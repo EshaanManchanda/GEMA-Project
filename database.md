@@ -9,21 +9,61 @@ This document outlines the **MongoDB schema** for the Kidzapp Clone project usin
 ```js
 {
   _id: ObjectId,
-  name: String,
+  firstName: String,
+  lastName: String,
   email: String,
   passwordHash: String,
-  roles: [ObjectId], // Refers to roles collection
-  isApproved: Boolean,
-  profileImage: String,
-  preferredLanguage: "en" | "ar",
-  vendorProfile: {
-    companyName: String,
-    businessLicense: String,
-    payoutAccount: String
-  },
-  timezone: String,
-  loginProvider: String,
+  phone?: String,
+  avatar?: String,
+  role: "admin" | "customer" | "vendor", // Refers to roles collection
+  status: "active" | "inactive" | "suspended" | "pending",
   isEmailVerified: Boolean,
+  isPhoneVerified: Boolean,
+  gender?: "male" | "female" | "other" | "prefer_not_to_say",
+  dateOfBirth?: Date,
+  addresses?: [
+    {
+      street: String,
+      city: String,
+      state: String,
+      zipCode: String,
+      country: String,
+      isDefault?: Boolean
+    }
+  ],
+  socialLogins?: [
+    {
+      provider: "google" | "facebook" | "apple",
+      providerId: String
+    }
+  ],
+  twoFactorAuth: {
+    enabled: Boolean,
+    secret?: String,
+    backupCodes?: [String]
+  },
+  passwordReset?: {
+    token: String,
+    expiresAt: Date
+  },
+  emailVerification?: {
+    token: String,
+    expiresAt: Date
+  },
+  phoneVerification?: {
+    code: String,
+    expiresAt: Date
+  },
+  loginAttempts?: [
+    {
+      timestamp: Date,
+      ip: String,
+      userAgent: String,
+      success: Boolean
+    }
+  ],
+  lastLogin?: Date,
+  firebaseUid?: String,
   createdAt: Date,
   updatedAt: Date
 }
@@ -36,8 +76,12 @@ This document outlines the **MongoDB schema** for the Kidzapp Clone project usin
 ```js
 {
   _id: ObjectId,
-  name: "admin" | "vendor" | "customer",
-  permissions: ["event:create", "user:approve", "dashboard:view"]
+  name: String,
+  displayName: String,
+  description: String,
+  permissions: [String],
+  createdAt: Date,
+  updatedAt: Date
 }
 ```
 
@@ -503,6 +547,27 @@ This document outlines the **MongoDB schema** for the Kidzapp Clone project usin
   status: "requested" | "approved" | "rejected" | "processed",
   requestedAt: Date,
   processedAt: Date
+}
+```
+
+---
+
+
+---
+
+## 🔄 Refresh Tokens (`refreshTokens`)
+
+```js
+{
+  _id: ObjectId,
+  token: String,
+  userId: ObjectId, // Refers to users collection
+  expiresAt: Date,
+  isRevoked: Boolean,
+  ipAddress?: String,
+  userAgent?: String,
+  createdAt: Date,
+  updatedAt: Date
 }
 ```
 
