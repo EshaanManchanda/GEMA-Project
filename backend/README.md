@@ -323,6 +323,204 @@ npm run start:prod
     }
     ```
 
+### Firebase Authentication with React Native App
+
+This section outlines the integration of Firebase Authentication with the MERN backend and a React Native application.
+
+#### Overview of the Flow
+
+1.  **React Native app** authenticates the user with Firebase.
+2.  Firebase returns an **ID token** (short-lived JWT issued by Firebase).
+3.  React Native sends that **ID token** to your backend.
+4.  Your backend **verifies** the token with Firebase Admin SDK.
+5.  Backend **finds or creates** a user in MongoDB linked to that Firebase UID.
+6.  Backend generates its **own JWT & refresh token** for session handling.
+7.  React Native stores and uses your backend’s tokens for all future requests.
+
+#### Step-by-Step Implementation
+
+##### Step 1 — Firebase Setup
+
+1.  Go to <mcurl name="Firebase Console" url="https://console.firebase.google.com/"></mcurl> → Create Project.
+2.  Enable **Firebase Authentication** and choose providers you need (Email/Password, Google, Facebook, etc.).
+3.  Go to **Project Settings → Service Accounts → Generate New Private Key**.
+4.  Save the downloaded JSON — you’ll use it in your backend `.env` file:
+
+    ```env
+    FIREBASE_PROJECT_ID=your_project_id
+    FIREBASE_PRIVATE_KEY="-----BEGIN PRIVATE KEY-----\n...\n-----END PRIVATE KEY-----\n"
+    FIREBASE_CLIENT_EMAIL=firebase-adminsdk-xxxx@your_project_id.iam.gserviceaccount.com
+    ```
+
+##### Step 2 — React Native App (Frontend)
+
+Install Firebase for React Native:
+
+```bash
+npm install @react-native-firebase/app @react-native-firebase/auth
+```
+
+**Initialize Firebase** in your RN app:
+
+```js
+import auth from '@react-native-firebase/auth';
+
+// Email/Password Example
+await auth().signInWithEmailAndPassword(email, password);
+
+// Get Firebase ID token
+const idToken = await auth().currentUser.getIdToken();
+```
+
+**Send `idToken` to your backend**:
+
+```js
+const response = await fetch('`https://your-backend.com/api/auth/firebase`', {
+  method: 'POST',
+  headers: { 'Content-Type': 'application/json' },
+  body: JSON.stringify({ idToken }),
+});
+
+const data = await response.json();
+// Save backend's JWT & refresh token
+```
+
+##### Step 3 — Backend Firebase Admin SDK Setup
+
+Install Firebase Admin SDK:
+
+```bash
+npm install firebase-admin
+```
+
+Initialize Firebase in your backend (<mcfile name="firebase.ts" path="e:\coding\gema\backend\src\config\firebase.ts"></mcfile>):
+
+```ts
+import admin from 'firebase-admin';
+import { config } from './env';
+
+export const initializeFirebase = () => {
+  if (!admin.apps.length) {
+    admin.initializeApp({
+      credential: admin.credential.cert({
+        projectId: config.firebase.projectId,
+        privateKey: config.firebase.privateKey.replace(/\\n/g, '\n'),
+        clientEmail: config.firebase.clientEmail,
+      }),
+    });
+    console.log('Firebase Admin SDK initialized with provided credentials');
+  }
+};
+```
+
+Call `initializeFirebase()` in your <mcfile name="server.ts" path="e:\coding\gema\backend\src\server.ts"></mcfile> before routes.
+
+##### Step 4 — Backend `/auth/firebase` Controller
+
+Here’s the **core logic** in <mcsymbol name="firebaseAuth" filename="auth.controller.ts" path="e:\coding\gema\backend\src\controllers\auth.controller.ts" startline="549" type="function"></mcsymbol>:
+
+```ts
+import admin from 'firebase-admin';
+import User from '../models/User';
+import { generateToken, generateRefreshToken } from '../config/jwt';
+import { AppError } from '../middleware';
+
+export const firebaseAuth = async (req, res, next) => {
+  const { idToken } = req.body;
+
+  try {
+    // 1. Verify Firebase ID Token
+    const decodedToken = await admin.auth().verifyIdToken(idToken);
+    const firebaseUid = decodedToken.uid;
+    const email = decodedToken.email;
+
+    // 2. Find or Create User in MongoDB
+    let user = await User.findOne({ firebaseUid });
+    if (!user && email) {
+      user = await User.findOne({ email });
+    }
+
+    if (!user) {
+      user = await User.create({
+        firebaseUid,
+        email,
+        isEmailVerified: decodedToken.email_verified,
+        role: 'customer', // default role
+        status: 'ACTIVE',
+      });
+    }
+
+    // 3. Generate Backend Tokens
+    const accessToken = generateToken({ id: user._id, role: user.role });
+    const refreshToken = generateRefreshToken({ id: user._id });
+
+    // 4. Respond
+    res.status(200).json({
+      success: true,
+      message: 'Firebase authentication successful',
+      data: {
+        user,
+        accessToken,
+        refreshToken,
+      },
+    });
+
+  } catch (err) {
+    return next(new AppError('Invalid Firebase ID token', 401));
+  }
+};
+```
+
+##### Step 5 — MongoDB User Schema
+
+Make sure your <mcfile name="User.ts" path="e:\coding\gema\backend\src\models\User.ts"></mcfile> model has:
+
+```ts
+firebaseUid: { type: String, unique: true, sparse: true },
+email: { type: String, unique: true, required: true },
+isEmailVerified: { type: Boolean, default: false },
+role: { type: String, enum: ['admin', 'vendor', 'customer'], default: 'customer' },
+status: { type: String, enum: ['ACTIVE', 'PENDING', 'SUSPENDED'], default: 'ACTIVE' }
+```
+
+`sparse: true` ensures uniqueness only applies when a value exists.
+
+##### Step 6 — Middleware to Verify Backend JWT
+
+Once you issue your own JWT, verify it for protected routes using the <mcsymbol name="authenticate" filename="auth.ts" path="e:\coding\gema\backend\src\middleware\auth.ts" startline="10" type="function"></mcsymbol> middleware:
+
+```ts
+import jwt from 'jsonwebtoken';
+import { config } from '../config';
+
+export const authenticate = (req, res, next) => {
+  const token = req.headers.authorization?.split(' ')[1];
+  if (!token) return res.status(401).json({ message: 'Unauthorized' });
+
+  try {
+    const decoded = jwt.verify(token, config.jwtSecret);
+    req.user = decoded;
+    next();
+  } catch {
+    res.status(401).json({ message: 'Invalid token' });
+  }
+};
+```
+
+##### Step 7 — Future API Requests
+
+React Native will:
+
+*   Call `/auth/firebase` **only once after sign-in with Firebase**.
+*   Store your **access & refresh tokens**.
+*   Use them for all API calls to your backend.
+
+**Result:**
+
+*   Firebase handles sign-in and identity verification.
+*   Your backend handles session control, role management, and MongoDB data.
+*   React Native app only talks to your backend with your JWT after initial login.
+
 ### General Endpoints
 
 - `GET /` - Health check / Root route
