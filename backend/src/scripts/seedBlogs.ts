@@ -403,7 +403,7 @@ async function seedBlogs() {
         (blog.category as any).toString() === (category._id as any).toString()
       ).length;
       
-      await BlogCategory.findByIdAndUpdate(category._id, {
+      await BlogCategory.findByIdAndUpdate((category as any)._id, {
         postsCount: postCount
       });
     }
