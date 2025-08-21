@@ -2,7 +2,7 @@ import { Router, Request, Response, NextFunction } from 'express';
 import path from 'path';
 import fs from 'fs';
 import { config } from '../config/env';
-import { AuthRequest } from '../types';
+import { AuthRequest } from '../types/express.d';
 import { AppError } from '../middleware/error';
 import { 
   uploadSingle, 
@@ -85,7 +85,7 @@ router.post('/multiple', authenticate, uploadMultiple('files', 5), handleUploadE
       return next(new AppError('No files uploaded', 400));
     }
 
-    const filesInfo = req.files.map(file => getFileInfo(file));
+    const filesInfo = (req.files as Express.Multer.File[]).map((file: Express.Multer.File) => getFileInfo(file));
 
     res.status(200).json({
       success: true,
