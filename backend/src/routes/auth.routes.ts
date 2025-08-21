@@ -62,7 +62,7 @@ router.post(
       .withMessage('Email is required')
       .isEmail()
       .withMessage('Please provide a valid email address'),
-    body('newPassword')
+    body('password')
       .notEmpty()
       .withMessage('Password is required')
   ],
@@ -201,15 +201,19 @@ router.post(
 
 /**
  * @route   POST /api/auth/verify-email
- * @desc    Verify email
+ * @desc    Verify email with OTP
  * @access  Public
  */
 router.post(
   '/verify-email',
   [
-    body('token')
+    body('otp')
       .notEmpty()
-      .withMessage('Verification token is required')
+      .withMessage('Verification OTP is required')
+      .isLength({ min: 4, max: 4 })
+      .withMessage('OTP must be exactly 4 digits')
+      .isNumeric()
+      .withMessage('OTP must contain only numbers')
   ],
   validate,
   authController.verifyEmail
@@ -217,7 +221,7 @@ router.post(
 
 /**
  * @route   POST /api/auth/resend-verification-email
- * @desc    Resend email verification link
+ * @desc    Resend email verification OTP
  * @access  Public
  */
 router.post(

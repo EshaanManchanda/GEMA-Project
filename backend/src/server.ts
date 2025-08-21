@@ -10,6 +10,7 @@ import hpp from 'hpp';
 import { config, connectDB, initializeFirebase, logger } from './config';
 import { errorHandler, notFound } from './middleware';
 import routes from './routes';
+import { scheduleTicketJobs } from './utils/ticketExpiration';
 
 // Initialize Firebase Admin SDK
 initializeFirebase();
@@ -23,8 +24,10 @@ const app: Express = express();
 // Security middleware
 app.use(helmet());
 app.use(cors({
-  origin: config.frontendUrl,
-  credentials: true
+  origin: [config.frontendUrl, 'http://localhost:3000', 'http://localhost:3001', 'http://localhost:4200', 'http://localhost:4201'],
+  credentials: true,
+  methods: ['GET', 'POST', 'PUT', 'DELETE', 'PATCH', 'OPTIONS'],
+  allowedHeaders: ['Content-Type', 'Authorization']
 }));
 app.use(mongoSanitize());
 app.use(hpp());
@@ -39,7 +42,8 @@ const limiter = rateLimit({
 });
 app.use(limiter);
 
-// Body parsing middleware
+// Body parsing middleware with special handling for Stripe webhooks
+app.use('/api/payments/webhook', express.raw({ type: 'application/json' }));
 app.use(express.json({ limit: '10mb' }));
 app.use(express.urlencoded({ extended: true, limit: '10mb' }));
 app.use(cookieParser());
@@ -51,7 +55,7 @@ app.use(compression());
 app.use(morgan(config.nodeEnv === 'development' ? 'dev' : 'combined'));
 
 // API routes
-app.use('/', routes);
+app.use('/api', routes);
 
 // Health check route
 app.get('/health', (req: Request, res: Response) => {
@@ -63,6 +67,9 @@ app.use(notFound);
 
 // Error handler
 app.use(errorHandler);
+
+// Initialize scheduled jobs
+scheduleTicketJobs();
 
 // Start server
 const PORT = config.port;

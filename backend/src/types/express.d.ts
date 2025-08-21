@@ -1,10 +1,9 @@
-import { IUser } from '../models/User';
+import { IUser } from '../models';
 
 declare global {
   namespace Express {
     interface Request {
-      user?: IUser;
-      firebaseUser?: any;
+      user?: IUser; // Define the user property with IUser type
     }
   }
 }

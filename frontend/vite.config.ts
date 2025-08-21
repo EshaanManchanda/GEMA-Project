@@ -1,0 +1,157 @@
+import { defineConfig } from 'vite';
+import react from '@vitejs/plugin-react';
+import { VitePWA } from 'vite-plugin-pwa';
+import path from 'path';
+
+// https://vitejs.dev/config/
+export default defineConfig({
+  plugins: [
+    react(),
+    VitePWA({
+      registerType: 'autoUpdate',
+      includeAssets: ['favicon.ico', 'apple-touch-icon.png', 'masked-icon.svg'],
+      manifest: {
+        name: 'KidzApp Clone',
+        short_name: 'KidzApp',
+        description: 'Discover and book amazing kids activities',
+        theme_color: '#3B82F6',
+        background_color: '#ffffff',
+        display: 'standalone',
+        icons: [
+          {
+            src: 'pwa-192x192.png',
+            sizes: '192x192',
+            type: 'image/png'
+          },
+          {
+            src: 'pwa-512x512.png',
+            sizes: '512x512',
+            type: 'image/png'
+          }
+        ]
+      },
+      workbox: {
+        globPatterns: ['**/*.{js,css,html,ico,png,svg}']
+      }
+    })
+  ],
+  resolve: {
+    alias: {
+      '@': path.resolve(__dirname, './src'),
+      '@components': path.resolve(__dirname, './src/components'),
+      '@pages': path.resolve(__dirname, './src/pages'),
+      '@hooks': path.resolve(__dirname, './src/hooks'),
+      '@utils': path.resolve(__dirname, './src/utils'),
+      '@services': path.resolve(__dirname, './src/services'),
+      '@store': path.resolve(__dirname, './src/store'),
+      '@types': path.resolve(__dirname, './src/types'),
+      '@assets': path.resolve(__dirname, './src/assets'),
+      '@styles': path.resolve(__dirname, './src/styles')
+    }
+  },
+  server: {
+    port: 3000,
+    host: true,
+    proxy: {
+      '/api': {
+        target: 'http://localhost:5001',
+        changeOrigin: true,
+        secure: false
+      }
+    }
+  },
+  build: {
+    outDir: 'dist',
+    sourcemap: false,
+    target: 'es2015',
+    minify: 'esbuild',
+    rollupOptions: {
+      output: {
+        manualChunks: {
+          // Core React
+          vendor: ['react', 'react-dom'],
+          
+          // Routing
+          router: ['react-router-dom'],
+          
+          // State Management
+          state: ['@reduxjs/toolkit', 'react-redux', 'redux-persist'],
+          
+          // UI & Animations
+          ui: ['framer-motion', 'lucide-react', 'react-icons'],
+          
+          // Forms & Validation
+          forms: ['react-hook-form', '@hookform/resolvers', 'yup'],
+          
+          // Data Fetching
+          query: ['@tanstack/react-query', 'axios'],
+          
+          // Charts & Visualization
+          charts: ['chart.js', 'react-chartjs-2'],
+          
+          // Carousels & Sliders
+          sliders: ['keen-slider', 'embla-carousel-react', 'swiper'],
+          
+          // Maps
+          maps: ['react-leaflet', 'leaflet'],
+          
+          // Payments
+          payments: ['@stripe/stripe-js', '@stripe/react-stripe-js'],
+          
+          // Utilities
+          utils: ['lodash', 'date-fns', 'clsx', 'tailwind-merge'],
+          
+          // i18n
+          i18n: ['i18next', 'react-i18next', 'i18next-browser-languagedetector'],
+          
+          // QR & Camera
+          qr: ['@zxing/library', 'qr-scanner', 'qrcode.react'],
+          
+          // Other
+          misc: ['firebase', 'js-cookie', 'uuid', 'react-helmet-async']
+        },
+        chunkFileNames: (chunkInfo) => {
+          const facadeModuleId = chunkInfo.facadeModuleId ? chunkInfo.facadeModuleId.split('/').pop() : 'chunk';
+          return `js/[name]-[hash].js`;
+        },
+        entryFileNames: 'js/[name]-[hash].js',
+        assetFileNames: (assetInfo) => {
+          const info = assetInfo.name.split('.');
+          const ext = info[info.length - 1];
+          if (/png|jpe?g|svg|gif|tiff|bmp|ico/i.test(ext)) {
+            return `images/[name]-[hash][extname]`;
+          }
+          if (/css/i.test(ext)) {
+            return `css/[name]-[hash][extname]`;
+          }
+          return `assets/[name]-[hash][extname]`;
+        }
+      }
+    },
+    chunkSizeWarningLimit: 500,
+    assetsInlineLimit: 4096
+  },
+  optimizeDeps: {
+    include: [
+      'react',
+      'react-dom',
+      'react-router-dom',
+      '@reduxjs/toolkit',
+      'react-redux',
+      'redux-persist',
+      'axios',
+      'framer-motion',
+      'lucide-react',
+      'react-icons/fa',
+      'date-fns',
+      'clsx',
+      'lodash',
+      '@tanstack/react-query',
+      'react-hook-form'
+    ],
+    exclude: ['@zxing/library']
+  },
+  define: {
+    __APP_VERSION__: JSON.stringify(process.env.npm_package_version)
+  }
+});

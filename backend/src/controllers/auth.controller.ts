@@ -1,12 +1,13 @@
 import { Request, Response, NextFunction } from 'express';
 import { getAuth } from '../config/firebase';
 import { generateToken, generateRefreshToken } from '../config/jwt';
-import { User, UserRole, UserStatus, RefreshToken, IUser } from '../models';
+import { User, UserStatus, RefreshToken, IUser } from '../models';
 import { AppError } from '../middleware';
-import { 
-  AuthResponse, 
-  LoginRequest, 
-  RegisterRequest, 
+import { emailService } from '../services/email.service';
+import {
+  AuthResponse,
+  LoginRequest,
+  RegisterRequest,
   RefreshTokenRequest,
   ForgotPasswordRequest,
   ResetPasswordRequest,
@@ -19,7 +20,7 @@ import {
 } from '../types';
 import bcrypt from 'bcryptjs';
 import crypto from 'crypto';
-import sendEmail from '../utils/mailer';
+import { generateOTP, getOTPExpiry } from '../utils/otp';
 
 
 /**
@@ -33,7 +34,7 @@ const formatUserResponse = (user: IUser): UserResponse => {
     email: user.email,
     phone: user.phone,
     avatar: user.avatar,
-    role: user.role,
+    role: user.role, // role is now a string
     isEmailVerified: user.isEmailVerified,
     isPhoneVerified: user.isPhoneVerified,
     createdAt: user.createdAt.toISOString(),
@@ -93,10 +94,9 @@ export const register = async (req: Request, res: Response, next: NextFunction):
       throw new AppError('User with this email already exists', 400);
     }
     
-    // Generate verification token
-    const verificationToken = crypto.randomBytes(32).toString('hex');
-    const tokenExpiry = new Date();
-    tokenExpiry.setHours(tokenExpiry.getHours() + 24); // 24 hours from now
+    // Generate verification OTP
+    const verificationOTP = generateOTP();
+    const otpExpiry = getOTPExpiry(); // 10 minutes from now
     
     // Create new user
     console.log('Creating new user...');
@@ -106,24 +106,22 @@ export const register = async (req: Request, res: Response, next: NextFunction):
       email,
       passwordHash: password, // Will be hashed by pre-save hook
       phone,
-      role: UserRole.CUSTOMER,
+      role: 'customer', // Using string literal since UserRole enum is not defined
       status: UserStatus.PENDING,
       emailVerification: {
-        token: verificationToken,
-        expiresAt: tokenExpiry
+        otp: verificationOTP,
+        expiresAt: otpExpiry
       }
     });
     
     // Generate tokens
     const tokens = await generateAuthTokens(user._id.toString(), req);
     
-    // TODO: Send verification email
-    const verificationLink = `${process.env.FRONTEND_URL}/verify-email?token=${verificationToken}`;
-    await sendEmail({
+    // Send verification email
+    await emailService.sendVerificationEmail({
       to: user.email,
-      subject: 'Verify Your Email Address',
-      text: `Please verify your email address by clicking on this link: ${verificationLink}`,
-      html: `<p>Please verify your email address by clicking on this link: <a href="${verificationLink}">${verificationLink}</a></p>`,
+      firstName: user.firstName,
+      otp: verificationOTP,
     });
     
     // Return response
@@ -160,24 +158,21 @@ export const resendVerificationEmail = async (req: Request, res: Response, next:
       throw new AppError('Email already verified', 400);
     }
 
-    // Generate new verification token
-    const verificationToken = crypto.randomBytes(32).toString('hex');
-    const tokenExpiry = new Date();
-    tokenExpiry.setHours(tokenExpiry.getHours() + 24); // 24 hours from now
+    // Generate new verification OTP
+    const verificationOTP = generateOTP();
+    const otpExpiry = getOTPExpiry(); // 10 minutes from now
 
     user.emailVerification = {
-      token: verificationToken,
-      expiresAt: tokenExpiry
+      otp: verificationOTP,
+      expiresAt: otpExpiry
     };
 
     await user.save();
 
-    const verificationLink = `${process.env.FRONTEND_URL}/verify-email?token=${verificationToken}`;
-    await sendEmail({
+    await emailService.sendVerificationEmail({
       to: user.email,
-      subject: 'Resend Email Verification Link',
-      text: `Please verify your email address by clicking on this link: ${verificationLink}`,
-      html: `<p>Please verify your email address by clicking on this link: <a href="${verificationLink}">${verificationLink}</a></p>`,
+      firstName: user.firstName,
+      otp: verificationOTP,
     });
 
     res.status(200).json({
@@ -451,13 +446,11 @@ export const forgotPassword = async (req: Request, res: Response, next: NextFunc
     };
     await user.save();
     
-    // TODO: Send password reset email
-    const resetLink = `${process.env.FRONTEND_URL}/reset-password?token=${resetToken}`;
-    await sendEmail({
+    // Send password reset email
+    await emailService.sendPasswordResetEmail({
       to: user.email,
-      subject: 'Password Reset Request',
-      text: `You are receiving this because you (or someone else) have requested the reset of the password for your account.\n\nPlease click on the following link, or paste this into your browser to complete the process within one hour of receiving it:\n\n${resetLink}\n\nIf you did not request this, please ignore this email and your password will remain unchanged.`,
-      html: `<p>You are receiving this because you (or someone else) have requested the reset of the password for your account.</p><p>Please click on the following link, or paste this into your browser to complete the process within one hour of receiving it:</p><p><a href="${resetLink}">${resetLink}</a></p><p>If you did not request this, please ignore this email and your password will remain unchanged.</p>`,
+      firstName: user.firstName,
+      resetToken,
     });
     
     res.status(200).json({
@@ -509,21 +502,21 @@ export const resetPassword = async (req: Request, res: Response, next: NextFunct
  */
 export const verifyEmail = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
   try {
-    const { token }: VerifyEmailRequest = req.body;
+    const { otp }: VerifyEmailRequest = req.body;
     
-    // Find user by verification token
+    // Find user by verification OTP
     const user = await User.findOne({
-      'emailVerification.token': token,
+      'emailVerification.otp': otp,
       'emailVerification.expiresAt': { $gt: new Date() }
     });
     
     if (!user) {
-      throw new AppError('Invalid or expired verification token', 400);
+      throw new AppError('Invalid or expired verification OTP', 400);
     }
     
     // Mark email as verified
     user.isEmailVerified = true;
-    user.emailVerification = undefined; // Clear verification token
+    user.emailVerification = undefined; // Clear verification OTP
     
     // Update status if pending
     if (user.status === UserStatus.PENDING) {
@@ -590,7 +583,7 @@ export const firebaseAuth = async (req: Request, res: Response, next: NextFuncti
         email: firebaseUser.email,
         firebaseUid: firebaseUser.uid,
         avatar: firebaseUser.photoURL,
-        role: UserRole.CUSTOMER,
+        role: 'customer',
         status: UserStatus.ACTIVE,
         isEmailVerified: firebaseUser.emailVerified
       });

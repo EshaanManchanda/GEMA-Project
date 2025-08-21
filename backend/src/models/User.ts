@@ -5,7 +5,8 @@ import bcrypt from 'bcryptjs';
 export enum UserRole {
   ADMIN = 'admin',
   CUSTOMER = 'customer',
-  VENDOR = 'vendor'
+  VENDOR = 'vendor',
+  EMPLOYEE = 'employee'
 }
 
 export enum UserStatus {
@@ -49,13 +50,30 @@ export interface ITwoFactorAuth {
   backupCodes?: string[];
 }
 
+export interface IBusinessHours {
+  [key: string]: {
+    isOpen: boolean;
+    openTime?: string;
+    closeTime?: string;
+  };
+}
+
+export interface ISocialMedia {
+  facebook?: string;
+  instagram?: string;
+  twitter?: string;
+  linkedin?: string;
+  youtube?: string;
+  website?: string;
+}
+
 export interface IPasswordReset {
   token: string;
   expiresAt: Date;
 }
 
 export interface IEmailVerification {
-  token: string;
+  otp: string;
   expiresAt: Date;
 }
 
@@ -95,6 +113,8 @@ export interface IUser extends Document {
   loginAttempts?: ILoginAttempt[];
   lastLogin?: Date;
   firebaseUid?: string;
+  businessHours?: IBusinessHours;
+  socialMedia?: ISocialMedia;
   createdAt: Date;
   updatedAt: Date;
   
@@ -143,7 +163,8 @@ const UserSchema = new Schema<IUser>(
     role: {
       type: String,
       enum: Object.values(UserRole),
-      default: UserRole.CUSTOMER
+      default: UserRole.CUSTOMER,
+      required: true
     },
     status: {
       type: String,
@@ -219,7 +240,7 @@ const UserSchema = new Schema<IUser>(
       expiresAt: Date
     },
     emailVerification: {
-      token: String,
+      otp: String,
       expiresAt: Date
     },
     phoneVerification: {
@@ -243,6 +264,14 @@ const UserSchema = new Schema<IUser>(
     firebaseUid: {
       type: String,
       sparse: true
+    },
+    businessHours: {
+      type: Object,
+      default: {}
+    },
+    socialMedia: {
+      type: Object,
+      default: {}
     }
   },
   {
@@ -278,7 +307,7 @@ UserSchema.pre('save', async function(next) {
     // Generate a salt
     const salt = await bcrypt.genSalt(10);
     // Hash the password along with the new salt
-    this.passwordHash = await bcrypt.hash(this.passwordHash, salt);
+    this.set('passwordHash', await bcrypt.hash(this.get('passwordHash'), salt));
     next();
   } catch (error) {
     next(error as Error);

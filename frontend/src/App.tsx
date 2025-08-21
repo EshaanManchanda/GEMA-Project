@@ -1,0 +1,581 @@
+import React, { Suspense, useEffect } from 'react';
+import { Routes, Route, useLocation } from 'react-router-dom';
+import { AnimatePresence } from 'framer-motion';
+import { Provider } from 'react-redux';
+import { PersistGate } from 'redux-persist/integration/react';
+import { store, persistor } from './store';
+
+// Layout Components
+import Layout from '@components/layout/Layout';
+import LoadingSpinner from '@components/common/LoadingSpinner';
+import ScrollToTop from '@components/common/ScrollToTop';
+
+// Page Components (Lazy loaded for better performance)
+const HomePage = React.lazy(() => import(/* webpackChunkName: "home" */ './pages/HomePage'));
+const EventsPage = React.lazy(() => import(/* webpackChunkName: "events" */ './pages/EventsPage'));
+const EventDetailPage = React.lazy(() => import(/* webpackChunkName: "events" */ './pages/EventDetailPage'));
+const CategoriesPage = React.lazy(() => import(/* webpackChunkName: "categories" */ './pages/CategoriesPage'));
+const CategoryPage = React.lazy(() => import(/* webpackChunkName: "categories" */ './pages/CategoryPage'));
+const VendorsPage = React.lazy(() => import(/* webpackChunkName: "vendors" */ './pages/VendorsPage'));
+const VendorPage = React.lazy(() => import(/* webpackChunkName: "vendors" */ './pages/VendorPage'));
+const SearchPage = React.lazy(() => import(/* webpackChunkName: "search" */ './pages/SearchPage'));
+const BookingPage = React.lazy(() => import(/* webpackChunkName: "booking" */ './pages/BookingPage'));
+const CartPage = React.lazy(() => import(/* webpackChunkName: "cart" */ './pages/CartPage'));
+const CheckoutPage = React.lazy(() => import(/* webpackChunkName: "payment" */ './pages/CheckoutPage'));
+const PaymentSuccessPage = React.lazy(() => import(/* webpackChunkName: "payment" */ './pages/PaymentSuccessPage'));
+const PaymentCancelPage = React.lazy(() => import(/* webpackChunkName: "payment" */ './pages/PaymentCancelPage'));
+
+// Auth Pages
+const LoginPage = React.lazy(() => import(/* webpackChunkName: "auth" */ './pages/auth/LoginPage'));
+const RegisterPage = React.lazy(() => import(/* webpackChunkName: "auth" */ './pages/auth/RegisterPage'));
+const ForgotPasswordPage = React.lazy(() => import(/* webpackChunkName: "auth" */ './pages/auth/ForgotPasswordPage'));
+const ResetPasswordPage = React.lazy(() => import(/* webpackChunkName: "auth" */ './pages/auth/ResetPasswordPage'));
+const VerifyEmailPage = React.lazy(() => import(/* webpackChunkName: "auth" */ './pages/auth/VerifyEmailPage'));
+
+// User Dashboard Pages
+const DashboardPage = React.lazy(() => import(/* webpackChunkName: "dashboard" */ './pages/dashboard/DashboardPage'));
+const ProfilePage = React.lazy(() => import(/* webpackChunkName: "dashboard" */ './pages/dashboard/ProfilePage'));
+const BookingsPage = React.lazy(() => import(/* webpackChunkName: "dashboard" */ './pages/dashboard/BookingsPage'));
+const FavoritesPage = React.lazy(() => import(/* webpackChunkName: "dashboard" */ './pages/dashboard/FavoritesPage'));
+const ReviewsPage = React.lazy(() => import(/* webpackChunkName: "dashboard" */ './pages/dashboard/ReviewsPage'));
+const MyTicketsPage = React.lazy(() => import(/* webpackChunkName: "dashboard" */ './pages/dashboard/MyTicketsPage'));
+const ChangePasswordPage = React.lazy(() => import(/* webpackChunkName: "dashboard" */ './pages/dashboard/ChangePasswordPage'));
+
+// Vendor Dashboard Pages
+const VendorDashboardPage = React.lazy(() => import(/* webpackChunkName: "vendor" */ './pages/vendor/VendorDashboardPage'));
+const VendorEventsPage = React.lazy(() => import(/* webpackChunkName: "vendor" */ './pages/vendor/VendorEventsPage'));
+const VendorCreateEventPage = React.lazy(() => import(/* webpackChunkName: "vendor" */ './pages/vendor/VendorCreateEventPage'));
+const VendorEditEventPage = React.lazy(() => import(/* webpackChunkName: "vendor" */ './pages/vendor/VendorEditEventPage'));
+const VendorBookingsPage = React.lazy(() => import(/* webpackChunkName: "vendor" */ './pages/vendor/VendorBookingsPage'));
+const VendorAnalyticsPage = React.lazy(() => import(/* webpackChunkName: "vendor" */ './pages/vendor/VendorAnalyticsPage'));
+const VendorProfilePage = React.lazy(() => import(/* webpackChunkName: "vendor" */ './pages/vendor/VendorProfilePage'));
+
+// Admin Dashboard Pages
+const AdminDashboardPage = React.lazy(() => import(/* webpackChunkName: "admin" */ './pages/admin/AdminDashboardPage'));
+const AdminUsersPage = React.lazy(() => import(/* webpackChunkName: "admin" */ './pages/admin/AdminUsersPage'));
+const AdminEventsPage = React.lazy(() => import(/* webpackChunkName: "admin" */ './pages/admin/AdminEventsPage'));
+const AdminVenuesPage = React.lazy(() => import(/* webpackChunkName: "admin" */ './pages/admin/AdminVenuesPage'));
+const AdminCategoriesPage = React.lazy(() => import(/* webpackChunkName: "admin" */ './pages/admin/AdminCategoriesPage'));
+const AdminOrdersPage = React.lazy(() => import(/* webpackChunkName: "admin" */ './pages/admin/AdminOrdersPage'));
+const AdminAnalyticsPage = React.lazy(() => import(/* webpackChunkName: "admin" */ './pages/admin/AdminAnalyticsPage'));
+const AdminSettingsPage = React.lazy(() => import(/* webpackChunkName: "admin" */ './pages/admin/AdminSettingsPage'));
+const EmployeeManagement = React.lazy(() => import(/* webpackChunkName: "admin" */ './pages/admin/EmployeeManagement'));
+
+// Analytics Pages
+const AnalyticsDashboard = React.lazy(() => import(/* webpackChunkName: "analytics" */ './pages/analytics/AnalyticsDashboard'));
+const EventPerformance = React.lazy(() => import(/* webpackChunkName: "analytics" */ './pages/analytics/EventPerformance'));
+
+// Upload Management Pages
+const FileManager = React.lazy(() => import(/* webpackChunkName: "upload" */ './pages/upload/FileManager'));
+
+// Employee Dashboard Pages
+const EmployeeDashboard = React.lazy(() => import(/* webpackChunkName: "employee" */ './pages/employee/EmployeeDashboard'));
+const EmployeeTicketScanPage = React.lazy(() => import(/* webpackChunkName: "employee" */ './pages/employee/EmployeeTicketScanPage'));
+
+// Static Pages
+const AboutPage = React.lazy(() => import(/* webpackChunkName: "static" */ './pages/static/AboutPage'));
+const BlogPage = React.lazy(() => import(/* webpackChunkName: "static" */ './pages/static/BlogPage'));
+const BlogDetailPage = React.lazy(() => import(/* webpackChunkName: "static" */ './pages/static/BlogDetailPage'));
+const ContactPage = React.lazy(() => import(/* webpackChunkName: "static" */ './pages/static/ContactPage'));
+const PrivacyPage = React.lazy(() => import(/* webpackChunkName: "static" */ './pages/static/PrivacyPage'));
+const TermsPage = React.lazy(() => import(/* webpackChunkName: "static" */ './pages/static/TermsPage'));
+const FAQPage = React.lazy(() => import(/* webpackChunkName: "static" */ './pages/static/FAQPage'));
+const HelpPage = React.lazy(() => import(/* webpackChunkName: "static" */ './pages/static/HelpPage'));
+
+// Error Pages
+const NotFoundPage = React.lazy(() => import(/* webpackChunkName: "error" */ './pages/error/NotFoundPage'));
+const ServerErrorPage = React.lazy(() => import(/* webpackChunkName: "error" */ './pages/error/ServerErrorPage'));
+
+// Protected Route Components
+import ProtectedRoute from '@components/auth/ProtectedRoute';
+import VendorRoute from '@components/auth/VendorRoute';
+import AdminRoute from '@components/auth/AdminRoute';
+import EmployeeRoute from '@components/auth/EmployeeRoute';
+
+// Hooks
+import useAuth from '@hooks/useAuth';
+import useLanguage from '@hooks/useLanguage';
+
+function AppContent() {
+  const location = useLocation();
+  const { user, isLoading } = useAuth();
+  const { language } = useLanguage();
+
+  // Set document direction based on language
+  useEffect(() => {
+    document.documentElement.dir = language === 'ar' ? 'rtl' : 'ltr';
+    document.documentElement.lang = language;
+  }, [language]);
+
+  // Show loading spinner while checking authentication
+  if (isLoading) {
+    return (
+      <div className="min-h-screen flex items-center justify-center">
+        <LoadingSpinner size="large" />
+      </div>
+    );
+  }
+
+  return (
+    <>
+      <ScrollToTop />
+      <AnimatePresence mode="wait">
+        <Routes location={location} key={location.pathname}>
+          {/* ============ PUBLIC ROUTES (/) ============ */}
+          {/* Routes accessible to all users including guests */}
+          <Route path="/" element={<Layout />}>
+            {/* Home Page */}
+            <Route index element={
+              <Suspense fallback={<LoadingSpinner />}>
+                <HomePage />
+              </Suspense>
+            } />
+            
+            {/* Event Discovery Routes */}
+            <Route path="events" element={
+              <Suspense fallback={<LoadingSpinner />}>
+                <EventsPage />
+              </Suspense>
+            } />
+            <Route path="events/:id" element={
+              <Suspense fallback={<LoadingSpinner />}>
+                <EventDetailPage />
+              </Suspense>
+            } />
+            
+            {/* Category Discovery Routes */}
+            <Route path="categories" element={
+              <Suspense fallback={<LoadingSpinner />}>
+                <CategoriesPage />
+              </Suspense>
+            } />
+            <Route path="categories/:slug" element={
+              <Suspense fallback={<LoadingSpinner />}>
+                <CategoryPage />
+              </Suspense>
+            } />
+            
+            {/* Vendor Discovery Routes */}
+            <Route path="vendors" element={
+              <Suspense fallback={<LoadingSpinner />}>
+                <VendorsPage />
+              </Suspense>
+            } />
+            <Route path="vendors/:id" element={
+              <Suspense fallback={<LoadingSpinner />}>
+                <VendorPage />
+              </Suspense>
+            } />
+            
+            {/* Search Functionality */}
+            <Route path="search" element={
+              <Suspense fallback={<LoadingSpinner />}>
+                <SearchPage />
+              </Suspense>
+            } />
+            
+            {/* Static Information Pages */}
+            <Route path="about" element={
+              <Suspense fallback={<LoadingSpinner />}>
+                <AboutPage />
+              </Suspense>
+            } />
+            <Route path="blog" element={
+              <Suspense fallback={<LoadingSpinner />}>
+                <BlogPage />
+              </Suspense>
+            } />
+            <Route path="blog/:slug" element={
+              <Suspense fallback={<LoadingSpinner />}>
+                <BlogDetailPage />
+              </Suspense>
+            } />
+            <Route path="contact" element={
+              <Suspense fallback={<LoadingSpinner />}>
+                <ContactPage />
+              </Suspense>
+            } />
+            <Route path="privacy" element={
+              <Suspense fallback={<LoadingSpinner />}>
+                <PrivacyPage />
+              </Suspense>
+            } />
+            <Route path="terms" element={
+              <Suspense fallback={<LoadingSpinner />}>
+                <TermsPage />
+              </Suspense>
+            } />
+            <Route path="faq" element={
+              <Suspense fallback={<LoadingSpinner />}>
+                <FAQPage />
+              </Suspense>
+            } />
+            <Route path="help" element={
+              <Suspense fallback={<LoadingSpinner />}>
+                <HelpPage />
+              </Suspense>
+            } />
+            
+            {/* ============ CUSTOMER ROUTES (/) ============ */}
+            {/* Routes accessible to authenticated customers */}
+            
+            {/* Shopping & Booking Routes */}
+            <Route path="book/:eventId" element={
+              <ProtectedRoute>
+                <Suspense fallback={<LoadingSpinner />}>
+                  <BookingPage />
+                </Suspense>
+              </ProtectedRoute>
+            } />
+            <Route path="cart" element={
+              <Suspense fallback={<LoadingSpinner />}>
+                <CartPage />
+              </Suspense>
+            } />
+            <Route path="checkout" element={
+              <ProtectedRoute>
+                <Suspense fallback={<LoadingSpinner />}>
+                  <CheckoutPage />
+                </Suspense>
+              </ProtectedRoute>
+            } />
+            
+            {/* Payment Routes */}
+            <Route path="payment/success" element={
+              <Suspense fallback={<LoadingSpinner />}>
+                <PaymentSuccessPage />
+              </Suspense>
+            } />
+            <Route path="payment/cancel" element={
+              <Suspense fallback={<LoadingSpinner />}>
+                <PaymentCancelPage />
+              </Suspense>
+            } />
+            
+            {/* Customer Dashboard Routes */}
+            <Route path="dashboard" element={
+              <ProtectedRoute>
+                <Suspense fallback={<LoadingSpinner />}>
+                  <DashboardPage />
+                </Suspense>
+              </ProtectedRoute>
+            } />
+            <Route path="profile" element={
+              <ProtectedRoute>
+                <Suspense fallback={<LoadingSpinner />}>
+                  <ProfilePage />
+                </Suspense>
+              </ProtectedRoute>
+            } />
+            <Route path="bookings" element={
+              <ProtectedRoute>
+                <Suspense fallback={<LoadingSpinner />}>
+                  <BookingsPage />
+                </Suspense>
+              </ProtectedRoute>
+            } />
+            <Route path="favorites" element={
+              <ProtectedRoute>
+                <Suspense fallback={<LoadingSpinner />}>
+                  <FavoritesPage />
+                </Suspense>
+              </ProtectedRoute>
+            } />
+            <Route path="reviews" element={
+              <ProtectedRoute>
+                <Suspense fallback={<LoadingSpinner />}>
+                  <ReviewsPage />
+                </Suspense>
+              </ProtectedRoute>
+            } />
+            <Route path="tickets" element={
+              <ProtectedRoute>
+                <Suspense fallback={<LoadingSpinner />}>
+                  <MyTicketsPage />
+                </Suspense>
+              </ProtectedRoute>
+            } />
+            <Route path="dashboard/change-password" element={
+              <ProtectedRoute>
+                <Suspense fallback={<LoadingSpinner />}>
+                  <ChangePasswordPage />
+                </Suspense>
+              </ProtectedRoute>
+            } />
+            
+            {/* Error Pages */}
+            <Route path="500" element={
+              <Suspense fallback={<LoadingSpinner />}>
+                <ServerErrorPage />
+              </Suspense>
+            } />
+            <Route path="*" element={
+              <Suspense fallback={<LoadingSpinner />}>
+                <NotFoundPage />
+              </Suspense>
+            } />
+          </Route>
+          
+          {/* ============ VENDOR ROUTES (/vendor) ============ */}
+          {/* Routes accessible only to vendors */}
+          <Route path="/vendor" element={<Layout />}>
+            {/* Vendor Dashboard */}
+            <Route index element={
+              <VendorRoute>
+                <Suspense fallback={<LoadingSpinner />}>
+                  <VendorDashboardPage />
+                </Suspense>
+              </VendorRoute>
+            } />
+            
+            {/* Event Management */}
+            <Route path="events" element={
+              <VendorRoute>
+                <Suspense fallback={<LoadingSpinner />}>
+                  <VendorEventsPage />
+                </Suspense>
+              </VendorRoute>
+            } />
+            <Route path="events/create" element={
+              <VendorRoute>
+                <Suspense fallback={<LoadingSpinner />}>
+                  <VendorCreateEventPage />
+                </Suspense>
+              </VendorRoute>
+            } />
+            <Route path="events/:id/edit" element={
+              <VendorRoute>
+                <Suspense fallback={<LoadingSpinner />}>
+                  <VendorEditEventPage />
+                </Suspense>
+              </VendorRoute>
+            } />
+            
+            {/* Booking Management */}
+            <Route path="bookings" element={
+              <VendorRoute>
+                <Suspense fallback={<LoadingSpinner />}>
+                  <VendorBookingsPage />
+                </Suspense>
+              </VendorRoute>
+            } />
+            
+            {/* Analytics & Reports */}
+            <Route path="analytics" element={
+              <VendorRoute>
+                <Suspense fallback={<LoadingSpinner />}>
+                  <AnalyticsDashboard />
+                </Suspense>
+              </VendorRoute>
+            } />
+            <Route path="analytics/events/:eventId" element={
+              <VendorRoute>
+                <Suspense fallback={<LoadingSpinner />}>
+                  <EventPerformance />
+                </Suspense>
+              </VendorRoute>
+            } />
+            
+            {/* File Management */}
+            <Route path="files" element={
+              <VendorRoute>
+                <Suspense fallback={<LoadingSpinner />}>
+                  <FileManager />
+                </Suspense>
+              </VendorRoute>
+            } />
+            
+            {/* Vendor Profile */}
+            <Route path="profile" element={
+              <VendorRoute>
+                <Suspense fallback={<LoadingSpinner />}>
+                  <VendorProfilePage />
+                </Suspense>
+              </VendorRoute>
+            } />
+          </Route>
+          
+          {/* ============ EMPLOYEE ROUTES (/employee) ============ */}
+          {/* Routes accessible only to employees */}
+          <Route path="/employee" element={<Layout />}>
+            {/* Employee Dashboard */}
+            <Route index element={
+              <EmployeeRoute>
+                <Suspense fallback={<LoadingSpinner />}>
+                  <EmployeeDashboard />
+                </Suspense>
+              </EmployeeRoute>
+            } />
+            
+            {/* Task Management */}
+            <Route path="tasks" element={
+              <EmployeeRoute>
+                <Suspense fallback={<LoadingSpinner />}>
+                  <EmployeeDashboard />
+                </Suspense>
+              </EmployeeRoute>
+            } />
+            
+            {/* Ticket Scanning */}
+            <Route path="scanner" element={
+              <EmployeeRoute>
+                <Suspense fallback={<LoadingSpinner />}>
+                  <EmployeeTicketScanPage />
+                </Suspense>
+              </EmployeeRoute>
+            } />
+            
+            {/* Reports */}
+            <Route path="reports" element={
+              <EmployeeRoute>
+                <Suspense fallback={<LoadingSpinner />}>
+                  <EmployeeDashboard />
+                </Suspense>
+              </EmployeeRoute>
+            } />
+          </Route>
+          
+          {/* ============ ADMIN ROUTES (/admin) ============ */}
+          {/* Routes accessible only to administrators */}
+          <Route path="/admin" element={<Layout />}>
+            {/* Admin Dashboard */}
+            <Route index element={
+              <AdminRoute>
+                <Suspense fallback={<LoadingSpinner />}>
+                  <AdminDashboardPage />
+                </Suspense>
+              </AdminRoute>
+            } />
+            
+            {/* User Management */}
+            <Route path="users" element={
+              <AdminRoute>
+                <Suspense fallback={<LoadingSpinner />}>
+                  <AdminUsersPage />
+                </Suspense>
+              </AdminRoute>
+            } />
+            
+            {/* Event Management */}
+            <Route path="events" element={
+              <AdminRoute>
+                <Suspense fallback={<LoadingSpinner />}>
+                  <AdminEventsPage />
+                </Suspense>
+              </AdminRoute>
+            } />
+            
+            {/* Venue Management */}
+            <Route path="venues" element={
+              <AdminRoute>
+                <Suspense fallback={<LoadingSpinner />}>
+                  <AdminVenuesPage />
+                </Suspense>
+              </AdminRoute>
+            } />
+            
+            {/* Category Management */}
+            <Route path="categories" element={
+              <AdminRoute>
+                <Suspense fallback={<LoadingSpinner />}>
+                  <AdminCategoriesPage />
+                </Suspense>
+              </AdminRoute>
+            } />
+            
+            {/* Order Management */}
+            <Route path="orders" element={
+              <AdminRoute>
+                <Suspense fallback={<LoadingSpinner />}>
+                  <AdminOrdersPage />
+                </Suspense>
+              </AdminRoute>
+            } />
+            
+            {/* Analytics & Reports */}
+            <Route path="analytics" element={
+              <AdminRoute>
+                <Suspense fallback={<LoadingSpinner />}>
+                  <AnalyticsDashboard />
+                </Suspense>
+              </AdminRoute>
+            } />
+            <Route path="analytics/events/:eventId" element={
+              <AdminRoute>
+                <Suspense fallback={<LoadingSpinner />}>
+                  <EventPerformance />
+                </Suspense>
+              </AdminRoute>
+            } />
+            
+            {/* Employee Management */}
+            <Route path="employees" element={
+              <AdminRoute>
+                <Suspense fallback={<LoadingSpinner />}>
+                  <EmployeeManagement />
+                </Suspense>
+              </AdminRoute>
+            } />
+            
+            {/* File Management */}
+            <Route path="files" element={
+              <AdminRoute>
+                <Suspense fallback={<LoadingSpinner />}>
+                  <FileManager />
+                </Suspense>
+              </AdminRoute>
+            } />
+            
+            {/* System Settings */}
+            <Route path="settings" element={
+              <AdminRoute>
+                <Suspense fallback={<LoadingSpinner />}>
+                  <AdminSettingsPage />
+                </Suspense>
+              </AdminRoute>
+            } />
+          </Route>
+          
+          {/* Auth Routes (without layout) */}
+          <Route path="login" element={
+            <Suspense fallback={<LoadingSpinner />}>
+              <LoginPage />
+            </Suspense>
+          } />
+          <Route path="register" element={
+            <Suspense fallback={<LoadingSpinner />}>
+              <RegisterPage />
+            </Suspense>
+          } />
+          <Route path="forgot-password" element={
+            <Suspense fallback={<LoadingSpinner />}>
+              <ForgotPasswordPage />
+            </Suspense>
+          } />
+          <Route path="reset-password" element={
+            <Suspense fallback={<LoadingSpinner />}>
+              <ResetPasswordPage />
+            </Suspense>
+          } />
+          <Route path="verify-email" element={
+            <Suspense fallback={<LoadingSpinner />}>
+              <VerifyEmailPage />
+            </Suspense>
+          } />
+        </Routes>
+      </AnimatePresence>
+    </>
+  );
+}
+
+function App() {
+  return (
+    <Provider store={store}>
+      <PersistGate loading={<LoadingSpinner />} persistor={persistor}>
+        <AppContent />
+      </PersistGate>
+    </Provider>
+  );
+}
+
+export default App;
