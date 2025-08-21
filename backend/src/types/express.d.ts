@@ -20,5 +20,9 @@ declare global {
         buffer: Buffer;
       }
     }
+    
+    interface Request {
+      user?: import('../models').IUser;
+    }
   }
 }
