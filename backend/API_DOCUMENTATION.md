@@ -19,10 +19,27 @@
 16. [Rate Limiting](#rate-limiting)
 
 ## Base URL
+
+### Environments
 ```
-Development: http://localhost:5000/api
-Production: https://api.gema.com/api
+Development:  http://localhost:5000/api
+Staging:      https://gema-backend-staging.render.com/api
+Production:   https://gema-backend.render.com/api
 ```
+
+### API Version
+- **Current Version**: v1.0.0
+- **API Path**: All endpoints are prefixed with `/api`
+- **Versioning Strategy**: URL-based versioning (future versions will use `/api/v2`)
+
+### Environment Configuration
+- **Node.js Version**: >=18.0.0
+- **Database**: MongoDB with Mongoose ODM
+- **Authentication**: JWT with refresh tokens
+- **File Storage**: Cloudinary CDN
+- **Payment Processing**: Stripe
+- **Email Service**: Nodemailer with SMTP
+- **Logging**: Winston with file and console transports
 
 ## Authentication
 
@@ -99,6 +116,130 @@ Verify email address.
 ```json
 {
   "token": "verification_token"
+}
+```
+
+### POST /api/auth/logout
+Logout user and invalidate tokens.
+
+**Headers:**
+```
+Authorization: Bearer <jwt_token>
+```
+
+**Response:**
+```json
+{
+  "success": true,
+  "message": "Logged out successfully"
+}
+```
+
+### GET /api/auth/me
+Get current authenticated user profile.
+
+**Headers:**
+```
+Authorization: Bearer <jwt_token>
+```
+
+**Response:**
+```json
+{
+  "success": true,
+  "message": "User profile retrieved successfully",
+  "data": {
+    "user": {
+      "_id": "user_id",
+      "firstName": "John",
+      "lastName": "Doe",
+      "email": "john.doe@example.com",
+      "role": "customer",
+      "phone": "+1234567890",
+      "country": "UAE",
+      "avatar": "https://cloudinary.com/avatar.jpg",
+      "emailVerified": true,
+      "status": "ACTIVE",
+      "addresses": [],
+      "createdAt": "2024-01-15T10:00:00Z",
+      "updatedAt": "2024-01-16T14:30:00Z"
+    }
+  }
+}
+```
+
+### PUT /api/auth/profile
+Update authenticated user's profile.
+
+**Headers:**
+```
+Authorization: Bearer <jwt_token>
+```
+
+**Body:**
+```json
+{
+  "firstName": "John",
+  "lastName": "Smith",
+  "phone": "+1234567890",
+  "country": "UAE",
+  "gender": "male",
+  "dateOfBirth": "1990-01-15"
+}
+```
+
+**Response:**
+```json
+{
+  "success": true,
+  "message": "Profile updated successfully",
+  "data": {
+    "user": {
+      "_id": "user_id",
+      "firstName": "John",
+      "lastName": "Smith",
+      "email": "john.doe@example.com",
+      "phone": "+1234567890",
+      "updatedAt": "2024-01-16T14:35:00Z"
+    }
+  }
+}
+```
+
+### PUT /api/auth/change-password
+Change authenticated user's password.
+
+**Headers:**
+```
+Authorization: Bearer <jwt_token>
+```
+
+**Body:**
+```json
+{
+  "currentPassword": "CurrentPassword123!",
+  "newPassword": "NewSecurePassword123!",
+  "confirmPassword": "NewSecurePassword123!"
+}
+```
+
+**Response:**
+```json
+{
+  "success": true,
+  "message": "Password changed successfully"
+}
+```
+
+**Error Response (Wrong Current Password):**
+```json
+{
+  "success": false,
+  "message": "Current password is incorrect",
+  "error": {
+    "code": "INVALID_CREDENTIALS",
+    "details": "The provided current password does not match"
+  }
 }
 ```
 
@@ -473,22 +614,13 @@ Create a new order (requires authentication).
 Authorization: Bearer <jwt_token>
 ```
 
-**Headers:**
-```
-Authorization: Bearer <jwt_token>
-```
-
 **Body:**
 ```json
 {
   "items": [{
     "eventId": "event_id",
-    "quantity": 2,
-    "participants": [{
-      "name": "John Doe",
-      "age": 30,
-      "email": "john@example.com"
-    }]
+    "scheduleDate": "2024-12-01T18:00:00Z",
+    "quantity": 2
   }],
   "billingAddress": {
     "firstName": "John",
@@ -501,7 +633,9 @@ Authorization: Bearer <jwt_token>
     "zipCode": "12345",
     "country": "UAE"
   },
-  "couponCode": "DISCOUNT10"
+  "notes": "Special requirements",
+  "couponCode": "DISCOUNT10",
+  "affiliateCode": "PARTNER123"
 }
 ```
 
@@ -515,8 +649,10 @@ Authorization: Bearer <jwt_token>
 
 **Query Parameters:**
 - `status` (string): Filter by status ("pending", "confirmed", "cancelled", "refunded")
+- `sortBy` (string): Sort field ("createdAt", "total", "status")
+- `sortOrder` (string): "asc" or "desc"
 - `page` (number): Page number (default: 1)
-- `limit` (number): Items per page (default: 10)
+- `limit` (number): Items per page (default: 10, max: 50)
 
 ### GET /api/orders/:id
 Get single order details (requires authentication).
@@ -534,13 +670,71 @@ Cancel order (Customer only - requires authentication).
 Authorization: Bearer <jwt_token>
 ```
 
-### POST /api/orders/:id/refund
-Request refund (Admin/Vendor only - requires authentication).
+### PUT /api/orders/:id/cancel
+Cancel order (Customer only - requires authentication).
 
 **Headers:**
 ```
 Authorization: Bearer <jwt_token>
 ```
+
+**Body:**
+```json
+{
+  "reason": "Changed my mind"
+}
+```
+
+### POST /api/orders/:id/payment
+Process payment for order (Customer only - requires authentication).
+
+**Headers:**
+```
+Authorization: Bearer <jwt_token>
+```
+
+**Body:**
+```json
+{
+  "paymentMethod": "stripe",
+  "paymentIntentId": "pi_1234567890"
+}
+```
+
+### GET /api/orders/vendor/my-orders
+Get vendor's orders (Vendor only - requires authentication).
+
+**Headers:**
+```
+Authorization: Bearer <jwt_token>
+```
+
+### GET /api/orders/admin/all
+Get all orders (Admin only - requires authentication).
+
+**Headers:**
+```
+Authorization: Bearer <jwt_token>
+```
+
+**Query Parameters:**
+- `status` (string): Filter by status ("pending", "confirmed", "cancelled", "refunded")
+- `paymentStatus` (string): Filter by payment status ("pending", "paid", "failed", "refunded")
+- `sortBy` (string): Sort field ("createdAt", "total", "status", "paymentStatus")
+- `sortOrder` (string): "asc" or "desc"
+- `page` (number): Page number (default: 1)
+- `limit` (number): Items per page (default: 10, max: 100)
+
+### GET /api/orders/admin/analytics
+Get order analytics (Admin only - requires authentication).
+
+**Headers:**
+```
+Authorization: Bearer <jwt_token>
+```
+
+**Query Parameters:**
+- `period` (number): Number of days for analytics (1-365, default: 30)
 
 ## Tickets
 
@@ -913,16 +1107,20 @@ Authorization: Bearer <jwt_token>
 
 ## Reviews
 
-### GET /api/reviews
-Get reviews with filtering. **No authentication required.**
+### GET /api/reviews/:type/:id
+Get reviews for a specific target with filtering. **No authentication required.**
+
+**Path Parameters:**
+- `type` (string): "event" or "vendor"
+- `id` (string): MongoDB ObjectId of the target (event/vendor)
 
 **Query Parameters:**
-- `type` (string): "event", "vendor", or "venue"
-- `targetId` (string): ID of the event/vendor/venue
 - `rating` (number): Filter by rating (1-5)
 - `verified` (boolean): Only verified reviews
+- `sortBy` (string): Sort field (default: "createdAt")
+- `sortOrder` (string): "asc" or "desc" (default: "desc")
 - `page` (number): Page number (default: 1)
-- `limit` (number): Items per page (default: 10)
+- `limit` (number): Items per page (default: 10, max: 50)
 
 ### POST /api/reviews
 Create new review (requires authentication).
@@ -936,17 +1134,24 @@ Authorization: Bearer <jwt_token>
 ```json
 {
   "type": "event",
-  "eventId": "event_id",
+  "targetId": "event_or_vendor_id",
   "rating": 5,
   "title": "Amazing event!",
   "comment": "Had a wonderful time",
   "pros": ["Great music", "Good organization"],
-  "cons": ["Long queues"]
+  "cons": ["Long queues"],
+  "orderId": "order_id_optional",
+  "media": ["image_urls_optional"]
 }
 ```
 
-### GET /api/reviews/:id
-Get review details. **No authentication required.**
+### GET /api/reviews/my-reviews
+Get current user's reviews (requires authentication).
+
+**Headers:**
+```
+Authorization: Bearer <jwt_token>
+```
 
 ### PUT /api/reviews/:id
 Update review (Author only, within 24 hours - requires authentication).
@@ -964,8 +1169,8 @@ Delete review (Author/Admin only - requires authentication).
 Authorization: Bearer <jwt_token>
 ```
 
-### POST /api/reviews/:id/helpful
-Mark review as helpful (requires authentication).
+### POST /api/reviews/:id/vote
+Vote on review helpfulness (requires authentication).
 
 **Headers:**
 ```
@@ -999,6 +1204,51 @@ Authorization: Bearer <jwt_token>
 
 **Available reasons:** "inappropriate", "spam", "fake", "offensive", "copyright", "other"
 
+### POST /api/reviews/:id/respond
+Respond to review (Vendor only - requires authentication).
+
+**Headers:**
+```
+Authorization: Bearer <jwt_token>
+```
+
+**Body:**
+```json
+{
+  "message": "Thank you for your feedback!"
+}
+```
+
+### GET /api/reviews/admin/pending
+Get pending reviews for moderation (Admin only - requires authentication).
+
+**Headers:**
+```
+Authorization: Bearer <jwt_token>
+```
+
+**Query Parameters:**
+- `page` (number): Page number (default: 1)
+- `limit` (number): Items per page (default: 10, max: 100)
+
+### PUT /api/reviews/admin/:id/moderate
+Moderate review status (Admin only - requires authentication).
+
+**Headers:**
+```
+Authorization: Bearer <jwt_token>
+```
+
+**Body:**
+```json
+{
+  "status": "approved",
+  "notes": "Review approved after verification"
+}
+```
+
+**Available statuses:** "pending", "approved", "rejected"
+
 ## Payments
 
 ### POST /api/payments/create-intent
@@ -1021,8 +1271,50 @@ Stripe webhook endpoint (for Stripe use only - no authentication required).
 
 **Note:** This endpoint uses Stripe signature verification instead of JWT authentication.
 
-### GET /api/payments/methods
-Get user's saved payment methods (requires authentication).
+### GET /api/payments/config
+Get Stripe configuration (public key, etc.) **No authentication required.**
+
+### POST /api/payments/confirm
+Confirm payment intent (Customer only - requires authentication).
+
+**Headers:**
+```
+Authorization: Bearer <jwt_token>
+```
+
+**Body:**
+```json
+{
+  "paymentIntentId": "pi_1234567890",
+  "paymentMethodId": "pm_1234567890"
+}
+```
+
+### POST /api/payments/cancel
+Cancel payment intent (Customer only - requires authentication).
+
+**Headers:**
+```
+Authorization: Bearer <jwt_token>
+```
+
+**Body:**
+```json
+{
+  "paymentIntentId": "pi_1234567890"
+}
+```
+
+### GET /api/payments/payment-methods
+Get user's saved payment methods (Customer only - requires authentication).
+
+**Headers:**
+```
+Authorization: Bearer <jwt_token>
+```
+
+### DELETE /api/payments/payment-methods/:id
+Remove saved payment method (Customer only - requires authentication).
 
 **Headers:**
 ```
@@ -1030,7 +1322,7 @@ Authorization: Bearer <jwt_token>
 ```
 
 ### POST /api/payments/refund
-Process refund (Admin/Vendor only - requires authentication).
+Process refund (Admin only - requires authentication).
 
 **Headers:**
 ```
@@ -1045,6 +1337,17 @@ Authorization: Bearer <jwt_token>
   "reason": "Customer request"
 }
 ```
+
+### GET /api/payments/admin/analytics
+Get payment analytics (Admin only - requires authentication).
+
+**Headers:**
+```
+Authorization: Bearer <jwt_token>
+```
+
+**Query Parameters:**
+- `period` (number): Number of days for analytics (1-365, default: 30)
 
 ## Check-in System
 
@@ -1327,6 +1630,53 @@ Authorization: Bearer <jwt_token>
 
 ## Admin Management
 
+All admin endpoints require authentication and admin role permissions.
+
+### User Management
+
+### GET /api/admin/users/stats
+Get user statistics overview (Admin only - requires authentication).
+
+**Headers:**
+```
+Authorization: Bearer <jwt_token>
+```
+
+**Response:**
+```json
+{
+  "success": true,
+  "message": "User statistics retrieved successfully",
+  "data": {
+    "totalUsers": 1520,
+    "activeUsers": 1350,
+    "suspendedUsers": 45,
+    "newUsersThisMonth": 125,
+    "usersByRole": {
+      "customer": 1200,
+      "vendor": 280,
+      "employee": 35,
+      "admin": 5
+    },
+    "usersByStatus": {
+      "ACTIVE": 1350,
+      "PENDING": 125,
+      "SUSPENDED": 45
+    },
+    "registrationTrend": [
+      {
+        "month": "2024-01",
+        "count": 89
+      },
+      {
+        "month": "2024-02", 
+        "count": 125
+      }
+    ]
+  }
+}
+```
+
 ### GET /api/admin/users
 Get all users for admin management (Admin only - requires authentication).
 
@@ -1337,10 +1687,16 @@ Authorization: Bearer <jwt_token>
 
 **Query Parameters:**
 - `page` (number): Page number (default: 1)
-- `limit` (number): Items per page (default: 10)
+- `limit` (number): Items per page (default: 20, max: 100)
+- `search` (string): Search by name, email, or phone
 - `role` (string): Filter by role ("customer", "vendor", "employee", "admin")
-- `status` (string): Filter by status
-- `search` (string): Search by name or email
+- `status` (string): Filter by status ("ACTIVE", "PENDING", "SUSPENDED", "BANNED")
+- `country` (string): Filter by country
+- `verified` (boolean): Filter by email verification status
+- `sortBy` (string): Sort field ("createdAt", "firstName", "email", "lastLoginAt")
+- `sortOrder` (string): Sort order ("asc", "desc", default: "desc")
+- `dateFrom` (date): Filter users created after this date
+- `dateTo` (date): Filter users created before this date
 
 **Response:**
 ```json
@@ -1348,14 +1704,102 @@ Authorization: Bearer <jwt_token>
   "success": true,
   "message": "Users retrieved successfully",
   "data": {
-    "users": [...],
-    "pagination": {...}
+    "users": [
+      {
+        "_id": "user_id",
+        "firstName": "John",
+        "lastName": "Doe",
+        "email": "john.doe@example.com",
+        "phone": "+1234567890",
+        "role": "customer",
+        "status": "ACTIVE",
+        "country": "UAE", 
+        "emailVerified": true,
+        "avatar": "https://cloudinary.com/avatar.jpg",
+        "lastLoginAt": "2024-03-15T10:30:00Z",
+        "createdAt": "2024-01-15T09:00:00Z",
+        "totalOrders": 5,
+        "totalSpent": 1250.00,
+        "accountValue": "high"
+      }
+    ],
+    "pagination": {
+      "currentPage": 1,
+      "totalPages": 76,
+      "totalUsers": 1520,
+      "hasNextPage": true,
+      "hasPrevPage": false,
+      "limit": 20
+    },
+    "summary": {
+      "totalFound": 1520,
+      "activeUsers": 1350,
+      "newThisMonth": 125
+    }
   }
 }
 ```
 
-### PUT /api/admin/users/:userId/status
-Update user status (Admin only - requires authentication).
+### GET /api/admin/users/:id
+Get detailed user information by ID (Admin only - requires authentication).
+
+**Headers:**
+```
+Authorization: Bearer <jwt_token>
+```
+
+**Path Parameters:**
+- `id` (string): User MongoDB ObjectId
+
+**Response:**
+```json
+{
+  "success": true,
+  "message": "User details retrieved successfully",
+  "data": {
+    "user": {
+      "_id": "user_id",
+      "firstName": "John",
+      "lastName": "Doe", 
+      "email": "john.doe@example.com",
+      "phone": "+1234567890",
+      "role": "customer",
+      "status": "ACTIVE",
+      "emailVerified": true,
+      "addresses": [
+        {
+          "street": "123 Main Street",
+          "city": "Dubai",
+          "country": "UAE",
+          "isDefault": true
+        }
+      ],
+      "loginHistory": [
+        {
+          "timestamp": "2024-03-15T10:30:00Z",
+          "ipAddress": "192.168.1.100",
+          "userAgent": "Mozilla/5.0...",
+          "location": "Dubai, UAE"
+        }
+      ],
+      "orderSummary": {
+        "totalOrders": 15,
+        "totalSpent": 3750.00,
+        "averageOrderValue": 250.00,
+        "lastOrderDate": "2024-03-10T15:20:00Z"
+      },
+      "activityMetrics": {
+        "eventsAttended": 8,
+        "reviewsPosted": 3,
+        "averageRating": 4.5
+      }
+    }
+  }
+}
+```
+
+### POST /api/admin/users
+Create new user account (Admin only - requires authentication).
 
 **Headers:**
 ```
@@ -1365,10 +1809,200 @@ Authorization: Bearer <jwt_token>
 **Body:**
 ```json
 {
-  "status": "SUSPENDED",
-  "reason": "Policy violation"
+  "firstName": "Jane",
+  "lastName": "Smith",
+  "email": "jane.smith@example.com",
+  "password": "SecurePassword123!",
+  "phone": "+1234567890",
+  "role": "vendor",
+  "status": "ACTIVE",
+  "country": "UAE",
+  "emailVerified": true,
+  "sendWelcomeEmail": true
 }
 ```
+
+**Response:**
+```json
+{
+  "success": true,
+  "message": "User created successfully",
+  "data": {
+    "user": {
+      "_id": "new_user_id",
+      "firstName": "Jane",
+      "lastName": "Smith",
+      "email": "jane.smith@example.com",
+      "role": "vendor",
+      "status": "ACTIVE",
+      "createdAt": "2024-03-15T14:30:00Z"
+    },
+    "temporaryPassword": "TempPass123!",
+    "welcomeEmailSent": true
+  }
+}
+```
+
+### PUT /api/admin/users/:id
+Update user information (Admin only - requires authentication).
+
+**Headers:**
+```
+Authorization: Bearer <jwt_token>
+```
+
+**Path Parameters:**
+- `id` (string): User MongoDB ObjectId
+
+**Body:**
+```json
+{
+  "firstName": "John",
+  "lastName": "Smith",
+  "phone": "+9876543210",
+  "role": "vendor",
+  "status": "ACTIVE",
+  "country": "Canada",
+  "emailVerified": true,
+  "notes": "Updated by admin - role change approved"
+}
+```
+
+### PUT /api/admin/users/:id/status
+Update user status with reason (Admin only - requires authentication).
+
+**Headers:**
+```
+Authorization: Bearer <jwt_token>
+```
+
+**Path Parameters:**
+- `id` (string): User MongoDB ObjectId
+
+**Body:**
+```json
+{
+  "status": "SUSPENDED",
+  "reason": "Policy violation - inappropriate content",
+  "suspensionDuration": 30,
+  "notifyUser": true,
+  "adminNotes": "Internal notes about the suspension"
+}
+```
+
+**Available Status Values:**
+- `ACTIVE` - User can access all features
+- `PENDING` - Account pending verification
+- `SUSPENDED` - Temporary access restriction
+- `BANNED` - Permanent account termination
+
+**Response:**
+```json
+{
+  "success": true,
+  "message": "User status updated successfully",
+  "data": {
+    "user": {
+      "_id": "user_id",
+      "status": "SUSPENDED",
+      "suspendedUntil": "2024-04-15T00:00:00Z",
+      "suspensionReason": "Policy violation - inappropriate content"
+    },
+    "emailNotificationSent": true
+  }
+}
+```
+
+### PUT /api/admin/users/:id/role
+Update user role (Admin only - requires authentication).
+
+**Headers:**
+```
+Authorization: Bearer <jwt_token>
+```
+
+**Body:**
+```json
+{
+  "newRole": "vendor",
+  "reason": "User requested vendor account upgrade",
+  "effectiveDate": "2024-03-16T00:00:00Z",
+  "notifyUser": true
+}
+```
+
+### DELETE /api/admin/users/:id
+Delete user account (Admin only - requires authentication).
+
+**Headers:**
+```
+Authorization: Bearer <jwt_token>
+```
+
+**Query Parameters:**
+- `deleteType` (string): "soft" or "hard" (default: "soft")
+- `reason` (string): Reason for deletion
+- `transferData` (boolean): Transfer user data to another account
+
+**Response:**
+```json
+{
+  "success": true,
+  "message": "User account deleted successfully",
+  "data": {
+    "deletedUserId": "user_id",
+    "deleteType": "soft", 
+    "dataRetentionDays": 30,
+    "recoverable": true
+  }
+}
+```
+
+### POST /api/admin/users/bulk-update
+Bulk update multiple users (Admin only - requires authentication).
+
+**Headers:**
+```
+Authorization: Bearer <jwt_token>
+```
+
+**Body:**
+```json
+{
+  "userIds": ["user1_id", "user2_id", "user3_id"],
+  "updates": {
+    "status": "ACTIVE",
+    "emailVerified": true,
+    "country": "UAE"
+  },
+  "reason": "Bulk verification completed",
+  "notifyUsers": false
+}
+```
+
+**Response:**
+```json
+{
+  "success": true,
+  "message": "Bulk update completed",
+  "data": {
+    "updatedCount": 3,
+    "failedCount": 0,
+    "results": [
+      {
+        "userId": "user1_id",
+        "status": "success"
+      },
+      {
+        "userId": "user2_id", 
+        "status": "success"
+      }
+    ]
+  }
+}
+```
+
+### Venue Management
 
 ### GET /api/admin/venues
 Get all venues for admin management (Admin only - requires authentication).
@@ -1380,9 +2014,14 @@ Authorization: Bearer <jwt_token>
 
 **Query Parameters:**
 - `page` (number): Page number (default: 1)
-- `limit` (number): Items per page (default: 10)
-- `status` (string): Filter by approval status
+- `limit` (number): Items per page (default: 20)
+- `search` (string): Search by name or address
+- `status` (string): Filter by approval status ("pending", "approved", "rejected")
 - `city` (string): Filter by city
+- `venueType` (string): Filter by venue type ("indoor", "outdoor")
+- `capacity` (number): Minimum capacity filter
+- `sortBy` (string): Sort field ("createdAt", "name", "capacity")
+- `sortOrder` (string): Sort order ("asc", "desc")
 
 **Response:**
 ```json
@@ -1390,13 +2029,53 @@ Authorization: Bearer <jwt_token>
   "success": true,
   "message": "Venues retrieved successfully",
   "data": {
-    "venues": [...],
-    "pagination": {...}
+    "venues": [
+      {
+        "_id": "venue_id",
+        "name": "Grand Convention Center",
+        "description": "Premium event venue",
+        "address": {
+          "street": "123 Business Bay",
+          "city": "Dubai",
+          "country": "UAE"
+        },
+        "capacity": 1000,
+        "venueType": "indoor",
+        "status": "approved",
+        "owner": {
+          "_id": "owner_id",
+          "firstName": "Ahmed",
+          "lastName": "Ali",
+          "email": "ahmed@venue.com"
+        },
+        "baseRentalPrice": 15000,
+        "currency": "AED",
+        "facilities": ["parking", "wifi", "catering"],
+        "images": ["https://cloudinary.com/venue1.jpg"],
+        "approvedAt": "2024-02-15T10:00:00Z",
+        "createdAt": "2024-02-10T14:30:00Z"
+      }
+    ],
+    "pagination": {...},
+    "summary": {
+      "totalVenues": 85,
+      "approvedVenues": 72,
+      "pendingApproval": 8,
+      "rejectedVenues": 5
+    }
   }
 }
 ```
 
-### PUT /api/admin/venues/:venueId/approval
+### GET /api/admin/venues/:id
+Get detailed venue information (Admin only - requires authentication).
+
+**Headers:**
+```
+Authorization: Bearer <jwt_token>
+```
+
+### PUT /api/admin/venues/:id/approval
 Approve or reject venue (Admin only - requires authentication).
 
 **Headers:**
@@ -1404,11 +2083,195 @@ Approve or reject venue (Admin only - requires authentication).
 Authorization: Bearer <jwt_token>
 ```
 
+**Path Parameters:**
+- `id` (string): Venue MongoDB ObjectId
+
 **Body:**
 ```json
 {
   "isApproved": true,
-  "reason": "Optional rejection reason"
+  "reason": "Meets all quality standards",
+  "adminNotes": "Excellent facilities and documentation",
+  "conditions": [
+    "Must maintain insurance coverage",
+    "Regular safety inspections required"
+  ],
+  "notifyOwner": true
+}
+```
+
+**Response:**
+```json
+{
+  "success": true,
+  "message": "Venue approved successfully", 
+  "data": {
+    "venue": {
+      "_id": "venue_id",
+      "name": "Grand Convention Center",
+      "status": "approved",
+      "approvedBy": "admin_id",
+      "approvedAt": "2024-03-15T14:30:00Z",
+      "approvalConditions": [
+        "Must maintain insurance coverage"
+      ]
+    },
+    "ownerNotified": true
+  }
+}
+```
+
+### Event Management
+
+### GET /api/admin/events/all
+Get all events for admin management (Admin only - requires authentication).
+
+**Headers:**
+```
+Authorization: Bearer <jwt_token>
+```
+
+**Query Parameters:**
+- `page` (number): Page number (default: 1) 
+- `limit` (number): Items per page (default: 20)
+- `search` (string): Search by title or description
+- `status` (string): Filter by approval status ("pending", "approved", "rejected", "draft")
+- `category` (string): Filter by event category
+- `vendor` (string): Filter by vendor ID
+- `featured` (boolean): Filter featured events
+- `dateFrom` (date): Filter events starting after this date
+- `dateTo` (date): Filter events ending before this date
+- `sortBy` (string): Sort field ("createdAt", "title", "price", "viewsCount")
+- `sortOrder` (string): Sort order ("asc", "desc")
+
+**Response:**
+```json
+{
+  "success": true,
+  "message": "Admin events retrieved successfully", 
+  "data": {
+    "events": [
+      {
+        "_id": "event_id",
+        "title": "Tech Conference 2024",
+        "description": "Annual technology conference",
+        "category": "Technology",
+        "status": "pending",
+        "vendor": {
+          "_id": "vendor_id",
+          "firstName": "John",
+          "lastName": "Doe",
+          "email": "john@techconf.com"
+        },
+        "price": 299,
+        "currency": "AED",
+        "featured": false,
+        "viewsCount": 1250,
+        "ticketsSold": 0,
+        "revenue": 0,
+        "submittedAt": "2024-03-10T09:00:00Z",
+        "pendingChanges": [
+          "title",
+          "description",
+          "price"
+        ]
+      }
+    ],
+    "pagination": {...},
+    "summary": {
+      "totalEvents": 342,
+      "pendingApproval": 23,
+      "approvedEvents": 298,
+      "rejectedEvents": 15,
+      "featuredEvents": 45
+    }
+  }
+}
+```
+
+### PUT /api/admin/events/:id/approval
+Approve or reject event (Admin only - requires authentication).
+
+**Headers:**
+```
+Authorization: Bearer <jwt_token>
+```
+
+**Path Parameters:**
+- `id` (string): Event MongoDB ObjectId
+
+**Body:**
+```json
+{
+  "isApproved": true,
+  "reason": "Event meets all guidelines",
+  "adminNotes": "High quality content and organization",
+  "autoFeature": false,
+  "notifyVendor": true,
+  "conditions": [
+    "Must provide COVID safety protocols",
+    "Insurance documentation required"
+  ]
+}
+```
+
+**Response:**
+```json
+{
+  "success": true,
+  "message": "Event approved successfully",
+  "data": {
+    "event": {
+      "_id": "event_id", 
+      "title": "Tech Conference 2024",
+      "status": "approved",
+      "approvedBy": "admin_id",
+      "approvedAt": "2024-03-15T14:30:00Z",
+      "featured": false,
+      "visibleToPublic": true
+    },
+    "vendorNotified": true,
+    "emailSent": true
+  }
+}
+```
+
+### PUT /api/admin/events/:id/featured
+Toggle event featured status (Admin only - requires authentication).
+
+**Headers:**
+```
+Authorization: Bearer <jwt_token>
+```
+
+**Path Parameters:**
+- `id` (string): Event MongoDB ObjectId
+
+**Body:**
+```json
+{
+  "featured": true,
+  "featuredUntil": "2024-04-15T23:59:59Z",
+  "reason": "High quality event with strong registration",
+  "priority": 1
+}
+```
+
+**Response:**
+```json
+{
+  "success": true,
+  "message": "Event featured successfully",
+  "data": {
+    "event": {
+      "_id": "event_id",
+      "title": "Tech Conference 2024", 
+      "featured": true,
+      "featuredAt": "2024-03-15T14:30:00Z",
+      "featuredUntil": "2024-04-15T23:59:59Z",
+      "featuredPriority": 1
+    }
+  }
 }
 ```
 
@@ -1520,64 +2383,409 @@ Authorization: Bearer <jwt_token>
 
 ## File Uploads
 
-### POST /uploads/single
-Upload single file.
+### POST /api/uploads/single
+Upload single file (requires authentication).
+
+**Headers:**
+```
+Authorization: Bearer <jwt_token>
+Content-Type: multipart/form-data
+```
 
 **Body (multipart/form-data):**
-- `file`: File to upload
+- `file`: Single file to upload
 
-### POST /uploads/multiple
-Upload multiple files.
+**File Constraints:**
+- Maximum file size: 5MB
+- Allowed types: JPEG, PNG, GIF, PDF, DOC, DOCX
+- Field name must be exactly `file`
+
+**Response:**
+```json
+{
+  "success": true,
+  "message": "File uploaded successfully",
+  "data": {
+    "file": {
+      "filename": "1647890123456-photo.jpg",
+      "originalName": "photo.jpg",
+      "mimetype": "image/jpeg",
+      "size": 2048576,
+      "url": "https://cloudinary.com/v1_1/your-cloud/image/upload/v1647890123/uploads/1647890123456-photo.jpg",
+      "category": "general",
+      "uploadedAt": "2024-03-15T10:30:00Z"
+    }
+  }
+}
+```
+
+### POST /api/uploads/multiple
+Upload multiple files (requires authentication).
+
+**Headers:**
+```
+Authorization: Bearer <jwt_token>
+Content-Type: multipart/form-data
+```
 
 **Body (multipart/form-data):**
-- `files`: Array of files to upload (max 5)
+- `files`: Array of files to upload (max 5 files)
 
-### POST /uploads/event-images
-Upload event images.
+**File Constraints:**
+- Maximum 5 files per request
+- Maximum file size: 5MB each
+- Total request size: 25MB max
+- Allowed types: JPEG, PNG, GIF, PDF
+
+**Response:**
+```json
+{
+  "success": true,
+  "message": "Files uploaded successfully",
+  "data": {
+    "files": [
+      {
+        "filename": "1647890123456-image1.jpg",
+        "originalName": "image1.jpg",
+        "url": "https://cloudinary.com/image1.jpg",
+        "size": 1024000
+      },
+      {
+        "filename": "1647890123457-image2.jpg",
+        "originalName": "image2.jpg",
+        "url": "https://cloudinary.com/image2.jpg", 
+        "size": 2048000
+      }
+    ],
+    "totalUploaded": 2,
+    "totalSize": 3072000
+  }
+}
+```
+
+### POST /api/uploads/event-images
+Upload event-related images (requires authentication).
+
+**Headers:**
+```
+Authorization: Bearer <jwt_token>
+Content-Type: multipart/form-data
+```
 
 **Body (multipart/form-data):**
-- `images`: Event gallery images (max 10)
-- `banner`: Event banner image (max 1)
-- `thumbnail`: Event thumbnail image (max 1)
+- `images`: Event gallery images (max 10 files)
+- `banner`: Event banner image (max 1 file) 
+- `thumbnail`: Event thumbnail image (max 1 file)
 
-### POST /uploads/venue-images
-Upload venue images.
+**File Constraints:**
+- Gallery images: Max 10 files, 3MB each, JPEG/PNG only
+- Banner: Max 1 file, 5MB, JPEG/PNG, recommended 1920x1080
+- Thumbnail: Max 1 file, 2MB, JPEG/PNG, recommended 600x400
+
+**Response:**
+```json
+{
+  "success": true,
+  "message": "Event images uploaded successfully",
+  "data": {
+    "images": [
+      "https://cloudinary.com/event-image1.jpg",
+      "https://cloudinary.com/event-image2.jpg"
+    ],
+    "banner": "https://cloudinary.com/event-banner.jpg",
+    "thumbnail": "https://cloudinary.com/event-thumb.jpg",
+    "uploadSummary": {
+      "totalImages": 2,
+      "hasBanner": true,
+      "hasThumbnail": true,
+      "totalSize": 8192000
+    }
+  }
+}
+```
+
+### POST /api/uploads/venue-images
+Upload venue-related images (requires authentication).
+
+**Headers:**
+```
+Authorization: Bearer <jwt_token>
+Content-Type: multipart/form-data
+```
 
 **Body (multipart/form-data):**
-- `images`: Venue gallery images (max 20)
-- `floorPlan`: Venue floor plan (max 1)
-- `thumbnail`: Venue thumbnail (max 1)
+- `images`: Venue gallery images (max 20 files)
+- `floorPlan`: Venue floor plan (max 1 file)
+- `thumbnail`: Venue thumbnail (max 1 file)
 
-### POST /uploads/avatar
-Upload user avatar.
+**File Constraints:**
+- Gallery images: Max 20 files, 3MB each, JPEG/PNG only
+- Floor plan: Max 1 file, 10MB, JPEG/PNG/PDF
+- Thumbnail: Max 1 file, 2MB, JPEG/PNG, recommended 600x400
+
+**Response:**
+```json
+{
+  "success": true,
+  "message": "Venue images uploaded successfully",
+  "data": {
+    "images": ["https://cloudinary.com/venue1.jpg"],
+    "floorPlan": "https://cloudinary.com/floor-plan.pdf", 
+    "thumbnail": "https://cloudinary.com/venue-thumb.jpg",
+    "uploadSummary": {
+      "totalImages": 1,
+      "hasFloorPlan": true,
+      "hasThumbnail": true
+    }
+  }
+}
+```
+
+### POST /api/uploads/avatar
+Upload user avatar image (requires authentication).
+
+**Headers:**
+```
+Authorization: Bearer <jwt_token>
+Content-Type: multipart/form-data
+```
 
 **Body (multipart/form-data):**
 - `avatar`: Avatar image file
 
-### POST /uploads/document
-Upload document.
+**File Constraints:**
+- Maximum file size: 2MB
+- Allowed types: JPEG, PNG, GIF
+- Recommended size: 300x300 pixels
+- Auto-cropped to square if needed
+
+**Response:**
+```json
+{
+  "success": true,
+  "message": "Avatar uploaded successfully",
+  "data": {
+    "avatar": {
+      "url": "https://cloudinary.com/avatar.jpg",
+      "filename": "avatar-user123.jpg",
+      "size": 512000,
+      "dimensions": {
+        "width": 300,
+        "height": 300
+      }
+    },
+    "user": {
+      "_id": "user_id",
+      "avatar": "https://cloudinary.com/avatar.jpg"
+    }
+  }
+}
+```
+
+### POST /api/uploads/document
+Upload document file (requires authentication).
+
+**Headers:**
+```
+Authorization: Bearer <jwt_token>
+Content-Type: multipart/form-data
+```
 
 **Body (multipart/form-data):**
-- `document`: Document file (PDF, DOC, DOCX)
+- `document`: Document file
 
-### GET /uploads/files/:category/:filename
-Serve uploaded file.
+**File Constraints:**
+- Maximum file size: 10MB
+- Allowed types: PDF, DOC, DOCX, TXT
+- Virus scanning enabled
 
-### DELETE /uploads/file/:filename
-Delete file.
+**Response:**
+```json
+{
+  "success": true,
+  "message": "Document uploaded successfully",
+  "data": {
+    "document": {
+      "filename": "document-1647890123456.pdf",
+      "originalName": "contract.pdf",
+      "url": "https://cloudinary.com/document.pdf",
+      "size": 5242880,
+      "mimetype": "application/pdf",
+      "pages": 5,
+      "uploadedAt": "2024-03-15T10:30:00Z"
+    }
+  }
+}
+```
+
+### GET /api/uploads/files/:category/:filename
+Serve uploaded file with proper headers.
+
+**Path Parameters:**
+- `category` (string): File category (users, events, venues, documents)
+- `filename` (string): File name
 
 **Query Parameters:**
+- `download` (boolean): Force download instead of inline display
+- `w` (number): Resize width for images
+- `h` (number): Resize height for images
+- `q` (number): Quality for images (1-100)
+
+**Response:**
+- Returns file with appropriate content-type headers
+- For images: Supports on-the-fly resizing via Cloudinary
+- For documents: Proper content-disposition headers
+
+### DELETE /api/uploads/file/:filename
+Delete uploaded file (requires authentication).
+
+**Headers:**
+```
+Authorization: Bearer <jwt_token>
+```
+
+**Path Parameters:**
+- `filename` (string): File name to delete
+
+**Query Parameters:**
+- `category` (string): File category (required)
+
+**Response:**
+```json
+{
+  "success": true,
+  "message": "File deleted successfully",
+  "data": {
+    "deletedFile": "1647890123456-photo.jpg",
+    "category": "users"
+  }
+}
+```
+
+### GET /api/uploads/info/:filename
+Get detailed file information (requires authentication).
+
+**Headers:**
+```
+Authorization: Bearer <jwt_token>
+```
+
+**Response:**
+```json
+{
+  "success": true,
+  "data": {
+    "file": {
+      "filename": "1647890123456-photo.jpg",
+      "originalName": "vacation-photo.jpg",
+      "mimetype": "image/jpeg",
+      "size": 2048576,
+      "url": "https://cloudinary.com/photo.jpg",
+      "category": "users",
+      "dimensions": {
+        "width": 1920,
+        "height": 1080
+      },
+      "uploadedAt": "2024-03-15T10:30:00Z",
+      "uploadedBy": "user_id"
+    }
+  }
+}
+```
+
+### GET /api/uploads/list/:category
+List files in category (requires authentication).
+
+**Headers:**
+```
+Authorization: Bearer <jwt_token>
+```
+
+**Path Parameters:**
 - `category` (string): File category
 
-### GET /uploads/info/:filename
-Get file information.
-
-### GET /uploads/list/:category
-List files in category.
-
 **Query Parameters:**
-- `page` (number): Page number
-- `limit` (number): Items per page
+- `page` (number): Page number (default: 1)
+- `limit` (number): Items per page (default: 20, max: 100)
+- `type` (string): Filter by file type (image, document, video)
+- `sortBy` (string): Sort by field (uploadedAt, size, name)
+- `sortOrder` (string): Sort order (asc, desc)
+
+**Response:**
+```json
+{
+  "success": true,
+  "data": {
+    "files": [
+      {
+        "filename": "photo1.jpg",
+        "originalName": "vacation.jpg",
+        "size": 2048576,
+        "url": "https://cloudinary.com/photo1.jpg",
+        "uploadedAt": "2024-03-15T10:30:00Z"
+      }
+    ],
+    "pagination": {
+      "page": 1,
+      "limit": 20,
+      "total": 45,
+      "pages": 3,
+      "hasNext": true,
+      "hasPrev": false
+    },
+    "summary": {
+      "totalFiles": 45,
+      "totalSize": 104857600,
+      "categories": {
+        "images": 30,
+        "documents": 15
+      }
+    }
+  }
+}
+```
+
+### Upload Error Responses
+
+**File Too Large:**
+```json
+{
+  "success": false,
+  "message": "File too large",
+  "error": {
+    "code": "FILE_SIZE_EXCEEDED",
+    "details": "File size 6MB exceeds maximum allowed size of 5MB",
+    "maxSize": 5242880
+  }
+}
+```
+
+**Invalid File Type:**
+```json
+{
+  "success": false,
+  "message": "Invalid file type",
+  "error": {
+    "code": "INVALID_FILE_TYPE",
+    "details": "Only JPEG, PNG, GIF files are allowed",
+    "allowedTypes": ["image/jpeg", "image/png", "image/gif"]
+  }
+}
+```
+
+**Too Many Files:**
+```json
+{
+  "success": false,
+  "message": "Too many files",
+  "error": {
+    "code": "FILE_COUNT_EXCEEDED", 
+    "details": "Maximum 5 files allowed per request",
+    "maxFiles": 5,
+    "receivedFiles": 7
+  }
+}
+```
 
 ## Error Handling
 
@@ -2367,13 +3575,182 @@ For API support, contact:
 - **Documentation**: https://docs.gema.com
 - **Status Page**: https://status.gema.com
 
+## Security Considerations
+
+### Authentication Security
+- JWT tokens expire after 24 hours
+- Refresh tokens expire after 7 days
+- Rate limiting applied to authentication endpoints
+- Account lockout after 5 failed login attempts
+- Password requirements: minimum 8 characters, uppercase, lowercase, number, special character
+
+### Data Protection
+- All sensitive data encrypted at rest
+- API communication secured with HTTPS
+- Personal data handling complies with GDPR
+- Payment data processed securely via Stripe
+- File uploads scanned for malware
+
+### API Security
+- CORS configured for allowed origins
+- Request sanitization to prevent injection attacks
+- Helmet.js for security headers
+- HPP protection against parameter pollution
+- XSS protection enabled
+
+## Performance Considerations
+
+### Caching Strategy
+- Static assets cached via Cloudinary CDN
+- Database queries optimized with indexing
+- Redis caching for frequently accessed data
+- Image optimization and lazy loading
+
+### Scalability
+- Horizontal scaling support via load balancers
+- Database connection pooling
+- Asynchronous processing for heavy operations
+- Rate limiting to prevent abuse
+
+## Monitoring and Logging
+
+### Request Logging
+- All API requests logged with Winston
+- Error tracking and alerting
+- Performance monitoring
+- Security incident logging
+
+### Analytics Tracking
+- API usage metrics
+- Error rate monitoring
+- Response time tracking
+- User behavior analytics
+
+## Testing and Development
+
+### Development Tools
+- Postman collection available for API testing
+- Swagger/OpenAPI documentation (planned)
+- Mock data generators for testing
+- Automated API testing suite
+
+### Testing Endpoints
+```bash
+# Health check endpoint
+GET /api/health
+
+# API status and version
+GET /api/status
+
+# Development-only test endpoints (not available in production)
+GET /api/dev/test-email
+POST /api/dev/seed-data
+```
+
+## Migration Guide
+
+### Upgrading from v0.x to v1.0
+1. Update base URLs to include `/api` prefix
+2. Replace old authentication endpoints with new JWT system
+3. Update file upload endpoints to use new structure
+4. Migrate to new error response format
+
+### Breaking Changes in v1.0
+- Authentication now uses JWT instead of sessions
+- All endpoints require `/api` prefix
+- Error response structure standardized
+- File upload field names changed for consistency
+
+## API Client Libraries
+
+### Official SDKs (Planned)
+- JavaScript/TypeScript SDK
+- React hooks library
+- Node.js server SDK
+- Mobile SDK (React Native)
+
+### Third-party Integrations
+- Zapier integration
+- Webhook support for external systems
+- REST API wrappers available
+
+## Support and Community
+
+### Documentation
+- **API Documentation**: This document
+- **Integration Guides**: Available in `/docs` folder
+- **Video Tutorials**: YouTube channel (coming soon)
+- **FAQ**: Frequently asked questions in knowledge base
+
+### Support Channels
+- **Email Support**: api-support@gema.com
+- **Discord Community**: gema-developers (invite link)
+- **GitHub Issues**: For bug reports and feature requests
+- **Stack Overflow**: Tag questions with `gema-api`
+
+### SLA and Uptime
+- **Uptime Target**: 99.9%
+- **Response Time**: <200ms for 95% of requests
+- **Support Response**: <24 hours for standard support
+- **Status Page**: https://status.gema.com
+
 ## Changelog
 
-### Version 1.0.0 (Current)
-- Initial API release
-- Authentication system
-- Event management
-- Order processing
-- Payment integration
-- Analytics dashboard
-- File upload system
+### Version 1.0.0 (Current - March 2024)
+- **New Features**:
+  - Complete JWT authentication system with refresh tokens
+  - Comprehensive admin management panel APIs
+  - Enhanced file upload system with Cloudinary integration
+  - Advanced analytics and reporting endpoints
+  - Blog management system with categories
+  - Employee management for vendors
+  - QR code-based check-in system
+  - Multi-currency payment support
+
+- **API Endpoints Added**:
+  - Authentication: 7 new endpoints including profile management
+  - Admin Management: 15+ endpoints for user, event, venue management
+  - File Uploads: 8 specialized upload endpoints with error handling
+  - Blog System: 10+ endpoints for content management
+  - Enhanced vendor and analytics endpoints
+
+- **Improvements**:
+  - Standardized error response format across all endpoints
+  - Enhanced security with rate limiting and validation
+  - Comprehensive logging and monitoring
+  - Performance optimizations for database queries
+  - Mobile-optimized file upload handling
+
+- **Breaking Changes**:
+  - All endpoints now require `/api` prefix
+  - Authentication system migrated from sessions to JWT
+  - File upload field names standardized
+  - Error response structure updated
+
+### Version 0.9.0 (February 2024)
+- Initial beta release
+- Basic CRUD operations for events, venues, orders
+- Simple authentication system
+- File upload functionality
+- Payment processing integration
+
+### Upcoming in Version 1.1.0 (Planned - June 2024)
+- **Planned Features**:
+  - Real-time notifications via WebSockets
+  - Advanced search with Elasticsearch
+  - Multi-language support
+  - Automated event recommendations
+  - Social media integration
+  - Advanced reporting dashboard
+  - Mobile app API optimizations
+
+- **API Versioning**:
+  - Introduction of `/api/v2` endpoints
+  - Backward compatibility maintained for v1
+  - Gradual migration path documented
+
+### Version History
+- **v1.0.0** (March 2024) - Current stable release
+- **v0.9.0** (February 2024) - Beta release  
+- **v0.8.0** (January 2024) - Alpha release
+- **v0.7.0** (December 2023) - Internal testing
