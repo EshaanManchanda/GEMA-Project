@@ -16,7 +16,7 @@ Backend API for Gema Event Management Platform with Firebase Authentication.
 
 ## Prerequisites
 
-- Node.js (v14 or higher)
+- Node.js (v18 or higher)
 - MongoDB (local or Atlas)
 - Firebase project (for authentication)
 
@@ -90,6 +90,98 @@ Start the production server:
 ```bash
 npm run start:prod
 ```
+
+## Deployment to Render
+
+### Prerequisites
+
+1. **MongoDB Atlas**: Create a cluster at [MongoDB Atlas](https://cloud.mongodb.com/)
+2. **Firebase Project**: Set up authentication at [Firebase Console](https://console.firebase.google.com/)
+3. **Stripe Account**: Configure webhooks and API keys
+4. **Cloudinary Account**: For file uploads and media management
+5. **Email Service**: Gmail App Password or SendGrid account
+
+### Render Deployment Steps
+
+1. **Fork or clone this repository** to your GitHub account
+
+2. **Create a new Web Service** on [Render](https://render.com):
+   - Connect your GitHub repository
+   - Set **Root Directory** to `backend`
+   - Set **Environment** to `Node`
+   - Set **Build Command** to `npm run build`
+   - Set **Start Command** to `npm start`
+
+3. **Configure Environment Variables** in Render dashboard:
+
+   **Required Variables:**
+   ```
+   NODE_ENV=production
+   MONGODB_URI=mongodb+srv://username:password@cluster.mongodb.net/gema?retryWrites=true&w=majority
+   JWT_SECRET=your_secure_jwt_secret_32_characters_min
+   JWT_REFRESH_SECRET=your_secure_refresh_secret_32_characters_min
+   FRONTEND_URL=https://your-frontend-domain.com
+   
+   # Firebase
+   FIREBASE_PROJECT_ID=your-firebase-project-id
+   FIREBASE_PRIVATE_KEY="-----BEGIN PRIVATE KEY-----\n...\n-----END PRIVATE KEY-----\n"
+   FIREBASE_CLIENT_EMAIL=firebase-adminsdk-xxx@your-project.iam.gserviceaccount.com
+   
+   # Stripe
+   STRIPE_SECRET_KEY=sk_live_xxxxxxxxxxxxxxxxxxxx
+   STRIPE_PUBLISHABLE_KEY=pk_live_xxxxxxxxxxxxxxxxxxxx
+   STRIPE_WEBHOOK_SECRET=whsec_xxxxxxxxxxxxxxxxxxxx
+   
+   # Email
+   EMAIL_HOST=smtp.gmail.com
+   EMAIL_PORT=587
+   EMAIL_USERNAME=your-email@gmail.com
+   EMAIL_PASSWORD=your-app-password
+   EMAIL_FROM=noreply@your-domain.com
+   
+   # Cloudinary
+   CLOUDINARY_CLOUD_NAME=your-cloud-name
+   CLOUDINARY_API_KEY=your-api-key
+   CLOUDINARY_API_SECRET=your-api-secret
+   CLOUDINARY_SECURE=true
+   UPLOAD_PROVIDER=cloudinary
+   ```
+
+4. **Configure Webhooks**:
+   - **Stripe**: Set webhook endpoint to `https://your-app.onrender.com/api/payments/webhook`
+   - **Events**: `payment_intent.succeeded`, `payment_intent.payment_failed`
+
+5. **Deploy**: Render will automatically build and deploy your application
+
+### Post-Deployment
+
+1. **Verify Health Check**: Visit `https://your-app.onrender.com/health`
+2. **Test API**: Ensure all endpoints are accessible
+3. **Monitor Logs**: Check Render logs for any issues
+4. **Set up Monitoring**: Configure alerts for downtime or errors
+
+### Environment-Specific Notes
+
+- **Development**: Uses local MongoDB and development Firebase config
+- **Production**: Uses MongoDB Atlas, production Firebase, and live Stripe keys
+- **CORS**: Make sure to update `FRONTEND_URL` with your actual frontend domain
+
+### Troubleshooting
+
+Common deployment issues:
+
+1. **Build Failures**: Check Node.js version compatibility (requires v18+)
+2. **Database Connection**: Verify MongoDB Atlas connection string and IP whitelist
+3. **Environment Variables**: Ensure all required variables are set correctly
+4. **Memory Issues**: Consider upgrading Render plan if needed
+5. **Timeout Issues**: Check if operations are completing within time limits
+
+### Performance Optimization
+
+- **Database Indexing**: Ensure proper indexes on frequently queried fields
+- **Connection Pooling**: MongoDB connection pooling is configured automatically
+- **Caching**: Consider adding Redis for session storage and caching
+- **CDN**: Use Cloudinary's CDN for image delivery
 
 ## API Documentation
 
