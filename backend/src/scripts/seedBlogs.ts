@@ -382,7 +382,7 @@ async function seedBlogs() {
       const { categoryName, ...postWithoutCategoryName } = post;
       return {
         ...postWithoutCategoryName,
-        category: category?._id,
+        category: (category as any)?._id,
         publishedAt: new Date(),
         readTime: Math.ceil(post.content.split(' ').length / 200) // Calculate read time based on word count
       };
@@ -400,7 +400,7 @@ async function seedBlogs() {
     // Update category post counts
     for (const category of createdCategories) {
       const postCount = createdBlogs.filter(blog => 
-        (blog.category as any).toString() === (category._id as any).toString()
+        (blog.category as any).toString() === ((category as any)._id as any).toString()
       ).length;
       
       await BlogCategory.findByIdAndUpdate((category as any)._id, {
