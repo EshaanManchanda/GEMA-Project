@@ -1,0 +1,1459 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Role Features Mapping - Gema Documentation</title>
+    <meta name="description" content="Comprehensive mapping of all role-based features to specific database operations and API implementations">
+    <link rel="stylesheet" href="../css/main.css">
+    <link rel="stylesheet" href="../css/components.css">
+    <link rel="stylesheet" href="../css/responsive.css">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/prism/1.24.1/themes/prism-tomorrow.min.css">
+</head>
+<body>
+    <!-- Header -->
+    <header class="header">
+        <div class="header-container">
+            <div class="header-brand">
+                <h1><a href="../index.html"><i class="fas fa-rocket"></i> Gema Platform</a></h1>
+                <span class="header-subtitle">Role Features Mapping</span>
+            </div>
+            <nav class="header-nav">
+                <div class="search-container">
+                    <input type="text" id="search-input" placeholder="Search documentation...">
+                    <i class="fas fa-search"></i>
+                </div>
+                <button class="theme-toggle" id="theme-toggle">
+                    <i class="fas fa-moon"></i>
+                </button>
+                <button class="mobile-menu-toggle" id="mobile-menu-toggle">
+                    <i class="fas fa-bars"></i>
+                </button>
+            </nav>
+        </div>
+    </header>
+
+    <!-- Main Container -->
+    <div class="main-container">
+        <!-- Sidebar Navigation -->
+        <aside class="sidebar" id="sidebar">
+            <nav class="sidebar-nav">
+                <div class="nav-section">
+                    <h3><i class="fas fa-home"></i> Overview</h3>
+                    <ul>
+                        <li><a href="../index.html#project-overview" class="nav-link">Project Overview</a></li>
+                        <li><a href="../index.html#business-model" class="nav-link">Business Model</a></li>
+                        <li><a href="../index.html#tech-stack" class="nav-link">Technology Stack</a></li>
+                        <li><a href="getting-started.html" class="nav-link">Getting Started</a></li>
+                    </ul>
+                </div>
+
+                <div class="nav-section">
+                    <h3><i class="fas fa-cogs"></i> Core Systems</h3>
+                    <ul>
+                        <li><a href="rbac.html" class="nav-link">Role-Based Access</a></li>
+                        <li><a href="authentication.html" class="nav-link">Authentication</a></li>
+                        <li><a href="event-management.html" class="nav-link">Event Management</a></li>
+                        <li><a href="payment-system.html" class="nav-link">Payment System</a></li>
+                    </ul>
+                </div>
+
+                <div class="nav-section">
+                    <h3><i class="fas fa-database"></i> Data & Architecture</h3>
+                    <ul>
+                        <li><a href="database-schema.html" class="nav-link">Database Schema</a></li>
+                        <li><a href="database-relationships.html" class="nav-link">Database Relationships</a></li>
+                        <li><a href="architecture.html" class="nav-link">Technical Architecture</a></li>
+                    </ul>
+                </div>
+
+                <div class="nav-section">
+                    <h3><i class="fas fa-code"></i> Development</h3>
+                    <ul>
+                        <li><a href="implementation-guide.html" class="nav-link">Implementation Guide</a></li>
+                        <li><a href="api-documentation.html" class="nav-link">API Documentation</a></li>
+                        <li><a href="role-features.html" class="nav-link active">Role Features</a></li>
+                        <li><a href="deployment.html" class="nav-link">Deployment</a></li>
+                    </ul>
+                </div>
+
+                <div class="nav-section">
+                    <h3><i class="fas fa-mobile-alt"></i> Additional</h3>
+                    <ul>
+                        <li><a href="mobile-app.html" class="nav-link">Mobile App</a></li>
+                        <li><a href="content-management.html" class="nav-link">Content Management</a></li>
+                        <li><a href="security.html" class="nav-link">Security Features</a></li>
+                    </ul>
+                </div>
+            </nav>
+        </aside>
+
+        <!-- Main Content -->
+        <main class="main-content">
+            <div class="content-header">
+                <h1><i class="fas fa-users-cog"></i> Role-Based Features to Database Operations Mapping</h1>
+                <p class="content-description">Comprehensive mapping of all role-based features to specific database operations, providing clear guidance for API implementation and data access patterns</p>
+            </div>
+
+            <!-- Quick Navigation -->
+            <nav class="page-nav">
+                <h4>Quick Navigation</h4>
+                <ul>
+                    <li><a href="#customer-features">Customer Features</a></li>
+                    <li><a href="#vendor-features">Vendor Features</a></li>
+                    <li><a href="#admin-features">Admin Features</a></li>
+                    <li><a href="#employee-features">Employee Features</a></li>
+                    <li><a href="#performance-patterns">Performance Patterns</a></li>
+                </ul>
+            </nav>
+
+            <!-- Customer Features -->
+            <section id="customer-features" class="content-section">
+                <div class="section-header">
+                    <h2><i class="fas fa-user"></i> Customer Features</h2>
+                    <span class="section-badge customer">End User</span>
+                </div>
+
+                <div class="role-features-grid">
+                    <div class="feature-category">
+                        <h3><i class="fas fa-user-cog"></i> Account Management</h3>
+                        
+                        <div class="feature-item">
+                            <h4>Sign up / Login with email, social, OTP</h4>
+                            
+                            <div class="feature-operations">
+                                <div class="operation">
+                                    <span class="operation-type">Registration</span>
+                                    <div class="code-block">
+                                        <div class="code-header">
+                                            <span>User Registration</span>
+                                            <button class="copy-btn" data-copy="customer-registration">
+                                                <i class="fas fa-copy"></i>
+                                            </button>
+                                        </div>
+                                        <pre id="customer-registration"><code class="language-javascript">Users.create({
+  firstName, lastName, email, passwordHash,
+  role: 'customer',
+  status: 'pending', // Until email verified
+  socialLogins: [{ provider: 'google', providerId: 'xxx' }], // if social
+  emailVerification: { otp: '1234', expiresAt: Date },
+  firebaseUid: 'xxx' // if using Firebase
+});
+
+// Login Session Creation
+UserSessions.create({
+  userId: ObjectId,
+  token: 'hashed_jwt_token',
+  deviceInfo: { userAgent, platform, browser, ip },
+  expiresAt: Date
+});
+
+// OTP Verification
+Users.updateOne(
+  { email: 'user@example.com', 'emailVerification.otp': '1234' },
+  { 
+    isEmailVerified: true, 
+    status: 'active',
+    $unset: { emailVerification: 1 }
+  }
+);</code></pre>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="feature-item">
+                            <h4>Profile management (kids' age, interests, saved events)</h4>
+                            
+                            <div class="feature-operations">
+                                <div class="operation">
+                                    <span class="operation-type">Profile Update</span>
+                                    <div class="code-block">
+                                        <div class="code-header">
+                                            <span>Customer Profile Management</span>
+                                            <button class="copy-btn" data-copy="customer-profile">
+                                                <i class="fas fa-copy"></i>
+                                            </button>
+                                        </div>
+                                        <pre id="customer-profile"><code class="language-javascript">// Update Customer Profile
+Users.updateOne(
+  { _id: userId, role: 'customer' },
+  {
+    $set: {
+      'customerProfile.kidsAgeGroups': [3, 6, 9], // Age brackets
+      'customerProfile.interests': ['sports', 'arts', 'music'],
+      'customerProfile.preferredLanguage': 'en'
+    }
+  }
+);
+
+// Save/Unsave Events (Wishlist)
+Users.updateOne(
+  { _id: userId },
+  { $addToSet: { 'customerProfile.savedEvents': eventId } }
+);
+
+// Get Customer Profile with Saved Events
+Users.aggregate([
+  { $match: { _id: userId } },
+  {
+    $lookup: {
+      from: 'events',
+      localField: 'customerProfile.savedEvents',
+      foreignField: '_id',
+      as: 'wishlistEvents'
+    }
+  }
+]);</code></pre>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="feature-category">
+                        <h3><i class="fas fa-search"></i> Event Discovery</h3>
+                        
+                        <div class="feature-item">
+                            <h4>Browse/search/filter events</h4>
+                            
+                            <div class="highlight-box info">
+                                <i class="fas fa-filter"></i>
+                                <div>
+                                    <strong>Advanced Filtering:</strong>
+                                    <ul>
+                                        <li>Text search with relevance scoring</li>
+                                        <li>Geographic radius filtering</li>
+                                        <li>Age-appropriate event matching</li>
+                                        <li>Price range and category filters</li>
+                                    </ul>
+                                </div>
+                            </div>
+                            
+                            <div class="feature-operations">
+                                <div class="operation">
+                                    <span class="operation-type">Search Query</span>
+                                    <div class="code-block">
+                                        <div class="code-header">
+                                            <span>Advanced Event Search</span>
+                                            <button class="copy-btn" data-copy="event-search">
+                                                <i class="fas fa-copy"></i>
+                                            </button>
+                                        </div>
+                                        <pre id="event-search"><code class="language-javascript">Events.aggregate([
+  // Text search
+  { $match: { $text: { $search: "birthday party" } } },
+  
+  // Filters
+  {
+    $match: {
+      isApproved: true,
+      isDeleted: false,
+      'location.city': 'Dubai', // City filter
+      'ageRange.0': { $lte: 6 }, // Min age <= 6
+      'ageRange.1': { $gte: 6 }, // Max age >= 6
+      price: { $gte: 50, $lte: 200 }, // Price range
+      category: { $in: categoryIds }, // Category filter
+      'dateSchedule.date': { $gte: new Date() }, // Future events
+      tags: { $in: ['outdoor', 'family-friendly'] } // Tags filter
+    }
+  },
+  
+  // Location-based search (within radius)
+  {
+    $geoNear: {
+      near: { type: 'Point', coordinates: [55.2708, 25.2048] },
+      distanceField: 'distance',
+      maxDistance: 10000, // 10km radius
+      spherical: true
+    }
+  },
+  
+  // Sort by relevance, then distance
+  { $sort: { score: { $meta: 'textScore' }, distance: 1 } }
+]);</code></pre>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="feature-item">
+                            <h4>Personalized recommendations</h4>
+                            
+                            <div class="recommendation-algorithm">
+                                <div class="algorithm-factor">
+                                    <i class="fas fa-heart"></i>
+                                    <div>
+                                        <strong>Interest Matching</strong>
+                                        <p>10 points for category match</p>
+                                    </div>
+                                </div>
+                                <div class="algorithm-factor">
+                                    <i class="fas fa-star"></i>
+                                    <div>
+                                        <strong>Rating Boost</strong>
+                                        <p>2x average rating multiplier</p>
+                                    </div>
+                                </div>
+                                <div class="algorithm-factor">
+                                    <i class="fas fa-fire"></i>
+                                    <div>
+                                        <strong>Popularity Score</strong>
+                                        <p>Booking count / 10</p>
+                                    </div>
+                                </div>
+                            </div>
+                            
+                            <div class="code-block">
+                                <div class="code-header">
+                                    <span>Personalized Recommendations</span>
+                                    <button class="copy-btn" data-copy="recommendations">
+                                        <i class="fas fa-copy"></i>
+                                    </button>
+                                </div>
+                                <pre id="recommendations"><code class="language-javascript">Events.aggregate([
+  // Match user's interests and kids' age groups
+  {
+    $match: {
+      isApproved: true,
+      isDeleted: false,
+      category: { $in: userInterestCategories },
+      'ageRange.0': { $lte: Math.max(...userKidsAges) },
+      'ageRange.1': { $gte: Math.min(...userKidsAges) }
+    }
+  },
+  
+  // Add recommendation score
+  {
+    $addFields: {
+      recommendationScore: {
+        $add: [
+          { $cond: [{ $in: ['$category', userInterests] }, 10, 0] },
+          { $multiply: ['$metrics.averageRating', 2] },
+          { $divide: ['$metrics.bookingsCount', 10] }
+        ]
+      }
+    }
+  },
+  
+  { $sort: { recommendationScore: -1 } },
+  { $limit: 20 }
+]);</code></pre>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="feature-category">
+                        <h3><i class="fas fa-shopping-cart"></i> Booking & Payments</h3>
+                        
+                        <div class="feature-item">
+                            <h4>Book tickets/slots with multiple payment gateways</h4>
+                            
+                            <div class="booking-flow">
+                                <div class="flow-step">
+                                    <div class="step-number">1</div>
+                                    <div class="step-content">
+                                        <h5>Booking Hold</h5>
+                                        <p>15-minute reservation</p>
+                                    </div>
+                                </div>
+                                <div class="flow-arrow">→</div>
+                                <div class="flow-step">
+                                    <div class="step-number">2</div>
+                                    <div class="step-content">
+                                        <h5>Create Booking</h5>
+                                        <p>Pending status</p>
+                                    </div>
+                                </div>
+                                <div class="flow-arrow">→</div>
+                                <div class="flow-step">
+                                    <div class="step-number">3</div>
+                                    <div class="step-content">
+                                        <h5>Process Payment</h5>
+                                        <p>Gateway integration</p>
+                                    </div>
+                                </div>
+                                <div class="flow-arrow">→</div>
+                                <div class="flow-step">
+                                    <div class="step-number">4</div>
+                                    <div class="step-content">
+                                        <h5>Generate Tickets</h5>
+                                        <p>QR codes & confirmation</p>
+                                    </div>
+                                </div>
+                            </div>
+                            
+                            <div class="code-block">
+                                <div class="code-header">
+                                    <span>Booking Transaction</span>
+                                    <button class="copy-btn" data-copy="booking-transaction">
+                                        <i class="fas fa-copy"></i>
+                                    </button>
+                                </div>
+                                <pre id="booking-transaction"><code class="language-javascript">// 1. Create Booking Hold (prevent double booking)
+const hold = await BookingHolds.create({
+  eventId: eventId,
+  customerId: userId,
+  selectedDate: selectedDate,
+  numberOfTickets: quantity,
+  holdExpiresAt: new Date(Date.now() + 15 * 60 * 1000) // 15 min
+});
+
+// 2. Create Booking
+const booking = await Bookings.create({
+  bookingNumber: generateBookingNumber(),
+  customerId: userId,
+  eventId: eventId,
+  vendorId: event.vendorId,
+  selectedDate: selectedDate,
+  numberOfTickets: quantity,
+  attendees: attendeesInfo,
+  pricing: {
+    basePrice: event.price * quantity,
+    totalAmount: calculatedTotal,
+    discountAmount: appliedDiscount,
+    taxAmount: calculatedTax
+  },
+  status: 'pending',
+  paymentStatus: 'pending'
+});
+
+// 4. On Payment Success - Generate tickets
+...Array(quantity).map((_, index) => 
+  Tickets.create({
+    ticketNumber: generateTicketNumber(),
+    bookingId: booking._id,
+    customerId: userId,
+    eventId: eventId,
+    attendeeName: attendees[index].name,
+    qrCode: {
+      code: generateUniqueQRCode(),
+      imageUrl: await generateQRCodeImage()
+    },
+    status: 'active'
+  })
+)</code></pre>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="feature-category">
+                        <h3><i class="fas fa-tachometer-alt"></i> Customer Dashboard</h3>
+                        
+                        <div class="dashboard-metrics">
+                            <div class="metric-card">
+                                <i class="fas fa-calendar-check"></i>
+                                <div>
+                                    <strong>Upcoming Events</strong>
+                                    <p>Confirmed bookings</p>
+                                </div>
+                            </div>
+                            <div class="metric-card">
+                                <i class="fas fa-history"></i>
+                                <div>
+                                    <strong>Past Events</strong>
+                                    <p>Completed experiences</p>
+                                </div>
+                            </div>
+                            <div class="metric-card">
+                                <i class="fas fa-chart-pie"></i>
+                                <div>
+                                    <strong>Statistics</strong>
+                                    <p>Spending & activity</p>
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <div class="code-block">
+                            <div class="code-header">
+                                <span>Dashboard Analytics</span>
+                                <button class="copy-btn" data-copy="customer-dashboard">
+                                    <i class="fas fa-copy"></i>
+                                </button>
+                            </div>
+                            <pre id="customer-dashboard"><code class="language-javascript">// Customer Dashboard - Upcoming Bookings
+Bookings.aggregate([
+  { 
+    $match: { 
+      customerId: userId,
+      status: { $in: ['confirmed', 'pending'] },
+      selectedDate: { $gte: new Date() }
+    }
+  },
+  {
+    $lookup: {
+      from: 'events',
+      localField: 'eventId',
+      foreignField: '_id',
+      as: 'event'
+    }
+  },
+  {
+    $lookup: {
+      from: 'tickets',
+      localField: '_id',
+      foreignField: 'bookingId',
+      as: 'tickets'
+    }
+  },
+  { $sort: { selectedDate: 1 } }
+]);
+
+// Booking Statistics
+Bookings.aggregate([
+  { $match: { customerId: userId } },
+  {
+    $group: {
+      _id: null,
+      totalBookings: { $sum: 1 },
+      totalSpent: { $sum: '$pricing.totalAmount' },
+      completedEvents: {
+        $sum: { $cond: [{ $eq: ['$status', 'completed'] }, 1, 0] }
+      }
+    }
+  }
+]);</code></pre>
+                        </div>
+                    </div>
+                </div>
+            </section>
+
+            <!-- Vendor Features -->
+            <section id="vendor-features" class="content-section">
+                <div class="section-header">
+                    <h2><i class="fas fa-store"></i> Vendor Features</h2>
+                    <span class="section-badge vendor">Business</span>
+                </div>
+
+                <div class="role-features-grid">
+                    <div class="feature-category">
+                        <h3><i class="fas fa-shield-check"></i> Account & Verification</h3>
+                        
+                        <div class="feature-item">
+                            <h4>Vendor registration & KYC verification</h4>
+                            
+                            <div class="verification-stages">
+                                <div class="stage">
+                                    <i class="fas fa-user-plus"></i>
+                                    <span>Registration</span>
+                                </div>
+                                <div class="stage">
+                                    <i class="fas fa-file-upload"></i>
+                                    <span>Document Upload</span>
+                                </div>
+                                <div class="stage">
+                                    <i class="fas fa-search"></i>
+                                    <span>Admin Review</span>
+                                </div>
+                                <div class="stage">
+                                    <i class="fas fa-check-circle"></i>
+                                    <span>Approval</span>
+                                </div>
+                            </div>
+                            
+                            <div class="code-block">
+                                <div class="code-header">
+                                    <span>Vendor Registration & KYC</span>
+                                    <button class="copy-btn" data-copy="vendor-kyc">
+                                        <i class="fas fa-copy"></i>
+                                    </button>
+                                </div>
+                                <pre id="vendor-kyc"><code class="language-javascript">// Vendor Registration
+Users.create({
+  firstName, lastName, email, passwordHash,
+  role: 'vendor',
+  status: 'pending',
+  vendorProfile: {
+    businessName: 'Amazing Kids Events',
+    businessType: 'Event Organizer',
+    licenseNumber: 'LIC123456',
+    description: 'We organize amazing events...',
+    subscriptionPlan: 'basic',
+    verificationStatus: 'pending',
+    verificationDocuments: [],
+    payoutSettings: {
+      method: 'bank_transfer',
+      minimumPayout: 100
+    }
+  }
+});
+
+// Upload KYC Documents
+Users.updateOne(
+  { _id: vendorId, role: 'vendor' },
+  {
+    $push: {
+      'vendorProfile.verificationDocuments': {
+        type: 'business_license',
+        url: cloudinaryUrl,
+        uploadedAt: new Date()
+      }
+    }
+  }
+);
+
+// Admin Approval
+Users.updateOne(
+  { _id: vendorId },
+  {
+    'vendorProfile.verificationStatus': 'verified',
+    status: 'active'
+  }
+);</code></pre>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="feature-category">
+                        <h3><i class="fas fa-calendar-alt"></i> Event Management</h3>
+                        
+                        <div class="feature-item">
+                            <h4>Create, edit, manage events</h4>
+                            
+                            <div class="event-management-features">
+                                <div class="management-feature">
+                                    <i class="fas fa-plus"></i>
+                                    <div>
+                                        <strong>Create Events</strong>
+                                        <p>Single or bulk creation</p>
+                                    </div>
+                                </div>
+                                <div class="management-feature">
+                                    <i class="fas fa-edit"></i>
+                                    <div>
+                                        <strong>Edit Events</strong>
+                                        <p>Update pricing & scheduling</p>
+                                    </div>
+                                </div>
+                                <div class="management-feature">
+                                    <i class="fas fa-chart-line"></i>
+                                    <div>
+                                        <strong>Real-time Tracking</strong>
+                                        <p>Bookings & performance</p>
+                                    </div>
+                                </div>
+                            </div>
+                            
+                            <div class="code-block">
+                                <div class="code-header">
+                                    <span>Event Creation & Management</span>
+                                    <button class="copy-btn" data-copy="event-management">
+                                        <i class="fas fa-copy"></i>
+                                    </button>
+                                </div>
+                                <pre id="event-management"><code class="language-javascript">// Create Event
+const event = await Events.create({
+  title: 'Birthday Party Package',
+  description: 'Complete birthday party setup...',
+  category: categoryId,
+  type: 'event',
+  venueType: 'indoor',
+  ageRange: [5, 12],
+  location: {
+    city: 'Dubai',
+    address: 'Al Wasl Road, Jumeirah',
+    coordinates: { lat: 25.2048, lng: 55.2708 }
+  },
+  vendorId: vendorId,
+  pricing: {
+    basePrice: 250,
+    currency: 'AED',
+    priceType: 'per_child'
+  },
+  dateSchedule: [{
+    date: new Date('2024-12-25'),
+    timeSlots: [{
+      startTime: '10:00',
+      endTime: '12:00',
+      availableSeats: 20,
+      bookedSeats: 0,
+      price: 250
+    }]
+  }],
+  submissionStatus: 'draft',
+  images: ['cloudinary_url1', 'cloudinary_url2']
+});
+
+// Real-time Event Stats
+Events.aggregate([
+  { $match: { vendorId: vendorId, isDeleted: false } },
+  {
+    $lookup: {
+      from: 'bookings',
+      localField: '_id',
+      foreignField: 'eventId',
+      as: 'bookings'
+    }
+  },
+  {
+    $addFields: {
+      totalBookings: { $size: '$bookings' },
+      totalRevenue: {
+        $sum: {
+          $map: {
+            input: '$bookings',
+            as: 'booking',
+            in: { 
+              $cond: [
+                { $eq: ['$$booking.status', 'confirmed'] },
+                '$$booking.pricing.totalAmount',
+                0
+              ]
+            }
+          }
+        }
+      }
+    }
+  }
+]);</code></pre>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="feature-category">
+                        <h3><i class="fas fa-chart-bar"></i> Financial Dashboard</h3>
+                        
+                        <div class="financial-metrics">
+                            <div class="financial-metric">
+                                <i class="fas fa-coins"></i>
+                                <div>
+                                    <strong>Gross Revenue</strong>
+                                    <p>Total booking value</p>
+                                </div>
+                            </div>
+                            <div class="financial-metric">
+                                <i class="fas fa-percentage"></i>
+                                <div>
+                                    <strong>Platform Commission</strong>
+                                    <p>10% of gross revenue</p>
+                                </div>
+                            </div>
+                            <div class="financial-metric">
+                                <i class="fas fa-money-bill-wave"></i>
+                                <div>
+                                    <strong>Net Earnings</strong>
+                                    <p>After commission & fees</p>
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <div class="code-block">
+                            <div class="code-header">
+                                <span>Financial Dashboard</span>
+                                <button class="copy-btn" data-copy="vendor-financial">
+                                    <i class="fas fa-copy"></i>
+                                </button>
+                            </div>
+                            <pre id="vendor-financial"><code class="language-javascript">// Vendor Financial Dashboard
+VendorEarnings.aggregate([
+  { $match: { vendorId: vendorId } },
+  {
+    $group: {
+      _id: null,
+      totalGrossRevenue: { $sum: '$grossRevenue' },
+      totalCommissions: { $sum: '$platformCommission' },
+      totalNetEarnings: { $sum: '$netEarnings' },
+      totalProcessingFees: { $sum: '$processingFees' },
+      monthlyEarnings: {
+        $push: {
+          month: '$period.month',
+          year: '$period.year',
+          earnings: '$netEarnings'
+        }
+      }
+    }
+  }
+]);
+
+// Commission Breakdown by Event
+Events.aggregate([
+  { $match: { vendorId: vendorId } },
+  {
+    $lookup: {
+      from: 'bookings',
+      localField: '_id',
+      foreignField: 'eventId',
+      pipeline: [{ $match: { status: 'confirmed' } }],
+      as: 'confirmedBookings'
+    }
+  },
+  {
+    $addFields: {
+      totalRevenue: { $sum: '$confirmedBookings.pricing.totalAmount' },
+      estimatedCommission: {
+        $multiply: [
+          { $sum: '$confirmedBookings.pricing.totalAmount' },
+          0.10 // 10% commission rate
+        ]
+      }
+    }
+  }
+]);</code></pre>
+                        </div>
+                    </div>
+                </div>
+            </section>
+
+            <!-- Admin Features -->
+            <section id="admin-features" class="content-section">
+                <div class="section-header">
+                    <h2><i class="fas fa-crown"></i> Admin Features</h2>
+                    <span class="section-badge admin">Platform Management</span>
+                </div>
+
+                <div class="role-features-grid">
+                    <div class="feature-category">
+                        <h3><i class="fas fa-users-cog"></i> User Management</h3>
+                        
+                        <div class="feature-item">
+                            <h4>Manage vendors, employees, and customers</h4>
+                            
+                            <div class="user-management-actions">
+                                <div class="action-card">
+                                    <i class="fas fa-search"></i>
+                                    <div>
+                                        <strong>Search & Filter</strong>
+                                        <p>Advanced user filtering</p>
+                                    </div>
+                                </div>
+                                <div class="action-card">
+                                    <i class="fas fa-check-circle"></i>
+                                    <div>
+                                        <strong>Verification</strong>
+                                        <p>KYC document review</p>
+                                    </div>
+                                </div>
+                                <div class="action-card">
+                                    <i class="fas fa-ban"></i>
+                                    <div>
+                                        <strong>Account Actions</strong>
+                                        <p>Suspend/activate users</p>
+                                    </div>
+                                </div>
+                            </div>
+                            
+                            <div class="code-block">
+                                <div class="code-header">
+                                    <span>User Management Dashboard</span>
+                                    <button class="copy-btn" data-copy="admin-user-mgmt">
+                                        <i class="fas fa-copy"></i>
+                                    </button>
+                                </div>
+                                <pre id="admin-user-mgmt"><code class="language-javascript">// Admin User Dashboard with Filters
+Users.aggregate([
+  // Search and filter
+  {
+    $match: {
+      $or: [
+        { firstName: { $regex: searchQuery, $options: 'i' } },
+        { lastName: { $regex: searchQuery, $options: 'i' } },
+        { email: { $regex: searchQuery, $options: 'i' } }
+      ],
+      role: { $in: selectedRoles },
+      status: { $in: selectedStatuses },
+      createdAt: { $gte: startDate, $lte: endDate }
+    }
+  },
+  
+  // Add computed fields
+  {
+    $addFields: {
+      fullName: { $concat: ['$firstName', ' ', '$lastName'] }
+    }
+  },
+  
+  { $sort: { createdAt: -1 } }
+]);
+
+// Vendor Verification Management
+Users.updateOne(
+  { _id: vendorId, role: 'vendor' },
+  {
+    $set: {
+      'vendorProfile.verificationStatus': 'verified',
+      status: 'active'
+    },
+    $push: {
+      'vendorProfile.verificationHistory': {
+        action: 'approved',
+        adminId: adminId,
+        notes: 'All documents verified',
+        timestamp: new Date()
+      }
+    }
+  }
+);</code></pre>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="feature-category">
+                        <h3><i class="fas fa-clipboard-check"></i> Event Oversight</h3>
+                        
+                        <div class="feature-item">
+                            <h4>Approve/reject vendor events</h4>
+                            
+                            <div class="moderation-queue">
+                                <div class="queue-item">
+                                    <i class="fas fa-clock"></i>
+                                    <div>
+                                        <strong>Submission Age</strong>
+                                        <p>Prioritize older submissions</p>
+                                    </div>
+                                </div>
+                                <div class="queue-item">
+                                    <i class="fas fa-star"></i>
+                                    <div>
+                                        <strong>Vendor Trust Score</strong>
+                                        <p>Based on history & ratings</p>
+                                    </div>
+                                </div>
+                                <div class="queue-item">
+                                    <i class="fas fa-comments"></i>
+                                    <div>
+                                        <strong>Feedback System</strong>
+                                        <p>Detailed rejection notes</p>
+                                    </div>
+                                </div>
+                            </div>
+                            
+                            <div class="code-block">
+                                <div class="code-header">
+                                    <span>Event Moderation System</span>
+                                    <button class="copy-btn" data-copy="admin-moderation">
+                                        <i class="fas fa-copy"></i>
+                                    </button>
+                                </div>
+                                <pre id="admin-moderation"><code class="language-javascript">// Admin Event Moderation Queue
+Events.aggregate([
+  { 
+    $match: { 
+      submissionStatus: 'submitted',
+      isDeleted: false
+    }
+  },
+  {
+    $lookup: {
+      from: 'users',
+      localField: 'vendorId',
+      foreignField: '_id',
+      as: 'vendor'
+    }
+  },
+  {
+    $addFields: {
+      submissionAge: {
+        $divide: [
+          { $subtract: [new Date(), '$createdAt'] },
+          1000 * 60 * 60 * 24 // Convert to days
+        ]
+      },
+      vendorTrustScore: {
+        $multiply: ['$vendor.vendorProfile.rating', 20]
+      }
+    }
+  },
+  { $sort: { submissionAge: -1, vendorTrustScore: -1 } }
+]);
+
+// Approve Event
+Events.updateOne(
+  { _id: eventId },
+  {
+    $set: {
+      submissionStatus: 'approved',
+      isApproved: true
+    },
+    $push: {
+      approvalHistory: {
+        status: 'approved',
+        adminId: adminId,
+        notes: 'Event meets all quality standards',
+        timestamp: new Date()
+      }
+    }
+  }
+);</code></pre>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="feature-category">
+                        <h3><i class="fas fa-chart-line"></i> Platform Analytics</h3>
+                        
+                        <div class="analytics-dashboard">
+                            <div class="analytics-metric">
+                                <i class="fas fa-users"></i>
+                                <div>
+                                    <strong>User Growth</strong>
+                                    <p>By role & time period</p>
+                                </div>
+                            </div>
+                            <div class="analytics-metric">
+                                <i class="fas fa-calendar"></i>
+                                <div>
+                                    <strong>Event Performance</strong>
+                                    <p>By category & location</p>
+                                </div>
+                            </div>
+                            <div class="analytics-metric">
+                                <i class="fas fa-dollar-sign"></i>
+                                <div>
+                                    <strong>Revenue Analytics</strong>
+                                    <p>Commission & transactions</p>
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <div class="code-block">
+                            <div class="code-header">
+                                <span>Comprehensive Platform Analytics</span>
+                                <button class="copy-btn" data-copy="admin-analytics">
+                                    <i class="fas fa-copy"></i>
+                                </button>
+                            </div>
+                            <pre id="admin-analytics"><code class="language-javascript">// Comprehensive Platform Analytics
+const analytics = await Promise.all([
+  // User growth metrics
+  Users.aggregate([
+    {
+      $group: {
+        _id: { 
+          year: { $year: '$createdAt' },
+          month: { $month: '$createdAt' },
+          role: '$role'
+        },
+        userCount: { $sum: 1 }
+      }
+    }
+  ]),
+  
+  // Event performance metrics
+  Events.aggregate([
+    {
+      $lookup: {
+        from: 'bookings',
+        localField: '_id',
+        foreignField: 'eventId',
+        as: 'bookings'
+      }
+    },
+    {
+      $group: {
+        _id: '$category',
+        totalEvents: { $sum: 1 },
+        totalBookings: { $sum: { $size: '$bookings' } },
+        averagePrice: { $avg: '$pricing.basePrice' },
+        totalRevenue: {
+          $sum: {
+            $sum: {
+              $map: {
+                input: '$bookings',
+                as: 'booking',
+                in: '$$booking.pricing.totalAmount'
+              }
+            }
+          }
+        }
+      }
+    }
+  ])
+]);</code></pre>
+                        </div>
+                    </div>
+                </div>
+            </section>
+
+            <!-- Employee Features -->
+            <section id="employee-features" class="content-section">
+                <div class="section-header">
+                    <h2><i class="fas fa-hard-hat"></i> Employee Features</h2>
+                    <span class="section-badge employee">Operations</span>
+                </div>
+
+                <div class="role-features-grid">
+                    <div class="feature-category">
+                        <h3><i class="fas fa-qrcode"></i> QR Ticket Validation</h3>
+                        
+                        <div class="feature-item">
+                            <h4>Mobile QR scanner & check-in system</h4>
+                            
+                            <div class="validation-process">
+                                <div class="process-step">
+                                    <div class="step-icon">
+                                        <i class="fas fa-shield-check"></i>
+                                    </div>
+                                    <div class="step-content">
+                                        <h5>Access Verification</h5>
+                                        <p>Employee event permissions</p>
+                                    </div>
+                                </div>
+                                <div class="process-step">
+                                    <div class="step-icon">
+                                        <i class="fas fa-search"></i>
+                                    </div>
+                                    <div class="step-content">
+                                        <h5>QR Code Lookup</h5>
+                                        <p>Validate ticket authenticity</p>
+                                    </div>
+                                </div>
+                                <div class="process-step">
+                                    <div class="step-icon">
+                                        <i class="fas fa-check-circle"></i>
+                                    </div>
+                                    <div class="step-content">
+                                        <h5>Check-in Process</h5>
+                                        <p>Update status & log entry</p>
+                                    </div>
+                                </div>
+                            </div>
+                            
+                            <div class="code-block">
+                                <div class="code-header">
+                                    <span>QR Code Validation System</span>
+                                    <button class="copy-btn" data-copy="qr-validation">
+                                        <i class="fas fa-copy"></i>
+                                    </button>
+                                </div>
+                                <pre id="qr-validation"><code class="language-javascript">// Validate QR Code and Check-in
+const validateTicketCheckIn = async (qrCode, employeeId, location) => {
+  // 1. Find ticket by QR code
+  const ticket = await Tickets.findOne({
+    'qrCode.code': qrCode,
+    'qrCode.isValid': true,
+    status: 'active'
+  }).populate('eventId bookingId');
+  
+  if (!ticket) {
+    return { success: false, error: 'Invalid or expired ticket' };
+  }
+  
+  // 2. Check if employee has access to this event
+  const employee = await Employees.findOne({ userId: employeeId });
+  if (ticket.eventId.vendorId.toString() !== employee.assignedVendor.toString()) {
+    return { success: false, error: 'Access denied for this event' };
+  }
+  
+  // 3. Check if already checked in
+  if (ticket.checkIn.isCheckedIn) {
+    return { 
+      success: false, 
+      error: 'Ticket already used',
+      checkInTime: ticket.checkIn.checkedInAt
+    };
+  }
+  
+  // 4. Perform check-in
+  await Tickets.updateOne(
+    { _id: ticket._id },
+    {
+      $set: {
+        'checkIn.isCheckedIn': true,
+        'checkIn.checkedInAt': new Date(),
+        'checkIn.checkedInBy': employeeId,
+        'checkIn.location': location,
+        status: 'used'
+      }
+    }
+  );
+  
+  // 5. Log the check-in
+  await CheckinLog.create({
+    employeeId: employeeId,
+    ticketId: ticket._id,
+    eventId: ticket.eventId._id,
+    customerId: ticket.customerId,
+    checkinTime: new Date(),
+    checkinLocation: location
+  });
+  
+  return {
+    success: true,
+    customerName: ticket.attendeeName,
+    eventTitle: ticket.eventId.title,
+    checkInTime: new Date()
+  };
+};</code></pre>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="feature-category">
+                        <h3><i class="fas fa-clipboard-list"></i> Event Operations</h3>
+                        
+                        <div class="feature-item">
+                            <h4>Track attendance & generate reports</h4>
+                            
+                            <div class="attendance-features">
+                                <div class="attendance-feature">
+                                    <i class="fas fa-chart-pie"></i>
+                                    <div>
+                                        <strong>Real-time Stats</strong>
+                                        <p>Live attendance tracking</p>
+                                    </div>
+                                </div>
+                                <div class="attendance-feature">
+                                    <i class="fas fa-file-export"></i>
+                                    <div>
+                                        <strong>Daily Reports</strong>
+                                        <p>Detailed attendance logs</p>
+                                    </div>
+                                </div>
+                                <div class="attendance-feature">
+                                    <i class="fas fa-exclamation-triangle"></i>
+                                    <div>
+                                        <strong>Incident Reporting</strong>
+                                        <p>Flag suspicious activities</p>
+                                    </div>
+                                </div>
+                            </div>
+                            
+                            <div class="code-block">
+                                <div class="code-header">
+                                    <span>Attendance Tracking & Reporting</span>
+                                    <button class="copy-btn" data-copy="attendance-tracking">
+                                        <i class="fas fa-copy"></i>
+                                    </button>
+                                </div>
+                                <pre id="attendance-tracking"><code class="language-javascript">// Real-time Event Attendance Dashboard
+const getEventAttendanceStats = async (eventId, employeeId) => {
+  return await Tickets.aggregate([
+    { $match: { eventId: ObjectId(eventId) } },
+    {
+      $lookup: {
+        from: 'bookings',
+        localField: 'bookingId',
+        foreignField: '_id',
+        as: 'booking'
+      }
+    },
+    {
+      $group: {
+        _id: null,
+        totalTickets: { $sum: 1 },
+        checkedInTickets: {
+          $sum: { $cond: ['$checkIn.isCheckedIn', 1, 0] }
+        },
+        pendingCheckIns: {
+          $sum: { $cond: [{ $not: '$checkIn.isCheckedIn' }, 1, 0] }
+        },
+        totalRevenue: {
+          $sum: { $arrayElemAt: ['$booking.pricing.totalAmount', 0] }
+        }
+      }
+    }
+  ]);
+};
+
+// Generate Daily Attendance Report
+const generateAttendanceReport = async (eventId, date, employeeId) => {
+  return await CheckinLog.aggregate([
+    {
+      $match: {
+        eventId: ObjectId(eventId),
+        checkinTime: {
+          $gte: new Date(date + 'T00:00:00.000Z'),
+          $lte: new Date(date + 'T23:59:59.999Z')
+        }
+      }
+    },
+    {
+      $lookup: {
+        from: 'tickets',
+        localField: 'ticketId',
+        foreignField: '_id',
+        as: 'ticket'
+      }
+    },
+    {
+      $project: {
+        checkinTime: 1,
+        checkinLocation: 1,
+        attendeeName: { $arrayElemAt: ['$ticket.attendeeName', 0] }
+      }
+    },
+    { $sort: { checkinTime: 1 } }
+  ]);
+};</code></pre>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </section>
+
+            <!-- Performance Patterns -->
+            <section id="performance-patterns" class="content-section">
+                <div class="section-header">
+                    <h2><i class="fas fa-rocket"></i> Performance Optimization Patterns</h2>
+                    <span class="section-badge optimization">Database Operations</span>
+                </div>
+
+                <div class="performance-grid">
+                    <div class="performance-category">
+                        <h3><i class="fas fa-database"></i> Key Indexes for Role-based Queries</h3>
+                        
+                        <div class="index-types">
+                            <div class="index-type">
+                                <div class="index-header">
+                                    <i class="fas fa-user"></i>
+                                    <span>Customer Queries</span>
+                                </div>
+                                <div class="code-block">
+                                    <pre><code class="language-javascript">// Event discovery indexes
+db.events.createIndex({ 
+  isApproved: 1, isDeleted: 1, 'location.city': 1 
+})
+db.events.createIndex({ 
+  category: 1, 'ageRange.0': 1, 'ageRange.1': 1 
+})</code></pre>
+                                </div>
+                            </div>
+                            
+                            <div class="index-type">
+                                <div class="index-header">
+                                    <i class="fas fa-store"></i>
+                                    <span>Vendor Queries</span>
+                                </div>
+                                <div class="code-block">
+                                    <pre><code class="language-javascript">// Vendor management indexes
+db.events.createIndex({ 
+  vendorId: 1, submissionStatus: 1 
+})
+db.bookings.createIndex({ 
+  vendorId: 1, status: 1, createdAt: -1 
+})</code></pre>
+                                </div>
+                            </div>
+                            
+                            <div class="index-type">
+                                <div class="index-header">
+                                    <i class="fas fa-crown"></i>
+                                    <span>Admin Queries</span>
+                                </div>
+                                <div class="code-block">
+                                    <pre><code class="language-javascript">// Admin dashboard indexes
+db.users.createIndex({ 
+  role: 1, status: 1, createdAt: -1 
+})
+db.events.createIndex({ 
+  submissionStatus: 1, createdAt: 1 
+})</code></pre>
+                                </div>
+                            </div>
+                            
+                            <div class="index-type">
+                                <div class="index-header">
+                                    <i class="fas fa-hard-hat"></i>
+                                    <span>Employee Queries</span>
+                                </div>
+                                <div class="code-block">
+                                    <pre><code class="language-javascript">// QR validation indexes
+db.tickets.createIndex({ 
+  'qrCode.code': 1, status: 1 
+})
+db.events.createIndex({ 
+  vendorId: 1, 'dateSchedule.date': 1 
+})</code></pre>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="performance-category">
+                        <h3><i class="fas fa-cogs"></i> Aggregation Pipeline Optimization</h3>
+                        
+                        <div class="optimization-rules">
+                            <div class="rule-card">
+                                <i class="fas fa-filter"></i>
+                                <div>
+                                    <strong>Use $match Early</strong>
+                                    <p>Filter documents at the beginning of pipelines</p>
+                                </div>
+                            </div>
+                            <div class="rule-card">
+                                <i class="fas fa-link"></i>
+                                <div>
+                                    <strong>Limit $lookup Operations</strong>
+                                    <p>Use targeted pipelines in lookups</p>
+                                </div>
+                            </div>
+                            <div class="rule-card">
+                                <i class="fas fa-cut"></i>
+                                <div>
+                                    <strong>Use $project</strong>
+                                    <p>Reduce data transfer between stages</p>
+                                </div>
+                            </div>
+                            <div class="rule-card">
+                                <i class="fas fa-list-ol"></i>
+                                <div>
+                                    <strong>Implement Pagination</strong>
+                                    <p>Always use $skip and $limit</p>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="performance-category">
+                        <h3><i class="fas fa-broadcast-tower"></i> Real-time Data Patterns</h3>
+                        
+                        <div class="realtime-patterns">
+                            <div class="pattern-card">
+                                <i class="fas fa-stream"></i>
+                                <div>
+                                    <strong>Change Streams</strong>
+                                    <p>Real-time notifications for data changes</p>
+                                </div>
+                            </div>
+                            <div class="pattern-card">
+                                <i class="fas fa-memory"></i>
+                                <div>
+                                    <strong>Redis Caching</strong>
+                                    <p>Cache frequently accessed data</p>
+                                </div>
+                            </div>
+                            <div class="pattern-card">
+                                <i class="fas fa-atom"></i>
+                                <div>
+                                    <strong>Atomic Operations</strong>
+                                    <p>Ensure data consistency in transactions</p>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="highlight-box success">
+                    <i class="fas fa-lightbulb"></i>
+                    <div>
+                        <strong>Optimization Summary:</strong>
+                        <p>This comprehensive mapping provides the foundation for implementing all role-based features with optimized database operations that scale with your platform's growth. Focus on proper indexing, efficient aggregation pipelines, and strategic caching for optimal performance.</p>
+                    </div>
+                </div>
+            </section>
+
+            <!-- Page Navigation -->
+            <nav class="page-navigation">
+                <a href="database-relationships.html" class="nav-btn prev">
+                    <i class="fas fa-arrow-left"></i>
+                    <span>Database Relationships</span>
+                </a>
+                <a href="architecture.html" class="nav-btn next">
+                    <span>Technical Architecture</span>
+                    <i class="fas fa-arrow-right"></i>
+                </a>
+            </nav>
+        </main>
+    </div>
+
+    <script src="../js/main.js"></script>
+    <script src="../js/search.js"></script>
+    <script src="../js/navigation.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.24.1/components/prism-core.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.24.1/plugins/autoloader/prism-autoloader.min.js"></script>
+</body>
+</html>

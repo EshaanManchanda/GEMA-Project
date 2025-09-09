@@ -1,64 +1,148 @@
 import { ApiService } from '../api';
 
+// Category interfaces
+export interface Category {
+  _id: string;
+  name: string;
+  slug: string;
+  description?: string;
+  icon?: string;
+  color?: string;
+  parentId?: string;
+  level: number;
+  isActive: boolean;
+  sortOrder: number;
+  seoMeta: {
+    title?: string;
+    description?: string;
+    keywords?: string[];
+  };
+  featuredImage?: string;
+  children?: Category[];
+  eventCount?: number;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface CreateCategoryData {
+  name: string;
+  slug?: string;
+  description?: string;
+  icon?: string;
+  color?: string;
+  parentId?: string;
+  sortOrder?: number;
+  isActive?: boolean;
+  seoMeta?: {
+    title?: string;
+    description?: string;
+    keywords?: string[];
+  };
+  featuredImage?: string;
+}
+
+export interface UpdateCategoryData extends Partial<CreateCategoryData> {}
+
 const categoriesAPI = {
-  getAllCategories: async () => {
+  // Get all categories (tree structure or flat)
+  getAllCategories: async (params?: { tree?: boolean; includeInactive?: boolean }) => {
     try {
-      const response = await ApiService.get('/events/categories');
+      const response = await ApiService.get('/categories', { params });
       return response.data;
     } catch (error) {
       throw error;
     }
   },
 
+  // Get single category by ID or slug
   getCategoryById: async (id: string) => {
     try {
-      // Backend doesn't have individual category endpoints
-      // Get all categories and filter by id
-      const response = await ApiService.get('/events/categories');
-      const categories = response.data?.categories || [];
-      const category = categories.find((cat: any) => cat.id === id || cat.name === id);
-      return { data: category };
-    } catch (error) {
-      throw error;
-    }
-  },
-
-  getFeaturedCategories: async () => {
-    try {
-      // Backend doesn't have featured categories endpoint
-      // Return all categories for now
-      const response = await ApiService.get('/events/categories');
+      const response = await ApiService.get(`/categories/${id}`);
       return response.data;
     } catch (error) {
       throw error;
     }
   },
 
-  createCategory: async (categoryData: any) => {
+  // Get root categories only
+  getRootCategories: async () => {
     try {
-      // Backend doesn't have category management endpoints
-      // This would need to be implemented in the backend
-      throw new Error('Category creation not implemented in backend');
+      const response = await ApiService.get('/categories/roots');
+      return response.data;
     } catch (error) {
       throw error;
     }
   },
 
-  updateCategory: async (id: string, categoryData: any) => {
+  // Get categories by parent ID
+  getCategoriesByParent: async (parentId: string | null) => {
     try {
-      // Backend doesn't have category management endpoints
-      // This would need to be implemented in the backend
-      throw new Error('Category update not implemented in backend');
+      const response = await ApiService.get(`/categories/parent/${parentId || 'null'}`);
+      return response.data;
     } catch (error) {
       throw error;
     }
   },
 
+  // Search categories
+  searchCategories: async (query: string, limit?: number) => {
+    try {
+      const response = await ApiService.get('/categories/search', {
+        params: { q: query, limit }
+      });
+      return response.data;
+    } catch (error) {
+      throw error;
+    }
+  },
+
+  // Admin only: Create new category
+  createCategory: async (categoryData: CreateCategoryData) => {
+    try {
+      const response = await ApiService.post('/categories', categoryData);
+      return response.data;
+    } catch (error) {
+      throw error;
+    }
+  },
+
+  // Admin only: Update category
+  updateCategory: async (id: string, categoryData: UpdateCategoryData) => {
+    try {
+      const response = await ApiService.put(`/categories/${id}`, categoryData);
+      return response.data;
+    } catch (error) {
+      throw error;
+    }
+  },
+
+  // Admin only: Delete category
   deleteCategory: async (id: string) => {
     try {
-      // Backend doesn't have category management endpoints
-      // This would need to be implemented in the backend
-      throw new Error('Category deletion not implemented in backend');
+      const response = await ApiService.delete(`/categories/${id}`);
+      return response.data;
+    } catch (error) {
+      throw error;
+    }
+  },
+
+  // Admin only: Update category sort order
+  updateSortOrder: async (categories: Array<{ id: string; sortOrder: number }>) => {
+    try {
+      const response = await ApiService.put('/categories/sort-order/bulk', {
+        categories
+      });
+      return response.data;
+    } catch (error) {
+      throw error;
+    }
+  },
+
+  // Admin only: Update event counts for all categories
+  updateEventCounts: async () => {
+    try {
+      const response = await ApiService.post('/categories/update-counts');
+      return response.data;
     } catch (error) {
       throw error;
     }

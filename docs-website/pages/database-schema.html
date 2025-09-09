@@ -1,0 +1,749 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Database Schema - Gema Documentation</title>
+    <meta name="description" content="Complete database schema documentation for the Gema Event Management Platform">
+    <link rel="stylesheet" href="../css/main.css">
+    <link rel="stylesheet" href="../css/components.css">
+    <link rel="stylesheet" href="../css/responsive.css">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+</head>
+<body>
+    <!-- Header -->
+    <header class="header">
+        <div class="header-container">
+            <div class="header-brand">
+                <h1><a href="../index.html"><i class="fas fa-rocket"></i> Gema Platform</a></h1>
+                <span class="header-subtitle">Database Schema</span>
+            </div>
+            <nav class="header-nav">
+                <div class="search-container">
+                    <input type="text" id="search-input" placeholder="Search documentation...">
+                    <i class="fas fa-search"></i>
+                </div>
+                <button class="theme-toggle" id="theme-toggle">
+                    <i class="fas fa-moon"></i>
+                </button>
+                <button class="mobile-menu-toggle" id="mobile-menu-toggle">
+                    <i class="fas fa-bars"></i>
+                </button>
+            </nav>
+        </div>
+    </header>
+
+    <!-- Main Container -->
+    <div class="main-container">
+        <!-- Sidebar Navigation -->
+        <aside class="sidebar" id="sidebar">
+            <nav class="sidebar-nav">
+                <div class="nav-section">
+                    <h3><i class="fas fa-home"></i> Overview</h3>
+                    <ul>
+                        <li><a href="../index.html#project-overview" class="nav-link">Project Overview</a></li>
+                        <li><a href="../index.html#business-model" class="nav-link">Business Model</a></li>
+                        <li><a href="../index.html#tech-stack" class="nav-link">Technology Stack</a></li>
+                        <li><a href="../index.html#architecture" class="nav-link">System Architecture</a></li>
+                    </ul>
+                </div>
+
+                <div class="nav-section">
+                    <h3><i class="fas fa-users-cog"></i> Core Systems</h3>
+                    <ul>
+                        <li><a href="rbac.html" class="nav-link">Role-Based Access Control</a></li>
+                        <li><a href="event-management.html" class="nav-link">Event Management</a></li>
+                        <li><a href="payment-system.html" class="nav-link">Payment System</a></li>
+                        <li><a href="content-management.html" class="nav-link">Content Management</a></li>
+                    </ul>
+                </div>
+
+                <div class="nav-section">
+                    <h3><i class="fas fa-shield-alt"></i> Security & Auth</h3>
+                    <ul>
+                        <li><a href="authentication.html" class="nav-link">Authentication System</a></li>
+                    </ul>
+                </div>
+
+                <div class="nav-section">
+                    <h3><i class="fas fa-code"></i> Developer Resources</h3>
+                    <ul>
+                        <li><a href="api-documentation.html" class="nav-link">API Documentation</a></li>
+                        <li><a href="database-schema.html" class="nav-link active">Database Schema</a></li>
+                        <li><a href="getting-started.html" class="nav-link">Getting Started</a></li>
+                    </ul>
+                </div>
+
+                <div class="nav-section">
+                    <h3><i class="fas fa-mobile-alt"></i> Mobile</h3>
+                    <ul>
+                        <li><a href="mobile-app.html" class="nav-link">Mobile Application</a></li>
+                    </ul>
+                </div>
+            </nav>
+        </aside>
+
+        <!-- Main Content -->
+        <main class="main-content">
+            <div class="content-wrapper">
+                <div class="breadcrumb">
+                    <a href="../index.html">Home</a>
+                    <span class="separator">/</span>
+                    <span class="current">Database Schema</span>
+                </div>
+
+                <!-- Page Header -->
+                <div class="page-header">
+                    <h1><i class="fas fa-database"></i> Database Schema Documentation</h1>
+                    <p class="page-description">
+                        Complete MongoDB database schema for the Gema Event Management Platform with 34+ collections supporting role-based features, optimized relationships, and performance indexes.
+                    </p>
+                </div>
+
+                <!-- Schema Overview -->
+                <section class="schema-overview">
+                    <h2>Schema Overview</h2>
+                    <div class="overview-stats">
+                        <div class="stat-card">
+                            <div class="stat-icon"><i class="fas fa-layer-group"></i></div>
+                            <div class="stat-content">
+                                <div class="stat-number">34+</div>
+                                <div class="stat-label">Collections</div>
+                            </div>
+                        </div>
+                        <div class="stat-card">
+                            <div class="stat-icon"><i class="fas fa-users"></i></div>
+                            <div class="stat-content">
+                                <div class="stat-number">4</div>
+                                <div class="stat-label">User Roles</div>
+                            </div>
+                        </div>
+                        <div class="stat-card">
+                            <div class="stat-icon"><i class="fas fa-link"></i></div>
+                            <div class="stat-content">
+                                <div class="stat-number">50+</div>
+                                <div class="stat-label">Relationships</div>
+                            </div>
+                        </div>
+                        <div class="stat-card">
+                            <div class="stat-icon"><i class="fas fa-search"></i></div>
+                            <div class="stat-content">
+                                <div class="stat-number">100+</div>
+                                <div class="stat-label">Indexes</div>
+                            </div>
+                        </div>
+                    </div>
+                </section>
+
+                <!-- Core Collections -->
+                <section class="core-collections">
+                    <h2>Core Collection Groups</h2>
+                    
+                    <div class="collection-groups">
+                        <div class="collection-group">
+                            <div class="group-header">
+                                <i class="fas fa-users"></i>
+                                <h3>User Management (8 Collections)</h3>
+                            </div>
+                            <div class="group-collections">
+                                <div class="collection-item">
+                                    <div class="collection-name">Users</div>
+                                    <div class="collection-desc">Enhanced user management with role-specific profiles</div>
+                                </div>
+                                <div class="collection-item">
+                                    <div class="collection-name">UserSessions</div>
+                                    <div class="collection-desc">Session tracking and device management</div>
+                                </div>
+                                <div class="collection-item">
+                                    <div class="collection-name">UserPreferences</div>
+                                    <div class="collection-desc">User preferences and settings</div>
+                                </div>
+                                <div class="collection-item">
+                                    <div class="collection-name">RefreshToken</div>
+                                    <div class="collection-desc">JWT refresh token management</div>
+                                </div>
+                                <div class="collection-item">
+                                    <div class="collection-name">Employee</div>
+                                    <div class="collection-desc">Employee management and permissions</div>
+                                </div>
+                                <div class="collection-item">
+                                    <div class="collection-name">CheckinLog</div>
+                                    <div class="collection-desc">Event check-in tracking</div>
+                                </div>
+                                <div class="collection-item">
+                                    <div class="collection-name">UserAnalytics</div>
+                                    <div class="collection-desc">User behavior analytics</div>
+                                </div>
+                                <div class="collection-item">
+                                    <div class="collection-name">AuditLogs</div>
+                                    <div class="collection-desc">System audit trail</div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="collection-group">
+                            <div class="group-header">
+                                <i class="fas fa-calendar-alt"></i>
+                                <h3>Event Management (4 Collections)</h3>
+                            </div>
+                            <div class="group-collections">
+                                <div class="collection-item">
+                                    <div class="collection-name">Events</div>
+                                    <div class="collection-desc">Enhanced event management with scheduling</div>
+                                </div>
+                                <div class="collection-item">
+                                    <div class="collection-name">EventTemplates</div>
+                                    <div class="collection-desc">Reusable event templates</div>
+                                </div>
+                                <div class="collection-item">
+                                    <div class="collection-name">EventViews</div>
+                                    <div class="collection-desc">Event view tracking</div>
+                                </div>
+                                <div class="collection-item">
+                                    <div class="collection-name">EventAnalytics</div>
+                                    <div class="collection-desc">Event performance analytics</div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="collection-group">
+                            <div class="group-header">
+                                <i class="fas fa-ticket-alt"></i>
+                                <h3>Booking & Transactions (6 Collections)</h3>
+                            </div>
+                            <div class="group-collections">
+                                <div class="collection-item">
+                                    <div class="collection-name">Bookings</div>
+                                    <div class="collection-desc">Enhanced booking management</div>
+                                </div>
+                                <div class="collection-item">
+                                    <div class="collection-name">BookingHolds</div>
+                                    <div class="collection-desc">Temporary booking holds</div>
+                                </div>
+                                <div class="collection-item">
+                                    <div class="collection-name">Tickets</div>
+                                    <div class="collection-desc">Enhanced ticket management with QR codes</div>
+                                </div>
+                                <div class="collection-item">
+                                    <div class="collection-name">Orders</div>
+                                    <div class="collection-desc">Order management</div>
+                                </div>
+                                <div class="collection-item">
+                                    <div class="collection-name">Payments</div>
+                                    <div class="collection-desc">Enhanced payment processing</div>
+                                </div>
+                                <div class="collection-item">
+                                    <div class="collection-name">Payouts</div>
+                                    <div class="collection-desc">Vendor payout management</div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="collection-group">
+                            <div class="group-header">
+                                <i class="fas fa-dollar-sign"></i>
+                                <h3>Financial Management (3 Collections)</h3>
+                            </div>
+                            <div class="group-collections">
+                                <div class="collection-item">
+                                    <div class="collection-name">CommissionRules</div>
+                                    <div class="collection-desc">Commission calculation rules</div>
+                                </div>
+                                <div class="collection-item">
+                                    <div class="collection-name">VendorEarnings</div>
+                                    <div class="collection-desc">Vendor earnings tracking</div>
+                                </div>
+                                <div class="collection-item">
+                                    <div class="collection-name">PlatformRevenue</div>
+                                    <div class="collection-desc">Platform revenue analytics</div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </section>
+
+                <!-- Key Relationships -->
+                <section class="relationships">
+                    <h2>Database Relationships</h2>
+                    
+                    <div class="relationship-diagram">
+                        <h3>Core Entity Relationships</h3>
+                        <div class="diagram-container">
+                            <div class="entity-relationship">
+                                <div class="entity users">
+                                    <div class="entity-header">Users</div>
+                                    <div class="entity-fields">
+                                        <div class="field">_id (Primary)</div>
+                                        <div class="field">role</div>
+                                        <div class="field">email</div>
+                                        <div class="field">customerProfile</div>
+                                        <div class="field">vendorProfile</div>
+                                    </div>
+                                </div>
+                                
+                                <div class="relationship-lines">
+                                    <div class="relation-line">
+                                        <div class="relation-label">1 : N</div>
+                                    </div>
+                                </div>
+                                
+                                <div class="entity events">
+                                    <div class="entity-header">Events</div>
+                                    <div class="entity-fields">
+                                        <div class="field">_id (Primary)</div>
+                                        <div class="field">vendorId (Foreign)</div>
+                                        <div class="field">title</div>
+                                        <div class="field">pricing</div>
+                                    </div>
+                                </div>
+                                
+                                <div class="relationship-lines">
+                                    <div class="relation-line">
+                                        <div class="relation-label">1 : N</div>
+                                    </div>
+                                </div>
+                                
+                                <div class="entity bookings">
+                                    <div class="entity-header">Bookings</div>
+                                    <div class="entity-fields">
+                                        <div class="field">_id (Primary)</div>
+                                        <div class="field">customerId (Foreign)</div>
+                                        <div class="field">eventId (Foreign)</div>
+                                        <div class="field">status</div>
+                                    </div>
+                                </div>
+                                
+                                <div class="relationship-lines">
+                                    <div class="relation-line">
+                                        <div class="relation-label">1 : N</div>
+                                    </div>
+                                </div>
+                                
+                                <div class="entity tickets">
+                                    <div class="entity-header">Tickets</div>
+                                    <div class="entity-fields">
+                                        <div class="field">_id (Primary)</div>
+                                        <div class="field">bookingId (Foreign)</div>
+                                        <div class="field">qrCode</div>
+                                        <div class="field">checkIn</div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </section>
+
+                <!-- Schema Details -->
+                <section class="schema-details">
+                    <h2>Detailed Schema Documentation</h2>
+                    
+                    <div class="schema-categories">
+                        <div class="schema-category">
+                            <h3><i class="fas fa-user"></i> Users Collection (Enhanced)</h3>
+                            <div class="schema-content">
+                                <div class="field-group">
+                                    <h4>Core Fields</h4>
+                                    <div class="field-list">
+                                        <div class="field-item">
+                                            <div class="field-name">_id</div>
+                                            <div class="field-type">ObjectId</div>
+                                            <div class="field-desc">Unique identifier</div>
+                                        </div>
+                                        <div class="field-item">
+                                            <div class="field-name">firstName</div>
+                                            <div class="field-type">String</div>
+                                            <div class="field-desc">User's first name</div>
+                                        </div>
+                                        <div class="field-item">
+                                            <div class="field-name">lastName</div>
+                                            <div class="field-type">String</div>
+                                            <div class="field-desc">User's last name</div>
+                                        </div>
+                                        <div class="field-item">
+                                            <div class="field-name">email</div>
+                                            <div class="field-type">String</div>
+                                            <div class="field-desc">Unique email address</div>
+                                        </div>
+                                        <div class="field-item">
+                                            <div class="field-name">role</div>
+                                            <div class="field-type">Enum</div>
+                                            <div class="field-desc">['customer', 'vendor', 'admin', 'employee']</div>
+                                        </div>
+                                    </div>
+                                </div>
+
+                                <div class="field-group">
+                                    <h4>Customer Profile</h4>
+                                    <div class="field-list">
+                                        <div class="field-item">
+                                            <div class="field-name">kidsAgeGroups</div>
+                                            <div class="field-type">[Number]</div>
+                                            <div class="field-desc">Children's age ranges</div>
+                                        </div>
+                                        <div class="field-item">
+                                            <div class="field-name">interests</div>
+                                            <div class="field-type">[String]</div>
+                                            <div class="field-desc">Activity interests</div>
+                                        </div>
+                                        <div class="field-item">
+                                            <div class="field-name">savedEvents</div>
+                                            <div class="field-type">[ObjectId]</div>
+                                            <div class="field-desc">Wishlist events</div>
+                                        </div>
+                                    </div>
+                                </div>
+
+                                <div class="field-group">
+                                    <h4>Vendor Profile</h4>
+                                    <div class="field-list">
+                                        <div class="field-item">
+                                            <div class="field-name">businessName</div>
+                                            <div class="field-type">String</div>
+                                            <div class="field-desc">Business display name</div>
+                                        </div>
+                                        <div class="field-item">
+                                            <div class="field-name">subscriptionPlan</div>
+                                            <div class="field-type">Enum</div>
+                                            <div class="field-desc">['basic', 'premium', 'enterprise']</div>
+                                        </div>
+                                        <div class="field-item">
+                                            <div class="field-name">verificationStatus</div>
+                                            <div class="field-type">Enum</div>
+                                            <div class="field-desc">['pending', 'verified', 'rejected']</div>
+                                        </div>
+                                        <div class="field-item">
+                                            <div class="field-name">payoutSettings</div>
+                                            <div class="field-type">Object</div>
+                                            <div class="field-desc">Payment method configuration</div>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="schema-category">
+                            <h3><i class="fas fa-calendar"></i> Events Collection (Enhanced)</h3>
+                            <div class="schema-content">
+                                <div class="field-group">
+                                    <h4>Core Event Information</h4>
+                                    <div class="field-list">
+                                        <div class="field-item">
+                                            <div class="field-name">title</div>
+                                            <div class="field-type">String</div>
+                                            <div class="field-desc">Event title</div>
+                                        </div>
+                                        <div class="field-item">
+                                            <div class="field-name">description</div>
+                                            <div class="field-type">String</div>
+                                            <div class="field-desc">Detailed description</div>
+                                        </div>
+                                        <div class="field-item">
+                                            <div class="field-name">category</div>
+                                            <div class="field-type">ObjectId</div>
+                                            <div class="field-desc">Reference to Categories collection</div>
+                                        </div>
+                                        <div class="field-item">
+                                            <div class="field-name">vendorId</div>
+                                            <div class="field-type">ObjectId</div>
+                                            <div class="field-desc">Reference to Users collection</div>
+                                        </div>
+                                    </div>
+                                </div>
+
+                                <div class="field-group">
+                                    <h4>Pricing & Scheduling</h4>
+                                    <div class="field-list">
+                                        <div class="field-item">
+                                            <div class="field-name">pricing</div>
+                                            <div class="field-type">Object</div>
+                                            <div class="field-desc">Pricing configuration and currency</div>
+                                        </div>
+                                        <div class="field-item">
+                                            <div class="field-name">dateSchedule</div>
+                                            <div class="field-type">[Object]</div>
+                                            <div class="field-desc">Available dates and time slots</div>
+                                        </div>
+                                        <div class="field-item">
+                                            <div class="field-name">recurring</div>
+                                            <div class="field-type">Object</div>
+                                            <div class="field-desc">Recurring event configuration</div>
+                                        </div>
+                                    </div>
+                                </div>
+
+                                <div class="field-group">
+                                    <h4>Status & Analytics</h4>
+                                    <div class="field-list">
+                                        <div class="field-item">
+                                            <div class="field-name">submissionStatus</div>
+                                            <div class="field-type">Enum</div>
+                                            <div class="field-desc">['draft', 'submitted', 'approved', 'rejected', 'published']</div>
+                                        </div>
+                                        <div class="field-item">
+                                            <div class="field-name">metrics</div>
+                                            <div class="field-type">Object</div>
+                                            <div class="field-desc">View count, bookings, ratings</div>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="schema-category">
+                            <h3><i class="fas fa-ticket-alt"></i> Tickets Collection (Enhanced)</h3>
+                            <div class="schema-content">
+                                <div class="field-group">
+                                    <h4>Ticket Information</h4>
+                                    <div class="field-list">
+                                        <div class="field-item">
+                                            <div class="field-name">ticketNumber</div>
+                                            <div class="field-type">String</div>
+                                            <div class="field-desc">Unique ticket identifier</div>
+                                        </div>
+                                        <div class="field-item">
+                                            <div class="field-name">bookingId</div>
+                                            <div class="field-type">ObjectId</div>
+                                            <div class="field-desc">Reference to Bookings collection</div>
+                                        </div>
+                                        <div class="field-item">
+                                            <div class="field-name">attendeeName</div>
+                                            <div class="field-type">String</div>
+                                            <div class="field-desc">Name of attendee</div>
+                                        </div>
+                                    </div>
+                                </div>
+
+                                <div class="field-group">
+                                    <h4>QR Code System</h4>
+                                    <div class="field-list">
+                                        <div class="field-item">
+                                            <div class="field-name">qrCode.code</div>
+                                            <div class="field-type">String</div>
+                                            <div class="field-desc">Unique QR code string</div>
+                                        </div>
+                                        <div class="field-item">
+                                            <div class="field-name">qrCode.imageUrl</div>
+                                            <div class="field-type">String</div>
+                                            <div class="field-desc">Cloudinary URL of QR image</div>
+                                        </div>
+                                        <div class="field-item">
+                                            <div class="field-name">qrCode.isValid</div>
+                                            <div class="field-type">Boolean</div>
+                                            <div class="field-desc">QR code validity status</div>
+                                        </div>
+                                    </div>
+                                </div>
+
+                                <div class="field-group">
+                                    <h4>Check-in Tracking</h4>
+                                    <div class="field-list">
+                                        <div class="field-item">
+                                            <div class="field-name">checkIn.isCheckedIn</div>
+                                            <div class="field-type">Boolean</div>
+                                            <div class="field-desc">Check-in status</div>
+                                        </div>
+                                        <div class="field-item">
+                                            <div class="field-name">checkIn.checkedInBy</div>
+                                            <div class="field-type">ObjectId</div>
+                                            <div class="field-desc">Employee who checked in</div>
+                                        </div>
+                                        <div class="field-item">
+                                            <div class="field-name">checkIn.checkedInAt</div>
+                                            <div class="field-type">Date</div>
+                                            <div class="field-desc">Check-in timestamp</div>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </section>
+
+                <!-- Performance Indexes -->
+                <section class="performance-indexes">
+                    <h2>Performance Indexes</h2>
+                    
+                    <div class="index-categories">
+                        <div class="index-category">
+                            <h3><i class="fas fa-search"></i> Search & Discovery Indexes</h3>
+                            <div class="index-list">
+                                <div class="index-item">
+                                    <div class="index-name">Event Text Search</div>
+                                    <div class="index-definition">{ title: "text", description: "text", tags: "text" }</div>
+                                    <div class="index-purpose">Full-text search across event content</div>
+                                </div>
+                                <div class="index-item">
+                                    <div class="index-name">Location Geospatial</div>
+                                    <div class="index-definition">{ "location.coordinates": "2dsphere" }</div>
+                                    <div class="index-purpose">Geographic proximity searches</div>
+                                </div>
+                                <div class="index-item">
+                                    <div class="index-name">Event Discovery</div>
+                                    <div class="index-definition">{ isApproved: 1, category: 1, "location.city": 1, price: 1 }</div>
+                                    <div class="index-purpose">Multi-filter event discovery queries</div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="index-category">
+                            <h3><i class="fas fa-users"></i> User Management Indexes</h3>
+                            <div class="index-list">
+                                <div class="index-item">
+                                    <div class="index-name">User Authentication</div>
+                                    <div class="index-definition">{ email: 1 } (unique)</div>
+                                    <div class="index-purpose">Fast user lookup during login</div>
+                                </div>
+                                <div class="index-item">
+                                    <div class="index-name">Role-based Queries</div>
+                                    <div class="index-definition">{ role: 1, status: 1, createdAt: -1 }</div>
+                                    <div class="index-purpose">Admin user management interface</div>
+                                </div>
+                                <div class="index-item">
+                                    <div class="index-name">Vendor Verification</div>
+                                    <div class="index-definition">{ role: 1, "vendorProfile.verificationStatus": 1 }</div>
+                                    <div class="index-purpose">Vendor approval workflows</div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="index-category">
+                            <h3><i class="fas fa-ticket-alt"></i> Booking & Transaction Indexes</h3>
+                            <div class="index-list">
+                                <div class="index-item">
+                                    <div class="index-name">QR Code Validation</div>
+                                    <div class="index-definition">{ "qrCode.code": 1 } (unique)</div>
+                                    <div class="index-purpose">Lightning-fast QR code lookup for check-ins</div>
+                                </div>
+                                <div class="index-item">
+                                    <div class="index-name">Customer Bookings</div>
+                                    <div class="index-definition">{ customerId: 1, status: 1, selectedDate: -1 }</div>
+                                    <div class="index-purpose">Customer booking history and upcoming events</div>
+                                </div>
+                                <div class="index-item">
+                                    <div class="index-name">Financial Reporting</div>
+                                    <div class="index-definition">{ status: 1, createdAt: -1, "pricing.totalAmount": -1 }</div>
+                                    <div class="index-purpose">Revenue analytics and financial reports</div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="index-category">
+                            <h3><i class="fas fa-clock"></i> TTL (Time-to-Live) Indexes</h3>
+                            <div class="index-list">
+                                <div class="index-item">
+                                    <div class="index-name">Booking Holds</div>
+                                    <div class="index-definition">{ holdExpiresAt: 1 } (TTL: 0)</div>
+                                    <div class="index-purpose">Auto-expire booking holds after 15 minutes</div>
+                                </div>
+                                <div class="index-item">
+                                    <div class="index-name">User Sessions</div>
+                                    <div class="index-definition">{ expiresAt: 1 } (TTL: 0)</div>
+                                    <div class="index-purpose">Auto-expire inactive user sessions</div>
+                                </div>
+                                <div class="index-item">
+                                    <div class="index-name">OTP Codes</div>
+                                    <div class="index-definition">{ "emailVerification.expiresAt": 1 } (TTL: 0)</div>
+                                    <div class="index-purpose">Auto-expire OTP verification codes</div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </section>
+
+                <!-- Migration Scripts -->
+                <section class="migration-info">
+                    <h2>Database Migration & Setup</h2>
+                    
+                    <div class="migration-steps">
+                        <h3>Setup Instructions</h3>
+                        <div class="step-list">
+                            <div class="step-item">
+                                <div class="step-number">1</div>
+                                <div class="step-content">
+                                    <h4>Initialize Database</h4>
+                                    <p>Create MongoDB database and collections with proper validation schemas</p>
+                                </div>
+                            </div>
+                            <div class="step-item">
+                                <div class="step-number">2</div>
+                                <div class="step-content">
+                                    <h4>Create Indexes</h4>
+                                    <p>Run index creation scripts for optimal query performance</p>
+                                </div>
+                            </div>
+                            <div class="step-item">
+                                <div class="step-number">3</div>
+                                <div class="step-content">
+                                    <h4>Seed Data</h4>
+                                    <p>Populate with initial categories, admin users, and system settings</p>
+                                </div>
+                            </div>
+                            <div class="step-item">
+                                <div class="step-number">4</div>
+                                <div class="step-content">
+                                    <h4>Validate Setup</h4>
+                                    <p>Run test queries to ensure proper relationships and performance</p>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <div class="code-example">
+                        <h4>Index Creation Script Example</h4>
+                        <pre><code class="language-javascript">// Create performance indexes for Users collection
+db.users.createIndex({ email: 1 }, { unique: true });
+db.users.createIndex({ role: 1, status: 1, createdAt: -1 });
+db.users.createIndex({ "qrCode.code": 1 }, { unique: true, sparse: true });
+
+// Create geospatial index for Events
+db.events.createIndex({ "location.coordinates": "2dsphere" });
+
+// Create text search index for Events
+db.events.createIndex({
+  title: "text",
+  description: "text", 
+  tags: "text"
+}, {
+  weights: {
+    title: 10,
+    description: 5,
+    tags: 6
+  }
+});</code></pre>
+                    </div>
+                </section>
+
+                <!-- Navigation -->
+                <div class="page-navigation">
+                    <div class="nav-item prev">
+                        <a href="api-documentation.html">
+                            <i class="fas fa-arrow-left"></i>
+                            <div>
+                                <span class="nav-label">Previous</span>
+                                <span class="nav-title">API Documentation</span>
+                            </div>
+                        </a>
+                    </div>
+                    <div class="nav-item next">
+                        <a href="getting-started.html">
+                            <div>
+                                <span class="nav-label">Next</span>
+                                <span class="nav-title">Getting Started</span>
+                            </div>
+                            <i class="fas fa-arrow-right"></i>
+                        </a>
+                    </div>
+                </div>
+            </div>
+        </main>
+    </div>
+
+    <!-- Scripts -->
+    <script src="../js/main.js"></script>
+    <script src="../js/search.js"></script>
+    <script src="../js/navigation.js"></script>
+</body>
+</html>

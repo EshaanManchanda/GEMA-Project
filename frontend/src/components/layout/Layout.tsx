@@ -1,9 +1,25 @@
-import React, { useEffect, useState, useRef } from 'react';
+import React, { useEffect, useState, useRef, useCallback } from 'react';
 import { Outlet, Link, useNavigate } from 'react-router-dom';
 import { useSelector, useDispatch } from 'react-redux';
 import { useCart } from '@/contexts/CartContext';
 import { RootState, AppDispatch } from '@/store';
 import { logoutUser } from '@/store/slices/authSlice';
+import { 
+  fetchFeaturedCategories, 
+  selectFeaturedCategories,
+  selectCategoriesLoading 
+} from '@/store/slices/categoriesSlice';
+import { 
+  fetchNotifications, 
+  selectUnreadCount 
+} from '@/store/slices/notificationsSlice';
+import NotificationDropdown from './NotificationDropdown';
+import NewsletterSubscription from './NewsletterSubscription';
+import ConnectionStatus from './ConnectionStatus';
+import { useRealTimeData } from '@/hooks/useRealTimeData';
+import ErrorBoundary from '@/components/common/ErrorBoundary';
+import LoadingSpinner from '@/components/common/LoadingSpinner';
+import kidroveLogo from '/assets/images/KidRove-Logo.png';
 import {
   FaFacebookF,
   FaTwitter,
@@ -11,7 +27,7 @@ import {
   FaInstagram,
   FaYoutube,
   FaDownload,
-  FaGlobe,
+  // FaGlobe,
   FaSearch,
   FaUser,
   FaHeart,
@@ -27,7 +43,7 @@ import {
   FaCalendarPlus,
   FaChartBar,
   FaFileAlt,
-  FaHome
+  // FaHome
 } from 'react-icons/fa';
 import { MdLanguage } from 'react-icons/md';
 import { IoMdArrowDropdown } from 'react-icons/io';
@@ -36,11 +52,26 @@ const Layout: React.FC<{ children?: React.ReactNode }> = ({ children }) => {
   const [scrolled, setScrolled] = useState(false);
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [profileDropdownOpen, setProfileDropdownOpen] = useState(false);
+  const [currentCountry, setCurrentCountry] = useState({ code: 'ae', name: 'UAE', flag: 'https://flagcdn.com/w40/ae.png' });
+  const [currentLanguage, setCurrentLanguage] = useState({ code: 'ar', name: 'عربي' });
+  
   const { cartCount } = useCart();
   const { isAuthenticated, user } = useSelector((state: RootState) => state.auth);
+  const featuredCategories = useSelector(selectFeaturedCategories);
+  const categoriesLoading = useSelector(selectCategoriesLoading);
+  const unreadNotificationsCount = useSelector(selectUnreadCount);
+  
   const dispatch = useDispatch<AppDispatch>();
   const navigate = useNavigate();
   const dropdownRef = useRef<HTMLDivElement>(null);
+
+  // Real-time data updates
+  useRealTimeData({
+    enableNotifications: true,
+    enableCategories: true,
+    notificationInterval: 30000, // 30 seconds
+    categoryInterval: 300000, // 5 minutes
+  });
 
   useEffect(() => {
     const handleScroll = () => {
@@ -109,8 +140,30 @@ const Layout: React.FC<{ children?: React.ReactNode }> = ({ children }) => {
     return user.firstName ? `${user.firstName} ${user.lastName || ''}`.trim() : user.email;
   };
 
+  const getUserAvatar = () => {
+    if (user?.avatar) return user.avatar;
+    // Generate a default avatar based on user initials
+    const initials = user?.firstName ? 
+      `${user.firstName.charAt(0)}${user.lastName?.charAt(0) || ''}` : 
+      user?.email?.charAt(0).toUpperCase() || 'U';
+    return `https://ui-avatars.com/api/?name=${encodeURIComponent(initials)}&background=1a73e8&color=fff&size=32&rounded=true`;
+  };
+
+  const handleCountryChange = useCallback((country: { code: string; name: string; flag: string }) => {
+    setCurrentCountry(country);
+    // TODO: Implement actual country change logic (currency, content localization)
+    console.log('Country changed to:', country);
+  }, []);
+
+  const handleLanguageChange = useCallback((language: { code: string; name: string }) => {
+    setCurrentLanguage(language);
+    // TODO: Implement actual language change logic (i18n)
+    console.log('Language changed to:', language);
+  }, []);
+
   return (
     <div className="min-h-screen flex flex-col bg-gray-50 overflow-x-hidden">
+      <ConnectionStatus />
       <header className="relative z-50">
         {/* Top Bar */}
         <div
@@ -140,7 +193,7 @@ const Layout: React.FC<{ children?: React.ReactNode }> = ({ children }) => {
             {/* Mobile: Logo */}
             <div className="md:hidden">
               <a href="/">
-                <img src="https://images.unsplash.com/photo-1558618666-fcd25c85cd64?w=120&h=40&fit=crop&crop=center" alt="Kidzapp Logo" className="h-6 w-auto" />
+                <img src={kidroveLogo} alt="Kidzapp Logo" className="h-6 w-auto" />
               </a>
             </div>
 
@@ -151,19 +204,21 @@ const Layout: React.FC<{ children?: React.ReactNode }> = ({ children }) => {
                 <span>Download App</span>
               </div>
 
-              <div className="flex items-center space-x-1 cursor-pointer hover:opacity-80 transition-opacity duration-300">
+              <div className="flex items-center space-x-1 cursor-pointer hover:opacity-80 transition-opacity duration-300" 
+                   onClick={() => handleCountryChange({ code: 'ae', name: 'UAE', flag: 'https://flagcdn.com/w40/ae.png' })}>
                 <img
-                  src="https://flagcdn.com/w40/ae.png"
-                  alt="UAE"
+                  src={currentCountry.flag}
+                  alt={currentCountry.name}
                   className="w-5 h-3"
                 />
-                <span className="hidden md:inline">UAE</span>
+                <span className="hidden md:inline">{currentCountry.name}</span>
                 <IoMdArrowDropdown />
               </div>
 
-              <div className="flex items-center space-x-1 cursor-pointer hover:opacity-80 transition-opacity duration-300">
+              <div className="flex items-center space-x-1 cursor-pointer hover:opacity-80 transition-opacity duration-300"
+                   onClick={() => handleLanguageChange({ code: 'ar', name: 'عربي' })}>
                 <MdLanguage size={16} />
-                <span>عربي</span>
+                <span>{currentLanguage.name}</span>
               </div>
             </div>
           </div>
@@ -182,7 +237,7 @@ const Layout: React.FC<{ children?: React.ReactNode }> = ({ children }) => {
             <div className="flex items-center">
               <Link to="/">
                 <img 
-                  src="https://images.unsplash.com/photo-1558618666-fcd25c85cd64?w=120&h=40&fit=crop&crop=center" 
+                  src={kidroveLogo} 
                   alt="Kidzapp Logo" 
                   className="h-8 w-auto" 
                 />
@@ -245,12 +300,17 @@ const Layout: React.FC<{ children?: React.ReactNode }> = ({ children }) => {
                 <FaShoppingCart size={14} />
                 {cartCount > 0 && (
                   <span 
-                    className="absolute -top-1 -right-1 bg-red-500 text-white text-xs rounded-full w-4 h-4 flex items-center justify-center"
+                    className="absolute -top-1 -right-1 bg-red-500 text-white text-xs rounded-full w-4 h-4 flex items-center justify-center animate-pulse"
                   >
                     {cartCount}
                   </span>
                 )}
               </Link>
+              
+              {/* Notifications - Only show for authenticated users */}
+              {isAuthenticated && (
+                <NotificationDropdown className="relative" />
+              )}
               {isAuthenticated && user ? (
                 <div className="relative" ref={dropdownRef}>
                   <button 
@@ -261,8 +321,21 @@ const Layout: React.FC<{ children?: React.ReactNode }> = ({ children }) => {
                       color: scrolled ? 'var(--primary-color)' : 'white'
                     }}
                   >
-                    <FaUserCircle size={16} />
+                    {user?.avatar ? (
+                      <img 
+                        src={getUserAvatar()} 
+                        alt="Profile" 
+                        className="w-6 h-6 rounded-full object-cover"
+                      />
+                    ) : (
+                      <FaUserCircle size={16} />
+                    )}
                     <span className="hidden md:inline">{getUserDisplayName()}</span>
+                    {unreadNotificationsCount > 0 && (
+                      <span className="bg-red-500 text-white text-xs rounded-full w-4 h-4 flex items-center justify-center ml-1">
+                        {unreadNotificationsCount > 9 ? '9+' : unreadNotificationsCount}
+                      </span>
+                    )}
                     <FaChevronDown size={12} className={`transition-transform duration-200 ${profileDropdownOpen ? 'rotate-180' : ''}`} />
                   </button>
 
@@ -567,9 +640,11 @@ const Layout: React.FC<{ children?: React.ReactNode }> = ({ children }) => {
 
       {/* Main content */}
       <main className="flex-grow pt-16">
-        <div className="w-full">
-          {children || <Outlet />}
-        </div>
+        <ErrorBoundary>
+          <div className="w-full">
+            {children || <Outlet />}
+          </div>
+        </ErrorBoundary>
       </main>
 
       {/* Footer */}
@@ -578,7 +653,7 @@ const Layout: React.FC<{ children?: React.ReactNode }> = ({ children }) => {
           <div className="grid grid-cols-1 md:grid-cols-4 gap-8">
             {/* Logo and About */}
             <div className="col-span-1">
-              <img src="https://images.unsplash.com/photo-1558618666-fcd25c85cd64?w=120&h=40&fit=crop&crop=center" alt="Kidzapp Logo" className="h-8 w-auto mb-4" />
+              <img src={kidroveLogo} alt="Kidzapp Logo" className="h-8 w-auto mb-4" />
               <p className="text-gray-600 text-sm mb-4">
                 Discover and book the best activities for your kids in the UAE.
               </p>
@@ -606,36 +681,38 @@ const Layout: React.FC<{ children?: React.ReactNode }> = ({ children }) => {
               </ul>
             </div>
             
-            {/* Categories */}
+            {/* Categories - Dynamic */}
             <div className="col-span-1">
               <h3 className="font-semibold mb-4" style={{ color: 'var(--primary-color)' }}>Categories</h3>
               <ul className="space-y-2">
-                <li><Link to="/categories/summer-camps" className="text-gray-600 hover:text-gray-900 text-sm">Summer Camps</Link></li>
-                <li><Link to="/categories/indoor-play" className="text-gray-600 hover:text-gray-900 text-sm">Indoor Play Areas</Link></li>
-                <li><Link to="/categories/outdoor-activities" className="text-gray-600 hover:text-gray-900 text-sm">Outdoor Activities</Link></li>
-                <li><Link to="/categories/educational" className="text-gray-600 hover:text-gray-900 text-sm">Educational Classes</Link></li>
+                {categoriesLoading ? (
+                  <div className="space-y-2">
+                    {[...Array(4)].map((_, index) => (
+                      <div key={index} className="animate-pulse">
+                        <div className="h-4 bg-gray-200 rounded w-3/4"></div>
+                      </div>
+                    ))}
+                  </div>
+                ) : (
+                  featuredCategories.slice(0, 4).map((category) => (
+                    <li key={category._id}>
+                      <Link 
+                        to={`/categories/${category.slug}`} 
+                        className="text-gray-600 hover:text-gray-900 text-sm transition-colors duration-200"
+                      >
+                        {category.name}
+                      </Link>
+                    </li>
+                  ))
+                )}
+                {featuredCategories.length === 0 && !categoriesLoading && (
+                  <li className="text-gray-500 text-sm italic">No categories available</li>
+                )}
               </ul>
             </div>
             
             {/* Newsletter */}
-            <div className="col-span-1">
-              <h3 className="font-semibold mb-4" style={{ color: 'var(--primary-color)' }}>Newsletter</h3>
-              <p className="text-gray-600 text-sm mb-4">Subscribe to our newsletter for updates on new activities and promotions.</p>
-              <div className="flex flex-wrap">
-                <input 
-                  type="email" 
-                  placeholder="Your email" 
-                  className="flex-grow w-full sm:w-auto px-4 py-2 text-sm rounded-l-lg sm:rounded-l-lg sm:rounded-r-none border border-gray-300 focus:outline-none focus:ring-2 focus:ring-inset"
-                  style={{ borderColor: 'var(--primary-color)', focusRing: 'var(--primary-color)' }}
-                />
-                <button 
-                  className="px-4 py-2 rounded-r-lg sm:rounded-r-lg sm:rounded-l-none text-white text-sm mt-2 sm:mt-0 w-full sm:w-auto"
-                  style={{ backgroundColor: 'var(--accent-color)' }}
-                >
-                  Subscribe
-                </button>
-              </div>
-            </div>
+            <NewsletterSubscription />
           </div>
           
           <div className="border-t border-gray-200 mt-8 pt-8 flex flex-col md:flex-row justify-between items-center">

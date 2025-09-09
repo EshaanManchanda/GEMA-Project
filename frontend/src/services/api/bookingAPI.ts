@@ -1,17 +1,18 @@
 import { ApiService } from '../api';
 
 const bookingAPI = {
-  // Orders (renamed from bookings to match backend API)
-  createOrder: async (orderData: any) => {
+  // Bookings - Updated to match Redux slice expectations
+  createBooking: async (bookingData: any) => {
     try {
-      const response = await ApiService.post('/orders', orderData);
+      // Backend uses orders endpoint but frontend expects booking methods
+      const response = await ApiService.post('/orders', bookingData);
       return response.data;
     } catch (error) {
       throw error;
     }
   },
 
-  getUserOrders: async (params?: any) => {
+  getUserBookings: async (params?: any) => {
     try {
       const response = await ApiService.get('/orders', { params });
       return response.data;
@@ -20,7 +21,7 @@ const bookingAPI = {
     }
   },
 
-  getOrderById: async (id: string) => {
+  getBookingById: async (id: string) => {
     try {
       const response = await ApiService.get(`/orders/${id}`);
       return response.data;
@@ -29,18 +30,53 @@ const bookingAPI = {
     }
   },
 
-  cancelOrder: async (id: string) => {
+  updateBooking: async (id: string, bookingData: any) => {
     try {
-      const response = await ApiService.put(`/orders/${id}/cancel`);
+      const response = await ApiService.put(`/orders/${id}`, bookingData);
       return response.data;
     } catch (error) {
       throw error;
     }
   },
 
-  requestRefund: async (id: string) => {
+  cancelBooking: async (id: string, reason?: string) => {
     try {
-      const response = await ApiService.post(`/orders/${id}/refund`);
+      const response = await ApiService.put(`/orders/${id}/cancel`, { reason });
+      return response.data;
+    } catch (error) {
+      throw error;
+    }
+  },
+
+  confirmBooking: async (id: string) => {
+    try {
+      const response = await ApiService.put(`/orders/${id}/confirm`);
+      return response.data;
+    } catch (error) {
+      throw error;
+    }
+  },
+
+  // Legacy methods for backward compatibility
+  createOrder: async (orderData: any) => {
+    return bookingAPI.createBooking(orderData);
+  },
+
+  getUserOrders: async (params?: any) => {
+    return bookingAPI.getUserBookings(params);
+  },
+
+  getOrderById: async (id: string) => {
+    return bookingAPI.getBookingById(id);
+  },
+
+  cancelOrder: async (id: string) => {
+    return bookingAPI.cancelBooking(id);
+  },
+
+  requestRefund: async (id: string, reason?: string) => {
+    try {
+      const response = await ApiService.post(`/orders/${id}/refund`, { reason });
       return response.data;
     } catch (error) {
       throw error;

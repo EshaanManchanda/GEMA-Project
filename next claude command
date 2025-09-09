@@ -1,1 +1,1350 @@
+User approved Claude's plan:
+  ⎿ Comprehensive Integration Plan for Gema Event Management System
+Role base Access Control, 
+    🎯 Project Overview
 
+    Transform your existing Gema codebase into a fully integrated Event Management Platform with proper 
+    frontend-backend communication across all four core systems:
+    - Event Management System
+    - Payment Management System 
+    - Employee/User Management System
+    - Booking Management System
+
+    📊 Current Status Analysis
+
+    Frontend Status: 85% Complete
+
+    - ✅ Excellent Redux architecture with comprehensive state management
+    - ✅ 14 specialized API services with proper authentication
+    - ✅ Complete routing structure for all user roles
+    - ✅ Modern React 18 + TypeScript + Tailwind CSS stack
+    - ❌ Gap: Payment UI components and Stripe integration incomplete
+    - ❌ Gap: Advanced analytics dashboards missing
+
+    Backend Status: 60% Complete
+
+    - ✅ Solid authentication system with Firebase integration
+    - ✅ Basic User, Role, and Event models implemented
+    - ✅ Express.js with TypeScript, security middleware, MongoDB
+    - ❌ Gap: Missing 15+ critical models (Payment, Booking, Coupon, etc.)
+    - ❌ Gap: Most business logic controllers not implemented
+
+    🚀 Phase 1: Core Backend Models & Controllers (Days 1-8)
+
+    1.1 Complete Database Models Implementation
+
+    - Implement missing models: Booking, Payment, Coupon, Review, Category, etc.
+    - Create proper relationships and validation schemas
+    - Add missing indexes for performance
+
+    1.2 Business Logic Controllers
+
+    - Payment processing with Stripe integration
+    - Booking management with seat allocation
+    - Coupon validation and affiliate tracking
+    - Notification system implementation
+
+    1.3 API Routes Completion
+
+    - Complete CRUD operations for all models
+    - Implement advanced filtering and search
+    - Add proper error handling and validation
+
+    🎨 Phase 2: Frontend-Backend Integration (Days 9-15)
+    
+      Phase 2.2: Build Reusable Component Library & UI Components
+
+     Current Status
+
+     ✅ Completed: Backend models, controllers, API routes, and frontend API services
+     ✅ Ready: Layout system, basic common components (LoadingSpinner, ImageUploader, ErrorBoundary)
+     🎯 Next: Build comprehensive UI component library for new features
+
+     Component Library Architecture
+
+     1. Form Components Library (/components/forms/)
+
+     - CategoryForm: Create/edit categories with hierarchical parent selection
+     - CouponForm: Advanced coupon creation with usage limits and validation rules
+     - PaymentMethodForm: Stripe payment method setup and management
+     - NotificationForm: Multi-channel notification creation with scheduling
+     - AffiliateApplicationForm: Comprehensive affiliate onboarding with validation
+     - BookingForm: Enhanced booking flow with seat selection and pricing
+
+     2. Data Display Components (/components/display/)
+
+     - CategoryTree: Interactive category hierarchy viewer
+     - CouponCard: Display coupon details with usage statistics
+     - PaymentHistory: Transaction list with filtering and status indicators
+     - NotificationCenter: Real-time notification display with action buttons
+     - AffiliateStats: Dashboard widgets for commission tracking
+     - BookingStatus: Comprehensive booking status display
+
+     3. Interactive Components (/components/interactive/)
+
+     - Modal System: Reusable modal framework with animations
+     - DataTable: Sortable, filterable table component for admin interfaces
+     - SearchWithFilters: Advanced search component with category/price/date filters
+     - PaymentStripe: Stripe Elements integration for secure payments
+     - QRCodeGenerator: Generate booking confirmation QR codes
+     - ChartComponents: Analytics charts using Chart.js/Recharts
+
+     4. Business Logic Components (/components/business/)
+
+     - CouponValidator: Real-time coupon validation with discount calculation
+     - PaymentProcessor: Handle payment intents and confirmations
+     - BookingSeat: Interactive seat selection for events
+     - AffiliateTracker: Click tracking and referral management
+     - NotificationBadge: Real-time notification count with updates
+
+     5. Admin Dashboard Components (/components/admin/)
+
+     - AdminAnalytics: Comprehensive analytics dashboard
+     - UserManagement: User role management with bulk actions
+     - EventModeration: Event approval/rejection workflow
+     - RevenueReports: Financial reporting with export functionality
+     - SystemHealth: Server status and performance monitoring
+
+     Integration Points
+
+     API Integration
+
+     - Connect all form components to newly created API services
+     - Implement real-time updates using WebSocket/Server-Sent Events
+     - Add proper error handling and loading states for all API calls
+
+     State Management
+
+     - Create Redux slices for new entities (categories, coupons, notifications, affiliates)
+     - Update existing booking/payment slices to use new API endpoints
+     - Implement optimistic updates and proper error rollback
+
+     Security & Validation
+
+     - Add client-side validation matching backend validation rules
+     - Implement proper role-based component rendering
+     - Add CSRF protection and sanitization for all form inputs
+
+     Implementation Strategy
+
+     Week 1: Core component library (forms, modals, data tables)
+     Week 2: Business logic components and API integration
+     Week 3: Admin dashboard and analytics components
+     Week 4: Testing, optimization, and documentation
+
+     Success Metrics
+
+     - ✅ All CRUD operations working through UI components
+     - ✅ Real-time payment processing with Stripe
+     - ✅ Complete admin management interfaces
+     - ✅ Responsive design across all components
+     - ✅ Proper error handling and user feedback 
+
+
+    2.1 API Integration Fixes
+
+    - Resolve bookingAPI/bookingsSlice endpoint mismatches
+    - Complete payment flow with Stripe Elements
+    - Implement real-time notifications
+
+    2.2 Component Library Development
+
+    - Build reusable form components with validation
+    - Create data visualization components (Chart.js)
+    - Implement modal system and advanced UI components
+
+    2.3 Payment System Integration
+
+    User approved Claude's plan:
+  ⎿ Phase 2.3: Redux Integration & Data Display Components
+
+    Current Analysis
+
+    ✅ Existing Redux slices: categories, events, bookings, auth, cart, favorites, search, vendor, 
+    admin, ui❌ Missing Redux slices: coupons, payments, notifications, affiliates✅ Component library: 
+    Complete with forms, interactive, and business logic components🎯 Next step: Integrate state 
+    management and build data display components
+
+    Phase 2.3 Implementation Plan
+
+    1. Redux State Management Integration
+
+    Create missing Redux slices for new entities:
+
+    A. CouponsSlice (/store/slices/couponsSlice.ts)
+
+    - State: List of coupons, current coupon, validation results, loading states
+    - Thunks: CRUD operations, validation, usage tracking, bulk operations
+    - Selectors: Active coupons, expired coupons, user-applicable coupons
+
+    B. PaymentsSlice (/store/slices/paymentsSlice.ts)
+
+    - State: Payment intents, payment methods, transaction history, processing status
+    - Thunks: Stripe integration, payment processing, refunds, analytics
+    - Selectors: User payments, successful transactions, payment analytics
+
+    C. NotificationsSlice (/store/slices/notificationsSlice.ts)
+
+    - State: Inbox notifications, unread count, notification preferences
+    - Thunks: Real-time updates, mark as read, create notifications, preferences
+    - Selectors: Unread notifications, recent notifications, notification analytics
+
+    D. AffiliatesSlice (/store/slices/affiliatesSlice.ts)
+
+    - State: Affiliate data, commission tracking, click analytics, dashboard stats
+    - Thunks: Application management, tracking, commission calculations, payouts
+    - Selectors: Performance metrics, earnings data, top performers
+
+    2. Data Display Components Library
+
+    A. CategoryTree Component (/components/display/CategoryTree.tsx)
+
+    - Features: Interactive hierarchy viewer, drag-drop reordering, expand/collapse
+    - Integration: Connect to categoriesSlice, real-time updates
+    - Use cases: Admin category management, customer category navigation
+
+    B. NotificationCenter Component (/components/display/NotificationCenter.tsx)
+
+    - Features: Real-time notifications, mark as read, action buttons, filtering
+    - Integration: Connect to notificationsSlice, WebSocket updates
+    - Use cases: Header notification dropdown, dedicated notifications page
+
+    C. PaymentHistory Component (/components/display/PaymentHistory.tsx)
+
+    - Features: Transaction list, status indicators, filtering, export functionality
+    - Integration: Connect to paymentsSlice, pagination, search
+    - Use cases: User payment history, admin payment management
+
+    D. AffiliateStats Component (/components/display/AffiliateStats.tsx)
+
+    - Features: Commission tracking widgets, performance charts, earnings breakdown
+    - Integration: Connect to affiliatesSlice, Chart.js integration
+    - Use cases: Affiliate dashboard, admin affiliate analytics
+
+    E. CouponCard Component (/components/display/CouponCard.tsx)
+
+    - Features: Visual coupon display, usage statistics, validity status
+    - Integration: Connect to couponsSlice, real-time validation
+    - Use cases: Coupon marketplace, admin coupon management
+
+    3. Integration & Enhancement
+
+    A. Update Existing Components
+
+    - Connect forms to new Redux slices for state management
+    - Add real-time updates using WebSocket integration
+    - Implement optimistic updates for better UX
+
+    B. State Synchronization
+
+    - Cross-slice dependencies: Ensure coupons integrate with bookings, payments with orders
+    - Cache management: Implement proper data invalidation strategies
+    - Error handling: Consistent error states across all slices
+
+    C. Performance Optimization
+
+    - Memoized selectors: Use reselect for complex data transformations
+    - Lazy loading: Implement code splitting for heavy components
+    - Data normalization: Normalize complex nested data structures
+
+    4. Admin Dashboard Components
+
+    A. AdminAnalytics Component (/components/admin/AdminAnalytics.tsx)
+
+    - Features: Revenue charts, booking trends, user growth metrics
+    - Integration: Multiple slice data aggregation, Chart.js/Recharts
+    - Real-time: Live data updates for key metrics
+
+    B. UserManagement Component (/components/admin/UserManagement.tsx)
+
+    - Features: User listing, role management, bulk actions, activity logs
+    - Integration: DataTable component, user slice, advanced filtering
+
+    C. RevenueReports Component (/components/admin/RevenueReports.tsx)
+
+    - Features: Financial reporting, export functionality, date range filtering
+    - Integration: Payment and booking slices, advanced analytics
+
+    Implementation Strategy
+
+    Week 1: Redux slices creation and testing
+    - Day 1-2: CouponsSlice and PaymentsSlice
+    - Day 3-4: NotificationsSlice and AffiliatesSlice
+    - Day 5: Integration testing and debugging
+
+    Week 2: Data display components
+    - Day 1-2: CategoryTree and NotificationCenter
+    - Day 3-4: PaymentHistory and AffiliateStats
+    - Day 5: Component integration and testing
+
+    Week 3: Admin dashboard and analytics
+    - Day 1-2: AdminAnalytics with Chart.js integration
+    - Day 3-4: UserManagement and RevenueReports
+    - Day 5: Performance optimization and testing
+
+    Success Metrics
+
+    - ✅ All CRUD operations managed through Redux state
+    - ✅ Real-time notifications working across the platform
+    - ✅ Complete payment flow with state synchronization
+    - ✅ Admin dashboard with live analytics and reporting
+    - ✅ Proper error handling and loading states
+    - ✅ Mobile-responsive data display components
+
+    This phase will complete the frontend state management architecture and provide comprehensive data       
+    visualization capabilities for all user roles (customers, vendors, employees, admins).
+
+    - Complete Stripe checkout flow
+    - Payment confirmation and receipt generation
+    - Refund and payment status management
+
+    Phase 2.3 Continuation: Complete Data Display Components                                              │ │
+│ │                                                                                                       │ │
+│ │ Current Status                                                                                        │ │
+│ │                                                                                                       │ │
+│ │ ✅ Completed: 4 Redux slices + CategoryTree component with drag-drop                                   │ │
+│ │ 🎯 Next: Build remaining data display components to complete Phase 2.3                                │ │
+│ │                                                                                                       │ │
+│ │ Remaining Components to Build                                                                         │ │
+│ │                                                                                                       │ │
+│ │ 1. NotificationCenter Component (/components/display/NotificationCenter.tsx)                          │ │
+│ │                                                                                                       │ │
+│ │ Features:                                                                                             │ │
+│ │ - Real-time notification dropdown/panel                                                               │ │
+│ │ - Mark as read/unread functionality                                                                   │ │
+│ │ - Notification filtering by type/priority                                                             │ │
+│ │ - Action buttons for notification interactions                                                        │ │
+│ │ - Infinite scroll for large notification lists                                                        │ │
+│ │ - Integration with notificationsSlice                                                                 │ │
+│ │                                                                                                       │ │
+│ │ Use cases: Header notification dropdown, dedicated notifications page                                 │ │
+│ │                                                                                                       │ │
+│ │ 2. PaymentHistory Component (/components/display/PaymentHistory.tsx)                                  │ │
+│ │                                                                                                       │ │
+│ │ Features:                                                                                             │ │
+│ │ - Transaction list with status indicators                                                             │ │
+│ │ - Advanced filtering (date range, status, gateway, amount)                                            │ │
+│ │ - Export functionality (CSV, PDF)                                                                     │ │
+│ │ - Pagination with search capability                                                                   │ │
+│ │ - Refund request functionality                                                                        │ │
+│ │ - Integration with paymentsSlice + DataTable component                                                │ │
+│ │                                                                                                       │ │
+│ │ Use cases: User payment history, admin payment management                                             │ │
+│ │                                                                                                       │ │
+│ │ 3. AffiliateStats Component (/components/display/AffiliateStats.tsx)                                  │ │
+│ │                                                                                                       │ │
+│ │ Features:                                                                                             │ │
+│ │ - Commission tracking dashboard widgets                                                               │ │
+│ │ - Performance charts (clicks, conversions, earnings)                                                  │ │
+│ │ - Real-time earnings breakdown                                                                        │ │
+│ │ - Top performer comparisons                                                                           │ │
+│ │ - Integration with affiliatesSlice + Chart.js                                                         │ │
+│ │ - Responsive card-based layout                                                                        │ │
+│ │                                                                                                       │ │
+│ │ Use cases: Affiliate dashboard, admin affiliate analytics                                             │ │
+│ │                                                                                                       │ │
+│ │ 4. CouponCard Component (/components/display/CouponCard.tsx)                                          │ │
+│ │                                                                                                       │ │
+│ │ Features:                                                                                             │ │
+│ │ - Visual coupon display with branding                                                                 │ │
+│ │ - Usage statistics and validity indicators                                                            │ │
+│ │ - Copy-to-clipboard functionality                                                                     │ │
+│ │ - QR code generation for mobile use                                                                   │ │
+│ │ - Real-time validation status                                                                         │ │
+│ │ - Integration with couponsSlice                                                                       │ │
+│ │                                                                                                       │ │
+│ │ Use cases: Coupon marketplace, admin coupon management                                                │ │
+│ │                                                                                                       │ │
+│ │ 5. Update Store Integration                                                                           │ │
+│ │                                                                                                       │ │
+│ │ Tasks:                                                                                                │ │
+│ │ - Add new slices to store configuration                                                               │ │
+│ │ - Update existing components to use new state                                                         │ │
+│ │ - Test cross-slice data synchronization                                                               │ │
+│ │ - Implement proper error boundaries                                                                   │ │
+│ │                                                                                                       │ │
+│ │ Implementation Strategy                                                                               │ │
+│ │                                                                                                       │ │
+│ │ Priority 1: NotificationCenter (most complex, real-time features)                                     │ │
+│ │ Priority 2: PaymentHistory (business critical, uses DataTable)Priority 3: AffiliateStats (dashboard   │ │
+│ │ widgets with charts)                                                                                  │ │
+│ │ Priority 4: CouponCard (visual component with QR codes)                                               │ │
+│ │ Priority 5: Store integration and testing                                                             │ │
+│ │                                                                                                       │ │
+│ │ Success Criteria                                                                                      │ │
+│ │                                                                                                       │ │
+│ │ - ✅ All data display components working with Redux state                                              │ │
+│ │ - ✅ Real-time updates for notifications                                                               │ │
+│ │ - ✅ Export functionality for payment history                                                          │ │
+│ │ - ✅ Interactive charts for affiliate analytics                                                        │ │
+│ │ - ✅ Mobile-responsive designs                                                                         │ │
+│ │ - ✅ Proper error handling and loading states                                                          │ │
+│ │                                                                                                       │ │
+│ │ This will complete Phase 2.3 and prepare us for the Admin Dashboard components in the next phase. 
+
+    🔧 Phase 3: Advanced Features & Admin Tools (Days 16-22)
+    Phase 3: Advanced Features & Admin Tools Implementation                                               │ │
+│ │                                                                                                       │ │
+│ │ Current Achievement Summary                                                                           │ │
+│ │                                                                                                       │ │
+│ │ ✅ Completed Phase 2.3: Full Redux state management + comprehensive data display components            │ │
+│ │ - 4 new Redux slices with full CRUD operations                                                        │ │
+│ │ - Real-time notification system                                                                       │ │
+│ │ - Payment processing with Stripe integration                                                          │ │
+│ │ - Affiliate analytics with charts                                                                     │ │
+│ │ - Admin dashboard with metrics                                                                        │ │
+│ │                                                                                                       │ │
+│ │ Phase 3 Strategic Focus                                                                               │ │
+│ │                                                                                                       │ │
+│ │ 3.1 Admin Management Systems (Days 1-3)                                                               │ │
+│ │                                                                                                       │ │
+│ │ Priority: Complete admin control panel                                                                │ │
+│ │                                                                                                       │ │
+│ │ 1. UserManagement Component (/components/admin/UserManagement.tsx)                                    │ │
+│ │   - User listing with role management                                                                 │ │
+│ │   - Bulk operations (activate/deactivate/delete)                                                      │ │
+│ │   - Advanced filtering and search                                                                     │ │
+│ │   - Integration with existing user data structure                                                     │ │
+│ │ 2. EventModeration Component (/components/admin/EventModeration.tsx)                                  │ │
+│ │   - Event approval/rejection workflow                                                                 │ │
+│ │   - Integration with existing event data                                                              │ │
+│ │   - Bulk moderation actions                                                                           │ │
+│ │   - Venue assignment management                                                                       │ │
+│ │ 3. RevenueReports Component (/components/admin/RevenueReports.tsx)                                    │ │
+│ │   - Financial reporting dashboard                                                                     │ │
+│ │   - Export functionality (CSV, PDF, Excel)                                                            │ │
+│ │   - Date range analysis with existing payment data                                                    │ │
+│ │                                                                                                       │ │
+│ │ 3.2 Employee Management Integration (Days 4-5)                                                        │ │
+│ │                                                                                                       │ │
+│ │ Priority: Connect with existing employee data                                                         │ │
+│ │                                                                                                       │ │
+│ │ 1. EmployeeManagement Component                                                                       │ │
+│ │   - Integration with existing employee MongoDB structure                                              │ │
+│ │   - Permission management matching current role system                                                │ │
+│ │   - Venue/event assignment workflow                                                                   │ │
+│ │   - Performance tracking                                                                              │ │
+│ │                                                                                                       │ │
+│ │ 3.3 Advanced Search & UX Features (Days 6-7)                                                          │ │
+│ │                                                                                                       │ │
+│ │ Priority: Enhanced user experience                                                                    │ │
+│ │                                                                                                       │ │
+│ │ 1. SearchWithFilters Enhancement                                                                      │ │
+│ │   - Category-based search integration                                                                 │ │
+│ │   - Price range and date filtering                                                                    │ │
+│ │   - Location-based search using venue coordinates                                                     │ │
+│ │ 2. User Experience Improvements                                                                       │ │
+│ │   - Wishlist/favorites functionality enhancement                                                      │ │
+│ │   - Multi-currency support (building on existing AED base)                                            │ │
+│ │   - Real-time search suggestions                                                                      │ │
+│ │                                                                                                       │ │
+│ │ Integration Strategy                                                                                  │ │
+│ │                                                                                                       │ │
+│ │ - Database Connection: Leverage existing MongoDB collections and data structures                      │ │
+│ │ - Authentication: Build on current admin/employee role system                                         │ │
+│ │ - Real-time Updates: Extend notification system for admin operations                                  │ │
+│ │ - Mobile Responsive: Ensure all admin tools work on mobile devices                                    │ │
+│ │                                                                                                       │ │
+│ │ Expected Deliverables                                                                                 │ │
+│ │                                                                                                       │ │
+│ │ - Complete admin control panel for user/event/revenue management                                      │ │
+│ │ - Enhanced employee management matching existing data structure                                       │ │
+│ │ - Advanced search capabilities with filtering                                                         │ │
+│ │ - Production-ready admin dashboard with real-time updates                                             │ │
+│ │                                                                                                       │ │
+│ │ This phase will complete the management layer and provide comprehensive administrative control over   │ │
+│ │ the entire platform, utilizing the existing database structure and user roles.   
+
+    3.1 Analytics & Reporting
+
+    - Admin analytics dashboard with real-time data
+    - Vendor performance metrics
+    - Revenue and booking trend analysis
+
+    3.2 Management Systems
+
+    - Employee management with role-based permissions
+    - Vendor payout and commission tracking
+    - Advanced event management tools
+
+    3.3 User Experience Enhancements
+
+    - Search and filtering improvements
+    - Wishlist/favorites functionality
+    - Multi-currency support implementation
+
+    🧪 Phase 4: Testing & Optimization (Days 23-25)
+
+    4.1 Integration Testing
+
+    - End-to-end user flow testing
+    - Payment processing verification
+    - Database performance optimization
+
+    4.2 Production Readiness
+
+    - Security audit and vulnerability assessment
+    - Performance monitoring setup
+    - Deployment configuration
+
+    📋 Expected Deliverables
+
+    1. Complete Backend API - All 25+ models with full CRUD operations
+    2. Integrated Frontend - Payment flows, dashboards, and management interfaces
+    3. Admin Panel - Full management capabilities for all systems
+    4. Vendor Dashboard - Event management and analytics tools
+    5. Customer Experience - Booking, payments, and account management
+    6. Documentation - API documentation and deployment guides
+
+    🎯 Success Metrics
+
+    - ✅ Complete user journey from registration → event discovery → booking → payment
+    - ✅ Admin can manage all aspects: users, events, payments, analytics
+    - ✅ Vendors can create events, track bookings, view earnings
+    - ✅ Customers can browse, book, pay, and manage their activities
+    - ✅ All four management systems fully operational and integrated
+
+    This plan will transform your project from a foundation into a production-ready, comprehensive event     
+     management platform.
+
+     Phase 4: Testing & Integration Implementation Plan                                                    │ │
+│ │                                                                                                       │ │
+│ │ Overview                                                                                              │ │
+│ │                                                                                                       │ │
+│ │ Complete end-to-end testing and production preparation for the comprehensive admin management system  │ │
+│ │ built in Phase 3.                                                                                     │ │
+│ │                                                                                                       │ │
+│ │ 4.1 End-to-End Integration Testing (Days 1-2)                                                         │ │
+│ │                                                                                                       │ │
+│ │ - Complete User Flow Testing: Validate all user journeys from registration to payment confirmation    │ │
+│ │ - Cross-System Integration: Test real-time notifications, data sync, and API consistency              │ │
+│ │ - Database Integration: Verify CRUD operations with existing MongoDB collections                      │ │
+│ │                                                                                                       │ │
+│ │ 4.2 Performance & Security Optimization (Days 3-4)                                                    │ │
+│ │                                                                                                       │ │
+│ │ - Performance Testing: Component loading analysis, bundle optimization, memory leak detection         │ │
+│ │ - Security Audit: Authentication flows, role-based access, input validation, API security             │ │
+│ │ - Mobile Responsiveness: Validate all admin components work seamlessly on mobile devices              │ │
+│ │                                                                                                       │ │
+│ │ 4.3 Documentation & Deployment (Day 5)                                                                │ │
+│ │                                                                                                       │ │
+│ │ - Technical Documentation: Component guides, API integration docs, deployment config                  │ │
+│ │ - User Guides: Admin dashboard manual, workflow guides                                                │ │
+│ │ - Deployment Prep: Environment setup, monitoring configuration                                        │ │
+│ │                                                                                                       │ │
+│ │ Key Integration Points                                                                                │ │
+│ │                                                                                                       │ │
+│ │ - MongoDB collections (users, events, employees, venues)                                              │ │
+│ │ - Real-time WebSocket features                                                                        │ │
+│ │ - Stripe payment system integration                                                                   │ │
+│ │ - Multi-currency and multi-language functionality                                                     │ │
+│ │                                                                                                       │ │
+│ │ Deliverables                                                                                          │ │
+│ │                                                                                                       │ │
+│ │ - Comprehensive test suite covering all user journeys                                                 │ │
+│ │ - Performance optimization recommendations                                                            │ │
+│ │ - Security assessment with vulnerability mitigation                                                   │ │
+│ │ - Production deployment guide                                                                         │ │
+│ │ - Complete user documentation                                                                         │ │
+│ │ - Performance monitoring setup                                                                        │ │
+│ │                                                                                                       │ │
+│ │ This phase ensures the admin management system is production-ready and seamlessly integrated with the │ │
+│ │  existing Gema platform.    
+
+categories
+checkinlogs
+commissions
+commissiontransactions
+coupons
+employees
+events
+notifications
+orders
+payments
+payouts
+refreshtokens
+reviews
+roles
+test
+tickets
+users
+venues
+
+mongo db 
+user data :{
+  "_id": {
+    "$oid": "68b2867eedc0af7c0c8fdf65"
+  },
+  "firstName": "Admin",
+  "lastName": "User",
+  "email": "admin@gema.com",
+  "passwordHash": "$2a$10$jEsDA91x2aoRmEQuakL1oOqqfRG4g7VxG/Dv5GmHZfwR3QEUH4r2m",
+  "phone": "+971501234567",
+  "country": "UAE",
+  "role": "admin",
+  "status": "active",
+  "isEmailVerified": true,
+  "isPhoneVerified": false,
+  "twoFactorAuth": {
+    "enabled": false,
+    "backupCodes": []
+  },
+  "favorites": [],
+  "verificationStatus": "unverified",
+  "stripeConnect": {
+    "requirements": {
+      "currently_due": [],
+      "eventually_due": [],
+      "past_due": []
+    },
+    "accountStatus": "not_connected",
+    "detailsSubmitted": false,
+    "chargesEnabled": false,
+    "payoutsEnabled": false
+  },
+  "razorpayConfig": {
+    "isActive": false,
+    "isTestMode": true,
+    "accountStatus": "not_connected",
+    "lastUpdated": {
+      "$date": "2025-08-30T05:05:02.371Z"
+    }
+  },
+  "paymentConfig": {
+    "notifications": {
+      "paymentReceived": true,
+      "payoutProcessed": true,
+      "refundIssued": true,
+      "disputeReceived": true
+    },
+    "preferredGateway": "platform_default",
+    "enabledMethods": [],
+    "platformFeeHandling": "deduct",
+    "autoPayouts": true,
+    "minimumPayout": 100,
+    "payoutSchedule": "weekly",
+    "currency": "AED",
+    "taxHandling": "included",
+    "refundPolicy": "manual"
+  },
+  "addresses": [],
+  "socialLogins": [],
+  "loginAttempts": [
+    {
+      "timestamp": {
+        "$date": "2025-08-30T05:05:59.218Z"
+      },
+      "ip": "::1",
+      "userAgent": "curl/8.14.1",
+      "success": true,
+      "_id": {
+        "$oid": "68b286b78d5f77f49a520484"
+      }
+    },
+    {
+      "timestamp": {
+        "$date": "2025-08-30T05:06:16.959Z"
+      },
+      "ip": "::1",
+      "userAgent": "curl/8.14.1",
+      "success": false,
+      "_id": {
+        "$oid": "68b286c88d5f77f49a520494"
+      }
+    },
+    {
+      "timestamp": {
+        "$date": "2025-08-30T05:45:26.564Z"
+      },
+      "ip": "::1",
+      "userAgent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/139.0.0.0 Safari/537.36",
+      "success": false,
+      "_id": {
+        "$oid": "68b28ff60cf45d6b6f33f5fe"
+      }
+    },
+    {
+      "timestamp": {
+        "$date": "2025-08-30T05:48:30.664Z"
+      },
+      "ip": "::1",
+      "userAgent": "PostmanRuntime/7.45.0",
+      "success": true,
+      "_id": {
+        "$oid": "68b290ae0cf45d6b6f33f604"
+      }
+    },
+    {
+      "timestamp": {
+        "$date": "2025-08-30T05:48:45.079Z"
+      },
+      "ip": "::1",
+      "userAgent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/139.0.0.0 Safari/537.36",
+      "success": true,
+      "_id": {
+        "$oid": "68b290bd0cf45d6b6f33f60d"
+      }
+    },
+    {
+      "timestamp": {
+        "$date": "2025-09-01T04:33:05.667Z"
+      },
+      "ip": "::1",
+      "userAgent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/139.0.0.0 Safari/537.36",
+      "success": true,
+      "_id": {
+        "$oid": "68b52201b41da19a9bbf6a9c"
+      }
+    },
+    {
+      "timestamp": {
+        "$date": "2025-09-01T04:40:49.200Z"
+      },
+      "ip": "::1",
+      "userAgent": "curl/8.14.1",
+      "success": true,
+      "_id": {
+        "$oid": "68b523d130e604209b14b59b"
+      }
+    },
+    {
+      "timestamp": {
+        "$date": "2025-09-01T04:40:54.677Z"
+      },
+      "ip": "::1",
+      "userAgent": "curl/8.14.1",
+      "success": true,
+      "_id": {
+        "$oid": "68b523d630e604209b14b5a7"
+      }
+    },
+    {
+      "timestamp": {
+        "$date": "2025-09-03T12:58:04.253Z"
+      },
+      "ip": "::1",
+      "userAgent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/139.0.0.0 Safari/537.36",
+      "success": true,
+      "_id": {
+        "$oid": "68b83b5c1c7599d13f75bad7"
+      }
+    },
+    {
+      "timestamp": {
+        "$date": "2025-09-07T04:30:51.004Z"
+      },
+      "ip": "::1",
+      "userAgent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/140.0.0.0 Safari/537.36",
+      "success": true,
+      "_id": {
+        "$oid": "68bd0a7b61d61949857d1aa4"
+      }
+    }
+  ],
+  "createdAt": {
+    "$date": "2025-08-30T05:05:02.375Z"
+  },
+  "updatedAt": {
+    "$date": "2025-09-07T04:30:51.006Z"
+  },
+  "__v": 10,
+  "lastLogin": {
+    "$date": "2025-09-07T04:30:51.004Z"
+  },
+  "passwordReset": {
+    "isVerified": false
+  }
+}"
+venu data : {
+  "_id": {
+    "$oid": "68b28680edc0af7c0c8fdfd5"
+  },
+  "name": "Dubai Opera House",
+  "description": "A world-class performing arts venue in the heart of Downtown Dubai",
+  "vendorId": {
+    "$oid": "68b2867eedc0af7c0c8fdf73"
+  },
+  "status": "active",
+  "address": {
+    "street": "Sheikh Mohammed bin Rashid Boulevard",
+    "city": "Dubai",
+    "state": "Dubai",
+    "country": "UAE",
+    "zipCode": "12345"
+  },
+  "coordinates": {
+    "lat": 25.1938,
+    "lng": 55.2736
+  },
+  "capacity": 2000,
+  "venueType": "indoor",
+  "facilities": [
+    "Air Conditioning",
+    "Sound System",
+    "Lighting",
+    "Parking",
+    "VIP Lounge"
+  ],
+  "amenities": [],
+  "operatingHours": [
+    {
+      "day": "monday",
+      "openTime": "09:00",
+      "closeTime": "23:00",
+      "isClosed": false,
+      "_id": {
+        "$oid": "68b28680edc0af7c0c8fdfd6"
+      }
+    },
+    {
+      "day": "tuesday",
+      "openTime": "09:00",
+      "closeTime": "23:00",
+      "isClosed": false,
+      "_id": {
+        "$oid": "68b28680edc0af7c0c8fdfd7"
+      }
+    },
+    {
+      "day": "wednesday",
+      "openTime": "09:00",
+      "closeTime": "23:00",
+      "isClosed": false,
+      "_id": {
+        "$oid": "68b28680edc0af7c0c8fdfd8"
+      }
+    },
+    {
+      "day": "thursday",
+      "openTime": "09:00",
+      "closeTime": "23:00",
+      "isClosed": false,
+      "_id": {
+        "$oid": "68b28680edc0af7c0c8fdfd9"
+      }
+    },
+    {
+      "day": "friday",
+      "openTime": "09:00",
+      "closeTime": "23:00",
+      "isClosed": false,
+      "_id": {
+        "$oid": "68b28680edc0af7c0c8fdfda"
+      }
+    },
+    {
+      "day": "saturday",
+      "openTime": "09:00",
+      "closeTime": "23:00",
+      "isClosed": false,
+      "_id": {
+        "$oid": "68b28680edc0af7c0c8fdfdb"
+      }
+    },
+    {
+      "day": "sunday",
+      "openTime": "09:00",
+      "closeTime": "23:00",
+      "isClosed": false,
+      "_id": {
+        "$oid": "68b28680edc0af7c0c8fdfdc"
+      }
+    }
+  ],
+  "timezone": "UTC",
+  "checkInGates": [
+    {
+      "gateName": "Main Entrance",
+      "gateCode": "GATE01",
+      "isActive": true,
+      "assignedEmployees": [],
+      "description": "Primary entrance for general admission",
+      "_id": {
+        "$oid": "68b28680edc0af7c0c8fdfdd"
+      }
+    },
+    {
+      "gateName": "VIP Entrance",
+      "gateCode": "GATE02",
+      "isActive": true,
+      "assignedEmployees": [],
+      "description": "Exclusive entrance for VIP guests",
+      "_id": {
+        "$oid": "68b28680edc0af7c0c8fdfde"
+      }
+    }
+  ],
+  "images": [],
+  "baseRentalPrice": 15000,
+  "currency": "AED",
+  "safetyFeatures": [],
+  "certifications": [],
+  "totalEvents": 0,
+  "isApproved": false,
+  "accessRules": [],
+  "createdAt": {
+    "$date": "2025-08-30T05:05:04.205Z"
+  },
+  "updatedAt": {
+    "$date": "2025-08-30T05:05:04.205Z"
+  },
+  "__v": 0
+}
+refresh token data : {
+  "_id": {
+    "$oid": "68ac013332df2f45f2a9f683"
+  },
+  "token": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpZCI6IjY4YWMwMTMyMzJkZjJmNDVmMmE5ZjY3MCIsImlhdCI6MTc1NjEwMjk2MywiZXhwIjoxNzU4Njk0OTYzfQ.VtReuIB0FvDVYRjImscF-Fnj_v0fawcF1pkaoaMVwMI",
+  "user": {
+    "$oid": "68ac013232df2f45f2a9f670"
+  },
+  "expiresAt": {
+    "$date": "2025-09-24T06:22:43.465Z"
+  },
+  "isRevoked": false,
+  "ipAddress": "::1",
+  "userAgent": "PostmanRuntime/7.45.0",
+  "createdAt": {
+    "$date": "2025-08-25T06:22:43.467Z"
+  },
+  "updatedAt": {
+    "$date": "2025-08-25T06:22:43.467Z"
+  },
+  "__v": 0
+}
+
+event data : {
+  "_id": {
+    "$oid": "68b2d0d63293690deba680a2"
+  },
+  "title": "Kids Summer Fun Day 2025",
+  "description": "Join us for an amazing day of fun activities, games, and entertainment designed specifically for children aged 4-12. Features include face painting, bouncy castles, magic shows, and interactive workshops.",
+  "category": "Family & Kids",
+  "type": "Event",
+  "venueType": "Outdoor",
+  "images": [
+    "https://placehold.co/400x300?text=Summer+Fun+Day&font=roboto"
+  ],
+  "location": {
+    "address": "Dubai Marina Beach",
+    "city": "Dubai",
+    "coordinates": {
+      "lat": 25.0772,
+      "lng": 55.1413
+    }
+  },
+  "dateSchedule": [
+    {
+      "startDate": {
+        "$date": "2025-09-06T10:22:14.610Z"
+      },
+      "endDate": {
+        "$date": "2025-09-06T16:22:14.610Z"
+      },
+      "totalSeats": 150,
+      "availableSeats": 150,
+      "soldSeats": 0,
+      "reservedSeats": 0,
+      "price": 75,
+      "_id": {
+        "$oid": "68b2d0d63293690deba680a3"
+      }
+    }
+  ],
+  "price": 75,
+  "currency": "AED",
+  "ageRange": [
+    4,
+    12
+  ],
+  "tags": [
+    "kids",
+    "outdoor",
+    "family",
+    "summer",
+    "activities"
+  ],
+  "vendorId": {
+    "$oid": "68b2867eedc0af7c0c8fdf73"
+  },
+  "isApproved": true,
+  "isDeleted": false,
+  "isFeatured": true,
+  "status": "published",
+  "viewsCount": 6,
+  "__v": 0,
+  "createdAt": {
+    "$date": "2025-08-30T10:22:14.711Z"
+  },
+  "updatedAt": {
+    "$date": "2025-09-03T12:56:56.514Z"
+  }
+}
+employee data : {
+  "_id": {
+    "$oid": "68b56a3f9640fde891a81b76"
+  },
+  "vendorId": {
+    "$oid": "68b2867eedc0af7c0c8fdf73"
+  },
+  "userId": {
+    "$oid": "68b2917e0cf45d6b6f33f745"
+  },
+  "employeeId": "EMP-1756719679585",
+  "firstName": "Eshaan",
+  "lastName": "Manchanda",
+  "email": "eshaanmanchanda01@gmail.com",
+  "role": "coordinator",
+  "permissions": [
+    {
+      "action": "view_events",
+      "scope": "assigned",
+      "_id": {
+        "$oid": "68b56a3f9640fde891a81b77"
+      }
+    },
+    {
+      "action": "view_dashboard",
+      "scope": "assigned",
+      "_id": {
+        "$oid": "68b56a3f9640fde891a81b78"
+      }
+    }
+  ],
+  "assignedEvents": [],
+  "assignedVenues": [],
+  "status": "active",
+  "hiredAt": {
+    "$date": "2025-09-01T09:41:19.585Z"
+  },
+  "createdAt": {
+    "$date": "2025-09-01T09:41:19.596Z"
+  },
+  "updatedAt": {
+    "$date": "2025-09-01T09:41:19.596Z"
+  },
+  "__v": 0
+}
+
+●User approved Claude's plan:
+  ⎿ 🎯 Admin UI Enhancement Plan: Dynamic Data Fetching & Commission-Based Payout System
+
+    📋 Scope & Objectives
+
+    Fix and enhance the admin UI with dynamic data fetching and implement a comprehensive payout system 
+    with commission-based model for the /admin routes.
+
+    ---
+    🔧 Phase 1: Core Infrastructure Enhancement
+
+    1.1 Admin API Enhancement
+
+    - ✅ Add missing payout-related endpoints to adminAPI.ts
+    - ✅ Implement commission management API calls
+    - ✅ Add real-time data refresh mechanisms
+
+    1.2 Redux Store Enhancement
+
+    - ✅ Extend adminSlice.ts with payout/commission state management
+    - ✅ Add async thunks for payout operations
+    - ✅ Implement real-time data synchronization
+
+    ---
+    🎨 Phase 2: Admin UI Components
+
+    2.1 New Admin Pages
+
+    - ✅ AdminPayoutsPage - Main payout management interface
+    - ✅ AdminCommissionsPage - Commission configuration & analytics
+    - ✅ AdminRevenueReportsPage - Advanced financial reporting
+
+    2.2 Enhanced Dashboard Components
+
+    - ✅ PayoutSummaryCard - Real-time payout statistics
+    - ✅ CommissionOverview - Commission performance metrics
+    - ✅ VendorEarningsWidget - Vendor revenue tracking
+    - ✅ PayoutRequestsTable - Pending payout management
+
+    2.3 Interactive Features
+
+    - ✅ Real-time data updates (30s intervals for critical data)
+    - ✅ Bulk payout processing with approval workflows
+    - ✅ Commission rate configuration UI
+    - ✅ Advanced filtering & search capabilities
+
+    ---
+    💰 Phase 3: Commission-Based Payout System
+
+    3.1 Commission Management
+
+    - ✅ Multi-tiered commission structures (vendor, affiliate, referral)
+    - ✅ Flexible commission rates by category/vendor/performance
+    - ✅ Automated commission calculations
+    - ✅ Commission approval workflow
+
+    3.2 Payout Processing
+
+    - ✅ Vendor earnings tracking with real-time updates
+    - ✅ Payout request management (approve/reject/batch processing)
+    - ✅ Multiple payout methods (bank transfer, PayPal, etc.)
+    - ✅ Payout history & reconciliation
+
+    3.3 Analytics & Reporting
+
+    - ✅ Commission performance analytics
+    - ✅ Vendor revenue insights
+    - ✅ Payout trend analysis
+    - ✅ Financial export capabilities
+
+    ---
+    🚀 Phase 4: Dynamic Data Integration
+
+    4.1 Real-Time Data Fetching
+
+    - ✅ Live payout status updates
+    - ✅ Commission tracking dashboard
+    - ✅ Vendor earning notifications
+    - ✅ Auto-refresh mechanisms with configurable intervals
+
+    4.2 Performance Optimization
+
+    - ✅ Paginated data loading
+    - ✅ Efficient caching strategies
+    - ✅ Loading states & error handling
+    - ✅ Responsive design patterns
+
+    ---
+    📊 Key Features to Implement
+
+    Admin Dashboard Enhancements:
+
+    - 📈 Real-time commission metrics
+    - 💸 Pending payout notifications
+    - 🏆 Top-performing vendors widget
+    - 📅 Payout calendar overview
+
+    Commission System:
+
+    - ⚙️ Flexible commission configuration
+    - 📋 Multi-level commission structures
+    - 🔄 Automated calculation engine
+    - ✅ Approval workflow management
+
+    Payout Management:
+
+    - 💰 Vendor earnings dashboard
+    - 📝 Payout request processing
+    - 🏦 Multiple payment method support
+    - 📄 Comprehensive reporting
+
+    ---
+    🛠️ Technical Implementation
+
+    New Components:
+
+    1. AdminPayoutsPage.tsx - Main payout management interface
+    2. AdminCommissionsPage.tsx - Commission configuration
+    3. PayoutSummaryCard.tsx - Payout overview widget
+    4. CommissionConfigModal.tsx - Commission setup dialog
+    5. VendorEarningsTable.tsx - Vendor earnings display
+
+    API Enhancements:
+
+    1. Add payout endpoints to adminAPI.ts
+    2. Extend commission management APIs
+    3. Implement real-time data fetching
+    4. Add export/reporting functionality
+
+    State Management:
+
+    1. Extend adminSlice.ts with payout state
+    2. Add commission management actions
+    3. Implement real-time sync mechanisms
+    4. Add error handling & loading states
+
+    ---
+
+    ●User approved Claude's plan:
+  ⎿ 🔧 Fix All TypeScript Errors in Frontend - Comprehensive Plan
+
+    📋 Problem Analysis
+
+    After running npx tsc --noEmit, I identified critical syntax errors in test files that are 
+    preventing TypeScript compilation:
+
+    🚨 Root Cause: File Extension Issues
+
+    - Test files with JSX syntax are using .ts extension instead of .tsx
+    - TypeScript compiler expects plain TypeScript in .ts files, not JSX
+    - This causes parser errors when encountering JSX elements like <TestWrapper> and <App />
+
+    📊 Error Summary:
+
+    - 64 TypeScript errors across 3 test files
+    - All errors are related to JSX syntax in .ts files
+    - Files affected:
+      - src/tests/integration/userJourneys.test.ts (21 errors)
+      - src/tests/performance/performanceTests.ts (32 errors)
+      - src/tests/security/securityAudit.test.ts (11 errors)
+
+    ---
+    🎯 Solution Strategy
+
+    Phase 1: File Extension Corrections
+
+    ✅ Rename files with JSX content from .ts to .tsx:
+    - userJourneys.test.ts → userJourneys.test.tsx
+    - performanceTests.ts → performanceTests.test.tsx
+    - securityAudit.test.ts → securityAudit.test.tsx
+
+    Phase 2: Import Fixes
+
+    ✅ Add missing React imports (only if needed for older JSX transform):
+    - Current config uses "jsx": "react-jsx" (new JSX transform)
+    - Files should work without explicit React imports
+    - Add imports only if still needed after extension fix
+
+    Phase 3: Syntax Validation
+
+    ✅ Fix any remaining JSX syntax issues:
+    - Ensure proper JSX element closing
+    - Fix unterminated JSX expressions
+    - Validate test component structure
+
+    Phase 4: Configuration Verification
+
+    ✅ Verify TypeScript configuration:
+    - Ensure .tsx files are included in tsconfig.json
+    - Validate JSX transform settings
+    - Check test file inclusion patterns
+
+    ---
+    🔍 Detailed Fix Plan
+
+    Files to Rename:
+
+    1. src/tests/integration/userJourneys.test.ts → .tsx
+      - Contains React components: <TestWrapper>, <App />
+      - Used in render() calls for integration testing
+    2. src/tests/performance/performanceTests.ts → .test.tsx
+      - Contains JSX: <TestWrapper>, <TranslationProvider>
+      - Performance testing with React components
+    3. src/tests/security/securityAudit.test.ts → .test.tsx
+      - Contains JSX: <SecureTestWrapper>, component renders
+      - Security testing with React components
+
+    Files to Keep as .ts:
+
+    - src/tests/basic.test.ts - No JSX, pure JavaScript testing
+    - src/tests/integration/apiIntegration.test.ts - API testing (if no JSX)
+
+    ---
+    ✅ Expected Results
+
+    After implementing these fixes:
+
+    🎯 Zero TypeScript compilation errors
+    🚀 All test files properly recognized by TypeScript🔧 Proper JSX syntax highlighting and validation      
+    🧪 Test suite ready for execution
+    📦 Build process unblocked
+
+    ---
+    🛡️ Risk Assessment
+
+    Low Risk Changes:
+    - File renames maintain all functionality
+    - No logic changes required
+    - TypeScript config already supports .tsx files
+    - Jest should automatically pick up renamed test files
+
+    Validation Steps:
+    1. Run npx tsc --noEmit after changes
+    2. Verify test discovery with Jest
+    3. Confirm component imports work correctly
+    4. Test build process completion
+
+    This plan will resolve all 64+ TypeScript errors and restore proper compilation!
+
+      Issues Identified:
+
+  1. API Rate Limiting (HTTP 429 Errors)
+
+  - Multiple API endpoints are returning 429 "Too Many Requests" errors
+  - Affecting: /api/reviews, /api/blogs/featured
+  - Components affected: FeaturedBlogsSection.tsx, ReviewCarouselKeen.tsx
+
+  2. API Configuration Mismatch
+
+  - Frontend is pointing to http://localhost:5001/api (line 6 in api.ts)
+  - But API calls in console show http://localhost:5000/api
+  - This port mismatch could be causing connection issues
+
+  3. External Image Loading Issues
+
+  - via.placeholder.com images failing with net::ERR_NAME_NOT_RESOLVED
+  - Multiple placeholder images used throughout the application
+  - Found in 10+ component files
+
+  4. Missing Asset File
+
+  - characters.png file missing from /assets/ directory
+  - Referenced in HomePage.tsx:306 but file doesn't exist
+  - Causing 404 error
+
+  Root Causes Analysis:
+
+  1. Rate Limiting: Likely due to missing/misconfigured rate limiting middleware or excessive API calls      
+  during development
+  2. Port Configuration: Environment variable mismatch between frontend API base URL and actual backend      
+  port
+  3. External Dependencies: Relying on external placeholder services that may be blocked/unavailable
+  4. Asset Management: Missing image assets that should be included in the project
+
+●User approved Claude's plan:
+  ⎿  Fix Frontend Runtime Errors and API Issues
+
+     1. Fix API Rate Limiting Issues (Priority: HIGH)
+
+     - Backend: Implement or adjust rate limiting middleware to allow reasonable development usage
+     - Frontend: Add retry logic with exponential backoff for API calls in FeaturedBlogsSection.tsx and 
+     ReviewCarouselKeen.tsx
+     - Frontend: Implement request debouncing/throttling to reduce API call frequency
+
+     2. Resolve API Configuration Mismatch (Priority: HIGH)
+
+     - Frontend: Fix API base URL configuration in services/api.ts
+     - Currently pointing to port 5001, but errors show backend running on port 5000
+     - Update environment variables or configuration to use correct port
+
+     3. Fix External Image Dependencies (Priority: MEDIUM)
+
+     - Replace via.placeholder.com URLs with local placeholder images or proper fallback handling
+     - Create local placeholder images in /public/assets/ directory
+     - Update all 10+ component files that reference external placeholder URLs
+     - Add error handling for failed image loads
+
+     4. Add Missing Asset Files (Priority: MEDIUM)
+
+     - Create or restore missing characters.png file in /public/assets/ directory
+     - Update asset references in HomePage.tsx to use correct path
+     - Audit other potentially missing assets
+
+     5. Improve Error Handling and Fallbacks (Priority: MEDIUM)
+
+     - Add better error boundaries and fallback UI for API failures
+     - Implement graceful degradation when APIs are unavailable
+     - Add loading states and user-friendly error messages
+     - Cache API responses to reduce server load
+
+     6. Backend Health Check (Priority: LOW)
+
+     - Verify backend is running and accessible on correct port
+     - Check if database connections and API endpoints are working
+     - Review rate limiting configuration
+
+     Expected Outcomes:
+
+     - Eliminate HTTP 429 rate limiting errors
+     - Fix image loading failures and 404 errors
+     - Provide better user experience with proper error handling
+     - Reduce unnecessary API calls and external dependencies

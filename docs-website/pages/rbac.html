@@ -1,0 +1,576 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Role-Based Access Control - Gema Documentation</title>
+    <meta name="description" content="Comprehensive Role-Based Access Control system with Admin, Vendor, Employee, and Customer roles">
+    <link rel="stylesheet" href="../css/main.css">
+    <link rel="stylesheet" href="../css/components.css">
+    <link rel="stylesheet" href="../css/responsive.css">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+</head>
+<body>
+    <!-- Header -->
+    <header class="header">
+        <div class="header-container">
+            <div class="header-brand">
+                <h1><a href="../index.html"><i class="fas fa-rocket"></i> Gema Platform</a></h1>
+                <span class="header-subtitle">Role-Based Access Control</span>
+            </div>
+            <nav class="header-nav">
+                <div class="search-container">
+                    <input type="text" id="search-input" placeholder="Search documentation...">
+                    <i class="fas fa-search"></i>
+                </div>
+                <button class="theme-toggle" id="theme-toggle">
+                    <i class="fas fa-moon"></i>
+                </button>
+                <button class="mobile-menu-toggle" id="mobile-menu-toggle">
+                    <i class="fas fa-bars"></i>
+                </button>
+            </nav>
+        </div>
+    </header>
+
+    <!-- Main Container -->
+    <div class="main-container">
+        <!-- Sidebar Navigation -->
+        <aside class="sidebar" id="sidebar">
+            <nav class="sidebar-nav">
+                <div class="nav-section">
+                    <h3><i class="fas fa-home"></i> Overview</h3>
+                    <ul>
+                        <li><a href="../index.html#project-overview" class="nav-link">Project Overview</a></li>
+                        <li><a href="../index.html#business-model" class="nav-link">Business Model</a></li>
+                        <li><a href="../index.html#tech-stack" class="nav-link">Technology Stack</a></li>
+                        <li><a href="../index.html#architecture" class="nav-link">System Architecture</a></li>
+                    </ul>
+                </div>
+
+                <div class="nav-section">
+                    <h3><i class="fas fa-shield-alt"></i> Role-Based Access Control</h3>
+                    <ul>
+                        <li><a href="#rbac-overview" class="nav-link active">RBAC Overview</a></li>
+                        <li><a href="#user-roles" class="nav-link">User Roles & Permissions</a></li>
+                        <li><a href="#admin-capabilities" class="nav-link">Admin System</a></li>
+                        <li><a href="#user-management" class="nav-link">User Management</a></li>
+                    </ul>
+                </div>
+
+                <div class="nav-section">
+                    <h3><i class="fas fa-calendar-alt"></i> Event Management</h3>
+                    <ul>
+                        <li><a href="event-management.html" class="nav-link">Event System Overview</a></li>
+                        <li><a href="event-management.html#creation-workflow" class="nav-link">Creation & Approval</a></li>
+                        <li><a href="event-management.html#moderation" class="nav-link">Event Moderation</a></li>
+                        <li><a href="event-management.html#booking" class="nav-link">Booking System</a></li>
+                    </ul>
+                </div>
+
+                <div class="nav-section">
+                    <h3><i class="fas fa-credit-card"></i> Payment Management</h3>
+                    <ul>
+                        <li><a href="payment-system.html" class="nav-link">Payment Overview</a></li>
+                        <li><a href="payment-system.html#gateways" class="nav-link">Payment Gateways</a></li>
+                        <li><a href="payment-system.html#commissions" class="nav-link">Commission System</a></li>
+                        <li><a href="payment-system.html#payouts" class="nav-link">Vendor Payouts</a></li>
+                    </ul>
+                </div>
+
+                <div class="nav-section">
+                    <h3><i class="fas fa-cog"></i> Content Management</h3>
+                    <ul>
+                        <li><a href="content-management.html" class="nav-link">CMS Overview</a></li>
+                        <li><a href="content-management.html#categories" class="nav-link">Category Management</a></li>
+                        <li><a href="content-management.html#media" class="nav-link">Media Management</a></li>
+                        <li><a href="content-management.html#moderation" class="nav-link">Content Moderation</a></li>
+                    </ul>
+                </div>
+
+                <div class="nav-section">
+                    <h3><i class="fas fa-handshake"></i> Business Relationships</h3>
+                    <ul>
+                        <li><a href="vendor-employee.html" class="nav-link">Vendor Management</a></li>
+                        <li><a href="vendor-employee.html#employee-system" class="nav-link">Employee System</a></li>
+                        <li><a href="vendor-employee.html#commission-model" class="nav-link">Commission Model</a></li>
+                        <li><a href="vendor-employee.html#analytics" class="nav-link">Performance Analytics</a></li>
+                    </ul>
+                </div>
+
+                <div class="nav-section">
+                    <h3><i class="fas fa-lock"></i> Authentication System</h3>
+                    <ul>
+                        <li><a href="authentication.html" class="nav-link">Auth Overview</a></li>
+                        <li><a href="authentication.html#jwt-system" class="nav-link">JWT & Firebase</a></li>
+                        <li><a href="authentication.html#otp-verification" class="nav-link">4-Digit OTP</a></li>
+                        <li><a href="authentication.html#security" class="nav-link">Security Features</a></li>
+                    </ul>
+                </div>
+
+                <div class="nav-section">
+                    <h3><i class="fas fa-mobile-alt"></i> Mobile Application</h3>
+                    <ul>
+                        <li><a href="mobile-app.html" class="nav-link">Mobile App Overview</a></li>
+                        <li><a href="mobile-app.html#react-native" class="nav-link">React Native</a></li>
+                        <li><a href="mobile-app.html#figma-design" class="nav-link">Figma Integration</a></li>
+                        <li><a href="mobile-app.html#features" class="nav-link">Mobile Features</a></li>
+                    </ul>
+                </div>
+            </nav>
+        </aside>
+
+        <!-- Main Content -->
+        <main class="main-content">
+            <!-- RBAC Overview Section -->
+            <section class="hero-section" id="rbac-overview">
+                <div class="hero-content">
+                    <h1><i class="fas fa-shield-alt"></i> Role-Based Access Control System</h1>
+                    <p class="hero-description">
+                        Gema implements a comprehensive Role-Based Access Control (RBAC) system with four distinct user roles, 
+                        each with carefully defined permissions and capabilities. This enterprise-grade security model ensures 
+                        proper data isolation, workflow management, and operational efficiency.
+                    </p>
+                    <div class="hero-stats">
+                        <div class="stat-item">
+                            <span class="stat-number">4</span>
+                            <span class="stat-label">User Roles</span>
+                        </div>
+                        <div class="stat-item">
+                            <span class="stat-number">50+</span>
+                            <span class="stat-label">Permissions</span>
+                        </div>
+                        <div class="stat-item">
+                            <span class="stat-number">100%</span>
+                            <span class="stat-label">Data Isolation</span>
+                        </div>
+                        <div class="stat-item">
+                            <span class="stat-number">Enterprise</span>
+                            <span class="stat-label">Security Grade</span>
+                        </div>
+                    </div>
+                </div>
+            </section>
+
+            <!-- User Roles & Permissions Section -->
+            <section class="content-section" id="user-roles">
+                <h2><i class="fas fa-users"></i> User Roles & Permissions</h2>
+                
+                <div class="alert alert-info">
+                    <div class="alert-title">Permission Hierarchy</div>
+                    <div class="alert-content">
+                        The system follows a hierarchical permission model: <strong>Admin > Vendor > Employee > Customer</strong>. 
+                        Higher-level roles inherit certain capabilities from lower levels while maintaining role-specific restrictions.
+                    </div>
+                </div>
+
+                <div class="feature-grid">
+                    <!-- Admin Role -->
+                    <div class="feature-card">
+                        <div class="feature-icon">
+                            <i class="fas fa-crown"></i>
+                        </div>
+                        <h3 class="feature-title">Admin</h3>
+                        <p class="feature-description">
+                            Ultimate system control with full platform oversight, user management, and business operations authority.
+                        </p>
+                        <ul class="feature-list">
+                            <li>Complete user account management</li>
+                            <li>Event approval and rejection authority</li>
+                            <li>Financial reporting and commission oversight</li>
+                            <li>System configuration and settings</li>
+                            <li>Advanced analytics and business intelligence</li>
+                            <li>Content moderation and platform policies</li>
+                            <li>Vendor verification and onboarding</li>
+                            <li>Employee management and role assignment</li>
+                        </ul>
+                    </div>
+
+                    <!-- Vendor Role -->
+                    <div class="feature-card">
+                        <div class="feature-icon">
+                            <i class="fas fa-store"></i>
+                        </div>
+                        <h3 class="feature-title">Vendor</h3>
+                        <p class="feature-description">
+                            Event organizers and service providers with comprehensive event management and customer interaction tools.
+                        </p>
+                        <ul class="feature-list">
+                            <li>Create and manage event listings</li>
+                            <li>View and process customer bookings</li>
+                            <li>Access vendor-specific analytics</li>
+                            <li>Manage pricing and availability</li>
+                            <li>Upload and organize media content</li>
+                            <li>Direct customer communication</li>
+                            <li>Employee assignment and management</li>
+                            <li>Revenue tracking and payout history</li>
+                        </ul>
+                    </div>
+
+                    <!-- Employee Role -->
+                    <div class="feature-card">
+                        <div class="feature-icon">
+                            <i class="fas fa-id-badge"></i>
+                        </div>
+                        <h3 class="feature-title">Employee</h3>
+                        <p class="feature-description">
+                            Vendor-assigned staff with limited operational access for day-to-day event management and customer service.
+                        </p>
+                        <ul class="feature-list">
+                            <li>Check-in customers at assigned events</li>
+                            <li>View event details and schedules</li>
+                            <li>Process customer inquiries</li>
+                            <li>Update event status and notes</li>
+                            <li>Access basic reporting for assigned events</li>
+                            <li>Communicate with customers during events</li>
+                            <li>Report issues to vendor management</li>
+                            <li>Limited profile and schedule management</li>
+                        </ul>
+                    </div>
+
+                    <!-- Customer Role -->
+                    <div class="feature-card">
+                        <div class="feature-icon">
+                            <i class="fas fa-user"></i>
+                        </div>
+                        <h3 class="feature-title">Customer</h3>
+                        <p class="feature-description">
+                            End users (families) who discover, book, and participate in events with personalized experience management.
+                        </p>
+                        <ul class="feature-list">
+                            <li>Browse and search events with advanced filters</li>
+                            <li>Book events with secure payment processing</li>
+                            <li>Manage personal profile and preferences</li>
+                            <li>View booking history and upcoming events</li>
+                            <li>Save events to wishlist and favorites</li>
+                            <li>Rate and review attended events</li>
+                            <li>Receive personalized recommendations</li>
+                            <li>Access digital tickets and QR codes</li>
+                        </ul>
+                    </div>
+                </div>
+
+                <!-- Permission Matrix Table -->
+                <h3><i class="fas fa-table"></i> Detailed Permission Matrix</h3>
+                <div style="overflow-x: auto;">
+                    <table class="data-table">
+                        <thead>
+                            <tr>
+                                <th>Permission Category</th>
+                                <th>Admin</th>
+                                <th>Vendor</th>
+                                <th>Employee</th>
+                                <th>Customer</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <tr>
+                                <td><strong>User Management</strong></td>
+                                <td><span class="badge badge-success">Full Access</span></td>
+                                <td><span class="badge badge-warning">Employees Only</span></td>
+                                <td><span class="badge badge-secondary">View Only</span></td>
+                                <td><span class="badge badge-secondary">Self Only</span></td>
+                            </tr>
+                            <tr>
+                                <td><strong>Event Creation</strong></td>
+                                <td><span class="badge badge-success">All Events</span></td>
+                                <td><span class="badge badge-success">Own Events</span></td>
+                                <td><span class="badge badge-error">No Access</span></td>
+                                <td><span class="badge badge-error">No Access</span></td>
+                            </tr>
+                            <tr>
+                                <td><strong>Event Moderation</strong></td>
+                                <td><span class="badge badge-success">Approve/Reject</span></td>
+                                <td><span class="badge badge-secondary">View Status</span></td>
+                                <td><span class="badge badge-secondary">View Status</span></td>
+                                <td><span class="badge badge-error">No Access</span></td>
+                            </tr>
+                            <tr>
+                                <td><strong>Booking Management</strong></td>
+                                <td><span class="badge badge-success">All Bookings</span></td>
+                                <td><span class="badge badge-success">Own Events</span></td>
+                                <td><span class="badge badge-warning">Assigned Events</span></td>
+                                <td><span class="badge badge-success">Own Bookings</span></td>
+                            </tr>
+                            <tr>
+                                <td><strong>Financial Reporting</strong></td>
+                                <td><span class="badge badge-success">Full Access</span></td>
+                                <td><span class="badge badge-warning">Own Revenue</span></td>
+                                <td><span class="badge badge-error">No Access</span></td>
+                                <td><span class="badge badge-secondary">Own Payments</span></td>
+                            </tr>
+                            <tr>
+                                <td><strong>System Configuration</strong></td>
+                                <td><span class="badge badge-success">Full Control</span></td>
+                                <td><span class="badge badge-secondary">Profile Only</span></td>
+                                <td><span class="badge badge-secondary">Profile Only</span></td>
+                                <td><span class="badge badge-secondary">Profile Only</span></td>
+                            </tr>
+                            <tr>
+                                <td><strong>Analytics Access</strong></td>
+                                <td><span class="badge badge-success">Platform-wide</span></td>
+                                <td><span class="badge badge-warning">Own Performance</span></td>
+                                <td><span class="badge badge-secondary">Basic Metrics</span></td>
+                                <td><span class="badge badge-secondary">Personal Stats</span></td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+            </section>
+
+            <!-- Admin System Capabilities -->
+            <section class="content-section" id="admin-capabilities">
+                <h2><i class="fas fa-cogs"></i> Enterprise Admin System</h2>
+                
+                <p>The admin system provides comprehensive platform management with enterprise-grade features for monitoring, 
+                control, and optimization of all platform operations.</p>
+
+                <div class="content-grid">
+                    <div class="content-card">
+                        <h3><i class="fas fa-chart-line"></i> Analytics Dashboard</h3>
+                        <p>Real-time platform metrics and business intelligence with customizable reporting.</p>
+                        <div class="code-block">
+                            <div class="code-block-header">
+                                <span class="code-block-title">Key Metrics Tracked</span>
+                            </div>
+                            <div class="code-content">• User Growth & Engagement Rates
+• Event Performance & Booking Conversion
+• Revenue Trends & Commission Analytics  
+• Platform Usage & Feature Adoption
+• Vendor Performance & Customer Satisfaction
+• System Performance & Error Monitoring</div>
+                        </div>
+                    </div>
+
+                    <div class="content-card">
+                        <h3><i class="fas fa-gavel"></i> Event Moderation</h3>
+                        <p>Comprehensive content review and approval system with automated screening and manual oversight.</p>
+                        <div class="progress-bar">
+                            <div class="progress-bar-fill" style="width: 95%;"></div>
+                        </div>
+                        <p style="font-size: var(--font-size-sm); color: var(--text-muted); margin-top: var(--spacing-sm);">
+                            95% automation rate with AI-powered content screening
+                        </p>
+                    </div>
+
+                    <div class="content-card">
+                        <h3><i class="fas fa-dollar-sign"></i> Financial Management</h3>
+                        <p>Complete financial oversight including commission tracking, payout processing, and revenue analytics.</p>
+                        <ul>
+                            <li>Automated commission calculations</li>
+                            <li>Vendor payout scheduling and processing</li>
+                            <li>Financial reporting and tax compliance</li>
+                            <li>Dispute resolution and refund management</li>
+                        </ul>
+                    </div>
+
+                    <div class="content-card">
+                        <h3><i class="fas fa-shield-alt"></i> Security & Compliance</h3>
+                        <p>Enterprise security features including audit logging, access control, and compliance management.</p>
+                        <div class="alert alert-success">
+                            <div class="alert-content">
+                                <strong>Compliance Standards:</strong> GDPR, PCI DSS, SOC 2, ISO 27001 compliant
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Admin Workflow Diagram -->
+                <h3><i class="fas fa-sitemap"></i> Admin Workflow Overview</h3>
+                <div class="architecture-diagram">
+                    <div class="arch-layer">
+                        <h3>Content Monitoring</h3>
+                        <div class="arch-components">
+                            <div class="arch-component">Event Submissions</div>
+                            <div class="arch-component">User Reports</div>
+                            <div class="arch-component">Automated Flags</div>
+                        </div>
+                    </div>
+                    <div class="arch-arrow">↓</div>
+                    <div class="arch-layer">
+                        <h3>Review & Decision</h3>
+                        <div class="arch-components">
+                            <div class="arch-component">Quality Assessment</div>
+                            <div class="arch-component">Policy Compliance</div>
+                            <div class="arch-component">Approve/Reject</div>
+                        </div>
+                    </div>
+                    <div class="arch-arrow">↓</div>
+                    <div class="arch-layer">
+                        <h3>Action & Communication</h3>
+                        <div class="arch-components">
+                            <div class="arch-component">Status Updates</div>
+                            <div class="arch-component">Vendor Notifications</div>
+                            <div class="arch-component">Platform Updates</div>
+                        </div>
+                    </div>
+                </div>
+            </section>
+
+            <!-- User Management System -->
+            <section class="content-section" id="user-management">
+                <h2><i class="fas fa-users-cog"></i> Advanced User Management</h2>
+                
+                <p>The user management system provides comprehensive tools for administering all platform users with 
+                sophisticated search, filtering, and bulk operation capabilities.</p>
+
+                <!-- User Management Features -->
+                <div class="accordion-group">
+                    <div class="accordion-item">
+                        <div class="accordion-header">
+                            <h3 class="accordion-title">User Search & Filtering</h3>
+                            <i class="accordion-icon fas fa-chevron-down"></i>
+                        </div>
+                        <div class="accordion-content">
+                            <p>Advanced search capabilities allow admins to quickly locate and manage users across the platform.</p>
+                            <ul>
+                                <li><strong>Multi-criteria Search:</strong> Name, email, role, registration date, status</li>
+                                <li><strong>Advanced Filters:</strong> Activity level, booking history, verification status</li>
+                                <li><strong>Saved Searches:</strong> Store frequently used search criteria</li>
+                                <li><strong>Export Functionality:</strong> CSV/Excel export of filtered user lists</li>
+                            </ul>
+                        </div>
+                    </div>
+
+                    <div class="accordion-item">
+                        <div class="accordion-header">
+                            <h3 class="accordion-title">Bulk Operations</h3>
+                            <i class="accordion-icon fas fa-chevron-down"></i>
+                        </div>
+                        <div class="accordion-content">
+                            <p>Efficient bulk operations for managing large numbers of users simultaneously.</p>
+                            <div class="api-endpoint">
+                                <div class="api-endpoint-header">
+                                    <span class="api-method post">POST</span>
+                                    <span class="api-path">/api/admin/users/bulk-action</span>
+                                </div>
+                                <div class="api-endpoint-content">
+                                    <strong>Supported Actions:</strong>
+                                    <ul>
+                                        <li>Role changes and permission updates</li>
+                                        <li>Account status modifications (suspend/activate)</li>
+                                        <li>Bulk notifications and communications</li>
+                                        <li>Data export and reporting</li>
+                                    </ul>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="accordion-item">
+                        <div class="accordion-header">
+                            <h3 class="accordion-title">User Profile Management</h3>
+                            <i class="accordion-icon fas fa-chevron-down"></i>
+                        </div>
+                        <div class="accordion-content">
+                            <p>Comprehensive user profile management with full audit trail and verification tools.</p>
+                            <div class="content-grid" style="grid-template-columns: repeat(2, 1fr);">
+                                <div>
+                                    <h4>Profile Actions</h4>
+                                    <ul>
+                                        <li>View complete user history</li>
+                                        <li>Edit profile information</li>
+                                        <li>Manage verification status</li>
+                                        <li>Reset authentication credentials</li>
+                                    </ul>
+                                </div>
+                                <div>
+                                    <h4>Monitoring Features</h4>
+                                    <ul>
+                                        <li>Login activity tracking</li>
+                                        <li>Booking and transaction history</li>
+                                        <li>Communication logs</li>
+                                        <li>Security event monitoring</li>
+                                    </ul>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- User Lifecycle Management -->
+                <h3><i class="fas fa-lifecycle"></i> User Lifecycle Management</h3>
+                <div class="feature-grid">
+                    <div class="feature-card">
+                        <div class="feature-icon">
+                            <i class="fas fa-user-plus"></i>
+                        </div>
+                        <h3 class="feature-title">Registration & Onboarding</h3>
+                        <ul class="feature-list">
+                            <li>Automated account creation workflows</li>
+                            <li>Email verification and OTP processes</li>
+                            <li>Role-specific onboarding sequences</li>
+                            <li>Document verification for vendors</li>
+                        </ul>
+                    </div>
+
+                    <div class="feature-card">
+                        <div class="feature-icon">
+                            <i class="fas fa-user-check"></i>
+                        </div>
+                        <h3 class="feature-title">Active User Management</h3>
+                        <ul class="feature-list">
+                            <li>Real-time activity monitoring</li>
+                            <li>Performance tracking and analytics</li>
+                            <li>Support ticket management</li>
+                            <li>Behavior analysis and insights</li>
+                        </ul>
+                    </div>
+
+                    <div class="feature-card">
+                        <div class="feature-icon">
+                            <i class="fas fa-user-times"></i>
+                        </div>
+                        <h3 class="feature-title">Account Suspension & Recovery</h3>
+                        <ul class="feature-list">
+                            <li>Temporary and permanent suspension options</li>
+                            <li>Automated suspension for policy violations</li>
+                            <li>Appeal and review processes</li>
+                            <li>Account recovery and reactivation</li>
+                        </ul>
+                    </div>
+                </div>
+            </section>
+
+            <!-- Footer Navigation -->
+            <section class="footer-nav">
+                <div class="footer-nav-content">
+                    <div class="footer-nav-links">
+                        <a href="../index.html" class="footer-nav-link">
+                            <i class="fas fa-arrow-left"></i>
+                            <span>Previous: Platform Overview</span>
+                        </a>
+                        <a href="event-management.html" class="footer-nav-link">
+                            <span>Next: Event Management System</span>
+                            <i class="fas fa-arrow-right"></i>
+                        </a>
+                    </div>
+                </div>
+            </section>
+        </main>
+    </div>
+
+    <!-- Search Results Modal -->
+    <div class="search-modal" id="search-modal">
+        <div class="search-modal-content">
+            <div class="search-modal-header">
+                <h3>Search Results</h3>
+                <button class="search-modal-close" id="search-modal-close">
+                    <i class="fas fa-times"></i>
+                </button>
+            </div>
+            <div class="search-results" id="search-results">
+                <!-- Search results will be populated here -->
+            </div>
+        </div>
+    </div>
+
+    <!-- JavaScript -->
+    <script src="../js/main.js"></script>
+    <script src="../js/search.js"></script>
+    <script src="../js/navigation.js"></script>
+</body>
+</html>

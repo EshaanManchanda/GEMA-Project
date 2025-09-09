@@ -2,6 +2,8 @@ import React, { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import adminAPI from '../../services/api/adminAPI';
 import AdminNavigation from '../../components/admin/AdminNavigation';
+import PayoutSummaryCard from '../../components/admin/PayoutSummaryCard';
+import CommissionOverview from '../../components/admin/CommissionOverview';
 
 interface DashboardStat {
   title: string;
@@ -27,13 +29,14 @@ const AdminDashboardPage: React.FC = () => {
   const [stats, setStats] = useState<DashboardStat[]>([]);
   const [recentActivity, setRecentActivity] = useState<RecentActivity[]>([]);
   const [isLoading, setIsLoading] = useState<boolean>(true);
+  const [refreshInterval, setRefreshInterval] = useState<NodeJS.Timeout | null>(null);
 
   useEffect(() => {
     const fetchDashboardData = async () => {
       try {
         setIsLoading(true);
         
-        // Fetch real data from API
+        // Fetch real data from API with enhanced functionality
         const statsData = await adminAPI.getDashboardStats();
         
         // Transform API data to match component interface
@@ -116,7 +119,22 @@ const AdminDashboardPage: React.FC = () => {
       }
     };
     
+    // Initial fetch
     fetchDashboardData();
+    
+    // Set up real-time refresh every 2 minutes for dashboard data
+    const interval = setInterval(() => {
+      if (!isLoading) {
+        fetchDashboardData();
+      }
+    }, 2 * 60 * 1000);
+    
+    setRefreshInterval(interval);
+
+    // Cleanup interval on component unmount
+    return () => {
+      if (refreshInterval) clearInterval(refreshInterval);
+    };
   }, []);
 
   const formatTimestamp = (timestamp: string) => {
@@ -279,7 +297,7 @@ const AdminDashboardPage: React.FC = () => {
           <div className="w-1 h-8 bg-gradient-to-b from-blue-500 to-indigo-600 rounded-full mr-3"></div>
           Quick Actions
         </h2>
-        <div className="grid grid-cols-2 md:grid-cols-5 gap-4">
+        <div className="grid grid-cols-2 md:grid-cols-7 gap-4">
           <Link to="/admin/users" className="group flex flex-col items-center p-6 bg-gradient-to-br from-blue-50 to-indigo-50 rounded-xl hover:shadow-lg hover:shadow-blue-500/20 transition-all duration-300 transform hover:scale-105 border border-blue-100">
             <div className="p-3 bg-gradient-to-r from-blue-500 to-indigo-600 rounded-xl text-white mb-3 group-hover:scale-110 transition-transform duration-300">
               <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
@@ -320,7 +338,29 @@ const AdminDashboardPage: React.FC = () => {
             </div>
             <span className="text-sm font-semibold text-gray-700 group-hover:text-indigo-700 transition-colors duration-300 text-center">Manage Orders</span>
           </Link>
+          <Link to="/admin/payouts" className="group flex flex-col items-center p-6 bg-gradient-to-br from-emerald-50 to-green-50 rounded-xl hover:shadow-lg hover:shadow-emerald-500/20 transition-all duration-300 transform hover:scale-105 border border-emerald-100">
+            <div className="p-3 bg-gradient-to-r from-emerald-500 to-green-600 rounded-xl text-white mb-3 group-hover:scale-110 transition-transform duration-300">
+              <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+              </svg>
+            </div>
+            <span className="text-sm font-semibold text-gray-700 group-hover:text-emerald-700 transition-colors duration-300 text-center">Manage Payouts</span>
+          </Link>
+          <Link to="/admin/commissions" className="group flex flex-col items-center p-6 bg-gradient-to-br from-amber-50 to-yellow-50 rounded-xl hover:shadow-lg hover:shadow-amber-500/20 transition-all duration-300 transform hover:scale-105 border border-amber-100">
+            <div className="p-3 bg-gradient-to-r from-amber-500 to-yellow-600 rounded-xl text-white mb-3 group-hover:scale-110 transition-transform duration-300">
+              <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" />
+              </svg>
+            </div>
+            <span className="text-sm font-semibold text-gray-700 group-hover:text-amber-700 transition-colors duration-300 text-center">Manage Commissions</span>
+          </Link>
         </div>
+      </div>
+
+      {/* Financial Overview Section */}
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 mb-8">
+        <PayoutSummaryCard className="col-span-1" />
+        <CommissionOverview className="col-span-1" />
       </div>
 
       {/* Recent Activity */}

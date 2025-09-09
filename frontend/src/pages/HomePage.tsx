@@ -16,6 +16,7 @@ import ReviewCarouselSwiper from '@/components/client/ReviewCarouselKeen';
 import FeaturedBlogsSection from '@/components/sections/FeaturedBlogsSection';
 import { Event } from '../types/event';
 import { Review } from '../types/review';
+import { getPlaceholderUrl, handleImageError } from '../utils/placeholderImage';
 
 // Mock data for when backend is unavailable
 const mockEvents = [
@@ -23,7 +24,7 @@ const mockEvents = [
     id: '1',
     title: 'Kids Fun Day',
     description: 'A day full of fun activities for kids of all ages.',
-    image: 'https://via.placeholder.com/400x300?text=Kids+Fun+Day',
+    image: getPlaceholderUrl('eventCard', 'Kids Fun Day'),
     price: 25,
     date: '2023-12-15',
     location: 'Central Park',
@@ -33,7 +34,7 @@ const mockEvents = [
     id: '2',
     title: 'Science Workshop',
     description: 'Interactive science experiments for curious minds.',
-    image: 'https://via.placeholder.com/400x300?text=Science+Workshop',
+    image: getPlaceholderUrl('eventCard', 'Science Workshop'),
     price: 30,
     date: '2023-12-20',
     location: 'Science Museum',
@@ -43,7 +44,7 @@ const mockEvents = [
     id: '3',
     title: 'Art & Craft Session',
     description: 'Creative art and craft activities for children.',
-    image: 'https://via.placeholder.com/400x300?text=Art+Craft',
+    image: getPlaceholderUrl('eventCard', 'Art & Craft'),
     price: 20,
     date: '2023-12-18',
     location: 'Community Center',
@@ -91,7 +92,7 @@ const LazyImage: React.FC<{
   alt: string;
   className?: string;
   fallbackSrc?: string;
-}> = ({ src, alt, className = '', fallbackSrc = 'https://via.placeholder.com/400x300?text=Loading...' }) => {
+}> = ({ src, alt, className = '', fallbackSrc = getPlaceholderUrl('eventCard', 'Loading...') }) => {
   const [imageSrc, setImageSrc] = useState(fallbackSrc);
   const [isLoading, setIsLoading] = useState(true);
   const [hasError, setHasError] = useState(false);
@@ -303,10 +304,10 @@ const Banner = ({ categories }: { categories: any[] }) => {
       <SlideIn direction="up" delay={0.6}>
         <div className="absolute bottom-0 left-0 w-full">
           <LazyImage 
-            src="./assets/characters.png" 
+            src="/assets/characters.svg" 
             alt="Kids Characters" 
             className="w-full"
-            fallbackSrc="data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iMTAwJSIgaGVpZ2h0PSIxMDAiIHZpZXdCb3g9IjAgMCAxMDAwIDEwMCIgZmlsbD0ibm9uZSIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj4KPHJlY3Qgd2lkdGg9IjEwMDAiIGhlaWdodD0iMTAwIiBmaWxsPSJ0cmFuc3BhcmVudCIvPgo8L3N2Zz4="
+            fallbackSrc={getPlaceholderUrl('galleryItem', 'Characters')}
           />
         </div>
       </SlideIn>
@@ -377,7 +378,7 @@ const FeaturedEventsCarousel: React.FC<{ featuredEvents: FeaturedEvent[] }> = ({
                   src={event.image}
                   alt={event.title}
                   className="w-full h-64 transition-transform duration-500 group-hover:scale-105"
-                  fallbackSrc="https://via.placeholder.com/400x300?text=Event+Image"
+                  fallbackSrc={getPlaceholderUrl('eventCard', 'Event Image')}
                 />
                 <ScaleIn delay={0.1 * index}>
                   <div className="absolute top-4 left-4 bg-white/90 backdrop-blur-sm rounded-full px-3 py-1 text-sm font-semibold shadow-sm" style={{ color: 'var(--primary-color)' }}>
@@ -599,12 +600,12 @@ const HomePage: React.FC = () => {
           ? featured.slice(0, 6).map((event: Event) => ({
               ...event,
               buttonLabel: 'View Details',
-              image: event.images?.[0] || 'https://via.placeholder.com/400x300?text=Event+Image' // Use first image or fallback
+              image: event.images?.[0] || getPlaceholderUrl('eventCard', 'Event Image') // Use first image or fallback
             }))
           : events.slice(0, 3).map((event: Event) => ({
               ...event,
               buttonLabel: 'View Details',
-              image: event.images?.[0] || 'https://via.placeholder.com/400x300?text=Event+Image'
+              image: event.images?.[0] || getPlaceholderUrl('eventCard', 'Event Image')
             }))
       );
       setCategories(Array.isArray(categories) ? categories.map(cat => ({ id: cat, name: cat, icon: getCategoryIcon(cat) })) : []);

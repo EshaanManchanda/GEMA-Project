@@ -15,6 +15,11 @@ import adminVenueRoutes from './admin.venue.routes';
 import vendorRoutes from './vendor.routes';
 import blogRoutes from './blog.routes';
 import adminBlogRoutes from './admin.blog.routes';
+// New routes
+import categoryRoutes from './category.routes';
+import couponRoutes from './coupon.routes';
+import notificationRoutes from './notification.routes';
+import affiliateRoutes from './affiliate.routes';
 import { Router } from 'express';
 
 const router = Router();
@@ -74,5 +79,11 @@ router.use('/blogs', blogRoutes);
 
 // Admin Blog Management routes
 router.use('/admin/blogs', adminBlogRoutes);
+
+// New feature routes
+router.use('/categories', categoryRoutes);
+router.use('/coupons', couponRoutes);
+router.use('/notifications', notificationRoutes);
+router.use('/affiliates', affiliateRoutes);
 
 export default router;

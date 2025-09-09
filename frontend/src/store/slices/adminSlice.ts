@@ -161,7 +161,7 @@ export interface SystemSettings {
 
 export interface AdminNotification {
   id: string;
-  type: 'user' | 'vendor' | 'event' | 'booking' | 'payment' | 'system';
+  type: 'user' | 'vendor' | 'event' | 'booking' | 'payment' | 'system' | 'payout' | 'commission';
   priority: 'low' | 'medium' | 'high' | 'critical';
   title: string;
   message: string;
@@ -170,6 +170,178 @@ export interface AdminNotification {
   actionUrl?: string;
   relatedId?: string;
   createdAt: string;
+}
+
+// Commission Types
+export interface CommissionConfig {
+  id: string;
+  name: string;
+  description?: string;
+  version: string;
+  status: 'active' | 'inactive' | 'archived';
+  isDefault: boolean;
+  platformCommission: {
+    defaultPercentage: number;
+    minAmount: number;
+    maxAmount?: number;
+    currency: string;
+  };
+  rules: CommissionRule[];
+  multiLevelEnabled?: boolean;
+  maxLevels?: number;
+  levelDistribution?: Array<{
+    level: number;
+    percentage: number;
+  }>;
+  createdBy: string;
+  updatedBy?: string;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface CommissionRule {
+  id: string;
+  name: string;
+  type: 'percentage' | 'fixed' | 'tiered';
+  recipient: 'vendor' | 'affiliate' | 'referrer' | 'platform';
+  percentage?: number;
+  fixedAmount?: number;
+  tiers?: Array<{
+    minAmount: number;
+    maxAmount?: number;
+    percentage: number;
+  }>;
+  conditions?: {
+    categories?: string[];
+    minOrderAmount?: number;
+    maxOrderAmount?: number;
+    vendorTiers?: string[];
+  };
+  status: 'active' | 'inactive';
+  priority: number;
+}
+
+export interface CommissionTransaction {
+  id: string;
+  transactionId: string;
+  orderId: string;
+  orderNumber: string;
+  vendorId: string;
+  vendorName: string;
+  customerId: string;
+  customerName: string;
+  commissionConfigId: string;
+  originalAmount: number;
+  totalCommissionAmount: number;
+  platformCommission: number;
+  vendorCommission: number;
+  commissions: Array<{
+    recipientId: string;
+    recipient: string;
+    recipientType: 'vendor' | 'affiliate' | 'referrer' | 'platform';
+    grossAmount: number;
+    deductions: number;
+    netAmount: number;
+    percentage: number;
+    rule: string;
+  }>;
+  status: 'calculated' | 'approved' | 'paid' | 'cancelled';
+  calculatedAt: string;
+  approvedAt?: string;
+  approvedBy?: string;
+  paidAt?: string;
+  createdAt: string;
+  updatedAt: string;
+}
+
+// Payout Types
+export interface VendorEarning {
+  id: string;
+  vendorId: string;
+  vendorName: string;
+  vendorEmail: string;
+  totalEarnings: number;
+  availableBalance: number;
+  pendingBalance: number;
+  paidBalance: number;
+  currency: string;
+  commissionRate: number;
+  totalOrders: number;
+  totalCommissions: number;
+  lastPayoutDate?: string;
+  lastPayoutAmount?: number;
+  paymentMethodId?: string;
+  status: 'active' | 'suspended' | 'inactive';
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface PayoutRequest {
+  id: string;
+  payoutId: string;
+  vendorId: string;
+  vendorName: string;
+  vendorEmail: string;
+  requestedAmount: number;
+  availableAmount: number;
+  finalAmount: number;
+  currency: string;
+  paymentMethodId: string;
+  paymentMethod: {
+    type: 'bank_transfer' | 'paypal' | 'stripe' | 'wise';
+    details: Record<string, any>;
+  };
+  status: 'pending' | 'approved' | 'processing' | 'completed' | 'rejected' | 'failed';
+  priority: 'low' | 'normal' | 'high';
+  fees: {
+    processingFee: number;
+    platformFee: number;
+    totalFees: number;
+  };
+  notes?: string;
+  rejectionReason?: string;
+  processedBy?: string;
+  requestedAt: string;
+  approvedAt?: string;
+  processedAt?: string;
+  completedAt?: string;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface PayoutStats {
+  totalPayouts: number;
+  totalAmount: number;
+  pendingPayouts: number;
+  pendingAmount: number;
+  completedPayouts: number;
+  completedAmount: number;
+  rejectedPayouts: number;
+  averagePayoutAmount: number;
+  currency: string;
+  periodComparison: {
+    payoutGrowth: number;
+    amountGrowth: number;
+  };
+}
+
+export interface CommissionStats {
+  totalCommissions: number;
+  totalAmount: number;
+  pendingCommissions: number;
+  pendingAmount: number;
+  approvedCommissions: number;
+  approvedAmount: number;
+  paidCommissions: number;
+  paidAmount: number;
+  averageCommissionRate: number;
+  topVendors: Array<{
+    vendorId: string;
+    vendorName: string;
+    totalCommissions: number;
+    totalAmount: number;
+  }>;
+  currency: string;
 }
 
 interface AdminState {
@@ -207,6 +379,22 @@ interface AdminState {
   categories: Category[];
   isCategoriesLoading: boolean;
   categoriesError: string | null;
+  
+  // Commission management
+  commissionConfigs: CommissionConfig[];
+  commissionTransactions: CommissionTransaction[];
+  commissionStats: CommissionStats | null;
+  pendingCommissions: CommissionTransaction[];
+  isCommissionLoading: boolean;
+  commissionError: string | null;
+  
+  // Payout management
+  vendorEarnings: VendorEarning[];
+  payoutRequests: PayoutRequest[];
+  payoutStats: PayoutStats | null;
+  pendingPayouts: PayoutRequest[];
+  isPayoutLoading: boolean;
+  payoutError: string | null;
   
   // System settings
   settings: SystemSettings | null;
@@ -290,6 +478,20 @@ const initialState: AdminState = {
   isCategoriesLoading: false,
   categoriesError: null,
   
+  commissionConfigs: [],
+  commissionTransactions: [],
+  commissionStats: null,
+  pendingCommissions: [],
+  isCommissionLoading: false,
+  commissionError: null,
+  
+  vendorEarnings: [],
+  payoutRequests: [],
+  payoutStats: null,
+  pendingPayouts: [],
+  isPayoutLoading: false,
+  payoutError: null,
+  
   settings: null,
   isSettingsLoading: false,
   settingsError: null,
@@ -317,6 +519,247 @@ const initialState: AdminState = {
 };
 
 // Async thunks
+// =============================================
+// COMMISSION ASYNC THUNKS
+// =============================================
+
+export const fetchCommissionConfigs = createAsyncThunk(
+  'admin/fetchCommissionConfigs',
+  async (params: {
+    page?: number;
+    limit?: number;
+    status?: string;
+    search?: string;
+  } = {}, { rejectWithValue }) => {
+    try {
+      const response = await adminAPI.getCommissionConfigs(params);
+      return response;
+    } catch (error: any) {
+      const message = error.response?.data?.message || 'Failed to fetch commission configs';
+      return rejectWithValue(message);
+    }
+  }
+);
+
+export const createCommissionConfig = createAsyncThunk(
+  'admin/createCommissionConfig',
+  async (configData: Partial<CommissionConfig>, { rejectWithValue }) => {
+    try {
+      const response = await adminAPI.createCommissionConfig(configData);
+      toast.success('Commission configuration created successfully!');
+      return response;
+    } catch (error: any) {
+      const message = error.response?.data?.message || 'Failed to create commission config';
+      toast.error(message);
+      return rejectWithValue(message);
+    }
+  }
+);
+
+export const updateCommissionConfig = createAsyncThunk(
+  'admin/updateCommissionConfig',
+  async (params: {
+    id: string;
+    configData: Partial<CommissionConfig>;
+  }, { rejectWithValue }) => {
+    try {
+      const response = await adminAPI.updateCommissionConfig(params.id, params.configData);
+      toast.success('Commission configuration updated successfully!');
+      return response;
+    } catch (error: any) {
+      const message = error.response?.data?.message || 'Failed to update commission config';
+      toast.error(message);
+      return rejectWithValue(message);
+    }
+  }
+);
+
+export const deleteCommissionConfig = createAsyncThunk(
+  'admin/deleteCommissionConfig',
+  async (id: string, { rejectWithValue }) => {
+    try {
+      await adminAPI.deleteCommissionConfig(id);
+      toast.success('Commission configuration deleted successfully!');
+      return id;
+    } catch (error: any) {
+      const message = error.response?.data?.message || 'Failed to delete commission config';
+      toast.error(message);
+      return rejectWithValue(message);
+    }
+  }
+);
+
+export const fetchCommissionTransactions = createAsyncThunk(
+  'admin/fetchCommissionTransactions',
+  async (params: {
+    page?: number;
+    limit?: number;
+    status?: string;
+    vendorId?: string;
+    startDate?: string;
+    endDate?: string;
+  } = {}, { rejectWithValue }) => {
+    try {
+      const response = await adminAPI.getCommissionTransactions(params);
+      return response;
+    } catch (error: any) {
+      const message = error.response?.data?.message || 'Failed to fetch commission transactions';
+      return rejectWithValue(message);
+    }
+  }
+);
+
+export const approveCommissions = createAsyncThunk(
+  'admin/approveCommissions',
+  async (transactionIds: string[], { rejectWithValue }) => {
+    try {
+      const response = await adminAPI.approveCommissionTransactions(transactionIds);
+      toast.success(`${transactionIds.length} commission(s) approved successfully!`);
+      return response;
+    } catch (error: any) {
+      const message = error.response?.data?.message || 'Failed to approve commissions';
+      toast.error(message);
+      return rejectWithValue(message);
+    }
+  }
+);
+
+export const fetchCommissionStats = createAsyncThunk(
+  'admin/fetchCommissionStats',
+  async (params?: any, { rejectWithValue }) => {
+    try {
+      const response = await adminAPI.getCommissionStats();
+      return response;
+    } catch (error: any) {
+      const message = error.response?.data?.message || 'Failed to fetch commission stats';
+      return rejectWithValue(message);
+    }
+  }
+);
+
+// =============================================
+// PAYOUT ASYNC THUNKS
+// =============================================
+
+export const fetchVendorEarnings = createAsyncThunk(
+  'admin/fetchVendorEarnings',
+  async (params: {
+    page?: number;
+    limit?: number;
+    status?: string;
+    search?: string;
+  } = {}, { rejectWithValue }) => {
+    try {
+      const response = await adminAPI.getVendorEarnings(params);
+      return response;
+    } catch (error: any) {
+      const message = error.response?.data?.message || 'Failed to fetch vendor earnings';
+      return rejectWithValue(message);
+    }
+  }
+);
+
+export const fetchPayoutRequests = createAsyncThunk(
+  'admin/fetchPayoutRequests',
+  async (params: {
+    page?: number;
+    limit?: number;
+    status?: string;
+    vendorId?: string;
+    priority?: string;
+  } = {}, { rejectWithValue }) => {
+    try {
+      const response = await adminAPI.getPayoutRequests(params);
+      return response;
+    } catch (error: any) {
+      const message = error.response?.data?.message || 'Failed to fetch payout requests';
+      return rejectWithValue(message);
+    }
+  }
+);
+
+export const approvePayoutRequest = createAsyncThunk(
+  'admin/approvePayoutRequest',
+  async (params: {
+    id: string;
+    approvalData?: any;
+  }, { rejectWithValue }) => {
+    try {
+      const response = await adminAPI.approvePayoutRequest(params.id, params.approvalData);
+      toast.success('Payout request approved successfully!');
+      return response;
+    } catch (error: any) {
+      const message = error.response?.data?.message || 'Failed to approve payout request';
+      toast.error(message);
+      return rejectWithValue(message);
+    }
+  }
+);
+
+export const rejectPayoutRequest = createAsyncThunk(
+  'admin/rejectPayoutRequest',
+  async (params: {
+    id: string;
+    reason: string;
+  }, { rejectWithValue }) => {
+    try {
+      const response = await adminAPI.rejectPayoutRequest(params.id, params.reason);
+      toast.success('Payout request rejected');
+      return response;
+    } catch (error: any) {
+      const message = error.response?.data?.message || 'Failed to reject payout request';
+      toast.error(message);
+      return rejectWithValue(message);
+    }
+  }
+);
+
+export const processPayoutRequest = createAsyncThunk(
+  'admin/processPayoutRequest',
+  async (params: {
+    id: string;
+    paymentData: any;
+  }, { rejectWithValue }) => {
+    try {
+      const response = await adminAPI.processPayoutRequest(params.id, params.paymentData);
+      toast.success('Payout request processed successfully!');
+      return response;
+    } catch (error: any) {
+      const message = error.response?.data?.message || 'Failed to process payout request';
+      toast.error(message);
+      return rejectWithValue(message);
+    }
+  }
+);
+
+export const bulkApprovePayouts = createAsyncThunk(
+  'admin/bulkApprovePayouts',
+  async (payoutIds: string[], { rejectWithValue }) => {
+    try {
+      const response = await adminAPI.bulkApprovePayouts(payoutIds);
+      toast.success(`${payoutIds.length} payout(s) approved successfully!`);
+      return response;
+    } catch (error: any) {
+      const message = error.response?.data?.message || 'Failed to approve payouts';
+      toast.error(message);
+      return rejectWithValue(message);
+    }
+  }
+);
+
+export const fetchPayoutStats = createAsyncThunk(
+  'admin/fetchPayoutStats',
+  async (params?: any, { rejectWithValue }) => {
+    try {
+      const response = await adminAPI.getPayoutStats(params);
+      return response;
+    } catch (error: any) {
+      const message = error.response?.data?.message || 'Failed to fetch payout stats';
+      return rejectWithValue(message);
+    }
+  }
+);
+
 export const fetchAdminStats = createAsyncThunk(
   'admin/fetchAdminStats',
   async (timeRange: string = '30d', { rejectWithValue }) => {
@@ -716,6 +1159,8 @@ const adminSlice = createSlice({
       state.bookingsError = null;
       state.categoriesError = null;
       state.settingsError = null;
+      state.commissionError = null;
+      state.payoutError = null;
     },
   },
   extraReducers: (builder) => {
@@ -887,6 +1332,160 @@ const adminSlice = createSlice({
         state.unreadNotificationsCount = action.payload.unreadCount;
       })
       
+      // =============================================
+      // COMMISSION EXTRA REDUCERS
+      // =============================================
+      
+      // Fetch Commission Configs
+      .addCase(fetchCommissionConfigs.pending, (state) => {
+        state.isCommissionLoading = true;
+        state.commissionError = null;
+      })
+      .addCase(fetchCommissionConfigs.fulfilled, (state, action) => {
+        state.isCommissionLoading = false;
+        state.commissionConfigs = action.payload.commissions || [];
+        state.commissionError = null;
+      })
+      .addCase(fetchCommissionConfigs.rejected, (state, action) => {
+        state.isCommissionLoading = false;
+        state.commissionError = action.payload as string;
+      })
+      
+      // Create Commission Config
+      .addCase(createCommissionConfig.fulfilled, (state, action: PayloadAction<CommissionConfig>) => {
+        state.commissionConfigs.push(action.payload);
+      })
+      
+      // Update Commission Config
+      .addCase(updateCommissionConfig.fulfilled, (state, action: PayloadAction<CommissionConfig>) => {
+        const index = state.commissionConfigs.findIndex(config => config.id === action.payload.id);
+        if (index !== -1) {
+          state.commissionConfigs[index] = action.payload;
+        }
+      })
+      
+      // Delete Commission Config
+      .addCase(deleteCommissionConfig.fulfilled, (state, action: PayloadAction<string>) => {
+        state.commissionConfigs = state.commissionConfigs.filter(config => config.id !== action.payload);
+      })
+      
+      // Fetch Commission Transactions
+      .addCase(fetchCommissionTransactions.pending, (state) => {
+        state.isCommissionLoading = true;
+        state.commissionError = null;
+      })
+      .addCase(fetchCommissionTransactions.fulfilled, (state, action) => {
+        state.isCommissionLoading = false;
+        state.commissionTransactions = action.payload.transactions || [];
+        state.pendingCommissions = action.payload.transactions?.filter(
+          (transaction: CommissionTransaction) => transaction.status === 'calculated'
+        ) || [];
+        state.commissionError = null;
+      })
+      .addCase(fetchCommissionTransactions.rejected, (state, action) => {
+        state.isCommissionLoading = false;
+        state.commissionError = action.payload as string;
+      })
+      
+      // Approve Commissions
+      .addCase(approveCommissions.fulfilled, (state, action) => {
+        const approvedIds = action.payload.approvedIds || [];
+        state.commissionTransactions = state.commissionTransactions.map(transaction =>
+          approvedIds.includes(transaction.id)
+            ? { ...transaction, status: 'approved' as const, approvedAt: new Date().toISOString() }
+            : transaction
+        );
+        state.pendingCommissions = state.pendingCommissions.filter(
+          commission => !approvedIds.includes(commission.id)
+        );
+      })
+      
+      // Fetch Commission Stats
+      .addCase(fetchCommissionStats.fulfilled, (state, action: PayloadAction<CommissionStats>) => {
+        state.commissionStats = action.payload;
+      })
+      
+      // =============================================
+      // PAYOUT EXTRA REDUCERS
+      // =============================================
+      
+      // Fetch Vendor Earnings
+      .addCase(fetchVendorEarnings.pending, (state) => {
+        state.isPayoutLoading = true;
+        state.payoutError = null;
+      })
+      .addCase(fetchVendorEarnings.fulfilled, (state, action) => {
+        state.isPayoutLoading = false;
+        state.vendorEarnings = action.payload.earnings || [];
+        state.payoutError = null;
+      })
+      .addCase(fetchVendorEarnings.rejected, (state, action) => {
+        state.isPayoutLoading = false;
+        state.payoutError = action.payload as string;
+      })
+      
+      // Fetch Payout Requests
+      .addCase(fetchPayoutRequests.pending, (state) => {
+        state.isPayoutLoading = true;
+        state.payoutError = null;
+      })
+      .addCase(fetchPayoutRequests.fulfilled, (state, action) => {
+        state.isPayoutLoading = false;
+        state.payoutRequests = action.payload.payouts || [];
+        state.pendingPayouts = action.payload.payouts?.filter(
+          (payout: PayoutRequest) => payout.status === 'pending'
+        ) || [];
+        state.payoutError = null;
+      })
+      .addCase(fetchPayoutRequests.rejected, (state, action) => {
+        state.isPayoutLoading = false;
+        state.payoutError = action.payload as string;
+      })
+      
+      // Approve Payout Request
+      .addCase(approvePayoutRequest.fulfilled, (state, action: PayloadAction<PayoutRequest>) => {
+        const index = state.payoutRequests.findIndex(payout => payout.id === action.payload.id);
+        if (index !== -1) {
+          state.payoutRequests[index] = action.payload;
+        }
+        state.pendingPayouts = state.pendingPayouts.filter(payout => payout.id !== action.payload.id);
+      })
+      
+      // Reject Payout Request
+      .addCase(rejectPayoutRequest.fulfilled, (state, action: PayloadAction<PayoutRequest>) => {
+        const index = state.payoutRequests.findIndex(payout => payout.id === action.payload.id);
+        if (index !== -1) {
+          state.payoutRequests[index] = action.payload;
+        }
+        state.pendingPayouts = state.pendingPayouts.filter(payout => payout.id !== action.payload.id);
+      })
+      
+      // Process Payout Request
+      .addCase(processPayoutRequest.fulfilled, (state, action: PayloadAction<PayoutRequest>) => {
+        const index = state.payoutRequests.findIndex(payout => payout.id === action.payload.id);
+        if (index !== -1) {
+          state.payoutRequests[index] = action.payload;
+        }
+      })
+      
+      // Bulk Approve Payouts
+      .addCase(bulkApprovePayouts.fulfilled, (state, action) => {
+        const approvedIds = action.payload.approvedIds || [];
+        state.payoutRequests = state.payoutRequests.map(payout =>
+          approvedIds.includes(payout.id)
+            ? { ...payout, status: 'approved' as const, approvedAt: new Date().toISOString() }
+            : payout
+        );
+        state.pendingPayouts = state.pendingPayouts.filter(
+          payout => !approvedIds.includes(payout.id)
+        );
+      })
+      
+      // Fetch Payout Stats
+      .addCase(fetchPayoutStats.fulfilled, (state, action: PayloadAction<PayoutStats>) => {
+        state.payoutStats = action.payload;
+      })
+      
       // Mark Notification as Read
       .addCase(markAdminNotificationAsRead.fulfilled, (state, action: PayloadAction<string>) => {
         adminSlice.caseReducers.markNotificationAsReadLocal(state, action);
@@ -987,4 +1586,60 @@ export const selectRecentAdminActivity = (state: { admin: AdminState }) => {
   return state.admin.notifications
     .filter(notification => new Date(notification.createdAt) >= oneDayAgo)
     .slice(0, 10);
+};
+
+// Commission Selectors
+export const selectCommissionConfigs = (state: { admin: AdminState }) => state.admin.commissionConfigs;
+export const selectCommissionTransactions = (state: { admin: AdminState }) => state.admin.commissionTransactions;
+export const selectCommissionStats = (state: { admin: AdminState }) => state.admin.commissionStats;
+export const selectPendingCommissions = (state: { admin: AdminState }) => state.admin.pendingCommissions;
+export const selectIsCommissionLoading = (state: { admin: AdminState }) => state.admin.isCommissionLoading;
+export const selectCommissionError = (state: { admin: AdminState }) => state.admin.commissionError;
+
+// Payout Selectors
+export const selectVendorEarnings = (state: { admin: AdminState }) => state.admin.vendorEarnings;
+export const selectPayoutRequests = (state: { admin: AdminState }) => state.admin.payoutRequests;
+export const selectPayoutStats = (state: { admin: AdminState }) => state.admin.payoutStats;
+export const selectPendingPayouts = (state: { admin: AdminState }) => state.admin.pendingPayouts;
+export const selectIsPayoutLoading = (state: { admin: AdminState }) => state.admin.isPayoutLoading;
+export const selectPayoutError = (state: { admin: AdminState }) => state.admin.payoutError;
+
+// Helper Selectors
+export const selectActiveCommissionConfig = (state: { admin: AdminState }) => {
+  return state.admin.commissionConfigs.find(config => config.isDefault && config.status === 'active');
+};
+
+export const selectTopEarningVendors = (state: { admin: AdminState }) => {
+  return [...state.admin.vendorEarnings]
+    .sort((a, b) => b.totalEarnings - a.totalEarnings)
+    .slice(0, 5);
+};
+
+export const selectPayoutSummary = (state: { admin: AdminState }) => {
+  const stats = state.admin.payoutStats;
+  const pending = state.admin.pendingPayouts;
+  
+  return {
+    totalRequests: stats?.totalPayouts || 0,
+    pendingRequests: pending.length,
+    totalAmount: stats?.totalAmount || 0,
+    pendingAmount: stats?.pendingAmount || 0,
+    completedAmount: stats?.completedAmount || 0,
+    currency: stats?.currency || 'AED',
+  };
+};
+
+export const selectCommissionSummary = (state: { admin: AdminState }) => {
+  const stats = state.admin.commissionStats;
+  const pending = state.admin.pendingCommissions;
+  
+  return {
+    totalCommissions: stats?.totalCommissions || 0,
+    pendingCommissions: pending.length,
+    totalAmount: stats?.totalAmount || 0,
+    pendingAmount: stats?.pendingAmount || 0,
+    approvedAmount: stats?.approvedAmount || 0,
+    averageRate: stats?.averageCommissionRate || 0,
+    currency: stats?.currency || 'AED',
+  };
 };

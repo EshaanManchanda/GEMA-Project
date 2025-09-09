@@ -1,0 +1,746 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Getting Started - Gema Documentation</title>
+    <meta name="description" content="Quick start guide for developers working with the Gema Event Management Platform">
+    <link rel="stylesheet" href="../css/main.css">
+    <link rel="stylesheet" href="../css/components.css">
+    <link rel="stylesheet" href="../css/responsive.css">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/prism/1.24.1/themes/prism-tomorrow.min.css">
+</head>
+<body>
+    <!-- Header -->
+    <header class="header">
+        <div class="header-container">
+            <div class="header-brand">
+                <h1><a href="../index.html"><i class="fas fa-rocket"></i> Gema Platform</a></h1>
+                <span class="header-subtitle">Getting Started</span>
+            </div>
+            <nav class="header-nav">
+                <div class="search-container">
+                    <input type="text" id="search-input" placeholder="Search documentation...">
+                    <i class="fas fa-search"></i>
+                </div>
+                <button class="theme-toggle" id="theme-toggle">
+                    <i class="fas fa-moon"></i>
+                </button>
+                <button class="mobile-menu-toggle" id="mobile-menu-toggle">
+                    <i class="fas fa-bars"></i>
+                </button>
+            </nav>
+        </div>
+    </header>
+
+    <!-- Main Container -->
+    <div class="main-container">
+        <!-- Sidebar Navigation -->
+        <aside class="sidebar" id="sidebar">
+            <nav class="sidebar-nav">
+                <div class="nav-section">
+                    <h3><i class="fas fa-home"></i> Overview</h3>
+                    <ul>
+                        <li><a href="../index.html#project-overview" class="nav-link">Project Overview</a></li>
+                        <li><a href="../index.html#business-model" class="nav-link">Business Model</a></li>
+                        <li><a href="../index.html#tech-stack" class="nav-link">Technology Stack</a></li>
+                        <li><a href="../index.html#architecture" class="nav-link">System Architecture</a></li>
+                    </ul>
+                </div>
+
+                <div class="nav-section">
+                    <h3><i class="fas fa-users-cog"></i> Core Systems</h3>
+                    <ul>
+                        <li><a href="rbac.html" class="nav-link">Role-Based Access Control</a></li>
+                        <li><a href="event-management.html" class="nav-link">Event Management</a></li>
+                        <li><a href="payment-system.html" class="nav-link">Payment System</a></li>
+                        <li><a href="content-management.html" class="nav-link">Content Management</a></li>
+                    </ul>
+                </div>
+
+                <div class="nav-section">
+                    <h3><i class="fas fa-shield-alt"></i> Security & Auth</h3>
+                    <ul>
+                        <li><a href="authentication.html" class="nav-link">Authentication System</a></li>
+                    </ul>
+                </div>
+
+                <div class="nav-section">
+                    <h3><i class="fas fa-code"></i> Developer Resources</h3>
+                    <ul>
+                        <li><a href="api-documentation.html" class="nav-link">API Documentation</a></li>
+                        <li><a href="database-schema.html" class="nav-link">Database Schema</a></li>
+                        <li><a href="getting-started.html" class="nav-link active">Getting Started</a></li>
+                    </ul>
+                </div>
+
+                <div class="nav-section">
+                    <h3><i class="fas fa-mobile-alt"></i> Mobile</h3>
+                    <ul>
+                        <li><a href="mobile-app.html" class="nav-link">Mobile Application</a></li>
+                    </ul>
+                </div>
+            </nav>
+        </aside>
+
+        <!-- Main Content -->
+        <main class="main-content">
+            <div class="content-wrapper">
+                <div class="breadcrumb">
+                    <a href="../index.html">Home</a>
+                    <span class="separator">/</span>
+                    <span class="current">Getting Started</span>
+                </div>
+
+                <!-- Page Header -->
+                <div class="page-header">
+                    <h1><i class="fas fa-play-circle"></i> Getting Started</h1>
+                    <p class="page-description">
+                        Complete setup guide for developers working with the Gema Event Management Platform. Get your development environment up and running in minutes.
+                    </p>
+                </div>
+
+                <!-- Quick Start -->
+                <section class="quick-start">
+                    <h2>Quick Start</h2>
+                    <div class="quick-start-grid">
+                        <div class="quick-start-card">
+                            <div class="card-icon"><i class="fas fa-download"></i></div>
+                            <h3>1. Clone Repository</h3>
+                            <div class="code-example">
+                                <pre><code class="language-bash">git clone https://github.com/your-org/gema-platform.git
+cd gema-platform</code></pre>
+                            </div>
+                        </div>
+
+                        <div class="quick-start-card">
+                            <div class="card-icon"><i class="fas fa-cog"></i></div>
+                            <h3>2. Setup Environment</h3>
+                            <div class="code-example">
+                                <pre><code class="language-bash">cp backend/.env.example backend/.env
+cp frontend/.env.example frontend/.env
+# Edit environment files with your config</code></pre>
+                            </div>
+                        </div>
+
+                        <div class="quick-start-card">
+                            <div class="card-icon"><i class="fas fa-database"></i></div>
+                            <h3>3. Start Services</h3>
+                            <div class="code-example">
+                                <pre><code class="language-bash">docker-compose up -d mongodb redis
+npm run dev:backend
+npm run dev:frontend</code></pre>
+                            </div>
+                        </div>
+
+                        <div class="quick-start-card">
+                            <div class="card-icon"><i class="fas fa-rocket"></i></div>
+                            <h3>4. Access Platform</h3>
+                            <p>Frontend: <code>http://localhost:3000</code></p>
+                            <p>Backend: <code>http://localhost:5000</code></p>
+                            <p>Admin Panel: <code>http://localhost:3000/admin</code></p>
+                        </div>
+                    </div>
+                </section>
+
+                <!-- Prerequisites -->
+                <section class="prerequisites">
+                    <h2>Prerequisites</h2>
+                    <div class="prereq-list">
+                        <div class="prereq-item">
+                            <div class="prereq-icon"><i class="fab fa-node-js"></i></div>
+                            <div class="prereq-content">
+                                <h3>Node.js</h3>
+                                <p>Version 18.0.0 or higher</p>
+                                <a href="https://nodejs.org/" target="_blank" class="external-link">
+                                    Download <i class="fas fa-external-link-alt"></i>
+                                </a>
+                            </div>
+                        </div>
+
+                        <div class="prereq-item">
+                            <div class="prereq-icon"><i class="fas fa-database"></i></div>
+                            <div class="prereq-content">
+                                <h3>MongoDB</h3>
+                                <p>Version 5.0 or higher</p>
+                                <a href="https://www.mongodb.com/try/download/community" target="_blank" class="external-link">
+                                    Download <i class="fas fa-external-link-alt"></i>
+                                </a>
+                            </div>
+                        </div>
+
+                        <div class="prereq-item">
+                            <div class="prereq-icon"><i class="fab fa-docker"></i></div>
+                            <div class="prereq-content">
+                                <h3>Docker</h3>
+                                <p>For containerized services (optional)</p>
+                                <a href="https://www.docker.com/get-started" target="_blank" class="external-link">
+                                    Download <i class="fas fa-external-link-alt"></i>
+                                </a>
+                            </div>
+                        </div>
+
+                        <div class="prereq-item">
+                            <div class="prereq-icon"><i class="fab fa-git-alt"></i></div>
+                            <div class="prereq-content">
+                                <h3>Git</h3>
+                                <p>Version control system</p>
+                                <a href="https://git-scm.com/" target="_blank" class="external-link">
+                                    Download <i class="fas fa-external-link-alt"></i>
+                                </a>
+                            </div>
+                        </div>
+                    </div>
+                </section>
+
+                <!-- Environment Setup -->
+                <section class="environment-setup">
+                    <h2>Environment Configuration</h2>
+                    
+                    <div class="setup-steps">
+                        <div class="setup-step">
+                            <h3><i class="fas fa-server"></i> Backend Environment</h3>
+                            <div class="step-content">
+                                <p>Create <code>backend/.env</code> file with the following configuration:</p>
+                                <div class="code-example">
+                                    <pre><code class="language-bash"># Server Configuration
+NODE_ENV=development
+PORT=5000
+SERVER_URL=http://localhost:5000
+
+# Database Configuration
+MONGODB_URI=mongodb://localhost:27017/gema
+REDIS_URL=redis://localhost:6379
+
+# JWT Configuration
+JWT_SECRET=your-super-secret-jwt-key-here
+JWT_REFRESH_SECRET=your-refresh-secret-here
+JWT_EXPIRES_IN=7d
+JWT_REFRESH_EXPIRES_IN=30d
+
+# Email Configuration
+SMTP_HOST=smtp.gmail.com
+SMTP_PORT=587
+SMTP_USER=your-email@gmail.com
+SMTP_PASS=your-app-password
+
+# Cloudinary Configuration
+CLOUDINARY_CLOUD_NAME=your-cloud-name
+CLOUDINARY_API_KEY=your-api-key
+CLOUDINARY_API_SECRET=your-api-secret
+
+# Payment Gateway Configuration
+STRIPE_SECRET_KEY=sk_test_your_stripe_secret_key
+STRIPE_WEBHOOK_SECRET=whsec_your_webhook_secret
+PAYPAL_CLIENT_ID=your-paypal-client-id
+PAYPAL_CLIENT_SECRET=your-paypal-client-secret
+
+# Firebase Configuration
+FIREBASE_PROJECT_ID=your-firebase-project-id
+FIREBASE_PRIVATE_KEY=your-firebase-private-key
+FIREBASE_CLIENT_EMAIL=your-firebase-client-email
+
+# Security
+RATE_LIMIT_MAX=1000
+RATE_LIMIT_WINDOW_MS=3600000</code></pre>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="setup-step">
+                            <h3><i class="fas fa-desktop"></i> Frontend Environment</h3>
+                            <div class="step-content">
+                                <p>Create <code>frontend/.env</code> file with the following configuration:</p>
+                                <div class="code-example">
+                                    <pre><code class="language-bash"># API Configuration
+REACT_APP_API_URL=http://localhost:5000/api
+REACT_APP_SOCKET_URL=http://localhost:5000
+
+# Firebase Configuration
+REACT_APP_FIREBASE_API_KEY=your-firebase-api-key
+REACT_APP_FIREBASE_AUTH_DOMAIN=your-project.firebaseapp.com
+REACT_APP_FIREBASE_PROJECT_ID=your-firebase-project-id
+REACT_APP_FIREBASE_STORAGE_BUCKET=your-project.appspot.com
+REACT_APP_FIREBASE_MESSAGING_SENDER_ID=123456789
+REACT_APP_FIREBASE_APP_ID=1:123456789:web:abcdef
+
+# Payment Configuration
+REACT_APP_STRIPE_PUBLISHABLE_KEY=pk_test_your_stripe_publishable_key
+REACT_APP_PAYPAL_CLIENT_ID=your-paypal-client-id
+
+# Google Maps Configuration
+REACT_APP_GOOGLE_MAPS_API_KEY=your-google-maps-api-key
+
+# App Configuration
+REACT_APP_APP_NAME=Gema Platform
+REACT_APP_APP_VERSION=1.0.0
+REACT_APP_SUPPORT_EMAIL=support@gema.com</code></pre>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </section>
+
+                <!-- Installation Steps -->
+                <section class="installation">
+                    <h2>Detailed Installation</h2>
+                    
+                    <div class="install-tabs">
+                        <div class="tab-buttons">
+                            <button class="tab-button active" data-tab="local">Local Development</button>
+                            <button class="tab-button" data-tab="docker">Docker Setup</button>
+                        </div>
+                        
+                        <div class="tab-content active" id="local-tab">
+                            <div class="install-steps">
+                                <div class="install-step">
+                                    <div class="step-header">
+                                        <span class="step-number">1</span>
+                                        <h3>Clone and Setup Repository</h3>
+                                    </div>
+                                    <div class="step-content">
+                                        <div class="code-example">
+                                            <pre><code class="language-bash"># Clone the repository
+git clone https://github.com/your-org/gema-platform.git
+cd gema-platform
+
+# Install backend dependencies
+cd backend
+npm install
+
+# Install frontend dependencies
+cd ../frontend
+npm install
+
+# Return to root directory
+cd ..</code></pre>
+                                        </div>
+                                    </div>
+                                </div>
+
+                                <div class="install-step">
+                                    <div class="step-header">
+                                        <span class="step-number">2</span>
+                                        <h3>Setup Database</h3>
+                                    </div>
+                                    <div class="step-content">
+                                        <div class="code-example">
+                                            <pre><code class="language-bash"># Start MongoDB service
+sudo systemctl start mongod
+
+# Connect to MongoDB and create database
+mongosh
+use gema
+db.createUser({
+  user: "gemaUser",
+  pwd: "gemaPassword",
+  roles: ["readWrite"]
+})
+exit
+
+# Run database migrations and seed data
+cd backend
+npm run db:migrate
+npm run db:seed</code></pre>
+                                        </div>
+                                    </div>
+                                </div>
+
+                                <div class="install-step">
+                                    <div class="step-header">
+                                        <span class="step-number">3</span>
+                                        <h3>Start Development Servers</h3>
+                                    </div>
+                                    <div class="step-content">
+                                        <div class="code-example">
+                                            <pre><code class="language-bash"># Terminal 1: Start backend server
+cd backend
+npm run dev
+
+# Terminal 2: Start frontend server
+cd frontend
+npm start
+
+# Terminal 3: Start Redis (if needed)
+redis-server</code></pre>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <div class="tab-content" id="docker-tab">
+                            <div class="install-steps">
+                                <div class="install-step">
+                                    <div class="step-header">
+                                        <span class="step-number">1</span>
+                                        <h3>Docker Compose Setup</h3>
+                                    </div>
+                                    <div class="step-content">
+                                        <div class="code-example">
+                                            <pre><code class="language-bash"># Clone repository
+git clone https://github.com/your-org/gema-platform.git
+cd gema-platform
+
+# Build and start all services
+docker-compose up --build
+
+# Or run in background
+docker-compose up -d</code></pre>
+                                        </div>
+                                    </div>
+                                </div>
+
+                                <div class="install-step">
+                                    <div class="step-header">
+                                        <span class="step-number">2</span>
+                                        <h3>Initialize Database</h3>
+                                    </div>
+                                    <div class="step-content">
+                                        <div class="code-example">
+                                            <pre><code class="language-bash"># Run database migrations
+docker-compose exec backend npm run db:migrate
+
+# Seed initial data
+docker-compose exec backend npm run db:seed
+
+# Create admin user
+docker-compose exec backend npm run admin:create</code></pre>
+                                        </div>
+                                    </div>
+                                </div>
+
+                                <div class="install-step">
+                                    <div class="step-header">
+                                        <span class="step-number">3</span>
+                                        <h3>Verify Installation</h3>
+                                    </div>
+                                    <div class="step-content">
+                                        <div class="code-example">
+                                            <pre><code class="language-bash"># Check running containers
+docker-compose ps
+
+# View logs
+docker-compose logs -f backend
+docker-compose logs -f frontend
+
+# Access services
+# Frontend: http://localhost:3000
+# Backend: http://localhost:5000
+# MongoDB: mongodb://localhost:27017</code></pre>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </section>
+
+                <!-- Development Commands -->
+                <section class="dev-commands">
+                    <h2>Development Commands</h2>
+                    
+                    <div class="command-categories">
+                        <div class="command-category">
+                            <h3><i class="fas fa-server"></i> Backend Commands</h3>
+                            <div class="command-list">
+                                <div class="command-item">
+                                    <div class="command-name">npm run dev</div>
+                                    <div class="command-desc">Start development server with hot reload</div>
+                                </div>
+                                <div class="command-item">
+                                    <div class="command-name">npm run build</div>
+                                    <div class="command-desc">Build for production</div>
+                                </div>
+                                <div class="command-item">
+                                    <div class="command-name">npm run test</div>
+                                    <div class="command-desc">Run test suite</div>
+                                </div>
+                                <div class="command-item">
+                                    <div class="command-name">npm run lint</div>
+                                    <div class="command-desc">Run ESLint code analysis</div>
+                                </div>
+                                <div class="command-item">
+                                    <div class="command-name">npm run db:migrate</div>
+                                    <div class="command-desc">Run database migrations</div>
+                                </div>
+                                <div class="command-item">
+                                    <div class="command-name">npm run db:seed</div>
+                                    <div class="command-desc">Seed database with initial data</div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="command-category">
+                            <h3><i class="fas fa-desktop"></i> Frontend Commands</h3>
+                            <div class="command-list">
+                                <div class="command-item">
+                                    <div class="command-name">npm start</div>
+                                    <div class="command-desc">Start development server</div>
+                                </div>
+                                <div class="command-item">
+                                    <div class="command-name">npm run build</div>
+                                    <div class="command-desc">Build optimized production bundle</div>
+                                </div>
+                                <div class="command-item">
+                                    <div class="command-name">npm run test</div>
+                                    <div class="command-desc">Run React test suite</div>
+                                </div>
+                                <div class="command-item">
+                                    <div class="command-name">npm run lint</div>
+                                    <div class="command-desc">Run ESLint and Prettier</div>
+                                </div>
+                                <div class="command-item">
+                                    <div class="command-name">npm run analyze</div>
+                                    <div class="command-desc">Analyze bundle size</div>
+                                </div>
+                                <div class="command-item">
+                                    <div class="command-name">npm run storybook</div>
+                                    <div class="command-desc">Start Storybook component library</div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </section>
+
+                <!-- Testing -->
+                <section class="testing">
+                    <h2>Testing</h2>
+                    
+                    <div class="test-info">
+                        <div class="test-category">
+                            <h3><i class="fas fa-vial"></i> Backend Testing</h3>
+                            <p>The backend uses Jest and Supertest for API testing with MongoDB Memory Server for isolated test environments.</p>
+                            <div class="code-example">
+                                <pre><code class="language-bash"># Run all tests
+npm run test
+
+# Run tests in watch mode
+npm run test:watch
+
+# Run tests with coverage
+npm run test:coverage
+
+# Run specific test file
+npm run test -- auth.test.js</code></pre>
+                            </div>
+                        </div>
+
+                        <div class="test-category">
+                            <h3><i class="fas fa-desktop"></i> Frontend Testing</h3>
+                            <p>Frontend testing includes unit tests with Jest, component tests with React Testing Library, and E2E tests with Cypress.</p>
+                            <div class="code-example">
+                                <pre><code class="language-bash"># Run unit and component tests
+npm run test
+
+# Run E2E tests
+npm run cypress:open
+
+# Run E2E tests headless
+npm run cypress:run</code></pre>
+                            </div>
+                        </div>
+                    </div>
+                </section>
+
+                <!-- Troubleshooting -->
+                <section class="troubleshooting">
+                    <h2>Common Issues & Troubleshooting</h2>
+                    
+                    <div class="troubleshoot-list">
+                        <div class="troubleshoot-item">
+                            <h3><i class="fas fa-database"></i> MongoDB Connection Issues</h3>
+                            <div class="issue-content">
+                                <p><strong>Problem:</strong> Cannot connect to MongoDB</p>
+                                <p><strong>Solution:</strong></p>
+                                <div class="code-example">
+                                    <pre><code class="language-bash"># Check if MongoDB is running
+sudo systemctl status mongod
+
+# Start MongoDB service
+sudo systemctl start mongod
+
+# Check connection string in .env file
+# Ensure MONGODB_URI is correct</code></pre>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="troubleshoot-item">
+                            <h3><i class="fas fa-exclamation-triangle"></i> Port Already in Use</h3>
+                            <div class="issue-content">
+                                <p><strong>Problem:</strong> EADDRINUSE: address already in use :::5000</p>
+                                <p><strong>Solution:</strong></p>
+                                <div class="code-example">
+                                    <pre><code class="language-bash"># Find process using port 5000
+lsof -i :5000
+
+# Kill the process
+kill -9 &lt;PID&gt;
+
+# Or change port in backend/.env
+PORT=5001</code></pre>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="troubleshoot-item">
+                            <h3><i class="fas fa-key"></i> Environment Variables Missing</h3>
+                            <div class="issue-content">
+                                <p><strong>Problem:</strong> JWT_SECRET is not defined</p>
+                                <p><strong>Solution:</strong></p>
+                                <div class="code-example">
+                                    <pre><code class="language-bash"># Copy example environment files
+cp backend/.env.example backend/.env
+cp frontend/.env.example frontend/.env
+
+# Generate secure JWT secret
+node -e "console.log(require('crypto').randomBytes(64).toString('hex'))"</code></pre>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="troubleshoot-item">
+                            <h3><i class="fas fa-npm"></i> npm install Failures</h3>
+                            <div class="issue-content">
+                                <p><strong>Problem:</strong> Package installation errors</p>
+                                <p><strong>Solution:</strong></p>
+                                <div class="code-example">
+                                    <pre><code class="language-bash"># Clear npm cache
+npm cache clean --force
+
+# Delete node_modules and package-lock.json
+rm -rf node_modules package-lock.json
+
+# Reinstall packages
+npm install
+
+# If still failing, try with legacy peer deps
+npm install --legacy-peer-deps</code></pre>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </section>
+
+                <!-- Next Steps -->
+                <section class="next-steps">
+                    <h2>Next Steps</h2>
+                    <div class="next-steps-grid">
+                        <div class="next-step-card">
+                            <div class="step-icon"><i class="fas fa-code"></i></div>
+                            <h3>Explore API</h3>
+                            <p>Check out the comprehensive API documentation with interactive examples.</p>
+                            <a href="api-documentation.html" class="btn btn-primary">View API Docs</a>
+                        </div>
+
+                        <div class="next-step-card">
+                            <div class="step-icon"><i class="fas fa-database"></i></div>
+                            <h3>Study Schema</h3>
+                            <p>Understand the database structure and relationships between collections.</p>
+                            <a href="database-schema.html" class="btn btn-primary">View Schema</a>
+                        </div>
+
+                        <div class="next-step-card">
+                            <div class="step-icon"><i class="fas fa-users"></i></div>
+                            <h3>Role-Based Features</h3>
+                            <p>Learn about the role-based access control and user management system.</p>
+                            <a href="rbac.html" class="btn btn-primary">View RBAC</a>
+                        </div>
+
+                        <div class="next-step-card">
+                            <div class="step-icon"><i class="fas fa-mobile-alt"></i></div>
+                            <h3>Mobile Development</h3>
+                            <p>Get started with the React Native mobile application development.</p>
+                            <a href="mobile-app.html" class="btn btn-primary">Mobile Guide</a>
+                        </div>
+                    </div>
+                </section>
+
+                <!-- Support -->
+                <section class="support">
+                    <h2>Need Help?</h2>
+                    <div class="support-options">
+                        <div class="support-option">
+                            <div class="support-icon"><i class="fas fa-bug"></i></div>
+                            <h3>Found a Bug?</h3>
+                            <p>Report issues on our GitHub repository</p>
+                            <a href="https://github.com/your-org/gema-platform/issues" target="_blank" class="external-link">
+                                Report Issue <i class="fas fa-external-link-alt"></i>
+                            </a>
+                        </div>
+
+                        <div class="support-option">
+                            <div class="support-icon"><i class="fas fa-question-circle"></i></div>
+                            <h3>Have Questions?</h3>
+                            <p>Join our developer community on Discord</p>
+                            <a href="#" target="_blank" class="external-link">
+                                Join Discord <i class="fas fa-external-link-alt"></i>
+                            </a>
+                        </div>
+
+                        <div class="support-option">
+                            <div class="support-icon"><i class="fas fa-envelope"></i></div>
+                            <h3>Contact Support</h3>
+                            <p>Get direct help from our team</p>
+                            <a href="mailto:support@gema.com" class="external-link">
+                                Email Support <i class="fas fa-external-link-alt"></i>
+                            </a>
+                        </div>
+                    </div>
+                </section>
+
+                <!-- Navigation -->
+                <div class="page-navigation">
+                    <div class="nav-item prev">
+                        <a href="database-schema.html">
+                            <i class="fas fa-arrow-left"></i>
+                            <div>
+                                <span class="nav-label">Previous</span>
+                                <span class="nav-title">Database Schema</span>
+                            </div>
+                        </a>
+                    </div>
+                    <div class="nav-item next">
+                        <a href="../index.html">
+                            <div>
+                                <span class="nav-label">Next</span>
+                                <span class="nav-title">Back to Home</span>
+                            </div>
+                            <i class="fas fa-arrow-right"></i>
+                        </a>
+                    </div>
+                </div>
+            </div>
+        </main>
+    </div>
+
+    <!-- Scripts -->
+    <script src="../js/main.js"></script>
+    <script src="../js/search.js"></script>
+    <script src="../js/navigation.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.24.1/components/prism-core.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.24.1/plugins/autoloader/prism-autoloader.min.js"></script>
+    
+    <script>
+        // Tab functionality
+        document.querySelectorAll('.tab-button').forEach(button => {
+            button.addEventListener('click', () => {
+                const tabName = button.dataset.tab;
+                
+                // Update active button
+                document.querySelectorAll('.tab-button').forEach(btn => btn.classList.remove('active'));
+                button.classList.add('active');
+                
+                // Update active content
+                document.querySelectorAll('.tab-content').forEach(content => content.classList.remove('active'));
+                document.getElementById(tabName + '-tab').classList.add('active');
+            });
+        });
+    </script>
+</body>
+</html>

@@ -1,0 +1,1047 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Payment Management System - Gema Documentation</title>
+    <meta name="description" content="Comprehensive Payment Management System with multi-gateway processing, commission tracking, and financial analytics">
+    <link rel="stylesheet" href="../css/main.css">
+    <link rel="stylesheet" href="../css/components.css">
+    <link rel="stylesheet" href="../css/responsive.css">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+</head>
+<body>
+    <!-- Header -->
+    <header class="header">
+        <div class="header-container">
+            <div class="header-brand">
+                <h1><a href="../index.html"><i class="fas fa-rocket"></i> Gema Platform</a></h1>
+                <span class="header-subtitle">Payment Management System</span>
+            </div>
+            <nav class="header-nav">
+                <div class="search-container">
+                    <input type="text" id="search-input" placeholder="Search documentation...">
+                    <i class="fas fa-search"></i>
+                </div>
+                <button class="theme-toggle" id="theme-toggle">
+                    <i class="fas fa-moon"></i>
+                </button>
+                <button class="mobile-menu-toggle" id="mobile-menu-toggle">
+                    <i class="fas fa-bars"></i>
+                </button>
+            </nav>
+        </div>
+    </header>
+
+    <!-- Main Container -->
+    <div class="main-container">
+        <!-- Sidebar Navigation -->
+        <aside class="sidebar" id="sidebar">
+            <nav class="sidebar-nav">
+                <div class="nav-section">
+                    <h3><i class="fas fa-home"></i> Overview</h3>
+                    <ul>
+                        <li><a href="../index.html#project-overview" class="nav-link">Project Overview</a></li>
+                        <li><a href="../index.html#business-model" class="nav-link">Business Model</a></li>
+                        <li><a href="../index.html#tech-stack" class="nav-link">Technology Stack</a></li>
+                        <li><a href="../index.html#architecture" class="nav-link">System Architecture</a></li>
+                    </ul>
+                </div>
+
+                <div class="nav-section">
+                    <h3><i class="fas fa-users-cog"></i> Core Systems</h3>
+                    <ul>
+                        <li><a href="rbac.html" class="nav-link">Role-Based Access Control</a></li>
+                        <li><a href="event-management.html" class="nav-link">Event Management</a></li>
+                        <li><a href="payment-system.html" class="nav-link active">Payment System</a></li>
+                        <li><a href="content-management.html" class="nav-link">Content Management</a></li>
+                    </ul>
+                </div>
+
+                <div class="nav-section">
+                    <h3><i class="fas fa-shield-alt"></i> Security & Auth</h3>
+                    <ul>
+                        <li><a href="authentication.html" class="nav-link">Authentication System</a></li>
+                    </ul>
+                </div>
+
+                <div class="nav-section">
+                    <h3><i class="fas fa-mobile-alt"></i> Mobile</h3>
+                    <ul>
+                        <li><a href="mobile-app.html" class="nav-link">Mobile Application</a></li>
+                    </ul>
+                </div>
+            </nav>
+        </aside>
+
+        <!-- Main Content -->
+        <main class="main-content">
+            <div class="content-wrapper">
+                <div class="breadcrumb">
+                    <a href="../index.html">Home</a>
+                    <span class="separator">/</span>
+                    <span class="current">Payment Management System</span>
+                </div>
+
+                <!-- Page Header -->
+                <div class="page-header">
+                    <h1><i class="fas fa-credit-card"></i> Payment Management System</h1>
+                    <p class="page-description">
+                        Comprehensive payment processing system with multi-gateway support, commission tracking, automated payouts, and financial reporting capabilities.
+                    </p>
+                </div>
+
+                <!-- Table of Contents -->
+                <div class="table-of-contents">
+                    <h3>Table of Contents</h3>
+                    <ul>
+                        <li><a href="#overview">System Overview</a></li>
+                        <li><a href="#payment-gateways">Payment Gateways</a></li>
+                        <li><a href="#booking-payments">Booking Payments</a></li>
+                        <li><a href="#commission-system">Commission System</a></li>
+                        <li><a href="#payout-management">Payout Management</a></li>
+                        <li><a href="#financial-reporting">Financial Reporting</a></li>
+                        <li><a href="#security-compliance">Security & Compliance</a></li>
+                        <li><a href="#api-endpoints">API Endpoints</a></li>
+                        <li><a href="#implementation">Implementation Details</a></li>
+                    </ul>
+                </div>
+
+                <!-- Content Sections -->
+                <section id="overview" class="content-section">
+                    <h2><i class="fas fa-eye"></i> System Overview</h2>
+                    <p>
+                        The Payment Management System handles all financial transactions within the Gema platform, 
+                        from customer payments for event bookings to vendor commission calculations and automated payouts. 
+                        It integrates with multiple payment gateways and provides comprehensive financial tracking.
+                    </p>
+
+                    <div class="feature-grid">
+                        <div class="feature-card">
+                            <div class="feature-icon">
+                                <i class="fas fa-credit-card"></i>
+                            </div>
+                            <div class="feature-content">
+                                <h3>Multi-Gateway Processing</h3>
+                                <p>Integrated Stripe and PayPal support with automatic failover and routing.</p>
+                            </div>
+                        </div>
+
+                        <div class="feature-card">
+                            <div class="feature-icon">
+                                <i class="fas fa-percentage"></i>
+                            </div>
+                            <div class="feature-content">
+                                <h3>Commission Management</h3>
+                                <p>Automated commission calculation and tracking for platform revenue.</p>
+                            </div>
+                        </div>
+
+                        <div class="feature-card">
+                            <div class="feature-icon">
+                                <i class="fas fa-money-bill-wave"></i>
+                            </div>
+                            <div class="feature-content">
+                                <h3>Automated Payouts</h3>
+                                <p>Scheduled vendor payments with customizable payout frequencies.</p>
+                            </div>
+                        </div>
+
+                        <div class="feature-card">
+                            <div class="feature-icon">
+                                <i class="fas fa-chart-line"></i>
+                            </div>
+                            <div class="feature-content">
+                                <h3>Financial Analytics</h3>
+                                <p>Comprehensive reporting and analytics for financial performance tracking.</p>
+                            </div>
+                        </div>
+                    </div>
+                </section>
+
+                <section id="payment-gateways" class="content-section">
+                    <h2><i class="fas fa-plug"></i> Payment Gateways</h2>
+                    <p>
+                        Multi-gateway architecture provides redundancy, global coverage, and optimized payment routing 
+                        based on customer location, payment method preferences, and gateway performance.
+                    </p>
+
+                    <div class="gateway-comparison">
+                        <h3>Supported Payment Gateways</h3>
+                        <div class="gateway-grid">
+                            <div class="gateway-card stripe">
+                                <div class="gateway-header">
+                                    <i class="fab fa-stripe"></i>
+                                    <h4>Stripe</h4>
+                                </div>
+                                <div class="gateway-details">
+                                    <div class="gateway-features">
+                                        <h5>Features:</h5>
+                                        <ul>
+                                            <li>Credit/Debit Cards</li>
+                                            <li>Digital Wallets (Apple Pay, Google Pay)</li>
+                                            <li>Bank Transfers (ACH)</li>
+                                            <li>Buy Now, Pay Later (Klarna, Afterpay)</li>
+                                        </ul>
+                                    </div>
+                                    <div class="gateway-coverage">
+                                        <h5>Coverage:</h5>
+                                        <p>46 countries, 135+ currencies</p>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <div class="gateway-card paypal">
+                                <div class="gateway-header">
+                                    <i class="fab fa-paypal"></i>
+                                    <h4>PayPal</h4>
+                                </div>
+                                <div class="gateway-details">
+                                    <div class="gateway-features">
+                                        <h5>Features:</h5>
+                                        <ul>
+                                            <li>PayPal Balance</li>
+                                            <li>Credit/Debit Cards</li>
+                                            <li>Bank Account Links</li>
+                                            <li>PayPal Credit</li>
+                                        </ul>
+                                    </div>
+                                    <div class="gateway-coverage">
+                                        <h5>Coverage:</h5>
+                                        <p>200+ countries, 25+ currencies</p>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="gateway-routing">
+                        <h3>Smart Payment Routing</h3>
+                        <div class="routing-logic">
+                            <div class="routing-step">
+                                <div class="step-icon"><span>1</span></div>
+                                <div class="step-content">
+                                    <h4>Customer Analysis</h4>
+                                    <p>Location, payment history, and preferred methods</p>
+                                </div>
+                            </div>
+                            <div class="routing-arrow">→</div>
+                            <div class="routing-step">
+                                <div class="step-icon"><span>2</span></div>
+                                <div class="step-content">
+                                    <h4>Gateway Selection</h4>
+                                    <p>Optimal gateway based on success rates and fees</p>
+                                </div>
+                            </div>
+                            <div class="routing-arrow">→</div>
+                            <div class="routing-step">
+                                <div class="step-icon"><span>3</span></div>
+                                <div class="step-content">
+                                    <h4>Fallback Handling</h4>
+                                    <p>Automatic retry with alternative gateways</p>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="code-example">
+                        <h4>Payment Gateway Integration</h4>
+                        <pre><code class="language-typescript">
+interface PaymentGateway {
+  name: string;
+  processPayment(request: PaymentRequest): Promise&lt;PaymentResult&gt;;
+  refundPayment(paymentId: string, amount: number): Promise&lt;RefundResult&gt;;
+  getPaymentStatus(paymentId: string): Promise&lt;PaymentStatus&gt;;
+}
+
+class StripeGateway implements PaymentGateway {
+  name = 'stripe';
+  
+  async processPayment(request: PaymentRequest): Promise&lt;PaymentResult&gt; {
+    const stripe = new Stripe(process.env.STRIPE_SECRET_KEY);
+    
+    try {
+      const paymentIntent = await stripe.paymentIntents.create({
+        amount: request.amount,
+        currency: request.currency,
+        payment_method: request.paymentMethodId,
+        confirm: true,
+        metadata: {
+          bookingId: request.bookingId,
+          customerId: request.customerId,
+          eventId: request.eventId
+        }
+      });
+      
+      return {
+        success: true,
+        transactionId: paymentIntent.id,
+        status: paymentIntent.status,
+        amount: paymentIntent.amount,
+        fees: paymentIntent.charges.data[0]?.balance_transaction?.fee || 0
+      };
+    } catch (error) {
+      return {
+        success: false,
+        error: error.message,
+        errorCode: error.code
+      };
+    }
+  }
+}
+
+class PaymentRouter {
+  private gateways: Map&lt;string, PaymentGateway&gt; = new Map();
+  
+  constructor() {
+    this.gateways.set('stripe', new StripeGateway());
+    this.gateways.set('paypal', new PayPalGateway());
+  }
+  
+  async processPayment(request: PaymentRequest): Promise&lt;PaymentResult&gt; {
+    const preferredGateway = this.selectGateway(request);
+    
+    let result = await preferredGateway.processPayment(request);
+    
+    // Retry with fallback gateway if primary fails
+    if (!result.success && this.shouldRetry(result.errorCode)) {
+      const fallbackGateway = this.getFallbackGateway(preferredGateway.name);
+      if (fallbackGateway) {
+        result = await fallbackGateway.processPayment(request);
+      }
+    }
+    
+    // Log transaction for analytics
+    await this.logTransaction(request, result, preferredGateway.name);
+    
+    return result;
+  }
+}
+</code></pre>
+                    </div>
+                </section>
+
+                <section id="booking-payments" class="content-section">
+                    <h2><i class="fas fa-ticket-alt"></i> Booking Payment Processing</h2>
+                    <p>
+                        Secure and efficient payment processing for event bookings with support for various payment 
+                        methods, installment plans, and automated reconciliation.
+                    </p>
+
+                    <div class="payment-flow">
+                        <h3>Payment Process Flow</h3>
+                        <div class="flow-diagram">
+                            <div class="flow-step">
+                                <div class="step-icon"><i class="fas fa-shopping-cart"></i></div>
+                                <div class="step-content">
+                                    <h4>Cart Creation</h4>
+                                    <p>Customer selects tickets and creates booking cart</p>
+                                </div>
+                            </div>
+                            <div class="flow-connector">↓</div>
+                            <div class="flow-step">
+                                <div class="step-icon"><i class="fas fa-calculator"></i></div>
+                                <div class="step-content">
+                                    <h4>Price Calculation</h4>
+                                    <p>Total amount, taxes, fees, and commission calculation</p>
+                                </div>
+                            </div>
+                            <div class="flow-connector">↓</div>
+                            <div class="flow-step">
+                                <div class="step-icon"><i class="fas fa-lock"></i></div>
+                                <div class="step-content">
+                                    <h4>Payment Processing</h4>
+                                    <p>Secure payment through selected gateway</p>
+                                </div>
+                            </div>
+                            <div class="flow-connector">↓</div>
+                            <div class="flow-step">
+                                <div class="step-icon"><i class="fas fa-check-circle"></i></div>
+                                <div class="step-content">
+                                    <h4>Confirmation</h4>
+                                    <p>Booking confirmed and notifications sent</p>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="payment-features">
+                        <h3>Payment Options</h3>
+                        <div class="payment-methods">
+                            <div class="method-category">
+                                <h4><i class="fas fa-credit-card"></i> Card Payments</h4>
+                                <ul>
+                                    <li>Visa, Mastercard, American Express</li>
+                                    <li>3D Secure authentication for EU compliance</li>
+                                    <li>Card tokenization for security</li>
+                                    <li>Recurring payment support</li>
+                                </ul>
+                            </div>
+                            
+                            <div class="method-category">
+                                <h4><i class="fas fa-mobile-alt"></i> Digital Wallets</h4>
+                                <ul>
+                                    <li>Apple Pay and Google Pay integration</li>
+                                    <li>PayPal and PayPal Pay Later</li>
+                                    <li>Samsung Pay support</li>
+                                    <li>One-click payment experience</li>
+                                </ul>
+                            </div>
+                            
+                            <div class="method-category">
+                                <h4><i class="fas fa-university"></i> Bank Transfers</h4>
+                                <ul>
+                                    <li>ACH transfers (US)</li>
+                                    <li>SEPA payments (Europe)</li>
+                                    <li>Open banking integration</li>
+                                    <li>Direct debit support</li>
+                                </ul>
+                            </div>
+                            
+                            <div class="method-category">
+                                <h4><i class="fas fa-calendar-alt"></i> Flexible Payments</h4>
+                                <ul>
+                                    <li>Installment payment plans</li>
+                                    <li>Buy now, pay later options</li>
+                                    <li>Deposit and balance payments</li>
+                                    <li>Group payment splitting</li>
+                                </ul>
+                            </div>
+                        </div>
+                    </div>
+                </section>
+
+                <section id="commission-system" class="content-section">
+                    <h2><i class="fas fa-percentage"></i> Commission Management System</h2>
+                    <p>
+                        Automated commission calculation and tracking system that manages platform revenue sharing 
+                        with vendors, employees, and affiliates through configurable commission structures.
+                    </p>
+
+                    <div class="commission-structure">
+                        <h3>Commission Hierarchy</h3>
+                        <div class="commission-flow">
+                            <div class="commission-item">
+                                <div class="commission-icon"><i class="fas fa-dollar-sign"></i></div>
+                                <div class="commission-details">
+                                    <h4>Gross Revenue</h4>
+                                    <p>Total booking amount from customer</p>
+                                    <span class="amount">$100.00</span>
+                                </div>
+                            </div>
+                            <div class="flow-separator">−</div>
+                            <div class="commission-item">
+                                <div class="commission-icon"><i class="fas fa-credit-card"></i></div>
+                                <div class="commission-details">
+                                    <h4>Payment Fees</h4>
+                                    <p>Gateway processing fees</p>
+                                    <span class="amount">$3.20</span>
+                                </div>
+                            </div>
+                            <div class="flow-separator">−</div>
+                            <div class="commission-item">
+                                <div class="commission-icon"><i class="fas fa-building"></i></div>
+                                <div class="commission-details">
+                                    <h4>Platform Commission</h4>
+                                    <p>Gema platform fee (8%)</p>
+                                    <span class="amount">$7.74</span>
+                                </div>
+                            </div>
+                            <div class="flow-separator">−</div>
+                            <div class="commission-item">
+                                <div class="commission-icon"><i class="fas fa-users"></i></div>
+                                <div class="commission-details">
+                                    <h4>Employee Commission</h4>
+                                    <p>Employee referral (3%)</p>
+                                    <span class="amount">$2.70</span>
+                                </div>
+                            </div>
+                            <div class="flow-separator">=</div>
+                            <div class="commission-item vendor">
+                                <div class="commission-icon"><i class="fas fa-store"></i></div>
+                                <div class="commission-details">
+                                    <h4>Vendor Payout</h4>
+                                    <p>Final amount to vendor</p>
+                                    <span class="amount">$86.36</span>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="commission-types">
+                        <h3>Commission Types</h3>
+                        <div class="commission-grid">
+                            <div class="commission-card">
+                                <div class="card-header">
+                                    <i class="fas fa-percentage"></i>
+                                    <h4>Percentage-Based</h4>
+                                </div>
+                                <div class="card-content">
+                                    <p>Variable commission as percentage of booking value</p>
+                                    <div class="example">
+                                        <strong>Example:</strong> 8% platform fee
+                                    </div>
+                                </div>
+                            </div>
+                            
+                            <div class="commission-card">
+                                <div class="card-header">
+                                    <i class="fas fa-dollar-sign"></i>
+                                    <h4>Fixed Amount</h4>
+                                </div>
+                                <div class="card-content">
+                                    <p>Fixed fee per transaction or booking</p>
+                                    <div class="example">
+                                        <strong>Example:</strong> $2.50 per booking
+                                    </div>
+                                </div>
+                            </div>
+                            
+                            <div class="commission-card">
+                                <div class="card-header">
+                                    <i class="fas fa-layer-group"></i>
+                                    <h4>Tiered Structure</h4>
+                                </div>
+                                <div class="card-content">
+                                    <p>Variable rates based on volume or performance</p>
+                                    <div class="example">
+                                        <strong>Example:</strong> 10% → 8% → 6% by volume
+                                    </div>
+                                </div>
+                            </div>
+                            
+                            <div class="commission-card">
+                                <div class="card-header">
+                                    <i class="fas fa-chart-line"></i>
+                                    <h4>Performance-Based</h4>
+                                </div>
+                                <div class="card-content">
+                                    <p>Commission based on ratings, reviews, or metrics</p>
+                                    <div class="example">
+                                        <strong>Example:</strong> Bonus for 5-star events
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="code-example">
+                        <h4>Commission Calculation Engine</h4>
+                        <pre><code class="language-typescript">
+interface CommissionRule {
+  id: string;
+  type: 'percentage' | 'fixed' | 'tiered' | 'performance';
+  recipient: 'platform' | 'vendor' | 'employee' | 'affiliate';
+  configuration: {
+    rate?: number;
+    amount?: number;
+    tiers?: CommissionTier[];
+    conditions?: CommissionCondition[];
+  };
+  priority: number;
+  active: boolean;
+}
+
+class CommissionCalculator {
+  async calculateCommissions(booking: Booking): Promise&lt;CommissionBreakdown&gt; {
+    const breakdown: CommissionBreakdown = {
+      grossAmount: booking.totalAmount,
+      paymentFees: 0,
+      commissions: [],
+      netPayout: 0
+    };
+    
+    // Calculate payment gateway fees
+    breakdown.paymentFees = await this.calculatePaymentFees(booking);
+    
+    // Get applicable commission rules
+    const rules = await this.getApplicableRules(booking);
+    
+    // Calculate each commission
+    for (const rule of rules.sort((a, b) => a.priority - b.priority)) {
+      const commission = await this.calculateRuleCommission(booking, rule, breakdown);
+      breakdown.commissions.push(commission);
+    }
+    
+    // Calculate final vendor payout
+    const totalDeductions = breakdown.paymentFees + 
+      breakdown.commissions.reduce((sum, c) => sum + c.amount, 0);
+    breakdown.netPayout = breakdown.grossAmount - totalDeductions;
+    
+    return breakdown;
+  }
+  
+  private async calculateRuleCommission(
+    booking: Booking, 
+    rule: CommissionRule, 
+    currentBreakdown: CommissionBreakdown
+  ): Promise&lt;Commission&gt; {
+    const baseAmount = currentBreakdown.grossAmount - currentBreakdown.paymentFees;
+    
+    switch (rule.type) {
+      case 'percentage':
+        return {
+          ruleId: rule.id,
+          recipient: rule.recipient,
+          type: 'percentage',
+          rate: rule.configuration.rate,
+          amount: baseAmount * (rule.configuration.rate / 100),
+          description: `${rule.configuration.rate}% commission`
+        };
+        
+      case 'tiered':
+        const tier = this.findApplicableTier(booking, rule.configuration.tiers);
+        return {
+          ruleId: rule.id,
+          recipient: rule.recipient,
+          type: 'tiered',
+          rate: tier.rate,
+          amount: baseAmount * (tier.rate / 100),
+          description: `Tier ${tier.level} - ${tier.rate}% commission`
+        };
+        
+      case 'fixed':
+        return {
+          ruleId: rule.id,
+          recipient: rule.recipient,
+          type: 'fixed',
+          amount: rule.configuration.amount,
+          description: `Fixed commission of $${rule.configuration.amount}`
+        };
+        
+      default:
+        throw new Error(`Unsupported commission type: ${rule.type}`);
+    }
+  }
+}
+</code></pre>
+                    </div>
+                </section>
+
+                <section id="payout-management" class="content-section">
+                    <h2><i class="fas fa-money-bill-wave"></i> Payout Management</h2>
+                    <p>
+                        Automated payout system manages vendor and employee payments with configurable schedules, 
+                        minimum thresholds, and multiple payout methods.
+                    </p>
+
+                    <div class="payout-schedule">
+                        <h3>Payout Frequencies</h3>
+                        <div class="schedule-options">
+                            <div class="schedule-option">
+                                <div class="schedule-icon"><i class="fas fa-calendar-day"></i></div>
+                                <div class="schedule-details">
+                                    <h4>Daily</h4>
+                                    <p>Automatic daily payouts for high-volume vendors</p>
+                                    <div class="schedule-note">Minimum: $100</div>
+                                </div>
+                            </div>
+                            
+                            <div class="schedule-option">
+                                <div class="schedule-icon"><i class="fas fa-calendar-week"></i></div>
+                                <div class="schedule-details">
+                                    <h4>Weekly</h4>
+                                    <p>Weekly payouts every Friday</p>
+                                    <div class="schedule-note">Minimum: $50</div>
+                                </div>
+                            </div>
+                            
+                            <div class="schedule-option">
+                                <div class="schedule-icon"><i class="fas fa-calendar-alt"></i></div>
+                                <div class="schedule-details">
+                                    <h4>Bi-weekly</h4>
+                                    <p>Payouts every two weeks</p>
+                                    <div class="schedule-note">Minimum: $25</div>
+                                </div>
+                            </div>
+                            
+                            <div class="schedule-option">
+                                <div class="schedule-icon"><i class="fas fa-calendar"></i></div>
+                                <div class="schedule-details">
+                                    <h4>Monthly</h4>
+                                    <p>Monthly payouts on the 1st of each month</p>
+                                    <div class="schedule-note">No minimum</div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="payout-methods">
+                        <h3>Payout Methods</h3>
+                        <div class="payout-grid">
+                            <div class="payout-method">
+                                <div class="method-icon"><i class="fas fa-university"></i></div>
+                                <div class="method-details">
+                                    <h4>Bank Transfer</h4>
+                                    <p>Direct deposit to bank account</p>
+                                    <div class="method-features">
+                                        <span class="feature-tag">1-2 business days</span>
+                                        <span class="feature-tag">No fees</span>
+                                    </div>
+                                </div>
+                            </div>
+                            
+                            <div class="payout-method">
+                                <div class="method-icon"><i class="fab fa-paypal"></i></div>
+                                <div class="method-details">
+                                    <h4>PayPal</h4>
+                                    <p>Instant transfer to PayPal account</p>
+                                    <div class="method-features">
+                                        <span class="feature-tag">Instant</span>
+                                        <span class="feature-tag">1% fee</span>
+                                    </div>
+                                </div>
+                            </div>
+                            
+                            <div class="payout-method">
+                                <div class="method-icon"><i class="fas fa-credit-card"></i></div>
+                                <div class="method-details">
+                                    <h4>Debit Card</h4>
+                                    <p>Instant transfer to debit card</p>
+                                    <div class="method-features">
+                                        <span class="feature-tag">Instant</span>
+                                        <span class="feature-tag">1.5% fee</span>
+                                    </div>
+                                </div>
+                            </div>
+                            
+                            <div class="payout-method">
+                                <div class="method-icon"><i class="fas fa-mobile-alt"></i></div>
+                                <div class="method-details">
+                                    <h4>Digital Wallet</h4>
+                                    <p>Transfer to digital wallet apps</p>
+                                    <div class="method-features">
+                                        <span class="feature-tag">1-3 hours</span>
+                                        <span class="feature-tag">0.5% fee</span>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="payout-workflow">
+                        <h3>Payout Processing Workflow</h3>
+                        <div class="workflow-steps">
+                            <div class="workflow-step">
+                                <div class="step-number">1</div>
+                                <div class="step-content">
+                                    <h4>Calculation</h4>
+                                    <p>Calculate pending payouts based on completed events and commission rules</p>
+                                </div>
+                            </div>
+                            <div class="workflow-arrow">→</div>
+                            <div class="workflow-step">
+                                <div class="step-number">2</div>
+                                <div class="step-content">
+                                    <h4>Validation</h4>
+                                    <p>Verify recipient details, minimum amounts, and account status</p>
+                                </div>
+                            </div>
+                            <div class="workflow-arrow">→</div>
+                            <div class="workflow-step">
+                                <div class="step-number">3</div>
+                                <div class="step-content">
+                                    <h4>Processing</h4>
+                                    <p>Initiate transfers through selected payment methods</p>
+                                </div>
+                            </div>
+                            <div class="workflow-arrow">→</div>
+                            <div class="workflow-step">
+                                <div class="step-number">4</div>
+                                <div class="step-content">
+                                    <h4>Confirmation</h4>
+                                    <p>Send notifications and update payout status</p>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </section>
+
+                <section id="financial-reporting" class="content-section">
+                    <h2><i class="fas fa-chart-line"></i> Financial Reporting & Analytics</h2>
+                    <p>
+                        Comprehensive financial reporting system provides insights into revenue performance, 
+                        commission distributions, payout histories, and business intelligence.
+                    </p>
+
+                    <div class="reporting-dashboard">
+                        <h3>Key Financial Metrics</h3>
+                        <div class="metrics-grid">
+                            <div class="metric-card">
+                                <div class="metric-icon"><i class="fas fa-dollar-sign"></i></div>
+                                <div class="metric-content">
+                                    <h4>Gross Revenue</h4>
+                                    <div class="metric-value">$127,450</div>
+                                    <div class="metric-change positive">+12.3% vs last month</div>
+                                </div>
+                            </div>
+                            
+                            <div class="metric-card">
+                                <div class="metric-icon"><i class="fas fa-percentage"></i></div>
+                                <div class="metric-content">
+                                    <h4>Platform Commission</h4>
+                                    <div class="metric-value">$10,196</div>
+                                    <div class="metric-change positive">8.0% of gross revenue</div>
+                                </div>
+                            </div>
+                            
+                            <div class="metric-card">
+                                <div class="metric-icon"><i class="fas fa-money-bill-wave"></i></div>
+                                <div class="metric-content">
+                                    <h4>Vendor Payouts</h4>
+                                    <div class="metric-value">$113,182</div>
+                                    <div class="metric-change neutral">88.8% of gross revenue</div>
+                                </div>
+                            </div>
+                            
+                            <div class="metric-card">
+                                <div class="metric-icon"><i class="fas fa-credit-card"></i></div>
+                                <div class="metric-content">
+                                    <h4>Processing Fees</h4>
+                                    <div class="metric-value">$4,072</div>
+                                    <div class="metric-change negative">3.2% of gross revenue</div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="report-types">
+                        <h3>Available Reports</h3>
+                        <div class="report-list">
+                            <div class="report-item">
+                                <div class="report-icon"><i class="fas fa-chart-bar"></i></div>
+                                <div class="report-details">
+                                    <h4>Revenue Analysis</h4>
+                                    <p>Detailed breakdown of revenue by time period, category, and vendor performance</p>
+                                    <div class="report-formats">
+                                        <span class="format-tag">PDF</span>
+                                        <span class="format-tag">Excel</span>
+                                        <span class="format-tag">CSV</span>
+                                    </div>
+                                </div>
+                            </div>
+                            
+                            <div class="report-item">
+                                <div class="report-icon"><i class="fas fa-receipt"></i></div>
+                                <div class="report-details">
+                                    <h4>Transaction History</h4>
+                                    <p>Complete transaction log with payment details, fees, and commission breakdowns</p>
+                                    <div class="report-formats">
+                                        <span class="format-tag">PDF</span>
+                                        <span class="format-tag">Excel</span>
+                                        <span class="format-tag">CSV</span>
+                                    </div>
+                                </div>
+                            </div>
+                            
+                            <div class="report-item">
+                                <div class="report-icon"><i class="fas fa-users"></i></div>
+                                <div class="report-details">
+                                    <h4>Vendor Performance</h4>
+                                    <p>Individual vendor earnings, commission history, and payout summaries</p>
+                                    <div class="report-formats">
+                                        <span class="format-tag">PDF</span>
+                                        <span class="format-tag">Excel</span>
+                                    </div>
+                                </div>
+                            </div>
+                            
+                            <div class="report-item">
+                                <div class="report-icon"><i class="fas fa-file-invoice-dollar"></i></div>
+                                <div class="report-details">
+                                    <h4>Tax Documentation</h4>
+                                    <p>1099 forms, tax summaries, and compliance reporting for vendors and platform</p>
+                                    <div class="report-formats">
+                                        <span class="format-tag">PDF</span>
+                                        <span class="format-tag">IRS XML</span>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </section>
+
+                <section id="security-compliance" class="content-section">
+                    <h2><i class="fas fa-shield-alt"></i> Security & Compliance</h2>
+                    <p>
+                        Comprehensive security measures and regulatory compliance ensure safe financial transactions 
+                        and protection of sensitive payment information.
+                    </p>
+
+                    <div class="security-standards">
+                        <h3>Security Standards</h3>
+                        <div class="standards-grid">
+                            <div class="standard-card">
+                                <div class="standard-icon"><i class="fas fa-shield-check"></i></div>
+                                <div class="standard-content">
+                                    <h4>PCI DSS Compliance</h4>
+                                    <p>Level 1 PCI DSS compliance for secure card data handling</p>
+                                </div>
+                            </div>
+                            
+                            <div class="standard-card">
+                                <div class="standard-icon"><i class="fas fa-lock"></i></div>
+                                <div class="standard-content">
+                                    <h4>SSL/TLS Encryption</h4>
+                                    <p>End-to-end encryption for all payment communications</p>
+                                </div>
+                            </div>
+                            
+                            <div class="standard-card">
+                                <div class="standard-icon"><i class="fas fa-key"></i></div>
+                                <div class="standard-content">
+                                    <h4>Token Vault</h4>
+                                    <p>Secure tokenization of payment methods and sensitive data</p>
+                                </div>
+                            </div>
+                            
+                            <div class="standard-card">
+                                <div class="standard-icon"><i class="fas fa-eye"></i></div>
+                                <div class="standard-content">
+                                    <h4>Fraud Detection</h4>
+                                    <p>Machine learning-based fraud prevention and risk scoring</p>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="compliance-requirements">
+                        <h3>Regulatory Compliance</h3>
+                        <div class="compliance-list">
+                            <div class="compliance-item">
+                                <div class="compliance-badge">GDPR</div>
+                                <div class="compliance-details">
+                                    <h4>General Data Protection Regulation</h4>
+                                    <p>EU privacy and data protection compliance with user consent management</p>
+                                </div>
+                            </div>
+                            
+                            <div class="compliance-item">
+                                <div class="compliance-badge">KYC/AML</div>
+                                <div class="compliance-details">
+                                    <h4>Know Your Customer / Anti-Money Laundering</h4>
+                                    <p>Identity verification and transaction monitoring for compliance</p>
+                                </div>
+                            </div>
+                            
+                            <div class="compliance-item">
+                                <div class="compliance-badge">SOX</div>
+                                <div class="compliance-details">
+                                    <h4>Sarbanes-Oxley Act</h4>
+                                    <p>Financial reporting accuracy and internal controls</p>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </section>
+
+                <section id="api-endpoints" class="content-section">
+                    <h2><i class="fas fa-code"></i> API Endpoints</h2>
+                    <p>RESTful API endpoints for payment processing and financial management.</p>
+
+                    <div class="api-section">
+                        <h3>Payment Processing Endpoints</h3>
+                        
+                        <div class="endpoint">
+                            <div class="endpoint-header">
+                                <span class="method post">POST</span>
+                                <span class="path">/api/payments/process</span>
+                            </div>
+                            <div class="endpoint-description">Process payment for booking</div>
+                        </div>
+
+                        <div class="endpoint">
+                            <div class="endpoint-header">
+                                <span class="method post">POST</span>
+                                <span class="path">/api/payments/refund</span>
+                            </div>
+                            <div class="endpoint-description">Process refund for cancelled booking</div>
+                        </div>
+
+                        <div class="endpoint">
+                            <div class="endpoint-header">
+                                <span class="method get">GET</span>
+                                <span class="path">/api/vendor/payouts</span>
+                            </div>
+                            <div class="endpoint-description">Get vendor payout history and pending amounts</div>
+                        </div>
+
+                        <div class="endpoint">
+                            <div class="endpoint-header">
+                                <span class="method post">POST</span>
+                                <span class="path">/api/admin/payouts/process</span>
+                            </div>
+                            <div class="endpoint-description">Process scheduled payouts (admin only)</div>
+                        </div>
+
+                        <div class="endpoint">
+                            <div class="endpoint-header">
+                                <span class="method get">GET</span>
+                                <span class="path">/api/admin/financial-reports</span>
+                            </div>
+                            <div class="endpoint-description">Generate financial reports (admin only)</div>
+                        </div>
+                    </div>
+                </section>
+
+                <section id="implementation" class="content-section">
+                    <h2><i class="fas fa-cogs"></i> Implementation Details</h2>
+                    <p>Technical implementation considerations and architecture details for the payment system.</p>
+
+                    <div class="implementation-notes">
+                        <div class="note-item">
+                            <h3><i class="fas fa-database"></i> Data Architecture</h3>
+                            <p>PostgreSQL for transactional data with Redis for caching payment methods and real-time balance tracking.</p>
+                        </div>
+
+                        <div class="note-item">
+                            <h3><i class="fas fa-sync"></i> Event-Driven Architecture</h3>
+                            <p>Message queues for asynchronous payment processing, commission calculations, and payout notifications.</p>
+                        </div>
+
+                        <div class="note-item">
+                            <h3><i class="fas fa-backup"></i> Data Backup & Recovery</h3>
+                            <p>Automated daily backups with point-in-time recovery for financial data integrity.</p>
+                        </div>
+
+                        <div class="note-item">
+                            <h3><i class="fas fa-chart-line"></i> Performance Monitoring</h3>
+                            <p>Real-time monitoring of payment success rates, gateway performance, and transaction volumes.</p>
+                        </div>
+                    </div>
+                </section>
+
+                <!-- Navigation -->
+                <div class="page-navigation">
+                    <div class="nav-item prev">
+                        <a href="event-management.html">
+                            <i class="fas fa-arrow-left"></i>
+                            <div>
+                                <span class="nav-label">Previous</span>
+                                <span class="nav-title">Event Management</span>
+                            </div>
+                        </a>
+                    </div>
+                    <div class="nav-item next">
+                        <a href="content-management.html">
+                            <div>
+                                <span class="nav-label">Next</span>
+                                <span class="nav-title">Content Management</span>
+                            </div>
+                            <i class="fas fa-arrow-right"></i>
+                        </a>
+                    </div>
+                </div>
+            </div>
+        </main>
+    </div>
+
+    <!-- Scripts -->
+    <script src="../js/main.js"></script>
+    <script src="../js/search.js"></script>
+    <script src="../js/navigation.js"></script>
+</body>
+</html>

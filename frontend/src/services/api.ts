@@ -3,8 +3,13 @@ import { store } from '../store';
 import { logoutUser, refreshToken } from '../store/slices/authSlice';
 
 // API Configuration
-const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || import.meta.env.VITE_API_URL || 'http://localhost:5001/api';
+const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || import.meta.env.VITE_API_URL || 'http://localhost:5000/api';
 const API_TIMEOUT = 30000; // 30 seconds
+
+// Retry configuration
+const RETRY_ATTEMPTS = 3;
+const INITIAL_RETRY_DELAY = 1000; // 1 second
+const RETRY_MULTIPLIER = 2;
 
 // Create axios instance
 const api: AxiosInstance = axios.create({
@@ -32,7 +37,10 @@ api.interceptors.request.use(
   }
 );
 
-// Response interceptor to handle token refresh
+// Helper function for exponential backoff delay
+const delay = (ms: number) => new Promise(resolve => setTimeout(resolve, ms));
+
+// Response interceptor to handle token refresh and retries
 api.interceptors.response.use(
   (response: AxiosResponse) => {
     return response;
@@ -40,6 +48,7 @@ api.interceptors.response.use(
   async (error) => {
     const originalRequest = error.config;
     
+    // Handle 401 (Unauthorized) errors
     if (error.response?.status === 401 && !originalRequest._retry) {
       originalRequest._retry = true;
       
@@ -66,6 +75,30 @@ api.interceptors.response.use(
         window.location.href = '/login';
         return Promise.reject(refreshError);
       }
+    }
+    
+    // Handle 429 (Rate Limiting) and 5xx (Server) errors with retry logic
+    if (
+      (error.response?.status === 429 || error.response?.status >= 500) &&
+      !originalRequest._retryCount &&
+      originalRequest.retry !== false // Allow requests to opt out of retry
+    ) {
+      originalRequest._retryCount = 0;
+    }
+    
+    if (originalRequest._retryCount < RETRY_ATTEMPTS) {
+      originalRequest._retryCount = (originalRequest._retryCount || 0) + 1;
+      
+      const retryDelay = INITIAL_RETRY_DELAY * Math.pow(RETRY_MULTIPLIER, originalRequest._retryCount - 1);
+      
+      // Add jitter to prevent thundering herd
+      const jitter = Math.random() * 0.1 * retryDelay;
+      const totalDelay = retryDelay + jitter;
+      
+      console.log(`API call failed, retrying in ${totalDelay}ms (attempt ${originalRequest._retryCount}/${RETRY_ATTEMPTS})`);
+      
+      await delay(totalDelay);
+      return api(originalRequest);
     }
     
     return Promise.reject(error);

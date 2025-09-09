@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import { format } from 'date-fns';
 import eventsAPI from '../services/api/eventsAPI';
+import { getPlaceholderUrl } from '../utils/placeholderImage';
 
 // Mock data for when backend is unavailable
 const mockEvents = [
@@ -9,7 +10,7 @@ const mockEvents = [
     id: '1',
     title: 'Kids Fun Day',
     description: 'A day full of fun activities for kids of all ages.',
-    image: 'https://via.placeholder.com/400x300?text=Kids+Fun+Day',
+    image: getPlaceholderUrl('eventCard', 'Kids Fun Day'),
     price: 25,
     date: '2023-12-15',
     location: 'Central Park',

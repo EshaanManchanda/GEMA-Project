@@ -93,17 +93,24 @@ export default function ReviewCarouselSwiper() {
           setReviews(fallbackReviews);
           setUsingFallback(true);
         }
-      } catch (err) {
+      } catch (err: any) {
         console.error('Error fetching reviews:', err);
         setReviews(fallbackReviews);
         setUsingFallback(true);
-        setError('Failed to load latest reviews');
+        
+        if (err.response?.status === 429) {
+          setError('Loading reviews... Please wait a moment');
+        } else {
+          setError('Failed to load latest reviews');
+        }
       } finally {
         setLoading(false);
       }
     };
 
-    fetchReviews();
+    // Add delay to reduce API call frequency
+    const timeoutId = setTimeout(fetchReviews, 800);
+    return () => clearTimeout(timeoutId);
   }, []);
 
   // Helper function to format date

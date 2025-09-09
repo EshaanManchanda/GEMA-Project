@@ -448,6 +448,364 @@ const adminAPI = {
       throw error;
     }
   },
+
+  // =============================================
+  // COMMISSION MANAGEMENT
+  // =============================================
+  
+  // Commission Configuration
+  getCommissionConfigs: async (params?: any) => {
+    try {
+      const response = await ApiService.get('/admin/commissions', { params });
+      return response.data;
+    } catch (error) {
+      throw error;
+    }
+  },
+
+  getCommissionConfig: async (id: string) => {
+    try {
+      const response = await ApiService.get(`/admin/commissions/${id}`);
+      return response.data;
+    } catch (error) {
+      throw error;
+    }
+  },
+
+  createCommissionConfig: async (configData: any) => {
+    try {
+      const response = await ApiService.post('/admin/commissions', configData);
+      return response.data;
+    } catch (error) {
+      throw error;
+    }
+  },
+
+  updateCommissionConfig: async (id: string, configData: any) => {
+    try {
+      const response = await ApiService.put(`/admin/commissions/${id}`, configData);
+      return response.data;
+    } catch (error) {
+      throw error;
+    }
+  },
+
+  deleteCommissionConfig: async (id: string) => {
+    try {
+      const response = await ApiService.delete(`/admin/commissions/${id}`);
+      return response.data;
+    } catch (error) {
+      throw error;
+    }
+  },
+
+  setDefaultCommissionConfig: async (id: string) => {
+    try {
+      const response = await ApiService.put(`/admin/commissions/${id}/set-default`);
+      return response.data;
+    } catch (error) {
+      throw error;
+    }
+  },
+
+  getCommissionTemplates: async () => {
+    try {
+      const response = await ApiService.get('/admin/commission-templates');
+      return response.data;
+    } catch (error) {
+      throw error;
+    }
+  },
+
+  // Commission Transactions
+  getCommissionTransactions: async (params?: any) => {
+    try {
+      const response = await ApiService.get('/admin/commission-transactions', { params });
+      return response.data;
+    } catch (error) {
+      throw error;
+    }
+  },
+
+  getCommissionTransaction: async (id: string) => {
+    try {
+      const response = await ApiService.get(`/admin/commission-transactions/${id}`);
+      return response.data;
+    } catch (error) {
+      throw error;
+    }
+  },
+
+  approveCommissionTransactions: async (transactionIds: string[]) => {
+    try {
+      const response = await ApiService.put('/admin/commission-transactions/approve', { transactionIds });
+      return response.data;
+    } catch (error) {
+      throw error;
+    }
+  },
+
+  rejectCommissionTransaction: async (id: string, reason: string) => {
+    try {
+      const response = await ApiService.put(`/admin/commission-transactions/${id}/reject`, { reason });
+      return response.data;
+    } catch (error) {
+      throw error;
+    }
+  },
+
+  recalculateCommissionTransaction: async (id: string) => {
+    try {
+      const response = await ApiService.put(`/admin/commission-transactions/${id}/recalculate`);
+      return response.data;
+    } catch (error) {
+      throw error;
+    }
+  },
+
+  batchCalculateCommissions: async (orderIds: string[]) => {
+    try {
+      const response = await ApiService.post('/admin/commission-batch-calculate', { orderIds });
+      return response.data;
+    } catch (error) {
+      throw error;
+    }
+  },
+
+  // Commission Analytics
+  getCommissionAnalytics: async (params?: any) => {
+    try {
+      const response = await ApiService.get('/admin/commission-analytics', { params });
+      return response.data;
+    } catch (error) {
+      throw error;
+    }
+  },
+
+  exportCommissionData: async (params?: any) => {
+    try {
+      const response = await ApiService.get('/admin/commission-export', { params });
+      return response.data;
+    } catch (error) {
+      throw error;
+    }
+  },
+
+  getCommissionStats: async () => {
+    try {
+      const response = await ApiService.get('/admin/commission-stats');
+      return response.data;
+    } catch (error) {
+      throw error;
+    }
+  },
+
+  getPendingCommissions: async (params?: any) => {
+    try {
+      const response = await ApiService.get('/admin/commission-pending', { params });
+      return response.data;
+    } catch (error) {
+      throw error;
+    }
+  },
+
+  bulkApproveCommissions: async (transactionIds: string[]) => {
+    try {
+      const response = await ApiService.post('/admin/commission-bulk-approve', { transactionIds });
+      return response.data;
+    } catch (error) {
+      throw error;
+    }
+  },
+
+  bulkRejectCommissions: async (transactionIds: string[], reason: string) => {
+    try {
+      const response = await ApiService.post('/admin/commission-bulk-reject', { transactionIds, reason });
+      return response.data;
+    } catch (error) {
+      throw error;
+    }
+  },
+
+  // =============================================
+  // PAYOUT MANAGEMENT
+  // =============================================
+  
+  // Vendor Earnings and Payouts
+  getVendorEarnings: async (params?: any) => {
+    try {
+      const response = await ApiService.get('/admin/vendor-earnings', { params });
+      return response.data;
+    } catch (error) {
+      throw error;
+    }
+  },
+
+  getVendorEarning: async (vendorId: string, params?: any) => {
+    try {
+      const response = await ApiService.get(`/admin/vendor-earnings/${vendorId}`, { params });
+      return response.data;
+    } catch (error) {
+      throw error;
+    }
+  },
+
+  // Payout Requests
+  getPayoutRequests: async (params?: any) => {
+    try {
+      const response = await ApiService.get('/admin/payout-requests', { params });
+      return response.data;
+    } catch (error) {
+      throw error;
+    }
+  },
+
+  getPayoutRequest: async (id: string) => {
+    try {
+      const response = await ApiService.get(`/admin/payout-requests/${id}`);
+      return response.data;
+    } catch (error) {
+      throw error;
+    }
+  },
+
+  approvePayoutRequest: async (id: string, approvalData?: any) => {
+    try {
+      const response = await ApiService.put(`/admin/payout-requests/${id}/approve`, approvalData);
+      return response.data;
+    } catch (error) {
+      throw error;
+    }
+  },
+
+  rejectPayoutRequest: async (id: string, reason: string) => {
+    try {
+      const response = await ApiService.put(`/admin/payout-requests/${id}/reject`, { reason });
+      return response.data;
+    } catch (error) {
+      throw error;
+    }
+  },
+
+  processPayoutRequest: async (id: string, paymentData: any) => {
+    try {
+      const response = await ApiService.put(`/admin/payout-requests/${id}/process`, paymentData);
+      return response.data;
+    } catch (error) {
+      throw error;
+    }
+  },
+
+  bulkApprovePayouts: async (payoutIds: string[]) => {
+    try {
+      const response = await ApiService.post('/admin/payout-requests/bulk-approve', { payoutIds });
+      return response.data;
+    } catch (error) {
+      throw error;
+    }
+  },
+
+  bulkRejectPayouts: async (payoutIds: string[], reason: string) => {
+    try {
+      const response = await ApiService.post('/admin/payout-requests/bulk-reject', { payoutIds, reason });
+      return response.data;
+    } catch (error) {
+      throw error;
+    }
+  },
+
+  // Payout Analytics
+  getPayoutStats: async (params?: any) => {
+    try {
+      const response = await ApiService.get('/admin/payout-stats', { params });
+      return response.data;
+    } catch (error) {
+      throw error;
+    }
+  },
+
+  getPayoutAnalytics: async (params?: any) => {
+    try {
+      const response = await ApiService.get('/admin/payout-analytics', { params });
+      return response.data;
+    } catch (error) {
+      throw error;
+    }
+  },
+
+  exportPayoutData: async (params?: any) => {
+    try {
+      const response = await ApiService.get('/admin/payout-export', { params });
+      return response.data;
+    } catch (error) {
+      throw error;
+    }
+  },
+
+  // Payment Methods Management
+  getPaymentMethods: async () => {
+    try {
+      const response = await ApiService.get('/admin/payment-methods');
+      return response.data;
+    } catch (error) {
+      throw error;
+    }
+  },
+
+  createPaymentMethod: async (methodData: any) => {
+    try {
+      const response = await ApiService.post('/admin/payment-methods', methodData);
+      return response.data;
+    } catch (error) {
+      throw error;
+    }
+  },
+
+  updatePaymentMethod: async (id: string, methodData: any) => {
+    try {
+      const response = await ApiService.put(`/admin/payment-methods/${id}`, methodData);
+      return response.data;
+    } catch (error) {
+      throw error;
+    }
+  },
+
+  deletePaymentMethod: async (id: string) => {
+    try {
+      const response = await ApiService.delete(`/admin/payment-methods/${id}`);
+      return response.data;
+    } catch (error) {
+      throw error;
+    }
+  },
+
+  // Financial Reports
+  getFinancialSummary: async (params?: any) => {
+    try {
+      const response = await ApiService.get('/admin/financial-summary', { params });
+      return response.data;
+    } catch (error) {
+      throw error;
+    }
+  },
+
+  getRevenueReport: async (params?: any) => {
+    try {
+      const response = await ApiService.get('/admin/revenue-report', { params });
+      return response.data;
+    } catch (error) {
+      throw error;
+    }
+  },
+
+  generateFinancialReport: async (params?: any) => {
+    try {
+      const response = await ApiService.post('/admin/generate-financial-report', params);
+      return response.data;
+    } catch (error) {
+      throw error;
+    }
+  },
 };
 
 export default adminAPI;

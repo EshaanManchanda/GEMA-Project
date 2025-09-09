@@ -25,3 +25,6 @@ export const validate = async (req: Request, res: Response, next: NextFunction):
     errors: formattedErrors
   } as ApiResponse);
 };
+
+// Alias for backwards compatibility
+export const validateRequest = validate;

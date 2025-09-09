@@ -47,7 +47,7 @@ const VendorEventsPage = React.lazy(() => import(/* webpackChunkName: "vendor" *
 const VendorCreateEventPage = React.lazy(() => import(/* webpackChunkName: "vendor" */ './pages/vendor/VendorCreateEventPage'));
 const VendorEditEventPage = React.lazy(() => import(/* webpackChunkName: "vendor" */ './pages/vendor/VendorEditEventPage'));
 const VendorBookingsPage = React.lazy(() => import(/* webpackChunkName: "vendor" */ './pages/vendor/VendorBookingsPage'));
-const VendorAnalyticsPage = React.lazy(() => import(/* webpackChunkName: "vendor" */ './pages/vendor/VendorAnalyticsPage'));
+// const VendorAnalyticsPage = React.lazy(() => import(/* webpackChunkName: "vendor" */ './pages/vendor/VendorAnalyticsPage'));
 const VendorProfilePage = React.lazy(() => import(/* webpackChunkName: "vendor" */ './pages/vendor/VendorProfilePage'));
 
 // Admin Dashboard Pages
@@ -57,7 +57,9 @@ const AdminEventsPage = React.lazy(() => import(/* webpackChunkName: "admin" */ 
 const AdminVenuesPage = React.lazy(() => import(/* webpackChunkName: "admin" */ './pages/admin/AdminVenuesPage'));
 const AdminCategoriesPage = React.lazy(() => import(/* webpackChunkName: "admin" */ './pages/admin/AdminCategoriesPage'));
 const AdminOrdersPage = React.lazy(() => import(/* webpackChunkName: "admin" */ './pages/admin/AdminOrdersPage'));
-const AdminAnalyticsPage = React.lazy(() => import(/* webpackChunkName: "admin" */ './pages/admin/AdminAnalyticsPage'));
+const AdminPayoutsPage = React.lazy(() => import(/* webpackChunkName: "admin" */ './pages/admin/AdminPayoutsPage'));
+const AdminCommissionsPage = React.lazy(() => import(/* webpackChunkName: "admin" */ './pages/admin/AdminCommissionsPage'));
+// const AdminAnalyticsPage = React.lazy(() => import(/* webpackChunkName: "admin" */ './pages/admin/AdminAnalyticsPage'));
 const AdminSettingsPage = React.lazy(() => import(/* webpackChunkName: "admin" */ './pages/admin/AdminSettingsPage'));
 const EmployeeManagement = React.lazy(() => import(/* webpackChunkName: "admin" */ './pages/admin/EmployeeManagement'));
 
@@ -98,17 +100,17 @@ import useLanguage from '@hooks/useLanguage';
 
 function AppContent() {
   const location = useLocation();
-  const { user, isLoading } = useAuth();
-  const { language } = useLanguage();
+  const { loading } = useAuth();
+  const { currentLanguage } = useLanguage();
 
   // Set document direction based on language
   useEffect(() => {
-    document.documentElement.dir = language === 'ar' ? 'rtl' : 'ltr';
-    document.documentElement.lang = language;
-  }, [language]);
+    document.documentElement.dir = currentLanguage === 'ar' ? 'rtl' : 'ltr';
+    document.documentElement.lang = currentLanguage || 'en';
+  }, [currentLanguage]);
 
   // Show loading spinner while checking authentication
-  if (isLoading) {
+  if (loading) {
     return (
       <div className="min-h-screen flex items-center justify-center">
         <LoadingSpinner size="large" />
@@ -488,6 +490,24 @@ function AppContent() {
               <AdminRoute>
                 <Suspense fallback={<LoadingSpinner />}>
                   <AdminOrdersPage />
+                </Suspense>
+              </AdminRoute>
+            } />
+            
+            {/* Payout Management */}
+            <Route path="payouts" element={
+              <AdminRoute>
+                <Suspense fallback={<LoadingSpinner />}>
+                  <AdminPayoutsPage />
+                </Suspense>
+              </AdminRoute>
+            } />
+            
+            {/* Commission Management */}
+            <Route path="commissions" element={
+              <AdminRoute>
+                <Suspense fallback={<LoadingSpinner />}>
+                  <AdminCommissionsPage />
                 </Suspense>
               </AdminRoute>
             } />

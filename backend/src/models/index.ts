@@ -33,3 +33,19 @@ export type { IBlog } from './Blog';
 
 export { BlogCategory } from './BlogCategory';
 export type { IBlogCategory } from './BlogCategory';
+
+// New Models
+export { default as Category } from './Category';
+export type { ICategory } from './Category';
+
+export { default as Coupon, CouponType, CouponStatus } from './Coupon';
+export type { ICoupon, ICouponUsage } from './Coupon';
+
+export { default as Payment, PaymentGateway, PaymentStatus, PaymentMethod } from './Payment';
+export type { IPayment, IPaymentRefund } from './Payment';
+
+export { default as Notification, NotificationType, NotificationPriority, NotificationChannel, NotificationStatus } from './Notification';
+export type { INotification, INotificationAction, INotificationDelivery } from './Notification';
+
+export { default as Affiliate, AffiliateStatus, CommissionType } from './Affiliate';
+export type { IAffiliate, IAffiliateClick, IAffiliateCommission, ICommissionTier } from './Affiliate';
