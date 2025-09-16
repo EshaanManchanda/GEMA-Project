@@ -36,7 +36,7 @@ interface CartContextType {
   applyCouponCode: (code: string) => boolean;
   removeCouponCode: () => void;
   isValidCoupon: (code: string) => boolean;
-  isItemInCart: (itemId: string) => boolean;
+  isItemInCart: (itemId: string, selectedDate?: string) => boolean;
 }
 
 const CartContext = createContext<CartContextType | undefined>(undefined);
@@ -71,6 +71,7 @@ export const CartProvider: React.FC<CartProviderProps> = ({ children }) => {
     dispatch(addToCart({
       event,
       quantity,
+      selectedDate: event.date, // Pass the selected date from the event
       participants: []
     }));
     toast.success(`${event.title} added to cart!`);
@@ -108,8 +109,13 @@ export const CartProvider: React.FC<CartProviderProps> = ({ children }) => {
     dispatch(removeCoupon());
   };
 
-  const isItemInCart = (itemId: string): boolean => {
-    return cartItems.some(item => item.id === itemId);
+  const isItemInCart = (itemId: string, selectedDate?: string): boolean => {
+    return cartItems.some(item => {
+      if (selectedDate) {
+        return item.event._id === itemId && item.selectedDate === selectedDate;
+      }
+      return item.event._id === itemId;
+    });
   };
 
   const value = {

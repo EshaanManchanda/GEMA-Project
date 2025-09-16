@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import LoadingSpinner from '@/components/common/LoadingSpinner';
+import { ApiService } from '@/services/api';
 
 interface CheckinStats {
   totalCheckins: number;
@@ -81,17 +82,9 @@ const EmployeeDashboard: React.FC = () => {
 
   const handleQuickCheckin = async (ticketCode: string) => {
     try {
-      const token = localStorage.getItem('authToken');
-      const response = await fetch('/api/checkin', {
-        method: 'POST',
-        headers: {
-          'Authorization': `Bearer ${token}`,
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({ ticketCode }),
-      });
+      const response = await ApiService.post('/checkin', { ticketCode });
 
-      if (response.ok) {
+      if (response.success) {
         alert('Ticket checked in successfully!');
         fetchDashboardData();
       } else {

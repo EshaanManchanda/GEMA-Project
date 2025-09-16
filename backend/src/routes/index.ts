@@ -20,6 +20,10 @@ import categoryRoutes from './category.routes';
 import couponRoutes from './coupon.routes';
 import notificationRoutes from './notification.routes';
 import affiliateRoutes from './affiliate.routes';
+import bookingRoutes from './booking.routes';
+import searchRoutes from './search.routes';
+import collectionRoutes from './collection.routes';
+import favoritesRoutes from './favorites.routes';
 import { Router } from 'express';
 
 const router = Router();
@@ -85,5 +89,17 @@ router.use('/categories', categoryRoutes);
 router.use('/coupons', couponRoutes);
 router.use('/notifications', notificationRoutes);
 router.use('/affiliates', affiliateRoutes);
+
+// Booking routes (enhanced booking flow)
+router.use('/bookings', bookingRoutes);
+
+// Search routes
+router.use('/search', searchRoutes);
+
+// Collection routes
+router.use('/collections', collectionRoutes);
+
+// Favorites routes
+router.use('/favorites', favoritesRoutes);
 
 export default router;

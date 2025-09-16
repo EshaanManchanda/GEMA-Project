@@ -10,7 +10,9 @@ import hpp from 'hpp';
 import { config, connectDB, initializeFirebase, logger } from './config';
 import { errorHandler, notFound } from './middleware';
 import routes from './routes';
+import healthRoutes from './routes/health.routes';
 import { scheduleTicketJobs } from './utils/ticketExpiration';
+import { scheduleEventLifecycleJobs } from './utils/eventLifecycle';
 
 // Initialize Firebase Admin SDK
 initializeFirebase();
@@ -57,10 +59,11 @@ app.use(morgan(config.nodeEnv === 'development' ? 'dev' : 'combined'));
 // API routes
 app.use('/api', routes);
 
-// Health check route
-app.get('/health', (req: Request, res: Response) => {
-  res.status(200).json({ status: 'ok', environment: config.nodeEnv });
-});
+// Enhanced health check routes (also mounted under /api for API consistency)
+app.use('/api/health', healthRoutes);
+
+// Also keep standalone health routes for direct access
+app.use('/health', healthRoutes);
 
 // 404 handler
 app.use(notFound);
@@ -70,6 +73,7 @@ app.use(errorHandler);
 
 // Initialize scheduled jobs
 scheduleTicketJobs();
+scheduleEventLifecycleJobs();
 
 // Start server
 const PORT = config.port;

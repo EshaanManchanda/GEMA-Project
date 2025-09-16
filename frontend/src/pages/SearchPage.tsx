@@ -1,155 +1,308 @@
-import React, { useState, useEffect, useMemo } from 'react';
+import React, { useState, useEffect, useMemo, useCallback } from 'react';
 import { useSearchParams, Link, useNavigate } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
-import { FaSearch, FaFilter, FaTimes, FaStar, FaMapMarkerAlt, FaCalendarAlt, FaClock } from 'react-icons/fa';
-
-interface Event {
-  id: number;
-  title: string;
-  description: string;
-  date: string;
-  time: string;
-  location: string;
-  price: number;
-  category: string;
-  image: string;
-  organizer: {
-    id: number;
-    name: string;
-    logo: string;
-  };
-  rating: number;
-  reviewCount: number;
-  attendees?: number;
-  featured?: boolean;
-}
+import { FaSearch, FaFilter, FaTimes, FaStar, FaMapMarkerAlt, FaCalendarAlt, FaClock, FaUsers, FaTag } from 'react-icons/fa';
+import { SearchEvent, SearchFilters, CategoryOption, FilterOptions } from '../types/search';
+import { ApiService } from '../services/api';
+import { debounce } from 'lodash';
 
 // FilterContent Component
 interface FilterContentProps {
-  selectedCategory: string;
-  setSelectedCategory: (category: string) => void;
-  priceRange: [number, number];
-  setPriceRange: (range: [number, number]) => void;
-  dateRange: string;
-  setDateRange: (range: string) => void;
-  categoryCounts: Record<string, number>;
-  sortBy: string;
-  setSortBy: (sort: string) => void;
+  filters: SearchFilters;
+  setFilters: (filters: SearchFilters) => void;
+  filterOptions: FilterOptions;
   resetFilters: () => void;
+  loading?: boolean;
 }
 
 const FilterContent: React.FC<FilterContentProps> = ({
-  selectedCategory,
-  setSelectedCategory,
-  priceRange,
-  setPriceRange,
-  dateRange,
-  setDateRange,
-  categoryCounts,
-  sortBy,
-  setSortBy,
-  resetFilters
+  filters,
+  setFilters,
+  filterOptions,
+  resetFilters,
+  loading = false
 }) => {
-  // Get unique categories from events
-  const categories = ['all', 'Conference', 'Festival', 'Seminar', 'Networking', 'Workshop', 'Charity', 'Concert', 'Exhibition'];
   
   return (
     <>
+      {/* Category Filter */}
       <div className="mb-6">
         <h3 className="font-medium mb-3">Category</h3>
         <div className="space-y-2">
-          {categories.map((category) => (
-            <label key={category} className="flex items-center justify-between py-1 px-2 rounded hover:bg-gray-50 cursor-pointer">
+          {filterOptions.categories.map((category) => (
+            <label key={category.value} className="flex items-center justify-between py-1 px-2 rounded hover:bg-gray-50 cursor-pointer">
               <div className="flex items-center">
                 <input
                   type="radio"
                   name="category"
-                  checked={selectedCategory === category}
-                  onChange={() => setSelectedCategory(category)}
+                  checked={filters.category === category.value}
+                  onChange={() => setFilters({ ...filters, category: category.value, page: 1 })}
                   className="mr-2 accent-primary"
+                  disabled={loading}
                 />
-                <span className="capitalize">{category === 'all' ? 'All Categories' : category}</span>
+                <span className="capitalize">{category.label}</span>
               </div>
               <span className="text-xs bg-gray-100 text-gray-600 px-2 py-1 rounded-full">
-                {categoryCounts[category] || 0}
+                {category.count}
+              </span>
+            </label>
+          ))}
+        </div>
+      </div>
+
+      {/* Event Type Filter */}
+      <div className="mb-6">
+        <h3 className="font-medium mb-3">Event Type</h3>
+        <div className="space-y-2">
+          {filterOptions.eventTypes.map((eventType) => (
+            <label key={eventType.value} className="flex items-center justify-between py-1 px-2 rounded hover:bg-gray-50 cursor-pointer">
+              <div className="flex items-center">
+                <input
+                  type="radio"
+                  name="eventType"
+                  checked={filters.type === eventType.value}
+                  onChange={() => setFilters({ ...filters, type: eventType.value, page: 1 })}
+                  className="mr-2 accent-primary"
+                  disabled={loading}
+                />
+                <span>{eventType.label}</span>
+              </div>
+              <span className="text-xs bg-gray-100 text-gray-600 px-2 py-1 rounded-full">
+                {eventType.count}
+              </span>
+            </label>
+          ))}
+        </div>
+      </div>
+
+      {/* Venue Type Filter */}
+      <div className="mb-6">
+        <h3 className="font-medium mb-3">Venue Type</h3>
+        <div className="space-y-2">
+          {filterOptions.venueTypes.map((venueType) => (
+            <label key={venueType.value} className="flex items-center justify-between py-1 px-2 rounded hover:bg-gray-50 cursor-pointer">
+              <div className="flex items-center">
+                <input
+                  type="radio"
+                  name="venueType"
+                  checked={filters.venueType === venueType.value}
+                  onChange={() => setFilters({ ...filters, venueType: venueType.value, page: 1 })}
+                  className="mr-2 accent-primary"
+                  disabled={loading}
+                />
+                <span>{venueType.label}</span>
+              </div>
+              <span className="text-xs bg-gray-100 text-gray-600 px-2 py-1 rounded-full">
+                {venueType.count}
+              </span>
+            </label>
+          ))}
+        </div>
+      </div>
+
+      {/* City Filter */}
+      <div className="mb-6">
+        <h3 className="font-medium mb-3">City</h3>
+        <div className="space-y-2 max-h-32 overflow-y-auto">
+          {filterOptions.cities.slice(0, 5).map((city) => (
+            <label key={city.value} className="flex items-center justify-between py-1 px-2 rounded hover:bg-gray-50 cursor-pointer">
+              <div className="flex items-center">
+                <input
+                  type="radio"
+                  name="city"
+                  checked={filters.city === city.value}
+                  onChange={() => setFilters({ ...filters, city: city.value, page: 1 })}
+                  className="mr-2 accent-primary"
+                  disabled={loading}
+                />
+                <span>{city.label}</span>
+              </div>
+              <span className="text-xs bg-gray-100 text-gray-600 px-2 py-1 rounded-full">
+                {city.count}
               </span>
             </label>
           ))}
         </div>
       </div>
       
+      {/* Price Range Filter */}
       <div className="mb-6">
         <h3 className="font-medium mb-3">Price Range</h3>
         <div className="flex items-center justify-between mb-2">
-          <div className="px-3 py-1 bg-gray-100 rounded-md text-sm">${priceRange[0]}</div>
-          <div className="px-3 py-1 bg-gray-100 rounded-md text-sm">${priceRange[1]}</div>
+          <div className="px-3 py-1 bg-gray-100 rounded-md text-sm">
+            {filters.minPrice || filterOptions.priceRange.min} {filters.currency || 'AED'}
+          </div>
+          <div className="px-3 py-1 bg-gray-100 rounded-md text-sm">
+            {filters.maxPrice || filterOptions.priceRange.max} {filters.currency || 'AED'}
+          </div>
         </div>
         <div className="mb-4">
           <input
             type="range"
-            min="0"
-            max="1000"
-            step="50"
-            value={priceRange[0]}
-            onChange={(e) => setPriceRange([parseInt(e.target.value), priceRange[1]])}
+            min={filterOptions.priceRange.min}
+            max={filterOptions.priceRange.max}
+            step="10"
+            value={filters.minPrice || filterOptions.priceRange.min}
+            onChange={(e) => setFilters({ 
+              ...filters, 
+              minPrice: parseInt(e.target.value), 
+              page: 1 
+            })}
             className="w-full h-2 bg-gray-200 rounded-lg appearance-none cursor-pointer accent-primary"
+            disabled={loading}
           />
         </div>
         <div>
           <input
             type="range"
-            min="0"
-            max="1000"
-            step="50"
-            value={priceRange[1]}
-            onChange={(e) => setPriceRange([priceRange[0], parseInt(e.target.value)])}
+            min={filterOptions.priceRange.min}
+            max={filterOptions.priceRange.max}
+            step="10"
+            value={filters.maxPrice || filterOptions.priceRange.max}
+            onChange={(e) => setFilters({ 
+              ...filters, 
+              maxPrice: parseInt(e.target.value), 
+              page: 1 
+            })}
             className="w-full h-2 bg-gray-200 rounded-lg appearance-none cursor-pointer accent-primary"
+            disabled={loading}
           />
         </div>
       </div>
-      
+
+      {/* Currency Filter */}
       <div className="mb-6">
-        <h3 className="font-medium mb-3">Date</h3>
-        <div className="space-y-2">
-          {[
-            { value: 'all', label: 'All Dates' },
-            { value: 'today', label: 'Today' },
-            { value: 'this-week', label: 'This Week' },
-            { value: 'this-month', label: 'This Month' }
-          ].map((option) => (
-            <label key={option.value} className="flex items-center py-1 px-2 rounded hover:bg-gray-50 cursor-pointer">
-              <input
-                type="radio"
-                name="date-range"
-                value={option.value}
-                checked={dateRange === option.value}
-                onChange={() => setDateRange(option.value)}
-                className="mr-2 accent-primary"
-              />
-              {option.label}
-            </label>
+        <h3 className="font-medium mb-3">Currency</h3>
+        <select
+          value={filters.currency || ''}
+          onChange={(e) => setFilters({ ...filters, currency: e.target.value, page: 1 })}
+          className="w-full px-3 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-primary"
+          disabled={loading}
+        >
+          <option value="">All Currencies</option>
+          {filterOptions.currencies.map((currency) => (
+            <option key={currency.value} value={currency.value}>
+              {currency.label} ({currency.count})
+            </option>
           ))}
-        </div>
+        </select>
       </div>
       
+      {/* Age Range Filter */}
+      <div className="mb-6">
+        <h3 className="font-medium mb-3">Age Range</h3>
+        <div className="flex items-center justify-between mb-2">
+          <div className="px-3 py-1 bg-gray-100 rounded-md text-sm">
+            {filters.ageMin || filterOptions.ageRange.min}+
+          </div>
+          <div className="px-3 py-1 bg-gray-100 rounded-md text-sm">
+            {filters.ageMax || filterOptions.ageRange.max}+
+          </div>
+        </div>
+        <div className="mb-4">
+          <input
+            type="range"
+            min={filterOptions.ageRange.min}
+            max={filterOptions.ageRange.max}
+            step="1"
+            value={filters.ageMin || filterOptions.ageRange.min}
+            onChange={(e) => setFilters({ 
+              ...filters, 
+              ageMin: parseInt(e.target.value), 
+              page: 1 
+            })}
+            className="w-full h-2 bg-gray-200 rounded-lg appearance-none cursor-pointer accent-primary"
+            disabled={loading}
+          />
+        </div>
+        <div>
+          <input
+            type="range"
+            min={filterOptions.ageRange.min}
+            max={filterOptions.ageRange.max}
+            step="1"
+            value={filters.ageMax || filterOptions.ageRange.max}
+            onChange={(e) => setFilters({ 
+              ...filters, 
+              ageMax: parseInt(e.target.value), 
+              page: 1 
+            })}
+            className="w-full h-2 bg-gray-200 rounded-lg appearance-none cursor-pointer accent-primary"
+            disabled={loading}
+          />
+        </div>
+      </div>
+
+      {/* Date Range Filter */}
+      <div className="mb-6">
+        <h3 className="font-medium mb-3">Date Range</h3>
+        <div className="space-y-2">
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-1">From</label>
+            <input
+              type="date"
+              value={filters.dateFrom || ''}
+              onChange={(e) => setFilters({ ...filters, dateFrom: e.target.value, page: 1 })}
+              className="w-full px-3 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-primary"
+              disabled={loading}
+            />
+          </div>
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-1">To</label>
+            <input
+              type="date"
+              value={filters.dateTo || ''}
+              onChange={(e) => setFilters({ ...filters, dateTo: e.target.value, page: 1 })}
+              className="w-full px-3 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-primary"
+              disabled={loading}
+            />
+          </div>
+        </div>
+      </div>
+
+      {/* Featured Events Filter */}
+      <div className="mb-6">
+        <label className="flex items-center py-1 px-2 rounded hover:bg-gray-50 cursor-pointer">
+          <input
+            type="checkbox"
+            checked={filters.featured || false}
+            onChange={(e) => setFilters({ 
+              ...filters, 
+              featured: e.target.checked ? true : undefined, 
+              page: 1 
+            })}
+            className="mr-2 accent-primary"
+            disabled={loading}
+          />
+          <span>Featured Events Only</span>
+        </label>
+      </div>
+      
+      {/* Sort Options for Mobile */}
       <div className="mb-6 md:hidden">
         <h3 className="font-medium mb-3">Sort By</h3>
         <select
-          value={sortBy}
-          onChange={(e) => setSortBy(e.target.value)}
+          value={`${filters.sortBy || 'createdAt'}-${filters.sortOrder || 'desc'}`}
+          onChange={(e) => {
+            const [sortBy, sortOrder] = e.target.value.split('-');
+            setFilters({ ...filters, sortBy, sortOrder: sortOrder as 'asc' | 'desc', page: 1 });
+          }}
           className="w-full px-4 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-primary"
+          disabled={loading}
         >
-          <option value="relevance">Relevance</option>
-          <option value="date">Date</option>
-          <option value="price-low">Price: Low to High</option>
-          <option value="price-high">Price: High to Low</option>
-          <option value="rating">Rating</option>
+          <option value="createdAt-desc">Newest First</option>
+          <option value="createdAt-asc">Oldest First</option>
+          <option value="price-asc">Price: Low to High</option>
+          <option value="price-desc">Price: High to Low</option>
+          <option value="viewsCount-desc">Most Popular</option>
+          <option value="title-asc">Name: A to Z</option>
         </select>
       </div>
       
       <button
         onClick={resetFilters}
         className="w-full px-4 py-2 bg-gray-100 text-gray-700 rounded-lg hover:bg-gray-200 transition-colors flex items-center justify-center gap-2"
+        disabled={loading}
       >
         <FaTimes className="w-3 h-3" />
         <span>Reset Filters</span>
@@ -162,275 +315,269 @@ const SearchPage: React.FC = () => {
   const [searchParams, setSearchParams] = useSearchParams();
   const navigate = useNavigate();
   const query = searchParams.get('q') || '';
-  const [events, setEvents] = useState<Event[]>([]);
+  const [events, setEvents] = useState<SearchEvent[]>([]);
   const [loading, setLoading] = useState<boolean>(true);
   const [error, setError] = useState<string | null>(null);
-  const [usingMockData, setUsingMockData] = useState<boolean>(false);
   const [searchInput, setSearchInput] = useState<string>(query);
   const [showFilters, setShowFilters] = useState<boolean>(false);
+  const [pagination, setPagination] = useState<any>(null);
+  const [filterOptions, setFilterOptions] = useState<FilterOptions>({
+    categories: [{ label: 'All Categories', value: '', count: 0 }],
+    cities: [{ label: 'All Cities', value: '', count: 0 }],
+    eventTypes: [{ label: 'All Types', value: '', count: 0 }],
+    venueTypes: [{ label: 'All Venues', value: '', count: 0 }],
+    currencies: [{ label: 'All Currencies', value: '', count: 0 }],
+    priceRange: { min: 0, max: 1000 },
+    ageRange: { min: 0, max: 100 }
+  });
   
-  // Filter states
-  const [selectedCategory, setSelectedCategory] = useState<string>('all');
-  const [priceRange, setPriceRange] = useState<[number, number]>([0, 1000]);
-  const [dateRange, setDateRange] = useState<string>('all');
-  const [sortBy, setSortBy] = useState<string>('relevance');
+  // Initialize filters from URL params
+  const [filters, setFilters] = useState<SearchFilters>(() => {
+    return {
+      category: searchParams.get('category') || undefined,
+      type: searchParams.get('type') || undefined,
+      venueType: searchParams.get('venueType') || undefined,
+      city: searchParams.get('city') || undefined,
+      minPrice: searchParams.get('minPrice') ? Number(searchParams.get('minPrice')) : undefined,
+      maxPrice: searchParams.get('maxPrice') ? Number(searchParams.get('maxPrice')) : undefined,
+      currency: searchParams.get('currency') || undefined,
+      ageMin: searchParams.get('ageMin') ? Number(searchParams.get('ageMin')) : undefined,
+      ageMax: searchParams.get('ageMax') ? Number(searchParams.get('ageMax')) : undefined,
+      featured: searchParams.get('featured') === 'true' ? true : undefined,
+      dateFrom: searchParams.get('dateFrom') || undefined,
+      dateTo: searchParams.get('dateTo') || undefined,
+      sortBy: searchParams.get('sortBy') || 'createdAt',
+      sortOrder: (searchParams.get('sortOrder') as 'asc' | 'desc') || 'desc',
+      page: searchParams.get('page') ? Number(searchParams.get('page')) : 1,
+      limit: 12
+    };
+  });
 
-  // Mock data for events
-  const mockEvents: Event[] = [
-    {
-      id: 1,
-      title: 'Tech Conference 2023',
-      image: 'https://via.placeholder.com/400x300',
-      date: '2023-11-15',
-      time: '09:00 AM - 05:00 PM',
-      location: 'Convention Center, New York',
-      price: 299.99,
-      category: 'Conference',
-      description: 'Join us for the biggest tech conference of the year featuring keynotes from industry leaders, workshops, and networking opportunities.',
-      organizer: {
-        id: 101,
-        name: 'TechEvents Inc',
-        logo: 'https://via.placeholder.com/50'
-      },
-      rating: 4.8,
-      reviewCount: 124,
-      featured: true,
-      attendees: 1250
-    },
-    {
-      id: 2,
-      title: 'Music Festival Weekend',
-      image: 'https://via.placeholder.com/400x300',
-      date: '2023-12-10',
-      time: '12:00 PM - 11:00 PM',
-      location: 'Central Park, New York',
-      price: 149.99,
-      category: 'Festival',
-      description: 'A two-day music festival featuring top artists from around the world, food vendors, and art installations.',
-      organizer: {
-        id: 102,
-        name: 'Festival Productions',
-        logo: 'https://via.placeholder.com/50'
-      },
-      rating: 4.5,
-      reviewCount: 89,
-      attendees: 3500
-    },
-    {
-      id: 3,
-      title: 'Business Leadership Summit',
-      image: 'https://via.placeholder.com/400x300',
-      date: '2023-11-25',
-      time: '10:00 AM - 04:00 PM',
-      location: 'Grand Hotel, Chicago',
-      price: 349.99,
-      category: 'Seminar',
-      description: 'Learn from successful business leaders and entrepreneurs about strategies for growth and innovation in today\'s market.',
-      organizer: {
-        id: 103,
-        name: 'Business Growth Network',
-        logo: 'https://via.placeholder.com/50'
-      },
-      rating: 4.7,
-      reviewCount: 56
-    },
-    {
-      id: 4,
-      title: 'Startup Networking Mixer',
-      image: 'https://via.placeholder.com/400x300',
-      date: '2023-11-30',
-      time: '06:00 PM - 09:00 PM',
-      location: 'Innovation Hub, San Francisco',
-      price: 25.00,
-      category: 'Networking',
-      description: 'Connect with fellow entrepreneurs, investors, and industry professionals in a casual networking environment.',
-      organizer: {
-        id: 104,
-        name: 'Startup Connect',
-        logo: 'https://via.placeholder.com/50'
-      },
-      rating: 4.3,
-      reviewCount: 42
-    },
-    {
-      id: 5,
-      title: 'Digital Marketing Workshop',
-      image: 'https://via.placeholder.com/400x300',
-      date: '2023-12-05',
-      time: '09:30 AM - 03:30 PM',
-      location: 'Business Center, Los Angeles',
-      price: 199.99,
-      category: 'Workshop',
-      description: 'A hands-on workshop covering the latest digital marketing strategies, SEO techniques, and social media best practices.',
-      organizer: {
-        id: 105,
-        name: 'Marketing Pros',
-        logo: 'https://via.placeholder.com/50'
-      },
-      rating: 4.6,
-      reviewCount: 78
-    },
-    {
-      id: 6,
-      title: 'Charity Gala Dinner',
-      image: 'https://via.placeholder.com/400x300',
-      date: '2023-12-15',
-      time: '07:00 PM - 11:00 PM',
-      location: 'Luxury Hotel, Miami',
-      price: 500.00,
-      category: 'Charity',
-      description: 'An elegant evening of dining and entertainment to raise funds for children\'s education in underprivileged communities.',
-      organizer: {
-        id: 106,
-        name: 'Global Education Foundation',
-        logo: 'https://via.placeholder.com/50'
-      },
-      rating: 4.9,
-      reviewCount: 32,
-      featured: true,
-      attendees: 250
-    },
-    {
-      id: 7,
-      title: 'Artificial Intelligence Symposium',
-      image: 'https://via.placeholder.com/400x300',
-      date: '2024-01-20',
-      time: '09:00 AM - 05:00 PM',
-      location: 'Tech Campus, Boston',
-      price: 279.99,
-      category: 'Conference',
-      description: 'Explore the latest advancements in AI technology with presentations from leading researchers and industry applications.',
-      organizer: {
-        id: 107,
-        name: 'AI Research Institute',
-        logo: 'https://via.placeholder.com/50'
-      },
-      rating: 4.7,
-      reviewCount: 45
-    },
-    {
-      id: 8,
-      title: 'Wellness Retreat Weekend',
-      image: 'https://via.placeholder.com/400x300',
-      date: '2024-02-10',
-      time: 'All Day',
-      location: 'Mountain Resort, Colorado',
-      price: 899.99,
-      category: 'Retreat',
-      description: 'A rejuvenating weekend of yoga, meditation, healthy cuisine, and wellness workshops in a beautiful mountain setting.',
-      organizer: {
-        id: 108,
-        name: 'Mindful Living Co',
-        logo: 'https://via.placeholder.com/50'
-      },
-      rating: 4.8,
-      reviewCount: 67
-    }
-  ];
-
-  // Categories derived from mock data
-  const categories = ['all', ...Array.from(new Set(mockEvents.map(event => event.category)))];
-
-  useEffect(() => {
-    const fetchSearchResults = async () => {
+  // Debounced search function
+  const debouncedFetchEvents = useCallback(
+    debounce(async (searchQuery: string, searchFilters: SearchFilters) => {
       try {
         setLoading(true);
-        
-        // In a real app, you would fetch from an API with the search query
-        // const response = await fetch(`/api/search?q=${encodeURIComponent(query)}`);
-        // if (!response.ok) throw new Error('Failed to fetch search results');
-        // const data = await response.json();
-        
-        // Simulate network delay
-        await new Promise(resolve => setTimeout(resolve, 1000));
-        
-        // Filter mock data based on search query
-        const filteredEvents = mockEvents.filter(event => 
-          event.title.toLowerCase().includes(query.toLowerCase()) ||
-          event.description.toLowerCase().includes(query.toLowerCase()) ||
-          event.category.toLowerCase().includes(query.toLowerCase()) ||
-          event.location.toLowerCase().includes(query.toLowerCase())
-        );
-        
-        setEvents(filteredEvents);
-        setUsingMockData(true);
         setError(null);
+        
+        // Prepare API parameters
+        const params: any = {
+          limit: searchFilters.limit || 12,
+          page: searchFilters.page || 1,
+          sortBy: searchFilters.sortBy || 'createdAt',
+          sortOrder: searchFilters.sortOrder || 'desc'
+        };
+
+        // Add search query if provided
+        if (searchQuery.trim()) {
+          params.search = searchQuery.trim();
+        }
+
+        // Add filters
+        if (searchFilters.category) params.category = searchFilters.category;
+        if (searchFilters.type) params.type = searchFilters.type;
+        if (searchFilters.venueType) params.venueType = searchFilters.venueType;
+        if (searchFilters.city) params.city = searchFilters.city;
+        if (searchFilters.minPrice !== undefined) params.minPrice = searchFilters.minPrice;
+        if (searchFilters.maxPrice !== undefined) params.maxPrice = searchFilters.maxPrice;
+        if (searchFilters.currency) params.currency = searchFilters.currency;
+        if (searchFilters.ageMin !== undefined) params.ageMin = searchFilters.ageMin;
+        if (searchFilters.ageMax !== undefined) params.ageMax = searchFilters.ageMax;
+        if (searchFilters.featured !== undefined) params.featured = searchFilters.featured.toString();
+        if (searchFilters.dateFrom) params.dateFrom = searchFilters.dateFrom;
+        if (searchFilters.dateTo) params.dateTo = searchFilters.dateTo;
+        
+        // Fetch events from API using ApiService directly
+        const response = await ApiService.get('/events', { params });
+        
+        // Handle API response structure
+        let eventsData = [];
+        let paginationData = null;
+        
+        if (response?.data?.data?.events) {
+          // Standard API response with nested data wrapper
+          eventsData = response.data.data.events;
+          paginationData = response.data.data.pagination;
+        } else if (response?.data?.events) {
+          // API response with direct data wrapper
+          eventsData = response.data.events;
+          paginationData = response.data.pagination;
+        } else if (Array.isArray(response?.data)) {
+          // Direct array response
+          eventsData = response.data;
+        } else {
+          console.warn('Unexpected API response structure:', response);
+          console.log('Full response:', JSON.stringify(response, null, 2));
+        }
+        
+        setEvents(eventsData);
+        setPagination(paginationData);
+        
+        // Update filter options based on current events
+        updateFilterOptions(eventsData);
       } catch (err) {
-        console.error('Error fetching search results:', err);
-        setError('Failed to load search results. Using mock data instead.');
-        
-        // Filter mock data based on search query as fallback
-        const filteredEvents = mockEvents.filter(event => 
-          event.title.toLowerCase().includes(query.toLowerCase()) ||
-          event.description.toLowerCase().includes(query.toLowerCase()) ||
-          event.category.toLowerCase().includes(query.toLowerCase()) ||
-          event.location.toLowerCase().includes(query.toLowerCase())
-        );
-        
-        setEvents(filteredEvents);
-        setUsingMockData(true);
+        console.error('Error fetching events:', err);
+        setError('Failed to load search results. Please try again.');
+        setEvents([]);
+        setPagination(null);
       } finally {
         setLoading(false);
       }
-    };
+    }, 300),
+    []
+  );
 
-    fetchSearchResults();
-  }, [query]);
+  // Function to update filter options based on current events
+  const updateFilterOptions = useCallback((eventList: SearchEvent[]) => {
+    const categories = new Map<string, number>();
+    const cities = new Map<string, number>();
+    const eventTypes = new Map<string, number>();
+    const venueTypes = new Map<string, number>();
+    const currencies = new Map<string, number>();
+    let minPrice = Infinity;
+    let maxPrice = 0;
+    let minAge = Infinity;
+    let maxAge = 0;
+
+    // Add "All" options
+    categories.set('', eventList.length);
+    cities.set('', eventList.length);
+    eventTypes.set('', eventList.length);
+    venueTypes.set('', eventList.length);
+    currencies.set('', eventList.length);
+
+    eventList.forEach(event => {
+      // Categories
+      if (event.category) {
+        categories.set(event.category, (categories.get(event.category) || 0) + 1);
+      }
+
+      // Cities
+      if (event.location?.city) {
+        cities.set(event.location.city, (cities.get(event.location.city) || 0) + 1);
+      }
+
+      // Event types
+      if (event.type) {
+        eventTypes.set(event.type, (eventTypes.get(event.type) || 0) + 1);
+      }
+
+      // Venue types
+      if (event.venueType) {
+        venueTypes.set(event.venueType, (venueTypes.get(event.venueType) || 0) + 1);
+      }
+
+      // Currencies
+      if (event.currency) {
+        currencies.set(event.currency, (currencies.get(event.currency) || 0) + 1);
+      }
+
+      // Price range
+      if (event.price) {
+        minPrice = Math.min(minPrice, event.price);
+        maxPrice = Math.max(maxPrice, event.price);
+      }
+
+      // Age range
+      if (event.ageRange && event.ageRange.length >= 2) {
+        minAge = Math.min(minAge, event.ageRange[0]);
+        maxAge = Math.max(maxAge, event.ageRange[1]);
+      }
+    });
+
+    setFilterOptions({
+      categories: Array.from(categories.entries()).map(([value, count]) => ({
+        label: value === '' ? 'All Categories' : value,
+        value,
+        count
+      })),
+      cities: Array.from(cities.entries()).map(([value, count]) => ({
+        label: value === '' ? 'All Cities' : value,
+        value,
+        count
+      })),
+      eventTypes: Array.from(eventTypes.entries()).map(([value, count]) => ({
+        label: value === '' ? 'All Types' : value,
+        value,
+        count
+      })),
+      venueTypes: Array.from(venueTypes.entries()).map(([value, count]) => ({
+        label: value === '' ? 'All Venues' : value,
+        value,
+        count
+      })),
+      currencies: Array.from(currencies.entries()).map(([value, count]) => ({
+        label: value === '' ? 'All Currencies' : value,
+        value,
+        count
+      })),
+      priceRange: {
+        min: minPrice === Infinity ? 0 : Math.floor(minPrice / 10) * 10,
+        max: maxPrice === 0 ? 1000 : Math.ceil(maxPrice / 10) * 10
+      },
+      ageRange: {
+        min: minAge === Infinity ? 0 : minAge,
+        max: maxAge === 0 ? 100 : maxAge
+      }
+    });
+  }, []);
+
+  // Effect to fetch events when query or filters change
+  useEffect(() => {
+    debouncedFetchEvents(query, filters);
+  }, [query, filters, debouncedFetchEvents]);
+
+  // Update URL params when filters change
+  useEffect(() => {
+    const params = new URLSearchParams();
+    
+    if (query) params.set('q', query);
+    if (filters.category) params.set('category', filters.category);
+    if (filters.type) params.set('type', filters.type);
+    if (filters.venueType) params.set('venueType', filters.venueType);
+    if (filters.city) params.set('city', filters.city);
+    if (filters.minPrice !== undefined) params.set('minPrice', filters.minPrice.toString());
+    if (filters.maxPrice !== undefined) params.set('maxPrice', filters.maxPrice.toString());
+    if (filters.currency) params.set('currency', filters.currency);
+    if (filters.ageMin !== undefined) params.set('ageMin', filters.ageMin.toString());
+    if (filters.ageMax !== undefined) params.set('ageMax', filters.ageMax.toString());
+    if (filters.featured) params.set('featured', 'true');
+    if (filters.dateFrom) params.set('dateFrom', filters.dateFrom);
+    if (filters.dateTo) params.set('dateTo', filters.dateTo);
+    if (filters.sortBy && filters.sortBy !== 'createdAt') params.set('sortBy', filters.sortBy);
+    if (filters.sortOrder && filters.sortOrder !== 'desc') params.set('sortOrder', filters.sortOrder);
+    if (filters.page && filters.page !== 1) params.set('page', filters.page.toString());
+    
+    setSearchParams(params);
+  }, [filters, query, setSearchParams]);
 
   // Handle search submission
   const handleSearch = (e?: React.FormEvent) => {
     if (e) e.preventDefault();
     if (searchInput.trim()) {
-      setSearchParams({ q: searchInput.trim() });
+      const params = new URLSearchParams(searchParams);
+      params.set('q', searchInput.trim());
+      setSearchParams(params);
     } else {
       navigate('/');
     }
   };
 
-  // Calculate category counts
-  const categoryCounts = useMemo(() => {
-    const counts: Record<string, number> = { all: events.length };
-    events.forEach(event => {
-      counts[event.category] = (counts[event.category] || 0) + 1;
+  // Reset filters function
+  const resetFilters = useCallback(() => {
+    setFilters({
+      sortBy: 'createdAt',
+      sortOrder: 'desc',
+      page: 1,
+      limit: 12
     });
-    return counts;
-  }, [events]);
+  }, []);
 
-  // Apply filters and sorting to events
-  const filteredEvents = useMemo(() => {
-    return events.filter(event => {
-      // Category filter
-      const matchesCategory = selectedCategory === 'all' || event.category === selectedCategory;
-      
-      // Price filter
-      const matchesPrice = event.price >= priceRange[0] && event.price <= priceRange[1];
-      
-      // Date filter
-      let matchesDate = true;
-      const eventDate = new Date(event.date);
-      const today = new Date();
-      
-      if (dateRange === 'today') {
-        matchesDate = eventDate.toDateString() === today.toDateString();
-      } else if (dateRange === 'this-week') {
-        const weekLater = new Date(today);
-        weekLater.setDate(today.getDate() + 7);
-        matchesDate = eventDate >= today && eventDate <= weekLater;
-      } else if (dateRange === 'this-month') {
-        matchesDate = eventDate.getMonth() === today.getMonth() && 
-                     eventDate.getFullYear() === today.getFullYear();
-      }
-      
-      return matchesCategory && matchesPrice && matchesDate;
-    }).sort((a, b) => {
-      if (sortBy === 'price-low') return a.price - b.price;
-      if (sortBy === 'price-high') return b.price - a.price;
-      if (sortBy === 'date') return new Date(a.date).getTime() - new Date(b.date).getTime();
-      if (sortBy === 'rating') return b.rating - a.rating;
-      // Default: relevance (no specific sorting)
-      return 0;
-    });
-  }, [events, selectedCategory, priceRange, dateRange, sortBy]);
+  // Handle pagination
+  const handlePageChange = useCallback((newPage: number) => {
+    setFilters(prev => ({ ...prev, page: newPage }));
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+  }, []);
 
   if (loading) {
     return (
@@ -486,12 +633,6 @@ const SearchPage: React.FC = () => {
       </div>
 
       <div className="container mx-auto px-4 py-6">
-        {usingMockData && (
-          <div className="bg-yellow-100 border-l-4 border-yellow-500 text-yellow-700 p-4 mb-6 rounded-r-lg" role="alert">
-            <p className="font-bold">Note</p>
-            <p>Using mock data. In a production environment, this would be fetched from a backend API.</p>
-          </div>
-        )}
 
         {error && (
           <div className="bg-red-100 border-l-4 border-red-500 text-red-700 p-4 mb-6 rounded-r-lg" role="alert">
@@ -502,21 +643,35 @@ const SearchPage: React.FC = () => {
 
         <div className="flex items-center justify-between mb-6">
           <div>
-            <h1 className="text-2xl font-bold mb-1">Search Results for "{query}"</h1>
-            <p className="text-gray-600">{filteredEvents.length} results found</p>
+            <h1 className="text-2xl font-bold mb-1">
+              {query ? `Search Results for "${query}"` : 'All Events'}
+            </h1>
+            <p className="text-gray-600">
+              {loading ? 'Loading...' : `${pagination?.totalEvents || events.length} results found`}
+              {pagination && (
+                <span className="ml-2 text-sm">
+                  (Page {pagination.currentPage} of {pagination.totalPages})
+                </span>
+              )}
+            </p>
           </div>
           <div className="hidden md:flex items-center gap-2">
             <label className="text-gray-600 text-sm">Sort by:</label>
             <select
-              value={sortBy}
-              onChange={(e) => setSortBy(e.target.value)}
+              value={`${filters.sortBy || 'createdAt'}-${filters.sortOrder || 'desc'}`}
+              onChange={(e) => {
+                const [sortBy, sortOrder] = e.target.value.split('-');
+                setFilters(prev => ({ ...prev, sortBy, sortOrder: sortOrder as 'asc' | 'desc', page: 1 }));
+              }}
               className="border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary"
+              disabled={loading}
             >
-              <option value="relevance">Relevance</option>
-              <option value="date">Date</option>
-              <option value="price-low">Price: Low to High</option>
-              <option value="price-high">Price: High to Low</option>
-              <option value="rating">Rating</option>
+              <option value="createdAt-desc">Newest First</option>
+              <option value="createdAt-asc">Oldest First</option>
+              <option value="price-asc">Price: Low to High</option>
+              <option value="price-desc">Price: High to Low</option>
+              <option value="viewsCount-desc">Most Popular</option>
+              <option value="title-asc">Name: A to Z</option>
             </select>
           </div>
         </div>
@@ -552,21 +707,11 @@ const SearchPage: React.FC = () => {
                 <div className="p-4">
                   {/* Mobile Filters Content */}
                   <FilterContent 
-                    selectedCategory={selectedCategory}
-                    setSelectedCategory={setSelectedCategory}
-                    priceRange={priceRange}
-                    setPriceRange={setPriceRange}
-                    dateRange={dateRange}
-                    setDateRange={setDateRange}
-                    categoryCounts={categoryCounts}
-                    sortBy={sortBy}
-                    setSortBy={setSortBy}
-                    resetFilters={() => {
-                      setSelectedCategory('all');
-                      setPriceRange([0, 1000]);
-                      setDateRange('all');
-                      setSortBy('relevance');
-                    }}
+                    filters={filters}
+                    setFilters={setFilters}
+                    filterOptions={filterOptions}
+                    resetFilters={resetFilters}
+                    loading={loading}
                   />
                 </div>
               </motion.div>
@@ -580,123 +725,231 @@ const SearchPage: React.FC = () => {
             <div className="flex justify-between items-center mb-6">
               <h2 className="text-xl font-bold">Filters</h2>
               <button
-                onClick={() => {
-                  setSelectedCategory('all');
-                  setPriceRange([0, 1000]);
-                  setDateRange('all');
-                  setSortBy('relevance');
-                }}
+                onClick={resetFilters}
                 className="text-sm text-primary hover:underline"
+                disabled={loading}
               >
                 Reset All
               </button>
             </div>
             
             <FilterContent 
-              selectedCategory={selectedCategory}
-              setSelectedCategory={setSelectedCategory}
-              priceRange={priceRange}
-              setPriceRange={setPriceRange}
-              dateRange={dateRange}
-              setDateRange={setDateRange}
-              categoryCounts={categoryCounts}
-              sortBy={sortBy}
-              setSortBy={setSortBy}
-              resetFilters={() => {
-                setSelectedCategory('all');
-                setPriceRange([0, 1000]);
-                setDateRange('all');
-                setSortBy('relevance');
-              }}
+              filters={filters}
+              setFilters={setFilters}
+              filterOptions={filterOptions}
+              resetFilters={resetFilters}
+              loading={loading}
             />
           </div>
         </div>
         
         {/* Search Results */}
         <div className="lg:col-span-3">
-          {filteredEvents.length === 0 ? (
+          {loading ? (
+            <div className="text-center py-16 bg-white rounded-lg shadow-sm">
+              <motion.div 
+                animate={{ rotate: 360 }}
+                transition={{ duration: 1, repeat: Infinity, ease: "linear" }}
+                className="w-16 h-16 mb-4 mx-auto"
+              >
+                <FaSearch className="w-full h-full text-primary opacity-50" />
+              </motion.div>
+              <h3 className="text-xl font-medium text-gray-500 mb-2">Loading events...</h3>
+              <p className="text-gray-400">Please wait while we fetch the latest events</p>
+            </div>
+          ) : events.length === 0 ? (
             <div className="text-center py-16 bg-white rounded-lg shadow-sm">
               <div className="mb-4">
                 <FaSearch className="w-12 h-12 mx-auto text-gray-300" />
               </div>
-              <h3 className="text-xl font-medium text-gray-500 mb-2">No events found</h3>
-              <p className="text-gray-400 mb-6">Try adjusting your search or filter options</p>
+              <h3 className="text-xl font-medium text-gray-500 mb-2">
+                {error ? 'Error loading events' : 'No events found'}
+              </h3>
+              <p className="text-gray-400 mb-6">
+                {error || 'Try adjusting your search or filter options'}
+              </p>
               <button 
-                onClick={() => {
-                  setSelectedCategory('all');
-                  setPriceRange([0, 1000]);
-                  setDateRange('all');
-                  setSortBy('relevance');
-                }}
+                onClick={resetFilters}
                 className="px-6 py-2 bg-primary text-white rounded-lg hover:bg-primary-dark transition-colors"
+                disabled={loading}
               >
                 Reset Filters
               </button>
             </div>
           ) : (
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-2 xl:grid-cols-3 gap-6">
-              {filteredEvents.map((event) => (
-                <motion.div
-                  key={event.id}
-                  initial={{ opacity: 0, y: 20 }}
-                  animate={{ opacity: 1, y: 0 }}
-                  transition={{ duration: 0.3 }}
-                  whileHover={{ y: -5, transition: { duration: 0.2 } }}
-                  className="bg-white rounded-lg overflow-hidden shadow-sm hover:shadow-lg transition-all duration-300"
-                >
-                  <Link to={`/events/${event.id}`} className="block h-full">
-                    <div className="relative h-48 overflow-hidden">
-                      <img 
-                        src={event.image} 
-                        alt={event.title} 
-                        className="w-full h-full object-cover transition-transform duration-500 hover:scale-110"
-                      />
-                      {event.featured && (
-                        <div className="absolute top-0 left-0 bg-yellow-500 text-white px-3 py-1 m-2 rounded-full text-xs font-medium">
-                          Featured
-                        </div>
-                      )}
-                      <div className="absolute top-0 right-0 bg-primary text-white px-3 py-1 m-2 rounded-full text-sm font-medium">
-                        ${event.price.toFixed(2)}
-                      </div>
-                      <div className="absolute bottom-0 left-0 bg-white px-3 py-1 m-2 rounded-full text-xs font-medium shadow-sm">
-                        {event.category}
-                      </div>
-                    </div>
-                    <div className="p-4">
-                      <h3 className="font-bold text-lg mb-2 line-clamp-1 group-hover:text-primary transition-colors">{event.title}</h3>
-                      <p className="text-gray-600 mb-3 text-sm line-clamp-2">{event.description}</p>
-                      <div className="flex items-center text-gray-500 text-sm mb-2">
-                        <FaCalendarAlt className="w-4 h-4 mr-2 text-gray-400" />
-                        {new Date(event.date).toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' })}
-                      </div>
-                      <div className="flex items-center text-gray-500 text-sm mb-2">
-                        <FaClock className="w-4 h-4 mr-2 text-gray-400" />
-                        {event.time}
-                      </div>
-                      <div className="flex items-center text-gray-500 text-sm mb-3">
-                        <FaMapMarkerAlt className="w-4 h-4 mr-2 text-gray-400" />
-                        {event.location}
-                      </div>
-                      <div className="flex items-center justify-between">
-                        <div className="flex items-center">
+            <>
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-2 xl:grid-cols-3 gap-6 mb-8">
+                {events.map((event) => {
+                  // Get the next available date from dateSchedule
+                  const nextDate = event.dateSchedule?.find(schedule => 
+                    new Date(schedule.startDate) >= new Date()
+                  ) || event.dateSchedule?.[0];
+                  
+                  return (
+                    <motion.div
+                      key={event._id}
+                      initial={{ opacity: 0, y: 20 }}
+                      animate={{ opacity: 1, y: 0 }}
+                      transition={{ duration: 0.3 }}
+                      whileHover={{ y: -5, transition: { duration: 0.2 } }}
+                      className="bg-white rounded-lg overflow-hidden shadow-sm hover:shadow-lg transition-all duration-300"
+                    >
+                      <Link to={`/events/${event._id}`} className="block h-full">
+                        <div className="relative h-48 overflow-hidden">
                           <img 
-                            src={event.organizer.logo} 
-                            alt={event.organizer.name} 
-                            className="w-6 h-6 rounded-full mr-2"
+                            src={event.images?.[0] || '/api/placeholder/400/300'} 
+                            alt={event.title} 
+                            className="w-full h-full object-cover transition-transform duration-500 hover:scale-110"
+                            onError={(e) => {
+                              const target = e.target as HTMLImageElement;
+                              target.src = 'https://placehold.co/400x300?text=' + encodeURIComponent(event.title);
+                            }}
                           />
-                          <span className="text-xs text-gray-500">{event.organizer.name}</span>
+                          {event.isFeatured && (
+                            <div className="absolute top-0 left-0 bg-yellow-500 text-white px-3 py-1 m-2 rounded-full text-xs font-medium">
+                              Featured
+                            </div>
+                          )}
+                          <div className="absolute top-0 right-0 bg-primary text-white px-3 py-1 m-2 rounded-full text-sm font-medium">
+                            {event.price} {event.currency}
+                          </div>
+                          <div className="absolute bottom-0 left-0 bg-white px-3 py-1 m-2 rounded-full text-xs font-medium shadow-sm">
+                            {event.category}
+                          </div>
+                          <div className="absolute bottom-0 right-0 bg-black bg-opacity-70 text-white px-2 py-1 m-2 rounded text-xs">
+                            {event.type}
+                          </div>
                         </div>
-                        <div className="flex items-center">
-                          <FaStar className="text-yellow-500 mr-1 w-3 h-3" />
-                          <span className="text-xs text-gray-500">{event.rating} ({event.reviewCount})</span>
+                        <div className="p-4">
+                          <h3 className="font-bold text-lg mb-2 line-clamp-2 group-hover:text-primary transition-colors">
+                            {event.title}
+                          </h3>
+                          <p className="text-gray-600 mb-3 text-sm line-clamp-2">{event.description}</p>
+                          
+                          {nextDate && (
+                            <div className="flex items-center text-gray-500 text-sm mb-2">
+                              <FaCalendarAlt className="w-4 h-4 mr-2 text-gray-400" />
+                              {new Date(nextDate.startDate).toLocaleDateString('en-US', { 
+                                weekday: 'short', 
+                                month: 'short', 
+                                day: 'numeric',
+                                year: 'numeric'
+                              })}
+                            </div>
+                          )}
+                          
+                          {nextDate && (
+                            <div className="flex items-center text-gray-500 text-sm mb-2">
+                              <FaClock className="w-4 h-4 mr-2 text-gray-400" />
+                              {new Date(nextDate.startDate).toLocaleTimeString('en-US', { 
+                                hour: '2-digit', 
+                                minute: '2-digit'
+                              })} - {new Date(nextDate.endDate).toLocaleTimeString('en-US', { 
+                                hour: '2-digit', 
+                                minute: '2-digit'
+                              })}
+                            </div>
+                          )}
+                          
+                          <div className="flex items-center text-gray-500 text-sm mb-2">
+                            <FaMapMarkerAlt className="w-4 h-4 mr-2 text-gray-400" />
+                            {event.location?.city}, {event.location?.address}
+                          </div>
+                          
+                          {event.ageRange && event.ageRange.length >= 2 && (
+                            <div className="flex items-center text-gray-500 text-sm mb-2">
+                              <FaUsers className="w-4 h-4 mr-2 text-gray-400" />
+                              Ages {event.ageRange[0]}-{event.ageRange[1]}
+                            </div>
+                          )}
+                          
+                          {nextDate && (
+                            <div className="flex items-center text-gray-500 text-sm mb-3">
+                              <FaUsers className="w-4 h-4 mr-2 text-gray-400" />
+                              {nextDate.availableSeats}/{nextDate.totalSeats} seats available
+                            </div>
+                          )}
+                          
+                          <div className="flex items-center justify-between">
+                            <div className="flex items-center">
+                              <span className="text-xs text-gray-500">
+                                by {event.vendorId?.firstName} {event.vendorId?.lastName}
+                              </span>
+                            </div>
+                            <div className="flex items-center">
+                              <span className="text-xs bg-gray-100 text-gray-600 px-2 py-1 rounded">
+                                {event.viewsCount || 0} views
+                              </span>
+                            </div>
+                          </div>
+                          
+                          {event.tags && event.tags.length > 0 && (
+                            <div className="mt-3 pt-3 border-t border-gray-100">
+                              <div className="flex items-center flex-wrap gap-1">
+                                <FaTag className="w-3 h-3 text-gray-400 mr-1" />
+                                {event.tags.slice(0, 3).map((tag, index) => (
+                                  <span key={index} className="text-xs bg-blue-100 text-blue-700 px-2 py-1 rounded">
+                                    {tag}
+                                  </span>
+                                ))}
+                                {event.tags.length > 3 && (
+                                  <span className="text-xs text-gray-500">+{event.tags.length - 3} more</span>
+                                )}
+                              </div>
+                            </div>
+                          )}
                         </div>
-                      </div>
-                    </div>
-                  </Link>
-                </motion.div>
-              ))}
-            </div>
+                      </Link>
+                    </motion.div>
+                  );
+                })}
+              </div>
+              
+              {/* Pagination */}
+              {pagination && pagination.totalPages > 1 && (
+                <div className="flex items-center justify-center space-x-2 mt-8">
+                  <button
+                    onClick={() => handlePageChange(pagination.currentPage - 1)}
+                    disabled={!pagination.hasPrevPage || loading}
+                    className="px-4 py-2 border border-gray-300 rounded-lg disabled:opacity-50 disabled:cursor-not-allowed hover:bg-gray-50"
+                  >
+                    Previous
+                  </button>
+                  
+                  <div className="flex space-x-2">
+                    {Array.from({ length: Math.min(5, pagination.totalPages) }, (_, i) => {
+                      const page = Math.max(1, Math.min(
+                        pagination.totalPages - 4,
+                        pagination.currentPage - 2
+                      )) + i;
+                      
+                      return (
+                        <button
+                          key={page}
+                          onClick={() => handlePageChange(page)}
+                          disabled={loading}
+                          className={`px-4 py-2 rounded-lg ${
+                            page === pagination.currentPage
+                              ? 'bg-primary text-white'
+                              : 'border border-gray-300 hover:bg-gray-50'
+                          }`}
+                        >
+                          {page}
+                        </button>
+                      );
+                    })}
+                  </div>
+                  
+                  <button
+                    onClick={() => handlePageChange(pagination.currentPage + 1)}
+                    disabled={!pagination.hasNextPage || loading}
+                    className="px-4 py-2 border border-gray-300 rounded-lg disabled:opacity-50 disabled:cursor-not-allowed hover:bg-gray-50"
+                  >
+                    Next
+                  </button>
+                </div>
+              )}
+            </>
           )}
         </div>
       </div>

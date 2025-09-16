@@ -1,17 +1,43 @@
 import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { FaMapMarkerAlt, FaChild, FaArrowRight } from 'react-icons/fa';
+import { FaArrowRight } from 'react-icons/fa';
+import EventCard from './EventCard';
+import { transformEvent } from '../../utils/dataTransformers';
 
 type Event = {
+  _id?: string;
   id: string;
   title: string;
-  image: string;
-  location?: string;
-  ageGroup?: string;
-  price?: number;
-  category?: string;
   description?: string;
+  images?: string[];
+  image: string;
+  price?: number;
+  currency?: string;
+  location?: {
+    city?: string;
+    address?: string;
+    coordinates?: { lat: number; lng: number };
+  } | string;
+  category?: string;
+  categories?: string[];
+  ageRange?: {
+    min: number;
+    max: number;
+  };
+  ageGroup?: string;
+  dateSchedule?: Array<{
+    startDate: string;
+    endDate: string;
+  }>;
   date?: string;
+  isFeatured?: boolean;
+  viewsCount?: number;
+  bookingsCount?: number;
+  rating?: number;
+  reviewsCount?: number;
+  vendorId?: {
+    businessName: string;
+  };
 };
 
 
@@ -21,15 +47,33 @@ interface EventGridSectionProps {
 
 const EventGridSection: React.FC<EventGridSectionProps> = ({ events = [] }) => {
   const navigate = useNavigate();
-  const [selectedFilter, setSelectedFilter] = useState('All');
+  const [showAll, setShowAll] = useState(false);
 
-  // Get unique categories from events
-  const categories = ['All', ...Array.from(new Set(events.map(event => event.category).filter(Boolean)))];
-  
-  const filteredEvents =
-    selectedFilter === 'All'
-      ? events.slice(0, 8) // Show first 8 events
-      : events.filter((event) => event.category === selectedFilter).slice(0, 8);
+  // Ensure events is an array and not undefined/null
+  const safeEvents = Array.isArray(events) ? events : [];
+
+  // Transform events to ensure consistent data structure
+  const transformedEvents = safeEvents.map(transformEvent);
+
+  // Sort events by popularity (viewsCount high to low)
+  const sortedEvents = [...transformedEvents].sort((a, b) => {
+    return (b.viewsCount || 0) - (a.viewsCount || 0);
+  });
+
+  // Debug logging (only in development with debug flag)
+  if (import.meta.env.DEV && import.meta.env.VITE_DEBUG_COMPONENTS === 'true') {
+    console.log('EventGridSection:', {
+      receivedEvents: events?.length || 0,
+      safeEvents: safeEvents.length,
+      transformedEvents: transformedEvents.length,
+      sortedEvents: sortedEvents.length
+    });
+  }
+
+  // Apply display limit
+  const displayLimit = showAll ? sortedEvents.length : 8;
+  const filteredEvents = sortedEvents.slice(0, displayLimit);
+  const hasMoreEvents = sortedEvents.length > displayLimit;
 
   return (
     <section className="px-6 py-16 max-w-screen-xl mx-auto">
@@ -38,10 +82,15 @@ const EventGridSection: React.FC<EventGridSectionProps> = ({ events = [] }) => {
           <div className="inline-block mb-4 px-4 py-2 rounded-full" style={{ backgroundColor: 'rgba(0, 142, 199, 0.1)' }}>
             <span className="font-semibold" style={{ color: 'var(--primary-color)' }}>Explore</span>
           </div>
-          <h2 className="text-3xl font-bold mb-2">🎉 Handpicked Experiences</h2>
+          <h2 className="text-3xl font-bold mb-2">🎉 Most Popular Experiences</h2>
           <p className="text-gray-600">
-            Our pick of the best kids activities in Dubai, Abu Dhabi and the rest of the UAE
+            Discover the most viewed and loved kids activities in Dubai, Abu Dhabi and the UAE
           </p>
+          {filteredEvents.length > 0 && (
+            <p className="text-sm text-gray-500 mt-1">
+              Showing top {filteredEvents.length} most viewed experiences
+            </p>
+          )}
         </div>
         <button 
           onClick={() => navigate('/events')}
@@ -52,89 +101,56 @@ const EventGridSection: React.FC<EventGridSectionProps> = ({ events = [] }) => {
         </button>
       </div>
 
-      {/* Filters */}
-      <div className="flex flex-wrap gap-3 mb-10 overflow-x-auto pb-2 -mx-1 px-1">
-        {categories.map((filter) => (
-          <button
-            key={filter}
-            className={`px-5 py-2.5 rounded-full text-sm font-semibold transition-all duration-300 ${selectedFilter === filter ? 'shadow-md' : 'hover:shadow-sm'}`}
-            style={{
-              backgroundColor: selectedFilter === filter ? 'var(--primary-color)' : 'white',
-              borderWidth: '1px',
-              borderStyle: 'solid',
-              borderColor: 'var(--primary-color)',
-              color: selectedFilter === filter ? 'white' : 'var(--primary-color)'
-            }}
-            onClick={() => setSelectedFilter(filter)}
-          >
-            {filter}
-          </button>
-        ))}
-      </div>
 
       {/* Grid View */}
-      <div className="grid gap-8 grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
-        {filteredEvents.map((event) => (
-          <div
-            key={event.id}
-            className="bg-white rounded-xl shadow-md overflow-hidden hover:shadow-lg transition-all duration-300 group"
-          >
-            <div className="relative overflow-hidden">
-              <img 
-                src={event.image} 
-                alt={event.title} 
-                className="w-full h-52 object-cover transition-transform duration-500 group-hover:scale-105" 
-              />
-              {event.ageGroup && (
-                <div className="absolute top-3 right-3 bg-white rounded-full px-3 py-1 text-sm font-semibold shadow-sm" style={{ color: 'var(--primary-color)' }}>
-                  Ages {event.ageGroup}
-                </div>
-              )}
-            </div>
-            <div className="p-5">
-              <h3 className="text-lg font-semibold mb-2 line-clamp-2 min-h-[3.5rem]">{event.title}</h3>
-              {event.location && (
-                <div className="flex items-center text-gray-500 mb-3 text-sm">
-                  <FaMapMarkerAlt className="mr-1" style={{ color: 'var(--primary-color)' }} />
-                  <p className="truncate">{event.location}</p>
-                </div>
-              )}
-              <div className="flex justify-between items-center pt-3 border-t border-gray-100">
-                <div>
-                  {event.price && (
-                    <>
-                      <span className="text-xs text-gray-500">Starting from</span>
-                      <div className="font-bold text-lg" style={{ color: 'var(--primary-color)' }}>AED {event.price}</div>
-                    </>
-                  )}
-                  {!event.price && event.date && (
-                    <div className="text-sm text-gray-500">
-                      {new Date(event.date).toLocaleDateString()}
-                    </div>
-                  )}
-                </div>
-                <button 
-                  onClick={() => navigate(`/events/${event.id}`)}
-                  className="px-4 py-2 text-white text-sm rounded-lg hover:shadow-md transition-all duration-300" 
-                  style={{ backgroundColor: 'var(--accent-color)' }}
-                >
-                  View Details
-                </button>
-              </div>
-            </div>
-          </div>
-        ))}
-      </div>
+      {filteredEvents.length > 0 ? (
+        <div className="grid gap-8 grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
+          {filteredEvents.map((event) => (
+            <EventCard
+              key={event.id}
+              {...event}
+              variant="default"
+              showStats={true}
+            />
+          ))}
+        </div>
+      ) : (
+        <div className="text-center py-16">
+          <div className="text-6xl mb-4">🎪</div>
+          <h3 className="text-xl font-semibold text-gray-700 mb-2">No events found</h3>
+          <p className="text-gray-500 mb-6">
+            No popular events are currently available.
+          </p>
+        </div>
+      )}
       
       {/* View More Button */}
-      <div className="mt-12 text-center">
-        <button 
-          className="px-8 py-3 rounded-lg font-semibold border-2 transition-all duration-300 hover:shadow-md"
-          style={{ borderColor: 'var(--primary-color)', color: 'var(--primary-color)' }}
-        >
-          Load More Experiences
-        </button>
-      </div>
+      {hasMoreEvents && (
+        <div className="mt-12 text-center">
+          <button 
+            onClick={() => setShowAll(!showAll)}
+            className="px-8 py-3 rounded-lg font-semibold border-2 transition-all duration-300 hover:shadow-md"
+            style={{ borderColor: 'var(--primary-color)', color: 'var(--primary-color)' }}
+          >
+            {showAll ? 'Show Less' : `Load More Experiences (${sortedEvents.length - displayLimit} more)`}
+          </button>
+        </div>
+      )}
+      
+      {!hasMoreEvents && filteredEvents.length > 0 && (
+        <div className="mt-12 text-center">
+          <p className="text-gray-500 text-sm">
+            Showing all {filteredEvents.length} experiences
+          </p>
+          <button 
+            onClick={() => navigate('/events')}
+            className="mt-3 px-6 py-2 rounded-lg font-medium transition-all duration-300 hover:shadow-md"
+            style={{ backgroundColor: 'var(--primary-color)', color: 'white' }}
+          >
+            Browse All Events
+          </button>
+        </div>
+      )}
     </section>
   );
 };

@@ -3,6 +3,7 @@ import { Routes, Route, useLocation } from 'react-router-dom';
 import { AnimatePresence } from 'framer-motion';
 import { Provider } from 'react-redux';
 import { PersistGate } from 'redux-persist/integration/react';
+import { Toaster } from 'react-hot-toast';
 import { store, persistor } from './store';
 
 // Layout Components
@@ -16,6 +17,8 @@ const EventsPage = React.lazy(() => import(/* webpackChunkName: "events" */ './p
 const EventDetailPage = React.lazy(() => import(/* webpackChunkName: "events" */ './pages/EventDetailPage'));
 const CategoriesPage = React.lazy(() => import(/* webpackChunkName: "categories" */ './pages/CategoriesPage'));
 const CategoryPage = React.lazy(() => import(/* webpackChunkName: "categories" */ './pages/CategoryPage'));
+const CollectionsPage = React.lazy(() => import(/* webpackChunkName: "collections" */ './pages/CollectionsPage'));
+const CollectionDetailPage = React.lazy(() => import(/* webpackChunkName: "collections" */ './pages/CollectionDetailPage'));
 const VendorsPage = React.lazy(() => import(/* webpackChunkName: "vendors" */ './pages/VendorsPage'));
 const VendorPage = React.lazy(() => import(/* webpackChunkName: "vendors" */ './pages/VendorPage'));
 const SearchPage = React.lazy(() => import(/* webpackChunkName: "search" */ './pages/SearchPage'));
@@ -121,6 +124,31 @@ function AppContent() {
   return (
     <>
       <ScrollToTop />
+      <Toaster
+        position="top-right"
+        toastOptions={{
+          duration: 4000,
+          style: {
+            background: '#ffffff',
+            color: '#374151',
+            boxShadow: '0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05)',
+            border: '1px solid #e5e7eb',
+            borderRadius: '8px',
+          },
+          success: {
+            iconTheme: {
+              primary: '#10b981',
+              secondary: '#ffffff',
+            },
+          },
+          error: {
+            iconTheme: {
+              primary: '#ef4444',
+              secondary: '#ffffff',
+            },
+          },
+        }}
+      />
       <AnimatePresence mode="wait">
         <Routes location={location} key={location.pathname}>
           {/* ============ PUBLIC ROUTES (/) ============ */}
@@ -154,6 +182,18 @@ function AppContent() {
             <Route path="categories/:slug" element={
               <Suspense fallback={<LoadingSpinner />}>
                 <CategoryPage />
+              </Suspense>
+            } />
+
+            {/* Collections Routes */}
+            <Route path="collections" element={
+              <Suspense fallback={<LoadingSpinner />}>
+                <CollectionsPage />
+              </Suspense>
+            } />
+            <Route path="collections/:id" element={
+              <Suspense fallback={<LoadingSpinner />}>
+                <CollectionDetailPage />
               </Suspense>
             } />
             
@@ -223,6 +263,27 @@ function AppContent() {
             
             {/* Shopping & Booking Routes */}
             <Route path="book/:eventId" element={
+              <ProtectedRoute>
+                <Suspense fallback={<LoadingSpinner />}>
+                  <BookingPage />
+                </Suspense>
+              </ProtectedRoute>
+            } />
+            <Route path="booking/:eventId" element={
+              <ProtectedRoute>
+                <Suspense fallback={<LoadingSpinner />}>
+                  <BookingPage />
+                </Suspense>
+              </ProtectedRoute>
+            } />
+            <Route path="booking/:id" element={
+              <ProtectedRoute>
+                <Suspense fallback={<LoadingSpinner />}>
+                  <BookingPage />
+                </Suspense>
+              </ProtectedRoute>
+            } />
+            <Route path="booking" element={
               <ProtectedRoute>
                 <Suspense fallback={<LoadingSpinner />}>
                   <BookingPage />

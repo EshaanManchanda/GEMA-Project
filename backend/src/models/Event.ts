@@ -19,11 +19,18 @@ export interface IEvent extends Document {
   price: number;
   currency: string;
   isApproved: boolean;
+  isActive: boolean;
+  status: 'draft' | 'published' | 'archived' | 'pending' | 'rejected';
   affiliateCode?: string;
   tags: string[];
   dateSchedule: Array<{
-    date: Date;
+    date?: Date; // Legacy field for backward compatibility
+    startDate?: Date;
+    endDate?: Date;
     availableSeats: number;
+    totalSeats?: number;
+    soldSeats?: number;
+    reservedSeats?: number;
     price: number;
     _id?: mongoose.Types.ObjectId;
   }>;
@@ -43,10 +50,12 @@ export interface IEvent extends Document {
   isDeleted: boolean;
   createdAt: Date;
   updatedAt: Date;
-  
+
   // Methods
   hasAvailableSeats(date: Date, quantity?: number): boolean;
   reduceSeats(date: Date, quantity: number): boolean;
+  getEndDate(): Date | null;
+  isExpired(): boolean;
 }
 
 const eventSchema = new Schema<IEvent>(
@@ -133,6 +142,15 @@ const eventSchema = new Schema<IEvent>(
       type: Boolean,
       default: false,
     },
+    isActive: {
+      type: Boolean,
+      default: true,
+    },
+    status: {
+      type: String,
+      enum: ['draft', 'published', 'archived', 'pending', 'rejected'],
+      default: 'pending',
+    },
     affiliateCode: {
       type: String,
       trim: true,
@@ -151,14 +169,39 @@ const eventSchema = new Schema<IEvent>(
     },
     dateSchedule: [
       {
+        // Legacy single date field (for backward compatibility)
         date: {
           type: Date,
-          required: [true, 'Schedule date is required'],
+          required: false,
         },
+        // New start/end date fields (current format)
+        startDate: {
+          type: Date,
+          required: false,
+        },
+        endDate: {
+          type: Date,
+          required: false,
+        },
+        // Seat management
         availableSeats: {
           type: Number,
           required: [true, 'Available seats is required'],
           min: [0, 'Available seats cannot be negative'],
+        },
+        totalSeats: {
+          type: Number,
+          min: [0, 'Total seats cannot be negative'],
+        },
+        soldSeats: {
+          type: Number,
+          default: 0,
+          min: [0, 'Sold seats cannot be negative'],
+        },
+        reservedSeats: {
+          type: Number,
+          default: 0,
+          min: [0, 'Reserved seats cannot be negative'],
         },
         price: {
           type: Number,
@@ -233,6 +276,8 @@ const eventSchema = new Schema<IEvent>(
 // Indexes for performance
 eventSchema.index({ vendorId: 1 });
 eventSchema.index({ isApproved: 1, isDeleted: 1 });
+eventSchema.index({ isActive: 1, isApproved: 1, isDeleted: 1 });
+eventSchema.index({ status: 1 });
 eventSchema.index({ category: 1 });
 eventSchema.index({ type: 1 });
 eventSchema.index({ 'location.city': 1 });
@@ -256,11 +301,21 @@ eventSchema.virtual('slug').get(function () {
   return this.title.toLowerCase().replace(/[^a-z0-9]/g, '-').replace(/-+/g, '-');
 });
 
-// Pre-save middleware to generate affiliate code if not provided
+// Pre-save middleware to generate affiliate code and set status
 eventSchema.pre('save', function (next) {
   if (!this.affiliateCode) {
     this.affiliateCode = `EVT-${(this._id as any).toString().slice(-8).toUpperCase()}`;
   }
+
+  // Auto-set status based on approval state
+  if (this.isModified('isApproved')) {
+    if (this.isApproved) {
+      this.status = 'published';
+    } else if (this.status === 'published') {
+      this.status = 'rejected';
+    }
+  }
+
   next();
 });
 
@@ -277,7 +332,7 @@ eventSchema.methods.reduceSeats = function (date: Date, quantity: number): boole
   const schedule = this.dateSchedule.find(
     (s: any) => s.date.toDateString() === date.toDateString()
   );
-  
+
   if (schedule && schedule.availableSeats >= quantity) {
     schedule.availableSeats -= quantity;
     return true;
@@ -285,14 +340,58 @@ eventSchema.methods.reduceSeats = function (date: Date, quantity: number): boole
   return false;
 };
 
-// Static method to find approved events
+// Method to get the end date of the event (latest scheduled date)
+eventSchema.methods.getEndDate = function (): Date | null {
+  if (!this.dateSchedule || this.dateSchedule.length === 0) {
+    return null;
+  }
+
+  // Handle both 'date' field (schema definition) and 'endDate' field (actual data)
+  const dates = this.dateSchedule.map((schedule: any) => {
+    const dateToUse = schedule.endDate || schedule.date;
+    return new Date(dateToUse);
+  });
+
+  return new Date(Math.max(...dates.map(date => date.getTime())));
+};
+
+// Method to check if event is expired
+eventSchema.methods.isExpired = function (): boolean {
+  const endDate = this.getEndDate();
+  if (!endDate) {
+    return false;
+  }
+
+  const now = new Date();
+  // Add 24 hours buffer after the last event date
+  const expirationDate = new Date(endDate.getTime() + 24 * 60 * 60 * 1000);
+
+  return now > expirationDate;
+};
+
+// Static method to find approved and active events (for public API)
 eventSchema.statics.findApproved = function () {
+  return this.find({ isApproved: true, isActive: true, isDeleted: false });
+};
+
+// Static method to find all approved events (for admin)
+eventSchema.statics.findAllApproved = function () {
   return this.find({ isApproved: true, isDeleted: false });
 };
 
 // Static method to find events by vendor
 eventSchema.statics.findByVendor = function (vendorId: string) {
   return this.find({ vendorId, isDeleted: false });
+};
+
+// Static method to find active published events
+eventSchema.statics.findActivePublished = function () {
+  return this.find({
+    isApproved: true,
+    isActive: true,
+    status: 'published',
+    isDeleted: false
+  });
 };
 
 const Event = mongoose.model<IEvent>('Event', eventSchema);

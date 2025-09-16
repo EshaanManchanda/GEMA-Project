@@ -1,5 +1,5 @@
-import path from 'path';
-import dotenv from 'dotenv';
+import * as path from 'path';
+import * as dotenv from 'dotenv';
 
 // Load environment variables from .env file
 dotenv.config({ path: path.resolve(process.cwd(), '.env') });
@@ -8,6 +8,16 @@ interface Config {
   port: number;
   nodeEnv: string;
   mongodbUri: string;
+  mongodb: {
+    connectTimeoutMS: number;
+    socketTimeoutMS: number;
+    serverSelectionTimeoutMS: number;
+    maxPoolSize: number;
+    minPoolSize: number;
+    maxIdleTimeMS: number;
+    retryWrites: boolean;
+    retryReads: boolean;
+  };
   jwtSecret: string;
   jwtExpiresIn: string;
   jwtRefreshSecret: string;
@@ -94,6 +104,16 @@ export const config: Config = {
   port: parseInt(process.env.PORT || '5001', 10),
   nodeEnv: process.env.NODE_ENV || 'development',
   mongodbUri: process.env.MONGODB_URI || 'mongodb://localhost:27017/gema',
+  mongodb: {
+    connectTimeoutMS: parseInt(process.env.MONGODB_CONNECT_TIMEOUT_MS || '30000', 10),
+    socketTimeoutMS: parseInt(process.env.MONGODB_SOCKET_TIMEOUT_MS || '45000', 10),
+    serverSelectionTimeoutMS: parseInt(process.env.MONGODB_SERVER_SELECTION_TIMEOUT_MS || '30000', 10),
+    maxPoolSize: parseInt(process.env.MONGODB_MAX_POOL_SIZE || '10', 10),
+    minPoolSize: parseInt(process.env.MONGODB_MIN_POOL_SIZE || '2', 10),
+    maxIdleTimeMS: parseInt(process.env.MONGODB_MAX_IDLE_TIME_MS || '30000', 10),
+    retryWrites: process.env.MONGODB_RETRY_WRITES !== 'false',
+    retryReads: process.env.MONGODB_RETRY_READS !== 'false',
+  },
   jwtSecret: process.env.JWT_SECRET || 'default_jwt_secret',
   jwtExpiresIn: process.env.JWT_EXPIRES_IN || '7d',
   jwtRefreshSecret: process.env.JWT_REFRESH_SECRET || 'default_jwt_refresh_secret',

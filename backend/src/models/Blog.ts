@@ -42,7 +42,6 @@ const blogSchema = new Schema<IBlog>(
     },
     slug: {
       type: String,
-      unique: true,
       lowercase: true,
       trim: true,
     },
@@ -164,7 +163,7 @@ const blogSchema = new Schema<IBlog>(
 
 // Indexes
 blogSchema.index({ title: 1 });
-blogSchema.index({ slug: 1 });
+blogSchema.index({ slug: 1 }, { unique: true });
 blogSchema.index({ status: 1 });
 blogSchema.index({ category: 1 });
 blogSchema.index({ featured: 1 });

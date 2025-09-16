@@ -94,12 +94,18 @@ export default function ReviewCarouselSwiper() {
           setUsingFallback(true);
         }
       } catch (err: any) {
-        console.error('Error fetching reviews:', err);
+        // Silently handle 401 errors (unauthorized) - just use fallback data
+        if (err.response?.status !== 401) {
+          console.error('Error fetching reviews:', err);
+        }
         setReviews(fallbackReviews);
         setUsingFallback(true);
         
         if (err.response?.status === 429) {
           setError('Loading reviews... Please wait a moment');
+        } else if (err.response?.status === 401) {
+          // Don't show error for unauthorized - just use fallback silently
+          setError(null);
         } else {
           setError('Failed to load latest reviews');
         }

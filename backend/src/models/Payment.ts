@@ -189,12 +189,10 @@ const paymentSchema = new Schema<IPayment>(
     // Gateway-specific fields
     paymentIntentId: {
       type: String,
-      sparse: true,
     },
     transactionId: {
       type: String,
       required: [true, 'Transaction ID is required'],
-      unique: true,
     },
     gatewayTransactionId: String,
     gatewayOrderId: String,

@@ -12,7 +12,7 @@ export const getUserNotifications = async (
   next: NextFunction
 ): Promise<void> => {
   try {
-    const userId = req.user?.id;
+    const userId = req.user?._id || req.user?.id;
     const {
       page = 1,
       limit = 20,
@@ -91,7 +91,7 @@ export const getNotification = async (
 ): Promise<void> => {
   try {
     const { id } = req.params;
-    const userId = req.user?.id;
+    const userId = req.user?._id || req.user?.id;
     
     if (!userId) {
       return next(new AppError('Authentication required', 401));
@@ -126,7 +126,7 @@ export const markAsRead = async (
 ): Promise<void> => {
   try {
     const { id } = req.params;
-    const userId = req.user?.id;
+    const userId = req.user?._id || req.user?.id;
     
     if (!userId) {
       return next(new AppError('Authentication required', 401));
@@ -163,7 +163,7 @@ export const markAsClicked = async (
 ): Promise<void> => {
   try {
     const { id } = req.params;
-    const userId = req.user?.id;
+    const userId = req.user?._id || req.user?.id;
     
     if (!userId) {
       return next(new AppError('Authentication required', 401));
@@ -199,7 +199,7 @@ export const markAllAsRead = async (
   next: NextFunction
 ): Promise<void> => {
   try {
-    const userId = req.user?.id;
+    const userId = req.user?._id || req.user?.id;
     
     if (!userId) {
       return next(new AppError('Authentication required', 401));
@@ -228,7 +228,7 @@ export const getUnreadCount = async (
   next: NextFunction
 ): Promise<void> => {
   try {
-    const userId = req.user?.id;
+    const userId = req.user?._id || req.user?.id;
     
     if (!userId) {
       return next(new AppError('Authentication required', 401));

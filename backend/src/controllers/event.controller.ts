@@ -3,12 +3,34 @@ import { validationResult } from 'express-validator';
 import { Event, User } from '../models';
 import { AppError } from '../middleware';
 import { AuthRequest } from '../types';
+import { config, checkDBHealth } from '../config';
+
+/**
+ * Wrapper to add timeout to database operations
+ */
+const withTimeout = async <T>(
+  operation: Promise<T>,
+  timeoutMs: number = 30000,
+  operationName: string = 'Database operation'
+): Promise<T> => {
+  const timeoutPromise = new Promise<never>((_, reject) => {
+    setTimeout(() => {
+      reject(new AppError(`${operationName} timed out after ${timeoutMs}ms`, 408));
+    }, timeoutMs);
+  });
+
+  return Promise.race([operation, timeoutPromise]);
+};
 
 // @desc    Get all events
 // @route   GET /api/events
 // @access  Public
 export const getEvents = async (req: Request, res: Response, next: NextFunction) => {
   try {
+    console.log('\n=== EVENTS API DEBUG ===');
+    console.log('Request query params:', req.query);
+    console.log('User-Agent:', req.headers['user-agent']?.includes('curl') ? 'curl' : 'browser/app');
+    
     const {
       page = 1,
       limit = 12,
@@ -31,10 +53,31 @@ export const getEvents = async (req: Request, res: Response, next: NextFunction)
     const limitNum = parseInt(limit as string);
     const skip = (pageNum - 1) * limitNum;
 
-    // Build filter query
+    // Build filter query - only show active, published events for public API
+    // Use $or to handle legacy events that might not have isActive/status fields
     const filter: any = {
       isApproved: true,
       isDeleted: false,
+      $or: [
+        // New events with proper fields
+        {
+          isActive: true,
+          status: 'published'
+        },
+        // Legacy events - approved but no isActive/status fields (fallback)
+        {
+          isActive: { $exists: false },
+          status: { $exists: false }
+        },
+        // Legacy events - approved but status is null/undefined
+        {
+          isActive: { $exists: false },
+          $or: [
+            { status: { $exists: false } },
+            { status: null }
+          ]
+        }
+      ]
     };
 
     if (category) filter.category = category;
@@ -71,6 +114,10 @@ export const getEvents = async (req: Request, res: Response, next: NextFunction)
       sort[sortBy as string] = sortOrder === 'asc' ? 1 : -1;
     }
 
+    console.log('Filter being applied:', JSON.stringify(filter, null, 2));
+    console.log('Sort being applied:', JSON.stringify(sort, null, 2));
+    console.log('Pagination: page', pageNum, 'limit', limitNum, 'skip', skip);
+
     // Execute query
     const [events, total] = await Promise.all([
       Event.find(filter)
@@ -81,6 +128,11 @@ export const getEvents = async (req: Request, res: Response, next: NextFunction)
         .limit(limitNum),
       Event.countDocuments(filter),
     ]);
+
+    console.log('Query results:');
+    console.log('- Total events matching filter:', total);
+    console.log('- Events returned:', events.length);
+    console.log('- Sample event viewsCounts:', events.map(e => ({ title: e.title.substring(0, 20), viewsCount: e.viewsCount })));
 
     // Calculate pagination info
     const totalPages = Math.ceil(total / limitNum);
@@ -114,18 +166,38 @@ export const getEvent = async (req: Request, res: Response, next: NextFunction) 
   try {
     const { id } = req.params;
 
-    const event = await Event.findOne({
-      _id: id,
-      isApproved: true,
-      isDeleted: false,
-    }).populate('vendorId', 'firstName lastName email phone avatar');
+    // Check database health before proceeding
+    const isDBHealthy = await checkDBHealth();
+    if (!isDBHealthy) {
+      return next(new AppError('Database is currently unavailable. Please try again later.', 503));
+    }
+
+    // Add timeout to the main query - only show active, published events for public API
+    const event = await withTimeout(
+      Event.findOne({
+        _id: id,
+        isApproved: true,
+        isActive: true,
+        status: 'published',
+        isDeleted: false,
+      }).populate('vendorId', 'firstName lastName email phone avatar'),
+      config.mongodb.socketTimeoutMS,
+      'Event lookup'
+    );
 
     if (!event) {
       return next(new AppError('Event not found', 404));
     }
 
-    // Increment view count
-    await Event.findByIdAndUpdate(id, { $inc: { viewsCount: 1 } });
+    // Increment view count with timeout (non-blocking, fire and forget)
+    withTimeout(
+      Event.findByIdAndUpdate(id, { $inc: { viewsCount: 1 } }),
+      15000,
+      'View count update'
+    ).catch(error => {
+      console.warn('Failed to update view count:', error.message);
+      // Don't fail the request if view count update fails
+    });
 
     res.status(200).json({
       success: true,
@@ -133,6 +205,18 @@ export const getEvent = async (req: Request, res: Response, next: NextFunction) 
       data: { event },
     });
   } catch (error) {
+    // Enhanced error handling for specific MongoDB errors
+    if (error instanceof Error) {
+      if (error.message.includes('timed out')) {
+        return next(new AppError('Request timed out. The database is experiencing high load. Please try again.', 408));
+      }
+      if (error.message.includes('buffering timed out')) {
+        return next(new AppError('Database connection is unstable. Please try again in a moment.', 503));
+      }
+      if (error.message.includes('MongooseError')) {
+        return next(new AppError('Database error occurred. Please try again later.', 503));
+      }
+    }
     next(error);
   }
 };
@@ -162,6 +246,8 @@ export const createEvent = async (req: AuthRequest, res: Response, next: NextFun
       ...req.body,
       vendorId: userId,
       isApproved: false, // Events require admin approval
+      isActive: true, // Set as active by default
+      status: 'pending', // Status starts as pending approval
     };
 
     const event = await Event.create(eventData);
@@ -339,6 +425,8 @@ export const getEventCategories = async (req: Request, res: Response, next: Next
   try {
     const categories = await Event.distinct('category', {
       isApproved: true,
+      isActive: true,
+      status: 'published',
       isDeleted: false,
     });
 

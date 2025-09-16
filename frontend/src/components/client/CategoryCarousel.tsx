@@ -17,18 +17,83 @@ const defaultCategories = [
   { id: '5', name: 'Adventure', icon: '🏕️', image: 'https://images.unsplash.com/photo-1464349095431-e9a21285b5f3?w=80&h=80&fit=crop&crop=center', count: '28+ activities' },
 ];
 
-interface CategoryCarouselProps {
-  categories?: any[];
+interface Category {
+  _id?: string;
+  id?: string;
+  name: string;
+  slug?: string;
+  description?: string;
+  icon?: string;
+  color?: string;
+  featuredImage?: string;
+  eventCount?: number;
+  count?: string;
+  image?: string;
 }
+
+interface CategoryCarouselProps {
+  categories?: Category[];
+}
+
+// Utility functions for category data transformation
+const getCategoryImage = (category: Category): string => {
+  if (category.featuredImage) return category.featuredImage;
+  if (category.image) return category.image;
+  // Return default image based on category name
+  const imageMap: Record<string, string> = {
+    'Entertainment': 'https://images.unsplash.com/photo-1466781783364-36c955e42a7f?w=80&h=80&fit=crop&crop=center',
+    'Education': 'https://images.unsplash.com/photo-1490750967868-88aa4486c946?w=80&h=80&fit=crop&crop=center',
+    'Arts': 'https://images.unsplash.com/photo-1607462109225-6b64ae2dd3cb?w=80&h=80&fit=crop&crop=center',
+    'Sports': 'https://images.unsplash.com/photo-1506905925346-21bda4d32df4?w=80&h=80&fit=crop&crop=center',
+    'Adventure': 'https://images.unsplash.com/photo-1464349095431-e9a21285b5f3?w=80&h=80&fit=crop&crop=center',
+  };
+  return imageMap[category.name] || `https://via.placeholder.com/80x80?text=${encodeURIComponent(category.name.slice(0, 2))}`;
+};
+
+const getCategoryIcon = (category: Category): string => {
+  if (category.icon) return category.icon;
+  // Return default icon based on category name
+  const iconMap: Record<string, string> = {
+    'Entertainment': '🎭',
+    'Education': '📚',
+    'Arts': '🎨',
+    'Sports': '⚽',
+    'Adventure': '🏕️',
+    'Food': '🍕',
+    'Music': '🎵',
+    'Science': '🔬',
+    'Technology': '💻',
+    'Nature': '🌳',
+  };
+  return iconMap[category.name] || '📂';
+};
+
+const getCategoryCount = (category: Category): string => {
+  if (category.count) return category.count;
+  if (category.eventCount !== undefined) return `${category.eventCount}+ activities`;
+  return `${Math.floor(Math.random() * 50) + 10}+ activities`;
+};
+
+const transformCategory = (category: Category): Category => {
+  return {
+    ...category,
+    id: category.id || category._id || category.name.toLowerCase().replace(/\s+/g, '-'),
+    slug: category.slug || category.name.toLowerCase().replace(/\s+/g, '-'),
+    icon: getCategoryIcon(category),
+    image: getCategoryImage(category),
+    count: getCategoryCount(category),
+  };
+};
 
 export default function CategoryCarousel({ categories = [] }: CategoryCarouselProps) {
   const navigate = useNavigate();
   
-  // Use provided categories or fallback to default
-  const displayCategories = categories.length > 0 ? categories : defaultCategories;
+  // Transform API categories and use provided categories or fallback to default
+  const transformedApiCategories = categories.map(transformCategory);
+  const displayCategories = transformedApiCategories.length > 0 ? transformedApiCategories : defaultCategories;
   
-  const handleCategoryClick = (category: any) => {
-    navigate(`/categories/${category.slug || category.name.toLowerCase().replace(/\s+/g, '-')}`);
+  const handleCategoryClick = (category: Category) => {
+    navigate(`/categories/${category.slug}`);
   };
   
   const handleViewAllCategories = () => {
@@ -92,14 +157,28 @@ export default function CategoryCarousel({ categories = [] }: CategoryCarouselPr
                         <img 
                           src={cat.image} 
                           alt={cat.name} 
-                          className="w-16 h-16 object-contain" 
+                          className="w-16 h-16 object-cover rounded-full" 
+                          onError={(e) => {
+                            // Fallback to icon if image fails to load
+                            e.currentTarget.style.display = 'none';
+                            if (e.currentTarget.nextElementSibling) {
+                              (e.currentTarget.nextElementSibling as HTMLElement).style.display = 'block';
+                            }
+                          }}
                         />
-                      ) : (
-                        <span className="text-3xl">{cat.icon || '📂'}</span>
-                      )}
+                      ) : null}
+                      <span 
+                        className="text-3xl"
+                        style={{ display: cat.image ? 'none' : 'block' }}
+                      >
+                        {cat.icon}
+                      </span>
                     </div>
                     <p className="text-base font-semibold mb-1" style={{ color: 'var(--primary-color)' }}>{cat.name}</p>
-                    <p className="text-xs text-gray-500">{cat.count || `${Math.floor(Math.random() * 50) + 10}+ activities`}</p>
+                    <p className="text-xs text-gray-500">{cat.count}</p>
+                    {cat.description && (
+                      <p className="text-xs text-gray-400 mt-1 line-clamp-2">{cat.description}</p>
+                    )}
                     <div 
                       className="mt-4 w-8 h-8 rounded-full flex items-center justify-center opacity-0 group-hover:opacity-100 transition-all duration-300"
                       style={{ backgroundColor: 'var(--accent-color)', color: 'white' }}

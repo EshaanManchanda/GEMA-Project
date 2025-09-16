@@ -1,40 +1,62 @@
 import { ApiService } from '../api';
+import { extractApiData, logApiResponse } from '../../utils/apiResponseHandler';
 
 const favoritesAPI = {
-  getUserFavorites: async () => {
+  // Get user's favorite events
+  getFavoriteEvents: async () => {
     try {
       const response = await ApiService.get('/favorites');
-      return response.data;
+      logApiResponse('GET /favorites', response);
+      return extractApiData(response);
     } catch (error) {
+      logApiResponse('GET /favorites', null, error);
       throw error;
     }
   },
 
+  // Add event to favorites
   addToFavorites: async (eventId: string) => {
     try {
-      const response = await ApiService.post('/favorites', { eventId });
-      return response.data;
+      const response = await ApiService.post(`/favorites/${eventId}`);
+      logApiResponse(`POST /favorites/${eventId}`, response);
+      return extractApiData(response);
     } catch (error) {
+      logApiResponse(`POST /favorites/${eventId}`, null, error);
       throw error;
     }
   },
 
+  // Remove event from favorites
   removeFromFavorites: async (eventId: string) => {
     try {
       const response = await ApiService.delete(`/favorites/${eventId}`);
-      return response.data;
+      logApiResponse(`DELETE /favorites/${eventId}`, response);
+      return extractApiData(response);
     } catch (error) {
+      logApiResponse(`DELETE /favorites/${eventId}`, null, error);
       throw error;
     }
   },
 
-  checkIsFavorite: async (eventId: string) => {
+  // Check if event is in favorites
+  checkIfFavorite: async (eventId: string) => {
     try {
       const response = await ApiService.get(`/favorites/check/${eventId}`);
-      return response.data;
+      logApiResponse(`GET /favorites/check/${eventId}`, response);
+      return extractApiData(response);
     } catch (error) {
+      logApiResponse(`GET /favorites/check/${eventId}`, null, error);
       throw error;
     }
+  },
+
+  // Legacy method names for backward compatibility
+  getUserFavorites: async () => {
+    return favoritesAPI.getFavoriteEvents();
+  },
+
+  checkIsFavorite: async (eventId: string) => {
+    return favoritesAPI.checkIfFavorite(eventId);
   },
 };
 

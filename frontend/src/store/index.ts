@@ -31,7 +31,7 @@ const persistConfig = {
 const authPersistConfig = {
   key: 'auth',
   storage,
-  whitelist: ['user', 'token', 'isAuthenticated'], // Only persist essential auth data
+  whitelist: ['user', 'token', 'refreshToken', 'isAuthenticated', 'isEmailVerified'], // Only persist essential auth data
   blacklist: ['isLoading', 'error'], // Don't persist loading states
 };
 

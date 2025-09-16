@@ -101,6 +101,13 @@ router.post(
 router.get('/me', authenticate, authController.getCurrentUser);
 
 /**
+ * @route   GET /api/auth/profile
+ * @desc    Get full user profile with enhanced data
+ * @access  Private
+ */
+router.get('/profile', authenticate, authController.getFullProfile);
+
+/**
  * @route   PUT /api/auth/profile
  * @desc    Update user profile
  * @access  Private
@@ -253,5 +260,123 @@ router.post(
   validate,
   authController.firebaseAuth
 );
+
+/**
+ * Address Management Routes
+ */
+
+/**
+ * @route   POST /api/auth/addresses
+ * @desc    Add a new address to user profile
+ * @access  Private
+ */
+router.post(
+  '/addresses',
+  authenticate,
+  [
+    body('street')
+      .trim()
+      .notEmpty()
+      .withMessage('Street address is required'),
+    body('city')
+      .trim()
+      .notEmpty()
+      .withMessage('City is required'),
+    body('state')
+      .trim()
+      .notEmpty()
+      .withMessage('State is required'),
+    body('zipCode')
+      .trim()
+      .notEmpty()
+      .withMessage('Zip code is required'),
+    body('country')
+      .trim()
+      .notEmpty()
+      .withMessage('Country is required'),
+    body('isDefault')
+      .optional()
+      .isBoolean()
+      .withMessage('isDefault must be a boolean value')
+  ],
+  validate,
+  authController.addAddress
+);
+
+/**
+ * @route   PUT /api/auth/addresses/:addressIndex
+ * @desc    Update an existing address
+ * @access  Private
+ */
+router.put(
+  '/addresses/:addressIndex',
+  authenticate,
+  [
+    body('street')
+      .trim()
+      .notEmpty()
+      .withMessage('Street address is required'),
+    body('city')
+      .trim()
+      .notEmpty()
+      .withMessage('City is required'),
+    body('state')
+      .trim()
+      .notEmpty()
+      .withMessage('State is required'),
+    body('zipCode')
+      .trim()
+      .notEmpty()
+      .withMessage('Zip code is required'),
+    body('country')
+      .trim()
+      .notEmpty()
+      .withMessage('Country is required'),
+    body('isDefault')
+      .optional()
+      .isBoolean()
+      .withMessage('isDefault must be a boolean value')
+  ],
+  validate,
+  authController.updateAddress
+);
+
+/**
+ * @route   DELETE /api/auth/addresses/:addressIndex
+ * @desc    Delete an address
+ * @access  Private
+ */
+router.delete('/addresses/:addressIndex', authenticate, authController.deleteAddress);
+
+/**
+ * Avatar Management Routes
+ */
+
+/**
+ * @route   PUT /api/auth/avatar
+ * @desc    Update user avatar
+ * @access  Private
+ */
+router.put(
+  '/avatar',
+  authenticate,
+  [
+    body('avatar')
+      .trim()
+      .notEmpty()
+      .withMessage('Avatar URL is required')
+      .isURL()
+      .withMessage('Please provide a valid avatar URL')
+  ],
+  validate,
+  authController.updateAvatar
+);
+
+/**
+ * @route   DELETE /api/auth/avatar
+ * @desc    Delete user avatar
+ * @access  Private
+ */
+router.delete('/avatar', authenticate, authController.deleteAvatar);
 
 export default router;

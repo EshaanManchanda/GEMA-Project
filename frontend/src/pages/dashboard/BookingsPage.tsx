@@ -1,5 +1,8 @@
 import React, { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
+import { useDispatch, useSelector } from 'react-redux';
+import { AppDispatch, RootState } from '@/store';
+import { fetchBookings } from '@/store/slices/bookingsSlice';
 
 interface Booking {
   id: string;
@@ -16,100 +19,13 @@ interface Booking {
 }
 
 const BookingsPage: React.FC = () => {
-  const [bookings, setBookings] = useState<Booking[]>([]);
+  const dispatch = useDispatch<AppDispatch>();
+  const { bookings, isLoading, error } = useSelector((state: RootState) => state.bookings);
   const [activeTab, setActiveTab] = useState<'upcoming' | 'past' | 'cancelled'>('upcoming');
-  const [isLoading, setIsLoading] = useState<boolean>(true);
-  const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
-    const fetchBookings = async () => {
-      try {
-        setIsLoading(true);
-        setError(null);
-        
-        // Simulate API call delay
-        await new Promise(resolve => setTimeout(resolve, 1000));
-        
-        // Mock data for bookings
-        const mockBookings: Booking[] = [
-          {
-            id: '1001',
-            eventId: '101',
-            eventTitle: 'Summer Art Camp for Kids',
-            eventImage: 'https://placehold.co/600x400/orange/white?text=Art+Camp',
-            eventDate: '2023-08-15',
-            eventTime: '09:00 AM - 12:00 PM',
-            eventLocation: 'Creative Arts Center, Downtown',
-            ticketCount: 2,
-            totalAmount: 120,
-            bookingDate: '2023-07-28',
-            status: 'confirmed'
-          },
-          {
-            id: '1002',
-            eventId: '102',
-            eventTitle: 'Science Workshop: Rockets and Space',
-            eventImage: 'https://placehold.co/600x400/blue/white?text=Science+Workshop',
-            eventDate: '2023-08-22',
-            eventTime: '10:00 AM - 02:00 PM',
-            eventLocation: 'Science Museum, West End',
-            ticketCount: 3,
-            totalAmount: 135,
-            bookingDate: '2023-07-26',
-            status: 'confirmed'
-          },
-          {
-            id: '1003',
-            eventId: '103',
-            eventTitle: 'Dinosaur Exhibition Tour',
-            eventImage: 'https://placehold.co/600x400/brown/white?text=Dinosaur+Tour',
-            eventDate: '2023-07-20',
-            eventTime: '10:00 AM - 12:00 PM',
-            eventLocation: 'Natural History Museum, Central Park',
-            ticketCount: 5,
-            totalAmount: 100,
-            bookingDate: '2023-07-10',
-            status: 'completed'
-          },
-          {
-            id: '1004',
-            eventId: '104',
-            eventTitle: 'Kids Cooking Class: Baking Basics',
-            eventImage: 'https://placehold.co/600x400/green/white?text=Cooking+Class',
-            eventDate: '2023-09-05',
-            eventTime: '03:00 PM - 05:00 PM',
-            eventLocation: 'Culinary Institute, North Side',
-            ticketCount: 1,
-            totalAmount: 35,
-            bookingDate: '2023-08-01',
-            status: 'cancelled'
-          },
-          {
-            id: '1005',
-            eventId: '105',
-            eventTitle: 'Interactive Storytelling Session',
-            eventImage: 'https://placehold.co/600x400/purple/white?text=Storytelling',
-            eventDate: '2023-08-30',
-            eventTime: '11:00 AM - 12:30 PM',
-            eventLocation: 'City Library, East Wing',
-            ticketCount: 2,
-            totalAmount: 40,
-            bookingDate: '2023-08-05',
-            status: 'confirmed'
-          }
-        ];
-        
-        setBookings(mockBookings);
-      } catch (err) {
-        console.error('Error fetching bookings:', err);
-        setError('Failed to load bookings. Please try again later.');
-      } finally {
-        setIsLoading(false);
-      }
-    };
-    
-    fetchBookings();
-  }, []);
+    dispatch(fetchBookings());
+  }, [dispatch]);
 
   const formatDate = (dateString: string): string => {
     const options: Intl.DateTimeFormatOptions = { year: 'numeric', month: 'long', day: 'numeric' };
@@ -131,15 +47,15 @@ const BookingsPage: React.FC = () => {
     }
   };
 
-  const filteredBookings = bookings.filter(booking => {
-    const eventDate = new Date(booking.eventDate);
+  const filteredBookings = bookings.filter((booking: any) => {
+    // Backend returns Order objects, so we need to adapt the filtering logic
     const today = new Date();
     today.setHours(0, 0, 0, 0);
-    
+
     if (activeTab === 'upcoming') {
-      return eventDate >= today && booking.status !== 'cancelled';
+      return booking.status !== 'cancelled' && (booking.status === 'confirmed' || booking.status === 'pending');
     } else if (activeTab === 'past') {
-      return eventDate < today && booking.status !== 'cancelled';
+      return booking.status === 'completed';
     } else {
       return booking.status === 'cancelled';
     }
@@ -214,74 +130,85 @@ const BookingsPage: React.FC = () => {
               </div>
             ) : (
               <div className="space-y-6">
-                {filteredBookings.map((booking) => (
-                  <div key={booking.id} className="border rounded-lg overflow-hidden shadow-sm hover:shadow-md transition-shadow duration-200">
-                    <div className="flex flex-col sm:flex-row">
-                      <div className="sm:w-1/3 md:w-1/4">
-                        <img 
-                          className="h-48 w-full object-cover sm:h-full" 
-                          src={booking.eventImage} 
-                          alt={booking.eventTitle} 
-                        />
-                      </div>
-                      <div className="p-4 sm:p-6 sm:w-2/3 md:w-3/4">
-                        <div className="flex flex-col sm:flex-row justify-between">
-                          <div>
-                            <div className="flex items-center mb-2">
-                              <h3 className="text-lg font-semibold text-gray-900 mr-2">
-                                <Link to={`/events/${booking.eventId}`} className="hover:text-primary">
-                                  {booking.eventTitle}
-                                </Link>
-                              </h3>
-                              <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${getStatusBadgeClass(booking.status)}`}>
-                                {booking.status.charAt(0).toUpperCase() + booking.status.slice(1)}
-                              </span>
+                {filteredBookings.map((booking: any) => {
+                  // Handle case where booking.items might be an array of order items
+                  const firstItem = booking.items && booking.items[0];
+                  const event = firstItem?.eventId || {};
+                  const eventTitle = event.title || 'Unknown Event';
+                  const eventImage = event.images && event.images[0] ? event.images[0] : 'https://placehold.co/600x400/gray/white?text=No+Image';
+                  const eventLocation = event.location || 'Location TBD';
+
+                  return (
+                    <div key={booking._id || booking.id} className="border rounded-lg overflow-hidden shadow-sm hover:shadow-md transition-shadow duration-200">
+                      <div className="flex flex-col sm:flex-row">
+                        <div className="sm:w-1/3 md:w-1/4">
+                          <img
+                            className="h-48 w-full object-cover sm:h-full"
+                            src={eventImage}
+                            alt={eventTitle}
+                          />
+                        </div>
+                        <div className="p-4 sm:p-6 sm:w-2/3 md:w-3/4">
+                          <div className="flex flex-col sm:flex-row justify-between">
+                            <div>
+                              <div className="flex items-center mb-2">
+                                <h3 className="text-lg font-semibold text-gray-900 mr-2">
+                                  <Link to={`/events/${event._id || event.id}`} className="hover:text-primary">
+                                    {eventTitle}
+                                  </Link>
+                                </h3>
+                                <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${getStatusBadgeClass(booking.status)}`}>
+                                  {booking.status.charAt(0).toUpperCase() + booking.status.slice(1)}
+                                </span>
+                              </div>
+                              <div className="text-sm text-gray-500 mb-4">
+                                <p><span className="font-medium">Order Number:</span> {booking.orderNumber || booking._id}</p>
+                                <p><span className="font-medium">Location:</span> {eventLocation}</p>
+                                <p><span className="font-medium">Items:</span> {booking.items?.length || 0}</p>
+                                <p><span className="font-medium">Total Amount:</span> ${(booking.totalAmount || 0).toFixed(2)}</p>
+                                <p><span className="font-medium">Booked on:</span> {formatDate(booking.createdAt || booking.bookingDate)}</p>
+                                {booking.updatedAt && booking.updatedAt !== booking.createdAt && (
+                                  <p><span className="font-medium">Last updated:</span> {formatDate(booking.updatedAt)}</p>
+                                )}
+                              </div>
                             </div>
-                            <div className="text-sm text-gray-500 mb-4">
-                              <p><span className="font-medium">Date:</span> {formatDate(booking.eventDate)}</p>
-                              <p><span className="font-medium">Time:</span> {booking.eventTime}</p>
-                              <p><span className="font-medium">Location:</span> {booking.eventLocation}</p>
-                              <p><span className="font-medium">Tickets:</span> {booking.ticketCount}</p>
-                              <p><span className="font-medium">Total Amount:</span> ${booking.totalAmount.toFixed(2)}</p>
-                              <p><span className="font-medium">Booked on:</span> {formatDate(booking.bookingDate)}</p>
-                            </div>
-                          </div>
-                          <div className="mt-4 sm:mt-0 flex flex-col space-y-2">
-                            <Link 
-                              to={`/bookings/${booking.id}`}
-                              className="inline-flex items-center justify-center px-4 py-2 border border-transparent text-sm font-medium rounded-md text-white bg-primary hover:bg-primary-dark focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-primary"
-                            >
-                              View Details
-                            </Link>
-                            
-                            {booking.status === 'confirmed' && new Date(booking.eventDate) > new Date() && (
-                              <button 
-                                className="inline-flex items-center justify-center px-4 py-2 border border-gray-300 text-sm font-medium rounded-md text-gray-700 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-primary"
-                                onClick={() => {
-                                  if (window.confirm('Are you sure you want to cancel this booking?')) {
-                                    // In a real app, you would call an API to cancel the booking
-                                    console.log('Booking cancelled:', booking.id);
-                                  }
-                                }}
+                            <div className="mt-4 sm:mt-0 flex flex-col space-y-2">
+                              <Link
+                                to={`/bookings/${booking._id || booking.id}`}
+                                className="inline-flex items-center justify-center px-4 py-2 border border-transparent text-sm font-medium rounded-md text-white bg-primary hover:bg-primary-dark focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-primary"
                               >
-                                Cancel Booking
-                              </button>
-                            )}
-                            
-                            {booking.status === 'completed' && (
-                              <Link 
-                                to={`/review/${booking.eventId}`}
-                                className="inline-flex items-center justify-center px-4 py-2 border border-gray-300 text-sm font-medium rounded-md text-gray-700 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-primary"
-                              >
-                                Write Review
+                                View Details
                               </Link>
-                            )}
+
+                              {booking.status === 'confirmed' && (
+                                <button
+                                  className="inline-flex items-center justify-center px-4 py-2 border border-gray-300 text-sm font-medium rounded-md text-gray-700 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-primary"
+                                  onClick={() => {
+                                    if (window.confirm('Are you sure you want to cancel this booking?')) {
+                                      console.log('Booking cancelled:', booking._id || booking.id);
+                                      // TODO: Implement cancel booking functionality with Redux
+                                    }
+                                  }}
+                                >
+                                  Cancel Booking
+                                </button>
+                              )}
+
+                              {booking.status === 'completed' && event._id && (
+                                <Link
+                                  to={`/review/${event._id}`}
+                                  className="inline-flex items-center justify-center px-4 py-2 border border-gray-300 text-sm font-medium rounded-md text-gray-700 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-primary"
+                                >
+                                  Write Review
+                                </Link>
+                              )}
+                            </div>
                           </div>
                         </div>
                       </div>
                     </div>
-                  </div>
-                ))}
+                  );
+                })}
               </div>
             )}
           </div>

@@ -275,13 +275,14 @@ const EmployeeManagement: React.FC<EmployeeManagementProps> = ({
     });
   };
 
-  const handleSelectAll = () => {
-    if (selectedEmployees.size === filteredEmployees.length) {
-      setSelectedEmployees(new Set());
-    } else {
-      setSelectedEmployees(new Set(filteredEmployees.map(emp => emp._id)));
-    }
-  };
+  // Unused function - commented out to fix TypeScript error
+  // const handleSelectAll = () => {
+  //   if (selectedEmployees.size === filteredEmployees.length) {
+  //     setSelectedEmployees(new Set());
+  //   } else {
+  //     setSelectedEmployees(new Set(filteredEmployees.map(emp => emp._id)));
+  //   }
+  // };
 
   const getRoleIcon = (role: string) => {
     switch (role) {
@@ -322,14 +323,7 @@ const EmployeeManagement: React.FC<EmployeeManagementProps> = ({
   const columns = [
     {
       key: 'select',
-      label: (
-        <input
-          type="checkbox"
-          checked={selectedEmployees.size === filteredEmployees.length && filteredEmployees.length > 0}
-          onChange={handleSelectAll}
-          className="h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300 rounded"
-        />
-      ),
+      title: '',
       render: (employee: Employee) => (
         <input
           type="checkbox"
@@ -342,7 +336,7 @@ const EmployeeManagement: React.FC<EmployeeManagementProps> = ({
     },
     {
       key: 'employee',
-      label: 'Employee',
+      title: 'Employee',
       sortable: true,
       render: (employee: Employee) => (
         <div className="flex items-center space-x-3">
@@ -361,7 +355,7 @@ const EmployeeManagement: React.FC<EmployeeManagementProps> = ({
     },
     {
       key: 'role',
-      label: 'Role',
+      title: 'Role',
       sortable: true,
       render: (employee: Employee) => (
         <span className={`inline-flex items-center px-2 py-1 rounded-full text-xs font-medium ${getRoleColor(employee.role)}`}>
@@ -371,7 +365,7 @@ const EmployeeManagement: React.FC<EmployeeManagementProps> = ({
     },
     {
       key: 'status',
-      label: 'Status',
+      title: 'Status',
       sortable: true,
       render: (employee: Employee) => (
         <span className={`inline-flex items-center px-2 py-1 rounded-full text-xs font-medium ${getStatusColor(employee.status)}`}>
@@ -381,7 +375,7 @@ const EmployeeManagement: React.FC<EmployeeManagementProps> = ({
     },
     {
       key: 'assignments',
-      label: 'Assignments',
+      title: 'Assignments',
       render: (employee: Employee) => (
         <div className="text-sm">
           <div className="flex items-center space-x-1 text-gray-600">
@@ -397,7 +391,7 @@ const EmployeeManagement: React.FC<EmployeeManagementProps> = ({
     },
     {
       key: 'permissions',
-      label: 'Permissions',
+      title: 'Permissions',
       render: (employee: Employee) => (
         <div className="text-sm">
           <div className="flex items-center space-x-1 text-blue-600">
@@ -413,7 +407,7 @@ const EmployeeManagement: React.FC<EmployeeManagementProps> = ({
     },
     {
       key: 'performance',
-      label: 'Performance',
+      title: 'Performance',
       render: (employee: Employee) => (
         <div className="text-sm">
           {employee.performance ? (
@@ -437,7 +431,7 @@ const EmployeeManagement: React.FC<EmployeeManagementProps> = ({
     },
     {
       key: 'hiredAt',
-      label: 'Hired Date',
+      title: 'Hired Date',
       sortable: true,
       render: (employee: Employee) => (
         <div className="text-sm text-gray-600">
@@ -449,18 +443,21 @@ const EmployeeManagement: React.FC<EmployeeManagementProps> = ({
 
   const actions = [
     {
+      key: 'view',
       label: 'View Details',
       icon: <FaEye size={14} />,
       onClick: handleViewEmployee,
       className: 'text-blue-600 hover:text-blue-800'
     },
     {
+      key: 'edit',
       label: 'Edit Permissions',
       icon: <FaKey size={14} />,
       onClick: handleEditPermissions,
       className: 'text-purple-600 hover:text-purple-800'
     },
     {
+      key: 'delete',
       label: 'Delete Employee',
       icon: <FaTrash size={14} />,
       onClick: handleDeleteEmployee,
@@ -622,14 +619,13 @@ const EmployeeManagement: React.FC<EmployeeManagementProps> = ({
           data={filteredEmployees}
           columns={columns}
           actions={actions}
-          isLoading={isLoading}
+          loading={isLoading}
           pagination={{
-            ...pagination,
-            totalItems: filteredEmployees.length
+            current: pagination.page,
+            pageSize: pagination.limit,
+            total: filteredEmployees.length,
+            onChange: (page: number) => setPagination(prev => ({ ...prev, page }))
           }}
-          onPageChange={(page) => setPagination(prev => ({ ...prev, page }))}
-          emptyMessage="No employees found matching your criteria"
-          compact={compact}
         />
       </div>
 

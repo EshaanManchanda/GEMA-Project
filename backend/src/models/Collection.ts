@@ -1,0 +1,97 @@
+import mongoose, { Document, Schema } from 'mongoose';
+
+export interface ICollection extends Document {
+  title: string;
+  description: string;
+  icon: string; // URL to icon image
+  count: string; // Display text like "45+ activities"
+  category?: string; // Optional category filter
+  events: mongoose.Types.ObjectId[]; // Associated event IDs
+  isActive: boolean;
+  sortOrder: number; // For ordering collections
+  createdAt: Date;
+  updatedAt: Date;
+
+  // Methods
+  getEventCount(): Promise<number>;
+}
+
+const CollectionSchema: Schema<ICollection> = new Schema({
+  title: {
+    type: String,
+    required: [true, 'Collection title is required'],
+    trim: true,
+    maxlength: [100, 'Title cannot exceed 100 characters']
+  },
+  description: {
+    type: String,
+    required: [true, 'Collection description is required'],
+    trim: true,
+    maxlength: [500, 'Description cannot exceed 500 characters']
+  },
+  icon: {
+    type: String,
+    required: [true, 'Collection icon is required'],
+    trim: true
+  },
+  count: {
+    type: String,
+    required: [true, 'Collection count display is required'],
+    trim: true,
+    maxlength: [50, 'Count text cannot exceed 50 characters']
+  },
+  category: {
+    type: String,
+    trim: true,
+    maxlength: [50, 'Category cannot exceed 50 characters']
+  },
+  events: [{
+    type: mongoose.Schema.Types.ObjectId,
+    ref: 'Event'
+  }],
+  isActive: {
+    type: Boolean,
+    default: true
+  },
+  sortOrder: {
+    type: Number,
+    default: 0
+  }
+}, {
+  timestamps: true,
+  toJSON: { virtuals: true },
+  toObject: { virtuals: true }
+});
+
+// Indexes for better performance
+CollectionSchema.index({ isActive: 1, sortOrder: 1 });
+CollectionSchema.index({ title: 'text', description: 'text' });
+
+// Virtual for populated events count
+CollectionSchema.virtual('eventsCount', {
+  ref: 'Event',
+  localField: 'events',
+  foreignField: '_id',
+  count: true
+});
+
+// Method to get actual event count
+CollectionSchema.methods.getEventCount = async function(): Promise<number> {
+  const Event = mongoose.model('Event');
+  return await Event.countDocuments({
+    _id: { $in: this.events },
+    isDeleted: false,
+    isApproved: true
+  });
+};
+
+// Pre-save middleware to update count display
+CollectionSchema.pre('save', async function(next) {
+  if (this.isModified('events')) {
+    const eventCount = await this.getEventCount();
+    this.count = `${eventCount}+ activities`;
+  }
+  next();
+});
+
+export default mongoose.model<ICollection>('Collection', CollectionSchema);

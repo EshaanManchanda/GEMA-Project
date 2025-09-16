@@ -66,6 +66,9 @@ export interface UpdateProfileRequest {
   firstName?: string;
   lastName?: string;
   phone?: string;
+  dateOfBirth?: string;
+  gender?: 'male' | 'female' | 'other' | 'prefer_not_to_say';
+  bio?: string;
 }
 
 // Email verification request type

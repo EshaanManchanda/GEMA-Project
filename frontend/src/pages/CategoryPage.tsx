@@ -1,5 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useParams, Link } from 'react-router-dom';
+import categoriesAPI from '../services/api/categoriesAPI';
+import eventsAPI from '../services/api/eventsAPI';
 
 // Mock categories data
 const mockCategories = [
@@ -144,15 +146,10 @@ const CategoryPage: React.FC = () => {
         setIsLoading(true);
         
         // Attempt to fetch real data from backend
-        const categoryResponse = await fetch(`/api/categories/${slug}`);
-        const eventsResponse = await fetch(`/api/categories/${slug}/events`);
-        
-        if (!categoryResponse.ok || !eventsResponse.ok) {
-          throw new Error('Backend service unavailable');
-        }
-        
-        const categoryData = await categoryResponse.json();
-        const eventsData = await eventsResponse.json();
+        const [categoryData, eventsData] = await Promise.all([
+          categoriesAPI.getCategoryById(slug),
+          eventsAPI.getEventsByCategory(slug)
+        ]);
         
         setCategory(categoryData);
         setEvents(eventsData.events);

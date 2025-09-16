@@ -18,11 +18,9 @@ const blogCategorySchema = new Schema<IBlogCategory>(
       required: [true, 'Category name is required'],
       trim: true,
       maxlength: [50, 'Category name cannot exceed 50 characters'],
-      unique: true,
     },
     slug: {
       type: String,
-      unique: true,
       lowercase: true,
       trim: true,
     },
@@ -55,8 +53,8 @@ const blogCategorySchema = new Schema<IBlogCategory>(
 );
 
 // Indexes
-blogCategorySchema.index({ name: 1 });
-blogCategorySchema.index({ slug: 1 });
+blogCategorySchema.index({ name: 1 }, { unique: true });
+blogCategorySchema.index({ slug: 1 }, { unique: true });
 blogCategorySchema.index({ isActive: 1 });
 
 // Pre-save middleware to generate slug

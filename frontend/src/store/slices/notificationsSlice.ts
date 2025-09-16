@@ -74,7 +74,13 @@ export const fetchUserNotifications = createAsyncThunk(
   } = {}, { rejectWithValue }) => {
     try {
       const response = await notificationAPI.getUserNotifications(params);
-      return response.data || response;
+      // Handle different response structures
+      const data = response.data || response;
+      // If data has notifications array, return it; otherwise return data if it's an array
+      if (data && typeof data === 'object' && 'notifications' in data) {
+        return data.notifications || [];
+      }
+      return Array.isArray(data) ? data : [];
     } catch (error: any) {
       const message = error.response?.data?.message || 'Failed to fetch user notifications';
       return rejectWithValue(message);
@@ -408,8 +414,10 @@ const notificationsSlice = createSlice({
 
       // Fetch User Notifications
       .addCase(fetchUserNotifications.fulfilled, (state, action) => {
-        state.userNotifications = action.payload;
-        state.unreadNotifications = action.payload.filter((n: Notification) => !n.isRead);
+        // Ensure payload is an array before using filter
+        const notifications = Array.isArray(action.payload) ? action.payload : [];
+        state.userNotifications = notifications;
+        state.unreadNotifications = notifications.filter((n: Notification) => !n.isRead);
       })
 
       // Fetch Unread Count

@@ -23,7 +23,12 @@ export interface EventVendor {
 export interface EventDateSchedule {
   _id: string;
   date: string;
+  startDateTime: string;
+  endDateTime: string;
   availableSeats: number;
+  totalSeats: number;
+  soldSeats: number;
+  reservedSeats: number;
   price?: number;
 }
 
@@ -31,6 +36,35 @@ export interface EventFaq {
   _id: string;
   question: string;
   answer: string;
+}
+
+// Backend API Response Types
+export interface ApiResponse<T = any> {
+  success: boolean;
+  message?: string;
+  data?: T;
+  error?: string;
+  errors?: any[];
+}
+
+export interface EventApiResponse extends ApiResponse {
+  data?: {
+    event: Event;
+  };
+}
+
+export interface EventsApiResponse extends ApiResponse {
+  data?: {
+    events: Event[];
+    pagination?: {
+      currentPage: number;
+      totalPages: number;
+      totalEvents: number;
+      hasNextPage: boolean;
+      hasPrevPage: boolean;
+      limit: number;
+    };
+  };
 }
 
 export interface Event {
@@ -47,6 +81,7 @@ export interface Event {
   price: number;
   currency: 'AED' | 'EGP' | 'CAD' | 'USD';
   isApproved: boolean;
+  status: 'draft' | 'published' | 'archived' | 'pending' | 'rejected';
   tags: string[];
   dateSchedule: EventDateSchedule[];
   faqs: EventFaq[];

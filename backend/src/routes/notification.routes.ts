@@ -152,21 +152,33 @@ const bulkNotificationValidation = [
 // Protected routes - User access
 router.use(authenticate);
 
-// User routes
-router.get('/my', getUserNotifications);
-router.get('/unread-count', getUnreadCount);
-router.put('/mark-all-read', markAllAsRead);
-router.get('/:id', 
+// User routes - accessible by authenticated customers, vendors, employees
+router.get('/my',
+  authorize(['admin', 'customer', 'vendor', 'employee']),
+  getUserNotifications
+);
+router.get('/unread-count',
+  authorize(['admin', 'customer', 'vendor', 'employee']),
+  getUnreadCount
+);
+router.put('/mark-all-read',
+  authorize(['admin', 'customer', 'vendor', 'employee']),
+  markAllAsRead
+);
+router.get('/:id',
+  authorize(['admin', 'customer', 'vendor', 'employee']),
   param('id').isMongoId().withMessage('Notification ID must be valid'),
   validateRequest,
   getNotification
 );
-router.put('/:id/read', 
+router.put('/:id/read',
+  authorize(['admin', 'customer', 'vendor', 'employee']),
   param('id').isMongoId().withMessage('Notification ID must be valid'),
   validateRequest,
   markAsRead
 );
-router.put('/:id/clicked', 
+router.put('/:id/clicked',
+  authorize(['admin', 'customer', 'vendor', 'employee']),
   param('id').isMongoId().withMessage('Notification ID must be valid'),
   validateRequest,
   markAsClicked

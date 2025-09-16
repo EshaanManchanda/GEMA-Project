@@ -20,6 +20,9 @@ import ErrorBoundary from '@components/common/ErrorBoundary';
 import '@/styles/index.css';
 import '@/i18n/config';
 
+// Initialize PWA
+import { initializePWA } from './services/pwaService';
+
 // Create a client for React Query
 const queryClient = new QueryClient({
   defaultOptions: {
@@ -65,6 +68,9 @@ const toastOptions = {
     },
   },
 };
+
+// Initialize PWA when app loads
+initializePWA().catch(console.error);
 
 ReactDOM.createRoot(document.getElementById('root')!).render(
   <React.StrictMode>

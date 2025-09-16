@@ -17,8 +17,8 @@ import {
 } from 'react-icons/fa';
 import { formatDistanceToNow } from 'date-fns';
 import { RootState, AppDispatch } from '../../store';
-import { 
-  fetchNotifications,
+import {
+  fetchUserNotifications,
   markNotificationAsRead,
   markNotificationAsUnread,
   markAllAsRead,
@@ -76,11 +76,11 @@ const NotificationCenter: React.FC<NotificationCenterProps> = ({
 
   // Real-time updates
   useEffect(() => {
-    dispatch(fetchNotifications({ page: 1, limit: 50 }));
-    
+    dispatch(fetchUserNotifications({ page: 1, limit: 50 }));
+
     if (realTimeUpdates) {
       const interval = setInterval(() => {
-        dispatch(fetchNotifications({ page: 1, limit: 50 }));
+        dispatch(fetchUserNotifications({ page: 1, limit: 50 }));
       }, 30000); // Poll every 30 seconds
       
       return () => clearInterval(interval);

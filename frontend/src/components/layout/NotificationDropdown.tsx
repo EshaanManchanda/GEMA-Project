@@ -4,7 +4,7 @@ import { Link } from 'react-router-dom';
 import { FaBell, FaTimes, FaUser, FaTicketAlt, FaDollarSign, FaExclamationTriangle } from 'react-icons/fa';
 import { RootState, AppDispatch } from '@/store';
 import {
-  fetchNotifications,
+  fetchUserNotifications,
   markAsRead,
   markAllAsRead,
   selectNotifications,
@@ -42,7 +42,7 @@ const NotificationDropdown: React.FC<NotificationDropdownProps> = ({ className =
   // Fetch notifications when dropdown opens
   useEffect(() => {
     if (isOpen && isAuthenticated) {
-      dispatch(fetchNotifications({ limit: 10 }));
+      dispatch(fetchUserNotifications({ limit: 10 }));
     }
   }, [isOpen, isAuthenticated, dispatch]);
 

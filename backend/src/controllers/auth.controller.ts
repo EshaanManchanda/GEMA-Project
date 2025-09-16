@@ -1,7 +1,7 @@
 import { Request, Response, NextFunction } from 'express';
 import { getAuth } from '../config/firebase';
 import { generateToken, generateRefreshToken } from '../config/jwt';
-import { User, UserStatus, RefreshToken, IUser } from '../models';
+import { User, UserStatus, RefreshToken, IUser, IAddress } from '../models';
 import { AppError } from '../middleware';
 import { emailService } from '../services/email.service';
 import {
@@ -601,6 +601,297 @@ export const firebaseAuth = async (req: Request, res: Response, next: NextFuncti
         tokens
       }
     } as ApiResponse<AuthResponse>);
+  } catch (error) {
+    next(error);
+  }
+};
+
+/**
+ * Get full user profile with enhanced data
+ */
+export const getFullProfile = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
+  try {
+    const user = req.user;
+    if (!user) {
+      throw new AppError('User not authenticated', 401);
+    }
+
+    const calculateProfileCompletion = (user: IUser): number => {
+      let completedFields = 0;
+      const totalFields = 8;
+
+      if (user.firstName) completedFields++;
+      if (user.lastName) completedFields++;
+      if (user.email && user.isEmailVerified) completedFields++;
+      if (user.phone && user.isPhoneVerified) completedFields++;
+      if (user.avatar) completedFields++;
+      if (user.dateOfBirth) completedFields++;
+      if (user.addresses && user.addresses.length > 0) completedFields++;
+      if (user.gender) completedFields++;
+
+      return Math.round((completedFields / totalFields) * 100);
+    };
+
+    const userProfile = {
+      id: user._id.toString(),
+      firstName: user.firstName,
+      lastName: user.lastName,
+      email: user.email,
+      phone: user.phone || '',
+      avatar: user.avatar || '',
+      role: user.role,
+      isEmailVerified: user.isEmailVerified,
+      isPhoneVerified: user.isPhoneVerified || false,
+      dateOfBirth: user.dateOfBirth ? user.dateOfBirth.toISOString().split('T')[0] : '',
+      gender: user.gender || '',
+      bio: '',
+      addresses: user.addresses || [],
+      socialLinks: {
+        facebook: user.socialMedia?.facebook || '',
+        instagram: user.socialMedia?.instagram || '',
+        twitter: user.socialMedia?.twitter || '',
+        linkedin: user.socialMedia?.linkedin || '',
+        website: user.socialMedia?.website || ''
+      },
+      securitySettings: {
+        twoFactorEnabled: user.twoFactorAuth?.enabled || false,
+        loginNotifications: true,
+        securityAlerts: true,
+        lastPasswordChange: user.updatedAt.toISOString(),
+        activeDevices: []
+      },
+      privacySettings: {
+        profileVisibility: 'public' as const,
+        showEmail: false,
+        showPhone: false,
+        showBirthDate: false,
+        dataProcessingConsent: true,
+        marketingEmails: true,
+        thirdPartySharing: false
+      },
+      preferences: {
+        language: 'en',
+        currency: 'AED',
+        timezone: 'Asia/Dubai',
+        theme: 'light' as const,
+        notifications: {
+          email: true,
+          sms: false,
+          push: true,
+          marketing: true,
+          security: true,
+          bookingReminders: true,
+          eventUpdates: true
+        }
+      },
+      profileCompletion: calculateProfileCompletion(user),
+      lastActiveAt: user.updatedAt.toISOString(),
+      memberSince: user.createdAt.toISOString(),
+      createdAt: user.createdAt.toISOString(),
+      updatedAt: user.updatedAt.toISOString()
+    };
+
+    res.status(200).json({
+      success: true,
+      message: 'Full profile retrieved successfully',
+      data: userProfile
+    });
+  } catch (error) {
+    next(error);
+  }
+};
+
+/**
+ * Add a new address to user profile
+ */
+export const addAddress = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
+  try {
+    const user = req.user;
+    if (!user) {
+      throw new AppError('User not authenticated', 401);
+    }
+
+    const { street, city, state, zipCode, country, isDefault }: IAddress = req.body;
+
+    // If this is being set as default, unset all other default addresses
+    if (isDefault) {
+      if (user.addresses && user.addresses.length > 0) {
+        user.addresses = user.addresses.map(addr => ({ ...addr, isDefault: false }));
+      }
+    }
+
+    // Add new address
+    const newAddress: IAddress = {
+      street,
+      city,
+      state,
+      zipCode,
+      country,
+      isDefault: isDefault || (user.addresses?.length === 0)
+    };
+
+    if (!user.addresses) {
+      user.addresses = [];
+    }
+    user.addresses.push(newAddress);
+
+    await user.save();
+
+    res.status(201).json({
+      success: true,
+      message: 'Address added successfully',
+      data: {
+        addresses: user.addresses
+      }
+    });
+  } catch (error) {
+    next(error);
+  }
+};
+
+/**
+ * Update an existing address
+ */
+export const updateAddress = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
+  try {
+    const user = req.user;
+    if (!user) {
+      throw new AppError('User not authenticated', 401);
+    }
+
+    const { addressIndex } = req.params;
+    const index = parseInt(addressIndex, 10);
+
+    if (!user.addresses || index < 0 || index >= user.addresses.length) {
+      throw new AppError('Address not found', 404);
+    }
+
+    const { street, city, state, zipCode, country, isDefault }: IAddress = req.body;
+
+    // If this is being set as default, unset all other default addresses
+    if (isDefault) {
+      user.addresses = user.addresses.map((addr, i) => ({
+        ...addr,
+        isDefault: i === index ? true : false
+      }));
+    }
+
+    // Update the address
+    user.addresses[index] = {
+      street,
+      city,
+      state,
+      zipCode,
+      country,
+      isDefault: isDefault !== undefined ? isDefault : user.addresses[index].isDefault
+    };
+
+    await user.save();
+
+    res.status(200).json({
+      success: true,
+      message: 'Address updated successfully',
+      data: {
+        addresses: user.addresses
+      }
+    });
+  } catch (error) {
+    next(error);
+  }
+};
+
+/**
+ * Delete an address
+ */
+export const deleteAddress = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
+  try {
+    const user = req.user;
+    if (!user) {
+      throw new AppError('User not authenticated', 401);
+    }
+
+    const { addressIndex } = req.params;
+    const index = parseInt(addressIndex, 10);
+
+    if (!user.addresses || index < 0 || index >= user.addresses.length) {
+      throw new AppError('Address not found', 404);
+    }
+
+    const wasDefault = user.addresses[index].isDefault;
+
+    // Remove the address
+    user.addresses.splice(index, 1);
+
+    // If the deleted address was default and there are still addresses, set the first one as default
+    if (wasDefault && user.addresses.length > 0) {
+      user.addresses[0].isDefault = true;
+    }
+
+    await user.save();
+
+    res.status(200).json({
+      success: true,
+      message: 'Address deleted successfully',
+      data: {
+        addresses: user.addresses
+      }
+    });
+  } catch (error) {
+    next(error);
+  }
+};
+
+/**
+ * Update user avatar
+ */
+export const updateAvatar = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
+  try {
+    const user = req.user;
+    if (!user) {
+      throw new AppError('User not authenticated', 401);
+    }
+
+    const { avatar }: { avatar: string } = req.body;
+
+    if (!avatar) {
+      throw new AppError('Avatar URL is required', 400);
+    }
+
+    user.avatar = avatar;
+    await user.save();
+
+    res.status(200).json({
+      success: true,
+      message: 'Avatar updated successfully',
+      data: {
+        avatar: user.avatar
+      }
+    });
+  } catch (error) {
+    next(error);
+  }
+};
+
+/**
+ * Delete user avatar
+ */
+export const deleteAvatar = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
+  try {
+    const user = req.user;
+    if (!user) {
+      throw new AppError('User not authenticated', 401);
+    }
+
+    user.avatar = undefined;
+    await user.save();
+
+    res.status(200).json({
+      success: true,
+      message: 'Avatar deleted successfully',
+      data: {
+        avatar: null
+      }
+    });
   } catch (error) {
     next(error);
   }

@@ -90,9 +90,16 @@ const EventsPage: React.FC = () => {
         // Fetch real data from backend using API service
         const eventsData = await eventsAPI.getAllEvents();
         
-        // Handle API response format - extract data if it's wrapped in response object
-        const events = eventsData?.data || eventsData || [];
-        setEvents(Array.isArray(events) ? events : []);
+        // Handle API response format - extract data from the response structure
+        const events = eventsData?.data?.events || [];
+        setEvents(Array.isArray(events) ? events.map((event: any) => ({
+          ...event,
+          id: event._id, // Map _id to id for compatibility
+          image: event.images?.[0] || `https://via.placeholder.com/400x300?text=${encodeURIComponent(event.title)}`,
+          date: event.dateSchedule?.[0]?.startDate || new Date().toISOString(),
+          location: event.location?.city || event.location?.address || 'Location TBD',
+          price: event.price || 0
+        })) : []);
         setUsingMockData(false);
         
       } catch (err) {
@@ -140,16 +147,21 @@ const EventsPage: React.FC = () => {
       if (event.price > filters.priceRange[1]) return false;
       
       // Apply date filter (simplified for demo)
-      if (filters.date && event.date !== filters.date) return false;
+      if (filters.date) {
+        const filterDate = new Date(filters.date).toISOString().split('T')[0];
+        const eventDate = new Date(event.date).toISOString().split('T')[0];
+        if (eventDate !== filterDate) return false;
+      }
       
       // Apply search query filter
       if (filters.searchQuery) {
         const query = filters.searchQuery.toLowerCase();
+        const eventLocation = typeof event.location === 'string' ? event.location : event.location?.city || '';
         return (
-          event.title.toLowerCase().includes(query) ||
-          event.description.toLowerCase().includes(query) ||
-          event.location.toLowerCase().includes(query) ||
-          event.category.toLowerCase().includes(query)
+          event.title?.toLowerCase().includes(query) ||
+          event.description?.toLowerCase().includes(query) ||
+          eventLocation.toLowerCase().includes(query) ||
+          event.category?.toLowerCase().includes(query)
         );
       }
       
@@ -312,7 +324,7 @@ const EventsPage: React.FC = () => {
                     />
                     <div className="absolute top-0 right-0 m-3">
                       <span className="bg-primary text-white px-3 py-1 rounded-full text-sm font-medium">
-                        ${event.price}
+                        {event.currency || 'AED'} {event.price}
                       </span>
                     </div>
                     <div className="absolute bottom-0 left-0 m-3">
@@ -336,7 +348,7 @@ const EventsPage: React.FC = () => {
                           <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z" />
                           <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 11a3 3 0 11-6 0 3 3 0 016 0z" />
                         </svg>
-                        <span>{event.location}</span>
+                        <span>{typeof event.location === 'string' ? event.location : event.location?.city || 'Location TBD'}</span>
                       </div>
                     </div>
                     <Link 

@@ -161,7 +161,6 @@ const affiliateClickSchema = new Schema<IAffiliateClick>({
   clickId: {
     type: String,
     required: true,
-    unique: true,
   },
   ipAddress: {
     type: String,
@@ -242,12 +241,10 @@ const affiliateSchema = new Schema<IAffiliate>(
       type: Schema.Types.ObjectId,
       ref: 'User',
       required: [true, 'User ID is required'],
-      unique: true,
     },
     affiliateCode: {
       type: String,
       required: [true, 'Affiliate code is required'],
-      unique: true,
       uppercase: true,
       minlength: [4, 'Affiliate code must be at least 4 characters'],
       maxlength: [20, 'Affiliate code cannot exceed 20 characters'],
@@ -475,7 +472,7 @@ const affiliateSchema = new Schema<IAffiliate>(
 affiliateSchema.index({ userId: 1 }, { unique: true });
 affiliateSchema.index({ affiliateCode: 1 }, { unique: true });
 affiliateSchema.index({ status: 1 });
-affiliateSchema.index({ 'clicks.clickId': 1 });
+affiliateSchema.index({ 'clicks.clickId': 1 }, { unique: true, sparse: true });
 affiliateSchema.index({ 'commissions.orderId': 1 });
 affiliateSchema.index({ 'commissions.status': 1 });
 affiliateSchema.index({ totalRevenue: -1 });

@@ -49,3 +49,6 @@ export type { INotification, INotificationAction, INotificationDelivery } from '
 
 export { default as Affiliate, AffiliateStatus, CommissionType } from './Affiliate';
 export type { IAffiliate, IAffiliateClick, IAffiliateCommission, ICommissionTier } from './Affiliate';
+
+export { default as Collection } from './Collection';
+export type { ICollection } from './Collection';

@@ -1,56 +1,65 @@
 import React, { useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
+import { useAppDispatch, useAppSelector } from '@/store/hooks';
+import { registerUser, verifyEmailWithOTP, resendVerificationEmail, loginWithGoogleThunk } from '@/store/slices/authSlice';
 import { loginWithGoogle } from '@/services/firebaseAuth';
 
 interface RegisterFormData {
-  name: string;
+  firstName: string;
+  lastName: string;
   email: string;
   password: string;
   confirmPassword: string;
+  phone: string;
   agreeToTerms: boolean;
 }
 
+interface OTPFormData {
+  otp: string;
+}
+
+type RegistrationStep = 1 | 2;
+
 const RegisterPage: React.FC = () => {
   const navigate = useNavigate();
+  const dispatch = useAppDispatch();
+  const { isLoading, error } = useAppSelector((state) => state.auth);
+  const [currentStep, setCurrentStep] = useState<RegistrationStep>(1);
   const [formData, setFormData] = useState<RegisterFormData>({
-    name: '',
+    firstName: '',
+    lastName: '',
     email: '',
     password: '',
     confirmPassword: '',
+    phone: '',
     agreeToTerms: false
   });
+  const [otpData, setOtpData] = useState<OTPFormData>({
+    otp: ''
+  });
   const [errors, setErrors] = useState<Partial<RegisterFormData>>({});
-  const [isLoading, setIsLoading] = useState<boolean>(false);
-  const [registerError, setRegisterError] = useState<string | null>(null);
+  const [otpError, setOtpError] = useState<string>('');
 
   const handleGoogleSignIn = async () => {
     try {
-      setIsLoading(true);
-      setRegisterError(null);
-      
-      const response = await loginWithGoogle();
-      
-      // Store auth data
-      localStorage.setItem('token', response.token);
-      localStorage.setItem('refreshToken', response.refreshToken);
-      localStorage.setItem('user', JSON.stringify(response.user));
-      
-      // Redirect to home page after successful registration
-      navigate('/');
+      await dispatch(loginWithGoogleThunk(navigate)).unwrap();
+      // Navigation handled by Redux thunk
     } catch (error) {
       console.error('Google sign-in error:', error);
-      setRegisterError(error instanceof Error ? error.message : 'Failed to sign in with Google');
-    } finally {
-      setIsLoading(false);
     }
   };
 
-  const validateForm = (): boolean => {
+  const validateStep1Form = (): boolean => {
     const newErrors: Partial<RegisterFormData> = {};
     let isValid = true;
 
-    if (!formData.name.trim()) {
-      newErrors.name = 'Name is required';
+    if (!formData.firstName.trim()) {
+      newErrors.firstName = 'First name is required';
+      isValid = false;
+    }
+
+    if (!formData.lastName.trim()) {
+      newErrors.lastName = 'Last name is required';
       isValid = false;
     }
 
@@ -65,8 +74,11 @@ const RegisterPage: React.FC = () => {
     if (!formData.password) {
       newErrors.password = 'Password is required';
       isValid = false;
-    } else if (formData.password.length < 6) {
-      newErrors.password = 'Password must be at least 6 characters';
+    } else if (formData.password.length < 8) {
+      newErrors.password = 'Password must be at least 8 characters long';
+      isValid = false;
+    } else if (!/^(?=.*\d)(?=.*[a-z])(?=.*[A-Z])(?=.*[!@#$%^&*])/.test(formData.password)) {
+      newErrors.password = 'Password must contain at least one uppercase letter, one lowercase letter, one number, and one special character';
       isValid = false;
     }
 
@@ -75,6 +87,11 @@ const RegisterPage: React.FC = () => {
       isValid = false;
     } else if (formData.password !== formData.confirmPassword) {
       newErrors.confirmPassword = 'Passwords do not match';
+      isValid = false;
+    }
+
+    if (!formData.phone) {
+      newErrors.phone = 'Phone number is required';
       isValid = false;
     }
 
@@ -102,47 +119,180 @@ const RegisterPage: React.FC = () => {
       }));
     }
 
-    // Clear register error when user makes changes
-    if (registerError) {
-      setRegisterError(null);
-    }
+    // Clear Redux error when user makes changes - we'll handle this in Redux
   };
 
-  const handleSubmit = async (e: React.FormEvent) => {
+  const handleOtpChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const value = e.target.value.replace(/\D/g, '').slice(0, 4); // Only digits, max 4
+    setOtpData({ otp: value });
+    setOtpError('');
+  };
+
+  const handleStep1Submit = async (e: React.FormEvent) => {
     e.preventDefault();
 
-    if (!validateForm()) {
+    if (!validateStep1Form()) {
       return;
     }
 
-    setIsLoading(true);
-    setRegisterError(null);
-
     try {
-      // Import authAPI dynamically to avoid circular dependencies
-      const { authAPI } = await import('@/services/api/authAPI');
-      
-      // Call the backend API to register
-      const data = await authAPI.register({
-        name: formData.name,
+      // Use Redux registerUser thunk
+      await dispatch(registerUser({
+        firstName: formData.firstName,
+        lastName: formData.lastName,
         email: formData.email,
-        password: formData.password
-      });
-      
-      // Store auth data if auto-login is enabled
-      localStorage.setItem('token', data.token);
-      localStorage.setItem('refreshToken', data.refreshToken);
-      localStorage.setItem('user', JSON.stringify(data.user));
-      
-      // Redirect to home page after successful registration
-      navigate('/');
+        password: formData.password,
+        confirmPassword: formData.confirmPassword,
+        phone: formData.phone,
+        acceptTerms: formData.agreeToTerms
+      })).unwrap();
+
+      // Move to step 2 for email verification
+      setCurrentStep(2);
     } catch (error: any) {
       console.error('Registration error:', error);
-      setRegisterError(error.response?.data?.message || error.message || 'An unexpected error occurred');
-    } finally {
-      setIsLoading(false);
+      // Error handling is done by Redux thunk with toast notifications
     }
   };
+
+  const handleOtpSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+
+    if (!otpData.otp || otpData.otp.length !== 4) {
+      setOtpError('Please enter a valid 4-digit OTP');
+      return;
+    }
+
+    setOtpError('');
+
+    try {
+      await dispatch(verifyEmailWithOTP(otpData.otp)).unwrap();
+
+      // Redirect to home page after successful verification
+      navigate('/', {
+        state: {
+          message: 'Registration completed successfully! Your email has been verified.',
+          type: 'success'
+        }
+      });
+    } catch (error: any) {
+      console.error('OTP verification error:', error);
+      setOtpError(error || 'Invalid OTP. Please try again.');
+    }
+  };
+
+  const handleSkipVerification = () => {
+    // Skip verification and go to home page
+    navigate('/', {
+      state: {
+        message: 'Registration completed successfully! You can verify your email later.',
+        type: 'info'
+      }
+    });
+  };
+
+  const handleResendOtp = async () => {
+    try {
+      await dispatch(resendVerificationEmail(formData.email)).unwrap();
+      setOtpError('');
+    } catch (error: any) {
+      console.error('Resend OTP error:', error);
+      setOtpError(error || 'Failed to resend OTP');
+    }
+  };
+
+  if (currentStep === 2) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-primary-50 to-white py-12 px-4 sm:px-6 lg:px-8">
+        <div className="max-w-md w-full space-y-6 animate-fade-in-up">
+          <div className="bg-white p-8 rounded-xl shadow-medium border border-neutral-200">
+            <div className="text-center">
+              <img src="/assets/animations/loading.svg" alt="Logo" className="h-12 w-12 mx-auto mb-4" />
+              <h2 className="text-center text-2xl font-bold text-neutral-800">Verify Your Email</h2>
+              <p className="mt-2 text-center text-sm text-neutral-600">
+                We've sent a 4-digit verification code to{' '}
+                <span className="font-medium text-primary-600">{formData.email}</span>
+              </p>
+            </div>
+
+          {otpError && (
+            <div className="alert alert-error flex items-center space-x-3 mb-4" role="alert">
+              <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 text-error-600" viewBox="0 0 20 20" fill="currentColor">
+                <path fillRule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7 4a1 1 0 11-2 0 1 1 0 012 0zm-1-9a1 1 0 00-1 1v4a1 1 0 102 0V6a1 1 0 00-1-1z" clipRule="evenodd" />
+              </svg>
+              <p className="text-sm font-medium">{otpError}</p>
+            </div>
+          )}
+
+          <form className="mt-6 space-y-6" onSubmit={handleOtpSubmit}>
+            <div className="form-group">
+              <label htmlFor="otp" className="form-label">Verification Code</label>
+              <div className="relative">
+                <input
+                  id="otp"
+                  name="otp"
+                  type="text"
+                  inputMode="numeric"
+                  pattern="[0-9]*"
+                  maxLength={4}
+                  required
+                  className="input text-center text-2xl tracking-widest"
+                  placeholder="••••"
+                  value={otpData.otp}
+                  onChange={handleOtpChange}
+                />
+              </div>
+            </div>
+
+            <div className="space-y-4">
+              <button
+                type="submit"
+                disabled={isLoading}
+                className={`btn btn-lg w-full flex justify-center items-center space-x-2 ${
+                  isLoading ? 'bg-primary-400 cursor-not-allowed' : 'bg-primary-600 hover:bg-primary-700'
+                } text-white font-medium rounded-lg transition-all duration-200 shadow-sm hover:shadow`}
+              >
+                {isLoading ? (
+                  <>
+                    <svg className="animate-spin h-5 w-5 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                      <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                      <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                    </svg>
+                    <span>Verifying...</span>
+                  </>
+                ) : (
+                  <span>Verify Email</span>
+                )}
+              </button>
+
+              <button
+                type="button"
+                onClick={handleSkipVerification}
+                className="btn btn-lg w-full border-2 border-neutral-200 bg-white text-neutral-700 hover:bg-neutral-50 font-medium rounded-lg transition-all duration-200"
+              >
+                Skip Verification
+              </button>
+            </div>
+          </form>
+
+          <div className="text-center">
+            <p className="text-sm text-neutral-600">
+              Didn't receive the code?{' '}
+              <button
+                type="button"
+                onClick={handleResendOtp}
+                disabled={isLoading}
+                className="font-medium text-primary-600 hover:text-primary-700 transition-colors disabled:text-primary-400"
+              >
+                Resend Code
+              </button>
+            </p>
+          </div>
+          </div>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-primary-50 to-white py-12 px-4 sm:px-6 lg:px-8">
@@ -158,43 +308,56 @@ const RegisterPage: React.FC = () => {
               </Link>
             </p>
           </div>
-        
-        {registerError && (
+
+        {error && (
           <div className="alert alert-error flex items-center space-x-3 mb-4" role="alert">
             <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 text-error-600" viewBox="0 0 20 20" fill="currentColor">
               <path fillRule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7 4a1 1 0 11-2 0 1 1 0 012 0zm-1-9a1 1 0 00-1 1v4a1 1 0 102 0V6a1 1 0 00-1-1z" clipRule="evenodd" />
             </svg>
-            <p className="text-sm font-medium">{registerError}</p>
+            <p className="text-sm font-medium">{error}</p>
           </div>
         )}
-        
-        <form className="mt-6 space-y-6" onSubmit={handleSubmit}>
+
+        <form className="mt-6 space-y-6" onSubmit={handleStep1Submit}>
           <div className="space-y-4">
-            <div className="form-group">
-              <label htmlFor="name" className="form-label">Full name</label>
-              <div className="relative">
-                <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-                  <svg className="h-5 w-5 text-neutral-400" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor">
-                    <path fillRule="evenodd" d="M10 9a3 3 0 100-6 3 3 0 000 6zm-7 9a7 7 0 1114 0H3z" clipRule="evenodd" />
-                  </svg>
-                </div>
+            <div className="grid grid-cols-2 gap-4">
+              <div className="form-group">
+                <label htmlFor="firstName" className="form-label">First name</label>
                 <input
-                  id="name"
-                  name="name"
+                  id="firstName"
+                  name="firstName"
                   type="text"
-                  autoComplete="name"
+                  autoComplete="given-name"
                   required
-                  className={`input pl-10 ${errors.name ? 'input-error' : ''}`}
-                  placeholder="John Doe"
-                  value={formData.name}
+                  className={`input ${errors.firstName ? 'input-error' : ''}`}
+                  placeholder="John"
+                  value={formData.firstName}
                   onChange={handleInputChange}
                 />
+                {errors.firstName && (
+                  <p className="form-error">{errors.firstName}</p>
+                )}
               </div>
-              {errors.name && (
-                <p className="form-error">{errors.name}</p>
-              )}
+
+              <div className="form-group">
+                <label htmlFor="lastName" className="form-label">Last name</label>
+                <input
+                  id="lastName"
+                  name="lastName"
+                  type="text"
+                  autoComplete="family-name"
+                  required
+                  className={`input ${errors.lastName ? 'input-error' : ''}`}
+                  placeholder="Doe"
+                  value={formData.lastName}
+                  onChange={handleInputChange}
+                />
+                {errors.lastName && (
+                  <p className="form-error">{errors.lastName}</p>
+                )}
+              </div>
             </div>
-            
+
             <div className="form-group">
               <label htmlFor="email" className="form-label">Email address</label>
               <div className="relative">
@@ -220,7 +383,32 @@ const RegisterPage: React.FC = () => {
                 <p className="form-error">{errors.email}</p>
               )}
             </div>
-            
+
+            <div className="form-group">
+              <label htmlFor="phone" className="form-label">Phone number</label>
+              <div className="relative">
+                <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                  <svg className="h-5 w-5 text-neutral-400" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor">
+                    <path d="M2 3a1 1 0 011-1h2.153a1 1 0 01.986.836l.74 4.435a1 1 0 01-.54 1.06l-1.548.773a11.037 11.037 0 006.105 6.105l.774-1.548a1 1 0 011.059-.54l4.435.74a1 1 0 01.836.986V17a1 1 0 01-1 1h-2C7.82 18 2 12.18 2 5V3z" />
+                  </svg>
+                </div>
+                <input
+                  id="phone"
+                  name="phone"
+                  type="tel"
+                  autoComplete="tel"
+                  required
+                  className={`input pl-10 ${errors.phone ? 'input-error' : ''}`}
+                  placeholder="+971501234567"
+                  value={formData.phone}
+                  onChange={handleInputChange}
+                />
+              </div>
+              {errors.phone && (
+                <p className="form-error">{errors.phone}</p>
+              )}
+            </div>
+
             <div className="form-group">
               <label htmlFor="password" className="form-label">Password</label>
               <div className="relative">
@@ -245,7 +433,7 @@ const RegisterPage: React.FC = () => {
                 <p className="form-error">{errors.password}</p>
               )}
             </div>
-            
+
             <div className="form-group">
               <label htmlFor="confirmPassword" className="form-label">Confirm password</label>
               <div className="relative">
@@ -322,14 +510,14 @@ const RegisterPage: React.FC = () => {
             </button>
           </div>
         </form>
-        
+
         <div className="mt-6">
           <div className="relative">
             <div className="absolute inset-0 flex items-center">
               <div className="w-full border-t border-gray-300"></div>
             </div>
             <div className="relative flex justify-center text-sm">
-              <span className="px-2 bg-gray-50 text-gray-500">
+              <span className="px-2 bg-white text-gray-500">
                 Or continue with
               </span>
             </div>

@@ -106,13 +106,20 @@ export const createReview = async (req: AuthRequest, res: Response, next: NextFu
   }
 };
 
-// @desc    Get reviews for a target (event, vendor, etc.)
-// @route   GET /api/reviews/:type/:id
+// @desc    Get reviews (general or for specific target)
+// @route   GET /api/reviews or GET /api/reviews/:type/:id
 // @access  Public
 export const getReviews = async (req: Request, res: Response, next: NextFunction) => {
   try {
-    const { type, id } = req.params;
+    const errors = validationResult(req);
+    if (!errors.isEmpty()) {
+      return next(new AppError('Validation failed', 400, errors.array()));
+    }
+
+    const { type: pathType, id: pathId } = req.params;
     const {
+      type: queryType,
+      targetId,
       page = 1,
       limit = 10,
       sortBy = 'createdAt',
@@ -121,9 +128,10 @@ export const getReviews = async (req: Request, res: Response, next: NextFunction
       verified,
     } = req.query;
 
-    if (!Object.values(ReviewType).includes(type as ReviewType)) {
-      return next(new AppError('Invalid review type', 400));
-    }
+    // Determine if this is a specific target query or general query
+    const isSpecificTarget = pathType && pathId;
+    const type = isSpecificTarget ? pathType : queryType;
+    const id = isSpecificTarget ? pathId : targetId;
 
     const pageNum = parseInt(page as string);
     const limitNum = parseInt(limit as string);
@@ -131,15 +139,25 @@ export const getReviews = async (req: Request, res: Response, next: NextFunction
 
     // Build filter query
     const filter: any = {
-      type,
       status: ReviewStatus.APPROVED,
       deletedAt: { $exists: false },
     };
 
-    if (type === ReviewType.EVENT) {
-      filter.event = id;
-    } else if (type === ReviewType.VENDOR) {
-      filter.vendor = id;
+    // Add type filter if specified
+    if (type) {
+      if (!Object.values(ReviewType).includes(type as ReviewType)) {
+        return next(new AppError('Invalid review type', 400));
+      }
+      filter.type = type;
+
+      // Add target ID filter if specified
+      if (id) {
+        if (type === ReviewType.EVENT) {
+          filter.event = id;
+        } else if (type === ReviewType.VENDOR) {
+          filter.vendor = id;
+        }
+      }
     }
 
     if (rating) {
@@ -158,30 +176,40 @@ export const getReviews = async (req: Request, res: Response, next: NextFunction
     const [reviews, total] = await Promise.all([
       Review.find(filter)
         .populate('user', 'firstName lastName avatar')
+        .populate('event', 'title')
+        .populate('vendor', 'firstName lastName businessName')
         .sort(sort)
         .skip(skip)
         .limit(limitNum),
       Review.countDocuments(filter),
     ]);
 
-    // Get average rating and distribution
-    const ratingStats = await Review.getAverageRating(new mongoose.Types.ObjectId(id), type as ReviewType);
+    // Get average rating and distribution if querying for specific target
+    let ratingStats = null;
+    if (isSpecificTarget && id && type) {
+      ratingStats = await Review.getAverageRating(new mongoose.Types.ObjectId(id as string), type as ReviewType);
+    }
+
+    const responseData: any = {
+      reviews,
+      pagination: {
+        currentPage: pageNum,
+        totalPages: Math.ceil(total / limitNum),
+        totalReviews: total,
+        hasNextPage: pageNum < Math.ceil(total / limitNum),
+        hasPrevPage: pageNum > 1,
+        limit: limitNum,
+      },
+    };
+
+    if (ratingStats) {
+      responseData.ratingStats = ratingStats;
+    }
 
     res.status(200).json({
       success: true,
       message: 'Reviews retrieved successfully',
-      data: {
-        reviews,
-        ratingStats,
-        pagination: {
-          currentPage: pageNum,
-          totalPages: Math.ceil(total / limitNum),
-          totalReviews: total,
-          hasNextPage: pageNum < Math.ceil(total / limitNum),
-          hasPrevPage: pageNum > 1,
-          limit: limitNum,
-        },
-      },
+      data: responseData,
     });
   } catch (error) {
     next(error);

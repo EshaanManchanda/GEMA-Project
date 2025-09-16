@@ -1,30 +1,47 @@
 import { createSlice, createAsyncThunk, PayloadAction } from '@reduxjs/toolkit';
 import authAPI from '@services/api/authAPI';
-import { User, LoginCredentials, RegisterData, AuthResponse } from '@types/auth';
+import {
+  User,
+  LoginCredentials,
+  RegisterData,
+  AuthResponse,
+  UserProfile,
+  UpdateProfileData,
+  AvatarUploadData,
+  Address
+} from '@types/auth';
 import { toast } from 'react-hot-toast';
 import { loginWithGoogle } from '@/services/firebaseAuth';
 import { redirectToRoleDashboard, type UserRole } from '@/utils/roleRedirect';
 
 interface AuthState {
   user: User | null;
+  userProfile: UserProfile | null;
   token: string | null;
   refreshToken: string | null;
   isAuthenticated: boolean;
   isLoading: boolean;
+  isProfileLoading: boolean;
   error: string | null;
+  profileError: string | null;
   isEmailVerified: boolean;
   lastLoginTime: string | null;
+  profileCompletion: number;
 }
 
 const initialState: AuthState = {
   user: null,
+  userProfile: null,
   token: null,
   refreshToken: null,
   isAuthenticated: false,
   isLoading: false,
+  isProfileLoading: false,
   error: null,
+  profileError: null,
   isEmailVerified: false,
   lastLoginTime: null,
+  profileCompletion: 0,
 };
 
 // Async thunks
@@ -117,6 +134,36 @@ export const verifyEmail = createAsyncThunk(
   }
 );
 
+export const verifyEmailWithOTP = createAsyncThunk(
+  'auth/verifyEmailWithOTP',
+  async (otp: string, { rejectWithValue }) => {
+    try {
+      const response = await authAPI.verifyEmailWithOTP(otp);
+      toast.success('Email verified successfully!');
+      return response;
+    } catch (error: any) {
+      const message = error.response?.data?.message || 'Email verification failed';
+      toast.error(message);
+      return rejectWithValue(message);
+    }
+  }
+);
+
+export const resendVerificationEmail = createAsyncThunk(
+  'auth/resendVerificationEmail',
+  async (email: string, { rejectWithValue }) => {
+    try {
+      await authAPI.sendVerificationEmail(email);
+      toast.success('Verification code sent successfully!');
+      return { success: true };
+    } catch (error: any) {
+      const message = error.response?.data?.message || 'Failed to resend verification email';
+      toast.error(message);
+      return rejectWithValue(message);
+    }
+  }
+);
+
 export const forgotPassword = createAsyncThunk(
   'auth/forgotPassword',
   async (email: string, { rejectWithValue }) => {
@@ -147,15 +194,103 @@ export const resetPassword = createAsyncThunk(
   }
 );
 
+export const getFullProfile = createAsyncThunk(
+  'auth/getFullProfile',
+  async (_, { rejectWithValue }) => {
+    try {
+      const response = await authAPI.getFullProfile();
+      return response;
+    } catch (error: any) {
+      const message = error.response?.data?.message || 'Failed to load profile';
+      return rejectWithValue(message);
+    }
+  }
+);
+
 export const updateProfile = createAsyncThunk(
   'auth/updateProfile',
-  async (userData: Partial<User>, { rejectWithValue }) => {
+  async (userData: UpdateProfileData, { rejectWithValue }) => {
     try {
       const response = await authAPI.updateProfile(userData);
       toast.success('Profile updated successfully!');
       return response;
     } catch (error: any) {
       const message = error.response?.data?.message || 'Profile update failed';
+      toast.error(message);
+      return rejectWithValue(message);
+    }
+  }
+);
+
+export const uploadAvatar = createAsyncThunk(
+  'auth/uploadAvatar',
+  async (data: AvatarUploadData, { rejectWithValue }) => {
+    try {
+      const response = await authAPI.uploadAvatar(data);
+      toast.success('Avatar updated successfully!');
+      return response.avatarUrl;
+    } catch (error: any) {
+      const message = error.response?.data?.message || 'Avatar upload failed';
+      toast.error(message);
+      return rejectWithValue(message);
+    }
+  }
+);
+
+export const removeAvatar = createAsyncThunk(
+  'auth/removeAvatar',
+  async (_, { rejectWithValue }) => {
+    try {
+      await authAPI.removeAvatar();
+      toast.success('Avatar removed successfully!');
+      return { success: true };
+    } catch (error: any) {
+      const message = error.response?.data?.message || 'Failed to remove avatar';
+      toast.error(message);
+      return rejectWithValue(message);
+    }
+  }
+);
+
+export const addAddress = createAsyncThunk(
+  'auth/addAddress',
+  async (address: Omit<Address, 'id'>, { rejectWithValue }) => {
+    try {
+      const response = await authAPI.addAddress(address);
+      toast.success('Address added successfully!');
+      return response;
+    } catch (error: any) {
+      const message = error.response?.data?.message || 'Failed to add address';
+      toast.error(message);
+      return rejectWithValue(message);
+    }
+  }
+);
+
+export const updateAddress = createAsyncThunk(
+  'auth/updateAddress',
+  async ({ addressId, address }: { addressId: string; address: Partial<Address> }, { rejectWithValue }) => {
+    try {
+      const response = await authAPI.updateAddress(addressId, address);
+      toast.success('Address updated successfully!');
+      return response;
+    } catch (error: any) {
+      const message = error.response?.data?.message || 'Failed to update address';
+      toast.error(message);
+      return rejectWithValue(message);
+    }
+  }
+);
+
+export const deleteAddress = createAsyncThunk(
+  'auth/deleteAddress',
+  async (addressId: string, { rejectWithValue }) => {
+    try {
+      await authAPI.deleteAddress(addressId);
+      toast.success('Address deleted successfully!');
+      return addressId;
+    } catch (error: any) {
+      const message = error.response?.data?.message || 'Failed to delete address';
       toast.error(message);
       return rejectWithValue(message);
     }
@@ -218,13 +353,22 @@ const authSlice = createSlice({
   reducers: {
     clearError: (state) => {
       state.error = null;
+      state.profileError = null;
     },
     setLoading: (state, action: PayloadAction<boolean>) => {
       state.isLoading = action.payload;
     },
+    setProfileLoading: (state, action: PayloadAction<boolean>) => {
+      state.isProfileLoading = action.payload;
+    },
     updateUser: (state, action: PayloadAction<Partial<User>>) => {
       if (state.user) {
         state.user = { ...state.user, ...action.payload };
+      }
+    },
+    updateUserProfile: (state, action: PayloadAction<Partial<UserProfile>>) => {
+      if (state.userProfile) {
+        state.userProfile = { ...state.userProfile, ...action.payload };
       }
     },
     setEmailVerified: (state, action: PayloadAction<boolean>) => {
@@ -232,6 +376,9 @@ const authSlice = createSlice({
       if (state.user) {
         state.user.isEmailVerified = action.payload;
       }
+    },
+    setProfileCompletion: (state, action: PayloadAction<number>) => {
+      state.profileCompletion = action.payload;
     },
     clearAuth: (state) => {
       state.user = null;
@@ -341,20 +488,110 @@ const authSlice = createSlice({
           state.user.isEmailVerified = true;
         }
       })
+
+      // Verify Email with OTP
+      .addCase(verifyEmailWithOTP.fulfilled, (state, action) => {
+        state.isEmailVerified = true;
+        if (state.user) {
+          state.user.isEmailVerified = true;
+        }
+      })
       
+      // Get Full Profile
+      .addCase(getFullProfile.pending, (state) => {
+        state.isProfileLoading = true;
+        state.profileError = null;
+      })
+      .addCase(getFullProfile.fulfilled, (state, action: PayloadAction<UserProfile>) => {
+        state.isProfileLoading = false;
+        state.userProfile = action.payload;
+        state.profileCompletion = action.payload.profileCompletion;
+        state.profileError = null;
+      })
+      .addCase(getFullProfile.rejected, (state, action) => {
+        state.isProfileLoading = false;
+        state.profileError = action.payload as string;
+      })
+
       // Update Profile
       .addCase(updateProfile.pending, (state) => {
-        state.isLoading = true;
-        state.error = null;
+        state.isProfileLoading = true;
+        state.profileError = null;
       })
-      .addCase(updateProfile.fulfilled, (state, action: PayloadAction<User>) => {
-        state.isLoading = false;
-        state.user = action.payload;
-        state.error = null;
+      .addCase(updateProfile.fulfilled, (state, action: PayloadAction<UserProfile>) => {
+        state.isProfileLoading = false;
+        state.userProfile = action.payload;
+        state.profileCompletion = action.payload.profileCompletion;
+        // Update basic user info as well
+        if (state.user) {
+          state.user = {
+            ...state.user,
+            firstName: action.payload.firstName,
+            lastName: action.payload.lastName,
+            phone: action.payload.phone,
+            avatar: action.payload.avatar,
+            preferences: action.payload.preferences,
+          };
+        }
+        state.profileError = null;
       })
       .addCase(updateProfile.rejected, (state, action) => {
-        state.isLoading = false;
-        state.error = action.payload as string;
+        state.isProfileLoading = false;
+        state.profileError = action.payload as string;
+      })
+
+      // Upload Avatar
+      .addCase(uploadAvatar.pending, (state) => {
+        state.isProfileLoading = true;
+        state.profileError = null;
+      })
+      .addCase(uploadAvatar.fulfilled, (state, action: PayloadAction<string>) => {
+        state.isProfileLoading = false;
+        if (state.user) {
+          state.user.avatar = action.payload;
+        }
+        if (state.userProfile) {
+          state.userProfile.avatar = action.payload;
+        }
+        state.profileError = null;
+      })
+      .addCase(uploadAvatar.rejected, (state, action) => {
+        state.isProfileLoading = false;
+        state.profileError = action.payload as string;
+      })
+
+      // Remove Avatar
+      .addCase(removeAvatar.fulfilled, (state) => {
+        if (state.user) {
+          state.user.avatar = undefined;
+        }
+        if (state.userProfile) {
+          state.userProfile.avatar = undefined;
+        }
+      })
+
+      // Add Address
+      .addCase(addAddress.fulfilled, (state, action: PayloadAction<Address>) => {
+        if (state.userProfile) {
+          state.userProfile.addresses.push(action.payload);
+        }
+      })
+
+      // Update Address
+      .addCase(updateAddress.fulfilled, (state, action: PayloadAction<Address>) => {
+        if (state.userProfile) {
+          const index = state.userProfile.addresses.findIndex(addr => addr.id === action.payload.id);
+          if (index !== -1) {
+            state.userProfile.addresses[index] = action.payload;
+          }
+        }
+      })
+
+      // Delete Address
+      .addCase(deleteAddress.fulfilled, (state, action: PayloadAction<string>) => {
+        if (state.userProfile) {
+          state.userProfile.addresses = state.userProfile.addresses.filter(addr => addr.id !== action.payload);
+        }
       })
       
       // Get Current User
@@ -376,8 +613,11 @@ const authSlice = createSlice({
 export const {
   clearError,
   setLoading,
+  setProfileLoading,
   updateUser,
+  updateUserProfile,
   setEmailVerified,
+  setProfileCompletion,
   clearAuth,
 } = authSlice.actions;
 
@@ -386,11 +626,15 @@ export default authSlice.reducer;
 // Selectors
 export const selectAuth = (state: { auth: AuthState }) => state.auth;
 export const selectUser = (state: { auth: AuthState }) => state.auth.user;
+export const selectUserProfile = (state: { auth: AuthState }) => state.auth.userProfile;
 export const selectIsAuthenticated = (state: { auth: AuthState }) => state.auth.isAuthenticated;
 export const selectIsLoading = (state: { auth: AuthState }) => state.auth.isLoading;
+export const selectIsProfileLoading = (state: { auth: AuthState }) => state.auth.isProfileLoading;
 export const selectError = (state: { auth: AuthState }) => state.auth.error;
+export const selectProfileError = (state: { auth: AuthState }) => state.auth.profileError;
 export const selectToken = (state: { auth: AuthState }) => state.auth.token;
 export const selectIsEmailVerified = (state: { auth: AuthState }) => state.auth.isEmailVerified;
+export const selectProfileCompletion = (state: { auth: AuthState }) => state.auth.profileCompletion;
 
 // Helper selectors
 export const selectUserRole = (state: { auth: AuthState }): UserRole | null => {

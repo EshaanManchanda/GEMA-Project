@@ -115,6 +115,7 @@ export interface IUser extends Document {
   firebaseUid?: string;
   businessHours?: IBusinessHours;
   socialMedia?: ISocialMedia;
+  favoriteEvents?: mongoose.Types.ObjectId[];
   createdAt: Date;
   updatedAt: Date;
   
@@ -272,7 +273,11 @@ const UserSchema = new Schema<IUser>(
     socialMedia: {
       type: Object,
       default: {}
-    }
+    },
+    favoriteEvents: [{
+      type: mongoose.Schema.Types.ObjectId,
+      ref: 'Event'
+    }]
   },
   {
     timestamps: true

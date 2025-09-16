@@ -41,7 +41,7 @@ export const generatePlaceholder = ({
   const ctx = canvas.getContext('2d');
   
   if (!ctx) {
-    return generatePlaceholder({ ...arguments[0], format: 'svg' });
+    return generatePlaceholder({ width, height, text, backgroundColor, textColor, format: 'svg' });
   }
   
   // Fill background

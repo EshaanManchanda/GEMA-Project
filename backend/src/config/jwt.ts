@@ -1,4 +1,5 @@
-import jwt, { Secret, SignOptions } from 'jsonwebtoken';
+import * as jwt from 'jsonwebtoken';
+import { Secret, SignOptions } from 'jsonwebtoken';
 import { StringValue } from 'ms'; // 👈 important
 import { config } from './env';
 

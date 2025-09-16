@@ -44,7 +44,6 @@ const categorySchema = new Schema<ICategory>(
     slug: {
       type: String,
       required: [true, 'Category slug is required'],
-      unique: true,
       trim: true,
       lowercase: true,
       match: [/^[a-z0-9-]+$/, 'Slug can only contain lowercase letters, numbers, and hyphens'],

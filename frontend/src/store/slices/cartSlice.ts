@@ -106,7 +106,7 @@ const cartSlice = createSlice({
                 item.selectedTimeSlot === selectedTimeSlot
       );
       
-      const unitPrice = event.pricing?.basePrice || 0;
+      const unitPrice = event.pricing?.basePrice || event.price || 0;
       const totalPrice = unitPrice * quantity;
       
       if (existingItemIndex >= 0) {
@@ -126,7 +126,7 @@ const cartSlice = createSlice({
           participants,
           unitPrice,
           totalPrice,
-          currency: event.pricing?.currency || 'AED',
+          currency: event.pricing?.currency || event.currency || 'AED',
           addedAt: new Date().toISOString(),
         };
         state.items.push(newItem);

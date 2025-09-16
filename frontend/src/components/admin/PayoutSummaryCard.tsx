@@ -44,7 +44,7 @@ const PayoutSummaryCard: React.FC<PayoutSummaryCardProps> = ({
 
   const loadPayoutData = async () => {
     try {
-      await dispatch(fetchPayoutStats()).unwrap();
+      await dispatch(fetchPayoutStats({})).unwrap();
     } catch (error) {
       console.error('Failed to load payout stats:', error);
     }

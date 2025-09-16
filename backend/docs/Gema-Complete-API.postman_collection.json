@@ -1,0 +1,4153 @@
+{
+	"info": {
+		"_postman_id": "6fbddc4d-f24a-4666-873f-33bfd9b922fb",
+		"name": "Gema Complete API Collection",
+		"description": "Complete Postman collection for the Gema event platform API. Includes all endpoints for authentication, events, bookings, payments, reviews, admin panel and more.",
+		"schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json",
+		"_exporter_id": "30269521"
+	},
+	"auth": {
+		"type": "bearer",
+		"bearer": [
+			{
+				"key": "token",
+				"value": "{{access_token}}",
+				"type": "string"
+			}
+		]
+	},
+	"event": [
+		{
+			"listen": "prerequest",
+			"script": {
+				"type": "text/javascript",
+				"exec": [
+					"// Auto-select appropriate token based on request",
+					"const url = pm.request.url.toString();",
+					"const method = pm.request.method;",
+					"",
+					"// Skip token assignment for routes that don't need auth",
+					"if (pm.request.auth && pm.request.auth.type === 'noauth') {",
+					"    return;",
+					"}",
+					"",
+					"// Initialize auth object if it doesn't exist or isn't bearer type",
+					"if (!pm.request.auth || pm.request.auth.type !== 'bearer') {",
+					"    pm.request.auth = {",
+					"        type: 'bearer',",
+					"        bearer: [{ key: 'token', value: '', type: 'string' }]",
+					"    };",
+					"}",
+					"",
+					"// Ensure bearer array structure exists",
+					"if (!pm.request.auth.bearer || !Array.isArray(pm.request.auth.bearer)) {",
+					"    pm.request.auth.bearer = [{ key: 'token', value: '', type: 'string' }];",
+					"}",
+					"",
+					"let token = '';",
+					"",
+					"// Admin routes",
+					"if (url.includes('/admin/')) {",
+					"    token = pm.environment.get('admin_token') || '';",
+					"} ",
+					"// Vendor routes",
+					"else if (url.includes('/vendor/') || (method === 'POST' && url.includes('/events'))) {",
+					"    token = pm.environment.get('vendor_token') || '';",
+					"} ",
+					"// Customer/default routes",
+					"else {",
+					"    token = pm.environment.get('customer_token') || '';",
+					"}",
+					"",
+					"// Fallback to general access token if role-specific token not found",
+					"if (!token) {",
+					"    token = pm.environment.get('access_token') || '';",
+					"}",
+					"",
+					"// Set the token",
+					"pm.request.auth.bearer[0].value = token;"
+				]
+			}
+		},
+		{
+			"listen": "test",
+			"script": {
+				"type": "text/javascript",
+				"exec": [
+					"// Auto-save tokens from login responses",
+					"if (pm.response.code === 200 || pm.response.code === 201) {",
+					"    const response = pm.response.json();",
+					"    ",
+					"    if (response.data && response.data.accessToken) {",
+					"        const user = response.data.user;",
+					"        const token = response.data.accessToken;",
+					"        const refreshToken = response.data.refreshToken;",
+					"        ",
+					"        if (user && user.role) {",
+					"            pm.environment.set(user.role + '_token', token);",
+					"            pm.environment.set(user.role + '_refresh_token', refreshToken);",
+					"            ",
+					"            // Set as default token",
+					"            pm.environment.set('access_token', token);",
+					"            pm.environment.set('refresh_token', refreshToken);",
+					"        }",
+					"    }",
+					"}"
+				]
+			}
+		}
+	],
+	"variable": [
+		{
+			"key": "base_url",
+			"value": "localhost:5000",
+			"type": "string"
+		},
+		{
+			"key": "api_version",
+			"value": "api",
+			"type": "string"
+		}
+	],
+	"item": [
+		{
+			"name": "🔐 Authentication",
+			"description": "User authentication and account management endpoints",
+			"item": [
+				{
+					"name": "Register New User (Customer)",
+					"request": {
+						"auth": {
+							"type": "noauth"
+						},
+						"method": "POST",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n    \"firstName\": \"John\",\n    \"lastName\": \"Doe\",\n    \"email\": \"customer@gema.com\",\n    \"password\": \"Customer123@@\",\n    \"phone\": \"+971501234567\"\n}"
+						},
+						"url": {
+							"raw": "{{base_url}}/{{api_version}}/auth/register",
+							"host": ["{{base_url}}"],
+							"path": ["{{api_version}}", "auth", "register"]
+						},
+						"description": "Register a new customer account"
+					}
+				},
+				{
+					"name": "Register New User (Vendor)",
+					"request": {
+						"auth": {
+							"type": "noauth"
+						},
+						"method": "POST",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n    \"firstName\": \"Jane\",\n    \"lastName\": \"Smith\",\n    \"email\": \"vendor@gema.com\",\n    \"password\": \"Vendor123@@\",\n    \"phone\": \"+971501234568\",\n    \"role\": \"vendor\"\n}"
+						},
+						"url": {
+							"raw": "{{base_url}}/{{api_version}}/auth/register",
+							"host": ["{{base_url}}"],
+							"path": ["{{api_version}}", "auth", "register"]
+						},
+						"description": "Register a new vendor account"
+					}
+				},
+				{
+					"name": "Register New User (Admin)",
+					"request": {
+						"auth": {
+							"type": "noauth"
+						},
+						"method": "POST",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n    \"firstName\": \"Admin\",\n    \"lastName\": \"User\",\n    \"email\": \"admin@gema.com\",\n    \"password\": \"Admin123@@\",\n    \"role\": \"admin\"\n}"
+						},
+						"url": {
+							"raw": "{{base_url}}/{{api_version}}/auth/register",
+							"host": ["{{base_url}}"],
+							"path": ["{{api_version}}", "auth", "register"]
+						},
+						"description": "Register a new admin account"
+					}
+				},
+				{
+					"name": "Login User (Customer)",
+					"request": {
+						"auth": {
+							"type": "noauth"
+						},
+						"method": "POST",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n    \"email\": \"customer@gema.com\",\n    \"password\": \"Customer123@@\"\n}"
+						},
+						"url": {
+							"raw": "{{base_url}}/{{api_version}}/auth/login",
+							"host": ["{{base_url}}"],
+							"path": ["{{api_version}}", "auth", "login"]
+						},
+						"description": "Login as customer"
+					}
+				},
+				{
+					"name": "Login User (Vendor)",
+					"request": {
+						"auth": {
+							"type": "noauth"
+						},
+						"method": "POST",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n    \"email\": \"vendor@gema.com\",\n    \"password\": \"Vendor123@@\"\n}"
+						},
+						"url": {
+							"raw": "{{base_url}}/{{api_version}}/auth/login",
+							"host": ["{{base_url}}"],
+							"path": ["{{api_version}}", "auth", "login"]
+						},
+						"description": "Login as vendor"
+					}
+				},
+				{
+					"name": "Login User (Admin)",
+					"request": {
+						"auth": {
+							"type": "noauth"
+						},
+						"method": "POST",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n    \"email\": \"admin@gema.com\",\n    \"password\": \"Admin123@@\"\n}"
+						},
+						"url": {
+							"raw": "{{base_url}}/{{api_version}}/auth/login",
+							"host": ["{{base_url}}"],
+							"path": ["{{api_version}}", "auth", "login"]
+						},
+						"description": "Login as admin"
+					}
+				},
+				{
+					"name": "Get Current User Profile",
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{base_url}}/{{api_version}}/auth/me",
+							"host": ["{{base_url}}"],
+							"path": ["{{api_version}}", "auth", "me"]
+						},
+						"description": "Get current authenticated user profile"
+					}
+				},
+				{
+					"name": "Update User Profile",
+					"request": {
+						"method": "PUT",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n    \"firstName\": \"John\",\n    \"lastName\": \"Updated\",\n    \"phone\": \"+971501234569\"\n}"
+						},
+						"url": {
+							"raw": "{{base_url}}/{{api_version}}/auth/profile",
+							"host": ["{{base_url}}"],
+							"path": ["{{api_version}}", "auth", "profile"]
+						},
+						"description": "Update user profile information"
+					}
+				},
+				{
+					"name": "Change Password",
+					"request": {
+						"method": "PUT",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n    \"currentPassword\": \"Customer123@@\",\n    \"newPassword\": \"NewPassword123@@\"\n}"
+						},
+						"url": {
+							"raw": "{{base_url}}/{{api_version}}/auth/change-password",
+							"host": ["{{base_url}}"],
+							"path": ["{{api_version}}", "auth", "change-password"]
+						},
+						"description": "Change user password"
+					}
+				},
+				{
+					"name": "Forgot Password",
+					"request": {
+						"auth": {
+							"type": "noauth"
+						},
+						"method": "POST",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n    \"email\": \"customer@gema.com\"\n}"
+						},
+						"url": {
+							"raw": "{{base_url}}/{{api_version}}/auth/forgot-password",
+							"host": ["{{base_url}}"],
+							"path": ["{{api_version}}", "auth", "forgot-password"]
+						},
+						"description": "Send password reset email"
+					}
+				},
+				{
+					"name": "Reset Password",
+					"request": {
+						"auth": {
+							"type": "noauth"
+						},
+						"method": "POST",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n    \"token\": \"RESET_TOKEN_FROM_EMAIL\",\n    \"newPassword\": \"NewPassword123@@\"\n}"
+						},
+						"url": {
+							"raw": "{{base_url}}/{{api_version}}/auth/reset-password",
+							"host": ["{{base_url}}"],
+							"path": ["{{api_version}}", "auth", "reset-password"]
+						},
+						"description": "Reset password using token from email"
+					}
+				},
+				{
+					"name": "Verify Email",
+					"request": {
+						"auth": {
+							"type": "noauth"
+						},
+						"method": "POST",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n    \"otp\": \"1234\"\n}"
+						},
+						"url": {
+							"raw": "{{base_url}}/{{api_version}}/auth/verify-email",
+							"host": ["{{base_url}}"],
+							"path": ["{{api_version}}", "auth", "verify-email"]
+						},
+						"description": "Verify email with OTP code"
+					}
+				},
+				{
+					"name": "Resend Verification Email",
+					"request": {
+						"auth": {
+							"type": "noauth"
+						},
+						"method": "POST",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n    \"email\": \"customer@gema.com\"\n}"
+						},
+						"url": {
+							"raw": "{{base_url}}/{{api_version}}/auth/resend-verification-email",
+							"host": ["{{base_url}}"],
+							"path": ["{{api_version}}", "auth", "resend-verification-email"]
+						},
+						"description": "Resend email verification OTP"
+					}
+				},
+				{
+					"name": "Firebase Authentication",
+					"request": {
+						"auth": {
+							"type": "noauth"
+						},
+						"method": "POST",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n    \"idToken\": \"FIREBASE_ID_TOKEN\"\n}"
+						},
+						"url": {
+							"raw": "{{base_url}}/{{api_version}}/auth/firebase",
+							"host": ["{{base_url}}"],
+							"path": ["{{api_version}}", "auth", "firebase"]
+						},
+						"description": "Authenticate using Firebase token"
+					}
+				},
+				{
+					"name": "Refresh Token",
+					"request": {
+						"auth": {
+							"type": "noauth"
+						},
+						"method": "POST",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n    \"refreshToken\": \"{{refresh_token}}\"\n}"
+						},
+						"url": {
+							"raw": "{{base_url}}/{{api_version}}/auth/refresh-token",
+							"host": ["{{base_url}}"],
+							"path": ["{{api_version}}", "auth", "refresh-token"]
+						},
+						"description": "Refresh access token"
+					}
+				},
+				{
+					"name": "Logout User",
+					"request": {
+						"method": "POST",
+						"header": [],
+						"url": {
+							"raw": "{{base_url}}/{{api_version}}/auth/logout",
+							"host": ["{{base_url}}"],
+							"path": ["{{api_version}}", "auth", "logout"]
+						},
+						"description": "Logout current user"
+					}
+				}
+			]
+		},
+		{
+			"name": "🎉 Events",
+			"description": "Event management endpoints",
+			"item": [
+				{
+					"name": "Get All Events (Public)",
+					"request": {
+						"auth": {
+							"type": "noauth"
+						},
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{base_url}}/{{api_version}}/events?page=1&limit=10&category=Music&city=Dubai",
+							"host": ["{{base_url}}"],
+							"path": ["{{api_version}}", "events"],
+							"query": [
+								{
+									"key": "page",
+									"value": "1",
+									"description": "Page number (default: 1)"
+								},
+								{
+									"key": "limit",
+									"value": "10",
+									"description": "Items per page (default: 10)"
+								},
+								{
+									"key": "category",
+									"value": "Music",
+									"description": "Filter by category"
+								},
+								{
+									"key": "city",
+									"value": "Dubai",
+									"description": "Filter by city"
+								}
+							]
+						},
+						"description": "Get paginated list of approved events"
+					}
+				},
+				{
+					"name": "Get Event Categories",
+					"request": {
+						"auth": {
+							"type": "noauth"
+						},
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{base_url}}/{{api_version}}/events/categories",
+							"host": ["{{base_url}}"],
+							"path": ["{{api_version}}", "events", "categories"]
+						},
+						"description": "Get all event categories"
+					}
+				},
+				{
+					"name": "Get Event by ID",
+					"request": {
+						"auth": {
+							"type": "noauth"
+						},
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{base_url}}/{{api_version}}/events/:eventId",
+							"host": ["{{base_url}}"],
+							"path": ["{{api_version}}", "events", ":eventId"],
+							"variable": [
+								{
+									"key": "eventId",
+									"value": "EVENT_ID_HERE",
+									"description": "MongoDB ObjectId of the event"
+								}
+							]
+						},
+						"description": "Get detailed information about a specific event"
+					}
+				},
+				{
+					"name": "Create New Event (Vendor)",
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n    \"title\": \"Amazing Concert 2025\",\n    \"description\": \"A wonderful evening of music featuring top artists from around the world.\",\n    \"category\": \"Music\",\n    \"type\": \"Event\",\n    \"venueType\": \"Indoor\",\n    \"ageRange\": [18, 65],\n    \"location\": {\n        \"city\": \"Dubai\",\n        \"address\": \"Dubai Opera House, Downtown Dubai\",\n        \"coordinates\": {\n            \"lat\": 25.2048,\n            \"lng\": 55.2708\n        }\n    },\n    \"price\": 250,\n    \"currency\": \"AED\",\n    \"tags\": [\"music\", \"concert\", \"entertainment\", \"live\"],\n    \"dateSchedule\": [\n        {\n            \"date\": \"2025-12-15T19:00:00Z\",\n            \"availableSeats\": 500,\n            \"price\": 250\n        },\n        {\n            \"date\": \"2025-12-16T19:00:00Z\",\n            \"availableSeats\": 500,\n            \"price\": 275\n        }\n    ],\n    \"images\": [\n        \"https://example.com/image1.jpg\",\n        \"https://example.com/image2.jpg\"\n    ]\n}"
+						},
+						"url": {
+							"raw": "{{base_url}}/{{api_version}}/events",
+							"host": ["{{base_url}}"],
+							"path": ["{{api_version}}", "events"]
+						},
+						"description": "Create a new event (vendor only)"
+					}
+				},
+				{
+					"name": "Update Event (Vendor)",
+					"request": {
+						"method": "PUT",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n    \"title\": \"Updated Amazing Concert 2025\",\n    \"description\": \"Updated description with more details about the concert.\",\n    \"price\": 300\n}"
+						},
+						"url": {
+							"raw": "{{base_url}}/{{api_version}}/events/:eventId",
+							"host": ["{{base_url}}"],
+							"path": ["{{api_version}}", "events", ":eventId"],
+							"variable": [
+								{
+									"key": "eventId",
+									"value": "EVENT_ID_HERE"
+								}
+							]
+						},
+						"description": "Update an existing event (vendor only, own events)"
+					}
+				},
+				{
+					"name": "Delete Event (Vendor)",
+					"request": {
+						"method": "DELETE",
+						"header": [],
+						"url": {
+							"raw": "{{base_url}}/{{api_version}}/events/:eventId",
+							"host": ["{{base_url}}"],
+							"path": ["{{api_version}}", "events", ":eventId"],
+							"variable": [
+								{
+									"key": "eventId",
+									"value": "EVENT_ID_HERE"
+								}
+							]
+						},
+						"description": "Delete an event (vendor only, own events)"
+					}
+				},
+				{
+					"name": "Get My Events (Vendor)",
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{base_url}}/{{api_version}}/events/vendor/my-events?page=1&limit=10",
+							"host": ["{{base_url}}"],
+							"path": ["{{api_version}}", "events", "vendor", "my-events"],
+							"query": [
+								{
+									"key": "page",
+									"value": "1"
+								},
+								{
+									"key": "limit",
+									"value": "10"
+								}
+							]
+						},
+						"description": "Get vendor's own events"
+					}
+				},
+				{
+					"name": "Get Event Analytics (Vendor)",
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{base_url}}/{{api_version}}/events/vendor/analytics",
+							"host": ["{{base_url}}"],
+							"path": ["{{api_version}}", "events", "vendor", "analytics"]
+						},
+						"description": "Get analytics for vendor's events"
+					}
+				}
+			]
+		},
+		{
+			"name": "📚 Collections",
+			"description": "Collection management endpoints for curated content",
+			"item": [
+				{
+					"name": "Get All Collections (Public)",
+					"request": {
+						"auth": {
+							"type": "noauth"
+						},
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{base_url}}/{{api_version}}/collections?page=1&limit=20&sortBy=sortOrder&sortOrder=asc",
+							"host": ["{{base_url}}"],
+							"path": ["{{api_version}}", "collections"],
+							"query": [
+								{
+									"key": "page",
+									"value": "1",
+									"description": "Page number (default: 1)"
+								},
+								{
+									"key": "limit",
+									"value": "20",
+									"description": "Items per page (max: 100)"
+								},
+								{
+									"key": "category",
+									"value": "Education",
+									"description": "Filter by category",
+									"disabled": true
+								},
+								{
+									"key": "isActive",
+									"value": "true",
+									"description": "Filter by active status"
+								},
+								{
+									"key": "sortBy",
+									"value": "sortOrder",
+									"description": "Sort field (title, createdAt, sortOrder)"
+								},
+								{
+									"key": "sortOrder",
+									"value": "asc",
+									"description": "Sort direction (asc, desc)"
+								}
+							]
+						},
+						"description": "Get paginated list of all active collections"
+					}
+				},
+				{
+					"name": "Get Collection by ID (Public)",
+					"request": {
+						"auth": {
+							"type": "noauth"
+						},
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{base_url}}/{{api_version}}/collections/:collectionId",
+							"host": ["{{base_url}}"],
+							"path": ["{{api_version}}", "collections", ":collectionId"],
+							"variable": [
+								{
+									"key": "collectionId",
+									"value": "COLLECTION_ID_HERE",
+									"description": "MongoDB ObjectId of the collection"
+								}
+							]
+						},
+						"description": "Get detailed information about a specific collection with populated events"
+					}
+				},
+				{
+					"name": "Create New Collection (Admin)",
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n    \"title\": \"New Collection\",\n    \"description\": \"A curated collection of amazing activities\",\n    \"icon\": \"https://images.unsplash.com/photo-1571019613454-1cb2f99b2d8b?w=80&h=80&fit=crop&crop=center\",\n    \"count\": \"25+ activities\",\n    \"category\": \"Education\",\n    \"events\": [],\n    \"isActive\": true,\n    \"sortOrder\": 1\n}"
+						},
+						"url": {
+							"raw": "{{base_url}}/{{api_version}}/collections",
+							"host": ["{{base_url}}"],
+							"path": ["{{api_version}}", "collections"]
+						},
+						"description": "Create a new collection (admin only)"
+					}
+				},
+				{
+					"name": "Update Collection (Admin)",
+					"request": {
+						"method": "PUT",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n    \"title\": \"Updated Collection Title\",\n    \"description\": \"Updated description with more details\",\n    \"category\": \"Arts\",\n    \"isActive\": true,\n    \"sortOrder\": 5\n}"
+						},
+						"url": {
+							"raw": "{{base_url}}/{{api_version}}/collections/:collectionId",
+							"host": ["{{base_url}}"],
+							"path": ["{{api_version}}", "collections", ":collectionId"],
+							"variable": [
+								{
+									"key": "collectionId",
+									"value": "COLLECTION_ID_HERE"
+								}
+							]
+						},
+						"description": "Update an existing collection (admin only)"
+					}
+				},
+				{
+					"name": "Delete Collection (Admin)",
+					"request": {
+						"method": "DELETE",
+						"header": [],
+						"url": {
+							"raw": "{{base_url}}/{{api_version}}/collections/:collectionId",
+							"host": ["{{base_url}}"],
+							"path": ["{{api_version}}", "collections", ":collectionId"],
+							"variable": [
+								{
+									"key": "collectionId",
+									"value": "COLLECTION_ID_HERE"
+								}
+							]
+						},
+						"description": "Delete a collection (admin only)"
+					}
+				},
+				{
+					"name": "Add Event to Collection (Admin)",
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n    \"eventId\": \"EVENT_ID_HERE\"\n}"
+						},
+						"url": {
+							"raw": "{{base_url}}/{{api_version}}/collections/:collectionId/events",
+							"host": ["{{base_url}}"],
+							"path": ["{{api_version}}", "collections", ":collectionId", "events"],
+							"variable": [
+								{
+									"key": "collectionId",
+									"value": "COLLECTION_ID_HERE"
+								}
+							]
+						},
+						"description": "Add an event to a collection (admin only)"
+					}
+				},
+				{
+					"name": "Remove Event from Collection (Admin)",
+					"request": {
+						"method": "DELETE",
+						"header": [],
+						"url": {
+							"raw": "{{base_url}}/{{api_version}}/collections/:collectionId/events/:eventId",
+							"host": ["{{base_url}}"],
+							"path": ["{{api_version}}", "collections", ":collectionId", "events", ":eventId"],
+							"variable": [
+								{
+									"key": "collectionId",
+									"value": "COLLECTION_ID_HERE"
+								},
+								{
+									"key": "eventId",
+									"value": "EVENT_ID_HERE"
+								}
+							]
+						},
+						"description": "Remove an event from a collection (admin only)"
+					}
+				}
+			]
+		},
+		{
+			"name": "🏥 Health Check",
+			"description": "System health monitoring endpoints",
+			"item": [
+				{
+					"name": "Health Status (Detailed)",
+					"request": {
+						"auth": {
+							"type": "noauth"
+						},
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{base_url}}/{{api_version}}/health",
+							"host": ["{{base_url}}"],
+							"path": ["{{api_version}}", "health"]
+						},
+						"description": "Get detailed system health status including database connectivity"
+					}
+				},
+				{
+					"name": "Basic Health Check",
+					"request": {
+						"auth": {
+							"type": "noauth"
+						},
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{base_url}}/{{api_version}}/health/basic",
+							"host": ["{{base_url}}"],
+							"path": ["{{api_version}}", "health", "basic"]
+						},
+						"description": "Basic health check endpoint"
+					}
+				}
+			]
+		},
+		{
+			"name": "🔍 Search & Discovery",
+			"description": "Global search and discovery endpoints",
+			"item": [
+				{
+					"name": "Global Search",
+					"request": {
+						"auth": {
+							"type": "noauth"
+						},
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{base_url}}/{{api_version}}/search?q=music concert&type=all&limit=10",
+							"host": ["{{base_url}}"],
+							"path": ["{{api_version}}", "search"],
+							"query": [
+								{
+									"key": "q",
+									"value": "music concert",
+									"description": "Search query"
+								},
+								{
+									"key": "type",
+									"value": "all",
+									"description": "Type: all, events, categories, vendors"
+								},
+								{
+									"key": "limit",
+									"value": "10",
+									"description": "Results limit (1-50)"
+								}
+							]
+						},
+						"description": "Search across events, categories, and vendors"
+					}
+				},
+				{
+					"name": "Advanced Event Search",
+					"request": {
+						"auth": {
+							"type": "noauth"
+						},
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{base_url}}/{{api_version}}/search/events?q=concert&category=Music&city=Dubai&minPrice=100&maxPrice=500&dateFrom=2025-01-01&dateTo=2025-12-31&page=1&limit=12",
+							"host": ["{{base_url}}"],
+							"path": ["{{api_version}}", "search", "events"],
+							"query": [
+								{
+									"key": "q",
+									"value": "concert",
+									"description": "Search query"
+								},
+								{
+									"key": "category",
+									"value": "Music",
+									"description": "Event category"
+								},
+								{
+									"key": "city",
+									"value": "Dubai",
+									"description": "City filter"
+								},
+								{
+									"key": "minPrice",
+									"value": "100",
+									"description": "Minimum price"
+								},
+								{
+									"key": "maxPrice",
+									"value": "500",
+									"description": "Maximum price"
+								},
+								{
+									"key": "dateFrom",
+									"value": "2025-01-01",
+									"description": "Start date (ISO 8601)"
+								},
+								{
+									"key": "dateTo",
+									"value": "2025-12-31",
+									"description": "End date (ISO 8601)"
+								},
+								{
+									"key": "page",
+									"value": "1",
+									"description": "Page number"
+								},
+								{
+									"key": "limit",
+									"value": "12",
+									"description": "Results per page"
+								}
+							]
+						},
+						"description": "Advanced search for events with multiple filters"
+					}
+				},
+				{
+					"name": "Search Suggestions",
+					"request": {
+						"auth": {
+							"type": "noauth"
+						},
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{base_url}}/{{api_version}}/search/suggestions?q=mus&limit=5",
+							"host": ["{{base_url}}"],
+							"path": ["{{api_version}}", "search", "suggestions"],
+							"query": [
+								{
+									"key": "q",
+									"value": "mus",
+									"description": "Partial search query (2-50 chars)"
+								},
+								{
+									"key": "limit",
+									"value": "5",
+									"description": "Number of suggestions (1-10)"
+								}
+							]
+						},
+						"description": "Get search suggestions based on partial query"
+					}
+				}
+			]
+		},
+		{
+			"name": "📅 Booking System",
+			"description": "Enhanced booking flow endpoints",
+			"item": [
+				{
+					"name": "Initiate Booking",
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n    \"eventId\": \"EVENT_ID_HERE\",\n    \"dateScheduleId\": \"SCHEDULE_ID_HERE\",\n    \"seats\": 2,\n    \"paymentMethod\": \"stripe\"\n}"
+						},
+						"url": {
+							"raw": "{{base_url}}/{{api_version}}/bookings/initiate",
+							"host": ["{{base_url}}"],
+							"path": ["{{api_version}}", "bookings", "initiate"]
+						},
+						"description": "Initiate a booking process (creates order and holds seats temporarily)"
+					}
+				},
+				{
+					"name": "Confirm Booking",
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n    \"paymentIntentId\": \"pi_STRIPE_PAYMENT_INTENT_ID\",\n    \"orderId\": \"ORDER_ID_HERE\"\n}"
+						},
+						"url": {
+							"raw": "{{base_url}}/{{api_version}}/bookings/confirm",
+							"host": ["{{base_url}}"],
+							"path": ["{{api_version}}", "bookings", "confirm"]
+						},
+						"description": "Confirm booking after successful payment"
+					}
+				},
+				{
+					"name": "Get User Bookings",
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{base_url}}/{{api_version}}/bookings?page=1&limit=10",
+							"host": ["{{base_url}}"],
+							"path": ["{{api_version}}", "bookings"],
+							"query": [
+								{
+									"key": "page",
+									"value": "1"
+								},
+								{
+									"key": "limit",
+									"value": "10"
+								}
+							]
+						},
+						"description": "Get current user's bookings"
+					}
+				},
+				{
+					"name": "Get Booking by ID",
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{base_url}}/{{api_version}}/bookings/:bookingId",
+							"host": ["{{base_url}}"],
+							"path": ["{{api_version}}", "bookings", ":bookingId"],
+							"variable": [
+								{
+									"key": "bookingId",
+									"value": "BOOKING_ID_HERE"
+								}
+							]
+						},
+						"description": "Get detailed booking information"
+					}
+				},
+				{
+					"name": "Cancel Booking",
+					"request": {
+						"method": "PUT",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n    \"reason\": \"Unable to attend due to personal reasons\"\n}"
+						},
+						"url": {
+							"raw": "{{base_url}}/{{api_version}}/bookings/:bookingId/cancel",
+							"host": ["{{base_url}}"],
+							"path": ["{{api_version}}", "bookings", ":bookingId", "cancel"],
+							"variable": [
+								{
+									"key": "bookingId",
+									"value": "BOOKING_ID_HERE"
+								}
+							]
+						},
+						"description": "Cancel a booking (with optional reason)"
+					}
+				}
+			]
+		},
+		{
+			"name": "💳 Payment System",
+			"description": "Payment processing and management endpoints",
+			"item": [
+				{
+					"name": "Get Stripe Config (Public)",
+					"request": {
+						"auth": {
+							"type": "noauth"
+						},
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{base_url}}/{{api_version}}/payments/config",
+							"host": ["{{base_url}}"],
+							"path": ["{{api_version}}", "payments", "config"]
+						},
+						"description": "Get Stripe publishable key and configuration"
+					}
+				},
+				{
+					"name": "Create Payment Intent",
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n    \"orderId\": \"ORDER_ID_HERE\"\n}"
+						},
+						"url": {
+							"raw": "{{base_url}}/{{api_version}}/payments/create-intent",
+							"host": ["{{base_url}}"],
+							"path": ["{{api_version}}", "payments", "create-intent"]
+						},
+						"description": "Create a Stripe payment intent for an order"
+					}
+				},
+				{
+					"name": "Confirm Payment",
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n    \"paymentIntentId\": \"pi_STRIPE_PAYMENT_INTENT_ID\",\n    \"paymentMethodId\": \"pm_STRIPE_PAYMENT_METHOD_ID\"\n}"
+						},
+						"url": {
+							"raw": "{{base_url}}/{{api_version}}/payments/confirm",
+							"host": ["{{base_url}}"],
+							"path": ["{{api_version}}", "payments", "confirm"]
+						},
+						"description": "Confirm a payment intent"
+					}
+				},
+				{
+					"name": "Cancel Payment",
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n    \"paymentIntentId\": \"pi_STRIPE_PAYMENT_INTENT_ID\"\n}"
+						},
+						"url": {
+							"raw": "{{base_url}}/{{api_version}}/payments/cancel",
+							"host": ["{{base_url}}"],
+							"path": ["{{api_version}}", "payments", "cancel"]
+						},
+						"description": "Cancel a payment intent"
+					}
+				},
+				{
+					"name": "Get Payment Methods",
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{base_url}}/{{api_version}}/payments/payment-methods",
+							"host": ["{{base_url}}"],
+							"path": ["{{api_version}}", "payments", "payment-methods"]
+						},
+						"description": "Get user's saved payment methods"
+					}
+				},
+				{
+					"name": "Remove Payment Method",
+					"request": {
+						"method": "DELETE",
+						"header": [],
+						"url": {
+							"raw": "{{base_url}}/{{api_version}}/payments/payment-methods/:paymentMethodId",
+							"host": ["{{base_url}}"],
+							"path": ["{{api_version}}", "payments", "payment-methods", ":paymentMethodId"],
+							"variable": [
+								{
+									"key": "paymentMethodId",
+									"value": "pm_STRIPE_PAYMENT_METHOD_ID"
+								}
+							]
+						},
+						"description": "Remove a saved payment method"
+					}
+				},
+				{
+					"name": "Process Refund (Admin)",
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n    \"orderId\": \"ORDER_ID_HERE\",\n    \"amount\": 150.00,\n    \"reason\": \"Event cancelled by organizer\"\n}"
+						},
+						"url": {
+							"raw": "{{base_url}}/{{api_version}}/payments/refund",
+							"host": ["{{base_url}}"],
+							"path": ["{{api_version}}", "payments", "refund"]
+						},
+						"description": "Process a refund (admin only)"
+					}
+				},
+				{
+					"name": "Get Payment Analytics (Admin)",
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{base_url}}/{{api_version}}/payments/admin/analytics?period=30",
+							"host": ["{{base_url}}"],
+							"path": ["{{api_version}}", "payments", "admin", "analytics"],
+							"query": [
+								{
+									"key": "period",
+									"value": "30",
+									"description": "Period in days (1-365)"
+								}
+							]
+						},
+						"description": "Get payment analytics (admin only)"
+					}
+				},
+				{
+					"name": "Stripe Webhook",
+					"request": {
+						"auth": {
+							"type": "noauth"
+						},
+						"method": "POST",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							},
+							{
+								"key": "Stripe-Signature",
+								"value": "STRIPE_WEBHOOK_SIGNATURE"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n    \"id\": \"evt_STRIPE_EVENT_ID\",\n    \"type\": \"payment_intent.succeeded\",\n    \"data\": {\n        \"object\": {\n            \"id\": \"pi_PAYMENT_INTENT_ID\",\n            \"status\": \"succeeded\"\n        }\n    }\n}"
+						},
+						"url": {
+							"raw": "{{base_url}}/{{api_version}}/payments/webhook",
+							"host": ["{{base_url}}"],
+							"path": ["{{api_version}}", "payments", "webhook"]
+						},
+						"description": "Stripe webhook endpoint (for testing webhook events)"
+					}
+				}
+			]
+		},
+		{
+			"name": "⭐ Review System",
+			"description": "Review and rating management endpoints",
+			"item": [
+				{
+					"name": "Get Reviews (Public)",
+					"request": {
+						"auth": {
+							"type": "noauth"
+						},
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{base_url}}/{{api_version}}/reviews?type=event&targetId=EVENT_ID_HERE&page=1&limit=10&rating=5&verified=true&sortBy=createdAt&sortOrder=desc",
+							"host": ["{{base_url}}"],
+							"path": ["{{api_version}}", "reviews"],
+							"query": [
+								{
+									"key": "type",
+									"value": "event",
+									"description": "Review type: event, vendor, venue"
+								},
+								{
+									"key": "targetId",
+									"value": "EVENT_ID_HERE",
+									"description": "Target object ID"
+								},
+								{
+									"key": "page",
+									"value": "1"
+								},
+								{
+									"key": "limit",
+									"value": "10"
+								},
+								{
+									"key": "rating",
+									"value": "5",
+									"description": "Filter by rating (1-5)"
+								},
+								{
+									"key": "verified",
+									"value": "true",
+									"description": "Show only verified reviews"
+								},
+								{
+									"key": "sortBy",
+									"value": "createdAt",
+									"description": "Sort by: createdAt, rating, helpfulVotes"
+								},
+								{
+									"key": "sortOrder",
+									"value": "desc",
+									"description": "Sort order: asc, desc"
+								}
+							]
+						},
+						"description": "Get reviews with filtering and pagination"
+					}
+				},
+				{
+					"name": "Get Reviews for Specific Target",
+					"request": {
+						"auth": {
+							"type": "noauth"
+						},
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{base_url}}/{{api_version}}/reviews/:reviewType/:targetId",
+							"host": ["{{base_url}}"],
+							"path": ["{{api_version}}", "reviews", ":reviewType", ":targetId"],
+							"variable": [
+								{
+									"key": "reviewType",
+									"value": "event",
+									"description": "Type: event, vendor, venue"
+								},
+								{
+									"key": "targetId",
+									"value": "TARGET_ID_HERE"
+								}
+							]
+						},
+						"description": "Get reviews for a specific event, vendor, or venue"
+					}
+				},
+				{
+					"name": "Create Review",
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n    \"type\": \"event\",\n    \"targetId\": \"EVENT_ID_HERE\",\n    \"rating\": 5,\n    \"title\": \"Amazing experience!\",\n    \"comment\": \"The concert was absolutely fantastic. Great venue, excellent sound quality, and the performers were outstanding.\",\n    \"pros\": [\n        \"Excellent sound quality\",\n        \"Great venue\",\n        \"Professional organization\"\n    ],\n    \"cons\": [\n        \"Parking was a bit challenging\"\n    ],\n    \"orderId\": \"ORDER_ID_HERE\",\n    \"media\": [\n        \"https://example.com/review-image1.jpg\"\n    ]\n}"
+						},
+						"url": {
+							"raw": "{{base_url}}/{{api_version}}/reviews",
+							"host": ["{{base_url}}"],
+							"path": ["{{api_version}}", "reviews"]
+						},
+						"description": "Create a new review"
+					}
+				},
+				{
+					"name": "Get My Reviews",
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{base_url}}/{{api_version}}/reviews/my-reviews?page=1&limit=10",
+							"host": ["{{base_url}}"],
+							"path": ["{{api_version}}", "reviews", "my-reviews"],
+							"query": [
+								{
+									"key": "page",
+									"value": "1"
+								},
+								{
+									"key": "limit",
+									"value": "10"
+								}
+							]
+						},
+						"description": "Get current user's reviews"
+					}
+				},
+				{
+					"name": "Update Review",
+					"request": {
+						"method": "PUT",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n    \"rating\": 4,\n    \"title\": \"Updated: Good experience\",\n    \"comment\": \"Updated review after some reflection. Still a good event, but had some minor issues.\"\n}"
+						},
+						"url": {
+							"raw": "{{base_url}}/{{api_version}}/reviews/:reviewId",
+							"host": ["{{base_url}}"],
+							"path": ["{{api_version}}", "reviews", ":reviewId"],
+							"variable": [
+								{
+									"key": "reviewId",
+									"value": "REVIEW_ID_HERE"
+								}
+							]
+						},
+						"description": "Update an existing review (own reviews only)"
+					}
+				},
+				{
+					"name": "Delete Review",
+					"request": {
+						"method": "DELETE",
+						"header": [],
+						"url": {
+							"raw": "{{base_url}}/{{api_version}}/reviews/:reviewId",
+							"host": ["{{base_url}}"],
+							"path": ["{{api_version}}", "reviews", ":reviewId"],
+							"variable": [
+								{
+									"key": "reviewId",
+									"value": "REVIEW_ID_HERE"
+								}
+							]
+						},
+						"description": "Delete a review (own reviews only)"
+					}
+				},
+				{
+					"name": "Vote on Review (Helpful/Not Helpful)",
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n    \"helpful\": true\n}"
+						},
+						"url": {
+							"raw": "{{base_url}}/{{api_version}}/reviews/:reviewId/vote",
+							"host": ["{{base_url}}"],
+							"path": ["{{api_version}}", "reviews", ":reviewId", "vote"],
+							"variable": [
+								{
+									"key": "reviewId",
+									"value": "REVIEW_ID_HERE"
+								}
+							]
+						},
+						"description": "Vote on whether a review is helpful"
+					}
+				},
+				{
+					"name": "Flag Review",
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n    \"reason\": \"inappropriate\",\n    \"description\": \"This review contains inappropriate language and personal attacks.\"\n}"
+						},
+						"url": {
+							"raw": "{{base_url}}/{{api_version}}/reviews/:reviewId/flag",
+							"host": ["{{base_url}}"],
+							"path": ["{{api_version}}", "reviews", ":reviewId", "flag"],
+							"variable": [
+								{
+									"key": "reviewId",
+									"value": "REVIEW_ID_HERE"
+								}
+							]
+						},
+						"description": "Flag a review for moderation"
+					}
+				},
+				{
+					"name": "Respond to Review (Vendor)",
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n    \"message\": \"Thank you for your review! We're glad you enjoyed the event. We'll work on improving the parking situation for future events.\"\n}"
+						},
+						"url": {
+							"raw": "{{base_url}}/{{api_version}}/reviews/:reviewId/respond",
+							"host": ["{{base_url}}"],
+							"path": ["{{api_version}}", "reviews", ":reviewId", "respond"],
+							"variable": [
+								{
+									"key": "reviewId",
+									"value": "REVIEW_ID_HERE"
+								}
+							]
+						},
+						"description": "Respond to a review (vendor only, for their events)"
+					}
+				}
+			]
+		},
+		{
+			"name": "👨‍💼 Admin Panel",
+			"description": "Administrative endpoints for platform management",
+			"item": [
+				{
+					"name": "User Management",
+					"description": "Administrative user management endpoints",
+					"item": [
+						{
+							"name": "Get User Statistics",
+							"request": {
+								"method": "GET",
+								"header": [],
+								"url": {
+									"raw": "{{base_url}}/{{api_version}}/admin/users/stats",
+									"host": ["{{base_url}}"],
+									"path": ["{{api_version}}", "admin", "users", "stats"]
+								},
+								"description": "Get user statistics and metrics"
+							}
+						},
+						{
+							"name": "Get All Users",
+							"request": {
+								"method": "GET",
+								"header": [],
+								"url": {
+									"raw": "{{base_url}}/{{api_version}}/admin/users?page=1&limit=20&search=john&role=customer&status=active&sortBy=createdAt&sortOrder=desc",
+									"host": ["{{base_url}}"],
+									"path": ["{{api_version}}", "admin", "users"],
+									"query": [
+										{
+											"key": "page",
+											"value": "1"
+										},
+										{
+											"key": "limit",
+											"value": "20"
+										},
+										{
+											"key": "search",
+											"value": "john",
+											"description": "Search by name or email"
+										},
+										{
+											"key": "role",
+											"value": "customer",
+											"description": "Filter by role"
+										},
+										{
+											"key": "status",
+											"value": "active",
+											"description": "Filter by status"
+										},
+										{
+											"key": "sortBy",
+											"value": "createdAt"
+										},
+										{
+											"key": "sortOrder",
+											"value": "desc"
+										}
+									]
+								},
+								"description": "Get paginated list of all users with filtering"
+							}
+						},
+						{
+							"name": "Get User by ID",
+							"request": {
+								"method": "GET",
+								"header": [],
+								"url": {
+									"raw": "{{base_url}}/{{api_version}}/admin/users/:userId",
+									"host": ["{{base_url}}"],
+									"path": ["{{api_version}}", "admin", "users", ":userId"],
+									"variable": [
+										{
+											"key": "userId",
+											"value": "USER_ID_HERE"
+										}
+									]
+								},
+								"description": "Get detailed user information by ID"
+							}
+						},
+						{
+							"name": "Create User",
+							"request": {
+								"method": "POST",
+								"header": [
+									{
+										"key": "Content-Type",
+										"value": "application/json"
+									}
+								],
+								"body": {
+									"mode": "raw",
+									"raw": "{\n    \"firstName\": \"New\",\n    \"lastName\": \"User\",\n    \"email\": \"newuser@example.com\",\n    \"password\": \"Password123@@\",\n    \"role\": \"customer\",\n    \"phone\": \"+971501234570\"\n}"
+								},
+								"url": {
+									"raw": "{{base_url}}/{{api_version}}/admin/users",
+									"host": ["{{base_url}}"],
+									"path": ["{{api_version}}", "admin", "users"]
+								},
+								"description": "Create a new user account"
+							}
+						},
+						{
+							"name": "Update User",
+							"request": {
+								"method": "PUT",
+								"header": [
+									{
+										"key": "Content-Type",
+										"value": "application/json"
+									}
+								],
+								"body": {
+									"mode": "raw",
+									"raw": "{\n    \"firstName\": \"Updated\",\n    \"lastName\": \"User\",\n    \"phone\": \"+971501234571\"\n}"
+								},
+								"url": {
+									"raw": "{{base_url}}/{{api_version}}/admin/users/:userId",
+									"host": ["{{base_url}}"],
+									"path": ["{{api_version}}", "admin", "users", ":userId"],
+									"variable": [
+										{
+											"key": "userId",
+											"value": "USER_ID_HERE"
+										}
+									]
+								},
+								"description": "Update user information"
+							}
+						},
+						{
+							"name": "Delete User",
+							"request": {
+								"method": "DELETE",
+								"header": [],
+								"url": {
+									"raw": "{{base_url}}/{{api_version}}/admin/users/:userId",
+									"host": ["{{base_url}}"],
+									"path": ["{{api_version}}", "admin", "users", ":userId"],
+									"variable": [
+										{
+											"key": "userId",
+											"value": "USER_ID_HERE"
+										}
+									]
+								},
+								"description": "Delete a user account"
+							}
+						},
+						{
+							"name": "Update User Status",
+							"request": {
+								"method": "PATCH",
+								"header": [
+									{
+										"key": "Content-Type",
+										"value": "application/json"
+									}
+								],
+								"body": {
+									"mode": "raw",
+									"raw": "{\n    \"status\": \"suspended\",\n    \"reason\": \"Policy violation\"\n}"
+								},
+								"url": {
+									"raw": "{{base_url}}/{{api_version}}/admin/users/:userId/status",
+									"host": ["{{base_url}}"],
+									"path": ["{{api_version}}", "admin", "users", ":userId", "status"],
+									"variable": [
+										{
+											"key": "userId",
+											"value": "USER_ID_HERE"
+										}
+									]
+								},
+								"description": "Update user account status"
+							}
+						},
+						{
+							"name": "Update User Role",
+							"request": {
+								"method": "PATCH",
+								"header": [
+									{
+										"key": "Content-Type",
+										"value": "application/json"
+									}
+								],
+								"body": {
+									"mode": "raw",
+									"raw": "{\n    \"role\": \"vendor\"\n}"
+								},
+								"url": {
+									"raw": "{{base_url}}/{{api_version}}/admin/users/:userId/role",
+									"host": ["{{base_url}}"],
+									"path": ["{{api_version}}", "admin", "users", ":userId", "role"],
+									"variable": [
+										{
+											"key": "userId",
+											"value": "USER_ID_HERE"
+										}
+									]
+								},
+								"description": "Update user role"
+							}
+						},
+						{
+							"name": "Bulk Update Users",
+							"request": {
+								"method": "PATCH",
+								"header": [
+									{
+										"key": "Content-Type",
+										"value": "application/json"
+									}
+								],
+								"body": {
+									"mode": "raw",
+									"raw": "{\n    \"userIds\": [\"USER_ID_1\", \"USER_ID_2\", \"USER_ID_3\"],\n    \"updates\": {\n        \"status\": \"active\"\n    }\n}"
+								},
+								"url": {
+									"raw": "{{base_url}}/{{api_version}}/admin/users/bulk",
+									"host": ["{{base_url}}"],
+									"path": ["{{api_version}}", "admin", "users", "bulk"]
+								},
+								"description": "Bulk update multiple users"
+							}
+						}
+					]
+				},
+				{
+					"name": "Event Management",
+					"description": "Administrative event management endpoints",
+					"item": [
+						{
+							"name": "Get All Events (Admin)",
+							"request": {
+								"method": "GET",
+								"header": [],
+								"url": {
+									"raw": "{{base_url}}/{{api_version}}/events/admin/all?page=1&limit=20&status=pending&category=Music",
+									"host": ["{{base_url}}"],
+									"path": ["{{api_version}}", "events", "admin", "all"],
+									"query": [
+										{
+											"key": "page",
+											"value": "1"
+										},
+										{
+											"key": "limit",
+											"value": "20"
+										},
+										{
+											"key": "status",
+											"value": "pending",
+											"description": "Filter by approval status"
+										},
+										{
+											"key": "category",
+											"value": "Music",
+											"description": "Filter by category"
+										}
+									]
+								},
+								"description": "Get all events for admin review"
+							}
+						},
+						{
+							"name": "Update Event Approval",
+							"request": {
+								"method": "PUT",
+								"header": [
+									{
+										"key": "Content-Type",
+										"value": "application/json"
+									}
+								],
+								"body": {
+									"mode": "raw",
+									"raw": "{\n    \"isApproved\": true,\n    \"reason\": \"Event meets all platform guidelines and requirements.\"\n}"
+								},
+								"url": {
+									"raw": "{{base_url}}/{{api_version}}/events/admin/:eventId/approval",
+									"host": ["{{base_url}}"],
+									"path": ["{{api_version}}", "events", "admin", ":eventId", "approval"],
+									"variable": [
+										{
+											"key": "eventId",
+											"value": "EVENT_ID_HERE"
+										}
+									]
+								},
+								"description": "Approve or reject an event"
+							}
+						},
+						{
+							"name": "Toggle Event Featured Status",
+							"request": {
+								"method": "PUT",
+								"header": [],
+								"url": {
+									"raw": "{{base_url}}/{{api_version}}/events/admin/:eventId/featured",
+									"host": ["{{base_url}}"],
+									"path": ["{{api_version}}", "events", "admin", ":eventId", "featured"],
+									"variable": [
+										{
+											"key": "eventId",
+											"value": "EVENT_ID_HERE"
+										}
+									]
+								},
+								"description": "Toggle event featured status"
+							}
+						}
+					]
+				},
+				{
+					"name": "Review Moderation",
+					"description": "Administrative review moderation endpoints",
+					"item": [
+						{
+							"name": "Get Pending Reviews",
+							"request": {
+								"method": "GET",
+								"header": [],
+								"url": {
+									"raw": "{{base_url}}/{{api_version}}/reviews/admin/pending?page=1&limit=20",
+									"host": ["{{base_url}}"],
+									"path": ["{{api_version}}", "reviews", "admin", "pending"],
+									"query": [
+										{
+											"key": "page",
+											"value": "1"
+										},
+										{
+											"key": "limit",
+											"value": "20"
+										}
+									]
+								},
+								"description": "Get reviews pending moderation"
+							}
+						},
+						{
+							"name": "Moderate Review",
+							"request": {
+								"method": "PUT",
+								"header": [
+									{
+										"key": "Content-Type",
+										"value": "application/json"
+									}
+								],
+								"body": {
+									"mode": "raw",
+									"raw": "{\n    \"status\": \"approved\",\n    \"notes\": \"Review meets community guidelines and is appropriate.\"\n}"
+								},
+								"url": {
+									"raw": "{{base_url}}/{{api_version}}/reviews/admin/:reviewId/moderate",
+									"host": ["{{base_url}}"],
+									"path": ["{{api_version}}", "reviews", "admin", ":reviewId", "moderate"],
+									"variable": [
+										{
+											"key": "reviewId",
+											"value": "REVIEW_ID_HERE"
+										}
+									]
+								},
+								"description": "Moderate a review (approve/reject)"
+							}
+						}
+					]
+				}
+			]
+		},
+		{
+			"name": "📊 Analytics & Business Intelligence",
+			"description": "Comprehensive analytics and business intelligence endpoints",
+			"item": [
+				{
+					"name": "Get Platform Overview",
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{base_url}}/{{api_version}}/analytics/overview?period=30",
+							"host": ["{{base_url}}"],
+							"path": ["{{api_version}}", "analytics", "overview"],
+							"query": [
+								{
+									"key": "period",
+									"value": "30",
+									"description": "Period in days (7, 30, 90, 365)"
+								}
+							]
+						},
+						"description": "Get high-level platform metrics and KPIs"
+					}
+				},
+				{
+					"name": "Get Revenue Analytics",
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{base_url}}/{{api_version}}/analytics/revenue?period=30&groupBy=day&currency=AED",
+							"host": ["{{base_url}}"],
+							"path": ["{{api_version}}", "analytics", "revenue"],
+							"query": [
+								{
+									"key": "period",
+									"value": "30"
+								},
+								{
+									"key": "groupBy",
+									"value": "day",
+									"description": "Group by: day, week, month"
+								},
+								{
+									"key": "currency",
+									"value": "AED",
+									"description": "Currency filter"
+								}
+							]
+						},
+						"description": "Get detailed revenue analytics and trends"
+					}
+				},
+				{
+					"name": "Get User Engagement Metrics",
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{base_url}}/{{api_version}}/analytics/users?period=30&segment=all",
+							"host": ["{{base_url}}"],
+							"path": ["{{api_version}}", "analytics", "users"],
+							"query": [
+								{
+									"key": "period",
+									"value": "30"
+								},
+								{
+									"key": "segment",
+									"value": "all",
+									"description": "User segment: all, new, returning, premium"
+								}
+							]
+						},
+						"description": "Get user engagement and behavior analytics"
+					}
+				},
+				{
+					"name": "Get Event Performance Analytics",
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{base_url}}/{{api_version}}/analytics/events?period=30&category=Music&city=Dubai",
+							"host": ["{{base_url}}"],
+							"path": ["{{api_version}}", "analytics", "events"],
+							"query": [
+								{
+									"key": "period",
+									"value": "30"
+								},
+								{
+									"key": "category",
+									"value": "Music",
+									"description": "Filter by event category"
+								},
+								{
+									"key": "city",
+									"value": "Dubai",
+									"description": "Filter by city"
+								}
+							]
+						},
+						"description": "Get event performance metrics and trends"
+					}
+				},
+				{
+					"name": "Get Top Performing Events",
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{base_url}}/{{api_version}}/analytics/events/top?period=30&metric=revenue&limit=10",
+							"host": ["{{base_url}}"],
+							"path": ["{{api_version}}", "analytics", "events", "top"],
+							"query": [
+								{
+									"key": "period",
+									"value": "30"
+								},
+								{
+									"key": "metric",
+									"value": "revenue",
+									"description": "Ranking metric: revenue, bookings, views, ratings"
+								},
+								{
+									"key": "limit",
+									"value": "10",
+									"description": "Number of top events to return"
+								}
+							]
+						},
+						"description": "Get top performing events by various metrics"
+					}
+				},
+				{
+					"name": "Get Vendor Performance",
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{base_url}}/{{api_version}}/analytics/vendors?period=30&sortBy=revenue",
+							"host": ["{{base_url}}"],
+							"path": ["{{api_version}}", "analytics", "vendors"],
+							"query": [
+								{
+									"key": "period",
+									"value": "30"
+								},
+								{
+									"key": "sortBy",
+									"value": "revenue",
+									"description": "Sort by: revenue, events, bookings, ratings"
+								}
+							]
+						},
+						"description": "Get vendor performance analytics and rankings"
+					}
+				},
+				{
+					"name": "Get Conversion Funnel",
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{base_url}}/{{api_version}}/analytics/conversion?period=30&funnel=booking",
+							"host": ["{{base_url}}"],
+							"path": ["{{api_version}}", "analytics", "conversion"],
+							"query": [
+								{
+									"key": "period",
+									"value": "30"
+								},
+								{
+									"key": "funnel",
+									"value": "booking",
+									"description": "Funnel type: booking, signup, engagement"
+								}
+							]
+						},
+						"description": "Get conversion funnel analysis"
+					}
+				},
+				{
+					"name": "Export Analytics Report",
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n    \"reportType\": \"revenue\",\n    \"period\": 30,\n    \"format\": \"pdf\",\n    \"includeCharts\": true,\n    \"filters\": {\n        \"category\": \"Music\",\n        \"city\": \"Dubai\"\n    }\n}"
+						},
+						"url": {
+							"raw": "{{base_url}}/{{api_version}}/analytics/export",
+							"host": ["{{base_url}}"],
+							"path": ["{{api_version}}", "analytics", "export"]
+						},
+						"description": "Export analytics report in various formats"
+					}
+				},
+				{
+					"name": "Get Real-time Metrics",
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{base_url}}/{{api_version}}/analytics/realtime?metrics=activeUsers,bookings,revenue",
+							"host": ["{{base_url}}"],
+							"path": ["{{api_version}}", "analytics", "realtime"],
+							"query": [
+								{
+									"key": "metrics",
+									"value": "activeUsers,bookings,revenue",
+									"description": "Comma-separated list of real-time metrics"
+								}
+							]
+						},
+						"description": "Get real-time platform metrics"
+					}
+				}
+			]
+		},
+		{
+			"name": "🎫 Tickets & Orders",
+			"description": "Ticket and order management endpoints",
+			"item": [
+				{
+					"name": "Get My Orders",
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{base_url}}/{{api_version}}/orders?page=1&limit=10&status=completed",
+							"host": ["{{base_url}}"],
+							"path": ["{{api_version}}", "orders"],
+							"query": [
+								{
+									"key": "page",
+									"value": "1"
+								},
+								{
+									"key": "limit",
+									"value": "10"
+								},
+								{
+									"key": "status",
+									"value": "completed",
+									"description": "Filter by order status"
+								}
+							]
+						},
+						"description": "Get current user's orders"
+					}
+				},
+				{
+					"name": "Get Order by ID",
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{base_url}}/{{api_version}}/orders/:orderId",
+							"host": ["{{base_url}}"],
+							"path": ["{{api_version}}", "orders", ":orderId"],
+							"variable": [
+								{
+									"key": "orderId",
+									"value": "ORDER_ID_HERE"
+								}
+							]
+						},
+						"description": "Get detailed order information"
+					}
+				},
+				{
+					"name": "Get My Tickets",
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{base_url}}/{{api_version}}/tickets?page=1&limit=10",
+							"host": ["{{base_url}}"],
+							"path": ["{{api_version}}", "tickets"],
+							"query": [
+								{
+									"key": "page",
+									"value": "1"
+								},
+								{
+									"key": "limit",
+									"value": "10"
+								}
+							]
+						},
+						"description": "Get current user's tickets"
+					}
+				},
+				{
+					"name": "Get Ticket by ID",
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{base_url}}/{{api_version}}/tickets/:ticketId",
+							"host": ["{{base_url}}"],
+							"path": ["{{api_version}}", "tickets", ":ticketId"],
+							"variable": [
+								{
+									"key": "ticketId",
+									"value": "TICKET_ID_HERE"
+								}
+							]
+						},
+						"description": "Get ticket details and QR code"
+					}
+				}
+			]
+		},
+		{
+			"name": "🏢 Venues & Locations",
+			"description": "Venue and location management endpoints",
+			"item": [
+				{
+					"name": "Get All Venues",
+					"request": {
+						"auth": {
+							"type": "noauth"
+						},
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{base_url}}/{{api_version}}/venues?city=Dubai&capacity_min=100&page=1&limit=10",
+							"host": ["{{base_url}}"],
+							"path": ["{{api_version}}", "venues"],
+							"query": [
+								{
+									"key": "city",
+									"value": "Dubai"
+								},
+								{
+									"key": "capacity_min",
+									"value": "100"
+								},
+								{
+									"key": "page",
+									"value": "1"
+								},
+								{
+									"key": "limit",
+									"value": "10"
+								}
+							]
+						},
+						"description": "Get list of venues with filtering"
+					}
+				},
+				{
+					"name": "Get Venue by ID",
+					"request": {
+						"auth": {
+							"type": "noauth"
+						},
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{base_url}}/{{api_version}}/venues/:venueId",
+							"host": ["{{base_url}}"],
+							"path": ["{{api_version}}", "venues", ":venueId"],
+							"variable": [
+								{
+									"key": "venueId",
+									"value": "VENUE_ID_HERE"
+								}
+							]
+						},
+						"description": "Get detailed venue information"
+					}
+				}
+			]
+		},
+		{
+			"name": "🏷️ Categories & Coupons",
+			"description": "Category and coupon management endpoints",
+			"item": [
+				{
+					"name": "Get All Categories",
+					"request": {
+						"auth": {
+							"type": "noauth"
+						},
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{base_url}}/{{api_version}}/categories",
+							"host": ["{{base_url}}"],
+							"path": ["{{api_version}}", "categories"]
+						},
+						"description": "Get all event categories"
+					}
+				},
+				{
+					"name": "Get Category by Slug",
+					"request": {
+						"auth": {
+							"type": "noauth"
+						},
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{base_url}}/{{api_version}}/categories/:categorySlug",
+							"host": ["{{base_url}}"],
+							"path": ["{{api_version}}", "categories", ":categorySlug"],
+							"variable": [
+								{
+									"key": "categorySlug",
+									"value": "music"
+								}
+							]
+						},
+						"description": "Get category details by slug"
+					}
+				},
+				{
+					"name": "Validate Coupon",
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n    \"code\": \"SAVE20\",\n    \"eventId\": \"EVENT_ID_HERE\",\n    \"orderTotal\": 200\n}"
+						},
+						"url": {
+							"raw": "{{base_url}}/{{api_version}}/coupons/validate",
+							"host": ["{{base_url}}"],
+							"path": ["{{api_version}}", "coupons", "validate"]
+						},
+						"description": "Validate a coupon code"
+					}
+				}
+			]
+		},
+		{
+			"name": "📱 Notifications & Communication",
+			"description": "Notification and communication endpoints",
+			"item": [
+				{
+					"name": "Get My Notifications",
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{base_url}}/{{api_version}}/notifications?page=1&limit=20&unread=true",
+							"host": ["{{base_url}}"],
+							"path": ["{{api_version}}", "notifications"],
+							"query": [
+								{
+									"key": "page",
+									"value": "1"
+								},
+								{
+									"key": "limit",
+									"value": "20"
+								},
+								{
+									"key": "unread",
+									"value": "true",
+									"description": "Filter unread notifications"
+								}
+							]
+						},
+						"description": "Get user's notifications"
+					}
+				},
+				{
+					"name": "Mark Notification as Read",
+					"request": {
+						"method": "PUT",
+						"header": [],
+						"url": {
+							"raw": "{{base_url}}/{{api_version}}/notifications/:notificationId/read",
+							"host": ["{{base_url}}"],
+							"path": ["{{api_version}}", "notifications", ":notificationId", "read"],
+							"variable": [
+								{
+									"key": "notificationId",
+									"value": "NOTIFICATION_ID_HERE"
+								}
+							]
+						},
+						"description": "Mark a notification as read"
+					}
+				},
+				{
+					"name": "Mark All Notifications as Read",
+					"request": {
+						"method": "PUT",
+						"header": [],
+						"url": {
+							"raw": "{{base_url}}/{{api_version}}/notifications/read-all",
+							"host": ["{{base_url}}"],
+							"path": ["{{api_version}}", "notifications", "read-all"]
+						},
+						"description": "Mark all notifications as read"
+					}
+				}
+			]
+		},
+		{
+			"name": "📤 File Upload & Media Management",
+			"description": "Comprehensive file upload and media management endpoints with Cloudinary integration",
+			"item": [
+				{
+					"name": "Upload Single Image",
+					"request": {
+						"method": "POST",
+						"header": [],
+						"body": {
+							"mode": "formdata",
+							"formdata": [
+								{
+									"key": "image",
+									"type": "file",
+									"src": "path/to/image.jpg"
+								},
+								{
+									"key": "category",
+									"value": "event",
+									"type": "text",
+									"description": "Category: event, profile, venue, blog, etc."
+								},
+								{
+									"key": "quality",
+									"value": "auto",
+									"type": "text",
+									"description": "Image quality: auto, high, medium, low"
+								}
+							]
+						},
+						"url": {
+							"raw": "{{base_url}}/{{api_version}}/uploads/image",
+							"host": ["{{base_url}}"],
+							"path": ["{{api_version}}", "uploads", "image"]
+						},
+						"description": "Upload a single image with Cloudinary optimization"
+					}
+				},
+				{
+					"name": "Upload Multiple Images",
+					"request": {
+						"method": "POST",
+						"header": [],
+						"body": {
+							"mode": "formdata",
+							"formdata": [
+								{
+									"key": "images",
+									"type": "file",
+									"src": "path/to/image1.jpg"
+								},
+								{
+									"key": "images",
+									"type": "file",
+									"src": "path/to/image2.jpg"
+								},
+								{
+									"key": "category",
+									"value": "event",
+									"type": "text"
+								}
+							]
+						},
+						"url": {
+							"raw": "{{base_url}}/{{api_version}}/uploads/images",
+							"host": ["{{base_url}}"],
+							"path": ["{{api_version}}", "uploads", "images"]
+						},
+						"description": "Upload multiple images in batch"
+					}
+				},
+				{
+					"name": "Upload Document (PDF/DOC)",
+					"request": {
+						"method": "POST",
+						"header": [],
+						"body": {
+							"mode": "formdata",
+							"formdata": [
+								{
+									"key": "document",
+									"type": "file",
+									"src": "path/to/document.pdf"
+								},
+								{
+									"key": "category",
+									"value": "contract",
+									"type": "text",
+									"description": "Document category"
+								}
+							]
+						},
+						"url": {
+							"raw": "{{base_url}}/{{api_version}}/uploads/document",
+							"host": ["{{base_url}}"],
+							"path": ["{{api_version}}", "uploads", "document"]
+						},
+						"description": "Upload documents (PDF, DOC, DOCX)"
+					}
+				},
+				{
+					"name": "Upload Avatar/Profile Image",
+					"request": {
+						"method": "POST",
+						"header": [],
+						"body": {
+							"mode": "formdata",
+							"formdata": [
+								{
+									"key": "avatar",
+									"type": "file",
+									"src": "path/to/avatar.jpg"
+								}
+							]
+						},
+						"url": {
+							"raw": "{{base_url}}/{{api_version}}/uploads/avatar",
+							"host": ["{{base_url}}"],
+							"path": ["{{api_version}}", "uploads", "avatar"]
+						},
+						"description": "Upload user avatar with automatic cropping and optimization"
+					}
+				},
+				{
+					"name": "Get Upload Signature",
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{base_url}}/{{api_version}}/uploads/signature?folder=events&resource_type=image",
+							"host": ["{{base_url}}"],
+							"path": ["{{api_version}}", "uploads", "signature"],
+							"query": [
+								{
+									"key": "folder",
+									"value": "events",
+									"description": "Upload folder"
+								},
+								{
+									"key": "resource_type",
+									"value": "image",
+									"description": "Resource type: image, raw, video"
+								}
+							]
+						},
+						"description": "Get Cloudinary upload signature for client-side uploads"
+					}
+				},
+				{
+					"name": "Get My Uploaded Files",
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{base_url}}/{{api_version}}/uploads/my-files?page=1&limit=20&category=event",
+							"host": ["{{base_url}}"],
+							"path": ["{{api_version}}", "uploads", "my-files"],
+							"query": [
+								{
+									"key": "page",
+									"value": "1"
+								},
+								{
+									"key": "limit",
+									"value": "20"
+								},
+								{
+									"key": "category",
+									"value": "event",
+									"description": "Filter by category"
+								}
+							]
+						},
+						"description": "Get current user's uploaded files"
+					}
+				},
+				{
+					"name": "Transform Image",
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n    \"publicId\": \"IMAGE_PUBLIC_ID\",\n    \"transformations\": {\n        \"width\": 800,\n        \"height\": 600,\n        \"crop\": \"fill\",\n        \"quality\": \"auto\",\n        \"format\": \"webp\"\n    }\n}"
+						},
+						"url": {
+							"raw": "{{base_url}}/{{api_version}}/uploads/transform",
+							"host": ["{{base_url}}"],
+							"path": ["{{api_version}}", "uploads", "transform"]
+						},
+						"description": "Apply transformations to existing image"
+					}
+				},
+				{
+					"name": "Delete File",
+					"request": {
+						"method": "DELETE",
+						"header": [],
+						"url": {
+							"raw": "{{base_url}}/{{api_version}}/uploads/:fileId",
+							"host": ["{{base_url}}"],
+							"path": ["{{api_version}}", "uploads", ":fileId"],
+							"variable": [
+								{
+									"key": "fileId",
+									"value": "FILE_ID_HERE"
+								}
+							]
+						},
+						"description": "Delete an uploaded file (own files only)"
+					}
+				},
+				{
+					"name": "Bulk Delete Files",
+					"request": {
+						"method": "DELETE",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n    \"fileIds\": [\"FILE_ID_1\", \"FILE_ID_2\", \"FILE_ID_3\"]\n}"
+						},
+						"url": {
+							"raw": "{{base_url}}/{{api_version}}/uploads/bulk-delete",
+							"host": ["{{base_url}}"],
+							"path": ["{{api_version}}", "uploads", "bulk-delete"]
+						},
+						"description": "Delete multiple files at once"
+					}
+				},
+				{
+					"name": "Get File Info",
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{base_url}}/{{api_version}}/uploads/:fileId/info",
+							"host": ["{{base_url}}"],
+							"path": ["{{api_version}}", "uploads", ":fileId", "info"],
+							"variable": [
+								{
+									"key": "fileId",
+									"value": "FILE_ID_HERE"
+								}
+							]
+						},
+						"description": "Get detailed file information and metadata"
+					}
+				},
+				{
+					"name": "Get Storage Usage",
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{base_url}}/{{api_version}}/uploads/usage",
+							"host": ["{{base_url}}"],
+							"path": ["{{api_version}}", "uploads", "usage"]
+						},
+						"description": "Get user's storage usage statistics"
+					}
+				},
+				{
+					"name": "Generate Shareable Link",
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n    \"fileId\": \"FILE_ID_HERE\",\n    \"expiresIn\": 3600,\n    \"downloadable\": true\n}"
+						},
+						"url": {
+							"raw": "{{base_url}}/{{api_version}}/uploads/share-link",
+							"host": ["{{base_url}}"],
+							"path": ["{{api_version}}", "uploads", "share-link"]
+						},
+						"description": "Generate a shareable link with expiration"
+					}
+				}
+			]
+		},
+		{
+			"name": "✅ Check-in System",
+			"description": "Event check-in and attendance tracking endpoints",
+			"item": [
+				{
+					"name": "Check-in to Event",
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n    \"ticketId\": \"TICKET_ID_HERE\",\n    \"qrCode\": \"QR_CODE_DATA\"\n}"
+						},
+						"url": {
+							"raw": "{{base_url}}/{{api_version}}/checkin",
+							"host": ["{{base_url}}"],
+							"path": ["{{api_version}}", "checkin"]
+						},
+						"description": "Check-in to an event using ticket"
+					}
+				},
+				{
+					"name": "Get Check-in History",
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{base_url}}/{{api_version}}/checkin/history?page=1&limit=10",
+							"host": ["{{base_url}}"],
+							"path": ["{{api_version}}", "checkin", "history"],
+							"query": [
+								{
+									"key": "page",
+									"value": "1"
+								},
+								{
+									"key": "limit",
+									"value": "10"
+								}
+							]
+						},
+						"description": "Get user's check-in history"
+					}
+				}
+			]
+		},
+		{
+			"name": "🏪 Vendor Dashboard",
+			"description": "Vendor-specific dashboard and management endpoints",
+			"item": [
+				{
+					"name": "Get Vendor Dashboard",
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{base_url}}/{{api_version}}/vendors/dashboard",
+							"host": ["{{base_url}}"],
+							"path": ["{{api_version}}", "vendors", "dashboard"]
+						},
+						"description": "Get vendor dashboard overview"
+					}
+				},
+				{
+					"name": "Get Vendor Profile",
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{base_url}}/{{api_version}}/vendors/profile",
+							"host": ["{{base_url}}"],
+							"path": ["{{api_version}}", "vendors", "profile"]
+						},
+						"description": "Get vendor's profile information"
+					}
+				},
+				{
+					"name": "Update Vendor Profile",
+					"request": {
+						"method": "PUT",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n    \"businessName\": \"Amazing Events Co.\",\n    \"description\": \"We create unforgettable event experiences\",\n    \"website\": \"https://amazingevents.com\",\n    \"socialMedia\": {\n        \"instagram\": \"@amazingevents\",\n        \"facebook\": \"AmazingEventsCo\"\n    }\n}"
+						},
+						"url": {
+							"raw": "{{base_url}}/{{api_version}}/vendors/profile",
+							"host": ["{{base_url}}"],
+							"path": ["{{api_version}}", "vendors", "profile"]
+						},
+						"description": "Update vendor profile"
+					}
+				}
+			]
+		},
+		{
+			"name": "👥 Employee Management",
+			"description": "Employee and staff management endpoints",
+			"item": [
+				{
+					"name": "Get My Employees",
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{base_url}}/{{api_version}}/employees?page=1&limit=10",
+							"host": ["{{base_url}}"],
+							"path": ["{{api_version}}", "employees"],
+							"query": [
+								{
+									"key": "page",
+									"value": "1"
+								},
+								{
+									"key": "limit",
+									"value": "10"
+								}
+							]
+						},
+						"description": "Get vendor's employees list"
+					}
+				},
+				{
+					"name": "Add Employee",
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n    \"firstName\": \"John\",\n    \"lastName\": \"Employee\",\n    \"email\": \"employee@amazingevents.com\",\n    \"role\": \"staff\",\n    \"permissions\": [\"event_management\", \"check_in\"]\n}"
+						},
+						"url": {
+							"raw": "{{base_url}}/{{api_version}}/employees",
+							"host": ["{{base_url}}"],
+							"path": ["{{api_version}}", "employees"]
+						},
+						"description": "Add a new employee"
+					}
+				}
+			]
+		},
+		{
+			"name": "📝 Blog & Content",
+			"description": "Blog and content management endpoints",
+			"item": [
+				{
+					"name": "Get All Blog Posts",
+					"request": {
+						"auth": {
+							"type": "noauth"
+						},
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{base_url}}/{{api_version}}/blogs?page=1&limit=10&category=events&featured=true",
+							"host": ["{{base_url}}"],
+							"path": ["{{api_version}}", "blogs"],
+							"query": [
+								{
+									"key": "page",
+									"value": "1"
+								},
+								{
+									"key": "limit",
+									"value": "10"
+								},
+								{
+									"key": "category",
+									"value": "events",
+									"description": "Filter by category"
+								},
+								{
+									"key": "featured",
+									"value": "true",
+									"description": "Show only featured posts"
+								}
+							]
+						},
+						"description": "Get paginated blog posts"
+					}
+				},
+				{
+					"name": "Get Blog Post by Slug",
+					"request": {
+						"auth": {
+							"type": "noauth"
+						},
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{base_url}}/{{api_version}}/blogs/:blogSlug",
+							"host": ["{{base_url}}"],
+							"path": ["{{api_version}}", "blogs", ":blogSlug"],
+							"variable": [
+								{
+									"key": "blogSlug",
+									"value": "how-to-plan-perfect-event"
+								}
+							]
+						},
+						"description": "Get blog post by slug"
+					}
+				}
+			]
+		},
+		{
+			"name": "🤝 Affiliate System",
+			"description": "Affiliate program and tracking endpoints",
+			"item": [
+				{
+					"name": "Get Affiliate Dashboard",
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{base_url}}/{{api_version}}/affiliates/dashboard",
+							"host": ["{{base_url}}"],
+							"path": ["{{api_version}}", "affiliates", "dashboard"]
+						},
+						"description": "Get affiliate dashboard data"
+					}
+				},
+				{
+					"name": "Generate Affiliate Link",
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n    \"eventId\": \"EVENT_ID_HERE\",\n    \"campaign\": \"summer_2025\"\n}"
+						},
+						"url": {
+							"raw": "{{base_url}}/{{api_version}}/affiliates/generate-link",
+							"host": ["{{base_url}}"],
+							"path": ["{{api_version}}", "affiliates", "generate-link"]
+						},
+						"description": "Generate affiliate tracking link"
+					}
+				}
+			]
+		},
+		{
+			"name": "📝 Blog Management",
+			"description": "Blog content and interaction endpoints",
+			"item": [
+				{
+					"name": "Get All Blogs",
+					"request": {
+						"auth": {
+							"type": "noauth"
+						},
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{base_url}}/{{api_version}}/blogs",
+							"host": ["{{base_url}}"],
+							"path": ["{{api_version}}", "blogs"]
+						},
+						"description": "Get all blog posts"
+					}
+				},
+				{
+					"name": "Get Featured Blogs",
+					"request": {
+						"auth": {
+							"type": "noauth"
+						},
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{base_url}}/{{api_version}}/blogs/featured",
+							"host": ["{{base_url}}"],
+							"path": ["{{api_version}}", "blogs", "featured"]
+						},
+						"description": "Get featured blog posts"
+					}
+				},
+				{
+					"name": "Get Popular Blogs",
+					"request": {
+						"auth": {
+							"type": "noauth"
+						},
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{base_url}}/{{api_version}}/blogs/popular",
+							"host": ["{{base_url}}"],
+							"path": ["{{api_version}}", "blogs", "popular"]
+						},
+						"description": "Get popular blog posts"
+					}
+				},
+				{
+					"name": "Get Recent Blogs",
+					"request": {
+						"auth": {
+							"type": "noauth"
+						},
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{base_url}}/{{api_version}}/blogs/recent",
+							"host": ["{{base_url}}"],
+							"path": ["{{api_version}}", "blogs", "recent"]
+						},
+						"description": "Get recent blog posts"
+					}
+				},
+				{
+					"name": "Get Blog Categories",
+					"request": {
+						"auth": {
+							"type": "noauth"
+						},
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{base_url}}/{{api_version}}/blogs/categories",
+							"host": ["{{base_url}}"],
+							"path": ["{{api_version}}", "blogs", "categories"]
+						},
+						"description": "Get blog categories"
+					}
+				},
+				{
+					"name": "Get Blog by Slug",
+					"request": {
+						"auth": {
+							"type": "noauth"
+						},
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{base_url}}/{{api_version}}/blogs/sample-blog-post",
+							"host": ["{{base_url}}"],
+							"path": ["{{api_version}}", "blogs", "sample-blog-post"]
+						},
+						"description": "Get specific blog post by slug"
+					}
+				},
+				{
+					"name": "Get Related Blogs",
+					"request": {
+						"auth": {
+							"type": "noauth"
+						},
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{base_url}}/{{api_version}}/blogs/sample-blog-post/related",
+							"host": ["{{base_url}}"],
+							"path": ["{{api_version}}", "blogs", "sample-blog-post", "related"]
+						},
+						"description": "Get related blog posts"
+					}
+				},
+				{
+					"name": "Like Blog",
+					"request": {
+						"method": "POST",
+						"header": [],
+						"url": {
+							"raw": "{{base_url}}/{{api_version}}/blogs/sample-blog-post/like",
+							"host": ["{{base_url}}"],
+							"path": ["{{api_version}}", "blogs", "sample-blog-post", "like"]
+						},
+						"description": "Like a blog post"
+					}
+				},
+				{
+					"name": "Share Blog",
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n    \"platform\": \"facebook\",\n    \"message\": \"Check out this amazing blog post!\"\n}"
+						},
+						"url": {
+							"raw": "{{base_url}}/{{api_version}}/blogs/sample-blog-post/share",
+							"host": ["{{base_url}}"],
+							"path": ["{{api_version}}", "blogs", "sample-blog-post", "share"]
+						},
+						"description": "Share a blog post on social media"
+					}
+				}
+			]
+		},
+		{
+			"name": "🏢 Venue Management",
+			"description": "Venue creation and management endpoints",
+			"item": [
+				{
+					"name": "Create Venue",
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n    \"name\": \"Grand Ballroom\",\n    \"description\": \"Elegant ballroom for weddings and corporate events\",\n    \"address\": {\n        \"street\": \"123 Event Street\",\n        \"city\": \"Dubai\",\n        \"country\": \"UAE\",\n        \"postalCode\": \"12345\"\n    },\n    \"capacity\": 500,\n    \"amenities\": [\"Audio/Visual Equipment\", \"Catering Kitchen\", \"Parking\"],\n    \"hourlyRate\": 200,\n    \"currency\": \"AED\",\n    \"availability\": {\n        \"monday\": { \"open\": \"09:00\", \"close\": \"22:00\" },\n        \"tuesday\": { \"open\": \"09:00\", \"close\": \"22:00\" }\n    }\n}"
+						},
+						"url": {
+							"raw": "{{base_url}}/{{api_version}}/venues",
+							"host": ["{{base_url}}"],
+							"path": ["{{api_version}}", "venues"]
+						},
+						"description": "Create a new venue (Vendor/Admin only)"
+					}
+				},
+				{
+					"name": "Get Venue Details",
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{base_url}}/{{api_version}}/venues/{{venue_id}}",
+							"host": ["{{base_url}}"],
+							"path": ["{{api_version}}", "venues", "{{venue_id}}"]
+						},
+						"description": "Get venue details (Vendor/Admin/Employee)"
+					}
+				},
+				{
+					"name": "Update Venue",
+					"request": {
+						"method": "PUT",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n    \"name\": \"Updated Grand Ballroom\",\n    \"capacity\": 600,\n    \"hourlyRate\": 250\n}"
+						},
+						"url": {
+							"raw": "{{base_url}}/{{api_version}}/venues/{{venue_id}}",
+							"host": ["{{base_url}}"],
+							"path": ["{{api_version}}", "venues", "{{venue_id}}"]
+						},
+						"description": "Update venue details (Vendor/Admin only)"
+					}
+				},
+				{
+					"name": "Delete Venue",
+					"request": {
+						"method": "DELETE",
+						"header": [],
+						"url": {
+							"raw": "{{base_url}}/{{api_version}}/venues/{{venue_id}}",
+							"host": ["{{base_url}}"],
+							"path": ["{{api_version}}", "venues", "{{venue_id}}"]
+						},
+						"description": "Delete venue (Vendor/Admin only)"
+					}
+				}
+			]
+		},
+		{
+			"name": "🎟️ Coupon System",
+			"description": "Coupon management and validation endpoints",
+			"item": [
+				{
+					"name": "Get Active Coupons",
+					"request": {
+						"auth": {
+							"type": "noauth"
+						},
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{base_url}}/{{api_version}}/coupons/active",
+							"host": ["{{base_url}}"],
+							"path": ["{{api_version}}", "coupons", "active"]
+						},
+						"description": "Get all active coupons"
+					}
+				},
+				{
+					"name": "Get User Coupon History",
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{base_url}}/{{api_version}}/coupons/my-history",
+							"host": ["{{base_url}}"],
+							"path": ["{{api_version}}", "coupons", "my-history"]
+						},
+						"description": "Get current user's coupon usage history"
+					}
+				},
+				{
+					"name": "Validate Coupon",
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n    \"orderAmount\": 500,\n    \"eventIds\": [\"EVENT_ID_1\", \"EVENT_ID_2\"]\n}"
+						},
+						"url": {
+							"raw": "{{base_url}}/{{api_version}}/coupons/validate/SUMMER25",
+							"host": ["{{base_url}}"],
+							"path": ["{{api_version}}", "coupons", "validate", "SUMMER25"]
+						},
+						"description": "Validate coupon code for order"
+					}
+				},
+				{
+					"name": "Apply Coupon",
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n    \"couponId\": \"COUPON_ID_HERE\",\n    \"orderId\": \"ORDER_ID_HERE\"\n}"
+						},
+						"url": {
+							"raw": "{{base_url}}/{{api_version}}/coupons/apply",
+							"host": ["{{base_url}}"],
+							"path": ["{{api_version}}", "coupons", "apply"]
+						},
+						"description": "Apply coupon to order"
+					}
+				},
+				{
+					"name": "Admin: Get All Coupons",
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{base_url}}/{{api_version}}/coupons",
+							"host": ["{{base_url}}"],
+							"path": ["{{api_version}}", "coupons"]
+						},
+						"description": "Get all coupons (Admin only)"
+					}
+				},
+				{
+					"name": "Admin: Get Coupon Details",
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{base_url}}/{{api_version}}/coupons/{{coupon_id}}",
+							"host": ["{{base_url}}"],
+							"path": ["{{api_version}}", "coupons", "{{coupon_id}}"]
+						},
+						"description": "Get coupon details (Admin only)"
+					}
+				},
+				{
+					"name": "Admin: Create Coupon",
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n    \"code\": \"SUMMER25\",\n    \"name\": \"Summer 2025 Discount\",\n    \"description\": \"25% off summer events\",\n    \"type\": \"percentage\",\n    \"value\": 25,\n    \"minimumAmount\": 100,\n    \"maximumDiscount\": 500,\n    \"validFrom\": \"2025-06-01T00:00:00Z\",\n    \"validUntil\": \"2025-08-31T23:59:59Z\",\n    \"usageLimit\": 1000,\n    \"userUsageLimit\": 1,\n    \"firstTimeOnly\": false\n}"
+						},
+						"url": {
+							"raw": "{{base_url}}/{{api_version}}/coupons",
+							"host": ["{{base_url}}"],
+							"path": ["{{api_version}}", "coupons"]
+						},
+						"description": "Create new coupon (Admin only)"
+					}
+				},
+				{
+					"name": "Admin: Update Coupon",
+					"request": {
+						"method": "PUT",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n    \"name\": \"Updated Summer Discount\",\n    \"value\": 30\n}"
+						},
+						"url": {
+							"raw": "{{base_url}}/{{api_version}}/coupons/{{coupon_id}}",
+							"host": ["{{base_url}}"],
+							"path": ["{{api_version}}", "coupons", "{{coupon_id}}"]
+						},
+						"description": "Update coupon (Admin only)"
+					}
+				},
+				{
+					"name": "Admin: Delete Coupon",
+					"request": {
+						"method": "DELETE",
+						"header": [],
+						"url": {
+							"raw": "{{base_url}}/{{api_version}}/coupons/{{coupon_id}}",
+							"host": ["{{base_url}}"],
+							"path": ["{{api_version}}", "coupons", "{{coupon_id}}"]
+						},
+						"description": "Delete coupon (Admin only)"
+					}
+				},
+				{
+					"name": "Admin: Get Coupon Stats",
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{base_url}}/{{api_version}}/coupons/{{coupon_id}}/stats",
+							"host": ["{{base_url}}"],
+							"path": ["{{api_version}}", "coupons", "{{coupon_id}}", "stats"]
+						},
+						"description": "Get coupon usage statistics (Admin only)"
+					}
+				},
+				{
+					"name": "Admin: Bulk Update Coupons",
+					"request": {
+						"method": "PUT",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n    \"couponIds\": [\"COUPON_ID_1\", \"COUPON_ID_2\"],\n    \"status\": \"inactive\"\n}"
+						},
+						"url": {
+							"raw": "{{base_url}}/{{api_version}}/coupons/bulk/status",
+							"host": ["{{base_url}}"],
+							"path": ["{{api_version}}", "coupons", "bulk", "status"]
+						},
+						"description": "Bulk update coupon status (Admin only)"
+					}
+				}
+			]
+		},
+		{
+			"name": "🔔 Notification System",
+			"description": "User notifications and messaging endpoints",
+			"item": [
+				{
+					"name": "Get My Notifications",
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{base_url}}/{{api_version}}/notifications/my",
+							"host": ["{{base_url}}"],
+							"path": ["{{api_version}}", "notifications", "my"]
+						},
+						"description": "Get current user's notifications"
+					}
+				},
+				{
+					"name": "Get Unread Count",
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{base_url}}/{{api_version}}/notifications/unread-count",
+							"host": ["{{base_url}}"],
+							"path": ["{{api_version}}", "notifications", "unread-count"]
+						},
+						"description": "Get unread notification count"
+					}
+				},
+				{
+					"name": "Mark All as Read",
+					"request": {
+						"method": "PUT",
+						"header": [],
+						"url": {
+							"raw": "{{base_url}}/{{api_version}}/notifications/mark-all-read",
+							"host": ["{{base_url}}"],
+							"path": ["{{api_version}}", "notifications", "mark-all-read"]
+						},
+						"description": "Mark all notifications as read"
+					}
+				},
+				{
+					"name": "Get Notification Details",
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{base_url}}/{{api_version}}/notifications/{{notification_id}}",
+							"host": ["{{base_url}}"],
+							"path": ["{{api_version}}", "notifications", "{{notification_id}}"]
+						},
+						"description": "Get specific notification details"
+					}
+				},
+				{
+					"name": "Mark as Read",
+					"request": {
+						"method": "PUT",
+						"header": [],
+						"url": {
+							"raw": "{{base_url}}/{{api_version}}/notifications/{{notification_id}}/read",
+							"host": ["{{base_url}}"],
+							"path": ["{{api_version}}", "notifications", "{{notification_id}}", "read"]
+						},
+						"description": "Mark notification as read"
+					}
+				},
+				{
+					"name": "Mark as Clicked",
+					"request": {
+						"method": "PUT",
+						"header": [],
+						"url": {
+							"raw": "{{base_url}}/{{api_version}}/notifications/{{notification_id}}/clicked",
+							"host": ["{{base_url}}"],
+							"path": ["{{api_version}}", "notifications", "{{notification_id}}", "clicked"]
+						},
+						"description": "Mark notification as clicked"
+					}
+				},
+				{
+					"name": "Admin: Get All Notifications",
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{base_url}}/{{api_version}}/notifications",
+							"host": ["{{base_url}}"],
+							"path": ["{{api_version}}", "notifications"]
+						},
+						"description": "Get all notifications (Admin only)"
+					}
+				},
+				{
+					"name": "Admin: Create Notification",
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n    \"userId\": \"USER_ID_HERE\",\n    \"type\": \"promotional\",\n    \"priority\": \"medium\",\n    \"title\": \"Special Event Discount!\",\n    \"message\": \"Get 20% off on all weekend events this month.\",\n    \"shortMessage\": \"20% off weekend events!\",\n    \"channels\": [\"in_app\", \"email\"],\n    \"scheduledFor\": \"2025-09-15T10:00:00Z\",\n    \"actions\": [{\n        \"label\": \"View Events\",\n        \"action\": \"navigate\",\n        \"url\": \"/events\",\n        \"style\": \"primary\"\n    }]\n}"
+						},
+						"url": {
+							"raw": "{{base_url}}/{{api_version}}/notifications",
+							"host": ["{{base_url}}"],
+							"path": ["{{api_version}}", "notifications"]
+						},
+						"description": "Create notification (Admin only)"
+					}
+				},
+				{
+					"name": "Admin: Update Notification",
+					"request": {
+						"method": "PUT",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n    \"title\": \"Updated Event Discount!\",\n    \"message\": \"Get 25% off on all weekend events this month.\"\n}"
+						},
+						"url": {
+							"raw": "{{base_url}}/{{api_version}}/notifications/{{notification_id}}",
+							"host": ["{{base_url}}"],
+							"path": ["{{api_version}}", "notifications", "{{notification_id}}"]
+						},
+						"description": "Update notification (Admin only)"
+					}
+				},
+				{
+					"name": "Admin: Delete Notification",
+					"request": {
+						"method": "DELETE",
+						"header": [],
+						"url": {
+							"raw": "{{base_url}}/{{api_version}}/notifications/{{notification_id}}",
+							"host": ["{{base_url}}"],
+							"path": ["{{api_version}}", "notifications", "{{notification_id}}"]
+						},
+						"description": "Delete notification (Admin only)"
+					}
+				},
+				{
+					"name": "Admin: Get Notification Analytics",
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{base_url}}/{{api_version}}/notifications/analytics/overview",
+							"host": ["{{base_url}}"],
+							"path": ["{{api_version}}", "notifications", "analytics", "overview"]
+						},
+						"description": "Get notification analytics (Admin only)"
+					}
+				},
+				{
+					"name": "Admin: Send Bulk Notifications",
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n    \"userIds\": [\"USER_ID_1\", \"USER_ID_2\", \"USER_ID_3\"],\n    \"type\": \"system_maintenance\",\n    \"title\": \"Scheduled Maintenance Notice\",\n    \"message\": \"Our system will undergo maintenance on Sunday from 2 AM to 4 AM UTC. Service may be temporarily unavailable.\"\n}"
+						},
+						"url": {
+							"raw": "{{base_url}}/{{api_version}}/notifications/bulk/send",
+							"host": ["{{base_url}}"],
+							"path": ["{{api_version}}", "notifications", "bulk", "send"]
+						},
+						"description": "Send bulk notifications (Admin only)"
+					}
+				}
+			]
+		},
+		{
+			"name": "🤝 Enhanced Affiliate Program",
+			"description": "Complete affiliate program management endpoints",
+			"item": [
+				{
+					"name": "Apply for Affiliate Program",
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n    \"defaultCommissionRate\": 10,\n    \"commissionType\": \"percentage\",\n    \"businessName\": \"My Event Marketing Co\",\n    \"website\": \"https://myeventmarketing.com\",\n    \"paymentMethod\": \"paypal\",\n    \"paymentDetails\": {\n        \"paypalEmail\": \"affiliate@myeventmarketing.com\"\n    },\n    \"minimumPayoutAmount\": 50,\n    \"payoutFrequency\": \"monthly\",\n    \"socialMedia\": {\n        \"facebook\": \"https://facebook.com/myeventmarketing\",\n        \"instagram\": \"https://instagram.com/myeventmarketing\"\n    }\n}"
+						},
+						"url": {
+							"raw": "{{base_url}}/{{api_version}}/affiliates/apply",
+							"host": ["{{base_url}}"],
+							"path": ["{{api_version}}", "affiliates", "apply"]
+						},
+						"description": "Apply to become an affiliate"
+					}
+				},
+				{
+					"name": "Get My Affiliate Profile",
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{base_url}}/{{api_version}}/affiliates/my",
+							"host": ["{{base_url}}"],
+							"path": ["{{api_version}}", "affiliates", "my"]
+						},
+						"description": "Get current user's affiliate profile"
+					}
+				},
+				{
+					"name": "Update Affiliate Profile",
+					"request": {
+						"method": "PUT",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n    \"businessName\": \"Updated Event Marketing Co\",\n    \"website\": \"https://updatedeventmarketing.com\",\n    \"minimumPayoutAmount\": 75\n}"
+						},
+						"url": {
+							"raw": "{{base_url}}/{{api_version}}/affiliates/profile",
+							"host": ["{{base_url}}"],
+							"path": ["{{api_version}}", "affiliates", "profile"]
+						},
+						"description": "Update affiliate profile"
+					}
+				},
+				{
+					"name": "Generate Tracking URL",
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n    \"eventId\": \"EVENT_ID_HERE\",\n    \"customParams\": {\n        \"campaign\": \"summer_promotion\",\n        \"source\": \"social_media\"\n    }\n}"
+						},
+						"url": {
+							"raw": "{{base_url}}/{{api_version}}/affiliates/generate-url",
+							"host": ["{{base_url}}"],
+							"path": ["{{api_version}}", "affiliates", "generate-url"]
+						},
+						"description": "Generate affiliate tracking URL"
+					}
+				},
+				{
+					"name": "Record Click (Public)",
+					"request": {
+						"auth": {
+							"type": "noauth"
+						},
+						"method": "POST",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n    \"countryCode\": \"AE\",\n    \"deviceType\": \"mobile\"\n}"
+						},
+						"url": {
+							"raw": "{{base_url}}/{{api_version}}/affiliates/click/{{affiliate_code}}",
+							"host": ["{{base_url}}"],
+							"path": ["{{api_version}}", "affiliates", "click", "{{affiliate_code}}"]
+						},
+						"description": "Record affiliate link click (public endpoint)"
+					}
+				},
+				{
+					"name": "Get Dashboard Stats",
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{base_url}}/{{api_version}}/affiliates/dashboard/stats?period=30",
+							"host": ["{{base_url}}"],
+							"path": ["{{api_version}}", "affiliates", "dashboard", "stats"],
+							"query": [
+								{
+									"key": "period",
+									"value": "30"
+								}
+							]
+						},
+						"description": "Get affiliate dashboard statistics"
+					}
+				},
+				{
+					"name": "Get My Commissions",
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{base_url}}/{{api_version}}/affiliates/commissions?status=approved",
+							"host": ["{{base_url}}"],
+							"path": ["{{api_version}}", "affiliates", "commissions"],
+							"query": [
+								{
+									"key": "status",
+									"value": "approved"
+								}
+							]
+						},
+						"description": "Get affiliate commission history"
+					}
+				},
+				{
+					"name": "Admin: Get All Affiliates",
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{base_url}}/{{api_version}}/affiliates?status=active&sortBy=totalRevenue&sortOrder=desc",
+							"host": ["{{base_url}}"],
+							"path": ["{{api_version}}", "affiliates"],
+							"query": [
+								{
+									"key": "status",
+									"value": "active"
+								},
+								{
+									"key": "sortBy",
+									"value": "totalRevenue"
+								},
+								{
+									"key": "sortOrder",
+									"value": "desc"
+								}
+							]
+						},
+						"description": "Get all affiliates (Admin only)"
+					}
+				},
+				{
+					"name": "Admin: Update Affiliate Status",
+					"request": {
+						"method": "PUT",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n    \"status\": \"active\"\n}"
+						},
+						"url": {
+							"raw": "{{base_url}}/{{api_version}}/affiliates/{{affiliate_id}}/status",
+							"host": ["{{base_url}}"],
+							"path": ["{{api_version}}", "affiliates", "{{affiliate_id}}", "status"]
+						},
+						"description": "Update affiliate status (Admin only)"
+					}
+				},
+				{
+					"name": "Admin: Get Top Performers",
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{base_url}}/{{api_version}}/affiliates/top-performers?limit=10&period=30",
+							"host": ["{{base_url}}"],
+							"path": ["{{api_version}}", "affiliates", "top-performers"],
+							"query": [
+								{
+									"key": "limit",
+									"value": "10"
+								},
+								{
+									"key": "period",
+									"value": "30"
+								}
+							]
+						},
+						"description": "Get top performing affiliates (Admin only)"
+					}
+				},
+				{
+					"name": "Admin: Get Affiliate Analytics",
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{base_url}}/{{api_version}}/affiliates/analytics/overview?startDate=2025-08-01&endDate=2025-08-31",
+							"host": ["{{base_url}}"],
+							"path": ["{{api_version}}", "affiliates", "analytics", "overview"],
+							"query": [
+								{
+									"key": "startDate",
+									"value": "2025-08-01"
+								},
+								{
+									"key": "endDate",
+									"value": "2025-08-31"
+								}
+							]
+						},
+						"description": "Get affiliate program analytics (Admin only)"
+					}
+				}
+			]
+		},
+		{
+			"name": "📂 Category Management",
+			"description": "Event category management endpoints",
+			"item": [
+				{
+					"name": "Get All Categories",
+					"request": {
+						"auth": {
+							"type": "noauth"
+						},
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{base_url}}/{{api_version}}/categories",
+							"host": ["{{base_url}}"],
+							"path": ["{{api_version}}", "categories"]
+						},
+						"description": "Get all event categories"
+					}
+				},
+				{
+					"name": "Get Root Categories",
+					"request": {
+						"auth": {
+							"type": "noauth"
+						},
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{base_url}}/{{api_version}}/categories/roots",
+							"host": ["{{base_url}}"],
+							"path": ["{{api_version}}", "categories", "roots"]
+						},
+						"description": "Get root level categories"
+					}
+				},
+				{
+					"name": "Search Categories",
+					"request": {
+						"auth": {
+							"type": "noauth"
+						},
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{base_url}}/{{api_version}}/categories/search?q=wedding",
+							"host": ["{{base_url}}"],
+							"path": ["{{api_version}}", "categories", "search"],
+							"query": [
+								{
+									"key": "q",
+									"value": "wedding"
+								}
+							]
+						},
+						"description": "Search categories by name"
+					}
+				},
+				{
+					"name": "Get Categories by Parent",
+					"request": {
+						"auth": {
+							"type": "noauth"
+						},
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{base_url}}/{{api_version}}/categories/parent/{{parent_id}}",
+							"host": ["{{base_url}}"],
+							"path": ["{{api_version}}", "categories", "parent", "{{parent_id}}"]
+						},
+						"description": "Get categories by parent ID"
+					}
+				},
+				{
+					"name": "Get Category Details",
+					"request": {
+						"auth": {
+							"type": "noauth"
+						},
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{base_url}}/{{api_version}}/categories/{{category_id}}",
+							"host": ["{{base_url}}"],
+							"path": ["{{api_version}}", "categories", "{{category_id}}"]
+						},
+						"description": "Get specific category details"
+					}
+				},
+				{
+					"name": "Admin: Create Category",
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n    \"name\": \"Wedding Ceremonies\",\n    \"description\": \"Traditional and modern wedding ceremony events\",\n    \"parentId\": \"PARENT_CATEGORY_ID\",\n    \"slug\": \"wedding-ceremonies\",\n    \"icon\": \"heart\",\n    \"color\": \"#FF6B6B\",\n    \"sortOrder\": 10,\n    \"isActive\": true\n}"
+						},
+						"url": {
+							"raw": "{{base_url}}/{{api_version}}/categories",
+							"host": ["{{base_url}}"],
+							"path": ["{{api_version}}", "categories"]
+						},
+						"description": "Create new category (Admin only)"
+					}
+				},
+				{
+					"name": "Admin: Update Category",
+					"request": {
+						"method": "PUT",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n    \"name\": \"Updated Wedding Ceremonies\",\n    \"description\": \"Updated description for wedding ceremonies\",\n    \"color\": \"#FF8E8E\"\n}"
+						},
+						"url": {
+							"raw": "{{base_url}}/{{api_version}}/categories/{{category_id}}",
+							"host": ["{{base_url}}"],
+							"path": ["{{api_version}}", "categories", "{{category_id}}"]
+						},
+						"description": "Update category (Admin only)"
+					}
+				},
+				{
+					"name": "Admin: Delete Category",
+					"request": {
+						"method": "DELETE",
+						"header": [],
+						"url": {
+							"raw": "{{base_url}}/{{api_version}}/categories/{{category_id}}",
+							"host": ["{{base_url}}"],
+							"path": ["{{api_version}}", "categories", "{{category_id}}"]
+						},
+						"description": "Delete category (Admin only)"
+					}
+				},
+				{
+					"name": "Admin: Update Sort Order",
+					"request": {
+						"method": "PUT",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n    \"categories\": [\n        { \"id\": \"CATEGORY_ID_1\", \"sortOrder\": 1 },\n        { \"id\": \"CATEGORY_ID_2\", \"sortOrder\": 2 },\n        { \"id\": \"CATEGORY_ID_3\", \"sortOrder\": 3 }\n    ]\n}"
+						},
+						"url": {
+							"raw": "{{base_url}}/{{api_version}}/categories/sort-order/bulk",
+							"host": ["{{base_url}}"],
+							"path": ["{{api_version}}", "categories", "sort-order", "bulk"]
+						},
+						"description": "Bulk update category sort order (Admin only)"
+					}
+				},
+				{
+					"name": "Admin: Update Event Counts",
+					"request": {
+						"method": "POST",
+						"header": [],
+						"url": {
+							"raw": "{{base_url}}/{{api_version}}/categories/update-counts",
+							"host": ["{{base_url}}"],
+							"path": ["{{api_version}}", "categories", "update-counts"]
+						},
+						"description": "Update event counts for all categories (Admin only)"
+					}
+				}
+			]
+		},
+		{
+			"name": "🔧 System Info",
+			"description": "System information and status endpoints",
+			"item": [
+				{
+					"name": "API Root",
+					"request": {
+						"auth": {
+							"type": "noauth"
+						},
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{base_url}}/",
+							"host": ["{{base_url}}"],
+							"path": [""]
+						},
+						"description": "Get API welcome message and basic info"
+					}
+				},
+				{
+					"name": "API Info",
+					"request": {
+						"auth": {
+							"type": "noauth"
+						},
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{base_url}}/{{api_version}}/",
+							"host": ["{{base_url}}"],
+							"path": ["{{api_version}}", ""]
+						},
+						"description": "Get API version and status information"
+					}
+				}
+			]
+		}
+	]
+}

@@ -18,6 +18,47 @@ import { ReviewType, FlagReason, ReviewStatus } from '../models';
 const router = Router();
 
 // Public routes
+// General reviews with query filters
+router.get(
+  '/',
+  [
+    query('type')
+      .optional()
+      .isIn(Object.values(ReviewType))
+      .withMessage('Invalid review type'),
+    query('targetId')
+      .optional()
+      .isMongoId()
+      .withMessage('Invalid target ID'),
+    query('page')
+      .optional()
+      .isInt({ min: 1 })
+      .withMessage('Page must be a positive integer'),
+    query('limit')
+      .optional()
+      .isInt({ min: 1, max: 50 })
+      .withMessage('Limit must be between 1 and 50'),
+    query('rating')
+      .optional()
+      .isInt({ min: 1, max: 5 })
+      .withMessage('Rating must be between 1 and 5'),
+    query('verified')
+      .optional()
+      .isBoolean()
+      .withMessage('Verified must be a boolean'),
+    query('sortBy')
+      .optional()
+      .isIn(['createdAt', 'rating', 'helpfulVotes'])
+      .withMessage('Invalid sort field'),
+    query('sortOrder')
+      .optional()
+      .isIn(['asc', 'desc'])
+      .withMessage('Invalid sort order'),
+  ],
+  getReviews
+);
+
+// Specific target reviews
 router.get(
   '/:type/:id',
   [

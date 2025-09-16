@@ -2,8 +2,8 @@ import axios, { AxiosInstance, AxiosRequestConfig, AxiosResponse } from 'axios';
 import { store } from '../store';
 import { logoutUser, refreshToken } from '../store/slices/authSlice';
 
-// API Configuration
-const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || import.meta.env.VITE_API_URL || 'http://localhost:5000/api';
+// API Configuration - using main backend server
+const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || import.meta.env.VITE_API_URL || 'http://localhost:5001/api';
 const API_TIMEOUT = 30000; // 30 seconds
 
 // Retry configuration
@@ -77,9 +77,34 @@ api.interceptors.response.use(
       }
     }
     
+    // Handle proxy/connection errors differently from server errors
+    if (error.code === 'ECONNREFUSED' || error.code === 'ERR_NETWORK') {
+      console.error('[API] Connection refused - Backend server may be down:', error.message);
+
+      // Emit connection error event for UI feedback
+      if (typeof window !== 'undefined') {
+        window.dispatchEvent(new CustomEvent('api-connection-error', {
+          detail: {
+            message: 'Backend server is not responding',
+            timestamp: Date.now(),
+            url: originalRequest.url
+          }
+        }));
+      }
+
+      return Promise.reject(new Error('Backend server is not responding. Please check if the server is running.'));
+    }
+    
+    // Handle proxy-specific errors
+    if (error.response?.status === 503 && error.config?.url?.includes('/api/')) {
+      console.error('[API] Proxy error - API requests may be misconfigured');
+      return Promise.reject(new Error('API proxy configuration error. Check Vite proxy settings.'));
+    }
+    
     // Handle 429 (Rate Limiting) and 5xx (Server) errors with retry logic
+    // But only retry actual server errors, not proxy/connection issues
     if (
-      (error.response?.status === 429 || error.response?.status >= 500) &&
+      (error.response?.status === 429 || (error.response?.status >= 500 && error.response?.status !== 503)) &&
       !originalRequest._retryCount &&
       originalRequest.retry !== false // Allow requests to opt out of retry
     ) {
@@ -88,15 +113,29 @@ api.interceptors.response.use(
     
     if (originalRequest._retryCount < RETRY_ATTEMPTS) {
       originalRequest._retryCount = (originalRequest._retryCount || 0) + 1;
-      
+
       const retryDelay = INITIAL_RETRY_DELAY * Math.pow(RETRY_MULTIPLIER, originalRequest._retryCount - 1);
-      
+
       // Add jitter to prevent thundering herd
       const jitter = Math.random() * 0.1 * retryDelay;
       const totalDelay = retryDelay + jitter;
-      
-      console.log(`API call failed, retrying in ${totalDelay}ms (attempt ${originalRequest._retryCount}/${RETRY_ATTEMPTS})`);
-      
+
+      console.log(`API call failed, retrying in ${Math.round(totalDelay)}ms (attempt ${originalRequest._retryCount}/${RETRY_ATTEMPTS}) - Status: ${error.response?.status}, URL: ${originalRequest.url}`);
+
+      // Emit a custom event for UI components to listen to
+      if (typeof window !== 'undefined') {
+        window.dispatchEvent(new CustomEvent('api-retry', {
+          detail: {
+            attempt: originalRequest._retryCount,
+            maxAttempts: RETRY_ATTEMPTS,
+            delay: Math.round(totalDelay),
+            url: originalRequest.url,
+            status: error.response?.status,
+            method: originalRequest.method?.toUpperCase()
+          }
+        }));
+      }
+
       await delay(totalDelay);
       return api(originalRequest);
     }

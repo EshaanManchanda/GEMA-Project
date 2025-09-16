@@ -1,509 +1,852 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
+import { useDispatch, useSelector } from 'react-redux';
+import { motion, AnimatePresence } from 'framer-motion';
+import { toast } from 'react-hot-toast';
+import {
+  FaUser,
+  FaCamera,
+  FaSave,
+  FaShieldAlt,
+  FaCog,
+  FaMapMarkerAlt,
+  FaPlus,
+  FaEdit,
+  FaTrash,
+  FaEye,
+  FaEyeSlash,
+  FaLock,
+  FaGlobe,
+  FaPhone,
+  FaEnvelope,
+  FaCalendar,
+  FaUserTag,
+  FaBell,
+  FaHistory,
+  FaDownload,
+  FaExclamationTriangle,
+  FaCheck,
+  FaTimes,
+  FaSpinner
+} from 'react-icons/fa';
+import {
+  FadeIn,
+  SlideIn,
+  ScaleIn,
+  HoverCard,
+  AnimatedButton,
+  PageTransition,
+  StaggerContainer
+} from '@/components/animations';
+import {
+  getFullProfile,
+  updateProfile,
+  uploadAvatar,
+  removeAvatar,
+  addAddress,
+  updateAddress,
+  deleteAddress,
+  selectUserProfile,
+  selectIsProfileLoading,
+  selectProfileError,
+  selectProfileCompletion,
+  selectUser
+} from '@/store/slices/authSlice';
+import {
+  UserProfile,
+  UpdateProfileData,
+  Address,
+  AvatarUploadData
+} from '@/types/auth';
 
-interface UserProfile {
-  id: string;
-  firstName: string;
-  lastName: string;
-  email: string;
-  phone: string;
-  address: string;
-  city: string;
-  state: string;
-  zipCode: string;
-  country: string;
-  profileImage: string | null;
-  emailNotifications: boolean;
-  smsNotifications: boolean;
-}
+// Components
+const ProfileHeader: React.FC<{
+  userProfile: UserProfile | null;
+  onAvatarUpload: (file: File) => void;
+  onAvatarRemove: () => void;
+  isLoading: boolean;
+}> = ({ userProfile, onAvatarUpload, onAvatarRemove, isLoading }) => {
+  const fileInputRef = useRef<HTMLInputElement>(null);
 
-const ProfilePage: React.FC = () => {
-  const navigate = useNavigate();
-  
-  const [profile, setProfile] = useState<UserProfile>({
-    id: '1',
-    firstName: '',
-    lastName: '',
-    email: '',
-    phone: '',
-    address: '',
-    city: '',
-    state: '',
-    zipCode: '',
-    country: '',
-    profileImage: null,
-    emailNotifications: true,
-    smsNotifications: false
+  const handleFileSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (file) {
+      onAvatarUpload(file);
+    }
+  };
+
+  return (
+    <div className="relative bg-gradient-to-br from-blue-600 via-blue-700 to-indigo-800 rounded-3xl p-8 text-white overflow-hidden">
+      {/* Background decoration */}
+      <div className="absolute inset-0 opacity-10">
+        <div className="absolute top-0 right-0 w-96 h-96 rounded-full bg-white transform translate-x-32 -translate-y-32"></div>
+        <div className="absolute bottom-0 left-0 w-64 h-64 rounded-full bg-white transform -translate-x-16 translate-y-16"></div>
+      </div>
+
+      <div className="relative z-10 flex flex-col md:flex-row items-center gap-8">
+        {/* Avatar Section */}
+        <div className="relative group">
+          <div className="w-32 h-32 rounded-full overflow-hidden bg-white/20 backdrop-blur-sm border-4 border-white/30">
+            {userProfile?.avatar ? (
+              <img
+                src={userProfile.avatar}
+                alt="Profile"
+                className="w-full h-full object-cover"
+              />
+            ) : (
+              <div className="w-full h-full flex items-center justify-center text-white/60">
+                <FaUser size={48} />
+              </div>
+            )}
+          </div>
+
+          {/* Avatar overlay */}
+          <div className="absolute inset-0 bg-black/50 rounded-full opacity-0 group-hover:opacity-100 transition-opacity duration-300 flex items-center justify-center">
+            <div className="flex gap-2">
+              <button
+                onClick={() => fileInputRef.current?.click()}
+                className="p-2 bg-white/20 rounded-full hover:bg-white/30 transition-colors"
+                disabled={isLoading}
+              >
+                {isLoading ? <FaSpinner className="animate-spin" size={16} /> : <FaCamera size={16} />}
+              </button>
+              {userProfile?.avatar && (
+                <button
+                  onClick={onAvatarRemove}
+                  className="p-2 bg-red-500/60 rounded-full hover:bg-red-500/80 transition-colors"
+                  disabled={isLoading}
+                >
+                  <FaTrash size={16} />
+                </button>
+              )}
+            </div>
+          </div>
+
+          <input
+            ref={fileInputRef}
+            type="file"
+            accept="image/*"
+            onChange={handleFileSelect}
+            className="hidden"
+          />
+        </div>
+
+        {/* Profile Info */}
+        <div className="flex-1 text-center md:text-left">
+          <h1 className="text-3xl font-bold mb-2">
+            {userProfile ? `${userProfile.firstName} ${userProfile.lastName}` : 'Loading...'}
+          </h1>
+          <p className="text-white/80 mb-4">{userProfile?.email}</p>
+
+          <div className="flex flex-wrap gap-4 justify-center md:justify-start text-sm">
+            <div className="flex items-center gap-2 bg-white/10 rounded-full px-3 py-1">
+              <FaUserTag />
+              <span className="capitalize">{userProfile?.role}</span>
+            </div>
+            <div className="flex items-center gap-2 bg-white/10 rounded-full px-3 py-1">
+              <FaCalendar />
+              <span>Member since {userProfile ? new Date(userProfile.memberSince).getFullYear() : '---'}</span>
+            </div>
+          </div>
+
+          {/* Profile Completion */}
+          {userProfile && (
+            <div className="mt-4">
+              <div className="flex items-center justify-between text-sm mb-2">
+                <span>Profile Completion</span>
+                <span>{userProfile.profileCompletion || 0}%</span>
+              </div>
+              <div className="w-full bg-white/20 rounded-full h-2">
+                <motion.div
+                  className="bg-white rounded-full h-2"
+                  initial={{ width: "0%" }}
+                  animate={{ width: `${userProfile.profileCompletion || 0}%` }}
+                  transition={{ duration: 1, delay: 0.5 }}
+                />
+              </div>
+            </div>
+          )}
+        </div>
+      </div>
+    </div>
+  );
+};
+
+const TabButton: React.FC<{
+  icon: React.ReactNode;
+  label: string;
+  isActive: boolean;
+  onClick: () => void;
+}> = ({ icon, label, isActive, onClick }) => (
+  <motion.button
+    onClick={onClick}
+    className={`flex items-center gap-3 px-6 py-3 rounded-xl font-medium transition-all ${
+      isActive
+        ? 'bg-blue-50 text-blue-600 border-2 border-blue-200'
+        : 'text-gray-600 hover:bg-gray-50 border-2 border-transparent'
+    }`}
+    whileHover={{ scale: 1.02 }}
+    whileTap={{ scale: 0.98 }}
+  >
+    {icon}
+    <span>{label}</span>
+  </motion.button>
+);
+
+const PersonalInfoTab: React.FC<{
+  userProfile: UserProfile | null;
+  onUpdate: (data: UpdateProfileData) => void;
+  isLoading: boolean;
+}> = ({ userProfile, onUpdate, isLoading }) => {
+  const [formData, setFormData] = useState({
+    firstName: userProfile?.firstName || '',
+    lastName: userProfile?.lastName || '',
+    phone: userProfile?.phone || '',
+    dateOfBirth: userProfile?.dateOfBirth || '',
+    gender: userProfile?.gender || '',
+    bio: userProfile?.bio || '',
   });
-  
-  const [isLoading, setIsLoading] = useState<boolean>(true);
-  const [isSaving, setIsSaving] = useState<boolean>(false);
-  const [errors, setErrors] = useState<Partial<Record<keyof UserProfile, string>>>({});
-  const [saveStatus, setSaveStatus] = useState<{ type: 'success' | 'error'; message: string } | null>(null);
-  const [imagePreview, setImagePreview] = useState<string | null>(null);
+
+  const [errors, setErrors] = useState<Record<string, string>>({});
 
   useEffect(() => {
-    // Fetch user profile data
-    const fetchUserProfile = async () => {
-      try {
-        setIsLoading(true);
-        
-        // Simulate API call
-        await new Promise(resolve => setTimeout(resolve, 1000));
-        
-        // Mock user profile data
-        const mockUserProfile: UserProfile = {
-          id: '1',
-          firstName: 'John',
-          lastName: 'Doe',
-          email: 'john.doe@example.com',
-          phone: '(555) 123-4567',
-          address: '123 Main St',
-          city: 'New York',
-          state: 'NY',
-          zipCode: '10001',
-          country: 'United States',
-          profileImage: 'https://randomuser.me/api/portraits/men/32.jpg',
-          emailNotifications: true,
-          smsNotifications: false
-        };
-        
-        setProfile(mockUserProfile);
-        setImagePreview(mockUserProfile.profileImage);
-      } catch (error) {
-        console.error('Error fetching user profile:', error);
-        setSaveStatus({
-          type: 'error',
-          message: 'Failed to load profile data. Please try again.'
-        });
-      } finally {
-        setIsLoading(false);
-      }
-    };
-    
-    fetchUserProfile();
-  }, []);
+    if (userProfile) {
+      setFormData({
+        firstName: userProfile.firstName || '',
+        lastName: userProfile.lastName || '',
+        phone: userProfile.phone || '',
+        dateOfBirth: userProfile.dateOfBirth || '',
+        gender: userProfile.gender || '',
+        bio: userProfile.bio || '',
+      });
+    }
+  }, [userProfile]);
 
-  const validateForm = (): boolean => {
-    const newErrors: Partial<Record<keyof UserProfile, string>> = {};
-    
-    if (!profile.firstName.trim()) newErrors.firstName = 'First name is required';
-    if (!profile.lastName.trim()) newErrors.lastName = 'Last name is required';
-    
-    // Email validation
-    if (!profile.email.trim()) {
-      newErrors.email = 'Email is required';
-    } else if (!/^\S+@\S+\.\S+$/.test(profile.email)) {
-      newErrors.email = 'Please enter a valid email address';
+  const validate = () => {
+    const newErrors: Record<string, string> = {};
+
+    if (!formData.firstName.trim()) newErrors.firstName = 'First name is required';
+    if (!formData.lastName.trim()) newErrors.lastName = 'Last name is required';
+    if (formData.phone && !/^[\d\s\(\)\-\+]+$/.test(formData.phone)) {
+      newErrors.phone = 'Invalid phone number format';
     }
-    
-    // Phone validation (optional field)
-    if (profile.phone && !/^[\d\s\(\)\-\+]+$/.test(profile.phone)) {
-      newErrors.phone = 'Please enter a valid phone number';
-    }
-    
-    // ZIP code validation (optional field)
-    if (profile.zipCode && !/^[\d\-]+$/.test(profile.zipCode)) {
-      newErrors.zipCode = 'Please enter a valid ZIP code';
-    }
-    
+
     setErrors(newErrors);
     return Object.keys(newErrors).length === 0;
   };
 
-  const handleInputChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>) => {
-    const { name, value, type } = e.target as HTMLInputElement;
-    
-    if (type === 'checkbox') {
-      const { checked } = e.target as HTMLInputElement;
-      setProfile(prev => ({ ...prev, [name]: checked }));
-    } else {
-      setProfile(prev => ({ ...prev, [name]: value }));
-    }
-    
-    // Clear error for this field when user types
-    if (errors[name as keyof UserProfile]) {
-      setErrors(prev => ({ ...prev, [name]: undefined }));
-    }
-  };
-
-  const handleImageChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    if (e.target.files && e.target.files[0]) {
-      const file = e.target.files[0];
-      const reader = new FileReader();
-      
-      reader.onloadend = () => {
-        setImagePreview(reader.result as string);
-        // In a real app, you would upload the image to a server and get a URL back
-        // For now, we'll just store the file object
-        setProfile(prev => ({ ...prev, profileImage: reader.result as string }));
-      };
-      
-      reader.readAsDataURL(file);
-    }
-  };
-
-  const handleSubmit = async (e: React.FormEvent) => {
+  const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    
-    if (!validateForm()) {
-      // Scroll to the first error
-      const firstErrorField = Object.keys(errors)[0] as keyof UserProfile;
-      const element = document.querySelector(`[name="${firstErrorField}"]`);
-      if (element) {
-        element.scrollIntoView({ behavior: 'smooth', block: 'center' });
-      }
-      return;
-    }
-    
-    try {
-      setIsSaving(true);
-      setSaveStatus(null);
-      
-      // Simulate API call
-      await new Promise(resolve => setTimeout(resolve, 1500));
-      
-      // Success message
-      setSaveStatus({
-        type: 'success',
-        message: 'Profile updated successfully!'
-      });
-      
-      // Clear success message after a delay
-      setTimeout(() => {
-        setSaveStatus(null);
-      }, 5000);
-    } catch (error) {
-      console.error('Error updating profile:', error);
-      setSaveStatus({
-        type: 'error',
-        message: 'Failed to update profile. Please try again.'
-      });
-    } finally {
-      setIsSaving(false);
+    if (validate()) {
+      onUpdate(formData);
     }
   };
 
-  if (isLoading) {
-    return (
-      <div className="flex justify-center items-center min-h-screen">
-        <svg className="animate-spin h-10 w-10 text-primary" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
-          <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
-          <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
-        </svg>
-      </div>
-    );
-  }
+  const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>) => {
+    const { name, value } = e.target;
+    setFormData(prev => ({ ...prev, [name]: value }));
+    if (errors[name]) {
+      setErrors(prev => ({ ...prev, [name]: '' }));
+    }
+  };
 
   return (
-    <div className="container mx-auto px-4 py-8">
-      <div className="max-w-4xl mx-auto bg-white rounded-lg shadow-md overflow-hidden">
-        <div className="px-6 py-4 bg-gray-50 border-b border-gray-200">
-          <h1 className="text-2xl font-bold text-gray-900">My Profile</h1>
+    <HoverCard className="bg-white rounded-2xl p-8 shadow-lg border border-gray-100">
+      <form onSubmit={handleSubmit} className="space-y-6">
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-2">
+              First Name *
+            </label>
+            <input
+              type="text"
+              name="firstName"
+              value={formData.firstName}
+              onChange={handleChange}
+              className={`w-full px-4 py-3 border rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500 transition-colors ${
+                errors.firstName ? 'border-red-500' : 'border-gray-200'
+              }`}
+              placeholder="Enter your first name"
+            />
+            {errors.firstName && <p className="text-red-500 text-sm mt-1">{errors.firstName}</p>}
+          </div>
+
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-2">
+              Last Name *
+            </label>
+            <input
+              type="text"
+              name="lastName"
+              value={formData.lastName}
+              onChange={handleChange}
+              className={`w-full px-4 py-3 border rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500 transition-colors ${
+                errors.lastName ? 'border-red-500' : 'border-gray-200'
+              }`}
+              placeholder="Enter your last name"
+            />
+            {errors.lastName && <p className="text-red-500 text-sm mt-1">{errors.lastName}</p>}
+          </div>
+
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-2">
+              Phone Number
+            </label>
+            <input
+              type="tel"
+              name="phone"
+              value={formData.phone}
+              onChange={handleChange}
+              className={`w-full px-4 py-3 border rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500 transition-colors ${
+                errors.phone ? 'border-red-500' : 'border-gray-200'
+              }`}
+              placeholder="Enter your phone number"
+            />
+            {errors.phone && <p className="text-red-500 text-sm mt-1">{errors.phone}</p>}
+          </div>
+
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-2">
+              Date of Birth
+            </label>
+            <input
+              type="date"
+              name="dateOfBirth"
+              value={formData.dateOfBirth}
+              onChange={handleChange}
+              className="w-full px-4 py-3 border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500 transition-colors"
+            />
+          </div>
+
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-2">
+              Gender
+            </label>
+            <select
+              name="gender"
+              value={formData.gender}
+              onChange={handleChange}
+              className="w-full px-4 py-3 border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500 transition-colors"
+            >
+              <option value="">Select gender</option>
+              <option value="male">Male</option>
+              <option value="female">Female</option>
+              <option value="other">Other</option>
+              <option value="prefer_not_to_say">Prefer not to say</option>
+            </select>
+          </div>
         </div>
-        
-        {saveStatus && (
-          <div className={`p-4 ${saveStatus.type === 'success' ? 'bg-green-100 text-green-700' : 'bg-red-100 text-red-700'}`}>
-            {saveStatus.message}
-          </div>
-        )}
-        
-        <form onSubmit={handleSubmit} className="p-6">
-          <div className="space-y-6">
-            {/* Profile Image Section */}
-            <div className="flex flex-col md:flex-row items-center space-y-4 md:space-y-0 md:space-x-6">
-              <div className="w-32 h-32 relative">
-                {imagePreview ? (
-                  <img 
-                    src={imagePreview} 
-                    alt="Profile" 
-                    className="w-32 h-32 rounded-full object-cover border-4 border-gray-200" 
-                  />
-                ) : (
-                  <div className="w-32 h-32 rounded-full bg-gray-200 flex items-center justify-center text-gray-400">
-                    <svg className="h-16 w-16" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
-                    </svg>
-                  </div>
-                )}
-                
-                <label htmlFor="profileImage" className="absolute bottom-0 right-0 bg-primary text-white rounded-full p-2 cursor-pointer hover:bg-primary-dark">
-                  <svg className="h-4 w-4" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 9a2 2 0 012-2h.93a2 2 0 001.664-.89l.812-1.22A2 2 0 0110.07 4h3.86a2 2 0 011.664.89l.812 1.22A2 2 0 0018.07 7H19a2 2 0 012 2v9a2 2 0 01-2 2H5a2 2 0 01-2-2V9z" />
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 13a3 3 0 11-6 0 3 3 0 016 0z" />
-                  </svg>
-                  <input 
-                    id="profileImage" 
-                    name="profileImage" 
-                    type="file" 
-                    className="sr-only" 
-                    accept="image/*"
-                    onChange={handleImageChange}
-                  />
-                </label>
-              </div>
-              
-              <div>
-                <h2 className="text-xl font-semibold">{profile.firstName} {profile.lastName}</h2>
-                <p className="text-gray-600">{profile.email}</p>
-                <p className="text-sm text-gray-500 mt-1">Click the camera icon to change your profile picture</p>
-              </div>
-            </div>
-            
-            {/* Personal Information Section */}
-            <div>
-              <h2 className="text-xl font-semibold text-gray-900 mb-4">Personal Information</h2>
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                <div>
-                  <label htmlFor="firstName" className="block text-sm font-medium text-gray-700 mb-1">
-                    First Name*
-                  </label>
-                  <input
-                    type="text"
-                    id="firstName"
-                    name="firstName"
-                    value={profile.firstName}
-                    onChange={handleInputChange}
-                    className={`w-full px-3 py-2 border ${errors.firstName ? 'border-red-500' : 'border-gray-300'} rounded-md shadow-sm focus:outline-none focus:ring-primary focus:border-primary`}
-                  />
-                  {errors.firstName && <p className="mt-1 text-sm text-red-600">{errors.firstName}</p>}
-                </div>
-                
-                <div>
-                  <label htmlFor="lastName" className="block text-sm font-medium text-gray-700 mb-1">
-                    Last Name*
-                  </label>
-                  <input
-                    type="text"
-                    id="lastName"
-                    name="lastName"
-                    value={profile.lastName}
-                    onChange={handleInputChange}
-                    className={`w-full px-3 py-2 border ${errors.lastName ? 'border-red-500' : 'border-gray-300'} rounded-md shadow-sm focus:outline-none focus:ring-primary focus:border-primary`}
-                  />
-                  {errors.lastName && <p className="mt-1 text-sm text-red-600">{errors.lastName}</p>}
-                </div>
-                
-                <div>
-                  <label htmlFor="email" className="block text-sm font-medium text-gray-700 mb-1">
-                    Email Address*
-                  </label>
-                  <input
-                    type="email"
-                    id="email"
-                    name="email"
-                    value={profile.email}
-                    onChange={handleInputChange}
-                    className={`w-full px-3 py-2 border ${errors.email ? 'border-red-500' : 'border-gray-300'} rounded-md shadow-sm focus:outline-none focus:ring-primary focus:border-primary`}
-                  />
-                  {errors.email && <p className="mt-1 text-sm text-red-600">{errors.email}</p>}
-                </div>
-                
-                <div>
-                  <label htmlFor="phone" className="block text-sm font-medium text-gray-700 mb-1">
-                    Phone Number
-                  </label>
-                  <input
-                    type="tel"
-                    id="phone"
-                    name="phone"
-                    value={profile.phone}
-                    onChange={handleInputChange}
-                    className={`w-full px-3 py-2 border ${errors.phone ? 'border-red-500' : 'border-gray-300'} rounded-md shadow-sm focus:outline-none focus:ring-primary focus:border-primary`}
-                  />
-                  {errors.phone && <p className="mt-1 text-sm text-red-600">{errors.phone}</p>}
-                </div>
-              </div>
-            </div>
-            
-            {/* Address Section */}
-            <div>
-              <h2 className="text-xl font-semibold text-gray-900 mb-4">Address Information</h2>
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                <div className="md:col-span-2">
-                  <label htmlFor="address" className="block text-sm font-medium text-gray-700 mb-1">
-                    Street Address
-                  </label>
-                  <input
-                    type="text"
-                    id="address"
-                    name="address"
-                    value={profile.address}
-                    onChange={handleInputChange}
-                    className="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-primary focus:border-primary"
-                  />
-                </div>
-                
-                <div>
-                  <label htmlFor="city" className="block text-sm font-medium text-gray-700 mb-1">
-                    City
-                  </label>
-                  <input
-                    type="text"
-                    id="city"
-                    name="city"
-                    value={profile.city}
-                    onChange={handleInputChange}
-                    className="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-primary focus:border-primary"
-                  />
-                </div>
-                
-                <div>
-                  <label htmlFor="state" className="block text-sm font-medium text-gray-700 mb-1">
-                    State/Province
-                  </label>
-                  <input
-                    type="text"
-                    id="state"
-                    name="state"
-                    value={profile.state}
-                    onChange={handleInputChange}
-                    className="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-primary focus:border-primary"
-                  />
-                </div>
-                
-                <div>
-                  <label htmlFor="zipCode" className="block text-sm font-medium text-gray-700 mb-1">
-                    ZIP/Postal Code
-                  </label>
-                  <input
-                    type="text"
-                    id="zipCode"
-                    name="zipCode"
-                    value={profile.zipCode}
-                    onChange={handleInputChange}
-                    className={`w-full px-3 py-2 border ${errors.zipCode ? 'border-red-500' : 'border-gray-300'} rounded-md shadow-sm focus:outline-none focus:ring-primary focus:border-primary`}
-                  />
-                  {errors.zipCode && <p className="mt-1 text-sm text-red-600">{errors.zipCode}</p>}
-                </div>
-                
-                <div>
-                  <label htmlFor="country" className="block text-sm font-medium text-gray-700 mb-1">
-                    Country
-                  </label>
-                  <select
-                    id="country"
-                    name="country"
-                    value={profile.country}
-                    onChange={handleInputChange}
-                    className="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-primary focus:border-primary"
-                  >
-                    <option value="">Select a country</option>
-                    <option value="United States">United States</option>
-                    <option value="Canada">Canada</option>
-                    <option value="United Kingdom">United Kingdom</option>
-                    <option value="Australia">Australia</option>
-                    <option value="Germany">Germany</option>
-                    <option value="France">France</option>
-                    <option value="Japan">Japan</option>
-                    <option value="China">China</option>
-                    <option value="India">India</option>
-                    <option value="Brazil">Brazil</option>
-                    {/* Add more countries as needed */}
-                  </select>
-                </div>
-              </div>
-            </div>
-            
-            {/* Notification Preferences Section */}
-            <div>
-              <h2 className="text-xl font-semibold text-gray-900 mb-4">Notification Preferences</h2>
-              <div className="space-y-4">
-                <div className="flex items-start">
-                  <div className="flex items-center h-5">
-                    <input
-                      id="emailNotifications"
-                      name="emailNotifications"
-                      type="checkbox"
-                      checked={profile.emailNotifications}
-                      onChange={handleInputChange}
-                      className="focus:ring-primary h-4 w-4 text-primary border-gray-300 rounded"
-                    />
-                  </div>
-                  <div className="ml-3 text-sm">
-                    <label htmlFor="emailNotifications" className="font-medium text-gray-700">Email Notifications</label>
-                    <p className="text-gray-500">Receive updates about your bookings, upcoming events, and promotions via email.</p>
-                  </div>
-                </div>
-                
-                <div className="flex items-start">
-                  <div className="flex items-center h-5">
-                    <input
-                      id="smsNotifications"
-                      name="smsNotifications"
-                      type="checkbox"
-                      checked={profile.smsNotifications}
-                      onChange={handleInputChange}
-                      className="focus:ring-primary h-4 w-4 text-primary border-gray-300 rounded"
-                    />
-                  </div>
-                  <div className="ml-3 text-sm">
-                    <label htmlFor="smsNotifications" className="font-medium text-gray-700">SMS Notifications</label>
-                    <p className="text-gray-500">Receive text message reminders about your upcoming events and bookings.</p>
-                  </div>
-                </div>
-              </div>
-            </div>
-            
-            {/* Account Actions Section */}
-            <div className="pt-4 border-t border-gray-200">
-              <h2 className="text-xl font-semibold text-gray-900 mb-4">Account Actions</h2>
-              <div className="space-y-4">
-                <button
-                  type="button"
-                  onClick={() => navigate('/dashboard/change-password')}
-                  className="text-primary hover:text-primary-dark font-medium"
-                >
-                  Change Password
-                </button>
-                
-                <button
-                  type="button"
-                  className="text-red-600 hover:text-red-800 font-medium"
-                  onClick={() => {
-                    if (window.confirm('Are you sure you want to delete your account? This action cannot be undone.')) {
-                      // Handle account deletion
-                      console.log('Account deletion requested');
-                    }
-                  }}
-                >
-                  Delete Account
-                </button>
-              </div>
-            </div>
-            
-            {/* Form Actions */}
-            <div className="flex justify-end space-x-3 pt-4 border-t border-gray-200">
-              <button
-                type="button"
-                onClick={() => navigate('/dashboard')}
-                className="px-4 py-2 border border-gray-300 rounded-md shadow-sm text-sm font-medium text-gray-700 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-primary"
-                disabled={isSaving}
-              >
-                Cancel
-              </button>
-              <button
-                type="submit"
-                className="px-4 py-2 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-primary hover:bg-primary-dark focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-primary"
-                disabled={isSaving}
-              >
-                {isSaving ? (
-                  <>
-                    <svg className="animate-spin -ml-1 mr-2 h-4 w-4 text-white inline-block" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
-                      <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
-                      <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
-                    </svg>
-                    Saving...
-                  </>
-                ) : (
-                  'Save Changes'
-                )}
-              </button>
-            </div>
-          </div>
-        </form>
+
+        <div>
+          <label className="block text-sm font-medium text-gray-700 mb-2">
+            Bio
+          </label>
+          <textarea
+            name="bio"
+            value={formData.bio}
+            onChange={handleChange}
+            rows={4}
+            className="w-full px-4 py-3 border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500 transition-colors resize-none"
+            placeholder="Tell us about yourself..."
+          />
+        </div>
+
+        <div className="flex justify-end">
+          <AnimatedButton
+            type="submit"
+            disabled={isLoading}
+            className="bg-blue-600 text-white px-8 py-3 rounded-xl font-medium hover:bg-blue-700 transition-colors flex items-center gap-2"
+          >
+            {isLoading ? (
+              <>
+                <FaSpinner className="animate-spin" />
+                Saving...
+              </>
+            ) : (
+              <>
+                <FaSave />
+                Save Changes
+              </>
+            )}
+          </AnimatedButton>
+        </div>
+      </form>
+    </HoverCard>
+  );
+};
+
+const AddressesTab: React.FC<{
+  addresses: Address[];
+  onAdd: (address: Omit<Address, 'id'>) => void;
+  onUpdate: (id: string, address: Partial<Address>) => void;
+  onDelete: (id: string) => void;
+  isLoading: boolean;
+}> = ({ addresses, onAdd, onUpdate, onDelete, isLoading }) => {
+  const [showAddForm, setShowAddForm] = useState(false);
+  const [editingId, setEditingId] = useState<string | null>(null);
+  const [formData, setFormData] = useState({
+    label: '',
+    street: '',
+    city: '',
+    state: '',
+    postalCode: '',
+    country: '',
+    isDefault: false,
+  });
+
+  const resetForm = () => {
+    setFormData({
+      label: '',
+      street: '',
+      city: '',
+      state: '',
+      postalCode: '',
+      country: '',
+      isDefault: false,
+    });
+    setShowAddForm(false);
+    setEditingId(null);
+  };
+
+  const handleSubmit = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (editingId) {
+      onUpdate(editingId, formData);
+    } else {
+      onAdd(formData);
+    }
+    resetForm();
+  };
+
+  const startEdit = (address: Address) => {
+    setFormData({
+      label: address.label,
+      street: address.street,
+      city: address.city,
+      state: address.state,
+      postalCode: address.postalCode,
+      country: address.country,
+      isDefault: address.isDefault,
+    });
+    setEditingId(address.id || '');
+    setShowAddForm(true);
+  };
+
+  return (
+    <div className="space-y-6">
+      {/* Add Address Button */}
+      <div className="flex justify-between items-center">
+        <h3 className="text-xl font-semibold text-gray-900">Addresses</h3>
+        <AnimatedButton
+          onClick={() => setShowAddForm(true)}
+          className="bg-blue-600 text-white px-4 py-2 rounded-xl flex items-center gap-2 hover:bg-blue-700 transition-colors"
+        >
+          <FaPlus />
+          Add Address
+        </AnimatedButton>
       </div>
+
+      {/* Address List */}
+      <div className="grid gap-4">
+        {addresses.map((address, index) => (
+          <HoverCard key={address.id || index} className="bg-white p-6 rounded-2xl border border-gray-200">
+            <div className="flex justify-between items-start">
+              <div className="flex-1">
+                <div className="flex items-center gap-2 mb-2">
+                  <h4 className="font-semibold text-gray-900">{address.label}</h4>
+                  {address.isDefault && (
+                    <span className="px-2 py-1 bg-blue-100 text-blue-800 text-xs rounded-full">
+                      Default
+                    </span>
+                  )}
+                </div>
+                <p className="text-gray-600">
+                  {address.street}<br />
+                  {address.city}, {address.state} {address.postalCode}<br />
+                  {address.country}
+                </p>
+              </div>
+              <div className="flex gap-2">
+                <button
+                  onClick={() => startEdit(address)}
+                  className="p-2 text-blue-600 hover:bg-blue-50 rounded-lg transition-colors"
+                >
+                  <FaEdit />
+                </button>
+                <button
+                  onClick={() => onDelete(address.id || '')}
+                  className="p-2 text-red-600 hover:bg-red-50 rounded-lg transition-colors"
+                  disabled={isLoading}
+                >
+                  <FaTrash />
+                </button>
+              </div>
+            </div>
+          </HoverCard>
+        ))}
+      </div>
+
+      {/* Add/Edit Address Form */}
+      <AnimatePresence>
+        {showAddForm && (
+          <motion.div
+            initial={{ opacity: 0, height: 0 }}
+            animate={{ opacity: 1, height: 'auto' }}
+            exit={{ opacity: 0, height: 0 }}
+            className="overflow-hidden"
+          >
+            <HoverCard className="bg-white p-6 rounded-2xl border border-gray-200">
+              <h4 className="text-lg font-semibold mb-4">
+                {editingId ? 'Edit Address' : 'Add New Address'}
+              </h4>
+              <form onSubmit={handleSubmit} className="space-y-4">
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">
+                      Label *
+                    </label>
+                    <input
+                      type="text"
+                      value={formData.label}
+                      onChange={(e) => setFormData(prev => ({ ...prev, label: e.target.value }))}
+                      className="w-full px-3 py-2 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                      placeholder="e.g., Home, Office"
+                      required
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">
+                      Country *
+                    </label>
+                    <input
+                      type="text"
+                      value={formData.country}
+                      onChange={(e) => setFormData(prev => ({ ...prev, country: e.target.value }))}
+                      className="w-full px-3 py-2 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                      placeholder="Country"
+                      required
+                    />
+                  </div>
+                </div>
+
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">
+                    Street Address *
+                  </label>
+                  <input
+                    type="text"
+                    value={formData.street}
+                    onChange={(e) => setFormData(prev => ({ ...prev, street: e.target.value }))}
+                    className="w-full px-3 py-2 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                    placeholder="Street address"
+                    required
+                  />
+                </div>
+
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">
+                      City *
+                    </label>
+                    <input
+                      type="text"
+                      value={formData.city}
+                      onChange={(e) => setFormData(prev => ({ ...prev, city: e.target.value }))}
+                      className="w-full px-3 py-2 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                      placeholder="City"
+                      required
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">
+                      State *
+                    </label>
+                    <input
+                      type="text"
+                      value={formData.state}
+                      onChange={(e) => setFormData(prev => ({ ...prev, state: e.target.value }))}
+                      className="w-full px-3 py-2 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                      placeholder="State"
+                      required
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">
+                      Postal Code *
+                    </label>
+                    <input
+                      type="text"
+                      value={formData.postalCode}
+                      onChange={(e) => setFormData(prev => ({ ...prev, postalCode: e.target.value }))}
+                      className="w-full px-3 py-2 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                      placeholder="Postal code"
+                      required
+                    />
+                  </div>
+                </div>
+
+                <div className="flex items-center">
+                  <input
+                    type="checkbox"
+                    id="isDefault"
+                    checked={formData.isDefault}
+                    onChange={(e) => setFormData(prev => ({ ...prev, isDefault: e.target.checked }))}
+                    className="h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300 rounded"
+                  />
+                  <label htmlFor="isDefault" className="ml-2 text-sm text-gray-700">
+                    Set as default address
+                  </label>
+                </div>
+
+                <div className="flex justify-end gap-3">
+                  <button
+                    type="button"
+                    onClick={resetForm}
+                    className="px-4 py-2 text-gray-600 border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors"
+                  >
+                    Cancel
+                  </button>
+                  <AnimatedButton
+                    type="submit"
+                    disabled={isLoading}
+                    className="bg-blue-600 text-white px-6 py-2 rounded-lg hover:bg-blue-700 transition-colors flex items-center gap-2"
+                  >
+                    {isLoading ? (
+                      <>
+                        <FaSpinner className="animate-spin" />
+                        Saving...
+                      </>
+                    ) : (
+                      <>
+                        <FaSave />
+                        {editingId ? 'Update' : 'Add'} Address
+                      </>
+                    )}
+                  </AnimatedButton>
+                </div>
+              </form>
+            </HoverCard>
+          </motion.div>
+        )}
+      </AnimatePresence>
     </div>
+  );
+};
+
+// Main ProfilePage Component
+const ProfilePage: React.FC = () => {
+  const navigate = useNavigate();
+  const dispatch = useDispatch();
+
+  const userProfile = useSelector(selectUserProfile);
+  const isLoading = useSelector(selectIsProfileLoading);
+  const error = useSelector(selectProfileError);
+  const user = useSelector(selectUser);
+
+  const [activeTab, setActiveTab] = useState('personal');
+
+  // Load profile on component mount
+  useEffect(() => {
+    if (!userProfile) {
+      dispatch(getFullProfile() as any);
+    }
+  }, [dispatch, userProfile]);
+
+  // Profile update handlers
+  const handleProfileUpdate = useCallback((data: UpdateProfileData) => {
+    dispatch(updateProfile(data) as any);
+  }, [dispatch]);
+
+  const handleAvatarUpload = useCallback((file: File) => {
+    const avatarData: AvatarUploadData = { file };
+    dispatch(uploadAvatar(avatarData) as any);
+  }, [dispatch]);
+
+  const handleAvatarRemove = useCallback(() => {
+    dispatch(removeAvatar() as any);
+  }, [dispatch]);
+
+  const handleAddAddress = useCallback((address: Omit<Address, 'id'>) => {
+    dispatch(addAddress(address) as any);
+  }, [dispatch]);
+
+  const handleUpdateAddress = useCallback((addressId: string, address: Partial<Address>) => {
+    dispatch(updateAddress({ addressId, address }) as any);
+  }, [dispatch]);
+
+  const handleDeleteAddress = useCallback((addressId: string) => {
+    if (window.confirm('Are you sure you want to delete this address?')) {
+      dispatch(deleteAddress(addressId) as any);
+    }
+  }, [dispatch]);
+
+  // Error handling
+  useEffect(() => {
+    if (error) {
+      toast.error(error);
+    }
+  }, [error]);
+
+  const tabs = [
+    { id: 'personal', label: 'Personal Info', icon: <FaUser /> },
+    { id: 'addresses', label: 'Addresses', icon: <FaMapMarkerAlt /> },
+    { id: 'security', label: 'Security', icon: <FaShieldAlt /> },
+    { id: 'preferences', label: 'Preferences', icon: <FaCog /> },
+  ];
+
+  return (
+    <PageTransition>
+      <div className="min-h-screen bg-gray-50 py-8">
+        <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8">
+          <StaggerContainer staggerDelay={0.1}>
+            {/* Profile Header */}
+            <FadeIn delay={0.1}>
+              <ProfileHeader
+                userProfile={userProfile}
+                onAvatarUpload={handleAvatarUpload}
+                onAvatarRemove={handleAvatarRemove}
+                isLoading={isLoading}
+              />
+            </FadeIn>
+
+            {/* Navigation Tabs */}
+            <SlideIn direction="up" delay={0.2}>
+              <div className="mt-8 bg-white rounded-2xl p-6 shadow-lg border border-gray-100">
+                <div className="flex flex-wrap gap-4">
+                  {tabs.map((tab) => (
+                    <TabButton
+                      key={tab.id}
+                      icon={tab.icon}
+                      label={tab.label}
+                      isActive={activeTab === tab.id}
+                      onClick={() => setActiveTab(tab.id)}
+                    />
+                  ))}
+                </div>
+              </div>
+            </SlideIn>
+
+            {/* Tab Content */}
+            <SlideIn direction="up" delay={0.3}>
+              <div className="mt-8">
+                <AnimatePresence mode="wait">
+                  {activeTab === 'personal' && (
+                    <motion.div
+                      key="personal"
+                      initial={{ opacity: 0, y: 20 }}
+                      animate={{ opacity: 1, y: 0 }}
+                      exit={{ opacity: 0, y: -20 }}
+                      transition={{ duration: 0.3 }}
+                    >
+                      <PersonalInfoTab
+                        userProfile={userProfile}
+                        onUpdate={handleProfileUpdate}
+                        isLoading={isLoading}
+                      />
+                    </motion.div>
+                  )}
+
+                  {activeTab === 'addresses' && (
+                    <motion.div
+                      key="addresses"
+                      initial={{ opacity: 0, y: 20 }}
+                      animate={{ opacity: 1, y: 0 }}
+                      exit={{ opacity: 0, y: -20 }}
+                      transition={{ duration: 0.3 }}
+                    >
+                      <AddressesTab
+                        addresses={userProfile?.addresses || []}
+                        onAdd={handleAddAddress}
+                        onUpdate={handleUpdateAddress}
+                        onDelete={handleDeleteAddress}
+                        isLoading={isLoading}
+                      />
+                    </motion.div>
+                  )}
+
+                  {activeTab === 'security' && (
+                    <motion.div
+                      key="security"
+                      initial={{ opacity: 0, y: 20 }}
+                      animate={{ opacity: 1, y: 0 }}
+                      exit={{ opacity: 0, y: -20 }}
+                      transition={{ duration: 0.3 }}
+                    >
+                      <HoverCard className="bg-white rounded-2xl p-8 shadow-lg border border-gray-100">
+                        <h3 className="text-xl font-semibold text-gray-900 mb-6">Security Settings</h3>
+                        <div className="space-y-6">
+                          <div className="flex items-center justify-between p-4 bg-gray-50 rounded-xl">
+                            <div className="flex items-center gap-3">
+                              <FaLock className="text-gray-600" />
+                              <div>
+                                <h4 className="font-medium">Change Password</h4>
+                                <p className="text-sm text-gray-600">Update your account password</p>
+                              </div>
+                            </div>
+                            <AnimatedButton
+                              onClick={() => navigate('/dashboard/change-password')}
+                              className="bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700 transition-colors"
+                            >
+                              Change
+                            </AnimatedButton>
+                          </div>
+
+                          <div className="flex items-center justify-between p-4 bg-gray-50 rounded-xl">
+                            <div className="flex items-center gap-3">
+                              <FaShieldAlt className="text-gray-600" />
+                              <div>
+                                <h4 className="font-medium">Two-Factor Authentication</h4>
+                                <p className="text-sm text-gray-600">Add an extra layer of security</p>
+                              </div>
+                            </div>
+                            <AnimatedButton className="bg-gray-600 text-white px-4 py-2 rounded-lg hover:bg-gray-700 transition-colors">
+                              Enable
+                            </AnimatedButton>
+                          </div>
+                        </div>
+                      </HoverCard>
+                    </motion.div>
+                  )}
+
+                  {activeTab === 'preferences' && (
+                    <motion.div
+                      key="preferences"
+                      initial={{ opacity: 0, y: 20 }}
+                      animate={{ opacity: 1, y: 0 }}
+                      exit={{ opacity: 0, y: -20 }}
+                      transition={{ duration: 0.3 }}
+                    >
+                      <HoverCard className="bg-white rounded-2xl p-8 shadow-lg border border-gray-100">
+                        <h3 className="text-xl font-semibold text-gray-900 mb-6">Preferences</h3>
+                        <div className="space-y-6">
+                          <div>
+                            <h4 className="font-medium mb-4">Notifications</h4>
+                            <div className="space-y-3">
+                              <div className="flex items-center justify-between">
+                                <span>Email notifications</span>
+                                <input type="checkbox" className="h-4 w-4 text-blue-600 rounded" defaultChecked />
+                              </div>
+                              <div className="flex items-center justify-between">
+                                <span>SMS notifications</span>
+                                <input type="checkbox" className="h-4 w-4 text-blue-600 rounded" />
+                              </div>
+                              <div className="flex items-center justify-between">
+                                <span>Marketing emails</span>
+                                <input type="checkbox" className="h-4 w-4 text-blue-600 rounded" />
+                              </div>
+                            </div>
+                          </div>
+                        </div>
+                      </HoverCard>
+                    </motion.div>
+                  )}
+                </AnimatePresence>
+              </div>
+            </SlideIn>
+          </StaggerContainer>
+        </div>
+      </div>
+    </PageTransition>
   );
 };
 

@@ -31,7 +31,7 @@ interface EventModerationProps {
 interface EventFilters {
   status: 'all' | 'pending' | 'approved' | 'rejected' | 'published' | 'draft';
   category: string;
-  venueType: 'all' | 'indoor' | 'outdoor' | 'hybrid';
+  venueType: 'all' | 'Indoor' | 'Outdoor' | 'hybrid';
   dateRange: 'all' | 'today' | 'week' | 'month' | 'upcoming';
   featured: 'all' | 'featured' | 'not_featured';
   search: string;
@@ -91,16 +91,30 @@ const EventModeration: React.FC<EventModerationProps> = ({
           description: 'Join us for an amazing day of fun activities, games, and entertainment designed specifically for children aged 4-12. Features include face painting, bouncy castles, magic shows, and interactive workshops.',
           category: 'Family & Kids',
           type: 'Event',
-          venueType: 'outdoor',
+          venueType: 'Outdoor',
           images: ['https://placehold.co/400x300?text=Summer+Fun+Day&font=roboto'],
           location: {
             address: 'Dubai Marina Beach',
             city: 'Dubai',
             coordinates: { lat: 25.0772, lng: 55.1413 }
           },
+          ageRange: [4, 12] as [number, number],
+          seoMeta: {
+            title: 'Kids Summer Fun Day 2025 | Best Family Event in Dubai',
+            description: 'Join the best summer fun day event for kids in Dubai Marina Beach',
+            keywords: ['kids', 'summer', 'fun', 'dubai', 'family']
+          },
+          vendorId: {
+            _id: 'vendor1',
+            firstName: 'John',
+            lastName: 'Doe',
+            email: 'john.doe@example.com'
+          },
           dateSchedule: [{
-            startDate: '2025-09-06T10:22:14.610Z',
-            endDate: '2025-09-06T16:22:14.610Z',
+            _id: 'schedule1',
+            date: '2025-09-06',
+            startDateTime: '2025-09-06T10:22:14.610Z',
+            endDateTime: '2025-09-06T16:22:14.610Z',
             totalSeats: 150,
             availableSeats: 150,
             soldSeats: 0,
@@ -109,33 +123,51 @@ const EventModeration: React.FC<EventModerationProps> = ({
           }],
           price: 75,
           currency: 'AED',
-          ageRange: [4, 12],
           tags: ['kids', 'outdoor', 'family', 'summer', 'activities'],
-          vendorId: '68b2867eedc0af7c0c8fdf73',
           isApproved: true,
           isDeleted: false,
           isFeatured: true,
           status: 'published',
           viewsCount: 6,
           createdAt: '2025-08-30T10:22:14.711Z',
-          updatedAt: '2025-09-03T12:56:56.514Z'
+          updatedAt: '2025-09-03T12:56:56.514Z',
+          faqs: [{
+            _id: 'faq1',
+            question: 'What age groups is this event suitable for?',
+            answer: 'This event is designed for children aged 4-12 years old.'
+          }],
+          affiliateCode: 'SUMMER2025'
         },
         {
           _id: '68b2d0d63293690deba680a3',
           title: 'Tech Conference Dubai 2025',
           description: 'Leading technology conference featuring industry experts, workshops, and networking opportunities.',
           category: 'Technology',
-          type: 'Conference',
-          venueType: 'indoor',
+          type: 'Event',
+          venueType: 'Indoor',
           images: ['https://placehold.co/400x300?text=Tech+Conference&font=roboto'],
           location: {
             address: 'Dubai World Trade Centre',
             city: 'Dubai',
             coordinates: { lat: 25.2319, lng: 55.3244 }
           },
+          ageRange: [18, 65] as [number, number],
+          seoMeta: {
+            title: 'Tech Conference Dubai 2025 | Leading Technology Event',
+            description: 'Join the premier tech conference in Dubai featuring industry experts',
+            keywords: ['tech', 'conference', 'dubai', 'technology', 'networking']
+          },
+          vendorId: {
+            _id: 'vendor2',
+            firstName: 'Sarah',
+            lastName: 'Johnson',
+            email: 'sarah.johnson@techconf.com'
+          },
           dateSchedule: [{
-            startDate: '2025-10-15T09:00:00.000Z',
-            endDate: '2025-10-17T18:00:00.000Z',
+            _id: 'schedule2',
+            date: '2025-10-15',
+            startDateTime: '2025-10-15T09:00:00.000Z',
+            endDateTime: '2025-10-17T18:00:00.000Z',
             totalSeats: 500,
             availableSeats: 450,
             soldSeats: 50,
@@ -144,33 +176,51 @@ const EventModeration: React.FC<EventModerationProps> = ({
           }],
           price: 299,
           currency: 'AED',
-          ageRange: [18, 65],
           tags: ['technology', 'conference', 'networking', 'business'],
-          vendorId: '68b2867eedc0af7c0c8fdf74',
           isApproved: false,
           isDeleted: false,
           isFeatured: false,
           status: 'pending',
           viewsCount: 12,
           createdAt: '2025-09-01T08:15:30.000Z',
-          updatedAt: '2025-09-01T08:15:30.000Z'
+          updatedAt: '2025-09-01T08:15:30.000Z',
+          faqs: [{
+            _id: 'faq2',
+            question: 'What topics will be covered at the conference?',
+            answer: 'The conference will cover AI, blockchain, cloud computing, and emerging technologies.'
+          }],
+          affiliateCode: 'TECH2025'
         },
         {
           _id: '68b2d0d63293690deba680a4',
           title: 'Art Exhibition - Modern Masters',
           description: 'Contemporary art exhibition featuring works from emerging and established artists.',
           category: 'Arts & Culture',
-          type: 'Exhibition',
-          venueType: 'indoor',
+          type: 'Event',
+          venueType: 'Indoor',
           images: ['https://placehold.co/400x300?text=Art+Exhibition&font=roboto'],
           location: {
             address: 'Dubai Design District',
             city: 'Dubai',
             coordinates: { lat: 25.1901, lng: 55.2441 }
           },
+          ageRange: [12, 80] as [number, number],
+          seoMeta: {
+            title: 'Art Exhibition - Modern Masters | Dubai Design District',
+            description: 'Contemporary art exhibition featuring emerging and established artists',
+            keywords: ['art', 'exhibition', 'dubai', 'contemporary', 'culture']
+          },
+          vendorId: {
+            _id: 'vendor3',
+            firstName: 'Michael',
+            lastName: 'Chen',
+            email: 'michael.chen@artgallery.com'
+          },
           dateSchedule: [{
-            startDate: '2025-09-20T10:00:00.000Z',
-            endDate: '2025-10-20T20:00:00.000Z',
+            _id: 'schedule3',
+            date: '2025-09-20',
+            startDateTime: '2025-09-20T10:00:00.000Z',
+            endDateTime: '2025-10-20T20:00:00.000Z',
             totalSeats: 200,
             availableSeats: 200,
             soldSeats: 0,
@@ -179,16 +229,20 @@ const EventModeration: React.FC<EventModerationProps> = ({
           }],
           price: 25,
           currency: 'AED',
-          ageRange: [12, 80],
           tags: ['art', 'exhibition', 'culture', 'design'],
-          vendorId: '68b2867eedc0af7c0c8fdf75',
           isApproved: false,
           isDeleted: false,
           isFeatured: false,
           status: 'pending',
           viewsCount: 3,
           createdAt: '2025-09-02T14:30:00.000Z',
-          updatedAt: '2025-09-02T14:30:00.000Z'
+          updatedAt: '2025-09-02T14:30:00.000Z',
+          faqs: [{
+            _id: 'faq3',
+            question: 'How long will the exhibition run?',
+            answer: 'The exhibition will be open for one month from September 20 to October 20.'
+          }],
+          affiliateCode: 'ART2025'
         }
       ];
       
@@ -322,13 +376,14 @@ const EventModeration: React.FC<EventModerationProps> = ({
     });
   };
 
-  const handleSelectAll = () => {
-    if (selectedEvents.size === filteredEvents.length) {
-      setSelectedEvents(new Set());
-    } else {
-      setSelectedEvents(new Set(filteredEvents.map(event => event._id)));
-    }
-  };
+  // Unused function - commented out to fix TypeScript error
+  // const handleSelectAll = () => {
+  //   if (selectedEvents.size === filteredEvents.length) {
+  //     setSelectedEvents(new Set());
+  //   } else {
+  //     setSelectedEvents(new Set(filteredEvents.map(event => event._id)));
+  //   }
+  // };
 
   const getStatusColor = (event: Event) => {
     if (!event.isApproved && event.status === 'pending') {
@@ -359,14 +414,7 @@ const EventModeration: React.FC<EventModerationProps> = ({
   const columns = [
     {
       key: 'select',
-      label: (
-        <input
-          type="checkbox"
-          checked={selectedEvents.size === filteredEvents.length && filteredEvents.length > 0}
-          onChange={handleSelectAll}
-          className="h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300 rounded"
-        />
-      ),
+      title: '',
       render: (event: Event) => (
         <input
           type="checkbox"
@@ -379,7 +427,7 @@ const EventModeration: React.FC<EventModerationProps> = ({
     },
     {
       key: 'event',
-      label: 'Event',
+      title: 'Event',
       sortable: true,
       render: (event: Event) => (
         <div className="flex items-center space-x-3">
@@ -406,7 +454,7 @@ const EventModeration: React.FC<EventModerationProps> = ({
     },
     {
       key: 'venue',
-      label: 'Venue & Date',
+      title: 'Venue & Date',
       render: (event: Event) => (
         <div className="text-sm">
           <div className="flex items-center space-x-1 text-gray-900">
@@ -416,7 +464,7 @@ const EventModeration: React.FC<EventModerationProps> = ({
           <div className="flex items-center space-x-1 text-gray-500 mt-1">
             <FaCalendarAlt className="text-gray-400" size={12} />
             <span>
-              {format(parseISO(event.dateSchedule[0].startDate), 'MMM dd, yyyy')}
+              {format(parseISO(event.dateSchedule[0].startDateTime), 'MMM dd, yyyy')}
             </span>
           </div>
           <div className="text-xs text-gray-400 capitalize mt-1">
@@ -427,7 +475,7 @@ const EventModeration: React.FC<EventModerationProps> = ({
     },
     {
       key: 'pricing',
-      label: 'Pricing & Capacity',
+      title: 'Pricing & Capacity',
       render: (event: Event) => (
         <div className="text-sm">
           <div className="flex items-center space-x-1 text-gray-900">
@@ -450,7 +498,7 @@ const EventModeration: React.FC<EventModerationProps> = ({
     },
     {
       key: 'status',
-      label: 'Status',
+      title: 'Status',
       sortable: true,
       render: (event: Event) => (
         <div className="space-y-2">
@@ -468,7 +516,7 @@ const EventModeration: React.FC<EventModerationProps> = ({
     },
     {
       key: 'metrics',
-      label: 'Engagement',
+      title: 'Engagement',
       render: (event: Event) => (
         <div className="text-sm space-y-1">
           <div className="flex items-center space-x-1 text-gray-600">
@@ -485,12 +533,14 @@ const EventModeration: React.FC<EventModerationProps> = ({
 
   const actions = [
     {
+      key: 'view',
       label: 'View Details',
       icon: <FaEye size={14} />,
       onClick: handleViewEvent,
       className: 'text-blue-600 hover:text-blue-800'
     },
     {
+      key: 'approve',
       label: 'Approve',
       icon: <FaCheck size={14} />,
       onClick: (event: Event) => handleModerationAction(moderationActions[0], event),
@@ -498,6 +548,7 @@ const EventModeration: React.FC<EventModerationProps> = ({
       condition: (event: Event) => !event.isApproved
     },
     {
+      key: 'reject',
       label: 'Reject',
       icon: <FaTimes size={14} />,
       onClick: (event: Event) => handleModerationAction(moderationActions[1], event),
@@ -505,6 +556,7 @@ const EventModeration: React.FC<EventModerationProps> = ({
       condition: (event: Event) => !event.isApproved || event.status !== 'rejected'
     },
     {
+      key: 'feature',
       label: 'Feature',
       icon: <FaStar size={14} />,
       onClick: (event: Event) => handleModerationAction(moderationActions[2], event),
@@ -701,14 +753,13 @@ const EventModeration: React.FC<EventModerationProps> = ({
           data={filteredEvents}
           columns={columns}
           actions={actions}
-          isLoading={isLoading}
+          loading={isLoading}
           pagination={{
-            ...pagination,
-            totalItems: filteredEvents.length
+            current: pagination.page,
+            pageSize: pagination.limit,
+            total: filteredEvents.length,
+            onChange: (page: number) => setPagination(prev => ({ ...prev, page }))
           }}
-          onPageChange={(page) => setPagination(prev => ({ ...prev, page }))}
-          emptyMessage="No events found matching your criteria"
-          compact={compact}
         />
       </div>
 
@@ -782,13 +833,13 @@ const EventModeration: React.FC<EventModerationProps> = ({
                   <div className="flex justify-between">
                     <dt className="text-sm text-gray-500">Start Date:</dt>
                     <dd className="text-sm font-medium text-gray-900">
-                      {format(parseISO(selectedEvent.dateSchedule[0].startDate), 'MMM dd, yyyy HH:mm')}
+                      {format(parseISO(selectedEvent.dateSchedule[0].startDateTime), 'MMM dd, yyyy HH:mm')}
                     </dd>
                   </div>
                   <div className="flex justify-between">
                     <dt className="text-sm text-gray-500">End Date:</dt>
                     <dd className="text-sm font-medium text-gray-900">
-                      {format(parseISO(selectedEvent.dateSchedule[0].endDate), 'MMM dd, yyyy HH:mm')}
+                      {format(parseISO(selectedEvent.dateSchedule[0].endDateTime), 'MMM dd, yyyy HH:mm')}
                     </dd>
                   </div>
                   <div className="flex justify-between">

@@ -2,7 +2,7 @@ import { Request, Response, NextFunction } from 'express';
 import { Affiliate, User, Order, Event, IAffiliate, AffiliateStatus } from '../models';
 import { AppError } from '../middleware';
 import { ApiResponse } from '../types';
-import crypto from 'crypto';
+import * as crypto from 'crypto';
 
 /**
  * Apply to become an affiliate

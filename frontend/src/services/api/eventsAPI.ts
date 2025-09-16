@@ -1,11 +1,14 @@
 import { ApiService } from '../api';
+import { extractEventData, extractEventsData, extractApiData, logApiResponse } from '../../utils/apiResponseHandler';
 
 const eventsAPI = {
   getAllEvents: async (params?: any) => {
     try {
       const response = await ApiService.get('/events', { params });
-      return response.data;
+      logApiResponse('GET /events', response);
+      return extractEventsData(response);
     } catch (error) {
+      logApiResponse('GET /events', null, error);
       throw error;
     }
   },
@@ -13,17 +16,25 @@ const eventsAPI = {
   getEventById: async (id: string) => {
     try {
       const response = await ApiService.get(`/events/${id}`);
-      return response.data;
+      logApiResponse(`GET /events/${id}`, response);
+      return extractEventData(response);
     } catch (error) {
+      logApiResponse(`GET /events/${id}`, null, error);
       throw error;
     }
   },
 
   getFeaturedEvents: async () => {
     try {
-      const response = await ApiService.get('/events', { params: { featured: 'true', limit: 6 } });
-      return response.data;
+      const response = await ApiService.get('/events', { params: { limit: 50 } });
+      logApiResponse('GET /events (featured)', response);
+      
+      const events = extractEventsData(response);
+      // Filter featured events client-side since API returns all events with isFeatured field
+      const featuredEvents = events.filter((event: any) => event.isFeatured === true).slice(0, 6);
+      return { events: featuredEvents };
     } catch (error) {
+      logApiResponse('GET /events (featured)', null, error);
       throw error;
     }
   },
@@ -67,8 +78,10 @@ const eventsAPI = {
   getEventCategories: async () => {
     try {
       const response = await ApiService.get('/events/categories');
-      return response.data;
+      logApiResponse('GET /events/categories', response);
+      return extractApiData(response);
     } catch (error) {
+      logApiResponse('GET /events/categories', null, error);
       throw error;
     }
   },

@@ -309,12 +309,11 @@ notificationSchema.index({ type: 1 });
 notificationSchema.index({ priority: 1, scheduledFor: 1 });
 notificationSchema.index({ isRead: 1, userId: 1 });
 notificationSchema.index({ scheduledFor: 1, 'delivery.status': 1 });
-notificationSchema.index({ expiresAt: 1 });
 notificationSchema.index({ relatedId: 1, relatedType: 1 });
 notificationSchema.index({ campaignId: 1 });
 notificationSchema.index({ groupId: 1 });
 
-// TTL index for expired notifications
+// TTL index for expired notifications (combines both index and TTL)
 notificationSchema.index({ expiresAt: 1 }, { expireAfterSeconds: 0 });
 
 // Virtual for unread status

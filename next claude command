@@ -1348,3 +1348,57 @@ employee data : {
      - Fix image loading failures and 404 errors
      - Provide better user experience with proper error handling
      - Reduce unnecessary API calls and external dependencies
+
+
+     Now I understand the issue! Looking at the logs and the code, I can see what's happening:
+
+  Root Cause Analysis
+
+  1. Backend logs show:
+    - GET /api/events?limit=12 and GET /api/events?limit=50 are returning 304 (Not Modified) status codes
+    - This means the API calls are successful but returning cached/empty responses
+  2. Frontend behavior:
+    - In HomePage.tsx:574-577, the frontend fetches events using eventsAPI.getAllEvents({ limit: 12 })
+    - In EventGridSection.tsx:65-67, it sorts events by viewsCount to show "Most Popular"
+    - The events array is empty, so no events are displayed in the "Most Popular Experiences" section
+  3. Data Flow Issue:
+    - The events API is working (304 responses indicate successful caching)
+    - But the actual events data is either:
+        - Empty in the database
+      - Not being returned properly from the backend
+      - Being filtered out somewhere in the process
+  4. Homepage Event Loading:
+    - Line 581: const events = eventsData?.data?.events || []; - This suggests the API response structure might be { data: { events: [] } }
+    - If eventsData.data.events is empty, then EventGridSection receives an empty array
+    - The section then shows "No events found" message instead of events
+
+●User approved Claude's plan:
+  ⎿ Plan to Fix "Most Popular Experiences" Section Not Showing Events
+
+    Root Cause: The events API is returning successful responses (304 Not Modified) but with empty event data, causing the "Most Popular Experiences" 
+    section to display no events.
+
+    Investigation & Fixes Needed:
+
+    1. Check Database & Events Controller:
+      - Verify events exist in the MongoDB database
+      - Check if events have proper viewsCount values for popularity sorting
+      - Ensure events controller is returning events in correct format
+    2. Fix API Response Structure:
+      - Check backend events controller to ensure it returns events in expected format: { data: { events: [...] } }
+      - Verify pagination and sorting are working properly
+      - Ensure viewsCount field exists and is populated for sorting
+    3. Add Debug Logging:
+      - Add console logging in frontend to see actual API response structure
+      - Log the events array length and content in EventGridSection
+      - Log backend response in events controller
+    4. Database Data Verification:
+      - Check if any events exist in the database
+      - Verify event documents have required fields like viewsCount, isFeatured
+      - Ensure events are not filtered out by status checks
+
+    Expected Outcome: The "Most Popular Experiences" section will display events sorted by popularity (viewsCount) instead of showing "No events found". 
+
+
+
+    npx tsc --noEmit

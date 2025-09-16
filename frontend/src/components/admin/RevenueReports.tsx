@@ -1,43 +1,35 @@
-import React, { useState, useEffect, useMemo } from 'react';
-import { useSelector, useDispatch } from 'react-redux';
-import { 
+import React, { useState, useMemo } from 'react';
+import {
   FaDollarSign,
   FaChartLine,
-  FaTrendingUp,
-  FaTrendingDown,
+  FaArrowUp,
   FaDownload,
-  FaFilter,
-  FaCalendarAlt,
   FaFileExport,
   FaCreditCard,
   FaReceipt,
   FaUsers,
   FaCalendarCheck,
-  FaPieChart,
-  FaArrowUp,
   FaArrowDown,
-  FaEquals,
-  FaEye
+  FaEquals
 } from 'react-icons/fa';
-import { 
-  LineChart, 
-  Line, 
-  AreaChart, 
+import {
+  LineChart,
+  Line,
+  AreaChart,
   Area,
-  BarChart, 
+  BarChart,
   Bar,
   PieChart,
   Pie,
   Cell,
-  XAxis, 
-  YAxis, 
-  CartesianGrid, 
-  Tooltip, 
-  Legend, 
-  ResponsiveContainer 
+  XAxis,
+  YAxis,
+  CartesianGrid,
+  Tooltip,
+  Legend,
+  ResponsiveContainer
 } from 'recharts';
-import { format, startOfMonth, endOfMonth, subMonths, subDays, parseISO } from 'date-fns';
-import { RootState, AppDispatch } from '../../store';
+import { format, startOfMonth, endOfMonth, subMonths, subDays } from 'date-fns';
 import LoadingSpinner from '../common/LoadingSpinner';
 import Modal from '../interactive/Modal';
 
@@ -75,17 +67,13 @@ interface RevenueMetrics {
 }
 
 const RevenueReports: React.FC<RevenueReportsProps> = ({
-  className = '',
-  compact = false
+  className = ''
 }) => {
-  const dispatch = useDispatch<AppDispatch>();
-  
   const [selectedDateRange, setSelectedDateRange] = useState<string>('month');
   const [chartType, setChartType] = useState<'line' | 'area' | 'bar'>('area');
   const [showExportModal, setShowExportModal] = useState(false);
   const [exportFormat, setExportFormat] = useState<'csv' | 'pdf' | 'excel'>('csv');
   const [isExporting, setIsExporting] = useState(false);
-  const [isLoading, setIsLoading] = useState(false);
   const [showDetailModal, setShowDetailModal] = useState(false);
   const [selectedMetric, setSelectedMetric] = useState<string | null>(null);
 
@@ -227,7 +215,7 @@ const RevenueReports: React.FC<RevenueReportsProps> = ({
     setShowDetailModal(true);
   };
 
-  const COLORS = ['#3B82F6', '#10B981', '#8B5CF6', '#F59E0B'];
+  // const COLORS = ['#3B82F6', '#10B981', '#8B5CF6', '#F59E0B'];
 
   return (
     <div className={`space-y-6 ${className}`}>
@@ -351,7 +339,7 @@ const RevenueReports: React.FC<RevenueReportsProps> = ({
                 {formatCurrency(metrics.averageOrderValue)}
               </p>
               <div className="flex items-center space-x-1 mt-2 text-sm text-purple-600">
-                <FaTrendingUp size={12} />
+                <FaArrowUp size={12} />
                 <span>Above target</span>
               </div>
             </div>

@@ -206,7 +206,7 @@ export const fetchBookings = createAsyncThunk(
     sortOrder?: string;
   } = {}, { rejectWithValue }) => {
     try {
-      const response = await bookingAPI.getBookings(params);
+      const response = await bookingAPI.getUserBookings(params);
       return response;
     } catch (error: any) {
       const message = error.response?.data?.message || 'Failed to fetch bookings';
@@ -658,56 +658,90 @@ export const {
 
 export default bookingsSlice.reducer;
 
-// Selectors
-export const selectBookings = (state: { bookings: BookingsState }) => state.bookings.bookings;
-export const selectCurrentBooking = (state: { bookings: BookingsState }) => state.bookings.currentBooking;
-export const selectBookingStats = (state: { bookings: BookingsState }) => state.bookings.stats;
+// Selectors - Updated to use correct RootState interface pattern
+export const selectBookings = (state: { bookings: BookingsState }) => state.bookings?.bookings || [];
+export const selectCurrentBooking = (state: { bookings: BookingsState }) => state.bookings?.currentBooking || null;
+export const selectBookingStats = (state: { bookings: BookingsState }) => state.bookings?.stats || null;
 
-export const selectBookingFlow = (state: { bookings: BookingsState }) => state.bookings.bookingFlow;
-export const selectBookingStep = (state: { bookings: BookingsState }) => state.bookings.bookingFlow.step;
-export const selectBookingParticipants = (state: { bookings: BookingsState }) => state.bookings.bookingFlow.participants;
-export const selectCheckout = (state: { bookings: BookingsState }) => state.bookings.checkout;
+export const selectBookingFlow = (state: { bookings: BookingsState }) => state.bookings?.bookingFlow || {
+  step: 'details' as const,
+  eventId: null,
+  participants: [],
+  paymentMethod: null,
+  specialRequests: '',
+  couponCode: '',
+  agreedToTerms: false,
+};
+export const selectBookingStep = (state: { bookings: BookingsState }) => state.bookings?.bookingFlow?.step || 'details';
+export const selectBookingParticipants = (state: { bookings: BookingsState }) => state.bookings?.bookingFlow?.participants || [];
+export const selectCheckout = (state: { bookings: BookingsState }) => state.bookings?.checkout || {
+  isProcessing: false,
+  paymentIntent: null,
+  clientSecret: null,
+};
 
-export const selectBookingFilters = (state: { bookings: BookingsState }) => state.bookings.filters;
-export const selectBookingPagination = (state: { bookings: BookingsState }) => state.bookings.pagination;
+export const selectBookingFilters = (state: { bookings: BookingsState }) => state.bookings?.filters || {
+  sortBy: 'date' as const,
+  sortOrder: 'desc' as const,
+};
+export const selectBookingPagination = (state: { bookings: BookingsState }) => state.bookings?.pagination || {
+  page: 1,
+  limit: 10,
+  total: 0,
+  totalPages: 0,
+};
 
-export const selectIsBookingLoading = (state: { bookings: BookingsState }) => state.bookings.isLoading;
-export const selectIsCreatingBooking = (state: { bookings: BookingsState }) => state.bookings.isCreating;
-export const selectIsUpdatingBooking = (state: { bookings: BookingsState }) => state.bookings.isUpdating;
-export const selectIsCancellingBooking = (state: { bookings: BookingsState }) => state.bookings.isCancelling;
-export const selectIsRefundingBooking = (state: { bookings: BookingsState }) => state.bookings.isRefunding;
+export const selectIsBookingLoading = (state: { bookings: BookingsState }) => state.bookings?.isLoading || false;
+export const selectIsCreatingBooking = (state: { bookings: BookingsState }) => state.bookings?.isCreating || false;
+export const selectIsUpdatingBooking = (state: { bookings: BookingsState }) => state.bookings?.isUpdating || false;
+export const selectIsCancellingBooking = (state: { bookings: BookingsState }) => state.bookings?.isCancelling || false;
+export const selectIsRefundingBooking = (state: { bookings: BookingsState }) => state.bookings?.isRefunding || false;
 
-export const selectBookingError = (state: { bookings: BookingsState }) => state.bookings.error;
-export const selectBookingCreateError = (state: { bookings: BookingsState }) => state.bookings.createError;
-export const selectBookingUpdateError = (state: { bookings: BookingsState }) => state.bookings.updateError;
+export const selectBookingError = (state: { bookings: BookingsState }) => state.bookings?.error || null;
+export const selectBookingCreateError = (state: { bookings: BookingsState }) => state.bookings?.createError || null;
+export const selectBookingUpdateError = (state: { bookings: BookingsState }) => state.bookings?.updateError || null;
 
-// Helper selectors
+// Helper selectors - Updated to use correct RootState interface pattern
 export const selectBookingById = (id: string) => (state: { bookings: BookingsState }) => {
-  return state.bookings.bookings.find(booking => booking.id === id);
+  return state.bookings?.bookings?.find(booking => booking.id === id) || null;
 };
 
 export const selectUpcomingBookings = (state: { bookings: BookingsState }) => {
   const now = new Date();
-  return state.bookings.bookings.filter(booking => {
-    const eventDate = new Date(booking.event.startDate);
-    return eventDate > now && booking.status === 'confirmed';
+  const bookings = state.bookings?.bookings || [];
+  return bookings.filter(booking => {
+    try {
+      const eventDate = new Date(booking.event?.startDate || '');
+      return eventDate > now && booking.status === 'confirmed';
+    } catch {
+      return false;
+    }
   });
 };
 
 export const selectPastBookings = (state: { bookings: BookingsState }) => {
   const now = new Date();
-  return state.bookings.bookings.filter(booking => {
-    const eventDate = new Date(booking.event.endDate);
-    return eventDate < now;
+  const bookings = state.bookings?.bookings || [];
+  return bookings.filter(booking => {
+    try {
+      const eventDate = new Date(booking.event?.endDate || '');
+      return eventDate < now;
+    } catch {
+      return false;
+    }
   });
 };
 
 export const selectBookingsByStatus = (status: string) => (state: { bookings: BookingsState }) => {
-  return state.bookings.bookings.filter(booking => booking.status === status);
+  const bookings = state.bookings?.bookings || [];
+  return bookings.filter(booking => booking.status === status);
 };
 
 export const selectCanProceedToNextStep = (state: { bookings: BookingsState }) => {
-  const { step, eventId, participants, paymentMethod, agreedToTerms } = state.bookings.bookingFlow;
+  const bookingFlow = state.bookings?.bookingFlow;
+  if (!bookingFlow) return false;
+  
+  const { step, eventId, participants, paymentMethod, agreedToTerms } = bookingFlow;
   
   switch (step) {
     case 'details':
@@ -724,20 +758,27 @@ export const selectCanProceedToNextStep = (state: { bookings: BookingsState }) =
 };
 
 export const selectBookingFlowProgress = (state: { bookings: BookingsState }) => {
+  const bookingFlow = state.bookings?.bookingFlow;
+  if (!bookingFlow) return 0;
+  
   const steps = ['details', 'participants', 'payment', 'confirmation'];
-  const currentStepIndex = steps.indexOf(state.bookings.bookingFlow.step);
+  const currentStepIndex = steps.indexOf(bookingFlow.step);
   return ((currentStepIndex + 1) / steps.length) * 100;
 };
 
 export const selectTotalBookingAmount = (state: { bookings: BookingsState }) => {
-  return state.bookings.bookings.reduce((total, booking) => total + booking.totalAmount, 0);
+  const bookings = state.bookings?.bookings || [];
+  return bookings.reduce((total, booking) => total + (booking.totalAmount || 0), 0);
 };
 
 export const selectBookingParticipantsCount = (state: { bookings: BookingsState }) => {
-  return state.bookings.bookingFlow.participants.length;
+  return state.bookings?.bookingFlow?.participants?.length || 0;
 };
 
 export const selectIsBookingFlowComplete = (state: { bookings: BookingsState }) => {
-  const { eventId, participants, paymentMethod, agreedToTerms } = state.bookings.bookingFlow;
+  const bookingFlow = state.bookings?.bookingFlow;
+  if (!bookingFlow) return false;
+  
+  const { eventId, participants, paymentMethod, agreedToTerms } = bookingFlow;
   return !!eventId && participants.length > 0 && !!paymentMethod && agreedToTerms;
 };

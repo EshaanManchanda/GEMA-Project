@@ -2,7 +2,7 @@ import { Request, Response, NextFunction } from 'express';
 import { User, UserRole, UserStatus, IUser } from '../models';
 import { AppError } from '../middleware';
 import { ApiResponse } from '../types';
-import bcrypt from 'bcryptjs';
+import * as bcrypt from 'bcryptjs';
 import mongoose from 'mongoose';
 
 /**

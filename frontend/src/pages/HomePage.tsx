@@ -11,7 +11,6 @@ import CategoryCarousel from '@/components/client/CategoryCarousel';
 import NewsletterSubscribe from '@/components/client/NewsletterSubscribe';
 import eventsAPI from '../services/api/eventsAPI';
 import categoriesAPI from '../services/api/categoriesAPI';
-import analyticsAPI from '../services/api/analyticsAPI';
 import ReviewCarouselSwiper from '@/components/client/ReviewCarouselKeen';
 import FeaturedBlogsSection from '@/components/sections/FeaturedBlogsSection';
 import { Event } from '../types/event';
@@ -299,18 +298,6 @@ const Banner = ({ categories }: { categories: any[] }) => {
           </div>
         </FadeIn>
       </StaggerContainer>
-
-      {/* Character illustrations */}
-      <SlideIn direction="up" delay={0.6}>
-        <div className="absolute bottom-0 left-0 w-full">
-          <LazyImage 
-            src="/assets/characters.svg" 
-            alt="Kids Characters" 
-            className="w-full"
-            fallbackSrc={getPlaceholderUrl('galleryItem', 'Characters')}
-          />
-        </div>
-      </SlideIn>
     </section>
   );
 };
@@ -359,7 +346,7 @@ const FeaturedEventsCarousel: React.FC<{ featuredEvents: FeaturedEvent[] }> = ({
         <AnimatedButton 
           className="mt-4 md:mt-0 flex items-center gap-2 font-medium hover:underline focus:outline-none focus:ring-2 focus:ring-blue-500 rounded px-2 py-1" 
           style={{ color: 'var(--primary-color)' }}
-          onClick={() => navigate('/events')}
+          onClick={() => navigate('/search')}
           aria-label="View all events"
         >
           View All Events <FaChevronRight size={14} aria-hidden="true" />
@@ -399,16 +386,18 @@ const FeaturedEventsCarousel: React.FC<{ featuredEvents: FeaturedEvent[] }> = ({
                   {event.price && (
                     <FadeIn delay={0.2}>
                       <div className="flex items-center gap-2">
-                        <span className="text-lg font-bold" style={{ color: 'var(--accent-color)' }}>AED {event.price}</span>
+                        <span className="text-lg font-bold" style={{ color: 'var(--accent-color)' }}>
+                          {event.currency || 'AED'} {event.price}
+                        </span>
                       </div>
                     </FadeIn>
                   )}
                   {(event.dateSchedule?.length > 0 || event.location) && (
                     <div className="flex flex-col gap-1">
-                      {event.dateSchedule?.[0]?.date && (
+                      {(event.dateSchedule?.[0]?.startDate || event.dateSchedule?.[0]?.date) && (
                         <div className="flex items-center text-sm text-gray-500">
                           <FaCalendar size={12} className="mr-2" style={{ color: 'var(--primary-color)' }} />
-                          <span>{new Date(event.dateSchedule[0].date).toLocaleDateString()}</span>
+                          <span>{new Date(event.dateSchedule[0].startDate || event.dateSchedule[0].date).toLocaleDateString()}</span>
                         </div>
                       )}
                       {event.location?.city && (
@@ -429,12 +418,14 @@ const FeaturedEventsCarousel: React.FC<{ featuredEvents: FeaturedEvent[] }> = ({
                       <span className="text-sm font-medium">4.8 (120 reviews)</span>
                     </div>
                   </FadeIn>
-                  <AnimatedButton 
-                    style={{ backgroundColor: 'var(--accent-color)' }} 
-                    className="text-white px-5 py-2.5 rounded-lg font-medium transition-all duration-300 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-orange-500"
-                    onClick={() => navigate(`/events/${event.id}`)}
-                    aria-label={`View details for ${event.title}`}
-                  >
+                  <AnimatedButton
+                    style={{
+                      backgroundColor: 'var(--accent-color, #FF6B00)',
+                      boxShadow: '0 4px 14px 0 rgba(255, 107, 0, 0.3)'
+                    }}
+                    className="text-white px-6 py-3 rounded-xl font-semibold transition-all duration-300 hover:opacity-90 hover:shadow-lg hover:scale-105 focus:outline-none focus:ring-2 focus:ring-offset-2 active:scale-95 whitespace-nowrap"
+                    onClick={() => navigate(`/events/${event._id || event.id}`)}
+                    aria-label={`View details for ${event.title}`}>
                     {event.buttonLabel}
                   </AnimatedButton>
                 </div>
@@ -450,7 +441,7 @@ const FeaturedEventsCarousel: React.FC<{ featuredEvents: FeaturedEvent[] }> = ({
                   <h3 className="text-xl font-semibold mb-3 text-gray-700">No Events Yet</h3>
                   <p className="text-gray-500 mb-6 max-w-md mx-auto">We're working on bringing you amazing events. Check back soon for exciting activities!</p>
                   <AnimatedButton 
-                    onClick={() => navigate('/events')} 
+                    onClick={() => navigate('/search')} 
                     className="px-6 py-3 text-white rounded-lg font-medium transition-all duration-300 hover:shadow-lg focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-orange-500"
                     style={{ backgroundColor: 'var(--accent-color)' }}
                     aria-label="Explore all events"
@@ -582,34 +573,47 @@ const HomePage: React.FC = () => {
       setError(null);
       
       // Fetch real data from backend using API services
-      const [eventsData, featuredEventsData, categoriesData, statsData] = await Promise.all([
+      const [eventsData, featuredEventsData, categoriesData] = await Promise.all([
         eventsAPI.getAllEvents({ limit: 12 }),
-        eventsAPI.getFeaturedEvents().catch(() => eventsAPI.getPopularEvents()).catch(() => ({ data: { events: [] } })),
-        eventsAPI.getEventCategories(),
-        analyticsAPI.getDashboardSummary().catch(() => null)
+        eventsAPI.getFeaturedEvents(),
+        eventsAPI.getEventCategories()
       ]);
       
-      // Handle API response format - extract data from the response structure
-      const events = eventsData?.data?.events || [];
-      const featured = featuredEventsData?.data?.events || [];
-      const categories = categoriesData?.data?.categories || [];
+      // Extract data using utility functions for consistency
+      const events = eventsData || [];
+      const featuredEventsRaw = featuredEventsData?.events || [];
+      const categories = categoriesData?.categories || [];
+
+      // Debug logging (only in development)
+      if (import.meta.env.DEV && import.meta.env.VITE_DEBUG_API === 'true') {
+        console.log('HomePage Debug - Processed Data:');
+        console.log('events length:', events.length);
+        console.log('featuredEvents length:', featuredEventsRaw.length);
+        console.log('categories length:', categories.length);
+      }
       
       setEvents(Array.isArray(events) ? events : []);
       setFeaturedEvents(
-        Array.isArray(featured) && featured.length > 0 
-          ? featured.slice(0, 6).map((event: Event) => ({
+        featuredEventsRaw.length > 0 
+          ? featuredEventsRaw.slice(0, 6).map((event: any) => ({
               ...event,
+              id: event._id, // Map _id to id for compatibility
               buttonLabel: 'View Details',
-              image: event.images?.[0] || getPlaceholderUrl('eventCard', 'Event Image') // Use first image or fallback
+              image: event.images?.[0] || getPlaceholderUrl('eventCard', event.title),
+              date: event.dateSchedule?.[0]?.startDate || new Date().toISOString(),
+              location: event.location || { city: 'Dubai', address: '', coordinates: { lat: 0, lng: 0 } }
             }))
-          : events.slice(0, 3).map((event: Event) => ({
+          : events.slice(0, 3).map((event: any) => ({
               ...event,
+              id: event._id, // Map _id to id for compatibility
               buttonLabel: 'View Details',
-              image: event.images?.[0] || getPlaceholderUrl('eventCard', 'Event Image')
+              image: event.images?.[0] || getPlaceholderUrl('eventCard', event.title),
+              date: event.dateSchedule?.[0]?.startDate || new Date().toISOString(),
+              location: event.location || { city: 'Dubai', address: '', coordinates: { lat: 0, lng: 0 } }
             }))
       );
       setCategories(Array.isArray(categories) ? categories.map(cat => ({ id: cat, name: cat, icon: getCategoryIcon(cat) })) : []);
-      setStats(statsData?.data || statsData);
+      setStats(null);
       setUsingMockData(false);
       
     } catch (err) {
@@ -630,14 +634,14 @@ const HomePage: React.FC = () => {
         seoMeta: { title: event.title, description: event.description || '', keywords: [] },
         isApproved: true,
         tags: [],
-        dateSchedule: [{ _id: '1', date: event.date || new Date().toISOString(), availableSeats: 100 }],
+        dateSchedule: [{ _id: '1', startDate: event.date || new Date().toISOString(), endDate: event.date || new Date().toISOString(), availableSeats: 100, totalSeats: 100, soldSeats: 0, reservedSeats: 0 }],
         faqs: [],
         viewsCount: 0,
         isFeatured: false,
         isDeleted: false,
         createdAt: new Date().toISOString(),
         updatedAt: new Date().toISOString(),
-        affiliateCode: 'MOCK'
+        status: 'published'
       })));
       setCategories(mockCategories);
       setUsingMockData(true);
