@@ -1,8 +1,9 @@
 import { Request, Response, NextFunction } from 'express';
-import { Ticket, User, Event } from '../models';
+import { Ticket, User, Event, Employee } from '../models';
 import { AppError } from '../middleware/error';
 import { AuthRequest } from '../types';
-import { generateQRCode } from '../utils/qrcode';
+import { generateQRCode, generateSecureQRData, validateQRData } from '../utils/qrcode';
+import { TicketGenerationService } from '../services/ticketGeneration.service';
 import { sendTicketByEmail } from '../utils/mailer';
 import { v4 as uuidv4 } from 'uuid';
 
@@ -53,18 +54,28 @@ export const generateTickets = async (req: Request, res: Response, next: NextFun
       }
 
       const ticketNumber = await generateUniqueTicketNumber();
-      const qrCodeData = JSON.stringify({ ticketNumber, eventId, userId: user._id });
-      const qrCodeImage = await generateQRCode(qrCodeData); // This will return a data URL or similar
+      const qrCodeData = generateSecureQRData({
+        ticketNumber,
+        eventId,
+        userId: user._id.toString(),
+        vendorId: event.vendorId.toString(),
+        orderNumber: orderId,
+        validUntil: event.dateSchedule[event.dateSchedule.length - 1]?.date || new Date(Date.now() + 24 * 60 * 60 * 1000),
+        seatsAllocated: 1
+      });
+      const qrCodeImage = await generateQRCode(qrCodeData, { errorCorrectionLevel: 'high' });
 
       const newTicket = await Ticket.create({
         ticketNumber,
         orderId,
         userId: user._id,
         eventId,
+        vendorId: event.vendorId,
         qrCode: qrCodeData,
         qrCodeImage,
         ticketType,
         seatNumber,
+        seatsAllocated: 1,
         attendeeName: name,
         attendeeEmail: email,
         attendeePhone: phone,
@@ -77,6 +88,10 @@ export const generateTickets = async (req: Request, res: Response, next: NextFun
         },
         validFrom: event.dateSchedule[0]?.date || new Date(), // Use first scheduled date
         validUntil: event.dateSchedule[event.dateSchedule.length - 1]?.date || new Date(), // Use last scheduled date
+        metadata: {
+          generatedBy: user._id,
+          ipAddress: orderId, // Using order ID as a placeholder
+        }
       });
 
       createdTickets.push(newTicket);
@@ -284,31 +299,55 @@ export const verifyTicketQR = async (req: AuthRequest, res: Response, next: Next
   }
 
   try {
-    // Parse QR code data
-    let parsedQRData;
-    try {
-      parsedQRData = JSON.parse(qrCodeData);
-    } catch (error) {
+    // Validate QR code data structure and integrity
+    const qrValidation = validateQRData(qrCodeData);
+    if (!qrValidation.isValid) {
       return res.status(400).json({
         success: false,
         status: 'invalid',
-        message: 'Invalid QR code format',
+        message: qrValidation.error || 'Invalid QR code',
       });
     }
 
-    const { ticketNumber, eventId: qrEventId, userId } = parsedQRData;
+    const parsedQRData = qrValidation.data;
+    const { ticketNumber, eventId: qrEventId, userId, vendorId, seatsAllocated } = parsedQRData;
 
-    // Find the ticket
+    // Find the ticket with vendor and event information
     const ticket = await Ticket.findOne({ ticketNumber })
       .populate('userId', 'firstName lastName email')
-      .populate('eventId', 'title dateSchedule location');
+      .populate('eventId', 'title dateSchedule location vendorId')
+      .populate('vendorId', 'firstName lastName email businessName');
 
     if (!ticket) {
       return res.status(404).json({
         success: false,
         status: 'invalid',
         message: 'Ticket not found',
+        details: {
+          ticketNumber,
+          searchedAt: new Date().toISOString()
+        }
       });
+    }
+
+    // Vendor-specific validation: Only allow employees to scan tickets for their vendor
+    if (req.user.role === 'employee') {
+      // Get employee record to find vendorId
+      const employee = await Employee.findOne({ userId: req.user._id });
+      if (employee && ticket.vendorId.toString() !== employee.vendorId.toString()) {
+        return res.status(403).json({
+          success: false,
+          status: 'invalid_vendor',
+          message: 'Invalid - Ticket belongs to different vendor',
+          details: {
+            ticketNumber,
+            ticketVendor: ticket.vendorId,
+            employeeVendor: employee.vendorId,
+            scannedBy: req.user.email,
+            scannedAt: new Date().toISOString()
+          }
+        });
+      }
     }
 
     // Verify event ID matches
@@ -400,7 +439,18 @@ export const verifyTicketQR = async (req: AuthRequest, res: Response, next: Next
       });
     }
 
-    // Ticket is valid
+    // Update scan tracking
+    await Ticket.findByIdAndUpdate(ticket._id, {
+      $set: {
+        'metadata.lastValidatedBy': req.user._id,
+        'metadata.lastValidatedAt': new Date()
+      },
+      $inc: {
+        'checkInDetails.scanCount': 1
+      }
+    });
+
+    // Ticket is valid - return comprehensive information
     res.status(200).json({
       success: true,
       status: 'verified',
@@ -414,13 +464,34 @@ export const verifyTicketQR = async (req: AuthRequest, res: Response, next: Next
           attendeePhone: ticket.attendeePhone,
           ticketType: ticket.ticketType,
           seatNumber: ticket.seatNumber,
+          seatsAllocated: ticket.seatsAllocated || 1,
           price: ticket.price,
           currency: ticket.currency,
-          eventTitle: event.title,
-          eventDate: event.dateSchedule[0]?.date,
-          eventLocation: `${event.location.address}, ${event.location.city}`,
-          scanCount: ticket.checkInDetails?.scanCount || 0,
+          status: ticket.status,
           validUntil: ticket.validUntil,
+          scanCount: (ticket.checkInDetails?.scanCount || 0) + 1,
+        },
+        event: {
+          id: event._id,
+          title: event.title,
+          date: event.dateSchedule[0]?.date,
+          location: `${event.location.address}, ${event.location.city}`,
+          coordinates: event.location.coordinates
+        },
+        vendor: {
+          id: typeof ticket.vendorId === 'object' && ticket.vendorId ? (ticket.vendorId as any)._id || ticket.vendorId.toString() : ticket.vendorId.toString(),
+          name: typeof ticket.vendorId === 'object' && ticket.vendorId ?
+            (ticket.vendorId as any).businessName ||
+            `${(ticket.vendorId as any).firstName || ''} ${(ticket.vendorId as any).lastName || ''}`.trim() ||
+            'Vendor' : 'Vendor',
+          email: typeof ticket.vendorId === 'object' && ticket.vendorId ?
+            (ticket.vendorId as any).email || 'N/A' : 'N/A'
+        },
+        validation: {
+          scannedBy: req.user.email,
+          scannedAt: new Date().toISOString(),
+          validatedBy: req.user.role,
+          qrVersion: parsedQRData.version || '1.0'
         }
       }
     });
@@ -555,7 +626,7 @@ export const getUserTickets = async (req: AuthRequest, res: Response, next: Next
 
   try {
     const query: any = { userId: req.user._id };
-    
+
     if (status) {
       query.status = status;
     }
@@ -582,6 +653,56 @@ export const getUserTickets = async (req: AuthRequest, res: Response, next: Next
   } catch (error) {
     console.error('Error retrieving user tickets:', error);
     next(new AppError('Failed to retrieve user tickets', 500));
+  }
+};
+
+// Get tickets by order ID for customer portal
+export const getTicketsByOrder = async (req: AuthRequest, res: Response, next: NextFunction) => {
+  const { orderId } = req.params;
+
+  if (!req.user) {
+    return next(new AppError('Authentication required', 401));
+  }
+
+  if (!orderId) {
+    return next(new AppError('Order ID is required', 400));
+  }
+
+  try {
+    // Find tickets by order ID and populate event data
+    const tickets = await Ticket.find({ orderId })
+      .populate('eventId', 'title dateSchedule location images description')
+      .populate('userId', 'firstName lastName email')
+      .populate('vendorId', 'firstName lastName email businessName')
+      .sort({ createdAt: -1 });
+
+    if (!tickets || tickets.length === 0) {
+      return res.status(200).json({
+        success: true,
+        message: 'No tickets found for this order',
+        tickets: [],
+      });
+    }
+
+    // Verify that the requesting user owns at least one ticket in this order
+    // or has admin/vendor privileges
+    const userOwnsTickets = tickets.some(ticket =>
+      ticket.userId._id.toString() === req.user!._id?.toString()
+    );
+
+    if (!userOwnsTickets && !['admin', 'vendor'].includes(req.user.role)) {
+      return next(new AppError('Unauthorized to view tickets for this order', 403));
+    }
+
+    res.status(200).json({
+      success: true,
+      message: 'Order tickets retrieved successfully',
+      tickets: tickets,
+    });
+
+  } catch (error) {
+    console.error('Error retrieving order tickets:', error);
+    next(new AppError('Failed to retrieve order tickets', 500));
   }
 };
 
@@ -627,5 +748,83 @@ export const downloadTicketPDF = async (req: AuthRequest, res: Response, next: N
   } catch (error) {
     console.error('Error downloading ticket:', error);
     next(new AppError('Failed to download ticket', 500));
+  }
+};
+
+
+// Generate missing tickets for confirmed bookings
+export const generateMissingTickets = async (req: AuthRequest, res: Response, next: NextFunction) => {
+  try {
+    const { orderId } = req.body;
+    const userId = req.user?.id;
+
+    if (!orderId) {
+      return next(new AppError('Order ID is required', 400));
+    }
+
+    if (!userId) {
+      return next(new AppError('User authentication required', 401));
+    }
+
+    // Import required modules
+    const { Order } = await import('../models');
+
+    // Find the order and ensure user owns it (unless admin/vendor)
+    const query: any = { _id: orderId };
+    if (!['admin', 'vendor'].includes(req.user.role)) {
+      query.userId = userId;
+    }
+
+    const order = await Order.findOne(query);
+    if (!order) {
+      return next(new AppError('Order not found or access denied', 404));
+    }
+
+    if (order.status !== 'confirmed') {
+      return next(new AppError('Order must be confirmed to generate tickets', 400));
+    }
+
+    console.log('Starting ticket generation for order using TicketGenerationService:', orderId);
+
+    // Use the centralized ticket generation service
+    const result = await TicketGenerationService.generateMissingTicketsForOrder(orderId);
+
+    if (!result.success) {
+      console.error('Ticket generation failed:', result.errors);
+      return next(new AppError(`Failed to generate tickets: ${result.errors.join(', ')}`, 500));
+    }
+
+    console.log('Ticket generation completed successfully:', {
+      orderId,
+      ticketsGenerated: result.totalGenerated
+    });
+
+    res.status(200).json({
+      success: true,
+      message: result.totalGenerated > 0
+        ? `Generated ${result.totalGenerated} tickets successfully`
+        : 'Tickets already exist for this order',
+      data: {
+        orderId: order._id,
+        orderNumber: order.orderNumber,
+        ticketsGenerated: result.totalGenerated,
+        tickets: result.tickets.map(ticket => ({
+          ticketId: ticket._id,
+          ticketNumber: ticket.ticketNumber,
+          qrCodeUrl: ticket.qrCodeImage,
+          status: ticket.status,
+          eventId: ticket.eventId,
+          attendeeName: ticket.attendeeName,
+          price: ticket.price,
+          currency: ticket.currency,
+          validFrom: ticket.validFrom,
+          validUntil: ticket.validUntil
+        }))
+      }
+    });
+
+  } catch (error) {
+    console.error('Error generating missing tickets:', error);
+    next(new AppError('Failed to generate missing tickets', 500));
   }
 };

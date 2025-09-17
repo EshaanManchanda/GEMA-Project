@@ -2,6 +2,7 @@ import { createSlice, createAsyncThunk, PayloadAction } from '@reduxjs/toolkit';
 import bookingAPI from '@services/api/bookingAPI';
 import { Event } from '@types/event';
 import { toast } from 'react-hot-toast';
+import { generateBookingQRWithEventData, generateOrderQRWithEventData } from '@/utils/qrcode.utils';
 
 export interface BookingParticipant {
   id: string;
@@ -60,6 +61,14 @@ export interface Booking {
   
   // Additional info
   specialRequests?: string;
+
+  // QR Code data
+  qrCode?: string;
+  qrCodeData?: {
+    bookingQR: string;
+    orderQR: string;
+    generatedAt: string;
+  };
   notes?: string;
   source: 'web' | 'mobile' | 'admin';
   
@@ -370,6 +379,44 @@ export const confirmPayment = createAsyncThunk(
   }
 );
 
+// Helper function to generate QR codes for confirmed bookings with smart event date expiration
+const generateBookingQRCodes = (booking: Booking): Booking => {
+  if (booking.status === 'confirmed' || booking.status === 'completed') {
+    try {
+      console.log('🔄 Generating QR codes with event-based expiration for booking:', booking.bookingNumber);
+
+      // Use smart QR generation with event dates (2 hour grace period)
+      const bookingQR = generateBookingQRWithEventData(
+        booking.bookingNumber,
+        booking,
+        2 // 2 hour grace period after event ends
+      );
+
+      const orderQR = generateOrderQRWithEventData(
+        booking.bookingNumber, // Using booking number as order ID
+        booking,
+        2 // 2 hour grace period after event ends
+      );
+
+      console.log('✅ QR codes generated successfully with event-based expiration');
+
+      return {
+        ...booking,
+        qrCodeData: {
+          bookingQR,
+          orderQR,
+          generatedAt: new Date().toISOString()
+        },
+        qrCode: bookingQR // Legacy field for backward compatibility
+      };
+    } catch (error) {
+      console.error('❌ Failed to generate QR codes for booking:', booking.id, error);
+      return booking;
+    }
+  }
+  return booking;
+};
+
 // Bookings slice
 const bookingsSlice = createSlice({
   name: 'bookings',
@@ -472,9 +519,23 @@ const bookingsSlice = createSlice({
     
     removeBookingFromList: (state, action: PayloadAction<string>) => {
       state.bookings = state.bookings.filter(booking => booking.id !== action.payload);
-      
+
       if (state.currentBooking?.id === action.payload) {
         state.currentBooking = null;
+      }
+    },
+
+    // Generate QR codes for confirmed bookings
+    generateQRCodesForBooking: (state, action: PayloadAction<string>) => {
+      const bookingIndex = state.bookings.findIndex(booking => booking.id === action.payload);
+      if (bookingIndex !== -1) {
+        const booking = state.bookings[bookingIndex];
+        const bookingWithQR = generateBookingQRCodes(booking);
+        state.bookings[bookingIndex] = bookingWithQR;
+
+        if (state.currentBooking?.id === action.payload) {
+          state.currentBooking = bookingWithQR;
+        }
       }
     },
     
@@ -538,10 +599,14 @@ const bookingsSlice = createSlice({
       })
       .addCase(createBooking.fulfilled, (state, action: PayloadAction<Booking>) => {
         state.isCreating = false;
-        state.bookings.unshift(action.payload);
-        state.currentBooking = action.payload;
+
+        // Generate QR codes for confirmed booking
+        const bookingWithQR = generateBookingQRCodes(action.payload);
+
+        state.bookings.unshift(bookingWithQR);
+        state.currentBooking = bookingWithQR;
         state.createError = null;
-        
+
         // Reset booking flow
         bookingsSlice.caseReducers.resetBookingFlow(state);
       })
@@ -557,7 +622,11 @@ const bookingsSlice = createSlice({
       })
       .addCase(updateBooking.fulfilled, (state, action: PayloadAction<Booking>) => {
         state.isUpdating = false;
-        bookingsSlice.caseReducers.updateBookingInList(state, action);
+
+        // Generate QR codes if booking is confirmed and doesn't have them yet
+        const bookingWithQR = generateBookingQRCodes(action.payload);
+        bookingsSlice.caseReducers.updateBookingInList(state, { ...action, payload: bookingWithQR });
+
         state.updateError = null;
       })
       .addCase(updateBooking.rejected, (state, action) => {
@@ -621,9 +690,13 @@ const bookingsSlice = createSlice({
       })
       .addCase(confirmPayment.fulfilled, (state, action: PayloadAction<Booking>) => {
         state.checkout.isProcessing = false;
-        state.bookings.unshift(action.payload);
-        state.currentBooking = action.payload;
-        
+
+        // Generate QR codes for confirmed booking
+        const bookingWithQR = generateBookingQRCodes(action.payload);
+
+        state.bookings.unshift(bookingWithQR);
+        state.currentBooking = bookingWithQR;
+
         // Reset booking flow and checkout
         bookingsSlice.caseReducers.resetBookingFlow(state);
       })
@@ -651,6 +724,7 @@ export const {
   setCurrentBooking,
   updateBookingInList,
   removeBookingFromList,
+  generateQRCodesForBooking,
   clearErrors,
   clearCreateError,
   clearUpdateError,

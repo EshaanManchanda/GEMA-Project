@@ -25,6 +25,8 @@ import { Event } from '../types/event';
 import { useErrorHandler } from '../utils/errorHandler';
 import { logger } from '../utils/logger';
 import { ComponentErrorBoundary } from '../components/common/ErrorBoundary';
+import { calculatePricingWithDiscount } from '../utils/couponUtils';
+import { getCurrentPageUrl } from '../utils/urlHelper';
 
 import Button from '../components/ui/Button';
 import { Card, CardContent, CardHeader, CardTitle } from '../components/ui/Card';
@@ -219,7 +221,7 @@ const BookingPage: React.FC = () => {
 
       // Early validation checks
       if (!actualEventId) {
-        logger.error('Missing event ID on booking page', { sessionId, url: window.location.href });
+        logger.error('Missing event ID on booking page', { sessionId, url: getCurrentPageUrl() });
         navigate('/events');
         toast.error('Event ID is required for booking');
         return;
@@ -250,6 +252,10 @@ const BookingPage: React.FC = () => {
         setLoading(true);
         logger.info('Starting event data loading', { sessionId, actualEventId });
         
+        // Initialize booking flow first
+        dispatch(resetBookingFlow());
+        dispatch(setBookingEvent(actualEventId));
+
         // If we have event data from route state, use it
         if (routeState?.event && routeState.event._id === actualEventId) {
           logger.info('Using event data from route state', {
@@ -258,7 +264,6 @@ const BookingPage: React.FC = () => {
             eventTitle: routeState.event.title
           });
           setEvent(routeState.event);
-          dispatch(setBookingEvent(actualEventId));
         } else {
           // Otherwise fetch event data
           logger.info('Fetching event data from API', { sessionId, actualEventId });
@@ -271,7 +276,6 @@ const BookingPage: React.FC = () => {
             eventDates: eventData.dateSchedule?.length
           });
           setEvent(eventData);
-          dispatch(setBookingEvent(actualEventId));
         }
 
         setError(null);
@@ -344,21 +348,44 @@ const BookingPage: React.FC = () => {
 
   // Handle booking completion with new API
   const handleCompleteBooking = async () => {
-    if (!event || !bookingFlow.eventId || !actualEventId) {
+    if (!event || !actualEventId) {
       logger.error('Cannot complete booking - missing required data', {
         hasEvent: !!event,
         bookingFlowEventId: bookingFlow.eventId,
         actualEventId,
         participantCount: bookingFlow.participants.length
       });
+      toast.error('Event information is missing. Please refresh and try again.');
       return;
+    }
+
+    // Ensure booking flow is properly initialized
+    if (!bookingFlow.eventId) {
+      logger.warn('Booking flow eventId is null, setting it now', { actualEventId });
+      dispatch(setBookingEvent(actualEventId));
     }
 
     // Get schedule information from route state
     const scheduleId = routeState?.scheduleId;
     if (!scheduleId) {
-      logger.error('Schedule ID is required for booking');
-      toast.error('Booking information is incomplete. Please start over.');
+      logger.error('Schedule ID is required for booking', {
+        hasRouteState: !!routeState,
+        routeStateKeys: routeState ? Object.keys(routeState) : [],
+        actualEventId
+      });
+      toast.error('Booking information is incomplete. Please go back to the event page and try again.');
+      navigate(`/events/${actualEventId}`);
+      return;
+    }
+
+    // Validate we have participants
+    if (!bookingFlow.participants || bookingFlow.participants.length === 0) {
+      logger.error('No participants found for booking', {
+        eventId: actualEventId,
+        participantCount: bookingFlow.participants?.length || 0
+      });
+      toast.error('Please add at least one participant to continue.');
+      dispatch(setBookingStep('participants'));
       return;
     }
 
@@ -383,11 +410,16 @@ const BookingPage: React.FC = () => {
         eventId: actualEventId,
         dateScheduleId: scheduleId,
         seats: bookingFlow.participants.length || 1,
-        paymentMethod: (bookingFlow.paymentMethod as 'stripe' | 'paypal') || 'stripe'
+        paymentMethod: (bookingFlow.paymentMethod as 'stripe' | 'paypal') || 'test' // Use test payment for development
       });
 
       if (!initiateResponse?.paymentIntentId || !initiateResponse?.orderId) {
-        throw new Error('Invalid booking initiation response');
+        logger.error('Invalid booking initiation response', {
+          response: initiateResponse,
+          hasPaymentIntentId: !!initiateResponse?.paymentIntentId,
+          hasOrderId: !!initiateResponse?.orderId
+        });
+        throw new Error('Invalid booking initiation response. Please try again.');
       }
 
       logger.info('Booking initiated successfully', {
@@ -411,7 +443,12 @@ const BookingPage: React.FC = () => {
       toast.dismiss();
 
       if (!confirmResponse?.bookingId) {
-        throw new Error('Booking confirmation failed');
+        logger.error('Booking confirmation failed', {
+          response: confirmResponse,
+          hasBookingId: !!confirmResponse?.bookingId,
+          paymentIntentId: initiateResponse.paymentIntentId
+        });
+        throw new Error('Booking confirmation failed. Please contact support if payment was charged.');
       }
 
       logger.info('Booking confirmed successfully', confirmResponse);
@@ -474,6 +511,37 @@ const BookingPage: React.FC = () => {
 
   const canProceedToNext = (): boolean => {
     return isStepComplete(currentStep);
+  };
+
+  // Calculate pricing with discounts
+  const calculatePricing = () => {
+    if (!event) return { subtotal: 0, discount: 0, total: 0, discountPercentage: 0, serviceFee: 0, tax: 0, hasServiceFee: true };
+
+    const participantCount = bookingFlow.participants.length || 1;
+    const pricePerTicket = event.price;
+    const subtotal = pricePerTicket * participantCount;
+
+    // For now, assume service fee applies (5%) - this could be made dynamic based on vendor
+    // In a real implementation, you'd fetch this from the vendor's payment settings
+    const hasServiceFee = true; // TODO: Get from vendor payment settings
+    const serviceFeeRate = 5; // TODO: Get from vendor payment settings
+
+    // Use centralized coupon utility for consistent calculation
+    const pricing = calculatePricingWithDiscount(subtotal, bookingFlow.couponCode, serviceFeeRate, hasServiceFee);
+
+    return {
+      subtotal: pricing.subtotal,
+      discount: pricing.discount,
+      serviceFee: pricing.serviceFee,
+      tax: pricing.tax,
+      total: pricing.total,
+      pricePerTicket,
+      participantCount,
+      discountPercentage: pricing.discountPercentage,
+      isValidCoupon: pricing.isValidCoupon,
+      couponError: pricing.couponError,
+      hasServiceFee: pricing.hasServiceFee
+    };
   };
 
   // Render step content with error boundaries and fallbacks
@@ -601,7 +669,7 @@ const BookingPage: React.FC = () => {
     logger.error('Rendering Redux error state', {
       eventId: actualEventId,
       reduxError,
-      url: window.location.href
+      url: getCurrentPageUrl()
     });
     return (
       <div className="min-h-screen bg-gray-50 flex items-center justify-center px-4">
@@ -847,24 +915,45 @@ const BookingPage: React.FC = () => {
                   </div>
 
                   <div className="border-t pt-4 space-y-2">
-                    <div className="flex justify-between text-sm">
-                      <span>Participants:</span>
-                      <span>{bookingFlow.participants.length || 1}</span>
-                    </div>
-                    <div className="flex justify-between text-sm">
-                      <span>Price per ticket:</span>
-                      <span>{event.currency} {event.price}</span>
-                    </div>
-                    {bookingFlow.couponCode && (
-                      <div className="flex justify-between text-sm text-green-600">
-                        <span>Discount ({bookingFlow.couponCode}):</span>
-                        <span>-{event.currency} 10.00</span>
-                      </div>
-                    )}
-                    <div className="border-t pt-2 flex justify-between font-semibold">
-                      <span>Total:</span>
-                      <span>{event.currency} {(event.price * (bookingFlow.participants.length || 1)).toFixed(2)}</span>
-                    </div>
+                    {(() => {
+                      const pricing = calculatePricing();
+                      return (
+                        <>
+                          <div className="flex justify-between text-sm">
+                            <span>Participants:</span>
+                            <span>{pricing.participantCount}</span>
+                          </div>
+                          <div className="flex justify-between text-sm">
+                            <span>Price per ticket:</span>
+                            <span>{event.currency} {pricing.pricePerTicket}</span>
+                          </div>
+                          <div className="flex justify-between text-sm">
+                            <span>Subtotal:</span>
+                            <span>{event.currency} {pricing.subtotal.toFixed(2)}</span>
+                          </div>
+                          {bookingFlow.couponCode && pricing.discount > 0 && (
+                            <div className="flex justify-between text-sm text-green-600">
+                              <span>Discount ({bookingFlow.couponCode} - {pricing.discountPercentage}%):</span>
+                              <span>-{event.currency} {pricing.discount.toFixed(2)}</span>
+                            </div>
+                          )}
+                          {pricing.hasServiceFee && pricing.serviceFee > 0 && (
+                            <div className="flex justify-between text-sm">
+                              <span>Service Fee (5%):</span>
+                              <span>{event.currency} {pricing.serviceFee.toFixed(2)}</span>
+                            </div>
+                          )}
+                          <div className="flex justify-between text-sm">
+                            <span>Tax (5%):</span>
+                            <span>{event.currency} {pricing.tax.toFixed(2)}</span>
+                          </div>
+                          <div className="border-t pt-2 flex justify-between font-semibold">
+                            <span>Total:</span>
+                            <span>{event.currency} {pricing.total.toFixed(2)}</span>
+                          </div>
+                        </>
+                      );
+                    })()}
                   </div>
 
                   {/* Security Badge */}

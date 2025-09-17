@@ -1,4 +1,12 @@
 import { ApiService } from '../api';
+import { extractApiData, logApiResponse } from '../../utils/apiResponseHandler';
+
+export interface VendorPaymentInfo {
+  hasCustomStripeAccount: boolean;
+  usesVendorStripe: boolean;
+  commissionRate: number;
+  acceptsPlatformPayments: boolean;
+}
 
 const vendorAPI = {
   getAllVendors: async (params?: any) => {
@@ -118,6 +126,33 @@ const vendorAPI = {
       const response = await ApiService.post('/vendors/apply', applicationData);
       return response.data;
     } catch (error) {
+      throw error;
+    }
+  },
+
+  // Get vendor payment information for fee calculation
+  getVendorPaymentInfo: async (vendorId: string) => {
+    try {
+      const response = await ApiService.get(`/vendors/${vendorId}/payment-info`);
+      logApiResponse(`GET /vendors/${vendorId}/payment-info`, response);
+      return extractApiData(response);
+    } catch (error) {
+      logApiResponse(`GET /vendors/${vendorId}/payment-info`, null, error);
+      throw error;
+    }
+  },
+
+  // Check if service fee applies for this vendor
+  checkServiceFee: async (vendorId: string, amount: number) => {
+    try {
+      const response = await ApiService.post('/vendors/check-service-fee', {
+        vendorId,
+        amount
+      });
+      logApiResponse('POST /vendors/check-service-fee', response);
+      return extractApiData(response);
+    } catch (error) {
+      logApiResponse('POST /vendors/check-service-fee', null, error);
       throw error;
     }
   },

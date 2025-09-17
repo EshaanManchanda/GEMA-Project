@@ -128,7 +128,7 @@ export const getCategoryImage = (category: CategoryData): string => {
     'Nature': 'https://images.unsplash.com/photo-1441974231531-c6227db76b6e?w=80&h=80&fit=crop&crop=center',
   };
   
-  return imageMap[category.name] || `https://via.placeholder.com/80x80?text=${encodeURIComponent(category.name.slice(0, 2))}`;
+  return imageMap[category.name] || getPlaceholderUrl('categoryIcon', category.name.slice(0, 2));
 };
 
 export const getCategoryIcon = (category: CategoryData): string => {

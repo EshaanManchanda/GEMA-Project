@@ -1399,6 +1399,81 @@ employee data : {
 
     Expected Outcome: The "Most Popular Experiences" section will display events sorted by popularity (viewsCount) instead of showing "No events found". 
 
+ Excellent! Now I can see the issue clearly. Looking at the logs:
 
+  1. Good news: The ticket API endpoint is working and returning 200 status codes for the
+  order 68c9a04a7759aa02302b7e50 with responses of only 73 bytes, which indicates an empty        
+  tickets array.
+  2. The problem: The API is returning an empty tickets array because no tickets were actually    
+   generated for this specific booking. From the previous logs we saw, the booking was
+  confirmed successfully, but we need to check if the ticket generation process actually
+  worked.
+
+  Let me check if the current bookings have ticket data or if there are any errors preventing     
+  ticket generation. Let me also check what the API is actually returning:
+
+● Now I have a clear understanding of the issue. Based on my analysis:
+
+  Problem Analysis
+
+  1. Infrastructure is Working:
+    - ✅ Backend ticket API endpoint /api/tickets/order/:orderId exists and is working
+  (returning 200 status)
+    - ✅ Frontend BookingDetailPage is properly implemented
+    - ✅ Ticket generation code exists in the booking confirmation process
+  2. Root Cause:
+    - The API returns only 73 bytes, indicating an empty tickets array
+    - The booking 68c9a04a7759aa02302b7e50 was confirmed successfully but no tickets were
+  actually generated
+    - This suggests there was likely an error during the ticket generation process that was       
+  caught and didn't fail the booking
+  3. Potential Issues:
+    - The ticket generation is wrapped in a try-catch that doesn't fail the booking if tickets    
+   fail to generate
+    - Could be an issue with the QR code generation library
+    - Could be a database schema issue or field mismatch
+    - Could be an issue with the generateUniqueTicketNumber() function
+
+●User approved Claude's plan:
+  ⎿ Plan to Fix QR Code Ticket Generation Issue
+
+    Problem: QR codes are not visible because tickets are not being generated for confirmed 
+    bookings, despite the booking confirmation process appearing to succeed.
+
+    Root Cause: The booking confirmation process has ticket generation code, but it's wrapped
+     in a try-catch that doesn't fail the booking if ticket generation fails. The specific 
+    booking 68c9a04a7759aa02302b7e50 has no tickets generated.
+
+    Fix Plan:
+
+    1. Debug Current State
+      - Add debugging logs to identify why ticket generation is failing
+      - Check if the issue is with QR code generation, database schema, or field validation       
+    2. Fix Ticket Generation Issues
+      - Investigate potential issues in the ticket generation process (lines 343-414 in 
+    booking.controller.ts)
+      - Fix any schema mismatches or validation errors
+      - Ensure QR code generation library is working properly
+    3. Generate Missing Tickets
+      - Create a method to retroactively generate tickets for existing confirmed bookings         
+    that have no tickets
+      - Run this for the specific booking 68c9a04a7759aa02302b7e50
+    4. Test and Verify
+      - Test the booking confirmation process end-to-end
+      - Verify QR codes appear correctly in the BookingDetailPage
+      - Ensure ticket API returns proper data
+
+    Expected Outcome: QR codes will be visible when users click "View Tickets" on confirmed       
+    bookings.
+
+● Let me start by debugging the ticket generation process. I'll add more detailed logging to
+  understand why tickets aren't being generated:
+
+● Read(backend\src\controllers\booking.controller.ts)
+  ⎿  Read 80 lines (ctrl+o to expand)
+
+● I notice a potential issue on line 382: price: orderItem.unitPrice. Let me check if there's
+  a field mismatch. Let me also add detailed logging and check if there might be an issue with
+   the QR code generation. First, let me enhance the logging:
 
     npx tsc --noEmit

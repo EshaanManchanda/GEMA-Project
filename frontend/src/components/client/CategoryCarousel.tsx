@@ -47,7 +47,10 @@ const getCategoryImage = (category: Category): string => {
     'Sports': 'https://images.unsplash.com/photo-1506905925346-21bda4d32df4?w=80&h=80&fit=crop&crop=center',
     'Adventure': 'https://images.unsplash.com/photo-1464349095431-e9a21285b5f3?w=80&h=80&fit=crop&crop=center',
   };
-  return imageMap[category.name] || `https://via.placeholder.com/80x80?text=${encodeURIComponent(category.name.slice(0, 2))}`;
+  // Use fallback for unknown categories
+  const initials = category.name.slice(0, 2).toUpperCase();
+  const svg = `<svg width="80" height="80" xmlns="http://www.w3.org/2000/svg"><rect width="100%" height="100%" fill="#3b82f6"/><text x="50%" y="50%" font-family="Arial, sans-serif" font-size="14" font-weight="500" text-anchor="middle" dominant-baseline="middle" fill="#ffffff">${initials}</text></svg>`;
+  return imageMap[category.name] || `data:image/svg+xml;base64,${btoa(svg)}`;
 };
 
 const getCategoryIcon = (category: Category): string => {

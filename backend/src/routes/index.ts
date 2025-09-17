@@ -24,6 +24,7 @@ import bookingRoutes from './booking.routes';
 import searchRoutes from './search.routes';
 import collectionRoutes from './collection.routes';
 import favoritesRoutes from './favorites.routes';
+import adminRevenueRoutes from './admin.revenue.routes';
 import { Router } from 'express';
 
 const router = Router();
@@ -101,5 +102,8 @@ router.use('/collections', collectionRoutes);
 
 // Favorites routes
 router.use('/favorites', favoritesRoutes);
+
+// Admin Revenue Management routes
+router.use('/admin/revenue', adminRevenueRoutes);
 
 export default router;

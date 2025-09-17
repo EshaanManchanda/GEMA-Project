@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState } from 'react';
 import { useSelector } from 'react-redux';
 import { format } from 'date-fns';
 import { 
@@ -19,35 +19,50 @@ import toast from 'react-hot-toast';
 import {
   selectBookingFlow,
   selectBookingParticipants,
+  selectCurrentBooking,
 } from '../../store/slices/bookingsSlice';
 import { Event } from '../../types/event';
 
 import Button from '../ui/Button';
 import { Card, CardContent, CardHeader, CardTitle } from '../ui/Card';
 import Badge from '../ui/Badge';
+import QRCodeModal from './QRCodeModal';
+import { generateBookingQRWithEventData, extractEventDates } from '../../utils/qrcode.utils';
 
 interface BookingConfirmationProps {
   event: Event;
   onComplete: () => void;
 }
 
-const BookingConfirmation: React.FC<BookingConfirmationProps> = ({ 
-  event, 
-  onComplete 
+const BookingConfirmation: React.FC<BookingConfirmationProps> = ({
+  event,
+  onComplete
 }) => {
   const bookingFlow = useSelector(selectBookingFlow);
   const participants = useSelector(selectBookingParticipants);
-  
-  // Mock booking data (in real app, this would come from the API response)
-  const [bookingData] = useState({
+  const currentBooking = useSelector(selectCurrentBooking);
+
+  // Use actual booking data from Redux store, fallback to mock for development
+  const bookingData = currentBooking ? {
+    bookingId: currentBooking.bookingNumber || currentBooking.id,
+    transactionId: currentBooking.payment?.transactionId || `TXN-${currentBooking.id}`,
+    qrCode: currentBooking.qrCodeData?.bookingQR || currentBooking.qrCode,
+    orderQR: currentBooking.qrCodeData?.orderQR,
+    ticketUrl: `/api/bookings/${currentBooking.id}/tickets.pdf`,
+    confirmationSent: true,
+    status: currentBooking.status,
+  } : {
     bookingId: `BKG-${Date.now()}`,
     transactionId: `TXN-${Date.now()}`,
-    qrCode: `https://api.qrserver.com/v1/create-qr-code/?data=BKG-${Date.now()}&size=200x200`,
-    ticketUrl: `/api/bookings/BKG-${Date.now()}/tickets.pdf`,
+    qrCode: null,
+    orderQR: null,
+    ticketUrl: `/api/bookings/temp/tickets.pdf`,
     confirmationSent: true,
-  });
+    status: 'confirmed' as const,
+  };
 
-  const [showQRCode, setShowQRCode] = useState(false);
+  // QR Code modal state
+  const [showQRModal, setShowQRModal] = useState(false);
 
   // Calculate totals
   const subtotal = event.price * participants.length;
@@ -119,11 +134,12 @@ const BookingConfirmation: React.FC<BookingConfirmationProps> = ({
         </Button>
         <Button
           variant="outline"
-          onClick={() => setShowQRCode(!showQRCode)}
+          onClick={() => setShowQRModal(true)}
           leftIcon={<QrCode className="w-4 h-4" />}
           fullWidth
+          disabled={bookingData.status !== 'confirmed'}
         >
-          Show QR Code
+          {bookingData.status === 'confirmed' ? 'View QR Details' : 'QR Code (Pending Confirmation)'}
         </Button>
         <Button
           variant="outline"
@@ -135,22 +151,23 @@ const BookingConfirmation: React.FC<BookingConfirmationProps> = ({
         </Button>
       </div>
 
-      {/* QR Code Display */}
-      {showQRCode && (
-        <Card>
-          <CardContent className="text-center py-8">
-            <h3 className="text-lg font-semibold mb-4">Your Event QR Code</h3>
-            <img 
-              src={bookingData.qrCode} 
-              alt="Booking QR Code"
-              className="mx-auto mb-4 rounded-lg border"
-            />
-            <p className="text-sm text-gray-600">
-              Show this QR code at the event entrance for quick check-in
-            </p>
-          </CardContent>
-        </Card>
-      )}
+
+      {/* QR Code Modal */}
+      <QRCodeModal
+        isOpen={showQRModal}
+        onClose={() => setShowQRModal(false)}
+        qrData={{
+          bookingId: bookingData.bookingId,
+          eventId: event._id,
+          userId: currentBooking?.userId,
+          type: 'booking',
+          eventStartDate: event.dateSchedule?.[0]?.startDateTime ? new Date(event.dateSchedule[0].startDateTime) : undefined,
+          eventEndDate: event.dateSchedule?.[0]?.endDateTime ? new Date(event.dateSchedule[0].endDateTime) : undefined,
+          gracePeriodHours: 2
+        }}
+        size={300}
+        title={`Booking Confirmed - ${bookingData.bookingId}`}
+      />
 
       {/* Booking Summary */}
       <Card>
@@ -170,7 +187,7 @@ const BookingConfirmation: React.FC<BookingConfirmationProps> = ({
                 <div>
                   <h3 className="font-semibold text-lg">{event.title}</h3>
                   <div className="flex items-center space-x-2 mt-1">
-                    <Badge variant="primary">{event.category}</Badge>
+                    <Badge variant="default">{event.category}</Badge>
                     <Badge variant="outline">{event.type}</Badge>
                   </div>
                 </div>
@@ -180,15 +197,34 @@ const BookingConfirmation: React.FC<BookingConfirmationProps> = ({
                 <div className="flex items-center">
                   <Calendar className="w-4 h-4 mr-2 text-gray-500" />
                   <span>
-                    {event.dateSchedule?.[0] ? 
-                      format(new Date(event.dateSchedule[0].startDateTime), 'PPP p') :
-                      'Date: TBD'
-                    }
+                    {event.dateSchedule?.[0] ? (() => {
+                      const schedule = event.dateSchedule[0];
+                      const dateValue = schedule.startDate || schedule.date || schedule.startDateTime;
+
+                      if (!dateValue) return 'Date: TBD';
+
+                      try {
+                        const date = new Date(dateValue);
+                        if (isNaN(date.getTime())) return 'Date: TBD';
+                        return format(date, 'PPP p');
+                      } catch (error) {
+                        console.warn('Error formatting date:', error);
+                        return 'Date: TBD';
+                      }
+                    })() : 'Date: TBD'}
                   </span>
                 </div>
                 <div className="flex items-center">
                   <MapPin className="w-4 h-4 mr-2 text-gray-500" />
-                  <span>{event.location.city}, {event.location.address}</span>
+                  <span>
+                    {event.location ? (() => {
+                      const { city, address } = event.location;
+                      if (city && address) return `${city}, ${address}`;
+                      if (city) return city;
+                      if (address) return address;
+                      return 'Location TBD';
+                    })() : 'Location TBD'}
+                  </span>
                 </div>
                 <div className="flex items-center">
                   <Users className="w-4 h-4 mr-2 text-gray-500" />

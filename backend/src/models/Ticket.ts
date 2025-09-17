@@ -31,10 +31,12 @@ export interface ITicket extends Document {
   orderId: Types.ObjectId;
   userId: Types.ObjectId;
   eventId: Types.ObjectId;
+  vendorId: Types.ObjectId;
   qrCode: string;
   qrCodeImage: string;
   ticketType: string;
   seatNumber?: string;
+  seatsAllocated?: number;
   attendeeName: string;
   attendeeEmail: string;
   attendeePhone?: string;
@@ -49,6 +51,9 @@ export interface ITicket extends Document {
     ipAddress?: string;
     deviceInfo?: string;
     browserInfo?: string;
+    generatedBy?: Types.ObjectId;
+    lastValidatedBy?: Types.ObjectId;
+    lastValidatedAt?: Date;
   };
   createdAt: Date;
   updatedAt: Date;
@@ -69,10 +74,12 @@ const TicketSchema = new Schema<ITicket>({
   orderId: { type: Schema.Types.ObjectId, ref: 'Order', required: true },
   userId: { type: Schema.Types.ObjectId, ref: 'User', required: true },
   eventId: { type: Schema.Types.ObjectId, ref: 'Event', required: true },
+  vendorId: { type: Schema.Types.ObjectId, ref: 'User', required: true },
   qrCode: { type: String, required: true },
   qrCodeImage: { type: String, required: true },
   ticketType: { type: String, required: true },
   seatNumber: { type: String },
+  seatsAllocated: { type: Number, default: 1 },
   attendeeName: { type: String, required: true },
   attendeeEmail: { type: String, required: true },
   attendeePhone: { type: String },
@@ -98,6 +105,9 @@ const TicketSchema = new Schema<ITicket>({
     ipAddress: { type: String },
     deviceInfo: { type: String },
     browserInfo: { type: String },
+    generatedBy: { type: Schema.Types.ObjectId, ref: 'User' },
+    lastValidatedBy: { type: Schema.Types.ObjectId, ref: 'User' },
+    lastValidatedAt: { type: Date },
   },
 }, { 
   timestamps: true,
@@ -110,9 +120,11 @@ TicketSchema.index({ ticketNumber: 1 }, { unique: true });
 TicketSchema.index({ orderId: 1 });
 TicketSchema.index({ eventId: 1 });
 TicketSchema.index({ userId: 1 });
+TicketSchema.index({ vendorId: 1 });
 TicketSchema.index({ attendeeEmail: 1 });
 TicketSchema.index({ status: 1 });
 TicketSchema.index({ validFrom: 1, validUntil: 1 });
+TicketSchema.index({ vendorId: 1, status: 1 }); // Composite index for vendor validation
 
 // Virtual fields
 TicketSchema.virtual('isExpired').get(function() {

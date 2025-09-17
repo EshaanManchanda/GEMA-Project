@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useDispatch, useSelector } from 'react-redux';
+import { Link, useLocation } from 'react-router-dom';
 import { CreditCard, Shield, Lock, AlertCircle, CheckCircle, ChevronLeft } from 'lucide-react';
 import toast from 'react-hot-toast';
 
@@ -31,6 +32,7 @@ const PaymentForm: React.FC<PaymentFormProps> = ({
   onPrev 
 }) => {
   const dispatch = useDispatch<AppDispatch>();
+  const location = useLocation();
   const bookingFlow = useSelector(selectBookingFlow);
   const participants = useSelector(selectBookingParticipants);
   const checkout = useSelector(selectCheckout);
@@ -48,6 +50,13 @@ const PaymentForm: React.FC<PaymentFormProps> = ({
 
   // Payment methods configuration
   const paymentMethods = [
+    {
+      id: 'test',
+      name: 'Test Payment',
+      description: 'For testing purposes - automatically succeeds',
+      icon: CheckCircle,
+      popular: true,
+    },
     {
       id: 'stripe',
       name: 'Credit/Debit Card',
@@ -141,12 +150,20 @@ const PaymentForm: React.FC<PaymentFormProps> = ({
     setPaymentError(null);
 
     try {
+      // Get schedule ID from route state
+      const routeState = location.state as any;
+      const scheduleId = routeState?.scheduleId;
+
+      if (!scheduleId) {
+        throw new Error('Schedule ID not found. Please restart the booking process.');
+      }
+
       // Prepare booking data for API
       const bookingData: InitiateBookingData = {
         eventId: event._id,
-        dateScheduleId: event.dateSchedule[0]._id,
+        dateScheduleId: scheduleId,
         seats: participants.length,
-        paymentMethod: selectedPaymentMethod as 'stripe' | 'paypal',
+        paymentMethod: selectedPaymentMethod as 'stripe' | 'paypal' | 'test',
       };
 
       // Initiate booking with payment intent
@@ -156,7 +173,13 @@ const PaymentForm: React.FC<PaymentFormProps> = ({
         // Payment intent created successfully
         toast.success('Payment session initialized');
         
-        if (selectedPaymentMethod === 'stripe') {
+        if (selectedPaymentMethod === 'test') {
+          // Test payment - simulate immediate success
+          toast.success('Test payment successful!');
+          setTimeout(() => {
+            onNext();
+          }, 1000);
+        } else if (selectedPaymentMethod === 'stripe') {
           // For demo purposes, simulate successful payment
           // In a real implementation, you would integrate with Stripe Elements here
           setTimeout(() => {

@@ -39,6 +39,7 @@ const VerifyEmailPage = React.lazy(() => import(/* webpackChunkName: "auth" */ '
 const DashboardPage = React.lazy(() => import(/* webpackChunkName: "dashboard" */ './pages/dashboard/DashboardPage'));
 const ProfilePage = React.lazy(() => import(/* webpackChunkName: "dashboard" */ './pages/dashboard/ProfilePage'));
 const BookingsPage = React.lazy(() => import(/* webpackChunkName: "dashboard" */ './pages/dashboard/BookingsPage'));
+const BookingDetailPage = React.lazy(() => import(/* webpackChunkName: "dashboard" */ './pages/dashboard/BookingDetailPage'));
 const FavoritesPage = React.lazy(() => import(/* webpackChunkName: "dashboard" */ './pages/dashboard/FavoritesPage'));
 const ReviewsPage = React.lazy(() => import(/* webpackChunkName: "dashboard" */ './pages/dashboard/ReviewsPage'));
 const MyTicketsPage = React.lazy(() => import(/* webpackChunkName: "dashboard" */ './pages/dashboard/MyTicketsPage'));
@@ -334,6 +335,13 @@ function AppContent() {
               <ProtectedRoute>
                 <Suspense fallback={<LoadingSpinner />}>
                   <BookingsPage />
+                </Suspense>
+              </ProtectedRoute>
+            } />
+            <Route path="bookings/:id" element={
+              <ProtectedRoute>
+                <Suspense fallback={<LoadingSpinner />}>
+                  <BookingDetailPage />
                 </Suspense>
               </ProtectedRoute>
             } />

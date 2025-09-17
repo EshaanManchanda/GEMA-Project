@@ -1,10 +1,27 @@
 import { Request, Response, NextFunction } from 'express';
 import { validationResult } from 'express-validator';
-import { Order, Event, User } from '../models';
+import { Order, Event, User, Ticket } from '../models';
 import { AppError } from '../middleware';
 import { AuthRequest } from '../types';
 import { PaymentService } from '../services/payment.service';
 import { logger } from '../config';
+import { generateQRCode, generateSecureQRData } from '../utils/qrcode';
+import { TicketGenerationService } from '../services/ticketGeneration.service';
+import { v4 as uuidv4 } from 'uuid';
+
+// Helper function to generate a unique ticket number
+const generateUniqueTicketNumber = async (): Promise<string> => {
+  let ticketNumber: string = '';
+  let isUnique = false;
+  while (!isUnique) {
+    ticketNumber = uuidv4();
+    const existingTicket = await Ticket.findOne({ ticketNumber });
+    if (!existingTicket) {
+      isUnique = true;
+    }
+  }
+  return ticketNumber;
+};
 
 // @desc    Initiate booking with Stripe payment session
 // @route   POST /api/bookings/initiate
@@ -43,6 +60,39 @@ export const initiateBooking = async (req: AuthRequest, res: Response, next: Nex
       return next(new AppError('Event schedule not found', 404));
     }
 
+    // Get schedule date (handle both legacy 'date' field and new 'startDate' field)
+    const scheduleDate = schedule.startDate || schedule.date;
+    if (!scheduleDate) {
+      logger.error('Schedule date is missing from schedule object', {
+        scheduleId: dateScheduleId,
+        schedule: {
+          _id: schedule._id,
+          date: schedule.date,
+          startDate: schedule.startDate,
+          endDate: schedule.endDate,
+          availableSeats: schedule.availableSeats
+        }
+      });
+      return next(new AppError('Schedule date is invalid', 400));
+    }
+
+    // Validate that scheduleDate is a valid date
+    const parsedScheduleDate = new Date(scheduleDate);
+    if (isNaN(parsedScheduleDate.getTime())) {
+      logger.error('Schedule date is not a valid date', {
+        scheduleId: dateScheduleId,
+        scheduleDate,
+        scheduleType: typeof scheduleDate
+      });
+      return next(new AppError('Schedule date format is invalid', 400));
+    }
+
+    logger.info('Schedule date validation passed', {
+      scheduleId: dateScheduleId,
+      scheduleDate: parsedScheduleDate.toISOString(),
+      originalScheduleDate: scheduleDate
+    });
+
     // Check seat availability
     if (schedule.availableSeats < seats) {
       return next(new AppError(`Only ${schedule.availableSeats} seats available for this date`, 400));
@@ -54,11 +104,16 @@ export const initiateBooking = async (req: AuthRequest, res: Response, next: Nex
       return next(new AppError('User not found', 404));
     }
 
-    // Calculate total amount
+    // Get payment routing info to determine if service fee applies
+    const paymentRouting = await PaymentService.getPaymentRouting(event.vendorId.toString(), 0); // Amount doesn't matter for routing decision
+
+    // Calculate total amount based on vendor payment setup
     const unitPrice = schedule.price || event.price;
     const subtotal = unitPrice * seats;
     const tax = subtotal * 0.05; // 5% tax
-    const serviceFee = subtotal * 0.05; // 5% service fee
+
+    // Service fee only applies if using platform Stripe
+    const serviceFee = paymentRouting.usesVendorStripe ? 0 : (subtotal * 0.05); // 5% service fee for platform payments
     const total = subtotal + tax + serviceFee;
 
     // Create temporary order with pending status
@@ -67,7 +122,7 @@ export const initiateBooking = async (req: AuthRequest, res: Response, next: Nex
       items: [{
         eventId,
         eventTitle: event.title,
-        scheduleDate: schedule.date,
+        scheduleDate: parsedScheduleDate,
         quantity: seats,
         unitPrice,
         totalPrice: subtotal,
@@ -81,15 +136,22 @@ export const initiateBooking = async (req: AuthRequest, res: Response, next: Nex
       status: 'pending',
       paymentStatus: 'pending',
       paymentMethod,
+      paymentRouting: {
+        usesVendorStripe: paymentRouting.usesVendorStripe,
+        vendorStripeAccountId: paymentRouting.vendorStripeAccountId,
+        platformCommission: paymentRouting.platformCommission,
+        vendorPayout: paymentRouting.vendorPayout,
+        stripeApplicationFee: 0, // Will be set if using Stripe Connect
+      },
       billingAddress: {
         firstName: user.firstName,
         lastName: user.lastName,
         email: user.email,
-        phone: user.phone || '',
-        address: user.addresses?.[0]?.street || '',
-        city: user.addresses?.[0]?.city || '',
-        state: user.addresses?.[0]?.state || '',
-        zipCode: user.addresses?.[0]?.zipCode || '',
+        phone: user.phone || user.email, // Use email as fallback for phone
+        address: user.addresses?.[0]?.street || 'TBD',
+        city: user.addresses?.[0]?.city || 'TBD',
+        state: user.addresses?.[0]?.state || 'TBD',
+        zipCode: user.addresses?.[0]?.zipCode || '00000',
         country: user.addresses?.[0]?.country || 'UAE',
       },
       source: 'web',
@@ -99,19 +161,31 @@ export const initiateBooking = async (req: AuthRequest, res: Response, next: Nex
 
     await tempOrder.save();
 
-    // Create Stripe payment session
-    const paymentSession = await PaymentService.createPaymentIntent({
-      amount: total, // Keep original amount, conversion happens in service
-      currency: event.currency,
-      orderId: tempOrder._id.toString(),
-      metadata: {
+    // Create payment session based on payment method
+    let paymentSession: any;
+
+    if (paymentMethod === 'test') {
+      // For test payments, create a mock payment session
+      paymentSession = {
+        paymentIntentId: `test_pi_${tempOrder._id}`,
+        clientSecret: `test_pi_${tempOrder._id}_secret`,
+      };
+    } else {
+      // Create Stripe payment session for real payments
+      paymentSession = await PaymentService.createPaymentIntent({
+        amount: total, // Keep original amount, conversion happens in service
+        currency: event.currency,
         orderId: tempOrder._id.toString(),
-        eventId: eventId,
-        scheduleId: dateScheduleId,
-        seats: seats.toString(),
-        userId: userId,
-      },
-    });
+        vendorId: event.vendorId.toString(), // Add vendor ID for routing
+        metadata: {
+          orderId: tempOrder._id.toString(),
+          eventId: eventId,
+          scheduleId: dateScheduleId,
+          seats: seats.toString(),
+          userId: userId,
+        },
+      });
+    }
 
     // Update order with payment intent ID
     tempOrder.paymentIntentId = paymentSession.paymentIntentId;
@@ -155,10 +229,21 @@ export const confirmBooking = async (req: AuthRequest, res: Response, next: Next
       return next(new AppError('Order not found', 404));
     }
 
-    // Verify payment with Stripe
-    const paymentIntent = await PaymentService.getPaymentIntent(paymentIntentId);
-    if (paymentIntent.status !== 'succeeded') {
-      return next(new AppError('Payment not confirmed', 400));
+    // Verify payment based on payment method
+    let paymentIntent: any;
+
+    if (paymentIntentId.startsWith('test_pi_')) {
+      // For test payments, create a mock successful payment intent
+      paymentIntent = {
+        id: paymentIntentId,
+        status: 'succeeded',
+      };
+    } else {
+      // Verify payment with Stripe for real payments
+      paymentIntent = await PaymentService.getPaymentIntent(paymentIntentId);
+      if (paymentIntent.status !== 'succeeded') {
+        return next(new AppError('Payment not confirmed', 400));
+      }
     }
 
     // Update order status
@@ -169,25 +254,122 @@ export const confirmBooking = async (req: AuthRequest, res: Response, next: Next
 
     // Reduce available seats for each item
     for (const item of order.items) {
-      const event = await Event.findById(item.eventId);
-      if (event) {
-        const success = event.reduceSeats(item.scheduleDate, item.quantity);
-        if (!success) {
-          return next(new AppError('Failed to reserve seats', 500));
-        }
-        await event.save();
+      // Validate order item data before processing
+      if (!item.eventId) {
+        logger.error('Order item missing eventId', {
+          orderId: order._id,
+          orderNumber: order.orderNumber,
+          item
+        });
+        return next(new AppError('Invalid order data: missing event ID', 500));
       }
+
+      if (!item.scheduleDate || !(item.scheduleDate instanceof Date) || isNaN(item.scheduleDate.getTime())) {
+        logger.error('Order item has invalid scheduleDate', {
+          orderId: order._id,
+          orderNumber: order.orderNumber,
+          eventId: item.eventId,
+          scheduleDate: item.scheduleDate,
+          scheduleDateType: typeof item.scheduleDate,
+          isDateInstance: item.scheduleDate instanceof Date
+        });
+        return next(new AppError('Invalid order data: missing or invalid schedule date', 500));
+      }
+
+      if (!item.quantity || item.quantity <= 0) {
+        logger.error('Order item has invalid quantity', {
+          orderId: order._id,
+          orderNumber: order.orderNumber,
+          eventId: item.eventId,
+          quantity: item.quantity
+        });
+        return next(new AppError('Invalid order data: invalid quantity', 500));
+      }
+
+      const event = await Event.findById(item.eventId);
+      if (!event) {
+        logger.error('Event not found for order item', {
+          orderId: order._id,
+          orderNumber: order.orderNumber,
+          eventId: item.eventId
+        });
+        return next(new AppError(`Event not found for order item: ${item.eventId}`, 404));
+      }
+
+      logger.info('Attempting to reduce seats', {
+        orderId: order._id,
+        orderNumber: order.orderNumber,
+        eventId: item.eventId,
+        eventTitle: event.title,
+        scheduleDate: item.scheduleDate.toISOString(),
+        quantity: item.quantity,
+        dateScheduleCount: event.dateSchedule.length
+      });
+
+      const success = event.reduceSeats(item.scheduleDate, item.quantity);
+      if (!success) {
+        logger.error('Failed to reduce seats for booking', {
+          orderId: order._id,
+          orderNumber: order.orderNumber,
+          eventId: item.eventId,
+          eventTitle: event.title,
+          scheduleDate: item.scheduleDate.toISOString(),
+          quantity: item.quantity,
+          dateSchedule: event.dateSchedule.map((s: any) => ({
+            _id: s._id,
+            date: s.date,
+            startDate: s.startDate,
+            endDate: s.endDate,
+            availableSeats: s.availableSeats,
+            soldSeats: s.soldSeats
+          }))
+        });
+        return next(new AppError(`Failed to reserve ${item.quantity} seats for ${event.title} on ${item.scheduleDate.toDateString()}`, 500));
+      }
+
+      logger.info('Successfully reduced seats', {
+        orderId: order._id,
+        orderNumber: order.orderNumber,
+        eventId: item.eventId,
+        eventTitle: event.title,
+        scheduleDate: item.scheduleDate.toISOString(),
+        quantity: item.quantity
+      });
+
+      await event.save();
     }
 
     await order.save();
 
-    // Generate tickets (QR codes) - this would be handled by a background job
-    // For now, we'll create placeholder ticket data
-    const tickets = [];
-    for (let i = 0; i < order.items.reduce((sum, item) => sum + item.quantity, 0); i++) {
-      tickets.push({
-        ticketId: `tkt_${order.orderNumber}_${i + 1}`,
-        qrCodeUrl: `https://api.qrserver.com/v1/create-qr-code/?data=${order.orderNumber}_${i + 1}&size=200x200`,
+    // Generate tickets using the centralized service
+    logger.info('Starting ticket generation process using TicketGenerationService', {
+      orderId: order._id,
+      orderNumber: order.orderNumber
+    });
+
+    const ticketResult = await TicketGenerationService.generateTicketsForOrder(order._id.toString(), {
+      sendEmail: true,
+      skipExisting: false
+    });
+
+    const tickets = ticketResult.tickets.map(ticket => ({
+      ticketId: ticket._id,
+      ticketNumber: ticket.ticketNumber,
+      qrCodeUrl: ticket.qrCodeImage,
+      status: ticket.status,
+    }));
+
+    if (!ticketResult.success && ticketResult.errors.length > 0) {
+      logger.warn('Some tickets failed to generate', {
+        orderId: order._id,
+        orderNumber: order.orderNumber,
+        errors: ticketResult.errors,
+        successfulTickets: ticketResult.totalGenerated
+      });
+    } else {
+      logger.info('Ticket generation completed successfully', {
+        orderId: order._id,
+        totalTicketsGenerated: ticketResult.totalGenerated
       });
     }
 

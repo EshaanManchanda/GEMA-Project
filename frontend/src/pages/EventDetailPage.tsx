@@ -8,8 +8,8 @@ import eventsAPI from '../services/api/eventsAPI';
 import { useErrorHandler } from '../utils/errorHandler';
 import { ComponentErrorBoundary } from '../components/common/ErrorBoundary';
 import { AppDispatch } from '../store';
-import { 
-  setBookingEvent, 
+import {
+  setBookingEvent,
   resetBookingFlow,
   setBookingParticipants
 } from '../store/slices/bookingsSlice';
@@ -18,6 +18,7 @@ import Badge from '../components/ui/Badge';
 import { Card, CardContent, CardHeader, CardTitle } from '../components/ui/Card';
 import Avatar from '../components/ui/Avatar';
 import StatCard from '../components/ui/StatCard';
+import { getEventImage, getVendorLogo, createImageErrorHandler } from '../utils/imageFallbacks';
 
 // Mock data for when backend is unavailable
 const mockEvents = [
@@ -25,7 +26,7 @@ const mockEvents = [
     id: '1',
     title: 'Kids Fun Day',
     description: 'A day full of fun activities for kids of all ages. Join us for a memorable experience filled with games, entertainment, and creative activities designed to engage children of various age groups. Our trained staff will ensure a safe and enjoyable environment for all participants.',
-    image: 'https://via.placeholder.com/800x400?text=Kids+Fun+Day',
+    image: getEventImage(undefined, 'Kids Fun Day', 800, 400),
     price: 25,
     date: '2023-12-15',
     time: '10:00 AM - 4:00 PM',
@@ -38,7 +39,7 @@ const mockEvents = [
     organizer: {
       id: '101',
       name: 'Fun Events Co.',
-      logo: 'https://via.placeholder.com/100x100?text=FEC',
+      logo: getVendorLogo(undefined, 'Fun Events Co.', 100),
       rating: 4.8
     },
     features: [
@@ -68,7 +69,7 @@ const mockEvents = [
     id: '2',
     title: 'Science Workshop',
     description: 'Interactive science experiments for curious minds. This workshop introduces children to the fascinating world of science through hands-on experiments and demonstrations. Participants will learn about basic scientific principles in a fun and engaging way, fostering a love for discovery and learning.',
-    image: 'https://via.placeholder.com/800x400?text=Science+Workshop',
+    image: getEventImage(undefined, 'Science Workshop', 800, 400),
     price: 30,
     date: '2023-12-20',
     time: '1:00 PM - 5:00 PM',
@@ -81,7 +82,7 @@ const mockEvents = [
     organizer: {
       id: '102',
       name: 'Science Explorers',
-      logo: 'https://via.placeholder.com/100x100?text=SE',
+      logo: getVendorLogo(undefined, 'Science Explorers', 100),
       rating: 4.9
     },
     features: [
@@ -143,7 +144,7 @@ const EventDetailPage: React.FC = () => {
         const transformedEvent = {
           ...eventData,
           id: eventData._id,
-          image: eventData.images?.[0] || `https://via.placeholder.com/800x400?text=${encodeURIComponent(eventData.title)}`,
+          image: getEventImage(eventData.images, eventData.title, 800, 400),
           date: eventData.dateSchedule?.[0]?.startDate || new Date().toISOString(),
           time: eventData.dateSchedule?.[0] ? 
             `${new Date(eventData.dateSchedule[0].startDate).toLocaleTimeString()} - ${new Date(eventData.dateSchedule[0].endDate).toLocaleTimeString()}` :
@@ -159,7 +160,9 @@ const EventDetailPage: React.FC = () => {
             name: eventData.vendorId?.firstName && eventData.vendorId?.lastName ? 
               `${eventData.vendorId.firstName} ${eventData.vendorId.lastName}` : 
               'Event Organizer',
-            logo: 'https://via.placeholder.com/100x100?text=ORG',
+            logo: getVendorLogo(null, eventData.vendorId?.firstName && eventData.vendorId?.lastName ?
+              `${eventData.vendorId.firstName} ${eventData.vendorId.lastName}` :
+              'Event Organizer', 100),
             rating: 4.8
           },
           features: [
@@ -316,7 +319,12 @@ const EventDetailPage: React.FC = () => {
     dispatch(resetBookingFlow());
     dispatch(setBookingEvent(id));
 
-    // Create initial participants based on quantity
+    // Create initial participants based on quantity with validation
+    if (quantity < 1 || quantity > currentAvailableSeats) {
+      toast.error(`Invalid quantity. Please select between 1 and ${currentAvailableSeats} participants.`);
+      return;
+    }
+
     const initialParticipants = Array.from({ length: quantity }, (_, index) => ({
       id: `participant-${index + 1}`,
       name: '',
@@ -674,10 +682,11 @@ const EventDetailPage: React.FC = () => {
       {/* Event Image Gallery */}
       <div className="mb-12">
         <div className="relative rounded-2xl overflow-hidden shadow-2xl group">
-          <img 
-            src={event.image} 
-            alt={event.title} 
-            className="w-full h-96 md:h-[500px] object-cover transition-transform duration-700 group-hover:scale-105" 
+          <img
+            src={event.image}
+            alt={event.title}
+            className="w-full h-96 md:h-[500px] object-cover transition-transform duration-700 group-hover:scale-105"
+            onError={createImageErrorHandler(getEventImage(undefined, event.title, 800, 500))}
           />
           
           {/* Modern Gradient Overlay */}
@@ -811,7 +820,16 @@ const EventDetailPage: React.FC = () => {
                         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 11a3 3 0 11-6 0 3 3 0 016 0z" />
                       </svg>
                       <div>
-                        <h3 className="font-medium">{event.location}</h3>
+                        <h3 className="font-medium">
+                          {event.location ? (() => {
+                            if (typeof event.location === 'string') return event.location;
+                            const { city, address } = event.location;
+                            if (city && address) return `${city}, ${address}`;
+                            if (city) return city;
+                            if (address) return address;
+                            return 'Location TBD';
+                          })() : 'Location TBD'}
+                        </h3>
                         <p className="text-gray-600 text-sm">{event.address}</p>
                       </div>
                     </div>

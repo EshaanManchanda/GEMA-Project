@@ -23,6 +23,11 @@ import '@/i18n/config';
 // Initialize PWA
 import { initializePWA } from './services/pwaService';
 
+// Auth debugging tools (development only)
+if (process.env.NODE_ENV === 'development') {
+  import('./utils/authDebug');
+}
+
 // Create a client for React Query
 const queryClient = new QueryClient({
   defaultOptions: {

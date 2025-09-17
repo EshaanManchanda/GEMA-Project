@@ -1,13 +1,23 @@
 import { stripe, convertToStripeAmount, convertFromStripeAmount, getStripeCurrency } from '../config/stripe';
-import { Order } from '../models';
+import { Order, User } from '../models';
 import Stripe from 'stripe';
 
 export interface CreatePaymentIntentParams {
   amount: number;
   currency: string;
   orderId: string;
+  vendorId?: string;
   customerId?: string;
   metadata?: Record<string, string>;
+}
+
+export interface PaymentRoutingInfo {
+  usesVendorStripe: boolean;
+  stripeInstance: Stripe;
+  vendorStripeAccountId?: string;
+  platformCommission: number;
+  serviceFee: number;
+  vendorPayout: number;
 }
 
 export interface PaymentIntentResult {
@@ -17,18 +27,84 @@ export interface PaymentIntentResult {
 
 export class PaymentService {
   /**
-   * Create a Stripe payment intent for an order
+   * Determine payment routing based on vendor settings
+   */
+  static async getPaymentRouting(vendorId: string, amount: number): Promise<PaymentRoutingInfo> {
+    try {
+      // Fetch vendor with payment settings
+      const vendor = await User.findById(vendorId).select('+vendorPaymentSettings.stripeApiKey');
+
+      if (!vendor || vendor.role !== 'vendor') {
+        throw new Error('Vendor not found');
+      }
+
+      const paymentSettings = vendor.vendorPaymentSettings;
+
+      // Check if vendor has custom Stripe account
+      if (paymentSettings?.hasCustomStripeAccount && paymentSettings.stripeApiKey) {
+        // Use vendor's Stripe account - no service fee
+        const vendorStripe = new Stripe(paymentSettings.stripeApiKey, {
+          apiVersion: '2025-07-30.basil',
+        });
+
+        return {
+          usesVendorStripe: true,
+          stripeInstance: vendorStripe,
+          vendorStripeAccountId: paymentSettings.stripeAccountId,
+          platformCommission: 0,
+          serviceFee: 0,
+          vendorPayout: amount,
+        };
+      } else {
+        // Use platform Stripe with service fee
+        const commissionRate = paymentSettings?.commissionRate || 5; // Default 5%
+        const serviceFee = Math.round((amount * commissionRate) / 100 * 100) / 100; // Round to 2 decimals
+        const vendorPayout = amount - serviceFee;
+
+        return {
+          usesVendorStripe: false,
+          stripeInstance: stripe,
+          platformCommission: serviceFee,
+          serviceFee,
+          vendorPayout,
+        };
+      }
+    } catch (error) {
+      console.error('Error determining payment routing:', error);
+      // Fallback to platform Stripe
+      const serviceFee = Math.round((amount * 5) / 100 * 100) / 100; // 5% default
+      return {
+        usesVendorStripe: false,
+        stripeInstance: stripe,
+        platformCommission: serviceFee,
+        serviceFee,
+        vendorPayout: amount - serviceFee,
+      };
+    }
+  }
+
+  /**
+   * Create a Stripe payment intent for an order with routing support
    */
   static async createPaymentIntent({
     amount,
     currency,
     orderId,
+    vendorId,
     customerId,
     metadata = {},
   }: CreatePaymentIntentParams): Promise<PaymentIntentResult> {
     try {
       const stripeAmount = convertToStripeAmount(amount, currency);
       const stripeCurrency = getStripeCurrency(currency);
+
+      // Determine payment routing if vendor is provided
+      let routingInfo: PaymentRoutingInfo | null = null;
+      if (vendorId) {
+        routingInfo = await this.getPaymentRouting(vendorId, amount);
+      }
+
+      const stripeInstance = routingInfo?.stripeInstance || stripe;
 
       const paymentIntentParams: Stripe.PaymentIntentCreateParams = {
         amount: stripeAmount,
@@ -38,6 +114,9 @@ export class PaymentService {
         },
         metadata: {
           orderId,
+          vendorId: vendorId || 'platform',
+          usesVendorStripe: String(routingInfo?.usesVendorStripe || false),
+          serviceFee: routingInfo?.serviceFee || 0,
           ...metadata,
         },
       };
@@ -47,7 +126,13 @@ export class PaymentService {
         paymentIntentParams.customer = customerId;
       }
 
-      const paymentIntent = await stripe.paymentIntents.create(paymentIntentParams);
+      // For platform payments with application fee (future Stripe Connect integration)
+      if (!routingInfo?.usesVendorStripe && routingInfo?.platformCommission > 0) {
+        // This would be used with Stripe Connect in the future
+        // paymentIntentParams.application_fee_amount = convertToStripeAmount(routingInfo.platformCommission, currency);
+      }
+
+      const paymentIntent = await stripeInstance.paymentIntents.create(paymentIntentParams);
 
       return {
         clientSecret: paymentIntent.client_secret!,
@@ -230,14 +315,13 @@ export class PaymentService {
         return;
       }
 
-      // Update order status
+      // Update order status and generate tickets
       await order.markAsPaid(paymentIntent.id, 'stripe');
-      await order.confirm();
+      await order.confirm(); // This will automatically generate tickets
 
-      console.log(`Order ${orderId} marked as paid and confirmed`);
+      console.log(`Order ${orderId} marked as paid, confirmed, and tickets generated`);
 
       // TODO: Send confirmation email
-      // TODO: Generate tickets
       // TODO: Send push notification
     } catch (error) {
       console.error('Error handling payment succeeded:', error);

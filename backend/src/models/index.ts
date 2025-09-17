@@ -52,3 +52,19 @@ export type { IAffiliate, IAffiliateClick, IAffiliateCommission, ICommissionTier
 
 export { default as Collection } from './Collection';
 export type { ICollection } from './Collection';
+
+// Revenue Management Models
+export { default as RevenueTransaction, RevenueStream, TransactionStatus, PayoutStatus } from './RevenueTransaction';
+export type { IRevenueTransaction } from './RevenueTransaction';
+
+export { default as VendorSubscription, SubscriptionPlan, SubscriptionStatus, BillingCycle } from './VendorSubscription';
+export type { IVendorSubscription, IPlanFeatures, IPlanPricing, IUsageTracking } from './VendorSubscription';
+
+export { default as AdminRevenueSettings, PayoutFrequency, CommissionStructure, TaxCalculationMethod } from './AdminRevenueSettings';
+export type { IAdminRevenueSettings, ITieredCommission, IPaymentGatewaySettings, ITaxSettings, IRefundPolicy, IRevenueSharingRule, IPlatformFees } from './AdminRevenueSettings';
+
+export { default as AdvertisingCampaign, CampaignType, CampaignStatus, BillingModel, AdPlacement } from './AdvertisingCampaign';
+export type { IAdvertisingCampaign, ITargeting, IBudgetSettings, IPerformanceMetrics, IAdContent } from './AdvertisingCampaign';
+
+export { default as EventAddon, AddonType, AddonStatus, PricingModel, AvailabilityType } from './EventAddon';
+export type { IEventAddon, ITieredPricing, IAddonRequirements, IAvailabilitySchedule } from './EventAddon';

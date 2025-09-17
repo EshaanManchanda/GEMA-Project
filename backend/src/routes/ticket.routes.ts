@@ -1,14 +1,16 @@
 import { Router } from 'express';
-import { 
-  generateTickets, 
-  getTicketDetails, 
-  transferTicket, 
+import {
+  generateTickets,
+  getTicketDetails,
+  transferTicket,
   resendTicket,
   verifyTicketQR,
   checkInTicket,
   getEventTickets,
   getUserTickets,
-  downloadTicketPDF
+  getTicketsByOrder,
+  downloadTicketPDF,
+  generateMissingTickets
 } from '../controllers/ticket.controller';
 import { authenticate, authorize } from '../middleware/auth';
 
@@ -19,6 +21,9 @@ router.use(authenticate);
 
 // Generate Tickets (Vendor/Admin only)
 router.post('/generate', authorize(['vendor', 'admin']), generateTickets);
+
+// Generate Missing Tickets (User/Customer for their own orders)
+router.post('/generate-missing', authorize(['user', 'customer', 'vendor', 'admin']), generateMissingTickets);
 
 // QR Code Verification (Employee/Vendor/Admin only)
 router.post('/verify-qr/:eventId?', authorize(['employee', 'vendor', 'admin']), verifyTicketQR);
@@ -31,6 +36,9 @@ router.get('/event/:eventId', authorize(['employee', 'vendor', 'admin']), getEve
 
 // Get User's Tickets (Customer portal)
 router.get('/user/my-tickets', authorize(['user', 'customer']), getUserTickets);
+
+// Get Tickets by Order ID (Customer portal)
+router.get('/order/:orderId', authorize(['user', 'customer']), getTicketsByOrder);
 
 // Download Ticket PDF (Ticket owner only)
 router.get('/:ticketId/download', authorize(['user', 'customer']), downloadTicketPDF);

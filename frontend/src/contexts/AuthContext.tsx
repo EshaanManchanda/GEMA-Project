@@ -7,6 +7,7 @@ import {
   logoutUser,
   updateProfile as updateProfileAction,
   getCurrentUser,
+  clearError,
   selectIsAuthenticated,
   selectUser,
   selectIsLoading,
@@ -36,15 +37,26 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const error = useSelector(selectError);
 
   useEffect(() => {
-    // Check if user is already authenticated from Redux store
-    const fetchCurrentUser = async () => {
-      if (isAuthenticated) {
-        await dispatch(getCurrentUser() as any);
+    // Check if user is already authenticated from stored token
+    const initializeAuth = async () => {
+      const token = localStorage.getItem('token');
+      if (token && !user) {
+        try {
+          // Clear any existing errors before attempting auth
+          dispatch(clearError());
+          await dispatch(getCurrentUser() as any);
+        } catch (error) {
+          // Token might be invalid, clear it
+          localStorage.removeItem('token');
+          localStorage.removeItem('refreshToken');
+          // Clear auth errors since this is just initialization
+          dispatch(clearError());
+        }
       }
     };
-    
-    fetchCurrentUser();
-  }, [dispatch, isAuthenticated]);
+
+    initializeAuth();
+  }, [dispatch, user]);
 
   const login = async (credentials: LoginCredentials) => {
     try {

@@ -19,6 +19,7 @@ import {
 } from 'react-icons/fa';
 import blogAPI from '../../services/api/blogAPI';
 import { Blog, SingleBlogResponse } from '../../types/blog';
+import { getCurrentPageUrl } from '../../utils/urlHelper';
 
 const BlogDetailPage: React.FC = () => {
   const { slug } = useParams<{ slug: string }>();
@@ -94,7 +95,7 @@ const BlogDetailPage: React.FC = () => {
       console.error('Error recording share:', err);
     }
 
-    const url = window.location.href;
+    const url = getCurrentPageUrl();
     const title = blog.title;
     const text = blog.excerpt;
 
@@ -221,7 +222,7 @@ const BlogDetailPage: React.FC = () => {
         <meta property="og:title" content={blog.title} />
         <meta property="og:description" content={blog.excerpt} />
         <meta property="og:image" content={blog.featuredImage} />
-        <meta property="og:url" content={window.location.href} />
+        <meta property="og:url" content={getCurrentPageUrl()} />
         <meta property="og:type" content="article" />
         
         {/* Twitter Card tags */}

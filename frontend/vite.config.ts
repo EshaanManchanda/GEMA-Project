@@ -158,7 +158,9 @@ export default defineConfig({
       'clsx',
       'lodash',
       '@tanstack/react-query',
-      'react-hook-form'
+      'react-hook-form',
+      'firebase/app',
+      'firebase/auth'
     ],
     exclude: ['@zxing/library']
   },

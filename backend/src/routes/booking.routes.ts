@@ -24,7 +24,7 @@ const initiateBookingValidation = [
     .withMessage('Seats must be between 1 and 10'),
   body('paymentMethod')
     .optional()
-    .isIn(['stripe', 'paypal'])
+    .isIn(['stripe', 'paypal', 'test'])
     .withMessage('Invalid payment method'),
 ];
 

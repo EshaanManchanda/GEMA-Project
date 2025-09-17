@@ -106,6 +106,21 @@ export const extractApiError = (response: any): string => {
 };
 
 /**
+ * Extracts booking data specifically, handling nested booking structure
+ */
+export const extractBookingData = (response: any): any => {
+  const data = extractApiData(response);
+
+  // If data has a 'booking' property, return that
+  if (data && data.booking) {
+    return data.booking;
+  }
+
+  // Otherwise return the data itself
+  return data;
+};
+
+/**
  * Logs API response for debugging (only in development with debug flag)
  */
 export const logApiResponse = (endpoint: string, response: any, error?: any): void => {

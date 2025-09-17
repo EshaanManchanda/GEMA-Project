@@ -67,6 +67,24 @@ export interface ISocialMedia {
   website?: string;
 }
 
+export interface IVendorPaymentSettings {
+  stripeAccountId?: string;
+  stripeApiKey?: string;
+  hasCustomStripeAccount: boolean;
+  acceptsPlatformPayments: boolean;
+  commissionRate?: number;
+  payoutSchedule?: 'daily' | 'weekly' | 'monthly';
+  minimumPayout?: number;
+  bankAccountDetails?: {
+    accountHolderName?: string;
+    bankName?: string;
+    accountNumber?: string;
+    routingNumber?: string;
+    iban?: string;
+    swiftCode?: string;
+  };
+}
+
 export interface IPasswordReset {
   token: string;
   expiresAt: Date;
@@ -115,6 +133,7 @@ export interface IUser extends Document {
   firebaseUid?: string;
   businessHours?: IBusinessHours;
   socialMedia?: ISocialMedia;
+  vendorPaymentSettings?: IVendorPaymentSettings;
   favoriteEvents?: mongoose.Types.ObjectId[];
   createdAt: Date;
   updatedAt: Date;
@@ -156,7 +175,14 @@ const UserSchema = new Schema<IUser>(
     phone: {
       type: String,
       trim: true,
-      match: [/^(\+971|00971|0)?(?:50|51|52|55|56|58|2|3|4|6|7|9)\d{7}$/, 'Please enter a valid UAE phone number']
+      validate: {
+        validator: function(v: string) {
+          if (!v) return true; // Phone is optional
+          // Basic international phone validation: starts with + and contains 8-15 digits
+          return /^\+[1-9]\d{7,14}$/.test(v);
+        },
+        message: 'Please enter a valid international phone number (e.g., +1234567890)'
+      }
     },
     avatar: {
       type: String
@@ -273,6 +299,48 @@ const UserSchema = new Schema<IUser>(
     socialMedia: {
       type: Object,
       default: {}
+    },
+    vendorPaymentSettings: {
+      stripeAccountId: {
+        type: String,
+        sparse: true
+      },
+      stripeApiKey: {
+        type: String,
+        sparse: true,
+        select: false // Don't include in queries by default for security
+      },
+      hasCustomStripeAccount: {
+        type: Boolean,
+        default: false
+      },
+      acceptsPlatformPayments: {
+        type: Boolean,
+        default: true
+      },
+      commissionRate: {
+        type: Number,
+        min: 0,
+        max: 100,
+        default: 5 // 5% default commission
+      },
+      payoutSchedule: {
+        type: String,
+        enum: ['daily', 'weekly', 'monthly'],
+        default: 'weekly'
+      },
+      minimumPayout: {
+        type: Number,
+        default: 50 // Minimum AED 50 for payout
+      },
+      bankAccountDetails: {
+        accountHolderName: String,
+        bankName: String,
+        accountNumber: String,
+        routingNumber: String,
+        iban: String,
+        swiftCode: String
+      }
     },
     favoriteEvents: [{
       type: mongoose.Schema.Types.ObjectId,

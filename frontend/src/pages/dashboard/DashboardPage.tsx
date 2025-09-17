@@ -522,7 +522,16 @@ const DashboardPage: React.FC = () => {
                             <div className="text-sm text-gray-500 mb-4">
                               <p><span className="font-medium">Date:</span> {formatDate(event.date)}</p>
                               {event.time && <p><span className="font-medium">Time:</span> {event.time}</p>}
-                              <p><span className="font-medium">Location:</span> {event.location}</p>
+                              <p><span className="font-medium">Location:</span> {
+                                event.location ? (() => {
+                                  if (typeof event.location === 'string') return event.location;
+                                  const { city, address } = event.location;
+                                  if (city && address) return `${city}, ${address}`;
+                                  if (city) return city;
+                                  if (address) return address;
+                                  return 'Location TBD';
+                                })() : 'Location TBD'
+                              }</p>
                               <p><span className="font-medium">Price:</span> {event.currency ? event.currency.toUpperCase() : 'AED'} {event.price?.toFixed(2) || '0.00'}</p>
                             </div>
                             <div className="flex justify-between items-center">

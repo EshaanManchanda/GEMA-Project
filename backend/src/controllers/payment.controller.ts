@@ -117,7 +117,7 @@ export const confirmPayment = async (req: AuthRequest, res: Response, next: Next
     if (paymentIntent.status === 'succeeded') {
       // Payment successful - this will also be handled by webhook
       await order.markAsPaid(paymentIntentId, 'stripe');
-      await order.confirm();
+      await order.confirm(); // This will automatically generate tickets
 
       res.status(200).json({
         success: true,

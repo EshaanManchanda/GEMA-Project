@@ -73,8 +73,8 @@ const EventDatePicker: React.FC<EventDatePickerProps> = ({
   
   // Get the schedule for a specific date
   const getScheduleForDate = (date: Date) => {
-    if (!date) return null;
-    
+    if (!date || !dateSchedules || !Array.isArray(dateSchedules)) return null;
+
     return dateSchedules.find(schedule => {
       const startDate = startOfDay(new Date(schedule.startDate));
       const endDate = startOfDay(new Date(schedule.endDate));
@@ -86,6 +86,7 @@ const EventDatePicker: React.FC<EventDatePickerProps> = ({
   
   // Check if a date is an event date (has schedule)
   const isEventDate = (date: Date) => {
+    if (!dateSchedules || !Array.isArray(dateSchedules)) return false;
     return dateSchedules.some(schedule => {
       const startDate = startOfDay(new Date(schedule.startDate));
       const endDate = startOfDay(new Date(schedule.endDate));
@@ -127,7 +128,7 @@ const EventDatePicker: React.FC<EventDatePickerProps> = ({
         <label className="block text-gray-700 text-sm font-medium mb-2">
           Select Event Date
         </label>
-        {dateSchedules.length > 0 && (
+        {dateSchedules && dateSchedules.length > 0 && (
           <div className="text-xs text-gray-600">
             Event runs: {format(new Date(dateSchedules[0].startDate), 'MMM d')} - {format(new Date(dateSchedules[0].endDate), 'MMM d, yyyy')}
           </div>
@@ -205,7 +206,15 @@ const EventDatePicker: React.FC<EventDatePickerProps> = ({
         </div>
       )}
       
-      {availableDates.length === 0 && (
+      {(!dateSchedules || dateSchedules.length === 0) && (
+        <div className="mt-3 p-3 bg-yellow-50 border border-yellow-200 rounded-lg">
+          <div className="text-sm text-yellow-700">
+            No event schedules available. Please check back later.
+          </div>
+        </div>
+      )}
+
+      {dateSchedules && dateSchedules.length > 0 && availableDates.length === 0 && (
         <div className="mt-3 p-3 bg-yellow-50 border border-yellow-200 rounded-lg">
           <div className="text-sm text-yellow-700">
             No dates available for booking at this time.

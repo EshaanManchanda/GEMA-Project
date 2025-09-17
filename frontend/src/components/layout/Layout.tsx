@@ -20,6 +20,7 @@ import { useRealTimeData } from '@/hooks/useRealTimeData';
 import ErrorBoundary from '@/components/common/ErrorBoundary';
 import LoadingSpinner from '@/components/common/LoadingSpinner';
 import kidroveLogo from '/assets/images/KidRove-Logo.png';
+import kidroveLogoWhite from '/assets/images/KidRove-Logo-white.png';
 import {
   FaFacebookF,
   FaTwitter,
@@ -193,7 +194,7 @@ const Layout: React.FC<{ children?: React.ReactNode }> = ({ children }) => {
             {/* Mobile: Logo */}
             <div className="md:hidden">
               <a href="/">
-                <img src={kidroveLogo} alt="Kidzapp Logo" className="h-6 w-auto" />
+                <img src={kidroveLogo} alt="Kidzapp Logo" className="h-8 w-auto" />
               </a>
             </div>
 
@@ -234,13 +235,9 @@ const Layout: React.FC<{ children?: React.ReactNode }> = ({ children }) => {
         >
           <div className="max-w-screen-xl mx-auto px-4 sm:px-6 lg:px-8 py-4 flex justify-between items-center">
             {/* Logo */}
-            <div className="flex items-center">
-              <Link to="/">
-                <img 
-                  src={kidroveLogo} 
-                  alt="Kidzapp Logo" 
-                  className="h-8 w-auto" 
-                />
+            <div className="flex items-center" style={{ width: '10%', height: 'auto',}}>
+              <Link to="/" style={{ width: '100%',}}>
+                <img src={scrolled ? kidroveLogoWhite : kidroveLogo} alt="Kidzapp Logo" className="h-auto w-10" style={{ width: '100%',}} />
               </Link>
             </div>
 

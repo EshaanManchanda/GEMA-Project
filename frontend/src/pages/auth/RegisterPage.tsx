@@ -1,8 +1,9 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { useAppDispatch, useAppSelector } from '@/store/hooks';
-import { registerUser, verifyEmailWithOTP, resendVerificationEmail, loginWithGoogleThunk } from '@/store/slices/authSlice';
+import { registerUser, verifyEmailWithOTP, resendVerificationEmail, loginWithGoogleThunk, clearError } from '@/store/slices/authSlice';
 import { loginWithGoogle } from '@/services/firebaseAuth';
+import PhoneInput from '@/components/forms/PhoneInput';
 
 interface RegisterFormData {
   firstName: string;
@@ -10,7 +11,8 @@ interface RegisterFormData {
   email: string;
   password: string;
   confirmPassword: string;
-  phone: string;
+  countryCode: string;
+  phoneNumber: string;
   agreeToTerms: boolean;
 }
 
@@ -31,7 +33,8 @@ const RegisterPage: React.FC = () => {
     email: '',
     password: '',
     confirmPassword: '',
-    phone: '',
+    countryCode: '+971', // Default to UAE
+    phoneNumber: '',
     agreeToTerms: false
   });
   const [otpData, setOtpData] = useState<OTPFormData>({
@@ -39,6 +42,11 @@ const RegisterPage: React.FC = () => {
   });
   const [errors, setErrors] = useState<Partial<RegisterFormData>>({});
   const [otpError, setOtpError] = useState<string>('');
+
+  // Clear any existing errors when component mounts
+  useEffect(() => {
+    dispatch(clearError());
+  }, [dispatch]);
 
   const handleGoogleSignIn = async () => {
     try {
@@ -90,8 +98,16 @@ const RegisterPage: React.FC = () => {
       isValid = false;
     }
 
-    if (!formData.phone) {
-      newErrors.phone = 'Phone number is required';
+    if (!formData.countryCode) {
+      newErrors.countryCode = 'Country code is required';
+      isValid = false;
+    }
+
+    if (!formData.phoneNumber) {
+      newErrors.phoneNumber = 'Phone number is required';
+      isValid = false;
+    } else if (formData.phoneNumber.length < 7 || formData.phoneNumber.length > 14) {
+      newErrors.phoneNumber = 'Phone number must be between 7 and 14 digits';
       isValid = false;
     }
 
@@ -122,6 +138,36 @@ const RegisterPage: React.FC = () => {
     // Clear Redux error when user makes changes - we'll handle this in Redux
   };
 
+  const handleCountryCodeChange = (code: string) => {
+    setFormData(prev => ({
+      ...prev,
+      countryCode: code
+    }));
+
+    // Clear country code error
+    if (errors.countryCode) {
+      setErrors(prev => ({
+        ...prev,
+        countryCode: undefined
+      }));
+    }
+  };
+
+  const handlePhoneNumberChange = (number: string) => {
+    setFormData(prev => ({
+      ...prev,
+      phoneNumber: number
+    }));
+
+    // Clear phone number error
+    if (errors.phoneNumber) {
+      setErrors(prev => ({
+        ...prev,
+        phoneNumber: undefined
+      }));
+    }
+  };
+
   const handleOtpChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const value = e.target.value.replace(/\D/g, '').slice(0, 4); // Only digits, max 4
     setOtpData({ otp: value });
@@ -143,7 +189,7 @@ const RegisterPage: React.FC = () => {
         email: formData.email,
         password: formData.password,
         confirmPassword: formData.confirmPassword,
-        phone: formData.phone,
+        phone: `${formData.countryCode}${formData.phoneNumber}`,
         acceptTerms: formData.agreeToTerms
       })).unwrap();
 
@@ -384,30 +430,15 @@ const RegisterPage: React.FC = () => {
               )}
             </div>
 
-            <div className="form-group">
-              <label htmlFor="phone" className="form-label">Phone number</label>
-              <div className="relative">
-                <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-                  <svg className="h-5 w-5 text-neutral-400" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor">
-                    <path d="M2 3a1 1 0 011-1h2.153a1 1 0 01.986.836l.74 4.435a1 1 0 01-.54 1.06l-1.548.773a11.037 11.037 0 006.105 6.105l.774-1.548a1 1 0 011.059-.54l4.435.74a1 1 0 01.836.986V17a1 1 0 01-1 1h-2C7.82 18 2 12.18 2 5V3z" />
-                  </svg>
-                </div>
-                <input
-                  id="phone"
-                  name="phone"
-                  type="tel"
-                  autoComplete="tel"
-                  required
-                  className={`input pl-10 ${errors.phone ? 'input-error' : ''}`}
-                  placeholder="+971501234567"
-                  value={formData.phone}
-                  onChange={handleInputChange}
-                />
-              </div>
-              {errors.phone && (
-                <p className="form-error">{errors.phone}</p>
-              )}
-            </div>
+            <PhoneInput
+              countryCode={formData.countryCode}
+              phoneNumber={formData.phoneNumber}
+              onCountryCodeChange={handleCountryCodeChange}
+              onPhoneNumberChange={handlePhoneNumberChange}
+              error={errors.countryCode || errors.phoneNumber}
+              required
+              disabled={isLoading}
+            />
 
             <div className="form-group">
               <label htmlFor="password" className="form-label">Password</label>

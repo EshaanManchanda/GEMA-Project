@@ -321,22 +321,123 @@ eventSchema.pre('save', function (next) {
 
 // Method to check if event has available seats for a specific date
 eventSchema.methods.hasAvailableSeats = function (date: Date, quantity: number = 1): boolean {
-  const schedule = this.dateSchedule.find(
-    (s: any) => s.date.toDateString() === date.toDateString()
-  );
+  if (!date || !(date instanceof Date) || isNaN(date.getTime())) {
+    console.error('Invalid date provided to hasAvailableSeats:', date);
+    return false;
+  }
+
+  const targetDate = new Date(date);
+  targetDate.setHours(0, 0, 0, 0); // Normalize to start of day
+
+  const schedule = this.dateSchedule.find((s: any) => {
+    // Handle both legacy 'date' field and new 'startDate'/'endDate' fields
+    if (s.startDate && s.endDate) {
+      // New format: check if target date falls within the start-end range
+      const startDate = new Date(s.startDate);
+      const endDate = new Date(s.endDate);
+      startDate.setHours(0, 0, 0, 0);
+      endDate.setHours(23, 59, 59, 999);
+
+      return targetDate >= startDate && targetDate <= endDate;
+    } else if (s.date) {
+      // Legacy format: exact date match
+      const scheduleDate = new Date(s.date);
+      scheduleDate.setHours(0, 0, 0, 0);
+      return scheduleDate.getTime() === targetDate.getTime();
+    } else if (s.startDate) {
+      // Only startDate available: treat as single day event
+      const startDate = new Date(s.startDate);
+      startDate.setHours(0, 0, 0, 0);
+      return startDate.getTime() === targetDate.getTime();
+    }
+
+    return false;
+  });
+
   return schedule ? schedule.availableSeats >= quantity : false;
 };
 
 // Method to reduce available seats
 eventSchema.methods.reduceSeats = function (date: Date, quantity: number): boolean {
-  const schedule = this.dateSchedule.find(
-    (s: any) => s.date.toDateString() === date.toDateString()
-  );
+  if (!date || !(date instanceof Date) || isNaN(date.getTime())) {
+    console.error('Invalid date provided to reduceSeats:', {
+      date,
+      dateType: typeof date,
+      isDateInstance: date instanceof Date,
+      eventId: this._id,
+      eventTitle: this.title,
+      quantity
+    });
+    return false;
+  }
+
+  if (!quantity || quantity <= 0) {
+    console.error('Invalid quantity provided to reduceSeats:', {
+      quantity,
+      quantityType: typeof quantity,
+      eventId: this._id,
+      eventTitle: this.title,
+      date: date.toISOString()
+    });
+    return false;
+  }
+
+  const targetDate = new Date(date);
+  targetDate.setHours(0, 0, 0, 0); // Normalize to start of day
+
+  const schedule = this.dateSchedule.find((s: any) => {
+    // Handle both legacy 'date' field and new 'startDate'/'endDate' fields
+    if (s.startDate && s.endDate) {
+      // New format: check if target date falls within the start-end range
+      const startDate = new Date(s.startDate);
+      const endDate = new Date(s.endDate);
+      startDate.setHours(0, 0, 0, 0);
+      endDate.setHours(23, 59, 59, 999);
+
+      return targetDate >= startDate && targetDate <= endDate;
+    } else if (s.date) {
+      // Legacy format: exact date match
+      const scheduleDate = new Date(s.date);
+      scheduleDate.setHours(0, 0, 0, 0);
+      return scheduleDate.getTime() === targetDate.getTime();
+    } else if (s.startDate) {
+      // Only startDate available: treat as single day event
+      const startDate = new Date(s.startDate);
+      startDate.setHours(0, 0, 0, 0);
+      return startDate.getTime() === targetDate.getTime();
+    }
+
+    return false;
+  });
 
   if (schedule && schedule.availableSeats >= quantity) {
     schedule.availableSeats -= quantity;
+    // Also update soldSeats if it exists
+    if (typeof schedule.soldSeats === 'number') {
+      schedule.soldSeats += quantity;
+    }
     return true;
   }
+
+  // Log failure details for debugging
+  console.error('Failed to reduce seats:', {
+    eventId: this._id,
+    eventTitle: this.title,
+    targetDate: targetDate.toISOString(),
+    quantity,
+    foundSchedule: !!schedule,
+    availableSeats: schedule?.availableSeats,
+    scheduleCount: this.dateSchedule.length,
+    scheduleDetails: this.dateSchedule.map((s: any) => ({
+      _id: s._id,
+      date: s.date,
+      startDate: s.startDate,
+      endDate: s.endDate,
+      availableSeats: s.availableSeats,
+      soldSeats: s.soldSeats
+    }))
+  });
+
   return false;
 };
 

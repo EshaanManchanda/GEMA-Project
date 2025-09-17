@@ -21,6 +21,7 @@ interface AuthState {
   refreshToken: string | null;
   isAuthenticated: boolean;
   isLoading: boolean;
+  loading: boolean; // Add for backward compatibility
   isProfileLoading: boolean;
   error: string | null;
   profileError: string | null;
@@ -36,6 +37,7 @@ const initialState: AuthState = {
   refreshToken: null,
   isAuthenticated: false,
   isLoading: false,
+  loading: false, // Add for backward compatibility
   isProfileLoading: false,
   error: null,
   profileError: null,
@@ -357,6 +359,7 @@ const authSlice = createSlice({
     },
     setLoading: (state, action: PayloadAction<boolean>) => {
       state.isLoading = action.payload;
+      state.loading = action.payload; // Keep both in sync
     },
     setProfileLoading: (state, action: PayloadAction<boolean>) => {
       state.isProfileLoading = action.payload;
@@ -395,10 +398,12 @@ const authSlice = createSlice({
     builder
       .addCase(loginUser.pending, (state) => {
         state.isLoading = true;
+        state.loading = true;
         state.error = null;
       })
       .addCase(loginUser.fulfilled, (state, action: PayloadAction<AuthResponse>) => {
         state.isLoading = false;
+        state.loading = false;
         state.user = action.payload.user;
         state.token = action.payload.tokens?.accessToken || action.payload.token || null;
         state.refreshToken = action.payload.tokens?.refreshToken || action.payload.refreshToken || null;
@@ -409,6 +414,7 @@ const authSlice = createSlice({
       })
       .addCase(loginUser.rejected, (state, action) => {
         state.isLoading = false;
+        state.loading = false;
         state.error = action.payload as string;
         state.isAuthenticated = false;
       })
@@ -416,10 +422,12 @@ const authSlice = createSlice({
       // Register
       .addCase(registerUser.pending, (state) => {
         state.isLoading = true;
+        state.loading = true;
         state.error = null;
       })
       .addCase(registerUser.fulfilled, (state, action: PayloadAction<AuthResponse>) => {
         state.isLoading = false;
+        state.loading = false;
         state.user = action.payload.user;
         state.token = action.payload.tokens?.accessToken || action.payload.token || null;
         state.refreshToken = action.payload.tokens?.refreshToken || action.payload.refreshToken || null;
@@ -429,6 +437,7 @@ const authSlice = createSlice({
       })
       .addCase(registerUser.rejected, (state, action) => {
         state.isLoading = false;
+        state.loading = false;
         state.error = action.payload as string;
       })
       
@@ -595,17 +604,28 @@ const authSlice = createSlice({
       })
       
       // Get Current User
+      .addCase(getCurrentUser.pending, (state) => {
+        state.isLoading = true;
+        state.loading = true;
+        state.error = null;
+      })
       .addCase(getCurrentUser.fulfilled, (state, action: PayloadAction<User>) => {
+        state.isLoading = false;
+        state.loading = false;
         state.user = action.payload;
         state.isAuthenticated = true;
         state.isEmailVerified = action.payload.isEmailVerified;
+        state.error = null;
       })
       .addCase(getCurrentUser.rejected, (state) => {
+        state.isLoading = false;
+        state.loading = false;
         state.user = null;
         state.token = null;
         state.refreshToken = null;
         state.isAuthenticated = false;
         state.isEmailVerified = false;
+        state.error = null; // Explicitly clear errors for failed auth checks
       });
   },
 });

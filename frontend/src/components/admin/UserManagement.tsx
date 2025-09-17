@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useMemo } from 'react';
-import { useSelector, useDispatch } from 'react-redux';
+// import { useDispatch } from 'react-redux';
 import { 
   FaUsers, 
   FaUserShield,
@@ -11,11 +11,9 @@ import {
   FaTimes,
   FaSearch,
   FaFilter,
-  FaDownload,
   FaUserPlus,
   FaEye,
   FaBan,
-  FaUnlock,
   FaEnvelope,
   FaPhone,
   FaCalendarAlt,
@@ -24,9 +22,8 @@ import {
   FaShieldAlt
 } from 'react-icons/fa';
 import { format } from 'date-fns';
-import { RootState, AppDispatch } from '../../store';
-import type { User } from '../../services/api/authAPI';
-import LoadingSpinner from '../common/LoadingSpinner';
+// import { AppDispatch } from '../../store';
+import type { User } from '../../types/auth';
 import Modal from '../interactive/Modal';
 import DataTable from '../interactive/DataTable';
 
@@ -54,7 +51,7 @@ const UserManagement: React.FC<UserManagementProps> = ({
   className = '',
   compact = false
 }) => {
-  const dispatch = useDispatch<AppDispatch>();
+  // const dispatch = useDispatch<AppDispatch>();
   
   // Mock data - In real app, this would come from Redux store
   const [users, setUsers] = useState<User[]>([]);

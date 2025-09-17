@@ -1,5 +1,5 @@
 import { ApiService } from '../api';
-import { extractApiData, logApiResponse } from '../../utils/apiResponseHandler';
+import { extractApiData, extractBookingData, logApiResponse } from '../../utils/apiResponseHandler';
 
 export interface InitiateBookingData {
   eventId: string;
@@ -67,7 +67,7 @@ const bookingAPI = {
     try {
       const response = await ApiService.get(`/bookings/${id}`);
       logApiResponse(`GET /bookings/${id}`, response);
-      return extractApiData(response);
+      return extractBookingData(response);
     } catch (error) {
       logApiResponse(`GET /bookings/${id}`, null, error);
       throw error;
