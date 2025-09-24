@@ -3,7 +3,7 @@ import { store } from '../store';
 import { logoutUser, refreshToken } from '../store/slices/authSlice';
 
 // API Configuration - using main backend server
-const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || import.meta.env.VITE_API_URL || 'http://localhost:5001/api';
+const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || import.meta.env.VITE_API_URL || 'https://gema-project.onrender.com/api';
 const API_TIMEOUT = 30000; // 30 seconds
 
 // Retry configuration
