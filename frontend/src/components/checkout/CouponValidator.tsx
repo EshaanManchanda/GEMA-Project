@@ -16,7 +16,7 @@ import Button from '../ui/Button';
 import { Card, CardContent } from '../ui/Card';
 import Badge from '../ui/Badge';
 import { RootState, AppDispatch } from '../../store';
-import { validateCoupon, clearValidatedCoupon } from '../../store/slices/couponsSlice';
+import { validateCoupon, clearValidationResult } from '../../store/slices/couponsSlice';
 
 interface CouponValidatorProps {
   orderAmount: number;
@@ -113,7 +113,7 @@ const CouponValidator: React.FC<CouponValidatorProps> = ({
 
   const handleRemoveCoupon = () => {
     setAppliedCoupon(null);
-    dispatch(clearValidatedCoupon());
+    dispatch(clearValidationResult());
     onCouponRemoved?.();
     toast.success('Coupon removed');
   };

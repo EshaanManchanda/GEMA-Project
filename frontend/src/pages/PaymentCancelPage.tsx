@@ -330,6 +330,7 @@ const PaymentCancelPage: React.FC = () => {
           </Link>
         </div>
       </div>
+      </div>
     </>
   );
 };

@@ -33,6 +33,7 @@ const ServerErrorPage: React.FC = () => {
           </button>
         </div>
       </div>
+      </div>
     </>
   );
 };
