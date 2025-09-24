@@ -1,7 +1,6 @@
 {
-  "buildCommand": "npm run build",
+  "buildCommand": "npx vite build",
   "outputDirectory": "dist",
-  "installCommand": "npm install",
   "framework": "vite",
   "regions": ["iad1"],
   "build": {
