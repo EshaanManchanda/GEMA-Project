@@ -70,8 +70,9 @@
       "url": "/events",
       "icons": [
         {
-          "src": "icon-96x96.png",
-          "sizes": "96x96"
+          "src": "icon-96x96.svg",
+          "sizes": "96x96",
+          "type": "image/svg+xml"
         }
       ]
     },
@@ -82,8 +83,9 @@
       "url": "/bookings",
       "icons": [
         {
-          "src": "icon-96x96.png",
-          "sizes": "96x96"
+          "src": "icon-96x96.svg",
+          "sizes": "96x96",
+          "type": "image/svg+xml"
         }
       ]
     },
@@ -94,8 +96,9 @@
       "url": "/search",
       "icons": [
         {
-          "src": "icon-96x96.png",
-          "sizes": "96x96"
+          "src": "icon-96x96.svg",
+          "sizes": "96x96",
+          "type": "image/svg+xml"
         }
       ]
     }
