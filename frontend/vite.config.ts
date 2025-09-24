@@ -118,8 +118,11 @@ export default defineConfig({
           // QR & Camera
           qr: ['@zxing/library', 'qr-scanner', 'qrcode.react'],
           
+          // Firebase
+          firebase: ['firebase/app', 'firebase/auth'],
+
           // Other
-          misc: ['firebase', 'js-cookie', 'uuid', 'react-helmet-async']
+          misc: ['js-cookie', 'uuid', 'react-helmet-async']
         },
         chunkFileNames: (chunkInfo) => {
           const facadeModuleId = chunkInfo.facadeModuleId ? chunkInfo.facadeModuleId.split('/').pop() : 'chunk';
@@ -140,7 +143,10 @@ export default defineConfig({
       }
     },
     chunkSizeWarningLimit: 500,
-    assetsInlineLimit: 4096
+    assetsInlineLimit: 4096,
+    commonjsOptions: {
+      include: [/firebase/, /node_modules/]
+    }
   },
   optimizeDeps: {
     include: [
@@ -159,8 +165,6 @@ export default defineConfig({
       'lodash',
       '@tanstack/react-query',
       'react-hook-form',
-      'firebase/app',
-      'firebase/auth'
     ],
     exclude: ['@zxing/library']
   },
