@@ -57,5 +57,5 @@ Object.defineProperty(performance, 'memory', {
 });
 
 // Mock environment variables
-process.env.REACT_APP_API_URL = 'http://localhost:5001/api';
-process.env.REACT_APP_WS_URL = 'ws://localhost:5001';
+process.env.REACT_APP_API_URL = 'https://gema-project.onrender.com/api';
+process.env.REACT_APP_WS_URL = 'wss://gema-project.onrender.com';
