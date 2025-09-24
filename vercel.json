@@ -1,7 +1,7 @@
 {
-  "buildCommand": "cd frontend && npm run build",
-  "outputDirectory": "frontend/dist",
-  "installCommand": "cd frontend && npm ci --production=false",
+  "buildCommand": "npm run build",
+  "outputDirectory": "dist",
+  "installCommand": "npm ci --production=false",
   "framework": "vite",
   "regions": ["iad1"],
   "build": {
