@@ -368,6 +368,7 @@ const PaymentSuccessPage: React.FC = () => {
           </Link>
         </div>
       </div>
+      </div>
     </>
   );
 };
