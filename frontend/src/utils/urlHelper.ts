@@ -20,7 +20,7 @@ export const getAppBaseUrl = (): string => {
   }
 
   // Fallback for SSR or when window is not available
-  return 'http://localhost:3001';
+  return 'https://gema-project-bnp5xge4w-eshaanmanchandas-projects.vercel.app';
 };
 
 /**

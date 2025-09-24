@@ -6,14 +6,14 @@ export const devTools = {
 
   // Test API connectivity
   async testAPIConnectivity() {
-    const apiUrl = import.meta.env.VITE_API_BASE_URL || 'http://localhost:5000/api';
-    
+    const apiUrl = import.meta.env.VITE_API_BASE_URL || 'https://gema-project.onrender.com/api';
+
     console.group('🔧 API Connectivity Test');
-    
+
     try {
       // Test direct connection to backend
       console.log('Testing direct backend connection...');
-      const directResponse = await fetch('http://localhost:5000/api/health', { 
+      const directResponse = await fetch(`${apiUrl}/health`, {
         method: 'GET',
         mode: 'cors'
       });
@@ -68,9 +68,9 @@ export const devTools = {
     
     console.group('🔗 Proxy Configuration Status');
     console.log('Frontend URL:', window.location.origin);
-    console.log('Expected Backend URL:', 'http://localhost:5000');
+    console.log('Expected Backend URL:', 'https://gema-project.onrender.com');
     console.log('API Base URL:', import.meta.env.VITE_API_BASE_URL || 'Using proxy (/api)');
-    console.log('Proxy should route /api/* → http://localhost:5000/api/*');
+    console.log('API should route to:', 'https://gema-project.onrender.com/api/*');
     console.groupEnd();
   },
 

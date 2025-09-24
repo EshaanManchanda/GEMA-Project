@@ -45,7 +45,7 @@ export const useRealTimeUpdates = (options: UseRealTimeUpdatesOptions = {}) => {
     try {
       // In a real implementation, this would connect to your WebSocket server
       // For now, we'll simulate WebSocket connection
-      const wsUrl = process.env.REACT_APP_WS_URL || 'ws://localhost:3001/ws';
+      const wsUrl = import.meta.env.VITE_WS_URL || 'wss://gema-project.onrender.com/ws';
       const token = localStorage.getItem('authToken');
       
       websocketRef.current = new WebSocket(`${wsUrl}?token=${token}`);
