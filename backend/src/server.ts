@@ -26,7 +26,15 @@ const app: Express = express();
 // Security middleware
 app.use(helmet());
 app.use(cors({
-  origin: [config.frontendUrl, 'http://localhost:3000', 'http://localhost:3001', 'http://localhost:4200', 'http://localhost:4201'],
+  origin: [
+    config.frontendUrl,
+    'http://localhost:3000',
+    'http://localhost:3001',
+    'http://localhost:4200',
+    'http://localhost:4201',
+    /\.vercel\.app$/,  // Allow all Vercel app domains
+    'https://gema-project-bnp5xge4w-eshaanmanchandas-projects.vercel.app'
+  ],
   credentials: true,
   methods: ['GET', 'POST', 'PUT', 'DELETE', 'PATCH', 'OPTIONS'],
   allowedHeaders: ['Content-Type', 'Authorization']
