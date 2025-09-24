@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { motion } from 'framer-motion';
 import { FiChevronDown, FiChevronUp, FiSearch } from 'react-icons/fi';
+import SEO from '@/components/common/SEO';
 
 const FAQPage: React.FC = () => {
   // Animation variants
@@ -222,8 +223,37 @@ const FAQPage: React.FC = () => {
         : true
     );
 
+  const breadcrumbs = [
+    { name: 'Home', url: '/' },
+    { name: 'FAQ', url: '/faq' }
+  ];
+
+  // Generate FAQ structured data
+  const faqStructuredData = {
+    '@context': 'https://schema.org',
+    '@type': 'FAQPage',
+    mainEntity: faqData.flatMap(category =>
+      category.questions.map(faq => ({
+        '@type': 'Question',
+        name: faq.question,
+        acceptedAnswer: {
+          '@type': 'Answer',
+          text: faq.answer
+        }
+      }))
+    )
+  };
+
   return (
-    <div className="container mx-auto px-4 py-12">
+    <>
+      <SEO
+        title="FAQ - Frequently Asked Questions | Gema Events"
+        description="Find answers to common questions about Gema Events, kids activities booking, payments, cancellations, and more. Get quick help and support for your queries."
+        keywords={['faq', 'frequently asked questions', 'gema events help', 'kids activities questions', 'booking help', 'support']}
+        breadcrumbs={breadcrumbs}
+        structuredData={faqStructuredData}
+      />
+      <div className="container mx-auto px-4 py-12">
       <motion.div 
         className="max-w-4xl mx-auto"
         initial="hidden"
@@ -312,6 +342,7 @@ const FAQPage: React.FC = () => {
         </motion.div>
       </motion.div>
     </div>
+    </>
   );
 };
 

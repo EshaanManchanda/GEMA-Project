@@ -1,0 +1,35 @@
+# Static robots.txt for development
+# Production robots.txt is served dynamically from backend at /robots.txt
+
+User-agent: *
+Allow: /
+Disallow: /admin
+Disallow: /vendor
+Disallow: /employee
+Disallow: /api
+Disallow: /login
+Disallow: /register
+Disallow: /dashboard
+Disallow: /profile
+Disallow: /bookings
+Disallow: /cart
+Disallow: /checkout
+Disallow: /payment
+
+# Allow specific static assets
+Allow: /assets/
+Allow: /images/
+Allow: /*.css
+Allow: /*.js
+Allow: /*.png
+Allow: /*.jpg
+Allow: /*.jpeg
+Allow: /*.gif
+Allow: /*.svg
+Allow: /*.ico
+
+# Sitemap location
+Sitemap: https://gema-events.com/sitemap.xml
+
+# Crawl-delay for being respectful to servers
+Crawl-delay: 1

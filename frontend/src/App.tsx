@@ -4,7 +4,12 @@ import { AnimatePresence } from 'framer-motion';
 import { Provider } from 'react-redux';
 import { PersistGate } from 'redux-persist/integration/react';
 import { Toaster } from 'react-hot-toast';
+import { Elements } from '@stripe/react-stripe-js';
+import { loadStripe } from '@stripe/stripe-js';
 import { store, persistor } from './store';
+
+// Initialize Stripe
+const stripePromise = loadStripe(import.meta.env.VITE_STRIPE_PUBLIC_KEY);
 
 // Layout Components
 import Layout from '@components/layout/Layout';
@@ -63,6 +68,9 @@ const AdminCategoriesPage = React.lazy(() => import(/* webpackChunkName: "admin"
 const AdminOrdersPage = React.lazy(() => import(/* webpackChunkName: "admin" */ './pages/admin/AdminOrdersPage'));
 const AdminPayoutsPage = React.lazy(() => import(/* webpackChunkName: "admin" */ './pages/admin/AdminPayoutsPage'));
 const AdminCommissionsPage = React.lazy(() => import(/* webpackChunkName: "admin" */ './pages/admin/AdminCommissionsPage'));
+const AdminBlogsPage = React.lazy(() => import(/* webpackChunkName: "admin" */ './pages/admin/AdminBlogsPage'));
+const AdminBlogCategoriesPage = React.lazy(() => import(/* webpackChunkName: "admin" */ './pages/admin/AdminBlogCategoriesPage'));
+const AdminCouponsPage = React.lazy(() => import(/* webpackChunkName: "admin" */ './pages/admin/AdminCouponsPage'));
 // const AdminAnalyticsPage = React.lazy(() => import(/* webpackChunkName: "admin" */ './pages/admin/AdminAnalyticsPage'));
 const AdminSettingsPage = React.lazy(() => import(/* webpackChunkName: "admin" */ './pages/admin/AdminSettingsPage'));
 const EmployeeManagement = React.lazy(() => import(/* webpackChunkName: "admin" */ './pages/admin/EmployeeManagement'));
@@ -580,7 +588,34 @@ function AppContent() {
                 </Suspense>
               </AdminRoute>
             } />
-            
+
+            {/* Blog Management */}
+            <Route path="blogs" element={
+              <AdminRoute>
+                <Suspense fallback={<LoadingSpinner />}>
+                  <AdminBlogsPage />
+                </Suspense>
+              </AdminRoute>
+            } />
+
+            {/* Blog Category Management */}
+            <Route path="blog-categories" element={
+              <AdminRoute>
+                <Suspense fallback={<LoadingSpinner />}>
+                  <AdminBlogCategoriesPage />
+                </Suspense>
+              </AdminRoute>
+            } />
+
+            {/* Coupon Management */}
+            <Route path="coupons" element={
+              <AdminRoute>
+                <Suspense fallback={<LoadingSpinner />}>
+                  <AdminCouponsPage />
+                </Suspense>
+              </AdminRoute>
+            } />
+
             {/* Analytics & Reports */}
             <Route path="analytics" element={
               <AdminRoute>
@@ -661,7 +696,18 @@ function App() {
   return (
     <Provider store={store}>
       <PersistGate loading={<LoadingSpinner />} persistor={persistor}>
-        <AppContent />
+        <Elements
+          stripe={stripePromise}
+          options={{
+            mode: 'setup',
+            currency: 'usd',
+            appearance: {
+              theme: 'stripe',
+            },
+          }}
+        >
+          <AppContent />
+        </Elements>
       </PersistGate>
     </Provider>
   );

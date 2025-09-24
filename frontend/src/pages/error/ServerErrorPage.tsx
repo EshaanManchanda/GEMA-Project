@@ -1,9 +1,17 @@
 import React from 'react';
 import { Link } from 'react-router-dom';
+import SEO from '../../components/common/SEO';
 
 const ServerErrorPage: React.FC = () => {
   return (
-    <div className="min-h-screen flex items-center justify-center px-4">
+    <>
+      <SEO
+        title="Server Error (500) | Gema Events"
+        description="We're experiencing technical difficulties. Please try again later or return to our homepage."
+        noIndex={true}
+        noFollow={true}
+      />
+      <div className="min-h-screen flex items-center justify-center px-4">
       <div className="text-center">
         <h1 className="text-9xl font-bold text-red-500 mb-4">500</h1>
         <h2 className="text-3xl font-semibold mb-6">Server Error</h2>
@@ -25,7 +33,7 @@ const ServerErrorPage: React.FC = () => {
           </button>
         </div>
       </div>
-    </div>
+    </>
   );
 };
 

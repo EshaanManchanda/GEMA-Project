@@ -1,8 +1,8 @@
 import React, { useState, useEffect, useMemo } from 'react';
 import { FaSearch, FaFilter, FaEdit, FaTrash, FaPlus, FaSort, FaEye, FaUserCog, FaUsers } from 'react-icons/fa';
 import { format } from 'date-fns';
-import adminAPI from '@/services/api/adminAPI';
-import AdminNavigation from '@/components/admin/AdminNavigation';
+import adminAPI from '@services/api/adminAPI';
+import AdminNavigation from '@components/admin/AdminNavigation';
 
 interface User {
   id: string;

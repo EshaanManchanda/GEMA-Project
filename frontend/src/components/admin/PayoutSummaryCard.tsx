@@ -28,16 +28,23 @@ const PayoutSummaryCard: React.FC<PayoutSummaryCardProps> = ({
   const [refreshInterval, setRefreshInterval] = useState<NodeJS.Timeout | null>(null);
 
   useEffect(() => {
-    loadPayoutData();
-    
-    // Set up auto-refresh every 5 minutes for payout data
-    const interval = setInterval(() => {
+    // Initial load with delay to avoid simultaneous requests with dashboard
+    const initialDelay = setTimeout(() => {
       loadPayoutData();
-    }, 5 * 60 * 1000);
-    
+    }, 2000); // 2 second delay after dashboard
+
+    // Set up auto-refresh every 10 minutes (increased from 5) with staggered timing
+    const interval = setInterval(() => {
+      // Only refresh if document is visible and not already loading
+      if (document.visibilityState === 'visible' && !isLoading) {
+        loadPayoutData();
+      }
+    }, 10 * 60 * 1000); // 10 minutes
+
     setRefreshInterval(interval);
 
     return () => {
+      clearTimeout(initialDelay);
       if (refreshInterval) clearInterval(refreshInterval);
     };
   }, [dispatch]);

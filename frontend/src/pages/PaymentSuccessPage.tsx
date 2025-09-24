@@ -1,6 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import { useLocation, useNavigate, Link } from 'react-router-dom';
 import { format } from 'date-fns';
+import SEO from '../components/common/SEO';
 
 interface Event {
   id: number;
@@ -74,7 +75,14 @@ const PaymentSuccessPage: React.FC = () => {
   const [showQRCode, setShowQRCode] = useState(false);
 
   return (
-    <div className="container mx-auto px-4 py-8 max-w-4xl">
+    <>
+      <SEO
+        title="Payment Successful - Booking Confirmed | Gema Events"
+        description="Your payment has been processed successfully. Your booking is confirmed."
+        noIndex={true}
+        noFollow={true}
+      />
+      <div className="container mx-auto px-4 py-8 max-w-4xl">
       {/* Back button */}
       <button 
         onClick={() => navigate('/events')} 
@@ -360,7 +368,7 @@ const PaymentSuccessPage: React.FC = () => {
           </Link>
         </div>
       </div>
-    </div>
+    </>
   );
 };
 

@@ -5,6 +5,7 @@ import { FaSearch, FaFilter, FaTimes, FaStar, FaMapMarkerAlt, FaCalendarAlt, FaC
 import { SearchEvent, SearchFilters, CategoryOption, FilterOptions } from '../types/search';
 import { ApiService } from '../services/api';
 import { debounce } from 'lodash';
+import SEO from '@/components/common/SEO';
 
 // FilterContent Component
 interface FilterContentProps {
@@ -597,8 +598,23 @@ const SearchPage: React.FC = () => {
     );
   }
 
+  const searchQuery = searchParams.get('q') || '';
+  const breadcrumbs = [
+    { name: 'Home', url: '/' },
+    { name: 'Search', url: '/search' },
+    ...(searchQuery ? [{ name: `Results for "${searchQuery}"`, url: `/search?q=${searchQuery}` }] : [])
+  ];
+
   return (
-    <div className="min-h-screen bg-gray-50">
+    <>
+      <SEO
+        title={searchQuery ? `Search Results for "${searchQuery}" | Gema Events` : 'Search Kids Activities & Events | Gema Events'}
+        description={searchQuery ? `Find kids activities and events matching "${searchQuery}" in the UAE. Discover educational programs, entertainment, and family-friendly experiences.` : 'Search for the perfect kids activities and events in the UAE. Filter by age, location, category, and more to find the ideal experiences for your children.'}
+        keywords={['search', 'kids activities', 'events', 'UAE', 'find activities', searchQuery].filter(Boolean)}
+        breadcrumbs={breadcrumbs}
+        noIndex={searchQuery ? true : false}
+      />
+      <div className="min-h-screen bg-gray-50">
       {/* Search Header */}
       <div className="bg-white shadow-md sticky top-0 z-10">
         <div className="container mx-auto px-4 py-4">
@@ -955,6 +971,7 @@ const SearchPage: React.FC = () => {
       </div>
       </div>
     </div>
+    </>
   );
 };
 

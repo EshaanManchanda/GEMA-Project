@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { motion } from 'framer-motion';
 import { FiMapPin, FiPhone, FiMail, FiClock, FiSend, FiCheckCircle } from 'react-icons/fi';
+import SEO from '@/components/common/SEO';
 
 const ContactPage: React.FC = () => {
   const [formData, setFormData] = useState({
@@ -68,8 +69,38 @@ const ContactPage: React.FC = () => {
     }
   };
 
+  const breadcrumbs = [
+    { name: 'Home', url: '/' },
+    { name: 'Contact', url: '/contact' }
+  ];
+
   return (
-    <div className="container mx-auto px-4 py-12">
+    <>
+      <SEO
+        title="Contact Gema Events - Get in Touch for Kids Activities & Events"
+        description="Contact Gema Events for questions about kids activities, event bookings, partnerships, or support. We're here to help create amazing experiences for your children in the UAE."
+        keywords={['contact gema events', 'customer support', 'kids activities help', 'event booking assistance', 'UAE contact']}
+        breadcrumbs={breadcrumbs}
+        structuredData={{
+          '@context': 'https://schema.org',
+          '@type': 'ContactPage',
+          name: 'Contact Gema Events',
+          description: 'Get in touch with Gema Events for kids activities and event support',
+          mainEntity: {
+            '@type': 'Organization',
+            name: 'Gema Events',
+            contactPoint: {
+              '@type': 'ContactPoint',
+              contactType: 'customer service',
+              telephone: '+971-XX-XXX-XXXX',
+              email: 'info@gema-events.com',
+              areaServed: 'AE',
+              availableLanguage: ['English', 'Arabic']
+            }
+          }
+        }}
+      />
+      <div className="container mx-auto px-4 py-12">
       <motion.div 
         className="max-w-5xl mx-auto"
         initial="hidden"
@@ -323,6 +354,7 @@ const ContactPage: React.FC = () => {
         </motion.div>
       </motion.div>
     </div>
+    </>
   );
 };
 

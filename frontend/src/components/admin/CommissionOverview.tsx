@@ -30,16 +30,23 @@ const CommissionOverview: React.FC<CommissionOverviewProps> = ({
   const [refreshInterval, setRefreshInterval] = useState<NodeJS.Timeout | null>(null);
 
   useEffect(() => {
-    loadCommissionData();
-    
-    // Set up auto-refresh every 5 minutes
-    const interval = setInterval(() => {
+    // Initial load with delay to avoid simultaneous requests (stagger after payout)
+    const initialDelay = setTimeout(() => {
       loadCommissionData();
-    }, 5 * 60 * 1000);
-    
+    }, 4000); // 4 second delay to stagger after payout widget
+
+    // Set up auto-refresh every 12 minutes (further staggered from payout)
+    const interval = setInterval(() => {
+      // Only refresh if document is visible and not already loading
+      if (document.visibilityState === 'visible' && !isLoading) {
+        loadCommissionData();
+      }
+    }, 12 * 60 * 1000); // 12 minutes
+
     setRefreshInterval(interval);
 
     return () => {
+      clearTimeout(initialDelay);
       if (refreshInterval) clearInterval(refreshInterval);
     };
   }, [dispatch]);

@@ -29,91 +29,111 @@ const AdminDashboardPage: React.FC = () => {
   const [stats, setStats] = useState<DashboardStat[]>([]);
   const [recentActivity, setRecentActivity] = useState<RecentActivity[]>([]);
   const [isLoading, setIsLoading] = useState<boolean>(true);
+  const [error, setError] = useState<string | null>(null);
   const [refreshInterval, setRefreshInterval] = useState<NodeJS.Timeout | null>(null);
 
   useEffect(() => {
     const fetchDashboardData = async () => {
       try {
         setIsLoading(true);
-        
-        // Fetch real data from API with enhanced functionality
-        const statsData = await adminAPI.getDashboardStats();
-        
-        // Transform API data to match component interface
-        const transformedStats: DashboardStat[] = [
-          {
-            title: 'Total Users',
-            value: statsData.totalUsers || 0,
-            change: statsData.usersChange || 0,
-            icon: (
-              <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4.354a4 4 0 110 5.292M15 21H3v-1a6 6 0 0112 0v1zm0 0h6v-1a6 6 0 00-9-5.197M13 7a4 4 0 11-8 0 4 4 0 018 0z" />
-              </svg>
-            ),
-          },
-          {
-            title: 'Total Events',
-            value: statsData.totalEvents || 0,
-            change: statsData.eventsChange || 0,
-            icon: (
-              <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
-              </svg>
-            ),
-          },
-          {
-            title: 'Total Bookings',
-            value: statsData.totalBookings || 0,
-            change: statsData.bookingsChange || 0,
-            icon: (
-              <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M16 11V7a4 4 0 00-8 0v4M5 9h14l1 12H4L5 9z" />
-              </svg>
-            ),
-          },
-          {
-            title: 'Total Revenue',
-            value: `$${statsData.totalRevenue?.toLocaleString() || '0'}`,
-            change: statsData.revenueChange || 0,
-            icon: (
-              <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
-              </svg>
-            ),
-          },
-        ];
-        
-        setStats(transformedStats);
-        setRecentActivity(statsData.recentActivity || []);
-      } catch (error) {
+        setError(null);
+
+        // Fetch real data from API
+        const response = await adminAPI.getDashboardStats();
+
+        if (response.success) {
+          const data = response.data;
+
+          // Transform API data to match component interface
+          const transformedStats: DashboardStat[] = [
+            {
+              title: 'Total Users',
+              value: data.totalUsers || 0,
+              change: data.userGrowth || 0,
+              icon: (
+                <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4.354a4 4 0 110 5.292M15 21H3v-1a6 6 0 0112 0v1zm0 0h6v-1a6 6 0 00-9-5.197M13 7a4 4 0 11-8 0 4 4 0 018 0z" />
+                </svg>
+              ),
+            },
+            {
+              title: 'Total Events',
+              value: data.totalEvents || 0,
+              change: data.eventGrowth || 0,
+              icon: (
+                <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
+                </svg>
+              ),
+            },
+            {
+              title: 'Total Bookings',
+              value: data.totalTicketsSold || 0,
+              change: 0, // Backend doesn't provide booking growth yet
+              icon: (
+                <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M16 11V7a4 4 0 00-8 0v4M5 9h14l1 12H4L5 9z" />
+                </svg>
+              ),
+            },
+            {
+              title: 'Total Revenue',
+              value: `$${data.totalRevenue?.toLocaleString() || '0'}`,
+              change: data.revenueGrowth || 0,
+              icon: (
+                <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                </svg>
+              ),
+            },
+          ];
+
+          setStats(transformedStats);
+
+          // Use recent activity from centralized endpoint or generate from events
+          let recentActivities: RecentActivity[] = [];
+
+          if (data.recentActivity && data.recentActivity.length > 0) {
+            recentActivities = data.recentActivity;
+          } else if (data.topPerformingEvents && data.topPerformingEvents.length > 0) {
+            data.topPerformingEvents.slice(0, 5).forEach((event: any, index: number) => {
+              recentActivities.push({
+                id: `event-${event.eventId}`,
+                type: 'event_created',
+                title: 'High Performing Event',
+                description: `${event.title} generated ${event.tickets} ticket sales`,
+                timestamp: new Date(Date.now() - index * 3600000).toISOString(),
+              });
+            });
+          } else {
+            recentActivities.push({
+              id: '1',
+              type: 'user_registered',
+              title: 'Dashboard Updated',
+              description: 'All dashboard data successfully loaded',
+              timestamp: new Date().toISOString(),
+            });
+          }
+
+          setRecentActivity(recentActivities);
+        } else {
+          throw new Error('API response indicated failure');
+        }
+      } catch (error: any) {
         console.error('Error fetching dashboard data:', error);
-        
-        // Fallback to mock data
-        const mockStats: DashboardStat[] = [
-          {
-            title: 'Total Users',
-            value: 2547,
-            change: 12.5,
-            icon: (
-              <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4.354a4 4 0 110 5.292M15 21H3v-1a6 6 0 0112 0v1zm0 0h6v-1a6 6 0 00-9-5.197M13 7a4 4 0 11-8 0 4 4 0 018 0z" />
-              </svg>
-            ),
-          },
-        ];
-        
-        const mockRecentActivity: RecentActivity[] = [
-          {
-            id: '1',
-            type: 'user_registered',
-            title: 'New User Registration',
-            description: 'Demo user registered',
-            timestamp: new Date().toISOString(),
-          },
-        ];
-        
-        setStats(mockStats);
-        setRecentActivity(mockRecentActivity);
+
+        const errorMessage = error?.response?.data?.message || error?.message || 'Failed to load dashboard data';
+        setError(errorMessage);
+
+        // Show error state instead of mock data
+        setStats([]);
+        setRecentActivity([{
+          id: 'error-1',
+          type: 'user_registered',
+          title: 'Data Loading Error',
+          description: errorMessage,
+          timestamp: new Date().toISOString(),
+        }]);
       } finally {
         setIsLoading(false);
       }
@@ -122,14 +142,38 @@ const AdminDashboardPage: React.FC = () => {
     // Initial fetch
     fetchDashboardData();
     
-    // Set up real-time refresh every 2 minutes for dashboard data
-    const interval = setInterval(() => {
-      if (!isLoading) {
-        fetchDashboardData();
-      }
-    }, 2 * 60 * 1000);
-    
-    setRefreshInterval(interval);
+    // Set up intelligent refresh with exponential backoff on errors
+    let refreshDelay = 5 * 60 * 1000; // Start with 5 minutes
+    let consecutiveErrors = 0;
+
+    const scheduleNextRefresh = () => {
+      if (refreshInterval) clearTimeout(refreshInterval);
+
+      const nextInterval = setTimeout(() => {
+        if (!isLoading && document.visibilityState === 'visible') {
+          fetchDashboardData()
+            .then(() => {
+              consecutiveErrors = 0;
+              refreshDelay = 5 * 60 * 1000; // Reset to 5 minutes on success
+            })
+            .catch(() => {
+              consecutiveErrors++;
+              // Exponential backoff: double the delay up to max 30 minutes
+              refreshDelay = Math.min(refreshDelay * 2, 30 * 60 * 1000);
+            })
+            .finally(() => {
+              scheduleNextRefresh(); // Schedule the next refresh
+            });
+        } else {
+          scheduleNextRefresh(); // Reschedule if loading or page not visible
+        }
+      }, error ? refreshDelay * 2 : refreshDelay); // Double delay if there's an error
+
+      setRefreshInterval(nextInterval);
+    };
+
+    // Start the intelligent refresh cycle
+    scheduleNextRefresh();
 
     // Cleanup interval on component unmount
     return () => {
@@ -256,39 +300,74 @@ const AdminDashboardPage: React.FC = () => {
 
       {/* Stats Cards */}
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
-        {stats.map((stat, index) => {
-          const gradients = [
-            'from-blue-500 to-indigo-600',
-            'from-green-500 to-emerald-600', 
-            'from-purple-500 to-pink-600',
-            'from-orange-500 to-red-600'
-          ];
-          const bgGradients = [
-            'from-blue-50 to-indigo-50',
-            'from-green-50 to-emerald-50',
-            'from-purple-50 to-pink-50', 
-            'from-orange-50 to-red-50'
-          ];
-          return (
-            <div key={index} className={`bg-gradient-to-br ${bgGradients[index]} rounded-2xl shadow-xl shadow-gray-200/50 p-6 border border-white/20 backdrop-blur-sm hover:shadow-2xl hover:shadow-gray-300/30 transition-all duration-300 transform hover:scale-105 group`}>
-              <div className="flex items-center justify-between mb-6">
-                <h3 className="text-lg font-semibold text-gray-700 group-hover:text-gray-800 transition-colors duration-300">{stat.title}</h3>
-                <div className={`p-3 rounded-xl bg-gradient-to-r ${gradients[index]} text-white shadow-lg transition-all duration-300 group-hover:scale-110`}>
-                  {stat.icon}
-                </div>
+        {stats.length === 0 && !isLoading ? (
+          // Error State
+          <div className="col-span-full">
+            <div className="bg-red-50 border border-red-200 rounded-2xl p-8 text-center">
+              <div className="inline-flex items-center justify-center w-16 h-16 bg-red-100 text-red-600 rounded-full mb-4">
+                <svg xmlns="http://www.w3.org/2000/svg" className="h-8 w-8" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-2.5L13.732 4c-.77-.833-1.964-.833-2.732 0L3.732 16.5c-.77.833.192 2.5 1.732 2.5z" />
+                </svg>
               </div>
-              <div className="flex items-baseline justify-between">
-                <p className="text-3xl font-bold text-gray-900 group-hover:text-gray-800 transition-colors duration-300">{stat.value}</p>
-                <div className="flex flex-col items-end">
-                  <p className={`text-sm font-bold px-2 py-1 rounded-full ${stat.change >= 0 ? 'text-green-700 bg-green-100' : 'text-red-700 bg-red-100'} transition-all duration-300 group-hover:scale-105`}>
-                    {stat.change >= 0 ? '↗ +' : '↘ '}{stat.change}%
-                  </p>
-                  <span className="text-xs text-gray-500 mt-1">vs last period</span>
-                </div>
+              <h3 className="text-lg font-semibold text-red-800 mb-2">Dashboard Data Unavailable</h3>
+              <p className="text-red-600 mb-4">{error || 'Unable to load dashboard statistics. Please check your connection and try again.'}</p>
+              <div className="flex justify-center gap-4">
+                <button
+                  onClick={() => window.location.reload()}
+                  className="inline-flex items-center px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 transition-colors"
+                >
+                  Refresh Page
+                </button>
+                <button
+                  onClick={() => {
+                    setStats([]);
+                    setError(null);
+                    setIsLoading(true);
+                    // Trigger a re-render by updating a dependency
+                    window.location.reload();
+                  }}
+                  className="inline-flex items-center px-4 py-2 bg-gray-600 text-white rounded-lg hover:bg-gray-700 transition-colors"
+                >
+                  Try Again
+                </button>
               </div>
             </div>
-          );
-        })}
+          </div>
+        ) : (
+          stats.map((stat, index) => {
+            const gradients = [
+              'from-blue-500 to-indigo-600',
+              'from-green-500 to-emerald-600',
+              'from-purple-500 to-pink-600',
+              'from-orange-500 to-red-600'
+            ];
+            const bgGradients = [
+              'from-blue-50 to-indigo-50',
+              'from-green-50 to-emerald-50',
+              'from-purple-50 to-pink-50',
+              'from-orange-50 to-red-50'
+            ];
+            return (
+              <div key={index} className={`bg-gradient-to-br ${bgGradients[index]} rounded-2xl shadow-xl shadow-gray-200/50 p-6 border border-white/20 backdrop-blur-sm hover:shadow-2xl hover:shadow-gray-300/30 transition-all duration-300 transform hover:scale-105 group`}>
+                <div className="flex items-center justify-between mb-6">
+                  <h3 className="text-lg font-semibold text-gray-700 group-hover:text-gray-800 transition-colors duration-300">{stat.title}</h3>
+                  <div className={`p-3 rounded-xl bg-gradient-to-r ${gradients[index]} text-white shadow-lg transition-all duration-300 group-hover:scale-110`}>
+                    {stat.icon}
+                  </div>
+                </div>
+                <div className="flex items-baseline justify-between">
+                  <p className="text-3xl font-bold text-gray-900 group-hover:text-gray-800 transition-colors duration-300">{stat.value}</p>
+                  <div className="flex flex-col items-end">
+                    <p className={`text-sm font-bold px-2 py-1 rounded-full ${stat.change >= 0 ? 'text-green-700 bg-green-100' : 'text-red-700 bg-red-100'} transition-all duration-300 group-hover:scale-105`}>
+                      {stat.change >= 0 ? '↗ +' : '↘ '}{Math.abs(stat.change).toFixed(1)}%
+                    </p>
+                    <span className="text-xs text-gray-500 mt-1">vs last period</span>
+                  </div>
+                </div>
+              </div>
+            );
+          })
+        )}
       </div>
 
       {/* Quick Links */}

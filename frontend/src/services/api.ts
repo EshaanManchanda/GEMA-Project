@@ -11,6 +11,14 @@ const RETRY_ATTEMPTS = 3;
 const INITIAL_RETRY_DELAY = 1000; // 1 second
 const RETRY_MULTIPLIER = 2;
 
+// Request deduplication
+const pendingRequests = new Map<string, Promise<any>>();
+
+// Helper function to create request key for deduplication
+const createRequestKey = (url: string, method: string, params?: any): string => {
+  return `${method.toUpperCase()}:${url}:${JSON.stringify(params || {})}`;
+};
+
 // Create axios instance
 const api: AxiosInstance = axios.create({
   baseURL: API_BASE_URL,
@@ -20,16 +28,26 @@ const api: AxiosInstance = axios.create({
   },
 });
 
-// Request interceptor to add auth token
+// Request interceptor to add auth token and handle deduplication
 api.interceptors.request.use(
   (config) => {
     const state = store.getState();
     const token = state.auth.token;
-    
+
     if (token) {
       config.headers.Authorization = `Bearer ${token}`;
     }
-    
+
+    // Add request deduplication for GET requests (stats/dashboard endpoints)
+    if (config.method?.toLowerCase() === 'get' && (
+      config.url?.includes('/admin/') ||
+      config.url?.includes('/analytics/') ||
+      config.url?.includes('/stats')
+    )) {
+      const requestKey = createRequestKey(config.url || '', config.method, config.params);
+      (config as any)._requestKey = requestKey;
+    }
+
     return config;
   },
   (error) => {
@@ -172,6 +190,33 @@ export class ApiService {
     url: string,
     config?: AxiosRequestConfig
   ): Promise<ApiResponse<T>> {
+    // Check for request deduplication for admin/stats endpoints
+    if (url.includes('/admin/') || url.includes('/analytics/') || url.includes('/stats')) {
+      const requestKey = createRequestKey(url, 'GET', config?.params);
+
+      // If there's already a pending request, return that promise
+      if (pendingRequests.has(requestKey)) {
+        return pendingRequests.get(requestKey);
+      }
+
+      // Create new request and store it
+      const requestPromise = api.get(url, config).then(
+        (response) => {
+          // Clean up the pending request
+          pendingRequests.delete(requestKey);
+          return response.data;
+        },
+        (error) => {
+          // Clean up the pending request on error too
+          pendingRequests.delete(requestKey);
+          throw error;
+        }
+      );
+
+      pendingRequests.set(requestKey, requestPromise);
+      return requestPromise;
+    }
+
     const response = await api.get(url, config);
     return response.data;
   }

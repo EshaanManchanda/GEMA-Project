@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { useParams, Link } from 'react-router-dom';
 import categoriesAPI from '../services/api/categoriesAPI';
 import eventsAPI from '../services/api/eventsAPI';
+import { CategorySEO } from '@/components/common/SEO';
 
 // Mock categories data
 const mockCategories = [
@@ -211,9 +212,17 @@ const CategoryPage: React.FC = () => {
     );
   }
   
+  const breadcrumbs = [
+    { name: 'Home', url: '/' },
+    { name: 'Categories', url: '/categories' },
+    { name: category?.name || 'Category', url: `/categories/${slug}` }
+  ];
+
   return (
-    <div className="container mx-auto px-4 py-8">
-      {usingMockData && (
+    <>
+      {category && <CategorySEO category={category} breadcrumbs={breadcrumbs} />}
+      <div className="container mx-auto px-4 py-8">
+        {usingMockData && (
         <div className="bg-yellow-100 border-l-4 border-yellow-500 text-yellow-700 p-4 mb-6" role="alert">
           <p className="font-bold">Note</p>
           <p>{error}</p>
@@ -270,6 +279,7 @@ const CategoryPage: React.FC = () => {
         </div>
       )}
     </div>
+    </>
   );
 };
 

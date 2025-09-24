@@ -15,8 +15,8 @@ export const useRealTimeData = (options: UseRealTimeDataOptions = {}) => {
   const {
     enableNotifications = true,
     enableCategories = false,
-    notificationInterval = 30000, // 30 seconds
-    categoryInterval = 300000, // 5 minutes
+    notificationInterval = 120000, // Increased to 2 minutes
+    categoryInterval = 600000, // Increased to 10 minutes
   } = options;
 
   const dispatch = useDispatch<AppDispatch>();
@@ -71,10 +71,12 @@ export const useRealTimeData = (options: UseRealTimeDataOptions = {}) => {
     if (enableNotifications && isAuthenticated) {
       refreshNotifications();
 
-      notificationIntervalRef.current = setInterval(
-        refreshNotifications,
-        currentNotificationInterval
-      );
+      notificationIntervalRef.current = setInterval(() => {
+        // Only poll if document is visible (user is active)
+        if (document.visibilityState === 'visible') {
+          refreshNotifications();
+        }
+      }, currentNotificationInterval);
     }
 
     return () => {

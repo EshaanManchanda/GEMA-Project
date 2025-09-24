@@ -1,5 +1,6 @@
 import React from 'react';
 import { motion } from 'framer-motion';
+import SEO from '@/components/common/SEO';
 
 const TermsPage: React.FC = () => {
   // Animation variants
@@ -27,8 +28,20 @@ const TermsPage: React.FC = () => {
   // Last updated date
   const lastUpdated = 'January 15, 2023';
 
+  const breadcrumbs = [
+    { name: 'Home', url: '/' },
+    { name: 'Terms & Conditions', url: '/terms' }
+  ];
+
   return (
-    <div className="container mx-auto px-4 py-12">
+    <>
+      <SEO
+        title="Terms & Conditions - Gema Events"
+        description="Read the terms and conditions for using Gema Events platform. Learn about our policies for booking kids activities, payments, cancellations, and user responsibilities."
+        keywords={['terms and conditions', 'gema events terms', 'booking terms', 'user agreement', 'privacy policy']}
+        breadcrumbs={breadcrumbs}
+      />
+      <div className="container mx-auto px-4 py-12">
       <motion.div 
         className="max-w-4xl mx-auto"
         initial="hidden"
@@ -211,6 +224,7 @@ const TermsPage: React.FC = () => {
         </motion.div>
       </motion.div>
     </div>
+    </>
   );
 };
 

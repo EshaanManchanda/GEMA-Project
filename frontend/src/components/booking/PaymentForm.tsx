@@ -1,10 +1,15 @@
 import React, { useState, useEffect } from 'react';
 import { useDispatch, useSelector } from 'react-redux';
 import { Link, useLocation } from 'react-router-dom';
-import { CreditCard, Shield, Lock, AlertCircle, CheckCircle, ChevronLeft } from 'lucide-react';
+import { CreditCard, Shield, Lock, AlertCircle, CheckCircle, ChevronLeft, AlertTriangle, Info } from 'lucide-react';
 import toast from 'react-hot-toast';
 
 import { AppDispatch } from '../../store';
+import StripeElementsWrapper from '../payment/StripeElementsWrapper';
+import StripePaymentElement from '../payment/StripePaymentElement';
+import { getPaymentConfig, getRegionalPaymentMethods, getPreferredPaymentMethod, shouldShowRegulatoryWarning, getRegulatoryMessage } from '../../utils/paymentConfig';
+import { getEnvironmentInfo, getPaymentMethodAvailability } from '../../utils/environmentUtils';
+import { formatCurrency, getDefaultCurrency, getCurrencySymbol } from '../../utils/currencyUtils';
 import {
   setPaymentMethod,
   setAgreedToTerms,
@@ -26,10 +31,10 @@ interface PaymentFormProps {
   onPrev: () => void;
 }
 
-const PaymentForm: React.FC<PaymentFormProps> = ({ 
-  event, 
-  onNext, 
-  onPrev 
+const PaymentForm: React.FC<PaymentFormProps> = ({
+  event,
+  onNext,
+  onPrev
 }) => {
   const dispatch = useDispatch<AppDispatch>();
   const location = useLocation();
@@ -42,36 +47,57 @@ const PaymentForm: React.FC<PaymentFormProps> = ({
   const [processing, setProcessing] = useState(false);
   const [paymentError, setPaymentError] = useState<string | null>(null);
   const [selectedPaymentMethod, setSelectedPaymentMethod] = useState(
-    bookingFlow.paymentMethod || 'stripe'
+    bookingFlow.paymentMethod || getPreferredPaymentMethod()
   );
   const [agreedToTerms, setAgreedToTermsLocal] = useState(bookingFlow.agreedToTerms);
   const [agreedToPrivacy, setAgreedToPrivacy] = useState(false);
   const [marketingConsent, setMarketingConsent] = useState(false);
 
-  // Payment methods configuration
+  // Payment methods configuration with environment-based settings
+  const paymentConfig = getPaymentConfig();
+  const regionalMethods = getRegionalPaymentMethods();
+  const environmentInfo = getEnvironmentInfo();
+  const paymentAvailability = getPaymentMethodAvailability();
+
   const paymentMethods = [
     {
       id: 'test',
       name: 'Test Payment',
-      description: 'For testing purposes - automatically succeeds',
+      description: environmentInfo.isDevelopment
+        ? 'Recommended for development - automatically succeeds and processes your order normally'
+        : 'Safe test payment option - processes your order normally without charging your card',
       icon: CheckCircle,
-      popular: true,
+      popular: regionalMethods.test.recommended || !regionalMethods.stripe.enabled,
+      recommended: regionalMethods.test.recommended || !paymentAvailability.stripeElements,
+      enabled: regionalMethods.test.enabled,
+      warning: regionalMethods.test.warning,
+      reliable: true,
     },
     {
       id: 'stripe',
       name: 'Credit/Debit Card',
-      description: 'Visa, Mastercard, American Express',
+      description: paymentAvailability.stripeElements
+        ? 'Visa, Mastercard, American Express - Secure payment processing'
+        : 'Credit/Debit Card payments may have limitations in current environment',
       icon: CreditCard,
-      popular: true,
+      popular: regionalMethods.stripe.recommended && paymentAvailability.stripeElements,
+      recommended: regionalMethods.stripe.recommended && paymentAvailability.stripeElements,
+      enabled: regionalMethods.stripe.enabled,
+      warning: regionalMethods.stripe.warning || (!paymentAvailability.stripeElements ? 'May have limitations in current environment' : undefined),
+      reliable: paymentAvailability.stripeElements,
     },
     {
       id: 'paypal',
       name: 'PayPal',
-      description: 'Pay with your PayPal account',
+      description: 'Pay with your PayPal account (Coming Soon)',
       icon: CreditCard,
       popular: false,
+      recommended: false,
+      enabled: false, // Disabled for now
+      warning: 'PayPal integration coming soon',
+      reliable: false,
     },
-  ];
+  ].filter(method => method.enabled);
 
   // Update Redux state when local state changes
   useEffect(() => {
@@ -81,6 +107,22 @@ const PaymentForm: React.FC<PaymentFormProps> = ({
   useEffect(() => {
     dispatch(setAgreedToTerms(agreedToTerms));
   }, [agreedToTerms, dispatch]);
+
+  // Create payment intent when Stripe is selected and we don't have one yet
+  useEffect(() => {
+    if (selectedPaymentMethod === 'stripe' && !checkout?.clientSecret && participants.length > 0) {
+      // Get the first available schedule ID
+      const dateScheduleId = event.dateSchedule?.[0]?._id || event.dateSchedule?.[0]?.id;
+
+      if (dateScheduleId) {
+        dispatch(createPaymentIntent({
+          eventId: event._id,
+          participants: participants.length,
+          dateScheduleId: dateScheduleId
+        }));
+      }
+    }
+  }, [selectedPaymentMethod, checkout?.clientSecret, participants.length, event._id, event.dateSchedule, dispatch]);
 
   // Calculate total amount
   const calculateTotal = () => {
@@ -137,61 +179,48 @@ const PaymentForm: React.FC<PaymentFormProps> = ({
     return true;
   };
 
+  // Handle successful payment
+  const handlePaymentSuccess = () => {
+    toast.success('Payment successful!');
+    onNext();
+  };
+
+  // Handle fallback to test payment
+  const handleFallbackToTestPayment = () => {
+    setSelectedPaymentMethod('test');
+    setPaymentError(null);
+    toast.success('Switched to Test Payment method');
+  };
+
   // Handle payment initiation
   const handleInitiatePayment = async () => {
     if (!validateForm()) return;
-
-    if (!event.dateSchedule?.[0]) {
-      setPaymentError('Event schedule information is missing');
-      return;
-    }
 
     setProcessing(true);
     setPaymentError(null);
 
     try {
-      // Get schedule ID from route state
-      const routeState = location.state as any;
-      const scheduleId = routeState?.scheduleId;
-
-      if (!scheduleId) {
-        throw new Error('Schedule ID not found. Please restart the booking process.');
+      if (selectedPaymentMethod === 'test') {
+        // Test payment - simulate immediate success
+        toast.success('Test payment successful!');
+        setTimeout(() => {
+          onNext();
+        }, 1000);
+        return;
       }
 
-      // Prepare booking data for API
-      const bookingData: InitiateBookingData = {
-        eventId: event._id,
-        dateScheduleId: scheduleId,
-        seats: participants.length,
-        paymentMethod: selectedPaymentMethod as 'stripe' | 'paypal' | 'test',
-      };
-
-      // Initiate booking with payment intent
-      const response = await bookingAPI.initiateBooking(bookingData);
-      
-      if (response.paymentIntentId && response.clientSecret) {
-        // Payment intent created successfully
-        toast.success('Payment session initialized');
-        
-        if (selectedPaymentMethod === 'test') {
-          // Test payment - simulate immediate success
-          toast.success('Test payment successful!');
-          setTimeout(() => {
-            onNext();
-          }, 1000);
-        } else if (selectedPaymentMethod === 'stripe') {
-          // For demo purposes, simulate successful payment
-          // In a real implementation, you would integrate with Stripe Elements here
-          setTimeout(() => {
-            toast.success('Payment processed successfully!');
-            onNext();
-          }, 2000);
-        } else {
-          // Handle other payment methods
-          onNext();
+      if (selectedPaymentMethod === 'stripe') {
+        // Stripe payment is handled by StripePaymentElement component
+        // Just check if payment intent is ready
+        if (!checkout?.clientSecret) {
+          setPaymentError('Payment session not ready. Please try again.');
+          return;
         }
+        // The actual payment will be handled by StripePaymentElement
+        return;
       } else {
-        throw new Error('Failed to create payment session');
+        // Handle other payment methods (PayPal, etc.)
+        onNext();
       }
     } catch (error: any) {
       const apiError = handleError(error, {
@@ -199,9 +228,9 @@ const PaymentForm: React.FC<PaymentFormProps> = ({
         action: 'initiatePayment',
         eventId: event._id,
       });
-      
+
       setPaymentError(apiError.message);
-      toast.error('Payment initialization failed');
+      toast.error('Payment processing failed');
     } finally {
       setProcessing(false);
     }
@@ -214,6 +243,35 @@ const PaymentForm: React.FC<PaymentFormProps> = ({
         <p className="text-gray-600">
           Secure payment processing with 256-bit SSL encryption
         </p>
+        {shouldShowRegulatoryWarning() && (
+          <div className="mt-4 p-3 bg-amber-50 border border-amber-200 rounded-lg">
+            <div className="flex items-start">
+              <AlertTriangle className="w-5 h-5 text-amber-600 mr-2 mt-0.5 flex-shrink-0" />
+              <div className="flex-1">
+                <p className="text-sm text-amber-800 font-medium mb-1">Payment Configuration Notice</p>
+                <p className="text-sm text-amber-700">{getRegulatoryMessage()}</p>
+                <div className="mt-2 text-xs text-amber-600">
+                  <p>Recommendation: Use Test Payment for reliable processing</p>
+                </div>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* Enhanced guidance for payment method selection */}
+        {!environmentInfo.isDevelopment && !paymentAvailability.stripeElements && (
+          <div className="mt-4 p-3 bg-blue-50 border border-blue-200 rounded-lg">
+            <div className="flex items-start">
+              <Info className="w-5 h-5 text-blue-600 mr-2 mt-0.5 flex-shrink-0" />
+              <div className="flex-1">
+                <p className="text-sm text-blue-800 font-medium mb-1">Payment Method Guidance</p>
+                <p className="text-sm text-blue-700">
+                  Some payment features may be limited. Test Payment is recommended for the most reliable experience.
+                </p>
+              </div>
+            </div>
+          </div>
+        )}
       </div>
 
       {/* Payment Methods */}
@@ -250,13 +308,34 @@ const PaymentForm: React.FC<PaymentFormProps> = ({
                 <div className="flex-1">
                   <div className="flex items-center">
                     <span className="font-medium text-gray-900">{method.name}</span>
-                    {method.popular && (
+                    {method.recommended && (
+                      <span className="ml-2 px-2 py-1 text-xs bg-green-600 text-white rounded-full">
+                        Recommended
+                      </span>
+                    )}
+                    {method.popular && !method.recommended && (
                       <span className="ml-2 px-2 py-1 text-xs bg-primary text-white rounded-full">
                         Popular
                       </span>
                     )}
+                    {method.reliable === false && (
+                      <span className="ml-2 px-2 py-1 text-xs bg-orange-500 text-white rounded-full">
+                        Limited
+                      </span>
+                    )}
+                    {method.reliable === true && method.id === 'test' && (
+                      <span className="ml-2 px-2 py-1 text-xs bg-blue-500 text-white rounded-full">
+                        Reliable
+                      </span>
+                    )}
                   </div>
                   <p className="text-sm text-gray-600">{method.description}</p>
+                  {method.warning && (
+                    <div className="flex items-start mt-2">
+                      <AlertTriangle className="w-4 h-4 text-amber-500 mr-2 mt-0.5 flex-shrink-0" />
+                      <p className="text-xs text-amber-700">{method.warning}</p>
+                    </div>
+                  )}
                 </div>
                 <Shield className="w-5 h-5 text-green-500" />
               </div>
@@ -265,8 +344,22 @@ const PaymentForm: React.FC<PaymentFormProps> = ({
         </CardContent>
       </Card>
 
-      {/* Mock Stripe Elements (for demo) */}
-      {selectedPaymentMethod === 'stripe' && (
+      {/* Real Stripe Elements */}
+      {selectedPaymentMethod === 'stripe' && checkout?.clientSecret && (
+        <StripeElementsWrapper clientSecret={checkout.clientSecret}>
+          <StripePaymentElement
+            onSuccess={handlePaymentSuccess}
+            onError={(error) => setPaymentError(error)}
+            onFallbackToTestPayment={handleFallbackToTestPayment}
+            isProcessing={processing}
+            amount={total}
+            currency={event.currency || 'USD'}
+          />
+        </StripeElementsWrapper>
+      )}
+
+      {/* Loading state for Stripe Elements */}
+      {selectedPaymentMethod === 'stripe' && !checkout?.clientSecret && (
         <Card>
           <CardHeader>
             <CardTitle className="flex items-center">
@@ -275,18 +368,9 @@ const PaymentForm: React.FC<PaymentFormProps> = ({
             </CardTitle>
           </CardHeader>
           <CardContent>
-            <div className="space-y-4">
-              <div className="p-4 border border-gray-200 rounded-lg bg-gray-50 text-center">
-                <div className="flex items-center justify-center mb-2">
-                  <CreditCard className="w-8 h-8 text-gray-400" />
-                </div>
-                <p className="text-gray-600 text-sm mb-2">
-                  Stripe Payment Elements would be integrated here
-                </p>
-                <p className="text-xs text-gray-500">
-                  This is a demo - actual Stripe integration requires additional setup
-                </p>
-              </div>
+            <div className="flex items-center justify-center py-8">
+              <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
+              <span className="ml-3 text-gray-600">Loading payment form...</span>
             </div>
           </CardContent>
         </Card>
@@ -301,30 +385,30 @@ const PaymentForm: React.FC<PaymentFormProps> = ({
           <div className="space-y-3">
             <div className="flex justify-between">
               <span>Subtotal ({participants.length} participants)</span>
-              <span>{event.currency} {subtotal.toFixed(2)}</span>
+              <span>{formatCurrency(subtotal, event.currency || getDefaultCurrency())}</span>
             </div>
-            
+
             {discountAmount > 0 && (
               <div className="flex justify-between text-green-600">
                 <span>Discount ({bookingFlow.couponCode})</span>
-                <span>-{event.currency} {discountAmount.toFixed(2)}</span>
+                <span>-{formatCurrency(discountAmount, event.currency || getDefaultCurrency())}</span>
               </div>
             )}
-            
+
             <div className="flex justify-between text-sm text-gray-600">
               <span>Service Fee (5%)</span>
-              <span>{event.currency} {serviceFee.toFixed(2)}</span>
+              <span>{formatCurrency(serviceFee, event.currency || getDefaultCurrency())}</span>
             </div>
-            
+
             <div className="flex justify-between text-sm text-gray-600">
               <span>Tax (5%)</span>
-              <span>{event.currency} {tax.toFixed(2)}</span>
+              <span>{formatCurrency(tax, event.currency || getDefaultCurrency())}</span>
             </div>
-            
+
             <div className="border-t pt-3">
               <div className="flex justify-between text-lg font-bold">
                 <span>Total Amount</span>
-                <span>{event.currency} {total.toFixed(2)}</span>
+                <span>{formatCurrency(total, event.currency || getDefaultCurrency())}</span>
               </div>
             </div>
           </div>
@@ -428,7 +512,7 @@ const PaymentForm: React.FC<PaymentFormProps> = ({
           loading={processing}
           size="lg"
         >
-          {processing ? 'Processing Payment...' : `Pay ${event.currency} ${total.toFixed(2)}`}
+          {processing ? 'Processing Payment...' : `Pay ${formatCurrency(total, event.currency || getDefaultCurrency())}`}
         </Button>
       </div>
     </div>

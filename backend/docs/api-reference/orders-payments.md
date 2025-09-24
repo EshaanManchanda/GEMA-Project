@@ -11,6 +11,77 @@ The Orders & Payments system provides:
 - **Payment Analytics**: Comprehensive financial reporting
 - **Refund Processing**: Automated refund capabilities
 
+## 🧪 Testing & Regional Compliance
+
+### Live vs Test Keys Configuration
+
+**Environment Setup:**
+- **Development**: Automatically uses test keys regardless of configuration
+- **Staging/Production**: Uses live keys when `USE_LIVE_KEYS=true`
+- **Force Test Mode**: Set `VITE_FORCE_TEST_MODE=true` to always use test keys
+
+### Test Cards
+When testing payment functionality, use region-appropriate test cards:
+
+**India-Compliant Test Cards (Recommended):**
+- `4000003560000008` - Visa India (domestic transaction)
+- `5200007840000022` - Mastercard UAE (for international testing)
+
+**Live Account Configuration:**
+- **Current Setup**: Live Stripe account with India compliance mode
+- **Regulatory Status**: `live-india` compliance mode active
+- **Key Format**: Live keys corrected from `rk_live_` to `sk_live_` format
+
+**Important Notes:**
+- ⚠️ **Live Account**: Now using live Stripe keys - real charges will occur
+- 🏢 **India Compliance**: Live account configured for Indian regulatory requirements
+- 🧪 **Development Mode**: Test Payment method remains recommended for development
+- 🔧 **Key Validation**: Automatic key format checking and environment warnings
+- 📚 **Documentation**: [Stripe India Export Regulations](https://stripe.com/docs/india-exports)
+
+### Error Handling
+Common regulatory compliance errors:
+```json
+{
+  "error": {
+    "type": "invalid_request_error",
+    "message": "As per Indian regulations, only registered Indian businesses can accept international payments."
+  }
+}
+```
+
+**Recommended Approach:**
+1. Implement fallback to test payment methods
+2. Show user-friendly error messages
+3. Provide alternative payment options
+4. Include links to regulatory documentation
+
+### Production Deployment Checklist
+
+**Before deploying to production:**
+1. ✅ Verify live Stripe keys are correctly formatted (`sk_live_` not `rk_live_`)
+2. ✅ Set `PAYMENT_ENVIRONMENT=production` and `USE_LIVE_KEYS=true`
+3. ✅ Test payment flow with small amounts in staging environment
+4. ✅ Confirm regulatory compliance for target markets
+5. ✅ Enable monitoring for payment failures and regulatory errors
+6. ✅ Verify webhook endpoints are configured for live events
+7. ✅ Test fallback mechanisms work with live account restrictions
+
+**Environment Variables for Production:**
+```bash
+# Backend (.env)
+PAYMENT_ENVIRONMENT=production
+USE_LIVE_KEYS=true
+STRIPE_SECRET_KEY=sk_live_... (corrected format)
+STRIPE_COMPLIANCE_MODE=live-india
+
+# Frontend (.env)
+VITE_PAYMENT_ENVIRONMENT=production
+VITE_USE_LIVE_KEYS=true
+VITE_FORCE_TEST_MODE=false
+VITE_STRIPE_COMPLIANCE_MODE=live-india
+```
+
 ---
 
 ## 📋 Order Management
@@ -462,7 +533,7 @@ Authorization: Bearer <access_token>
         "type": "card",
         "card": {
           "brand": "visa",
-          "last4": "4242",
+          "last4": "0008",
           "expMonth": 12,
           "expYear": 2025
         },

@@ -7,6 +7,7 @@ import { format } from 'date-fns';
 import eventsAPI from '../services/api/eventsAPI';
 import { useErrorHandler } from '../utils/errorHandler';
 import { ComponentErrorBoundary } from '../components/common/ErrorBoundary';
+import { EventSEO } from '@/components/common/SEO';
 import { AppDispatch } from '../store';
 import {
   setBookingEvent,
@@ -388,9 +389,17 @@ const EventDetailPage: React.FC = () => {
   // Check if event is already in cart for the selected date
   const eventInCart = event && selectedDate ? isItemInCart(event.id, selectedDate.toISOString()) : false;
 
+  const breadcrumbs = event ? [
+    { name: 'Home', url: '/' },
+    { name: 'Events', url: '/events' },
+    { name: event.title, url: `/events/${event.id}` }
+  ] : [];
+
   return (
-    <div className="container mx-auto px-4 py-8">
-      {/* Back button */}
+    <>
+      {event && <EventSEO event={event} breadcrumbs={breadcrumbs} />}
+      <div className="container mx-auto px-4 py-8">
+        {/* Back button */}
       <button 
         onClick={() => navigate('/events')} 
         className="flex items-center text-primary hover:text-primary-dark mb-4 transition-colors"
@@ -1099,6 +1108,7 @@ const EventDetailPage: React.FC = () => {
         </div>
       </div>
     </div>
+    </>
   );
 };
 

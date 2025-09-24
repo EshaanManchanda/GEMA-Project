@@ -34,15 +34,30 @@ app.use(cors({
 app.use(mongoSanitize());
 app.use(hpp());
 
-// Rate limiting
-const limiter = rateLimit({
+// Rate limiting with enhanced limits for admin routes
+const generalLimiter = rateLimit({
   windowMs: config.rateLimitWindowMs,
   max: config.rateLimitMax,
   standardHeaders: true,
   legacyHeaders: false,
   message: 'Too many requests from this IP, please try again later.'
 });
-app.use(limiter);
+
+// More generous rate limiting for admin routes
+const adminLimiter = rateLimit({
+  windowMs: config.rateLimitWindowMs,
+  max: config.rateLimitMax * 2, // Double the limit for admin routes
+  standardHeaders: true,
+  legacyHeaders: false,
+  message: 'Too many admin requests from this IP, please try again later.'
+});
+
+// Apply general rate limiting to all routes
+app.use(generalLimiter);
+
+// Apply enhanced rate limiting to admin routes
+app.use('/api/admin', adminLimiter);
+app.use('/api/analytics', adminLimiter);
 
 // Body parsing middleware with special handling for Stripe webhooks
 app.use('/api/payments/webhook', express.raw({ type: 'application/json' }));

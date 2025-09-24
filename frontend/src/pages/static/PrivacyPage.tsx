@@ -1,5 +1,6 @@
 import React from 'react';
 import { motion } from 'framer-motion';
+import SEO from '@/components/common/SEO';
 
 const PrivacyPage: React.FC = () => {
   // Animation variants
@@ -27,8 +28,20 @@ const PrivacyPage: React.FC = () => {
   // Last updated date
   const lastUpdated = 'January 15, 2023';
 
+  const breadcrumbs = [
+    { name: 'Home', url: '/' },
+    { name: 'Privacy Policy', url: '/privacy' }
+  ];
+
   return (
-    <div className="container mx-auto px-4 py-12">
+    <>
+      <SEO
+        title="Privacy Policy - Gema Events"
+        description="Learn about Gema Events privacy policy and how we protect your personal information. Understand our data collection, usage, and security practices for kids activities platform."
+        keywords={['privacy policy', 'data protection', 'gema events privacy', 'user privacy', 'data security']}
+        breadcrumbs={breadcrumbs}
+      />
+      <div className="container mx-auto px-4 py-12">
       <motion.div 
         className="max-w-4xl mx-auto"
         initial="hidden"
@@ -209,6 +222,7 @@ const PrivacyPage: React.FC = () => {
         </motion.div>
       </motion.div>
     </div>
+    </>
   );
 };
 

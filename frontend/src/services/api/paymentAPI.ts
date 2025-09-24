@@ -43,7 +43,7 @@ export interface Payment {
   updatedAt: string;
 }
 
-export type PaymentGateway = 'stripe' | 'paypal' | 'razorpay';
+export type PaymentGateway = 'stripe' | 'paypal';
 export type PaymentMethodType = 'credit_card' | 'debit_card' | 'digital_wallet' | 'bank_transfer' | 'cash';
 export type PaymentStatus = 'pending' | 'processing' | 'completed' | 'failed' | 'cancelled' | 'refunded' | 'partially_refunded';
 

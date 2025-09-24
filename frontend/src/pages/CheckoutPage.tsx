@@ -15,8 +15,10 @@ import {
 import { Event } from '../types/event';
 import Button from '../components/ui/Button';
 import { Card, CardContent, CardHeader, CardTitle } from '../components/ui/Card';
-import PaymentForm from '../components/booking/PaymentForm';
+import StripePaymentForm from '../components/payment/StripePaymentForm';
 import LoadingSpinner from '../components/common/LoadingSpinner';
+import CouponValidator from '../components/checkout/CouponValidator';
+import SEO from '../components/common/SEO';
 
 interface BookingFormData {
   quantity: number;
@@ -42,6 +44,9 @@ const CheckoutPage: React.FC = () => {
   const isCreatingBooking = useSelector(selectIsCreatingBooking);
 
   const [isProcessing, setIsProcessing] = useState(false);
+  const [appliedCoupon, setAppliedCoupon] = useState<any>(null);
+  const [discountAmount, setDiscountAmount] = useState(0);
+  const [finalTotal, setFinalTotal] = useState(state?.totalPrice || 0);
 
   useEffect(() => {
     // If no state is passed, redirect to home page
@@ -52,10 +57,13 @@ const CheckoutPage: React.FC = () => {
 
     // Create payment intent when component mounts
     if (state.totalPrice > 0) {
+      // Get the first available schedule ID if not provided
+      const dateScheduleId = state.event.dateSchedule?.[0]?._id || state.event.dateSchedule?.[0]?.id;
+
       dispatch(createPaymentIntent({
-        amount: state.totalPrice,
         eventId: state.event.id,
-        currency: 'usd'
+        participants: state.booking.quantity,
+        dateScheduleId: dateScheduleId
       }));
     }
 
@@ -68,10 +76,8 @@ const CheckoutPage: React.FC = () => {
       setIsProcessing(true);
 
       const result = await dispatch(confirmPayment({
-        paymentIntentId: checkout?.paymentIntentId,
-        eventId: state!.event.id,
-        bookingData: state!.booking,
-        paymentData
+        paymentIntentId: paymentData.paymentIntentId,
+        bookingData: state!.booking
       }));
 
       if (result.type === 'bookings/confirmPayment/fulfilled') {
@@ -95,6 +101,18 @@ const CheckoutPage: React.FC = () => {
     navigate(-1);
   };
 
+  const handleCouponApplied = (coupon: any, discount: number) => {
+    setAppliedCoupon(coupon);
+    setDiscountAmount(discount);
+    setFinalTotal(state!.totalPrice - discount);
+  };
+
+  const handleCouponRemoved = () => {
+    setAppliedCoupon(null);
+    setDiscountAmount(0);
+    setFinalTotal(state!.totalPrice);
+  };
+
   if (!state) {
     return null;
   }
@@ -102,7 +120,14 @@ const CheckoutPage: React.FC = () => {
   const { event, booking, totalPrice } = state;
 
   return (
-    <div className="min-h-screen bg-gray-50 py-8">
+    <>
+      <SEO
+        title={`Checkout - ${event.title} | Gema Events`}
+        description={`Complete your booking for ${event.title}. Secure payment with Stripe.`}
+        noIndex={true}
+        noFollow={true}
+      />
+      <div className="min-h-screen bg-gray-50 py-8">
       <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8">
         {/* Header */}
         <div className="mb-8">
@@ -181,7 +206,7 @@ const CheckoutPage: React.FC = () => {
                   <div className="space-y-2">
                     <div className="flex justify-between text-sm">
                       <span className="text-gray-600">
-                        Ticket Price × {booking.quantity}
+                        Ticket Price Ã— {booking.quantity}
                       </span>
                       <span className="text-gray-900">
                         ${(event.price * booking.quantity).toFixed(2)}
@@ -191,9 +216,15 @@ const CheckoutPage: React.FC = () => {
                       <span className="text-gray-600">Service Fee</span>
                       <span className="text-gray-900">$2.50</span>
                     </div>
+                    {appliedCoupon && discountAmount > 0 && (
+                      <div className="flex justify-between text-sm text-green-600">
+                        <span>Discount ({appliedCoupon.code})</span>
+                        <span>-${discountAmount.toFixed(2)}</span>
+                      </div>
+                    )}
                     <div className="border-t pt-2 flex justify-between font-semibold">
                       <span className="text-gray-900">Total</span>
-                      <span className="text-gray-900">${totalPrice.toFixed(2)}</span>
+                      <span className="text-gray-900">${finalTotal.toFixed(2)}</span>
                     </div>
                   </div>
                 </div>
@@ -202,7 +233,16 @@ const CheckoutPage: React.FC = () => {
           </div>
 
           {/* Payment Form */}
-          <div className="order-1 lg:order-2">
+          <div className="order-1 lg:order-2 space-y-6">
+            {/* Coupon Validator */}
+            <CouponValidator
+              orderAmount={totalPrice}
+              eventIds={[event.id]}
+              onCouponApplied={handleCouponApplied}
+              onCouponRemoved={handleCouponRemoved}
+              appliedCoupon={appliedCoupon}
+            />
+
             <Card>
               <CardHeader>
                 <CardTitle className="flex items-center">
@@ -212,32 +252,24 @@ const CheckoutPage: React.FC = () => {
               </CardHeader>
               <CardContent>
                 {checkout?.clientSecret ? (
-                  <PaymentForm
+                  <StripePaymentForm
                     clientSecret={checkout.clientSecret}
                     onSuccess={handlePaymentSuccess}
                     isProcessing={isProcessing || isCreatingBooking}
-                    amount={totalPrice}
+                    amount={finalTotal}
+                    currency="USD"
                   />
                 ) : (
                   <div className="flex justify-center items-center py-8">
                     <LoadingSpinner size="large" text="Preparing payment..." />
                   </div>
                 )}
-
-                {/* Security Notice */}
-                <div className="mt-6 flex items-start space-x-3 text-sm text-gray-600">
-                  <Shield className="w-5 h-5 text-green-600 mt-0.5" />
-                  <div>
-                    <p className="font-medium text-gray-900">Secure Payment</p>
-                    <p>Your payment information is encrypted and secure. We use Stripe for processing payments.</p>
-                  </div>
-                </div>
               </CardContent>
             </Card>
           </div>
         </div>
       </div>
-    </div>
+    </>
   );
 };
 

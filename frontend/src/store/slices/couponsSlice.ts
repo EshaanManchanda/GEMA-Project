@@ -1,14 +1,20 @@
 import { createSlice, createAsyncThunk, PayloadAction } from '@reduxjs/toolkit';
-import { couponAPI } from '../../services/api/index';
-import type { 
-  Coupon, 
-  CreateCouponData, 
-  UpdateCouponData, 
+import couponAPI from '../../services/api/couponAPI';
+import type {
+  Coupon,
+  CreateCouponData,
+  UpdateCouponData,
   CouponValidation,
-  CouponStats,
-  CouponUsage 
-} from '../../services/api/index';
-import { toast } from 'react-hot-toast';
+  CouponStats
+} from '../../services/api/couponAPI';
+import toast from 'react-hot-toast';
+
+export interface CouponUsage {
+  userId: string;
+  orderId: string;
+  usedAt: string;
+  discountAmount: number;
+}
 
 interface CouponsState {
   coupons: Coupon[];
@@ -17,14 +23,38 @@ interface CouponsState {
   currentCoupon: Coupon | null;
   validationResult: CouponValidation | null;
   couponStats: CouponStats | null;
-  usageHistory: CouponUsage[];
-  isLoading: boolean;
-  isValidating: boolean;
-  isCreating: boolean;
-  isUpdating: boolean;
-  isDeleting: boolean;
-  error: string | null;
-  validationError: string | null;
+  usageHistory: any[];
+  pagination: {
+    page: number;
+    limit: number;
+    total: number;
+    pages: number;
+  };
+  filters: {
+    search: string;
+    status: string;
+    type: string;
+  };
+  loading: {
+    list: boolean;
+    current: boolean;
+    validating: boolean;
+    creating: boolean;
+    updating: boolean;
+    deleting: boolean;
+    stats: boolean;
+    userHistory: boolean;
+  };
+  error: {
+    list: string | null;
+    current: string | null;
+    validating: string | null;
+    creating: string | null;
+    updating: string | null;
+    deleting: string | null;
+    stats: string | null;
+    userHistory: string | null;
+  };
 }
 
 const initialState: CouponsState = {
@@ -35,13 +65,37 @@ const initialState: CouponsState = {
   validationResult: null,
   couponStats: null,
   usageHistory: [],
-  isLoading: false,
-  isValidating: false,
-  isCreating: false,
-  isUpdating: false,
-  isDeleting: false,
-  error: null,
-  validationError: null,
+  pagination: {
+    page: 1,
+    limit: 10,
+    total: 0,
+    pages: 0
+  },
+  filters: {
+    search: '',
+    status: '',
+    type: ''
+  },
+  loading: {
+    list: false,
+    current: false,
+    validating: false,
+    creating: false,
+    updating: false,
+    deleting: false,
+    stats: false,
+    userHistory: false
+  },
+  error: {
+    list: null,
+    current: null,
+    validating: null,
+    creating: null,
+    updating: null,
+    deleting: null,
+    stats: null,
+    userHistory: null
+  }
 };
 
 // Async thunks
@@ -50,13 +104,13 @@ export const fetchCoupons = createAsyncThunk(
   async (params: {
     page?: number;
     limit?: number;
-    isActive?: boolean;
+    status?: string;
     type?: string;
     search?: string;
   } = {}, { rejectWithValue }) => {
     try {
       const response = await couponAPI.getAllCoupons(params);
-      return response.data || response;
+      return response.data;
     } catch (error: any) {
       const message = error.response?.data?.message || 'Failed to fetch coupons';
       return rejectWithValue(message);
@@ -69,7 +123,7 @@ export const fetchActiveCoupons = createAsyncThunk(
   async (_, { rejectWithValue }) => {
     try {
       const response = await couponAPI.getActiveCoupons();
-      return response.data || response;
+      return response.data;
     } catch (error: any) {
       const message = error.response?.data?.message || 'Failed to fetch active coupons';
       return rejectWithValue(message);
@@ -291,13 +345,20 @@ const couponsSlice = createSlice({
   name: 'coupons',
   initialState,
   reducers: {
-    clearError: (state) => {
-      state.error = null;
-      state.validationError = null;
+    setFilters: (state, action: PayloadAction<Partial<CouponsState['filters']>>) => {
+      state.filters = { ...state.filters, ...action.payload };
+    },
+    clearError: (state, action: PayloadAction<keyof CouponsState['error']>) => {
+      state.error[action.payload] = null;
+    },
+    clearAllErrors: (state) => {
+      Object.keys(state.error).forEach(key => {
+        state.error[key as keyof CouponsState['error']] = null;
+      });
     },
     clearValidationResult: (state) => {
       state.validationResult = null;
-      state.validationError = null;
+      state.error.validating = null;
     },
     setCurrentCoupon: (state, action: PayloadAction<Coupon | null>) => {
       state.currentCoupon = action.payload;
@@ -337,17 +398,18 @@ const couponsSlice = createSlice({
     // Fetch Coupons
     builder
       .addCase(fetchCoupons.pending, (state) => {
-        state.isLoading = true;
-        state.error = null;
+        state.loading.list = true;
+        state.error.list = null;
       })
       .addCase(fetchCoupons.fulfilled, (state, action) => {
-        state.isLoading = false;
-        state.coupons = action.payload;
-        state.error = null;
+        state.loading.list = false;
+        state.coupons = action.payload.coupons;
+        state.pagination = action.payload.pagination;
+        state.error.list = null;
       })
       .addCase(fetchCoupons.rejected, (state, action) => {
-        state.isLoading = false;
-        state.error = action.payload as string;
+        state.loading.list = false;
+        state.error.list = action.payload as string;
       })
 
       // Fetch Active Coupons

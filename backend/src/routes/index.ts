@@ -15,16 +15,20 @@ import adminVenueRoutes from './admin.venue.routes';
 import vendorRoutes from './vendor.routes';
 import blogRoutes from './blog.routes';
 import adminBlogRoutes from './admin.blog.routes';
+import blogCommentsRoutes from './blog.comments.routes';
 // New routes
 import categoryRoutes from './category.routes';
 import couponRoutes from './coupon.routes';
 import notificationRoutes from './notification.routes';
 import affiliateRoutes from './affiliate.routes';
 import bookingRoutes from './booking.routes';
+import newsletterRoutes from './newsletter.routes';
 import searchRoutes from './search.routes';
 import collectionRoutes from './collection.routes';
 import favoritesRoutes from './favorites.routes';
 import adminRevenueRoutes from './admin.revenue.routes';
+import adminStatsRoutes from './admin.stats.routes';
+import seoRoutes from './seo.routes';
 import { Router } from 'express';
 
 const router = Router();
@@ -81,6 +85,7 @@ router.use('/vendors', vendorRoutes);
 
 // Blog routes
 router.use('/blogs', blogRoutes);
+router.use('/blog', blogCommentsRoutes);
 
 // Admin Blog Management routes
 router.use('/admin/blogs', adminBlogRoutes);
@@ -90,6 +95,7 @@ router.use('/categories', categoryRoutes);
 router.use('/coupons', couponRoutes);
 router.use('/notifications', notificationRoutes);
 router.use('/affiliates', affiliateRoutes);
+router.use('/newsletter', newsletterRoutes);
 
 // Booking routes (enhanced booking flow)
 router.use('/bookings', bookingRoutes);
@@ -105,5 +111,11 @@ router.use('/favorites', favoritesRoutes);
 
 // Admin Revenue Management routes
 router.use('/admin/revenue', adminRevenueRoutes);
+
+// Admin Statistics routes
+router.use('/admin', adminStatsRoutes);
+
+// SEO routes (sitemap, robots.txt, etc.)
+router.use('/', seoRoutes);
 
 export default router;

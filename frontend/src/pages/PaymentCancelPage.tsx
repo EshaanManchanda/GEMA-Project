@@ -1,6 +1,7 @@
 import React, { useEffect } from 'react';
 import { useLocation, useNavigate, Link } from 'react-router-dom';
 import { format } from 'date-fns';
+import SEO from '../components/common/SEO';
 
 interface Event {
   id: number;
@@ -63,7 +64,14 @@ const PaymentCancelPage: React.FC = () => {
   };
 
   return (
-    <div className="container mx-auto px-4 py-8 max-w-4xl">
+    <>
+      <SEO
+        title="Payment Cancelled - Complete Your Booking | Gema Events"
+        description="Your payment was cancelled. You can try again to complete your booking."
+        noIndex={true}
+        noFollow={true}
+      />
+      <div className="container mx-auto px-4 py-8 max-w-4xl">
       {/* Back button */}
       <button 
         onClick={() => navigate('/events')} 
@@ -322,7 +330,7 @@ const PaymentCancelPage: React.FC = () => {
           </Link>
         </div>
       </div>
-    </div>
+    </>
   );
 };
 

@@ -3,6 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import { FaSearch, FaFilter, FaChevronRight, FaRedo } from 'react-icons/fa';
 import collectionsAPI, { Collection } from '../services/api/collectionsAPI';
 import { generatePlaceholder } from '../utils/placeholderImage';
+import SEO from '@/components/common/SEO';
 
 // Mock collections data for fallback
 const mockCollections: Collection[] = [
@@ -193,8 +194,20 @@ const CollectionsPage: React.FC = () => {
     );
   }
 
+  const breadcrumbs = [
+    { name: 'Home', url: '/' },
+    { name: 'Collections', url: '/collections' }
+  ];
+
   return (
-    <div className="min-h-screen bg-gray-50">
+    <>
+      <SEO
+        title="Collections - Curated Kids Activities | Gema Events"
+        description="Explore our curated collections of kids activities and events in the UAE. Find themed activity packages, seasonal events, and specially organized experiences for children."
+        keywords={['collections', 'curated activities', 'kids events packages', 'themed activities', 'UAE children events']}
+        breadcrumbs={breadcrumbs}
+      />
+      <div className="min-h-screen bg-gray-50">
       {/* Header */}
       <div className="bg-white shadow-sm border-b">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
@@ -383,6 +396,7 @@ const CollectionsPage: React.FC = () => {
         )}
       </div>
     </div>
+    </>
   );
 };
 

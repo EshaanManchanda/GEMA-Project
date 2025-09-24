@@ -349,6 +349,7 @@ export const createPaymentIntent = createAsyncThunk(
   async (params: {
     eventId: string;
     participants: number;
+    dateScheduleId?: string;
     couponCode?: string;
   }, { rejectWithValue }) => {
     try {

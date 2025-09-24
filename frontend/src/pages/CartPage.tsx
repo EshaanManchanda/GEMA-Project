@@ -3,6 +3,7 @@ import { Link, useNavigate } from 'react-router-dom';
 import { useCart } from '@/contexts/CartContext';
 import { FaTrash, FaMinus, FaPlus, FaArrowLeft, FaShoppingCart } from 'react-icons/fa';
 import LoadingSpinner from '@components/common/LoadingSpinner';
+import SEO from '../components/common/SEO';
 
 const CartPage: React.FC = () => {
   const navigate = useNavigate();
@@ -92,7 +93,14 @@ const CartPage: React.FC = () => {
   }
 
   return (
-    <div className="container mx-auto px-4 py-8">
+    <>
+      <SEO
+        title="Shopping Cart | Gema Events"
+        description="Review your selected events and proceed to checkout."
+        noIndex={true}
+        noFollow={true}
+      />
+      <div className="container mx-auto px-4 py-8">
       <div className="max-w-6xl mx-auto">
         <Link to="/events" className="flex items-center text-primary hover:text-primary-dark mb-6">
           <FaArrowLeft className="mr-2" />
@@ -244,7 +252,7 @@ const CartPage: React.FC = () => {
           </div>
         </div>
       </div>
-    </div>
+    </>
   );
 };
 

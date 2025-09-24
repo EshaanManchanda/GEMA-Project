@@ -107,6 +107,96 @@
 			"key": "api_version",
 			"value": "api",
 			"type": "string"
+		},
+		{
+			"key": "admin_email",
+			"value": "blogadmin@gema.com",
+			"type": "string"
+		},
+		{
+			"key": "admin_password",
+			"value": "BlogAdmin123!",
+			"type": "string"
+		},
+		{
+			"key": "vendor_email",
+			"value": "vendor@gema.com",
+			"type": "string"
+		},
+		{
+			"key": "vendor_password",
+			"value": "Vendor123!",
+			"type": "string"
+		},
+		{
+			"key": "customer_email",
+			"value": "customer@gema.com",
+			"type": "string"
+		},
+		{
+			"key": "customer_password",
+			"value": "Customer123!",
+			"type": "string"
+		},
+		{
+			"key": "employee_email",
+			"value": "employee@gema.com",
+			"type": "string"
+		},
+		{
+			"key": "employee_password",
+			"value": "Employee123!",
+			"type": "string"
+		},
+		{
+			"key": "test_event_id",
+			"value": "",
+			"type": "string"
+		},
+		{
+			"key": "test_venue_id",
+			"value": "",
+			"type": "string"
+		},
+		{
+			"key": "test_order_id",
+			"value": "",
+			"type": "string"
+		},
+		{
+			"key": "test_blog_id",
+			"value": "",
+			"type": "string"
+		},
+		{
+			"key": "test_comment_id",
+			"value": "",
+			"type": "string"
+		},
+		{
+			"key": "test_category_id",
+			"value": "",
+			"type": "string"
+		},
+		{
+			"key": "test_coupon_id",
+			"value": "",
+			"type": "string"
+		},
+		{
+			"key": "test_user_id",
+			"value": "",
+			"type": "string"
+		},
+		{
+			"key": "stripe_test_card",
+			"value": "4242424242424242",
+			"type": "string"
+		},
+		{
+			"key": "invalid_id",
+			"value": "507f1f77bcf86cd799439011",
+			"type": "string"
 		}
 	],
 	"item": [
@@ -483,6 +573,2814 @@
 						},
 						"description": "Logout current user"
 					}
+				}
+			]
+		},
+		{
+			"name": "🧪 Role-Based Authentication Tests",
+			"description": "Comprehensive authentication tests for all user roles with various scenarios",
+			"item": [
+				{
+					"name": "🔑 Admin Login Flow",
+					"item": [
+						{
+							"name": "Admin - Valid Login",
+							"event": [
+								{
+									"listen": "test",
+									"script": {
+										"exec": [
+											"pm.test('Admin login successful', function () {",
+											"    pm.response.to.have.status(200);",
+											"    const response = pm.response.json();",
+											"    pm.expect(response.data.user.role).to.eql('admin');",
+											"    pm.environment.set('admin_token', response.data.accessToken);",
+											"    pm.environment.set('admin_user_id', response.data.user._id);",
+											"});"
+										]
+									}
+								}
+							],
+							"request": {
+								"auth": {
+									"type": "noauth"
+								},
+								"method": "POST",
+								"header": [
+									{
+										"key": "Content-Type",
+										"value": "application/json"
+									}
+								],
+								"body": {
+									"mode": "raw",
+									"raw": "{\n    \"email\": \"{{admin_email}}\",\n    \"password\": \"{{admin_password}}\"\n}"
+								},
+								"url": {
+									"raw": "{{base_url}}/{{api_version}}/auth/login",
+									"host": ["{{base_url}}"],
+									"path": ["{{api_version}}", "auth", "login"]
+								}
+							}
+						},
+						{
+							"name": "Admin - Invalid Password",
+							"event": [
+								{
+									"listen": "test",
+									"script": {
+										"exec": [
+											"pm.test('Admin login fails with invalid password', function () {",
+											"    pm.response.to.have.status(401);",
+											"    const response = pm.response.json();",
+											"    pm.expect(response.message).to.include('Invalid');",
+											"});"
+										]
+									}
+								}
+							],
+							"request": {
+								"auth": {
+									"type": "noauth"
+								},
+								"method": "POST",
+								"header": [
+									{
+										"key": "Content-Type",
+										"value": "application/json"
+									}
+								],
+								"body": {
+									"mode": "raw",
+									"raw": "{\n    \"email\": \"{{admin_email}}\",\n    \"password\": \"wrongpassword\"\n}"
+								},
+								"url": {
+									"raw": "{{base_url}}/{{api_version}}/auth/login",
+									"host": ["{{base_url}}"],
+									"path": ["{{api_version}}", "auth", "login"]
+								}
+							}
+						}
+					]
+				},
+				{
+					"name": "🏪 Vendor Login Flow",
+					"item": [
+						{
+							"name": "Vendor - Valid Login",
+							"event": [
+								{
+									"listen": "test",
+									"script": {
+										"exec": [
+											"pm.test('Vendor login successful', function () {",
+											"    pm.response.to.have.status(200);",
+											"    const response = pm.response.json();",
+											"    pm.expect(response.data.user.role).to.eql('vendor');",
+											"    pm.environment.set('vendor_token', response.data.accessToken);",
+											"    pm.environment.set('vendor_user_id', response.data.user._id);",
+											"});"
+										]
+									}
+								}
+							],
+							"request": {
+								"auth": {
+									"type": "noauth"
+								},
+								"method": "POST",
+								"header": [
+									{
+										"key": "Content-Type",
+										"value": "application/json"
+									}
+								],
+								"body": {
+									"mode": "raw",
+									"raw": "{\n    \"email\": \"{{vendor_email}}\",\n    \"password\": \"{{vendor_password}}\"\n}"
+								},
+								"url": {
+									"raw": "{{base_url}}/{{api_version}}/auth/login",
+									"host": ["{{base_url}}"],
+									"path": ["{{api_version}}", "auth", "login"]
+								}
+							}
+						},
+						{
+							"name": "Vendor - Access Admin Resource (Should Fail)",
+							"event": [
+								{
+									"listen": "test",
+									"script": {
+										"exec": [
+											"pm.test('Vendor cannot access admin resources', function () {",
+											"    pm.response.to.have.status(403);",
+											"    const response = pm.response.json();",
+											"    pm.expect(response.message).to.include('Access denied');",
+											"});"
+										]
+									}
+								}
+							],
+							"request": {
+								"auth": {
+									"type": "bearer",
+									"bearer": [
+										{
+											"key": "token",
+											"value": "{{vendor_token}}",
+											"type": "string"
+										}
+									]
+								},
+								"method": "GET",
+								"url": {
+									"raw": "{{base_url}}/{{api_version}}/admin/users",
+									"host": ["{{base_url}}"],
+									"path": ["{{api_version}}", "admin", "users"]
+								}
+							}
+						}
+					]
+				},
+				{
+					"name": "👤 Customer Login Flow",
+					"item": [
+						{
+							"name": "Customer - Valid Login",
+							"event": [
+								{
+									"listen": "test",
+									"script": {
+										"exec": [
+											"pm.test('Customer login successful', function () {",
+											"    pm.response.to.have.status(200);",
+											"    const response = pm.response.json();",
+											"    pm.expect(response.data.user.role).to.eql('customer');",
+											"    pm.environment.set('customer_token', response.data.accessToken);",
+											"    pm.environment.set('customer_user_id', response.data.user._id);",
+											"});"
+										]
+									}
+								}
+							],
+							"request": {
+								"auth": {
+									"type": "noauth"
+								},
+								"method": "POST",
+								"header": [
+									{
+										"key": "Content-Type",
+										"value": "application/json"
+									}
+								],
+								"body": {
+									"mode": "raw",
+									"raw": "{\n    \"email\": \"{{customer_email}}\",\n    \"password\": \"{{customer_password}}\"\n}"
+								},
+								"url": {
+									"raw": "{{base_url}}/{{api_version}}/auth/login",
+									"host": ["{{base_url}}"],
+									"path": ["{{api_version}}", "auth", "login"]
+								}
+							}
+						},
+						{
+							"name": "Customer - Access Vendor Resource (Should Fail)",
+							"event": [
+								{
+									"listen": "test",
+									"script": {
+										"exec": [
+											"pm.test('Customer cannot access vendor resources', function () {",
+											"    pm.response.to.have.status(403);",
+											"});"
+										]
+									}
+								}
+							],
+							"request": {
+								"auth": {
+									"type": "bearer",
+									"bearer": [
+										{
+											"key": "token",
+											"value": "{{customer_token}}",
+											"type": "string"
+										}
+									]
+								},
+								"method": "GET",
+								"url": {
+									"raw": "{{base_url}}/{{api_version}}/vendors/dashboard",
+									"host": ["{{base_url}}"],
+									"path": ["{{api_version}}", "vendors", "dashboard"]
+								}
+							}
+						}
+					]
+				},
+				{
+					"name": "🧑‍💼 Employee Login Flow",
+					"item": [
+						{
+							"name": "Employee - Valid Login",
+							"event": [
+								{
+									"listen": "test",
+									"script": {
+										"exec": [
+											"pm.test('Employee login successful', function () {",
+											"    pm.response.to.have.status(200);",
+											"    const response = pm.response.json();",
+											"    pm.expect(response.data.user.role).to.eql('employee');",
+											"    pm.environment.set('employee_token', response.data.accessToken);",
+											"    pm.environment.set('employee_user_id', response.data.user._id);",
+											"});"
+										]
+									}
+								}
+							],
+							"request": {
+								"auth": {
+									"type": "noauth"
+								},
+								"method": "POST",
+								"header": [
+									{
+										"key": "Content-Type",
+										"value": "application/json"
+									}
+								],
+								"body": {
+									"mode": "raw",
+									"raw": "{\n    \"email\": \"{{employee_email}}\",\n    \"password\": \"{{employee_password}}\"\n}"
+								},
+								"url": {
+									"raw": "{{base_url}}/{{api_version}}/auth/login",
+									"host": ["{{base_url}}"],
+									"path": ["{{api_version}}", "auth", "login"]
+								}
+							}
+						}
+					]
+				},
+				{
+					"name": "🚫 Authentication Edge Cases",
+					"item": [
+						{
+							"name": "Login - Missing Email",
+							"event": [
+								{
+									"listen": "test",
+									"script": {
+										"exec": [
+											"pm.test('Login fails with missing email', function () {",
+											"    pm.response.to.have.status(400);",
+											"    const response = pm.response.json();",
+											"    pm.expect(response.message).to.include('email');",
+											"});"
+										]
+									}
+								}
+							],
+							"request": {
+								"auth": {
+									"type": "noauth"
+								},
+								"method": "POST",
+								"header": [
+									{
+										"key": "Content-Type",
+										"value": "application/json"
+									}
+								],
+								"body": {
+									"mode": "raw",
+									"raw": "{\n    \"password\": \"somepassword\"\n}"
+								},
+								"url": {
+									"raw": "{{base_url}}/{{api_version}}/auth/login",
+									"host": ["{{base_url}}"],
+									"path": ["{{api_version}}", "auth", "login"]
+								}
+							}
+						},
+						{
+							"name": "Login - Invalid Email Format",
+							"event": [
+								{
+									"listen": "test",
+									"script": {
+										"exec": [
+											"pm.test('Login fails with invalid email format', function () {",
+											"    pm.response.to.have.status(400);",
+											"});"
+										]
+									}
+								}
+							],
+							"request": {
+								"auth": {
+									"type": "noauth"
+								},
+								"method": "POST",
+								"header": [
+									{
+										"key": "Content-Type",
+										"value": "application/json"
+									}
+								],
+								"body": {
+									"mode": "raw",
+									"raw": "{\n    \"email\": \"invalid-email\",\n    \"password\": \"somepassword\"\n}"
+								},
+								"url": {
+									"raw": "{{base_url}}/{{api_version}}/auth/login",
+									"host": ["{{base_url}}"],
+									"path": ["{{api_version}}", "auth", "login"]
+								}
+							}
+						},
+						{
+							"name": "Access Protected Route - No Token",
+							"event": [
+								{
+									"listen": "test",
+									"script": {
+										"exec": [
+											"pm.test('Access denied without token', function () {",
+											"    pm.response.to.have.status(401);",
+											"    const response = pm.response.json();",
+											"    pm.expect(response.message).to.include('token');",
+											"});"
+										]
+									}
+								}
+							],
+							"request": {
+								"auth": {
+									"type": "noauth"
+								},
+								"method": "GET",
+								"url": {
+									"raw": "{{base_url}}/{{api_version}}/auth/profile",
+									"host": ["{{base_url}}"],
+									"path": ["{{api_version}}", "auth", "profile"]
+								}
+							}
+						},
+						{
+							"name": "Access Protected Route - Invalid Token",
+							"event": [
+								{
+									"listen": "test",
+									"script": {
+										"exec": [
+											"pm.test('Access denied with invalid token', function () {",
+											"    pm.response.to.have.status(401);",
+											"});"
+										]
+									}
+								}
+							],
+							"request": {
+								"auth": {
+									"type": "bearer",
+									"bearer": [
+										{
+											"key": "token",
+											"value": "invalid.jwt.token",
+											"type": "string"
+										}
+									]
+								},
+								"method": "GET",
+								"url": {
+									"raw": "{{base_url}}/{{api_version}}/auth/profile",
+									"host": ["{{base_url}}"],
+									"path": ["{{api_version}}", "auth", "profile"]
+								}
+							}
+						}
+					]
+				}
+			]
+		},
+		{
+			"name": "🧪 Event Management Tests - All Roles",
+			"description": "Comprehensive event management tests for different user roles",
+			"item": [
+				{
+					"name": "🔍 Event Search & Filters",
+					"item": [
+						{
+							"name": "Search Events - By Title",
+							"event": [
+								{
+									"listen": "test",
+									"script": {
+										"exec": [
+											"pm.test('Search returns relevant events', function () {",
+											"    pm.response.to.have.status(200);",
+											"    const response = pm.response.json();",
+											"    pm.expect(response.data).to.be.an('object');",
+											"    pm.expect(response.data.events).to.be.an('array');",
+											"});"
+										]
+									}
+								}
+							],
+							"request": {
+								"auth": {
+									"type": "noauth"
+								},
+								"method": "GET",
+								"url": {
+									"raw": "{{base_url}}/{{api_version}}/search/events?q=concert&type=event",
+									"host": ["{{base_url}}"],
+									"path": ["{{api_version}}", "search", "events"],
+									"query": [
+										{
+											"key": "q",
+											"value": "concert"
+										},
+										{
+											"key": "type",
+											"value": "event"
+										}
+									]
+								}
+							}
+						},
+						{
+							"name": "Filter Events - By Category",
+							"request": {
+								"auth": {
+									"type": "noauth"
+								},
+								"method": "GET",
+								"url": {
+									"raw": "{{base_url}}/{{api_version}}/events?category=music&limit=10",
+									"host": ["{{base_url}}"],
+									"path": ["{{api_version}}", "events"],
+									"query": [
+										{
+											"key": "category",
+											"value": "music"
+										},
+										{
+											"key": "limit",
+											"value": "10"
+										}
+									]
+								}
+							}
+						},
+						{
+							"name": "Filter Events - By Date Range",
+							"request": {
+								"auth": {
+									"type": "noauth"
+								},
+								"method": "GET",
+								"url": {
+									"raw": "{{base_url}}/{{api_version}}/events?startDate=2024-01-01&endDate=2024-12-31&sort=date",
+									"host": ["{{base_url}}"],
+									"path": ["{{api_version}}", "events"],
+									"query": [
+										{
+											"key": "startDate",
+											"value": "2024-01-01"
+										},
+										{
+											"key": "endDate",
+											"value": "2024-12-31"
+										},
+										{
+											"key": "sort",
+											"value": "date"
+										}
+									]
+								}
+							}
+						},
+						{
+							"name": "Filter Events - By Price Range",
+							"request": {
+								"auth": {
+									"type": "noauth"
+								},
+								"method": "GET",
+								"url": {
+									"raw": "{{base_url}}/{{api_version}}/events?minPrice=50&maxPrice=200&currency=AED",
+									"host": ["{{base_url}}"],
+									"path": ["{{api_version}}", "events"],
+									"query": [
+										{
+											"key": "minPrice",
+											"value": "50"
+										},
+										{
+											"key": "maxPrice",
+											"value": "200"
+										},
+										{
+											"key": "currency",
+											"value": "AED"
+										}
+									]
+								}
+							}
+						},
+						{
+							"name": "Filter Events - By Location",
+							"request": {
+								"auth": {
+									"type": "noauth"
+								},
+								"method": "GET",
+								"url": {
+									"raw": "{{base_url}}/{{api_version}}/events?city=Dubai&venue={{test_venue_id}}",
+									"host": ["{{base_url}}"],
+									"path": ["{{api_version}}", "events"],
+									"query": [
+										{
+											"key": "city",
+											"value": "Dubai"
+										},
+										{
+											"key": "venue",
+											"value": "{{test_venue_id}}"
+										}
+									]
+								}
+							}
+						}
+					]
+				},
+				{
+					"name": "🎭 Admin Event Management",
+					"item": [
+						{
+							"name": "Admin - Get All Events (With Admin Details)",
+							"request": {
+								"auth": {
+									"type": "bearer",
+									"bearer": [
+										{
+											"key": "token",
+											"value": "{{admin_token}}",
+											"type": "string"
+										}
+									]
+								},
+								"method": "GET",
+								"url": {
+									"raw": "{{base_url}}/{{api_version}}/admin/events?includeInactive=true&includeStats=true",
+									"host": ["{{base_url}}"],
+									"path": ["{{api_version}}", "admin", "events"],
+									"query": [
+										{
+											"key": "includeInactive",
+											"value": "true"
+										},
+										{
+											"key": "includeStats",
+											"value": "true"
+										}
+									]
+								}
+							}
+						},
+						{
+							"name": "Admin - Approve Event",
+							"request": {
+								"auth": {
+									"type": "bearer",
+									"bearer": [
+										{
+											"key": "token",
+											"value": "{{admin_token}}",
+											"type": "string"
+										}
+									]
+								},
+								"method": "PUT",
+								"header": [
+									{
+										"key": "Content-Type",
+										"value": "application/json"
+									}
+								],
+								"body": {
+									"mode": "raw",
+									"raw": "{\n    \"status\": \"approved\",\n    \"approvalNotes\": \"Event approved by admin after review\"\n}"
+								},
+								"url": {
+									"raw": "{{base_url}}/{{api_version}}/admin/events/{{test_event_id}}/status",
+									"host": ["{{base_url}}"],
+									"path": ["{{api_version}}", "admin", "events", "{{test_event_id}}", "status"]
+								}
+							}
+						},
+						{
+							"name": "Admin - Reject Event",
+							"request": {
+								"auth": {
+									"type": "bearer",
+									"bearer": [
+										{
+											"key": "token",
+											"value": "{{admin_token}}",
+											"type": "string"
+										}
+									]
+								},
+								"method": "PUT",
+								"header": [
+									{
+										"key": "Content-Type",
+										"value": "application/json"
+									}
+								],
+								"body": {
+									"mode": "raw",
+									"raw": "{\n    \"status\": \"rejected\",\n    \"rejectionReason\": \"Event does not meet community guidelines\"\n}"
+								},
+								"url": {
+									"raw": "{{base_url}}/{{api_version}}/admin/events/{{test_event_id}}/status",
+									"host": ["{{base_url}}"],
+									"path": ["{{api_version}}", "admin", "events", "{{test_event_id}}", "status"]
+								}
+							}
+						}
+					]
+				},
+				{
+					"name": "🏪 Vendor Event Management",
+					"item": [
+						{
+							"name": "Vendor - Create Event",
+							"event": [
+								{
+									"listen": "test",
+									"script": {
+										"exec": [
+											"pm.test('Vendor can create event', function () {",
+											"    pm.response.to.have.status(201);",
+											"    const response = pm.response.json();",
+											"    pm.environment.set('test_event_id', response.data._id);",
+											"});"
+										]
+									}
+								}
+							],
+							"request": {
+								"auth": {
+									"type": "bearer",
+									"bearer": [
+										{
+											"key": "token",
+											"value": "{{vendor_token}}",
+											"type": "string"
+										}
+									]
+								},
+								"method": "POST",
+								"header": [
+									{
+										"key": "Content-Type",
+										"value": "application/json"
+									}
+								],
+								"body": {
+									"mode": "raw",
+									"raw": "{\n    \"title\": \"Vendor Test Concert\",\n    \"description\": \"A test concert event created by vendor\",\n    \"category\": \"music\",\n    \"startDateTime\": \"2024-12-25T20:00:00Z\",\n    \"endDateTime\": \"2024-12-25T23:00:00Z\",\n    \"venue\": {\n        \"name\": \"Test Venue\",\n        \"address\": \"Dubai, UAE\",\n        \"city\": \"Dubai\",\n        \"country\": \"UAE\"\n    },\n    \"ticketPrice\": 150,\n    \"totalTickets\": 100,\n    \"tags\": [\"music\", \"concert\", \"live\"]\n}"
+								},
+								"url": {
+									"raw": "{{base_url}}/{{api_version}}/events",
+									"host": ["{{base_url}}"],
+									"path": ["{{api_version}}", "events"]
+								}
+							}
+						},
+						{
+							"name": "Vendor - Get Own Events",
+							"request": {
+								"auth": {
+									"type": "bearer",
+									"bearer": [
+										{
+											"key": "token",
+											"value": "{{vendor_token}}",
+											"type": "string"
+										}
+									]
+								},
+								"method": "GET",
+								"url": {
+									"raw": "{{base_url}}/{{api_version}}/vendors/events?status=all&includeStats=true",
+									"host": ["{{base_url}}"],
+									"path": ["{{api_version}}", "vendors", "events"],
+									"query": [
+										{
+											"key": "status",
+											"value": "all"
+										},
+										{
+											"key": "includeStats",
+											"value": "true"
+										}
+									]
+								}
+							}
+						},
+						{
+							"name": "Vendor - Update Own Event",
+							"request": {
+								"auth": {
+									"type": "bearer",
+									"bearer": [
+										{
+											"key": "token",
+											"value": "{{vendor_token}}",
+											"type": "string"
+										}
+									]
+								},
+								"method": "PUT",
+								"header": [
+									{
+										"key": "Content-Type",
+										"value": "application/json"
+									}
+								],
+								"body": {
+									"mode": "raw",
+									"raw": "{\n    \"title\": \"Updated Vendor Test Concert\",\n    \"description\": \"Updated description for the test concert\",\n    \"ticketPrice\": 175\n}"
+								},
+								"url": {
+									"raw": "{{base_url}}/{{api_version}}/events/{{test_event_id}}",
+									"host": ["{{base_url}}"],
+									"path": ["{{api_version}}", "events", "{{test_event_id}}"]
+								}
+							}
+						},
+						{
+							"name": "Vendor - Cannot Update Other's Event",
+							"event": [
+								{
+									"listen": "test",
+									"script": {
+										"exec": [
+											"pm.test('Vendor cannot update other vendor events', function () {",
+											"    pm.response.to.have.status(403);",
+											"});"
+										]
+									}
+								}
+							],
+							"request": {
+								"auth": {
+									"type": "bearer",
+									"bearer": [
+										{
+											"key": "token",
+											"value": "{{vendor_token}}",
+											"type": "string"
+										}
+									]
+								},
+								"method": "PUT",
+								"header": [
+									{
+										"key": "Content-Type",
+										"value": "application/json"
+									}
+								],
+								"body": {
+									"mode": "raw",
+									"raw": "{\n    \"title\": \"Unauthorized Update\"\n}"
+								},
+								"url": {
+									"raw": "{{base_url}}/{{api_version}}/events/{{invalid_id}}",
+									"host": ["{{base_url}}"],
+									"path": ["{{api_version}}", "events", "{{invalid_id}}"]
+								}
+							}
+						}
+					]
+				}
+			]
+		},
+		{
+			"name": "🧪 Blog Comments Testing - All Scenarios",
+			"description": "Comprehensive blog comment testing with different conditions and user roles",
+			"item": [
+				{
+					"name": "📝 Comment CRUD Operations",
+					"item": [
+						{
+							"name": "Customer - Create Comment",
+							"event": [
+								{
+									"listen": "test",
+									"script": {
+										"exec": [
+											"pm.test('Comment created successfully', function () {",
+											"    pm.response.to.have.status(201);",
+											"    const response = pm.response.json();",
+											"    pm.environment.set('test_comment_id', response.data._id);",
+											"});"
+										]
+									}
+								}
+							],
+							"request": {
+								"auth": {
+									"type": "bearer",
+									"bearer": [
+										{
+											"key": "token",
+											"value": "{{customer_token}}",
+											"type": "string"
+										}
+									]
+								},
+								"method": "POST",
+								"header": [
+									{
+										"key": "Content-Type",
+										"value": "application/json"
+									}
+								],
+								"body": {
+									"mode": "raw",
+									"raw": "{\n    \"content\": \"This is a test comment from a customer. Great blog post!\"\n}"
+								},
+								"url": {
+									"raw": "{{base_url}}/{{api_version}}/blog/posts/{{test_blog_id}}/comments",
+									"host": ["{{base_url}}"],
+									"path": ["{{api_version}}", "blog", "posts", "{{test_blog_id}}", "comments"]
+								}
+							}
+						},
+						{
+							"name": "Customer - Create Reply Comment",
+							"request": {
+								"auth": {
+									"type": "bearer",
+									"bearer": [
+										{
+											"key": "token",
+											"value": "{{customer_token}}",
+											"type": "string"
+										}
+									]
+								},
+								"method": "POST",
+								"header": [
+									{
+										"key": "Content-Type",
+										"value": "application/json"
+									}
+								],
+								"body": {
+									"mode": "raw",
+									"raw": "{\n    \"content\": \"This is a reply to the previous comment.\",\n    \"parentComment\": \"{{test_comment_id}}\"\n}"
+								},
+								"url": {
+									"raw": "{{base_url}}/{{api_version}}/blog/posts/{{test_blog_id}}/comments",
+									"host": ["{{base_url}}"],
+									"path": ["{{api_version}}", "blog", "posts", "{{test_blog_id}}", "comments"]
+								}
+							}
+						},
+						{
+							"name": "Get Comments - Newest First",
+							"request": {
+								"auth": {
+									"type": "noauth"
+								},
+								"method": "GET",
+								"url": {
+									"raw": "{{base_url}}/{{api_version}}/blog/posts/{{test_blog_id}}/comments?sort=newest&limit=20",
+									"host": ["{{base_url}}"],
+									"path": ["{{api_version}}", "blog", "posts", "{{test_blog_id}}", "comments"],
+									"query": [
+										{
+											"key": "sort",
+											"value": "newest"
+										},
+										{
+											"key": "limit",
+											"value": "20"
+										}
+									]
+								}
+							}
+						},
+						{
+							"name": "Get Comments - By Likes",
+							"request": {
+								"auth": {
+									"type": "noauth"
+								},
+								"method": "GET",
+								"url": {
+									"raw": "{{base_url}}/{{api_version}}/blog/posts/{{test_blog_id}}/comments?sort=likes&page=1&limit=10",
+									"host": ["{{base_url}}"],
+									"path": ["{{api_version}}", "blog", "posts", "{{test_blog_id}}", "comments"],
+									"query": [
+										{
+											"key": "sort",
+											"value": "likes"
+										},
+										{
+											"key": "page",
+											"value": "1"
+										},
+										{
+											"key": "limit",
+											"value": "10"
+										}
+									]
+								}
+							}
+						},
+						{
+							"name": "Get Comment Replies",
+							"request": {
+								"auth": {
+									"type": "noauth"
+								},
+								"method": "GET",
+								"url": {
+									"raw": "{{base_url}}/{{api_version}}/blog/comments/{{test_comment_id}}/replies?page=1&limit=5",
+									"host": ["{{base_url}}"],
+									"path": ["{{api_version}}", "blog", "comments", "{{test_comment_id}}", "replies"],
+									"query": [
+										{
+											"key": "page",
+											"value": "1"
+										},
+										{
+											"key": "limit",
+											"value": "5"
+										}
+									]
+								}
+							}
+						}
+					]
+				},
+				{
+					"name": "👍 Comment Interactions",
+					"item": [
+						{
+							"name": "Customer - Like Comment",
+							"request": {
+								"auth": {
+									"type": "bearer",
+									"bearer": [
+										{
+											"key": "token",
+											"value": "{{customer_token}}",
+											"type": "string"
+										}
+									]
+								},
+								"method": "POST",
+								"url": {
+									"raw": "{{base_url}}/{{api_version}}/blog/comments/{{test_comment_id}}/like",
+									"host": ["{{base_url}}"],
+									"path": ["{{api_version}}", "blog", "comments", "{{test_comment_id}}", "like"]
+								}
+							}
+						},
+						{
+							"name": "Customer - Dislike Comment",
+							"request": {
+								"auth": {
+									"type": "bearer",
+									"bearer": [
+										{
+											"key": "token",
+											"value": "{{customer_token}}",
+											"type": "string"
+										}
+									]
+								},
+								"method": "POST",
+								"url": {
+									"raw": "{{base_url}}/{{api_version}}/blog/comments/{{test_comment_id}}/dislike",
+									"host": ["{{base_url}}"],
+									"path": ["{{api_version}}", "blog", "comments", "{{test_comment_id}}", "dislike"]
+								}
+							}
+						},
+						{
+							"name": "Customer - Report Comment",
+							"request": {
+								"auth": {
+									"type": "bearer",
+									"bearer": [
+										{
+											"key": "token",
+											"value": "{{customer_token}}",
+											"type": "string"
+										}
+									]
+								},
+								"method": "POST",
+								"header": [
+									{
+										"key": "Content-Type",
+										"value": "application/json"
+									}
+								],
+								"body": {
+									"mode": "raw",
+									"raw": "{\n    \"reason\": \"Inappropriate content or spam\"\n}"
+								},
+								"url": {
+									"raw": "{{base_url}}/{{api_version}}/blog/comments/{{test_comment_id}}/report",
+									"host": ["{{base_url}}"],
+									"path": ["{{api_version}}", "blog", "comments", "{{test_comment_id}}", "report"]
+								}
+							}
+						}
+					]
+				},
+				{
+					"name": "✏️ Comment Management",
+					"item": [
+						{
+							"name": "Customer - Update Own Comment",
+							"request": {
+								"auth": {
+									"type": "bearer",
+									"bearer": [
+										{
+											"key": "token",
+											"value": "{{customer_token}}",
+											"type": "string"
+										}
+									]
+								},
+								"method": "PUT",
+								"header": [
+									{
+										"key": "Content-Type",
+										"value": "application/json"
+									}
+								],
+								"body": {
+									"mode": "raw",
+									"raw": "{\n    \"content\": \"Updated comment content. This is much better now!\"\n}"
+								},
+								"url": {
+									"raw": "{{base_url}}/{{api_version}}/blog/comments/{{test_comment_id}}",
+									"host": ["{{base_url}}"],
+									"path": ["{{api_version}}", "blog", "comments", "{{test_comment_id}}"]
+								}
+							}
+						},
+						{
+							"name": "Customer - Delete Own Comment",
+							"request": {
+								"auth": {
+									"type": "bearer",
+									"bearer": [
+										{
+											"key": "token",
+											"value": "{{customer_token}}",
+											"type": "string"
+										}
+									]
+								},
+								"method": "DELETE",
+								"url": {
+									"raw": "{{base_url}}/{{api_version}}/blog/comments/{{test_comment_id}}",
+									"host": ["{{base_url}}"],
+									"path": ["{{api_version}}", "blog", "comments", "{{test_comment_id}}"]
+								}
+							}
+						}
+					]
+				},
+				{
+					"name": "🚫 Comment Edge Cases & Validation",
+					"item": [
+						{
+							"name": "Create Comment - No Authentication",
+							"event": [
+								{
+									"listen": "test",
+									"script": {
+										"exec": [
+											"pm.test('Comment creation requires authentication', function () {",
+											"    pm.response.to.have.status(401);",
+											"});"
+										]
+									}
+								}
+							],
+							"request": {
+								"auth": {
+									"type": "noauth"
+								},
+								"method": "POST",
+								"header": [
+									{
+										"key": "Content-Type",
+										"value": "application/json"
+									}
+								],
+								"body": {
+									"mode": "raw",
+									"raw": "{\n    \"content\": \"Unauthorized comment attempt\"\n}"
+								},
+								"url": {
+									"raw": "{{base_url}}/{{api_version}}/blog/posts/{{test_blog_id}}/comments",
+									"host": ["{{base_url}}"],
+									"path": ["{{api_version}}", "blog", "posts", "{{test_blog_id}}", "comments"]
+								}
+							}
+						},
+						{
+							"name": "Create Comment - Empty Content",
+							"event": [
+								{
+									"listen": "test",
+									"script": {
+										"exec": [
+											"pm.test('Comment creation fails with empty content', function () {",
+											"    pm.response.to.have.status(400);",
+											"});"
+										]
+									}
+								}
+							],
+							"request": {
+								"auth": {
+									"type": "bearer",
+									"bearer": [
+										{
+											"key": "token",
+											"value": "{{customer_token}}",
+											"type": "string"
+										}
+									]
+								},
+								"method": "POST",
+								"header": [
+									{
+										"key": "Content-Type",
+										"value": "application/json"
+									}
+								],
+								"body": {
+									"mode": "raw",
+									"raw": "{\n    \"content\": \"\"\n}"
+								},
+								"url": {
+									"raw": "{{base_url}}/{{api_version}}/blog/posts/{{test_blog_id}}/comments",
+									"host": ["{{base_url}}"],
+									"path": ["{{api_version}}", "blog", "posts", "{{test_blog_id}}", "comments"]
+								}
+							}
+						},
+						{
+							"name": "Create Comment - Content Too Long",
+							"event": [
+								{
+									"listen": "test",
+									"script": {
+										"exec": [
+											"pm.test('Comment creation fails with content too long', function () {",
+											"    pm.response.to.have.status(400);",
+											"});"
+										]
+									}
+								}
+							],
+							"request": {
+								"auth": {
+									"type": "bearer",
+									"bearer": [
+										{
+											"key": "token",
+											"value": "{{customer_token}}",
+											"type": "string"
+										}
+									]
+								},
+								"method": "POST",
+								"header": [
+									{
+										"key": "Content-Type",
+										"value": "application/json"
+									}
+								],
+								"body": {
+									"mode": "raw",
+									"raw": "{\n    \"content\": \"Lorem ipsum dolor sit amet, consectetur adipiscing elit, sed do eiusmod tempor incididunt ut labore et dolore magna aliqua. Ut enim ad minim veniam, quis nostrud exercitation ullamco laboris nisi ut aliquip ex ea commodo consequat. Duis aute irure dolor in reprehenderit in voluptate velit esse cillum dolore eu fugiat nulla pariatur. Excepteur sint occaecat cupidatat non proident, sunt in culpa qui officia deserunt mollit anim id est laborum. Sed ut perspiciatis unde omnis iste natus error sit voluptatem accusantium doloremque laudantium, totam rem aperiam, eaque ipsa quae ab illo inventore veritatis et quasi architecto beatae vitae dicta sunt explicabo. Nemo enim ipsam voluptatem quia voluptas sit aspernatur aut odit aut fugit, sed quia consequuntur magni dolores eos qui ratione voluptatem sequi nesciunt. Neque porro quisquam est, qui dolorem ipsum quia dolor sit amet, consectetur, adipisci velit, sed quia non numquam eius modi tempora incidunt ut labore et dolore magnam aliquam quaerat voluptatem. Ut enim ad minima veniam, quis nostrum exercitationem ullam corporis suscipit laboriosam, nisi ut aliquid ex ea commodi consequatur? Quis autem vel eum iure reprehenderit qui in ea voluptate velit esse quam nihil molestiae consequatur, vel illum qui dolorem eum fugiat quo voluptas nulla pariatur?\"\n}"
+								},
+								"url": {
+									"raw": "{{base_url}}/{{api_version}}/blog/posts/{{test_blog_id}}/comments",
+									"host": ["{{base_url}}"],
+									"path": ["{{api_version}}", "blog", "posts", "{{test_blog_id}}", "comments"]
+								}
+							}
+						},
+						{
+							"name": "Get Comments - Invalid Blog ID",
+							"event": [
+								{
+									"listen": "test",
+									"script": {
+										"exec": [
+											"pm.test('Returns error for invalid blog ID', function () {",
+											"    pm.response.to.have.status(400);",
+											"});"
+										]
+									}
+								}
+							],
+							"request": {
+								"auth": {
+									"type": "noauth"
+								},
+								"method": "GET",
+								"url": {
+									"raw": "{{base_url}}/{{api_version}}/blog/posts/invalid-id/comments",
+									"host": ["{{base_url}}"],
+									"path": ["{{api_version}}", "blog", "posts", "invalid-id", "comments"]
+								}
+							}
+						},
+						{
+							"name": "Like Comment - Invalid Comment ID",
+							"event": [
+								{
+									"listen": "test",
+									"script": {
+										"exec": [
+											"pm.test('Returns error for invalid comment ID', function () {",
+											"    pm.response.to.have.status(400);",
+											"});"
+										]
+									}
+								}
+							],
+							"request": {
+								"auth": {
+									"type": "bearer",
+									"bearer": [
+										{
+											"key": "token",
+											"value": "{{customer_token}}",
+											"type": "string"
+										}
+									]
+								},
+								"method": "POST",
+								"url": {
+									"raw": "{{base_url}}/{{api_version}}/blog/comments/invalid-id/like",
+									"host": ["{{base_url}}"],
+									"path": ["{{api_version}}", "blog", "comments", "invalid-id", "like"]
+								}
+							}
+						}
+					]
+				}
+			]
+		},
+		{
+			"name": "🧪 Booking & Payment Workflow Tests",
+			"description": "Comprehensive booking and payment testing scenarios",
+			"item": [
+				{
+					"name": "🎫 Customer Booking Flow",
+					"item": [
+						{
+							"name": "Customer - Create Booking",
+							"event": [
+								{
+									"listen": "test",
+									"script": {
+										"exec": [
+											"pm.test('Booking created successfully', function () {",
+											"    pm.response.to.have.status(201);",
+											"    const response = pm.response.json();",
+											"    pm.environment.set('test_booking_id', response.data._id);",
+											"    pm.environment.set('test_order_id', response.data.order);",
+											"});"
+										]
+									}
+								}
+							],
+							"request": {
+								"auth": {
+									"type": "bearer",
+									"bearer": [
+										{
+											"key": "token",
+											"value": "{{customer_token}}",
+											"type": "string"
+										}
+									]
+								},
+								"method": "POST",
+								"header": [
+									{
+										"key": "Content-Type",
+										"value": "application/json"
+									}
+								],
+								"body": {
+									"mode": "raw",
+									"raw": "{\n    \"eventId\": \"{{test_event_id}}\",\n    \"quantity\": 2,\n    \"ticketType\": \"standard\",\n    \"customerDetails\": {\n        \"firstName\": \"John\",\n        \"lastName\": \"Doe\",\n        \"email\": \"{{customer_email}}\",\n        \"phone\": \"+971501234567\"\n    }\n}"
+								},
+								"url": {
+									"raw": "{{base_url}}/{{api_version}}/bookings",
+									"host": ["{{base_url}}"],
+									"path": ["{{api_version}}", "bookings"]
+								}
+							}
+						},
+						{
+							"name": "Customer - Get Own Bookings",
+							"request": {
+								"auth": {
+									"type": "bearer",
+									"bearer": [
+										{
+											"key": "token",
+											"value": "{{customer_token}}",
+											"type": "string"
+										}
+									]
+								},
+								"method": "GET",
+								"url": {
+									"raw": "{{base_url}}/{{api_version}}/bookings?status=all&includeEvents=true",
+									"host": ["{{base_url}}"],
+									"path": ["{{api_version}}", "bookings"],
+									"query": [
+										{
+											"key": "status",
+											"value": "all"
+										},
+										{
+											"key": "includeEvents",
+											"value": "true"
+										}
+									]
+								}
+							}
+						},
+						{
+							"name": "Customer - Get Booking Details",
+							"request": {
+								"auth": {
+									"type": "bearer",
+									"bearer": [
+										{
+											"key": "token",
+											"value": "{{customer_token}}",
+											"type": "string"
+										}
+									]
+								},
+								"method": "GET",
+								"url": {
+									"raw": "{{base_url}}/{{api_version}}/bookings/{{test_booking_id}}",
+									"host": ["{{base_url}}"],
+									"path": ["{{api_version}}", "bookings", "{{test_booking_id}}"]
+								}
+							}
+						}
+					]
+				},
+				{
+					"name": "💳 Payment Processing",
+					"item": [
+						{
+							"name": "Create Payment Intent",
+							"event": [
+								{
+									"listen": "test",
+									"script": {
+										"exec": [
+											"pm.test('Payment intent created', function () {",
+											"    pm.response.to.have.status(200);",
+											"    const response = pm.response.json();",
+											"    pm.environment.set('payment_intent_id', response.data.paymentIntentId);",
+											"    pm.environment.set('client_secret', response.data.clientSecret);",
+											"});"
+										]
+									}
+								}
+							],
+							"request": {
+								"auth": {
+									"type": "bearer",
+									"bearer": [
+										{
+											"key": "token",
+											"value": "{{customer_token}}",
+											"type": "string"
+										}
+									]
+								},
+								"method": "POST",
+								"header": [
+									{
+										"key": "Content-Type",
+										"value": "application/json"
+									}
+								],
+								"body": {
+									"mode": "raw",
+									"raw": "{\n    \"orderId\": \"{{test_order_id}}\",\n    \"currency\": \"AED\"\n}"
+								},
+								"url": {
+									"raw": "{{base_url}}/{{api_version}}/payments/create-intent",
+									"host": ["{{base_url}}"],
+									"path": ["{{api_version}}", "payments", "create-intent"]
+								}
+							}
+						},
+						{
+							"name": "Confirm Payment",
+							"request": {
+								"auth": {
+									"type": "bearer",
+									"bearer": [
+										{
+											"key": "token",
+											"value": "{{customer_token}}",
+											"type": "string"
+										}
+									]
+								},
+								"method": "POST",
+								"header": [
+									{
+										"key": "Content-Type",
+										"value": "application/json"
+									}
+								],
+								"body": {
+									"mode": "raw",
+									"raw": "{\n    \"paymentIntentId\": \"{{payment_intent_id}}\",\n    \"paymentMethodId\": \"pm_card_visa\"\n}"
+								},
+								"url": {
+									"raw": "{{base_url}}/{{api_version}}/payments/confirm",
+									"host": ["{{base_url}}"],
+									"path": ["{{api_version}}", "payments", "confirm"]
+								}
+							}
+						},
+						{
+							"name": "Get Payment Status",
+							"request": {
+								"auth": {
+									"type": "bearer",
+									"bearer": [
+										{
+											"key": "token",
+											"value": "{{customer_token}}",
+											"type": "string"
+										}
+									]
+								},
+								"method": "GET",
+								"url": {
+									"raw": "{{base_url}}/{{api_version}}/payments/{{payment_intent_id}}/status",
+									"host": ["{{base_url}}"],
+									"path": ["{{api_version}}", "payments", "{{payment_intent_id}}", "status"]
+								}
+							}
+						}
+					]
+				},
+				{
+					"name": "🛒 Order Management",
+					"item": [
+						{
+							"name": "Customer - Get Order Details",
+							"request": {
+								"auth": {
+									"type": "bearer",
+									"bearer": [
+										{
+											"key": "token",
+											"value": "{{customer_token}}",
+											"type": "string"
+										}
+									]
+								},
+								"method": "GET",
+								"url": {
+									"raw": "{{base_url}}/{{api_version}}/orders/{{test_order_id}}",
+									"host": ["{{base_url}}"],
+									"path": ["{{api_version}}", "orders", "{{test_order_id}}"]
+								}
+							}
+						},
+						{
+							"name": "Customer - Get Order History",
+							"request": {
+								"auth": {
+									"type": "bearer",
+									"bearer": [
+										{
+											"key": "token",
+											"value": "{{customer_token}}",
+											"type": "string"
+										}
+									]
+								},
+								"method": "GET",
+								"url": {
+									"raw": "{{base_url}}/{{api_version}}/orders?status=all&includeEvents=true&sort=-createdAt",
+									"host": ["{{base_url}}"],
+									"path": ["{{api_version}}", "orders"],
+									"query": [
+										{
+											"key": "status",
+											"value": "all"
+										},
+										{
+											"key": "includeEvents",
+											"value": "true"
+										},
+										{
+											"key": "sort",
+											"value": "-createdAt"
+										}
+									]
+								}
+							}
+						},
+						{
+							"name": "Vendor - Get Event Orders",
+							"request": {
+								"auth": {
+									"type": "bearer",
+									"bearer": [
+										{
+											"key": "token",
+											"value": "{{vendor_token}}",
+											"type": "string"
+										}
+									]
+								},
+								"method": "GET",
+								"url": {
+									"raw": "{{base_url}}/{{api_version}}/vendors/orders?eventId={{test_event_id}}&includeCustomer=true",
+									"host": ["{{base_url}}"],
+									"path": ["{{api_version}}", "vendors", "orders"],
+									"query": [
+										{
+											"key": "eventId",
+											"value": "{{test_event_id}}"
+										},
+										{
+											"key": "includeCustomer",
+											"value": "true"
+										}
+									]
+								}
+							}
+						}
+					]
+				},
+				{
+					"name": "🚫 Booking Edge Cases",
+					"item": [
+						{
+							"name": "Create Booking - Invalid Event ID",
+							"event": [
+								{
+									"listen": "test",
+									"script": {
+										"exec": [
+											"pm.test('Booking fails with invalid event ID', function () {",
+											"    pm.response.to.have.status(400);",
+											"});"
+										]
+									}
+								}
+							],
+							"request": {
+								"auth": {
+									"type": "bearer",
+									"bearer": [
+										{
+											"key": "token",
+											"value": "{{customer_token}}",
+											"type": "string"
+										}
+									]
+								},
+								"method": "POST",
+								"header": [
+									{
+										"key": "Content-Type",
+										"value": "application/json"
+									}
+								],
+								"body": {
+									"mode": "raw",
+									"raw": "{\n    \"eventId\": \"invalid-event-id\",\n    \"quantity\": 1\n}"
+								},
+								"url": {
+									"raw": "{{base_url}}/{{api_version}}/bookings",
+									"host": ["{{base_url}}"],
+									"path": ["{{api_version}}", "bookings"]
+								}
+							}
+						},
+						{
+							"name": "Create Booking - Exceeds Available Tickets",
+							"event": [
+								{
+									"listen": "test",
+									"script": {
+										"exec": [
+											"pm.test('Booking fails when exceeding ticket availability', function () {",
+											"    pm.response.to.have.status(400);",
+											"});"
+										]
+									}
+								}
+							],
+							"request": {
+								"auth": {
+									"type": "bearer",
+									"bearer": [
+										{
+											"key": "token",
+											"value": "{{customer_token}}",
+											"type": "string"
+										}
+									]
+								},
+								"method": "POST",
+								"header": [
+									{
+										"key": "Content-Type",
+										"value": "application/json"
+									}
+								],
+								"body": {
+									"mode": "raw",
+									"raw": "{\n    \"eventId\": \"{{test_event_id}}\",\n    \"quantity\": 9999\n}"
+								},
+								"url": {
+									"raw": "{{base_url}}/{{api_version}}/bookings",
+									"host": ["{{base_url}}"],
+									"path": ["{{api_version}}", "bookings"]
+								}
+							}
+						},
+						{
+							"name": "Create Booking - No Authentication",
+							"event": [
+								{
+									"listen": "test",
+									"script": {
+										"exec": [
+											"pm.test('Booking requires authentication', function () {",
+											"    pm.response.to.have.status(401);",
+											"});"
+										]
+									}
+								}
+							],
+							"request": {
+								"auth": {
+									"type": "noauth"
+								},
+								"method": "POST",
+								"header": [
+									{
+										"key": "Content-Type",
+										"value": "application/json"
+									}
+								],
+								"body": {
+									"mode": "raw",
+									"raw": "{\n    \"eventId\": \"{{test_event_id}}\",\n    \"quantity\": 1\n}"
+								},
+								"url": {
+									"raw": "{{base_url}}/{{api_version}}/bookings",
+									"host": ["{{base_url}}"],
+									"path": ["{{api_version}}", "bookings"]
+								}
+							}
+						}
+					]
+				}
+			]
+		},
+		{
+			"name": "🧪 Admin Management - Complete System Control",
+			"description": "Comprehensive admin testing for all system management functions",
+			"item": [
+				{
+					"name": "👥 User Management",
+					"item": [
+						{
+							"name": "Admin - Get All Users",
+							"request": {
+								"auth": {
+									"type": "bearer",
+									"bearer": [
+										{
+											"key": "token",
+											"value": "{{admin_token}}",
+											"type": "string"
+										}
+									]
+								},
+								"method": "GET",
+								"url": {
+									"raw": "{{base_url}}/{{api_version}}/admin/users?page=1&limit=20&includeStats=true&role=all",
+									"host": ["{{base_url}}"],
+									"path": ["{{api_version}}", "admin", "users"],
+									"query": [
+										{
+											"key": "page",
+											"value": "1"
+										},
+										{
+											"key": "limit",
+											"value": "20"
+										},
+										{
+											"key": "includeStats",
+											"value": "true"
+										},
+										{
+											"key": "role",
+											"value": "all"
+										}
+									]
+								}
+							}
+						},
+						{
+							"name": "Admin - Get Users by Role (Vendors)",
+							"request": {
+								"auth": {
+									"type": "bearer",
+									"bearer": [
+										{
+											"key": "token",
+											"value": "{{admin_token}}",
+											"type": "string"
+										}
+									]
+								},
+								"method": "GET",
+								"url": {
+									"raw": "{{base_url}}/{{api_version}}/admin/users?role=vendor&status=active",
+									"host": ["{{base_url}}"],
+									"path": ["{{api_version}}", "admin", "users"],
+									"query": [
+										{
+											"key": "role",
+											"value": "vendor"
+										},
+										{
+											"key": "status",
+											"value": "active"
+										}
+									]
+								}
+							}
+						},
+						{
+							"name": "Admin - Update User Role",
+							"request": {
+								"auth": {
+									"type": "bearer",
+									"bearer": [
+										{
+											"key": "token",
+											"value": "{{admin_token}}",
+											"type": "string"
+										}
+									]
+								},
+								"method": "PUT",
+								"header": [
+									{
+										"key": "Content-Type",
+										"value": "application/json"
+									}
+								],
+								"body": {
+									"mode": "raw",
+									"raw": "{\n    \"role\": \"vendor\",\n    \"reason\": \"User promoted to vendor status\"\n}"
+								},
+								"url": {
+									"raw": "{{base_url}}/{{api_version}}/admin/users/{{customer_user_id}}/role",
+									"host": ["{{base_url}}"],
+									"path": ["{{api_version}}", "admin", "users", "{{customer_user_id}}", "role"]
+								}
+							}
+						},
+						{
+							"name": "Admin - Suspend User",
+							"request": {
+								"auth": {
+									"type": "bearer",
+									"bearer": [
+										{
+											"key": "token",
+											"value": "{{admin_token}}",
+											"type": "string"
+										}
+									]
+								},
+								"method": "PUT",
+								"header": [
+									{
+										"key": "Content-Type",
+										"value": "application/json"
+									}
+								],
+								"body": {
+									"mode": "raw",
+									"raw": "{\n    \"status\": \"suspended\",\n    \"reason\": \"Violation of terms of service\",\n    \"duration\": \"30 days\"\n}"
+								},
+								"url": {
+									"raw": "{{base_url}}/{{api_version}}/admin/users/{{test_user_id}}/status",
+									"host": ["{{base_url}}"],
+									"path": ["{{api_version}}", "admin", "users", "{{test_user_id}}", "status"]
+								}
+							}
+						},
+						{
+							"name": "Admin - Get User Activity",
+							"request": {
+								"auth": {
+									"type": "bearer",
+									"bearer": [
+										{
+											"key": "token",
+											"value": "{{admin_token}}",
+											"type": "string"
+										}
+									]
+								},
+								"method": "GET",
+								"url": {
+									"raw": "{{base_url}}/{{api_version}}/admin/users/{{customer_user_id}}/activity?limit=50&includeEvents=true",
+									"host": ["{{base_url}}"],
+									"path": ["{{api_version}}", "admin", "users", "{{customer_user_id}}", "activity"],
+									"query": [
+										{
+											"key": "limit",
+											"value": "50"
+										},
+										{
+											"key": "includeEvents",
+											"value": "true"
+										}
+									]
+								}
+							}
+						}
+					]
+				},
+				{
+					"name": "🏢 Venue Management",
+					"item": [
+						{
+							"name": "Admin - Get All Venues",
+							"request": {
+								"auth": {
+									"type": "bearer",
+									"bearer": [
+										{
+											"key": "token",
+											"value": "{{admin_token}}",
+											"type": "string"
+										}
+									]
+								},
+								"method": "GET",
+								"url": {
+									"raw": "{{base_url}}/{{api_version}}/admin/venues?includeInactive=true&includeStats=true",
+									"host": ["{{base_url}}"],
+									"path": ["{{api_version}}", "admin", "venues"],
+									"query": [
+										{
+											"key": "includeInactive",
+											"value": "true"
+										},
+										{
+											"key": "includeStats",
+											"value": "true"
+										}
+									]
+								}
+							}
+						},
+						{
+							"name": "Admin - Create Venue",
+							"event": [
+								{
+									"listen": "test",
+									"script": {
+										"exec": [
+											"pm.test('Admin can create venue', function () {",
+											"    pm.response.to.have.status(201);",
+											"    const response = pm.response.json();",
+											"    pm.environment.set('test_venue_id', response.data._id);",
+											"});"
+										]
+									}
+								}
+							],
+							"request": {
+								"auth": {
+									"type": "bearer",
+									"bearer": [
+										{
+											"key": "token",
+											"value": "{{admin_token}}",
+											"type": "string"
+										}
+									]
+								},
+								"method": "POST",
+								"header": [
+									{
+										"key": "Content-Type",
+										"value": "application/json"
+									}
+								],
+								"body": {
+									"mode": "raw",
+									"raw": "{\n    \"name\": \"Admin Test Venue\",\n    \"description\": \"A test venue created by admin\",\n    \"address\": {\n        \"street\": \"123 Sheikh Zayed Road\",\n        \"city\": \"Dubai\",\n        \"state\": \"Dubai\",\n        \"country\": \"UAE\",\n        \"zipCode\": \"00000\"\n    },\n    \"capacity\": 500,\n    \"facilities\": [\"parking\", \"wifi\", \"accessibility\"],\n    \"contact\": {\n        \"phone\": \"+971501234567\",\n        \"email\": \"venue@gema.com\"\n    }\n}"
+								},
+								"url": {
+									"raw": "{{base_url}}/{{api_version}}/admin/venues",
+									"host": ["{{base_url}}"],
+									"path": ["{{api_version}}", "admin", "venues"]
+								}
+							}
+						},
+						{
+							"name": "Admin - Update Venue",
+							"request": {
+								"auth": {
+									"type": "bearer",
+									"bearer": [
+										{
+											"key": "token",
+											"value": "{{admin_token}}",
+											"type": "string"
+										}
+									]
+								},
+								"method": "PUT",
+								"header": [
+									{
+										"key": "Content-Type",
+										"value": "application/json"
+									}
+								],
+								"body": {
+									"mode": "raw",
+									"raw": "{\n    \"name\": \"Updated Admin Test Venue\",\n    \"capacity\": 750,\n    \"facilities\": [\"parking\", \"wifi\", \"accessibility\", \"catering\"]\n}"
+								},
+								"url": {
+									"raw": "{{base_url}}/{{api_version}}/admin/venues/{{test_venue_id}}",
+									"host": ["{{base_url}}"],
+									"path": ["{{api_version}}", "admin", "venues", "{{test_venue_id}}"]
+								}
+							}
+						},
+						{
+							"name": "Admin - Approve Venue",
+							"request": {
+								"auth": {
+									"type": "bearer",
+									"bearer": [
+										{
+											"key": "token",
+											"value": "{{admin_token}}",
+											"type": "string"
+										}
+									]
+								},
+								"method": "PUT",
+								"header": [
+									{
+										"key": "Content-Type",
+										"value": "application/json"
+									}
+								],
+								"body": {
+									"mode": "raw",
+									"raw": "{\n    \"status\": \"approved\",\n    \"approvalNotes\": \"Venue meets all requirements\"\n}"
+								},
+								"url": {
+									"raw": "{{base_url}}/{{api_version}}/admin/venues/{{test_venue_id}}/status",
+									"host": ["{{base_url}}"],
+									"path": ["{{api_version}}", "admin", "venues", "{{test_venue_id}}", "status"]
+								}
+							}
+						}
+					]
+				},
+				{
+					"name": "💰 Revenue Management",
+					"item": [
+						{
+							"name": "Admin - Get Revenue Dashboard",
+							"request": {
+								"auth": {
+									"type": "bearer",
+									"bearer": [
+										{
+											"key": "token",
+											"value": "{{admin_token}}",
+											"type": "string"
+										}
+									]
+								},
+								"method": "GET",
+								"url": {
+									"raw": "{{base_url}}/{{api_version}}/admin/revenue/dashboard?period=monthly&year=2024",
+									"host": ["{{base_url}}"],
+									"path": ["{{api_version}}", "admin", "revenue", "dashboard"],
+									"query": [
+										{
+											"key": "period",
+											"value": "monthly"
+										},
+										{
+											"key": "year",
+											"value": "2024"
+										}
+									]
+								}
+							}
+						},
+						{
+							"name": "Admin - Get Transaction History",
+							"request": {
+								"auth": {
+									"type": "bearer",
+									"bearer": [
+										{
+											"key": "token",
+											"value": "{{admin_token}}",
+											"type": "string"
+										}
+									]
+								},
+								"method": "GET",
+								"url": {
+									"raw": "{{base_url}}/{{api_version}}/admin/revenue/transactions?status=all&limit=50&includeUser=true",
+									"host": ["{{base_url}}"],
+									"path": ["{{api_version}}", "admin", "revenue", "transactions"],
+									"query": [
+										{
+											"key": "status",
+											"value": "all"
+										},
+										{
+											"key": "limit",
+											"value": "50"
+										},
+										{
+											"key": "includeUser",
+											"value": "true"
+										}
+									]
+								}
+							}
+						},
+						{
+							"name": "Admin - Process Vendor Payout",
+							"request": {
+								"auth": {
+									"type": "bearer",
+									"bearer": [
+										{
+											"key": "token",
+											"value": "{{admin_token}}",
+											"type": "string"
+										}
+									]
+								},
+								"method": "POST",
+								"header": [
+									{
+										"key": "Content-Type",
+										"value": "application/json"
+									}
+								],
+								"body": {
+									"mode": "raw",
+									"raw": "{\n    \"vendorId\": \"{{vendor_user_id}}\",\n    \"amount\": 500,\n    \"currency\": \"AED\",\n    \"description\": \"Monthly payout for events\"\n}"
+								},
+								"url": {
+									"raw": "{{base_url}}/{{api_version}}/admin/revenue/payouts",
+									"host": ["{{base_url}}"],
+									"path": ["{{api_version}}", "admin", "revenue", "payouts"]
+								}
+							}
+						},
+						{
+							"name": "Admin - Get Revenue Analytics",
+							"request": {
+								"auth": {
+									"type": "bearer",
+									"bearer": [
+										{
+											"key": "token",
+											"value": "{{admin_token}}",
+											"type": "string"
+										}
+									]
+								},
+								"method": "GET",
+								"url": {
+									"raw": "{{base_url}}/{{api_version}}/admin/revenue/analytics?period=quarterly&breakdown=category",
+									"host": ["{{base_url}}"],
+									"path": ["{{api_version}}", "admin", "revenue", "analytics"],
+									"query": [
+										{
+											"key": "period",
+											"value": "quarterly"
+										},
+										{
+											"key": "breakdown",
+											"value": "category"
+										}
+									]
+								}
+							}
+						}
+					]
+				},
+				{
+					"name": "📊 System Analytics",
+					"item": [
+						{
+							"name": "Admin - Get System Overview",
+							"request": {
+								"auth": {
+									"type": "bearer",
+									"bearer": [
+										{
+											"key": "token",
+											"value": "{{admin_token}}",
+											"type": "string"
+										}
+									]
+								},
+								"method": "GET",
+								"url": {
+									"raw": "{{base_url}}/{{api_version}}/analytics/overview?period=monthly",
+									"host": ["{{base_url}}"],
+									"path": ["{{api_version}}", "analytics", "overview"],
+									"query": [
+										{
+											"key": "period",
+											"value": "monthly"
+										}
+									]
+								}
+							}
+						},
+						{
+							"name": "Admin - Get User Engagement Stats",
+							"request": {
+								"auth": {
+									"type": "bearer",
+									"bearer": [
+										{
+											"key": "token",
+											"value": "{{admin_token}}",
+											"type": "string"
+										}
+									]
+								},
+								"method": "GET",
+								"url": {
+									"raw": "{{base_url}}/{{api_version}}/analytics/users?period=weekly&breakdown=role",
+									"host": ["{{base_url}}"],
+									"path": ["{{api_version}}", "analytics", "users"],
+									"query": [
+										{
+											"key": "period",
+											"value": "weekly"
+										},
+										{
+											"key": "breakdown",
+											"value": "role"
+										}
+									]
+								}
+							}
+						},
+						{
+							"name": "Admin - Get Event Performance",
+							"request": {
+								"auth": {
+									"type": "bearer",
+									"bearer": [
+										{
+											"key": "token",
+											"value": "{{admin_token}}",
+											"type": "string"
+										}
+									]
+								},
+								"method": "GET",
+								"url": {
+									"raw": "{{base_url}}/{{api_version}}/analytics/events?period=monthly&sort=revenue&limit=20",
+									"host": ["{{base_url}}"],
+									"path": ["{{api_version}}", "analytics", "events"],
+									"query": [
+										{
+											"key": "period",
+											"value": "monthly"
+										},
+										{
+											"key": "sort",
+											"value": "revenue"
+										},
+										{
+											"key": "limit",
+											"value": "20"
+										}
+									]
+								}
+							}
+						}
+					]
+				}
+			]
+		},
+		{
+			"name": "🧪 Newsletter & Favorites Testing",
+			"description": "Comprehensive testing for newsletter subscriptions and user favorites",
+			"item": [
+				{
+					"name": "📧 Newsletter Management",
+					"item": [
+						{
+							"name": "Subscribe to Newsletter",
+							"request": {
+								"auth": {
+									"type": "noauth"
+								},
+								"method": "POST",
+								"header": [
+									{
+										"key": "Content-Type",
+										"value": "application/json"
+									}
+								],
+								"body": {
+									"mode": "raw",
+									"raw": "{\n    \"email\": \"newsletter@test.com\",\n    \"source\": \"blog\",\n    \"preferences\": {\n        \"frequency\": \"weekly\",\n        \"categories\": [\"music\", \"technology\"],\n        \"receivePromotions\": true\n    }\n}"
+								},
+								"url": {
+									"raw": "{{base_url}}/{{api_version}}/newsletter/subscribe",
+									"host": ["{{base_url}}"],
+									"path": ["{{api_version}}", "newsletter", "subscribe"]
+								}
+							}
+						},
+						{
+							"name": "Update Newsletter Preferences",
+							"request": {
+								"auth": {
+									"type": "bearer",
+									"bearer": [
+										{
+											"key": "token",
+											"value": "{{customer_token}}",
+											"type": "string"
+										}
+									]
+								},
+								"method": "PUT",
+								"header": [
+									{
+										"key": "Content-Type",
+										"value": "application/json"
+									}
+								],
+								"body": {
+									"mode": "raw",
+									"raw": "{\n    \"preferences\": {\n        \"frequency\": \"monthly\",\n        \"categories\": [\"music\", \"technology\", \"sports\"],\n        \"receivePromotions\": false\n    }\n}"
+								},
+								"url": {
+									"raw": "{{base_url}}/{{api_version}}/newsletter/preferences",
+									"host": ["{{base_url}}"],
+									"path": ["{{api_version}}", "newsletter", "preferences"]
+								}
+							}
+						},
+						{
+							"name": "Get Newsletter Status",
+							"request": {
+								"auth": {
+									"type": "bearer",
+									"bearer": [
+										{
+											"key": "token",
+											"value": "{{customer_token}}",
+											"type": "string"
+										}
+									]
+								},
+								"method": "GET",
+								"url": {
+									"raw": "{{base_url}}/{{api_version}}/newsletter/status",
+									"host": ["{{base_url}}"],
+									"path": ["{{api_version}}", "newsletter", "status"]
+								}
+							}
+						},
+						{
+							"name": "Unsubscribe from Newsletter",
+							"request": {
+								"auth": {
+									"type": "noauth"
+								},
+								"method": "POST",
+								"url": {
+									"raw": "{{base_url}}/{{api_version}}/newsletter/unsubscribe/{{unsubscribe_token}}",
+									"host": ["{{base_url}}"],
+									"path": ["{{api_version}}", "newsletter", "unsubscribe", "{{unsubscribe_token}}"]
+								}
+							}
+						}
+					]
+				},
+				{
+					"name": "❤️ Favorites Management",
+					"item": [
+						{
+							"name": "Add Event to Favorites",
+							"request": {
+								"auth": {
+									"type": "bearer",
+									"bearer": [
+										{
+											"key": "token",
+											"value": "{{customer_token}}",
+											"type": "string"
+										}
+									]
+								},
+								"method": "POST",
+								"header": [
+									{
+										"key": "Content-Type",
+										"value": "application/json"
+									}
+								],
+								"body": {
+									"mode": "raw",
+									"raw": "{\n    \"eventId\": \"{{test_event_id}}\"\n}"
+								},
+								"url": {
+									"raw": "{{base_url}}/{{api_version}}/favorites",
+									"host": ["{{base_url}}"],
+									"path": ["{{api_version}}", "favorites"]
+								}
+							}
+						},
+						{
+							"name": "Get User Favorites",
+							"request": {
+								"auth": {
+									"type": "bearer",
+									"bearer": [
+										{
+											"key": "token",
+											"value": "{{customer_token}}",
+											"type": "string"
+										}
+									]
+								},
+								"method": "GET",
+								"url": {
+									"raw": "{{base_url}}/{{api_version}}/favorites?includeEvents=true&sort=-createdAt",
+									"host": ["{{base_url}}"],
+									"path": ["{{api_version}}", "favorites"],
+									"query": [
+										{
+											"key": "includeEvents",
+											"value": "true"
+										},
+										{
+											"key": "sort",
+											"value": "-createdAt"
+										}
+									]
+								}
+							}
+						},
+						{
+							"name": "Remove from Favorites",
+							"request": {
+								"auth": {
+									"type": "bearer",
+									"bearer": [
+										{
+											"key": "token",
+											"value": "{{customer_token}}",
+											"type": "string"
+										}
+									]
+								},
+								"method": "DELETE",
+								"url": {
+									"raw": "{{base_url}}/{{api_version}}/favorites/{{test_event_id}}",
+									"host": ["{{base_url}}"],
+									"path": ["{{api_version}}", "favorites", "{{test_event_id}}"]
+								}
+							}
+						},
+						{
+							"name": "Check if Event is Favorited",
+							"request": {
+								"auth": {
+									"type": "bearer",
+									"bearer": [
+										{
+											"key": "token",
+											"value": "{{customer_token}}",
+											"type": "string"
+										}
+									]
+								},
+								"method": "GET",
+								"url": {
+									"raw": "{{base_url}}/{{api_version}}/favorites/{{test_event_id}}/status",
+									"host": ["{{base_url}}"],
+									"path": ["{{api_version}}", "favorites", "{{test_event_id}}", "status"]
+								}
+							}
+						}
+					]
+				}
+			]
+		},
+		{
+			"name": "🧪 File Upload & Media Management",
+			"description": "Comprehensive testing for file uploads and media handling",
+			"item": [
+				{
+					"name": "📁 Image Uploads",
+					"item": [
+						{
+							"name": "Upload Event Image",
+							"request": {
+								"auth": {
+									"type": "bearer",
+									"bearer": [
+										{
+											"key": "token",
+											"value": "{{vendor_token}}",
+											"type": "string"
+										}
+									]
+								},
+								"method": "POST",
+								"header": [],
+								"body": {
+									"mode": "formdata",
+									"formdata": [
+										{
+											"key": "file",
+											"type": "file",
+											"src": []
+										},
+										{
+											"key": "type",
+											"value": "event_image",
+											"type": "text"
+										},
+										{
+											"key": "eventId",
+											"value": "{{test_event_id}}",
+											"type": "text"
+										}
+									]
+								},
+								"url": {
+									"raw": "{{base_url}}/{{api_version}}/uploads/image",
+									"host": ["{{base_url}}"],
+									"path": ["{{api_version}}", "uploads", "image"]
+								}
+							}
+						},
+						{
+							"name": "Upload Profile Avatar",
+							"request": {
+								"auth": {
+									"type": "bearer",
+									"bearer": [
+										{
+											"key": "token",
+											"value": "{{customer_token}}",
+											"type": "string"
+										}
+									]
+								},
+								"method": "POST",
+								"header": [],
+								"body": {
+									"mode": "formdata",
+									"formdata": [
+										{
+											"key": "file",
+											"type": "file",
+											"src": []
+										},
+										{
+											"key": "type",
+											"value": "profile_avatar",
+											"type": "text"
+										}
+									]
+								},
+								"url": {
+									"raw": "{{base_url}}/{{api_version}}/uploads/image",
+									"host": ["{{base_url}}"],
+									"path": ["{{api_version}}", "uploads", "image"]
+								}
+							}
+						},
+						{
+							"name": "Upload Blog Featured Image",
+							"request": {
+								"auth": {
+									"type": "bearer",
+									"bearer": [
+										{
+											"key": "token",
+											"value": "{{admin_token}}",
+											"type": "string"
+										}
+									]
+								},
+								"method": "POST",
+								"header": [],
+								"body": {
+									"mode": "formdata",
+									"formdata": [
+										{
+											"key": "file",
+											"type": "file",
+											"src": []
+										},
+										{
+											"key": "type",
+											"value": "blog_featured",
+											"type": "text"
+										},
+										{
+											"key": "blogId",
+											"value": "{{test_blog_id}}",
+											"type": "text"
+										}
+									]
+								},
+								"url": {
+									"raw": "{{base_url}}/{{api_version}}/uploads/image",
+									"host": ["{{base_url}}"],
+									"path": ["{{api_version}}", "uploads", "image"]
+								}
+							}
+						}
+					]
+				},
+				{
+					"name": "📄 Document Uploads",
+					"item": [
+						{
+							"name": "Upload Vendor Documentation",
+							"request": {
+								"auth": {
+									"type": "bearer",
+									"bearer": [
+										{
+											"key": "token",
+											"value": "{{vendor_token}}",
+											"type": "string"
+										}
+									]
+								},
+								"method": "POST",
+								"header": [],
+								"body": {
+									"mode": "formdata",
+									"formdata": [
+										{
+											"key": "file",
+											"type": "file",
+											"src": []
+										},
+										{
+											"key": "type",
+											"value": "vendor_license",
+											"type": "text"
+										}
+									]
+								},
+								"url": {
+									"raw": "{{base_url}}/{{api_version}}/uploads/document",
+									"host": ["{{base_url}}"],
+									"path": ["{{api_version}}", "uploads", "document"]
+								}
+							}
+						},
+						{
+							"name": "Get Upload History",
+							"request": {
+								"auth": {
+									"type": "bearer",
+									"bearer": [
+										{
+											"key": "token",
+											"value": "{{vendor_token}}",
+											"type": "string"
+										}
+									]
+								},
+								"method": "GET",
+								"url": {
+									"raw": "{{base_url}}/{{api_version}}/uploads/history?type=all&limit=20",
+									"host": ["{{base_url}}"],
+									"path": ["{{api_version}}", "uploads", "history"],
+									"query": [
+										{
+											"key": "type",
+											"value": "all"
+										},
+										{
+											"key": "limit",
+											"value": "20"
+										}
+									]
+								}
+							}
+						}
+					]
+				},
+				{
+					"name": "🚫 Upload Validation Tests",
+					"item": [
+						{
+							"name": "Upload - Invalid File Type",
+							"event": [
+								{
+									"listen": "test",
+									"script": {
+										"exec": [
+											"pm.test('Upload fails with invalid file type', function () {",
+											"    pm.response.to.have.status(400);",
+											"});"
+										]
+									}
+								}
+							],
+							"request": {
+								"auth": {
+									"type": "bearer",
+									"bearer": [
+										{
+											"key": "token",
+											"value": "{{customer_token}}",
+											"type": "string"
+										}
+									]
+								},
+								"method": "POST",
+								"header": [],
+								"body": {
+									"mode": "formdata",
+									"formdata": [
+										{
+											"key": "file",
+											"type": "file",
+											"src": []
+										},
+										{
+											"key": "type",
+											"value": "invalid_type",
+											"type": "text"
+										}
+									]
+								},
+								"url": {
+									"raw": "{{base_url}}/{{api_version}}/uploads/image",
+									"host": ["{{base_url}}"],
+									"path": ["{{api_version}}", "uploads", "image"]
+								}
+							}
+						},
+						{
+							"name": "Upload - No Authentication",
+							"event": [
+								{
+									"listen": "test",
+									"script": {
+										"exec": [
+											"pm.test('Upload requires authentication', function () {",
+											"    pm.response.to.have.status(401);",
+											"});"
+										]
+									}
+								}
+							],
+							"request": {
+								"auth": {
+									"type": "noauth"
+								},
+								"method": "POST",
+								"header": [],
+								"body": {
+									"mode": "formdata",
+									"formdata": [
+										{
+											"key": "file",
+											"type": "file",
+											"src": []
+										}
+									]
+								},
+								"url": {
+									"raw": "{{base_url}}/{{api_version}}/uploads/image",
+									"host": ["{{base_url}}"],
+									"path": ["{{api_version}}", "uploads", "image"]
+								}
+							}
+						}
+					]
 				}
 			]
 		},
@@ -2910,6 +5808,153 @@
 						},
 						"description": "Update vendor profile"
 					}
+				},
+				{
+					"name": "Get Vendor Statistics",
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{base_url}}/{{api_version}}/vendors/stats",
+							"host": ["{{base_url}}"],
+							"path": ["{{api_version}}", "vendors", "stats"]
+						},
+						"description": "Get vendor dashboard statistics and analytics"
+					}
+				},
+				{
+					"name": "Get Vendor Events",
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{base_url}}/{{api_version}}/vendors/events?page=1&limit=10&status=active",
+							"host": ["{{base_url}}"],
+							"path": ["{{api_version}}", "vendors", "events"],
+							"query": [
+								{
+									"key": "page",
+									"value": "1"
+								},
+								{
+									"key": "limit",
+									"value": "10"
+								},
+								{
+									"key": "status",
+									"value": "active",
+									"description": "Filter by event status"
+								}
+							]
+						},
+						"description": "Get events created by the authenticated vendor"
+					}
+				},
+				{
+					"name": "Get Vendor Bookings",
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{base_url}}/{{api_version}}/vendors/bookings?page=1&limit=20&status=confirmed",
+							"host": ["{{base_url}}"],
+							"path": ["{{api_version}}", "vendors", "bookings"],
+							"query": [
+								{
+									"key": "page",
+									"value": "1"
+								},
+								{
+									"key": "limit",
+									"value": "20"
+								},
+								{
+									"key": "status",
+									"value": "confirmed",
+									"description": "Filter by booking status"
+								}
+							]
+						},
+						"description": "Get bookings for the authenticated vendor's events"
+					}
+				},
+				{
+					"name": "Upload Vendor Image",
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "multipart/form-data"
+							}
+						],
+						"body": {
+							"mode": "formdata",
+							"formdata": [
+								{
+									"key": "image",
+									"type": "file",
+									"src": []
+								},
+								{
+									"key": "type",
+									"value": "logo",
+									"description": "Image type: logo, cover",
+									"type": "text"
+								}
+							]
+						},
+						"url": {
+							"raw": "{{base_url}}/{{api_version}}/vendors/upload-image",
+							"host": ["{{base_url}}"],
+							"path": ["{{api_version}}", "vendors", "upload-image"]
+						},
+						"description": "Upload vendor images (logo, cover image)"
+					}
+				},
+				{
+					"name": "Update Business Hours",
+					"request": {
+						"method": "PUT",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n    \"businessHours\": {\n        \"monday\": { \"isOpen\": true, \"openTime\": \"09:00\", \"closeTime\": \"18:00\" },\n        \"tuesday\": { \"isOpen\": true, \"openTime\": \"09:00\", \"closeTime\": \"18:00\" },\n        \"wednesday\": { \"isOpen\": true, \"openTime\": \"09:00\", \"closeTime\": \"18:00\" },\n        \"thursday\": { \"isOpen\": true, \"openTime\": \"09:00\", \"closeTime\": \"18:00\" },\n        \"friday\": { \"isOpen\": true, \"openTime\": \"09:00\", \"closeTime\": \"18:00\" },\n        \"saturday\": { \"isOpen\": false },\n        \"sunday\": { \"isOpen\": false }\n    }\n}"
+						},
+						"url": {
+							"raw": "{{base_url}}/{{api_version}}/vendors/business-hours",
+							"host": ["{{base_url}}"],
+							"path": ["{{api_version}}", "vendors", "business-hours"]
+						},
+						"description": "Update vendor business hours"
+					}
+				},
+				{
+					"name": "Update Social Media Links",
+					"request": {
+						"method": "PUT",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n    \"socialMedia\": {\n        \"facebook\": \"https://facebook.com/amazingevents\",\n        \"instagram\": \"https://instagram.com/amazingevents\",\n        \"twitter\": \"https://twitter.com/amazingevents\",\n        \"youtube\": \"https://youtube.com/amazingevents\",\n        \"linkedin\": \"https://linkedin.com/company/amazingevents\"\n    }\n}"
+						},
+						"url": {
+							"raw": "{{base_url}}/{{api_version}}/vendors/social-media",
+							"host": ["{{base_url}}"],
+							"path": ["{{api_version}}", "vendors", "social-media"]
+						},
+						"description": "Update vendor social media links"
+					}
 				}
 			]
 		},
@@ -4107,6 +7152,737 @@
 							"path": ["{{api_version}}", "categories", "update-counts"]
 						},
 						"description": "Update event counts for all categories (Admin only)"
+					}
+				}
+			]
+		},
+		{
+			"name": "📰 Newsletter Management",
+			"description": "Newsletter subscription and management endpoints",
+			"item": [
+				{
+					"name": "Subscribe to Newsletter",
+					"request": {
+						"auth": {
+							"type": "noauth"
+						},
+						"method": "POST",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n    \"email\": \"subscriber@example.com\",\n    \"source\": \"blog\",\n    \"preferences\": {\n        \"frequency\": \"weekly\",\n        \"categories\": [\"events\", \"music\"],\n        \"receivePromotions\": true\n    }\n}"
+						},
+						"url": {
+							"raw": "{{base_url}}/{{api_version}}/newsletter/subscribe",
+							"host": ["{{base_url}}"],
+							"path": ["{{api_version}}", "newsletter", "subscribe"]
+						},
+						"description": "Subscribe to newsletter with preferences"
+					}
+				},
+				{
+					"name": "Unsubscribe from Newsletter",
+					"request": {
+						"auth": {
+							"type": "noauth"
+						},
+						"method": "POST",
+						"header": [],
+						"url": {
+							"raw": "{{base_url}}/{{api_version}}/newsletter/unsubscribe/{{unsubscribe_token}}",
+							"host": ["{{base_url}}"],
+							"path": ["{{api_version}}", "newsletter", "unsubscribe", "{{unsubscribe_token}}"]
+						},
+						"description": "Unsubscribe using token from email"
+					}
+				},
+				{
+					"name": "Get Subscription Status",
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{base_url}}/{{api_version}}/newsletter/status",
+							"host": ["{{base_url}}"],
+							"path": ["{{api_version}}", "newsletter", "status"]
+						},
+						"description": "Get user's newsletter subscription status"
+					}
+				},
+				{
+					"name": "Update Newsletter Preferences",
+					"request": {
+						"method": "PUT",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n    \"preferences\": {\n        \"frequency\": \"monthly\",\n        \"categories\": [\"events\"],\n        \"receivePromotions\": false\n    }\n}"
+						},
+						"url": {
+							"raw": "{{base_url}}/{{api_version}}/newsletter/preferences",
+							"host": ["{{base_url}}"],
+							"path": ["{{api_version}}", "newsletter", "preferences"]
+						},
+						"description": "Update newsletter subscription preferences"
+					}
+				}
+			]
+		},
+		{
+			"name": "🔗 Admin Blog Management",
+			"description": "Administrative blog management endpoints",
+			"item": [
+				{
+					"name": "Get All Blogs (Admin)",
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{base_url}}/{{api_version}}/admin/blogs?page=1&limit=10&status=published&category=music",
+							"host": ["{{base_url}}"],
+							"path": ["{{api_version}}", "admin", "blogs"],
+							"query": [
+								{
+									"key": "page",
+									"value": "1"
+								},
+								{
+									"key": "limit",
+									"value": "10"
+								},
+								{
+									"key": "status",
+									"value": "published",
+									"description": "Filter by status: draft, published, archived"
+								},
+								{
+									"key": "category",
+									"value": "music",
+									"description": "Filter by category"
+								}
+							]
+						},
+						"description": "Get all blogs with admin filters"
+					}
+				},
+				{
+					"name": "Create New Blog Post",
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n    \"title\": \"Ultimate Guide to Dubai Events\",\n    \"content\": \"# Introduction\\n\\nThis is a comprehensive guide to the best events in Dubai...\",\n    \"excerpt\": \"Discover the most exciting events happening in Dubai\",\n    \"categories\": [\"events\", \"dubai\", \"travel\"],\n    \"tags\": [\"dubai\", \"events\", \"nightlife\", \"culture\"],\n    \"featuredImage\": \"https://example.com/image.jpg\",\n    \"status\": \"published\",\n    \"seo\": {\n        \"metaTitle\": \"Best Dubai Events 2024 - Complete Guide\",\n        \"metaDescription\": \"Discover the hottest events in Dubai with our comprehensive guide\",\n        \"keywords\": [\"dubai events\", \"nightlife\", \"concerts\"]\n    },\n    \"publishedAt\": \"2024-01-15T10:00:00Z\"\n}"
+						},
+						"url": {
+							"raw": "{{base_url}}/{{api_version}}/admin/blogs",
+							"host": ["{{base_url}}"],
+							"path": ["{{api_version}}", "admin", "blogs"]
+						},
+						"description": "Create a new blog post"
+					}
+				},
+				{
+					"name": "Update Blog Post",
+					"request": {
+						"method": "PUT",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n    \"title\": \"Updated: Ultimate Guide to Dubai Events\",\n    \"content\": \"# Updated Introduction\\n\\nThis is the updated comprehensive guide...\",\n    \"status\": \"published\"\n}"
+						},
+						"url": {
+							"raw": "{{base_url}}/{{api_version}}/admin/blogs/{{blog_id}}",
+							"host": ["{{base_url}}"],
+							"path": ["{{api_version}}", "admin", "blogs", "{{blog_id}}"]
+						},
+						"description": "Update an existing blog post"
+					}
+				},
+				{
+					"name": "Delete Blog Post",
+					"request": {
+						"method": "DELETE",
+						"header": [],
+						"url": {
+							"raw": "{{base_url}}/{{api_version}}/admin/blogs/{{blog_id}}",
+							"host": ["{{base_url}}"],
+							"path": ["{{api_version}}", "admin", "blogs", "{{blog_id}}"]
+						},
+						"description": "Delete a blog post"
+					}
+				},
+				{
+					"name": "Get Blog Categories",
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{base_url}}/{{api_version}}/admin/blogs/categories",
+							"host": ["{{base_url}}"],
+							"path": ["{{api_version}}", "admin", "blogs", "categories"]
+						},
+						"description": "Get all blog categories"
+					}
+				},
+				{
+					"name": "Create Blog Category",
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n    \"name\": \"Technology\",\n    \"description\": \"Technology and innovation articles\",\n    \"slug\": \"technology\",\n    \"color\": \"#007bff\"\n}"
+						},
+						"url": {
+							"raw": "{{base_url}}/{{api_version}}/admin/blogs/categories",
+							"host": ["{{base_url}}"],
+							"path": ["{{api_version}}", "admin", "blogs", "categories"]
+						},
+						"description": "Create a new blog category"
+					}
+				},
+				{
+					"name": "Update Blog Category",
+					"request": {
+						"method": "PUT",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n    \"name\": \"Tech & Innovation\",\n    \"description\": \"Updated description for technology category\"\n}"
+						},
+						"url": {
+							"raw": "{{base_url}}/{{api_version}}/admin/blogs/categories/{{category_id}}",
+							"host": ["{{base_url}}"],
+							"path": ["{{api_version}}", "admin", "blogs", "categories", "{{category_id}}"]
+						},
+						"description": "Update a blog category"
+					}
+				},
+				{
+					"name": "Delete Blog Category",
+					"request": {
+						"method": "DELETE",
+						"header": [],
+						"url": {
+							"raw": "{{base_url}}/{{api_version}}/admin/blogs/categories/{{category_id}}",
+							"host": ["{{base_url}}"],
+							"path": ["{{api_version}}", "admin", "blogs", "categories", "{{category_id}}"]
+						},
+						"description": "Delete a blog category"
+					}
+				}
+			]
+		},
+		{
+			"name": "📄 Blog Comments",
+			"description": "Blog comment system endpoints",
+			"item": [
+				{
+					"name": "Get Blog Comments",
+					"request": {
+						"auth": {
+							"type": "noauth"
+						},
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{base_url}}/{{api_version}}/blog/posts/{{post_id}}/comments?page=1&limit=10&sort=newest",
+							"host": ["{{base_url}}"],
+							"path": ["{{api_version}}", "blog", "posts", "{{post_id}}", "comments"],
+							"query": [
+								{
+									"key": "page",
+									"value": "1"
+								},
+								{
+									"key": "limit",
+									"value": "10"
+								},
+								{
+									"key": "sort",
+									"value": "newest",
+									"description": "Sort by: newest, oldest, likes"
+								}
+							]
+						},
+						"description": "Get comments for a blog post"
+					}
+				},
+				{
+					"name": "Create Comment",
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n    \"content\": \"Great article! Very informative and well written.\",\n    \"parentComment\": null\n}"
+						},
+						"url": {
+							"raw": "{{base_url}}/{{api_version}}/blog/posts/{{post_id}}/comments",
+							"host": ["{{base_url}}"],
+							"path": ["{{api_version}}", "blog", "posts", "{{post_id}}", "comments"]
+						},
+						"description": "Create a new comment on a blog post"
+					}
+				},
+				{
+					"name": "Reply to Comment",
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n    \"content\": \"Thanks for your comment! Glad you found it helpful.\",\n    \"parentComment\": \"{{parent_comment_id}}\"\n}"
+						},
+						"url": {
+							"raw": "{{base_url}}/{{api_version}}/blog/posts/{{post_id}}/comments",
+							"host": ["{{base_url}}"],
+							"path": ["{{api_version}}", "blog", "posts", "{{post_id}}", "comments"]
+						},
+						"description": "Reply to an existing comment"
+					}
+				},
+				{
+					"name": "Update Comment",
+					"request": {
+						"method": "PUT",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n    \"content\": \"Updated comment content\"\n}"
+						},
+						"url": {
+							"raw": "{{base_url}}/{{api_version}}/blog/comments/{{comment_id}}",
+							"host": ["{{base_url}}"],
+							"path": ["{{api_version}}", "blog", "comments", "{{comment_id}}"]
+						},
+						"description": "Update an existing comment"
+					}
+				},
+				{
+					"name": "Delete Comment",
+					"request": {
+						"method": "DELETE",
+						"header": [],
+						"url": {
+							"raw": "{{base_url}}/{{api_version}}/blog/comments/{{comment_id}}",
+							"host": ["{{base_url}}"],
+							"path": ["{{api_version}}", "blog", "comments", "{{comment_id}}"]
+						},
+						"description": "Delete a comment"
+					}
+				},
+				{
+					"name": "Like Comment",
+					"request": {
+						"method": "POST",
+						"header": [],
+						"url": {
+							"raw": "{{base_url}}/{{api_version}}/blog/comments/{{comment_id}}/like",
+							"host": ["{{base_url}}"],
+							"path": ["{{api_version}}", "blog", "comments", "{{comment_id}}", "like"]
+						},
+						"description": "Like a comment"
+					}
+				},
+				{
+					"name": "Dislike Comment",
+					"request": {
+						"method": "POST",
+						"header": [],
+						"url": {
+							"raw": "{{base_url}}/{{api_version}}/blog/comments/{{comment_id}}/dislike",
+							"host": ["{{base_url}}"],
+							"path": ["{{api_version}}", "blog", "comments", "{{comment_id}}", "dislike"]
+						},
+						"description": "Dislike a comment"
+					}
+				},
+				{
+					"name": "Report Comment",
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n    \"reason\": \"Inappropriate content or spam\"\n}"
+						},
+						"url": {
+							"raw": "{{base_url}}/{{api_version}}/blog/comments/{{comment_id}}/report",
+							"host": ["{{base_url}}"],
+							"path": ["{{api_version}}", "blog", "comments", "{{comment_id}}", "report"]
+						},
+						"description": "Report a comment for moderation"
+					}
+				},
+				{
+					"name": "Get Comment Replies",
+					"request": {
+						"auth": {
+							"type": "noauth"
+						},
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{base_url}}/{{api_version}}/blog/comments/{{comment_id}}/replies?page=1&limit=5",
+							"host": ["{{base_url}}"],
+							"path": ["{{api_version}}", "blog", "comments", "{{comment_id}}", "replies"],
+							"query": [
+								{
+									"key": "page",
+									"value": "1"
+								},
+								{
+									"key": "limit",
+									"value": "5"
+								}
+							]
+						},
+						"description": "Get replies for a specific comment"
+					}
+				}
+			]
+		},
+		{
+			"name": "💰 Admin Revenue Management",
+			"description": "Administrative revenue and financial management endpoints",
+			"item": [
+				{
+					"name": "Get Revenue Dashboard",
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{base_url}}/{{api_version}}/admin/revenue/dashboard",
+							"host": ["{{base_url}}"],
+							"path": ["{{api_version}}", "admin", "revenue", "dashboard"]
+						},
+						"description": "Get revenue dashboard overview with key metrics"
+					}
+				},
+				{
+					"name": "Get Revenue Transactions",
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{base_url}}/{{api_version}}/admin/revenue/transactions?page=1&limit=20&status=completed&startDate=2024-01-01&endDate=2024-12-31",
+							"host": ["{{base_url}}"],
+							"path": ["{{api_version}}", "admin", "revenue", "transactions"],
+							"query": [
+								{
+									"key": "page",
+									"value": "1"
+								},
+								{
+									"key": "limit",
+									"value": "20"
+								},
+								{
+									"key": "status",
+									"value": "completed",
+									"description": "Filter by transaction status"
+								},
+								{
+									"key": "startDate",
+									"value": "2024-01-01"
+								},
+								{
+									"key": "endDate",
+									"value": "2024-12-31"
+								}
+							]
+						},
+						"description": "Get all revenue transactions with filtering options"
+					}
+				},
+				{
+					"name": "Create Revenue Transaction",
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n    \"amount\": 1000,\n    \"currency\": \"AED\",\n    \"type\": \"commission\",\n    \"description\": \"Event booking commission\",\n    \"relatedId\": \"{{booking_id}}\",\n    \"relatedType\": \"booking\"\n}"
+						},
+						"url": {
+							"raw": "{{base_url}}/{{api_version}}/admin/revenue/transactions",
+							"host": ["{{base_url}}"],
+							"path": ["{{api_version}}", "admin", "revenue", "transactions"]
+						},
+						"description": "Create a manual revenue transaction"
+					}
+				},
+				{
+					"name": "Update Revenue Transaction",
+					"request": {
+						"method": "PUT",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n    \"status\": \"completed\",\n    \"description\": \"Updated transaction description\"\n}"
+						},
+						"url": {
+							"raw": "{{base_url}}/{{api_version}}/admin/revenue/transactions/{{transaction_id}}",
+							"host": ["{{base_url}}"],
+							"path": ["{{api_version}}", "admin", "revenue", "transactions", "{{transaction_id}}"]
+						},
+						"description": "Update an existing revenue transaction"
+					}
+				},
+				{
+					"name": "Process Vendor Payouts",
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n    \"vendorIds\": [\"{{vendor_id_1}}\", \"{{vendor_id_2}}\"],\n    \"payoutDate\": \"2024-01-31\"\n}"
+						},
+						"url": {
+							"raw": "{{base_url}}/{{api_version}}/admin/revenue/payouts/process",
+							"host": ["{{base_url}}"],
+							"path": ["{{api_version}}", "admin", "revenue", "payouts", "process"]
+						},
+						"description": "Process payouts for vendors"
+					}
+				},
+				{
+					"name": "Get Subscription Analytics",
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{base_url}}/{{api_version}}/admin/revenue/analytics/subscriptions?period=monthly&year=2024",
+							"host": ["{{base_url}}"],
+							"path": ["{{api_version}}", "admin", "revenue", "analytics", "subscriptions"],
+							"query": [
+								{
+									"key": "period",
+									"value": "monthly"
+								},
+								{
+									"key": "year",
+									"value": "2024"
+								}
+							]
+						},
+						"description": "Get subscription revenue analytics"
+					}
+				},
+				{
+					"name": "Get Advertising Analytics",
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{base_url}}/{{api_version}}/admin/revenue/analytics/advertising?period=quarterly&year=2024",
+							"host": ["{{base_url}}"],
+							"path": ["{{api_version}}", "admin", "revenue", "analytics", "advertising"],
+							"query": [
+								{
+									"key": "period",
+									"value": "quarterly"
+								},
+								{
+									"key": "year",
+									"value": "2024"
+								}
+							]
+						},
+						"description": "Get advertising revenue analytics"
+					}
+				},
+				{
+					"name": "Get Revenue Settings",
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{base_url}}/{{api_version}}/admin/revenue/settings",
+							"host": ["{{base_url}}"],
+							"path": ["{{api_version}}", "admin", "revenue", "settings"]
+						},
+						"description": "Get current revenue settings and configurations"
+					}
+				},
+				{
+					"name": "Update Revenue Settings",
+					"request": {
+						"method": "PUT",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n    \"commissionRate\": 15,\n    \"payoutFrequency\": \"monthly\",\n    \"minimumPayoutAmount\": 100,\n    \"taxRate\": 5\n}"
+						},
+						"url": {
+							"raw": "{{base_url}}/{{api_version}}/admin/revenue/settings",
+							"host": ["{{base_url}}"],
+							"path": ["{{api_version}}", "admin", "revenue", "settings"]
+						},
+						"description": "Update revenue settings and configurations"
+					}
+				},
+				{
+					"name": "Generate Revenue Report",
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{base_url}}/{{api_version}}/admin/revenue/reports/generate?reportType=monthly&startDate=2024-01-01&endDate=2024-01-31&format=pdf",
+							"host": ["{{base_url}}"],
+							"path": ["{{api_version}}", "admin", "revenue", "reports", "generate"],
+							"query": [
+								{
+									"key": "reportType",
+									"value": "monthly",
+									"description": "Type of report: daily, weekly, monthly, quarterly, yearly"
+								},
+								{
+									"key": "startDate",
+									"value": "2024-01-01"
+								},
+								{
+									"key": "endDate",
+									"value": "2024-01-31"
+								},
+								{
+									"key": "format",
+									"value": "pdf",
+									"description": "Report format: pdf, excel, csv"
+								}
+							]
+						},
+						"description": "Generate a comprehensive revenue report"
+					}
+				}
+			]
+		},
+		{
+			"name": "❤️ Favorites Management",
+			"description": "User favorites and wishlist management endpoints",
+			"item": [
+				{
+					"name": "Get User's Favorite Events",
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{base_url}}/{{api_version}}/favorites",
+							"host": ["{{base_url}}"],
+							"path": ["{{api_version}}", "favorites"]
+						},
+						"description": "Get all events in user's favorites list"
+					}
+				},
+				{
+					"name": "Add Event to Favorites",
+					"request": {
+						"method": "POST",
+						"header": [],
+						"url": {
+							"raw": "{{base_url}}/{{api_version}}/favorites/{{event_id}}",
+							"host": ["{{base_url}}"],
+							"path": ["{{api_version}}", "favorites", "{{event_id}}"]
+						},
+						"description": "Add an event to user's favorites list"
+					}
+				},
+				{
+					"name": "Remove Event from Favorites",
+					"request": {
+						"method": "DELETE",
+						"header": [],
+						"url": {
+							"raw": "{{base_url}}/{{api_version}}/favorites/{{event_id}}",
+							"host": ["{{base_url}}"],
+							"path": ["{{api_version}}", "favorites", "{{event_id}}"]
+						},
+						"description": "Remove an event from user's favorites list"
+					}
+				},
+				{
+					"name": "Check if Event is Favorited",
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{base_url}}/{{api_version}}/favorites/check/{{event_id}}",
+							"host": ["{{base_url}}"],
+							"path": ["{{api_version}}", "favorites", "check", "{{event_id}}"]
+						},
+						"description": "Check if a specific event is in user's favorites"
 					}
 				}
 			]

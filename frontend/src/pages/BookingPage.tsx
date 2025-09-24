@@ -27,6 +27,7 @@ import { logger } from '../utils/logger';
 import { ComponentErrorBoundary } from '../components/common/ErrorBoundary';
 import { calculatePricingWithDiscount } from '../utils/couponUtils';
 import { getCurrentPageUrl } from '../utils/urlHelper';
+import SEO from '../components/common/SEO';
 
 import Button from '../components/ui/Button';
 import { Card, CardContent, CardHeader, CardTitle } from '../components/ui/Card';
@@ -838,8 +839,15 @@ const BookingPage: React.FC = () => {
   }
 
   return (
-    <ComponentErrorBoundary componentName="BookingPage">
-      <div className="min-h-screen bg-gray-50">
+    <>
+      <SEO
+        title={`Book ${event.title} | Gema Events`}
+        description={`Complete your booking for ${event.title}. Secure payment and instant confirmation.`}
+        noIndex={true}
+        noFollow={true}
+      />
+      <ComponentErrorBoundary componentName="BookingPage">
+        <div className="min-h-screen bg-gray-50">
         {/* Header */}
         <div className="bg-white border-b border-gray-200">
           <div className="max-w-4xl mx-auto px-4 py-6">
@@ -977,8 +985,9 @@ const BookingPage: React.FC = () => {
             </div>
           </div>
         </div>
-      </div>
-    </ComponentErrorBoundary>
+        </div>
+      </ComponentErrorBoundary>
+    </>
   );
 };
 

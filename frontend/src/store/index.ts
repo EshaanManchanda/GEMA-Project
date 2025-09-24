@@ -19,13 +19,14 @@ import couponsSlice from './slices/couponsSlice';
 import affiliatesSlice from './slices/affiliatesSlice';
 import paymentsSlice from './slices/paymentsSlice';
 import ticketsSlice from './slices/ticketsSlice';
+import blogSlice from './slices/blogSlice';
 
 // Persist configuration
 const persistConfig = {
   key: 'root',
   storage,
   whitelist: ['auth', 'cart', 'favorites', 'ui'], // Only persist these slices
-  blacklist: ['events', 'categories', 'search', 'bookings', 'vendor', 'admin', 'notifications', 'coupons', 'affiliates', 'payments', 'tickets'], // Don't persist these
+  blacklist: ['events', 'categories', 'search', 'bookings', 'vendor', 'admin', 'notifications', 'coupons', 'affiliates', 'payments', 'tickets', 'blog'], // Don't persist these
 };
 
 // Auth persist config (separate for sensitive data)
@@ -61,6 +62,7 @@ const rootReducer = combineReducers({
   affiliates: affiliatesSlice,
   payments: paymentsSlice,
   tickets: ticketsSlice,
+  blog: blogSlice,
 });
 
 // Create persisted reducer
@@ -116,3 +118,4 @@ export * from './slices/couponsSlice';
 export * from './slices/affiliatesSlice';
 export * from './slices/paymentsSlice';
 export * from './slices/ticketsSlice';
+export * from './slices/blogSlice';

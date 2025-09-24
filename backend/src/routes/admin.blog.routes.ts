@@ -11,8 +11,156 @@ import {
   getAllCategoriesAdmin
 } from '../controllers/blog.controller';
 import { authenticate, authorize } from '../middleware/auth';
+import { validateRequest } from '../middleware/validation';
+import { body, param, query } from 'express-validator';
 
 const router = Router();
+
+// Validation rules
+const createBlogValidation = [
+  body('title')
+    .isString()
+    .isLength({ min: 1, max: 200 })
+    .withMessage('Title must be between 1 and 200 characters'),
+  body('excerpt')
+    .isString()
+    .isLength({ min: 1, max: 500 })
+    .withMessage('Excerpt must be between 1 and 500 characters'),
+  body('content')
+    .isString()
+    .isLength({ min: 1 })
+    .withMessage('Content is required'),
+  body('featuredImage')
+    .isString()
+    .isURL()
+    .withMessage('Featured image must be a valid URL'),
+  body('category')
+    .isMongoId()
+    .withMessage('Category must be a valid ID'),
+  body('author.name')
+    .isString()
+    .isLength({ min: 1, max: 100 })
+    .withMessage('Author name must be between 1 and 100 characters'),
+  body('author.email')
+    .isEmail()
+    .withMessage('Author email must be valid'),
+  body('author.avatar')
+    .optional()
+    .isURL()
+    .withMessage('Author avatar must be a valid URL'),
+  body('author.bio')
+    .optional()
+    .isString()
+    .isLength({ max: 500 })
+    .withMessage('Author bio cannot exceed 500 characters'),
+  body('tags')
+    .optional()
+    .isArray()
+    .withMessage('Tags must be an array'),
+  body('tags.*')
+    .optional()
+    .isString()
+    .trim()
+    .isLength({ min: 1, max: 50 })
+    .withMessage('Each tag must be between 1 and 50 characters'),
+  body('status')
+    .optional()
+    .isIn(['draft', 'published', 'archived'])
+    .withMessage('Status must be draft, published, or archived'),
+  body('featured')
+    .optional()
+    .isBoolean()
+    .withMessage('Featured must be a boolean'),
+  body('seo.metaTitle')
+    .optional()
+    .isString()
+    .isLength({ max: 60 })
+    .withMessage('Meta title cannot exceed 60 characters'),
+  body('seo.metaDescription')
+    .optional()
+    .isString()
+    .isLength({ max: 160 })
+    .withMessage('Meta description cannot exceed 160 characters'),
+  body('seo.metaKeywords')
+    .optional()
+    .isArray()
+    .withMessage('Meta keywords must be an array'),
+  body('seo.canonicalUrl')
+    .optional()
+    .isURL()
+    .withMessage('Canonical URL must be valid')
+];
+
+const updateBlogValidation = [
+  param('id').isMongoId().withMessage('Blog ID must be valid'),
+  ...createBlogValidation.map(validation => validation.optional())
+];
+
+const createCategoryValidation = [
+  body('name')
+    .isString()
+    .isLength({ min: 1, max: 100 })
+    .withMessage('Category name must be between 1 and 100 characters'),
+  body('description')
+    .optional()
+    .isString()
+    .isLength({ max: 500 })
+    .withMessage('Description cannot exceed 500 characters'),
+  body('color')
+    .optional()
+    .isString()
+    .matches(/^#([A-Fa-f0-9]{6}|[A-Fa-f0-9]{3})$/)
+    .withMessage('Color must be a valid hex color')
+];
+
+const updateCategoryValidation = [
+  param('id').isMongoId().withMessage('Category ID must be valid'),
+  ...createCategoryValidation.map(validation => validation.optional())
+];
+
+const getBlogValidation = [
+  param('id').isMongoId().withMessage('Blog ID must be valid')
+];
+
+const deleteBlogValidation = [
+  param('id').isMongoId().withMessage('Blog ID must be valid')
+];
+
+const deleteCategoryValidation = [
+  param('id').isMongoId().withMessage('Category ID must be valid')
+];
+
+const getAllBlogsValidation = [
+  query('page')
+    .optional()
+    .isInt({ min: 1 })
+    .withMessage('Page must be a positive integer'),
+  query('limit')
+    .optional()
+    .isInt({ min: 1, max: 50 })
+    .withMessage('Limit must be between 1 and 50'),
+  query('status')
+    .optional()
+    .isIn(['draft', 'published', 'archived'])
+    .withMessage('Status must be draft, published, or archived'),
+  query('category')
+    .optional()
+    .isMongoId()
+    .withMessage('Category must be a valid ID'),
+  query('search')
+    .optional()
+    .isString()
+    .isLength({ min: 1, max: 100 })
+    .withMessage('Search query must be between 1 and 100 characters'),
+  query('sortBy')
+    .optional()
+    .isIn(['createdAt', 'updatedAt', 'publishedAt', 'viewCount', 'likeCount'])
+    .withMessage('Sort by must be a valid field'),
+  query('sortOrder')
+    .optional()
+    .isIn(['asc', 'desc'])
+    .withMessage('Sort order must be asc or desc')
+];
 
 // All admin blog routes require authentication and admin/superadmin role
 router.use(authenticate);
@@ -20,21 +168,21 @@ router.use(authorize(['admin', 'superadmin']));
 
 // Blog management routes
 router.route('/blogs')
-  .get(getAllBlogsAdmin)
-  .post(createBlog);
+  .get(getAllBlogsValidation, validateRequest, getAllBlogsAdmin)
+  .post(createBlogValidation, validateRequest, createBlog);
 
 router.route('/blogs/:id')
-  .get(getBlogById)
-  .put(updateBlog)
-  .delete(deleteBlog);
+  .get(getBlogValidation, validateRequest, getBlogById)
+  .put(updateBlogValidation, validateRequest, updateBlog)
+  .delete(deleteBlogValidation, validateRequest, deleteBlog);
 
 // Blog category management routes
 router.route('/categories')
   .get(getAllCategoriesAdmin)
-  .post(createCategory);
+  .post(createCategoryValidation, validateRequest, createCategory);
 
 router.route('/categories/:id')
-  .put(updateCategory)
-  .delete(deleteCategory);
+  .put(updateCategoryValidation, validateRequest, updateCategory)
+  .delete(deleteCategoryValidation, validateRequest, deleteCategory);
 
 export default router;

@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import eventsAPI from '../../services/api/eventsAPI';
+import SEOEditor from '../../components/seo/SEOEditor';
 
 interface EventFormData {
   title: string;
@@ -22,6 +23,11 @@ interface EventFormData {
   schedulePrice: string;
   images: File[];
   imagePreviewUrls: string[];
+  seoMeta: {
+    title: string;
+    description: string;
+    keywords: string[];
+  };
 }
 
 interface Category {
@@ -53,7 +59,12 @@ const VendorEditEventPage: React.FC = () => {
     availableSeats: '',
     schedulePrice: '',
     images: [],
-    imagePreviewUrls: []
+    imagePreviewUrls: [],
+    seoMeta: {
+      title: '',
+      description: '',
+      keywords: []
+    }
   });
   
   const [categories, setCategories] = useState<Category[]>([]);
@@ -239,7 +250,7 @@ const VendorEditEventPage: React.FC = () => {
       setIsSaving(true);
       setSaveStatus(null);
       
-      // Transform form data to match backend Event model\n      const eventData = {\n        title: formData.title,\n        description: formData.description,\n        category: formData.category,\n        type: formData.type,\n        venueType: formData.venueType,\n        ageRange: [parseInt(formData.ageRangeMin), parseInt(formData.ageRangeMax)],\n        location: {\n          city: formData.city,\n          address: formData.address,\n          coordinates: {\n            lat: parseFloat(formData.latitude) || 0,\n            lng: parseFloat(formData.longitude) || 0\n          }\n        },\n        price: parseFloat(formData.price),\n        currency: formData.currency,\n        tags: formData.tags.split(',').map(tag => tag.trim()).filter(tag => tag.length > 0),\n        dateSchedule: [{\n          date: formData.eventDate,\n          availableSeats: parseInt(formData.availableSeats),\n          price: parseFloat(formData.schedulePrice || formData.price)\n        }],\n        images: [], // Images will be handled separately if upload service is implemented\n        seoMeta: {\n          title: formData.title,\n          description: formData.description.substring(0, 160),\n          keywords: formData.tags.split(',').map(tag => tag.trim())\n        },\n        faqs: []\n      };\n      \n      // Call appropriate API endpoint\n      if (isNewEvent) {\n        await eventsAPI.createEvent(eventData);\n      } else {\n        await eventsAPI.updateEvent(eventId!, eventData);\n      }\n      \n      // Success message\n      setSaveStatus({\n        type: 'success',\n        message: isNewEvent \n          ? 'Event created successfully! Redirecting to events page...'\n          : 'Event updated successfully!'\n      });\n      \n      // Redirect after successful creation/update\n      setTimeout(() => {\n        navigate('/vendor/events');\n      }, 2000);
+      // Transform form data to match backend Event model\n      const eventData = {\n        title: formData.title,\n        description: formData.description,\n        category: formData.category,\n        type: formData.type,\n        venueType: formData.venueType,\n        ageRange: [parseInt(formData.ageRangeMin), parseInt(formData.ageRangeMax)],\n        location: {\n          city: formData.city,\n          address: formData.address,\n          coordinates: {\n            lat: parseFloat(formData.latitude) || 0,\n            lng: parseFloat(formData.longitude) || 0\n          }\n        },\n        price: parseFloat(formData.price),\n        currency: formData.currency,\n        tags: formData.tags.split(',').map(tag => tag.trim()).filter(tag => tag.length > 0),\n        dateSchedule: [{\n          date: formData.eventDate,\n          availableSeats: parseInt(formData.availableSeats),\n          price: parseFloat(formData.schedulePrice || formData.price)\n        }],\n        images: [], // Images will be handled separately if upload service is implemented\n        seoMeta: {\n          title: formData.seoMeta.title || formData.title,\n          description: formData.seoMeta.description || formData.description.substring(0, 160),\n          keywords: formData.seoMeta.keywords.length > 0\n            ? formData.seoMeta.keywords\n            : formData.tags.split(',').map(tag => tag.trim()).filter(tag => tag.length > 0)\n        },\n        faqs: []\n      };\n      \n      // Call appropriate API endpoint\n      if (isNewEvent) {\n        await eventsAPI.createEvent(eventData);\n      } else {\n        await eventsAPI.updateEvent(eventId!, eventData);\n      }\n      \n      // Success message\n      setSaveStatus({\n        type: 'success',\n        message: isNewEvent \n          ? 'Event created successfully! Redirecting to events page...'\n          : 'Event updated successfully!'\n      });\n      \n      // Redirect after successful creation/update\n      setTimeout(() => {\n        navigate('/vendor/events');\n      }, 2000);
     } catch (error: any) {
       console.error('Error saving event:', error);
       setSaveStatus({
@@ -629,7 +640,40 @@ const VendorEditEventPage: React.FC = () => {
                 </div>
               </div>
             </div>
-            
+
+            {/* SEO Settings */}
+            <div className="mt-8">
+              <SEOEditor
+                initialData={{
+                  title: formData.seoMeta.title,
+                  description: formData.seoMeta.description,
+                  keywords: formData.seoMeta.keywords
+                }}
+                contentData={{
+                  title: formData.title,
+                  description: formData.description,
+                  category: formData.category,
+                  location: formData.city,
+                  tags: formData.tags.split(',').map(tag => tag.trim()).filter(tag => tag.length > 0),
+                  type: 'event'
+                }}
+                onChange={(seoData) => {
+                  setFormData(prev => ({
+                    ...prev,
+                    seoMeta: {
+                      title: seoData.title,
+                      description: seoData.description,
+                      keywords: seoData.keywords
+                    }
+                  }));
+                }}
+                baseUrl={import.meta.env.VITE_APP_URL || 'https://gema-events.com'}
+                path={`/events/${eventId !== 'new' ? eventId : 'new-event'}`}
+                ogImage={formData.imagePreviewUrls[0]}
+                disabled={isSaving}
+              />
+            </div>
+
             {/* Form Actions */}
             <div className="flex justify-end space-x-3 pt-4 border-t border-gray-200">
               <button

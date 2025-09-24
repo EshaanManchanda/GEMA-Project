@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useParams, Link } from 'react-router-dom';
 import { motion } from 'framer-motion';
+import { VendorSEO } from '@/components/common/SEO';
 
 interface Event {
   id: number;
@@ -201,9 +202,17 @@ With a track record of successful events across multiple industries, we have bui
     );
   }
 
+  const breadcrumbs = [
+    { name: 'Home', url: '/' },
+    { name: 'Vendors', url: '/vendors' },
+    { name: vendor?.name || 'Vendor', url: `/vendors/${id}` }
+  ];
+
   return (
-    <div className="container mx-auto px-4 py-8">
-      {usingMockData && (
+    <>
+      {vendor && <VendorSEO vendor={vendor} breadcrumbs={breadcrumbs} />}
+      <div className="container mx-auto px-4 py-8">
+        {usingMockData && (
         <div className="bg-yellow-100 border-l-4 border-yellow-500 text-yellow-700 p-4 mb-6" role="alert">
           <p className="font-bold">Note</p>
           <p>Using mock data. In a production environment, this would be fetched from a backend API.</p>
@@ -529,6 +538,7 @@ With a track record of successful events across multiple industries, we have bui
         )}
       </div>
     </div>
+    </>
   );
 };
 

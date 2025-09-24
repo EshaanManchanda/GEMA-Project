@@ -34,6 +34,8 @@ interface Config {
     secretKey: string;
     publishableKey: string;
     webhookSecret: string;
+    testSecretKey: string;
+    testPublishableKey: string;
   };
   email: {
     service: string;
@@ -119,8 +121,8 @@ export const config: Config = {
   jwtRefreshSecret: process.env.JWT_REFRESH_SECRET || 'default_jwt_refresh_secret',
   jwtRefreshExpiresIn: process.env.JWT_REFRESH_EXPIRES_IN || '30d',
   frontendUrl: process.env.FRONTEND_URL || 'http://localhost:3001',
-  rateLimitWindowMs: parseInt(process.env.RATE_LIMIT_WINDOW_MS || '900000', 10),
-  rateLimitMax: parseInt(process.env.RATE_LIMIT_MAX || '100', 10),
+  rateLimitWindowMs: parseInt(process.env.RATE_LIMIT_WINDOW_MS || '900000', 10), // 15 minutes
+  rateLimitMax: parseInt(process.env.RATE_LIMIT_MAX || '500', 10), // Increased from 100 to 500
   firebase: {
     projectId: process.env.FIREBASE_PROJECT_ID || '',
     privateKey: process.env.FIREBASE_PRIVATE_KEY?.replace(/\\n/g, '\n') || '',
@@ -129,7 +131,9 @@ export const config: Config = {
   stripe: {
     secretKey: process.env.STRIPE_SECRET_KEY || '',
     publishableKey: process.env.STRIPE_PUBLISHABLE_KEY || '',
-    webhookSecret: process.env.STRIPE_WEBHOOK_SECRET || ''
+    webhookSecret: process.env.STRIPE_WEBHOOK_SECRET || '',
+    testSecretKey: process.env.STRIPE_TEST_SECRET_KEY || '',
+    testPublishableKey: process.env.STRIPE_TEST_PUBLISHABLE_KEY || ''
   },
   email: {
     service: process.env.EMAIL_SERVICE || 'mailtrap',

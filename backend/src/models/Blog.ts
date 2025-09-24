@@ -21,6 +21,7 @@ export interface IBlog extends Document {
   viewCount: number;
   likeCount: number;
   shareCount: number;
+  commentsCount: number;
   seo: {
     metaTitle?: string;
     metaDescription?: string;
@@ -124,6 +125,11 @@ const blogSchema = new Schema<IBlog>(
       type: Number,
       default: 0,
       min: [0, 'Share count cannot be negative'],
+    },
+    commentsCount: {
+      type: Number,
+      default: 0,
+      min: [0, 'Comments count cannot be negative'],
     },
     seo: {
       metaTitle: {

@@ -3,6 +3,7 @@ import { Link } from 'react-router-dom';
 import { format } from 'date-fns';
 import eventsAPI from '../services/api/eventsAPI';
 import { getPlaceholderUrl } from '../utils/placeholderImage';
+import SEO from '@/components/common/SEO';
 
 // Mock data for when backend is unavailable
 const mockEvents = [
@@ -171,9 +172,21 @@ const EventsPage: React.FC = () => {
 
   const filteredEvents = sortEvents(getFilteredEvents());
 
+  const breadcrumbs = [
+    { name: 'Home', url: '/' },
+    { name: 'Events', url: '/events' }
+  ];
+
   return (
-    <div className="container mx-auto px-4 py-8">
-      {usingMockData && (
+    <>
+      <SEO
+        title="Kids Activities & Events in UAE | Gema Events"
+        description="Discover amazing kids activities and events across the UAE. Book educational programs, entertainment, sports, and family-friendly experiences for children of all ages."
+        keywords={['kids activities', 'events', 'UAE', 'Dubai', 'children', 'family fun', 'entertainment', 'education']}
+        breadcrumbs={breadcrumbs}
+      />
+      <div className="container mx-auto px-4 py-8">
+        {usingMockData && (
         <div className="bg-yellow-100 border-l-4 border-yellow-500 text-yellow-700 p-4 mb-6" role="alert">
           <p className="font-bold">Note</p>
           <p>{error}</p>
@@ -384,6 +397,7 @@ const EventsPage: React.FC = () => {
         </div>
       </div>
     </div>
+    </>
   );
 };
 

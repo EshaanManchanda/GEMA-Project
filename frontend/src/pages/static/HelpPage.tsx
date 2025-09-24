@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { motion } from 'framer-motion';
 import { FiSearch, FiChevronRight, FiPhone, FiMail, FiMessageSquare, FiHelpCircle } from 'react-icons/fi';
+import SEO from '@/components/common/SEO';
 
 const HelpPage: React.FC = () => {
   // Animation variants
@@ -131,8 +132,20 @@ const HelpPage: React.FC = () => {
     console.log('Searching for:', searchQuery);
   };
 
+  const breadcrumbs = [
+    { name: 'Home', url: '/' },
+    { name: 'Help & Support', url: '/help' }
+  ];
+
   return (
-    <div className="container mx-auto px-4 py-12">
+    <>
+      <SEO
+        title="Help & Support - Gema Events"
+        description="Get help and support for Gema Events. Find guides for booking kids activities, managing your account, payments, and get quick answers to common questions."
+        keywords={['help', 'support', 'gema events help', 'customer service', 'booking help', 'user guide']}
+        breadcrumbs={breadcrumbs}
+      />
+      <div className="container mx-auto px-4 py-12">
       <motion.div 
         className="max-w-6xl mx-auto"
         initial="hidden"
@@ -255,6 +268,7 @@ const HelpPage: React.FC = () => {
         </motion.div>
       </motion.div>
     </div>
+    </>
   );
 };
 

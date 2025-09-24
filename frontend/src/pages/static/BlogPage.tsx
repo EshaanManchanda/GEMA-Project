@@ -1,10 +1,10 @@
 import React, { useState, useEffect, useCallback } from 'react';
-import { Helmet } from 'react-helmet-async';
 import { motion } from 'framer-motion';
 import { FaArrowLeft, FaSpinner, FaExclamationTriangle } from 'react-icons/fa';
 import { Link } from 'react-router-dom';
 import blogAPI from '../../services/api/blogAPI';
 import { Blog, BlogCategory, BlogsResponse, BlogCategoriesResponse } from '../../types/blog';
+import SEO from '../../components/common/SEO';
 
 
 const BlogPage: React.FC = () => {
@@ -96,6 +96,83 @@ const BlogPage: React.FC = () => {
 
   const allCategories = ['All', ...categories.map(cat => cat.name)];
 
+  // Generate SEO data based on current state
+  const generateSEOData = () => {
+    const baseUrl = import.meta.env.VITE_APP_URL || 'https://gema-events.com';
+    const isFiltered = selectedCategory !== 'All';
+    const categoryName = isFiltered ? selectedCategory : '';
+
+    const title = isFiltered
+      ? `${categoryName} Articles | Kids Activities Blog | Gema Events`
+      : 'Kids Activities Blog - Tips, Ideas & Event Guides | Gema Events';
+
+    const description = isFiltered
+      ? `Discover ${categoryName.toLowerCase()} articles about kids activities, events, and family fun in the UAE. Expert tips and guides for parents.`
+      : 'Explore our comprehensive blog with expert tips, activity ideas, and guides for kids events and family activities in the UAE. Stay informed with the latest parenting insights.';
+
+    const keywords = isFiltered
+      ? ['kids activities blog', categoryName.toLowerCase(), 'UAE family activities', 'parenting tips', 'children events']
+      : ['kids activities blog', 'parenting tips', 'family activities', 'UAE events', 'children activities', 'kids events'];
+
+    const canonicalUrl = isFiltered
+      ? `${baseUrl}/blog?category=${encodeURIComponent(categoryName)}`
+      : `${baseUrl}/blog`;
+
+    const breadcrumbs = [
+      { name: 'Home', url: '/' },
+      { name: 'Blog', url: '/blog' }
+    ];
+
+    if (isFiltered) {
+      breadcrumbs.push({ name: categoryName, url: `/blog?category=${encodeURIComponent(categoryName)}` });
+    }
+
+    // Generate structured data for blog listing
+    const structuredData = {
+      '@context': 'https://schema.org',
+      '@type': 'Blog',
+      name: 'Gema Events Blog',
+      description: 'Expert tips and guides for kids activities, events, and family fun',
+      url: `${baseUrl}/blog`,
+      publisher: {
+        '@type': 'Organization',
+        name: 'Gema Events',
+        url: baseUrl,
+        logo: {
+          '@type': 'ImageObject',
+          url: `${baseUrl}/assets/images/logo.png`
+        }
+      },
+      ...(blogs.length > 0 && {
+        blogPost: blogs.slice(0, 5).map(blog => ({
+          '@type': 'BlogPosting',
+          headline: blog.title,
+          description: blog.excerpt,
+          url: `${baseUrl}/blog/${blog.slug}`,
+          datePublished: blog.publishedAt || blog.createdAt,
+          dateModified: blog.updatedAt,
+          author: {
+            '@type': 'Person',
+            name: blog.author?.name || 'Gema Events Team'
+          },
+          image: blog.featuredImage,
+          wordCount: blog.content ? blog.content.split(' ').length : undefined
+        }))
+      })
+    };
+
+    return {
+      title,
+      description,
+      keywords,
+      canonicalUrl,
+      breadcrumbs,
+      structuredData
+    };
+  };
+
+  const seoData = generateSEOData();
+
   return (
     <motion.div
       initial={{ opacity: 0 }}
@@ -103,10 +180,14 @@ const BlogPage: React.FC = () => {
       exit={{ opacity: 0 }}
       className="py-8 px-4 sm:px-6 lg:px-8 max-w-screen-xl mx-auto"
     >
-      <Helmet>
-        <title>Blog | Kidzapp</title>
-        <meta name="description" content="Read our latest articles about kids activities, events, and parenting tips." />
-      </Helmet>
+      <SEO
+        title={seoData.title}
+        description={seoData.description}
+        keywords={seoData.keywords}
+        canonicalUrl={seoData.canonicalUrl}
+        breadcrumbs={seoData.breadcrumbs}
+        structuredData={seoData.structuredData}
+      />
 
       {/* Back button */}
       <div className="mb-8">

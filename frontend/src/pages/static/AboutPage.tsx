@@ -1,6 +1,7 @@
 import React from 'react';
 import { motion } from 'framer-motion';
 import { FiUsers, FiCalendar, FiMapPin, FiAward, FiHeart } from 'react-icons/fi';
+import SEO from '@/components/common/SEO';
 
 const AboutPage: React.FC = () => {
   // Animation variants
@@ -25,8 +26,34 @@ const AboutPage: React.FC = () => {
     }
   };
 
+  const breadcrumbs = [
+    { name: 'Home', url: '/' },
+    { name: 'About', url: '/about' }
+  ];
+
   return (
-    <div className="container mx-auto px-4 py-12">
+    <>
+      <SEO
+        title="About Gema Events - Leading Kids Activities Platform in UAE"
+        description="Learn about Gema Events, the UAE's trusted platform for discovering and booking amazing kids activities, educational programs, and family events. Our mission is to create memorable experiences for children."
+        keywords={['about gema events', 'kids activities UAE', 'family events', 'children entertainment', 'about us']}
+        breadcrumbs={breadcrumbs}
+        structuredData={{
+          '@context': 'https://schema.org',
+          '@type': 'AboutPage',
+          name: 'About Gema Events',
+          description: 'Learn about Gema Events, the UAE\'s leading platform for kids activities and family events.',
+          mainEntity: {
+            '@type': 'Organization',
+            name: 'Gema Events',
+            description: 'Leading platform for kids activities and family events in the UAE',
+            foundingDate: '2023',
+            areaServed: 'United Arab Emirates',
+            serviceType: ['Event Management', 'Kids Activities', 'Educational Programs', 'Family Entertainment']
+          }
+        }}
+      />
+      <div className="container mx-auto px-4 py-12">
       <motion.div 
         className="max-w-4xl mx-auto"
         initial="hidden"
@@ -196,6 +223,7 @@ const AboutPage: React.FC = () => {
         </motion.div>
       </motion.div>
     </div>
+    </>
   );
 };
 

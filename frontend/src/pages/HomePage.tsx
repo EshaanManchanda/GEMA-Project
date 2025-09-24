@@ -13,6 +13,7 @@ import eventsAPI from '../services/api/eventsAPI';
 import categoriesAPI from '../services/api/categoriesAPI';
 import ReviewCarouselSwiper from '@/components/client/ReviewCarouselKeen';
 import FeaturedBlogsSection from '@/components/sections/FeaturedBlogsSection';
+import { HomeSEO } from '@/components/common/SEO';
 import { Event } from '../types/event';
 import { Review } from '../types/review';
 import { getPlaceholderUrl, handleImageError } from '../utils/placeholderImage';
@@ -732,6 +733,7 @@ const HomePage: React.FC = () => {
   
   return (
     <PageTransition>
+      <HomeSEO />
       <div className="w-full bg-gray-50">
         {usingMockData && (
           <SlideIn direction="right">

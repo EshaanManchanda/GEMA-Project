@@ -9,6 +9,14 @@ export interface ICollection extends Document {
   events: mongoose.Types.ObjectId[]; // Associated event IDs
   isActive: boolean;
   sortOrder: number; // For ordering collections
+  slug: string; // URL-friendly slug
+  seo: {
+    metaTitle?: string;
+    metaDescription?: string;
+    metaKeywords?: string[];
+    canonicalUrl?: string;
+  };
+  featuredImage?: string;
   createdAt: Date;
   updatedAt: Date;
 
@@ -56,6 +64,41 @@ const CollectionSchema: Schema<ICollection> = new Schema({
   sortOrder: {
     type: Number,
     default: 0
+  },
+  slug: {
+    type: String,
+    trim: true,
+    lowercase: true,
+    match: [/^[a-z0-9-]+$/, 'Slug can only contain lowercase letters, numbers, and hyphens'],
+  },
+  seo: {
+    metaTitle: {
+      type: String,
+      trim: true,
+      maxlength: [70, 'Meta title cannot exceed 70 characters'],
+    },
+    metaDescription: {
+      type: String,
+      trim: true,
+      maxlength: [160, 'Meta description cannot exceed 160 characters'],
+    },
+    metaKeywords: {
+      type: [String],
+      validate: {
+        validator: function(v: string[]) {
+          return v.length <= 10;
+        },
+        message: 'Cannot have more than 10 meta keywords',
+      },
+    },
+    canonicalUrl: {
+      type: String,
+      trim: true,
+    },
+  },
+  featuredImage: {
+    type: String,
+    trim: true,
   }
 }, {
   timestamps: true,
@@ -64,6 +107,7 @@ const CollectionSchema: Schema<ICollection> = new Schema({
 });
 
 // Indexes for better performance
+CollectionSchema.index({ slug: 1 }, { unique: true, sparse: true });
 CollectionSchema.index({ isActive: 1, sortOrder: 1 });
 CollectionSchema.index({ title: 'text', description: 'text' });
 
@@ -85,8 +129,25 @@ CollectionSchema.methods.getEventCount = async function(): Promise<number> {
   });
 };
 
-// Pre-save middleware to update count display
+// Pre-save middleware to update count display and generate slug
 CollectionSchema.pre('save', async function(next) {
+  // Generate slug from title if not provided
+  if (this.isModified('title') && !this.slug) {
+    this.slug = this.title
+      .toLowerCase()
+      .replace(/[^a-z0-9]+/g, '-')
+      .replace(/^-|-$/g, '');
+  }
+
+  // Auto-generate SEO fields if not provided
+  if (!this.seo.metaTitle) {
+    this.seo.metaTitle = this.title.length > 70 ? `${this.title.substring(0, 67)}...` : this.title;
+  }
+
+  if (!this.seo.metaDescription) {
+    this.seo.metaDescription = this.description.length > 160 ? `${this.description.substring(0, 157)}...` : this.description;
+  }
+
   if (this.isModified('events')) {
     const eventCount = await this.getEventCount();
     this.count = `${eventCount}+ activities`;

@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import { motion } from 'framer-motion';
+import SEO from '@/components/common/SEO';
 
 interface Vendor {
   id: number;
@@ -152,9 +153,21 @@ const VendorsPage: React.FC = () => {
     );
   }
 
+  const breadcrumbs = [
+    { name: 'Home', url: '/' },
+    { name: 'Vendors', url: '/vendors' }
+  ];
+
   return (
-    <div className="container mx-auto px-4 py-8">
-      {usingMockData && (
+    <>
+      <SEO
+        title="Event Vendors - Kids Activities Organizers | Gema Events"
+        description="Discover trusted event vendors and organizers for kids activities in the UAE. Find professional service providers for birthday parties, educational programs, and family events."
+        keywords={['event vendors', 'kids activities organizers', 'event planners UAE', 'children event services', 'party organizers']}
+        breadcrumbs={breadcrumbs}
+      />
+      <div className="container mx-auto px-4 py-8">
+        {usingMockData && (
         <div className="bg-yellow-100 border-l-4 border-yellow-500 text-yellow-700 p-4 mb-6" role="alert">
           <p className="font-bold">Note</p>
           <p>Using mock data. In a production environment, this would be fetched from a backend API.</p>
@@ -264,6 +277,7 @@ const VendorsPage: React.FC = () => {
         </div>
       )}
     </div>
+    </>
   );
 };
 

@@ -4,6 +4,7 @@ import { FaArrowLeft, FaChevronRight, FaMapMarkerAlt, FaCalendarAlt, FaUsers, Fa
 import collectionsAPI, { Collection } from '../services/api/collectionsAPI';
 import { getPlaceholderUrl } from '../utils/placeholderImage';
 import { format } from 'date-fns';
+import { CollectionSEO } from '@/components/common/SEO';
 
 interface Event {
   _id: string;
@@ -171,8 +172,16 @@ const CollectionDetailPage: React.FC = () => {
     );
   }
 
+  const breadcrumbs = collection ? [
+    { name: 'Home', url: '/' },
+    { name: 'Collections', url: '/collections' },
+    { name: collection.title, url: `/collections/${id}` }
+  ] : [];
+
   return (
-    <div className="min-h-screen bg-gray-50">
+    <>
+      {collection && <CollectionSEO collection={collection} breadcrumbs={breadcrumbs} />}
+      <div className="min-h-screen bg-gray-50">
       {/* Header */}
       <div className="bg-white shadow-sm border-b">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
@@ -349,6 +358,7 @@ const CollectionDetailPage: React.FC = () => {
         </button>
       </div>
     </div>
+    </>
   );
 };
 

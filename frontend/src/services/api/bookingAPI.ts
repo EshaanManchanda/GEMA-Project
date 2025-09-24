@@ -182,18 +182,25 @@ const bookingAPI = {
     }
   },
 
-  // Payment methods
+  // Payment methods - initiate booking with payment intent
   createPaymentIntent: async (params: {
     eventId: string;
     participants: number;
+    dateScheduleId?: string;
     couponCode?: string;
   }) => {
     try {
-      const response = await ApiService.post('/payments/create-intent', params);
-      logApiResponse('POST /payments/create-intent', response);
+      const bookingParams = {
+        eventId: params.eventId,
+        dateScheduleId: params.dateScheduleId,
+        seats: params.participants,
+        paymentMethod: 'stripe'
+      };
+      const response = await ApiService.post('/bookings/initiate', bookingParams);
+      logApiResponse('POST /bookings/initiate', response);
       return extractApiData(response);
     } catch (error) {
-      logApiResponse('POST /payments/create-intent', null, error);
+      logApiResponse('POST /bookings/initiate', null, error);
       throw error;
     }
   },
