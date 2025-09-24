@@ -76,6 +76,8 @@ export default defineConfig({
     sourcemap: false,
     target: 'es2015',
     minify: 'esbuild',
+    // Force fresh build - disable caching
+    emptyOutDir: true,
     rollupOptions: {
       output: {
         manualChunks: {
@@ -126,9 +128,10 @@ export default defineConfig({
         },
         chunkFileNames: (chunkInfo) => {
           const facadeModuleId = chunkInfo.facadeModuleId ? chunkInfo.facadeModuleId.split('/').pop() : 'chunk';
-          return `js/[name]-[hash].js`;
+          const buildId = Date.now().toString(36);
+          return `js/[name]-[hash]-${buildId}.js`;
         },
-        entryFileNames: 'js/[name]-[hash].js',
+        entryFileNames: `js/[name]-[hash]-${Date.now().toString(36)}.js`,
         assetFileNames: (assetInfo) => {
           const info = assetInfo.name.split('.');
           const ext = info[info.length - 1];
@@ -169,6 +172,10 @@ export default defineConfig({
     exclude: ['@zxing/library']
   },
   define: {
-    __APP_VERSION__: JSON.stringify(process.env.npm_package_version)
-  }
+    __APP_VERSION__: JSON.stringify(process.env.npm_package_version),
+    __BUILD_TIME__: JSON.stringify(new Date().toISOString()),
+    __CACHE_BUST__: JSON.stringify(Date.now().toString(36))
+  },
+  // Force Vercel to do fresh build
+  clearScreen: false
 });

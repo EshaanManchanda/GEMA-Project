@@ -14,6 +14,9 @@ if (typeof window !== 'undefined') {
   console.log('- Final API_BASE_URL:', API_BASE_URL);
   console.log('- Environment Mode:', import.meta.env.MODE);
   console.log('- Is Dev:', import.meta.env.DEV);
+  console.log('- Build Time:', __BUILD_TIME__);
+  console.log('- Cache Bust ID:', __CACHE_BUST__);
+  console.log('- Window Origin:', window.location.origin);
 }
 
 // Retry configuration
