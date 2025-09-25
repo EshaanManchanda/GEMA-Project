@@ -37,31 +37,93 @@ import 'whatwg-fetch';
   // Extra defensive measure: ensure axios utils.global will find these APIs
   console.log('[Polyfill Fix] Populated fetch APIs on all global objects');
 
-  // AXIOS SPECIFIC FIX: Patch axios global detection
-  // Create a safe global object that axios can destructure from
-  const safeGlobal = {
-    ...globalThis,
-    Request: Request,
-    Response: Response,
-    Headers: Headers,
-    fetch: fetch,
-    ReadableStream: typeof ReadableStream !== 'undefined' ? ReadableStream : undefined,
-    TextEncoder: typeof TextEncoder !== 'undefined' ? TextEncoder : undefined,
+  // AXIOS SPECIFIC FIX: Create a bulletproof global object for axios destructuring
+  const createSafeGlobal = () => {
+    // Determine which global object axios will use (mimicking axios utils.js logic)
+    let axiosGlobal;
+    if (typeof globalThis !== "undefined") {
+      axiosGlobal = globalThis;
+    } else if (typeof self !== "undefined") {
+      axiosGlobal = self;
+    } else if (typeof window !== 'undefined') {
+      axiosGlobal = window;
+    } else {
+      axiosGlobal = global;
+    }
+
+    // Ensure the exact properties axios expects are enumerable and accessible
+    const requiredAPIs = {
+      fetch: fetch,
+      Request: Request,
+      Response: Response,
+      Headers: Headers,
+      ReadableStream: typeof ReadableStream !== 'undefined' ? ReadableStream : undefined,
+      TextEncoder: typeof TextEncoder !== 'undefined' ? TextEncoder : undefined,
+    };
+
+    // Use defineProperty to ensure these are enumerable (crucial for destructuring)
+    Object.keys(requiredAPIs).forEach(apiName => {
+      const apiValue = requiredAPIs[apiName];
+      if (apiValue && typeof apiValue !== 'undefined') {
+        try {
+          Object.defineProperty(axiosGlobal, apiName, {
+            value: apiValue,
+            writable: true,
+            enumerable: true,  // CRITICAL: Must be enumerable for destructuring to work
+            configurable: true
+          });
+        } catch (e) {
+          // Fallback for environments where defineProperty fails
+          axiosGlobal[apiName] = apiValue;
+        }
+      }
+    });
+
+    return axiosGlobal;
   };
 
-  // Override axios utils detection if possible
-  try {
-    if (typeof globalThis !== 'undefined') {
-      Object.keys(safeGlobal).forEach(key => {
-        if (safeGlobal[key] && typeof globalThis[key] === 'undefined') {
-          globalThis[key] = safeGlobal[key];
-        }
+  const axiosGlobal = createSafeGlobal();
+  console.log('[Axios Fix] Prepared global object for axios with enumerable APIs:', {
+    hasRequest: 'Request' in axiosGlobal,
+    hasResponse: 'Response' in axiosGlobal,
+    requestEnumerable: Object.propertyIsEnumerable.call(axiosGlobal, 'Request'),
+    responseEnumerable: Object.propertyIsEnumerable.call(axiosGlobal, 'Response')
+  });
+})();
+
+// ULTIMATE AXIOS DESTRUCTURING FIX
+// Override any potential axios utils.global before axios can load
+try {
+  // Ensure we create the most compatible global reference for axios
+  const ultimateGlobal = (() => {
+    if (typeof globalThis !== "undefined") return globalThis;
+    return typeof self !== "undefined" ? self : (typeof window !== 'undefined' ? window : global);
+  })();
+
+  // Guarantee these properties exist and are enumerable before any module can destructure them
+  const ensureEnumerableAPI = (obj: any, name: string, api: any) => {
+    if (obj && api && typeof api !== 'undefined') {
+      // Delete first to ensure we can redefine
+      delete obj[name];
+      // Define as enumerable
+      Object.defineProperty(obj, name, {
+        value: api,
+        writable: true,
+        enumerable: true,
+        configurable: true
       });
     }
-  } catch (e) {
-    console.warn('[Axios Fix] Could not patch global object:', e);
-  }
-})();
+  };
+
+  ensureEnumerableAPI(ultimateGlobal, 'fetch', fetch);
+  ensureEnumerableAPI(ultimateGlobal, 'Request', Request);
+  ensureEnumerableAPI(ultimateGlobal, 'Response', Response);
+  ensureEnumerableAPI(ultimateGlobal, 'Headers', Headers);
+
+  console.log('[Ultimate Fix] Axios destructuring should now work - APIs are enumerable');
+} catch (e) {
+  console.error('[Ultimate Fix] Failed to apply axios destructuring fix:', e);
+}
 
 import React from 'react';
 import ReactDOM from 'react-dom/client';
