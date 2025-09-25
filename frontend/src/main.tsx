@@ -1,30 +1,67 @@
-// Import whatwg-fetch polyfill first and ensure it's available
+// CRITICAL: Import whatwg-fetch polyfill first and ensure APIs are immediately available
 import 'whatwg-fetch';
 
-// Immediately ensure fetch APIs are available globally after import
-// This must happen synchronously before any other imports
-if (typeof globalThis !== 'undefined') {
-  globalThis.fetch = globalThis.fetch || fetch;
-  globalThis.Request = globalThis.Request || Request;
-  globalThis.Response = globalThis.Response || Response;
-  globalThis.Headers = globalThis.Headers || Headers;
+// AXIOS FIX: Aggressively populate ALL possible global objects before any other code can run
+// This is specifically to prevent axios fetch adapter from destructuring undefined objects
+(() => {
+  const ensureAPI = (globalObj: any, apiName: string, api: any) => {
+    if (api && typeof api !== 'undefined') {
+      try {
+        Object.defineProperty(globalObj, apiName, {
+          value: api,
+          writable: true,
+          enumerable: true,
+          configurable: true
+        });
+      } catch (e) {
+        // Fallback for read-only objects
+        globalObj[apiName] = api;
+      }
+    }
+  };
 
-  // Also ensure on global object for compatibility
-  if (typeof global !== 'undefined') {
-    global.fetch = global.fetch || fetch;
-    global.Request = global.Request || Request;
-    global.Response = global.Response || Response;
-    global.Headers = global.Headers || Headers;
-  }
+  const populateGlobal = (obj: any) => {
+    if (!obj) return;
+    ensureAPI(obj, 'fetch', fetch);
+    ensureAPI(obj, 'Request', Request);
+    ensureAPI(obj, 'Response', Response);
+    ensureAPI(obj, 'Headers', Headers);
+  };
 
-  // Also ensure on window object
-  if (typeof window !== 'undefined') {
-    window.fetch = window.fetch || fetch;
-    window.Request = window.Request || Request;
-    window.Response = window.Response || Response;
-    window.Headers = window.Headers || Headers;
+  // Populate ALL possible global objects that axios might check
+  if (typeof globalThis !== 'undefined') populateGlobal(globalThis);
+  if (typeof window !== 'undefined') populateGlobal(window);
+  if (typeof global !== 'undefined') populateGlobal(global);
+  if (typeof self !== 'undefined') populateGlobal(self);
+
+  // Extra defensive measure: ensure axios utils.global will find these APIs
+  console.log('[Polyfill Fix] Populated fetch APIs on all global objects');
+
+  // AXIOS SPECIFIC FIX: Patch axios global detection
+  // Create a safe global object that axios can destructure from
+  const safeGlobal = {
+    ...globalThis,
+    Request: Request,
+    Response: Response,
+    Headers: Headers,
+    fetch: fetch,
+    ReadableStream: typeof ReadableStream !== 'undefined' ? ReadableStream : undefined,
+    TextEncoder: typeof TextEncoder !== 'undefined' ? TextEncoder : undefined,
+  };
+
+  // Override axios utils detection if possible
+  try {
+    if (typeof globalThis !== 'undefined') {
+      Object.keys(safeGlobal).forEach(key => {
+        if (safeGlobal[key] && typeof globalThis[key] === 'undefined') {
+          globalThis[key] = safeGlobal[key];
+        }
+      });
+    }
+  } catch (e) {
+    console.warn('[Axios Fix] Could not patch global object:', e);
   }
-}
+})();
 
 import React from 'react';
 import ReactDOM from 'react-dom/client';
@@ -105,50 +142,47 @@ const toastOptions = {
 // Initialize PWA when app loads
 initializePWA().catch(console.error);
 
-// Final verification and emergency fallbacks before React bootstraps
+// Final verification and debug logging before React bootstraps
 const ensureFetchAPIs = () => {
+  const checkGlobal = (obj: any, name: string) => {
+    if (!obj) return { available: false, apis: {} };
+    return {
+      available: true,
+      apis: {
+        fetch: typeof obj.fetch !== 'undefined',
+        Request: typeof obj.Request !== 'undefined',
+        Response: typeof obj.Response !== 'undefined',
+        Headers: typeof obj.Headers !== 'undefined'
+      }
+    };
+  };
+
+  // Debug: Check all global objects
+  const globalStatus = {
+    globalThis: checkGlobal(typeof globalThis !== 'undefined' ? globalThis : null, 'globalThis'),
+    window: checkGlobal(typeof window !== 'undefined' ? window : null, 'window'),
+    global: checkGlobal(typeof global !== 'undefined' ? global : null, 'global'),
+    self: checkGlobal(typeof self !== 'undefined' ? self : null, 'self')
+  };
+
+  console.log('[Debug] Global object status before React bootstrap:', globalStatus);
+
   const missingApis = [];
-
-  if (typeof fetch === 'undefined') {
-    missingApis.push('fetch');
-    console.error('[Emergency] fetch API still undefined after polyfill loading');
-  }
-
-  if (typeof Request === 'undefined') {
-    missingApis.push('Request');
-    console.error('[Emergency] Request API still undefined after polyfill loading');
-    // Emergency fallback to prevent destructuring errors
-    globalThis.Request = globalThis.Request || function() {
-      throw new Error('Request API not available');
-    };
-    if (typeof global !== 'undefined') global.Request = globalThis.Request;
-    if (typeof window !== 'undefined') window.Request = globalThis.Request;
-  }
-
-  if (typeof Response === 'undefined') {
-    missingApis.push('Response');
-    console.error('[Emergency] Response API still undefined after polyfill loading');
-    globalThis.Response = globalThis.Response || function() {
-      throw new Error('Response API not available');
-    };
-    if (typeof global !== 'undefined') global.Response = globalThis.Response;
-    if (typeof window !== 'undefined') window.Response = globalThis.Response;
-  }
-
-  if (typeof Headers === 'undefined') {
-    missingApis.push('Headers');
-    console.error('[Emergency] Headers API still undefined after polyfill loading');
-    globalThis.Headers = globalThis.Headers || function() {
-      throw new Error('Headers API not available');
-    };
-    if (typeof global !== 'undefined') global.Headers = globalThis.Headers;
-    if (typeof window !== 'undefined') window.Headers = globalThis.Headers;
-  }
+  if (typeof fetch === 'undefined') missingApis.push('fetch');
+  if (typeof Request === 'undefined') missingApis.push('Request');
+  if (typeof Response === 'undefined') missingApis.push('Response');
+  if (typeof Headers === 'undefined') missingApis.push('Headers');
 
   if (missingApis.length === 0) {
-    console.log('[Bootstrap] All fetch APIs verified and available');
+    console.log('[Bootstrap] ✅ All fetch APIs verified and available');
   } else {
-    console.warn('[Bootstrap] Some APIs required emergency fallbacks:', missingApis);
+    console.error('[Bootstrap] ❌ Missing APIs:', missingApis);
+    // Emergency fallbacks
+    missingApis.forEach(api => {
+      const fallback = function() { throw new Error(`${api} API not available`); };
+      if (typeof globalThis !== 'undefined') globalThis[api] = globalThis[api] || fallback;
+      if (typeof window !== 'undefined') window[api] = window[api] || fallback;
+    });
   }
 };
 
