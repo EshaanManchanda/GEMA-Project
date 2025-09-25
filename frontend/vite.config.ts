@@ -252,10 +252,9 @@ export default defineConfig({
     __CACHE_BUST__: JSON.stringify(Date.now().toString(36)),
     __VERCEL_ENV__: JSON.stringify(process.env.VERCEL_ENV || 'development'),
     __VERCEL_URL__: JSON.stringify(process.env.VERCEL_URL || 'localhost'),
+    // Ensure global points to globalThis for polyfill compatibility
     global: 'globalThis',
     'process.env.NODE_ENV': JSON.stringify(process.env.NODE_ENV || 'development'),
-    // Remove conflicting typeof definitions - let polyfills handle them naturally
-    // Prevent Node.js globals from being undefined
     'process.env': '{}',
     'process.platform': JSON.stringify('browser'),
     'process.version': JSON.stringify('v18.0.0')

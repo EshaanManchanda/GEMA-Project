@@ -2,11 +2,28 @@
 import 'whatwg-fetch';
 
 // Immediately ensure fetch APIs are available globally after import
+// This must happen synchronously before any other imports
 if (typeof globalThis !== 'undefined') {
   globalThis.fetch = globalThis.fetch || fetch;
   globalThis.Request = globalThis.Request || Request;
   globalThis.Response = globalThis.Response || Response;
   globalThis.Headers = globalThis.Headers || Headers;
+
+  // Also ensure on global object for compatibility
+  if (typeof global !== 'undefined') {
+    global.fetch = global.fetch || fetch;
+    global.Request = global.Request || Request;
+    global.Response = global.Response || Response;
+    global.Headers = global.Headers || Headers;
+  }
+
+  // Also ensure on window object
+  if (typeof window !== 'undefined') {
+    window.fetch = window.fetch || fetch;
+    window.Request = window.Request || Request;
+    window.Response = window.Response || Response;
+    window.Headers = window.Headers || Headers;
+  }
 }
 
 import React from 'react';
@@ -88,10 +105,54 @@ const toastOptions = {
 // Initialize PWA when app loads
 initializePWA().catch(console.error);
 
-// Verify all fetch APIs are available before React bootstraps
-if (typeof fetch === 'undefined' || typeof Request === 'undefined' || typeof Response === 'undefined' || typeof Headers === 'undefined') {
-  console.error('[Bootstrap Error] Some fetch APIs are missing after polyfill loading');
-}
+// Final verification and emergency fallbacks before React bootstraps
+const ensureFetchAPIs = () => {
+  const missingApis = [];
+
+  if (typeof fetch === 'undefined') {
+    missingApis.push('fetch');
+    console.error('[Emergency] fetch API still undefined after polyfill loading');
+  }
+
+  if (typeof Request === 'undefined') {
+    missingApis.push('Request');
+    console.error('[Emergency] Request API still undefined after polyfill loading');
+    // Emergency fallback to prevent destructuring errors
+    globalThis.Request = globalThis.Request || function() {
+      throw new Error('Request API not available');
+    };
+    if (typeof global !== 'undefined') global.Request = globalThis.Request;
+    if (typeof window !== 'undefined') window.Request = globalThis.Request;
+  }
+
+  if (typeof Response === 'undefined') {
+    missingApis.push('Response');
+    console.error('[Emergency] Response API still undefined after polyfill loading');
+    globalThis.Response = globalThis.Response || function() {
+      throw new Error('Response API not available');
+    };
+    if (typeof global !== 'undefined') global.Response = globalThis.Response;
+    if (typeof window !== 'undefined') window.Response = globalThis.Response;
+  }
+
+  if (typeof Headers === 'undefined') {
+    missingApis.push('Headers');
+    console.error('[Emergency] Headers API still undefined after polyfill loading');
+    globalThis.Headers = globalThis.Headers || function() {
+      throw new Error('Headers API not available');
+    };
+    if (typeof global !== 'undefined') global.Headers = globalThis.Headers;
+    if (typeof window !== 'undefined') window.Headers = globalThis.Headers;
+  }
+
+  if (missingApis.length === 0) {
+    console.log('[Bootstrap] All fetch APIs verified and available');
+  } else {
+    console.warn('[Bootstrap] Some APIs required emergency fallbacks:', missingApis);
+  }
+};
+
+ensureFetchAPIs();
 
 ReactDOM.createRoot(document.getElementById('root')!).render(
   <React.StrictMode>
