@@ -6,7 +6,7 @@ export const HoverCard: React.FC<{
   children: ReactNode;
   className?: string;
 }> = ({ children, className = '' }) => {
-  const [props, set] = useSpring(() => ({
+  const [props, api] = useSpring(() => ({
     transform: 'scale(1)',
     boxShadow: '0 4px 6px rgba(0, 0, 0, 0.1)',
     config: config.gentle
@@ -16,13 +16,13 @@ export const HoverCard: React.FC<{
     <animated.div
       className={className}
       style={props}
-      onMouseEnter={() => set({ 
-        transform: 'scale(1.03)', 
-        boxShadow: '0 10px 20px rgba(0, 0, 0, 0.15)' 
+      onMouseEnter={() => api.start({
+        transform: 'scale(1.03)',
+        boxShadow: '0 10px 20px rgba(0, 0, 0, 0.15)'
       })}
-      onMouseLeave={() => set({ 
-        transform: 'scale(1)', 
-        boxShadow: '0 4px 6px rgba(0, 0, 0, 0.1)' 
+      onMouseLeave={() => api.start({
+        transform: 'scale(1)',
+        boxShadow: '0 4px 6px rgba(0, 0, 0, 0.1)'
       })}
     >
       {children}
@@ -36,7 +36,7 @@ export const AnimatedButton: React.FC<{
   onClick?: () => void;
   className?: string;
 }> = ({ children, onClick, className = '' }) => {
-  const [props, set] = useSpring(() => ({
+  const [props, api] = useSpring(() => ({
     transform: 'scale(1)',
     config: { tension: 300, friction: 10 }
   }));
@@ -46,10 +46,10 @@ export const AnimatedButton: React.FC<{
       className={className}
       style={props}
       onClick={onClick}
-      onMouseEnter={() => set({ transform: 'scale(1.05)' })}
-      onMouseLeave={() => set({ transform: 'scale(1)' })}
-      onMouseDown={() => set({ transform: 'scale(0.95)' })}
-      onMouseUp={() => set({ transform: 'scale(1.05)' })}
+      onMouseEnter={() => api.start({ transform: 'scale(1.05)' })}
+      onMouseLeave={() => api.start({ transform: 'scale(1)' })}
+      onMouseDown={() => api.start({ transform: 'scale(0.95)' })}
+      onMouseUp={() => api.start({ transform: 'scale(1.05)' })}
     >
       {children}
     </animated.button>

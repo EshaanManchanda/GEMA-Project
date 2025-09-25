@@ -142,7 +142,7 @@ export default defineConfig({
       },
       output: {
         manualChunks: {
-          // Polyfills FIRST - loaded before other chunks
+          // Polyfills FIRST - ensure they load before any other code
           polyfills: ['whatwg-fetch'],
 
           // Core React
@@ -243,7 +243,8 @@ export default defineConfig({
       'react-hook-form'
     ],
     exclude: ['@zxing/library'],
-    force: true
+    force: true,
+    entries: ['src/main.tsx']
   },
   define: {
     __APP_VERSION__: JSON.stringify(process.env.npm_package_version),

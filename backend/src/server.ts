@@ -30,14 +30,18 @@ app.use(cors({
     config.frontendUrl,
     'http://localhost:3000',
     'http://localhost:3001',
+    'http://localhost:3002',
     'http://localhost:4200',
     'http://localhost:4201',
     /\.vercel\.app$/,  // Allow all Vercel app domains
+    'https://kidrove-frontend.vercel.app', // Current frontend Vercel URL
     'https://gema-project-bnp5xge4w-eshaanmanchandas-projects.vercel.app'
   ],
   credentials: true,
   methods: ['GET', 'POST', 'PUT', 'DELETE', 'PATCH', 'OPTIONS'],
-  allowedHeaders: ['Content-Type', 'Authorization']
+  allowedHeaders: ['Content-Type', 'Authorization', 'X-Requested-With'],
+  preflightContinue: false,
+  optionsSuccessStatus: 200
 }));
 app.use(mongoSanitize());
 app.use(hpp());
