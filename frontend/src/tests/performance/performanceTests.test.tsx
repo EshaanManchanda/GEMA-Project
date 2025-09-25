@@ -8,7 +8,8 @@ import { render, screen, waitFor } from '@testing-library/react';
 import { Provider } from 'react-redux';
 import { BrowserRouter } from 'react-router-dom';
 import { store } from '../../store';
-import { performance } from 'perf_hooks';
+// Use browser-compatible performance API instead of Node.js perf_hooks
+const performance = globalThis.performance || window.performance;
 
 // Import components for testing
 import UserManagement from '../../components/admin/UserManagement';

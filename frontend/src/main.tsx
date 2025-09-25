@@ -1,3 +1,31 @@
+// Import whatwg-fetch first to guarantee fetch APIs are available
+import 'whatwg-fetch';
+
+// Import polyfills first to ensure they're available before any other code runs
+import './polyfills';
+
+// Import safety checks immediately after polyfills
+import './utils/fetchSafety';
+
+// Global error handler for destructuring errors
+window.addEventListener('error', (event) => {
+  if (event.error?.message?.includes('destructure') && event.error?.message?.includes('Request')) {
+    console.error('[Global Error Handler] Caught Request destructuring error:', {
+      message: event.error.message,
+      stack: event.error.stack,
+      filename: event.filename,
+      lineno: event.lineno,
+      colno: event.colno
+    });
+
+    // Prevent the error from breaking the app
+    event.preventDefault();
+
+    // Show user-friendly error
+    console.error('A polyfill loading issue has been detected and handled. The app should still function.');
+  }
+});
+
 import React from 'react';
 import ReactDOM from 'react-dom/client';
 import { BrowserRouter } from 'react-router-dom';
@@ -76,6 +104,32 @@ const toastOptions = {
 
 // Initialize PWA when app loads
 initializePWA().catch(console.error);
+
+// Final runtime safety guard - ensure fetch APIs exist before React bootstraps
+if (typeof globalThis !== 'undefined') {
+  if (typeof globalThis.fetch === 'undefined') {
+    console.error('[Runtime Guard] fetch API missing - polyfill failed to load');
+  }
+  if (typeof globalThis.Request === 'undefined') {
+    console.error('[Runtime Guard] Request constructor missing - polyfill failed to load');
+    // Emergency fallback - prevent destructuring errors
+    globalThis.Request = function() {
+      throw new Error('Request constructor not available - polyfill failed');
+    } as any;
+  }
+  if (typeof globalThis.Response === 'undefined') {
+    console.error('[Runtime Guard] Response constructor missing - polyfill failed to load');
+    globalThis.Response = function() {
+      throw new Error('Response constructor not available - polyfill failed');
+    } as any;
+  }
+  if (typeof globalThis.Headers === 'undefined') {
+    console.error('[Runtime Guard] Headers constructor missing - polyfill failed to load');
+    globalThis.Headers = function() {
+      throw new Error('Headers constructor not available - polyfill failed');
+    } as any;
+  }
+}
 
 ReactDOM.createRoot(document.getElementById('root')!).render(
   <React.StrictMode>

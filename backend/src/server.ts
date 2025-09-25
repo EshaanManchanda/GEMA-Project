@@ -88,6 +88,22 @@ app.use('/api/health', healthRoutes);
 // Also keep standalone health routes for direct access
 app.use('/health', healthRoutes);
 
+// Root route handler
+app.get('/', (req: Request, res: Response) => {
+  res.status(200).json({
+    message: 'Welcome to the Gema Backend API',
+    version: '1.0.0',
+    status: 'running',
+    endpoints: {
+      api: '/api',
+      health: '/health',
+      sitemap: '/sitemap.xml',
+      robots: '/robots.txt'
+    },
+    documentation: 'API endpoints are available under /api/'
+  });
+});
+
 // 404 handler
 app.use(notFound);
 

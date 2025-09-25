@@ -89,6 +89,23 @@
       ]
     }
     </script>
+
+    <!-- Polyfill Status Detection - Local polyfills will be loaded via bundled JavaScript -->
+    <script>
+      // Initialize polyfill status tracking
+      window.__POLYFILL_STATUS__ = {
+        fetch: typeof fetch !== 'undefined',
+        request: typeof Request !== 'undefined',
+        response: typeof Response !== 'undefined',
+        headers: typeof Headers !== 'undefined',
+        source: 'native' // Will be updated to 'bundled' if polyfills are applied
+      };
+
+      console.log('[Polyfills] Native browser support detected:', window.__POLYFILL_STATUS__);
+
+      // Note: Polyfills will be loaded via bundled JavaScript (whatwg-fetch)
+      // This ensures reliable loading without CDN dependencies
+    </script>
   </head>
   <body>
     <div id="root"></div>
