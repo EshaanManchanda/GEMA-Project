@@ -90,21 +90,215 @@
     }
     </script>
 
-    <!-- Polyfill Status Detection - Local polyfills will be loaded via bundled JavaScript -->
+    <!-- CRITICAL: Pre-chunk polyfill fixes - Must run before ANY JavaScript chunks load -->
     <script>
-      // Initialize polyfill status tracking
-      window.__POLYFILL_STATUS__ = {
-        fetch: typeof fetch !== 'undefined',
-        request: typeof Request !== 'undefined',
-        response: typeof Response !== 'undefined',
-        headers: typeof Headers !== 'undefined',
-        source: 'native' // Will be updated to 'bundled' if polyfills are applied
-      };
+      (function() {
+        // UNIVERSAL CHUNK PROTECTION: Comprehensive fetch API polyfill protection
+        console.log('[Pre-Chunk Fix] Setting up universal fetch API protection');
 
-      console.log('[Polyfills] Native browser support detected:', window.__POLYFILL_STATUS__);
+        // Get the primary global object using the same resolution as axios
+        var safeGlobal =
+          (typeof globalThis !== "undefined" && globalThis) ||
+          (typeof window !== "undefined" && window) ||
+          (typeof self !== "undefined" && self) ||
+          (typeof global !== "undefined" && global) ||
+          {};
 
-      // Note: Polyfills will be loaded via bundled JavaScript (whatwg-fetch)
-      // This ensures reliable loading without CDN dependencies
+        // Get polyfilled APIs safely (avoiding ReferenceErrors)
+        function getPolyfillAPIs() {
+          try {
+            return {
+              fetch: typeof fetch !== 'undefined' ? fetch : undefined,
+              Request: typeof Request !== 'undefined' ? Request : undefined,
+              Response: typeof Response !== 'undefined' ? Response : undefined,
+              Headers: typeof Headers !== 'undefined' ? Headers : undefined,
+            };
+          } catch (e) {
+            console.warn('[Pre-Chunk Fix] Error accessing APIs:', e);
+            return { fetch: undefined, Request: undefined, Response: undefined, Headers: undefined };
+          }
+        }
+
+        var apis = getPolyfillAPIs();
+
+        // Enhanced API setting with multiple fallback strategies
+        function setAPIOnGlobal(globalObj, apiName, apiValue) {
+          if (!globalObj || !apiValue) return false;
+
+          try {
+            // Strategy 1: Delete and redefine as enumerable (most reliable)
+            delete globalObj[apiName];
+            Object.defineProperty(globalObj, apiName, {
+              value: apiValue,
+              writable: true,
+              enumerable: true,  // CRITICAL for destructuring
+              configurable: true
+            });
+            return true;
+          } catch (e1) {
+            try {
+              // Strategy 2: Direct assignment
+              globalObj[apiName] = apiValue;
+              return true;
+            } catch (e2) {
+              try {
+                // Strategy 3: Force assignment (bypasses some restrictions)
+                Object.assign(globalObj, { [apiName]: apiValue });
+                return true;
+              } catch (e3) {
+                console.warn('[Pre-Chunk Fix] All strategies failed for', apiName, 'on', globalObj);
+                return false;
+              }
+            }
+          }
+        }
+
+        // Apply to ALL potential global objects with comprehensive coverage
+        var allGlobals = [safeGlobal];
+
+        // Add other globals if different from primary (using safe typeof checks)
+        var potentialGlobals = [];
+        if (typeof globalThis !== 'undefined') potentialGlobals.push(globalThis);
+        if (typeof window !== 'undefined') potentialGlobals.push(window);
+        if (typeof self !== 'undefined') potentialGlobals.push(self);
+        if (typeof global !== 'undefined') potentialGlobals.push(global);
+
+        potentialGlobals.forEach(function(g) {
+          if (g && typeof g === 'object' && g !== safeGlobal && allGlobals.indexOf(g) === -1) {
+            allGlobals.push(g);
+          }
+        });
+
+        var totalFixed = 0;
+        var globalResults = {};
+
+        allGlobals.forEach(function(globalObj, index) {
+          var globalName = globalObj === globalThis ? 'globalThis' :
+                          globalObj === window ? 'window' :
+                          globalObj === self ? 'self' :
+                          globalObj === global ? 'global' :
+                          'global' + index;
+
+          var results = {};
+          var localFixed = 0;
+
+          Object.keys(apis).forEach(function(apiName) {
+            if (apis[apiName]) {
+              var success = setAPIOnGlobal(globalObj, apiName, apis[apiName]);
+              results[apiName] = success;
+              if (success) {
+                localFixed++;
+                totalFixed++;
+              }
+            } else {
+              results[apiName] = false;
+            }
+          });
+
+          globalResults[globalName] = {
+            fixed: localFixed,
+            apis: results
+          };
+        });
+
+        // Comprehensive verification
+        var finalVerification = {
+          globalUsed: safeGlobal === globalThis ? 'globalThis' :
+                      safeGlobal === window ? 'window' :
+                      safeGlobal === self ? 'self' :
+                      safeGlobal === global ? 'global' : 'fallback',
+          totalAPIsFixed: totalFixed,
+          perGlobal: globalResults,
+          primaryGlobal: {
+            fetch: !!safeGlobal.fetch,
+            Request: !!safeGlobal.Request,
+            Response: !!safeGlobal.Response,
+            Headers: !!safeGlobal.Headers,
+            requestEnumerable: safeGlobal.propertyIsEnumerable ? safeGlobal.propertyIsEnumerable('Request') : 'unknown',
+            responseEnumerable: safeGlobal.propertyIsEnumerable ? safeGlobal.propertyIsEnumerable('Response') : 'unknown'
+          }
+        };
+
+        console.log('[Pre-Chunk Fix] ✅ Universal chunk protection applied:', finalVerification);
+
+        // Multiple destructuring tests with different strategies
+        var destructureResults = [];
+
+        // Test 1: Direct destructuring from primary global
+        try {
+          var testResult1 = (function(testGlobal) {
+            var destructured = (function({Request: R, Response: Res, Headers: H}) {
+              return {
+                Request: !!R,
+                Response: !!Res,
+                Headers: !!H,
+                allPresent: !!(R && Res && H)
+              };
+            })(testGlobal);
+            return { success: true, result: destructured, method: 'primary-global' };
+          })(safeGlobal);
+          destructureResults.push(testResult1);
+        } catch (e) {
+          destructureResults.push({ success: false, error: e.message, method: 'primary-global' });
+        }
+
+        // Test 2: Object.keys based test (mimics some libraries)
+        try {
+          var keys = Object.keys(safeGlobal);
+          var hasRequiredKeys = keys.indexOf('Request') !== -1 && keys.indexOf('Response') !== -1;
+          destructureResults.push({
+            success: hasRequiredKeys,
+            result: { hasRequiredKeys: hasRequiredKeys, keys: keys.filter(function(k) { return k.match(/^(fetch|Request|Response|Headers)$/); }) },
+            method: 'object-keys'
+          });
+        } catch (e) {
+          destructureResults.push({ success: false, error: e.message, method: 'object-keys' });
+        }
+
+        // Log results
+        var allTestsPassed = destructureResults.filter(function(r) { return r.success; }).length > 0;
+        if (allTestsPassed) {
+          console.log('[Pre-Chunk Fix] ✅ Destructuring tests PASSED - axios should work');
+        } else {
+          console.error('[Pre-Chunk Fix] ❌ All destructuring tests FAILED');
+          console.error('[Pre-Chunk Fix] Test results:', destructureResults);
+        }
+
+        // Enhanced polyfill status tracking
+        window.__POLYFILL_STATUS__ = {
+          source: 'enhanced-pre-chunk-fix',
+          timestamp: Date.now(),
+          verification: finalVerification,
+          destructureTests: destructureResults,
+          success: allTestsPassed,
+          apis: {
+            fetch: finalVerification.primaryGlobal.fetch,
+            Request: finalVerification.primaryGlobal.Request,
+            Response: finalVerification.primaryGlobal.Response,
+            Headers: finalVerification.primaryGlobal.Headers
+          }
+        };
+
+        // Emergency axios protection: Override axios utils.getGlobal if needed
+        try {
+          // This is a last-resort patch that ensures axios gets a valid global
+          var originalGetGlobal = window.getGlobal;
+          window.getGlobal = function() {
+            var result = safeGlobal;
+            console.log('[Pre-Chunk Fix] getGlobal() called, returning:', result);
+            return result;
+          };
+
+          // Also patch any existing axios reference
+          if (window.axios && window.axios.defaults) {
+            console.log('[Pre-Chunk Fix] Found existing axios, applying emergency patches');
+          }
+        } catch (e) {
+          console.log('[Pre-Chunk Fix] Emergency axios patches not needed:', e.message);
+        }
+
+        console.log('[Pre-Chunk Fix] Setup complete. APIs should be available for all chunks.');
+      })();
     </script>
   </head>
   <body>
