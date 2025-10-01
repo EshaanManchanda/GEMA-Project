@@ -1,5 +1,5 @@
 import React, { ReactNode } from 'react';
-import { useSpring, animated, config } from 'react-spring';
+import { useSpring, animated, config } from '@react-spring/web';
 
 // Hover Card Animation
 export const HoverCard: React.FC<{

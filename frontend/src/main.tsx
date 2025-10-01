@@ -1,34 +1,17 @@
-// Configure axios adapter fallback BEFORE importing React/libraries
-import axios from 'axios';
-
-// Safety net: if fetch adapter fails, fall back to XHR
-(() => {
-  try {
-    // Test if destructuring works
-    const testGlobal = globalThis || window;
-    const { Request: TestRequest } = testGlobal;
-    if (!TestRequest) {
-      throw new Error('Request not available for destructuring');
-    }
-    console.log('[Axios] Fetch adapter should work - Request is available');
-  } catch (e) {
-    console.warn('[Axios] Fetch adapter may fail, setting XHR adapter as fallback:', e.message);
-    try {
-      // Import XHR adapter synchronously
-      import('axios/lib/adapters/xhr.js').then(xhrModule => {
-        axios.defaults.adapter = xhrModule.default;
-        console.log('[Axios] XHR adapter configured successfully');
-      }).catch(adapterError => {
-        console.warn('[Axios] Could not configure XHR adapter:', adapterError);
-      });
-    } catch (importError) {
-      console.warn('[Axios] Could not import XHR adapter:', importError);
-    }
-  }
-})();
+// CRITICAL: Import polyfills FIRST before any other imports
+// This ensures fetch API is available for all modules, especially axios
+import './polyfills';
 
 import React from 'react';
 import ReactDOM from 'react-dom/client';
+
+// CRITICAL: Signal that React is loaded and available
+// This works with the React Guard in index.html to prevent race conditions
+if (typeof window !== 'undefined') {
+  (window as any).__REACT_LOADED__ = true;
+  console.log('[React Guard] ✅ React loaded and available');
+}
+
 import { BrowserRouter } from 'react-router-dom';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { ReactQueryDevtools } from '@tanstack/react-query-devtools';
@@ -48,7 +31,7 @@ import { CartProvider } from '@/contexts/CartContext';
 import ErrorBoundary from '@components/common/ErrorBoundary';
 
 import '@/styles/index.css';
-import '@/i18n/config';
+// i18n will be initialized lazily in App.tsx to avoid loading before React
 
 // Initialize PWA
 import { initializePWA } from './services/pwaService';
@@ -57,26 +40,6 @@ import { initializePWA } from './services/pwaService';
 if (process.env.NODE_ENV === 'development') {
   import('./utils/authDebug');
 }
-
-// Axios adapter fallback (in case fetch adapter misbehaves)
-(() => {
-  try {
-    if (!globalThis.Request) {
-      throw new Error('Request not available');
-    }
-    console.log('[Axios] ✅ Fetch adapter should work');
-  } catch (e) {
-    console.warn('[Axios] ⚠️ Falling back to XHR adapter:', e.message);
-    import('axios/lib/adapters/xhr.js')
-      .then(xhrModule => {
-        axios.defaults.adapter = xhrModule.default;
-        console.log('[Axios] ✅ XHR adapter configured');
-      })
-      .catch(err => {
-        console.error('[Axios] ❌ Could not configure XHR adapter:', err);
-      });
-  }
-})();
 
 // React Query client
 const queryClient = new QueryClient({

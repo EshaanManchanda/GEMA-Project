@@ -6,8 +6,8 @@ import { logoutUser, refreshToken } from '../store/slices/authSlice';
 const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || import.meta.env.VITE_API_URL || 'https://gema-project.onrender.com/api';
 const API_TIMEOUT = 30000; // 30 seconds
 
-// Debug logging for production (temporarily)
-if (typeof window !== 'undefined') {
+// Debug logging (development only)
+if (import.meta.env.MODE === 'development' && typeof window !== 'undefined') {
   console.log('🔧 API Configuration Debug:');
   console.log('- VITE_API_BASE_URL:', import.meta.env.VITE_API_BASE_URL);
   console.log('- VITE_API_URL:', import.meta.env.VITE_API_URL);

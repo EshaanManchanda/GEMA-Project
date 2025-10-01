@@ -155,4 +155,5 @@ const EventGridSection: React.FC<EventGridSectionProps> = ({ events = [] }) => {
   );
 };
 
-export default EventGridSection;
+// Memoize to prevent re-renders when events/loading don't change
+export default React.memo(EventGridSection);

@@ -1,5 +1,5 @@
 import React, { useState, useRef } from 'react';
-import QRCode from 'react-qr-code';
+import { QRCodeSVG } from 'qrcode.react';
 import { Download, Copy, Share2, Check } from 'lucide-react';
 import toast from 'react-hot-toast';
 import { clsx } from 'clsx';
@@ -161,7 +161,7 @@ const QRCodeGenerator: React.FC<QRCodeGeneratorProps> = ({
           className="flex justify-center mb-6 p-4 bg-white rounded-lg border"
           style={{ backgroundColor }}
         >
-          <QRCode
+          <QRCodeSVG
             value={value}
             size={size}
             bgColor={backgroundColor}

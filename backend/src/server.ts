@@ -35,7 +35,8 @@ app.use(cors({
     'http://localhost:4201',
     /\.vercel\.app$/,  // Allow all Vercel app domains
     'https://kidrove-frontend.vercel.app', // Current frontend Vercel URL
-    'https://gema-project-bnp5xge4w-eshaanmanchandas-projects.vercel.app'
+    'https://gema-project-bnp5xge4w-eshaanmanchandas-projects.vercel.app',
+    'https://kidrove.netlify.app/'
   ],
   credentials: true,
   methods: ['GET', 'POST', 'PUT', 'DELETE', 'PATCH', 'OPTIONS'],

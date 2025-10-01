@@ -25,7 +25,8 @@ import blogSlice from './slices/blogSlice';
 const persistConfig = {
   key: 'root',
   storage,
-  whitelist: ['auth', 'cart', 'favorites', 'ui'], // Only persist these slices
+  // Note: auth and cart use custom persist configs below, so exclude them here
+  whitelist: ['favorites', 'ui'], // Only persist these slices
   blacklist: ['events', 'categories', 'search', 'bookings', 'vendor', 'admin', 'notifications', 'coupons', 'affiliates', 'payments', 'tickets', 'blog'], // Don't persist these
 };
 

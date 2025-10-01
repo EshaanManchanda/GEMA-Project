@@ -78,6 +78,7 @@ export default defineConfig({
   ],
   resolve: {
     alias: {
+      // Path aliases
       '@': path.resolve(__dirname, './src'),
       '@components': path.resolve(__dirname, './src/components'),
       '@pages': path.resolve(__dirname, './src/pages'),
@@ -114,9 +115,9 @@ export default defineConfig({
   },
   build: {
     outDir: 'dist',
-    sourcemap: true, // Always enable sourcemaps for debugging
+    sourcemap: process.env.NODE_ENV !== 'production', // Sourcemaps only in development
     target: ['es2020', 'chrome80', 'safari13', 'firefox78'],
-    minify: 'esbuild',
+    minify: 'terser', // Use terser for better compression
     // Force fresh build - disable caching
     emptyOutDir: true,
     // Vercel optimizations
@@ -125,7 +126,7 @@ export default defineConfig({
     rollupOptions: {
       // Prevent Node.js built-ins from being bundled for client
       external: (id) => {
-        // Only exclude actual Node.js built-ins, NOT fetch libraries
+        // Exclude Node.js built-ins from browser bundle
         if (id.startsWith('node:') ||
             id.includes('perf_hooks') ||
             id.startsWith('fs') ||
@@ -137,55 +138,136 @@ export default defineConfig({
           console.warn(`[Vite] Excluding Node.js built-in from bundle: ${id}`);
           return true;
         }
-        // ✅ Allow undici/node-fetch to be bundled or replaced with browser equivalents
         return false;
       },
       output: {
-        manualChunks: {
-          // Core React
-          vendor: ['react', 'react-dom'],
+        manualChunks: (id) => {
+          // CRITICAL: Force polyfills into main entry chunk (no separate chunk)
+          // This ensures polyfills run BEFORE any other code
+          if (id.includes('src/polyfills') || id.includes('whatwg-fetch')) {
+            return undefined; // undefined = main entry chunk
+          }
 
-          // Routing
-          router: ['react-router-dom'],
+          // Core React - Bundle in main entry chunk to guarantee it loads first
+          // This prevents race conditions where other chunks load before React is available
+          if (id.includes('node_modules/react') || id.includes('node_modules/react-dom')) {
+            if (!id.includes('react-router') && !id.includes('react-redux') &&
+                !id.includes('react-hook-form') && !id.includes('react-query') &&
+                !id.includes('react-icons') && !id.includes('react-chartjs') &&
+                !id.includes('react-leaflet') && !id.includes('react-i18next') &&
+                !id.includes('react-helmet') && !id.includes('react-hot-toast') &&
+                !id.includes('react-stripe')) {
+              return undefined; // Main entry chunk - always loads first
+            }
+          }
+
+          // Routing - REMOVED: react-router-dom now bundled with main entry chunk
+          // See lines 238-243 for router configuration
 
           // State Management
-          state: ['@reduxjs/toolkit', 'react-redux', 'redux-persist'],
-          
-          // UI & Animations
-          ui: ['framer-motion', 'lucide-react', 'react-icons'],
-          
-          // Forms & Validation
-          forms: ['react-hook-form', '@hookform/resolvers', 'yup'],
-          
-          // Data Fetching
-          query: ['@tanstack/react-query', 'axios'],
-          
-          // Charts & Visualization
-          charts: ['chart.js', 'react-chartjs-2'],
-          
-          // Carousels & Sliders
-          sliders: ['keen-slider', 'embla-carousel-react', 'swiper'],
-          
-          // Maps
-          maps: ['react-leaflet', 'leaflet'],
-          
-          // Payments
-          payments: ['@stripe/stripe-js', '@stripe/react-stripe-js'],
-          
-          // Utilities
-          utils: ['lodash', 'date-fns', 'clsx', 'tailwind-merge'],
-          
-          // i18n
-          i18n: ['i18next', 'react-i18next', 'i18next-browser-languagedetector'],
-          
-          // QR & Camera
-          qr: ['@zxing/library', 'qr-scanner', 'qrcode.react'],
-          
-          // Firebase
-          firebase: ['firebase/app', 'firebase/auth'],
+          if (id.includes('node_modules/@reduxjs/toolkit') ||
+              id.includes('node_modules/react-redux') ||
+              id.includes('node_modules/redux-persist')) {
+            return 'state';
+          }
 
-          // Other
-          misc: ['js-cookie', 'uuid', 'react-helmet-async']
+          // UI & Animations
+          if (id.includes('node_modules/framer-motion') ||
+              id.includes('node_modules/lucide-react') ||
+              id.includes('node_modules/react-icons')) {
+            return 'ui';
+          }
+
+          // Forms & Validation
+          if (id.includes('node_modules/react-hook-form') ||
+              id.includes('node_modules/@hookform/resolvers') ||
+              id.includes('node_modules/yup')) {
+            return 'forms';
+          }
+
+          // Data Fetching - AFTER polyfills are guaranteed to be in main chunk
+          if (id.includes('node_modules/@tanstack/react-query') ||
+              id.includes('node_modules/axios')) {
+            return 'query';
+          }
+
+          // Charts & Visualization
+          if (id.includes('node_modules/chart.js') ||
+              id.includes('node_modules/react-chartjs-2')) {
+            return 'charts';
+          }
+
+          // Carousels & Sliders
+          if (id.includes('node_modules/keen-slider') ||
+              id.includes('node_modules/swiper')) {
+            return 'sliders';
+          }
+
+          // Maps
+          if (id.includes('node_modules/react-leaflet') ||
+              id.includes('node_modules/leaflet')) {
+            return 'maps';
+          }
+
+          // Payments
+          if (id.includes('node_modules/@stripe/stripe-js') ||
+              id.includes('node_modules/@stripe/react-stripe-js')) {
+            return 'payments';
+          }
+
+          // Utilities
+          if (id.includes('node_modules/lodash') ||
+              id.includes('node_modules/date-fns') ||
+              id.includes('node_modules/clsx') ||
+              id.includes('node_modules/tailwind-merge')) {
+            return 'utils';
+          }
+
+          // i18n - Explicitly exclude from misc chunk to bundle with dynamic import
+          // Returning undefined allows Vite to bundle these with their importer (App.tsx dynamic import)
+          // This ensures i18n only loads when useEffect runs, after React is initialized
+          if (id.includes('node_modules/i18next') ||
+              id.includes('node_modules/react-i18next') ||
+              id.includes('node_modules/i18next-browser-languagedetector') ||
+              id.includes('node_modules/i18next-http-backend')) {
+            return undefined; // Bundle with dynamic import chunk, not misc
+          }
+
+          // CRITICAL: Router and React-dependent libraries must load with main chunk
+          // react-router-dom calls createContext at module parse time (not runtime)
+          // These libraries MUST have React available before they load
+          if (id.includes('node_modules/react-router-dom')) {
+            return undefined; // Bundle with main entry chunk to guarantee React is available
+          }
+
+          // Other React-dependent libraries that use Context APIs
+          if (id.includes('node_modules/react-helmet-async') ||
+              id.includes('node_modules/react-hot-toast')) {
+            return undefined; // Bundle with main entry chunk
+          }
+
+          // QR & Camera
+          if (id.includes('node_modules/@zxing/library') ||
+              id.includes('node_modules/qr-scanner') ||
+              id.includes('node_modules/qrcode.react')) {
+            return 'qr';
+          }
+
+          // Firebase
+          if (id.includes('node_modules/firebase')) {
+            return 'firebase';
+          }
+
+          // Other misc libraries
+          if (id.includes('node_modules/js-cookie') ||
+              id.includes('node_modules/uuid')) {
+            return 'misc';
+          }
+
+          // Everything else from node_modules goes to misc
+          if (id.includes('node_modules')) {
+            return 'misc';
+          }
         },
         chunkFileNames: (chunkInfo) => {
           const facadeModuleId = chunkInfo.facadeModuleId ? chunkInfo.facadeModuleId.split('/').pop() : 'chunk';
@@ -217,11 +299,21 @@ export default defineConfig({
         drop_console: process.env.NODE_ENV === 'production',
         drop_debugger: process.env.NODE_ENV === 'production'
       }
+    },
+    // Module preload to ensure proper chunk loading order
+    modulePreload: {
+      polyfill: true,
+      resolveDependencies: (filename, deps, { hostId, hostType }) => {
+        // Ensure main chunk (with React) loads before misc/router chunks
+        if (filename.includes('misc') || filename.includes('router')) {
+          return deps.filter(dep => dep.includes('index-'));
+        }
+        return deps;
+      }
     }
   },
   optimizeDeps: {
     include: [
-      // Include whatwg-fetch FIRST to ensure polyfills are available early
       'whatwg-fetch',
       'react',
       'react-dom',
@@ -241,7 +333,7 @@ export default defineConfig({
     ],
     exclude: ['@zxing/library'],
     force: true,
-    entries: ['src/main.tsx']
+    entries: ['src/polyfills.ts', 'src/main.tsx']
   },
   define: {
     __APP_VERSION__: JSON.stringify(process.env.npm_package_version),
@@ -249,23 +341,23 @@ export default defineConfig({
     __CACHE_BUST__: JSON.stringify(Date.now().toString(36)),
     __VERCEL_ENV__: JSON.stringify(process.env.VERCEL_ENV || 'development'),
     __VERCEL_URL__: JSON.stringify(process.env.VERCEL_URL || 'localhost'),
-    // Ensure global points to globalThis for polyfill compatibility
-    global: 'globalThis',
+
+    // Node/env mocks
     'process.env.NODE_ENV': JSON.stringify(process.env.NODE_ENV || 'development'),
     'process.env': '{}',
     'process.platform': JSON.stringify('browser'),
     'process.version': JSON.stringify('v18.0.0')
+
+    // NOTE: Removed global.* definitions - they interfere with runtime polyfills
+    // Our polyfill code in src/polyfills.ts handles global patching at runtime
   },
-  // Vercel deployment settings
   clearScreen: false,
   logLevel: process.env.NODE_ENV === 'production' ? 'error' : 'info',
-  // Preview mode optimizations
   preview: {
     port: 3000,
     host: true,
     strictPort: false
   },
-  // ESBuild options for better compatibility
   esbuild: {
     target: 'es2020',
     supported: {

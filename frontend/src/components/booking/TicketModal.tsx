@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import QRCode from 'react-qr-code';
+import { QRCodeSVG } from 'qrcode.react';
 import { X, Download, Calendar, MapPin, Clock, User, Hash, QrCode as QrCodeIcon } from 'lucide-react';
 import QRCodeModal from './QRCodeModal';
 import { generateTicketQRData, extractEventDates } from '../../utils/qrcode.utils';
@@ -162,7 +162,7 @@ const TicketModal: React.FC<TicketModalProps> = ({ ticket, isOpen, onClose, onDo
             {/* QR Code Section */}
             <div className="flex flex-col items-center justify-center">
               <div className="bg-white p-6 border-2 border-gray-200 rounded-lg shadow-sm">
-                <QRCode
+                <QRCodeSVG
                   value={qrCodeData}
                   size={200}
                   style={{ height: "auto", maxWidth: "100%", width: "100%" }}

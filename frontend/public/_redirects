@@ -1,0 +1,10 @@
+# Netlify Redirects for Single Page Application (SPA)
+# This file ensures that all routes are handled by React Router
+
+# Proxy API requests to the backend server (optional)
+# Uncomment the line below if you want Netlify to proxy API calls
+# /api/*  https://gema-project.onrender.com/api/:splat  200
+
+# Handle all other routes with React Router
+# This must be the last rule
+/*    /index.html   200

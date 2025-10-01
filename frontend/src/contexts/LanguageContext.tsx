@@ -17,26 +17,47 @@ export const LanguageProvider: React.FC<{ children: React.ReactNode }> = ({ chil
 
   useEffect(() => {
     // Initialize language from localStorage or browser preference
-    const savedLanguage = localStorage.getItem('language') as Language;
-    if (savedLanguage) {
-      setCurrentLanguage(savedLanguage);
-      i18n.changeLanguage(savedLanguage);
-      setIsRTL(savedLanguage === 'ar');
-      document.documentElement.dir = savedLanguage === 'ar' ? 'rtl' : 'ltr';
-      document.documentElement.lang = savedLanguage;
+    const initializeLanguage = () => {
+      const savedLanguage = localStorage.getItem('language') as Language;
+      if (savedLanguage) {
+        setCurrentLanguage(savedLanguage);
+        // Check if i18n is initialized before calling changeLanguage
+        if (i18n.isInitialized) {
+          i18n.changeLanguage(savedLanguage);
+        }
+        setIsRTL(savedLanguage === 'ar');
+        document.documentElement.dir = savedLanguage === 'ar' ? 'rtl' : 'ltr';
+        document.documentElement.lang = savedLanguage;
+      } else {
+        // Default to English
+        setCurrentLanguage('en');
+        if (i18n.isInitialized) {
+          i18n.changeLanguage('en');
+        }
+        setIsRTL(false);
+        document.documentElement.dir = 'ltr';
+        document.documentElement.lang = 'en';
+      }
+    };
+
+    // If i18n is already initialized, use it immediately
+    if (i18n.isInitialized) {
+      initializeLanguage();
     } else {
-      // Default to English
-      setCurrentLanguage('en');
-      i18n.changeLanguage('en');
-      setIsRTL(false);
-      document.documentElement.dir = 'ltr';
-      document.documentElement.lang = 'en';
+      // Otherwise, wait for i18n to be ready
+      i18n.on('initialized', initializeLanguage);
+      return () => {
+        i18n.off('initialized', initializeLanguage);
+      };
     }
   }, []);
 
   const changeLanguage = (lang: Language) => {
     setCurrentLanguage(lang);
-    i18n.changeLanguage(lang);
+    // Only call i18n.changeLanguage if i18n is initialized
+    if (i18n.isInitialized) {
+      i18n.changeLanguage(lang);
+    }
     localStorage.setItem('language', lang);
     setIsRTL(lang === 'ar');
     document.documentElement.dir = lang === 'ar' ? 'rtl' : 'ltr';

@@ -4,7 +4,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { FaSearch, FaFilter, FaTimes, FaStar, FaMapMarkerAlt, FaCalendarAlt, FaClock, FaUsers, FaTag } from 'react-icons/fa';
 import { SearchEvent, SearchFilters, CategoryOption, FilterOptions } from '../types/search';
 import { ApiService } from '../services/api';
-import { debounce } from 'lodash';
+import debounce from 'lodash/debounce'; // Import only debounce (not entire lodash library)
 import SEO from '@/components/common/SEO';
 
 // FilterContent Component

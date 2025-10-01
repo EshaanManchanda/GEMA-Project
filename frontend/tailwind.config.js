@@ -201,7 +201,7 @@ export default {
     require('@tailwindcss/forms'),
     require('@tailwindcss/typography'),
     require('@tailwindcss/aspect-ratio'),
-    require('@tailwindcss/line-clamp'),
+    // @tailwindcss/line-clamp is now built-in as of Tailwind CSS v3.3
   ],
   darkMode: 'class',
 }

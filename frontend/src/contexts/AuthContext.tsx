@@ -38,6 +38,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
   useEffect(() => {
     // Check if user is already authenticated from stored token
+    // Only run once on mount to avoid infinite loops
     const initializeAuth = async () => {
       const token = localStorage.getItem('token');
       if (token && !user) {
@@ -56,7 +57,8 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     };
 
     initializeAuth();
-  }, [dispatch, user]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [dispatch]); // Removed 'user' to prevent infinite loop
 
   const login = async (credentials: LoginCredentials) => {
     try {

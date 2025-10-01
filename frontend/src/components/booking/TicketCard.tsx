@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import QRCode from 'react-qr-code';
+import { QRCodeSVG } from 'qrcode.react';
 import { Calendar, MapPin, Clock, User, Download, Eye, AlertCircle, QrCode as QrCodeIcon } from 'lucide-react';
 import { generateTicketQRData, extractEventDates } from '../../utils/qrcode.utils';
 
@@ -137,7 +137,7 @@ const TicketCard: React.FC<TicketProps> = ({ ticket, onViewTicket, onDownloadTic
                   onError={() => setQrImageError(true)}
                 />
               ) : qrCodeData ? (
-                <QRCode
+                <QRCodeSVG
                   value={qrCodeData}
                   size={80}
                   style={{ height: "auto", maxWidth: "100%", width: "100%" }}

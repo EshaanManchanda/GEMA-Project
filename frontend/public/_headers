@@ -1,0 +1,53 @@
+# Netlify Headers Configuration
+# Additional security and performance headers for all routes
+
+# Default headers for all pages
+/*
+  X-Frame-Options: DENY
+  X-Content-Type-Options: nosniff
+  X-XSS-Protection: 1; mode=block
+  Referrer-Policy: strict-origin-when-cross-origin
+  Permissions-Policy: camera=(), microphone=(), geolocation=()
+  Content-Security-Policy: default-src 'self'; script-src 'self' 'unsafe-inline' 'unsafe-eval' https://fonts.googleapis.com https://unpkg.com https://js.stripe.com; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com https://unpkg.com; img-src 'self' data: https: blob:; font-src 'self' data: https://fonts.gstatic.com; connect-src 'self' https://gema-project.onrender.com https://*.cloudinary.com https://*.stripe.com https://*.googleapis.com; frame-src 'self' https://*.stripe.com; object-src 'none'; base-uri 'self'; form-action 'self'; frame-ancestors 'none'; upgrade-insecure-requests;
+
+# Static assets - aggressive caching
+/assets/*
+  Cache-Control: public, max-age=31536000, immutable
+
+# JavaScript files
+/js/*
+  Cache-Control: public, max-age=31536000, immutable
+
+# CSS files
+/css/*
+  Cache-Control: public, max-age=31536000, immutable
+
+# Images
+/images/*
+  Cache-Control: public, max-age=31536000, immutable
+
+# Fonts
+/fonts/*
+  Cache-Control: public, max-age=31536000, immutable
+  Access-Control-Allow-Origin: *
+
+# SVG icons
+/*.svg
+  Cache-Control: public, max-age=31536000, immutable
+
+# Don't cache the main HTML file
+/index.html
+  Cache-Control: public, max-age=0, must-revalidate
+
+# PWA files
+/manifest.json
+  Content-Type: application/manifest+json
+  Cache-Control: public, max-age=0, must-revalidate
+
+/sw.js
+  Content-Type: application/javascript
+  Cache-Control: public, max-age=0, must-revalidate
+
+/browserconfig.xml
+  Content-Type: application/xml
+  Cache-Control: public, max-age=0, must-revalidate

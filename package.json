@@ -7,8 +7,12 @@
     "install-frontend": "cd frontend && npm install"
   },
   "dependencies": {
+    "@heroicons/react": "^2.2.0",
     "axios": "^1.12.2",
     "bcryptjs": "^3.0.2",
-    "mongoose": "^8.18.1"
+    "mongoose": "^8.18.1",
+    "react": "^19.1.1",
+    "react-dom": "^19.1.1",
+    "react-loading-skeleton": "^3.5.0"
   }
 }

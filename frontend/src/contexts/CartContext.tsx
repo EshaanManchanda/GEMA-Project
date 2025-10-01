@@ -68,13 +68,13 @@ export const CartProvider: React.FC<CartProviderProps> = ({ children }) => {
   const cartCount = useAppSelector(selectCartItemsCount);
 
   const addItemToCart = (event: any, quantity: number) => {
+    // Note: Toast notification is handled by the Redux slice
     dispatch(addToCart({
       event,
       quantity,
       selectedDate: event.date, // Pass the selected date from the event
       participants: []
     }));
-    toast.success(`${event.title} added to cart!`);
   };
 
   const removeItemFromCart = (itemId: string) => {

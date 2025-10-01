@@ -88,7 +88,7 @@ const transformCategory = (category: Category): Category => {
   };
 };
 
-export default function CategoryCarousel({ categories = [] }: CategoryCarouselProps) {
+function CategoryCarousel({ categories = [] }: CategoryCarouselProps) {
   const navigate = useNavigate();
   
   // Transform API categories and use provided categories or fallback to default
@@ -206,3 +206,6 @@ export default function CategoryCarousel({ categories = [] }: CategoryCarouselPr
     </div>
   );
 }
+
+// Memoize to prevent re-renders when categories don't change
+export default React.memo(CategoryCarousel);

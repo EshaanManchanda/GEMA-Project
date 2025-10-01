@@ -256,4 +256,5 @@ const EventCard: React.FC<EventCardProps> = ({
   );
 };
 
-export default EventCard;
+// Memoize component to prevent unnecessary re-renders when props don't change
+export default React.memo(EventCard);

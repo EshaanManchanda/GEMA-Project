@@ -332,4 +332,5 @@ const CollectionsCarousel: React.FC = () => {
   );
 };
 
-export default CollectionsCarousel;
+// Memoize to prevent re-renders when collections don't change
+export default React.memo(CollectionsCarousel);
