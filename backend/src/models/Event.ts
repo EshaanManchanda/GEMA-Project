@@ -4,8 +4,8 @@ export interface IEvent extends Document {
   title: string;
   description: string;
   category: string;
-  type: 'Event' | 'Course' | 'Venue';
-  venueType: 'Indoor' | 'Outdoor';
+  type: 'Olympiad' | 'Championship' | 'Competition' | 'Event' | 'Course' | 'Venue';
+  venueType: 'Indoor' | 'Outdoor' | 'Online' | 'Offline';
   ageRange: [number, number];
   location: {
     city: string;
@@ -48,6 +48,15 @@ export interface IEvent extends Document {
   isFeatured: boolean;
   images: string[];
   isDeleted: boolean;
+  reviewCount: number;
+  averageRating: number;
+  ratingDistribution: {
+    1: number;
+    2: number;
+    3: number;
+    4: number;
+    5: number;
+  };
   createdAt: Date;
   updatedAt: Date;
 
@@ -78,12 +87,12 @@ const eventSchema = new Schema<IEvent>(
     },
     type: {
       type: String,
-      enum: ['Event', 'Course', 'Venue'],
+      enum: ['Olympiad', 'Championship', 'Competition', 'Event', 'Course', 'Venue'],
       required: [true, 'Event type is required'],
     },
     venueType: {
       type: String,
-      enum: ['Indoor', 'Outdoor'],
+      enum: ['Indoor', 'Outdoor', 'Online', 'Offline'],
       required: [true, 'Venue type is required'],
     },
     ageRange: {
@@ -261,6 +270,27 @@ const eventSchema = new Schema<IEvent>(
       type: Boolean,
       default: false,
     },
+    reviewCount: {
+      type: Number,
+      default: 0,
+      min: [0, 'Review count cannot be negative'],
+    },
+    averageRating: {
+      type: Number,
+      default: 0,
+      min: [0, 'Rating cannot be negative'],
+      max: [5, 'Rating cannot exceed 5'],
+    },
+    ratingDistribution: {
+      type: {
+        1: { type: Number, default: 0, min: 0 },
+        2: { type: Number, default: 0, min: 0 },
+        3: { type: Number, default: 0, min: 0 },
+        4: { type: Number, default: 0, min: 0 },
+        5: { type: Number, default: 0, min: 0 },
+      },
+      default: { 1: 0, 2: 0, 3: 0, 4: 0, 5: 0 },
+    },
   },
   {
     timestamps: true,
@@ -286,6 +316,9 @@ eventSchema.index({ currency: 1 });
 eventSchema.index({ createdAt: -1 });
 eventSchema.index({ isFeatured: 1, isApproved: 1, isDeleted: 1 });
 eventSchema.index({ tags: 1 });
+eventSchema.index({ averageRating: -1 });
+eventSchema.index({ reviewCount: -1 });
+eventSchema.index({ averageRating: -1, reviewCount: -1 });
 
 // Text search index
 eventSchema.index({
@@ -492,6 +525,25 @@ eventSchema.statics.findActivePublished = function () {
     isActive: true,
     status: 'published',
     isDeleted: false
+  });
+};
+
+// Static method to find public events (approved, active, published, not deleted, not expired)
+eventSchema.statics.findPublic = function (extraFilters: any = {}) {
+  const now = new Date();
+
+  return this.find({
+    isApproved: true,
+    isActive: true,
+    status: 'published',
+    isDeleted: false,
+    $or: [
+      // New format: check endDate
+      { 'dateSchedule.endDate': { $gte: now } },
+      // Legacy format: check date field
+      { 'dateSchedule.date': { $gte: now } },
+    ],
+    ...extraFilters
   });
 };
 

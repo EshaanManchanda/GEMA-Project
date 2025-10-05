@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import categoriesAPI from '../services/api/categoriesAPI';
+import { getPlaceholderUrl } from '../utils/placeholderImage';
 
 // Mock data for when backend is unavailable
 const mockCategories = [
@@ -156,21 +157,28 @@ const CategoriesPage: React.FC = () => {
       
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
         {filteredCategories.map(category => (
-          <Link 
-            key={category.id} 
-            to={`/categories/${category.slug}`} 
+          <Link
+            key={category._id || category.id}
+            to={`/categories/${category.slug}`}
             className="bg-white rounded-lg shadow-md overflow-hidden hover:shadow-lg transition-shadow"
           >
             <div className="relative h-48">
-              <img src={category.image} alt={category.name} className="w-full h-full object-cover" />
+              <img
+                src={category.featuredImage || category.image || getPlaceholderUrl('categoryIcon', category.name)}
+                alt={category.name}
+                className="w-full h-full object-cover"
+                onError={(e) => {
+                  e.currentTarget.src = getPlaceholderUrl('categoryIcon', category.name);
+                }}
+              />
               <div className="absolute inset-0 bg-black bg-opacity-40 flex items-center justify-center">
-                <span className="text-6xl">{category.icon}</span>
+                <span className="text-6xl">{category.icon || '📂'}</span>
               </div>
             </div>
             <div className="p-4">
               <h2 className="text-xl font-bold mb-2">{category.name}</h2>
               <p className="text-gray-600 mb-3 line-clamp-2">{category.description}</p>
-              <div className="text-sm text-primary">{category.eventCount} events</div>
+              <div className="text-sm text-primary">{category.eventCount || 0} events</div>
             </div>
           </Link>
         ))}

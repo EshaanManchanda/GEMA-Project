@@ -36,7 +36,7 @@ router.get('/vendor/analytics', authorize(['vendor']), getVendorEventAnalytics);
 
 router.post(
   '/',
-  authorize(['vendor']),
+  authorize(['vendor', 'admin']),
   [
     body('title')
       .trim()
@@ -55,11 +55,11 @@ router.post(
       .notEmpty()
       .withMessage('Category is required'),
     body('type')
-      .isIn(['Event', 'Course', 'Venue'])
-      .withMessage('Type must be Event, Course, or Venue'),
+      .isIn(['Olympiad', 'Championship', 'Competition', 'Event', 'Course', 'Venue'])
+      .withMessage('Type must be Olympiad, Championship, Competition, Event, Course, or Venue'),
     body('venueType')
-      .isIn(['Indoor', 'Outdoor'])
-      .withMessage('Venue type must be Indoor or Outdoor'),
+      .isIn(['Indoor', 'Outdoor', 'Online', 'Offline'])
+      .withMessage('Venue type must be Indoor, Outdoor, Online, or Offline'),
     body('ageRange')
       .isArray({ min: 2, max: 2 })
       .withMessage('Age range must be an array of 2 numbers')
@@ -142,7 +142,7 @@ router.post(
 
 router.put(
   '/:id',
-  authorize(['vendor']),
+  authorize(['vendor', 'admin']),
   [
     param('id').isMongoId().withMessage('Invalid event ID'),
     body('title')
@@ -170,7 +170,7 @@ router.put(
 
 router.delete(
   '/:id',
-  authorize(['vendor']),
+  authorize(['vendor', 'admin']),
   [
     param('id').isMongoId().withMessage('Invalid event ID'),
   ],

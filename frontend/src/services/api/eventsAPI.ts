@@ -42,8 +42,10 @@ const eventsAPI = {
   getPopularEvents: async () => {
     try {
       const response = await ApiService.get('/events', { params: { sortBy: 'viewsCount', sortOrder: 'desc', limit: 6 } });
-      return response.data;
+      logApiResponse('GET /events (popular)', response);
+      return extractEventsData(response);
     } catch (error) {
+      logApiResponse('GET /events (popular)', null, error);
       throw error;
     }
   },
@@ -51,8 +53,10 @@ const eventsAPI = {
   getUpcomingEvents: async () => {
     try {
       const response = await ApiService.get('/events', { params: { sortBy: 'createdAt', sortOrder: 'desc', limit: 6 } });
-      return response.data;
+      logApiResponse('GET /events (upcoming)', response);
+      return extractEventsData(response);
     } catch (error) {
+      logApiResponse('GET /events (upcoming)', null, error);
       throw error;
     }
   },
@@ -60,8 +64,10 @@ const eventsAPI = {
   getEventsByCategory: async (category: string, params?: any) => {
     try {
       const response = await ApiService.get('/events', { params: { category, ...params } });
-      return response.data;
+      logApiResponse(`GET /events (category: ${category})`, response);
+      return extractEventsData(response);
     } catch (error) {
+      logApiResponse(`GET /events (category: ${category})`, null, error);
       throw error;
     }
   },
@@ -69,8 +75,10 @@ const eventsAPI = {
   searchEvents: async (searchQuery: string, params?: any) => {
     try {
       const response = await ApiService.get('/events', { params: { search: searchQuery, ...params } });
-      return response.data;
+      logApiResponse(`GET /events (search: ${searchQuery})`, response);
+      return extractEventsData(response);
     } catch (error) {
+      logApiResponse(`GET /events (search: ${searchQuery})`, null, error);
       throw error;
     }
   },

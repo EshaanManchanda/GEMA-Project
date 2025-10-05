@@ -575,7 +575,7 @@ export const approveEvent = async (req: Request, res: Response, next: NextFuncti
     // Update event approval status
     const event = await Event.findByIdAndUpdate(
       id,
-      { isApproved: true },
+      { isApproved: true, status: 'published' },
       { new: true, runValidators: true }
     ).populate('vendorId', 'firstName lastName email');
 
@@ -613,8 +613,9 @@ export const rejectEvent = async (req: Request, res: Response, next: NextFunctio
     // Update event approval status
     const event = await Event.findByIdAndUpdate(
       id,
-      { 
+      {
         isApproved: false,
+        status: 'rejected'
         // You could add a rejectionReason field to the Event model if needed
       },
       { new: true, runValidators: true }

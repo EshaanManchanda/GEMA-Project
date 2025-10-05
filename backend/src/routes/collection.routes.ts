@@ -9,7 +9,7 @@ import {
   addEventToCollection,
   removeEventFromCollection
 } from '../controllers/collection.controller';
-import { authenticate, authorize } from '../middleware/auth';
+import { authenticate, authorize, validate } from '../middleware';
 
 const router = Router();
 
@@ -39,6 +39,7 @@ router.get(
       .isIn(['asc', 'desc'])
       .withMessage('Sort order must be asc or desc')
   ],
+  validate,
   getCollections
 );
 
@@ -47,6 +48,7 @@ router.get(
   [
     param('id').isMongoId().withMessage('Invalid collection ID'),
   ],
+  validate,
   getCollectionById
 );
 
@@ -75,6 +77,11 @@ router.post(
       .withMessage('Icon URL is required')
       .isURL()
       .withMessage('Icon must be a valid URL'),
+    body('count')
+      .optional()
+      .trim()
+      .isLength({ max: 50 })
+      .withMessage('Count text cannot exceed 50 characters'),
     body('category')
       .optional()
       .trim()
@@ -93,6 +100,7 @@ router.post(
       .isInt({ min: 0 })
       .withMessage('Sort order must be a non-negative integer')
   ],
+  validate,
   createCollection
 );
 
@@ -121,6 +129,11 @@ router.put(
       .withMessage('Icon URL cannot be empty')
       .isURL()
       .withMessage('Icon must be a valid URL'),
+    body('count')
+      .optional()
+      .trim()
+      .isLength({ max: 50 })
+      .withMessage('Count text cannot exceed 50 characters'),
     body('category')
       .optional()
       .trim()
@@ -143,6 +156,7 @@ router.put(
       .isInt({ min: 0 })
       .withMessage('Sort order must be a non-negative integer')
   ],
+  validate,
   updateCollection
 );
 
@@ -151,6 +165,7 @@ router.delete(
   [
     param('id').isMongoId().withMessage('Invalid collection ID'),
   ],
+  validate,
   deleteCollection
 );
 
@@ -165,6 +180,7 @@ router.post(
       .isMongoId()
       .withMessage('Invalid event ID')
   ],
+  validate,
   addEventToCollection
 );
 
@@ -174,6 +190,7 @@ router.delete(
     param('id').isMongoId().withMessage('Invalid collection ID'),
     param('eventId').isMongoId().withMessage('Invalid event ID')
   ],
+  validate,
   removeEventFromCollection
 );
 

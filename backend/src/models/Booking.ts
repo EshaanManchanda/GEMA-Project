@@ -51,6 +51,16 @@ const BookingSchema = new Schema<IBooking>({
   timestamps: true,
 });
 
+// Indexes for performance optimization
+BookingSchema.index({ userId: 1 }); // User's bookings
+BookingSchema.index({ eventId: 1 }); // Event's bookings
+BookingSchema.index({ status: 1 }); // Filter by status
+BookingSchema.index({ createdAt: -1 }); // Sort by creation date
+BookingSchema.index({ userId: 1, status: 1 }); // User's bookings by status
+BookingSchema.index({ eventId: 1, status: 1 }); // Event's bookings by status
+BookingSchema.index({ userId: 1, createdAt: -1 }); // User's recent bookings
+BookingSchema.index({ paymentIntentId: 1 }, { sparse: true }); // Stripe payment lookup
+
 const Booking = model<IBooking>('Booking', BookingSchema);
 
 export default Booking;

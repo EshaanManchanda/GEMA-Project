@@ -1,7 +1,30 @@
 import { Router } from 'express';
-import { body } from 'express-validator';
 import * as authController from '../controllers/auth.controller';
-import { authenticate, validate } from '../middleware';
+import {
+  authenticate,
+  validate,
+  authLimiter,
+  passwordResetLimiter,
+  emailVerificationLimiter,
+} from '../middleware';
+import {
+  validateRegistration,
+  validateAdminRegistration,
+  validateLogin,
+  validateRefreshToken,
+  validateChangePassword,
+  validateForgotPassword,
+  validateResetPassword,
+  validateEmailVerification,
+  validateResendVerification,
+  validateFirebaseAuth
+} from '../validators/auth.validator';
+import {
+  validateProfileUpdate,
+  validateAddress,
+  validateAddressIndex,
+  validateAvatarUpdate
+} from '../validators/user.validator';
 
 const router = Router();
 
@@ -12,40 +35,23 @@ const router = Router();
  */
 router.post(
   '/register',
-  [
-    body('firstName')
-      .trim()
-      .notEmpty()
-      .withMessage('First name is required')
-      .isLength({ max: 50 })
-      .withMessage('First name cannot be more than 50 characters'),
-    body('lastName')
-      .trim()
-      .notEmpty()
-      .withMessage('Last name is required')
-      .isLength({ max: 50 })
-      .withMessage('Last name cannot be more than 50 characters'),
-    body('email')
-      .trim()
-      .notEmpty()
-      .withMessage('Email is required')
-      .isEmail()
-      .withMessage('Please provide a valid email address'),
-    body('password')
-      .notEmpty()
-      .withMessage('Password is required')
-      .isLength({ min: 8 })
-      .withMessage('Password must be at least 8 characters long')
-      .matches(/^(?=.*\d)(?=.*[a-z])(?=.*[A-Z])(?=.*[!@#$%^&*])/)
-      .withMessage('Password must contain at least one uppercase letter, one lowercase letter, one number, and one special character'),
-    body('phone')
-      .optional()
-      .trim()
-      .matches(/^\+?[1-9]\d{1,14}$/)
-      .withMessage('Please provide a valid phone number')
-  ],
+  authLimiter,
+  validateRegistration,
   validate,
   authController.register
+);
+
+/**
+ * @route   POST /auth/register-admin
+ * @desc    Register a new admin user (requires admin secret key)
+ * @access  Public (protected by secret key)
+ */
+router.post(
+  '/register-admin',
+  authLimiter,
+  validateAdminRegistration,
+  validate,
+  authController.registerAdmin
 );
 
 /**
@@ -55,17 +61,8 @@ router.post(
  */
 router.post(
   '/login',
-  [
-    body('email')
-      .trim()
-      .notEmpty()
-      .withMessage('Email is required')
-      .isEmail()
-      .withMessage('Please provide a valid email address'),
-    body('password')
-      .notEmpty()
-      .withMessage('Password is required')
-  ],
+  authLimiter,
+  validateLogin,
   validate,
   authController.login
 );
@@ -84,11 +81,7 @@ router.post('/logout', authenticate, authController.logout);
  */
 router.post(
   '/refresh-token',
-  [
-    body('refreshToken')
-      .notEmpty()
-      .withMessage('Refresh token is required')
-  ],
+  validateRefreshToken,
   validate,
   authController.refreshToken
 );
@@ -115,27 +108,7 @@ router.get('/profile', authenticate, authController.getFullProfile);
 router.put(
   '/profile',
   authenticate,
-  [
-    body('firstName')
-      .optional()
-      .trim()
-      .notEmpty()
-      .withMessage('First name cannot be empty')
-      .isLength({ max: 50 })
-      .withMessage('First name cannot be more than 50 characters'),
-    body('lastName')
-      .optional()
-      .trim()
-      .notEmpty()
-      .withMessage('Last name cannot be empty')
-      .isLength({ max: 50 })
-      .withMessage('Last name cannot be more than 50 characters'),
-    body('phone')
-      .optional()
-      .trim()
-      .matches(/^\+?[1-9]\d{1,14}$/)
-      .withMessage('Please provide a valid phone number')
-  ],
+  validateProfileUpdate,
   validate,
   authController.updateProfile
 );
@@ -148,18 +121,7 @@ router.put(
 router.put(
   '/change-password',
   authenticate,
-  [
-    body('currentPassword')
-      .notEmpty()
-      .withMessage('Current password is required'),
-    body('newPassword')
-      .notEmpty()
-      .withMessage('New password is required')
-      .isLength({ min: 8 })
-      .withMessage('New password must be at least 8 characters long')
-      .matches(/^(?=.*\d)(?=.*[a-z])(?=.*[A-Z])(?=.*[!@#$%^&*])/)
-      .withMessage('New password must contain at least one uppercase letter, one lowercase letter, one number, and one special character')
-  ],
+  validateChangePassword,
   validate,
   authController.changePassword
 );
@@ -171,14 +133,8 @@ router.put(
  */
 router.post(
   '/forgot-password',
-  [
-    body('email')
-      .trim()
-      .notEmpty()
-      .withMessage('Email is required')
-      .isEmail()
-      .withMessage('Please provide a valid email address')
-  ],
+  passwordResetLimiter,
+  validateForgotPassword,
   validate,
   authController.forgotPassword
 );
@@ -190,18 +146,8 @@ router.post(
  */
 router.post(
   '/reset-password',
-  [
-    body('token')
-      .notEmpty()
-      .withMessage('Token is required'),
-    body('newPassword')
-      .notEmpty()
-      .withMessage('Password is required')
-      .isLength({ min: 8 })
-      .withMessage('Password must be at least 8 characters long')
-      .matches(/^(?=.*\d)(?=.*[a-z])(?=.*[A-Z])(?=.*[!@#$%^&*])/)
-      .withMessage('Password must contain at least one uppercase letter, one lowercase letter, one number, and one special character')
-  ],
+  passwordResetLimiter,
+  validateResetPassword,
   validate,
   authController.resetPassword
 );
@@ -213,15 +159,8 @@ router.post(
  */
 router.post(
   '/verify-email',
-  [
-    body('otp')
-      .notEmpty()
-      .withMessage('Verification OTP is required')
-      .isLength({ min: 4, max: 4 })
-      .withMessage('OTP must be exactly 4 digits')
-      .isNumeric()
-      .withMessage('OTP must contain only numbers')
-  ],
+  emailVerificationLimiter,
+  validateEmailVerification,
   validate,
   authController.verifyEmail
 );
@@ -233,14 +172,8 @@ router.post(
  */
 router.post(
   '/resend-verification-email',
-  [
-    body('email')
-      .trim()
-      .notEmpty()
-      .withMessage('Email is required')
-      .isEmail()
-      .withMessage('Please provide a valid email address')
-  ],
+  emailVerificationLimiter,
+  validateResendVerification,
   validate,
   authController.resendVerificationEmail
 );
@@ -252,11 +185,8 @@ router.post(
  */
 router.post(
   '/firebase',
-  [
-    body('idToken')
-      .notEmpty()
-      .withMessage('Firebase ID token is required')
-  ],
+  authLimiter,
+  validateFirebaseAuth,
   validate,
   authController.firebaseAuth
 );
@@ -273,32 +203,7 @@ router.post(
 router.post(
   '/addresses',
   authenticate,
-  [
-    body('street')
-      .trim()
-      .notEmpty()
-      .withMessage('Street address is required'),
-    body('city')
-      .trim()
-      .notEmpty()
-      .withMessage('City is required'),
-    body('state')
-      .trim()
-      .notEmpty()
-      .withMessage('State is required'),
-    body('zipCode')
-      .trim()
-      .notEmpty()
-      .withMessage('Zip code is required'),
-    body('country')
-      .trim()
-      .notEmpty()
-      .withMessage('Country is required'),
-    body('isDefault')
-      .optional()
-      .isBoolean()
-      .withMessage('isDefault must be a boolean value')
-  ],
+  validateAddress,
   validate,
   authController.addAddress
 );
@@ -311,32 +216,7 @@ router.post(
 router.put(
   '/addresses/:addressIndex',
   authenticate,
-  [
-    body('street')
-      .trim()
-      .notEmpty()
-      .withMessage('Street address is required'),
-    body('city')
-      .trim()
-      .notEmpty()
-      .withMessage('City is required'),
-    body('state')
-      .trim()
-      .notEmpty()
-      .withMessage('State is required'),
-    body('zipCode')
-      .trim()
-      .notEmpty()
-      .withMessage('Zip code is required'),
-    body('country')
-      .trim()
-      .notEmpty()
-      .withMessage('Country is required'),
-    body('isDefault')
-      .optional()
-      .isBoolean()
-      .withMessage('isDefault must be a boolean value')
-  ],
+  [...validateAddressIndex, ...validateAddress],
   validate,
   authController.updateAddress
 );
@@ -346,7 +226,13 @@ router.put(
  * @desc    Delete an address
  * @access  Private
  */
-router.delete('/addresses/:addressIndex', authenticate, authController.deleteAddress);
+router.delete(
+  '/addresses/:addressIndex',
+  authenticate,
+  validateAddressIndex,
+  validate,
+  authController.deleteAddress
+);
 
 /**
  * Avatar Management Routes
@@ -360,14 +246,7 @@ router.delete('/addresses/:addressIndex', authenticate, authController.deleteAdd
 router.put(
   '/avatar',
   authenticate,
-  [
-    body('avatar')
-      .trim()
-      .notEmpty()
-      .withMessage('Avatar URL is required')
-      .isURL()
-      .withMessage('Please provide a valid avatar URL')
-  ],
+  validateAvatarUpdate,
   validate,
   authController.updateAvatar
 );

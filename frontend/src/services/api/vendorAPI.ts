@@ -27,6 +27,18 @@ const vendorAPI = {
     }
   },
 
+  // Get public vendor profile (no authentication required)
+  getPublicVendorProfile: async (id: string) => {
+    try {
+      const response = await ApiService.get(`/vendors/public/${id}`);
+      logApiResponse(`GET /vendors/public/${id}`, response);
+      return extractApiData(response);
+    } catch (error) {
+      logApiResponse(`GET /vendors/public/${id}`, null, error);
+      throw error;
+    }
+  },
+
   getFeaturedVendors: async () => {
     try {
       const response = await ApiService.get('/vendors/featured');

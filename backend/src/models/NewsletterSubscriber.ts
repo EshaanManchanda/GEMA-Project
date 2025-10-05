@@ -101,12 +101,11 @@ const newsletterSubscriberSchema: Schema = new Schema(
 );
 
 // Indexes for better performance
-newsletterSubscriberSchema.index({ email: 1 });
+// Note: email and unsubscribeToken already have indexes from unique: true
 newsletterSubscriberSchema.index({ isActive: 1 });
 newsletterSubscriberSchema.index({ source: 1 });
 newsletterSubscriberSchema.index({ subscriptionDate: -1 });
 newsletterSubscriberSchema.index({ 'preferences.frequency': 1 });
-newsletterSubscriberSchema.index({ unsubscribeToken: 1 });
 
 // Pre-save middleware to generate unsubscribe token
 newsletterSubscriberSchema.pre('save', function(next) {

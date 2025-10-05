@@ -506,14 +506,22 @@ const orderSchema = new Schema<IOrder>(
 
 // Indexes for performance
 orderSchema.index({ userId: 1 });
-orderSchema.index({ orderNumber: 1 });
+orderSchema.index({ orderNumber: 1 }, { unique: true });
 orderSchema.index({ status: 1 });
 orderSchema.index({ paymentStatus: 1 });
 orderSchema.index({ createdAt: -1 });
-orderSchema.index({ paymentIntentId: 1 });
-orderSchema.index({ transactionId: 1 });
-orderSchema.index({ affiliateCode: 1 });
-orderSchema.index({ couponCode: 1 });
+orderSchema.index({ paymentIntentId: 1 }, { sparse: true });
+orderSchema.index({ transactionId: 1 }, { sparse: true });
+orderSchema.index({ affiliateCode: 1 }, { sparse: true });
+orderSchema.index({ couponCode: 1 }, { sparse: true });
+
+// Compound indexes for common query patterns
+orderSchema.index({ userId: 1, status: 1 }); // User orders by status
+orderSchema.index({ userId: 1, createdAt: -1 }); // User recent orders
+orderSchema.index({ status: 1, createdAt: -1 }); // Recent orders by status
+orderSchema.index({ paymentStatus: 1, createdAt: -1 }); // Orders by payment status
+orderSchema.index({ 'items.eventId': 1 }); // Orders by event
+orderSchema.index({ userId: 1, paymentStatus: 1 }); // User orders by payment status
 
 // Pre-save middleware to generate order number
 orderSchema.pre('save', function (next) {

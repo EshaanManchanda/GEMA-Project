@@ -1,4 +1,4 @@
-import React, { ReactNode } from 'react';
+import React, { ReactNode, ButtonHTMLAttributes } from 'react';
 import { useSpring, animated, config } from '@react-spring/web';
 
 // Hover Card Animation
@@ -31,11 +31,9 @@ export const HoverCard: React.FC<{
 };
 
 // Button Animation
-export const AnimatedButton: React.FC<{
-  children: ReactNode;
-  onClick?: () => void;
-  className?: string;
-}> = ({ children, onClick, className = '' }) => {
+export const AnimatedButton: React.FC<
+  ButtonHTMLAttributes<HTMLButtonElement> & { children: ReactNode }
+> = ({ children, className = '', style, ...rest }) => {
   const [props, api] = useSpring(() => ({
     transform: 'scale(1)',
     config: { tension: 300, friction: 10 }
@@ -44,8 +42,8 @@ export const AnimatedButton: React.FC<{
   return (
     <animated.button
       className={className}
-      style={props}
-      onClick={onClick}
+      style={{ ...props, ...style }}
+      {...rest}
       onMouseEnter={() => api.start({ transform: 'scale(1.05)' })}
       onMouseLeave={() => api.start({ transform: 'scale(1)' })}
       onMouseDown={() => api.start({ transform: 'scale(0.95)' })}

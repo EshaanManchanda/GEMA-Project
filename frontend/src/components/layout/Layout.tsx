@@ -171,7 +171,7 @@ const Layout: React.FC<{ children?: React.ReactNode }> = ({ children }) => {
           className="w-full text-white"
           style={{ backgroundColor: 'var(--primary-color)' }}
         >
-          <div className="max-w-screen-xl mx-auto px-4 sm:px-6 lg:px-8 py-3 flex justify-between items-center text-sm">
+          <div className="max-w-screen-xl mx-auto px-4 sm:px-6 lg:px-8 py-3 flex justify-center items-center text-sm">
             {/* Left: Social Icons */}
             <div className="hidden md:flex space-x-4">
               <a href="#" className="hover:opacity-80 transition-opacity duration-300 flex items-center justify-center w-7 h-7 rounded-full bg-white/10">
@@ -199,7 +199,7 @@ const Layout: React.FC<{ children?: React.ReactNode }> = ({ children }) => {
             </div>
 
             {/* Right: Download App, Country, Language */}
-            <div className="flex items-center space-x-4 md:space-x-6">
+           {/* <div className="flex items-center space-x-4 md:space-x-6">
               <div className="hidden md:flex items-center space-x-1 cursor-pointer hover:opacity-80 transition-opacity duration-300">
                 <FaDownload size={14} />
                 <span>Download App</span>
@@ -221,7 +221,7 @@ const Layout: React.FC<{ children?: React.ReactNode }> = ({ children }) => {
                 <MdLanguage size={16} />
                 <span>{currentLanguage.name}</span>
               </div>
-            </div>
+            </div> */}
           </div>
         </div>
 

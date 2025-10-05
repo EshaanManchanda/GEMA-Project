@@ -148,10 +148,10 @@ CollectionSchema.pre('save', async function(next) {
     this.seo.metaDescription = this.description.length > 160 ? `${this.description.substring(0, 157)}...` : this.description;
   }
 
-  if (this.isModified('events')) {
-    const eventCount = await this.getEventCount();
-    this.count = `${eventCount}+ activities`;
-  }
+  // Always update count display (not just when events modified)
+  const eventCount = await this.getEventCount();
+  this.count = `${eventCount}+ activities`;
+
   next();
 });
 

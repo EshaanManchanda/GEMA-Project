@@ -120,6 +120,15 @@ const adminAPI = {
     }
   },
 
+  createEvent: async (eventData: any) => {
+    try {
+      const response = await ApiService.post('/admin/events', eventData);
+      return response.data;
+    } catch (error) {
+      throw error;
+    }
+  },
+
   updateEvent: async (id: string, eventData: any) => {
     try {
       const response = await ApiService.put(`/admin/events/${id}`, eventData);

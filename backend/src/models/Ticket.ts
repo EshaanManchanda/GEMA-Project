@@ -116,15 +116,24 @@ const TicketSchema = new Schema<ITicket>({
 });
 
 // Indexes for performance
-TicketSchema.index({ ticketNumber: 1 }, { unique: true });
+// Single field indexes
+TicketSchema.index({ ticketNumber: 1 }, { unique: true }); // Unique ticket number
 TicketSchema.index({ orderId: 1 });
 TicketSchema.index({ eventId: 1 });
 TicketSchema.index({ userId: 1 });
 TicketSchema.index({ vendorId: 1 });
 TicketSchema.index({ attendeeEmail: 1 });
 TicketSchema.index({ status: 1 });
-TicketSchema.index({ validFrom: 1, validUntil: 1 });
-TicketSchema.index({ vendorId: 1, status: 1 }); // Composite index for vendor validation
+TicketSchema.index({ createdAt: -1 });
+
+// Compound indexes for common query patterns
+TicketSchema.index({ userId: 1, status: 1 }); // User tickets by status
+TicketSchema.index({ eventId: 1, status: 1 }); // Event tickets by status
+TicketSchema.index({ vendorId: 1, status: 1 }); // Vendor tickets by status
+TicketSchema.index({ validFrom: 1, validUntil: 1 }); // Validity period
+TicketSchema.index({ userId: 1, createdAt: -1 }); // User recent tickets
+TicketSchema.index({ eventId: 1, createdAt: -1 }); // Event recent tickets
+TicketSchema.index({ status: 1, validUntil: 1 }); // Active/expired ticket queries
 
 // Virtual fields
 TicketSchema.virtual('isExpired').get(function() {

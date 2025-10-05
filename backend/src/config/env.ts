@@ -110,9 +110,9 @@ export const config: Config = {
     connectTimeoutMS: parseInt(process.env.MONGODB_CONNECT_TIMEOUT_MS || '30000', 10),
     socketTimeoutMS: parseInt(process.env.MONGODB_SOCKET_TIMEOUT_MS || '45000', 10),
     serverSelectionTimeoutMS: parseInt(process.env.MONGODB_SERVER_SELECTION_TIMEOUT_MS || '30000', 10),
-    maxPoolSize: parseInt(process.env.MONGODB_MAX_POOL_SIZE || '10', 10),
-    minPoolSize: parseInt(process.env.MONGODB_MIN_POOL_SIZE || '2', 10),
-    maxIdleTimeMS: parseInt(process.env.MONGODB_MAX_IDLE_TIME_MS || '30000', 10),
+    maxPoolSize: parseInt(process.env.MONGODB_MAX_POOL_SIZE || '50', 10), // Increased from 10 to 50 for production load
+    minPoolSize: parseInt(process.env.MONGODB_MIN_POOL_SIZE || '5', 10), // Increased from 2 to 5
+    maxIdleTimeMS: parseInt(process.env.MONGODB_MAX_IDLE_TIME_MS || '60000', 10), // Increased from 30s to 60s
     retryWrites: process.env.MONGODB_RETRY_WRITES !== 'false',
     retryReads: process.env.MONGODB_RETRY_READS !== 'false',
   },

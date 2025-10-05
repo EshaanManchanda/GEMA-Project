@@ -73,6 +73,7 @@ export interface IReviewModel extends mongoose.Model<IReview> {
     totalReviews: number;
     distribution: { [key: number]: number };
   }>;
+  updateEventStats(eventId: mongoose.Types.ObjectId): Promise<void>;
 }
 
 // Review interface
@@ -516,6 +517,57 @@ reviewSchema.pre('save', async function(next) {
   }
 });
 
+// Post-save middleware to update Event stats
+reviewSchema.post('save', async function(doc) {
+  try {
+    // Only update stats for event reviews
+    if (doc.type === ReviewType.EVENT && doc.event) {
+      // Check if review status changed or rating changed while approved
+      const statusChanged = doc.isModified('status');
+      const ratingChanged = doc.isModified('rating');
+      const isApproved = doc.status === ReviewStatus.APPROVED;
+
+      // Update stats if:
+      // - Status changed (could be to/from approved)
+      // - Rating changed while approved
+      // - New review that is approved
+      if (statusChanged || (ratingChanged && isApproved) || (doc.isNew && isApproved)) {
+        const Review = mongoose.model<IReview, IReviewModel>('Review');
+        await Review.updateEventStats(doc.event);
+      }
+    }
+  } catch (error) {
+    console.error('Error in post-save middleware for review stats:', error);
+    // Don't throw error to avoid interrupting the save operation
+  }
+});
+
+// Post-deleteOne middleware to update Event stats when review is deleted
+reviewSchema.post('deleteOne', async function(doc: any) {
+  try {
+    // Only update stats for event reviews that were approved
+    if (doc && doc.type === ReviewType.EVENT && doc.event && doc.status === ReviewStatus.APPROVED) {
+      const Review = mongoose.model<IReview, IReviewModel>('Review');
+      await Review.updateEventStats(doc.event);
+    }
+  } catch (error) {
+    console.error('Error in post-deleteOne middleware for review stats:', error);
+    // Don't throw error to avoid interrupting the remove operation
+  }
+});
+
+// Post-findOneAndDelete middleware to handle soft deletes
+reviewSchema.post('findOneAndDelete', async function(doc) {
+  try {
+    if (doc && doc.type === ReviewType.EVENT && doc.event && doc.status === ReviewStatus.APPROVED) {
+      const Review = mongoose.model<IReview, IReviewModel>('Review');
+      await Review.updateEventStats(doc.event);
+    }
+  } catch (error) {
+    console.error('Error in post-findOneAndDelete middleware for review stats:', error);
+  }
+});
+
 // Instance methods
 reviewSchema.methods.addHelpfulVote = function(userId: mongoose.Types.ObjectId, helpful: boolean): void {
   // Remove existing vote from same user
@@ -678,6 +730,33 @@ reviewSchema.statics.getAverageRating = async function(targetId: mongoose.Types.
     totalReviews: data.totalReviews,
     distribution
   };
+};
+
+reviewSchema.statics.updateEventStats = async function(this: IReviewModel, eventId: mongoose.Types.ObjectId) {
+  try {
+    const Event = mongoose.model('Event');
+
+    // Get rating statistics using existing method
+    const stats = await this.getAverageRating(eventId, ReviewType.EVENT);
+
+    // Update the event with the calculated statistics
+    await Event.findByIdAndUpdate(
+      eventId,
+      {
+        $set: {
+          reviewCount: stats.totalReviews,
+          averageRating: stats.averageRating,
+          ratingDistribution: stats.distribution
+        }
+      },
+      { new: true }
+    );
+
+    console.log(`Updated review stats for event ${eventId}: ${stats.totalReviews} reviews, ${stats.averageRating} avg rating`);
+  } catch (error) {
+    console.error(`Error updating event stats for ${eventId}:`, error);
+    throw error;
+  }
 };
 
 const Review = mongoose.model<IReview, IReviewModel>('Review', reviewSchema);

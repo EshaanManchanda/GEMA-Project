@@ -1,588 +1,299 @@
 import React, { useState, useEffect } from 'react';
-import { useSelector } from 'react-redux';
-import {
-  MessageCircle,
-  Send,
-  Reply,
-  ThumbsUp,
-  ThumbsDown,
-  Edit,
-  Trash2,
-  Flag,
-  User,
-  Calendar,
-  MoreVertical
-} from 'lucide-react';
-import Button from '../ui/Button';
-import { Card, CardContent } from '../ui/Card';
-import Modal from '../ui/Modal';
-import toast from 'react-hot-toast';
-import { RootState } from '../../store';
-
-interface Comment {
-  _id: string;
-  content: string;
-  author: {
-    _id: string;
-    name: string;
-    avatar?: string;
-    email: string;
-  };
-  blogPost: string;
-  parentComment?: string;
-  replies?: Comment[];
-  likes: string[];
-  dislikes: string[];
-  isEdited: boolean;
-  isReported: boolean;
-  createdAt: string;
-  updatedAt: string;
-}
+import { FaComments, FaSpinner, FaSignInAlt, FaSort } from 'react-icons/fa';
+import { Link } from 'react-router-dom';
+import blogAPI from '../../services/api/blogAPI';
+import { BlogComment, CommentStats } from '../../types/blog';
+import CommentForm from './CommentForm';
+import CommentItem from './CommentItem';
 
 interface CommentSectionProps {
   blogPostId: string;
-  commentsCount?: number;
-  onCommentsCountChange?: (count: number) => void;
+  currentUserId?: string;
+  isAuthenticated: boolean;
 }
+
+type SortOption = 'newest' | 'oldest' | 'likes';
 
 const CommentSection: React.FC<CommentSectionProps> = ({
   blogPostId,
-  commentsCount = 0,
-  onCommentsCountChange
+  currentUserId,
+  isAuthenticated
 }) => {
-  const { user, isAuthenticated } = useSelector((state: RootState) => state.auth);
-  const [comments, setComments] = useState<Comment[]>([]);
-  const [loading, setLoading] = useState(false);
-  const [submitting, setSubmitting] = useState(false);
-  const [newComment, setNewComment] = useState('');
-  const [replyTo, setReplyTo] = useState<string>('');
-  const [replyContent, setReplyContent] = useState('');
-  const [editingComment, setEditingComment] = useState<string>('');
-  const [editContent, setEditContent] = useState('');
-  const [showLoginModal, setShowLoginModal] = useState(false);
+  const [comments, setComments] = useState<BlogComment[]>([]);
+  const [stats, setStats] = useState<CommentStats | null>(null);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+  const [sortBy, setSortBy] = useState<SortOption>('newest');
+  const [page, setPage] = useState(1);
+  const [hasMore, setHasMore] = useState(false);
 
-  useEffect(() => {
-    fetchComments();
-  }, [blogPostId]);
-
-  const fetchComments = async () => {
-    setLoading(true);
+  // Fetch comments
+  const fetchComments = async (resetPagination = false) => {
     try {
-      const response = await fetch(`/api/blog/posts/${blogPostId}/comments`);
-      const data = await response.json();
+      setLoading(true);
+      setError(null);
 
-      if (data.success) {
-        setComments(data.data.comments || []);
-        onCommentsCountChange?.(data.data.comments?.length || 0);
+      const currentPage = resetPagination ? 1 : page;
+      const response = await blogAPI.comments.getComments(blogPostId, {
+        page: currentPage,
+        limit: 10,
+        sort: sortBy
+      });
+
+      if (response.success) {
+        setComments(response.data.comments || []);
+        setStats(response.data.stats || null);
+        setHasMore(response.data.pagination.page < Math.ceil(response.data.pagination.total / 10));
+        if (resetPagination) setPage(1);
       }
-    } catch (error) {
-      console.error('Error fetching comments:', error);
-      toast.error('Failed to load comments');
+    } catch (err: any) {
+      console.error('Error fetching comments:', err);
+      setError(err.response?.data?.message || 'Failed to load comments');
     } finally {
       setLoading(false);
     }
   };
 
-  const handleSubmitComment = async () => {
-    if (!isAuthenticated) {
-      setShowLoginModal(true);
-      return;
-    }
+  useEffect(() => {
+    fetchComments(true);
+  }, [blogPostId, sortBy]);
 
-    if (!newComment.trim()) {
-      toast.error('Please write a comment');
-      return;
-    }
-
-    setSubmitting(true);
+  // Create new comment
+  const handleCreateComment = async (content: string) => {
     try {
-      const response = await fetch(`/api/blog/posts/${blogPostId}/comments`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${localStorage.getItem('token')}`
-        },
-        body: JSON.stringify({
-          content: newComment.trim()
-        })
-      });
-
-      const data = await response.json();
-
-      if (data.success) {
-        setNewComment('');
-        await fetchComments();
-        toast.success('Comment posted successfully!');
-      } else {
-        toast.error(data.message || 'Failed to post comment');
-      }
-    } catch (error) {
-      console.error('Error posting comment:', error);
-      toast.error('Failed to post comment');
-    } finally {
-      setSubmitting(false);
+      await blogAPI.comments.createComment(blogPostId, content);
+      // Refresh comments after creating
+      await fetchComments(true);
+    } catch (err: any) {
+      throw err;
     }
   };
 
-  const handleReply = async (parentCommentId: string) => {
-    if (!isAuthenticated) {
-      setShowLoginModal(true);
-      return;
-    }
-
-    if (!replyContent.trim()) {
-      toast.error('Please write a reply');
-      return;
-    }
-
-    setSubmitting(true);
+  // Reply to comment
+  const handleReply = async (parentCommentId: string, content: string) => {
     try {
-      const response = await fetch(`/api/blog/posts/${blogPostId}/comments`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${localStorage.getItem('token')}`
-        },
-        body: JSON.stringify({
-          content: replyContent.trim(),
-          parentComment: parentCommentId
-        })
-      });
-
-      const data = await response.json();
-
-      if (data.success) {
-        setReplyTo('');
-        setReplyContent('');
-        await fetchComments();
-        toast.success('Reply posted successfully!');
-      } else {
-        toast.error(data.message || 'Failed to post reply');
-      }
-    } catch (error) {
-      console.error('Error posting reply:', error);
-      toast.error('Failed to post reply');
-    } finally {
-      setSubmitting(false);
+      await blogAPI.comments.createComment(blogPostId, content, parentCommentId);
+      // Refresh comments after reply
+      await fetchComments(true);
+    } catch (err: any) {
+      throw err;
     }
   };
 
-  const handleEditComment = async (commentId: string) => {
-    if (!editContent.trim()) {
-      toast.error('Comment cannot be empty');
-      return;
-    }
-
-    setSubmitting(true);
+  // Edit comment
+  const handleEdit = async (commentId: string, content: string) => {
     try {
-      const response = await fetch(`/api/blog/comments/${commentId}`, {
-        method: 'PUT',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${localStorage.getItem('token')}`
-        },
-        body: JSON.stringify({
-          content: editContent.trim()
-        })
-      });
-
-      const data = await response.json();
-
-      if (data.success) {
-        setEditingComment('');
-        setEditContent('');
-        await fetchComments();
-        toast.success('Comment updated successfully!');
-      } else {
-        toast.error(data.message || 'Failed to update comment');
-      }
-    } catch (error) {
-      console.error('Error updating comment:', error);
-      toast.error('Failed to update comment');
-    } finally {
-      setSubmitting(false);
+      await blogAPI.comments.updateComment(commentId, content);
+      // Refresh comments after edit
+      await fetchComments();
+    } catch (err: any) {
+      throw err;
     }
   };
 
-  const handleDeleteComment = async (commentId: string) => {
-    if (!confirm('Are you sure you want to delete this comment?')) {
-      return;
-    }
-
+  // Delete comment
+  const handleDelete = async (commentId: string) => {
     try {
-      const response = await fetch(`/api/blog/comments/${commentId}`, {
-        method: 'DELETE',
-        headers: {
-          'Authorization': `Bearer ${localStorage.getItem('token')}`
-        }
-      });
-
-      const data = await response.json();
-
-      if (data.success) {
-        await fetchComments();
-        toast.success('Comment deleted successfully!');
-      } else {
-        toast.error(data.message || 'Failed to delete comment');
-      }
-    } catch (error) {
-      console.error('Error deleting comment:', error);
-      toast.error('Failed to delete comment');
+      await blogAPI.comments.deleteComment(commentId);
+      // Refresh comments after delete
+      await fetchComments(true);
+    } catch (err: any) {
+      alert(err.response?.data?.message || 'Failed to delete comment');
     }
   };
 
-  const handleLikeComment = async (commentId: string) => {
-    if (!isAuthenticated) {
-      setShowLoginModal(true);
-      return;
-    }
-
+  // Like comment
+  const handleLike = async (commentId: string) => {
     try {
-      const response = await fetch(`/api/blog/comments/${commentId}/like`, {
-        method: 'POST',
-        headers: {
-          'Authorization': `Bearer ${localStorage.getItem('token')}`
-        }
-      });
-
-      const data = await response.json();
-
-      if (data.success) {
-        await fetchComments();
-      } else {
-        toast.error(data.message || 'Failed to like comment');
-      }
-    } catch (error) {
-      console.error('Error liking comment:', error);
-      toast.error('Failed to like comment');
+      await blogAPI.comments.likeComment(commentId);
+      // Refresh comments to update like counts
+      await fetchComments();
+    } catch (err: any) {
+      console.error('Error liking comment:', err);
     }
   };
 
-  const handleReportComment = async (commentId: string) => {
-    if (!isAuthenticated) {
-      setShowLoginModal(true);
-      return;
-    }
-
+  // Dislike comment
+  const handleDislike = async (commentId: string) => {
     try {
-      const response = await fetch(`/api/blog/comments/${commentId}/report`, {
-        method: 'POST',
-        headers: {
-          'Authorization': `Bearer ${localStorage.getItem('token')}`
-        }
-      });
-
-      const data = await response.json();
-
-      if (data.success) {
-        toast.success('Comment reported successfully');
-      } else {
-        toast.error(data.message || 'Failed to report comment');
-      }
-    } catch (error) {
-      console.error('Error reporting comment:', error);
-      toast.error('Failed to report comment');
+      await blogAPI.comments.dislikeComment(commentId);
+      // Refresh comments to update dislike counts
+      await fetchComments();
+    } catch (err: any) {
+      console.error('Error disliking comment:', err);
     }
   };
 
-  const formatDate = (dateString: string) => {
-    return new Date(dateString).toLocaleDateString('en-US', {
-      year: 'numeric',
-      month: 'short',
-      day: 'numeric',
-      hour: '2-digit',
-      minute: '2-digit'
-    });
+  // Report comment
+  const handleReport = async (commentId: string) => {
+    try {
+      await blogAPI.comments.reportComment(commentId);
+      // Refresh comments to update report status
+      await fetchComments();
+    } catch (err: any) {
+      alert(err.response?.data?.message || 'Failed to report comment');
+    }
   };
 
-  const canEditComment = (comment: Comment) => {
-    return isAuthenticated && user?._id === comment.author._id;
+  // Load more comments
+  const handleLoadMore = () => {
+    setPage(page + 1);
+    fetchComments();
   };
-
-  const renderComment = (comment: Comment, isReply = false) => (
-    <div key={comment._id} className={`${isReply ? 'ml-12' : ''} mb-4`}>
-      <Card>
-        <CardContent className="p-4">
-          <div className="flex justify-between items-start mb-3">
-            <div className="flex items-center space-x-3">
-              <div className="w-8 h-8 bg-gray-300 rounded-full flex items-center justify-center">
-                {comment.author.avatar ? (
-                  <img
-                    src={comment.author.avatar}
-                    alt={comment.author.name}
-                    className="w-8 h-8 rounded-full object-cover"
-                  />
-                ) : (
-                  <User className="w-4 h-4 text-gray-600" />
-                )}
-              </div>
-              <div>
-                <h4 className="font-medium text-sm text-gray-900">
-                  {comment.author.name}
-                </h4>
-                <div className="flex items-center text-xs text-gray-500">
-                  <Calendar className="w-3 h-3 mr-1" />
-                  {formatDate(comment.createdAt)}
-                  {comment.isEdited && <span className="ml-2">(edited)</span>}
-                </div>
-              </div>
-            </div>
-
-            <div className="flex items-center space-x-2">
-              {canEditComment(comment) && (
-                <>
-                  <Button
-                    variant="ghost"
-                    size="sm"
-                    onClick={() => {
-                      setEditingComment(comment._id);
-                      setEditContent(comment.content);
-                    }}
-                  >
-                    <Edit className="w-3 h-3" />
-                  </Button>
-                  <Button
-                    variant="ghost"
-                    size="sm"
-                    onClick={() => handleDeleteComment(comment._id)}
-                  >
-                    <Trash2 className="w-3 h-3" />
-                  </Button>
-                </>
-              )}
-              {isAuthenticated && user?._id !== comment.author._id && (
-                <Button
-                  variant="ghost"
-                  size="sm"
-                  onClick={() => handleReportComment(comment._id)}
-                >
-                  <Flag className="w-3 h-3" />
-                </Button>
-              )}
-            </div>
-          </div>
-
-          {editingComment === comment._id ? (
-            <div className="space-y-3">
-              <textarea
-                value={editContent}
-                onChange={(e) => setEditContent(e.target.value)}
-                className="w-full p-3 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-                rows={3}
-                placeholder="Edit your comment..."
-              />
-              <div className="flex space-x-2">
-                <Button
-                  variant="primary"
-                  size="sm"
-                  onClick={() => handleEditComment(comment._id)}
-                  loading={submitting}
-                >
-                  Save
-                </Button>
-                <Button
-                  variant="secondary"
-                  size="sm"
-                  onClick={() => {
-                    setEditingComment('');
-                    setEditContent('');
-                  }}
-                >
-                  Cancel
-                </Button>
-              </div>
-            </div>
-          ) : (
-            <>
-              <p className="text-gray-800 mb-3">{comment.content}</p>
-
-              <div className="flex items-center justify-between">
-                <div className="flex items-center space-x-4">
-                  <button
-                    onClick={() => handleLikeComment(comment._id)}
-                    className={`flex items-center space-x-1 text-sm ${
-                      comment.likes.includes(user?._id || '')
-                        ? 'text-blue-600'
-                        : 'text-gray-500 hover:text-blue-600'
-                    }`}
-                  >
-                    <ThumbsUp className="w-4 h-4" />
-                    <span>{comment.likes.length}</span>
-                  </button>
-
-                  {!isReply && (
-                    <Button
-                      variant="ghost"
-                      size="sm"
-                      onClick={() => setReplyTo(comment._id)}
-                    >
-                      <Reply className="w-4 h-4 mr-1" />
-                      Reply
-                    </Button>
-                  )}
-                </div>
-              </div>
-
-              {replyTo === comment._id && (
-                <div className="mt-4 p-3 bg-gray-50 rounded-md">
-                  <textarea
-                    value={replyContent}
-                    onChange={(e) => setReplyContent(e.target.value)}
-                    className="w-full p-3 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-                    rows={2}
-                    placeholder="Write a reply..."
-                  />
-                  <div className="flex space-x-2 mt-2">
-                    <Button
-                      variant="primary"
-                      size="sm"
-                      onClick={() => handleReply(comment._id)}
-                      loading={submitting}
-                    >
-                      Reply
-                    </Button>
-                    <Button
-                      variant="secondary"
-                      size="sm"
-                      onClick={() => {
-                        setReplyTo('');
-                        setReplyContent('');
-                      }}
-                    >
-                      Cancel
-                    </Button>
-                  </div>
-                </div>
-              )}
-            </>
-          )}
-        </CardContent>
-      </Card>
-
-      {/* Render replies */}
-      {comment.replies && comment.replies.length > 0 && (
-        <div className="mt-4">
-          {comment.replies.map(reply => renderComment(reply, true))}
-        </div>
-      )}
-    </div>
-  );
 
   return (
-    <div className="space-y-6">
-      {/* Comments Header */}
-      <div className="flex items-center space-x-2">
-        <MessageCircle className="w-5 h-5 text-gray-600" />
-        <h3 className="text-lg font-semibold text-gray-900">
-          Comments ({comments.length})
-        </h3>
+    <section className="mt-12 mb-12">
+      {/* Section Header */}
+      <div className="flex items-center justify-between mb-6">
+        <div className="flex items-center gap-3">
+          <FaComments className="text-2xl text-primary-600" style={{ color: 'var(--primary-color)' }} />
+          <h2 className="text-2xl font-bold text-gray-900">
+            Comments {stats && `(${stats.totalComments})`}
+          </h2>
+        </div>
+
+        {/* Sort Dropdown */}
+        {comments.length > 0 && (
+          <div className="flex items-center gap-2">
+            <FaSort className="text-gray-400" />
+            <select
+              value={sortBy}
+              onChange={(e) => setSortBy(e.target.value as SortOption)}
+              className="px-3 py-1.5 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-primary-500"
+            >
+              <option value="newest">Newest First</option>
+              <option value="oldest">Oldest First</option>
+              <option value="likes">Most Liked</option>
+            </select>
+          </div>
+        )}
       </div>
 
-      {/* Add Comment Form */}
-      <Card>
-        <CardContent className="p-4">
-          {isAuthenticated ? (
-            <div className="space-y-4">
-              <div className="flex items-start space-x-3">
-                <div className="w-8 h-8 bg-gray-300 rounded-full flex items-center justify-center">
-                  {user?.avatar ? (
-                    <img
-                      src={user.avatar}
-                      alt={user.name}
-                      className="w-8 h-8 rounded-full object-cover"
-                    />
-                  ) : (
-                    <User className="w-4 h-4 text-gray-600" />
-                  )}
-                </div>
-                <div className="flex-1">
-                  <textarea
-                    value={newComment}
-                    onChange={(e) => setNewComment(e.target.value)}
-                    className="w-full p-3 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-                    rows={3}
-                    placeholder="Share your thoughts..."
-                  />
-                </div>
-              </div>
-
-              <div className="flex justify-end">
-                <Button
-                  variant="primary"
-                  onClick={handleSubmitComment}
-                  loading={submitting}
-                  disabled={!newComment.trim()}
-                >
-                  <Send className="w-4 h-4 mr-2" />
-                  Post Comment
-                </Button>
-              </div>
-            </div>
-          ) : (
-            <div className="text-center py-6">
-              <p className="text-gray-600 mb-4">
-                Please sign in to leave a comment
-              </p>
-              <Button
-                variant="primary"
-                onClick={() => setShowLoginModal(true)}
-              >
-                Sign In
-              </Button>
-            </div>
-          )}
-        </CardContent>
-      </Card>
+      {/* Comment Form or Login Prompt */}
+      <div className="mb-8">
+        {isAuthenticated ? (
+          <div className="bg-gray-50 p-4 rounded-lg">
+            <h3 className="text-lg font-semibold mb-3 text-gray-900">Leave a Comment</h3>
+            <CommentForm
+              onSubmit={handleCreateComment}
+              placeholder="Share your thoughts..."
+              submitText="Post Comment"
+            />
+          </div>
+        ) : (
+          <div className="bg-gray-50 border-2 border-dashed border-gray-300 p-8 rounded-lg text-center">
+            <FaSignInAlt className="mx-auto text-4xl text-gray-400 mb-3" />
+            <h3 className="text-lg font-semibold mb-2 text-gray-900">Sign in to Comment</h3>
+            <p className="text-gray-600 mb-4">
+              You need to be logged in to leave a comment
+            </p>
+            <Link
+              to="/login"
+              className="inline-block px-6 py-2 bg-primary-600 text-white rounded-lg hover:bg-primary-700 transition-colors"
+              style={{ backgroundColor: 'var(--primary-color)' }}
+            >
+              Sign In
+            </Link>
+          </div>
+        )}
+      </div>
 
       {/* Comments List */}
-      {loading ? (
-        <div className="text-center py-8">
-          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600 mx-auto"></div>
-          <p className="mt-2 text-gray-600">Loading comments...</p>
+      {loading && comments.length === 0 ? (
+        <div className="flex items-center justify-center py-12">
+          <FaSpinner className="animate-spin text-3xl text-primary-600" />
+          <span className="ml-3 text-gray-600">Loading comments...</span>
         </div>
-      ) : comments.length > 0 ? (
-        <div className="space-y-4">
-          {comments.filter(comment => !comment.parentComment).map(comment => renderComment(comment))}
+      ) : error ? (
+        <div className="bg-red-50 border border-red-200 rounded-lg p-6 text-center">
+          <p className="text-red-600 font-medium mb-2">Failed to Load Comments</p>
+          <p className="text-red-500 text-sm mb-4">{error}</p>
+          <button
+            onClick={() => fetchComments(true)}
+            className="px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 transition-colors"
+          >
+            Try Again
+          </button>
+        </div>
+      ) : comments.length === 0 ? (
+        <div className="bg-gray-50 rounded-lg p-12 text-center">
+          <FaComments className="mx-auto text-5xl text-gray-300 mb-4" />
+          <h3 className="text-xl font-semibold text-gray-900 mb-2">No Comments Yet</h3>
+          <p className="text-gray-600">
+            Be the first to share your thoughts!
+          </p>
         </div>
       ) : (
-        <div className="text-center py-8">
-          <MessageCircle className="w-16 h-16 text-gray-300 mx-auto mb-4" />
-          <h3 className="text-lg font-medium text-gray-900 mb-2">No comments yet</h3>
-          <p className="text-gray-500">Be the first to share your thoughts!</p>
+        <div className="space-y-4">
+          {comments.map((comment) => (
+            <CommentItem
+              key={comment._id}
+              comment={comment}
+              currentUserId={currentUserId}
+              onReply={handleReply}
+              onEdit={handleEdit}
+              onDelete={handleDelete}
+              onLike={handleLike}
+              onDislike={handleDislike}
+              onReport={handleReport}
+            />
+          ))}
+
+          {/* Load More Button */}
+          {hasMore && (
+            <div className="text-center pt-4">
+              <button
+                onClick={handleLoadMore}
+                disabled={loading}
+                className="px-6 py-2 border-2 border-primary-600 text-primary-600 rounded-lg hover:bg-primary-50 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                style={{ borderColor: 'var(--primary-color)', color: 'var(--primary-color)' }}
+              >
+                {loading ? (
+                  <span className="flex items-center gap-2">
+                    <FaSpinner className="animate-spin" />
+                    Loading...
+                  </span>
+                ) : (
+                  'Load More Comments'
+                )}
+              </button>
+            </div>
+          )}
         </div>
       )}
 
-      {/* Login Modal */}
-      <Modal
-        isOpen={showLoginModal}
-        onClose={() => setShowLoginModal(false)}
-        title="Sign In Required"
-      >
-        <div className="text-center py-6">
-          <p className="text-gray-600 mb-4">
-            You need to be signed in to interact with comments.
-          </p>
-          <div className="space-x-3">
-            <Button
-              variant="primary"
-              onClick={() => {
-                setShowLoginModal(false);
-                // Navigate to login page
-                window.location.href = '/login';
-              }}
-            >
-              Sign In
-            </Button>
-            <Button
-              variant="secondary"
-              onClick={() => setShowLoginModal(false)}
-            >
-              Cancel
-            </Button>
+      {/* Comment Stats */}
+      {stats && stats.totalComments > 0 && (
+        <div className="mt-8 p-4 bg-gray-50 rounded-lg">
+          <div className="grid grid-cols-2 md:grid-cols-4 gap-4 text-center">
+            <div>
+              <p className="text-2xl font-bold text-primary-600" style={{ color: 'var(--primary-color)' }}>
+                {stats.totalComments}
+              </p>
+              <p className="text-sm text-gray-600">Total Comments</p>
+            </div>
+            <div>
+              <p className="text-2xl font-bold text-primary-600" style={{ color: 'var(--primary-color)' }}>
+                {stats.topLevelComments}
+              </p>
+              <p className="text-sm text-gray-600">Top Level</p>
+            </div>
+            <div>
+              <p className="text-2xl font-bold text-primary-600" style={{ color: 'var(--primary-color)' }}>
+                {stats.totalReplies}
+              </p>
+              <p className="text-sm text-gray-600">Replies</p>
+            </div>
+            <div>
+              <p className="text-2xl font-bold text-primary-600" style={{ color: 'var(--primary-color)' }}>
+                {stats.totalLikes}
+              </p>
+              <p className="text-sm text-gray-600">Total Likes</p>
+            </div>
           </div>
         </div>
-      </Modal>
-    </div>
+      )}
+    </section>
   );
 };
 

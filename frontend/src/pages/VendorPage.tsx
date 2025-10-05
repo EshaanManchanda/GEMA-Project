@@ -2,6 +2,8 @@ import React, { useState, useEffect } from 'react';
 import { useParams, Link } from 'react-router-dom';
 import { motion } from 'framer-motion';
 import { VendorSEO } from '@/components/common/SEO';
+import vendorAPI from '@/services/api/vendorAPI';
+import { getEventImage } from '@/utils/imageFallbacks';
 
 interface Event {
   id: number;
@@ -137,21 +139,53 @@ With a track record of successful events across multiple industries, we have bui
   useEffect(() => {
     const fetchVendor = async () => {
       if (!id) return;
-      
+
       try {
         setLoading(true);
-        
-        // In a real app, you would fetch from an API
-        // const response = await fetch(`/api/vendors/${id}`);
-        // if (!response.ok) throw new Error('Failed to fetch vendor details');
-        // const data = await response.json();
-        
-        // Simulate network delay
-        await new Promise(resolve => setTimeout(resolve, 1000));
-        
-        // Use mock data instead
-        setVendor(mockVendor);
-        setUsingMockData(true);
+
+        // Fetch vendor data from API
+        const response = await vendorAPI.getPublicVendorProfile(id);
+        const { vendor: vendorData, events: vendorEvents, stats } = response;
+
+        // Transform API data to match component interface
+        const transformedVendor: Vendor = {
+          id: parseInt(id),
+          name: `${vendorData.firstName} ${vendorData.lastName}`,
+          logo: vendorData.avatar || 'https://via.placeholder.com/150',
+          coverImage: 'https://via.placeholder.com/1200x400',
+          description: `Professional Event Organizer - ${vendorData.firstName} ${vendorData.lastName}`,
+          longDescription: `${vendorData.firstName} ${vendorData.lastName} is a professional event organizer with expertise in creating memorable experiences. With a commitment to excellence and attention to detail, we ensure every event is executed flawlessly.`,
+          rating: 4.8,
+          reviewCount: stats?.totalBookings || 0,
+          location: 'Location information',
+          contactEmail: vendorData.email,
+          contactPhone: vendorData.phone || '',
+          website: vendorData.socialMedia?.website || '',
+          socialMedia: {
+            facebook: vendorData.socialMedia?.facebook,
+            twitter: vendorData.socialMedia?.twitter,
+            instagram: vendorData.socialMedia?.instagram,
+            linkedin: vendorData.socialMedia?.linkedin,
+          },
+          categories: [],
+          events: vendorEvents.map((event: any) => ({
+            id: event._id,
+            title: event.title,
+            image: getEventImage(event.images, event.title, 400, 300),
+            date: event.dateSchedule?.[0]?.date || event.dateSchedule?.[0]?.startDate || new Date().toISOString(),
+            time: event.dateSchedule?.[0]?.date
+              ? new Date(event.dateSchedule[0].date).toLocaleTimeString()
+              : '10:00 AM - 05:00 PM',
+            location: event.location?.city && event.location?.address
+              ? `${event.location.address}, ${event.location.city}`
+              : event.location?.city || event.location?.address || 'Location TBD',
+            price: event.price || 0,
+            category: event.category || 'Event',
+          }))
+        };
+
+        setVendor(transformedVendor);
+        setUsingMockData(false);
         setError(null);
       } catch (err) {
         console.error('Error fetching vendor details:', err);

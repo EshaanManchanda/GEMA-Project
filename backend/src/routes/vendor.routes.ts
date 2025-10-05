@@ -10,11 +10,19 @@ import {
   uploadVendorImage,
   updateVendorBusinessHours,
   updateVendorSocialMedia,
+  getPublicVendorProfile,
 } from '../controllers/vendor.controller';
 
 const router = Router();
 
-// All vendor routes require authentication and vendor role
+/**
+ * @route   GET /api/vendors/public/:id
+ * @desc    Get public vendor profile by ID
+ * @access  Public
+ */
+router.get('/public/:id', getPublicVendorProfile);
+
+// All vendor routes below require authentication and vendor role
 router.use(authenticate);
 router.use(authorize([UserRole.VENDOR]));
 

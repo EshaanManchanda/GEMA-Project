@@ -9,6 +9,8 @@ package-lock.json
 /backend/dist/
 /frontend/dist/
 /frontend/build/
+/docs/
+/frontend/docs/
 
 # Environment variables
 .env

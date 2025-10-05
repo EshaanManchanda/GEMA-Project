@@ -32,7 +32,9 @@ export const generateRefreshToken = (payload: object): string => {
  */
 export const verifyToken = (token: string): any => {
   try {
-    return jwt.verify(token, config.jwtSecret as Secret);
+    return jwt.verify(token, config.jwtSecret as Secret, {
+      clockTolerance: 60 // Allow 60 seconds clock skew
+    });
   } catch {
     return null;
   }
@@ -43,7 +45,9 @@ export const verifyToken = (token: string): any => {
  */
 export const verifyRefreshToken = (token: string): any => {
   try {
-    return jwt.verify(token, config.jwtRefreshSecret as Secret);
+    return jwt.verify(token, config.jwtRefreshSecret as Secret, {
+      clockTolerance: 60 // Allow 60 seconds clock skew
+    });
   } catch {
     return null;
   }

@@ -1,7 +1,8 @@
 import { Router, Response, NextFunction } from 'express';
 import { AuthRequest } from '../types';
-import { authenticate, authorize } from '../middleware/auth';
+import { authenticate, authorize, validate } from '../middleware';
 import { UserRole } from '../models/User';
+import { validateDashboardDateRange } from '../validators/admin.validator';
 
 const router = Router();
 
@@ -81,7 +82,7 @@ router.get('/commission-stats', async (req: AuthRequest, res: Response, next: Ne
  * @desc    Get all dashboard data in a single request
  * @access  Admin only
  */
-router.get('/dashboard-all', async (req: AuthRequest, res: Response, next: NextFunction) => {
+router.get('/dashboard-all', validateDashboardDateRange, validate, async (req: AuthRequest, res: Response, next: NextFunction) => {
   try {
     // Import analytics service
     const { analyticsService } = await import('../services/analytics.service');

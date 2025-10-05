@@ -276,6 +276,107 @@ const blogAPI = {
         throw error;
       }
     }
+  },
+
+  // Comment functions
+  comments: {
+    // Get comments for a blog post
+    getComments: async (postId: string, params?: {
+      page?: number;
+      limit?: number;
+      sort?: 'newest' | 'oldest' | 'likes';
+    }) => {
+      try {
+        const response = await ApiService.get(`/blog-comments/posts/${postId}/comments`, {
+          params
+        });
+        return response.data;
+      } catch (error) {
+        throw error;
+      }
+    },
+
+    // Create a new comment or reply
+    createComment: async (postId: string, content: string, parentCommentId?: string) => {
+      try {
+        const response = await ApiService.post(`/blog-comments/posts/${postId}/comments`, {
+          content,
+          parentComment: parentCommentId
+        });
+        return response.data;
+      } catch (error) {
+        throw error;
+      }
+    },
+
+    // Update a comment
+    updateComment: async (commentId: string, content: string) => {
+      try {
+        const response = await ApiService.put(`/blog-comments/comments/${commentId}`, {
+          content
+        });
+        return response.data;
+      } catch (error) {
+        throw error;
+      }
+    },
+
+    // Delete a comment
+    deleteComment: async (commentId: string) => {
+      try {
+        const response = await ApiService.delete(`/blog-comments/comments/${commentId}`);
+        return response.data;
+      } catch (error) {
+        throw error;
+      }
+    },
+
+    // Like a comment
+    likeComment: async (commentId: string) => {
+      try {
+        const response = await ApiService.post(`/blog-comments/comments/${commentId}/like`);
+        return response.data;
+      } catch (error) {
+        throw error;
+      }
+    },
+
+    // Dislike a comment
+    dislikeComment: async (commentId: string) => {
+      try {
+        const response = await ApiService.post(`/blog-comments/comments/${commentId}/dislike`);
+        return response.data;
+      } catch (error) {
+        throw error;
+      }
+    },
+
+    // Report a comment
+    reportComment: async (commentId: string, reason?: string) => {
+      try {
+        const response = await ApiService.post(`/blog-comments/comments/${commentId}/report`, {
+          reason
+        });
+        return response.data;
+      } catch (error) {
+        throw error;
+      }
+    },
+
+    // Get replies for a comment
+    getCommentReplies: async (commentId: string, params?: {
+      page?: number;
+      limit?: number;
+    }) => {
+      try {
+        const response = await ApiService.get(`/blog-comments/comments/${commentId}/replies`, {
+          params
+        });
+        return response.data;
+      } catch (error) {
+        throw error;
+      }
+    }
   }
 };
 

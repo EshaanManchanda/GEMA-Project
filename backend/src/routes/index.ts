@@ -12,6 +12,8 @@ import analyticsRoutes from './analytics.routes';
 import adminUserRoutes from './admin.user.routes';
 import adminEventRoutes from './admin.event.routes';
 import adminVenueRoutes from './admin.venue.routes';
+import adminDashboardRoutes from './admin.dashboard.routes';
+import adminModerationRoutes from './admin.moderation.routes';
 import vendorRoutes from './vendor.routes';
 import blogRoutes from './blog.routes';
 import adminBlogRoutes from './admin.blog.routes';
@@ -79,6 +81,12 @@ router.use('/admin/events', adminEventRoutes);
 
 // Admin Venue Management routes
 router.use('/admin/venues', adminVenueRoutes);
+
+// Admin Dashboard routes
+router.use('/admin/dashboard', adminDashboardRoutes);
+
+// Admin Moderation routes
+router.use('/admin/moderation', adminModerationRoutes);
 
 // Vendor routes
 router.use('/vendors', vendorRoutes);

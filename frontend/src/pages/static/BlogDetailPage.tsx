@@ -2,15 +2,15 @@ import React, { useState, useEffect } from 'react';
 import { useParams, Link, useNavigate } from 'react-router-dom';
 import { Helmet } from 'react-helmet-async';
 import { motion } from 'framer-motion';
-import { 
-  FaArrowLeft, 
-  FaCalendar, 
-  FaClock, 
-  FaUser, 
-  FaTag, 
-  FaHeart, 
-  FaShare, 
-  FaSpinner, 
+import {
+  FaArrowLeft,
+  FaCalendar,
+  FaClock,
+  FaUser,
+  FaTag,
+  FaHeart,
+  FaShare,
+  FaSpinner,
   FaExclamationTriangle,
   FaFacebook,
   FaTwitter,
@@ -20,10 +20,14 @@ import {
 import blogAPI from '../../services/api/blogAPI';
 import { Blog, SingleBlogResponse } from '../../types/blog';
 import { getCurrentPageUrl } from '../../utils/urlHelper';
+import CommentSection from '../../components/blog/CommentSection';
+import { useSelector } from 'react-redux';
+import { RootState } from '../../store';
 
 const BlogDetailPage: React.FC = () => {
   const { slug } = useParams<{ slug: string }>();
   const navigate = useNavigate();
+  const { user, isAuthenticated } = useSelector((state: RootState) => state.auth);
   const [blog, setBlog] = useState<Blog | null>(null);
   const [relatedBlogs, setRelatedBlogs] = useState<Blog[]>([]);
   const [loading, setLoading] = useState(true);
@@ -440,8 +444,8 @@ const BlogDetailPage: React.FC = () => {
               >
                 <div className="bg-white rounded-lg shadow-md overflow-hidden hover:shadow-lg transition-shadow">
                   <div className="h-40 overflow-hidden">
-                    <img 
-                      src={relatedBlog.featuredImage} 
+                    <img
+                      src={relatedBlog.featuredImage}
                       alt={relatedBlog.title}
                       className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
                     />
@@ -464,6 +468,13 @@ const BlogDetailPage: React.FC = () => {
           </div>
         </section>
       )}
+
+      {/* Comments Section */}
+      <CommentSection
+        blogPostId={blog._id}
+        currentUserId={user?._id}
+        isAuthenticated={isAuthenticated}
+      />
 
       {/* Back to blog button */}
       <div className="text-center">

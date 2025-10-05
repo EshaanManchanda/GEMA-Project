@@ -265,21 +265,24 @@ const Banner = ({ categories }: { categories: any[] }) => {
         <FadeIn delay={0.5}>
           <div className="mt-4 flex flex-wrap justify-center gap-2 text-sm">
             <span className="text-white/70">Popular:</span>
-            <button 
+            <button
+              key="summer-camps"
               onClick={() => handlePopularSearch('Summer Camps')}
               className="text-white hover:text-white/80 transition-colors duration-300 underline underline-offset-2 cursor-pointer focus:outline-none focus:ring-2 focus:ring-white/50 rounded px-1"
               aria-label="Search for Summer Camps"
             >
               Summer Camps
             </button>
-            <button 
+            <button
+              key="indoor-play-areas"
               onClick={() => handlePopularSearch('Indoor Play Areas')}
               className="text-white hover:text-white/80 transition-colors duration-300 underline underline-offset-2 cursor-pointer focus:outline-none focus:ring-2 focus:ring-white/50 rounded px-1"
               aria-label="Search for Indoor Play Areas"
             >
               Indoor Play Areas
             </button>
-            <button 
+            <button
+              key="swimming-classes"
               onClick={() => handlePopularSearch('Swimming Classes')}
               className="text-white hover:text-white/80 transition-colors duration-300 underline underline-offset-2 cursor-pointer focus:outline-none focus:ring-2 focus:ring-white/50 rounded px-1"
               aria-label="Search for Swimming Classes"
@@ -287,7 +290,7 @@ const Banner = ({ categories }: { categories: any[] }) => {
               Swimming Classes
             </button>
             {categories.slice(0, 2).map((category, index) => (
-              <button 
+              <button
                 key={category.id}
                 onClick={() => handlePopularSearch(category.name)}
                 className="text-white hover:text-white/80 transition-colors duration-300 underline underline-offset-2 cursor-pointer focus:outline-none focus:ring-2 focus:ring-white/50 rounded px-1"
@@ -425,7 +428,7 @@ const FeaturedEventsCarousel: React.FC<{ featuredEvents: FeaturedEvent[] }> = ({
                       boxShadow: '0 4px 14px 0 rgba(255, 107, 0, 0.3)'
                     }}
                     className="text-white px-6 py-3 rounded-xl font-semibold transition-all duration-300 hover:opacity-90 hover:shadow-lg hover:scale-105 focus:outline-none focus:ring-2 focus:ring-offset-2 active:scale-95 whitespace-nowrap"
-                    onClick={() => navigate(`/events/${event._id || event.id}`)}
+                    onClick={() => navigate(`/events/${event._id}`)}
                     aria-label={`View details for ${event.title}`}>
                     {event.buttonLabel}
                   </AnimatedButton>
@@ -577,13 +580,13 @@ const HomePage: React.FC = () => {
       const [eventsData, featuredEventsData, categoriesData] = await Promise.all([
         eventsAPI.getAllEvents({ limit: 12 }),
         eventsAPI.getFeaturedEvents(),
-        eventsAPI.getEventCategories()
+        categoriesAPI.getAllCategories({ tree: false }) // Fetch full category objects from /categories endpoint
       ]);
       
       // Extract data using utility functions for consistency
       const events = eventsData || [];
       const featuredEventsRaw = featuredEventsData?.events || [];
-      const categories = categoriesData?.categories || [];
+      const categories = Array.isArray(categoriesData) ? categoriesData : [];
 
       // Debug logging (only in development)
       if (import.meta.env.DEV && import.meta.env.VITE_DEBUG_API === 'true') {
@@ -613,16 +616,24 @@ const HomePage: React.FC = () => {
               location: event.location || { city: 'Dubai', address: '', coordinates: { lat: 0, lng: 0 } }
             }))
       );
-      setCategories(Array.isArray(categories) ? categories.map(cat => ({ id: cat, name: cat, icon: getCategoryIcon(cat) })) : []);
+      // Categories now come from /categories API with full object structure
+      setCategories(Array.isArray(categories) ? categories : []);
       setStats(null);
       setUsingMockData(false);
       
-    } catch (err) {
+    } catch (err: any) {
       console.error('Error fetching data:', err);
+
+      // Determine if it's a timeout/cold start issue
+      const isColdStart = err?.message?.includes('starting up') || err?.message?.includes('timeout');
+      const errorMsg = isColdStart
+        ? 'Backend is waking up (takes 30-60s on first request). Click "Retry" in a moment.'
+        : 'Unable to connect to the server. Showing default data.';
+
       // Use mock data if backend is unavailable
       setEvents(mockEvents);
-      setFeaturedEvents(mockEvents.slice(0, 3).map(event => ({ 
-        ...event, 
+      setFeaturedEvents(mockEvents.slice(0, 3).map(event => ({
+        ...event,
         buttonLabel: 'View Details',
         images: [event.image],
         _id: event.id,
@@ -646,7 +657,7 @@ const HomePage: React.FC = () => {
       })));
       setCategories(mockCategories);
       setUsingMockData(true);
-      setError('Unable to connect to the server. Showing default data.');
+      setError(errorMsg);
     } finally {
       // Always set loading to false after a short delay to prevent flash of loading state
       setTimeout(() => setIsLoading(false), 300);
@@ -747,7 +758,9 @@ const HomePage: React.FC = () => {
                     <FaWifi className="text-orange-500" size={16} />
                   </div>
                   <div className="py-1">
-                    <p className="font-semibold text-orange-600">Connection Issue</p>
+                    <p className="font-semibold text-orange-600">
+                      {error?.includes('waking up') || error?.includes('starting up') ? 'Backend Starting' : 'Connection Issue'}
+                    </p>
                     <p className="text-sm text-gray-600">{error}</p>
                   </div>
                 </div>

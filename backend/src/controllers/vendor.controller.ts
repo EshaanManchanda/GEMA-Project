@@ -289,3 +289,58 @@ export const updateVendorSocialMedia = catchAsync(async (req: AuthRequest, res: 
     data: { vendor: updatedVendor },
   });
 });
+
+// @desc    Get public vendor profile by ID
+// @route   GET /api/vendors/public/:id
+// @access  Public
+export const getPublicVendorProfile = catchAsync(async (req: AuthRequest, res: Response, next: NextFunction) => {
+  const { id } = req.params;
+
+  // Find vendor with only public information
+  const vendor = await User.findOne({
+    _id: id,
+    role: 'vendor',
+    status: 'active'
+  }).select('firstName lastName email phone avatar socialMedia businessHours createdAt');
+
+  if (!vendor) {
+    return next(new AppError('Vendor not found', 404));
+  }
+
+  // Get vendor's published events
+  const events = await Event.find({
+    vendorId: id,
+    isDeleted: false,
+    isActive: true,
+    status: 'published',
+    isApproved: true
+  })
+    .select('title description category price currency images dateSchedule location tags viewsCount averageRating reviewCount')
+    .sort({ createdAt: -1 })
+    .limit(20);
+
+  // Get vendor statistics
+  const totalEvents = await Event.countDocuments({
+    vendorId: id,
+    isDeleted: false,
+    status: 'published'
+  });
+
+  const totalBookings = await Booking.countDocuments({
+    eventId: { $in: events.map(e => e._id) }
+  });
+
+  res.status(200).json({
+    success: true,
+    message: 'Vendor profile retrieved successfully',
+    data: {
+      vendor,
+      events,
+      stats: {
+        totalEvents,
+        totalBookings,
+        activeEvents: events.length
+      }
+    }
+  });
+});

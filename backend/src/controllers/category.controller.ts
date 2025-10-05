@@ -1,4 +1,5 @@
 import { Request, Response, NextFunction } from 'express';
+import mongoose from 'mongoose';
 import { Category, Event, ICategory } from '../models';
 import { AppError } from '../middleware';
 import { ApiResponse } from '../types';
@@ -55,14 +56,21 @@ export const getCategory = async (
 ): Promise<void> => {
   try {
     const { id } = req.params;
-    
-    // Try to find by ID first, then by slug
-    let category = await Category.findById(id).populate('parentId', 'name slug');
-    
+
+    // Check if id is a valid ObjectId format before querying by ID
+    const isValidObjectId = mongoose.Types.ObjectId.isValid(id);
+
+    let category = null;
+
+    // Try to find by ID first (only if valid ObjectId), then by slug
+    if (isValidObjectId) {
+      category = await Category.findById(id).populate('parentId', 'name slug');
+    }
+
     if (!category) {
       category = await Category.findOne({ slug: id }).populate('parentId', 'name slug');
     }
-    
+
     if (!category) {
       return next(new AppError('Category not found', 404));
     }

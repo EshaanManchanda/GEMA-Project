@@ -4,7 +4,7 @@ import { logoutUser, refreshToken } from '../store/slices/authSlice';
 
 // API Configuration - using main backend server
 const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || import.meta.env.VITE_API_URL || 'https://gema-project.onrender.com/api';
-const API_TIMEOUT = 30000; // 30 seconds
+const API_TIMEOUT = Number(import.meta.env.VITE_API_TIMEOUT) || 60000; // 60 seconds - increased to handle Render.com cold starts
 
 // Debug logging (development only)
 if (import.meta.env.MODE === 'development' && typeof window !== 'undefined') {
@@ -109,21 +109,27 @@ api.interceptors.response.use(
     }
     
     // Handle proxy/connection errors differently from server errors
-    if (error.code === 'ECONNREFUSED' || error.code === 'ERR_NETWORK') {
-      console.error('[API] Connection refused - Backend server may be down:', error.message);
+    if (error.code === 'ECONNREFUSED' || error.code === 'ERR_NETWORK' || error.code === 'ECONNABORTED') {
+      const isTimeout = error.code === 'ECONNABORTED' || error.message?.includes('timeout');
+      const errorMessage = isTimeout
+        ? 'Backend server is starting up (this may take 30-60 seconds on first request)'
+        : 'Backend server is not responding';
+
+      console.error(`[API] Connection ${isTimeout ? 'timeout' : 'refused'} - Backend may be waking up:`, error.message);
 
       // Emit connection error event for UI feedback
       if (typeof window !== 'undefined') {
         window.dispatchEvent(new CustomEvent('api-connection-error', {
           detail: {
-            message: 'Backend server is not responding',
+            message: errorMessage,
+            isTimeout: isTimeout,
             timestamp: Date.now(),
             url: originalRequest.url
           }
         }));
       }
 
-      return Promise.reject(new Error('Backend server is not responding. Please check if the server is running.'));
+      return Promise.reject(new Error(errorMessage));
     }
     
     // Handle proxy-specific errors

@@ -1,0 +1,110 @@
+Backend Production Optimization Plan                                                                                                                   │ │
+│ │                                                                                                                                                        │ │
+│ │ Phase 1: Critical Performance Fixes (Week 1)                                                                                                           │ │
+│ │                                                                                                                                                        │ │
+│ │ 1.1 Database Optimization                                                                                                                              │ │
+│ │                                                                                                                                                        │ │
+│ │ - Add critical indexes to Booking model (userId, eventId, status, createdAt)                                                                           │ │
+│ │ - Add compound indexes for common query patterns                                                                                                       │ │
+│ │ - Tune MongoDB connection pool (increase to 50-100 based on load)                                                                                      │ │
+│ │ - Configure MongoDB Atlas read replicas                                                                                                                │ │
+│ │                                                                                                                                                        │ │
+│ │ 1.2 Redis Caching Layer                                                                                                                                │ │
+│ │                                                                                                                                                        │ │
+│ │ - Set up Redis (ioredis client)                                                                                                                        │ │
+│ │ - Cache event listings (5-15 min TTL)                                                                                                                  │ │
+│ │ - Cache categories, featured events                                                                                                                    │ │
+│ │ - Implement cache invalidation on updates                                                                                                              │ │
+│ │ - Use Redis for rate limiting (replace in-memory)                                                                                                      │ │
+│ │                                                                                                                                                        │ │
+│ │ 1.3 Background Job Queue (BullMQ + Redis)                                                                                                              │ │
+│ │                                                                                                                                                        │ │
+│ │ - Set up BullMQ worker pools                                                                                                                           │ │
+│ │ - Move QR generation to background jobs                                                                                                                │ │
+│ │ - Move email sending to background jobs                                                                                                                │ │
+│ │ - Create separate worker containers/processes                                                                                                          │ │
+│ │ - Add job retry logic and dead letter queue                                                                                                            │ │
+│ │                                                                                                                                                        │ │
+│ │ Phase 2: Scalability & Reliability (Week 2)                                                                                                            │ │
+│ │                                                                                                                                                        │ │
+│ │ 2.1 API Improvements                                                                                                                                   │ │
+│ │                                                                                                                                                        │ │
+│ │ - Add response compression (already in place, verify config)                                                                                           │ │
+│ │ - Implement request deduplication for bookings                                                                                                         │ │
+│ │ - Add circuit breakers for Stripe, Cloudinary, Email (opossum)                                                                                         │ │
+│ │ - Optimize booking flow with distributed locks (Redlock)                                                                                               │ │
+│ │                                                                                                                                                        │ │
+│ │ 2.2 Graceful Shutdown & Health Checks                                                                                                                  │ │
+│ │                                                                                                                                                        │ │
+│ │ - Add /health/ready endpoint                                                                                                                           │ │
+│ │ - Implement graceful HTTP server shutdown (drain connections)                                                                                          │ │
+│ │ - Make cron jobs cluster-aware (leader election with Redis)                                                                                            │ │
+│ │ - Add readiness probe for load balancers                                                                                                               │ │
+│ │                                                                                                                                                        │ │
+│ │ 2.3 Horizontal Scaling Setup                                                                                                                           │ │
+│ │                                                                                                                                                        │ │
+│ │ - Containerize with Docker (multi-stage build)                                                                                                         │ │
+│ │ - Create separate API and Worker containers                                                                                                            │ │
+│ │ - Add Kubernetes/Docker Compose configs                                                                                                                │ │
+│ │ - Configure sticky sessions for Socket.io (if used)                                                                                                    │ │
+│ │                                                                                                                                                        │ │
+│ │ Phase 3: Observability & Testing (Week 3)                                                                                                              │ │
+│ │                                                                                                                                                        │ │
+│ │ 3.1 Metrics & Monitoring                                                                                                                               │ │
+│ │                                                                                                                                                        │ │
+│ │ - Add Prometheus metrics (prom-client)                                                                                                                 │ │
+│ │ - Track: RPS, latency (p50/p95/p99), error rates, DB pool usage                                                                                        │ │
+│ │ - Set up Grafana dashboards                                                                                                                            │ │
+│ │ - Add distributed tracing (OpenTelemetry)                                                                                                              │ │
+│ │                                                                                                                                                        │ │
+│ │ 3.2 Load Testing                                                                                                                                       │ │
+│ │                                                                                                                                                        │ │
+│ │ - Create k6 test scripts for:                                                                                                                          │ │
+│ │   - GET /events (read-heavy)                                                                                                                           │ │
+│ │   - POST /bookings/initiate (write-heavy)                                                                                                              │ │
+│ │   - Concurrent booking conflicts                                                                                                                       │ │
+│ │ - Run baseline tests, measure capacity                                                                                                                 │ │
+│ │ - Document SLA targets (p95 < 500ms for bookings)                                                                                                      │ │
+│ │                                                                                                                                                        │ │
+│ │ 3.3 Security Hardening                                                                                                                                 │ │
+│ │                                                                                                                                                        │ │
+│ │ - Add idempotency keys for payment endpoints                                                                                                           │ │
+│ │ - Implement Stripe webhook signature validation                                                                                                        │ │
+│ │ - Add request correlation IDs                                                                                                                          │ │
+│ │ - Set up alerts for anomalies                                                                                                                          │ │
+│ │                                                                                                                                                        │ │
+│ │ Phase 4: Production Deployment (Week 4)                                                                                                                │ │
+│ │                                                                                                                                                        │ │
+│ │ 4.1 Infrastructure                                                                                                                                     │ │
+│ │                                                                                                                                                        │ │
+│ │ - Deploy to Kubernetes or managed platform                                                                                                             │ │
+│ │ - Configure Horizontal Pod Autoscaler (CPU/memory)                                                                                                     │ │
+│ │ - Set up Redis cluster (or managed Redis)                                                                                                              │ │
+│ │ - Configure MongoDB Atlas replica set                                                                                                                  │ │
+│ │                                                                                                                                                        │ │
+│ │ 4.2 CI/CD Pipeline                                                                                                                                     │ │
+│ │                                                                                                                                                        │ │
+│ │ - Build → Test → Deploy to staging                                                                                                                     │ │
+│ │ - Canary deployments (10% → 50% → 100%)                                                                                                                │ │
+│ │ - Automated rollback on errors                                                                                                                         │ │
+│ │ - Smoke tests post-deploy                                                                                                                              │ │
+│ │                                                                                                                                                        │ │
+│ │ 4.3 Operational Readiness                                                                                                                              │ │
+│ │                                                                                                                                                        │ │
+│ │ - Set up alerts (error rate, latency, DB lag)                                                                                                          │ │
+│ │ - Create runbooks for incidents                                                                                                                        │ │
+│ │ - Configure log aggregation (ELK or Datadog)                                                                                                           │ │
+│ │ - Schedule DR drills                                                                                                                                   │ │
+│ │                                                                                                                                                        │ │
+│ │ Estimated Capacity After Implementation                                                                                                                │ │
+│ │                                                                                                                                                        │ │
+│ │ - Read endpoints: 2,000-5,000 RPS (with caching)                                                                                                       │ │
+│ │ - Booking endpoint: 500-1,000 RPS (with optimizations)                                                                                                 │ │
+│ │ - Concurrent users: 50,000+ (with 4-8 API replicas)                                                                                                    │ │
+│ │                                                                                                                                                        │ │
+│ │ Quick Wins (Start Today)                                                                                                                               │ │
+│ │                                                                                                                                                        │ │
+│ │ 1. Add Booking model indexes (1 hour)                                                                                                                  │ │
+│ │ 2. Increase MongoDB pool size to 50 (5 min)                                                                                                            │ │
+│ │ 3. Set up basic Redis caching for events (4 hours)                                                                                                     │ │
+│ │ 4. Move QR generation to background job (4 hours)   

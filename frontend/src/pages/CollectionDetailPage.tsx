@@ -18,8 +18,9 @@ interface Event {
     address?: string;
   };
   dateSchedule?: Array<{
-    startDate: string;
-    endDate?: string;
+    date?: string;        // Single date field (legacy format)
+    startDate?: string;   // Date range start
+    endDate?: string;     // Date range end
   }>;
   viewsCount?: number;
 }
@@ -27,6 +28,13 @@ interface Event {
 interface CollectionWithEvents extends Collection {
   events: Event[];
 }
+
+// Helper to safely extract date from schedule (handles both date formats)
+const getEventDate = (schedule?: Array<{ date?: string; startDate?: string; endDate?: string }>) => {
+  if (!schedule || schedule.length === 0) return null;
+  const firstSchedule = schedule[0];
+  return firstSchedule.date || firstSchedule.startDate || null;
+};
 
 const CollectionDetailPage: React.FC = () => {
   const { id } = useParams<{ id: string }>();
@@ -298,14 +306,17 @@ const CollectionDetailPage: React.FC = () => {
                     )}
 
                     {/* Date */}
-                    {event.dateSchedule && event.dateSchedule.length > 0 && (
-                      <div className="flex items-center text-sm text-gray-500">
-                        <FaCalendarAlt className="mr-2" size={12} />
-                        <span>
-                          {format(new Date(event.dateSchedule[0].startDate), 'MMM dd, yyyy')}
-                        </span>
-                      </div>
-                    )}
+                    {event.dateSchedule && event.dateSchedule.length > 0 && (() => {
+                      const eventDate = getEventDate(event.dateSchedule);
+                      return eventDate ? (
+                        <div className="flex items-center text-sm text-gray-500">
+                          <FaCalendarAlt className="mr-2" size={12} />
+                          <span>
+                            {format(new Date(eventDate), 'MMM dd, yyyy')}
+                          </span>
+                        </div>
+                      ) : null;
+                    })()}
 
                     {/* Views */}
                     {event.viewsCount !== undefined && (

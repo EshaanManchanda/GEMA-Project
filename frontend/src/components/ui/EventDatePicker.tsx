@@ -136,17 +136,19 @@ const EventDatePicker: React.FC<EventDatePickerProps> = ({
       </div>
       
       <div className="bg-white rounded-lg border border-gray-200 p-4">
-        <DatePicker
-          selected={selectedDate}
-          onChange={onDateSelect}
-          filterDate={filterDate}
-          minDate={today}
-          inline
-          disabled={disabled}
-          dayClassName={getDayClassName}
-          className="w-full"
-          calendarClassName="w-full"
-        />
+        <div style={{ width: '100%', display: 'flex', justifyContent: 'center' }}>
+          <DatePicker
+            selected={selectedDate}
+            onChange={onDateSelect}
+            filterDate={filterDate}
+            minDate={today}
+            inline
+            disabled={disabled}
+            dayClassName={getDayClassName}
+            wrapperClassName="w-full"
+            calendarClassName="!w-full"
+          />
+        </div>
         
         {/* Legend */}
         <div className="mt-4 pt-4 border-t border-gray-100">

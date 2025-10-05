@@ -140,6 +140,81 @@ export const register = async (req: Request, res: Response, next: NextFunction):
 };
 
 /**
+ * @desc    Register a new admin user
+ * @route   POST /auth/register-admin
+ * @access  Public (requires admin secret key)
+ */
+export const registerAdmin = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
+  try {
+    const { firstName, lastName, email, password, phone, adminSecretKey } = req.body;
+
+    // Verify admin secret key
+    const ADMIN_SECRET_KEY = process.env.ADMIN_SECRET_KEY;
+
+    if (!ADMIN_SECRET_KEY) {
+      throw new AppError('Admin registration is not configured. Please contact system administrator.', 500);
+    }
+
+    if (adminSecretKey !== ADMIN_SECRET_KEY) {
+      throw new AppError('Invalid admin secret key', 403);
+    }
+
+    // Check if user already exists
+    const existingUser = await User.findOne({ email });
+    if (existingUser) {
+      throw new AppError('User with this email already exists', 400);
+    }
+
+    // Generate verification OTP
+    const verificationOTP = generateOTP();
+    const otpExpiry = getOTPExpiry(); // 10 minutes from now
+
+    // Create new admin user
+    const user = await User.create({
+      firstName,
+      lastName,
+      email,
+      passwordHash: password, // Will be hashed by pre-save hook
+      phone,
+      role: 'admin',
+      status: UserStatus.ACTIVE, // Admin users are active immediately
+      isEmailVerified: true, // Admin users are verified immediately
+      emailVerification: {
+        otp: verificationOTP,
+        expiresAt: otpExpiry
+      }
+    });
+
+    // Generate tokens
+    const tokens = await generateAuthTokens(user._id.toString(), req);
+
+    // Optionally send welcome email (you can customize this)
+    try {
+      await emailService.sendVerificationEmail({
+        to: user.email,
+        firstName: user.firstName,
+        otp: verificationOTP,
+      });
+    } catch (emailError) {
+      console.error('Failed to send admin welcome email:', emailError);
+      // Don't fail registration if email fails
+    }
+
+    // Return response
+    res.status(201).json({
+      success: true,
+      message: 'Admin user registered successfully',
+      data: {
+        user: formatUserResponse(user),
+        tokens
+      }
+    } as ApiResponse<AuthResponse>);
+  } catch (error) {
+    next(error);
+  }
+};
+
+/**
  * @desc    Resend email verification link
  * @route   POST /api/auth/resend-verification-email
  * @access  Public

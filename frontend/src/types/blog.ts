@@ -220,3 +220,91 @@ export interface BlogReadingProgress {
   lastReadAt: string;
   completed: boolean;
 }
+
+// Comment Author Interface
+export interface CommentAuthor {
+  _id: string;
+  name: string;
+  email: string;
+  avatar?: string;
+}
+
+// Comment Interface
+export interface BlogComment {
+  _id: string;
+  content: string;
+  author: CommentAuthor;
+  blogPost: string;
+  parentComment?: string;
+  replies?: BlogComment[];
+  likes: string[];
+  dislikes: string[];
+  likeCount: number;
+  dislikeCount: number;
+  replyCount: number;
+  isEdited: boolean;
+  isReported: boolean;
+  reportCount: number;
+  status: 'active' | 'flagged' | 'deleted';
+  createdAt: string;
+  updatedAt: string;
+}
+
+// Comment Stats Interface
+export interface CommentStats {
+  totalComments: number;
+  totalLikes: number;
+  totalReplies: number;
+  topLevelComments: number;
+}
+
+// Comments Response Interface
+export interface CommentsResponse {
+  success: boolean;
+  message: string;
+  data: {
+    comments: BlogComment[];
+    stats: CommentStats;
+    pagination: {
+      page: number;
+      limit: number;
+      total: number;
+    };
+  };
+}
+
+// Single Comment Response Interface
+export interface SingleCommentResponse {
+  success: boolean;
+  message: string;
+  data: {
+    comment: BlogComment;
+  };
+}
+
+// Comment Action Response Interface
+export interface CommentActionResponse {
+  success: boolean;
+  message: string;
+  data: {
+    likes: number;
+    dislikes: number;
+    hasLiked: boolean;
+    hasDisliked: boolean;
+  };
+}
+
+// Comment Replies Response Interface
+export interface CommentRepliesResponse {
+  success: boolean;
+  message: string;
+  data: {
+    replies: BlogComment[];
+    pagination: {
+      page: number;
+      limit: number;
+      total: number;
+      pages: number;
+    };
+  };
+}

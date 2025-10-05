@@ -600,6 +600,15 @@
 /* React Datepicker overrides */
 .react-datepicker {
   @apply border border-neutral-300 rounded-lg shadow-medium;
+  width: 100%;
+}
+
+.react-datepicker-wrapper {
+  width: 100%;
+}
+
+.react-datepicker__month-container {
+  width: 100%;
 }
 
 .react-datepicker__header {

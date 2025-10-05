@@ -1,6 +1,6 @@
 import { Request, Response } from 'express';
 import mongoose from 'mongoose';
-import { config, logger } from '../config';
+import { config, logger, checkRedisHealth } from '../config';
 import { Event, User, Order } from '../models';
 
 interface HealthStatus {
@@ -11,6 +11,7 @@ interface HealthStatus {
   uptime: number;
   services: {
     database: ServiceStatus;
+    redis: ServiceStatus;
     stripe: ServiceStatus;
     cloudinary: ServiceStatus;
     email: ServiceStatus;
@@ -50,19 +51,23 @@ export const getHealthStatus = async (req: Request, res: Response) => {
   try {
     // Check database connectivity
     const dbStatus = await checkDatabaseHealth();
-    
+
+    // Check Redis connectivity
+    const redisStatus = await checkRedisHealthStatus();
+
     // Check external services
     const stripeStatus = await checkStripeHealth();
     const cloudinaryStatus = await checkCloudinaryHealth();
     const emailStatus = await checkEmailHealth();
     const firebaseStatus = await checkFirebaseHealth();
-    
+
     // Get system metrics
     const metrics = await getSystemMetrics();
-    
+
     // Calculate overall status
     const services = {
       database: dbStatus,
+      redis: redisStatus,
       stripe: stripeStatus,
       cloudinary: cloudinaryStatus,
       email: emailStatus,
@@ -143,7 +148,7 @@ export const getBasicHealthStatus = async (req: Request, res: Response) => {
 // Helper functions
 async function checkDatabaseHealth(): Promise<ServiceStatus> {
   const startTime = Date.now();
-  
+
   try {
     // Check connection status
     if (mongoose.connection.readyState !== 1) {
@@ -153,12 +158,12 @@ async function checkDatabaseHealth(): Promise<ServiceStatus> {
         error: 'Database not connected',
       };
     }
-    
+
     // Perform a simple query to test responsiveness
     await mongoose.connection.db.admin().ping();
-    
+
     const responseTime = Date.now() - startTime;
-    
+
     return {
       status: responseTime < 1000 ? 'ok' : 'degraded',
       responseTime,
@@ -170,6 +175,37 @@ async function checkDatabaseHealth(): Promise<ServiceStatus> {
       responseTime: Date.now() - startTime,
       lastChecked: new Date().toISOString(),
       error: error instanceof Error ? error.message : 'Database health check failed',
+    };
+  }
+}
+
+async function checkRedisHealthStatus(): Promise<ServiceStatus> {
+  const startTime = Date.now();
+
+  try {
+    const isHealthy = await checkRedisHealth();
+    const responseTime = Date.now() - startTime;
+
+    if (!isHealthy) {
+      return {
+        status: 'down',
+        responseTime,
+        lastChecked: new Date().toISOString(),
+        error: 'Redis not responding',
+      };
+    }
+
+    return {
+      status: responseTime < 500 ? 'ok' : 'degraded',
+      responseTime,
+      lastChecked: new Date().toISOString(),
+    };
+  } catch (error) {
+    return {
+      status: 'down',
+      responseTime: Date.now() - startTime,
+      lastChecked: new Date().toISOString(),
+      error: error instanceof Error ? error.message : 'Redis health check failed',
     };
   }
 }

@@ -4,6 +4,9 @@ import { Event, User } from '../models';
 import { AppError } from '../middleware';
 import { AuthRequest } from '../types';
 import { config, checkDBHealth } from '../config';
+import { buildPublicEventFilter, sanitizeEventOutput, sanitizeEventsOutput } from '../utils/event.utils';
+import { cacheService } from '../services/cache.service';
+import { invalidateEventCaches } from '../utils/cache.utils';
 
 /**
  * Wrapper to add timeout to database operations
@@ -30,7 +33,7 @@ export const getEvents = async (req: Request, res: Response, next: NextFunction)
     console.log('\n=== EVENTS API DEBUG ===');
     console.log('Request query params:', req.query);
     console.log('User-Agent:', req.headers['user-agent']?.includes('curl') ? 'curl' : 'browser/app');
-    
+
     const {
       page = 1,
       limit = 12,
@@ -53,39 +56,51 @@ export const getEvents = async (req: Request, res: Response, next: NextFunction)
     const limitNum = parseInt(limit as string);
     const skip = (pageNum - 1) * limitNum;
 
-    // Build filter query - only show active, published events for public API
-    // Use $or to handle legacy events that might not have isActive/status fields
-    const filter: any = {
-      isApproved: true,
-      isDeleted: false,
-      $or: [
-        // New events with proper fields
-        {
-          isActive: true,
-          status: 'published'
-        },
-        // Legacy events - approved but no isActive/status fields (fallback)
-        {
-          isActive: { $exists: false },
-          status: { $exists: false }
-        },
-        // Legacy events - approved but status is null/undefined
-        {
-          isActive: { $exists: false },
-          $or: [
-            { status: { $exists: false } },
-            { status: null }
-          ]
-        }
-      ]
-    };
+    // Generate cache key based on query parameters
+    const cacheKey = `events:list:${JSON.stringify({
+      page: pageNum,
+      limit: limitNum,
+      category,
+      type,
+      venueType,
+      city,
+      minPrice,
+      maxPrice,
+      currency,
+      ageMin,
+      ageMax,
+      featured,
+      search,
+      sortBy,
+      sortOrder,
+    })}`;
 
-    if (category) filter.category = category;
-    if (type) filter.type = type;
-    if (venueType) filter.venueType = venueType;
-    if (city) filter['location.city'] = new RegExp(city as string, 'i');
-    if (currency) filter.currency = currency;
-    if (featured === 'true') filter.isFeatured = true;
+    // Try to get from cache first
+    const cached = await cacheService.get<any>(cacheKey);
+    if (cached) {
+      console.log('✅ Cache HIT for events listing');
+      return res.status(200).json({
+        success: true,
+        message: 'Events retrieved successfully',
+        data: cached,
+        cached: true,
+      });
+    }
+
+    console.log('❌ Cache MISS for events listing');
+
+    // Build additional filters based on query params
+    const additionalFilters: any = {};
+
+    if (category) additionalFilters.category = category;
+    if (type) additionalFilters.type = type;
+    if (venueType) additionalFilters.venueType = venueType;
+    if (city) additionalFilters['location.city'] = new RegExp(city as string, 'i');
+    if (currency) additionalFilters.currency = currency;
+    if (featured === 'true') additionalFilters.isFeatured = true;
+
+    // Build public event filter (includes expiration check)
+    const filter = buildPublicEventFilter(additionalFilters);
 
     // Price filtering
     if (minPrice || maxPrice) {
@@ -139,20 +154,29 @@ export const getEvents = async (req: Request, res: Response, next: NextFunction)
     const hasNextPage = pageNum < totalPages;
     const hasPrevPage = pageNum > 1;
 
+    // Sanitize output to remove internal fields
+    const sanitizedEvents = sanitizeEventsOutput(events);
+
+    const responseData = {
+      events: sanitizedEvents,
+      pagination: {
+        currentPage: pageNum,
+        totalPages,
+        totalEvents: total,
+        hasNextPage,
+        hasPrevPage,
+        limit: limitNum,
+      },
+    };
+
+    // Cache the response for 5 minutes (300 seconds)
+    await cacheService.set(cacheKey, responseData, { ttl: 300 });
+
     res.status(200).json({
       success: true,
       message: 'Events retrieved successfully',
-      data: {
-        events,
-        pagination: {
-          currentPage: pageNum,
-          totalPages,
-          totalEvents: total,
-          hasNextPage,
-          hasPrevPage,
-          limit: limitNum,
-        },
-      },
+      data: responseData,
+      cached: false,
     });
   } catch (error) {
     next(error);
@@ -166,27 +190,49 @@ export const getEvent = async (req: Request, res: Response, next: NextFunction) 
   try {
     const { id } = req.params;
 
+    // Try to get from cache first
+    const cacheKey = `event:${id}`;
+    const cached = await cacheService.get<any>(cacheKey);
+
+    if (cached) {
+      console.log(`✅ Cache HIT for event ${id}`);
+      // Still increment view count (async, non-blocking)
+      withTimeout(
+        Event.findByIdAndUpdate(id, { $inc: { viewsCount: 1 } }),
+        15000,
+        'View count update'
+      ).catch(error => {
+        console.warn('Failed to update view count:', error.message);
+      });
+
+      return res.status(200).json({
+        success: true,
+        message: 'Event retrieved successfully',
+        data: cached,
+        cached: true,
+      });
+    }
+
+    console.log(`❌ Cache MISS for event ${id}`);
+
     // Check database health before proceeding
     const isDBHealthy = await checkDBHealth();
     if (!isDBHealthy) {
       return next(new AppError('Database is currently unavailable. Please try again later.', 503));
     }
 
-    // Add timeout to the main query - only show active, published events for public API
+    // Build public filter with expiration check
+    const filter = buildPublicEventFilter({ _id: id });
+
+    // Add timeout to the main query - only show active, published, non-expired events
     const event = await withTimeout(
-      Event.findOne({
-        _id: id,
-        isApproved: true,
-        isActive: true,
-        status: 'published',
-        isDeleted: false,
-      }).populate('vendorId', 'firstName lastName email phone avatar'),
+      Event.findOne(filter).populate('vendorId', 'firstName lastName email phone avatar'),
       config.mongodb.socketTimeoutMS,
       'Event lookup'
     );
 
     if (!event) {
-      return next(new AppError('Event not found', 404));
+      return next(new AppError('Event not found or expired', 404));
     }
 
     // Increment view count with timeout (non-blocking, fire and forget)
@@ -199,10 +245,19 @@ export const getEvent = async (req: Request, res: Response, next: NextFunction) 
       // Don't fail the request if view count update fails
     });
 
+    // Sanitize output
+    const sanitizedEvent = sanitizeEventOutput(event);
+
+    const responseData = { event: sanitizedEvent };
+
+    // Cache for 10 minutes (600 seconds)
+    await cacheService.set(cacheKey, responseData, { ttl: 600 });
+
     res.status(200).json({
       success: true,
       message: 'Event retrieved successfully',
-      data: { event },
+      data: responseData,
+      cached: false,
     });
   } catch (error) {
     // Enhanced error handling for specific MongoDB errors
@@ -251,6 +306,9 @@ export const createEvent = async (req: AuthRequest, res: Response, next: NextFun
     };
 
     const event = await Event.create(eventData);
+
+    // Invalidate event caches
+    await invalidateEventCaches();
 
     res.status(201).json({
       success: true,
@@ -303,9 +361,12 @@ export const updateEvent = async (req: AuthRequest, res: Response, next: NextFun
       runValidators: true,
     });
 
+    // Invalidate event caches
+    await invalidateEventCaches(id);
+
     res.status(200).json({
       success: true,
-      message: requiresReapproval 
+      message: requiresReapproval
         ? 'Event updated successfully. Pending admin re-approval due to significant changes.'
         : 'Event updated successfully',
       data: { event: updatedEvent },
@@ -334,6 +395,9 @@ export const deleteEvent = async (req: AuthRequest, res: Response, next: NextFun
     }
 
     await Event.findByIdAndUpdate(id, { isDeleted: true });
+
+    // Invalidate event caches
+    await invalidateEventCaches(id);
 
     res.status(200).json({
       success: true,
@@ -423,12 +487,10 @@ export const getVendorEvents = async (req: AuthRequest, res: Response, next: Nex
 // @access  Public
 export const getEventCategories = async (req: Request, res: Response, next: NextFunction) => {
   try {
-    const categories = await Event.distinct('category', {
-      isApproved: true,
-      isActive: true,
-      status: 'published',
-      isDeleted: false,
-    });
+    // Use public filter to exclude expired/inactive events
+    const filter = buildPublicEventFilter();
+
+    const categories = await Event.distinct('category', filter);
 
     res.status(200).json({
       success: true,

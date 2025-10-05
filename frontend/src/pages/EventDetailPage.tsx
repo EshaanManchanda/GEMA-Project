@@ -14,6 +14,8 @@ import {
   resetBookingFlow,
   setBookingParticipants
 } from '../store/slices/bookingsSlice';
+import { toggleFavorite } from '../store/slices/favoritesSlice';
+import { RootState } from '../store';
 import EventDatePicker from '../components/ui/EventDatePicker';
 import Badge from '../components/ui/Badge';
 import { Card, CardContent, CardHeader, CardTitle } from '../components/ui/Card';
@@ -121,8 +123,12 @@ const EventDetailPage: React.FC = () => {
   const [usingMockData, setUsingMockData] = useState(false);
   const [quantity, setQuantity] = useState(1);
   const [selectedDate, setSelectedDate] = useState<Date | null>(null);
-  const [activeTab, setActiveTab] = useState('about'); // 'about', 'location', 'reviews'
+  const [activeTab, setActiveTab] = useState('about'); // 'about', 'location', 'reviews', 'faqs'
   const { addItemToCart, isItemInCart } = useCart();
+
+  // Favorites state
+  const favorites = useSelector((state: RootState) => state.favorites.items);
+  const isFavorite = favorites.some(fav => fav._id === event?._id);
   
   // Simulate fetching data from backend
   useEffect(() => {
@@ -142,20 +148,52 @@ const EventDetailPage: React.FC = () => {
         }
         
         // Transform the API data to match component expectations
+
+        // Helper to get start date from schedule (handles both date and startDate formats)
+        const getScheduleDate = (schedule: any) =>
+          schedule?.date || schedule?.startDate || new Date().toISOString();
+
+        // Helper to format time (handles both single date and date range formats)
+        const getScheduleTime = (schedule: any) => {
+          if (!schedule) return '10:00 AM - 4:00 PM';
+
+          if (schedule.startDate && schedule.endDate) {
+            const start = new Date(schedule.startDate).toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit', hour12: true });
+            const end = new Date(schedule.endDate).toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit', hour12: true });
+            return `${start} - ${end}`;
+          }
+
+          if (schedule.date) {
+            return new Date(schedule.date).toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit', hour12: true });
+          }
+
+          return '10:00 AM - 4:00 PM';
+        };
+
+        const firstSchedule = eventData.dateSchedule?.[0];
+
+        // Use totalSeats from API if available, otherwise calculate
+        const totalSeats = firstSchedule?.totalSeats ||
+          (firstSchedule ? (firstSchedule.availableSeats + (firstSchedule.reservedSeats || 0) + (firstSchedule.soldSeats || 0)) : 50);
+
         const transformedEvent = {
           ...eventData,
           id: eventData._id,
           image: getEventImage(eventData.images, eventData.title, 800, 400),
-          date: eventData.dateSchedule?.[0]?.startDate || new Date().toISOString(),
-          time: eventData.dateSchedule?.[0] ? 
-            `${new Date(eventData.dateSchedule[0].startDate).toLocaleTimeString()} - ${new Date(eventData.dateSchedule[0].endDate).toLocaleTimeString()}` :
-            '10:00 AM - 4:00 PM',
-          location: eventData.location?.city || 'Location TBD',
-          address: eventData.location?.address || 'Address TBD',
+          date: getScheduleDate(firstSchedule),
+          time: getScheduleTime(firstSchedule),
+          location: eventData.location || { city: 'Location TBD', address: 'Address TBD', coordinates: {} },
           ageRange: eventData.ageRange ? `${eventData.ageRange[0]}-${eventData.ageRange[1]} years` : 'All ages',
-          capacity: eventData.dateSchedule?.[0]?.totalSeats || 50,
-          availableSpots: eventData.dateSchedule?.[0]?.availableSeats || eventData.dateSchedule?.[0]?.totalSeats || 50,
-          dateSchedule: eventData.dateSchedule || [],
+          capacity: totalSeats,
+          availableSpots: firstSchedule?.availableSeats || totalSeats,
+          dateSchedule: (eventData.dateSchedule || []).map((schedule: any) => ({
+            ...schedule,
+            // Preserve existing startDate/endDate, or use date field as fallback
+            startDate: schedule.startDate || schedule.date,
+            endDate: schedule.endDate || schedule.date,
+            // Use totalSeats from API if available, otherwise calculate
+            totalSeats: schedule.totalSeats || (schedule.availableSeats + (schedule.reservedSeats || 0) + (schedule.soldSeats || 0))
+          })),
           organizer: {
             id: eventData.vendorId?._id || eventData.vendorId,
             name: eventData.vendorId?.firstName && eventData.vendorId?.lastName ? 
@@ -388,6 +426,56 @@ const EventDetailPage: React.FC = () => {
   
   // Check if event is already in cart for the selected date
   const eventInCart = event && selectedDate ? isItemInCart(event.id, selectedDate.toISOString()) : false;
+
+  // Share handler
+  const handleShare = async () => {
+    if (!event) return;
+
+    if (navigator.share) {
+      try {
+        await navigator.share({
+          title: event.title,
+          text: event.description,
+          url: window.location.href,
+        });
+        toast.success('Shared successfully!');
+      } catch (err) {
+        // User cancelled share - do nothing
+      }
+    } else {
+      // Fallback: copy link to clipboard
+      try {
+        await navigator.clipboard.writeText(window.location.href);
+        toast.success('Link copied to clipboard!');
+      } catch (err) {
+        toast.error('Failed to copy link');
+      }
+    }
+  };
+
+  // Favorite handler
+  const handleToggleFavorite = () => {
+    if (!event?._id) return;
+    dispatch(toggleFavorite(event._id));
+  };
+
+  // Contact vendor handler
+  const handleContactVendor = () => {
+    if (!event?.vendorId) return;
+
+    const { email, phone, firstName, lastName } = event.vendorId;
+    const subject = encodeURIComponent(`Inquiry about ${event.title}`);
+    const body = encodeURIComponent(`Hello ${firstName} ${lastName},\n\nI'm interested in your event "${event.title}".\n\n`);
+
+    // Open email client with pre-filled information
+    window.location.href = `mailto:${email}?subject=${subject}&body=${body}`;
+  };
+
+  // View vendor profile handler
+  const handleViewVendorProfile = () => {
+    if (!event?.vendorId?._id) return;
+    navigate(`/vendors/${event.vendorId._id}`);
+  };
 
   const breadcrumbs = event ? [
     { name: 'Home', url: '/' },
@@ -698,18 +786,33 @@ const EventDetailPage: React.FC = () => {
             onError={createImageErrorHandler(getEventImage(undefined, event.title, 800, 500))}
           />
           
-          {/* Modern Gradient Overlay */}
-          <div className="absolute inset-0 bg-gradient-to-t from-black/70 via-transparent to-transparent"></div>
-          
+          {/* Modern Gradient Overlays */}
+          {/* Top gradient for action buttons */}
+          <div className="absolute inset-x-0 top-0 h-1/3 bg-gradient-to-b from-black/70 via-black/20 to-transparent pointer-events-none"></div>
+          {/* Bottom gradient for stats */}
+          <div className="absolute inset-x-0 bottom-0 h-1/3 bg-gradient-to-t from-black/70 via-black/20 to-transparent pointer-events-none"></div>
+
           {/* Floating Action Buttons */}
           <div className="absolute top-6 right-6 flex space-x-3">
-            <button className="w-12 h-12 bg-white/20 backdrop-blur-md rounded-full flex items-center justify-center text-white hover:bg-white/30 transition-all duration-300 hover:scale-110">
+            <button
+              onClick={handleShare}
+              className="w-12 h-12 bg-white/20 backdrop-blur-md rounded-full flex items-center justify-center text-white hover:bg-white/30 transition-all duration-300 hover:scale-110"
+              title="Share event"
+            >
               <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8.684 13.342C8.886 12.938 9 12.482 9 12c0-.482-.114-.938-.316-1.342m0 2.684a3 3 0 110-2.684m0 2.684l6.632 3.316m-6.632-6l6.632-3.316m0 0a3 3 0 105.367-2.684 3 3 0 00-5.367 2.684zm0 9.316a3 3 0 105.368 2.684 3 3 0 00-5.368-2.684z" />
               </svg>
             </button>
-            <button className="w-12 h-12 bg-white/20 backdrop-blur-md rounded-full flex items-center justify-center text-white hover:bg-white/30 transition-all duration-300 hover:scale-110">
-              <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <button
+              onClick={handleToggleFavorite}
+              className={`w-12 h-12 backdrop-blur-md rounded-full flex items-center justify-center transition-all duration-300 hover:scale-110 ${
+                isFavorite
+                  ? 'bg-red-500/80 text-white hover:bg-red-600/80'
+                  : 'bg-white/20 text-white hover:bg-white/30'
+              }`}
+              title={isFavorite ? 'Remove from favorites' : 'Add to favorites'}
+            >
+              <svg className="w-6 h-6" fill={isFavorite ? 'currentColor' : 'none'} stroke="currentColor" viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4.318 6.318a4.5 4.5 0 000 6.364L12 20.364l7.682-7.682a4.5 4.5 0 00-6.364-6.364L12 7.636l-1.318-1.318a4.5 4.5 0 00-6.364 0z" />
               </svg>
             </button>
@@ -764,12 +867,20 @@ const EventDetailPage: React.FC = () => {
               >
                 Location
               </button>
-              <button 
+              <button
                 className={`flex-1 py-4 px-6 text-center font-medium ${activeTab === 'reviews' ? 'text-primary border-b-2 border-primary' : 'text-gray-500 hover:text-gray-700'}`}
                 onClick={() => setActiveTab('reviews')}
               >
                 Reviews ({event.reviews.length})
               </button>
+              {event.faqs && event.faqs.length > 0 && (
+                <button
+                  className={`flex-1 py-4 px-6 text-center font-medium ${activeTab === 'faqs' ? 'text-primary border-b-2 border-primary' : 'text-gray-500 hover:text-gray-700'}`}
+                  onClick={() => setActiveTab('faqs')}
+                >
+                  FAQs ({event.faqs.length})
+                </button>
+              )}
             </div>
             
             <div className="p-6">
@@ -830,16 +941,11 @@ const EventDetailPage: React.FC = () => {
                       </svg>
                       <div>
                         <h3 className="font-medium">
-                          {event.location ? (() => {
-                            if (typeof event.location === 'string') return event.location;
-                            const { city, address } = event.location;
-                            if (city && address) return `${city}, ${address}`;
-                            if (city) return city;
-                            if (address) return address;
-                            return 'Location TBD';
-                          })() : 'Location TBD'}
+                          {event.location?.city && event.location?.address
+                            ? `${event.location.city}, ${event.location.address}`
+                            : event.location?.city || event.location?.address || 'Location TBD'}
                         </h3>
-                        <p className="text-gray-600 text-sm">{event.address}</p>
+                        <p className="text-gray-600 text-sm">{event.location?.address}</p>
                       </div>
                     </div>
                     <div className="bg-gray-200 h-64 rounded-lg mb-4">
@@ -952,6 +1058,30 @@ const EventDetailPage: React.FC = () => {
                   )}
                 </div>
               )}
+
+              {/* FAQs Tab */}
+              {activeTab === 'faqs' && event.faqs && event.faqs.length > 0 && (
+                <div>
+                  <h2 className="text-2xl font-bold mb-6">Frequently Asked Questions</h2>
+                  <div className="space-y-4">
+                    {event.faqs.map((faq: any, index: number) => (
+                      <div key={index} className="bg-gray-50 rounded-lg p-5 border border-gray-200 hover:border-primary-200 transition-colors">
+                        <div className="flex items-start">
+                          <div className="flex-shrink-0 w-8 h-8 bg-primary-100 rounded-full flex items-center justify-center mr-4">
+                            <svg className="w-5 h-5 text-primary-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8.228 9c.549-1.165 2.03-2 3.772-2 2.21 0 4 1.343 4 3 0 1.4-1.278 2.575-3.006 2.907-.542.104-.994.54-.994 1.093m0 3h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                            </svg>
+                          </div>
+                          <div className="flex-1">
+                            <h3 className="font-semibold text-lg text-gray-900 mb-2">{faq.question}</h3>
+                            <p className="text-gray-600 leading-relaxed">{faq.answer}</p>
+                          </div>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
             </div>
           </div>
         </div>
@@ -964,17 +1094,27 @@ const EventDetailPage: React.FC = () => {
           <Card variant="elevated" className="lg:hidden">
             <CardContent className="p-4">
               <div className="flex space-x-3">
-                <button className="flex-1 flex items-center justify-center py-3 px-4 bg-gradient-to-r from-blue-500 to-blue-600 text-white rounded-lg hover:from-blue-600 hover:to-blue-700 transition-all transform hover:-translate-y-0.5 shadow-lg">
+                <button
+                  onClick={handleShare}
+                  className="flex-1 flex items-center justify-center py-3 px-4 bg-gradient-to-r from-blue-500 to-blue-600 text-white rounded-lg hover:from-blue-600 hover:to-blue-700 transition-all transform hover:-translate-y-0.5 shadow-lg"
+                >
                   <svg className="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8.684 13.342C8.886 12.938 9 12.482 9 12c0-.482-.114-.938-.316-1.342m0 2.684a3 3 0 110-2.684m0 2.684l6.632 3.316m-6.632-6l6.632-3.316m0 0a3 3 0 105.367-2.684 3 3 0 00-5.367 2.684zm0 9.316a3 3 0 105.368 2.684 3 3 0 00-5.368-2.684z" />
                   </svg>
                   Share
                 </button>
-                <button className="flex-1 flex items-center justify-center py-3 px-4 bg-gradient-to-r from-pink-500 to-red-500 text-white rounded-lg hover:from-pink-600 hover:to-red-600 transition-all transform hover:-translate-y-0.5 shadow-lg">
-                  <svg className="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <button
+                  onClick={handleToggleFavorite}
+                  className={`flex-1 flex items-center justify-center py-3 px-4 text-white rounded-lg transition-all transform hover:-translate-y-0.5 shadow-lg ${
+                    isFavorite
+                      ? 'bg-gradient-to-r from-red-500 to-red-600 hover:from-red-600 hover:to-red-700'
+                      : 'bg-gradient-to-r from-pink-500 to-red-500 hover:from-pink-600 hover:to-red-600'
+                  }`}
+                >
+                  <svg className="w-5 h-5 mr-2" fill={isFavorite ? 'currentColor' : 'none'} stroke="currentColor" viewBox="0 0 24 24">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4.318 6.318a4.5 4.5 0 000 6.364L12 20.364l7.682-7.682a4.5 4.5 0 00-6.364-6.364L12 7.636l-1.318-1.318a4.5 4.5 0 00-6.364 0z" />
                   </svg>
-                  Save
+                  {isFavorite ? 'Saved' : 'Save'}
                 </button>
               </div>
             </CardContent>
@@ -1014,10 +1154,18 @@ const EventDetailPage: React.FC = () => {
               </div>
 
               <div className="flex space-x-2">
-                <button className="flex-1 py-2 px-3 bg-primary-600 text-white text-sm rounded-lg hover:bg-primary-700 transition-colors">
+                <button
+                  onClick={handleContactVendor}
+                  className="flex-1 py-2 px-3 bg-primary-600 text-white text-sm rounded-lg hover:bg-primary-700 transition-colors"
+                  title="Send email to vendor"
+                >
                   Contact
                 </button>
-                <button className="flex-1 py-2 px-3 border border-primary-200 text-primary-600 text-sm rounded-lg hover:bg-primary-50 transition-colors">
+                <button
+                  onClick={handleViewVendorProfile}
+                  className="flex-1 py-2 px-3 border border-primary-200 text-primary-600 text-sm rounded-lg hover:bg-primary-50 transition-colors"
+                  title="View vendor profile"
+                >
                   View Profile
                 </button>
               </div>

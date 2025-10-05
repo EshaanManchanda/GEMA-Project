@@ -78,10 +78,14 @@ const getCategoryCount = (category: Category): string => {
 };
 
 const transformCategory = (category: Category): Category => {
+  // Ensure we have a valid name
+  const categoryName = category.name || 'Unnamed Category';
+  const slugFallback = categoryName.toLowerCase().replace(/\s+/g, '-');
+
   return {
     ...category,
-    id: category.id || category._id || category.name.toLowerCase().replace(/\s+/g, '-'),
-    slug: category.slug || category.name.toLowerCase().replace(/\s+/g, '-'),
+    id: category.id || category._id || slugFallback,
+    slug: category.slug || slugFallback,
     icon: getCategoryIcon(category),
     image: getCategoryImage(category),
     count: getCategoryCount(category),
@@ -90,13 +94,24 @@ const transformCategory = (category: Category): Category => {
 
 function CategoryCarousel({ categories = [] }: CategoryCarouselProps) {
   const navigate = useNavigate();
-  
+
   // Transform API categories and use provided categories or fallback to default
   const transformedApiCategories = categories.map(transformCategory);
   const displayCategories = transformedApiCategories.length > 0 ? transformedApiCategories : defaultCategories;
-  
+
+  // Debug logging in development
+  if (import.meta.env.DEV && import.meta.env.VITE_DEBUG_API === 'true') {
+    console.log('CategoryCarousel - Original categories:', categories);
+    console.log('CategoryCarousel - Transformed categories:', transformedApiCategories);
+  }
+
   const handleCategoryClick = (category: Category) => {
-    navigate(`/categories/${category.slug}`);
+    const slug = category.slug || category.id || category._id;
+    if (!slug) {
+      console.error('Category missing slug:', category);
+      return;
+    }
+    navigate(`/categories/${slug}`);
   };
   
   const handleViewAllCategories = () => {

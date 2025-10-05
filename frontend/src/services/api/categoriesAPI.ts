@@ -1,4 +1,5 @@
 import { ApiService } from '../api';
+import { extractApiData, logApiResponse } from '../../utils/apiResponseHandler';
 
 // Category interfaces
 export interface Category {
@@ -48,8 +49,10 @@ const categoriesAPI = {
   getAllCategories: async (params?: { tree?: boolean; includeInactive?: boolean }) => {
     try {
       const response = await ApiService.get('/categories', { params });
-      return response.data;
+      logApiResponse('GET /categories', response);
+      return extractApiData(response);
     } catch (error) {
+      logApiResponse('GET /categories', null, error);
       throw error;
     }
   },
@@ -58,8 +61,10 @@ const categoriesAPI = {
   getCategoryById: async (id: string) => {
     try {
       const response = await ApiService.get(`/categories/${id}`);
-      return response.data;
+      logApiResponse(`GET /categories/${id}`, response);
+      return extractApiData(response);
     } catch (error) {
+      logApiResponse(`GET /categories/${id}`, null, error);
       throw error;
     }
   },
@@ -68,8 +73,10 @@ const categoriesAPI = {
   getRootCategories: async () => {
     try {
       const response = await ApiService.get('/categories/roots');
-      return response.data;
+      logApiResponse('GET /categories/roots', response);
+      return extractApiData(response);
     } catch (error) {
+      logApiResponse('GET /categories/roots', null, error);
       throw error;
     }
   },
@@ -78,8 +85,10 @@ const categoriesAPI = {
   getCategoriesByParent: async (parentId: string | null) => {
     try {
       const response = await ApiService.get(`/categories/parent/${parentId || 'null'}`);
-      return response.data;
+      logApiResponse(`GET /categories/parent/${parentId || 'null'}`, response);
+      return extractApiData(response);
     } catch (error) {
+      logApiResponse(`GET /categories/parent/${parentId || 'null'}`, null, error);
       throw error;
     }
   },
@@ -90,8 +99,10 @@ const categoriesAPI = {
       const response = await ApiService.get('/categories/search', {
         params: { q: query, limit }
       });
-      return response.data;
+      logApiResponse('GET /categories/search', response);
+      return extractApiData(response);
     } catch (error) {
+      logApiResponse('GET /categories/search', null, error);
       throw error;
     }
   },
@@ -100,8 +111,10 @@ const categoriesAPI = {
   createCategory: async (categoryData: CreateCategoryData) => {
     try {
       const response = await ApiService.post('/categories', categoryData);
-      return response.data;
+      logApiResponse('POST /categories', response);
+      return extractApiData(response);
     } catch (error) {
+      logApiResponse('POST /categories', null, error);
       throw error;
     }
   },
@@ -110,8 +123,10 @@ const categoriesAPI = {
   updateCategory: async (id: string, categoryData: UpdateCategoryData) => {
     try {
       const response = await ApiService.put(`/categories/${id}`, categoryData);
-      return response.data;
+      logApiResponse(`PUT /categories/${id}`, response);
+      return extractApiData(response);
     } catch (error) {
+      logApiResponse(`PUT /categories/${id}`, null, error);
       throw error;
     }
   },
@@ -120,8 +135,10 @@ const categoriesAPI = {
   deleteCategory: async (id: string) => {
     try {
       const response = await ApiService.delete(`/categories/${id}`);
-      return response.data;
+      logApiResponse(`DELETE /categories/${id}`, response);
+      return extractApiData(response);
     } catch (error) {
+      logApiResponse(`DELETE /categories/${id}`, null, error);
       throw error;
     }
   },
@@ -132,8 +149,10 @@ const categoriesAPI = {
       const response = await ApiService.put('/categories/sort-order/bulk', {
         categories
       });
-      return response.data;
+      logApiResponse('PUT /categories/sort-order/bulk', response);
+      return extractApiData(response);
     } catch (error) {
+      logApiResponse('PUT /categories/sort-order/bulk', null, error);
       throw error;
     }
   },
@@ -142,8 +161,10 @@ const categoriesAPI = {
   updateEventCounts: async () => {
     try {
       const response = await ApiService.post('/categories/update-counts');
-      return response.data;
+      logApiResponse('POST /categories/update-counts', response);
+      return extractApiData(response);
     } catch (error) {
+      logApiResponse('POST /categories/update-counts', null, error);
       throw error;
     }
   },

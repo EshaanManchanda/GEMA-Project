@@ -3,6 +3,8 @@ import { useParams, Link } from 'react-router-dom';
 import categoriesAPI from '../services/api/categoriesAPI';
 import eventsAPI from '../services/api/eventsAPI';
 import { CategorySEO } from '@/components/common/SEO';
+import { getPlaceholderUrl } from '../utils/placeholderImage';
+import EventCard from '../components/client/EventCard';
 
 // Mock categories data
 const mockCategories = [
@@ -132,6 +134,26 @@ const mockEvents = {
   ]
 };
 
+// Helper functions for event data extraction
+const getEventImage = (images?: string[], title?: string): string => {
+  if (images && images.length > 0) return images[0];
+  return getPlaceholderUrl('eventCard', title || 'Event');
+};
+
+const getEventLocation = (location?: any): string => {
+  if (!location) return 'Location TBD';
+  if (typeof location === 'string') return location;
+  const { city, address } = location;
+  if (city && address) return `${city}, ${address}`;
+  return city || address || 'Location TBD';
+};
+
+const getEventDate = (dateSchedule?: any[]): string => {
+  if (!dateSchedule || dateSchedule.length === 0) return '';
+  const firstSchedule = dateSchedule[0];
+  return firstSchedule.date || firstSchedule.startDate || '';
+};
+
 const CategoryPage: React.FC = () => {
   const { slug } = useParams<{ slug: string }>();
   const [isLoading, setIsLoading] = useState(true);
@@ -145,15 +167,19 @@ const CategoryPage: React.FC = () => {
     const fetchCategoryData = async () => {
       try {
         setIsLoading(true);
-        
+
         // Attempt to fetch real data from backend
         const [categoryData, eventsData] = await Promise.all([
           categoriesAPI.getCategoryById(slug),
           eventsAPI.getEventsByCategory(slug)
         ]);
-        
-        setCategory(categoryData);
-        setEvents(eventsData.events);
+
+        // Extract data from API response
+        const category = categoryData;
+        const events = eventsData || [];
+
+        setCategory(category);
+        setEvents(Array.isArray(events) ? events : []);
         setUsingMockData(false);
         
       } catch (err) {
@@ -231,10 +257,17 @@ const CategoryPage: React.FC = () => {
       
       {/* Category Header */}
       <div className="relative h-64 rounded-lg overflow-hidden mb-8">
-        <img src={category.image} alt={category.name} className="w-full h-full object-cover" />
+        <img
+          src={category.featuredImage || category.image || getPlaceholderUrl('categoryIcon', category.name)}
+          alt={category.name}
+          className="w-full h-full object-cover"
+          onError={(e) => {
+            e.currentTarget.src = getPlaceholderUrl('categoryIcon', category.name);
+          }}
+        />
         <div className="absolute inset-0 bg-black bg-opacity-50 flex items-center justify-center">
           <div className="text-center text-white">
-            <div className="text-6xl mb-2">{category.icon}</div>
+            <div className="text-6xl mb-2">{category.icon || '📂'}</div>
             <h1 className="text-4xl font-bold">{category.name}</h1>
           </div>
         </div>
@@ -249,26 +282,28 @@ const CategoryPage: React.FC = () => {
       {events.length > 0 ? (
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
           {events.map((event: any) => (
-            <div key={event.id} className="bg-white rounded-lg shadow-md overflow-hidden hover:shadow-lg transition-shadow">
-              <img src={event.image} alt={event.title} className="w-full h-48 object-cover" />
-              <div className="p-4">
-                <div className="flex justify-between items-start mb-2">
-                  <h3 className="font-bold text-lg">{event.title}</h3>
-                  <span className="bg-primary text-white px-2 py-1 rounded text-sm">${event.price}</span>
-                </div>
-                <p className="text-gray-600 mb-4 line-clamp-2">{event.description}</p>
-                <div className="flex justify-between items-center text-sm text-gray-500 mb-4">
-                  <span>{event.date}</span>
-                  <span>{event.location}</span>
-                </div>
-                <Link 
-                  to={`/events/${event.id}`} 
-                  className="block w-full text-center bg-primary text-white py-2 rounded-md hover:bg-primary-dark transition-colors"
-                >
-                  View Details
-                </Link>
-              </div>
-            </div>
+            <EventCard
+              key={event._id || event.id}
+              id={event._id || event.id}
+              _id={event._id}
+              title={event.title}
+              description={event.description}
+              images={event.images}
+              image={getEventImage(event.images, event.title)}
+              price={event.price}
+              currency={event.currency}
+              location={event.location}
+              category={event.category}
+              ageRange={event.ageRange}
+              ageGroup={event.ageGroup}
+              dateSchedule={event.dateSchedule}
+              date={getEventDate(event.dateSchedule)}
+              viewsCount={event.viewsCount}
+              rating={event.averageRating}
+              reviewsCount={event.reviewCount}
+              vendorId={event.vendorId}
+              showStats={true}
+            />
           ))}
         </div>
       ) : (
