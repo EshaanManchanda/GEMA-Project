@@ -1,7 +1,7 @@
 import { Worker, Job } from 'bullmq';
 import { QUEUE_NAMES, redisConnection } from '../config/queue';
 import logger from '../config/logger';
-import { EmailService } from '../services/email.service';
+import { emailService } from '../services/email.service';
 
 export interface EmailJobData {
   type: 'verification' | 'passwordReset' | 'orderConfirmation' | 'ticket' | 'generic';
@@ -34,7 +34,7 @@ const emailWorker = new Worker(
 
       switch (data.type) {
         case 'verification':
-          result = await EmailService.sendVerificationEmail({
+          result = await emailService.sendVerificationEmail({
             to: data.to as string,
             firstName: data.templateData.firstName,
             otp: data.templateData.otp,
@@ -42,7 +42,7 @@ const emailWorker = new Worker(
           break;
 
         case 'passwordReset':
-          result = await EmailService.sendPasswordResetEmail({
+          result = await emailService.sendPasswordResetEmail({
             to: data.to as string,
             firstName: data.templateData.firstName,
             resetToken: data.templateData.resetToken,
@@ -50,7 +50,7 @@ const emailWorker = new Worker(
           break;
 
         case 'orderConfirmation':
-          result = await EmailService.sendOrderConfirmationEmail({
+          result = await emailService.sendOrderConfirmationEmail({
             to: data.to as string,
             firstName: data.templateData.firstName,
             orderNumber: data.templateData.orderNumber,
@@ -61,7 +61,7 @@ const emailWorker = new Worker(
           break;
 
         case 'ticket':
-          result = await EmailService.sendTicketEmail({
+          result = await emailService.sendTicketsEmail({
             to: data.to as string,
             firstName: data.templateData.firstName,
             tickets: data.templateData.tickets,
@@ -70,7 +70,7 @@ const emailWorker = new Worker(
 
         case 'generic':
         default:
-          result = await EmailService.sendEmail({
+          result = await emailService.sendEmail({
             to: data.to,
             subject: data.subject || 'Notification',
             html: data.html,
