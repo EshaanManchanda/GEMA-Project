@@ -9006,6 +9006,202 @@
               }
             }
           ]
+        },
+        {
+          "name": "Dashboard & Analytics",
+          "item": [
+            {
+              "name": "Get Dashboard Statistics",
+              "request": {
+                "auth": {
+                  "type": "bearer",
+                  "bearer": [
+                    {
+                      "key": "token",
+                      "value": "{{admin_token}}",
+                      "type": "string"
+                    }
+                  ]
+                },
+                "method": "GET",
+                "url": {
+                  "raw": "{{base_url}}/{{api_version}}/admin/dashboard/stats?startDate=2024-01-01&endDate=2024-12-31&period=month",
+                  "host": [
+                    "{{base_url}}"
+                  ],
+                  "path": [
+                    "{{api_version}}",
+                    "admin",
+                    "dashboard",
+                    "stats"
+                  ],
+                  "query": [
+                    {
+                      "key": "startDate",
+                      "value": "2024-01-01",
+                      "description": "Start date (YYYY-MM-DD)"
+                    },
+                    {
+                      "key": "endDate",
+                      "value": "2024-12-31",
+                      "description": "End date (YYYY-MM-DD)"
+                    },
+                    {
+                      "key": "period",
+                      "value": "month",
+                      "description": "Period: day, week, month, year"
+                    }
+                  ]
+                },
+                "description": "Get comprehensive dashboard statistics including overview, user breakdown, event breakdown, order breakdown, financial metrics, performance metrics, and system health"
+              }
+            },
+            {
+              "name": "Get Recent Activity",
+              "request": {
+                "auth": {
+                  "type": "bearer",
+                  "bearer": [
+                    {
+                      "key": "token",
+                      "value": "{{admin_token}}",
+                      "type": "string"
+                    }
+                  ]
+                },
+                "method": "GET",
+                "url": {
+                  "raw": "{{base_url}}/{{api_version}}/admin/dashboard/activity?page=1&limit=20&type=user_registered",
+                  "host": [
+                    "{{base_url}}"
+                  ],
+                  "path": [
+                    "{{api_version}}",
+                    "admin",
+                    "dashboard",
+                    "activity"
+                  ],
+                  "query": [
+                    {
+                      "key": "page",
+                      "value": "1",
+                      "description": "Page number"
+                    },
+                    {
+                      "key": "limit",
+                      "value": "20",
+                      "description": "Items per page"
+                    },
+                    {
+                      "key": "type",
+                      "value": "user_registered",
+                      "description": "Activity type filter (optional): user_registered, event_approved, event_pending, order_paid, order_pending, review_submitted, booking_created, ticket_generated, payment_completed, payment_failed, notification_sent, blog_published, affiliate_registered"
+                    }
+                  ]
+                },
+                "description": "Get recent activity logs with filtering and pagination. Includes user registrations, event approvals, orders, reviews, bookings, tickets, payments, notifications, blogs, and affiliate registrations"
+              }
+            },
+            {
+              "name": "Get Top Performers",
+              "request": {
+                "auth": {
+                  "type": "bearer",
+                  "bearer": [
+                    {
+                      "key": "token",
+                      "value": "{{admin_token}}",
+                      "type": "string"
+                    }
+                  ]
+                },
+                "method": "GET",
+                "url": {
+                  "raw": "{{base_url}}/{{api_version}}/admin/dashboard/top-performers",
+                  "host": [
+                    "{{base_url}}"
+                  ],
+                  "path": [
+                    "{{api_version}}",
+                    "admin",
+                    "dashboard",
+                    "top-performers"
+                  ]
+                },
+                "description": "Get top performing vendors, events, and customers based on revenue and bookings"
+              }
+            },
+            {
+              "name": "Get Comprehensive Analytics",
+              "request": {
+                "auth": {
+                  "type": "bearer",
+                  "bearer": [
+                    {
+                      "key": "token",
+                      "value": "{{admin_token}}",
+                      "type": "string"
+                    }
+                  ]
+                },
+                "method": "GET",
+                "url": {
+                  "raw": "{{base_url}}/{{api_version}}/admin/dashboard/analytics?period=30d&metric=user_engagement",
+                  "host": [
+                    "{{base_url}}"
+                  ],
+                  "path": [
+                    "{{api_version}}",
+                    "admin",
+                    "dashboard",
+                    "analytics"
+                  ],
+                  "query": [
+                    {
+                      "key": "period",
+                      "value": "30d",
+                      "description": "Time period: 7d, 30d, 90d, 1y"
+                    },
+                    {
+                      "key": "metric",
+                      "value": "user_engagement",
+                      "description": "Specific metric to analyze (optional)"
+                    }
+                  ]
+                },
+                "description": "Get comprehensive analytics including user analytics, event analytics, revenue analytics, engagement analytics, geographic analytics, time analytics, conversion analytics, and customer analytics"
+              }
+            },
+            {
+              "name": "Get System Health",
+              "request": {
+                "auth": {
+                  "type": "bearer",
+                  "bearer": [
+                    {
+                      "key": "token",
+                      "value": "{{admin_token}}",
+                      "type": "string"
+                    }
+                  ]
+                },
+                "method": "GET",
+                "url": {
+                  "raw": "{{base_url}}/{{api_version}}/admin/dashboard/system-health",
+                  "host": [
+                    "{{base_url}}"
+                  ],
+                  "path": [
+                    "{{api_version}}",
+                    "admin",
+                    "dashboard",
+                    "system-health"
+                  ]
+                },
+                "description": "Get system health status including database connectivity, pending approvals, failed orders, system metrics, and performance metrics"
+              }
+            }
+          ]
         }
       ]
     },

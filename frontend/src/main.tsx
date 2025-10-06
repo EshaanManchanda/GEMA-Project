@@ -2,7 +2,7 @@
 // This ensures fetch API is available for all modules, especially axios
 import './polyfills';
 
-import React from 'react';
+import React, { lazy, Suspense } from 'react';
 import ReactDOM from 'react-dom/client';
 
 // CRITICAL: Signal that React is loaded and available
@@ -14,7 +14,12 @@ if (typeof window !== 'undefined') {
 
 import { BrowserRouter } from 'react-router-dom';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
-import { ReactQueryDevtools } from '@tanstack/react-query-devtools';
+// Lazy load dev tools to reduce initial bundle size
+const ReactQueryDevtools = lazy(() => 
+  import('@tanstack/react-query-devtools').then(module => ({
+    default: module.ReactQueryDevtools
+  }))
+);
 import { HelmetProvider } from 'react-helmet-async';
 import { Toaster } from 'react-hot-toast';
 
@@ -82,35 +87,39 @@ initializePWA().catch(console.error);
 
 ReactDOM.createRoot(document.getElementById('root')!).render(
   <React.StrictMode>
-    <Provider store={store}>
-      <PersistGate loading={null} persistor={persistor}>
-        <BrowserRouter
-          future={{
-            v7_startTransition: true,
-            v7_relativeSplatPath: true,
-          }}
-        >
+    <ErrorBoundary>
+      <Provider store={store}>
+        <PersistGate loading={null} persistor={persistor}>
           <QueryClientProvider client={queryClient}>
-            <HelmetProvider>
-              <LanguageProvider>
-                <CurrencyProvider>
-                  <ThemeProvider>
-                    <AuthProvider>
-                      <CartProvider>
-                        <ErrorBoundary>
+            <BrowserRouter
+              future={{
+                v7_startTransition: true,
+                v7_relativeSplatPath: true,
+              }}
+            >
+              <HelmetProvider>
+                <ThemeProvider>
+                  <LanguageProvider>
+                    <CurrencyProvider>
+                      <AuthProvider>
+                        <CartProvider>
                           <App />
-                        </ErrorBoundary>
-                      </CartProvider>
-                    </AuthProvider>
-                  </ThemeProvider>
-                </CurrencyProvider>
-              </LanguageProvider>
-            </HelmetProvider>
-            <ReactQueryDevtools initialIsOpen={false} />
+                          <Toaster toastOptions={toastOptions} />
+                          {process.env.NODE_ENV === 'development' && (
+                            <Suspense fallback={null}>
+                              <ReactQueryDevtools initialIsOpen={false} />
+                            </Suspense>
+                          )}
+                        </CartProvider>
+                      </AuthProvider>
+                    </CurrencyProvider>
+                  </LanguageProvider>
+                </ThemeProvider>
+              </HelmetProvider>
+            </BrowserRouter>
           </QueryClientProvider>
-        </BrowserRouter>
-      </PersistGate>
-    </Provider>
-    <Toaster toastOptions={toastOptions} />
+        </PersistGate>
+      </Provider>
+    </ErrorBoundary>
   </React.StrictMode>
 );

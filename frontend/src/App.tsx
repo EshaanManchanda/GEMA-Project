@@ -1,5 +1,5 @@
-import React, { Suspense, useEffect } from 'react';
-import { Routes, Route, useLocation } from 'react-router-dom';
+import React, { Suspense, useEffect, lazy } from 'react';
+import { Routes, Route, useLocation, Outlet } from 'react-router-dom';
 import { AnimatePresence } from 'framer-motion';
 import { Toaster } from 'react-hot-toast';
 import { Elements } from '@stripe/react-stripe-js';
@@ -92,6 +92,7 @@ const PrivacyPage = React.lazy(() => import(/* webpackChunkName: "static" */ './
 const TermsPage = React.lazy(() => import(/* webpackChunkName: "static" */ './pages/static/TermsPage'));
 const FAQPage = React.lazy(() => import(/* webpackChunkName: "static" */ './pages/static/FAQPage'));
 const HelpPage = React.lazy(() => import(/* webpackChunkName: "static" */ './pages/static/HelpPage'));
+const PartnerWithUsPage = React.lazy(() => import(/* webpackChunkName: "static" */ './pages/static/PartnerWithUsPage'));
 
 // Error Pages
 const NotFoundPage = React.lazy(() => import(/* webpackChunkName: "error" */ './pages/error/NotFoundPage'));
@@ -261,6 +262,11 @@ function AppContent() {
             <Route path="help" element={
               <Suspense fallback={<LoadingSpinner />}>
                 <HelpPage />
+              </Suspense>
+            } />
+            <Route path="partner-with-us" element={
+              <Suspense fallback={<LoadingSpinner />}>
+                <PartnerWithUsPage />
               </Suspense>
             } />
             
@@ -701,6 +707,14 @@ function App() {
         currency: 'usd',
         appearance: {
           theme: 'stripe',
+          variables: {
+            colorPrimary: '#6366f1',
+            colorBackground: '#ffffff',
+            colorText: '#374151',
+            colorDanger: '#ef4444',
+            fontFamily: 'Inter, system-ui, sans-serif',
+            borderRadius: '8px'
+          }
         },
       }}
     >

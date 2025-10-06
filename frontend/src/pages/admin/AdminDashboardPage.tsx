@@ -43,6 +43,7 @@ const AdminDashboardPage: React.FC = () => {
 
         if (response.success) {
           const data = response.data;
+          console.log("Dashboard data:", data);
 
           // Transform API data to match component interface
           const transformedStats: DashboardStat[] = [

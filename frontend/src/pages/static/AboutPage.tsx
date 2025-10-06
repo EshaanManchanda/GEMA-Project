@@ -208,14 +208,41 @@ const AboutPage: React.FC = () => {
 
         {/* Join Us CTA */}
         <motion.div variants={itemVariants} className="text-center">
-          <div className="bg-primary rounded-lg shadow-lg p-8 text-white">
+          <div 
+            className="rounded-lg shadow-lg p-8 text-white"
+            style={{ backgroundColor: 'var(--accent-color)' }}
+          >
             <h2 className="text-3xl font-bold mb-4">Join Our Community</h2>
             <p className="text-xl mb-6">Discover amazing events for your children or become a vendor and share your experiences with families.</p>
             <div className="flex flex-col sm:flex-row justify-center gap-4">
-              <button className="px-6 py-3 bg-white text-primary font-semibold rounded-md hover:bg-gray-100 transition-colors">
+              <button 
+                className="px-6 py-3 font-semibold rounded-md transition-colors"
+                style={{ 
+                  backgroundColor: 'white',
+                  color: 'var(--primary-color)'
+                }}
+                onMouseEnter={(e) => {
+                  e.target.style.backgroundColor = '#f3f4f6';
+                }}
+                onMouseLeave={(e) => {
+                  e.target.style.backgroundColor = 'white';
+                }}
+              >
                 Browse Events
               </button>
-              <button className="px-6 py-3 bg-primary-dark text-white font-semibold rounded-md hover:bg-opacity-90 transition-colors border border-white">
+              <button 
+                className="px-6 py-3 font-semibold rounded-md transition-colors border border-white"
+                style={{ 
+                  backgroundColor: 'rgba(255, 255, 255, 0.1)',
+                  color: 'white'
+                }}
+                onMouseEnter={(e) => {
+                  e.target.style.backgroundColor = 'rgba(255, 255, 255, 0.2)';
+                }}
+                onMouseLeave={(e) => {
+                  e.target.style.backgroundColor = 'rgba(255, 255, 255, 0.1)';
+                }}
+              >
                 Become a Vendor
               </button>
             </div>

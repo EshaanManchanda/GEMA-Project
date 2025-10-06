@@ -1,6 +1,6 @@
 import { Request, Response } from 'express';
 import mongoose from 'mongoose';
-import { config, logger, checkRedisHealth } from '../config';
+import { config, logger, checkRedisHealth, isRedisEnabled } from '../config';
 import { Event, User, Order } from '../models';
 
 interface HealthStatus {
@@ -183,6 +183,16 @@ async function checkRedisHealthStatus(): Promise<ServiceStatus> {
   const startTime = Date.now();
 
   try {
+    // If Redis is disabled, mark as degraded (not down)
+    if (!isRedisEnabled) {
+      return {
+        status: 'degraded',
+        responseTime: Date.now() - startTime,
+        lastChecked: new Date().toISOString(),
+        error: 'Redis is disabled (background jobs unavailable)',
+      };
+    }
+
     const isHealthy = await checkRedisHealth();
     const responseTime = Date.now() - startTime;
 

@@ -1,6 +1,13 @@
 import { Queue, Worker, QueueEvents, Job } from 'bullmq';
-import { redisClient } from './redis';
+import { redisClient, isRedisEnabled } from './redis';
 import logger from './logger';
+
+// Check if queues should be disabled
+const areQueuesDisabled = !isRedisEnabled || process.env.DISABLE_REDIS === 'true';
+
+if (areQueuesDisabled) {
+  logger.warn('Queues are disabled because Redis is not available');
+}
 
 // Redis connection options for BullMQ
 export const redisConnection = {
@@ -47,64 +54,77 @@ export const QUEUE_NAMES = {
 } as const;
 
 // QR Code Generation Queue
-export const qrQueue = new Queue(QUEUE_NAMES.QR_GENERATION, queueConfig);
+export const qrQueue = areQueuesDisabled ? null : new Queue(QUEUE_NAMES.QR_GENERATION, queueConfig);
 
 // Email Queue
-export const emailQueue = new Queue(QUEUE_NAMES.EMAIL, queueConfig);
+export const emailQueue = areQueuesDisabled ? null : new Queue(QUEUE_NAMES.EMAIL, queueConfig);
 
 // Ticket Generation Queue
-export const ticketQueue = new Queue(QUEUE_NAMES.TICKET_GENERATION, queueConfig);
+export const ticketQueue = areQueuesDisabled ? null : new Queue(QUEUE_NAMES.TICKET_GENERATION, queueConfig);
 
 // Analytics Queue
-export const analyticsQueue = new Queue(QUEUE_NAMES.ANALYTICS, queueConfig);
+export const analyticsQueue = areQueuesDisabled ? null : new Queue(QUEUE_NAMES.ANALYTICS, queueConfig);
 
 // Notifications Queue
-export const notificationsQueue = new Queue(QUEUE_NAMES.NOTIFICATIONS, queueConfig);
+export const notificationsQueue = areQueuesDisabled ? null : new Queue(QUEUE_NAMES.NOTIFICATIONS, queueConfig);
 
-// Queue Events for monitoring
-const qrQueueEvents = new QueueEvents(QUEUE_NAMES.QR_GENERATION, { connection: redisConnection });
-const emailQueueEvents = new QueueEvents(QUEUE_NAMES.EMAIL, { connection: redisConnection });
-const ticketQueueEvents = new QueueEvents(QUEUE_NAMES.TICKET_GENERATION, { connection: redisConnection });
+// Queue Events for monitoring (only if queues are enabled)
+const qrQueueEvents = areQueuesDisabled ? null : new QueueEvents(QUEUE_NAMES.QR_GENERATION, { connection: redisConnection });
+const emailQueueEvents = areQueuesDisabled ? null : new QueueEvents(QUEUE_NAMES.EMAIL, { connection: redisConnection });
+const ticketQueueEvents = areQueuesDisabled ? null : new QueueEvents(QUEUE_NAMES.TICKET_GENERATION, { connection: redisConnection });
 
-// Event listeners for monitoring
-qrQueueEvents.on('completed', ({ jobId }) => {
-  logger.info(`QR generation job ${jobId} completed`);
-});
+// Event listeners for monitoring (only if queue events are enabled)
+if (qrQueueEvents) {
+  qrQueueEvents.on('completed', ({ jobId }) => {
+    logger.info(`QR generation job ${jobId} completed`);
+  });
 
-qrQueueEvents.on('failed', ({ jobId, failedReason }) => {
-  logger.error(`QR generation job ${jobId} failed: ${failedReason}`);
-});
+  qrQueueEvents.on('failed', ({ jobId, failedReason }) => {
+    logger.error(`QR generation job ${jobId} failed: ${failedReason}`);
+  });
+}
 
-emailQueueEvents.on('completed', ({ jobId }) => {
-  logger.info(`Email job ${jobId} completed`);
-});
+if (emailQueueEvents) {
+  emailQueueEvents.on('completed', ({ jobId }) => {
+    logger.info(`Email job ${jobId} completed`);
+  });
 
-emailQueueEvents.on('failed', ({ jobId, failedReason }) => {
-  logger.error(`Email job ${jobId} failed: ${failedReason}`);
-});
+  emailQueueEvents.on('failed', ({ jobId, failedReason }) => {
+    logger.error(`Email job ${jobId} failed: ${failedReason}`);
+  });
+}
 
-ticketQueueEvents.on('completed', ({ jobId }) => {
-  logger.info(`Ticket generation job ${jobId} completed`);
-});
+if (ticketQueueEvents) {
+  ticketQueueEvents.on('completed', ({ jobId }) => {
+    logger.info(`Ticket generation job ${jobId} completed`);
+  });
 
-ticketQueueEvents.on('failed', ({ jobId, failedReason }) => {
-  logger.error(`Ticket generation job ${jobId} failed: ${failedReason}`);
-});
+  ticketQueueEvents.on('failed', ({ jobId, failedReason }) => {
+    logger.error(`Ticket generation job ${jobId} failed: ${failedReason}`);
+  });
+}
 
 // Graceful shutdown
 const gracefulShutdown = async () => {
+  if (areQueuesDisabled) {
+    logger.info('No queues to close (queues are disabled)');
+    return;
+  }
+
   logger.info('Closing queues...');
 
-  await Promise.all([
-    qrQueue.close(),
-    emailQueue.close(),
-    ticketQueue.close(),
-    analyticsQueue.close(),
-    notificationsQueue.close(),
-    qrQueueEvents.close(),
-    emailQueueEvents.close(),
-    ticketQueueEvents.close(),
-  ]);
+  const closePromises = [
+    qrQueue?.close(),
+    emailQueue?.close(),
+    ticketQueue?.close(),
+    analyticsQueue?.close(),
+    notificationsQueue?.close(),
+    qrQueueEvents?.close(),
+    emailQueueEvents?.close(),
+    ticketQueueEvents?.close(),
+  ].filter(Boolean);
+
+  await Promise.all(closePromises);
 
   logger.info('All queues closed');
 };
@@ -114,6 +134,10 @@ process.on('SIGTERM', gracefulShutdown);
 
 // Export utility functions
 export async function getQueueStats(queueName: string) {
+  if (areQueuesDisabled) {
+    return null;
+  }
+
   const queue = getQueueByName(queueName);
   if (!queue) return null;
 
@@ -136,6 +160,10 @@ export async function getQueueStats(queueName: string) {
 }
 
 function getQueueByName(name: string): Queue | null {
+  if (areQueuesDisabled) {
+    return null;
+  }
+
   switch (name) {
     case QUEUE_NAMES.QR_GENERATION:
       return qrQueue;
@@ -153,6 +181,10 @@ function getQueueByName(name: string): Queue | null {
 }
 
 export async function getAllQueuesStats() {
+  if (areQueuesDisabled) {
+    return [];
+  }
+
   const stats = await Promise.all(
     Object.values(QUEUE_NAMES).map(async (queueName) => ({
       name: queueName,
@@ -162,3 +194,6 @@ export async function getAllQueuesStats() {
 
   return stats;
 }
+
+// Export flag for other modules to check queue availability
+export const areQueuesEnabled = !areQueuesDisabled;

@@ -27,6 +27,24 @@
     <meta name="twitter:title" content="Gema Events - Kids Activities Platform" />
     <meta name="twitter:description" content="Discover and book amazing kids activities, events, and educational programs in the UAE." />
     <meta name="twitter:image" content="/assets/images/og-default.jpg" />
+    
+    <!-- Prevent layout shifts by setting image dimensions -->
+    <style>
+      img, picture, video, canvas, svg {
+        display: block;
+        max-width: 100%;
+        height: auto;
+      }
+      /* Reserve space for images that are likely to cause layout shifts */
+      .hero-image-container {
+        aspect-ratio: 16/9;
+        width: 100%;
+      }
+      .card-image {
+        aspect-ratio: 4/3;
+        width: 100%;
+      }
+    </style>
     <meta name="twitter:site" content="@gemaevents" />
     
     <!-- PWA Meta Tags -->
@@ -50,11 +68,32 @@
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
     
-    <!-- Google Fonts -->
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&family=Cairo:wght@300;400;500;600;700;800&family=Poppins:wght@300;400;500;600;700;800&display=swap" rel="stylesheet" />
+    <!-- Google Fonts - with display=swap for better performance -->
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&family=Cairo:wght@300;400;500;600;700;800&family=Poppins:wght@300;400;500;600;700;800&display=swap" rel="stylesheet" media="print" onload="this.media='all'" />
     
-    <!-- Leaflet CSS for maps -->
-    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" integrity="sha256-p4NxAoJBhIIN+hmNHrzRCf9tD/miZyoHS5obTRR9BMY=" crossorigin="" />
+    <!-- Preload critical assets -->
+    <link rel="preload" href="/assets/images/og-default.jpg" as="image" />
+    <link rel="preload" fetchpriority="high" as="image" href="https://images.unsplash.com/photo-1558618666-fcd25c85cd64?w=32&h=32&fit=crop&crop=center" type="image/svg+xml" />
+    
+    <!-- Leaflet CSS for maps - deferred loading -->
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" integrity="sha256-p4NxAoJBhIIN+hmNHrzRCf9tD/miZyoHS5obTRR9BMY=" crossorigin="" media="print" onload="this.media='all'" />
+    
+    <!-- Add native lazy loading and fetchpriority attributes -->
+    <script>
+      // Add lazy loading to images that are below the fold
+      document.addEventListener('DOMContentLoaded', () => {
+        const images = document.querySelectorAll('img:not([loading])');
+        images.forEach(img => {
+          // Don't lazy load images that might be in the viewport initially
+          const rect = img.getBoundingClientRect();
+          if (rect.top > window.innerHeight) {
+            img.setAttribute('loading', 'lazy');
+          } else {
+            img.setAttribute('fetchpriority', 'high');
+          }
+        });
+      });
+    </script>
     
     <title>Gema Events - Discover Amazing Kids Activities & Events in UAE</title>
 

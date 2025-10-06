@@ -17,7 +17,7 @@ export const getRoleBasedRedirectPath = (role: UserRole): string => {
     case 'employee':
       return '/employee';
     case 'admin':
-      return '/admin-dashboard';
+      return '/admin';
     default:
       return '/';
   }
@@ -104,8 +104,8 @@ export const getAllowedRoutes = (role: UserRole): string[] => {
     case 'admin':
       return [
         '*', // Admin has access to all routes
-        '/admin-dashboard',
-        '/admin-dashboard/*'
+        '/admin',
+        '/admin/*'
       ];
 
     default:
