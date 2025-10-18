@@ -25,6 +25,7 @@ const StripeElementsWrapper: React.FC<StripeElementsWrapperProps> = ({
   // Use ref to store stripe instance to prevent prop changes after mount
   const stripeInstanceRef = useRef<Stripe | null>(null);
   const [isReady, setIsReady] = useState(false);
+  const [hasError, setHasError] = useState(false);
   const initializationRef = useRef(false);
 
   // Load appropriate Stripe instance ONCE on mount
@@ -42,7 +43,13 @@ const StripeElementsWrapper: React.FC<StripeElementsWrapperProps> = ({
         if (vendorId) {
           // Try to load vendor-specific Stripe
           logger.info('Loading Stripe instance for vendor', { vendorId });
-          instance = await vendorPaymentService.getStripeInstance(vendorId);
+
+          try {
+            instance = await vendorPaymentService.getStripeInstance(vendorId);
+          } catch (vendorError) {
+            logger.warn('Failed to load vendor Stripe instance', { vendorId, error: vendorError });
+            instance = null;
+          }
 
           // If vendor fetch failed, fallback to platform Stripe
           if (!instance) {
@@ -55,6 +62,10 @@ const StripeElementsWrapper: React.FC<StripeElementsWrapperProps> = ({
           instance = await defaultStripePromise;
         }
 
+        if (!instance) {
+          throw new Error('Failed to load Stripe instance');
+        }
+
         // Set the instance in ref (never changes after this)
         stripeInstanceRef.current = instance;
         setIsReady(true);
@@ -65,15 +76,29 @@ const StripeElementsWrapper: React.FC<StripeElementsWrapperProps> = ({
         });
       } catch (error) {
         logger.error('Failed to initialize Stripe', { error, vendorId });
-        // Fallback to platform Stripe on any error
-        const fallbackInstance = await defaultStripePromise;
-        stripeInstanceRef.current = fallbackInstance;
-        setIsReady(true);
+
+        try {
+          // Fallback to platform Stripe on any error
+          const fallbackInstance = await defaultStripePromise;
+          if (fallbackInstance) {
+            stripeInstanceRef.current = fallbackInstance;
+            setIsReady(true);
+            logger.info('Using fallback platform Stripe instance');
+          } else {
+            logger.error('Fallback Stripe instance is also null');
+            setIsReady(false);
+          }
+        } catch (fallbackError) {
+          logger.error('Failed to load fallback Stripe instance', { fallbackError });
+          setIsReady(false);
+          setHasError(true);
+        }
       }
     };
 
     initStripe();
   }, []); // Empty deps - only run once on mount
+
   const environmentWarning = getKeyEnvironmentMismatchWarning();
   const showHTTPSWarning = shouldShowHTTPSWarning();
   const httpsWarningMessage = getHTTPSWarningMessage();
@@ -95,6 +120,50 @@ const StripeElementsWrapper: React.FC<StripeElementsWrapperProps> = ({
       },
     },
   }), [clientSecret]);
+
+  // Show error state if Stripe failed to initialize
+  if (hasError) {
+    return (
+      <div className="bg-red-50 border border-red-200 rounded-lg p-6">
+        <div className="flex items-start">
+          <AlertTriangle className="w-6 h-6 text-red-600 mr-3 mt-0.5 flex-shrink-0" />
+          <div className="flex-1">
+            <h3 className="text-lg font-semibold text-red-800 mb-2">Payment System Unavailable</h3>
+            <p className="text-sm text-red-700 mb-4">
+              We're unable to load the payment system at this time. This could be due to:
+            </p>
+            <ul className="text-sm text-red-700 list-disc list-inside space-y-1 mb-4">
+              <li>Network connectivity issues</li>
+              <li>Payment provider configuration</li>
+              <li>Browser security settings blocking third-party scripts</li>
+            </ul>
+            <div className="bg-red-100 p-4 rounded-md mb-4">
+              <p className="text-sm font-medium text-red-800 mb-2">Recommended Solutions:</p>
+              <ol className="text-sm text-red-700 list-decimal list-inside space-y-1">
+                <li>Try refreshing the page</li>
+                <li>Use the Test Payment option instead</li>
+                <li>Contact support if the issue persists</li>
+              </ol>
+            </div>
+            <div className="flex gap-3">
+              <button
+                onClick={() => window.location.reload()}
+                className="px-4 py-2 bg-red-600 text-white rounded-md hover:bg-red-700 text-sm font-medium"
+              >
+                Refresh Page
+              </button>
+              <a
+                href="mailto:support@gema.ae"
+                className="px-4 py-2 bg-white text-red-600 border border-red-300 rounded-md hover:bg-red-50 text-sm font-medium"
+              >
+                Contact Support
+              </a>
+            </div>
+          </div>
+        </div>
+      </div>
+    );
+  }
 
   if (!clientSecret || !isReady || !stripeInstanceRef.current) {
     logger.debug('StripeElementsWrapper waiting...', {

@@ -282,25 +282,81 @@ export const confirmBooking = async (req: AuthRequest, res: Response, next: Next
   try {
     const { paymentIntentId, orderId } = req.body;
 
+    logger.info('Starting booking confirmation', {
+      paymentIntentId: paymentIntentId?.substring(0, 20) + '...',
+      orderId,
+      userId: req.user?.id
+    });
+
+    // Validate required fields
+    if (!paymentIntentId || !orderId) {
+      logger.error('Missing required fields for booking confirmation', {
+        hasPaymentIntentId: !!paymentIntentId,
+        hasOrderId: !!orderId
+      });
+      return next(new AppError('Payment intent ID and order ID are required', 400));
+    }
+
     const order = await Order.findById(orderId).populate('items.eventId');
     if (!order) {
+      logger.error('Order not found for confirmation', { orderId });
       return next(new AppError('Order not found', 404));
     }
+
+    logger.info('Order found for confirmation', {
+      orderId: order._id,
+      orderNumber: order.orderNumber,
+      status: order.status,
+      paymentStatus: order.paymentStatus,
+      total: order.total
+    });
 
     // Verify payment based on payment method
     let paymentIntent: any;
 
     if (paymentIntentId.startsWith('test_pi_')) {
       // For test payments, create a mock successful payment intent
+      logger.info('Processing test payment confirmation', {
+        paymentIntentId: paymentIntentId.substring(0, 30) + '...',
+        orderId: order._id
+      });
       paymentIntent = {
         id: paymentIntentId,
         status: 'succeeded',
+        payment_method: 'test'
       };
     } else {
       // Verify payment with Stripe for real payments
-      paymentIntent = await PaymentService.getPaymentIntent(paymentIntentId);
+      logger.info('Verifying Stripe payment intent', {
+        paymentIntentId: paymentIntentId.substring(0, 20) + '...'
+      });
+
+      try {
+        paymentIntent = await PaymentService.getPaymentIntent(paymentIntentId);
+        logger.info('Stripe payment intent retrieved', {
+          paymentIntentId: paymentIntent.id,
+          status: paymentIntent.status,
+          amount: paymentIntent.amount,
+          currency: paymentIntent.currency
+        });
+      } catch (error) {
+        logger.error('Failed to retrieve payment intent from Stripe', {
+          error: error.message,
+          paymentIntentId: paymentIntentId.substring(0, 20) + '...'
+        });
+        return next(new AppError('Failed to verify payment. Please contact support.', 500));
+      }
+
       if (paymentIntent.status !== 'succeeded') {
-        return next(new AppError('Payment not confirmed', 400));
+        logger.warn('Payment intent not in succeeded status', {
+          paymentIntentId: paymentIntent.id,
+          status: paymentIntent.status,
+          orderId: order._id
+        });
+        return next(new AppError(
+          `Payment not completed. Status: ${paymentIntent.status}. Please try again or contact support.`,
+          400
+        ));
       }
     }
 

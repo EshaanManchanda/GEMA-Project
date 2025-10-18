@@ -188,11 +188,13 @@ export class TicketGenerationService {
 
               logger.info('🖼️ TICKET GENERATION: Generating QR code image', {
                 ticketNumber,
-                errorCorrectionLevel: 'high'
+                errorCorrectionLevel: 'medium',
+                qrDataLength: qrCodeData.length
               });
 
               const qrCodeImage = await generateQRCode(qrCodeData, {
-                errorCorrectionLevel: 'high'
+                errorCorrectionLevel: 'medium', // Medium is sufficient for URL format
+                width: 300 // Slightly larger for better scanning
               });
 
               logger.info('✅ TICKET GENERATION: QR code image generated', {

@@ -81,6 +81,7 @@ export const generateQRCodeBuffer = async (
 
 /**
  * Generate secure QR code data with timestamping and validation info
+ * Uses compact URL format instead of JSON to reduce size
  */
 export const generateSecureQRData = (data: {
   ticketNumber: string;
@@ -93,14 +94,36 @@ export const generateSecureQRData = (data: {
 }): string => {
   console.log('🔒 QR DATA UTILS: Generating secure QR data', {
     ticketNumber: data.ticketNumber,
-    eventId: data.eventId,
-    userId: data.userId,
-    vendorId: data.vendorId,
-    orderNumber: data.orderNumber,
-    validUntil: data.validUntil?.toISOString(),
-    seatsAllocated: data.seatsAllocated
+    eventId: data.eventId
   });
 
+  // Use compact URL format instead of JSON
+  // This dramatically reduces QR code size from 2738 to ~100 characters
+  const baseUrl = process.env.FRONTEND_URL || 'https://gema-project.onrender.com';
+  const verifyUrl = `${baseUrl}/verify-ticket/${data.ticketNumber}`;
+
+  console.log('✅ QR DATA UTILS: Secure QR data generated (URL format)', {
+    resultLength: verifyUrl.length,
+    ticketNumber: data.ticketNumber,
+    format: 'URL'
+  });
+
+  return verifyUrl;
+};
+
+/**
+ * Generate secure QR code data in legacy JSON format (for backward compatibility)
+ * Use this only when you need the full data in the QR code
+ */
+export const generateSecureQRDataLegacy = (data: {
+  ticketNumber: string;
+  eventId: string;
+  userId: string;
+  vendorId?: string;
+  orderNumber?: string;
+  validUntil?: Date;
+  seatsAllocated?: number;
+}): string => {
   const timestamp = new Date().toISOString();
   const expiresAt = data.validUntil?.toISOString() || new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString();
 
@@ -113,24 +136,33 @@ export const generateSecureQRData = (data: {
     checksum: Buffer.from(`${data.ticketNumber}-${data.eventId}-${timestamp}`).toString('base64').slice(0, 8)
   };
 
-  const result = JSON.stringify(secureData);
-
-  console.log('✅ QR DATA UTILS: Secure QR data generated', {
-    resultLength: result.length,
-    secureDataKeys: Object.keys(secureData),
-    generatedAt: timestamp,
-    expiresAt,
-    checksum: secureData.checksum
-  });
-
-  return result;
+  return JSON.stringify(secureData);
 };
 
 /**
  * Validate QR code data structure and timing
+ * Handles both URL format and legacy JSON format
  */
 export const validateQRData = (qrDataString: string): { isValid: boolean; data?: any; error?: string } => {
   try {
+    // Check if it's a URL format (new format)
+    if (qrDataString.startsWith('http://') || qrDataString.startsWith('https://')) {
+      // Extract ticket number from URL
+      const urlMatch = qrDataString.match(/\/verify-ticket\/([^/?#]+)/);
+      if (!urlMatch || !urlMatch[1]) {
+        return { isValid: false, error: 'Invalid URL format' };
+      }
+
+      return {
+        isValid: true,
+        data: {
+          ticketNumber: urlMatch[1],
+          format: 'URL'
+        }
+      };
+    }
+
+    // Legacy JSON format
     const data = JSON.parse(qrDataString);
 
     // Check required fields
@@ -149,7 +181,7 @@ export const validateQRData = (qrDataString: string): { isValid: boolean; data?:
       return { isValid: false, error: 'QR code integrity check failed' };
     }
 
-    return { isValid: true, data };
+    return { isValid: true, data: { ...data, format: 'JSON' } };
   } catch (error) {
     return { isValid: false, error: 'Invalid QR code format' };
   }
