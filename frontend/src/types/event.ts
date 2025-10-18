@@ -22,6 +22,7 @@ export interface EventVendor {
 
 export interface EventDateSchedule {
   _id: string;
+  id?: string;
   date: string;
   startDateTime: string;
   endDateTime: string;
@@ -30,12 +31,47 @@ export interface EventDateSchedule {
   soldSeats: number;
   reservedSeats: number;
   price?: number;
+  unlimitedSeats?: boolean;
 }
 
 export interface EventFaq {
   _id: string;
   question: string;
   answer: string;
+}
+
+export interface RegistrationField {
+  id: string;
+  label: string;
+  type: 'text' | 'email' | 'number' | 'tel' | 'textarea' | 'dropdown' | 'checkbox' | 'radio' | 'file' | 'date';
+  placeholder?: string;
+  required: boolean;
+  validation?: {
+    pattern?: string;
+    minLength?: number;
+    maxLength?: number;
+    min?: number;
+    max?: number;
+  };
+  options?: string[];
+  accept?: string[];
+  maxFileSize?: number;
+  section?: string;
+  order: number;
+  helpText?: string;
+}
+
+export interface RegistrationConfig {
+  enabled: boolean;
+  fields: RegistrationField[];
+  maxRegistrations?: number;
+  registrationDeadline?: Date;
+  requiresApproval: boolean;
+  emailNotifications: {
+    toVendor: boolean;
+    toParticipant: boolean;
+    customMessage?: string;
+  };
 }
 
 // Backend API Response Types
@@ -92,6 +128,7 @@ export interface Event {
   createdAt: string;
   updatedAt: string;
   affiliateCode: string;
+  registrationConfig?: RegistrationConfig;
 }
 
 export interface EventsResponse {

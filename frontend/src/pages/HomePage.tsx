@@ -264,7 +264,7 @@ const Banner = ({ categories }: { categories: any[] }) => {
         {/* Popular searches */}
         <FadeIn delay={0.5}>
           <div className="mt-4 flex flex-wrap justify-center gap-2 text-sm">
-            <span className="text-white/70">Popular:</span>
+            <span key="popular-label" className="text-white/70">Popular:</span>
             <button
               key="summer-camps"
               onClick={() => handlePopularSearch('Summer Camps')}
@@ -291,7 +291,7 @@ const Banner = ({ categories }: { categories: any[] }) => {
             </button>
             {categories.slice(0, 2).map((category, index) => (
               <button
-                key={category.id}
+                key={category._id || category.id || `category-${index}`}
                 onClick={() => handlePopularSearch(category.name)}
                 className="text-white hover:text-white/80 transition-colors duration-300 underline underline-offset-2 cursor-pointer focus:outline-none focus:ring-2 focus:ring-white/50 rounded px-1"
                 aria-label={`Search for ${category.name}`}

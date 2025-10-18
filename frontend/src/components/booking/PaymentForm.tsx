@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import { useDispatch, useSelector } from 'react-redux';
 import { Link, useLocation } from 'react-router-dom';
 import { CreditCard, Shield, Lock, AlertCircle, CheckCircle, ChevronLeft, AlertTriangle, Info } from 'lucide-react';
@@ -21,6 +21,8 @@ import {
 import { Event } from '../../types/event';
 import bookingAPI, { InitiateBookingData } from '../../services/api/bookingAPI';
 import { useErrorHandler } from '../../utils/errorHandler';
+import vendorPaymentService, { VendorPaymentInfo } from '../../services/vendorPaymentService';
+import { logger } from '../../utils/logger';
 
 import Button from '../ui/Button';
 import { Card, CardContent, CardHeader, CardTitle } from '../ui/Card';
@@ -52,12 +54,53 @@ const PaymentForm: React.FC<PaymentFormProps> = ({
   const [agreedToTerms, setAgreedToTermsLocal] = useState(bookingFlow.agreedToTerms);
   const [agreedToPrivacy, setAgreedToPrivacy] = useState(false);
   const [marketingConsent, setMarketingConsent] = useState(false);
+  const [vendorPaymentInfo, setVendorPaymentInfo] = useState<VendorPaymentInfo | null>(null);
 
   // Payment methods configuration with environment-based settings
   const paymentConfig = getPaymentConfig();
   const regionalMethods = getRegionalPaymentMethods();
   const environmentInfo = getEnvironmentInfo();
   const paymentAvailability = getPaymentMethodAvailability();
+
+  // Extract and stabilize vendorId to prevent unnecessary re-renders
+  const stableVendorId = useMemo(() => {
+    // Validate vendorId exists, is populated object, and has valid MongoDB ObjectId format
+    if (event.vendorId &&
+        typeof event.vendorId === 'object' &&
+        '_id' in event.vendorId &&
+        event.vendorId._id &&
+        /^[0-9a-fA-F]{24}$/.test(event.vendorId._id)) {
+      return event.vendorId._id;
+    }
+    return undefined;
+  }, [event.vendorId]);
+
+  // Fetch vendor payment info on mount
+  useEffect(() => {
+    const fetchVendorPaymentInfo = async () => {
+      if (stableVendorId) {
+        // Valid vendorId - fetch payment info
+        const info = await vendorPaymentService.getVendorPaymentInfo(stableVendorId);
+        setVendorPaymentInfo(info);
+      } else {
+        // Invalid or missing vendorId - use platform defaults
+        logger.warn('Invalid or missing vendorId, using platform payment defaults', {
+          vendorId: event.vendorId,
+          hasVendorId: !!event.vendorId,
+          isObject: typeof event.vendorId === 'object'
+        });
+        setVendorPaymentInfo({
+          vendorId: 'platform',
+          hasCustomStripe: false,
+          stripePublishableKey: null,
+          serviceFeeRate: 5,
+          usePlatformStripe: true,
+        });
+      }
+    };
+
+    fetchVendorPaymentInfo();
+  }, [stableVendorId, event.vendorId]);
 
   const paymentMethods = [
     {
@@ -111,28 +154,36 @@ const PaymentForm: React.FC<PaymentFormProps> = ({
   // Create payment intent when Stripe is selected and we don't have one yet
   useEffect(() => {
     if (selectedPaymentMethod === 'stripe' && !checkout?.clientSecret && participants.length > 0) {
-      // Get the first available schedule ID
-      const dateScheduleId = event.dateSchedule?.[0]?._id || event.dateSchedule?.[0]?.id;
+      // Get schedule ID from bookingFlow (set during booking initialization)
+      const dateScheduleId = bookingFlow.scheduleId;
 
       if (dateScheduleId) {
+        logger.debug('Creating payment intent for Stripe');
         dispatch(createPaymentIntent({
           eventId: event._id,
           participants: participants.length,
           dateScheduleId: dateScheduleId
         }));
+      } else {
+        logger.warn('No schedule ID found in booking flow. User must select a schedule.');
       }
     }
-  }, [selectedPaymentMethod, checkout?.clientSecret, participants.length, event._id, event.dateSchedule, dispatch]);
+  }, [selectedPaymentMethod, checkout?.clientSecret, participants.length, event._id, bookingFlow.scheduleId, dispatch]);
 
   // Calculate total amount
   const calculateTotal = () => {
     const basePrice = event.price;
     const participantCount = participants.length;
     const subtotal = basePrice * participantCount;
-    
+
     // Apply discount if coupon is applied
     const discountAmount = bookingFlow.couponCode ? subtotal * 0.1 : 0; // 10% discount example
-    const serviceFee = subtotal * 0.05; // 5% service fee
+
+    // Service fee based on vendor payment settings
+    // If vendor has custom Stripe, no service fee. Otherwise, use vendor's commission rate
+    const serviceFeeRate = vendorPaymentInfo?.serviceFeeRate || 5; // Default 5%
+    const serviceFee = vendorPaymentInfo?.usePlatformStripe !== false ? (subtotal * (serviceFeeRate / 100)) : 0;
+
     const tax = (subtotal - discountAmount + serviceFee) * 0.05; // 5% tax
     const total = subtotal - discountAmount + serviceFee + tax;
 
@@ -140,12 +191,14 @@ const PaymentForm: React.FC<PaymentFormProps> = ({
       subtotal,
       discountAmount,
       serviceFee,
+      serviceFeeRate,
       tax,
       total,
+      hasVendorStripe: vendorPaymentInfo?.hasCustomStripe || false,
     };
   };
 
-  const { subtotal, discountAmount, serviceFee, tax, total } = calculateTotal();
+  const { subtotal, discountAmount, serviceFee, serviceFeeRate, tax, total, hasVendorStripe } = calculateTotal();
 
   // Handle payment method selection
   const handlePaymentMethodChange = (method: string) => {
@@ -180,9 +233,48 @@ const PaymentForm: React.FC<PaymentFormProps> = ({
   };
 
   // Handle successful payment
-  const handlePaymentSuccess = () => {
-    toast.success('Payment successful!');
-    onNext();
+  const handlePaymentSuccess = async () => {
+    setProcessing(true);
+    try {
+      // Get orderId and paymentIntent from checkout state
+      // Note: checkout.paymentIntent (not paymentIntentId)
+      const { orderId, paymentIntent: paymentIntentId } = checkout || {};
+
+      logger.debug('Checkout state:', { orderId, paymentIntentId, checkoutKeys: Object.keys(checkout || {}) });
+
+      if (!orderId || !paymentIntentId) {
+        throw new Error('Missing order or payment information');
+      }
+
+      logger.debug('Confirming booking after successful payment', {
+        orderId,
+        paymentIntentId: paymentIntentId.substring(0, 20) + '...'
+      });
+
+      // Confirm booking on backend - this will:
+      // - Update order status to 'confirmed'
+      // - Update payment status to 'paid'
+      // - Reduce available seats
+      // - Generate tickets
+      // - Send confirmation emails
+      await bookingAPI.confirmBooking({
+        paymentIntentId,
+        orderId
+      });
+
+      toast.success('Booking confirmed successfully!');
+      onNext();
+    } catch (error: any) {
+      logger.error('Booking confirmation failed:', error);
+      const apiError = handleError(error, {
+        component: 'PaymentForm',
+        action: 'confirmBooking'
+      });
+      setPaymentError(apiError.message);
+      toast.error('Booking confirmation failed. Please contact support with your order details.');
+    } finally {
+      setProcessing(false);
+    }
   };
 
   // Handle fallback to test payment
@@ -201,11 +293,51 @@ const PaymentForm: React.FC<PaymentFormProps> = ({
 
     try {
       if (selectedPaymentMethod === 'test') {
-        // Test payment - simulate immediate success
-        toast.success('Test payment successful!');
+        // Test payment - first initiate if needed, then confirm
+        let orderId = checkout?.orderId;
+        let paymentIntentId = checkout?.paymentIntent;
+
+        // If we don't have an order yet, create one
+        if (!orderId) {
+          logger.debug('Initiating test payment booking');
+          const dateScheduleId = bookingFlow.scheduleId;
+
+          if (!dateScheduleId) {
+            setPaymentError('No schedule selected. Please try again.');
+            return;
+          }
+
+          // Initiate booking with test payment method
+          const initiateResponse = await bookingAPI.initiateBooking({
+            eventId: event._id,
+            dateScheduleId,
+            seats: participants.length,
+            paymentMethod: 'test',
+            participants: participants
+          });
+
+          orderId = initiateResponse.orderId;
+          paymentIntentId = initiateResponse.paymentIntentId;
+          logger.debug('Test payment initiated:', { orderId, paymentIntentId });
+        }
+
+        if (!orderId || !paymentIntentId) {
+          setPaymentError('Failed to initiate booking. Please try again.');
+          return;
+        }
+
+        logger.debug('Confirming test payment booking', { orderId, paymentIntentId });
+
+        // Confirm test payment booking
+        await bookingAPI.confirmBooking({
+          paymentIntentId,
+          orderId
+        });
+
+        toast.success('Test booking confirmed successfully!');
         setTimeout(() => {
           onNext();
-        }, 1000);
+        }, 500);
         return;
       }
 
@@ -346,7 +478,10 @@ const PaymentForm: React.FC<PaymentFormProps> = ({
 
       {/* Real Stripe Elements */}
       {selectedPaymentMethod === 'stripe' && checkout?.clientSecret && (
-        <StripeElementsWrapper clientSecret={checkout.clientSecret}>
+        <StripeElementsWrapper
+          clientSecret={checkout.clientSecret}
+          vendorId={stableVendorId}
+        >
           <StripePaymentElement
             onSuccess={handlePaymentSuccess}
             onError={(error) => setPaymentError(error)}
@@ -395,10 +530,23 @@ const PaymentForm: React.FC<PaymentFormProps> = ({
               </div>
             )}
 
-            <div className="flex justify-between text-sm text-gray-600">
-              <span>Service Fee (5%)</span>
-              <span>{formatCurrency(serviceFee, event.currency || getDefaultCurrency())}</span>
-            </div>
+            {hasVendorStripe ? (
+              <div className="flex justify-between text-sm text-green-600">
+                <span className="flex items-center">
+                  Service Fee
+                  <Info className="w-3 h-3 ml-1" title="No service fee - vendor payment" />
+                </span>
+                <span className="font-medium">Free</span>
+              </div>
+            ) : (
+              <div className="flex justify-between text-sm text-gray-600">
+                <span className="flex items-center">
+                  Service Fee ({serviceFeeRate}%)
+                  <Info className="w-3 h-3 ml-1" title="Platform payment processing fee" />
+                </span>
+                <span>{formatCurrency(serviceFee, event.currency || getDefaultCurrency())}</span>
+              </div>
+            )}
 
             <div className="flex justify-between text-sm text-gray-600">
               <span>Tax (5%)</span>
@@ -496,25 +644,41 @@ const PaymentForm: React.FC<PaymentFormProps> = ({
         </div>
       </div>
 
-      {/* Action Buttons */}
-      <div className="flex justify-between">
-        <Button
-          variant="outline"
-          onClick={onPrev}
-          leftIcon={<ChevronLeft className="w-4 h-4" />}
-        >
-          Back to Participants
-        </Button>
-        <Button
-          variant="primary"
-          onClick={handleInitiatePayment}
-          disabled={processing || !agreedToTerms || !agreedToPrivacy}
-          loading={processing}
-          size="lg"
-        >
-          {processing ? 'Processing Payment...' : `Pay ${formatCurrency(total, event.currency || getDefaultCurrency())}`}
-        </Button>
-      </div>
+      {/* Action Buttons - Only show for non-Stripe payments or when Stripe is not ready */}
+      {/* For Stripe payments, StripePaymentElement has its own submit button */}
+      {!(selectedPaymentMethod === 'stripe' && checkout?.clientSecret) && (
+        <div className="flex justify-between">
+          <Button
+            variant="outline"
+            onClick={onPrev}
+            leftIcon={<ChevronLeft className="w-4 h-4" />}
+          >
+            Back to Participants
+          </Button>
+          <Button
+            variant="primary"
+            onClick={handleInitiatePayment}
+            disabled={processing || !agreedToTerms || !agreedToPrivacy}
+            loading={processing}
+            size="lg"
+          >
+            {processing ? 'Processing Payment...' : `Pay ${formatCurrency(total, event.currency || getDefaultCurrency())}`}
+          </Button>
+        </div>
+      )}
+
+      {/* Back button for Stripe payments (when payment element is shown) */}
+      {selectedPaymentMethod === 'stripe' && checkout?.clientSecret && (
+        <div className="flex justify-start">
+          <Button
+            variant="outline"
+            onClick={onPrev}
+            leftIcon={<ChevronLeft className="w-4 h-4" />}
+          >
+            Back to Participants
+          </Button>
+        </div>
+      )}
     </div>
   );
 };

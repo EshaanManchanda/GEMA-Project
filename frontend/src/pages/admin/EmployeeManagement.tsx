@@ -1,6 +1,5 @@
 import React, { useState } from 'react';
 import LoadingSpinner from '@/components/common/LoadingSpinner';
-import AdminNavigation from '@/components/admin/AdminNavigation';
 
 interface Employee {
   _id: string;
@@ -70,9 +69,7 @@ const EmployeeManagement: React.FC = () => {
   }
 
   return (
-    <>
-      <AdminNavigation />
-      <div className="p-6 space-y-6">
+    <div className="p-6 space-y-6">
       <div className="flex justify-between items-center">
         <div>
           <h1 className="text-3xl font-bold">Employee Management</h1>
@@ -231,7 +228,6 @@ const EmployeeManagement: React.FC = () => {
         </div>
       )}
     </div>
-    </>
   );
 };
 

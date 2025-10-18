@@ -168,7 +168,7 @@ const blogAPI = {
       sortOrder?: 'asc' | 'desc';
     }) => {
       try {
-        const response = await ApiService.get('/admin/blogs/blogs', { params: filters });
+        const response = await ApiService.get('/admin/blogs', { params: filters });
         return response.data;
       } catch (error) {
         throw error;
@@ -178,7 +178,7 @@ const blogAPI = {
     // Get blog by ID for admin
     getBlogById: async (id: string) => {
       try {
-        const response = await ApiService.get(`/admin/blogs/blogs/${id}`);
+        const response = await ApiService.get(`/admin/blogs/${id}`);
         return response.data;
       } catch (error) {
         throw error;
@@ -209,7 +209,7 @@ const blogAPI = {
       };
     }) => {
       try {
-        const response = await ApiService.post('/admin/blogs/blogs', blogData);
+        const response = await ApiService.post('/admin/blogs', blogData);
         return response.data;
       } catch (error) {
         throw error;
@@ -219,7 +219,7 @@ const blogAPI = {
     // Update blog
     updateBlog: async (id: string, blogData: any) => {
       try {
-        const response = await ApiService.put(`/admin/blogs/blogs/${id}`, blogData);
+        const response = await ApiService.put(`/admin/blogs/${id}`, blogData);
         return response.data;
       } catch (error) {
         throw error;
@@ -229,7 +229,7 @@ const blogAPI = {
     // Delete blog
     deleteBlog: async (id: string) => {
       try {
-        const response = await ApiService.delete(`/admin/blogs/blogs/${id}`);
+        const response = await ApiService.delete(`/admin/blogs/${id}`);
         return response.data;
       } catch (error) {
         throw error;

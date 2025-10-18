@@ -167,11 +167,11 @@ router.use(authenticate);
 router.use(authorize(['admin', 'superadmin']));
 
 // Blog management routes
-router.route('/blogs')
+router.route('/')
   .get(getAllBlogsValidation, validateRequest, getAllBlogsAdmin)
   .post(createBlogValidation, validateRequest, createBlog);
 
-router.route('/blogs/:id')
+router.route('/:id')
   .get(getBlogValidation, validateRequest, getBlogById)
   .put(updateBlogValidation, validateRequest, updateBlog)
   .delete(deleteBlogValidation, validateRequest, deleteBlog);

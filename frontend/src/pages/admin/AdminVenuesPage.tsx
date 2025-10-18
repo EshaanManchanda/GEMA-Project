@@ -2,7 +2,6 @@ import React, { useState, useEffect, useCallback } from 'react';
 import { Link } from 'react-router-dom';
 import toast from 'react-hot-toast';
 import adminAPI from '../../services/api/adminAPI';
-import AdminNavigation from '../../components/admin/AdminNavigation';
 
 interface Venue {
   id: string;
@@ -440,9 +439,7 @@ const AdminVenuesPage: React.FC = () => {
   }
 
   return (
-    <>
-      <AdminNavigation />
-      <div className="container mx-auto px-4 py-8">
+    <div className="container mx-auto px-4 py-8">
       <div className="flex flex-col md:flex-row justify-between items-start md:items-center mb-6">
         <h1 className="text-3xl font-bold text-gray-900 mb-4 md:mb-0">Venues Management</h1>
         <Link
@@ -838,7 +835,6 @@ const AdminVenuesPage: React.FC = () => {
         </div>
       )}
     </div>
-    </>
   );
 };
 

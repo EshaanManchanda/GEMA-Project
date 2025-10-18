@@ -38,7 +38,7 @@ export const initiateBooking = async (req: AuthRequest, res: Response, next: Nex
       return next(new AppError('User not authenticated', 401));
     }
 
-    const { eventId, dateScheduleId, seats, paymentMethod = 'stripe' } = req.body;
+    const { eventId, dateScheduleId, seats, paymentMethod = 'stripe', participants } = req.body;
 
     // Validate event exists and is available
     const event = await Event.findOne({
@@ -93,9 +93,17 @@ export const initiateBooking = async (req: AuthRequest, res: Response, next: Nex
       originalScheduleDate: scheduleDate
     });
 
-    // Check seat availability
-    if (schedule.availableSeats < seats) {
+    // Check seat availability (skip for unlimited seats)
+    if (!schedule.unlimitedSeats && schedule.availableSeats < seats) {
       return next(new AppError(`Only ${schedule.availableSeats} seats available for this date`, 400));
+    }
+
+    if (schedule.unlimitedSeats) {
+      logger.info('✓ Unlimited seats event - skipping capacity check', {
+        eventId,
+        scheduleId: dateScheduleId,
+        requestedSeats: seats
+      });
     }
 
     // Get user information for billing
@@ -127,6 +135,7 @@ export const initiateBooking = async (req: AuthRequest, res: Response, next: Nex
         unitPrice,
         totalPrice: subtotal,
         currency: event.currency,
+        participants: participants || [],
       }],
       subtotal,
       tax,
@@ -341,6 +350,15 @@ export const confirmBooking = async (req: AuthRequest, res: Response, next: Next
 
     await order.save();
 
+    // Verify order was saved with correct payment status
+    logger.info('Order saved successfully with payment status', {
+      orderId: order._id,
+      orderNumber: order.orderNumber,
+      status: order.status,
+      paymentStatus: order.paymentStatus,
+      confirmedAt: order.confirmedAt
+    });
+
     // Generate tickets using the centralized service
     logger.info('Starting ticket generation process using TicketGenerationService', {
       orderId: order._id,
@@ -373,6 +391,95 @@ export const confirmBooking = async (req: AuthRequest, res: Response, next: Next
       });
     }
 
+    // Send vendor booking notification email
+    logger.info('Sending vendor booking notification email', {
+      orderId: order._id,
+      orderNumber: order.orderNumber
+    });
+
+    try {
+      // Get vendor information and event details
+      const firstItem = order.items[0];
+      const event = await Event.findById(firstItem.eventId).populate('vendorId');
+
+      if (event && event.vendorId) {
+        const vendor = await User.findById(event.vendorId);
+        const customer = await User.findById(order.userId);
+
+        if (vendor && customer) {
+          // Format participants data for email
+          const participants = [];
+          for (const item of order.items) {
+            if (item.participants && item.participants.length > 0) {
+              item.participants.forEach((p: any) => {
+                participants.push({
+                  name: p.name,
+                  email: customer.email,
+                  phone: p.phone || customer.phone,
+                  age: p.age,
+                  gender: p.gender,
+                  registrationData: p.registrationData || []
+                });
+              });
+            }
+          }
+
+          // If no participants in order items, create default from customer info
+          if (participants.length === 0) {
+            const totalQuantity = order.items.reduce((sum, item) => sum + item.quantity, 0);
+            for (let i = 0; i < totalQuantity; i++) {
+              participants.push({
+                name: `${customer.firstName} ${customer.lastName}`,
+                email: customer.email,
+                phone: customer.phone,
+                age: undefined,
+                gender: undefined,
+                registrationData: []
+              });
+            }
+          }
+
+          const { emailService } = await import('../services/email.service');
+          await emailService.sendVendorBookingNotificationEmail({
+            to: vendor.email,
+            vendorName: vendor.firstName || 'Vendor',
+            orderNumber: order.orderNumber,
+            eventTitle: event.title,
+            eventDate: firstItem.scheduleDate,
+            participantCount: participants.length,
+            orderTotal: order.total,
+            currency: order.currency,
+            participants,
+            customerName: `${customer.firstName} ${customer.lastName}`,
+            customerEmail: customer.email,
+            customerPhone: customer.phone
+          });
+
+          // Log communication
+          order.addCommunication(
+            'email',
+            `Booking confirmation sent to vendor ${vendor.email}`,
+            'Vendor Booking Notification'
+          );
+          await order.save();
+
+          logger.info('Vendor notification email sent successfully', {
+            orderId: order._id,
+            vendorEmail: vendor.email,
+            orderNumber: order.orderNumber
+          });
+        }
+      }
+    } catch (emailError) {
+      // Log error but don't fail the booking
+      logger.warn('Failed to send vendor notification email (non-blocking)', {
+        orderId: order._id,
+        orderNumber: order.orderNumber,
+        error: emailError.message,
+        stack: emailError.stack
+      });
+    }
+
     logger.info('Booking confirmed successfully', {
       orderId: order._id,
       transactionId: paymentIntent.id,
@@ -389,6 +496,7 @@ export const confirmBooking = async (req: AuthRequest, res: Response, next: Next
         amountPaid: order.total,
         currency: order.currency,
         status: order.status,
+        paymentStatus: order.paymentStatus,
         tickets,
       },
     });

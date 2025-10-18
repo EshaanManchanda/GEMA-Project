@@ -352,6 +352,9 @@ export const getAdminOrders = async (req: AuthRequest, res: Response, next: Next
       paymentStatus,
       sortBy = 'createdAt',
       sortOrder = 'desc',
+      search,
+      startDate,
+      endDate,
     } = req.query;
 
     const pageNum = parseInt(page as string);
@@ -360,21 +363,46 @@ export const getAdminOrders = async (req: AuthRequest, res: Response, next: Next
 
     // Build filter query
     const filter: any = {};
+
+    // Status filters
     if (status) filter.status = status;
     if (paymentStatus) filter.paymentStatus = paymentStatus;
+
+    // Date range filter
+    if (startDate || endDate) {
+      filter.createdAt = {};
+      if (startDate) filter.createdAt.$gte = new Date(startDate as string);
+      if (endDate) {
+        const endDateTime = new Date(endDate as string);
+        endDateTime.setHours(23, 59, 59, 999); // Include the entire end date
+        filter.createdAt.$lte = endDateTime;
+      }
+    }
+
+    // Search filter (search across multiple fields)
+    if (search) {
+      const searchRegex = new RegExp(search as string, 'i'); // Case-insensitive
+      filter.$or = [
+        { orderNumber: searchRegex },
+        { 'billingAddress.email': searchRegex },
+        { 'billingAddress.firstName': searchRegex },
+        { 'billingAddress.lastName': searchRegex },
+        { 'items.eventTitle': searchRegex },
+      ];
+    }
 
     // Build sort query
     const sort: any = {};
     sort[sortBy as string] = sortOrder === 'asc' ? 1 : -1;
 
-    // Execute query
+    // Execute query with lean() for better performance
+    // (billingAddress already contains customer data, no need to populate userId)
     const [orders, total] = await Promise.all([
       Order.find(filter)
-        .populate('userId', 'firstName lastName email')
-        .populate('items.eventId', 'title vendorId')
         .sort(sort)
         .skip(skip)
-        .limit(limitNum),
+        .limit(limitNum)
+        .lean(),
       Order.countDocuments(filter),
     ]);
 
@@ -570,6 +598,251 @@ export const getVendorOrders = async (req: AuthRequest, res: Response, next: Nex
           hasPrevPage: pageNum > 1,
           limit: limitNum,
         },
+      },
+    });
+  } catch (error) {
+    next(error);
+  }
+};
+
+// =============================================
+// ADMIN ORDER MANAGEMENT FUNCTIONS
+// =============================================
+
+// @desc    Confirm order (Admin only)
+// @route   POST /api/orders/admin/:id/confirm
+// @access  Private (Admin only)
+export const confirmOrderAdmin = async (req: AuthRequest, res: Response, next: NextFunction) => {
+  try {
+    const { id } = req.params;
+
+    const order = await Order.findById(id);
+    if (!order) {
+      return next(new AppError('Order not found', 404));
+    }
+
+    if (order.status === 'confirmed') {
+      return next(new AppError('Order is already confirmed', 400));
+    }
+
+    if (order.status === 'cancelled' || order.status === 'refunded') {
+      return next(new AppError(`Cannot confirm ${order.status} order`, 400));
+    }
+
+    // Mark order as confirmed
+    await order.confirm();
+
+    res.status(200).json({
+      success: true,
+      message: 'Order confirmed successfully',
+      data: { order },
+    });
+  } catch (error) {
+    next(error);
+  }
+};
+
+// @desc    Refund order (Admin only)
+// @route   POST /api/orders/admin/:id/refund
+// @access  Private (Admin only)
+export const refundOrderAdmin = async (req: AuthRequest, res: Response, next: NextFunction) => {
+  try {
+    const { id } = req.params;
+    const { amount, reason } = req.body;
+
+    const order = await Order.findById(id);
+    if (!order) {
+      return next(new AppError('Order not found', 404));
+    }
+
+    if (order.paymentStatus !== 'paid') {
+      return next(new AppError('Cannot refund unpaid order', 400));
+    }
+
+    if (order.status === 'refunded') {
+      return next(new AppError('Order is already refunded', 400));
+    }
+
+    // Calculate refund amount if not provided
+    const refundAmount = amount || order.calculateRefundAmount();
+
+    if (refundAmount > order.total) {
+      return next(new AppError('Refund amount cannot exceed order total', 400));
+    }
+
+    // Process refund
+    await order.refund(refundAmount, reason);
+
+    res.status(200).json({
+      success: true,
+      message: 'Order refunded successfully',
+      data: {
+        order,
+        refundAmount,
+        refundReason: reason,
+      },
+    });
+  } catch (error) {
+    next(error);
+  }
+};
+
+// @desc    Update order (Admin only)
+// @route   PUT /api/orders/admin/:id
+// @access  Private (Admin only)
+export const updateOrderAdmin = async (req: AuthRequest, res: Response, next: NextFunction) => {
+  try {
+    const { id } = req.params;
+    const updateData = req.body;
+
+    // Prevent updating certain protected fields
+    const protectedFields = ['_id', 'userId', 'orderNumber', 'paymentIntentId', 'transactionId', 'createdAt'];
+    protectedFields.forEach(field => delete updateData[field]);
+
+    const order = await Order.findById(id);
+    if (!order) {
+      return next(new AppError('Order not found', 404));
+    }
+
+    // Update order fields
+    Object.assign(order, updateData);
+    await order.save();
+
+    res.status(200).json({
+      success: true,
+      message: 'Order updated successfully',
+      data: { order },
+    });
+  } catch (error) {
+    next(error);
+  }
+};
+
+// @desc    Delete order (Admin only)
+// @route   DELETE /api/orders/admin/:id
+// @access  Private (Admin only)
+export const deleteOrderAdmin = async (req: AuthRequest, res: Response, next: NextFunction) => {
+  try {
+    const { id } = req.params;
+
+    const order = await Order.findById(id);
+    if (!order) {
+      return next(new AppError('Order not found', 404));
+    }
+
+    // Only allow deletion of pending or cancelled orders
+    if (order.status === 'confirmed' || order.paymentStatus === 'paid') {
+      return next(new AppError('Cannot delete confirmed or paid orders. Please refund or cancel first.', 400));
+    }
+
+    await Order.findByIdAndDelete(id);
+
+    res.status(200).json({
+      success: true,
+      message: 'Order deleted successfully',
+      data: { orderId: id },
+    });
+  } catch (error) {
+    next(error);
+  }
+};
+
+// @desc    Bulk update orders (Admin only)
+// @route   PATCH /api/orders/admin/bulk
+// @access  Private (Admin only)
+export const bulkUpdateOrders = async (req: AuthRequest, res: Response, next: NextFunction) => {
+  try {
+    const { orderIds, action, updateData } = req.body;
+
+    if (!orderIds || !Array.isArray(orderIds) || orderIds.length === 0) {
+      return next(new AppError('Order IDs array is required', 400));
+    }
+
+    const orders = await Order.find({ _id: { $in: orderIds } });
+
+    if (orders.length === 0) {
+      return next(new AppError('No orders found with provided IDs', 404));
+    }
+
+    const results = {
+      successful: [] as string[],
+      failed: [] as { orderId: string; reason: string }[],
+    };
+
+    // Process each order based on action
+    for (const order of orders) {
+      try {
+        switch (action) {
+          case 'confirm':
+            if (order.status === 'pending') {
+              await order.confirm();
+              results.successful.push(order._id.toString());
+            } else {
+              results.failed.push({
+                orderId: order._id.toString(),
+                reason: `Order status is ${order.status}, cannot confirm`,
+              });
+            }
+            break;
+
+          case 'cancel':
+            if (order.status === 'pending' || order.status === 'confirmed') {
+              await order.cancel(updateData?.reason || 'Bulk cancellation by admin');
+              results.successful.push(order._id.toString());
+            } else {
+              results.failed.push({
+                orderId: order._id.toString(),
+                reason: `Order status is ${order.status}, cannot cancel`,
+              });
+            }
+            break;
+
+          case 'refund':
+            if (order.paymentStatus === 'paid' && order.status !== 'refunded') {
+              const refundAmount = updateData?.amount || order.calculateRefundAmount();
+              await order.refund(refundAmount, updateData?.reason || 'Bulk refund by admin');
+              results.successful.push(order._id.toString());
+            } else {
+              results.failed.push({
+                orderId: order._id.toString(),
+                reason: `Cannot refund - payment status: ${order.paymentStatus}, order status: ${order.status}`,
+              });
+            }
+            break;
+
+          case 'update':
+            // Prevent updating protected fields
+            const protectedFields = ['_id', 'userId', 'orderNumber', 'paymentIntentId', 'transactionId', 'createdAt'];
+            const safeUpdateData = { ...updateData };
+            protectedFields.forEach(field => delete safeUpdateData[field]);
+
+            Object.assign(order, safeUpdateData);
+            await order.save();
+            results.successful.push(order._id.toString());
+            break;
+
+          default:
+            results.failed.push({
+              orderId: order._id.toString(),
+              reason: `Unknown action: ${action}`,
+            });
+        }
+      } catch (error) {
+        results.failed.push({
+          orderId: order._id.toString(),
+          reason: error instanceof Error ? error.message : 'Unknown error',
+        });
+      }
+    }
+
+    res.status(200).json({
+      success: true,
+      message: `Bulk ${action} completed`,
+      data: {
+        total: orderIds.length,
+        successful: results.successful.length,
+        failed: results.failed.length,
+        results,
       },
     });
   } catch (error) {

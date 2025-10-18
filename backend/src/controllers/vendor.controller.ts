@@ -1,4 +1,4 @@
-import { Event, Booking, IBooking, User } from '../models';
+import { Event, Booking, IBooking, User, Order } from '../models';
  import { AppError, catchAsync } from '../middleware';
  import { uploadSingle, getFileInfo } from '../middleware/upload';
  import { AuthRequest } from '../types';
@@ -66,18 +66,486 @@ export const getVendorBookings = catchAsync(async (req: AuthRequest, res: Respon
     return next(new AppError('Vendor ID not found', 401));
   }
 
-  const vendorEvents = await Event.find({ vendorId }).select('_id');
+  // Get all event IDs for this vendor
+  const vendorEvents = await Event.find({ vendorId }).select('_id title');
   const eventIds = vendorEvents.map(event => event._id);
 
-  const bookings = await Booking.find({ eventId: { $in: eventIds } })
-    .populate('eventId', 'title')
-    .populate('userId', 'firstName lastName email')
-    .sort({ createdAt: -1 });
+  // Extract query parameters
+  const {
+    page = 1,
+    limit = 10,
+    search,
+    status,
+    paymentStatus,
+    eventId,
+    startDate,
+    endDate,
+    minAmount,
+    maxAmount,
+    sortBy = 'createdAt',
+    sortOrder = 'desc',
+  } = req.query;
+
+  const pageNum = parseInt(page as string);
+  const limitNum = parseInt(limit as string);
+  const skip = (pageNum - 1) * limitNum;
+
+  // Build filter query
+  const filter: any = {
+    'items.eventId': { $in: eventIds },
+  };
+
+  // Status filter (exclude pending by default unless explicitly requested)
+  if (status) {
+    filter.status = status;
+  } else {
+    filter.status = { $nin: ['pending'] };
+  }
+
+  // Payment status filter
+  if (paymentStatus) {
+    filter.paymentStatus = paymentStatus;
+  }
+
+  // Event filter
+  if (eventId) {
+    filter['items.eventId'] = eventId;
+  }
+
+  // Date range filter (for booking creation date)
+  if (startDate || endDate) {
+    filter.createdAt = {};
+    if (startDate) {
+      filter.createdAt.$gte = new Date(startDate as string);
+    }
+    if (endDate) {
+      const endDateTime = new Date(endDate as string);
+      endDateTime.setHours(23, 59, 59, 999);
+      filter.createdAt.$lte = endDateTime;
+    }
+  }
+
+  // Amount range filter
+  if (minAmount || maxAmount) {
+    filter.total = {};
+    if (minAmount) {
+      filter.total.$gte = parseFloat(minAmount as string);
+    }
+    if (maxAmount) {
+      filter.total.$lte = parseFloat(maxAmount as string);
+    }
+  }
+
+  // Search filter (across multiple fields)
+  if (search) {
+    const searchRegex = new RegExp(search as string, 'i');
+    filter.$or = [
+      { orderNumber: searchRegex },
+      { 'billingAddress.firstName': searchRegex },
+      { 'billingAddress.lastName': searchRegex },
+      { 'billingAddress.email': searchRegex },
+      { 'billingAddress.phone': searchRegex },
+      { 'items.eventTitle': searchRegex },
+    ];
+  }
+
+  // Build sort query
+  const sort: any = {};
+  sort[sortBy as string] = sortOrder === 'asc' ? 1 : -1;
+
+  // Execute query with pagination
+  const [bookings, total] = await Promise.all([
+    Order.find(filter)
+      .populate('userId', 'firstName lastName email phone')
+      .populate('items.eventId', 'title category images')
+      .sort(sort)
+      .skip(skip)
+      .limit(limitNum)
+      .lean(),
+    Order.countDocuments(filter),
+  ]);
+
+  // Calculate statistics
+  const stats = await Order.aggregate([
+    { $match: filter },
+    {
+      $group: {
+        _id: null,
+        totalRevenue: { $sum: '$total' },
+        totalBookings: { $sum: 1 },
+        confirmedBookings: {
+          $sum: { $cond: [{ $eq: ['$status', 'confirmed'] }, 1, 0] },
+        },
+        cancelledBookings: {
+          $sum: { $cond: [{ $eq: ['$status', 'cancelled'] }, 1, 0] },
+        },
+        paidBookings: {
+          $sum: { $cond: [{ $eq: ['$paymentStatus', 'paid'] }, 1, 0] },
+        },
+        pendingPayments: {
+          $sum: { $cond: [{ $eq: ['$paymentStatus', 'pending'] }, 1, 0] },
+        },
+      },
+    },
+  ]);
 
   res.status(200).json({
     success: true,
     message: 'Vendor bookings retrieved successfully',
-    data: { bookings },
+    data: {
+      bookings,
+      pagination: {
+        currentPage: pageNum,
+        totalPages: Math.ceil(total / limitNum),
+        totalBookings: total,
+        hasNextPage: pageNum < Math.ceil(total / limitNum),
+        hasPrevPage: pageNum > 1,
+        limit: limitNum,
+      },
+      stats: stats[0] || {
+        totalRevenue: 0,
+        totalBookings: 0,
+        confirmedBookings: 0,
+        cancelledBookings: 0,
+        paidBookings: 0,
+        pendingPayments: 0,
+      },
+      events: vendorEvents, // Send vendor's events for filter dropdown
+    },
+  });
+});
+
+// @desc    Get single booking by ID for vendor
+// @route   GET /api/vendors/bookings/:id
+// @access  Private (Vendor only)
+export const getVendorBookingById = catchAsync(async (req: AuthRequest, res: Response, next: NextFunction) => {
+  const vendorId = req.user?.id;
+  const { id } = req.params;
+
+  if (!vendorId) {
+    return next(new AppError('Vendor ID not found', 401));
+  }
+
+  // Get all event IDs for this vendor
+  const vendorEvents = await Event.find({ vendorId }).select('_id');
+  const eventIds = vendorEvents.map(event => event._id);
+
+  // Find order that contains vendor's events
+  const booking = await Order.findOne({
+    _id: id,
+    'items.eventId': { $in: eventIds },
+  })
+    .populate('userId', 'firstName lastName email phone avatar')
+    .populate('items.eventId', 'title category images location');
+
+  if (!booking) {
+    return next(new AppError('Booking not found', 404));
+  }
+
+  res.status(200).json({
+    success: true,
+    message: 'Booking retrieved successfully',
+    data: { booking },
+  });
+});
+
+// @desc    Update booking (limited edit - status, notes, fulfillment)
+// @route   PUT /api/vendors/bookings/:id
+// @access  Private (Vendor only)
+export const updateVendorBooking = catchAsync(async (req: AuthRequest, res: Response, next: NextFunction) => {
+  const vendorId = req.user?.id;
+  const { id } = req.params;
+  const { vendorNotes, vendorStatus, isFulfilled } = req.body;
+
+  if (!vendorId) {
+    return next(new AppError('Vendor ID not found', 401));
+  }
+
+  // Get all event IDs for this vendor
+  const vendorEvents = await Event.find({ vendorId }).select('_id');
+  const eventIds = vendorEvents.map(event => event._id);
+
+  // Find order that contains vendor's events
+  const booking = await Order.findOne({
+    _id: id,
+    'items.eventId': { $in: eventIds },
+  });
+
+  if (!booking) {
+    return next(new AppError('Booking not found', 404));
+  }
+
+  // Only allow limited updates
+  const updates: any = {};
+  if (vendorNotes !== undefined) updates.vendorNotes = vendorNotes;
+  if (vendorStatus !== undefined) updates.vendorStatus = vendorStatus;
+  if (isFulfilled !== undefined) updates.isFulfilled = isFulfilled;
+
+  // Add vendor metadata
+  updates.lastModifiedBy = vendorId;
+  updates.lastModifiedAt = new Date();
+
+  const updatedBooking = await Order.findByIdAndUpdate(
+    id,
+    { $set: updates },
+    { new: true, runValidators: true }
+  )
+    .populate('userId', 'firstName lastName email phone')
+    .populate('items.eventId', 'title category images');
+
+  res.status(200).json({
+    success: true,
+    message: 'Booking updated successfully',
+    data: { booking: updatedBooking },
+  });
+});
+
+// @desc    Export vendor bookings to CSV or JSON
+// @route   GET /api/vendors/bookings/export
+// @access  Private (Vendor only)
+export const exportVendorBookings = catchAsync(async (req: AuthRequest, res: Response, next: NextFunction) => {
+  const vendorId = req.user?.id;
+
+  if (!vendorId) {
+    return next(new AppError('Vendor ID not found', 401));
+  }
+
+  const { format = 'csv', ...filters } = req.query;
+
+  // Get all event IDs for this vendor
+  const vendorEvents = await Event.find({ vendorId }).select('_id');
+  const eventIds = vendorEvents.map(event => event._id);
+
+  // Build filter query (similar to getVendorBookings)
+  const filter: any = {
+    'items.eventId': { $in: eventIds },
+    status: { $nin: ['pending'] },
+  };
+
+  // Apply filters
+  if (filters.status) filter.status = filters.status;
+  if (filters.paymentStatus) filter.paymentStatus = filters.paymentStatus;
+  if (filters.eventId) filter['items.eventId'] = filters.eventId;
+  if (filters.startDate || filters.endDate) {
+    filter.createdAt = {};
+    if (filters.startDate) filter.createdAt.$gte = new Date(filters.startDate as string);
+    if (filters.endDate) {
+      const endDateTime = new Date(filters.endDate as string);
+      endDateTime.setHours(23, 59, 59, 999);
+      filter.createdAt.$lte = endDateTime;
+    }
+  }
+  if (filters.minAmount || filters.maxAmount) {
+    filter.total = {};
+    if (filters.minAmount) filter.total.$gte = parseFloat(filters.minAmount as string);
+    if (filters.maxAmount) filter.total.$lte = parseFloat(filters.maxAmount as string);
+  }
+  if (filters.search) {
+    const searchRegex = new RegExp(filters.search as string, 'i');
+    filter.$or = [
+      { orderNumber: searchRegex },
+      { 'billingAddress.firstName': searchRegex },
+      { 'billingAddress.lastName': searchRegex },
+      { 'billingAddress.email': searchRegex },
+    ];
+  }
+
+  // Fetch all matching bookings
+  const bookings = await Order.find(filter)
+    .populate('userId', 'firstName lastName email phone')
+    .populate('items.eventId', 'title')
+    .sort({ createdAt: -1 })
+    .lean();
+
+  if (format === 'json') {
+    // JSON export
+    res.setHeader('Content-Type', 'application/json');
+    res.setHeader('Content-Disposition', `attachment; filename="bookings-${Date.now()}.json"`);
+    return res.json({
+      success: true,
+      data: bookings,
+      exportedAt: new Date(),
+      totalRecords: bookings.length,
+    });
+  } else {
+    // CSV export
+    const csvRows: string[] = [];
+
+    // CSV Headers
+    csvRows.push([
+      'Order Number',
+      'Customer Name',
+      'Customer Email',
+      'Customer Phone',
+      'Event Title',
+      'Event Date',
+      'Quantity',
+      'Total Amount',
+      'Currency',
+      'Status',
+      'Payment Status',
+      'Booking Date',
+      'Participant Names',
+    ].join(','));
+
+    // CSV Data
+    bookings.forEach((booking: any) => {
+      const customerName = `${booking.billingAddress.firstName} ${booking.billingAddress.lastName}`;
+
+      booking.items.forEach((item: any) => {
+        const participantNames = item.participants
+          ? item.participants.map((p: any) => p.name).join('; ')
+          : 'N/A';
+
+        csvRows.push([
+          booking.orderNumber || booking._id,
+          `"${customerName}"`,
+          booking.billingAddress.email || 'N/A',
+          booking.billingAddress.phone || 'N/A',
+          `"${item.eventTitle || (item.eventId?.title) || 'N/A'}"`,
+          new Date(item.scheduleDate).toLocaleDateString(),
+          item.quantity,
+          booking.total,
+          booking.currency,
+          booking.status,
+          booking.paymentStatus,
+          new Date(booking.createdAt).toLocaleDateString(),
+          `"${participantNames}"`,
+        ].join(','));
+      });
+    });
+
+    const csvContent = csvRows.join('\n');
+
+    res.setHeader('Content-Type', 'text/csv');
+    res.setHeader('Content-Disposition', `attachment; filename="bookings-${Date.now()}.csv"`);
+    return res.send(csvContent);
+  }
+});
+
+// @desc    Import vendor bookings from CSV
+// @route   POST /api/vendors/bookings/import
+// @access  Private (Vendor only)
+export const importVendorBookings = catchAsync(async (req: AuthRequest, res: Response, next: NextFunction) => {
+  const vendorId = req.user?.id;
+
+  if (!vendorId) {
+    return next(new AppError('Vendor ID not found', 401));
+  }
+
+  const { csvData } = req.body;
+
+  if (!csvData || !Array.isArray(csvData)) {
+    return next(new AppError('CSV data is required and must be an array', 400));
+  }
+
+  const results = {
+    successful: [] as string[],
+    failed: [] as { row: number; reason: string; data: any }[],
+    total: csvData.length,
+  };
+
+  // Process each row
+  for (let i = 0; i < csvData.length; i++) {
+    const row = csvData[i];
+
+    try {
+      // Validate required fields
+      if (!row.customerEmail || !row.eventTitle || !row.quantity || !row.totalAmount) {
+        results.failed.push({
+          row: i + 1,
+          reason: 'Missing required fields (customerEmail, eventTitle, quantity, totalAmount)',
+          data: row,
+        });
+        continue;
+      }
+
+      // Find event by title
+      const event = await Event.findOne({
+        vendorId,
+        title: new RegExp(`^${row.eventTitle}$`, 'i'),
+        isDeleted: false,
+      });
+
+      if (!event) {
+        results.failed.push({
+          row: i + 1,
+          reason: `Event not found: ${row.eventTitle}`,
+          data: row,
+        });
+        continue;
+      }
+
+      // Find or create user
+      let user = await User.findOne({ email: row.customerEmail });
+      if (!user) {
+        // Create guest user
+        const [firstName, ...lastNameParts] = (row.customerName || 'Guest User').split(' ');
+        user = await User.create({
+          email: row.customerEmail,
+          firstName: firstName || 'Guest',
+          lastName: lastNameParts.join(' ') || 'User',
+          phone: row.customerPhone || '',
+          role: 'customer',
+          status: 'active',
+        });
+      }
+
+      // Parse event date
+      const eventDate = row.eventDate ? new Date(row.eventDate) : new Date();
+
+      // Create order
+      const order = await Order.create({
+        userId: user._id,
+        items: [{
+          eventId: event._id,
+          eventTitle: event.title,
+          scheduleDate: eventDate,
+          quantity: parseInt(row.quantity),
+          unitPrice: parseFloat(row.totalAmount) / parseInt(row.quantity),
+          totalPrice: parseFloat(row.totalAmount),
+          currency: row.currency || event.currency || 'AED',
+          participants: row.participantNames ? row.participantNames.split(';').map((name: string) => ({
+            name: name.trim(),
+          })) : [],
+        }],
+        subtotal: parseFloat(row.totalAmount),
+        tax: 0,
+        discount: 0,
+        total: parseFloat(row.totalAmount),
+        currency: row.currency || event.currency || 'AED',
+        status: row.status || 'confirmed',
+        paymentStatus: row.paymentStatus || 'paid',
+        paymentMethod: 'imported',
+        billingAddress: {
+          firstName: user.firstName,
+          lastName: user.lastName,
+          email: user.email,
+          phone: user.phone || row.customerPhone || '',
+          address: 'Imported',
+          city: 'Imported',
+          state: 'Imported',
+          zipCode: '00000',
+          country: 'UAE',
+        },
+        source: 'vendor_import',
+        notes: `Imported by vendor on ${new Date().toISOString()}`,
+      });
+
+      results.successful.push(order.orderNumber);
+    } catch (error) {
+      results.failed.push({
+        row: i + 1,
+        reason: error instanceof Error ? error.message : 'Unknown error',
+        data: row,
+      });
+    }
+  }
+
+  res.status(200).json({
+    success: true,
+    message: `Import completed: ${results.successful.length} successful, ${results.failed.length} failed`,
+    data: results,
   });
 });
 
@@ -342,5 +810,53 @@ export const getPublicVendorProfile = catchAsync(async (req: AuthRequest, res: R
         activeEvents: events.length
       }
     }
+  });
+});
+
+// @desc    Get vendor payment information (public endpoint for booking flow)
+// @route   GET /api/vendors/:vendorId/payment-info
+// @access  Public
+export const getVendorPaymentInfo = catchAsync(async (req: AuthRequest, res: Response, next: NextFunction) => {
+  const { vendorId } = req.params;
+
+  if (!vendorId) {
+    return next(new AppError('Vendor ID is required', 400));
+  }
+
+  // Fetch vendor with payment settings
+  // IMPORTANT: Only select safe fields - never expose secret keys
+  const vendor = await User.findById(vendorId)
+    .select('role vendorPaymentSettings.hasCustomStripeAccount')
+    .select('vendorPaymentSettings.stripePublishableKey')
+    .select('vendorPaymentSettings.commissionRate');
+
+  // If vendor not found or not a vendor, return platform defaults instead of 404
+  // This allows the payment flow to continue with platform payment settings
+  if (!vendor || vendor.role !== 'vendor') {
+    return res.status(200).json({
+      success: true,
+      message: 'Using platform payment settings',
+      data: {
+        vendorId,
+        hasCustomStripe: false,
+        stripePublishableKey: null,
+        serviceFeeRate: 5,
+        usePlatformStripe: true,
+      },
+    });
+  }
+
+  const paymentSettings = vendor.vendorPaymentSettings;
+
+  res.status(200).json({
+    success: true,
+    message: 'Vendor payment information retrieved successfully',
+    data: {
+      vendorId,
+      hasCustomStripe: paymentSettings?.hasCustomStripeAccount || false,
+      stripePublishableKey: paymentSettings?.stripePublishableKey || null,
+      serviceFeeRate: paymentSettings?.hasCustomStripeAccount ? 0 : (paymentSettings?.commissionRate || 5),
+      usePlatformStripe: !paymentSettings?.hasCustomStripeAccount,
+    },
   });
 });

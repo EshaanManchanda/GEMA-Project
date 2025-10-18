@@ -204,17 +204,35 @@ export const getUserById = async (req: Request, res: Response, next: NextFunctio
 export const createUser = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
   try {
     const {
+      // Basic Info
       firstName,
       lastName,
       email,
       password,
       phone,
+      avatar,
+      gender,
+      dateOfBirth,
+
+      // Role & Status
       role = UserRole.CUSTOMER,
       status = UserStatus.ACTIVE,
-      avatar,
       isEmailVerified = false,
-      isPhoneVerified = false
-    } = req.body as CreateUserRequest;
+      isPhoneVerified = false,
+
+      // Employee-specific
+      employeeId,
+      employeeRole,
+      vendorId,
+      permissions,
+      emergencyContact,
+      hiredAt,
+
+      // Vendor-specific
+      vendorPaymentSettings,
+      socialMedia,
+      businessHours
+    } = req.body;
 
     // Validate required fields
     if (!firstName || !lastName || !email) {
@@ -232,9 +250,9 @@ export const createUser = async (req: Request, res: Response, next: NextFunction
 
     // Generate password if not provided
     let passwordHash = '';
-    if (password) {
+    if (password && password.trim() !== '') {
       const salt = await bcrypt.genSalt(10);
-      passwordHash = await bcrypt.hash(password, salt);
+      passwordHash = await bcrypt.hash(password.trim(), salt);
     } else {
       // Generate a default password if none provided
       const defaultPassword = 'TempPass123!';
@@ -242,8 +260,8 @@ export const createUser = async (req: Request, res: Response, next: NextFunction
       passwordHash = await bcrypt.hash(defaultPassword, salt);
     }
 
-    // Create user
-    const user = new User({
+    // Prepare user data
+    const userData: any = {
       firstName,
       lastName,
       email,
@@ -251,16 +269,50 @@ export const createUser = async (req: Request, res: Response, next: NextFunction
       phone: cleanPhone,
       role,
       status,
-      avatar,
       isEmailVerified,
       isPhoneVerified
-    });
+    };
 
-    await user.save();
+    // Add optional fields if provided
+    if (avatar) userData.avatar = avatar;
+    if (gender) userData.gender = gender;
+    if (dateOfBirth) userData.dateOfBirth = new Date(dateOfBirth);
+    if (socialMedia) userData.socialMedia = socialMedia;
+    if (businessHours) userData.businessHours = businessHours;
+    if (vendorPaymentSettings) userData.vendorPaymentSettings = vendorPaymentSettings;
+
+    // Create user
+    const user = await User.create(userData);
+
+    // If role is employee, create employee record
+    if (role === UserRole.EMPLOYEE) {
+      const Employee = require('../models/Employee').default;
+
+      // Generate employee ID if not provided
+      const generatedEmployeeId = employeeId || `EMP-${new Date().getFullYear()}-${String(Math.floor(Math.random() * 100000)).padStart(5, '0')}`;
+
+      // Create employee record
+      await Employee.create({
+        vendorId: vendorId || user._id, // Use provided vendorId or user's own ID as fallback
+        userId: user._id,
+        employeeId: generatedEmployeeId,
+        firstName: user.firstName,
+        lastName: user.lastName,
+        email: user.email,
+        phone: user.phone,
+        role: employeeRole || 'scanner', // Default to scanner if not provided
+        permissions: permissions || [],
+        assignedEvents: [],
+        assignedVenues: [],
+        status: status === UserStatus.ACTIVE ? 'active' : 'inactive',
+        emergencyContact: emergencyContact || undefined,
+        hiredAt: hiredAt ? new Date(hiredAt) : new Date()
+      });
+    }
 
     const response: ApiResponse = {
       success: true,
-      message: 'User created successfully',
+      message: `${role === UserRole.EMPLOYEE ? 'Employee' : 'User'} created successfully`,
       data: {
         user: formatAdminUserResponse(user)
       }

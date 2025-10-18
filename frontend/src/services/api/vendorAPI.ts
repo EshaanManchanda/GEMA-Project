@@ -52,7 +52,7 @@ const vendorAPI = {
   getVendorEvents: async () => {
     try {
       const response = await ApiService.get('/vendors/events');
-      return response.data?.data?.events || [];
+      return response.data?.events || [];
     } catch (error) {
       throw error;
     }
@@ -61,8 +61,82 @@ const vendorAPI = {
   getVendorBookings: async (params?: any) => {
     try {
       const response = await ApiService.get('/vendors/bookings', { params });
-      return response.data?.data?.bookings || [];
+      logApiResponse('GET /vendors/bookings', response);
+      return extractApiData(response);
     } catch (error) {
+      logApiResponse('GET /vendors/bookings', null, error);
+      throw error;
+    }
+  },
+
+  getVendorBookingById: async (id: string) => {
+    try {
+      const response = await ApiService.get(`/vendors/bookings/${id}`);
+      logApiResponse(`GET /vendors/bookings/${id}`, response);
+      return extractApiData(response);
+    } catch (error) {
+      logApiResponse(`GET /vendors/bookings/${id}`, null, error);
+      throw error;
+    }
+  },
+
+  updateVendorBooking: async (id: string, data: { vendorNotes?: string; vendorStatus?: string; isFulfilled?: boolean }) => {
+    try {
+      const response = await ApiService.put(`/vendors/bookings/${id}`, data);
+      logApiResponse(`PUT /vendors/bookings/${id}`, response);
+      return extractApiData(response);
+    } catch (error) {
+      logApiResponse(`PUT /vendors/bookings/${id}`, null, error);
+      throw error;
+    }
+  },
+
+  exportVendorBookings: async (format: 'csv' | 'json' = 'csv', filters?: any) => {
+    try {
+      const params = { format, ...filters };
+      const response = await ApiService.get('/vendors/bookings/export', {
+        params,
+        responseType: format === 'csv' ? 'blob' : 'json'
+      });
+
+      if (format === 'csv') {
+        // Create download link for CSV
+        const url = window.URL.createObjectURL(new Blob([response.data]));
+        const link = document.createElement('a');
+        link.href = url;
+        link.setAttribute('download', `bookings-${Date.now()}.csv`);
+        document.body.appendChild(link);
+        link.click();
+        link.remove();
+        window.URL.revokeObjectURL(url);
+        return { success: true, message: 'CSV exported successfully' };
+      } else {
+        // For JSON, trigger download
+        const dataStr = JSON.stringify(response.data, null, 2);
+        const dataBlob = new Blob([dataStr], { type: 'application/json' });
+        const url = window.URL.createObjectURL(dataBlob);
+        const link = document.createElement('a');
+        link.href = url;
+        link.setAttribute('download', `bookings-${Date.now()}.json`);
+        document.body.appendChild(link);
+        link.click();
+        link.remove();
+        window.URL.revokeObjectURL(url);
+        return { success: true, message: 'JSON exported successfully' };
+      }
+    } catch (error) {
+      logApiResponse('GET /vendors/bookings/export', null, error);
+      throw error;
+    }
+  },
+
+  importVendorBookings: async (csvData: any[]) => {
+    try {
+      const response = await ApiService.post('/vendors/bookings/import', { csvData });
+      logApiResponse('POST /vendors/bookings/import', response);
+      return extractApiData(response);
+    } catch (error) {
+      logApiResponse('POST /vendors/bookings/import', null, error);
       throw error;
     }
   },
@@ -165,6 +239,52 @@ const vendorAPI = {
       return extractApiData(response);
     } catch (error) {
       logApiResponse('POST /vendors/check-service-fee', null, error);
+      throw error;
+    }
+  },
+
+  // Vendor Event CRUD operations
+  getVendorEventById: async (id: string) => {
+    try {
+      const response = await ApiService.get(`/vendors/events/${id}`);
+      return response.data;
+    } catch (error) {
+      throw error;
+    }
+  },
+
+  createVendorEvent: async (eventData: any) => {
+    try {
+      const response = await ApiService.post('/vendors/events', eventData);
+      return response.data;
+    } catch (error) {
+      throw error;
+    }
+  },
+
+  updateVendorEvent: async (id: string, eventData: any) => {
+    try {
+      const response = await ApiService.put(`/vendors/events/${id}`, eventData);
+      return response.data;
+    } catch (error) {
+      throw error;
+    }
+  },
+
+  deleteVendorEvent: async (id: string, permanent?: boolean) => {
+    try {
+      const response = await ApiService.delete(`/vendors/events/${id}${permanent ? '?permanent=true' : ''}`);
+      return response.data;
+    } catch (error) {
+      throw error;
+    }
+  },
+
+  restoreVendorEvent: async (id: string) => {
+    try {
+      const response = await ApiService.put(`/vendors/events/${id}/restore`);
+      return response.data;
+    } catch (error) {
       throw error;
     }
   },

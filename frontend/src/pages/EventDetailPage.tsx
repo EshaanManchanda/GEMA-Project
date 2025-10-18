@@ -199,7 +199,7 @@ const EventDetailPage: React.FC = () => {
             name: eventData.vendorId?.firstName && eventData.vendorId?.lastName ? 
               `${eventData.vendorId.firstName} ${eventData.vendorId.lastName}` : 
               'Event Organizer',
-            logo: getVendorLogo(null, eventData.vendorId?.firstName && eventData.vendorId?.lastName ?
+            logo: getVendorLogo(undefined, eventData.vendorId?.firstName && eventData.vendorId?.lastName ?
               `${eventData.vendorId.firstName} ${eventData.vendorId.lastName}` :
               'Event Organizer', 100),
             rating: 4.8
@@ -421,7 +421,6 @@ const EventDetailPage: React.FC = () => {
       organizer: event.organizer.name,
       schedule: getCurrentSchedule()
     }, quantity);
-    toast.success(`${event.title} added to cart!`);
   };
   
   // Check if event is already in cart for the selected date

@@ -1,16 +1,20 @@
 import React, { useState, useEffect } from 'react';
-import { Link } from 'react-router-dom';
-import vendorAPI from '../../services/api/vendorAPI';
-import eventsAPI from '../../services/api/eventsAPI';
+import { FaSearch, FaEdit, FaTrash, FaEye, FaUndo, FaPlus, FaWpforms } from 'react-icons/fa';
+import { useNavigate } from 'react-router-dom';
 import VendorNavigation from '../../components/vendor/VendorNavigation';
+import vendorAPI from '../../services/api/vendorAPI';
+import categoriesAPI, { Category } from '../../services/api/categoriesAPI';
+import VendorEventCreateModal from '../../components/vendor/VendorEventCreateModal';
+import VendorEventEditModal from '../../components/vendor/VendorEventEditModal';
+import VendorEventViewModal from '../../components/vendor/VendorEventViewModal';
 
 interface Event {
   _id: string;
   title: string;
   description: string;
   category: string;
-  type: 'Event' | 'Course' | 'Venue';
-  venueType: 'Indoor' | 'Outdoor';
+  type: 'Olympiad' | 'Championship' | 'Competition' | 'Event' | 'Course' | 'Venue';
+  venueType: 'Indoor' | 'Outdoor' | 'Online' | 'Offline';
   ageRange: [number, number];
   location: {
     city: string;
@@ -20,107 +24,152 @@ interface Event {
       lng: number;
     };
   };
-  dateTime: {
-    startDate: Date;
-    endDate: Date;
-    startTime: string;
-    endTime: string;
-  };
-  pricing: {
-    currency: string;
-    ticketTypes: Array<{
-      type: string;
-      price: number;
-      capacity: number;
-    }>;
-  };
-  images: string[];
-  status: 'draft' | 'published' | 'archived';
+  price: number;
+  currency: string;
   isApproved: boolean;
+  isFeatured?: boolean;
+  viewsCount?: number;
+  images: string[];
   isDeleted: boolean;
+  tags: string[];
+  dateSchedule: Array<{
+    _id?: string;
+    date?: string;
+    startDate?: string;
+    endDate?: string;
+    availableSeats: number;
+    totalSeats?: number;
+    price: number;
+  }>;
+  seoMeta?: {
+    title: string;
+    description: string;
+    keywords: string[];
+  };
+  faqs?: Array<{
+    _id?: string;
+    question: string;
+    answer: string;
+  }>;
   createdAt: string;
   updatedAt: string;
+  status?: string;
   bookingsCount?: number;
 }
 
 const VendorEventsPage: React.FC = () => {
+  const navigate = useNavigate();
   const [events, setEvents] = useState<Event[]>([]);
+  const [filteredEvents, setFilteredEvents] = useState<Event[]>([]);
+  const [categories, setCategories] = useState<Category[]>([]);
   const [isLoading, setIsLoading] = useState<boolean>(true);
   const [error, setError] = useState<string>('');
-  const [activeTab, setActiveTab] = useState<'all' | 'draft' | 'published' | 'archived'>('all');
   const [searchTerm, setSearchTerm] = useState<string>('');
-  const [sortBy, setSortBy] = useState<'newest' | 'oldest' | 'title' | 'bookings'>('newest');
+  const [statusFilter, setStatusFilter] = useState<string>('all');
+  const [categoryFilter, setCategoryFilter] = useState<string>('all');
+  const [typeFilter, setTypeFilter] = useState<string>('all');
+
+  // Modal states
+  const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
+  const [isEditModalOpen, setIsEditModalOpen] = useState(false);
+  const [isViewModalOpen, setIsViewModalOpen] = useState(false);
+  const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);
+  const [selectedEvent, setSelectedEvent] = useState<Event | null>(null);
+  const [eventToDelete, setEventToDelete] = useState<string | null>(null);
+  const [deleteType, setDeleteType] = useState<'soft' | 'permanent'>('soft');
 
   useEffect(() => {
     fetchEvents();
+    fetchCategories();
   }, []);
+
+  useEffect(() => {
+    filterEvents();
+  }, [events, searchTerm, statusFilter, categoryFilter, typeFilter]);
 
   const fetchEvents = async () => {
     try {
       setIsLoading(true);
+      setError('');
       const response = await vendorAPI.getVendorEvents();
-      setEvents(response.data || []);
-    } catch (err) {
+      console.log('API Response Events:', response);
+      const eventsData = response || [];
+      setEvents(eventsData);
+    } catch (err: any) {
       console.error('Error fetching events:', err);
-      setError('Failed to fetch events.');
+      setError(err.response?.data?.message || 'Failed to fetch events.');
+      setEvents([]);
     } finally {
       setIsLoading(false);
     }
   };
 
-  const handleChangeStatus = async (eventId: string, newStatus: string) => {
+  const fetchCategories = async () => {
     try {
-      const updateData: any = {};
-      
-      if (newStatus === 'published') {
-        updateData.isApproved = true;
-        updateData.isDeleted = false;
-      } else if (newStatus === 'archived') {
-        updateData.isApproved = false;
-        updateData.isDeleted = true;
-      } else if (newStatus === 'draft') {
-        updateData.isApproved = false;
-        updateData.isDeleted = false;
-      }
-      
-      await eventsAPI.updateEvent(eventId, updateData);
-      setEvents(prevEvents => 
-        prevEvents.map(event => 
-          event._id === eventId ? { ...event, status: newStatus } : event
-        )
-      );
-    } catch (err) {
-      console.error('Error updating event status:', err);
-      setError('Failed to update event status.');
+      const response = await categoriesAPI.getAllCategories({ tree: false, includeInactive: false });
+      const categoriesList = response.data || [];
+      setCategories(categoriesList);
+    } catch (err: any) {
+      console.error('Error fetching categories:', err);
     }
   };
 
-  const filteredEvents = events
-    .filter(event => {
-      if (activeTab !== 'all' && event.status !== activeTab) {
-        return false;
+  const filterEvents = () => {
+    let filtered = [...events];
+
+    // Search filter
+    if (searchTerm) {
+      filtered = filtered.filter(event =>
+        event.title.toLowerCase().includes(searchTerm.toLowerCase()) ||
+        event.description.toLowerCase().includes(searchTerm.toLowerCase())
+      );
+    }
+
+    // Status filter
+    if (statusFilter !== 'all') {
+      if (statusFilter === 'approved') {
+        filtered = filtered.filter(e => e.isApproved && !e.isDeleted);
+      } else if (statusFilter === 'pending') {
+        filtered = filtered.filter(e => !e.isApproved && !e.isDeleted);
+      } else if (statusFilter === 'deleted') {
+        filtered = filtered.filter(e => e.isDeleted);
       }
-      
-      if (searchTerm && !event.title.toLowerCase().includes(searchTerm.toLowerCase())) {
-        return false;
-      }
-      
-      return true;
-    })
-    .sort((a, b) => {
-      switch (sortBy) {
-        case 'newest':
-          return new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime();
-        case 'oldest':
-          return new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime();
-        case 'title':
-          return a.title.localeCompare(b.title);
-        case 'bookings':
-          return (b.bookingsCount || 0) - (a.bookingsCount || 0);
-        default:
-          return 0;
-      }
-    });
+    }
+
+    // Category filter
+    if (categoryFilter !== 'all') {
+      filtered = filtered.filter(e => e.category === categoryFilter);
+    }
+
+    // Type filter
+    if (typeFilter !== 'all') {
+      filtered = filtered.filter(e => e.type === typeFilter);
+    }
+
+    setFilteredEvents(filtered);
+  };
+
+  const handleDeleteEvent = async (eventId: string, permanent: boolean) => {
+    try {
+      await vendorAPI.deleteVendorEvent(eventId, permanent);
+      await fetchEvents();
+      setEventToDelete(null);
+      setIsDeleteModalOpen(false);
+    } catch (err: any) {
+      console.error('Error deleting event:', err);
+      setError(err.response?.data?.message || err.message || 'Failed to delete event');
+    }
+  };
+
+  const handleRestoreEvent = async (eventId: string) => {
+    try {
+      await vendorAPI.restoreVendorEvent(eventId);
+      await fetchEvents();
+    } catch (err: any) {
+      console.error('Error restoring event:', err);
+      setError(err.response?.data?.message || err.message || 'Failed to restore event');
+    }
+  };
 
   if (isLoading) {
     return (
@@ -134,11 +183,6 @@ const VendorEventsPage: React.FC = () => {
                 <div className="animate-spin rounded-full h-16 w-16 border-t-4 border-emerald-600 absolute top-0 left-0"></div>
               </div>
               <p className="mt-4 text-xl font-semibold text-gray-700 animate-pulse">Loading Events...</p>
-              <div className="mt-2 flex justify-center space-x-1">
-                <div className="h-2 w-2 bg-emerald-500 rounded-full animate-bounce" style={{ animationDelay: '0ms' }}></div>
-                <div className="h-2 w-2 bg-emerald-500 rounded-full animate-bounce" style={{ animationDelay: '150ms' }}></div>
-                <div className="h-2 w-2 bg-emerald-500 rounded-full animate-bounce" style={{ animationDelay: '300ms' }}></div>
-              </div>
             </div>
           </div>
         </div>
@@ -151,117 +195,140 @@ const VendorEventsPage: React.FC = () => {
       <VendorNavigation />
       <div className="min-h-screen bg-gradient-to-br from-emerald-50 via-green-50 to-teal-50">
         <div className="container mx-auto px-4 py-8">
-          <div className="max-w-6xl mx-auto">
-            {/* Header Section */}
-            <div className="mb-8">
-              <div className="bg-gradient-to-r from-emerald-600 to-green-700 h-1 w-20 rounded-full mb-4"></div>
-              <div className="flex flex-col lg:flex-row justify-between items-start lg:items-center gap-4">
-                <div>
-                  <h1 className="text-4xl font-bold text-gray-900 mb-2">My Events</h1>
-                  <p className="text-gray-600">Manage your events, track performance, and create new experiences</p>
+          {/* Header */}
+          <div className="mb-8 flex items-center justify-between">
+            <div>
+              <h1 className="text-3xl font-bold text-gray-900 mb-2">Events Management</h1>
+              <p className="text-gray-600">Create and manage your events</p>
+            </div>
+            <button
+              onClick={() => setIsCreateModalOpen(true)}
+              className="flex items-center px-4 py-2 bg-gradient-to-r from-emerald-600 to-green-700 text-white rounded-lg hover:from-emerald-700 hover:to-green-800 transition-all duration-200 shadow-lg hover:shadow-xl"
+            >
+              <FaPlus className="mr-2" />
+              Create New Event
+            </button>
+          </div>
+
+          {/* Error Banner */}
+          {error && (
+            <div className="mb-6 bg-red-50 border border-red-200 rounded-lg p-4">
+              <div className="flex items-center justify-between">
+                <p className="text-red-800">{error}</p>
+                <button
+                  onClick={() => setError('')}
+                  className="text-red-600 hover:text-red-800"
+                >
+                  ×
+                </button>
+              </div>
+            </div>
+          )}
+
+          {/* Filters */}
+          <div className="bg-white rounded-lg shadow mb-6 p-6">
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+              <div className="lg:col-span-1">
+                <label className="block text-sm font-medium text-gray-700 mb-2">Search</label>
+                <div className="relative">
+                  <FaSearch className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400" />
+                  <input
+                    type="text"
+                    placeholder="Search events..."
+                    value={searchTerm}
+                    onChange={(e) => setSearchTerm(e.target.value)}
+                    className="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500"
+                  />
                 </div>
-                <Link
-                  to="/vendor/events/create"
-                  className="bg-gradient-to-r from-emerald-600 to-green-700 text-white px-6 py-3 rounded-lg hover:from-emerald-700 hover:to-green-800 transition-all duration-200 shadow-lg hover:shadow-xl transform hover:-translate-y-0.5"
-                >
-                  + Create New Event
-                </Link>
               </div>
-            </div>
 
-            {/* Tabs */}
-            <div className="mb-6">
-              <div className="border-b border-gray-200">
-                <nav className="-mb-px flex space-x-8">
-                  {[
-                    { key: 'all', label: 'All Events' },
-                    { key: 'draft', label: 'Drafts' },
-                    { key: 'published', label: 'Published' },
-                    { key: 'archived', label: 'Archived' }
-                  ].map(tab => (
-                    <button
-                      key={tab.key}
-                      onClick={() => setActiveTab(tab.key as any)}
-                      className={`py-2 px-1 border-b-2 font-medium text-sm transition-colors ${
-                        activeTab === tab.key
-                          ? 'border-emerald-500 text-emerald-600'
-                          : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
-                      }`}
-                    >
-                      {tab.label}
-                    </button>
-                  ))}
-                </nav>
-              </div>
-            </div>
-
-            {/* Search and Sort */}
-            <div className="mb-6 flex flex-col sm:flex-row gap-4">
-              <div className="flex-1">
-                <input
-                  type="text"
-                  placeholder="Search events..."
-                  value={searchTerm}
-                  onChange={(e) => setSearchTerm(e.target.value)}
-                  className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500"
-                />
-              </div>
               <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">Status</label>
                 <select
-                  value={sortBy}
-                  onChange={(e) => setSortBy(e.target.value as any)}
-                  className="px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500"
+                  value={statusFilter}
+                  onChange={(e) => setStatusFilter(e.target.value)}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500"
                 >
-                  <option value="newest">Newest First</option>
-                  <option value="oldest">Oldest First</option>
-                  <option value="title">A-Z</option>
-                  <option value="bookings">Most Bookings</option>
+                  <option value="all">All Status</option>
+                  <option value="approved">Approved</option>
+                  <option value="pending">Pending</option>
+                  <option value="deleted">Deleted</option>
+                </select>
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">Category</label>
+                <select
+                  value={categoryFilter}
+                  onChange={(e) => setCategoryFilter(e.target.value)}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500"
+                >
+                  <option value="all">All Categories</option>
+                  {categories.map((cat) => (
+                    <option key={cat._id} value={cat.slug}>
+                      {cat.name}
+                    </option>
+                  ))}
+                </select>
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">Type</label>
+                <select
+                  value={typeFilter}
+                  onChange={(e) => setTypeFilter(e.target.value)}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500"
+                >
+                  <option value="all">All Types</option>
+                  <option value="Olympiad">Olympiad</option>
+                  <option value="Championship">Championship</option>
+                  <option value="Competition">Competition</option>
+                  <option value="Event">Event</option>
+                  <option value="Course">Course</option>
+                  <option value="Venue">Venue</option>
                 </select>
               </div>
             </div>
+          </div>
 
-            {/* Error State */}
-            {error && (
-              <div className="mb-6 p-4 bg-red-50 border border-red-200 rounded-lg">
-                <p className="text-red-600">{error}</p>
-              </div>
-            )}
-
-            {/* Events List */}
-            {filteredEvents.length === 0 ? (
-              <div className="text-center py-12">
-                <p className="text-gray-500 text-lg">No events found</p>
-                <Link
-                  to="/vendor/events/create"
-                  className="mt-4 inline-block bg-emerald-600 text-white px-6 py-2 rounded-lg hover:bg-emerald-700"
-                >
-                  Create Your First Event
-                </Link>
-              </div>
-            ) : (
-              <div className="bg-white rounded-lg shadow overflow-hidden">
-                <table className="min-w-full divide-y divide-gray-200">
-                  <thead className="bg-gray-50">
+          {/* Events Table */}
+          <div className="bg-white rounded-lg shadow overflow-hidden">
+            <div className="overflow-x-auto">
+              <table className="min-w-full divide-y divide-gray-200">
+                <thead className="bg-gray-50">
+                  <tr>
+                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                      Event
+                    </th>
+                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                      Status
+                    </th>
+                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                      Type
+                    </th>
+                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                      Category
+                    </th>
+                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                      Price
+                    </th>
+                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                      Views
+                    </th>
+                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                      Actions
+                    </th>
+                  </tr>
+                </thead>
+                <tbody className="bg-white divide-y divide-gray-200">
+                  {filteredEvents.length === 0 ? (
                     <tr>
-                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                        Event
-                      </th>
-                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                        Status
-                      </th>
-                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                        Date
-                      </th>
-                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                        Bookings
-                      </th>
-                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                        Actions
-                      </th>
+                      <td colSpan={7} className="px-6 py-12 text-center text-gray-500">
+                        No events found. Try adjusting your filters or create a new event.
+                      </td>
                     </tr>
-                  </thead>
-                  <tbody className="bg-white divide-y divide-gray-200">
-                    {filteredEvents.map((event) => (
+                  ) : (
+                    filteredEvents.map((event) => (
                       <tr key={event._id} className="hover:bg-gray-50">
                         <td className="px-6 py-4 whitespace-nowrap">
                           <div className="flex items-center">
@@ -283,71 +350,176 @@ const VendorEventsPage: React.FC = () => {
                           </div>
                         </td>
                         <td className="px-6 py-4 whitespace-nowrap">
-                          <span className={`inline-flex px-2 py-1 text-xs font-semibold rounded-full ${
-                            event.status === 'published'
-                              ? 'bg-green-100 text-green-800'
-                              : event.status === 'draft'
-                              ? 'bg-yellow-100 text-yellow-800'
-                              : 'bg-gray-100 text-gray-800'
-                          }`}>
-                            {event.status}
-                          </span>
+                          <div className="flex items-center space-x-2">
+                            {event.isDeleted ? (
+                              <span className="inline-flex px-2 py-1 text-xs font-semibold rounded-full bg-red-100 text-red-800">
+                                Deleted
+                              </span>
+                            ) : event.isApproved ? (
+                              <span className="inline-flex px-2 py-1 text-xs font-semibold rounded-full bg-green-100 text-green-800">
+                                Approved
+                              </span>
+                            ) : (
+                              <span className="inline-flex px-2 py-1 text-xs font-semibold rounded-full bg-yellow-100 text-yellow-800">
+                                Pending
+                              </span>
+                            )}
+                          </div>
                         </td>
                         <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-                          {new Date(event.dateTime.startDate).toLocaleDateString()}
+                          {event.type}
                         </td>
                         <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-                          {event.bookingsCount || 0}
+                          {event.category}
+                        </td>
+                        <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+                          {event.currency} {event.price}
+                        </td>
+                        <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+                          {event.viewsCount?.toLocaleString() || 0}
                         </td>
                         <td className="px-6 py-4 whitespace-nowrap text-sm font-medium">
                           <div className="flex space-x-2">
-                            <Link
-                              to={`/vendor/events/${event._id}/edit`}
-                              className="text-indigo-600 hover:text-indigo-900"
+                            <button
+                              onClick={() => {
+                                setSelectedEvent(event);
+                                setIsViewModalOpen(true);
+                              }}
+                              className="text-blue-600 hover:text-blue-900"
+                              title="View Details"
                             >
-                              Edit
-                            </Link>
-                            <button 
-                              onClick={() => handleChangeStatus(event._id, 'archived')}
-                              className="text-red-600 hover:text-red-900"
-                            >
-                              Delete
+                              <FaEye className="w-4 h-4" />
                             </button>
-                            {event.status === 'draft' && (
-                              <button 
-                                onClick={() => handleChangeStatus(event._id, 'published')}
-                                className="text-green-600 hover:text-green-900"
-                              >
-                                Publish
-                              </button>
+
+                            {!event.isDeleted && (
+                              <>
+                                <button
+                                  onClick={() => {
+                                    setSelectedEvent(event);
+                                    setIsEditModalOpen(true);
+                                  }}
+                                  className="text-emerald-600 hover:text-emerald-900"
+                                  title="Edit Event"
+                                >
+                                  <FaEdit className="w-4 h-4" />
+                                </button>
+
+                                <button
+                                  onClick={() => navigate(`/vendor/events/${event._id}/registration/builder`)}
+                                  className="text-purple-600 hover:text-purple-900"
+                                  title="Form Builder"
+                                >
+                                  <FaWpforms className="w-4 h-4" />
+                                </button>
+
+                                <button
+                                  onClick={() => {
+                                    setEventToDelete(event._id);
+                                    setIsDeleteModalOpen(true);
+                                  }}
+                                  className="text-red-600 hover:text-red-900"
+                                  title="Delete Event"
+                                >
+                                  <FaTrash className="w-4 h-4" />
+                                </button>
+                              </>
                             )}
-                            {event.status === 'published' && (
-                              <button 
-                                onClick={() => handleChangeStatus(event._id, 'archived')}
-                                className="text-gray-600 hover:text-gray-900"
-                              >
-                                Archive
-                              </button>
-                            )}
-                            {event.status === 'archived' && (
-                              <button 
-                                onClick={() => handleChangeStatus(event._id, 'published')}
+
+                            {event.isDeleted && (
+                              <button
+                                onClick={() => handleRestoreEvent(event._id)}
                                 className="text-blue-600 hover:text-blue-900"
+                                title="Restore Event"
                               >
-                                Restore
+                                <FaUndo className="w-4 h-4" />
                               </button>
                             )}
                           </div>
                         </td>
                       </tr>
-                    ))}
-                  </tbody>
-                </table>
-              </div>
-            )}
+                    ))
+                  )}
+                </tbody>
+              </table>
+            </div>
           </div>
         </div>
       </div>
+
+      {/* Create Modal */}
+      <VendorEventCreateModal
+        isOpen={isCreateModalOpen}
+        onClose={() => setIsCreateModalOpen(false)}
+        onSave={() => {
+          fetchEvents();
+        }}
+      />
+
+      {/* Edit Modal */}
+      {isEditModalOpen && selectedEvent && (
+        <VendorEventEditModal
+          event={selectedEvent}
+          isOpen={isEditModalOpen}
+          onClose={() => {
+            setIsEditModalOpen(false);
+            setSelectedEvent(null);
+          }}
+          onSave={() => {
+            fetchEvents();
+          }}
+        />
+      )}
+
+      {/* View Modal */}
+      {isViewModalOpen && selectedEvent && (
+        <VendorEventViewModal
+          event={selectedEvent}
+          isOpen={isViewModalOpen}
+          onClose={() => {
+            setIsViewModalOpen(false);
+            setSelectedEvent(null);
+          }}
+          onEdit={() => {
+            setIsViewModalOpen(false);
+            setIsEditModalOpen(true);
+          }}
+        />
+      )}
+
+      {/* Delete Confirmation Modal */}
+      {isDeleteModalOpen && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+          <div className="bg-white rounded-lg p-6 w-full max-w-md">
+            <h3 className="text-lg font-medium mb-4">Confirm Delete</h3>
+            <p className="text-gray-600 mb-6">
+              Are you sure you want to delete this event? You can choose to soft delete (recoverable) or permanently delete.
+            </p>
+            <div className="flex justify-end gap-2">
+              <button
+                onClick={() => {
+                  setIsDeleteModalOpen(false);
+                  setEventToDelete(null);
+                }}
+                className="px-4 py-2 text-gray-600 border border-gray-300 rounded-lg hover:bg-gray-50"
+              >
+                Cancel
+              </button>
+              <button
+                onClick={() => eventToDelete && handleDeleteEvent(eventToDelete, false)}
+                className="px-4 py-2 bg-yellow-600 text-white rounded-lg hover:bg-yellow-700"
+              >
+                Soft Delete
+              </button>
+              <button
+                onClick={() => eventToDelete && handleDeleteEvent(eventToDelete, true)}
+                className="px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700"
+              >
+                Permanent Delete
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </>
   );
 };

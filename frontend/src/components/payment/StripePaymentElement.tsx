@@ -1,10 +1,11 @@
-import React, { useState } from 'react';
+import React, { useState, useRef } from 'react';
 import { useStripe, useElements, PaymentElement } from '@stripe/react-stripe-js';
 import { CreditCard, Lock, AlertCircle, ExternalLink, Info } from 'lucide-react';
 import toast from 'react-hot-toast';
 import Button from '../ui/Button';
 import { Card, CardContent, CardHeader, CardTitle } from '../ui/Card';
 import { formatCurrency, getDefaultCurrency } from '../../utils/currencyUtils';
+import { logger } from '../../utils/logger';
 
 interface StripePaymentElementProps {
   onSuccess: () => void;
@@ -28,6 +29,10 @@ const StripePaymentElement: React.FC<StripePaymentElementProps> = ({
   const [processing, setProcessing] = useState(false);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const [isRegulatoryError, setIsRegulatoryError] = useState(false);
+  const [isElementReady, setIsElementReady] = useState(false);
+
+  // Ref to prevent double submission (synchronous guard)
+  const submittedRef = useRef(false);
 
   // Helper function to detect regulatory compliance errors
   const isIndiaRegulatoryError = (error: any): boolean => {
@@ -61,6 +66,12 @@ const StripePaymentElement: React.FC<StripePaymentElementProps> = ({
         return 'Your card has expired. Please use a different payment method.';
       case 'processing_error':
         return 'A processing error occurred. Please try again in a moment.';
+      case 'payment_intent_unexpected_state':
+        // Check if payment actually succeeded
+        if (error.payment_intent?.status === 'succeeded') {
+          return 'Payment already completed successfully';
+        }
+        return 'Payment state error. Please refresh the page and try again.';
       case 'invalid_request_error':
         if (errorMessage.includes('domain')) {
           return 'Payment method not available for this domain. Please try the Test Payment option.';
@@ -74,14 +85,28 @@ const StripePaymentElement: React.FC<StripePaymentElementProps> = ({
   const handleSubmit = async (event: React.FormEvent) => {
     event.preventDefault();
 
+    // Synchronous guard to prevent double submission
+    if (submittedRef.current) {
+      logger.debug('Payment already being processed, ignoring duplicate submission');
+      return;
+    }
+
     if (!stripe || !elements) {
       setErrorMessage('Stripe not initialized. Please refresh the page.');
+      return;
+    }
+
+    if (!isElementReady) {
+      setErrorMessage('Payment form is still loading. Please wait a moment and try again.');
       return;
     }
 
     if (processing || isProcessing) {
       return;
     }
+
+    // Set ref immediately (before any async operations)
+    submittedRef.current = true;
 
     setProcessing(true);
     setErrorMessage(null);
@@ -98,7 +123,16 @@ const StripePaymentElement: React.FC<StripePaymentElementProps> = ({
       });
 
       if (error) {
-        console.error('Payment confirmation error:', error);
+        logger.error('Payment confirmation error:', error);
+
+        // Special case: PaymentIntent already succeeded (double-submission)
+        if (error.code === 'payment_intent_unexpected_state' &&
+            error.payment_intent?.status === 'succeeded') {
+          logger.info('Payment already succeeded, proceeding to success callback');
+          toast.success('Payment successful!');
+          onSuccess();
+          return;
+        }
 
         const isRegulatory = isIndiaRegulatoryError(error);
         const userFriendlyMessage = getErrorMessage(error);
@@ -118,7 +152,16 @@ const StripePaymentElement: React.FC<StripePaymentElementProps> = ({
         onSuccess();
       }
     } catch (err: any) {
-      console.error('Payment processing error:', err);
+      logger.error('Payment processing error:', err);
+
+      // Special case: PaymentIntent already succeeded (double-submission in catch)
+      if (err.code === 'payment_intent_unexpected_state' &&
+          err.payment_intent?.status === 'succeeded') {
+        logger.info('Payment already succeeded (caught in exception), proceeding to success callback');
+        toast.success('Payment successful!');
+        onSuccess();
+        return;
+      }
 
       const isRegulatory = isIndiaRegulatoryError(err);
       const userFriendlyMessage = getErrorMessage(err);
@@ -134,6 +177,7 @@ const StripePaymentElement: React.FC<StripePaymentElementProps> = ({
       }
     } finally {
       setProcessing(false);
+      // Note: We don't reset submittedRef here to prevent any resubmission
     }
   };
 
@@ -161,6 +205,42 @@ const StripePaymentElement: React.FC<StripePaymentElementProps> = ({
           <div className="space-y-4">
             <PaymentElement
               id="payment-element"
+              onReady={() => {
+                logger.debug('PaymentElement is ready');
+                setIsElementReady(true);
+              }}
+              onLoadError={(error) => {
+                logger.error('PaymentElement failed to load:', error);
+                logger.error('Error details:', {
+                  message: error?.message,
+                  type: error?.type,
+                  code: error?.code,
+                  decline_code: error?.decline_code,
+                  error_description: error?.error_description,
+                  full: JSON.stringify(error, null, 2)
+                });
+
+                // Extract error message with fallbacks
+                let errorMsg = 'Unknown error';
+                if (error?.message) {
+                  errorMsg = error.message;
+                } else if (error?.error_description) {
+                  errorMsg = error.error_description;
+                } else if (typeof error === 'string') {
+                  errorMsg = error;
+                } else if (error?.toString && error.toString() !== '[object Object]') {
+                  errorMsg = error.toString();
+                } else {
+                  errorMsg = JSON.stringify(error);
+                }
+
+                logger.error('Extracted error message:', errorMsg);
+                setErrorMessage(`Payment form failed to load: ${errorMsg}. Please try using Test Payment instead.`);
+                setIsElementReady(false);
+              }}
+              onLoaderStart={() => {
+                logger.debug('PaymentElement loading started');
+              }}
               options={{
                 layout: 'tabs',
                 paymentMethodOrder: ['card', 'digital_wallet'],
@@ -173,6 +253,11 @@ const StripePaymentElement: React.FC<StripePaymentElementProps> = ({
               }}
               className="w-full"
             />
+            {!isElementReady && !errorMessage && (
+              <div className="text-center text-sm text-gray-500">
+                Loading payment form...
+              </div>
+            )}
           </div>
 
           {/* Error Display */}
@@ -250,10 +335,12 @@ const StripePaymentElement: React.FC<StripePaymentElementProps> = ({
             variant="primary"
             size="lg"
             className="w-full"
-            disabled={!stripe || !elements || processing || isProcessing}
+            disabled={!stripe || !elements || !isElementReady || processing || isProcessing}
             loading={processing || isProcessing}
           >
-            {processing || isProcessing
+            {!isElementReady
+              ? 'Loading payment form...'
+              : processing || isProcessing
               ? 'Processing Payment...'
               : `Pay ${formatCurrency(amount, currency || getDefaultCurrency())}`
             }

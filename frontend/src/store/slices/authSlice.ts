@@ -164,6 +164,46 @@ export const resendVerificationEmail = createAsyncThunk(
   }
 );
 
+// Phone Verification Thunks
+export const sendPhoneVerificationOTP = createAsyncThunk(
+  'auth/sendPhoneVerificationOTP',
+  async (phone: string, { rejectWithValue }) => {
+    try {
+      const response = await authAPI.sendPhoneVerificationOTP(phone);
+      return response;
+    } catch (error: any) {
+      const message = error.response?.data?.message || 'Failed to send verification code';
+      return rejectWithValue(message);
+    }
+  }
+);
+
+export const verifyPhoneOTP = createAsyncThunk(
+  'auth/verifyPhoneOTP',
+  async (otp: string, { rejectWithValue }) => {
+    try {
+      const response = await authAPI.verifyPhoneOTP(otp);
+      return response;
+    } catch (error: any) {
+      const message = error.response?.data?.message || 'Invalid verification code';
+      return rejectWithValue(message);
+    }
+  }
+);
+
+export const resendPhoneVerificationOTP = createAsyncThunk(
+  'auth/resendPhoneVerificationOTP',
+  async (_, { rejectWithValue }) => {
+    try {
+      const response = await authAPI.resendPhoneVerificationOTP();
+      return response;
+    } catch (error: any) {
+      const message = error.response?.data?.message || 'Failed to resend verification code';
+      return rejectWithValue(message);
+    }
+  }
+);
+
 export const forgotPassword = createAsyncThunk(
   'auth/forgotPassword',
   async (email: string, { rejectWithValue }) => {
@@ -496,7 +536,21 @@ const authSlice = createSlice({
           state.user.isEmailVerified = true;
         }
       })
-      
+
+      // Verify Phone with OTP
+      .addCase(verifyPhoneOTP.fulfilled, (state, action) => {
+        if (state.user) {
+          state.user.isPhoneVerified = true;
+        }
+        if (state.userProfile) {
+          state.userProfile.isPhoneVerified = true;
+        }
+        // Refresh profile to update completion percentage
+        if (state.userProfile) {
+          state.profileCompletion = state.userProfile.profileCompletion;
+        }
+      })
+
       // Get Full Profile
       .addCase(getFullProfile.pending, (state) => {
         state.isProfileLoading = true;

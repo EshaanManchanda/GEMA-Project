@@ -1,23 +1,79 @@
-import React, { useMemo } from 'react';
+import React, { useMemo, useState, useEffect, useRef } from 'react';
 import { Elements } from '@stripe/react-stripe-js';
-import { loadStripe } from '@stripe/stripe-js';
+import { loadStripe, Stripe } from '@stripe/stripe-js';
 import { AlertTriangle, Shield, Info } from 'lucide-react';
 import { getStripeConfig, getKeyEnvironmentMismatchWarning } from '../../utils/stripeConfig';
 import { shouldShowHTTPSWarning, getHTTPSWarningMessage, getDomainVerificationStatus } from '../../utils/environmentUtils';
+import vendorPaymentService from '../../services/vendorPaymentService';
+import { logger } from '../../utils/logger';
 
 // Get configuration and initialize Stripe with environment-appropriate key
 const stripeConfig = getStripeConfig();
-const stripePromise = loadStripe(stripeConfig.publicKey);
+const defaultStripePromise = loadStripe(stripeConfig.publicKey);
 
 interface StripeElementsWrapperProps {
   clientSecret: string;
   children: React.ReactNode;
+  vendorId?: string; // Optional: If provided, use vendor's Stripe key
 }
 
 const StripeElementsWrapper: React.FC<StripeElementsWrapperProps> = ({
   clientSecret,
-  children
+  children,
+  vendorId
 }) => {
+  // Use ref to store stripe instance to prevent prop changes after mount
+  const stripeInstanceRef = useRef<Stripe | null>(null);
+  const [isReady, setIsReady] = useState(false);
+  const initializationRef = useRef(false);
+
+  // Load appropriate Stripe instance ONCE on mount
+  useEffect(() => {
+    // Prevent double initialization in StrictMode
+    if (initializationRef.current) {
+      return;
+    }
+    initializationRef.current = true;
+
+    const initStripe = async () => {
+      try {
+        let instance: Stripe | null = null;
+
+        if (vendorId) {
+          // Try to load vendor-specific Stripe
+          logger.info('Loading Stripe instance for vendor', { vendorId });
+          instance = await vendorPaymentService.getStripeInstance(vendorId);
+
+          // If vendor fetch failed, fallback to platform Stripe
+          if (!instance) {
+            logger.warn('Vendor Stripe instance not available, using platform Stripe', { vendorId });
+            instance = await defaultStripePromise;
+          }
+        } else {
+          // Use default platform Stripe
+          logger.info('Loading platform Stripe instance');
+          instance = await defaultStripePromise;
+        }
+
+        // Set the instance in ref (never changes after this)
+        stripeInstanceRef.current = instance;
+        setIsReady(true);
+
+        logger.info('✅ Stripe instance loaded successfully', {
+          hasInstance: !!instance,
+          vendorId: vendorId || 'platform'
+        });
+      } catch (error) {
+        logger.error('Failed to initialize Stripe', { error, vendorId });
+        // Fallback to platform Stripe on any error
+        const fallbackInstance = await defaultStripePromise;
+        stripeInstanceRef.current = fallbackInstance;
+        setIsReady(true);
+      }
+    };
+
+    initStripe();
+  }, []); // Empty deps - only run once on mount
   const environmentWarning = getKeyEnvironmentMismatchWarning();
   const showHTTPSWarning = shouldShowHTTPSWarning();
   const httpsWarningMessage = getHTTPSWarningMessage();
@@ -40,14 +96,30 @@ const StripeElementsWrapper: React.FC<StripeElementsWrapperProps> = ({
     },
   }), [clientSecret]);
 
-  if (!clientSecret) {
+  if (!clientSecret || !isReady || !stripeInstanceRef.current) {
+    logger.debug('StripeElementsWrapper waiting...', {
+      hasClientSecret: !!clientSecret,
+      isReady,
+      hasStripeInstance: !!stripeInstanceRef.current,
+      clientSecretPrefix: clientSecret?.substring(0, 20)
+    });
+
     return (
       <div className="flex items-center justify-center py-8">
         <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
-        <span className="ml-3 text-gray-600">Preparing payment form...</span>
+        <span className="ml-3 text-gray-600">
+          {!isReady ? 'Loading payment provider...' : 'Preparing payment form...'}
+        </span>
       </div>
     );
   }
+
+  logger.info('StripeElementsWrapper ready to render Elements', {
+    hasClientSecret: !!clientSecret,
+    hasStripeInstance: !!stripeInstanceRef.current,
+    clientSecretPrefix: clientSecret?.substring(0, 20),
+    vendorId
+  });
 
   return (
     <div className="space-y-4">
@@ -99,10 +171,10 @@ const StripeElementsWrapper: React.FC<StripeElementsWrapperProps> = ({
         </div>
       )}
 
-      {/* Stripe Elements with key-based remounting to prevent mutation errors */}
+      {/* Stripe Elements - using stable ref to prevent prop change errors */}
       <Elements
-        key={clientSecret} // Force remount when clientSecret changes
-        stripe={stripePromise}
+        key={clientSecret} // Only remount when clientSecret changes (new payment intent)
+        stripe={stripeInstanceRef.current}
         options={elementsOptions}
       >
         {children}

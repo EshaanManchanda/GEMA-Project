@@ -106,6 +106,20 @@ const BookingDetailPage: React.FC = () => {
       fetchBookingDetails();
       dispatch(fetchTicketsByOrder(id));
     }
+
+    // Refetch data when user returns to the tab/window
+    const handleVisibilityChange = () => {
+      if (document.visibilityState === 'visible' && id) {
+        console.log('Tab became visible, refetching booking details...');
+        fetchBookingDetails();
+      }
+    };
+
+    document.addEventListener('visibilitychange', handleVisibilityChange);
+
+    return () => {
+      document.removeEventListener('visibilitychange', handleVisibilityChange);
+    };
   }, [id, dispatch]);
 
   // Auto-generate QR codes for confirmed bookings that don't have them
@@ -121,10 +135,18 @@ const BookingDetailPage: React.FC = () => {
     try {
       setIsLoading(true);
       setError(null);
+      console.log('📡 Fetching booking details for ID:', id);
       const response = await bookingAPI.getBookingById(id);
+      console.log('✅ Booking details fetched:', {
+        bookingId: response._id,
+        orderNumber: response.orderNumber,
+        status: response.status,
+        paymentStatus: response.paymentStatus,
+        paymentMethod: response.paymentMethod
+      });
       setBooking(response);
     } catch (err: any) {
-      console.error('Error fetching booking details:', err);
+      console.error('❌ Error fetching booking details:', err);
       setError(err.message || 'Failed to load booking details');
       toast.error('Failed to load booking details');
     } finally {

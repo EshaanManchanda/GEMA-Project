@@ -46,6 +46,14 @@ export const uploadPresets = {
     folder: 'gema/documents',
     resource_type: 'raw',
     allowed_formats: ['pdf', 'doc', 'docx', 'txt']
+  },
+  registrations: {
+    folder: 'gema/registrations',
+    resource_type: 'auto', // Supports images and documents
+    transformation: [
+      { quality: 'auto', fetch_format: 'auto' }
+    ],
+    allowed_formats: ['jpg', 'jpeg', 'png', 'pdf', 'zip', 'doc', 'docx']
   }
 };
 

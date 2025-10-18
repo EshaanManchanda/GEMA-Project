@@ -2,14 +2,12 @@ import React, { Suspense, useEffect, lazy } from 'react';
 import { Routes, Route, useLocation, Outlet } from 'react-router-dom';
 import { AnimatePresence } from 'framer-motion';
 import { Toaster } from 'react-hot-toast';
-import { Elements } from '@stripe/react-stripe-js';
-import { loadStripe } from '@stripe/stripe-js';
-
-// Initialize Stripe
-const stripePromise = loadStripe(import.meta.env.VITE_STRIPE_PUBLIC_KEY);
+// Stripe Elements are handled by StripeElementsWrapper in payment components
+// No need for global Elements provider
 
 // Layout Components
 import Layout from '@components/layout/Layout';
+import AdminLayout from '@components/layout/AdminLayout';
 import LoadingSpinner from '@components/common/LoadingSpinner';
 import ScrollToTop from '@components/common/ScrollToTop';
 
@@ -47,6 +45,10 @@ const ReviewsPage = React.lazy(() => import(/* webpackChunkName: "dashboard" */ 
 const MyTicketsPage = React.lazy(() => import(/* webpackChunkName: "dashboard" */ './pages/dashboard/MyTicketsPage'));
 const ChangePasswordPage = React.lazy(() => import(/* webpackChunkName: "dashboard" */ './pages/dashboard/ChangePasswordPage'));
 
+// Registration Pages
+const UserRegistrationsPage = React.lazy(() => import(/* webpackChunkName: "registration" */ './pages/UserRegistrationsPage'));
+const RegistrationDetailPage = React.lazy(() => import(/* webpackChunkName: "registration" */ './pages/RegistrationDetailPage'));
+
 // Vendor Dashboard Pages
 const VendorDashboardPage = React.lazy(() => import(/* webpackChunkName: "vendor" */ './pages/vendor/VendorDashboardPage'));
 const VendorEventsPage = React.lazy(() => import(/* webpackChunkName: "vendor" */ './pages/vendor/VendorEventsPage'));
@@ -56,10 +58,15 @@ const VendorBookingsPage = React.lazy(() => import(/* webpackChunkName: "vendor"
 // const VendorAnalyticsPage = React.lazy(() => import(/* webpackChunkName: "vendor" */ './pages/vendor/VendorAnalyticsPage'));
 const VendorProfilePage = React.lazy(() => import(/* webpackChunkName: "vendor" */ './pages/vendor/VendorProfilePage'));
 
+// Vendor Registration Pages
+const VendorRegistrationsDashboard = React.lazy(() => import(/* webpackChunkName: "vendor" */ './pages/vendor/VendorRegistrationsDashboard'));
+const FormBuilderPage = React.lazy(() => import(/* webpackChunkName: "vendor" */ './pages/vendor/FormBuilderPage'));
+
 // Admin Dashboard Pages
 const AdminDashboardPage = React.lazy(() => import(/* webpackChunkName: "admin" */ './pages/admin/AdminDashboardPage'));
 const AdminUsersPage = React.lazy(() => import(/* webpackChunkName: "admin" */ './pages/admin/AdminUsersPage'));
 const AdminEventsPage = React.lazy(() => import(/* webpackChunkName: "admin" */ './pages/admin/AdminEventsPage'));
+const AdminEditEventPage = React.lazy(() => import(/* webpackChunkName: "admin" */ './pages/admin/AdminEditEventPage'));
 const AdminVenuesPage = React.lazy(() => import(/* webpackChunkName: "admin" */ './pages/admin/AdminVenuesPage'));
 const AdminCategoriesPage = React.lazy(() => import(/* webpackChunkName: "admin" */ './pages/admin/AdminCategoriesPage'));
 const AdminOrdersPage = React.lazy(() => import(/* webpackChunkName: "admin" */ './pages/admin/AdminOrdersPage'));
@@ -135,23 +142,52 @@ function AppContent() {
         position="top-right"
         toastOptions={{
           duration: 4000,
-          style: {
-            background: '#ffffff',
-            color: '#374151',
-            boxShadow: '0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05)',
-            border: '1px solid #e5e7eb',
-            borderRadius: '8px',
-          },
+          // Success toast - Glassmorphism with green tint
           success: {
+            style: {
+              background: 'rgba(16, 185, 129, 0.15)',
+              backdropFilter: 'blur(10px)',
+              border: '1px solid rgba(16, 185, 129, 0.3)',
+              borderRadius: '16px',
+              color: '#065f46',
+              padding: '16px 20px',
+              boxShadow: '0 8px 32px 0 rgba(16, 185, 129, 0.2)',
+            },
             iconTheme: {
               primary: '#10b981',
-              secondary: '#ffffff',
+              secondary: '#ecfdf5',
             },
           },
+          // Error toast - Glassmorphism with red tint
           error: {
+            style: {
+              background: 'rgba(239, 68, 68, 0.15)',
+              backdropFilter: 'blur(10px)',
+              border: '1px solid rgba(239, 68, 68, 0.3)',
+              borderRadius: '16px',
+              color: '#7f1d1d',
+              padding: '16px 20px',
+              boxShadow: '0 8px 32px 0 rgba(239, 68, 68, 0.2)',
+            },
             iconTheme: {
               primary: '#ef4444',
-              secondary: '#ffffff',
+              secondary: '#fef2f2',
+            },
+          },
+          // Loading toast - Glassmorphism with blue tint
+          loading: {
+            style: {
+              background: 'rgba(59, 130, 246, 0.15)',
+              backdropFilter: 'blur(10px)',
+              border: '1px solid rgba(59, 130, 246, 0.3)',
+              borderRadius: '16px',
+              color: '#1e3a8a',
+              padding: '16px 20px',
+              boxShadow: '0 8px 32px 0 rgba(59, 130, 246, 0.2)',
+            },
+            iconTheme: {
+              primary: '#3b82f6',
+              secondary: '#eff6ff',
             },
           },
         }}
@@ -384,7 +420,23 @@ function AppContent() {
                 </Suspense>
               </ProtectedRoute>
             } />
-            
+
+            {/* Registration Routes */}
+            <Route path="registrations" element={
+              <ProtectedRoute>
+                <Suspense fallback={<LoadingSpinner />}>
+                  <UserRegistrationsPage />
+                </Suspense>
+              </ProtectedRoute>
+            } />
+            <Route path="registrations/:registrationId" element={
+              <ProtectedRoute>
+                <Suspense fallback={<LoadingSpinner />}>
+                  <RegistrationDetailPage />
+                </Suspense>
+              </ProtectedRoute>
+            } />
+
             {/* Error Pages */}
             <Route path="500" element={
               <Suspense fallback={<LoadingSpinner />}>
@@ -475,6 +527,29 @@ function AppContent() {
                 </Suspense>
               </VendorRoute>
             } />
+
+            {/* Registration Management */}
+            <Route path="events/:eventId/registrations" element={
+              <VendorRoute>
+                <Suspense fallback={<LoadingSpinner />}>
+                  <VendorRegistrationsDashboard />
+                </Suspense>
+              </VendorRoute>
+            } />
+            <Route path="events/:eventId/registration/builder" element={
+              <VendorRoute>
+                <Suspense fallback={<LoadingSpinner />}>
+                  <FormBuilderPage />
+                </Suspense>
+              </VendorRoute>
+            } />
+            <Route path="registrations/:registrationId" element={
+              <VendorRoute>
+                <Suspense fallback={<LoadingSpinner />}>
+                  <RegistrationDetailPage />
+                </Suspense>
+              </VendorRoute>
+            } />
           </Route>
           
           {/* ============ EMPLOYEE ROUTES (/employee) ============ */}
@@ -519,7 +594,7 @@ function AppContent() {
           
           {/* ============ ADMIN ROUTES (/admin) ============ */}
           {/* Routes accessible only to administrators */}
-          <Route path="/admin" element={<Layout />}>
+          <Route path="/admin" element={<AdminLayout />}>
             {/* Admin Dashboard */}
             <Route index element={
               <AdminRoute>
@@ -543,6 +618,20 @@ function AppContent() {
               <AdminRoute>
                 <Suspense fallback={<LoadingSpinner />}>
                   <AdminEventsPage />
+                </Suspense>
+              </AdminRoute>
+            } />
+            <Route path="events/:id/edit" element={
+              <AdminRoute>
+                <Suspense fallback={<LoadingSpinner />}>
+                  <AdminEditEventPage />
+                </Suspense>
+              </AdminRoute>
+            } />
+            <Route path="events/:eventId/registration/builder" element={
+              <AdminRoute>
+                <Suspense fallback={<LoadingSpinner />}>
+                  <FormBuilderPage />
                 </Suspense>
               </AdminRoute>
             } />
@@ -699,28 +788,8 @@ function App() {
   // Note: i18n is initialized in main.tsx before React renders
   // Note: Redux Provider and PersistGate are set up in main.tsx
   // This prevents double wrapping and potential state issues
-  return (
-    <Elements
-      stripe={stripePromise}
-      options={{
-        mode: 'setup',
-        currency: 'usd',
-        appearance: {
-          theme: 'stripe',
-          variables: {
-            colorPrimary: '#6366f1',
-            colorBackground: '#ffffff',
-            colorText: '#374151',
-            colorDanger: '#ef4444',
-            fontFamily: 'Inter, system-ui, sans-serif',
-            borderRadius: '8px'
-          }
-        },
-      }}
-    >
-      <AppContent />
-    </Elements>
-  );
+  // Note: Stripe Elements are provided by StripeElementsWrapper in payment components
+  return <AppContent />;
 }
 
 export default App;

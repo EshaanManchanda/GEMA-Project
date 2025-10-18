@@ -69,7 +69,9 @@ export interface ISocialMedia {
 
 export interface IVendorPaymentSettings {
   stripeAccountId?: string;
-  stripeApiKey?: string;
+  stripePublishableKey?: string; // pk_live_... or pk_test_... (safe for frontend)
+  stripeSecretKey?: string; // sk_live_... or sk_test_... (NEVER send to frontend)
+  stripeApiKey?: string; // Legacy field, same as stripeSecretKey
   hasCustomStripeAccount: boolean;
   acceptsPlatformPayments: boolean;
   commissionRate?: number;
@@ -305,10 +307,20 @@ const UserSchema = new Schema<IUser>(
         type: String,
         sparse: true
       },
+      stripePublishableKey: {
+        type: String,
+        sparse: true
+        // This is safe to expose to frontend
+      },
+      stripeSecretKey: {
+        type: String,
+        sparse: true,
+        select: false // NEVER send to frontend
+      },
       stripeApiKey: {
         type: String,
         sparse: true,
-        select: false // Don't include in queries by default for security
+        select: false // Legacy field, don't include in queries by default for security
       },
       hasCustomStripeAccount: {
         type: Boolean,

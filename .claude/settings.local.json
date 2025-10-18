@@ -1,0 +1,17 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(npm run:*)",
+      "Bash(curl:*)",
+      "Bash(npx tsc:*)",
+      "mcp__ide__getDiagnostics",
+      "Bash(vercel:*)",
+      "WebFetch(domain:gema-project.onrender.com)",
+      "WebFetch(domain:kidrove-frontend.vercel.app)",
+      "Bash(python:*)",
+      "Bash(node:*)"
+    ],
+    "deny": [],
+    "ask": []
+  }
+}

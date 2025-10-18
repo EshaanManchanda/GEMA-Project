@@ -74,44 +74,56 @@ const generateAuthTokens = async (userId: string, req: Request): Promise<{ acces
  * @access  Public
  */
 export const register = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
-  console.log('Register function entered');
+  console.log('[REGISTER] Function entered');
   try {
     if (!req.body) {
       throw new AppError('Request body is missing', 400);
     }
-    const { firstName, lastName, email, password, phone }: RegisterRequest = req.body;
-    console.log('Request body received:', { firstName, lastName, email, phone });
-    
+    const { firstName, lastName, email, password, phone, role }: RegisterRequest = req.body;
+    console.log('[REGISTER] Request body received:', { firstName, lastName, email, phone, role });
+
     if (!email || !password) {
       throw new AppError('Email and password are required', 400);
     }
-    
+
     // Check if user already exists
-    console.log('Checking for existing user...');
+    console.log('[REGISTER] Checking for existing user...');
     const existingUser = await User.findOne({ email });
-    console.log('Existing user check complete. User found:', !!existingUser);
+    console.log('[REGISTER] Existing user check complete. User found:', !!existingUser);
     if (existingUser) {
       throw new AppError('User with this email already exists', 400);
     }
-    
+
     // Generate verification OTP
     const verificationOTP = generateOTP();
     const otpExpiry = getOTPExpiry(); // 10 minutes from now
-    
+
+    // Determine user role
+    const userRole = role || 'customer';
+    console.log('[REGISTER] Creating user with role:', userRole);
+
     // Create new user
-    console.log('Creating new user...');
     const user = await User.create({
       firstName,
       lastName,
       email,
       passwordHash: password, // Will be hashed by pre-save hook
       phone,
-      role: 'customer', // Using string literal since UserRole enum is not defined
+      role: userRole,
       status: UserStatus.PENDING,
       emailVerification: {
         otp: verificationOTP,
         expiresAt: otpExpiry
       }
+    });
+
+    console.log('[REGISTER] User created successfully:', {
+      id: user._id,
+      email: user.email,
+      role: user.role,
+      hasPassword: !!user.passwordHash,
+      passwordHashLength: user.passwordHash?.length,
+      passwordHashStart: user.passwordHash?.substring(0, 10) + '***'
     });
     
     // Generate tokens
@@ -267,20 +279,37 @@ export const resendVerificationEmail = async (req: Request, res: Response, next:
 export const login = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
   try {
     const { email, password }: LoginRequest = req.body;
-    
+
+    console.log('[LOGIN] Attempting login for:', email);
+
     // Find user by email
     const user = await User.findOne({ email });
     if (!user) {
+      console.log('[LOGIN] User not found:', email);
       throw new AppError('Invalid credentials', 401);
     }
-    
+
+    console.log('[LOGIN] User found:', {
+      id: user._id,
+      email: user.email,
+      role: user.role,
+      hasPassword: !!user.passwordHash,
+      passwordHashLength: user.passwordHash?.length
+    });
+
     // Check if user has a password (might be social login only)
     if (!user.passwordHash) {
+      console.log('[LOGIN] No password hash found for user');
       throw new AppError('This account does not have a password. Please use social login.', 400);
     }
-    
+
     // Verify password
+    console.log('[LOGIN] Comparing passwords...');
+    console.log('[LOGIN] Password provided (first 3 chars):', password.substring(0, 3) + '***');
+    console.log('[LOGIN] Stored hash (first 10 chars):', user.passwordHash.substring(0, 10) + '***');
     const isMatch = await user.comparePassword(password);
+    console.log('[LOGIN] Password match result:', isMatch);
+
     if (!isMatch) {
       // Record failed login attempt
       user.loginAttempts = user.loginAttempts || [];
@@ -291,7 +320,8 @@ export const login = async (req: Request, res: Response, next: NextFunction): Pr
         success: false
       });
       await user.save();
-      
+
+      console.log('[LOGIN] Password mismatch for user:', email);
       throw new AppError('Invalid credentials', 401);
     }
     
@@ -967,6 +997,191 @@ export const deleteAvatar = async (req: Request, res: Response, next: NextFuncti
         avatar: null
       }
     });
+  } catch (error) {
+    next(error);
+  }
+};
+
+/**
+ * @desc    Send phone verification OTP
+ * @route   POST /api/auth/send-phone-verification
+ * @access  Private
+ */
+export const sendPhoneVerificationOTP = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
+  try {
+    const user = req.user;
+    if (!user) {
+      throw new AppError('User not authenticated', 401);
+    }
+
+    const { phone }: { phone: string } = req.body;
+
+    if (!phone) {
+      throw new AppError('Phone number is required', 400);
+    }
+
+    // Validate phone format (basic E.164 validation)
+    if (!/^\+[1-9]\d{7,14}$/.test(phone)) {
+      throw new AppError('Please provide a valid international phone number (e.g., +1234567890)', 400);
+    }
+
+    // Check if phone is already verified by another user
+    const existingUser = await User.findOne({
+      phone,
+      isPhoneVerified: true,
+      _id: { $ne: user._id }
+    });
+
+    if (existingUser) {
+      throw new AppError('This phone number is already verified by another user', 400);
+    }
+
+    // Generate 6-digit OTP
+    const verificationOTP = generateOTP();
+    const otpExpiry = getOTPExpiry(); // 10 minutes from now
+
+    // Save OTP to user
+    user.phoneVerification = {
+      code: verificationOTP,
+      expiresAt: otpExpiry
+    };
+
+    // Update phone if different
+    if (user.phone !== phone) {
+      user.phone = phone;
+      user.isPhoneVerified = false; // Reset verification status
+    }
+
+    await user.save();
+
+    // In production, you would send SMS via Twilio, AWS SNS, or Firebase
+    // For now, we'll just return the OTP in development mode
+    const responseData: any = {
+      message: 'Verification OTP sent successfully'
+    };
+
+    // Only send OTP in response during development
+    if (process.env.NODE_ENV === 'development') {
+      responseData.otp = verificationOTP; // Remove this in production
+      console.log(`[DEV] Phone verification OTP for ${phone}: ${verificationOTP}`);
+    }
+
+    res.status(200).json({
+      success: true,
+      message: 'Verification OTP sent to your phone number',
+      data: responseData
+    } as ApiResponse);
+  } catch (error) {
+    next(error);
+  }
+};
+
+/**
+ * @desc    Verify phone number with OTP
+ * @route   POST /api/auth/verify-phone
+ * @access  Private
+ */
+export const verifyPhoneOTP = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
+  try {
+    const user = req.user;
+    if (!user) {
+      throw new AppError('User not authenticated', 401);
+    }
+
+    const { otp }: { otp: string } = req.body;
+
+    if (!otp) {
+      throw new AppError('OTP is required', 400);
+    }
+
+    // Check if user has phoneVerification data
+    if (!user.phoneVerification || !user.phoneVerification.code) {
+      throw new AppError('No verification OTP found. Please request a new one.', 400);
+    }
+
+    // Check if OTP is expired
+    if (user.phoneVerification.expiresAt < new Date()) {
+      user.phoneVerification = undefined;
+      await user.save();
+      throw new AppError('Verification OTP has expired. Please request a new one.', 400);
+    }
+
+    // Verify OTP
+    if (user.phoneVerification.code !== otp) {
+      throw new AppError('Invalid verification OTP', 400);
+    }
+
+    // Mark phone as verified
+    user.isPhoneVerified = true;
+    user.phoneVerification = undefined; // Clear verification OTP
+
+    // Update status if pending
+    if (user.status === UserStatus.PENDING) {
+      user.status = UserStatus.ACTIVE;
+    }
+
+    await user.save();
+
+    res.status(200).json({
+      success: true,
+      message: 'Phone number verified successfully',
+      data: {
+        isPhoneVerified: true,
+        phone: user.phone
+      }
+    } as ApiResponse);
+  } catch (error) {
+    next(error);
+  }
+};
+
+/**
+ * @desc    Resend phone verification OTP
+ * @route   POST /api/auth/resend-phone-verification
+ * @access  Private
+ */
+export const resendPhoneVerificationOTP = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
+  try {
+    const user = req.user;
+    if (!user) {
+      throw new AppError('User not authenticated', 401);
+    }
+
+    if (!user.phone) {
+      throw new AppError('No phone number found. Please add a phone number first.', 400);
+    }
+
+    if (user.isPhoneVerified) {
+      throw new AppError('Phone number is already verified', 400);
+    }
+
+    // Generate new OTP
+    const verificationOTP = generateOTP();
+    const otpExpiry = getOTPExpiry();
+
+    user.phoneVerification = {
+      code: verificationOTP,
+      expiresAt: otpExpiry
+    };
+
+    await user.save();
+
+    // In production, send SMS via Twilio, AWS SNS, or Firebase
+    const responseData: any = {
+      message: 'Verification OTP resent successfully'
+    };
+
+    // Only send OTP in response during development
+    if (process.env.NODE_ENV === 'development') {
+      responseData.otp = verificationOTP; // Remove this in production
+      console.log(`[DEV] Phone verification OTP for ${user.phone}: ${verificationOTP}`);
+    }
+
+    res.status(200).json({
+      success: true,
+      message: 'Verification OTP resent to your phone number',
+      data: responseData
+    } as ApiResponse);
   } catch (error) {
     next(error);
   }

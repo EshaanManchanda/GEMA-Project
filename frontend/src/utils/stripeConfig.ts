@@ -10,6 +10,8 @@ export interface StripeConfig {
   complianceMode: string;
   shouldShowWarning: boolean;
   keyType: 'live' | 'test';
+  isVendorKey: boolean;
+  feePercentage: number;
 }
 
 export interface StripeKeyValidation {
@@ -73,15 +75,28 @@ export const getStripeConfig = (): StripeConfig => {
   const enableWarning = import.meta.env.VITE_ENABLE_LIVE_KEY_WARNING === 'true';
   const region = import.meta.env.VITE_PAYMENT_REGION || 'US';
   const complianceMode = import.meta.env.VITE_STRIPE_COMPLIANCE_MODE || 'standard';
+  
+  // Check for vendor-specific Stripe key first
+  const vendorKey = import.meta.env.VITE_VENDOR_STRIPE_KEY;
+  let isVendorKey = false;
+  let feePercentage = 5; // Default 5% fee when using fallback key
 
   // Determine which keys to use
   let publicKey: string;
   let isLiveMode: boolean;
   let keyType: 'live' | 'test';
 
-  if (forceTestMode || environment === 'development') {
+  // First try to use vendor key if available
+  if (vendorKey && validateStripeKey(vendorKey).isValid) {
+    publicKey = vendorKey;
+    isVendorKey = true;
+    feePercentage = 0; // No fee when using vendor key
+    isLiveMode = isLiveKey(vendorKey);
+    keyType = isLiveMode ? 'live' : 'test';
+    console.log('Using vendor Stripe key - no fee applied');
+  } else if (forceTestMode || environment === 'development') {
     // Force test mode in development
-    publicKey = import.meta.env.VITE_STRIPE_TEST_PUBLIC_KEY || import.meta.env.VITE_STRIPE_PUBLISHABLE_KEY;
+    publicKey = import.meta.env.VITE_STRIPE_TEST_PUBLISHABLE_KEY || import.meta.env.VITE_STRIPE_PUBLISHABLE_KEY;
     isLiveMode = false;
     keyType = 'test';
   } else if (useLiveKeys && (environment === 'production' || environment === 'staging')) {
@@ -91,7 +106,7 @@ export const getStripeConfig = (): StripeConfig => {
     keyType = 'live';
   } else {
     // Default to test keys
-    publicKey = import.meta.env.VITE_STRIPE_TEST_PUBLIC_KEY || import.meta.env.VITE_STRIPE_PUBLISHABLE_KEY;
+    publicKey = import.meta.env.VITE_STRIPE_TEST_PUBLISHABLE_KEY || import.meta.env.VITE_STRIPE_PUBLISHABLE_KEY;
     isLiveMode = false;
     keyType = 'test';
   }
@@ -106,6 +121,8 @@ export const getStripeConfig = (): StripeConfig => {
       publicKey = import.meta.env.VITE_STRIPE_TEST_PUBLIC_KEY || import.meta.env.VITE_STRIPE_PUBLISHABLE_KEY;
       isLiveMode = false;
       keyType = 'test';
+      isVendorKey = false;
+      feePercentage = 5;
     }
   }
 
@@ -123,6 +140,8 @@ export const getStripeConfig = (): StripeConfig => {
     complianceMode,
     shouldShowWarning,
     keyType,
+    isVendorKey,
+    feePercentage
   };
 };
 

@@ -8,6 +8,7 @@ import { ChevronLeft, ChevronRight, CheckCircle, Clock, CreditCard, Users, Alert
 import { AppDispatch, RootState } from '../store';
 import {
   setBookingEvent,
+  setBookingSchedule,
   setBookingStep,
   resetBookingFlow,
   selectBookingFlow,
@@ -84,6 +85,8 @@ const BookingConfirmationFallback = ({ onComplete }: any) => (
   </Card>
 );
 
+// Stripe payment is handled by StripePaymentElement component
+// No need for direct Stripe hooks in BookingPage
 const BookingPage: React.FC = () => {
   const renderCount = useRef(0);
   renderCount.current++;
@@ -257,6 +260,15 @@ const BookingPage: React.FC = () => {
         dispatch(resetBookingFlow());
         dispatch(setBookingEvent(actualEventId));
 
+        // Set schedule ID if provided in route state
+        if (routeState?.scheduleId) {
+          logger.info('Setting schedule ID from route state', {
+            scheduleId: routeState.scheduleId,
+            actualEventId
+          });
+          dispatch(setBookingSchedule(routeState.scheduleId));
+        }
+
         // If we have event data from route state, use it
         if (routeState?.event && routeState.event._id === actualEventId) {
           logger.info('Using event data from route state', {
@@ -349,6 +361,7 @@ const BookingPage: React.FC = () => {
 
   // Handle booking completion with new API
   const handleCompleteBooking = async () => {
+    // Validate required data
     if (!event || !actualEventId) {
       logger.error('Cannot complete booking - missing required data', {
         hasEvent: !!event,
@@ -366,15 +379,16 @@ const BookingPage: React.FC = () => {
       dispatch(setBookingEvent(actualEventId));
     }
 
-    // Get schedule information from route state
-    const scheduleId = routeState?.scheduleId;
+    // Get schedule information from bookingFlow or route state
+    const scheduleId = bookingFlow.scheduleId || routeState?.scheduleId;
     if (!scheduleId) {
       logger.error('Schedule ID is required for booking', {
         hasRouteState: !!routeState,
         routeStateKeys: routeState ? Object.keys(routeState) : [],
+        hasBookingFlowScheduleId: !!bookingFlow.scheduleId,
         actualEventId
       });
-      toast.error('Booking information is incomplete. Please go back to the event page and try again.');
+      toast.error('Booking information is incomplete. Please go back to the event page and select a date/time.');
       navigate(`/events/${actualEventId}`);
       return;
     }
@@ -403,16 +417,75 @@ const BookingPage: React.FC = () => {
     logger.info('Starting booking completion process', bookingSession);
 
     try {
-      // Show loading state
+      // Check if we're in the StripePaymentElement flow (payment already processed)
+      const isStripeElementFlow = bookingFlow.paymentMethod === 'stripe' && checkout?.paymentIntent;
+
+      if (isStripeElementFlow) {
+        // Stripe payment was already processed by StripePaymentElement component
+        logger.info('Payment already processed by StripePaymentElement, confirming booking', {
+          paymentIntentId: checkout.paymentIntent,
+          orderId: checkout.orderId
+        });
+
+        toast.loading('Finalizing your booking...');
+
+        // Confirm the booking with the backend using the existing payment intent
+        if (!checkout.orderId) {
+          logger.error('Missing orderId in checkout state', {
+            paymentIntentId: checkout.paymentIntent,
+            checkoutState: checkout
+          });
+          throw new Error('Booking session expired. Please try again.');
+        }
+
+        const confirmResponse = await bookingAPI.confirmBooking({
+          paymentIntentId: checkout.paymentIntent,
+          orderId: checkout.orderId,
+          participants: bookingFlow.participants, // Include participants with registration data
+        });
+
+        toast.dismiss();
+
+        if (!confirmResponse?.bookingId) {
+          logger.error('Booking confirmation failed', {
+            response: confirmResponse,
+            hasBookingId: !!confirmResponse?.bookingId,
+            paymentIntentId: checkout.paymentIntent
+          });
+          throw new Error('Booking confirmation failed. Please contact support if payment was charged.');
+        }
+
+        logger.info('Booking confirmed successfully', confirmResponse);
+        toast.success('🎉 Booking completed successfully!');
+        dispatch(setBookingStep('confirmation'));
+
+        // Navigate to bookings page
+        setTimeout(() => {
+          logger.info('Navigating to bookings page after confirmation', {
+            bookingId: confirmResponse.bookingId,
+            paymentIntentId: checkout.paymentIntent
+          });
+          navigate('/bookings');
+        }, 2000);
+
+        return;
+      }
+
+      // Test payment flow: Initiate and confirm booking directly
+      logger.info('Processing test payment booking', bookingSession);
       toast.loading('Processing your booking...');
 
-      // Initiate booking with new API
+      // Initiate booking with test payment
       const initiateResponse = await bookingAPI.initiateBooking({
         eventId: actualEventId,
         dateScheduleId: scheduleId,
         seats: bookingFlow.participants.length || 1,
-        paymentMethod: (bookingFlow.paymentMethod as 'stripe' | 'paypal') || 'test' // Use test payment for development
+        paymentMethod: 'test' // Backend will handle test payment
       });
+
+      if (!initiateResponse) {
+        throw new Error('Failed to initiate booking. Please try again.');
+      }
 
       if (!initiateResponse?.paymentIntentId || !initiateResponse?.orderId) {
         logger.error('Invalid booking initiation response', {
@@ -429,43 +502,14 @@ const BookingPage: React.FC = () => {
         amount: initiateResponse.amount
       });
 
-      // Dismiss loading toast
-      toast.dismiss();
+      // Confirm the booking (for test payments, payment is auto-approved)
+      const confirmResponse = await handleBookingConfirmation(initiateResponse);
 
-      // For now, simulate payment completion
-      // In a real implementation, this would be handled by Stripe
-      toast.loading('Confirming payment...');
-
-      const confirmResponse = await bookingAPI.confirmBooking({
-        paymentIntentId: initiateResponse.paymentIntentId,
-        orderId: initiateResponse.orderId
-      });
-
-      toast.dismiss();
-
-      if (!confirmResponse?.bookingId) {
-        logger.error('Booking confirmation failed', {
-          response: confirmResponse,
-          hasBookingId: !!confirmResponse?.bookingId,
-          paymentIntentId: initiateResponse.paymentIntentId
-        });
-        throw new Error('Booking confirmation failed. Please contact support if payment was charged.');
-      }
-
-      logger.info('Booking confirmed successfully', confirmResponse);
-      toast.success('🎉 Booking completed successfully!');
-      dispatch(setBookingStep('confirmation'));
-
-      // Navigate to confirmation page or user bookings
-      setTimeout(() => {
-        logger.info('Navigating to bookings page after confirmation', bookingSession);
-        navigate('/bookings');
-      }, 2000);
+      return confirmResponse;
     } catch (err) {
       toast.dismiss(); // Dismiss any loading toasts
 
       logger.error('Failed to complete booking', {
-        ...bookingSession,
         error: err,
         stack: err instanceof Error ? err.stack : undefined
       });
@@ -490,6 +534,49 @@ const BookingPage: React.FC = () => {
       }
 
       toast.error(errorMessage);
+    }
+  };
+    
+  // Helper function to handle booking confirmation after successful payment
+  const handleBookingConfirmation = async (initiateResponse: any) => {
+    toast.loading('Finalizing your booking...');
+    
+    try {
+      const confirmResponse = await bookingAPI.confirmBooking({
+        paymentIntentId: initiateResponse.paymentIntentId,
+        orderId: initiateResponse.orderId,
+        participants: bookingFlow.participants, // Include participants with registration data
+      });
+
+      toast.dismiss();
+
+      if (!confirmResponse?.bookingId) {
+        logger.error('Booking confirmation failed', {
+          response: confirmResponse,
+          hasBookingId: !!confirmResponse?.bookingId,
+          paymentIntentId: initiateResponse.paymentIntentId
+        });
+        throw new Error('Booking confirmation failed. Please contact support if payment was charged.');
+      }
+
+      logger.info('Booking confirmed successfully', confirmResponse);
+      toast.success('🎉 Booking completed successfully!');
+      dispatch(setBookingStep('confirmation'));
+
+      // Navigate to confirmation page or user bookings
+      setTimeout(() => {
+        logger.info('Navigating to bookings page after confirmation', {
+          bookingId: confirmResponse.bookingId,
+          paymentIntentId: initiateResponse.paymentIntentId
+        });
+        navigate('/bookings');
+      }, 2000);
+      
+      return confirmResponse;
+    } catch (error: any) {
+      logger.error('Error confirming booking after successful payment', error);
+      toast.error(error?.message || 'Error finalizing booking. Please contact support.');
+      throw error; // Re-throw to be caught by the parent try/catch
     }
   };
 

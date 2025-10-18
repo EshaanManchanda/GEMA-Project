@@ -46,12 +46,19 @@ import {
   addAddress,
   updateAddress,
   deleteAddress,
+  resendVerificationEmail,
+  verifyEmailWithOTP,
+  sendPhoneVerificationOTP,
+  verifyPhoneOTP,
+  resendPhoneVerificationOTP,
   selectUserProfile,
   selectIsProfileLoading,
   selectProfileError,
   selectProfileCompletion,
   selectUser
 } from '@/store/slices/authSlice';
+import EmailVerificationSection from '@/components/profile/EmailVerificationSection';
+import PhoneVerificationSection from '@/components/profile/PhoneVerificationSection';
 import {
   UserProfile,
   UpdateProfileData,
@@ -687,8 +694,42 @@ const ProfilePage: React.FC = () => {
     }
   }, [error]);
 
+  // Verification handlers
+  const handleSendEmailVerification = useCallback(async () => {
+    if (userProfile?.email) {
+      await dispatch(resendVerificationEmail(userProfile.email) as any).unwrap();
+    }
+  }, [dispatch, userProfile]);
+
+  const handleVerifyEmail = useCallback(async (otp: string) => {
+    await dispatch(verifyEmailWithOTP(otp) as any).unwrap();
+    // Refresh profile after verification
+    dispatch(getFullProfile() as any);
+  }, [dispatch]);
+
+  const handleResendEmailVerification = useCallback(async () => {
+    if (userProfile?.email) {
+      await dispatch(resendVerificationEmail(userProfile.email) as any).unwrap();
+    }
+  }, [dispatch, userProfile]);
+
+  const handleSendPhoneVerification = useCallback(async (phone: string) => {
+    await dispatch(sendPhoneVerificationOTP(phone) as any).unwrap();
+  }, [dispatch]);
+
+  const handleVerifyPhone = useCallback(async (otp: string) => {
+    await dispatch(verifyPhoneOTP(otp) as any).unwrap();
+    // Refresh profile after verification
+    dispatch(getFullProfile() as any);
+  }, [dispatch]);
+
+  const handleResendPhoneVerification = useCallback(async () => {
+    await dispatch(resendPhoneVerificationOTP() as any).unwrap();
+  }, [dispatch]);
+
   const tabs = [
     { id: 'personal', label: 'Personal Info', icon: <FaUser /> },
+    { id: 'verification', label: 'Verification', icon: <FaCheck /> },
     { id: 'addresses', label: 'Addresses', icon: <FaMapMarkerAlt /> },
     { id: 'security', label: 'Security', icon: <FaShieldAlt /> },
     { id: 'preferences', label: 'Preferences', icon: <FaCog /> },
@@ -743,6 +784,65 @@ const ProfilePage: React.FC = () => {
                         onUpdate={handleProfileUpdate}
                         isLoading={isLoading}
                       />
+                    </motion.div>
+                  )}
+
+                  {activeTab === 'verification' && (
+                    <motion.div
+                      key="verification"
+                      initial={{ opacity: 0, y: 20 }}
+                      animate={{ opacity: 1, y: 0 }}
+                      exit={{ opacity: 0, y: -20 }}
+                      transition={{ duration: 0.3 }}
+                    >
+                      <div className="space-y-6">
+                        <div className="bg-white rounded-2xl p-6 shadow-lg border border-gray-100">
+                          <h3 className="text-xl font-semibold text-gray-900 mb-2">Account Verification</h3>
+                          <p className="text-sm text-gray-600 mb-6">
+                            Verify your email and phone number to secure your account and enable all features
+                          </p>
+
+                          <div className="space-y-4">
+                            <EmailVerificationSection
+                              email={userProfile?.email || ''}
+                              isEmailVerified={userProfile?.isEmailVerified || false}
+                              onSendVerification={handleSendEmailVerification}
+                              onVerifyEmail={handleVerifyEmail}
+                              onResendVerification={handleResendEmailVerification}
+                            />
+
+                            <PhoneVerificationSection
+                              phone={userProfile?.phone}
+                              isPhoneVerified={userProfile?.isPhoneVerified || false}
+                              onSendVerification={handleSendPhoneVerification}
+                              onVerifyPhone={handleVerifyPhone}
+                              onResendVerification={handleResendPhoneVerification}
+                            />
+                          </div>
+                        </div>
+
+                        {(userProfile?.isEmailVerified && userProfile?.isPhoneVerified) && (
+                          <motion.div
+                            initial={{ opacity: 0, scale: 0.9 }}
+                            animate={{ opacity: 1, scale: 1 }}
+                            className="bg-gradient-to-r from-green-50 to-emerald-50 rounded-2xl p-6 border-2 border-green-200"
+                          >
+                            <div className="flex items-center gap-4">
+                              <div className="w-12 h-12 bg-green-500 rounded-full flex items-center justify-center">
+                                <FaCheck className="text-white text-xl" />
+                              </div>
+                              <div className="flex-1">
+                                <h4 className="font-semibold text-green-900 mb-1">
+                                  All Verified!
+                                </h4>
+                                <p className="text-sm text-green-700">
+                                  Your account is fully verified. You can now access all features and enjoy enhanced security.
+                                </p>
+                              </div>
+                            </div>
+                          </motion.div>
+                        )}
+                      </div>
                     </motion.div>
                   )}
 

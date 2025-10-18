@@ -43,6 +43,7 @@ export interface RegisterData {
   password: string;
   confirmPassword?: string;
   phone?: string;
+  role?: 'customer' | 'vendor' | 'employee';
   dateOfBirth?: string;
   gender?: 'male' | 'female' | 'other' | 'prefer_not_to_say';
   acceptTerms?: boolean;
@@ -56,6 +57,7 @@ export interface RegisterAPIData {
   email: string;
   password: string;
   phone?: string;
+  role?: 'customer' | 'vendor' | 'employee';
 }
 
 // Auth response from API
@@ -236,4 +238,163 @@ export interface DisableTwoFactorData {
 // Account deletion type
 export interface DeleteAccountData {
   password: string;
+}
+
+// Login Attempt Interface
+export interface LoginAttempt {
+  _id?: string;
+  timestamp: string;
+  ip: string;
+  userAgent: string;
+  success: boolean;
+}
+
+// Two-Factor Authentication Interface
+export interface TwoFactorAuth {
+  enabled: boolean;
+  backupCodes: string[];
+}
+
+// Email Verification Interface
+export interface EmailVerification {
+  otp?: string;
+  expiresAt?: string;
+}
+
+// Vendor Payment Settings Interface
+export interface VendorPaymentSettings {
+  hasCustomStripeAccount: boolean;
+  acceptsPlatformPayments: boolean;
+  commissionRate: number;
+  payoutSchedule: 'daily' | 'weekly' | 'monthly';
+  minimumPayout: number;
+  bankAccountDetails?: {
+    accountHolderName?: string;
+    bankName?: string;
+    accountNumber?: string;
+    routingNumber?: string;
+    iban?: string;
+    swiftCode?: string;
+  };
+}
+
+// Business Hours Interface
+export interface BusinessHours {
+  [key: string]: {
+    isOpen: boolean;
+    openTime?: string;
+    closeTime?: string;
+  };
+}
+
+// Social Media Interface
+export interface SocialMedia {
+  facebook?: string;
+  instagram?: string;
+  twitter?: string;
+  linkedin?: string;
+  youtube?: string;
+  website?: string;
+}
+
+// Employee Details Interface
+export interface EmployeeDetails {
+  employeeId: string;
+  vendorId: string;
+  employeeRole: 'manager' | 'scanner' | 'coordinator' | 'security';
+  permissions?: Array<{
+    action: string;
+    scope: 'all' | 'assigned';
+  }>;
+  assignedEvents?: string[];
+  assignedVenues?: string[];
+  emergencyContact?: {
+    name: string;
+    phone: string;
+    relationship?: string;
+  };
+  hiredAt?: string;
+}
+
+// Social Login Interface
+export interface SocialLogin {
+  _id?: string;
+  provider: 'google' | 'facebook' | 'apple' | 'github';
+  providerId: string;
+  email?: string;
+  connectedAt: string;
+}
+
+// Admin User Interface (Complete database schema)
+export interface AdminUser {
+  id: string;
+  _id?: string;
+  firstName: string;
+  lastName: string;
+  fullName?: string;
+  email: string;
+  passwordHash?: string;
+  phone?: string;
+  avatar?: string;
+  role: 'customer' | 'vendor' | 'employee' | 'admin';
+  status: 'active' | 'inactive' | 'pending' | 'suspended';
+  isEmailVerified: boolean;
+  isPhoneVerified: boolean;
+  gender?: 'male' | 'female' | 'other' | 'prefer_not_to_say';
+  dateOfBirth?: string;
+  twoFactorAuth?: TwoFactorAuth;
+  emailVerification?: EmailVerification;
+  vendorPaymentSettings?: VendorPaymentSettings;
+  businessHours?: BusinessHours;
+  socialMedia?: SocialMedia;
+  favoriteEvents?: string[];
+  addresses?: Address[];
+  socialLogins?: SocialLogin[];
+  loginAttempts?: LoginAttempt[];
+  employeeDetails?: EmployeeDetails;
+  lastLogin?: string;
+  createdAt: string;
+  updatedAt: string;
+  __v?: number;
+}
+
+// Create User Request Interface
+export interface CreateUserRequest {
+  // Basic Info
+  firstName: string;
+  lastName: string;
+  email: string;
+  phone?: string;
+  avatar?: string;
+  gender?: 'male' | 'female' | 'other' | 'prefer_not_to_say';
+  dateOfBirth?: string;
+
+  // Authentication
+  password?: string;
+  isEmailVerified?: boolean;
+  isPhoneVerified?: boolean;
+
+  // Role & Status
+  role: 'customer' | 'vendor' | 'employee' | 'admin';
+  status?: 'active' | 'inactive' | 'pending' | 'suspended';
+
+  // Employee-specific
+  employeeId?: string;
+  employeeRole?: 'manager' | 'scanner' | 'coordinator' | 'security';
+  vendorId?: string;
+  permissions?: Array<{ action: string; scope: 'all' | 'assigned' }>;
+  emergencyContact?: {
+    name: string;
+    phone: string;
+    relationship?: string;
+  };
+  hiredAt?: string;
+
+  // Vendor-specific
+  businessHours?: BusinessHours;
+  socialMedia?: SocialMedia;
+  vendorPaymentSettings?: VendorPaymentSettings;
+
+  // Address
+  addresses?: Address[];
 }

@@ -13,6 +13,7 @@ interface RegisterFormData {
   confirmPassword: string;
   countryCode: string;
   phoneNumber: string;
+  role: 'customer' | 'vendor';
   agreeToTerms: boolean;
 }
 
@@ -35,6 +36,7 @@ const RegisterPage: React.FC = () => {
     confirmPassword: '',
     countryCode: '+971', // Default to UAE
     phoneNumber: '',
+    role: 'customer', // Default to customer
     agreeToTerms: false
   });
   const [otpData, setOtpData] = useState<OTPFormData>({
@@ -190,6 +192,7 @@ const RegisterPage: React.FC = () => {
         password: formData.password,
         confirmPassword: formData.confirmPassword,
         phone: `${formData.countryCode}${formData.phoneNumber}`,
+        role: formData.role,
         acceptTerms: formData.agreeToTerms
       })).unwrap();
 
@@ -402,6 +405,49 @@ const RegisterPage: React.FC = () => {
                   <p className="form-error">{errors.lastName}</p>
                 )}
               </div>
+            </div>
+
+            <div className="form-group">
+              <label className="form-label">I am registering as</label>
+              <div className="grid grid-cols-2 gap-3">
+                <button
+                  type="button"
+                  onClick={() => setFormData(prev => ({ ...prev, role: 'customer' }))}
+                  className={`py-3 px-4 border-2 rounded-lg font-medium text-sm transition-all duration-200 ${
+                    formData.role === 'customer'
+                      ? 'border-primary-600 bg-primary-50 text-primary-700'
+                      : 'border-neutral-200 bg-white text-neutral-700 hover:border-neutral-300'
+                  }`}
+                >
+                  <div className="flex items-center justify-center space-x-2">
+                    <svg className="h-5 w-5" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor">
+                      <path d="M10 9a3 3 0 100-6 3 3 0 000 6zm-7 9a7 7 0 1114 0H3z" />
+                    </svg>
+                    <span>Customer</span>
+                  </div>
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setFormData(prev => ({ ...prev, role: 'vendor' }))}
+                  className={`py-3 px-4 border-2 rounded-lg font-medium text-sm transition-all duration-200 ${
+                    formData.role === 'vendor'
+                      ? 'border-primary-600 bg-primary-50 text-primary-700'
+                      : 'border-neutral-200 bg-white text-neutral-700 hover:border-neutral-300'
+                  }`}
+                >
+                  <div className="flex items-center justify-center space-x-2">
+                    <svg className="h-5 w-5" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor">
+                      <path fillRule="evenodd" d="M4 4a2 2 0 012-2h8a2 2 0 012 2v12a1 1 0 110 2h-3a1 1 0 01-1-1v-2a1 1 0 00-1-1H9a1 1 0 00-1 1v2a1 1 0 01-1 1H4a1 1 0 110-2V4zm3 1h2v2H7V5zm2 4H7v2h2V9zm2-4h2v2h-2V5zm2 4h-2v2h2V9z" clipRule="evenodd" />
+                    </svg>
+                    <span>Vendor</span>
+                  </div>
+                </button>
+              </div>
+              <p className="mt-1 text-xs text-neutral-500">
+                {formData.role === 'customer'
+                  ? 'Book events and manage your tickets'
+                  : 'List events, manage venues, and grow your business'}
+              </p>
             </div>
 
             <div className="form-group">

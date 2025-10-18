@@ -241,6 +241,26 @@ export const validate2FAVerification = [
 ];
 
 /**
+ * Phone verification send OTP validation
+ */
+export const validateSendPhoneOTP = [
+  validatePhone('phone', true),
+];
+
+/**
+ * Phone verification OTP validation
+ */
+export const validatePhoneOTP = [
+  body('otp')
+    .notEmpty()
+    .withMessage('Verification OTP is required')
+    .isLength({ min: 4, max: 4 })
+    .withMessage('OTP must be exactly 4 digits')
+    .isNumeric()
+    .withMessage('OTP must contain only numbers'),
+];
+
+/**
  * Export all auth validators
  */
 export default {
@@ -256,4 +276,6 @@ export default {
   validateFirebaseAuth,
   validate2FASetup,
   validate2FAVerification,
+  validateSendPhoneOTP,
+  validatePhoneOTP,
 };

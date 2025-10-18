@@ -14,6 +14,7 @@ import adminEventRoutes from './admin.event.routes';
 import adminVenueRoutes from './admin.venue.routes';
 import adminDashboardRoutes from './admin.dashboard.routes';
 import adminModerationRoutes from './admin.moderation.routes';
+import adminPayoutRoutes from './admin.payout.routes';
 import vendorRoutes from './vendor.routes';
 import blogRoutes from './blog.routes';
 import adminBlogRoutes from './admin.blog.routes';
@@ -21,7 +22,7 @@ import blogCommentsRoutes from './blog.comments.routes';
 // New routes
 import categoryRoutes from './category.routes';
 import couponRoutes from './coupon.routes';
-import notificationRoutes from './notification.routes';
+// import notificationRoutes from './notification.routes';
 import affiliateRoutes from './affiliate.routes';
 import bookingRoutes from './booking.routes';
 import newsletterRoutes from './newsletter.routes';
@@ -31,6 +32,7 @@ import favoritesRoutes from './favorites.routes';
 import adminRevenueRoutes from './admin.revenue.routes';
 import adminStatsRoutes from './admin.stats.routes';
 import seoRoutes from './seo.routes';
+import registrationRoutes from './registration.routes';
 import { Router } from 'express';
 
 const router = Router();
@@ -88,6 +90,9 @@ router.use('/admin/dashboard', adminDashboardRoutes);
 // Admin Moderation routes
 router.use('/admin/moderation', adminModerationRoutes);
 
+// Admin Payout routes
+router.use('/admin', adminPayoutRoutes);
+
 // Vendor routes
 router.use('/vendors', vendorRoutes);
 
@@ -101,7 +106,7 @@ router.use('/admin/blogs', adminBlogRoutes);
 // New feature routes
 router.use('/categories', categoryRoutes);
 router.use('/coupons', couponRoutes);
-router.use('/notifications', notificationRoutes);
+// router.use('/notifications', notificationRoutes); // Commented out - notification system disabled
 router.use('/affiliates', affiliateRoutes);
 router.use('/newsletter', newsletterRoutes);
 
@@ -122,6 +127,9 @@ router.use('/admin/revenue', adminRevenueRoutes);
 
 // Admin Statistics routes
 router.use('/admin', adminStatsRoutes);
+
+// Registration routes (event registration system)
+router.use('/registrations', registrationRoutes);
 
 // SEO routes (sitemap, robots.txt, etc.)
 router.use('/', seoRoutes);

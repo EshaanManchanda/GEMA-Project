@@ -21,7 +21,6 @@ const ReactQueryDevtools = lazy(() =>
   }))
 );
 import { HelmetProvider } from 'react-helmet-async';
-import { Toaster } from 'react-hot-toast';
 
 import { Provider } from 'react-redux';
 import { store, persistor } from './store';
@@ -67,21 +66,6 @@ const queryClient = new QueryClient({
   },
 });
 
-// Toast config
-const toastOptions = {
-  duration: 4000,
-  position: 'top-right' as const,
-  style: {
-    background: '#363636',
-    color: '#fff',
-    borderRadius: '8px',
-    fontSize: '14px',
-    maxWidth: '400px',
-  },
-  success: { iconTheme: { primary: '#22c55e', secondary: '#fff' } },
-  error: { iconTheme: { primary: '#ef4444', secondary: '#fff' } },
-};
-
 // Initialize PWA
 initializePWA().catch(console.error);
 
@@ -104,7 +88,6 @@ ReactDOM.createRoot(document.getElementById('root')!).render(
                       <AuthProvider>
                         <CartProvider>
                           <App />
-                          <Toaster toastOptions={toastOptions} />
                           {process.env.NODE_ENV === 'development' && (
                             <Suspense fallback={null}>
                               <ReactQueryDevtools initialIsOpen={false} />

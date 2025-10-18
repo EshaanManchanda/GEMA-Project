@@ -2,7 +2,6 @@ import React, { useState, useEffect } from 'react';
 import { useDispatch, useSelector } from 'react-redux';
 import { Link } from 'react-router-dom';
 import { toast } from 'react-hot-toast';
-import AdminNavigation from '../../components/admin/AdminNavigation';
 import {
   fetchCommissionConfigs,
   fetchCommissionTransactions,
@@ -268,22 +267,17 @@ const AdminCommissionsPage: React.FC = () => {
 
   if (isLoading && commissionConfigs.length === 0) {
     return (
-      <>
-        <AdminNavigation />
-        <div className="flex justify-center items-center h-screen">
-          <div className="text-center">
-            <div className="animate-spin rounded-full h-16 w-16 border-4 border-blue-200 border-t-blue-600 mx-auto"></div>
-            <p className="mt-4 text-xl font-semibold text-gray-700">Loading commissions...</p>
-          </div>
+      <div className="flex justify-center items-center h-screen">
+        <div className="text-center">
+          <div className="animate-spin rounded-full h-16 w-16 border-4 border-blue-200 border-t-blue-600 mx-auto"></div>
+          <p className="mt-4 text-xl font-semibold text-gray-700">Loading commissions...</p>
         </div>
-      </>
+      </div>
     );
   }
 
   return (
-    <>
-      <AdminNavigation />
-      <div className="container mx-auto px-4 py-8">
+    <div className="container mx-auto px-4 py-8">
         <div className="flex flex-col md:flex-row justify-between items-start md:items-center mb-8">
           <h1 className="text-3xl font-bold text-gray-900 mb-4 md:mb-0">Commission Management</h1>
           <div className="flex space-x-3">
@@ -1040,7 +1034,6 @@ const AdminCommissionsPage: React.FC = () => {
           </div>
         )}
       </div>
-    </>
   );
 };
 

@@ -168,6 +168,8 @@ const CategoryPage: React.FC = () => {
       try {
         setIsLoading(true);
 
+        console.log(`[CategoryPage] Fetching category: "${slug}"`);
+
         // Attempt to fetch real data from backend
         const [categoryData, eventsData] = await Promise.all([
           categoriesAPI.getCategoryById(slug),
@@ -178,12 +180,15 @@ const CategoryPage: React.FC = () => {
         const category = categoryData;
         const events = eventsData || [];
 
+        console.log(`[CategoryPage] Found category: "${category?.name}" (slug: "${category?.slug}")`);
+        console.log(`[CategoryPage] Found ${Array.isArray(events) ? events.length : 0} events`);
+
         setCategory(category);
         setEvents(Array.isArray(events) ? events : []);
         setUsingMockData(false);
-        
+
       } catch (err) {
-        console.error('Error fetching category data:', err);
+        console.error('[CategoryPage] Error fetching category data:', err);
         // Use mock data if backend is unavailable
         const mockCategory = mockCategories.find(c => c.slug === slug);
         const mockCategoryEvents = slug ? mockEvents[slug as keyof typeof mockEvents] || [] : [];
@@ -277,8 +282,13 @@ const CategoryPage: React.FC = () => {
         <p className="text-lg text-center max-w-3xl mx-auto">{category.description}</p>
       </div>
       
-      <h2 className="text-2xl font-bold mb-6">Events in {category.name}</h2>
-      
+      <div className="flex justify-between items-center mb-6">
+        <h2 className="text-2xl font-bold">Events in {category.name}</h2>
+        <span className="text-gray-600">
+          {events.length} {events.length === 1 ? 'event' : 'events'} found
+        </span>
+      </div>
+
       {events.length > 0 ? (
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
           {events.map((event: any) => (
@@ -308,9 +318,26 @@ const CategoryPage: React.FC = () => {
         </div>
       ) : (
         <div className="text-center py-12 bg-white rounded-lg shadow-md">
-          <h3 className="text-xl font-medium mb-2">No events found</h3>
-          <p className="text-gray-600 mb-6">There are currently no events in this category.</p>
-          <Link to="/events" className="text-primary hover:underline">Browse all events</Link>
+          <div className="text-6xl mb-4">📅</div>
+          <h3 className="text-xl font-medium mb-2">No events found in "{category.name}"</h3>
+          <p className="text-gray-600 mb-6">
+            There are currently no active events in this category.
+            {!usingMockData && ' Check back soon or explore other categories!'}
+          </p>
+          <div className="flex gap-4 justify-center">
+            <Link
+              to="/search"
+              className="px-6 py-2 bg-primary text-white rounded-md hover:bg-primary-dark transition-colors"
+            >
+              Browse All Events
+            </Link>
+            <Link
+              to="/categories"
+              className="px-6 py-2 border border-gray-300 text-gray-700 rounded-md hover:bg-gray-50 transition-colors"
+            >
+              View All Categories
+            </Link>
+          </div>
         </div>
       )}
     </div>

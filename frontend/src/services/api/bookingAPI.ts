@@ -6,6 +6,7 @@ export interface InitiateBookingData {
   dateScheduleId: string;
   seats: number;
   paymentMethod?: 'stripe' | 'paypal';
+  participants?: BookingParticipant[];
 }
 
 export interface ConfirmBookingData {
@@ -26,6 +27,13 @@ export interface BookingParticipant {
   };
   specialRequirements?: string;
   dietaryRestrictions?: string[];
+  // Dynamic registration form data
+  registrationData?: Array<{
+    fieldId: string;
+    fieldLabel: string;
+    fieldType: string;
+    value: any;
+  }>;
 }
 
 const bookingAPI = {

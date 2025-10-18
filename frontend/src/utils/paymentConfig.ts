@@ -67,15 +67,21 @@ export const getRegionalPaymentMethods = () => {
   const isIndiaCompliance = config.complianceMode === 'india' || config.complianceMode === 'live-india';
   const isUAECompliance = config.complianceMode === 'uae-standard';
 
+  // Production environment check
+  const isProduction = import.meta.env.VITE_PAYMENT_ENVIRONMENT === 'production' || envInfo.isProduction;
+
   // Detect potential Stripe account misconfigurations
   const hasRegionalMismatch = (isUAERegion || isUAECompliance) && isIndiaCompliance;
   const isDevelopmentEnvironment = envInfo.isDevelopment;
 
   return {
     test: {
-      enabled: config.testPaymentsEnabled,
+      // Test payment is disabled in production, even if VITE_ENABLE_TEST_PAYMENTS is true
+      enabled: config.testPaymentsEnabled && !isProduction,
       recommended: isIndiaCompliance || hasRegionalMismatch || isDevelopmentEnvironment,
-      warning: hasRegionalMismatch
+      warning: isProduction
+        ? 'Test payments are disabled in production'
+        : hasRegionalMismatch
         ? 'Recommended due to regional payment restrictions'
         : undefined,
     },

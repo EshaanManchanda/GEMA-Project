@@ -68,6 +68,15 @@ export interface IRevenueTransaction extends Document {
     addonType?: string;
     bulkDiscount?: number;
     notes?: string;
+    // Admin tracking fields
+    adminNotes?: string;
+    rejectionReason?: string;
+    rejectedBy?: mongoose.Types.ObjectId;
+    rejectedAt?: Date;
+    approvedBy?: mongoose.Types.ObjectId;
+    approvedAt?: Date;
+    processedBy?: mongoose.Types.ObjectId;
+    processedAt?: Date;
   };
 
   // Admin notes
@@ -192,7 +201,16 @@ const RevenueTransactionSchema = new Schema<IRevenueTransaction>(
       campaignName: String,
       addonType: String,
       bulkDiscount: Number,
-      notes: String
+      notes: String,
+      // Admin tracking fields
+      adminNotes: String,
+      rejectionReason: String,
+      rejectedBy: Schema.Types.ObjectId,
+      rejectedAt: Date,
+      approvedBy: Schema.Types.ObjectId,
+      approvedAt: Date,
+      processedBy: Schema.Types.ObjectId,
+      processedAt: Date
     },
     adminNotes: {
       type: String,

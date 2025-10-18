@@ -1,6 +1,7 @@
 import { stripe, convertToStripeAmount, convertFromStripeAmount, getStripeCurrency } from '../config/stripe';
 import { Order, User } from '../models';
 import Stripe from 'stripe';
+import logger from '../config/logger';
 
 export interface CreatePaymentIntentParams {
   amount: number;
@@ -31,8 +32,10 @@ export class PaymentService {
    */
   static async getPaymentRouting(vendorId: string, amount: number): Promise<PaymentRoutingInfo> {
     try {
-      // Fetch vendor with payment settings
-      const vendor = await User.findById(vendorId).select('+vendorPaymentSettings.stripeApiKey');
+      // Fetch vendor with payment settings (select secret keys explicitly)
+      const vendor = await User.findById(vendorId)
+        .select('+vendorPaymentSettings.stripeSecretKey')
+        .select('+vendorPaymentSettings.stripeApiKey');
 
       if (!vendor || vendor.role !== 'vendor') {
         throw new Error('Vendor not found');
@@ -41,9 +44,11 @@ export class PaymentService {
       const paymentSettings = vendor.vendorPaymentSettings;
 
       // Check if vendor has custom Stripe account
-      if (paymentSettings?.hasCustomStripeAccount && paymentSettings.stripeApiKey) {
+      // Prefer stripeSecretKey over legacy stripeApiKey
+      const vendorSecretKey = paymentSettings?.stripeSecretKey || paymentSettings?.stripeApiKey;
+      if (paymentSettings?.hasCustomStripeAccount && vendorSecretKey) {
         // Use vendor's Stripe account - no service fee
-        const vendorStripe = new Stripe(paymentSettings.stripeApiKey, {
+        const vendorStripe = new Stripe(vendorSecretKey, {
           apiVersion: '2025-07-30.basil',
         });
 
@@ -70,7 +75,7 @@ export class PaymentService {
         };
       }
     } catch (error) {
-      console.error('Error determining payment routing:', error);
+      logger.error('Error determining payment routing:', error);
       // Fallback to platform Stripe
       const serviceFee = Math.round((amount * 5) / 100 * 100) / 100; // 5% default
       return {
@@ -102,9 +107,20 @@ export class PaymentService {
       let routingInfo: PaymentRoutingInfo | null = null;
       if (vendorId) {
         routingInfo = await this.getPaymentRouting(vendorId, amount);
+        logger.info('Payment routing determined:', {
+          vendorId,
+          usesVendorStripe: routingInfo.usesVendorStripe,
+          hasVendorAccount: !!routingInfo.vendorStripeAccountId,
+          serviceFee: routingInfo.serviceFee
+        });
       }
 
       const stripeInstance = routingInfo?.stripeInstance || stripe;
+      logger.info('Creating PaymentIntent with:', {
+        usesVendorStripe: routingInfo?.usesVendorStripe || false,
+        amount: convertToStripeAmount(amount, currency),
+        currency: getStripeCurrency(currency)
+      });
 
       const paymentIntentParams: Stripe.PaymentIntentCreateParams = {
         amount: stripeAmount,
@@ -139,7 +155,7 @@ export class PaymentService {
         paymentIntentId: paymentIntent.id,
       };
     } catch (error) {
-      console.error('Error creating payment intent:', error);
+      logger.error('Error creating payment intent:', error);
       throw new Error('Failed to create payment intent');
     }
   }
@@ -151,7 +167,7 @@ export class PaymentService {
     try {
       return await stripe.paymentIntents.retrieve(paymentIntentId);
     } catch (error) {
-      console.error('Error retrieving payment intent:', error);
+      logger.error('Error retrieving payment intent:', error);
       throw new Error('Failed to retrieve payment intent');
     }
   }
@@ -172,7 +188,7 @@ export class PaymentService {
 
       return await stripe.paymentIntents.confirm(paymentIntentId, params);
     } catch (error) {
-      console.error('Error confirming payment intent:', error);
+      logger.error('Error confirming payment intent:', error);
       throw new Error('Failed to confirm payment intent');
     }
   }
@@ -184,7 +200,7 @@ export class PaymentService {
     try {
       return await stripe.paymentIntents.cancel(paymentIntentId);
     } catch (error) {
-      console.error('Error cancelling payment intent:', error);
+      logger.error('Error cancelling payment intent:', error);
       throw new Error('Failed to cancel payment intent');
     }
   }
@@ -212,7 +228,7 @@ export class PaymentService {
 
       return await stripe.refunds.create(refundParams);
     } catch (error) {
-      console.error('Error creating refund:', error);
+      logger.error('Error creating refund:', error);
       throw new Error('Failed to create refund');
     }
   }
@@ -251,7 +267,7 @@ export class PaymentService {
 
       return await stripe.customers.create(customerParams);
     } catch (error) {
-      console.error('Error creating/getting customer:', error);
+      logger.error('Error creating/getting customer:', error);
       throw new Error('Failed to create or retrieve customer');
     }
   }
@@ -270,7 +286,7 @@ export class PaymentService {
         process.env.STRIPE_WEBHOOK_SECRET!
       );
 
-      console.log(`Received Stripe webhook: ${event.type}`);
+      logger.info(`Received Stripe webhook: ${event.type}`);
 
       switch (event.type) {
         case 'payment_intent.succeeded':
@@ -288,12 +304,12 @@ export class PaymentService {
         case 'charge.dispute.created':
           await this.handleChargeDispute(event.data.object as Stripe.Dispute);
           break;
-        
+
         default:
-          console.log(`Unhandled webhook event type: ${event.type}`);
+          logger.info(`Unhandled webhook event type: ${event.type}`);
       }
     } catch (error) {
-      console.error('Error processing webhook:', error);
+      logger.error('Error processing webhook:', error);
       throw new Error('Failed to process webhook event');
     }
   }
@@ -305,13 +321,13 @@ export class PaymentService {
     try {
       const orderId = paymentIntent.metadata.orderId;
       if (!orderId) {
-        console.error('No orderId found in payment intent metadata');
+        logger.error('No orderId found in payment intent metadata');
         return;
       }
 
       const order = await Order.findById(orderId);
       if (!order) {
-        console.error(`Order not found: ${orderId}`);
+        logger.error(`Order not found: ${orderId}`);
         return;
       }
 
@@ -319,12 +335,12 @@ export class PaymentService {
       await order.markAsPaid(paymentIntent.id, 'stripe');
       await order.confirm(); // This will automatically generate tickets
 
-      console.log(`Order ${orderId} marked as paid, confirmed, and tickets generated`);
+      logger.info(`Order ${orderId} marked as paid, confirmed, and tickets generated`);
 
       // TODO: Send confirmation email
       // TODO: Send push notification
     } catch (error) {
-      console.error('Error handling payment succeeded:', error);
+      logger.error('Error handling payment succeeded:', error);
     }
   }
 
@@ -335,23 +351,23 @@ export class PaymentService {
     try {
       const orderId = paymentIntent.metadata.orderId;
       if (!orderId) {
-        console.error('No orderId found in payment intent metadata');
+        logger.error('No orderId found in payment intent metadata');
         return;
       }
 
       const order = await Order.findById(orderId);
       if (!order) {
-        console.error(`Order not found: ${orderId}`);
+        logger.error(`Order not found: ${orderId}`);
         return;
       }
 
       // Keep order as pending, but log the failure
-      console.log(`Payment failed for order ${orderId}`);
+      logger.info(`Payment failed for order ${orderId}`);
 
       // TODO: Send payment failure notification
       // TODO: Log payment attempt
     } catch (error) {
-      console.error('Error handling payment failed:', error);
+      logger.error('Error handling payment failed:', error);
     }
   }
 
@@ -362,13 +378,13 @@ export class PaymentService {
     try {
       const orderId = paymentIntent.metadata.orderId;
       if (!orderId) {
-        console.error('No orderId found in payment intent metadata');
+        logger.error('No orderId found in payment intent metadata');
         return;
       }
 
-      console.log(`Payment canceled for order ${orderId}`);
+      logger.info(`Payment canceled for order ${orderId}`);
     } catch (error) {
-      console.error('Error handling payment canceled:', error);
+      logger.error('Error handling payment canceled:', error);
     }
   }
 
@@ -377,12 +393,12 @@ export class PaymentService {
    */
   private static async handleChargeDispute(dispute: Stripe.Dispute): Promise<void> {
     try {
-      console.log(`Charge dispute created: ${dispute.id}`);
-      
+      logger.info(`Charge dispute created: ${dispute.id}`);
+
       // TODO: Send admin notification about dispute
       // TODO: Log dispute for manual review
     } catch (error) {
-      console.error('Error handling charge dispute:', error);
+      logger.error('Error handling charge dispute:', error);
     }
   }
 
@@ -398,7 +414,7 @@ export class PaymentService {
 
       return paymentMethods.data;
     } catch (error) {
-      console.error('Error getting customer payment methods:', error);
+      logger.error('Error getting customer payment methods:', error);
       throw new Error('Failed to retrieve payment methods');
     }
   }
@@ -410,7 +426,7 @@ export class PaymentService {
     try {
       return await stripe.paymentMethods.detach(paymentMethodId);
     } catch (error) {
-      console.error('Error detaching payment method:', error);
+      logger.error('Error detaching payment method:', error);
       throw new Error('Failed to detach payment method');
     }
   }
@@ -433,7 +449,7 @@ export class PaymentService {
         stripeAccount: accountId,
       });
     } catch (error) {
-      console.error('Error getting connected account balance:', error);
+      logger.error('Error getting connected account balance:', error);
       throw new Error('Failed to retrieve account balance');
     }
   }

@@ -16,7 +16,7 @@ if (!fs.existsSync(uploadDir)) {
 
 // Create subdirectories for different file types
 const createSubDirectories = () => {
-  const subDirs = ['events', 'venues', 'users', 'tickets', 'documents'];
+  const subDirs = ['events', 'venues', 'users', 'tickets', 'documents', 'registrations'];
   subDirs.forEach(dir => {
     const subDirPath = path.join(uploadDir, dir);
     if (!fs.existsSync(subDirPath)) {
@@ -34,6 +34,7 @@ const getCategoryFromRequest = (req: Request): string => {
   if (req.path.includes('/users') || req.path.includes('/avatar')) return 'users';
   if (req.path.includes('/tickets')) return 'tickets';
   if (req.path.includes('/document')) return 'documents';
+  if (req.path.includes('/registration')) return 'registrations';
   if (req.body.category) return req.body.category;
   return 'misc';
 };
@@ -131,6 +132,9 @@ export const uploadDocument = upload.single('document');
 
 // QR code upload middleware
 export const uploadQRCode = upload.single('qrCode');
+
+// Registration files upload middleware (supports multiple dynamic fields)
+export const uploadRegistrationFiles = upload.any();
 
 // Error handling middleware for multer errors
 export const handleUploadError = (error: any, req: Request, res: any, next: any) => {

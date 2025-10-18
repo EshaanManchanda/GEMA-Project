@@ -4,16 +4,17 @@ import { useSelector, useDispatch } from 'react-redux';
 import { useCart } from '@/contexts/CartContext';
 import { RootState, AppDispatch } from '@/store';
 import { logoutUser } from '@/store/slices/authSlice';
-import { 
-  fetchFeaturedCategories, 
+import {
+  fetchFeaturedCategories,
   selectFeaturedCategories,
-  selectCategoriesLoading 
+  selectCategoriesLoading
 } from '@/store/slices/categoriesSlice';
-import { 
-  fetchNotifications, 
-  selectUnreadCount 
-} from '@/store/slices/notificationsSlice';
-import NotificationDropdown from './NotificationDropdown';
+// Commented out - notification system disabled
+// import {
+//   fetchNotifications,
+//   selectUnreadCount
+// } from '@/store/slices/notificationsSlice';
+// import NotificationDropdown from './NotificationDropdown';
 import NewsletterSubscription from './NewsletterSubscription';
 import ConnectionStatus from './ConnectionStatus';
 import { useRealTimeData } from '@/hooks/useRealTimeData';
@@ -60,7 +61,7 @@ const Layout: React.FC<{ children?: React.ReactNode }> = ({ children }) => {
   const { isAuthenticated, user } = useSelector((state: RootState) => state.auth);
   const featuredCategories = useSelector(selectFeaturedCategories);
   const categoriesLoading = useSelector(selectCategoriesLoading);
-  const unreadNotificationsCount = useSelector(selectUnreadCount);
+  // const unreadNotificationsCount = useSelector(selectUnreadCount); // Commented out - notification system disabled
   
   const dispatch = useDispatch<AppDispatch>();
   const navigate = useNavigate();
@@ -68,7 +69,7 @@ const Layout: React.FC<{ children?: React.ReactNode }> = ({ children }) => {
 
   // Real-time data updates
   useRealTimeData({
-    enableNotifications: true,
+    enableNotifications: false, // Disabled - notification system disabled
     enableCategories: true,
     notificationInterval: 30000, // 30 seconds
     categoryInterval: 300000, // 5 minutes
@@ -310,11 +311,11 @@ const Layout: React.FC<{ children?: React.ReactNode }> = ({ children }) => {
                   </span>
                 )}
               </Link>
-              
-              {/* Notifications - Only show for authenticated users */}
-              {isAuthenticated && (
+
+              {/* Notifications - Commented out - notification system disabled */}
+              {/* {isAuthenticated && (
                 <NotificationDropdown className="relative" />
-              )}
+              )} */}
               {isAuthenticated && user ? (
                 <div className="relative" ref={dropdownRef}>
                   <button 
@@ -335,11 +336,12 @@ const Layout: React.FC<{ children?: React.ReactNode }> = ({ children }) => {
                       <FaUserCircle size={16} />
                     )}
                     <span className="hidden md:inline">{getUserDisplayName()}</span>
-                    {unreadNotificationsCount > 0 && (
+                    {/* Commented out - notification system disabled */}
+                    {/* {unreadNotificationsCount > 0 && (
                       <span className="bg-red-500 text-white text-xs rounded-full w-4 h-4 flex items-center justify-center ml-1">
                         {unreadNotificationsCount > 9 ? '9+' : unreadNotificationsCount}
                       </span>
-                    )}
+                    )} */}
                     <FaChevronDown size={12} className={`transition-transform duration-200 ${profileDropdownOpen ? 'rotate-180' : ''}`} />
                   </button>
 

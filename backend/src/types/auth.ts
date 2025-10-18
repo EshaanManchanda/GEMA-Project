@@ -28,6 +28,7 @@ export interface RegisterRequest {
   email: string;
   password: string;
   phone?: string;
+  role?: 'customer' | 'vendor' | 'employee';
 }
 
 // Auth response type

@@ -32,6 +32,7 @@ export interface IEvent extends Document {
     soldSeats?: number;
     reservedSeats?: number;
     price: number;
+    unlimitedSeats?: boolean; // For online events with no capacity limit
     _id?: mongoose.Types.ObjectId;
   }>;
   seoMeta: {
@@ -56,6 +57,38 @@ export interface IEvent extends Document {
     3: number;
     4: number;
     5: number;
+  };
+  registrationConfig?: {
+    enabled: boolean;
+    fields: Array<{
+      id: string;
+      label: string;
+      type: 'text' | 'email' | 'number' | 'tel' | 'textarea' | 'dropdown' | 'checkbox' | 'radio' | 'file' | 'date';
+      placeholder?: string;
+      required: boolean;
+      validation?: {
+        pattern?: string;
+        minLength?: number;
+        maxLength?: number;
+        min?: number;
+        max?: number;
+      };
+      options?: string[]; // For dropdown/radio
+      accept?: string[]; // For file uploads: ['image/*', 'application/pdf', '.zip']
+      maxFileSize?: number; // In bytes
+      section?: string; // Group fields: "Personal Info", "Payment Details", etc.
+      order: number;
+      helpText?: string;
+      _id?: mongoose.Types.ObjectId;
+    }>;
+    maxRegistrations?: number;
+    registrationDeadline?: Date;
+    requiresApproval: boolean;
+    emailNotifications: {
+      toVendor: boolean;
+      toParticipant: boolean;
+      customMessage?: string;
+    };
   };
   createdAt: Date;
   updatedAt: Date;
@@ -217,6 +250,11 @@ const eventSchema = new Schema<IEvent>(
           required: [true, 'Schedule price is required'],
           min: [0, 'Price cannot be negative'],
         },
+        // Unlimited capacity flag (for online events)
+        unlimitedSeats: {
+          type: Boolean,
+          default: false,
+        },
       },
     ],
     seoMeta: {
@@ -290,6 +328,100 @@ const eventSchema = new Schema<IEvent>(
         5: { type: Number, default: 0, min: 0 },
       },
       default: { 1: 0, 2: 0, 3: 0, 4: 0, 5: 0 },
+    },
+    registrationConfig: {
+      type: {
+        enabled: {
+          type: Boolean,
+          default: false,
+        },
+        fields: [
+          {
+            id: {
+              type: String,
+              required: true,
+            },
+            label: {
+              type: String,
+              required: true,
+              trim: true,
+              maxlength: [200, 'Field label cannot exceed 200 characters'],
+            },
+            type: {
+              type: String,
+              enum: ['text', 'email', 'number', 'tel', 'textarea', 'dropdown', 'checkbox', 'radio', 'file', 'date', 
+                    'address', 'website', 'datetime', 'time', 'country', 'city', 'html', 'pagebreak'],
+              required: true,
+            },
+            placeholder: {
+              type: String,
+              trim: true,
+            },
+            required: {
+              type: Boolean,
+              default: false,
+            },
+            validation: {
+              pattern: String,
+              minLength: Number,
+              maxLength: Number,
+              min: Number,
+              max: Number,
+            },
+            options: {
+              type: [String],
+              default: [],
+            },
+            accept: {
+              type: [String],
+              default: [],
+            },
+            maxFileSize: {
+              type: Number,
+              default: 5242880, // 5MB default
+            },
+            section: {
+              type: String,
+              trim: true,
+            },
+            order: {
+              type: Number,
+              required: true,
+            },
+            helpText: {
+              type: String,
+              trim: true,
+            },
+          },
+        ],
+        maxRegistrations: {
+          type: Number,
+          min: [0, 'Max registrations cannot be negative'],
+        },
+        registrationDeadline: {
+          type: Date,
+        },
+        requiresApproval: {
+          type: Boolean,
+          default: false,
+        },
+        emailNotifications: {
+          toVendor: {
+            type: Boolean,
+            default: true,
+          },
+          toParticipant: {
+            type: Boolean,
+            default: true,
+          },
+          customMessage: {
+            type: String,
+            trim: true,
+          },
+        },
+      },
+      required: false,
+      default: undefined,
     },
   },
   {
@@ -387,6 +519,16 @@ eventSchema.methods.hasAvailableSeats = function (date: Date, quantity: number =
     return false;
   });
 
+  // Unlimited seats always have availability
+  if (schedule && schedule.unlimitedSeats) {
+    console.log('✓ Unlimited seats - no capacity check needed', {
+      eventId: this._id,
+      eventTitle: this.title,
+      targetDate: targetDate.toISOString()
+    });
+    return true;
+  }
+
   return schedule ? schedule.availableSeats >= quantity : false;
 };
 
@@ -442,6 +584,22 @@ eventSchema.methods.reduceSeats = function (date: Date, quantity: number): boole
 
     return false;
   });
+
+  // Unlimited seats - no need to reduce availability, just track sold count
+  if (schedule && schedule.unlimitedSeats) {
+    // Still track soldSeats for analytics
+    if (typeof schedule.soldSeats === 'number') {
+      schedule.soldSeats += quantity;
+    }
+    console.log('✓ Unlimited seats - seat reduction skipped, sold count updated', {
+      eventId: this._id,
+      eventTitle: this.title,
+      targetDate: targetDate.toISOString(),
+      quantity,
+      newSoldSeats: schedule.soldSeats
+    });
+    return true;
+  }
 
   if (schedule && schedule.availableSeats >= quantity) {
     schedule.availableSeats -= quantity;

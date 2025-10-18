@@ -1,7 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import adminAPI from '../../services/api/adminAPI';
-import AdminNavigation from '../../components/admin/AdminNavigation';
 import PayoutSummaryCard from '../../components/admin/PayoutSummaryCard';
 import CommissionOverview from '../../components/admin/CommissionOverview';
 
@@ -249,32 +248,27 @@ const AdminDashboardPage: React.FC = () => {
 
   if (isLoading) {
     return (
-      <>
-        <AdminNavigation />
-        <div className="container mx-auto px-4 py-8">
-          <div className="flex justify-center items-center h-[50vh]">
-            <div className="text-center">
-              <div className="relative inline-block">
-                <div className="animate-spin rounded-full h-16 w-16 border-4 border-blue-200"></div>
-                <div className="animate-spin rounded-full h-16 w-16 border-t-4 border-blue-600 absolute top-0 left-0"></div>
-              </div>
-              <p className="mt-4 text-xl font-semibold text-gray-700 animate-pulse">Loading Dashboard...</p>
-              <div className="mt-6 space-y-3">
-                <div className="h-4 bg-gradient-to-r from-blue-200 to-transparent rounded w-64 mx-auto animate-pulse"></div>
-                <div className="h-4 bg-gradient-to-r from-indigo-200 to-transparent rounded w-48 mx-auto animate-pulse"></div>
-                <div className="h-4 bg-gradient-to-r from-blue-200 to-transparent rounded w-56 mx-auto animate-pulse"></div>
-              </div>
+      <div className="container mx-auto px-4 py-8">
+        <div className="flex justify-center items-center h-[50vh]">
+          <div className="text-center">
+            <div className="relative inline-block">
+              <div className="animate-spin rounded-full h-16 w-16 border-4 border-blue-200"></div>
+              <div className="animate-spin rounded-full h-16 w-16 border-t-4 border-blue-600 absolute top-0 left-0"></div>
+            </div>
+            <p className="mt-4 text-xl font-semibold text-gray-700 animate-pulse">Loading Dashboard...</p>
+            <div className="mt-6 space-y-3">
+              <div className="h-4 bg-gradient-to-r from-blue-200 to-transparent rounded w-64 mx-auto animate-pulse"></div>
+              <div className="h-4 bg-gradient-to-r from-indigo-200 to-transparent rounded w-48 mx-auto animate-pulse"></div>
+              <div className="h-4 bg-gradient-to-r from-blue-200 to-transparent rounded w-56 mx-auto animate-pulse"></div>
             </div>
           </div>
         </div>
-      </>
+      </div>
     );
   }
 
   return (
-    <>
-      <AdminNavigation />
-      <div className="container mx-auto px-4 py-8">
+    <div className="container mx-auto px-4 py-8">
       <div className="flex flex-col md:flex-row justify-between items-start md:items-center mb-8">
         <h1 className="text-3xl font-bold text-gray-900 mb-4 md:mb-0">Admin Dashboard</h1>
         <div className="flex space-x-4">
@@ -476,7 +470,6 @@ const AdminDashboardPage: React.FC = () => {
         </div>
       </div>
     </div>
-    </>
   );
 };
 

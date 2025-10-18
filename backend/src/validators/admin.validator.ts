@@ -19,6 +19,9 @@ import {
 const USER_ROLES = ['admin', 'customer', 'vendor', 'employee'];
 const USER_STATUSES = ['active', 'inactive', 'suspended', 'pending'];
 const EVENT_STATUSES = ['draft', 'published', 'archived', 'pending', 'rejected'];
+const GENDERS = ['male', 'female', 'other', 'prefer_not_to_say'];
+const EMPLOYEE_ROLES = ['manager', 'scanner', 'coordinator', 'security'];
+const PAYOUT_SCHEDULES = ['daily', 'weekly', 'monthly'];
 
 /**
  * User management validations
@@ -55,11 +58,39 @@ export const validateGetAllUsers = [
 
 // Create user (admin)
 export const validateCreateUser = [
+  // Basic Information
   validateStringLength('firstName', 1, 50, true),
   validateStringLength('lastName', 1, 50, true),
   validateEmail('email', true),
   validatePhone('phone', false),
 
+  body('gender')
+    .optional()
+    .isIn(GENDERS)
+    .withMessage(`Gender must be one of: ${GENDERS.join(', ')}`),
+
+  body('dateOfBirth')
+    .optional()
+    .isISO8601()
+    .withMessage('Date of birth must be a valid date (YYYY-MM-DD)')
+    .toDate()
+    .custom((value) => {
+      const age = Math.floor((new Date().getTime() - new Date(value).getTime()) / (1000 * 60 * 60 * 24 * 365.25));
+      if (age < 13) {
+        throw new Error('User must be at least 13 years old');
+      }
+      return true;
+    }),
+
+  body('avatar')
+    .optional()
+    .trim()
+    .isURL()
+    .withMessage('Avatar must be a valid URL')
+    .isLength({ max: 500 })
+    .withMessage('Avatar URL cannot exceed 500 characters'),
+
+  // Authentication
   body('password')
     .optional()
     .isLength({ min: 8 })
@@ -67,17 +98,6 @@ export const validateCreateUser = [
     .matches(/^(?=.*\d)(?=.*[a-z])(?=.*[A-Z])(?=.*[!@#$%^&*])/)
     .withMessage('Password must contain at least one uppercase letter, one lowercase letter, one number, and one special character'),
 
-  validateEnum('role', USER_ROLES, true),
-  validateEnum('status', USER_STATUSES, false),
-
-  body('avatar')
-    .optional()
-    .trim()
-    .isURL()
-    .withMessage('Avatar must be a valid URL')
-    .isLength({ max: 500 })
-    .withMessage('Avatar URL cannot exceed 500 characters'),
-
   body('isEmailVerified')
     .optional()
     .isBoolean()
@@ -89,17 +109,174 @@ export const validateCreateUser = [
     .isBoolean()
     .withMessage('isPhoneVerified must be a boolean')
     .toBoolean(),
+
+  // Role & Status
+  validateEnum('role', USER_ROLES, true),
+  validateEnum('status', USER_STATUSES, false),
+
+  // Employee-specific fields
+  body('employeeId')
+    .optional()
+    .trim()
+    .isLength({ min: 3, max: 50 })
+    .withMessage('Employee ID must be between 3 and 50 characters'),
+
+  body('employeeRole')
+    .optional()
+    .isIn(EMPLOYEE_ROLES)
+    .withMessage(`Employee role must be one of: ${EMPLOYEE_ROLES.join(', ')}`),
+
+  body('vendorId')
+    .optional()
+    .custom((value) => {
+      const mongoose = require('mongoose');
+      if (!mongoose.Types.ObjectId.isValid(value)) {
+        throw new Error('Vendor ID must be a valid MongoDB ObjectId');
+      }
+      return true;
+    }),
+
+  body('permissions')
+    .optional()
+    .isArray()
+    .withMessage('Permissions must be an array'),
+
+  body('permissions.*.action')
+    .optional()
+    .trim()
+    .notEmpty()
+    .withMessage('Permission action is required'),
+
+  body('permissions.*.scope')
+    .optional()
+    .isIn(['all', 'assigned'])
+    .withMessage('Permission scope must be either "all" or "assigned"'),
+
+  body('emergencyContact.name')
+    .optional()
+    .trim()
+    .isLength({ min: 2, max: 100 })
+    .withMessage('Emergency contact name must be between 2 and 100 characters'),
+
+  body('emergencyContact.phone')
+    .optional()
+    .trim()
+    .matches(/^\+[1-9]\d{7,14}$/)
+    .withMessage('Emergency contact phone must be a valid international phone number (e.g., +1234567890)'),
+
+  body('emergencyContact.relationship')
+    .optional()
+    .trim()
+    .isLength({ max: 50 })
+    .withMessage('Emergency contact relationship cannot exceed 50 characters'),
+
+  body('hiredAt')
+    .optional()
+    .isISO8601()
+    .withMessage('Hired date must be a valid date (YYYY-MM-DD)')
+    .toDate(),
+
+  // Vendor-specific fields
+  body('vendorPaymentSettings.hasCustomStripeAccount')
+    .optional()
+    .isBoolean()
+    .withMessage('hasCustomStripeAccount must be a boolean')
+    .toBoolean(),
+
+  body('vendorPaymentSettings.acceptsPlatformPayments')
+    .optional()
+    .isBoolean()
+    .withMessage('acceptsPlatformPayments must be a boolean')
+    .toBoolean(),
+
+  body('vendorPaymentSettings.commissionRate')
+    .optional()
+    .isFloat({ min: 0, max: 100 })
+    .withMessage('Commission rate must be between 0 and 100')
+    .toFloat(),
+
+  body('vendorPaymentSettings.payoutSchedule')
+    .optional()
+    .isIn(PAYOUT_SCHEDULES)
+    .withMessage(`Payout schedule must be one of: ${PAYOUT_SCHEDULES.join(', ')}`),
+
+  body('vendorPaymentSettings.minimumPayout')
+    .optional()
+    .isFloat({ min: 0 })
+    .withMessage('Minimum payout must be a positive number')
+    .toFloat(),
+
+  // Social Media fields
+  body('socialMedia.facebook')
+    .optional()
+    .trim()
+    .isURL()
+    .withMessage('Facebook URL must be a valid URL'),
+
+  body('socialMedia.instagram')
+    .optional()
+    .trim()
+    .isURL()
+    .withMessage('Instagram URL must be a valid URL'),
+
+  body('socialMedia.twitter')
+    .optional()
+    .trim()
+    .isURL()
+    .withMessage('Twitter URL must be a valid URL'),
+
+  body('socialMedia.linkedin')
+    .optional()
+    .trim()
+    .isURL()
+    .withMessage('LinkedIn URL must be a valid URL'),
+
+  body('socialMedia.youtube')
+    .optional()
+    .trim()
+    .isURL()
+    .withMessage('YouTube URL must be a valid URL'),
+
+  body('socialMedia.website')
+    .optional()
+    .trim()
+    .isURL()
+    .withMessage('Website URL must be a valid URL'),
+
+  // Business Hours (validated as object)
+  body('businessHours')
+    .optional()
+    .isObject()
+    .withMessage('Business hours must be an object'),
 ];
 
 // Update user (admin)
 export const validateUpdateUser = [
   validateMongoId('id', 'param'),
+
+  // Basic Information
   validateStringLength('firstName', 1, 50, false),
   validateStringLength('lastName', 1, 50, false),
   validateEmail('email', false),
   validatePhone('phone', false),
-  validateEnum('role', USER_ROLES, false),
-  validateEnum('status', USER_STATUSES, false),
+
+  body('gender')
+    .optional()
+    .isIn(GENDERS)
+    .withMessage(`Gender must be one of: ${GENDERS.join(', ')}`),
+
+  body('dateOfBirth')
+    .optional()
+    .isISO8601()
+    .withMessage('Date of birth must be a valid date (YYYY-MM-DD)')
+    .toDate()
+    .custom((value) => {
+      const age = Math.floor((new Date().getTime() - new Date(value).getTime()) / (1000 * 60 * 60 * 24 * 365.25));
+      if (age < 13) {
+        throw new Error('User must be at least 13 years old');
+      }
+      return true;
+    }),
 
   body('avatar')
     .optional()
@@ -109,6 +286,11 @@ export const validateUpdateUser = [
     .isLength({ max: 500 })
     .withMessage('Avatar URL cannot exceed 500 characters'),
 
+  // Role & Status
+  validateEnum('role', USER_ROLES, false),
+  validateEnum('status', USER_STATUSES, false),
+
+  // Verification
   body('isEmailVerified')
     .optional()
     .isBoolean()
@@ -120,6 +302,130 @@ export const validateUpdateUser = [
     .isBoolean()
     .withMessage('isPhoneVerified must be a boolean')
     .toBoolean(),
+
+  // Employee-specific fields
+  body('employeeId')
+    .optional()
+    .trim()
+    .isLength({ min: 3, max: 50 })
+    .withMessage('Employee ID must be between 3 and 50 characters'),
+
+  body('employeeRole')
+    .optional()
+    .isIn(EMPLOYEE_ROLES)
+    .withMessage(`Employee role must be one of: ${EMPLOYEE_ROLES.join(', ')}`),
+
+  body('vendorId')
+    .optional()
+    .custom((value) => {
+      const mongoose = require('mongoose');
+      if (!mongoose.Types.ObjectId.isValid(value)) {
+        throw new Error('Vendor ID must be a valid MongoDB ObjectId');
+      }
+      return true;
+    }),
+
+  body('permissions')
+    .optional()
+    .isArray()
+    .withMessage('Permissions must be an array'),
+
+  body('emergencyContact.name')
+    .optional()
+    .trim()
+    .isLength({ min: 2, max: 100 })
+    .withMessage('Emergency contact name must be between 2 and 100 characters'),
+
+  body('emergencyContact.phone')
+    .optional()
+    .trim()
+    .matches(/^\+[1-9]\d{7,14}$/)
+    .withMessage('Emergency contact phone must be a valid international phone number (e.g., +1234567890)'),
+
+  body('emergencyContact.relationship')
+    .optional()
+    .trim()
+    .isLength({ max: 50 })
+    .withMessage('Emergency contact relationship cannot exceed 50 characters'),
+
+  body('hiredAt')
+    .optional()
+    .isISO8601()
+    .withMessage('Hired date must be a valid date (YYYY-MM-DD)')
+    .toDate(),
+
+  // Vendor-specific fields
+  body('vendorPaymentSettings.hasCustomStripeAccount')
+    .optional()
+    .isBoolean()
+    .withMessage('hasCustomStripeAccount must be a boolean')
+    .toBoolean(),
+
+  body('vendorPaymentSettings.acceptsPlatformPayments')
+    .optional()
+    .isBoolean()
+    .withMessage('acceptsPlatformPayments must be a boolean')
+    .toBoolean(),
+
+  body('vendorPaymentSettings.commissionRate')
+    .optional()
+    .isFloat({ min: 0, max: 100 })
+    .withMessage('Commission rate must be between 0 and 100')
+    .toFloat(),
+
+  body('vendorPaymentSettings.payoutSchedule')
+    .optional()
+    .isIn(PAYOUT_SCHEDULES)
+    .withMessage(`Payout schedule must be one of: ${PAYOUT_SCHEDULES.join(', ')}`),
+
+  body('vendorPaymentSettings.minimumPayout')
+    .optional()
+    .isFloat({ min: 0 })
+    .withMessage('Minimum payout must be a positive number')
+    .toFloat(),
+
+  // Social Media fields
+  body('socialMedia.facebook')
+    .optional()
+    .trim()
+    .isURL()
+    .withMessage('Facebook URL must be a valid URL'),
+
+  body('socialMedia.instagram')
+    .optional()
+    .trim()
+    .isURL()
+    .withMessage('Instagram URL must be a valid URL'),
+
+  body('socialMedia.twitter')
+    .optional()
+    .trim()
+    .isURL()
+    .withMessage('Twitter URL must be a valid URL'),
+
+  body('socialMedia.linkedin')
+    .optional()
+    .trim()
+    .isURL()
+    .withMessage('LinkedIn URL must be a valid URL'),
+
+  body('socialMedia.youtube')
+    .optional()
+    .trim()
+    .isURL()
+    .withMessage('YouTube URL must be a valid URL'),
+
+  body('socialMedia.website')
+    .optional()
+    .trim()
+    .isURL()
+    .withMessage('Website URL must be a valid URL'),
+
+  // Business Hours
+  body('businessHours')
+    .optional()
+    .isObject()
+    .withMessage('Business hours must be an object'),
 ];
 
 // Update user status

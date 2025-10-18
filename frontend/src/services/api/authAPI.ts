@@ -32,7 +32,8 @@ export const authAPI = {
         lastName: userData.lastName,
         email: userData.email,
         password: userData.password,
-        phone: userData.phone
+        phone: userData.phone,
+        role: userData.role
       };
       const response = await ApiService.post('/auth/register', apiData);
       return response.data;
@@ -315,6 +316,34 @@ export const authAPI = {
   sendVerificationEmail: async (email: string) => {
     try {
       const response = await ApiService.post('/auth/resend-verification-email', { email });
+      return response.data;
+    } catch (error) {
+      throw error;
+    }
+  },
+
+  // Phone Verification APIs
+  sendPhoneVerificationOTP: async (phone: string) => {
+    try {
+      const response = await ApiService.post('/auth/send-phone-verification', { phone });
+      return response.data;
+    } catch (error) {
+      throw error;
+    }
+  },
+
+  verifyPhoneOTP: async (otp: string) => {
+    try {
+      const response = await ApiService.post('/auth/verify-phone', { otp });
+      return response.data;
+    } catch (error) {
+      throw error;
+    }
+  },
+
+  resendPhoneVerificationOTP: async () => {
+    try {
+      const response = await ApiService.post('/auth/resend-phone-verification');
       return response.data;
     } catch (error) {
       throw error;

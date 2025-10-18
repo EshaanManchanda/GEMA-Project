@@ -13,6 +13,13 @@ export interface IParticipant {
     phone: string;
   };
   specialRequirements?: string;
+  // Dynamic registration form data (from form builder)
+  registrationData?: Array<{
+    fieldId: string;
+    fieldLabel: string;
+    fieldType: string;
+    value: any;
+  }>;
 }
 
 export interface IOrderItem {
@@ -207,6 +214,25 @@ const orderItemSchema = new Schema<IOrderItem>({
       },
     },
     specialRequirements: String,
+    // Dynamic registration form data (from form builder)
+    registrationData: [{
+      fieldId: {
+        type: String,
+        required: true,
+      },
+      fieldLabel: {
+        type: String,
+        required: true,
+      },
+      fieldType: {
+        type: String,
+        required: true,
+      },
+      value: {
+        type: Schema.Types.Mixed,
+        required: true,
+      },
+    }],
   }],
 });
 

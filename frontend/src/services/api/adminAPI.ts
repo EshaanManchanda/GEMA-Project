@@ -23,7 +23,7 @@ const adminAPI = {
   getAllUsers: async (params?: any) => {
     try {
       const response = await ApiService.get('/admin/users', { params });
-      return response.data;
+      return response;
     } catch (error) {
       throw error;
     }
@@ -32,7 +32,7 @@ const adminAPI = {
   getUserById: async (id: string) => {
     try {
       const response = await ApiService.get(`/admin/users/${id}`);
-      return response.data;
+      return response;
     } catch (error) {
       throw error;
     }
@@ -41,7 +41,7 @@ const adminAPI = {
   createUser: async (userData: any) => {
     try {
       const response = await ApiService.post('/admin/users', userData);
-      return response.data;
+      return response;
     } catch (error) {
       throw error;
     }
@@ -50,7 +50,7 @@ const adminAPI = {
   updateUser: async (id: string, userData: any) => {
     try {
       const response = await ApiService.put(`/admin/users/${id}`, userData);
-      return response.data;
+      return response;
     } catch (error) {
       throw error;
     }
@@ -59,7 +59,7 @@ const adminAPI = {
   deleteUser: async (id: string) => {
     try {
       const response = await ApiService.delete(`/admin/users/${id}`);
-      return response.data;
+      return response;
     } catch (error) {
       throw error;
     }
@@ -68,7 +68,7 @@ const adminAPI = {
   updateUserStatus: async (id: string, status: string) => {
     try {
       const response = await ApiService.patch(`/admin/users/${id}/status`, { status });
-      return response.data;
+      return response;
     } catch (error) {
       throw error;
     }
@@ -77,7 +77,7 @@ const adminAPI = {
   updateUserRole: async (id: string, role: string) => {
     try {
       const response = await ApiService.patch(`/admin/users/${id}/role`, { role });
-      return response.data;
+      return response;
     } catch (error) {
       throw error;
     }
@@ -86,7 +86,7 @@ const adminAPI = {
   bulkUpdateUsers: async (userIds: string[], updateData: any) => {
     try {
       const response = await ApiService.patch('/admin/users/bulk', { userIds, updateData });
-      return response.data;
+      return response;
     } catch (error) {
       throw error;
     }
@@ -95,7 +95,7 @@ const adminAPI = {
   getUserStats: async () => {
     try {
       const response = await ApiService.get('/admin/users/stats');
-      return response.data;
+      return response;
     } catch (error) {
       throw error;
     }
@@ -204,7 +204,7 @@ const adminAPI = {
   // Order management
   getAllOrders: async (params?: any) => {
     try {
-      const response = await ApiService.get('/admin/orders', { params });
+      const response = await ApiService.get('/orders/admin/all', { params });
       return response.data;
     } catch (error) {
       throw error;
@@ -213,16 +213,71 @@ const adminAPI = {
 
   getOrderById: async (id: string) => {
     try {
-      const response = await ApiService.get(`/admin/orders/${id}`);
+      const response = await ApiService.get(`/orders/${id}`);
       return response.data;
     } catch (error) {
       throw error;
     }
   },
 
+  getOrderAnalytics: async (params?: any) => {
+    try {
+      const response = await ApiService.get('/orders/admin/analytics', { params });
+      return response.data;
+    } catch (error) {
+      throw error;
+    }
+  },
+
+  confirmOrder: async (id: string) => {
+    try {
+      const response = await ApiService.post(`/orders/admin/${id}/confirm`);
+      return response.data;
+    } catch (error) {
+      throw error;
+    }
+  },
+
+  refundOrder: async (id: string, amount?: number, reason?: string) => {
+    try {
+      const response = await ApiService.post(`/orders/admin/${id}/refund`, { amount, reason });
+      return response.data;
+    } catch (error) {
+      throw error;
+    }
+  },
+
+  updateOrder: async (id: string, orderData: any) => {
+    try {
+      const response = await ApiService.put(`/orders/admin/${id}`, orderData);
+      return response.data;
+    } catch (error) {
+      throw error;
+    }
+  },
+
+  deleteOrder: async (id: string) => {
+    try {
+      const response = await ApiService.delete(`/orders/admin/${id}`);
+      return response.data;
+    } catch (error) {
+      throw error;
+    }
+  },
+
+  bulkUpdateOrders: async (orderIds: string[], action: 'confirm' | 'cancel' | 'refund' | 'update', data?: any) => {
+    try {
+      const response = await ApiService.patch('/orders/admin/bulk', { orderIds, action, data });
+      return response.data;
+    } catch (error) {
+      throw error;
+    }
+  },
+
+  // Legacy method (deprecated - use updateOrder instead)
   updateOrderStatus: async (id: string, status: string) => {
     try {
-      const response = await ApiService.put(`/admin/orders/${id}/status`, { status });
+      const response = await ApiService.put(`/orders/admin/${id}`, { status });
       return response.data;
     } catch (error) {
       throw error;
@@ -324,15 +379,6 @@ const adminAPI = {
   getEventAnalytics: async (params?: any) => {
     try {
       const response = await ApiService.get('/analytics/events', { params });
-      return response.data;
-    } catch (error) {
-      throw error;
-    }
-  },
-
-  getOrderAnalytics: async (params?: any) => {
-    try {
-      const response = await ApiService.get('/analytics/orders', { params });
       return response.data;
     } catch (error) {
       throw error;

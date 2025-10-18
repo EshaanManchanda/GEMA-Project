@@ -1,0 +1,165 @@
+[{
+  "_id": {
+    "$oid": "670fa00123456789abcdef01"
+  },
+  "name": "Education",
+  "slug": "education",
+  "description": "Top-level category for all educational programs, workshops, and learning activities.",
+  "icon": "book-open",
+  "color": "#2A9D8F",
+  "level": 0,
+  "isActive": true,
+  "sortOrder": 1,
+  "seoMeta": {
+    "title": "Education Programs & Learning Activities",
+    "description": "Explore educational events and courses designed for students and professionals.",
+    "keywords": [
+      "education",
+      "learning",
+      "courses",
+      "workshops"
+    ]
+  },
+  "featuredImage": "https://cdn.example.com/images/categories/education.jpg",
+  "createdAt": {
+    "$date": "2025-10-05T00:00:00.000Z"
+  },
+  "updatedAt": {
+    "$date": "2025-10-05T00:00:00.000Z"
+  }
+},
+{
+  "_id": {
+    "$oid": "670fa00123456789abcdef02"
+  },
+  "name": "Technology",
+  "slug": "technology",
+  "description": "Events and categories focused on emerging tech, coding, and innovation.",
+  "icon": "laptop-code",
+  "color": "#264653",
+  "level": 0,
+  "isActive": true,
+  "sortOrder": 2,
+  "seoMeta": {
+    "title": "Technology Events & Coding Competitions",
+    "description": "Participate in coding challenges, hackathons, and tech innovation programs.",
+    "keywords": [
+      "technology",
+      "coding",
+      "hackathon",
+      "AI"
+    ]
+  },
+  "featuredImage": "https://cdn.example.com/images/categories/technology.jpg",
+  "createdAt": {
+    "$date": "2025-10-05T00:00:00.000Z"
+  },
+  "updatedAt": {
+    "$date": "2025-10-05T00:00:00.000Z"
+  }
+},
+{
+  "_id": {
+    "$oid": "670fa00123456789abcdef03"
+  },
+  "name": "STEM Programs",
+  "slug": "stem-programs",
+  "description": "Hands-on STEM learning experiences in science, technology, engineering, and math.",
+  "icon": "flask",
+  "color": "#E9C46A",
+  "parentId": {
+    "$oid": "670fa00123456789abcdef01"
+  },
+  "level": 1,
+  "isActive": true,
+  "sortOrder": 1,
+  "seoMeta": {
+    "title": "STEM Learning Programs & Workshops",
+    "description": "Engage in interactive science and engineering workshops for all ages.",
+    "keywords": [
+      "STEM",
+      "science",
+      "engineering",
+      "education"
+    ]
+  },
+  "featuredImage": "https://cdn.example.com/images/categories/stem.jpg",
+  "createdAt": {
+    "$date": "2025-10-05T00:00:00.000Z"
+  },
+  "updatedAt": {
+    "$date": "2025-10-05T00:00:00.000Z"
+  }
+},
+{
+  "_id": {
+    "$oid": "670fa00123456789abcdef04"
+  },
+  "name": "Hackathons",
+  "slug": "hackathons",
+  "description": "Competitive programming events that encourage creative problem-solving and teamwork.",
+  "icon": "code",
+  "color": "#F4A261",
+  "parentId": {
+    "$oid": "670fa00123456789abcdef02"
+  },
+  "level": 1,
+  "isActive": true,
+  "sortOrder": 1,
+  "seoMeta": {
+    "title": "Global Hackathons & Coding Challenges",
+    "description": "Join technology hackathons and build innovative projects with global teams.",
+    "keywords": [
+      "hackathon",
+      "coding",
+      "teamwork",
+      "innovation"
+    ]
+  },
+  "featuredImage": "https://cdn.example.com/images/categories/hackathon.jpg",
+  "createdAt": {
+    "$date": "2025-10-05T00:00:00.000Z"
+  },
+  "updatedAt": {
+    "$date": "2025-10-05T00:00:00.000Z"
+  }
+},
+{
+  "_id": {
+    "$oid": "670fa00123456789abcdef05"
+  },
+  "name": "AI & Machine Learning",
+  "slug": "ai-machine-learning",
+  "description": "Explore artificial intelligence and ML-based projects, events, and seminars.",
+  "icon": "brain",
+  "color": "#E76F51",
+  "parentId": {
+    "$oid": "670fa00123456789abcdef04"
+  },
+  "level": 2,
+  "isActive": true,
+  "sortOrder": 1,
+  "seoMeta": {
+    "title": "AI & Machine Learning Events | Deep Learning Workshops",
+    "description": "Participate in machine learning and AI innovation programs worldwide.",
+    "keywords": [
+      "AI",
+      "machine learning",
+      "deep learning",
+      "data science"
+    ]
+  },
+  "featuredImage": "https://cdn.example.com/images/categories/ai.jpg",
+  "eventCount": 1,
+  "createdAt": {
+    "$date": "2025-10-05T00:00:00.000Z"
+  },
+  "updatedAt": {
+    "$date": "2025-10-05T00:00:00.000Z"
+  },
+  "events": [
+    {
+      "$oid": "68e2076e58c257675833514d"
+    }
+  ]
+}]

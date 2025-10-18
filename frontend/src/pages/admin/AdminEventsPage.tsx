@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
-import { FaSearch, FaEdit, FaTrash, FaEye, FaCheck, FaTimes, FaStar, FaUndo, FaPlus } from 'react-icons/fa';
-import AdminNavigation from '../../components/admin/AdminNavigation';
+import { FaSearch, FaEdit, FaTrash, FaEye, FaCheck, FaTimes, FaStar, FaUndo, FaPlus, FaWpforms } from 'react-icons/fa';
+import { useNavigate } from 'react-router-dom';
 import adminAPI from '../../services/api/adminAPI';
 import EventEditModal from '../../components/admin/EventEditModal';
 import EventCreateModal from '../../components/admin/EventCreateModal';
@@ -59,6 +59,7 @@ interface Event {
 }
 
 const AdminEventsPage: React.FC = () => {
+  const navigate = useNavigate();
   const [events, setEvents] = useState<Event[]>([]);
   const [filteredEvents, setFilteredEvents] = useState<Event[]>([]);
   const [categories, setCategories] = useState<Category[]>([]);
@@ -282,21 +283,16 @@ const AdminEventsPage: React.FC = () => {
 
   if (isLoading) {
     return (
-      <>
-        <AdminNavigation />
-        <div className="min-h-screen bg-gray-50">
-          <div className="flex justify-center items-center h-64">
-            <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600"></div>
-          </div>
+      <div className="min-h-screen bg-gray-50">
+        <div className="flex justify-center items-center h-64">
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600"></div>
         </div>
-      </>
+      </div>
     );
   }
 
   return (
-    <>
-      <AdminNavigation />
-      <div className="min-h-screen bg-gray-50">
+    <div className="min-h-screen bg-gray-50">
         <div className="container mx-auto px-4 py-8">
           <div className="mb-8 flex items-center justify-between">
             <div>
@@ -569,10 +565,7 @@ const AdminEventsPage: React.FC = () => {
                           {!event.isDeleted && (
                             <>
                               <button
-                                onClick={() => {
-                                  setEventToEdit(event);
-                                  setIsEditModalOpen(true);
-                                }}
+                                onClick={() => navigate(`/admin/events/${event.id}/edit`)}
                                 className="text-indigo-600 hover:text-indigo-900"
                                 title="Edit Event"
                               >
@@ -599,6 +592,14 @@ const AdminEventsPage: React.FC = () => {
                                 title="Toggle Featured"
                               >
                                 <FaStar className="w-4 h-4" />
+                              </button>
+
+                              <button
+                                onClick={() => navigate(`/admin/events/${event.id}/registration/builder`)}
+                                className="text-purple-600 hover:text-purple-900"
+                                title="Form Builder"
+                              >
+                                <FaWpforms className="w-4 h-4" />
                               </button>
 
                               <button
@@ -903,8 +904,7 @@ const AdminEventsPage: React.FC = () => {
                     <button
                       onClick={() => {
                         setIsViewModalOpen(false);
-                        setEventToEdit(selectedEvent);
-                        setIsEditModalOpen(true);
+                        navigate(`/admin/events/${selectedEvent.id}/edit`);
                       }}
                       className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 flex items-center"
                     >
@@ -974,7 +974,6 @@ const AdminEventsPage: React.FC = () => {
           />
         </div>
       </div>
-    </>
   );
 };
 

@@ -5,13 +5,25 @@ import {
   getVendorDashboardStats,
   getVendorEvents,
   getVendorBookings,
+  getVendorBookingById,
+  updateVendorBooking,
+  exportVendorBookings,
+  importVendorBookings,
   getVendorProfile,
   updateVendorProfile,
   uploadVendorImage,
   updateVendorBusinessHours,
   updateVendorSocialMedia,
   getPublicVendorProfile,
+  getVendorPaymentInfo,
 } from '../controllers/vendor.controller';
+import {
+  getVendorEventById,
+  createVendorEvent,
+  updateVendorEvent,
+  deleteVendorEvent,
+  restoreVendorEvent,
+} from '../controllers/vendor.event.controller';
 
 const router = Router();
 
@@ -21,6 +33,13 @@ const router = Router();
  * @access  Public
  */
 router.get('/public/:id', getPublicVendorProfile);
+
+/**
+ * @route   GET /api/vendors/:vendorId/payment-info
+ * @desc    Get vendor payment information (for booking flow)
+ * @access  Public
+ */
+router.get('/:vendorId/payment-info', getVendorPaymentInfo);
 
 // All vendor routes below require authentication and vendor role
 router.use(authenticate);
@@ -39,6 +58,69 @@ router.get('/stats', getVendorDashboardStats);
  * @access  Vendor only
  */
 router.get('/events', getVendorEvents);
+
+/**
+ * @route   POST /api/vendors/events
+ * @desc    Create a new event
+ * @access  Vendor only
+ */
+router.post('/events', createVendorEvent);
+
+/**
+ * @route   GET /api/vendors/events/:id
+ * @desc    Get single event by ID
+ * @access  Vendor only
+ */
+router.get('/events/:id', getVendorEventById);
+
+/**
+ * @route   PUT /api/vendors/events/:id
+ * @desc    Update vendor's own event
+ * @access  Vendor only
+ */
+router.put('/events/:id', updateVendorEvent);
+
+/**
+ * @route   DELETE /api/vendors/events/:id
+ * @desc    Delete vendor's own event (soft or permanent)
+ * @access  Vendor only
+ */
+router.delete('/events/:id', deleteVendorEvent);
+
+/**
+ * @route   PUT /api/vendors/events/:id/restore
+ * @desc    Restore deleted event
+ * @access  Vendor only
+ */
+router.put('/events/:id/restore', restoreVendorEvent);
+
+/**
+ * @route   GET /api/vendors/bookings/export
+ * @desc    Export vendor bookings to CSV or JSON
+ * @access  Vendor only
+ */
+router.get('/bookings/export', exportVendorBookings);
+
+/**
+ * @route   POST /api/vendors/bookings/import
+ * @desc    Import vendor bookings from CSV
+ * @access  Vendor only
+ */
+router.post('/bookings/import', importVendorBookings);
+
+/**
+ * @route   GET /api/vendors/bookings/:id
+ * @desc    Get single booking by ID
+ * @access  Vendor only
+ */
+router.get('/bookings/:id', getVendorBookingById);
+
+/**
+ * @route   PUT /api/vendors/bookings/:id
+ * @desc    Update booking (limited edit - status, notes, fulfillment)
+ * @access  Vendor only
+ */
+router.put('/bookings/:id', updateVendorBooking);
 
 /**
  * @route   GET /api/vendors/bookings

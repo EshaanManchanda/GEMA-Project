@@ -14,12 +14,13 @@ import searchSlice from './slices/searchSlice';
 import bookingsSlice from './slices/bookingsSlice';
 import vendorSlice from './slices/vendorSlice';
 import adminSlice from './slices/adminSlice';
-import notificationsSlice from './slices/notificationsSlice';
+// import notificationsSlice from './slices/notificationsSlice'; // Commented out - notification system disabled
 import couponsSlice from './slices/couponsSlice';
 import affiliatesSlice from './slices/affiliatesSlice';
 import paymentsSlice from './slices/paymentsSlice';
 import ticketsSlice from './slices/ticketsSlice';
 import blogSlice from './slices/blogSlice';
+import registrationsSlice from './slices/registrationsSlice';
 
 // Persist configuration
 const persistConfig = {
@@ -27,7 +28,7 @@ const persistConfig = {
   storage,
   // Note: auth and cart use custom persist configs below, so exclude them here
   whitelist: ['favorites', 'ui'], // Only persist these slices
-  blacklist: ['events', 'categories', 'search', 'bookings', 'vendor', 'admin', 'notifications', 'coupons', 'affiliates', 'payments', 'tickets', 'blog'], // Don't persist these
+  blacklist: ['events', 'categories', 'search', 'bookings', 'vendor', 'admin', 'coupons', 'affiliates', 'payments', 'tickets', 'blog', 'registrations'], // Don't persist these (notifications removed - system disabled)
 };
 
 // Auth persist config (separate for sensitive data)
@@ -58,12 +59,13 @@ const rootReducer = combineReducers({
   bookings: bookingsSlice,
   vendor: vendorSlice,
   admin: adminSlice,
-  notifications: notificationsSlice,
+  // notifications: notificationsSlice, // Commented out - notification system disabled
   coupons: couponsSlice,
   affiliates: affiliatesSlice,
   payments: paymentsSlice,
   tickets: ticketsSlice,
   blog: blogSlice,
+  registrations: registrationsSlice,
 });
 
 // Create persisted reducer
@@ -114,9 +116,10 @@ export * from './slices/searchSlice';
 export * from './slices/bookingsSlice';
 export * from './slices/vendorSlice';
 export * from './slices/adminSlice';
-export * from './slices/notificationsSlice';
+// export * from './slices/notificationsSlice'; // Commented out - notification system disabled
 export * from './slices/couponsSlice';
 export * from './slices/affiliatesSlice';
 export * from './slices/paymentsSlice';
 export * from './slices/ticketsSlice';
 export * from './slices/blogSlice';
+export * from './slices/registrationsSlice';

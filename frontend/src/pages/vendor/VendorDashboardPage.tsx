@@ -2,19 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import vendorAPI from '../../services/api/vendorAPI';
 import VendorNavigation from '../../components/vendor/VendorNavigation';
-
-interface Event {
-  id: string;
-  title: string;
-  date: string;
-  time: string;
-  location: string;
-  price: number;
-  ticketsSold: number;
-  totalCapacity: number;
-  status: 'published' | 'draft' | 'cancelled';
-  image: string;
-}
+import { Event } from '../../types/event';
 
 interface Booking {
   id: string;
@@ -68,28 +56,88 @@ const VendorDashboardPage: React.FC = () => {
         // Fallback to mock data if API fails
         const mockEvents: Event[] = [
           {
-            id: '1',
+            _id: '1',
             title: 'Summer Art Camp for Kids',
-            date: '2023-08-15',
-            time: '09:00 AM - 12:00 PM',
-            location: 'Creative Arts Center, Downtown',
+            description: 'An exciting art camp for kids during summer break',
+            category: 'Arts & Crafts',
+            type: 'Event',
+            venueType: 'Indoor',
+            ageRange: [6, 12],
+            location: {
+              city: 'Downtown',
+              address: 'Creative Arts Center',
+              coordinates: { lat: 0, lng: 0 }
+            },
             price: 60,
-            ticketsSold: 15,
-            totalCapacity: 20,
+            currency: 'AED',
+            isApproved: true,
             status: 'published',
-            image: 'https://placehold.co/600x400/orange/white?text=Art+Camp'
+            tags: ['art', 'kids', 'summer'],
+            dateSchedule: [
+              {
+                _id: 'schedule1',
+                date: '2023-08-15',
+                startDateTime: '2023-08-15T09:00:00Z',
+                endDateTime: '2023-08-15T12:00:00Z',
+                availableSeats: 5,
+                totalSeats: 20,
+                soldSeats: 15,
+                reservedSeats: 0,
+                price: 60
+              }
+            ],
+            seoMeta: { title: '', description: '', keywords: [] },
+            vendorId: { _id: 'vendor1', firstName: 'John', lastName: 'Doe', email: 'john@example.com' },
+            faqs: [],
+            viewsCount: 0,
+            isFeatured: false,
+            images: ['https://placehold.co/600x400/orange/white?text=Art+Camp'],
+            isDeleted: false,
+            createdAt: '2023-07-01T00:00:00Z',
+            updatedAt: '2023-07-01T00:00:00Z',
+            affiliateCode: 'EVT-001'
           },
           {
-            id: '2',
+            _id: '2',
             title: 'Science Workshop: Rockets and Space',
-            date: '2023-08-22',
-            time: '10:00 AM - 02:00 PM',
-            location: 'Science Museum, West End',
+            description: 'Learn about rockets and space exploration',
+            category: 'Science',
+            type: 'Event',
+            venueType: 'Indoor',
+            ageRange: [8, 14],
+            location: {
+              city: 'West End',
+              address: 'Science Museum',
+              coordinates: { lat: 0, lng: 0 }
+            },
             price: 45,
-            ticketsSold: 8,
-            totalCapacity: 25,
+            currency: 'AED',
+            isApproved: true,
             status: 'published',
-            image: 'https://placehold.co/600x400/blue/white?text=Science+Workshop'
+            tags: ['science', 'kids', 'workshop'],
+            dateSchedule: [
+              {
+                _id: 'schedule2',
+                date: '2023-08-22',
+                startDateTime: '2023-08-22T10:00:00Z',
+                endDateTime: '2023-08-22T14:00:00Z',
+                availableSeats: 17,
+                totalSeats: 25,
+                soldSeats: 8,
+                reservedSeats: 0,
+                price: 45
+              }
+            ],
+            seoMeta: { title: '', description: '', keywords: [] },
+            vendorId: { _id: 'vendor1', firstName: 'John', lastName: 'Doe', email: 'john@example.com' },
+            faqs: [],
+            viewsCount: 0,
+            isFeatured: false,
+            images: ['https://placehold.co/600x400/blue/white?text=Science+Workshop'],
+            isDeleted: false,
+            createdAt: '2023-07-01T00:00:00Z',
+            updatedAt: '2023-07-01T00:00:00Z',
+            affiliateCode: 'EVT-002'
           }
         ];
         
@@ -205,7 +253,7 @@ const VendorDashboardPage: React.FC = () => {
 
       {stats && (
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
-          <div className="bg-gradient-to-br from-blue-50 to-indigo-50 rounded-2xl shadow-xl shadow-blue-200/50 p-6 border border-blue-100 backdrop-blur-sm hover:shadow-2xl hover:shadow-blue-300/30 transition-all duration-300 transform hover:scale-105 group">
+          <div key="stats-events" className="bg-gradient-to-br from-blue-50 to-indigo-50 rounded-2xl shadow-xl shadow-blue-200/50 p-6 border border-blue-100 backdrop-blur-sm hover:shadow-2xl hover:shadow-blue-300/30 transition-all duration-300 transform hover:scale-105 group">
             <div className="flex items-center">
               <div className="p-4 rounded-xl bg-gradient-to-r from-blue-500 to-indigo-600 text-white mr-4 shadow-lg transition-all duration-300 group-hover:scale-110">
                 <svg className="h-6 w-6" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor">
@@ -225,7 +273,7 @@ const VendorDashboardPage: React.FC = () => {
             </div>
           </div>
 
-          <div className="bg-gradient-to-br from-green-50 to-emerald-50 rounded-2xl shadow-xl shadow-green-200/50 p-6 border border-green-100 backdrop-blur-sm hover:shadow-2xl hover:shadow-green-300/30 transition-all duration-300 transform hover:scale-105 group">
+          <div key="stats-bookings" className="bg-gradient-to-br from-green-50 to-emerald-50 rounded-2xl shadow-xl shadow-green-200/50 p-6 border border-green-100 backdrop-blur-sm hover:shadow-2xl hover:shadow-green-300/30 transition-all duration-300 transform hover:scale-105 group">
             <div className="flex items-center">
               <div className="p-4 rounded-xl bg-gradient-to-r from-green-500 to-emerald-600 text-white mr-4 shadow-lg transition-all duration-300 group-hover:scale-110">
                 <svg className="h-6 w-6" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor">
@@ -244,7 +292,7 @@ const VendorDashboardPage: React.FC = () => {
             </div>
           </div>
 
-          <div className="bg-gradient-to-br from-purple-50 to-pink-50 rounded-2xl shadow-xl shadow-purple-200/50 p-6 border border-purple-100 backdrop-blur-sm hover:shadow-2xl hover:shadow-purple-300/30 transition-all duration-300 transform hover:scale-105 group">
+          <div key="stats-revenue" className="bg-gradient-to-br from-purple-50 to-pink-50 rounded-2xl shadow-xl shadow-purple-200/50 p-6 border border-purple-100 backdrop-blur-sm hover:shadow-2xl hover:shadow-purple-300/30 transition-all duration-300 transform hover:scale-105 group">
             <div className="flex items-center">
               <div className="p-4 rounded-xl bg-gradient-to-r from-purple-500 to-pink-600 text-white mr-4 shadow-lg transition-all duration-300 group-hover:scale-110">
                 <svg className="h-6 w-6" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor">
@@ -264,7 +312,7 @@ const VendorDashboardPage: React.FC = () => {
             </div>
           </div>
 
-          <div className="bg-gradient-to-br from-orange-50 to-yellow-50 rounded-2xl shadow-xl shadow-orange-200/50 p-6 border border-orange-100 backdrop-blur-sm hover:shadow-2xl hover:shadow-orange-300/30 transition-all duration-300 transform hover:scale-105 group">
+          <div key="stats-growth" className="bg-gradient-to-br from-orange-50 to-yellow-50 rounded-2xl shadow-xl shadow-orange-200/50 p-6 border border-orange-100 backdrop-blur-sm hover:shadow-2xl hover:shadow-orange-300/30 transition-all duration-300 transform hover:scale-105 group">
             <div className="flex items-center">
               <div className="p-4 rounded-xl bg-gradient-to-r from-orange-500 to-yellow-600 text-white mr-4 shadow-lg transition-all duration-300 group-hover:scale-110">
                 <svg className="h-6 w-6" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor">
@@ -314,13 +362,13 @@ const VendorDashboardPage: React.FC = () => {
               ) : (
                 <div className="space-y-6">
                   {Array.isArray(events) && events.map((event) => (
-                    <div key={event.id} className="border rounded-lg overflow-hidden shadow-sm hover:shadow-md transition-shadow duration-200">
+                    <div key={event._id} className="border rounded-lg overflow-hidden shadow-sm hover:shadow-md transition-shadow duration-200">
                       <div className="flex flex-col sm:flex-row">
                         <div className="sm:w-1/3 md:w-1/4">
-                          <img 
-                            className="h-48 w-full object-cover sm:h-full" 
-                            src={event.image} 
-                            alt={event.title} 
+                          <img
+                            className="h-48 w-full object-cover sm:h-full"
+                            src={event.images?.[0] || 'https://placehold.co/600x400/gray/white?text=No+Image'}
+                            alt={event.title}
                           />
                         </div>
                         <div className="p-4 sm:p-6 sm:w-2/3 md:w-3/4">
@@ -328,7 +376,7 @@ const VendorDashboardPage: React.FC = () => {
                             <div>
                               <div className="flex items-center mb-2">
                                 <h3 className="text-lg font-semibold text-gray-900 mr-2">
-                                  <Link to={`/vendor/events/${event.id}`} className="hover:text-primary">
+                                  <Link to={`/vendor/events/${event._id}`} className="hover:text-primary">
                                     {event.title}
                                   </Link>
                                 </h3>
@@ -337,31 +385,30 @@ const VendorDashboardPage: React.FC = () => {
                                 </span>
                               </div>
                               <div className="text-sm text-gray-500 mb-4">
-                                <p><span className="font-medium">Date:</span> {formatDate(event.date)}</p>
-                                <p><span className="font-medium">Time:</span> {event.time}</p>
-                                <p><span className="font-medium">Location:</span> {event.location}</p>
+                                <p><span className="font-medium">Date:</span> {event.dateSchedule?.[0]?.date ? formatDate(event.dateSchedule[0].date) : 'TBD'}</p>
+                                <p><span className="font-medium">Location:</span> {event.location.city}, {event.location.address}</p>
                                 <p><span className="font-medium">Price:</span> ${event.price.toFixed(2)}</p>
                               </div>
                             </div>
                             <div className="mt-4 sm:mt-0">
                               <div className="text-sm text-gray-500 mb-2">
-                                <span className="font-medium">Tickets sold:</span> {event.ticketsSold} / {event.totalCapacity}
+                                <span className="font-medium">Tickets sold:</span> {event.dateSchedule?.[0]?.soldSeats || 0} / {event.dateSchedule?.[0]?.totalSeats || 0}
                               </div>
                               <div className="w-full bg-gray-200 rounded-full h-2.5 mb-4">
-                                <div 
-                                  className="bg-primary h-2.5 rounded-full" 
-                                  style={{ width: `${calculateProgress(event.ticketsSold, event.totalCapacity)}%` }}
+                                <div
+                                  className="bg-primary h-2.5 rounded-full"
+                                  style={{ width: `${calculateProgress(event.dateSchedule?.[0]?.soldSeats || 0, event.dateSchedule?.[0]?.totalSeats || 0)}%` }}
                                 ></div>
                               </div>
                               <div className="flex space-x-2">
-                                <Link 
-                                  to={`/vendor/events/${event.id}/edit`}
+                                <Link
+                                  to={`/vendor/events/${event._id}/edit`}
                                   className="inline-flex items-center px-3 py-1.5 border border-gray-300 text-xs font-medium rounded text-gray-700 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-primary"
                                 >
                                   Edit
                                 </Link>
-                                <Link 
-                                  to={`/events/${event.id}`}
+                                <Link
+                                  to={`/events/${event._id}`}
                                   className="inline-flex items-center px-3 py-1.5 border border-gray-300 text-xs font-medium rounded text-gray-700 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-primary"
                                 >
                                   Preview

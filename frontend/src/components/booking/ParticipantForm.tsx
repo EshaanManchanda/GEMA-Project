@@ -1,18 +1,20 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { useDispatch, useSelector } from 'react-redux';
 import { User, Phone, Mail, Calendar, Heart, AlertTriangle, ChevronLeft, ChevronRight } from 'lucide-react';
 import toast from 'react-hot-toast';
 
 import { AppDispatch } from '../../store';
-import { 
-  updateParticipant, 
-  selectBookingParticipants 
+import {
+  updateParticipant,
+  updateParticipantRegistrationData,
+  selectBookingParticipants
 } from '../../store/slices/bookingsSlice';
 import { Event } from '../../types/event';
 import { BookingParticipant } from '../../services/api/bookingAPI';
 
 import Button from '../ui/Button';
 import { Card, CardContent, CardHeader, CardTitle } from '../ui/Card';
+import DynamicRegistrationForm from './DynamicRegistrationForm';
 
 interface ParticipantFormProps {
   event: Event;
@@ -20,15 +22,28 @@ interface ParticipantFormProps {
   onPrev: () => void;
 }
 
-const ParticipantForm: React.FC<ParticipantFormProps> = ({ 
-  event, 
-  onNext, 
-  onPrev 
+const ParticipantForm: React.FC<ParticipantFormProps> = ({
+  event,
+  onNext,
+  onPrev
 }) => {
   const dispatch = useDispatch<AppDispatch>();
   const participants = useSelector(selectBookingParticipants);
-  
+
   const [errors, setErrors] = useState<Record<number, Record<string, string>>>({});
+  const [dynamicRegistrationData, setDynamicRegistrationData] = useState<Record<number, any>>({});
+
+  // Debug logging for registration config
+  useEffect(() => {
+    console.log('🔍 ParticipantForm Debug:', {
+      hasEvent: !!event,
+      hasRegistrationConfig: !!event?.registrationConfig,
+      isEnabled: event?.registrationConfig?.enabled,
+      fieldsCount: event?.registrationConfig?.fields?.length || 0,
+      fields: event?.registrationConfig?.fields,
+      fullRegistrationConfig: event?.registrationConfig
+    });
+  }, [event]);
 
   // Validate participant data
   const validateParticipant = (participant: BookingParticipant, index: number): boolean => {
@@ -125,7 +140,7 @@ const ParticipantForm: React.FC<ParticipantFormProps> = ({
   ) => {
     const participant = participants[index];
     const currentRestrictions = participant.dietaryRestrictions || [];
-    
+
     let updatedRestrictions: string[];
     if (checked) {
       updatedRestrictions = [...currentRestrictions, restriction];
@@ -139,6 +154,22 @@ const ParticipantForm: React.FC<ParticipantFormProps> = ({
 
     dispatch(updateParticipant({ index, participant: updatedParticipant }));
   };
+
+  // Handle dynamic registration data change
+  // Wrapped in useCallback to prevent infinite loop in DynamicRegistrationForm
+  const handleDynamicDataChange = useCallback((participantIndex: number, data: Record<string, any>) => {
+    // Store in local state for real-time updates
+    setDynamicRegistrationData(prev => ({
+      ...prev,
+      [participantIndex]: data
+    }));
+
+    // Also store in Redux for persistence across navigation
+    dispatch(updateParticipantRegistrationData({
+      index: participantIndex,
+      registrationData: data
+    }));
+  }, [dispatch]);
 
   const handleNext = () => {
     if (!validateAllParticipants()) {
@@ -378,6 +409,18 @@ const ParticipantForm: React.FC<ParticipantFormProps> = ({
                 className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary"
               />
             </div>
+
+            {/* Dynamic Registration Form - Custom fields defined by vendor */}
+            {event.registrationConfig?.enabled && event.registrationConfig.fields.length > 0 && (
+              <div className="border-t pt-4 mt-4">
+                <DynamicRegistrationForm
+                  config={event.registrationConfig}
+                  participantIndex={index}
+                  onDataChange={handleDynamicDataChange}
+                  initialData={dynamicRegistrationData[index]}
+                />
+              </div>
+            )}
           </CardContent>
         </Card>
       ))}

@@ -1,7 +1,14 @@
 import React, { useState, useEffect } from 'react';
-import { useParams, useNavigate } from 'react-router-dom';
+import { useParams, useNavigate, useLocation } from 'react-router-dom';
+import { v4 as uuidv4 } from 'uuid';
 import eventsAPI from '../../services/api/eventsAPI';
-import SEOEditor from '../../components/seo/SEOEditor';
+import vendorAPI from '../../services/api/vendorAPI';
+import categoriesAPI from '../../services/api/categoriesAPI';
+import VendorNavigation from '../../components/vendor/VendorNavigation';
+import BasicInfoTab from '../../components/vendor/BasicInfoTab';
+import SchedulePricingTab from '../../components/vendor/SchedulePricingTab';
+import AdvancedTab from '../../components/vendor/AdvancedTab';
+import FormBuilder from '@/components/registration/FormBuilder';
 
 interface EventFormData {
   title: string;
@@ -15,12 +22,10 @@ interface EventFormData {
   address: string;
   latitude: string;
   longitude: string;
-  price: string;
   currency: string;
   tags: string;
-  eventDate: string;
-  availableSeats: string;
-  schedulePrice: string;
+  capacity: string;
+  featured: boolean;
   images: File[];
   imagePreviewUrls: string[];
   seoMeta: {
@@ -30,16 +35,29 @@ interface EventFormData {
   };
 }
 
+interface Schedule {
+  id: string;
+  startDate: string;
+  endDate: string;
+  availableSeats: string;
+  price: string;
+  _id?: string;
+}
+
 interface Category {
   id: string;
   name: string;
 }
 
 const VendorEditEventPage: React.FC = () => {
-  const { eventId } = useParams<{ eventId: string }>();
+  const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
-  const isNewEvent = eventId === 'new';
-  
+  const location = useLocation();
+
+  // Check if we should open form builder tab from route state
+  const initialTab = location.state?.activeTab === 'formBuilder' ? 'formBuilder' : 'basic';
+  const [activeTab, setActiveTab] = useState<'basic' | 'schedule' | 'advanced' | 'formBuilder'>(initialTab);
+
   const [formData, setFormData] = useState<EventFormData>({
     title: '',
     description: '',
@@ -52,12 +70,10 @@ const VendorEditEventPage: React.FC = () => {
     address: '',
     latitude: '',
     longitude: '',
-    price: '',
     currency: 'USD',
     tags: '',
-    eventDate: '',
-    availableSeats: '',
-    schedulePrice: '',
+    capacity: '',
+    featured: false,
     images: [],
     imagePreviewUrls: [],
     seoMeta: {
@@ -66,19 +82,18 @@ const VendorEditEventPage: React.FC = () => {
       keywords: []
     }
   });
-  
+
+  const [schedules, setSchedules] = useState<Schedule[]>([]);
   const [categories, setCategories] = useState<Category[]>([]);
   const [isLoading, setIsLoading] = useState<boolean>(true);
   const [isSaving, setIsSaving] = useState<boolean>(false);
-  const [errors, setErrors] = useState<Partial<Record<keyof EventFormData, string>>>({});
+  const [errors, setErrors] = useState<Record<string, string>>({});
   const [saveStatus, setSaveStatus] = useState<{ type: 'success' | 'error'; message: string } | null>(null);
 
   useEffect(() => {
-    // Fetch categories from backend
     const fetchCategories = async () => {
       try {
-        const categoriesData = await eventsAPI.getEventCategories();
-        // Transform backend data to expected format
+        const categoriesData = await categoriesAPI.getAllCategories({ tree: false });
         const transformedCategories: Category[] = categoriesData.map((cat: any) => ({
           id: cat._id || cat.id,
           name: cat.name
@@ -86,7 +101,6 @@ const VendorEditEventPage: React.FC = () => {
         setCategories(transformedCategories);
       } catch (error) {
         console.error('Error fetching categories:', error);
-        // Fallback to basic categories if API fails
         setCategories([
           { id: 'arts', name: 'Arts & Crafts' },
           { id: 'science', name: 'Science & Technology' },
@@ -96,21 +110,17 @@ const VendorEditEventPage: React.FC = () => {
         ]);
       }
     };
-    
-    // Fetch event data if editing an existing event
+
     const fetchEventData = async () => {
-      if (isNewEvent) {
-        setIsLoading(false);
+      if (!id) {
+        navigate('/vendor/events');
         return;
       }
-      
+
       try {
         setIsLoading(true);
-        
-        // Fetch real event data from backend
-        const eventData = await eventsAPI.getEventById(eventId!);
-        
-        // Transform backend data to form format
+        const eventData = await eventsAPI.getEventById(id);
+
         setFormData({
           title: eventData.title,
           description: eventData.description,
@@ -123,15 +133,39 @@ const VendorEditEventPage: React.FC = () => {
           address: eventData.location?.address || '',
           latitude: eventData.location?.coordinates?.lat?.toString() || '',
           longitude: eventData.location?.coordinates?.lng?.toString() || '',
-          price: eventData.price?.toString() || '',
           currency: eventData.currency || 'USD',
           tags: eventData.tags?.join(', ') || '',
-          eventDate: eventData.dateSchedule?.[0]?.date || '',
-          availableSeats: eventData.dateSchedule?.[0]?.availableSeats?.toString() || '',
-          schedulePrice: eventData.dateSchedule?.[0]?.price?.toString() || '',
+          capacity: eventData.capacity?.toString() || '',
+          featured: eventData.isFeatured || false,
           images: [],
-          imagePreviewUrls: eventData.images || []
+          imagePreviewUrls: eventData.images || [],
+          seoMeta: {
+            title: eventData.seoMeta?.title || '',
+            description: eventData.seoMeta?.description || '',
+            keywords: eventData.seoMeta?.keywords || []
+          }
         });
+
+        // Transform dateSchedule to schedules format
+        const transformedSchedules = eventData.dateSchedule?.map((schedule: any) => ({
+          id: schedule._id || uuidv4(),
+          _id: schedule._id,
+          startDate: schedule.startDate ? new Date(schedule.startDate).toISOString().split('T')[0] :
+                     schedule.date ? new Date(schedule.date).toISOString().split('T')[0] : '',
+          endDate: schedule.endDate ? new Date(schedule.endDate).toISOString().split('T')[0] :
+                   schedule.date ? new Date(schedule.date).toISOString().split('T')[0] : '',
+          availableSeats: schedule.availableSeats?.toString() || '',
+          price: schedule.price?.toString() || ''
+        })) || [];
+
+        setSchedules(transformedSchedules.length > 0 ? transformedSchedules : [{
+          id: uuidv4(),
+          startDate: '',
+          endDate: '',
+          availableSeats: '',
+          price: ''
+        }]);
+
       } catch (error) {
         console.error('Error fetching event data:', error);
         setSaveStatus({
@@ -142,570 +176,486 @@ const VendorEditEventPage: React.FC = () => {
         setIsLoading(false);
       }
     };
-    
+
     fetchCategories();
     fetchEventData();
-  }, [eventId, isNewEvent]);
+  }, [id, navigate]);
+
+  const handleInputChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>) => {
+    const { name, value } = e.target;
+
+    if (name === 'seoTitle') {
+      setFormData(prev => ({
+        ...prev,
+        seoMeta: { ...prev.seoMeta, title: value }
+      }));
+    } else if (name === 'seoDescription') {
+      setFormData(prev => ({
+        ...prev,
+        seoMeta: { ...prev.seoMeta, description: value }
+      }));
+    } else if (name === 'seoKeywords') {
+      setFormData(prev => ({
+        ...prev,
+        seoMeta: { ...prev.seoMeta, keywords: value.split(',').map(k => k.trim()).filter(k => k.length > 0) }
+      }));
+    } else {
+      setFormData(prev => ({ ...prev, [name]: value }));
+    }
+
+    if (errors[name]) {
+      setErrors(prev => {
+        const newErrors = { ...prev };
+        delete newErrors[name];
+        return newErrors;
+      });
+    }
+  };
+
+  const handleCheckboxChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const { name, checked } = e.target;
+    setFormData(prev => ({ ...prev, [name]: checked }));
+  };
+
+  const handleImageUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+    if (e.target.files) {
+      const filesArray = Array.from(e.target.files);
+
+      const validFiles = filesArray.filter(file => {
+        const isValidType = ['image/jpeg', 'image/png', 'image/jpg'].includes(file.type);
+        const isValidSize = file.size <= 5 * 1024 * 1024;
+
+        if (!isValidType) {
+          setErrors(prev => ({ ...prev, images: 'Only JPG, JPEG, and PNG files are allowed.' }));
+        } else if (!isValidSize) {
+          setErrors(prev => ({ ...prev, images: 'Image size should not exceed 5MB.' }));
+        }
+
+        return isValidType && isValidSize;
+      });
+
+      if (validFiles.length > 0) {
+        const newImagePreviewUrls = validFiles.map(file => URL.createObjectURL(file));
+
+        setFormData(prev => ({
+          ...prev,
+          images: [...prev.images, ...validFiles],
+          imagePreviewUrls: [...prev.imagePreviewUrls, ...newImagePreviewUrls]
+        }));
+
+        if (errors.images) {
+          setErrors(prev => {
+            const newErrors = { ...prev };
+            delete newErrors.images;
+            return newErrors;
+          });
+        }
+      }
+    }
+  };
+
+  const removeImage = (index: number) => {
+    setFormData(prev => {
+      const newImages = [...prev.images];
+      const newImagePreviewUrls = [...prev.imagePreviewUrls];
+
+      if (newImagePreviewUrls[index].startsWith('blob:')) {
+        URL.revokeObjectURL(newImagePreviewUrls[index]);
+      }
+
+      newImages.splice(index, 1);
+      newImagePreviewUrls.splice(index, 1);
+
+      return {
+        ...prev,
+        images: newImages,
+        imagePreviewUrls: newImagePreviewUrls
+      };
+    });
+  };
+
+  const handleScheduleChange = (index: number, field: keyof Schedule, value: string) => {
+    setSchedules(prev => {
+      const updated = [...prev];
+      updated[index] = { ...updated[index], [field]: value };
+      return updated;
+    });
+
+    const errorKey = `schedule_${index}_${field}`;
+    if (errors[errorKey]) {
+      setErrors(prev => {
+        const newErrors = { ...prev };
+        delete newErrors[errorKey];
+        return newErrors;
+      });
+    }
+  };
+
+  const handleAddSchedule = () => {
+    setSchedules(prev => [...prev, {
+      id: uuidv4(),
+      startDate: '',
+      endDate: '',
+      availableSeats: '',
+      price: ''
+    }]);
+  };
+
+  const handleRemoveSchedule = (index: number) => {
+    if (schedules.length > 1) {
+      setSchedules(prev => prev.filter((_, i) => i !== index));
+    }
+  };
 
   const validateForm = (): boolean => {
-    const newErrors: Partial<Record<keyof EventFormData, string>> = {};
-    
+    const newErrors: Record<string, string> = {};
+
     if (!formData.title.trim()) newErrors.title = 'Title is required';
     if (!formData.description.trim()) newErrors.description = 'Description is required';
-    if (!formData.eventDate) newErrors.eventDate = 'Event date is required';
-    if (!formData.address.trim()) newErrors.address = 'Address is required';
-    if (!formData.city.trim()) newErrors.city = 'City is required';
     if (!formData.category) newErrors.category = 'Category is required';
     if (!formData.ageRangeMin.trim()) newErrors.ageRangeMin = 'Minimum age is required';
     if (!formData.ageRangeMax.trim()) newErrors.ageRangeMax = 'Maximum age is required';
-    if (!formData.availableSeats.trim()) newErrors.availableSeats = 'Available seats is required';
-    
-    // Price validation
-    if (!formData.price.trim()) {
-      newErrors.price = 'Price is required';
-    } else if (isNaN(parseFloat(formData.price)) || parseFloat(formData.price) < 0) {
-      newErrors.price = 'Price must be a valid number greater than or equal to 0';
-    }
-    
-    // Available seats validation
-    if (formData.availableSeats.trim()) {
-      const seats = parseInt(formData.availableSeats);
-      if (isNaN(seats) || seats <= 0) {
-        newErrors.availableSeats = 'Available seats must be a positive number';
-      }
-    }
-    
-    // Age range validation
-    if (formData.ageRangeMin.trim() && formData.ageRangeMax.trim()) {
-      const minAge = parseInt(formData.ageRangeMin);
-      const maxAge = parseInt(formData.ageRangeMax);
+
+    if (formData.ageRangeMin && formData.ageRangeMax) {
+      const minAge = parseInt(formData.ageRangeMin, 10);
+      const maxAge = parseInt(formData.ageRangeMax, 10);
       if (isNaN(minAge) || isNaN(maxAge)) {
         newErrors.ageRangeMin = 'Age must be a valid number';
       } else if (minAge >= maxAge) {
         newErrors.ageRangeMax = 'Maximum age must be greater than minimum age';
       }
     }
-    
-    // Date validation - ensure it's a future date for new events
-    if (formData.eventDate && isNewEvent) {
-      const selectedDate = new Date(formData.eventDate);
-      const today = new Date();
-      today.setHours(0, 0, 0, 0);
-      
-      if (selectedDate < today) {
-        newErrors.eventDate = 'Event date must be in the future';
+
+    schedules.forEach((schedule, index) => {
+      if (!schedule.startDate) {
+        newErrors[`schedule_${index}_startDate`] = 'Start date is required';
       }
+      if (!schedule.endDate) {
+        newErrors[`schedule_${index}_endDate`] = 'End date is required';
+      }
+      if (schedule.startDate && schedule.endDate) {
+        const start = new Date(schedule.startDate);
+        const end = new Date(schedule.endDate);
+
+        if (end < start) {
+          newErrors[`schedule_${index}_endDate`] = 'End date must be after start date';
+        }
+      }
+      if (!schedule.availableSeats || parseInt(schedule.availableSeats) <= 0) {
+        newErrors[`schedule_${index}_availableSeats`] = 'Available seats must be greater than 0';
+      }
+      if (!schedule.price || parseFloat(schedule.price) < 0) {
+        newErrors[`schedule_${index}_price`] = 'Price must be 0 or greater';
+      }
+    });
+
+    if (!formData.capacity.trim() || parseInt(formData.capacity) <= 0) {
+      newErrors.capacity = 'Capacity must be greater than 0';
     }
-    
+
+    if (!formData.city.trim()) newErrors.city = 'City is required';
+    if (!formData.address.trim()) newErrors.address = 'Address is required';
+
     setErrors(newErrors);
     return Object.keys(newErrors).length === 0;
   };
 
-  const handleInputChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>) => {
-    const { name, value } = e.target;
-    setFormData(prev => ({ ...prev, [name]: value }));
-    
-    // Clear error for this field when user types
-    if (errors[name as keyof EventFormData]) {
-      setErrors(prev => ({ ...prev, [name]: undefined }));
-    }
-  };
-
-  const handleImageChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    if (e.target.files && e.target.files[0]) {
-      const file = e.target.files[0];
-      const reader = new FileReader();
-      
-      reader.onloadend = () => {
-        setFormData(prev => ({
-          ...prev,
-          image: file,
-          imagePreview: reader.result as string
-        }));
-      };
-      
-      reader.readAsDataURL(file);
-      
-      // Clear error for image when user uploads
-      if (errors.image) {
-        setErrors(prev => ({ ...prev, image: undefined }));
-      }
-    }
-  };
-
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    
+
     if (!validateForm()) {
-      // Scroll to the first error
-      const firstErrorField = Object.keys(errors)[0] as keyof EventFormData;
-      const element = document.querySelector(`[name="${firstErrorField}"]`);
-      if (element) {
-        element.scrollIntoView({ behavior: 'smooth', block: 'center' });
+      const firstErrorField = Object.keys(errors)[0];
+
+      if (firstErrorField.includes('schedule') || firstErrorField === 'capacity') {
+        setActiveTab('schedule');
+      } else if (['city', 'address', 'latitude', 'longitude', 'seoTitle', 'seoDescription', 'seoKeywords'].includes(firstErrorField)) {
+        setActiveTab('advanced');
+      } else {
+        setActiveTab('basic');
       }
+
+      setTimeout(() => {
+        const errorElement = document.querySelector(`[name="${firstErrorField}"]`);
+        if (errorElement) {
+          errorElement.scrollIntoView({ behavior: 'smooth', block: 'center' });
+        }
+      }, 100);
       return;
     }
-    
+
+    setIsSaving(true);
+    setSaveStatus(null);
+
     try {
-      setIsSaving(true);
-      setSaveStatus(null);
-      
-      // Transform form data to match backend Event model\n      const eventData = {\n        title: formData.title,\n        description: formData.description,\n        category: formData.category,\n        type: formData.type,\n        venueType: formData.venueType,\n        ageRange: [parseInt(formData.ageRangeMin), parseInt(formData.ageRangeMax)],\n        location: {\n          city: formData.city,\n          address: formData.address,\n          coordinates: {\n            lat: parseFloat(formData.latitude) || 0,\n            lng: parseFloat(formData.longitude) || 0\n          }\n        },\n        price: parseFloat(formData.price),\n        currency: formData.currency,\n        tags: formData.tags.split(',').map(tag => tag.trim()).filter(tag => tag.length > 0),\n        dateSchedule: [{\n          date: formData.eventDate,\n          availableSeats: parseInt(formData.availableSeats),\n          price: parseFloat(formData.schedulePrice || formData.price)\n        }],\n        images: [], // Images will be handled separately if upload service is implemented\n        seoMeta: {\n          title: formData.seoMeta.title || formData.title,\n          description: formData.seoMeta.description || formData.description.substring(0, 160),\n          keywords: formData.seoMeta.keywords.length > 0\n            ? formData.seoMeta.keywords\n            : formData.tags.split(',').map(tag => tag.trim()).filter(tag => tag.length > 0)\n        },\n        faqs: []\n      };\n      \n      // Call appropriate API endpoint\n      if (isNewEvent) {\n        await eventsAPI.createEvent(eventData);\n      } else {\n        await eventsAPI.updateEvent(eventId!, eventData);\n      }\n      \n      // Success message\n      setSaveStatus({\n        type: 'success',\n        message: isNewEvent \n          ? 'Event created successfully! Redirecting to events page...'\n          : 'Event updated successfully!'\n      });\n      \n      // Redirect after successful creation/update\n      setTimeout(() => {\n        navigate('/vendor/events');\n      }, 2000);
+      const minPrice = Math.min(...schedules.map(s => parseFloat(s.price)));
+
+      const eventData = {
+        title: formData.title,
+        description: formData.description,
+        category: formData.category,
+        type: formData.type,
+        venueType: formData.venueType,
+        ageRange: [parseInt(formData.ageRangeMin), parseInt(formData.ageRangeMax)],
+        location: {
+          city: formData.city,
+          address: formData.address,
+          coordinates: {
+            lat: parseFloat(formData.latitude) || 0,
+            lng: parseFloat(formData.longitude) || 0
+          }
+        },
+        price: minPrice,
+        currency: formData.currency,
+        capacity: parseInt(formData.capacity),
+        isFeatured: formData.featured,
+        tags: formData.tags.split(',').map(tag => tag.trim()).filter(tag => tag.length > 0),
+        dateSchedule: schedules.map(schedule => ({
+          ...(schedule._id && { _id: schedule._id }),
+          startDate: schedule.startDate,
+          endDate: schedule.endDate,
+          availableSeats: parseInt(schedule.availableSeats),
+          price: parseFloat(schedule.price)
+        })),
+        images: formData.imagePreviewUrls,
+        seoMeta: {
+          title: formData.seoMeta.title || formData.title,
+          description: formData.seoMeta.description || formData.description.substring(0, 160),
+          keywords: formData.seoMeta.keywords.length > 0
+            ? formData.seoMeta.keywords
+            : formData.tags.split(',').map(tag => tag.trim()).filter(tag => tag.length > 0)
+        }
+      };
+
+      await vendorAPI.updateVendorEvent(id!, eventData);
+
+      setSaveStatus({
+        type: 'success',
+        message: 'Event updated successfully!'
+      });
+
+      setTimeout(() => {
+        navigate('/vendor/events');
+      }, 2000);
+
     } catch (error: any) {
-      console.error('Error saving event:', error);
+      console.error('Error updating event:', error);
       setSaveStatus({
         type: 'error',
-        message: error.response?.data?.message || (isNewEvent 
-          ? 'Failed to create event. Please try again.'
-          : 'Failed to update event. Please try again.')
+        message: error.response?.data?.message || 'Failed to update event. Please try again.'
       });
     } finally {
       setIsSaving(false);
     }
   };
 
-  const handleCancel = () => {
-    navigate(-1); // Go back to previous page
-  };
-
   if (isLoading) {
     return (
-      <div className="flex justify-center items-center min-h-screen">
-        <svg className="animate-spin h-10 w-10 text-primary" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
-          <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
-          <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
-        </svg>
-      </div>
+      <>
+        <VendorNavigation />
+        <div className="flex justify-center items-center min-h-screen">
+          <svg className="animate-spin h-10 w-10 text-primary" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+            <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+            <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+          </svg>
+        </div>
+      </>
     );
   }
 
   return (
-    <div className="container mx-auto px-4 py-8">
-      <div className="max-w-4xl mx-auto bg-white rounded-lg shadow-md overflow-hidden">
-        <div className="px-6 py-4 bg-gray-50 border-b border-gray-200">
-          <h1 className="text-2xl font-bold text-gray-900">
-            {isNewEvent ? 'Create New Event' : 'Edit Event'}
-          </h1>
-        </div>
-        
-        {saveStatus && (
-          <div className={`p-4 ${saveStatus.type === 'success' ? 'bg-green-100 text-green-700' : 'bg-red-100 text-red-700'}`}>
-            {saveStatus.message}
+    <>
+      <VendorNavigation />
+      <div className="container mx-auto px-4 py-8">
+        <div className="max-w-4xl mx-auto">
+          <div className="flex items-center justify-between mb-6">
+            <h1 className="text-3xl font-bold text-gray-900">Edit Event</h1>
+            <button
+              onClick={() => navigate('/vendor/events')}
+              className="inline-flex items-center px-4 py-2 border border-gray-300 shadow-sm text-sm font-medium rounded-md text-gray-700 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-primary"
+            >
+              Cancel
+            </button>
           </div>
-        )}
-        
-        <form onSubmit={handleSubmit} className="p-6">
-          <div className="space-y-6">
-            {/* Event Details Section */}
-            <div>
-              <h2 className="text-xl font-semibold text-gray-900 mb-4">Event Details</h2>
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                <div className="md:col-span-2">
-                  <label htmlFor="title" className="block text-sm font-medium text-gray-700 mb-1">
-                    Event Title*
-                  </label>
-                  <input
-                    type="text"
-                    id="title"
-                    name="title"
-                    value={formData.title}
-                    onChange={handleInputChange}
-                    className={`w-full px-3 py-2 border ${errors.title ? 'border-red-500' : 'border-gray-300'} rounded-md shadow-sm focus:outline-none focus:ring-primary focus:border-primary`}
-                    placeholder="Enter event title"
-                  />
-                  {errors.title && <p className="mt-1 text-sm text-red-600">{errors.title}</p>}
-                </div>
-                
-                <div className="md:col-span-2">
-                  <label htmlFor="description" className="block text-sm font-medium text-gray-700 mb-1">
-                    Event Description*
-                  </label>
-                  <textarea
-                    id="description"
-                    name="description"
-                    value={formData.description}
-                    onChange={handleInputChange}
-                    rows={4}
-                    className={`w-full px-3 py-2 border ${errors.description ? 'border-red-500' : 'border-gray-300'} rounded-md shadow-sm focus:outline-none focus:ring-primary focus:border-primary`}
-                    placeholder="Describe your event"
-                  />
-                  {errors.description && <p className="mt-1 text-sm text-red-600">{errors.description}</p>}
-                </div>
-                
-                <div>
-                  <label htmlFor="eventDate" className="block text-sm font-medium text-gray-700 mb-1">
-                    Event Date*
-                  </label>
-                  <input
-                    type="date"
-                    id="eventDate"
-                    name="eventDate"
-                    value={formData.eventDate}
-                    onChange={handleInputChange}
-                    className={`w-full px-3 py-2 border ${errors.eventDate ? 'border-red-500' : 'border-gray-300'} rounded-md shadow-sm focus:outline-none focus:ring-primary focus:border-primary`}
-                  />
-                  {errors.eventDate && <p className="mt-1 text-sm text-red-600">{errors.eventDate}</p>}
-                </div>
-                
-                <div>
-                  <label htmlFor="availableSeats" className="block text-sm font-medium text-gray-700 mb-1">
-                    Available Seats*
-                  </label>
-                  <input
-                    type="number"
-                    id="availableSeats"
-                    name="availableSeats"
-                    value={formData.availableSeats}
-                    onChange={handleInputChange}
-                    min="1"
-                    className={`w-full px-3 py-2 border ${errors.availableSeats ? 'border-red-500' : 'border-gray-300'} rounded-md shadow-sm focus:outline-none focus:ring-primary focus:border-primary`}
-                    placeholder="Enter number of seats"
-                  />
-                  {errors.availableSeats && <p className="mt-1 text-sm text-red-600">{errors.availableSeats}</p>}
-                </div>
-                
-                <div>
-                  <label htmlFor="category" className="block text-sm font-medium text-gray-700 mb-1">
-                    Category*
-                  </label>
-                  <select
-                    id="category"
-                    name="category"
-                    value={formData.category}
-                    onChange={handleInputChange}
-                    className={`w-full px-3 py-2 border ${errors.category ? 'border-red-500' : 'border-gray-300'} rounded-md shadow-sm focus:outline-none focus:ring-primary focus:border-primary`}
-                  >
-                    <option value="">Select a category</option>
-                    {categories.map(category => (
-                      <option key={category.id} value={category.name}>
-                        {category.name}
-                      </option>
-                    ))}
-                  </select>
-                  {errors.category && <p className="mt-1 text-sm text-red-600">{errors.category}</p>}
-                </div>
-                
-                <div>
-                  <label htmlFor="price" className="block text-sm font-medium text-gray-700 mb-1">
-                    Ticket Price ($)*
-                  </label>
-                  <input
-                    type="text"
-                    id="price"
-                    name="price"
-                    value={formData.price}
-                    onChange={handleInputChange}
-                    className={`w-full px-3 py-2 border ${errors.price ? 'border-red-500' : 'border-gray-300'} rounded-md shadow-sm focus:outline-none focus:ring-primary focus:border-primary`}
-                    placeholder="0.00"
-                  />
-                  {errors.price && <p className="mt-1 text-sm text-red-600">{errors.price}</p>}
-                </div>
-                
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
-                  <div>
-                    <label htmlFor="type" className="block text-sm font-medium text-gray-700 mb-1">
-                      Event Type*
-                    </label>
-                    <select
-                      id="type"
-                      name="type"
-                      value={formData.type}
-                      onChange={handleInputChange}
-                      className={`w-full px-3 py-2 border ${errors.type ? 'border-red-500' : 'border-gray-300'} rounded-md shadow-sm focus:outline-none focus:ring-primary focus:border-primary`}
-                    >
-                      <option value="Event">Event</option>
-                      <option value="Course">Course</option>
-                      <option value="Venue">Venue</option>
-                    </select>
-                    {errors.type && <p className="mt-1 text-sm text-red-600">{errors.type}</p>}
-                  </div>
-                  
-                  <div>
-                    <label htmlFor="venueType" className="block text-sm font-medium text-gray-700 mb-1">
-                      Venue Type*
-                    </label>
-                    <select
-                      id="venueType"
-                      name="venueType"
-                      value={formData.venueType}
-                      onChange={handleInputChange}
-                      className={`w-full px-3 py-2 border ${errors.venueType ? 'border-red-500' : 'border-gray-300'} rounded-md shadow-sm focus:outline-none focus:ring-primary focus:border-primary`}
-                    >
-                      <option value="Indoor">Indoor</option>
-                      <option value="Outdoor">Outdoor</option>
-                    </select>
-                    {errors.venueType && <p className="mt-1 text-sm text-red-600">{errors.venueType}</p>}
-                  </div>
-                </div>
 
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
-                  <div>
-                    <label htmlFor="ageRangeMin" className="block text-sm font-medium text-gray-700 mb-1">
-                      Minimum Age*
-                    </label>
-                    <input
-                      type="number"
-                      id="ageRangeMin"
-                      name="ageRangeMin"
-                      value={formData.ageRangeMin}
-                      onChange={handleInputChange}
-                      min="0"
-                      max="100"
-                      className={`w-full px-3 py-2 border ${errors.ageRangeMin ? 'border-red-500' : 'border-gray-300'} rounded-md shadow-sm focus:outline-none focus:ring-primary focus:border-primary`}
-                      placeholder="e.g. 5"
-                    />
-                    {errors.ageRangeMin && <p className="mt-1 text-sm text-red-600">{errors.ageRangeMin}</p>}
-                  </div>
-                  
-                  <div>
-                    <label htmlFor="ageRangeMax" className="block text-sm font-medium text-gray-700 mb-1">
-                      Maximum Age*
-                    </label>
-                    <input
-                      type="number"
-                      id="ageRangeMax"
-                      name="ageRangeMax"
-                      value={formData.ageRangeMax}
-                      onChange={handleInputChange}
-                      min="0"
-                      max="100"
-                      className={`w-full px-3 py-2 border ${errors.ageRangeMax ? 'border-red-500' : 'border-gray-300'} rounded-md shadow-sm focus:outline-none focus:ring-primary focus:border-primary`}
-                      placeholder="e.g. 12"
-                    />
-                    {errors.ageRangeMax && <p className="mt-1 text-sm text-red-600">{errors.ageRangeMax}</p>}
-                  </div>
-                </div>
-                
-                <div>
-                  <label htmlFor="tags" className="block text-sm font-medium text-gray-700 mb-1">
-                    Tags <span className="text-gray-500">(comma separated)</span>
-                  </label>
-                  <input
-                    type="text"
-                    id="tags"
-                    name="tags"
-                    value={formData.tags}
-                    onChange={handleInputChange}
-                    className={`w-full px-3 py-2 border ${errors.tags ? 'border-red-500' : 'border-gray-300'} rounded-md shadow-sm focus:outline-none focus:ring-primary focus:border-primary`}
-                    placeholder="e.g. kids, science, fun, educational"
-                  />
-                  {errors.tags && <p className="mt-1 text-sm text-red-600">{errors.tags}</p>}
-                </div>
-              </div>
+          {saveStatus && (
+            <div className={`p-4 mb-6 rounded-lg ${saveStatus.type === 'success' ? 'bg-green-100 text-green-700' : 'bg-red-100 text-red-700'}`}>
+              {saveStatus.message}
             </div>
-            
-            {/* Location Section */}
-            <div>
-              <h2 className="text-xl font-semibold text-gray-900 mb-4">Location</h2>
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                <div>
-                  <label htmlFor="address" className="block text-sm font-medium text-gray-700 mb-1">
-                    Street Address*
-                  </label>
-                  <input
-                    type="text"
-                    id="address"
-                    name="address"
-                    value={formData.address}
-                    onChange={handleInputChange}
-                    className={`w-full px-3 py-2 border ${errors.address ? 'border-red-500' : 'border-gray-300'} rounded-md shadow-sm focus:outline-none focus:ring-primary focus:border-primary`}
-                    placeholder="Enter street address"
-                  />
-                  {errors.address && <p className="mt-1 text-sm text-red-600">{errors.address}</p>}
-                </div>
-                
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
-                  <div>
-                    <label htmlFor="city" className="block text-sm font-medium text-gray-700 mb-1">
-                      City*
-                    </label>
-                    <input
-                      type="text"
-                      id="city"
-                      name="city"
-                      value={formData.city}
-                      onChange={handleInputChange}
-                      className={`w-full px-3 py-2 border ${errors.city ? 'border-red-500' : 'border-gray-300'} rounded-md shadow-sm focus:outline-none focus:ring-primary focus:border-primary`}
-                      placeholder="Enter city"
-                    />
-                    {errors.city && <p className="mt-1 text-sm text-red-600">{errors.city}</p>}
-                  </div>
-                  
-                  <div>
-                    <label htmlFor="currency" className="block text-sm font-medium text-gray-700 mb-1">
-                      Currency
-                    </label>
-                    <select
-                      id="currency"
-                      name="currency"
-                      value={formData.currency}
-                      onChange={handleInputChange}
-                      className={`w-full px-3 py-2 border ${errors.currency ? 'border-red-500' : 'border-gray-300'} rounded-md shadow-sm focus:outline-none focus:ring-primary focus:border-primary`}
-                    >
-                      <option value="USD">USD ($)</option>
-                      <option value="EUR">EUR (€)</option>
-                      <option value="GBP">GBP (£)</option>
-                    </select>
-                    {errors.currency && <p className="mt-1 text-sm text-red-600">{errors.currency}</p>}
-                  </div>
-                </div>
-                
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
-                  <div>
-                    <label htmlFor="latitude" className="block text-sm font-medium text-gray-700 mb-1">
-                      Latitude <span className="text-gray-500">(optional)</span>
-                    </label>
-                    <input
-                      type="text"
-                      id="latitude"
-                      name="latitude"
-                      value={formData.latitude}
-                      onChange={handleInputChange}
-                      className={`w-full px-3 py-2 border ${errors.latitude ? 'border-red-500' : 'border-gray-300'} rounded-md shadow-sm focus:outline-none focus:ring-primary focus:border-primary`}
-                      placeholder="e.g. 40.7128"
-                    />
-                    {errors.latitude && <p className="mt-1 text-sm text-red-600">{errors.latitude}</p>}
-                  </div>
-                  
-                  <div>
-                    <label htmlFor="longitude" className="block text-sm font-medium text-gray-700 mb-1">
-                      Longitude <span className="text-gray-500">(optional)</span>
-                    </label>
-                    <input
-                      type="text"
-                      id="longitude"
-                      name="longitude"
-                      value={formData.longitude}
-                      onChange={handleInputChange}
-                      className={`w-full px-3 py-2 border ${errors.longitude ? 'border-red-500' : 'border-gray-300'} rounded-md shadow-sm focus:outline-none focus:ring-primary focus:border-primary`}
-                      placeholder="e.g. -74.0060"
-                    />
-                    {errors.longitude && <p className="mt-1 text-sm text-red-600">{errors.longitude}</p>}
-                  </div>
-                </div>
-              </div>
-            </div>
-            
-            {/* Image Upload Section */}
-            <div>
-              <h2 className="text-xl font-semibold text-gray-900 mb-4">Event Image</h2>
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">
-                    Upload Image{isNewEvent ? '*' : ''}
-                  </label>
-                  <div className="mt-1 flex justify-center px-6 pt-5 pb-6 border-2 border-gray-300 border-dashed rounded-md">
-                    <div className="space-y-1 text-center">
-                      <svg className="mx-auto h-12 w-12 text-gray-400" stroke="currentColor" fill="none" viewBox="0 0 48 48" aria-hidden="true">
-                        <path d="M28 8H12a4 4 0 00-4 4v20m32-12v8m0 0v8a4 4 0 01-4 4H12a4 4 0 01-4-4v-4m32-4l-3.172-3.172a4 4 0 00-5.656 0L28 28M8 32l9.172-9.172a4 4 0 015.656 0L28 28m0 0l4 4m4-24h8m-4-4v8m-12 4h.02" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
-                      </svg>
-                      <div className="flex text-sm text-gray-600">
-                        <label htmlFor="image" className="relative cursor-pointer bg-white rounded-md font-medium text-primary hover:text-primary-dark focus-within:outline-none focus-within:ring-2 focus-within:ring-offset-2 focus-within:ring-primary">
-                          <span>Upload a file</span>
-                          <input 
-                            id="image" 
-                            name="image" 
-                            type="file" 
-                            className="sr-only" 
-                            accept="image/*"
-                            onChange={handleImageChange}
-                          />
-                        </label>
-                        <p className="pl-1">or drag and drop</p>
-                      </div>
-                      <p className="text-xs text-gray-500">
-                        PNG, JPG, GIF up to 10MB
-                      </p>
-                    </div>
-                  </div>
-                  {errors.image && <p className="mt-1 text-sm text-red-600">{errors.image}</p>}
-                </div>
-                
-                <div>
-                  {formData.imagePreviewUrls.length > 0 && (
-                    <div>
-                      <p className="block text-sm font-medium text-gray-700 mb-1">Image Preview</p>
-                      <div className="grid grid-cols-2 sm:grid-cols-3 gap-4 mt-2">
-                        {formData.imagePreviewUrls.map((url, index) => (
-                          <img 
-                            key={index}
-                            src={url} 
-                            alt={`Event preview ${index + 1}`} 
-                            className="h-32 w-full object-cover rounded-md" 
-                          />
-                        ))}
-                      </div>
-                    </div>
-                  )}
-                </div>
-              </div>
-            </div>
+          )}
 
-            {/* SEO Settings */}
-            <div className="mt-8">
-              <SEOEditor
-                initialData={{
-                  title: formData.seoMeta.title,
-                  description: formData.seoMeta.description,
-                  keywords: formData.seoMeta.keywords
-                }}
-                contentData={{
-                  title: formData.title,
-                  description: formData.description,
-                  category: formData.category,
-                  location: formData.city,
-                  tags: formData.tags.split(',').map(tag => tag.trim()).filter(tag => tag.length > 0),
-                  type: 'event'
-                }}
-                onChange={(seoData) => {
-                  setFormData(prev => ({
-                    ...prev,
-                    seoMeta: {
-                      title: seoData.title,
-                      description: seoData.description,
-                      keywords: seoData.keywords
+          <div className="bg-white shadow-md rounded-lg overflow-hidden">
+            {/* Tabs */}
+            <div className="border-b border-gray-200">
+              <div className="flex space-x-1 p-2">
+                <button
+                  type="button"
+                  onClick={() => setActiveTab('basic')}
+                  className={`
+                    px-4 py-2 rounded-lg font-medium text-sm transition-colors
+                    ${activeTab === 'basic'
+                      ? 'bg-primary text-white'
+                      : 'text-gray-600 hover:bg-gray-100'
                     }
-                  }));
-                }}
-                baseUrl={import.meta.env.VITE_APP_URL || 'https://gema-events.com'}
-                path={`/events/${eventId !== 'new' ? eventId : 'new-event'}`}
-                ogImage={formData.imagePreviewUrls[0]}
-                disabled={isSaving}
-              />
+                  `}
+                >
+                  Basic Info
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setActiveTab('schedule')}
+                  className={`
+                    px-4 py-2 rounded-lg font-medium text-sm transition-colors
+                    ${activeTab === 'schedule'
+                      ? 'bg-primary text-white'
+                      : 'text-gray-600 hover:bg-gray-100'
+                    }
+                  `}
+                >
+                  Schedule & Pricing
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setActiveTab('advanced')}
+                  className={`
+                    px-4 py-2 rounded-lg font-medium text-sm transition-colors
+                    ${activeTab === 'advanced'
+                      ? 'bg-primary text-white'
+                      : 'text-gray-600 hover:bg-gray-100'
+                    }
+                  `}
+                >
+                  Advanced
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setActiveTab('formBuilder')}
+                  className={`
+                    px-4 py-2 rounded-lg font-medium text-sm transition-colors flex items-center
+                    ${activeTab === 'formBuilder'
+                      ? 'bg-primary text-white'
+                      : 'text-gray-600 hover:bg-gray-100'
+                    }
+                  `}
+                >
+                  <svg className="w-4 h-4 mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+                  </svg>
+                  Registration Form
+                </button>
+              </div>
             </div>
 
-            {/* Form Actions */}
-            <div className="flex justify-end space-x-3 pt-4 border-t border-gray-200">
-              <button
-                type="button"
-                onClick={handleCancel}
-                className="px-4 py-2 border border-gray-300 rounded-md shadow-sm text-sm font-medium text-gray-700 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-primary"
-                disabled={isSaving}
-              >
-                Cancel
-              </button>
-              <button
-                type="submit"
-                className="px-4 py-2 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-primary hover:bg-primary-dark focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-primary"
-                disabled={isSaving}
-              >
-                {isSaving ? (
-                  <>
-                    <svg className="animate-spin -ml-1 mr-2 h-4 w-4 text-white inline-block" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
-                      <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
-                      <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
-                    </svg>
-                    {isNewEvent ? 'Creating...' : 'Saving...'}
-                  </>
-                ) : (
-                  <>{isNewEvent ? 'Create Event' : 'Save Changes'}</>
+            {/* Tab Content */}
+            <form onSubmit={handleSubmit}>
+              <div className="p-6">
+                {activeTab === 'basic' && (
+                  <BasicInfoTab
+                    formData={formData}
+                    categories={categories}
+                    errors={errors}
+                    onInputChange={handleInputChange}
+                    onCheckboxChange={handleCheckboxChange}
+                    onImageUpload={handleImageUpload}
+                    onRemoveImage={removeImage}
+                  />
                 )}
-              </button>
-            </div>
+
+                {activeTab === 'schedule' && (
+                  <SchedulePricingTab
+                    schedules={schedules}
+                    currency={formData.currency}
+                    capacity={formData.capacity}
+                    errors={errors}
+                    onScheduleChange={handleScheduleChange}
+                    onAddSchedule={handleAddSchedule}
+                    onRemoveSchedule={handleRemoveSchedule}
+                    onCurrencyChange={handleInputChange}
+                    onCapacityChange={handleInputChange}
+                  />
+                )}
+
+                {activeTab === 'advanced' && (
+                  <AdvancedTab
+                    formData={formData}
+                    errors={errors}
+                    onInputChange={handleInputChange}
+                  />
+                )}
+
+                {activeTab === 'formBuilder' && id && (
+                  <FormBuilder
+                    eventId={id}
+                    onSaveSuccess={() => {
+                      setSaveStatus({
+                        type: 'success',
+                        message: 'Registration form saved successfully!'
+                      });
+                      setTimeout(() => setSaveStatus(null), 3000);
+                    }}
+                  />
+                )}
+              </div>
+
+              {/* Navigation Buttons (hide for form builder tab) */}
+              {activeTab !== 'formBuilder' && (
+                <div className="px-6 py-4 bg-gray-50 border-t flex justify-between">
+                  <button
+                    type="button"
+                    onClick={() => {
+                      if (activeTab === 'schedule') setActiveTab('basic');
+                      else if (activeTab === 'advanced') setActiveTab('schedule');
+                    }}
+                    disabled={activeTab === 'basic'}
+                    className="inline-flex justify-center py-2 px-4 border border-gray-300 shadow-sm text-sm font-medium rounded-md text-gray-700 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-primary disabled:opacity-50 disabled:cursor-not-allowed"
+                  >
+                    Previous
+                  </button>
+
+                  <div className="flex space-x-3">
+                    <button
+                      type="button"
+                      onClick={() => navigate('/vendor/events')}
+                      className="inline-flex justify-center py-2 px-4 border border-gray-300 shadow-sm text-sm font-medium rounded-md text-gray-700 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-primary"
+                    >
+                      Cancel
+                    </button>
+
+                    {activeTab !== 'advanced' ? (
+                      <button
+                        type="button"
+                        onClick={() => {
+                          if (activeTab === 'basic') setActiveTab('schedule');
+                          else if (activeTab === 'schedule') setActiveTab('advanced');
+                        }}
+                        className="inline-flex justify-center py-2 px-4 border border-transparent shadow-sm text-sm font-medium rounded-md text-white bg-primary hover:bg-primary-dark focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-primary"
+                      >
+                        Next
+                      </button>
+                    ) : (
+                      <button
+                        type="submit"
+                        disabled={isSaving}
+                        className="inline-flex justify-center py-2 px-4 border border-transparent shadow-sm text-sm font-medium rounded-md text-white bg-primary hover:bg-primary-dark focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-primary disabled:opacity-50"
+                      >
+                        {isSaving ? (
+                          <>
+                            <svg className="animate-spin -ml-1 mr-2 h-4 w-4 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                              <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                              <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                            </svg>
+                            Saving...
+                          </>
+                        ) : 'Save Changes'}
+                      </button>
+                    )}
+                  </div>
+                </div>
+              )}
+            </form>
           </div>
-        </form>
+        </div>
       </div>
-    </div>
+    </>
   );
 };
 

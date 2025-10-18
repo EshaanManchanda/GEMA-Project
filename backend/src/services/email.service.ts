@@ -51,6 +51,32 @@ export interface TicketEmailOptions {
   }>;
 }
 
+export interface VendorBookingNotificationOptions {
+  to: string;
+  vendorName: string;
+  orderNumber: string;
+  eventTitle: string;
+  eventDate: Date;
+  participantCount: number;
+  orderTotal: number;
+  currency: string;
+  participants: Array<{
+    name: string;
+    email?: string;
+    phone?: string;
+    age?: number;
+    gender?: string;
+    registrationData?: Array<{
+      fieldLabel: string;
+      fieldType: string;
+      value: any;
+    }>;
+  }>;
+  customerName: string;
+  customerEmail: string;
+  customerPhone?: string;
+}
+
 class EmailService {
   private transporter: nodemailer.Transporter;
 
@@ -404,6 +430,173 @@ class EmailService {
     await this.sendEmail({
       to: options.to,
       subject: 'Your Event Tickets - Gema',
+      html,
+    });
+  }
+
+  /**
+   * Send vendor booking notification email
+   */
+  async sendVendorBookingNotificationEmail(options: VendorBookingNotificationOptions): Promise<void> {
+    // Format participant information
+    const participantsHtml = options.participants.map((participant, index) => {
+      // Build registration data section if available
+      let registrationDataHtml = '';
+      if (participant.registrationData && participant.registrationData.length > 0) {
+        const fieldRows = participant.registrationData.map(field => {
+          // Format value based on type
+          let displayValue = field.value;
+          if (Array.isArray(field.value)) {
+            displayValue = field.value.join(', ');
+          } else if (field.fieldType === 'checkbox') {
+            displayValue = field.value ? 'Yes' : 'No';
+          } else if (field.fieldType === 'date' && field.value) {
+            displayValue = new Date(field.value).toLocaleDateString();
+          }
+
+          return `
+            <tr>
+              <td style="padding: 8px; border-bottom: 1px solid #eee; font-weight: 500;">${field.fieldLabel}</td>
+              <td style="padding: 8px; border-bottom: 1px solid #eee;">${displayValue || 'N/A'}</td>
+            </tr>
+          `;
+        }).join('');
+
+        registrationDataHtml = `
+          <div style="margin-top: 15px; background: #f8f9fa; padding: 15px; border-radius: 5px;">
+            <h4 style="margin-top: 0; color: #495057; font-size: 14px;">Additional Registration Details</h4>
+            <table style="width: 100%; font-size: 13px;">
+              ${fieldRows}
+            </table>
+          </div>
+        `;
+      }
+
+      return `
+        <div style="border: 2px solid #e9ecef; border-radius: 8px; padding: 20px; margin: 15px 0; background: white;">
+          <h3 style="margin-top: 0; color: #007bff; font-size: 16px;">Participant ${index + 1}: ${participant.name}</h3>
+          <table style="width: 100%; margin-top: 10px; font-size: 14px;">
+            ${participant.email ? `
+              <tr>
+                <td style="padding: 8px; font-weight: 500; width: 30%;">Email:</td>
+                <td style="padding: 8px;">${participant.email}</td>
+              </tr>
+            ` : ''}
+            ${participant.phone ? `
+              <tr>
+                <td style="padding: 8px; font-weight: 500;">Phone:</td>
+                <td style="padding: 8px;">${participant.phone}</td>
+              </tr>
+            ` : ''}
+            ${participant.age ? `
+              <tr>
+                <td style="padding: 8px; font-weight: 500;">Age:</td>
+                <td style="padding: 8px;">${participant.age}</td>
+              </tr>
+            ` : ''}
+            ${participant.gender ? `
+              <tr>
+                <td style="padding: 8px; font-weight: 500;">Gender:</td>
+                <td style="padding: 8px; text-transform: capitalize;">${participant.gender}</td>
+              </tr>
+            ` : ''}
+          </table>
+          ${registrationDataHtml}
+        </div>
+      `;
+    }).join('');
+
+    const html = `
+      <!DOCTYPE html>
+      <html>
+      <head>
+        <meta charset="utf-8">
+        <meta name="viewport" content="width=device-width, initial-scale=1.0">
+        <title>New Booking Received - Gema</title>
+        <style>
+          body { font-family: Arial, sans-serif; line-height: 1.6; color: #333; }
+          .container { max-width: 700px; margin: 0 auto; padding: 20px; }
+          .header { background: linear-gradient(135deg, #6366f1 0%, #8b5cf6 100%); color: white; padding: 25px; text-align: center; border-radius: 8px 8px 0 0; }
+          .content { background: #f8f9fa; padding: 30px; border-radius: 0 0 8px 8px; }
+          .booking-summary { background: white; padding: 20px; border-radius: 8px; margin: 20px 0; border-left: 4px solid #6366f1; }
+          .customer-info { background: #e0e7ff; padding: 15px; border-radius: 5px; margin: 15px 0; }
+          .footer { text-align: center; margin-top: 20px; color: #666; font-size: 14px; }
+          .btn { display: inline-block; background: #6366f1; color: white; padding: 12px 24px; text-decoration: none; border-radius: 5px; margin: 15px 0; }
+        </style>
+      </head>
+      <body>
+        <div class="container">
+          <div class="header">
+            <h1>🎉 New Booking Received!</h1>
+          </div>
+          <div class="content">
+            <h2>Hi ${options.vendorName}!</h2>
+            <p>Great news! You've received a new booking for your event.</p>
+
+            <div class="booking-summary">
+              <h3 style="margin-top: 0; color: #6366f1;">Booking Summary</h3>
+              <table style="width: 100%; font-size: 14px;">
+                <tr>
+                  <td style="padding: 8px; font-weight: 500; width: 30%;">Order Number:</td>
+                  <td style="padding: 8px;"><strong>${options.orderNumber}</strong></td>
+                </tr>
+                <tr>
+                  <td style="padding: 8px; font-weight: 500;">Event:</td>
+                  <td style="padding: 8px;">${options.eventTitle}</td>
+                </tr>
+                <tr>
+                  <td style="padding: 8px; font-weight: 500;">Event Date:</td>
+                  <td style="padding: 8px;">${options.eventDate.toLocaleDateString()} at ${options.eventDate.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</td>
+                </tr>
+                <tr>
+                  <td style="padding: 8px; font-weight: 500;">Participants:</td>
+                  <td style="padding: 8px;"><strong>${options.participantCount}</strong></td>
+                </tr>
+                <tr>
+                  <td style="padding: 8px; font-weight: 500;">Total Amount:</td>
+                  <td style="padding: 8px;"><strong style="color: #10b981; font-size: 18px;">${options.currency} ${options.orderTotal.toFixed(2)}</strong></td>
+                </tr>
+              </table>
+            </div>
+
+            <div class="customer-info">
+              <h3 style="margin-top: 0; color: #4338ca; font-size: 16px;">Customer Information</h3>
+              <p style="margin: 5px 0;"><strong>Name:</strong> ${options.customerName}</p>
+              <p style="margin: 5px 0;"><strong>Email:</strong> ${options.customerEmail}</p>
+              ${options.customerPhone ? `<p style="margin: 5px 0;"><strong>Phone:</strong> ${options.customerPhone}</p>` : ''}
+            </div>
+
+            <h3 style="color: #374151;">Participant Details</h3>
+            ${participantsHtml}
+
+            <div style="background: #dbeafe; border: 1px solid #93c5fd; padding: 15px; border-radius: 5px; margin: 20px 0;">
+              <p style="margin: 0; font-size: 14px; color: #1e40af;">
+                <strong>📋 Next Steps:</strong>
+              </p>
+              <ul style="margin: 10px 0; padding-left: 20px; color: #1e40af;">
+                <li>The customer has received their tickets with QR codes</li>
+                <li>Review participant information and prepare for the event</li>
+                <li>Contact participants if you need additional information</li>
+                <li>Use QR code scanner at check-in for quick verification</li>
+              </ul>
+            </div>
+
+            <div style="text-align: center; margin: 25px 0;">
+              <p style="color: #6b7280;">Manage this booking in your vendor dashboard</p>
+            </div>
+          </div>
+          <div class="footer">
+            <p>Best regards,<br>The Gema Team</p>
+            <p><small>Booking notification #${options.orderNumber}</small></p>
+          </div>
+        </div>
+      </body>
+      </html>
+    `;
+
+    await this.sendEmail({
+      to: options.to,
+      subject: `New Booking Received - ${options.eventTitle} (${options.orderNumber})`,
       html,
     });
   }

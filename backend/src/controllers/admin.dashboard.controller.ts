@@ -1,7 +1,7 @@
 import { Request, Response, NextFunction } from 'express';
-import { 
-  User, Event, Order, Review, Booking, Ticket, Payment, 
-  Category, Venue, Blog, Notification,
+import {
+  User, Event, Order, Review, Booking, Ticket, Payment,
+  Category, Venue, Blog, // Notification, // Commented out - notification system disabled
   Affiliate, Coupon, RevenueTransaction, AdminRevenueSettings,
   AdvertisingCampaign, VendorSubscription, CheckinLog
 } from '../models';
@@ -189,7 +189,7 @@ export const getDashboardStats = async (req: Request, res: Response, next: NextF
       Category.countDocuments(),
       Venue.countDocuments(),
       Blog.countDocuments(),
-      Notification.countDocuments(),
+      Promise.resolve(0), // Notification.countDocuments(), // Commented out - notification system disabled
       Affiliate.countDocuments(),
       Coupon.countDocuments({ isActive: true }),
       RevenueTransaction.countDocuments(),
@@ -446,7 +446,7 @@ export const getRecentActivity = async (req: Request, res: Response, next: NextF
       recentBookings,
       recentTickets,
       recentPayments,
-      recentNotifications,
+      // recentNotifications, // Commented out - notification system disabled
       recentBlogs,
       recentAffiliates,
     ] = await Promise.all([
@@ -501,12 +501,12 @@ export const getRecentActivity = async (req: Request, res: Response, next: NextF
         .populate('userId', 'firstName lastName')
         .select('amount status method createdAt userId'),
 
-      // Recent notifications
-      Notification.find()
-        .sort({ createdAt: -1 })
-        .limit(10)
-        .populate('userId', 'firstName lastName')
-        .select('title message type createdAt userId'),
+      // Recent notifications - Commented out - notification system disabled
+      // Notification.find()
+      //   .sort({ createdAt: -1 })
+      //   .limit(10)
+      //   .populate('userId', 'firstName lastName')
+      //   .select('title message type createdAt userId'),
 
       // Recent blogs
       Blog.find()
@@ -637,22 +637,23 @@ export const getRecentActivity = async (req: Request, res: Response, next: NextF
           status: payment.status,
         },
       })),
-      
-      ...recentNotifications.map((notification: any) => ({
-        id: notification._id,
-        type: 'notification_sent',
-        title: 'Notification Sent',
-        description: `"${notification.title}" sent to user`,
-        timestamp: notification.createdAt,
-        priority: 'normal',
-        metadata: {
-          notificationId: notification._id,
-          userName: notification.userId ? `${notification.userId.firstName} ${notification.userId.lastName}` : 'Unknown',
-          title: notification.title,
-          type: notification.type,
-        },
-      })),
-      
+
+      // Commented out - notification system disabled
+      // ...recentNotifications.map((notification: any) => ({
+      //   id: notification._id,
+      //   type: 'notification_sent',
+      //   title: 'Notification Sent',
+      //   description: `"${notification.title}" sent to user`,
+      //   timestamp: notification.createdAt,
+      //   priority: 'normal',
+      //   metadata: {
+      //     notificationId: notification._id,
+      //     userName: notification.userId ? `${notification.userId.firstName} ${notification.userId.lastName}` : 'Unknown',
+      //     title: notification.title,
+      //     type: notification.type,
+      //   },
+      // })),
+
       ...recentBlogs.map((blog: any) => ({
         id: blog._id,
         type: 'blog_published',

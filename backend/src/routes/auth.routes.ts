@@ -17,7 +17,9 @@ import {
   validateResetPassword,
   validateEmailVerification,
   validateResendVerification,
-  validateFirebaseAuth
+  validateFirebaseAuth,
+  validateSendPhoneOTP,
+  validatePhoneOTP
 } from '../validators/auth.validator';
 import {
   validateProfileUpdate,
@@ -257,5 +259,49 @@ router.put(
  * @access  Private
  */
 router.delete('/avatar', authenticate, authController.deleteAvatar);
+
+/**
+ * Phone Verification Routes
+ */
+
+/**
+ * @route   POST /api/auth/send-phone-verification
+ * @desc    Send phone verification OTP
+ * @access  Private
+ */
+router.post(
+  '/send-phone-verification',
+  authenticate,
+  emailVerificationLimiter,
+  validateSendPhoneOTP,
+  validate,
+  authController.sendPhoneVerificationOTP
+);
+
+/**
+ * @route   POST /api/auth/verify-phone
+ * @desc    Verify phone number with OTP
+ * @access  Private
+ */
+router.post(
+  '/verify-phone',
+  authenticate,
+  emailVerificationLimiter,
+  validatePhoneOTP,
+  validate,
+  authController.verifyPhoneOTP
+);
+
+/**
+ * @route   POST /api/auth/resend-phone-verification
+ * @desc    Resend phone verification OTP
+ * @access  Private
+ */
+router.post(
+  '/resend-phone-verification',
+  authenticate,
+  emailVerificationLimiter,
+  authController.resendPhoneVerificationOTP
+);
 
 export default router;

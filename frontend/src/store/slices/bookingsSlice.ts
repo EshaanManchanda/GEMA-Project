@@ -18,6 +18,8 @@ export interface BookingParticipant {
   };
   specialRequirements?: string;
   dietaryRestrictions?: string[];
+  // Dynamic registration form data
+  registrationData?: Record<string, any>;
 }
 
 export interface BookingPayment {
@@ -143,6 +145,7 @@ interface BookingsState {
   bookingFlow: {
     step: 'details' | 'participants' | 'payment' | 'confirmation';
     eventId: string | null;
+    scheduleId: string | null;
     participants: BookingParticipant[];
     paymentMethod: string | null;
     specialRequests: string;
@@ -155,6 +158,7 @@ interface BookingsState {
     isProcessing: boolean;
     paymentIntent: string | null;
     clientSecret: string | null;
+    orderId: string | null;
   };
 }
 
@@ -189,6 +193,7 @@ const initialState: BookingsState = {
   bookingFlow: {
     step: 'details',
     eventId: null,
+    scheduleId: null,
     participants: [],
     paymentMethod: null,
     specialRequests: '',
@@ -200,6 +205,7 @@ const initialState: BookingsState = {
     isProcessing: false,
     paymentIntent: null,
     clientSecret: null,
+    orderId: null,
   },
 };
 
@@ -353,7 +359,14 @@ export const createPaymentIntent = createAsyncThunk(
     couponCode?: string;
   }, { rejectWithValue }) => {
     try {
-      const response = await bookingAPI.createPaymentIntent(params);
+      // Pass parameters directly to API - participants should be a number (count)
+      // The actual participant data will be sent during booking confirmation
+      const response = await bookingAPI.createPaymentIntent({
+        eventId: params.eventId,
+        participants: params.participants,  // Keep as number (participant count)
+        dateScheduleId: params.dateScheduleId,
+        couponCode: params.couponCode
+      });
       return response;
     } catch (error: any) {
       const message = error.response?.data?.message || 'Failed to create payment intent';
@@ -432,7 +445,11 @@ const bookingsSlice = createSlice({
       state.bookingFlow.eventId = action.payload;
       state.bookingFlow.step = 'details';
     },
-    
+
+    setBookingSchedule: (state, action: PayloadAction<string>) => {
+      state.bookingFlow.scheduleId = action.payload;
+    },
+
     setBookingParticipants: (state, action: PayloadAction<BookingParticipant[]>) => {
       state.bookingFlow.participants = action.payload;
     },
@@ -451,6 +468,17 @@ const bookingsSlice = createSlice({
           ...state.bookingFlow.participants[index],
           ...participant,
         };
+      }
+    },
+
+    // Update registration data for a participant
+    updateParticipantRegistrationData: (state, action: PayloadAction<{
+      index: number;
+      registrationData: Record<string, any>;
+    }>) => {
+      const { index, registrationData } = action.payload;
+      if (state.bookingFlow.participants[index]) {
+        state.bookingFlow.participants[index].registrationData = registrationData;
       }
     },
     
@@ -478,6 +506,7 @@ const bookingsSlice = createSlice({
       state.bookingFlow = {
         step: 'details',
         eventId: null,
+        scheduleId: null,
         participants: [],
         paymentMethod: null,
         specialRequests: '',
@@ -488,6 +517,7 @@ const bookingsSlice = createSlice({
         isProcessing: false,
         paymentIntent: null,
         clientSecret: null,
+        orderId: null,
       };
     },
     
@@ -679,6 +709,7 @@ const bookingsSlice = createSlice({
         state.checkout.isProcessing = false;
         state.checkout.paymentIntent = action.payload.paymentIntentId;
         state.checkout.clientSecret = action.payload.clientSecret;
+        state.checkout.orderId = action.payload.orderId;
       })
       .addCase(createPaymentIntent.rejected, (state, action) => {
         state.checkout.isProcessing = false;
@@ -711,9 +742,11 @@ const bookingsSlice = createSlice({
 export const {
   setBookingStep,
   setBookingEvent,
+  setBookingSchedule,
   setBookingParticipants,
   addParticipant,
   updateParticipant,
+  updateParticipantRegistrationData,
   removeParticipant,
   setPaymentMethod,
   setSpecialRequests,
@@ -741,6 +774,7 @@ export const selectBookingStats = (state: { bookings: BookingsState }) => state.
 export const selectBookingFlow = (state: { bookings: BookingsState }) => state.bookings?.bookingFlow || {
   step: 'details' as const,
   eventId: null,
+  scheduleId: null,
   participants: [],
   paymentMethod: null,
   specialRequests: '',
@@ -753,6 +787,7 @@ export const selectCheckout = (state: { bookings: BookingsState }) => state.book
   isProcessing: false,
   paymentIntent: null,
   clientSecret: null,
+  orderId: null,
 };
 
 export const selectBookingFilters = (state: { bookings: BookingsState }) => state.bookings?.filters || {
@@ -815,12 +850,12 @@ export const selectBookingsByStatus = (status: string) => (state: { bookings: Bo
 export const selectCanProceedToNextStep = (state: { bookings: BookingsState }) => {
   const bookingFlow = state.bookings?.bookingFlow;
   if (!bookingFlow) return false;
-  
-  const { step, eventId, participants, paymentMethod, agreedToTerms } = bookingFlow;
-  
+
+  const { step, eventId, scheduleId, participants, paymentMethod, agreedToTerms } = bookingFlow;
+
   switch (step) {
     case 'details':
-      return !!eventId;
+      return !!eventId && !!scheduleId; // Must have both event and schedule selected
     case 'participants':
       return participants.length > 0 && participants.every(p => p.name && p.email);
     case 'payment':
@@ -853,7 +888,7 @@ export const selectBookingParticipantsCount = (state: { bookings: BookingsState 
 export const selectIsBookingFlowComplete = (state: { bookings: BookingsState }) => {
   const bookingFlow = state.bookings?.bookingFlow;
   if (!bookingFlow) return false;
-  
-  const { eventId, participants, paymentMethod, agreedToTerms } = bookingFlow;
-  return !!eventId && participants.length > 0 && !!paymentMethod && agreedToTerms;
+
+  const { eventId, scheduleId, participants, paymentMethod, agreedToTerms } = bookingFlow;
+  return !!eventId && !!scheduleId && participants.length > 0 && !!paymentMethod && agreedToTerms;
 };

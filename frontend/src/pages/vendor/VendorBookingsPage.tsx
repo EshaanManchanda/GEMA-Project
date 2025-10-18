@@ -3,6 +3,27 @@ import { Link } from 'react-router-dom';
 import vendorAPI from '../../services/api/vendorAPI';
 import VendorNavigation from '../../components/vendor/VendorNavigation';
 
+interface Participant {
+  name: string;
+  age?: number;
+  gender?: 'male' | 'female' | 'other';
+  phone?: string;
+  allergies?: string[];
+  medicalConditions?: string[];
+  emergencyContact?: {
+    name: string;
+    relationship: string;
+    phone: string;
+  };
+  specialRequirements?: string;
+  registrationData?: Array<{
+    fieldId: string;
+    fieldLabel: string;
+    fieldType: string;
+    value: any;
+  }>;
+}
+
 interface Booking {
   _id: string;
   userId: string;
@@ -15,6 +36,7 @@ interface Booking {
     unitPrice: number;
     totalPrice: number;
     currency: string;
+    participants?: Participant[];
   }>;
   total: number;
   currency: string;
@@ -45,9 +67,10 @@ const VendorBookingsPage: React.FC = () => {
   const [searchTerm, setSearchTerm] = useState<string>('');
   const [statusFilter, setStatusFilter] = useState<string>('all');
   const [dateFilter, setDateFilter] = useState<string>('all');
-  const [sortConfig, setSortConfig] = useState<{ key: keyof Booking; direction: 'ascending' | 'descending' }>({ 
-    key: 'createdAt', 
-    direction: 'descending' 
+  const [expandedRows, setExpandedRows] = useState<Set<string>>(new Set());
+  const [sortConfig, setSortConfig] = useState<{ key: keyof Booking; direction: 'ascending' | 'descending' }>({
+    key: 'createdAt',
+    direction: 'descending'
   });
 
   useEffect(() => {
@@ -62,19 +85,34 @@ const VendorBookingsPage: React.FC = () => {
         
         // Transform backend data to frontend format
         const transformedBookings: Booking[] = bookingsData.map((order: any) => ({
-          id: order.id,
-          eventId: order.items[0]?.eventId || 'unknown',
+          _id: order._id || order.id,
+          userId: order.userId,
+          orderNumber: order.orderNumber,
+          items: order.items.map((item: any) => ({
+            eventId: item.eventId,
+            eventTitle: item.eventTitle,
+            scheduleDate: item.scheduleDate,
+            quantity: item.quantity,
+            unitPrice: item.unitPrice,
+            totalPrice: item.totalPrice,
+            currency: item.currency,
+            participants: item.participants || []
+          })),
+          total: order.total,
+          currency: order.currency,
+          status: order.status,
+          paymentStatus: order.paymentStatus,
+          paymentMethod: order.paymentMethod,
+          billingAddress: order.billingAddress,
+          createdAt: order.createdAt,
+          // Computed fields for UI
           customerName: `${order.billingAddress.firstName} ${order.billingAddress.lastName}`,
           customerEmail: order.billingAddress.email,
           customerPhone: order.billingAddress.phone || 'N/A',
           eventTitle: order.items[0]?.eventTitle || 'Multiple Events',
           eventDate: order.items[0]?.scheduleDate || 'TBD',
-          bookingDate: order.createdAt?.split('T')[0] || new Date().toISOString().split('T')[0],
           ticketCount: order.items.reduce((sum: number, item: any) => sum + item.quantity, 0),
-          totalAmount: order.total,
-          status: order.status,
-          paymentMethod: order.paymentMethod || 'Credit Card',
-          createdAt: order.createdAt
+          totalAmount: order.total
         }));
         
         setBookings(transformedBookings);
@@ -164,6 +202,149 @@ const VendorBookingsPage: React.FC = () => {
 
   const formatCurrency = (amount: number, currency: string = 'USD') => {
     return new Intl.NumberFormat('en-US', { style: 'currency', currency }).format(amount);
+  };
+
+  const toggleRowExpansion = (bookingId: string) => {
+    setExpandedRows(prev => {
+      const newSet = new Set(prev);
+      if (newSet.has(bookingId)) {
+        newSet.delete(bookingId);
+      } else {
+        newSet.add(bookingId);
+      }
+      return newSet;
+    });
+  };
+
+  const formatRegistrationValue = (fieldType: string, value: any): string => {
+    if (value === null || value === undefined) return 'N/A';
+
+    if (Array.isArray(value)) {
+      return value.join(', ');
+    }
+
+    switch (fieldType) {
+      case 'checkbox':
+        return value ? 'Yes' : 'No';
+      case 'date':
+        return value ? new Date(value).toLocaleDateString() : 'N/A';
+      case 'boolean':
+        return value ? 'Yes' : 'No';
+      default:
+        return String(value);
+    }
+  };
+
+  const renderParticipantDetails = (booking: Booking) => {
+    const participants = booking.items[0]?.participants || [];
+
+    if (participants.length === 0) {
+      return (
+        <tr>
+          <td colSpan={9} className="px-6 py-4 bg-gray-50">
+            <p className="text-sm text-gray-500 text-center">No participant information available</p>
+          </td>
+        </tr>
+      );
+    }
+
+    return (
+      <tr>
+        <td colSpan={9} className="px-6 py-4 bg-gray-50">
+          <div className="space-y-4">
+            <h3 className="text-lg font-semibold text-gray-900 mb-3">Participant Details</h3>
+            {participants.map((participant, index) => (
+              <div key={index} className="bg-white rounded-lg border border-gray-200 p-4">
+                <div className="flex items-start justify-between mb-3">
+                  <h4 className="text-md font-semibold text-gray-800">
+                    Participant {index + 1}: {participant.name}
+                  </h4>
+                </div>
+
+                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 mb-4">
+                  {participant.age && (
+                    <div>
+                      <span className="text-sm font-medium text-gray-600">Age:</span>
+                      <span className="ml-2 text-sm text-gray-900">{participant.age}</span>
+                    </div>
+                  )}
+                  {participant.gender && (
+                    <div>
+                      <span className="text-sm font-medium text-gray-600">Gender:</span>
+                      <span className="ml-2 text-sm text-gray-900 capitalize">{participant.gender}</span>
+                    </div>
+                  )}
+                  {participant.phone && (
+                    <div>
+                      <span className="text-sm font-medium text-gray-600">Phone:</span>
+                      <span className="ml-2 text-sm text-gray-900">{participant.phone}</span>
+                    </div>
+                  )}
+                  {participant.allergies && participant.allergies.length > 0 && (
+                    <div className="lg:col-span-3">
+                      <span className="text-sm font-medium text-gray-600">Allergies:</span>
+                      <span className="ml-2 text-sm text-gray-900">{participant.allergies.join(', ')}</span>
+                    </div>
+                  )}
+                  {participant.medicalConditions && participant.medicalConditions.length > 0 && (
+                    <div className="lg:col-span-3">
+                      <span className="text-sm font-medium text-gray-600">Medical Conditions:</span>
+                      <span className="ml-2 text-sm text-gray-900">{participant.medicalConditions.join(', ')}</span>
+                    </div>
+                  )}
+                  {participant.specialRequirements && (
+                    <div className="lg:col-span-3">
+                      <span className="text-sm font-medium text-gray-600">Special Requirements:</span>
+                      <span className="ml-2 text-sm text-gray-900">{participant.specialRequirements}</span>
+                    </div>
+                  )}
+                </div>
+
+                {participant.emergencyContact && (
+                  <div className="mb-4 p-3 bg-yellow-50 border border-yellow-200 rounded">
+                    <h5 className="text-sm font-semibold text-gray-800 mb-2">Emergency Contact</h5>
+                    <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
+                      <div>
+                        <span className="text-sm font-medium text-gray-600">Name:</span>
+                        <span className="ml-2 text-sm text-gray-900">{participant.emergencyContact.name}</span>
+                      </div>
+                      <div>
+                        <span className="text-sm font-medium text-gray-600">Relationship:</span>
+                        <span className="ml-2 text-sm text-gray-900">{participant.emergencyContact.relationship}</span>
+                      </div>
+                      <div>
+                        <span className="text-sm font-medium text-gray-600">Phone:</span>
+                        <span className="ml-2 text-sm text-gray-900">{participant.emergencyContact.phone}</span>
+                      </div>
+                    </div>
+                  </div>
+                )}
+
+                {participant.registrationData && participant.registrationData.length > 0 && (
+                  <div className="mt-4">
+                    <h5 className="text-sm font-semibold text-gray-800 mb-2">Custom Registration Responses</h5>
+                    <div className="bg-blue-50 border border-blue-200 rounded p-3">
+                      <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                        {participant.registrationData.map((field, fieldIndex) => (
+                          <div key={fieldIndex} className="flex flex-col">
+                            <span className="text-xs font-medium text-gray-600 uppercase tracking-wide">
+                              {field.fieldLabel}
+                            </span>
+                            <span className="mt-1 text-sm text-gray-900">
+                              {formatRegistrationValue(field.fieldType, field.value)}
+                            </span>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  </div>
+                )}
+              </div>
+            ))}
+          </div>
+        </td>
+      </tr>
+    );
   };
 
   if (isLoading) {
@@ -395,59 +576,90 @@ const VendorBookingsPage: React.FC = () => {
             </thead>
             <tbody className="bg-white divide-y divide-gray-200">
               {filteredBookings.length > 0 ? (
-                filteredBookings.map((booking) => (
-                  <tr key={booking._id} className="hover:bg-gray-50">
-                    <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">
-                      #{booking.orderNumber || booking._id.slice(-6)}
-                    </td>
-                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                      {booking.eventTitle}
-                    </td>
-                    <td className="px-6 py-4 whitespace-nowrap">
-                      <div className="text-sm font-medium text-gray-900">{booking.customerName}</div>
-                      <div className="text-sm text-gray-500">{booking.customerEmail}</div>
-                    </td>
-                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                      {formatDate(booking.eventDate)}
-                    </td>
-                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                      {booking.ticketCount}
-                    </td>
-                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                      {formatCurrency(booking.totalAmount, booking.currency)}
-                    </td>
-                    <td className="px-6 py-4 whitespace-nowrap">
-                      <span className={`px-2 inline-flex text-xs leading-5 font-semibold rounded-full ${getStatusBadgeClass(booking.status)}`}>
-                        {booking.status.charAt(0).toUpperCase() + booking.status.slice(1)}
-                      </span>
-                    </td>
-                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                      {formatDate(booking.createdAt)}
-                    </td>
-                    <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
-                      <Link
-                        to={`/vendor/bookings/${booking._id}`}
-                        className="text-primary hover:text-primary-dark mr-4"
-                      >
-                        View
-                      </Link>
-                      {booking.status === 'confirmed' && (
-                        <button
-                          className="text-red-600 hover:text-red-900"
-                          onClick={() => {
-                            // In a real app, you would call an API to cancel the booking
-                            const updatedBookings = bookings.map(b => 
-                              b._id === booking._id ? { ...b, status: 'cancelled' as const } : b
-                            );
-                            setBookings(updatedBookings);
-                          }}
-                        >
-                          Cancel
-                        </button>
-                      )}
-                    </td>
-                  </tr>
-                ))
+                filteredBookings.map((booking) => {
+                  const isExpanded = expandedRows.has(booking._id);
+                  const hasParticipants = booking.items[0]?.participants && booking.items[0].participants.length > 0;
+
+                  return (
+                    <React.Fragment key={booking._id}>
+                      <tr className="hover:bg-gray-50">
+                        <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">
+                          <div className="flex items-center space-x-2">
+                            {hasParticipants && (
+                              <button
+                                onClick={() => toggleRowExpansion(booking._id)}
+                                className="text-gray-400 hover:text-gray-600 focus:outline-none"
+                                title={isExpanded ? "Collapse participant details" : "Expand participant details"}
+                              >
+                                <svg
+                                  className={`w-5 h-5 transform transition-transform ${isExpanded ? 'rotate-90' : ''}`}
+                                  fill="none"
+                                  stroke="currentColor"
+                                  viewBox="0 0 24 24"
+                                >
+                                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
+                                </svg>
+                              </button>
+                            )}
+                            <span>#{booking.orderNumber || booking._id.slice(-6)}</span>
+                          </div>
+                        </td>
+                        <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                          {booking.eventTitle}
+                        </td>
+                        <td className="px-6 py-4 whitespace-nowrap">
+                          <div className="text-sm font-medium text-gray-900">{booking.customerName}</div>
+                          <div className="text-sm text-gray-500">{booking.customerEmail}</div>
+                        </td>
+                        <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                          {formatDate(booking.eventDate)}
+                        </td>
+                        <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                          {booking.ticketCount}
+                          {hasParticipants && (
+                            <span className="ml-1 text-xs text-blue-600">
+                              ({booking.items[0].participants!.length} participants)
+                            </span>
+                          )}
+                        </td>
+                        <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                          {formatCurrency(booking.totalAmount, booking.currency)}
+                        </td>
+                        <td className="px-6 py-4 whitespace-nowrap">
+                          <span className={`px-2 inline-flex text-xs leading-5 font-semibold rounded-full ${getStatusBadgeClass(booking.status)}`}>
+                            {booking.status.charAt(0).toUpperCase() + booking.status.slice(1)}
+                          </span>
+                        </td>
+                        <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                          {formatDate(booking.createdAt)}
+                        </td>
+                        <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
+                          <Link
+                            to={`/vendor/bookings/${booking._id}`}
+                            className="text-primary hover:text-primary-dark mr-4"
+                          >
+                            View
+                          </Link>
+                          {booking.status === 'confirmed' && (
+                            <button
+                              className="text-red-600 hover:text-red-900"
+                              onClick={() => {
+                                // In a real app, you would call an API to cancel the booking
+                                const updatedBookings = bookings.map(b =>
+                                  b._id === booking._id ? { ...b, status: 'cancelled' as const } : b
+                                );
+                                setBookings(updatedBookings);
+                              }}
+                            >
+                              Cancel
+                            </button>
+                          )}
+                        </td>
+                      </tr>
+                      {isExpanded && renderParticipantDetails(booking)}
+                    </React.Fragment>
+                  );
+                })
               ) : (
                 <tr>
                   <td colSpan={9} className="px-6 py-4 text-center text-sm text-gray-500">

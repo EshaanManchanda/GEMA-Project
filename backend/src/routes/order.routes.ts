@@ -9,6 +9,11 @@ import {
   getAdminOrders,
   getOrderAnalytics,
   getVendorOrders,
+  confirmOrderAdmin,
+  refundOrderAdmin,
+  updateOrderAdmin,
+  deleteOrderAdmin,
+  bulkUpdateOrders,
 } from '../controllers/order.controller';
 import { authenticate, authorize } from '../middleware/auth';
 
@@ -197,6 +202,84 @@ router.get(
       .withMessage('Period must be between 1 and 365 days'),
   ],
   getOrderAnalytics
+);
+
+router.post(
+  '/admin/:id/confirm',
+  authorize(['admin']),
+  [
+    param('id').isMongoId().withMessage('Invalid order ID'),
+  ],
+  confirmOrderAdmin
+);
+
+router.post(
+  '/admin/:id/refund',
+  authorize(['admin']),
+  [
+    param('id').isMongoId().withMessage('Invalid order ID'),
+    body('amount')
+      .optional()
+      .isFloat({ min: 0 })
+      .withMessage('Refund amount must be a positive number'),
+    body('reason')
+      .optional()
+      .trim()
+      .isLength({ max: 500 })
+      .withMessage('Reason cannot exceed 500 characters'),
+  ],
+  refundOrderAdmin
+);
+
+router.put(
+  '/admin/:id',
+  authorize(['admin']),
+  [
+    param('id').isMongoId().withMessage('Invalid order ID'),
+    body('status')
+      .optional()
+      .isIn(['pending', 'confirmed', 'cancelled', 'refunded'])
+      .withMessage('Invalid status value'),
+    body('paymentStatus')
+      .optional()
+      .isIn(['pending', 'paid', 'failed', 'refunded'])
+      .withMessage('Invalid payment status value'),
+    body('notes')
+      .optional()
+      .isLength({ max: 500 })
+      .withMessage('Notes cannot exceed 500 characters'),
+  ],
+  updateOrderAdmin
+);
+
+router.delete(
+  '/admin/:id',
+  authorize(['admin']),
+  [
+    param('id').isMongoId().withMessage('Invalid order ID'),
+  ],
+  deleteOrderAdmin
+);
+
+router.patch(
+  '/admin/bulk',
+  authorize(['admin']),
+  [
+    body('orderIds')
+      .isArray({ min: 1 })
+      .withMessage('Order IDs array is required and cannot be empty'),
+    body('orderIds.*')
+      .isMongoId()
+      .withMessage('All order IDs must be valid'),
+    body('action')
+      .isIn(['confirm', 'cancel', 'refund', 'update'])
+      .withMessage('Invalid action value'),
+    body('data')
+      .optional()
+      .isObject()
+      .withMessage('Data must be an object'),
+  ],
+  bulkUpdateOrders
 );
 
 export default router;

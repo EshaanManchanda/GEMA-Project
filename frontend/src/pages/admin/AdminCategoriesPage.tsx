@@ -1,26 +1,15 @@
 import React, { useState, useEffect } from 'react';
-import AdminNavigation from '../../components/admin/AdminNavigation';
-
-interface Category {
-  id: string;
-  name: string;
-  slug: string;
-  description: string;
-  icon: string;
-  eventsCount: number;
-  createdAt: string;
-  updatedAt: string;
-  featured: boolean;
-}
+import categoriesAPI, { Category } from '../../services/api/categoriesAPI';
+import toast from 'react-hot-toast';
 
 const AdminCategoriesPage: React.FC = () => {
   const [categories, setCategories] = useState<Category[]>([]);
   const [filteredCategories, setFilteredCategories] = useState<Category[]>([]);
   const [isLoading, setIsLoading] = useState<boolean>(true);
   const [searchTerm, setSearchTerm] = useState<string>('');
-  const [sortConfig, setSortConfig] = useState<{ key: keyof Category; direction: 'ascending' | 'descending' }>({ 
-    key: 'name', 
-    direction: 'ascending' 
+  const [sortConfig, setSortConfig] = useState<{ key: keyof Category; direction: 'ascending' | 'descending' }>({
+    key: 'name',
+    direction: 'ascending'
   });
   const [selectedCategories, setSelectedCategories] = useState<string[]>([]);
   const [isDeleteModalOpen, setIsDeleteModalOpen] = useState<boolean>(false);
@@ -32,146 +21,73 @@ const AdminCategoriesPage: React.FC = () => {
     slug: string;
     description: string;
     icon: string;
-    featured: boolean;
-  }>({ name: '', slug: '', description: '', icon: '', featured: false });
+    color: string;
+    parentId: string;
+    isActive: boolean;
+    sortOrder: number;
+    seoTitle: string;
+    seoDescription: string;
+    seoKeywords: string;
+  }>({
+    name: '',
+    slug: '',
+    description: '',
+    icon: '',
+    color: '#4F46E5',
+    parentId: '',
+    isActive: true,
+    sortOrder: 0,
+    seoTitle: '',
+    seoDescription: '',
+    seoKeywords: ''
+  });
 
   useEffect(() => {
-    const fetchCategories = async () => {
-      try {
-        setIsLoading(true);
-        
-        // Simulate API call delay
-        await new Promise(resolve => setTimeout(resolve, 1000));
-        
-        // Mock categories data
-        const mockCategories: Category[] = [
-          {
-            id: '1',
-            name: 'Music',
-            slug: 'music',
-            description: 'Music events including concerts, festivals, and live performances',
-            icon: '🎵',
-            eventsCount: 42,
-            createdAt: '2023-01-15T10:30:00Z',
-            updatedAt: '2023-06-20T14:15:00Z',
-            featured: true,
-          },
-          {
-            id: '2',
-            name: 'Sports',
-            slug: 'sports',
-            description: 'Sporting events including matches, tournaments, and competitions',
-            icon: '⚽',
-            eventsCount: 28,
-            createdAt: '2023-01-20T11:45:00Z',
-            updatedAt: '2023-06-18T09:30:00Z',
-            featured: true,
-          },
-          {
-            id: '3',
-            name: 'Food & Drink',
-            slug: 'food-drink',
-            description: 'Culinary events including food festivals, tastings, and cooking classes',
-            icon: '🍽️',
-            eventsCount: 35,
-            createdAt: '2023-02-05T13:20:00Z',
-            updatedAt: '2023-07-01T16:45:00Z',
-            featured: true,
-          },
-          {
-            id: '4',
-            name: 'Art & Culture',
-            slug: 'art-culture',
-            description: 'Art exhibitions, cultural festivals, and museum events',
-            icon: '🎨',
-            eventsCount: 31,
-            createdAt: '2023-02-12T15:10:00Z',
-            updatedAt: '2023-06-25T11:20:00Z',
-            featured: false,
-          },
-          {
-            id: '5',
-            name: 'Business',
-            slug: 'business',
-            description: 'Business conferences, networking events, and workshops',
-            icon: '💼',
-            eventsCount: 24,
-            createdAt: '2023-03-01T09:45:00Z',
-            updatedAt: '2023-06-30T13:50:00Z',
-            featured: false,
-          },
-          {
-            id: '6',
-            name: 'Education',
-            slug: 'education',
-            description: 'Educational seminars, workshops, and training sessions',
-            icon: '📚',
-            eventsCount: 19,
-            createdAt: '2023-03-15T14:30:00Z',
-            updatedAt: '2023-07-05T10:15:00Z',
-            featured: false,
-          },
-          {
-            id: '7',
-            name: 'Health & Wellness',
-            slug: 'health-wellness',
-            description: 'Health and wellness events including yoga sessions, fitness classes, and wellness retreats',
-            icon: '🧘',
-            eventsCount: 22,
-            createdAt: '2023-04-02T11:15:00Z',
-            updatedAt: '2023-07-10T15:30:00Z',
-            featured: true,
-          },
-          {
-            id: '8',
-            name: 'Technology',
-            slug: 'technology',
-            description: 'Tech conferences, hackathons, and product launches',
-            icon: '💻',
-            eventsCount: 27,
-            createdAt: '2023-04-18T16:40:00Z',
-            updatedAt: '2023-07-12T09:45:00Z',
-            featured: false,
-          },
-        ];
-        
-        setCategories(mockCategories);
-        setFilteredCategories(mockCategories);
-      } catch (error) {
-        console.error('Error fetching categories:', error);
-      } finally {
-        setIsLoading(false);
-      }
-    };
-    
     fetchCategories();
   }, []);
+
+  const fetchCategories = async () => {
+    try {
+      setIsLoading(true);
+      const response = await categoriesAPI.getAllCategories({ tree: false, includeInactive: true });
+      setCategories(response);
+      setFilteredCategories(response);
+    } catch (error: any) {
+      console.error('Error fetching categories:', error);
+      toast.error(error?.message || 'Failed to fetch categories');
+    } finally {
+      setIsLoading(false);
+    }
+  };
 
   useEffect(() => {
     // Apply filters and search
     let result = [...categories];
-    
+
     // Search filter
     if (searchTerm) {
       const lowerCaseSearchTerm = searchTerm.toLowerCase();
       result = result.filter(
         category =>
           category.name.toLowerCase().includes(lowerCaseSearchTerm) ||
-          category.description.toLowerCase().includes(lowerCaseSearchTerm)
+          (category.description && category.description.toLowerCase().includes(lowerCaseSearchTerm))
       );
     }
-    
+
     // Sorting
     result.sort((a, b) => {
-      if (a[sortConfig.key] < b[sortConfig.key]) {
+      const aValue = a[sortConfig.key];
+      const bValue = b[sortConfig.key];
+
+      if (aValue < bValue) {
         return sortConfig.direction === 'ascending' ? -1 : 1;
       }
-      if (a[sortConfig.key] > b[sortConfig.key]) {
+      if (aValue > bValue) {
         return sortConfig.direction === 'ascending' ? 1 : -1;
       }
       return 0;
     });
-    
+
     setFilteredCategories(result);
   }, [categories, searchTerm, sortConfig]);
 
@@ -185,7 +101,7 @@ const AdminCategoriesPage: React.FC = () => {
 
   const handleSelectAll = (e: React.ChangeEvent<HTMLInputElement>) => {
     if (e.target.checked) {
-      setSelectedCategories(filteredCategories.map(category => category.id));
+      setSelectedCategories(filteredCategories.map(category => category._id));
     } else {
       setSelectedCategories([]);
     }
@@ -204,39 +120,55 @@ const AdminCategoriesPage: React.FC = () => {
     setIsDeleteModalOpen(true);
   };
 
-  const handleDeleteConfirm = () => {
+  const handleDeleteConfirm = async () => {
     if (categoryToDelete) {
-      // In a real app, you would call an API to delete the category
-      setCategories(categories.filter(category => category.id !== categoryToDelete));
-      setSelectedCategories(selectedCategories.filter(id => id !== categoryToDelete));
+      try {
+        await categoriesAPI.deleteCategory(categoryToDelete);
+        toast.success('Category deleted successfully');
+        setCategories(categories.filter(category => category._id !== categoryToDelete));
+        setSelectedCategories(selectedCategories.filter(id => id !== categoryToDelete));
+      } catch (error: any) {
+        console.error('Error deleting category:', error);
+        toast.error(error?.message || 'Failed to delete category');
+      }
     }
     setIsDeleteModalOpen(false);
     setCategoryToDelete(null);
   };
 
-  const handleBulkAction = (action: 'delete' | 'feature' | 'unfeature') => {
-    // In a real app, you would call an API to perform the bulk action
-    if (action === 'delete') {
-      setCategories(categories.filter(category => !selectedCategories.includes(category.id)));
+  const handleBulkDelete = async () => {
+    if (selectedCategories.length === 0) return;
+
+    if (!window.confirm(`Are you sure you want to delete ${selectedCategories.length} categories?`)) {
+      return;
+    }
+
+    try {
+      await Promise.all(selectedCategories.map(id => categoriesAPI.deleteCategory(id)));
+      toast.success(`${selectedCategories.length} categories deleted successfully`);
+      setCategories(categories.filter(category => !selectedCategories.includes(category._id)));
       setSelectedCategories([]);
-    } else if (action === 'feature') {
-      setCategories(
-        categories.map(category =>
-          selectedCategories.includes(category.id) ? { ...category, featured: true } : category
-        )
-      );
-    } else if (action === 'unfeature') {
-      setCategories(
-        categories.map(category =>
-          selectedCategories.includes(category.id) ? { ...category, featured: false } : category
-        )
-      );
+    } catch (error: any) {
+      console.error('Error bulk deleting categories:', error);
+      toast.error(error?.message || 'Failed to delete categories');
     }
   };
 
   const handleAddCategory = () => {
     setEditingCategory(null);
-    setFormData({ name: '', slug: '', description: '', icon: '', featured: false });
+    setFormData({
+      name: '',
+      slug: '',
+      description: '',
+      icon: '',
+      color: '#4F46E5',
+      parentId: '',
+      isActive: true,
+      sortOrder: 0,
+      seoTitle: '',
+      seoDescription: '',
+      seoKeywords: ''
+    });
     setIsAddEditModalOpen(true);
   };
 
@@ -245,14 +177,20 @@ const AdminCategoriesPage: React.FC = () => {
     setFormData({
       name: category.name,
       slug: category.slug,
-      description: category.description,
-      icon: category.icon,
-      featured: category.featured,
+      description: category.description || '',
+      icon: category.icon || '',
+      color: category.color || '#4F46E5',
+      parentId: category.parentId?.toString() || '',
+      isActive: category.isActive,
+      sortOrder: category.sortOrder,
+      seoTitle: category.seoMeta?.title || '',
+      seoDescription: category.seoMeta?.description || '',
+      seoKeywords: category.seoMeta?.keywords?.join(', ') || ''
     });
     setIsAddEditModalOpen(true);
   };
 
-  const handleFormChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
+  const handleFormChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>) => {
     const { name, value, type } = e.target;
     setFormData({
       ...formData,
@@ -260,44 +198,47 @@ const AdminCategoriesPage: React.FC = () => {
     });
   };
 
-  const handleFormSubmit = (e: React.FormEvent) => {
+  const handleFormSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    
-    // In a real app, you would call an API to save the category
-    if (editingCategory) {
-      // Update existing category
-      setCategories(
-        categories.map(category =>
-          category.id === editingCategory.id
-            ? {
-                ...category,
-                name: formData.name,
-                slug: formData.slug,
-                description: formData.description,
-                icon: formData.icon,
-                featured: formData.featured,
-                updatedAt: new Date().toISOString(),
-              }
-            : category
-        )
-      );
-    } else {
-      // Add new category
-      const newCategory: Category = {
-        id: `new-${Date.now()}`,
+
+    try {
+      const categoryData: any = {
         name: formData.name,
         slug: formData.slug,
         description: formData.description,
         icon: formData.icon,
-        featured: formData.featured,
-        eventsCount: 0,
-        createdAt: new Date().toISOString(),
-        updatedAt: new Date().toISOString(),
+        color: formData.color,
+        parentId: formData.parentId || undefined,
+        isActive: formData.isActive,
+        sortOrder: formData.sortOrder,
+        seoMeta: {
+          title: formData.seoTitle,
+          description: formData.seoDescription,
+          keywords: formData.seoKeywords.split(',').map(k => k.trim()).filter(k => k)
+        }
       };
-      setCategories([...categories, newCategory]);
+
+      if (editingCategory) {
+        // Update existing category
+        const updatedCategory = await categoriesAPI.updateCategory(editingCategory._id, categoryData);
+        toast.success('Category updated successfully');
+        setCategories(
+          categories.map(category =>
+            category._id === editingCategory._id ? updatedCategory : category
+          )
+        );
+      } else {
+        // Add new category
+        const newCategory = await categoriesAPI.createCategory(categoryData);
+        toast.success('Category created successfully');
+        setCategories([...categories, newCategory]);
+      }
+
+      setIsAddEditModalOpen(false);
+    } catch (error: any) {
+      console.error('Error saving category:', error);
+      toast.error(error?.message || 'Failed to save category');
     }
-    
-    setIsAddEditModalOpen(false);
   };
 
   const formatDate = (dateString: string) => {
@@ -309,6 +250,12 @@ const AdminCategoriesPage: React.FC = () => {
     });
   };
 
+  const getParentName = (parentId?: string) => {
+    if (!parentId) return '-';
+    const parent = categories.find(c => c._id === parentId);
+    return parent ? parent.name : '-';
+  };
+
   if (isLoading) {
     return (
       <div className="flex justify-center items-center h-screen">
@@ -318,9 +265,7 @@ const AdminCategoriesPage: React.FC = () => {
   }
 
   return (
-    <>
-      <AdminNavigation />
-      <div className="container mx-auto px-4 py-8">
+    <div className="container mx-auto px-4 py-8">
       <div className="flex flex-col md:flex-row justify-between items-start md:items-center mb-6">
         <h1 className="text-3xl font-bold text-gray-900 mb-4 md:mb-0">Categories Management</h1>
         <button
@@ -368,19 +313,7 @@ const AdminCategoriesPage: React.FC = () => {
           </div>
           <div className="flex flex-wrap gap-2">
             <button
-              onClick={() => handleBulkAction('feature')}
-              className="inline-flex items-center px-3 py-1.5 border border-transparent text-xs font-medium rounded-md text-white bg-indigo-600 hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500"
-            >
-              Feature
-            </button>
-            <button
-              onClick={() => handleBulkAction('unfeature')}
-              className="inline-flex items-center px-3 py-1.5 border border-transparent text-xs font-medium rounded-md text-white bg-yellow-600 hover:bg-yellow-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-yellow-500"
-            >
-              Unfeature
-            </button>
-            <button
-              onClick={() => handleBulkAction('delete')}
+              onClick={handleBulkDelete}
               className="inline-flex items-center px-3 py-1.5 border border-transparent text-xs font-medium rounded-md text-white bg-red-600 hover:bg-red-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-red-500"
             >
               Delete
@@ -443,12 +376,15 @@ const AdminCategoriesPage: React.FC = () => {
                   Description
                 </th>
                 <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                  Parent
+                </th>
+                <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                   <button
                     className="flex items-center focus:outline-none"
-                    onClick={() => handleSort('eventsCount')}
+                    onClick={() => handleSort('eventCount')}
                   >
                     Events
-                    {sortConfig.key === 'eventsCount' && (
+                    {sortConfig.key === 'eventCount' && (
                       <svg xmlns="http://www.w3.org/2000/svg" className="ml-1 h-4 w-4" viewBox="0 0 20 20" fill="currentColor">
                         {sortConfig.direction === 'ascending' ? (
                           <path fillRule="evenodd" d="M14.707 12.707a1 1 0 01-1.414 0L10 9.414l-3.293 3.293a1 1 0 01-1.414-1.414l4-4a1 1 0 011.414 0l4 4a1 1 0 010 1.414z" clipRule="evenodd" />
@@ -487,28 +423,36 @@ const AdminCategoriesPage: React.FC = () => {
             <tbody className="bg-white divide-y divide-gray-200">
               {filteredCategories.length === 0 ? (
                 <tr>
-                  <td colSpan={8} className="px-6 py-4 text-center text-sm text-gray-500">
+                  <td colSpan={9} className="px-6 py-4 text-center text-sm text-gray-500">
                     No categories found matching your criteria
                   </td>
                 </tr>
               ) : (
                 filteredCategories.map((category) => (
-                  <tr key={category.id}>
+                  <tr key={category._id}>
                     <td className="px-6 py-4 whitespace-nowrap">
                       <div className="flex items-center">
                         <input
                           type="checkbox"
                           className="focus:ring-primary h-4 w-4 text-primary border-gray-300 rounded"
-                          checked={selectedCategories.includes(category.id)}
-                          onChange={() => handleSelectCategory(category.id)}
+                          checked={selectedCategories.includes(category._id)}
+                          onChange={() => handleSelectCategory(category._id)}
                         />
                       </div>
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap">
                       <div className="flex items-center">
-                        <div className="flex-shrink-0 h-10 w-10 flex items-center justify-center text-2xl">
-                          {category.icon}
-                        </div>
+                        {category.icon && (
+                          <div className="flex-shrink-0 h-10 w-10 flex items-center justify-center text-2xl">
+                            {category.icon}
+                          </div>
+                        )}
+                        {category.color && (
+                          <div
+                            className="flex-shrink-0 h-10 w-10 rounded mr-3"
+                            style={{ backgroundColor: category.color }}
+                          ></div>
+                        )}
                         <div className="ml-4">
                           <div className="text-sm font-medium text-gray-900">{category.name}</div>
                         </div>
@@ -518,22 +462,25 @@ const AdminCategoriesPage: React.FC = () => {
                       {category.slug}
                     </td>
                     <td className="px-6 py-4 text-sm text-gray-500 max-w-xs truncate">
-                      {category.description}
+                      {category.description || '-'}
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                      {category.eventsCount}
+                      {getParentName(category.parentId?.toString())}
+                    </td>
+                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                      {category.eventCount || 0}
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
                       {formatDate(category.updatedAt)}
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap">
-                      {category.featured ? (
-                        <span className="px-2 inline-flex text-xs leading-5 font-semibold rounded-full bg-indigo-100 text-indigo-800">
-                          Featured
+                      {category.isActive ? (
+                        <span className="px-2 inline-flex text-xs leading-5 font-semibold rounded-full bg-green-100 text-green-800">
+                          Active
                         </span>
                       ) : (
                         <span className="px-2 inline-flex text-xs leading-5 font-semibold rounded-full bg-gray-100 text-gray-800">
-                          Standard
+                          Inactive
                         </span>
                       )}
                     </td>
@@ -546,7 +493,7 @@ const AdminCategoriesPage: React.FC = () => {
                           Edit
                         </button>
                         <button
-                          onClick={() => handleDeleteClick(category.id)}
+                          onClick={() => handleDeleteClick(category._id)}
                           className="text-red-600 hover:text-red-900"
                         >
                           Delete
@@ -585,7 +532,7 @@ const AdminCategoriesPage: React.FC = () => {
                     </h3>
                     <div className="mt-2">
                       <p className="text-sm text-gray-500">
-                        Are you sure you want to delete this category? All events in this category will need to be reassigned. This action cannot be undone.
+                        Are you sure you want to delete this category? This action cannot be undone.
                       </p>
                     </div>
                   </div>
@@ -622,17 +569,19 @@ const AdminCategoriesPage: React.FC = () => {
 
             <span className="hidden sm:inline-block sm:align-middle sm:h-screen" aria-hidden="true">&#8203;</span>
 
-            <div className="inline-block align-bottom bg-white rounded-lg text-left overflow-hidden shadow-xl transform transition-all sm:my-8 sm:align-middle sm:max-w-lg sm:w-full">
+            <div className="inline-block align-bottom bg-white rounded-lg text-left overflow-hidden shadow-xl transform transition-all sm:my-8 sm:align-middle sm:max-w-2xl sm:w-full">
               <form onSubmit={handleFormSubmit}>
-                <div className="bg-white px-4 pt-5 pb-4 sm:p-6 sm:pb-4">
+                <div className="bg-white px-4 pt-5 pb-4 sm:p-6 sm:pb-4 max-h-[80vh] overflow-y-auto">
                   <div className="mb-4">
                     <h3 className="text-lg leading-6 font-medium text-gray-900" id="modal-title">
                       {editingCategory ? 'Edit Category' : 'Add Category'}
                     </h3>
                   </div>
-                  <div className="grid grid-cols-1 gap-4">
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                     <div>
-                      <label htmlFor="name" className="block text-sm font-medium text-gray-700 mb-1">Name</label>
+                      <label htmlFor="name" className="block text-sm font-medium text-gray-700 mb-1">
+                        Name <span className="text-red-500">*</span>
+                      </label>
                       <input
                         type="text"
                         id="name"
@@ -644,7 +593,9 @@ const AdminCategoriesPage: React.FC = () => {
                       />
                     </div>
                     <div>
-                      <label htmlFor="slug" className="block text-sm font-medium text-gray-700 mb-1">Slug</label>
+                      <label htmlFor="slug" className="block text-sm font-medium text-gray-700 mb-1">
+                        Slug <span className="text-red-500">*</span>
+                      </label>
                       <input
                         type="text"
                         id="slug"
@@ -655,7 +606,7 @@ const AdminCategoriesPage: React.FC = () => {
                         required
                       />
                     </div>
-                    <div>
+                    <div className="md:col-span-2">
                       <label htmlFor="description" className="block text-sm font-medium text-gray-700 mb-1">Description</label>
                       <textarea
                         id="description"
@@ -664,11 +615,10 @@ const AdminCategoriesPage: React.FC = () => {
                         className="focus:ring-primary focus:border-primary block w-full sm:text-sm border-gray-300 rounded-md"
                         value={formData.description}
                         onChange={handleFormChange}
-                        required
                       />
                     </div>
                     <div>
-                      <label htmlFor="icon" className="block text-sm font-medium text-gray-700 mb-1">Icon (Emoji)</label>
+                      <label htmlFor="icon" className="block text-sm font-medium text-gray-700 mb-1">Icon (Emoji or FontAwesome)</label>
                       <input
                         type="text"
                         id="icon"
@@ -676,19 +626,102 @@ const AdminCategoriesPage: React.FC = () => {
                         className="focus:ring-primary focus:border-primary block w-full sm:text-sm border-gray-300 rounded-md"
                         value={formData.icon}
                         onChange={handleFormChange}
-                        required
+                        placeholder="🎵 or fa-music"
                       />
                     </div>
-                    <div className="flex items-center">
+                    <div>
+                      <label htmlFor="color" className="block text-sm font-medium text-gray-700 mb-1">Color</label>
                       <input
-                        type="checkbox"
-                        id="featured"
-                        name="featured"
-                        className="focus:ring-primary h-4 w-4 text-primary border-gray-300 rounded"
-                        checked={formData.featured}
+                        type="color"
+                        id="color"
+                        name="color"
+                        className="focus:ring-primary focus:border-primary block w-full h-10 sm:text-sm border-gray-300 rounded-md"
+                        value={formData.color}
                         onChange={handleFormChange}
                       />
-                      <label htmlFor="featured" className="ml-2 block text-sm text-gray-900">Featured Category</label>
+                    </div>
+                    <div>
+                      <label htmlFor="parentId" className="block text-sm font-medium text-gray-700 mb-1">Parent Category</label>
+                      <select
+                        id="parentId"
+                        name="parentId"
+                        className="focus:ring-primary focus:border-primary block w-full sm:text-sm border-gray-300 rounded-md"
+                        value={formData.parentId}
+                        onChange={handleFormChange}
+                      >
+                        <option value="">None (Root Category)</option>
+                        {categories.filter(c => !editingCategory || c._id !== editingCategory._id).map(category => (
+                          <option key={category._id} value={category._id}>
+                            {category.name} {category.level > 0 && `(Level ${category.level})`}
+                          </option>
+                        ))}
+                      </select>
+                    </div>
+                    <div>
+                      <label htmlFor="sortOrder" className="block text-sm font-medium text-gray-700 mb-1">Sort Order</label>
+                      <input
+                        type="number"
+                        id="sortOrder"
+                        name="sortOrder"
+                        min="0"
+                        className="focus:ring-primary focus:border-primary block w-full sm:text-sm border-gray-300 rounded-md"
+                        value={formData.sortOrder}
+                        onChange={handleFormChange}
+                      />
+                    </div>
+                    <div className="flex items-center mt-6">
+                      <input
+                        type="checkbox"
+                        id="isActive"
+                        name="isActive"
+                        className="focus:ring-primary h-4 w-4 text-primary border-gray-300 rounded"
+                        checked={formData.isActive}
+                        onChange={handleFormChange}
+                      />
+                      <label htmlFor="isActive" className="ml-2 block text-sm text-gray-900">Active Category</label>
+                    </div>
+
+                    {/* SEO Section */}
+                    <div className="md:col-span-2 border-t pt-4 mt-4">
+                      <h4 className="text-md font-medium text-gray-900 mb-3">SEO Metadata</h4>
+                    </div>
+                    <div className="md:col-span-2">
+                      <label htmlFor="seoTitle" className="block text-sm font-medium text-gray-700 mb-1">SEO Title</label>
+                      <input
+                        type="text"
+                        id="seoTitle"
+                        name="seoTitle"
+                        maxLength={60}
+                        className="focus:ring-primary focus:border-primary block w-full sm:text-sm border-gray-300 rounded-md"
+                        value={formData.seoTitle}
+                        onChange={handleFormChange}
+                        placeholder="Max 60 characters"
+                      />
+                    </div>
+                    <div className="md:col-span-2">
+                      <label htmlFor="seoDescription" className="block text-sm font-medium text-gray-700 mb-1">SEO Description</label>
+                      <textarea
+                        id="seoDescription"
+                        name="seoDescription"
+                        rows={2}
+                        maxLength={160}
+                        className="focus:ring-primary focus:border-primary block w-full sm:text-sm border-gray-300 rounded-md"
+                        value={formData.seoDescription}
+                        onChange={handleFormChange}
+                        placeholder="Max 160 characters"
+                      />
+                    </div>
+                    <div className="md:col-span-2">
+                      <label htmlFor="seoKeywords" className="block text-sm font-medium text-gray-700 mb-1">SEO Keywords (comma separated)</label>
+                      <input
+                        type="text"
+                        id="seoKeywords"
+                        name="seoKeywords"
+                        className="focus:ring-primary focus:border-primary block w-full sm:text-sm border-gray-300 rounded-md"
+                        value={formData.seoKeywords}
+                        onChange={handleFormChange}
+                        placeholder="keyword1, keyword2, keyword3"
+                      />
                     </div>
                   </div>
                 </div>
@@ -713,7 +746,6 @@ const AdminCategoriesPage: React.FC = () => {
         </div>
       )}
     </div>
-    </>
   );
 };
 

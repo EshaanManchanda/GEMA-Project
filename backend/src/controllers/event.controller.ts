@@ -92,7 +92,12 @@ export const getEvents = async (req: Request, res: Response, next: NextFunction)
     // Build additional filters based on query params
     const additionalFilters: any = {};
 
-    if (category) additionalFilters.category = category;
+    // Case-insensitive category matching (events store category as slugs)
+    if (category) {
+      // Escape regex special characters to prevent injection
+      const escapedCategory = (category as string).replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+      additionalFilters.category = new RegExp(`^${escapedCategory}$`, 'i');
+    }
     if (type) additionalFilters.type = type;
     if (venueType) additionalFilters.venueType = venueType;
     if (city) additionalFilters['location.city'] = new RegExp(city as string, 'i');
