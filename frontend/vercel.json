@@ -8,9 +8,9 @@
   "regions": ["iad1"],
   "build": {
     "env": {
-      "NODE_ENV": "production",
+      "NODE_ENV": "development",
       "NODE_OPTIONS": "--max-old-space-size=4096",
-      "VITE_BUILD_TARGET": "production"
+      "VITE_BUILD_TARGET": "development"
     }
   },
   "headers": [
