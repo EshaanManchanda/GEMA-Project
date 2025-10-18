@@ -43,6 +43,14 @@ export interface IOrder extends Document {
   discount: number;
   total: number;
   currency: string;
+
+  // Multi-currency support (display vs charged)
+  displayCurrency?: string;
+  displayAmount?: number;
+  exchangeRate?: number;
+  chargedCurrency?: string;
+  chargedAmount?: number;
+
   status: 'pending' | 'confirmed' | 'cancelled' | 'refunded';
   paymentStatus: 'pending' | 'paid' | 'failed' | 'refunded';
   paymentMethod?: 'stripe' | 'paypal' | 'razorpay' | 'test';
@@ -173,7 +181,7 @@ const orderItemSchema = new Schema<IOrderItem>({
   currency: {
     type: String,
     required: [true, 'Currency is required'],
-    enum: ['AED', 'EGP', 'CAD', 'USD'],
+    enum: ['INR', 'AED', 'USD', 'EUR', 'GBP', 'EGP', 'CAD'],
   },
   participants: [{
     name: {
@@ -282,9 +290,33 @@ const orderSchema = new Schema<IOrder>(
     currency: {
       type: String,
       required: [true, 'Currency is required'],
-      enum: ['AED', 'EGP', 'CAD', 'USD'],
-      default: 'AED',
+      enum: ['INR', 'AED', 'USD', 'EUR', 'GBP', 'EGP', 'CAD'],
+      default: 'INR',
     },
+
+    // Multi-currency support fields
+    displayCurrency: {
+      type: String,
+      enum: ['INR', 'AED', 'USD', 'EUR', 'GBP', 'EGP', 'CAD'],
+    },
+    displayAmount: {
+      type: Number,
+      min: [0, 'Display amount cannot be negative'],
+    },
+    exchangeRate: {
+      type: Number,
+      min: [0, 'Exchange rate cannot be negative'],
+    },
+    chargedCurrency: {
+      type: String,
+      enum: ['INR', 'AED', 'USD', 'EUR', 'GBP', 'EGP', 'CAD'],
+      default: 'INR', // Always INR for Indian Stripe account
+    },
+    chargedAmount: {
+      type: Number,
+      min: [0, 'Charged amount cannot be negative'],
+    },
+
     status: {
       type: String,
       enum: ['pending', 'confirmed', 'cancelled', 'refunded'],

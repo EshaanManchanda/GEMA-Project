@@ -77,6 +77,17 @@ export interface VendorBookingNotificationOptions {
   customerPhone?: string;
 }
 
+export interface EmployeeWelcomeEmailOptions {
+  to: string;
+  firstName: string;
+  lastName: string;
+  employeeId: string;
+  email: string;
+  temporaryPassword: string;
+  vendorName: string;
+  role: string;
+}
+
 class EmailService {
   private transporter: nodemailer.Transporter;
 
@@ -648,6 +659,138 @@ class EmailService {
       to: adminEmail,
       subject: `[ADMIN] ${subject}`,
       html,
+    });
+  }
+
+  /**
+   * Send employee welcome email with login credentials
+   */
+  async sendEmployeeWelcomeEmail(options: EmployeeWelcomeEmailOptions): Promise<void> {
+    const loginUrl = `${config.frontendUrl}/login`;
+
+    const html = `
+      <!DOCTYPE html>
+      <html>
+      <head>
+        <meta charset="utf-8">
+        <meta name="viewport" content="width=device-width, initial-scale=1.0">
+        <title>Welcome to the Team - Gema</title>
+        <style>
+          body { font-family: Arial, sans-serif; line-height: 1.6; color: #333; }
+          .container { max-width: 600px; margin: 0 auto; padding: 20px; }
+          .header { background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white; padding: 20px; text-align: center; border-radius: 8px 8px 0 0; }
+          .content { background: #f8f9fa; padding: 30px; border-radius: 0 0 8px 8px; }
+          .credentials-box { background: white; border: 2px solid #007bff; padding: 20px; border-radius: 8px; margin: 20px 0; }
+          .credential-row { display: flex; justify-content: space-between; padding: 10px 0; border-bottom: 1px solid #e0e0e0; }
+          .credential-row:last-child { border-bottom: none; }
+          .credential-label { font-weight: bold; color: #666; }
+          .credential-value { font-family: 'Courier New', monospace; color: #007bff; font-weight: bold; }
+          .button { display: inline-block; background: #007bff; color: white; padding: 15px 30px; text-decoration: none; border-radius: 5px; margin: 20px 0; font-weight: bold; }
+          .button:hover { background: #0056b3; }
+          .footer { text-align: center; margin-top: 20px; color: #666; font-size: 14px; }
+          .warning { background: #fff3cd; border: 1px solid #ffeaa7; padding: 15px; border-radius: 5px; margin: 15px 0; }
+          .info-box { background: #d1ecf1; border: 1px solid #bee5eb; padding: 15px; border-radius: 5px; margin: 15px 0; }
+        </style>
+      </head>
+      <body>
+        <div class="container">
+          <div class="header">
+            <h1>🎉 Welcome to the Team!</h1>
+          </div>
+          <div class="content">
+            <h2>Hi ${options.firstName} ${options.lastName}!</h2>
+            <p>Welcome to <strong>${options.vendorName}</strong>! Your employer has created an employee account for you on Gema.</p>
+
+            <p>You have been assigned the role of <strong>${options.role.charAt(0).toUpperCase() + options.role.slice(1)}</strong>.</p>
+
+            <div class="credentials-box">
+              <h3 style="margin-top: 0; color: #007bff;">📝 Your Login Credentials</h3>
+              <div class="credential-row">
+                <span class="credential-label">Employee ID:</span>
+                <span class="credential-value">${options.employeeId}</span>
+              </div>
+              <div class="credential-row">
+                <span class="credential-label">Email (Username):</span>
+                <span class="credential-value">${options.email}</span>
+              </div>
+              <div class="credential-row">
+                <span class="credential-label">Temporary Password:</span>
+                <span class="credential-value">${options.temporaryPassword}</span>
+              </div>
+            </div>
+
+            <div style="text-align: center;">
+              <a href="${loginUrl}" class="button">🔐 Login to Your Dashboard</a>
+            </div>
+
+            <div class="warning">
+              <strong>⚠️ Important Security Instructions:</strong>
+              <ul>
+                <li><strong>Change your password immediately</strong> after your first login</li>
+                <li>Do not share your password with anyone, including your employer</li>
+                <li>Keep this email secure or delete it after changing your password</li>
+                <li>If you didn't expect this email, please contact your employer immediately</li>
+              </ul>
+            </div>
+
+            <div class="info-box">
+              <strong>📌 Next Steps:</strong>
+              <ol style="margin: 10px 0;">
+                <li>Click the login button above or visit: <a href="${loginUrl}">${loginUrl}</a></li>
+                <li>Enter your email and temporary password</li>
+                <li>You'll be prompted to change your password</li>
+                <li>Complete your profile and start working!</li>
+              </ol>
+            </div>
+
+            <p>If you have any questions or need assistance, please contact your supervisor or the Gema support team.</p>
+          </div>
+          <div class="footer">
+            <p>Best regards,<br><strong>The Gema Team</strong></p>
+            <p><small>This is an automated email. Please do not reply to this message.</small></p>
+          </div>
+        </div>
+      </body>
+      </html>
+    `;
+
+    const text = `
+      Welcome to the Team, ${options.firstName} ${options.lastName}!
+
+      Welcome to ${options.vendorName}! Your employer has created an employee account for you on Gema.
+
+      Role: ${options.role.charAt(0).toUpperCase() + options.role.slice(1)}
+
+      YOUR LOGIN CREDENTIALS:
+      =======================
+      Employee ID: ${options.employeeId}
+      Email (Username): ${options.email}
+      Temporary Password: ${options.temporaryPassword}
+
+      Login URL: ${loginUrl}
+
+      IMPORTANT SECURITY INSTRUCTIONS:
+      - Change your password immediately after your first login
+      - Do not share your password with anyone
+      - Keep this email secure or delete it after changing your password
+
+      NEXT STEPS:
+      1. Visit ${loginUrl}
+      2. Enter your email and temporary password
+      3. You'll be prompted to change your password
+      4. Complete your profile and start working!
+
+      If you have any questions, please contact your supervisor.
+
+      Best regards,
+      The Gema Team
+    `;
+
+    await this.sendEmail({
+      to: options.to,
+      subject: `Welcome to ${options.vendorName} - Your Gema Employee Account`,
+      html,
+      text,
     });
   }
 

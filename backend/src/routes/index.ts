@@ -33,6 +33,7 @@ import adminRevenueRoutes from './admin.revenue.routes';
 import adminStatsRoutes from './admin.stats.routes';
 import seoRoutes from './seo.routes';
 import registrationRoutes from './registration.routes';
+import currencyRoutes from './currency.routes';
 import { Router } from 'express';
 
 const router = Router();
@@ -121,6 +122,9 @@ router.use('/collections', collectionRoutes);
 
 // Favorites routes
 router.use('/favorites', favoritesRoutes);
+
+// Currency routes (exchange rates, conversion, etc.)
+router.use('/currency', currencyRoutes);
 
 // Admin Revenue Management routes
 router.use('/admin/revenue', adminRevenueRoutes);

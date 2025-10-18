@@ -288,6 +288,132 @@ const vendorAPI = {
       throw error;
     }
   },
+
+  // ===================== EMPLOYEE MANAGEMENT API =====================
+
+  // Get all employees for the authenticated vendor
+  getVendorEmployees: async (params?: any) => {
+    try {
+      const response = await ApiService.get('/vendors/employees', { params });
+      logApiResponse('GET /vendors/employees', response);
+      return extractApiData(response);
+    } catch (error) {
+      logApiResponse('GET /vendors/employees', null, error);
+      throw error;
+    }
+  },
+
+  // Get single employee by ID
+  getVendorEmployeeById: async (id: string) => {
+    try {
+      const response = await ApiService.get(`/vendors/employees/${id}`);
+      logApiResponse(`GET /vendors/employees/${id}`, response);
+      return extractApiData(response);
+    } catch (error) {
+      logApiResponse(`GET /vendors/employees/${id}`, null, error);
+      throw error;
+    }
+  },
+
+  // Create a new employee
+  createVendorEmployee: async (employeeData: any) => {
+    try {
+      const response = await ApiService.post('/vendors/employees', employeeData);
+      logApiResponse('POST /vendors/employees', response);
+      return extractApiData(response);
+    } catch (error) {
+      logApiResponse('POST /vendors/employees', null, error);
+      throw error;
+    }
+  },
+
+  // Update an employee
+  updateVendorEmployee: async (id: string, employeeData: any) => {
+    try {
+      const response = await ApiService.put(`/vendors/employees/${id}`, employeeData);
+      logApiResponse(`PUT /vendors/employees/${id}`, response);
+      return extractApiData(response);
+    } catch (error) {
+      logApiResponse(`PUT /vendors/employees/${id}`, null, error);
+      throw error;
+    }
+  },
+
+  // Delete/deactivate an employee
+  deleteVendorEmployee: async (id: string, permanent?: boolean) => {
+    try {
+      const response = await ApiService.delete(`/vendors/employees/${id}${permanent ? '?permanent=true' : ''}`);
+      logApiResponse(`DELETE /vendors/employees/${id}`, response);
+      return extractApiData(response);
+    } catch (error) {
+      logApiResponse(`DELETE /vendors/employees/${id}`, null, error);
+      throw error;
+    }
+  },
+
+  // Assign employee to an event
+  assignEmployeeToEvent: async (employeeId: string, eventId: string) => {
+    try {
+      const response = await ApiService.post(`/vendors/employees/${employeeId}/assign-event`, { eventId });
+      logApiResponse(`POST /vendors/employees/${employeeId}/assign-event`, response);
+      return extractApiData(response);
+    } catch (error) {
+      logApiResponse(`POST /vendors/employees/${employeeId}/assign-event`, null, error);
+      throw error;
+    }
+  },
+
+  // Remove employee from an event
+  removeEmployeeFromEvent: async (employeeId: string, eventId: string) => {
+    try {
+      const response = await ApiService.post(`/vendors/employees/${employeeId}/remove-event`, { eventId });
+      logApiResponse(`POST /vendors/employees/${employeeId}/remove-event`, response);
+      return extractApiData(response);
+    } catch (error) {
+      logApiResponse(`POST /vendors/employees/${employeeId}/remove-event`, null, error);
+      throw error;
+    }
+  },
+
+  // Export employees to CSV or JSON
+  exportVendorEmployees: async (format: 'csv' | 'json' = 'csv', filters?: any) => {
+    try {
+      const params = { format, ...filters };
+      const response = await ApiService.get('/vendors/employees/export', {
+        params,
+        responseType: format === 'csv' ? 'blob' : 'json'
+      });
+
+      if (format === 'csv') {
+        // Create download link for CSV
+        const url = window.URL.createObjectURL(new Blob([response.data]));
+        const link = document.createElement('a');
+        link.href = url;
+        link.setAttribute('download', `employees-${Date.now()}.csv`);
+        document.body.appendChild(link);
+        link.click();
+        link.remove();
+        window.URL.revokeObjectURL(url);
+        return { success: true, message: 'CSV exported successfully' };
+      } else {
+        // For JSON, trigger download
+        const dataStr = JSON.stringify(response.data, null, 2);
+        const dataBlob = new Blob([dataStr], { type: 'application/json' });
+        const url = window.URL.createObjectURL(dataBlob);
+        const link = document.createElement('a');
+        link.href = url;
+        link.setAttribute('download', `employees-${Date.now()}.json`);
+        document.body.appendChild(link);
+        link.click();
+        link.remove();
+        window.URL.revokeObjectURL(url);
+        return { success: true, message: 'JSON exported successfully' };
+      }
+    } catch (error) {
+      logApiResponse('GET /vendors/employees/export', null, error);
+      throw error;
+    }
+  },
 };
 
 export default vendorAPI;

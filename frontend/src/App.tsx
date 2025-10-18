@@ -55,6 +55,9 @@ const VendorEventsPage = React.lazy(() => import(/* webpackChunkName: "vendor" *
 const VendorCreateEventPage = React.lazy(() => import(/* webpackChunkName: "vendor" */ './pages/vendor/VendorCreateEventPage'));
 const VendorEditEventPage = React.lazy(() => import(/* webpackChunkName: "vendor" */ './pages/vendor/VendorEditEventPage'));
 const VendorBookingsPage = React.lazy(() => import(/* webpackChunkName: "vendor" */ './pages/vendor/VendorBookingsPage'));
+const VendorEmployeesPage = React.lazy(() => import(/* webpackChunkName: "vendor" */ './pages/vendor/VendorEmployeesPage'));
+const VendorCreateEmployeePage = React.lazy(() => import(/* webpackChunkName: "vendor" */ './pages/vendor/VendorCreateEmployeePage'));
+const VendorEditEmployeePage = React.lazy(() => import(/* webpackChunkName: "vendor" */ './pages/vendor/VendorEditEmployeePage'));
 // const VendorAnalyticsPage = React.lazy(() => import(/* webpackChunkName: "vendor" */ './pages/vendor/VendorAnalyticsPage'));
 const VendorProfilePage = React.lazy(() => import(/* webpackChunkName: "vendor" */ './pages/vendor/VendorProfilePage'));
 
@@ -493,7 +496,30 @@ function AppContent() {
                 </Suspense>
               </VendorRoute>
             } />
-            
+
+            {/* Employee Management */}
+            <Route path="employees" element={
+              <VendorRoute>
+                <Suspense fallback={<LoadingSpinner />}>
+                  <VendorEmployeesPage />
+                </Suspense>
+              </VendorRoute>
+            } />
+            <Route path="employees/create" element={
+              <VendorRoute>
+                <Suspense fallback={<LoadingSpinner />}>
+                  <VendorCreateEmployeePage />
+                </Suspense>
+              </VendorRoute>
+            } />
+            <Route path="employees/:id/edit" element={
+              <VendorRoute>
+                <Suspense fallback={<LoadingSpinner />}>
+                  <VendorEditEmployeePage />
+                </Suspense>
+              </VendorRoute>
+            } />
+
             {/* Analytics & Reports */}
             <Route path="analytics" element={
               <VendorRoute>

@@ -1,5 +1,5 @@
-// Currency utilities for AED and multi-currency support
-// Handles formatting, conversion, and display for UAE market
+// Currency utilities for multi-currency support
+// Handles formatting, conversion, and display with INR as base currency
 
 export interface CurrencyConfig {
   code: string;
@@ -11,6 +11,14 @@ export interface CurrencyConfig {
 }
 
 export const SUPPORTED_CURRENCIES: Record<string, CurrencyConfig> = {
+  INR: {
+    code: 'INR',
+    symbol: '₹',
+    name: 'Indian Rupee',
+    decimals: 2,
+    locale: 'en-IN',
+    position: 'before',
+  },
   AED: {
     code: 'AED',
     symbol: 'د.إ',
@@ -35,14 +43,22 @@ export const SUPPORTED_CURRENCIES: Record<string, CurrencyConfig> = {
     locale: 'en-EU',
     position: 'before',
   },
+  GBP: {
+    code: 'GBP',
+    symbol: '£',
+    name: 'British Pound',
+    decimals: 2,
+    locale: 'en-GB',
+    position: 'before',
+  },
 };
 
 export const getDefaultCurrency = (): string => {
-  return import.meta.env.VITE_DEFAULT_CURRENCY || 'AED';
+  return import.meta.env.VITE_DEFAULT_CURRENCY || 'INR';
 };
 
 export const getCurrencyConfig = (currencyCode: string): CurrencyConfig => {
-  return SUPPORTED_CURRENCIES[currencyCode] || SUPPORTED_CURRENCIES.AED;
+  return SUPPORTED_CURRENCIES[currencyCode] || SUPPORTED_CURRENCIES.INR;
 };
 
 export const formatCurrency = (
@@ -129,11 +145,39 @@ export const convertCurrency = async (
     return amount;
   }
 
-  // Mock conversion rates (replace with real API)
+  // Mock conversion rates based on INR (replace with real API)
+  // These are approximate rates from INR to other currencies
   const mockRates: Record<string, Record<string, number>> = {
-    USD: { AED: 3.67, EUR: 0.85 },
-    AED: { USD: 0.27, EUR: 0.23 },
-    EUR: { USD: 1.18, AED: 4.33 },
+    INR: {
+      AED: 0.044,   // 1 INR ≈ 0.044 AED
+      USD: 0.012,   // 1 INR ≈ 0.012 USD
+      EUR: 0.011,   // 1 INR ≈ 0.011 EUR
+      GBP: 0.0095,  // 1 INR ≈ 0.0095 GBP
+    },
+    AED: {
+      INR: 22.7,    // 1 AED ≈ 22.7 INR
+      USD: 0.27,    // 1 AED ≈ 0.27 USD
+      EUR: 0.25,    // 1 AED ≈ 0.25 EUR
+      GBP: 0.21,    // 1 AED ≈ 0.21 GBP
+    },
+    USD: {
+      INR: 83.3,    // 1 USD ≈ 83.3 INR
+      AED: 3.67,    // 1 USD ≈ 3.67 AED
+      EUR: 0.92,    // 1 USD ≈ 0.92 EUR
+      GBP: 0.79,    // 1 USD ≈ 0.79 GBP
+    },
+    EUR: {
+      INR: 90.9,    // 1 EUR ≈ 90.9 INR
+      AED: 4.00,    // 1 EUR ≈ 4.00 AED
+      USD: 1.09,    // 1 EUR ≈ 1.09 USD
+      GBP: 0.86,    // 1 EUR ≈ 0.86 GBP
+    },
+    GBP: {
+      INR: 105.3,   // 1 GBP ≈ 105.3 INR
+      AED: 4.76,    // 1 GBP ≈ 4.76 AED
+      USD: 1.27,    // 1 GBP ≈ 1.27 USD
+      EUR: 1.16,    // 1 GBP ≈ 1.16 EUR
+    },
   };
 
   const rate = mockRates[fromCurrency]?.[toCurrency] || 1;

@@ -4,8 +4,8 @@
   "description": "Backend API for Gema Event Management Platform with Firebase Authentication",
   "main": "dist/server.js",
   "engines": {
-  "node": "22.x",
-  "npm": "10.x"
+  "node": ">=20.0.0",
+  "npm": ">=10.0.0"
   },
   "scripts": {
     "dev": "nodemon src/server.ts",

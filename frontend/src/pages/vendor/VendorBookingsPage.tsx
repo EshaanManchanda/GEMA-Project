@@ -1,7 +1,10 @@
 import React, { useState, useEffect } from 'react';
-import { Link } from 'react-router-dom';
 import vendorAPI from '../../services/api/vendorAPI';
 import VendorNavigation from '../../components/vendor/VendorNavigation';
+import BookingFilters from '../../components/vendor/BookingFilters';
+import VendorBookingEditModal from '../../components/vendor/VendorBookingEditModal';
+import ExportOptionsModal from '../../components/vendor/ExportOptionsModal';
+import VendorBookingImportModal from '../../components/vendor/VendorBookingImportModal';
 
 interface Participant {
   name: string;
@@ -29,7 +32,7 @@ interface Booking {
   userId: string;
   orderNumber: string;
   items: Array<{
-    eventId: string;
+    eventId: any;
     eventTitle: string;
     scheduleDate: string;
     quantity: number;
@@ -50,158 +53,109 @@ interface Booking {
     phone?: string;
   };
   createdAt: string;
-  // Computed fields for UI
-  customerName: string;
-  customerEmail: string;
-  customerPhone: string;
-  eventTitle: string;
-  eventDate: string;
-  ticketCount: number;
-  totalAmount: number;
+  vendorNotes?: string;
+  vendorStatus?: string;
+  isFulfilled?: boolean;
 }
 
 const VendorBookingsPage: React.FC = () => {
   const [bookings, setBookings] = useState<Booking[]>([]);
-  const [filteredBookings, setFilteredBookings] = useState<Booking[]>([]);
   const [isLoading, setIsLoading] = useState<boolean>(true);
-  const [searchTerm, setSearchTerm] = useState<string>('');
-  const [statusFilter, setStatusFilter] = useState<string>('all');
-  const [dateFilter, setDateFilter] = useState<string>('all');
   const [expandedRows, setExpandedRows] = useState<Set<string>>(new Set());
-  const [sortConfig, setSortConfig] = useState<{ key: keyof Booking; direction: 'ascending' | 'descending' }>({
+  const [events, setEvents] = useState<Array<{ _id: string; title: string }>>([]);
+  const [stats, setStats] = useState<any>(null);
+  const [pagination, setPagination] = useState<any>(null);
+
+  // Modals
+  const [showEditModal, setShowEditModal] = useState(false);
+  const [showExportModal, setShowExportModal] = useState(false);
+  const [showImportModal, setShowImportModal] = useState(false);
+  const [selectedBooking, setSelectedBooking] = useState<Booking | null>(null);
+
+  // Filters
+  const [filters, setFilters] = useState({
+    search: '',
+    status: 'all',
+    paymentStatus: 'all',
+    eventId: 'all',
+    startDate: '',
+    endDate: '',
+    minAmount: '',
+    maxAmount: '',
+  });
+
+  // Pagination
+  const [currentPage, setCurrentPage] = useState(1);
+  const [pageSize, setPageSize] = useState(10);
+
+  // Sorting
+  const [sortConfig, setSortConfig] = useState<{ key: string; direction: 'asc' | 'desc' }>({
     key: 'createdAt',
-    direction: 'descending'
+    direction: 'desc'
   });
 
   useEffect(() => {
-    const fetchBookings = async () => {
-      setIsLoading(true);
-      try {
-        // Simulate API call delay
-        await new Promise(resolve => setTimeout(resolve, 1000));
-        
-        // Fetch real bookings from backend
-        const bookingsData = await vendorAPI.getVendorBookings();
-        
-        // Transform backend data to frontend format
-        const transformedBookings: Booking[] = bookingsData.map((order: any) => ({
-          _id: order._id || order.id,
-          userId: order.userId,
-          orderNumber: order.orderNumber,
-          items: order.items.map((item: any) => ({
-            eventId: item.eventId,
-            eventTitle: item.eventTitle,
-            scheduleDate: item.scheduleDate,
-            quantity: item.quantity,
-            unitPrice: item.unitPrice,
-            totalPrice: item.totalPrice,
-            currency: item.currency,
-            participants: item.participants || []
-          })),
-          total: order.total,
-          currency: order.currency,
-          status: order.status,
-          paymentStatus: order.paymentStatus,
-          paymentMethod: order.paymentMethod,
-          billingAddress: order.billingAddress,
-          createdAt: order.createdAt,
-          // Computed fields for UI
-          customerName: `${order.billingAddress.firstName} ${order.billingAddress.lastName}`,
-          customerEmail: order.billingAddress.email,
-          customerPhone: order.billingAddress.phone || 'N/A',
-          eventTitle: order.items[0]?.eventTitle || 'Multiple Events',
-          eventDate: order.items[0]?.scheduleDate || 'TBD',
-          ticketCount: order.items.reduce((sum: number, item: any) => sum + item.quantity, 0),
-          totalAmount: order.total
-        }));
-        
-        setBookings(transformedBookings);
-        setFilteredBookings(transformedBookings);
-      } catch (error) {
-        console.error('Error fetching bookings:', error);
-      } finally {
-        setIsLoading(false);
-      }
-    };
-    
     fetchBookings();
-  }, []);
+  }, [currentPage, pageSize, filters, sortConfig]);
 
-  useEffect(() => {
-    // Apply filters and search
-    let result = [...bookings];
-    
-    // Apply status filter
-    if (statusFilter !== 'all') {
-      result = result.filter(booking => booking.status === statusFilter);
+  const fetchBookings = async () => {
+    setIsLoading(true);
+    try {
+      // Build query parameters
+      const params: any = {
+        page: currentPage,
+        limit: pageSize,
+        sortBy: sortConfig.key,
+        sortOrder: sortConfig.direction,
+      };
+
+      // Add filters
+      if (filters.search) params.search = filters.search;
+      if (filters.status !== 'all') params.status = filters.status;
+      if (filters.paymentStatus !== 'all') params.paymentStatus = filters.paymentStatus;
+      if (filters.eventId !== 'all') params.eventId = filters.eventId;
+      if (filters.startDate) params.startDate = filters.startDate;
+      if (filters.endDate) params.endDate = filters.endDate;
+      if (filters.minAmount) params.minAmount = filters.minAmount;
+      if (filters.maxAmount) params.maxAmount = filters.maxAmount;
+
+      const response = await vendorAPI.getVendorBookings(params);
+
+      setBookings(response.bookings || []);
+      setPagination(response.pagination);
+      setStats(response.stats);
+      setEvents(response.events || []);
+    } catch (error) {
+      console.error('Error fetching bookings:', error);
+    } finally {
+      setIsLoading(false);
     }
-    
-    // Apply date filter
-    if (dateFilter === 'today') {
-      const today = new Date().toISOString().split('T')[0];
-      result = result.filter(booking => booking.eventDate === today);
-    } else if (dateFilter === 'upcoming') {
-      const today = new Date().toISOString().split('T')[0];
-      result = result.filter(booking => booking.eventDate > today);
-    } else if (dateFilter === 'past') {
-      const today = new Date().toISOString().split('T')[0];
-      result = result.filter(booking => booking.eventDate < today);
-    }
-    
-    // Apply search term
-    if (searchTerm) {
-      const lowercasedSearch = searchTerm.toLowerCase();
-      result = result.filter(
-        booking =>
-          booking.eventTitle.toLowerCase().includes(lowercasedSearch) ||
-          booking.customerName.toLowerCase().includes(lowercasedSearch) ||
-          booking.customerEmail.toLowerCase().includes(lowercasedSearch) ||
-          booking.id.toLowerCase().includes(lowercasedSearch)
-      );
-    }
-    
-    // Apply sorting
-    result.sort((a, b) => {
-      if (a[sortConfig.key] < b[sortConfig.key]) {
-        return sortConfig.direction === 'ascending' ? -1 : 1;
-      }
-      if (a[sortConfig.key] > b[sortConfig.key]) {
-        return sortConfig.direction === 'ascending' ? 1 : -1;
-      }
-      return 0;
+  };
+
+  const handleFilterChange = (newFilters: any) => {
+    setFilters(newFilters);
+    setCurrentPage(1); // Reset to first page when filters change
+  };
+
+  const handleClearFilters = () => {
+    setFilters({
+      search: '',
+      status: 'all',
+      paymentStatus: 'all',
+      eventId: 'all',
+      startDate: '',
+      endDate: '',
+      minAmount: '',
+      maxAmount: '',
     });
-    
-    setFilteredBookings(result);
-  }, [bookings, searchTerm, statusFilter, dateFilter, sortConfig]);
-
-  const handleSort = (key: keyof Booking) => {
-    let direction: 'ascending' | 'descending' = 'ascending';
-    if (sortConfig.key === key && sortConfig.direction === 'ascending') {
-      direction = 'descending';
-    }
-    setSortConfig({ key, direction });
+    setCurrentPage(1);
   };
 
-  const getStatusBadgeClass = (status: string) => {
-    switch (status) {
-      case 'confirmed':
-        return 'bg-green-100 text-green-800';
-      case 'cancelled':
-        return 'bg-red-100 text-red-800';
-      case 'completed':
-        return 'bg-blue-100 text-blue-800';
-      default:
-        return 'bg-gray-100 text-gray-800';
-    }
-  };
-
-  const formatDate = (dateString: string) => {
-    const options: Intl.DateTimeFormatOptions = { year: 'numeric', month: 'short', day: 'numeric' };
-    return new Date(dateString).toLocaleDateString(undefined, options);
-  };
-
-  const formatCurrency = (amount: number, currency: string = 'USD') => {
-    return new Intl.NumberFormat('en-US', { style: 'currency', currency }).format(amount);
+  const handleSort = (key: string) => {
+    setSortConfig(prev => ({
+      key,
+      direction: prev.key === key && prev.direction === 'asc' ? 'desc' : 'asc'
+    }));
   };
 
   const toggleRowExpansion = (bookingId: string) => {
@@ -214,6 +168,58 @@ const VendorBookingsPage: React.FC = () => {
       }
       return newSet;
     });
+  };
+
+  const handleEdit = (booking: Booking) => {
+    setSelectedBooking(booking);
+    setShowEditModal(true);
+  };
+
+  const handleUpdateComplete = () => {
+    fetchBookings();
+    setShowEditModal(false);
+  };
+
+  const handleImportComplete = () => {
+    fetchBookings();
+    setShowImportModal(false);
+  };
+
+  const getStatusBadgeClass = (status: string) => {
+    switch (status) {
+      case 'confirmed':
+        return 'bg-green-100 text-green-800';
+      case 'cancelled':
+        return 'bg-red-100 text-red-800';
+      case 'refunded':
+        return 'bg-yellow-100 text-yellow-800';
+      default:
+        return 'bg-gray-100 text-gray-800';
+    }
+  };
+
+  const getPaymentStatusBadgeClass = (status: string) => {
+    switch (status) {
+      case 'paid':
+        return 'bg-green-100 text-green-800';
+      case 'failed':
+        return 'bg-red-100 text-red-800';
+      case 'pending':
+        return 'bg-yellow-100 text-yellow-800';
+      case 'refunded':
+        return 'bg-purple-100 text-purple-800';
+      default:
+        return 'bg-gray-100 text-gray-800';
+    }
+  };
+
+  const formatDate = (dateString: string) => {
+    const options: Intl.DateTimeFormatOptions = { year: 'numeric', month: 'short', day: 'numeric' };
+    return new Date(dateString).toLocaleDateString(undefined, options);
+  };
+
+  const formatCurrency = (amount: number, currency: string = 'AED') => {
+    return new Intl.NumberFormat('en-US', { style: 'currency', currency }).format(amount);
   };
 
   const formatRegistrationValue = (fieldType: string, value: any): string => {
@@ -241,7 +247,7 @@ const VendorBookingsPage: React.FC = () => {
     if (participants.length === 0) {
       return (
         <tr>
-          <td colSpan={9} className="px-6 py-4 bg-gray-50">
+          <td colSpan={10} className="px-6 py-4 bg-gray-50">
             <p className="text-sm text-gray-500 text-center">No participant information available</p>
           </td>
         </tr>
@@ -250,7 +256,7 @@ const VendorBookingsPage: React.FC = () => {
 
     return (
       <tr>
-        <td colSpan={9} className="px-6 py-4 bg-gray-50">
+        <td colSpan={10} className="px-6 py-4 bg-gray-50">
           <div className="space-y-4">
             <h3 className="text-lg font-semibold text-gray-900 mb-3">Participant Details</h3>
             {participants.map((participant, index) => (
@@ -347,7 +353,7 @@ const VendorBookingsPage: React.FC = () => {
     );
   };
 
-  if (isLoading) {
+  if (isLoading && bookings.length === 0) {
     return (
       <div className="container mx-auto px-4 py-8">
         <div className="flex justify-center items-center h-64">
@@ -361,345 +367,347 @@ const VendorBookingsPage: React.FC = () => {
     <>
       <VendorNavigation />
       <div className="container mx-auto px-4 py-8">
-      <div className="flex flex-col md:flex-row justify-between items-start md:items-center mb-6">
-        <h1 className="text-3xl font-bold text-gray-900 mb-4 md:mb-0">Bookings Management</h1>
-        
-        <div className="flex flex-col sm:flex-row gap-3">
-          <div className="relative">
-            <input
-              type="text"
-              placeholder="Search bookings..."
-              className="w-full sm:w-64 px-4 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-primary focus:border-primary"
-              value={searchTerm}
-              onChange={(e) => setSearchTerm(e.target.value)}
-            />
-            <svg
-              className="absolute right-3 top-2.5 h-5 w-5 text-gray-400"
-              xmlns="http://www.w3.org/2000/svg"
-              viewBox="0 0 20 20"
-              fill="currentColor"
-              aria-hidden="true"
-            >
-              <path
-                fillRule="evenodd"
-                d="M8 4a4 4 0 100 8 4 4 0 000-8zM2 8a6 6 0 1110.89 3.476l4.817 4.817a1 1 0 01-1.414 1.414l-4.816-4.816A6 6 0 012 8z"
-                clipRule="evenodd"
-              />
-            </svg>
-          </div>
-          
-          <select
-            className="w-full sm:w-auto px-4 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-primary focus:border-primary"
-            value={statusFilter}
-            onChange={(e) => setStatusFilter(e.target.value)}
-          >
-            <option value="all">All Statuses</option>
-            <option value="confirmed">Confirmed</option>
-            <option value="cancelled">Cancelled</option>
-            <option value="completed">Completed</option>
-          </select>
-          
-          <select
-            className="w-full sm:w-auto px-4 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-primary focus:border-primary"
-            value={dateFilter}
-            onChange={(e) => setDateFilter(e.target.value)}
-          >
-            <option value="all">All Dates</option>
-            <option value="today">Today</option>
-            <option value="upcoming">Upcoming</option>
-            <option value="past">Past</option>
-          </select>
-        </div>
-      </div>
-      
-      <div className="bg-white shadow-md rounded-lg overflow-hidden">
-        <div className="overflow-x-auto">
-          <table className="min-w-full divide-y divide-gray-200">
-            <thead className="bg-gray-50">
-              <tr>
-                <th
-                  scope="col"
-                  className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider cursor-pointer hover:bg-gray-100"
-                  onClick={() => handleSort('id')}
-                >
-                  <div className="flex items-center">
-                    Booking ID
-                    {sortConfig.key === 'id' && (
-                      <svg
-                        className={`ml-1 h-4 w-4 ${sortConfig.direction === 'ascending' ? 'transform rotate-180' : ''}`}
-                        xmlns="http://www.w3.org/2000/svg"
-                        viewBox="0 0 20 20"
-                        fill="currentColor"
-                      >
-                        <path fillRule="evenodd" d="M5.293 7.293a1 1 0 011.414 0L10 10.586l3.293-3.293a1 1 0 111.414 1.414l-4 4a1 1 0 01-1.414 0l-4-4a1 1 0 010-1.414z" clipRule="evenodd" />
-                      </svg>
-                    )}
-                  </div>
-                </th>
-                <th
-                  scope="col"
-                  className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider cursor-pointer hover:bg-gray-100"
-                  onClick={() => handleSort('eventTitle')}
-                >
-                  <div className="flex items-center">
-                    Event
-                    {sortConfig.key === 'eventTitle' && (
-                      <svg
-                        className={`ml-1 h-4 w-4 ${sortConfig.direction === 'ascending' ? 'transform rotate-180' : ''}`}
-                        xmlns="http://www.w3.org/2000/svg"
-                        viewBox="0 0 20 20"
-                        fill="currentColor"
-                      >
-                        <path fillRule="evenodd" d="M5.293 7.293a1 1 0 011.414 0L10 10.586l3.293-3.293a1 1 0 111.414 1.414l-4 4a1 1 0 01-1.414 0l-4-4a1 1 0 010-1.414z" clipRule="evenodd" />
-                      </svg>
-                    )}
-                  </div>
-                </th>
-                <th
-                  scope="col"
-                  className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider cursor-pointer hover:bg-gray-100"
-                  onClick={() => handleSort('customerName')}
-                >
-                  <div className="flex items-center">
-                    Customer
-                    {sortConfig.key === 'customerName' && (
-                      <svg
-                        className={`ml-1 h-4 w-4 ${sortConfig.direction === 'ascending' ? 'transform rotate-180' : ''}`}
-                        xmlns="http://www.w3.org/2000/svg"
-                        viewBox="0 0 20 20"
-                        fill="currentColor"
-                      >
-                        <path fillRule="evenodd" d="M5.293 7.293a1 1 0 011.414 0L10 10.586l3.293-3.293a1 1 0 111.414 1.414l-4 4a1 1 0 01-1.414 0l-4-4a1 1 0 010-1.414z" clipRule="evenodd" />
-                      </svg>
-                    )}
-                  </div>
-                </th>
-                <th
-                  scope="col"
-                  className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider cursor-pointer hover:bg-gray-100"
-                  onClick={() => handleSort('eventDate')}
-                >
-                  <div className="flex items-center">
-                    Event Date
-                    {sortConfig.key === 'eventDate' && (
-                      <svg
-                        className={`ml-1 h-4 w-4 ${sortConfig.direction === 'ascending' ? 'transform rotate-180' : ''}`}
-                        xmlns="http://www.w3.org/2000/svg"
-                        viewBox="0 0 20 20"
-                        fill="currentColor"
-                      >
-                        <path fillRule="evenodd" d="M5.293 7.293a1 1 0 011.414 0L10 10.586l3.293-3.293a1 1 0 111.414 1.414l-4 4a1 1 0 01-1.414 0l-4-4a1 1 0 010-1.414z" clipRule="evenodd" />
-                      </svg>
-                    )}
-                  </div>
-                </th>
-                <th
-                  scope="col"
-                  className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider cursor-pointer hover:bg-gray-100"
-                  onClick={() => handleSort('ticketCount')}
-                >
-                  <div className="flex items-center">
-                    Tickets
-                    {sortConfig.key === 'ticketCount' && (
-                      <svg
-                        className={`ml-1 h-4 w-4 ${sortConfig.direction === 'ascending' ? 'transform rotate-180' : ''}`}
-                        xmlns="http://www.w3.org/2000/svg"
-                        viewBox="0 0 20 20"
-                        fill="currentColor"
-                      >
-                        <path fillRule="evenodd" d="M5.293 7.293a1 1 0 011.414 0L10 10.586l3.293-3.293a1 1 0 111.414 1.414l-4 4a1 1 0 01-1.414 0l-4-4a1 1 0 010-1.414z" clipRule="evenodd" />
-                      </svg>
-                    )}
-                  </div>
-                </th>
-                <th
-                  scope="col"
-                  className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider cursor-pointer hover:bg-gray-100"
-                  onClick={() => handleSort('totalAmount')}
-                >
-                  <div className="flex items-center">
-                    Amount
-                    {sortConfig.key === 'totalAmount' && (
-                      <svg
-                        className={`ml-1 h-4 w-4 ${sortConfig.direction === 'ascending' ? 'transform rotate-180' : ''}`}
-                        xmlns="http://www.w3.org/2000/svg"
-                        viewBox="0 0 20 20"
-                        fill="currentColor"
-                      >
-                        <path fillRule="evenodd" d="M5.293 7.293a1 1 0 011.414 0L10 10.586l3.293-3.293a1 1 0 111.414 1.414l-4 4a1 1 0 01-1.414 0l-4-4a1 1 0 010-1.414z" clipRule="evenodd" />
-                      </svg>
-                    )}
-                  </div>
-                </th>
-                <th
-                  scope="col"
-                  className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider cursor-pointer hover:bg-gray-100"
-                  onClick={() => handleSort('status')}
-                >
-                  <div className="flex items-center">
-                    Status
-                    {sortConfig.key === 'status' && (
-                      <svg
-                        className={`ml-1 h-4 w-4 ${sortConfig.direction === 'ascending' ? 'transform rotate-180' : ''}`}
-                        xmlns="http://www.w3.org/2000/svg"
-                        viewBox="0 0 20 20"
-                        fill="currentColor"
-                      >
-                        <path fillRule="evenodd" d="M5.293 7.293a1 1 0 011.414 0L10 10.586l3.293-3.293a1 1 0 111.414 1.414l-4 4a1 1 0 01-1.414 0l-4-4a1 1 0 010-1.414z" clipRule="evenodd" />
-                      </svg>
-                    )}
-                  </div>
-                </th>
-                <th
-                  scope="col"
-                  className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider cursor-pointer hover:bg-gray-100"
-                  onClick={() => handleSort('createdAt')}
-                >
-                  <div className="flex items-center">
-                    Booking Date
-                    {sortConfig.key === 'createdAt' && (
-                      <svg
-                        className={`ml-1 h-4 w-4 ${sortConfig.direction === 'ascending' ? 'transform rotate-180' : ''}`}
-                        xmlns="http://www.w3.org/2000/svg"
-                        viewBox="0 0 20 20"
-                        fill="currentColor"
-                      >
-                        <path fillRule="evenodd" d="M5.293 7.293a1 1 0 011.414 0L10 10.586l3.293-3.293a1 1 0 111.414 1.414l-4 4a1 1 0 01-1.414 0l-4-4a1 1 0 010-1.414z" clipRule="evenodd" />
-                      </svg>
-                    )}
-                  </div>
-                </th>
-                <th scope="col" className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">
-                  Actions
-                </th>
-              </tr>
-            </thead>
-            <tbody className="bg-white divide-y divide-gray-200">
-              {filteredBookings.length > 0 ? (
-                filteredBookings.map((booking) => {
-                  const isExpanded = expandedRows.has(booking._id);
-                  const hasParticipants = booking.items[0]?.participants && booking.items[0].participants.length > 0;
+        <div className="flex flex-col md:flex-row justify-between items-start md:items-center mb-6">
+          <h1 className="text-3xl font-bold text-gray-900 mb-4 md:mb-0">Bookings Management</h1>
 
-                  return (
-                    <React.Fragment key={booking._id}>
-                      <tr className="hover:bg-gray-50">
-                        <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">
-                          <div className="flex items-center space-x-2">
-                            {hasParticipants && (
-                              <button
-                                onClick={() => toggleRowExpansion(booking._id)}
-                                className="text-gray-400 hover:text-gray-600 focus:outline-none"
-                                title={isExpanded ? "Collapse participant details" : "Expand participant details"}
-                              >
-                                <svg
-                                  className={`w-5 h-5 transform transition-transform ${isExpanded ? 'rotate-90' : ''}`}
-                                  fill="none"
-                                  stroke="currentColor"
-                                  viewBox="0 0 24 24"
-                                >
-                                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
-                                </svg>
-                              </button>
-                            )}
-                            <span>#{booking.orderNumber || booking._id.slice(-6)}</span>
-                          </div>
-                        </td>
-                        <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                          {booking.eventTitle}
-                        </td>
-                        <td className="px-6 py-4 whitespace-nowrap">
-                          <div className="text-sm font-medium text-gray-900">{booking.customerName}</div>
-                          <div className="text-sm text-gray-500">{booking.customerEmail}</div>
-                        </td>
-                        <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                          {formatDate(booking.eventDate)}
-                        </td>
-                        <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                          {booking.ticketCount}
-                          {hasParticipants && (
-                            <span className="ml-1 text-xs text-blue-600">
-                              ({booking.items[0].participants!.length} participants)
-                            </span>
-                          )}
-                        </td>
-                        <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                          {formatCurrency(booking.totalAmount, booking.currency)}
-                        </td>
-                        <td className="px-6 py-4 whitespace-nowrap">
-                          <span className={`px-2 inline-flex text-xs leading-5 font-semibold rounded-full ${getStatusBadgeClass(booking.status)}`}>
-                            {booking.status.charAt(0).toUpperCase() + booking.status.slice(1)}
-                          </span>
-                        </td>
-                        <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                          {formatDate(booking.createdAt)}
-                        </td>
-                        <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
-                          <Link
-                            to={`/vendor/bookings/${booking._id}`}
-                            className="text-primary hover:text-primary-dark mr-4"
-                          >
-                            View
-                          </Link>
-                          {booking.status === 'confirmed' && (
-                            <button
-                              className="text-red-600 hover:text-red-900"
-                              onClick={() => {
-                                // In a real app, you would call an API to cancel the booking
-                                const updatedBookings = bookings.map(b =>
-                                  b._id === booking._id ? { ...b, status: 'cancelled' as const } : b
-                                );
-                                setBookings(updatedBookings);
-                              }}
-                            >
-                              Cancel
-                            </button>
-                          )}
-                        </td>
-                      </tr>
-                      {isExpanded && renderParticipantDetails(booking)}
-                    </React.Fragment>
-                  );
-                })
-              ) : (
-                <tr>
-                  <td colSpan={9} className="px-6 py-4 text-center text-sm text-gray-500">
-                    No bookings found matching your criteria.
-                  </td>
-                </tr>
-              )}
-            </tbody>
-          </table>
+          <div className="flex flex-wrap gap-3">
+            <button
+              onClick={() => setShowImportModal(true)}
+              className="inline-flex items-center px-4 py-2 border border-gray-300 rounded-md shadow-sm text-sm font-medium text-gray-700 bg-white hover:bg-gray-50"
+            >
+              <svg className="mr-2 h-4 w-4" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-8l-4-4m0 0L8 8m4-4v12" />
+              </svg>
+              Import CSV
+            </button>
+
+            <button
+              onClick={() => setShowExportModal(true)}
+              className="inline-flex items-center px-4 py-2 border border-primary rounded-md shadow-sm text-sm font-medium text-primary bg-white hover:bg-primary-light"
+            >
+              <svg className="mr-2 h-4 w-4" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
+              </svg>
+              Export
+            </button>
+          </div>
         </div>
-      </div>
-      
-      <div className="mt-8">
-        <div className="bg-white shadow-md rounded-lg overflow-hidden">
-          <div className="p-6">
-            <h2 className="text-xl font-semibold text-gray-800 mb-4">Booking Statistics</h2>
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-              <div className="bg-green-50 p-4 rounded-lg">
-                <div className="text-green-500 text-lg font-semibold">
-                  {filteredBookings.filter(b => b.status === 'confirmed').length}
+
+        {/* Statistics Cards */}
+        {stats && (
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
+            <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-4">
+              <div className="flex items-center justify-between">
+                <div>
+                  <p className="text-sm font-medium text-gray-600">Total Revenue</p>
+                  <p className="text-2xl font-bold text-gray-900">{formatCurrency(stats.totalRevenue || 0)}</p>
                 </div>
-                <div className="text-sm text-gray-600">Confirmed Bookings</div>
+                <div className="bg-green-100 rounded-full p-3">
+                  <svg className="h-6 w-6 text-green-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                  </svg>
+                </div>
               </div>
-              <div className="bg-blue-50 p-4 rounded-lg">
-                <div className="text-blue-500 text-lg font-semibold">
-                  {filteredBookings.filter(b => b.status === 'completed').length}
+            </div>
+
+            <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-4">
+              <div className="flex items-center justify-between">
+                <div>
+                  <p className="text-sm font-medium text-gray-600">Total Bookings</p>
+                  <p className="text-2xl font-bold text-gray-900">{stats.totalBookings || 0}</p>
                 </div>
-                <div className="text-sm text-gray-600">Completed Bookings</div>
+                <div className="bg-blue-100 rounded-full p-3">
+                  <svg className="h-6 w-6 text-blue-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2" />
+                  </svg>
+                </div>
               </div>
-              <div className="bg-red-50 p-4 rounded-lg">
-                <div className="text-red-500 text-lg font-semibold">
-                  {filteredBookings.filter(b => b.status === 'cancelled').length}
+            </div>
+
+            <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-4">
+              <div className="flex items-center justify-between">
+                <div>
+                  <p className="text-sm font-medium text-gray-600">Confirmed</p>
+                  <p className="text-2xl font-bold text-gray-900">{stats.confirmedBookings || 0}</p>
                 </div>
-                <div className="text-sm text-gray-600">Cancelled Bookings</div>
+                <div className="bg-green-100 rounded-full p-3">
+                  <svg className="h-6 w-6 text-green-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
+                  </svg>
+                </div>
+              </div>
+            </div>
+
+            <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-4">
+              <div className="flex items-center justify-between">
+                <div>
+                  <p className="text-sm font-medium text-gray-600">Paid</p>
+                  <p className="text-2xl font-bold text-gray-900">{stats.paidBookings || 0}</p>
+                </div>
+                <div className="bg-purple-100 rounded-full p-3">
+                  <svg className="h-6 w-6 text-purple-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 10h18M7 15h1m4 0h1m-7 4h12a3 3 0 003-3V8a3 3 0 00-3-3H6a3 3 0 00-3 3v8a3 3 0 003 3z" />
+                  </svg>
+                </div>
               </div>
             </div>
           </div>
+        )}
+
+        {/* Filters */}
+        <BookingFilters
+          filters={filters}
+          onFilterChange={handleFilterChange}
+          events={events}
+          onClearFilters={handleClearFilters}
+        />
+
+        {/* Bookings Table */}
+        <div className="bg-white shadow-md rounded-lg overflow-hidden">
+          <div className="overflow-x-auto">
+            <table className="min-w-full divide-y divide-gray-200">
+              <thead className="bg-gray-50">
+                <tr>
+                  <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                    <div className="flex items-center cursor-pointer" onClick={() => handleSort('orderNumber')}>
+                      Order #
+                      {sortConfig.key === 'orderNumber' && (
+                        <svg className={`ml-1 h-4 w-4 ${sortConfig.direction === 'asc' ? 'transform rotate-180' : ''}`} xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor">
+                          <path fillRule="evenodd" d="M5.293 7.293a1 1 0 011.414 0L10 10.586l3.293-3.293a1 1 0 111.414 1.414l-4 4a1 1 0 01-1.414 0l-4-4a1 1 0 010-1.414z" clipRule="evenodd" />
+                        </svg>
+                      )}
+                    </div>
+                  </th>
+                  <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                    Customer
+                  </th>
+                  <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                    Event
+                  </th>
+                  <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                    Date
+                  </th>
+                  <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                    Quantity
+                  </th>
+                  <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                    <div className="flex items-center cursor-pointer" onClick={() => handleSort('total')}>
+                      Amount
+                      {sortConfig.key === 'total' && (
+                        <svg className={`ml-1 h-4 w-4 ${sortConfig.direction === 'asc' ? 'transform rotate-180' : ''}`} xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor">
+                          <path fillRule="evenodd" d="M5.293 7.293a1 1 0 011.414 0L10 10.586l3.293-3.293a1 1 0 111.414 1.414l-4 4a1 1 0 01-1.414 0l-4-4a1 1 0 010-1.414z" clipRule="evenodd" />
+                        </svg>
+                      )}
+                    </div>
+                  </th>
+                  <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                    Status
+                  </th>
+                  <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                    Payment
+                  </th>
+                  <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                    <div className="flex items-center cursor-pointer" onClick={() => handleSort('createdAt')}>
+                      Booked
+                      {sortConfig.key === 'createdAt' && (
+                        <svg className={`ml-1 h-4 w-4 ${sortConfig.direction === 'asc' ? 'transform rotate-180' : ''}`} xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor">
+                          <path fillRule="evenodd" d="M5.293 7.293a1 1 0 011.414 0L10 10.586l3.293-3.293a1 1 0 111.414 1.414l-4 4a1 1 0 01-1.414 0l-4-4a1 1 0 010-1.414z" clipRule="evenodd" />
+                        </svg>
+                      )}
+                    </div>
+                  </th>
+                  <th scope="col" className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">
+                    Actions
+                  </th>
+                </tr>
+              </thead>
+              <tbody className="bg-white divide-y divide-gray-200">
+                {bookings.length > 0 ? (
+                  bookings.map((booking) => {
+                    const isExpanded = expandedRows.has(booking._id);
+                    const hasParticipants = booking.items[0]?.participants && booking.items[0].participants.length > 0;
+
+                    return (
+                      <React.Fragment key={booking._id}>
+                        <tr className="hover:bg-gray-50">
+                          <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">
+                            <div className="flex items-center space-x-2">
+                              {hasParticipants && (
+                                <button
+                                  onClick={() => toggleRowExpansion(booking._id)}
+                                  className="text-gray-400 hover:text-gray-600 focus:outline-none"
+                                  title={isExpanded ? "Collapse participant details" : "Expand participant details"}
+                                >
+                                  <svg
+                                    className={`w-5 h-5 transform transition-transform ${isExpanded ? 'rotate-90' : ''}`}
+                                    fill="none"
+                                    stroke="currentColor"
+                                    viewBox="0 0 24 24"
+                                  >
+                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
+                                  </svg>
+                                </button>
+                              )}
+                              <span>#{booking.orderNumber || booking._id.slice(-6)}</span>
+                            </div>
+                          </td>
+                          <td className="px-6 py-4 whitespace-nowrap">
+                            <div className="text-sm font-medium text-gray-900">
+                              {booking.billingAddress.firstName} {booking.billingAddress.lastName}
+                            </div>
+                            <div className="text-sm text-gray-500">{booking.billingAddress.email}</div>
+                            {booking.billingAddress.phone && (
+                              <div className="text-sm text-gray-500">{booking.billingAddress.phone}</div>
+                            )}
+                          </td>
+                          <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                            {booking.items[0]?.eventTitle}
+                          </td>
+                          <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                            {formatDate(booking.items[0]?.scheduleDate)}
+                          </td>
+                          <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                            {booking.items[0]?.quantity}
+                            {hasParticipants && (
+                              <span className="ml-1 text-xs text-blue-600">
+                                ({booking.items[0].participants!.length} participants)
+                              </span>
+                            )}
+                          </td>
+                          <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                            {formatCurrency(booking.total, booking.currency)}
+                          </td>
+                          <td className="px-6 py-4 whitespace-nowrap">
+                            <span className={`px-2 inline-flex text-xs leading-5 font-semibold rounded-full ${getStatusBadgeClass(booking.status)}`}>
+                              {booking.status.charAt(0).toUpperCase() + booking.status.slice(1)}
+                            </span>
+                          </td>
+                          <td className="px-6 py-4 whitespace-nowrap">
+                            <span className={`px-2 inline-flex text-xs leading-5 font-semibold rounded-full ${getPaymentStatusBadgeClass(booking.paymentStatus)}`}>
+                              {booking.paymentStatus.charAt(0).toUpperCase() + booking.paymentStatus.slice(1)}
+                            </span>
+                          </td>
+                          <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                            {formatDate(booking.createdAt)}
+                          </td>
+                          <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
+                            <button
+                              onClick={() => handleEdit(booking)}
+                              className="text-primary hover:text-primary-dark mr-4"
+                            >
+                              Edit
+                            </button>
+                          </td>
+                        </tr>
+                        {isExpanded && renderParticipantDetails(booking)}
+                      </React.Fragment>
+                    );
+                  })
+                ) : (
+                  <tr>
+                    <td colSpan={10} className="px-6 py-4 text-center text-sm text-gray-500">
+                      No bookings found matching your criteria.
+                    </td>
+                  </tr>
+                )}
+              </tbody>
+            </table>
+          </div>
+
+          {/* Pagination */}
+          {pagination && pagination.totalPages > 1 && (
+            <div className="bg-white px-4 py-3 flex items-center justify-between border-t border-gray-200 sm:px-6">
+              <div className="flex-1 flex justify-between sm:hidden">
+                <button
+                  onClick={() => setCurrentPage(prev => Math.max(1, prev - 1))}
+                  disabled={!pagination.hasPrevPage}
+                  className="relative inline-flex items-center px-4 py-2 border border-gray-300 text-sm font-medium rounded-md text-gray-700 bg-white hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed"
+                >
+                  Previous
+                </button>
+                <button
+                  onClick={() => setCurrentPage(prev => prev + 1)}
+                  disabled={!pagination.hasNextPage}
+                  className="ml-3 relative inline-flex items-center px-4 py-2 border border-gray-300 text-sm font-medium rounded-md text-gray-700 bg-white hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed"
+                >
+                  Next
+                </button>
+              </div>
+              <div className="hidden sm:flex-1 sm:flex sm:items-center sm:justify-between">
+                <div>
+                  <p className="text-sm text-gray-700">
+                    Showing page <span className="font-medium">{pagination.currentPage}</span> of{' '}
+                    <span className="font-medium">{pagination.totalPages}</span> ({pagination.totalBookings} total bookings)
+                  </p>
+                </div>
+                <div className="flex items-center space-x-4">
+                  <select
+                    value={pageSize}
+                    onChange={(e) => {
+                      setPageSize(Number(e.target.value));
+                      setCurrentPage(1);
+                    }}
+                    className="border border-gray-300 rounded-md text-sm px-2 py-1"
+                  >
+                    <option value={10}>10 per page</option>
+                    <option value={25}>25 per page</option>
+                    <option value={50}>50 per page</option>
+                    <option value={100}>100 per page</option>
+                  </select>
+
+                  <nav className="relative z-0 inline-flex rounded-md shadow-sm -space-x-px">
+                    <button
+                      onClick={() => setCurrentPage(prev => Math.max(1, prev - 1))}
+                      disabled={!pagination.hasPrevPage}
+                      className="relative inline-flex items-center px-2 py-2 rounded-l-md border border-gray-300 bg-white text-sm font-medium text-gray-500 hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed"
+                    >
+                      <span className="sr-only">Previous</span>
+                      <svg className="h-5 w-5" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor">
+                        <path fillRule="evenodd" d="M12.707 5.293a1 1 0 010 1.414L9.414 10l3.293 3.293a1 1 0 01-1.414 1.414l-4-4a1 1 0 010-1.414l4-4a1 1 0 011.414 0z" clipRule="evenodd" />
+                      </svg>
+                    </button>
+                    <span className="relative inline-flex items-center px-4 py-2 border border-gray-300 bg-white text-sm font-medium text-gray-700">
+                      {pagination.currentPage}
+                    </span>
+                    <button
+                      onClick={() => setCurrentPage(prev => prev + 1)}
+                      disabled={!pagination.hasNextPage}
+                      className="relative inline-flex items-center px-2 py-2 rounded-r-md border border-gray-300 bg-white text-sm font-medium text-gray-500 hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed"
+                    >
+                      <span className="sr-only">Next</span>
+                      <svg className="h-5 w-5" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor">
+                        <path fillRule="evenodd" d="M7.293 14.707a1 1 0 010-1.414L10.586 10 7.293 6.707a1 1 0 011.414-1.414l4 4a1 1 0 010 1.414l-4 4a1 1 0 01-1.414 0z" clipRule="evenodd" />
+                      </svg>
+                    </button>
+                  </nav>
+                </div>
+              </div>
+            </div>
+          )}
         </div>
       </div>
-      </div>
+
+      {/* Modals */}
+      {selectedBooking && (
+        <VendorBookingEditModal
+          isOpen={showEditModal}
+          onClose={() => setShowEditModal(false)}
+          booking={selectedBooking}
+          onUpdate={handleUpdateComplete}
+        />
+      )}
+
+      <ExportOptionsModal
+        isOpen={showExportModal}
+        onClose={() => setShowExportModal(false)}
+        filters={filters}
+      />
+
+      <VendorBookingImportModal
+        isOpen={showImportModal}
+        onClose={() => setShowImportModal(false)}
+        onImportComplete={handleImportComplete}
+      />
     </>
   );
 };

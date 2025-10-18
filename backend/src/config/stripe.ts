@@ -76,8 +76,10 @@ export const getStripeConfig = () => {
 };
 
 // Stripe configuration constants
+// NOTE: All payments are processed in INR through Indian Stripe account
+// Other currencies are for display purposes only
 export const STRIPE_CONFIG = {
-  currency: 'aed', // Default currency
+  currency: 'inr', // Base currency for all Stripe transactions
   automatic_payment_methods: {
     enabled: true,
   },
@@ -87,15 +89,19 @@ export const STRIPE_CONFIG = {
 
 // Currency mapping for multi-currency support
 export const CURRENCY_MAPPING = {
+  INR: 'inr',
   AED: 'aed',
   USD: 'usd',
+  EUR: 'eur',
+  GBP: 'gbp',
   EGP: 'egp',
   CAD: 'cad',
 } as const;
 
 // Helper function to get Stripe currency code
+// NOTE: Always returns 'inr' as all payments are processed through Indian Stripe
 export const getStripeCurrency = (currency: string): string => {
-  return CURRENCY_MAPPING[currency as keyof typeof CURRENCY_MAPPING] || 'aed';
+  return 'inr'; // Always use INR for Stripe transactions
 };
 
 // Helper function to convert amount to Stripe's smallest currency unit

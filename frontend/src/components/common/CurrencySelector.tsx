@@ -1,131 +1,52 @@
-import React, { useState, useEffect } from 'react';
-import { useSelector, useDispatch } from 'react-redux';
-import { 
+import React, { useState } from 'react';
+import {
   FaDollarSign,
   FaEuroSign,
   FaPoundSign,
-  FaYenSign,
   FaChevronDown,
   FaGlobe,
-  FaExchangeAlt
+  FaExchangeAlt,
+  FaRupeeSign
 } from 'react-icons/fa';
-import { RootState, AppDispatch } from '../../store';
-
-interface Currency {
-  code: string;
-  name: string;
-  symbol: string;
-  flag: string;
-  rate: number; // Exchange rate relative to AED
-  icon?: React.ReactNode;
-}
+import { useCurrencyContext } from '../../contexts/CurrencyContext';
 
 interface CurrencySelectorProps {
   className?: string;
   compact?: boolean;
   showRates?: boolean;
-  onCurrencyChange?: (currency: Currency) => void;
 }
-
-const currencies: Currency[] = [
-  {
-    code: 'AED',
-    name: 'UAE Dirham',
-    symbol: 'د.إ',
-    flag: '🇦🇪',
-    rate: 1.0,
-    icon: <FaDollarSign />
-  },
-  {
-    code: 'USD',
-    name: 'US Dollar',
-    symbol: '$',
-    flag: '🇺🇸',
-    rate: 0.27,
-    icon: <FaDollarSign />
-  },
-  {
-    code: 'EUR',
-    name: 'Euro',
-    symbol: '€',
-    flag: '🇪🇺',
-    rate: 0.25,
-    icon: <FaEuroSign />
-  },
-  {
-    code: 'GBP',
-    name: 'British Pound',
-    symbol: '£',
-    flag: '🇬🇧',
-    rate: 0.21,
-    icon: <FaPoundSign />
-  },
-  {
-    code: 'JPY',
-    name: 'Japanese Yen',
-    symbol: '¥',
-    flag: '🇯🇵',
-    rate: 40.5,
-    icon: <FaYenSign />
-  },
-  {
-    code: 'SAR',
-    name: 'Saudi Riyal',
-    symbol: 'ر.س',
-    flag: '🇸🇦',
-    rate: 1.02,
-    icon: <FaDollarSign />
-  },
-  {
-    code: 'QAR',
-    name: 'Qatari Riyal',
-    symbol: 'ر.ق',
-    flag: '🇶🇦',
-    rate: 0.99,
-    icon: <FaDollarSign />
-  }
-];
 
 const CurrencySelector: React.FC<CurrencySelectorProps> = ({
   className = '',
   compact = false,
   showRates = false,
-  onCurrencyChange
 }) => {
-  const [selectedCurrency, setSelectedCurrency] = useState<Currency>(currencies[0]);
+  const {
+    currentCurrency,
+    changeCurrency,
+    currencyInfo,
+    supportedCurrencies,
+    exchangeRates,
+    isAutoDetected,
+    isLoading: contextLoading
+  } = useCurrencyContext();
+
   const [showDropdown, setShowDropdown] = useState(false);
-  const [isLoading, setIsLoading] = useState(false);
 
-  // Load saved currency from localStorage
-  useEffect(() => {
-    const savedCurrencyCode = localStorage.getItem('selectedCurrency');
-    if (savedCurrencyCode) {
-      const savedCurrency = currencies.find(c => c.code === savedCurrencyCode);
-      if (savedCurrency) {
-        setSelectedCurrency(savedCurrency);
-      }
-    }
-  }, []);
-
-  const handleCurrencySelect = async (currency: Currency) => {
-    setIsLoading(true);
+  const handleCurrencySelect = (currencyCode: string) => {
+    changeCurrency(currencyCode as any);
     setShowDropdown(false);
-    
-    // Simulate API call to update exchange rates
-    setTimeout(() => {
-      setSelectedCurrency(currency);
-      localStorage.setItem('selectedCurrency', currency.code);
-      onCurrencyChange?.(currency);
-      setIsLoading(false);
-    }, 500);
   };
 
-  const formatPrice = (amount: number, fromCurrency: Currency = currencies[0]) => {
-    const convertedAmount = fromCurrency.code === selectedCurrency.code 
-      ? amount 
-      : (amount * fromCurrency.rate) / selectedCurrency.rate;
-    
-    return `${selectedCurrency.symbol}${convertedAmount.toFixed(2)}`;
+  const getCurrencyIcon = (code: string) => {
+    switch (code) {
+      case 'INR': return <FaRupeeSign />;
+      case 'USD': return <FaDollarSign />;
+      case 'EUR': return <FaEuroSign />;
+      case 'GBP': return <FaPoundSign />;
+      case 'AED': return <FaDollarSign />;
+      default: return <FaDollarSign />;
+    }
   };
 
   if (compact) {
@@ -133,33 +54,44 @@ const CurrencySelector: React.FC<CurrencySelectorProps> = ({
       <div className={`relative ${className}`}>
         <button
           onClick={() => setShowDropdown(!showDropdown)}
-          className="flex items-center space-x-1 px-2 py-1 text-sm border border-gray-300 rounded hover:bg-gray-50"
+          className="flex items-center space-x-1 px-2 py-1 text-sm border border-gray-300 rounded hover:bg-gray-50 transition-colors"
+          disabled={contextLoading}
         >
-          <span>{selectedCurrency.flag}</span>
-          <span className="font-medium">{selectedCurrency.code}</span>
+          <span>{currencyInfo.flag}</span>
+          <span className="font-medium">{currencyInfo.code}</span>
+          {isAutoDetected && (
+            <span className="text-xs bg-blue-100 text-blue-700 px-1 rounded">Auto</span>
+          )}
           <FaChevronDown size={12} className={`transform transition-transform ${showDropdown ? 'rotate-180' : ''}`} />
         </button>
 
         {showDropdown && (
-          <div className="absolute top-full right-0 mt-1 w-48 bg-white border border-gray-200 rounded-md shadow-lg z-50">
-            <div className="py-1 max-h-60 overflow-y-auto">
-              {currencies.map((currency) => (
-                <button
-                  key={currency.code}
-                  onClick={() => handleCurrencySelect(currency)}
-                  className={`w-full flex items-center justify-between px-3 py-2 text-sm hover:bg-gray-100 ${
-                    selectedCurrency.code === currency.code ? 'bg-blue-50 text-blue-600' : ''
-                  }`}
-                >
-                  <div className="flex items-center space-x-2">
-                    <span>{currency.flag}</span>
-                    <span>{currency.code}</span>
-                  </div>
-                  <span className="text-xs text-gray-500">{currency.symbol}</span>
-                </button>
-              ))}
+          <>
+            <div
+              className="fixed inset-0 z-40"
+              onClick={() => setShowDropdown(false)}
+            />
+            <div className="absolute top-full right-0 mt-1 w-56 bg-white border border-gray-200 rounded-md shadow-lg z-50">
+              <div className="py-1 max-h-60 overflow-y-auto">
+                {supportedCurrencies.map((currency) => (
+                  <button
+                    key={currency.code}
+                    onClick={() => handleCurrencySelect(currency.code)}
+                    className={`w-full flex items-center justify-between px-3 py-2 text-sm hover:bg-gray-100 transition-colors ${
+                      currentCurrency === currency.code ? 'bg-blue-50 text-blue-600' : ''
+                    }`}
+                  >
+                    <div className="flex items-center space-x-2">
+                      <span>{currency.flag}</span>
+                      <span className="font-medium">{currency.code}</span>
+                      <span className="text-xs text-gray-500">{currency.name}</span>
+                    </div>
+                    <span className="text-xs font-medium">{currency.symbol}</span>
+                  </button>
+                ))}
+              </div>
             </div>
-          </div>
+          </>
         )}
       </div>
     );
@@ -174,11 +106,16 @@ const CurrencySelector: React.FC<CurrencySelectorProps> = ({
             <FaGlobe className="text-gray-600" size={20} />
             <h3 className="text-lg font-medium text-gray-900">Currency</h3>
           </div>
-          {isLoading && (
+          {contextLoading && (
             <div className="flex items-center space-x-2 text-sm text-blue-600">
               <FaExchangeAlt className="animate-spin" size={14} />
-              <span>Updating rates...</span>
+              <span>Loading rates...</span>
             </div>
+          )}
+          {isAutoDetected && (
+            <span className="text-xs bg-blue-100 text-blue-700 px-2 py-1 rounded-full">
+              Auto-detected
+            </span>
           )}
         </div>
       </div>
@@ -187,24 +124,25 @@ const CurrencySelector: React.FC<CurrencySelectorProps> = ({
       <div className="p-4 border-b border-gray-200">
         <div className="flex items-center justify-between">
           <div className="flex items-center space-x-3">
-            <span className="text-2xl">{selectedCurrency.flag}</span>
+            <span className="text-2xl">{currencyInfo.flag}</span>
             <div>
-              <div className="font-medium text-gray-900">{selectedCurrency.name}</div>
-              <div className="text-sm text-gray-500">{selectedCurrency.code} ({selectedCurrency.symbol})</div>
+              <div className="font-medium text-gray-900">{currencyInfo.name}</div>
+              <div className="text-sm text-gray-500">{currencyInfo.code} ({currencyInfo.symbol})</div>
             </div>
           </div>
           <button
             onClick={() => setShowDropdown(!showDropdown)}
-            className="flex items-center px-3 py-2 text-sm border border-gray-300 rounded-md hover:bg-gray-50"
+            className="flex items-center px-3 py-2 text-sm border border-gray-300 rounded-md hover:bg-gray-50 transition-colors"
+            disabled={contextLoading}
           >
             Change
             <FaChevronDown size={12} className={`ml-2 transform transition-transform ${showDropdown ? 'rotate-180' : ''}`} />
           </button>
         </div>
 
-        {showRates && (
+        {showRates && exchangeRates[currencyInfo.code] && (
           <div className="mt-3 text-xs text-gray-500">
-            1 AED = {selectedCurrency.rate === 1 ? '1' : (1 / selectedCurrency.rate).toFixed(4)} {selectedCurrency.code}
+            1 INR = {exchangeRates[currencyInfo.code].toFixed(4)} {currencyInfo.code}
           </div>
         )}
       </div>
@@ -213,12 +151,12 @@ const CurrencySelector: React.FC<CurrencySelectorProps> = ({
       {showDropdown && (
         <div className="p-2">
           <div className="space-y-1 max-h-60 overflow-y-auto">
-            {currencies.map((currency) => (
+            {supportedCurrencies.map((currency) => (
               <button
                 key={currency.code}
-                onClick={() => handleCurrencySelect(currency)}
+                onClick={() => handleCurrencySelect(currency.code)}
                 className={`w-full flex items-center justify-between p-3 rounded-md hover:bg-gray-100 transition-colors ${
-                  selectedCurrency.code === currency.code ? 'bg-blue-50 ring-2 ring-blue-500' : ''
+                  currentCurrency === currency.code ? 'bg-blue-50 ring-2 ring-blue-500' : ''
                 }`}
               >
                 <div className="flex items-center space-x-3">
@@ -230,9 +168,9 @@ const CurrencySelector: React.FC<CurrencySelectorProps> = ({
                 </div>
                 <div className="text-right">
                   <div className="font-medium text-gray-900">{currency.symbol}</div>
-                  {showRates && (
+                  {showRates && exchangeRates[currency.code] && (
                     <div className="text-xs text-gray-500">
-                      Rate: {currency.rate}
+                      Rate: {exchangeRates[currency.code].toFixed(4)}
                     </div>
                   )}
                 </div>

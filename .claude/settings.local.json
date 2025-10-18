@@ -9,7 +9,8 @@
       "WebFetch(domain:gema-project.onrender.com)",
       "WebFetch(domain:kidrove-frontend.vercel.app)",
       "Bash(python:*)",
-      "Bash(node:*)"
+      "Bash(node:*)",
+      "Bash(ls -la \"E:\\coding\\gema\\backend\\src\\routes\"\" | grep -E \".ts$ \")"
     ],
     "deny": [],
     "ask": []

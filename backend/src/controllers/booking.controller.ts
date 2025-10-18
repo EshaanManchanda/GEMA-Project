@@ -8,6 +8,7 @@ import { logger } from '../config';
 import { generateQRCode, generateSecureQRData } from '../utils/qrcode';
 import { TicketGenerationService } from '../services/ticketGeneration.service';
 import { v4 as uuidv4 } from 'uuid';
+import currencyService from '../services/currency.service';
 
 // Helper function to generate a unique ticket number
 const generateUniqueTicketNumber = async (): Promise<string> => {
@@ -38,7 +39,7 @@ export const initiateBooking = async (req: AuthRequest, res: Response, next: Nex
       return next(new AppError('User not authenticated', 401));
     }
 
-    const { eventId, dateScheduleId, seats, paymentMethod = 'stripe', participants } = req.body;
+    const { eventId, dateScheduleId, seats, paymentMethod = 'stripe', participants, displayCurrency } = req.body;
 
     // Validate event exists and is available
     const event = await Event.findOne({
@@ -124,6 +125,40 @@ export const initiateBooking = async (req: AuthRequest, res: Response, next: Nex
     const serviceFee = paymentRouting.usesVendorStripe ? 0 : (subtotal * 0.05); // 5% service fee for platform payments
     const total = subtotal + tax + serviceFee;
 
+    // Multi-currency support
+    let displayAmount = total;
+    let displayCurrencyCode = event.currency;
+    let exchangeRate = 1;
+    let chargedAmount = total;
+    const chargedCurrency = 'INR'; // All payments go through Indian Stripe
+
+    // If user selected a different display currency
+    if (displayCurrency && displayCurrency !== chargedCurrency) {
+      // Convert INR amount to display currency for showing to user
+      if (event.currency === chargedCurrency) {
+        displayAmount = await currencyService.convertCurrency(total, chargedCurrency, displayCurrency);
+      } else {
+        // Event is in another currency, convert to display currency
+        displayAmount = await currencyService.convertCurrency(total, event.currency, displayCurrency);
+      }
+      displayCurrencyCode = displayCurrency;
+      exchangeRate = await currencyService.getExchangeRate(displayCurrency, chargedCurrency);
+
+      // The amount we charge (always in INR)
+      if (event.currency !== chargedCurrency) {
+        chargedAmount = await currencyService.convertToINR(total, event.currency);
+      }
+
+      logger.info('Multi-currency booking:', {
+        eventCurrency: event.currency,
+        displayCurrency: displayCurrencyCode,
+        displayAmount,
+        chargedCurrency,
+        chargedAmount,
+        exchangeRate
+      });
+    }
+
     // Create temporary order with pending status
     const tempOrder = new Order({
       userId,
@@ -142,6 +177,12 @@ export const initiateBooking = async (req: AuthRequest, res: Response, next: Nex
       serviceFee: serviceFee,
       total,
       currency: event.currency,
+      // Multi-currency fields
+      displayCurrency: displayCurrencyCode,
+      displayAmount,
+      exchangeRate,
+      chargedCurrency,
+      chargedAmount,
       status: 'pending',
       paymentStatus: 'pending',
       paymentMethod,
@@ -182,10 +223,12 @@ export const initiateBooking = async (req: AuthRequest, res: Response, next: Nex
     } else {
       // Create Stripe payment session for real payments
       paymentSession = await PaymentService.createPaymentIntent({
-        amount: total, // Keep original amount, conversion happens in service
-        currency: event.currency,
+        amount: chargedAmount, // Amount to charge (in INR)
+        currency: chargedCurrency, // Always INR for Indian Stripe
         orderId: tempOrder._id.toString(),
         vendorId: event.vendorId.toString(), // Add vendor ID for routing
+        displayCurrency: displayCurrencyCode, // Currency shown to user
+        displayAmount, // Amount shown to user
         metadata: {
           orderId: tempOrder._id.toString(),
           eventId: eventId,
@@ -217,6 +260,12 @@ export const initiateBooking = async (req: AuthRequest, res: Response, next: Nex
         clientSecret: paymentSession.clientSecret,
         amount: total,
         currency: event.currency,
+        // Multi-currency display info
+        displayAmount,
+        displayCurrency: displayCurrencyCode,
+        chargedAmount,
+        chargedCurrency,
+        exchangeRate,
         expiresAt: new Date(Date.now() + 30 * 60 * 1000), // 30 minutes
       },
     });

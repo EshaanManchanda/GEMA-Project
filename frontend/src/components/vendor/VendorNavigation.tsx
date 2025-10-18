@@ -1,13 +1,14 @@
 import React from 'react';
 import { Link, useLocation } from 'react-router-dom';
-import { 
-  FaTachometerAlt, 
-  FaTicketAlt, 
-  FaCalendarPlus, 
-  FaFileAlt, 
-  FaChartBar, 
+import {
+  FaTachometerAlt,
+  FaTicketAlt,
+  FaCalendarPlus,
+  FaFileAlt,
+  FaUsers,
+  FaChartBar,
   FaCog,
-  FaHome 
+  FaHome
 } from 'react-icons/fa';
 
 interface NavItem {
@@ -39,6 +40,11 @@ const VendorNavigation: React.FC = () => {
       path: '/vendor/bookings',
       label: 'Bookings',
       icon: <FaFileAlt className="w-4 h-4" />
+    },
+    {
+      path: '/vendor/employees',
+      label: 'Employees',
+      icon: <FaUsers className="w-4 h-4" />
     },
     {
       path: '/vendor/analytics',

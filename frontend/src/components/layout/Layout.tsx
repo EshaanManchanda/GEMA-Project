@@ -17,6 +17,7 @@ import {
 // import NotificationDropdown from './NotificationDropdown';
 import NewsletterSubscription from './NewsletterSubscription';
 import ConnectionStatus from './ConnectionStatus';
+import CurrencySelector from '@/components/common/CurrencySelector';
 import { useRealTimeData } from '@/hooks/useRealTimeData';
 import ErrorBoundary from '@/components/common/ErrorBoundary';
 import LoadingSpinner from '@/components/common/LoadingSpinner';
@@ -54,8 +55,7 @@ const Layout: React.FC<{ children?: React.ReactNode }> = ({ children }) => {
   const [scrolled, setScrolled] = useState(false);
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [profileDropdownOpen, setProfileDropdownOpen] = useState(false);
-  const [currentCountry, setCurrentCountry] = useState({ code: 'ae', name: 'UAE', flag: 'https://flagcdn.com/w40/ae.png' });
-  const [currentLanguage, setCurrentLanguage] = useState({ code: 'ar', name: 'عربي' });
+  const [currentLanguage, setCurrentLanguage] = useState({ code: 'en', name: 'English' });
   
   const { cartCount } = useCart();
   const { isAuthenticated, user } = useSelector((state: RootState) => state.auth);
@@ -151,12 +151,6 @@ const Layout: React.FC<{ children?: React.ReactNode }> = ({ children }) => {
     return `https://ui-avatars.com/api/?name=${encodeURIComponent(initials)}&background=1a73e8&color=fff&size=32&rounded=true`;
   };
 
-  const handleCountryChange = useCallback((country: { code: string; name: string; flag: string }) => {
-    setCurrentCountry(country);
-    // TODO: Implement actual country change logic (currency, content localization)
-    console.log('Country changed to:', country);
-  }, []);
-
   const handleLanguageChange = useCallback((language: { code: string; name: string }) => {
     setCurrentLanguage(language);
     // TODO: Implement actual language change logic (i18n)
@@ -199,30 +193,23 @@ const Layout: React.FC<{ children?: React.ReactNode }> = ({ children }) => {
               </a>
             </div>
 
-            {/* Right: Download App, Country, Language */}
-           {/* <div className="flex items-center space-x-4 md:space-x-6">
+            {/* Right: Download App, Currency, Language */}
+            <div className="flex items-center space-x-4 md:space-x-6">
               <div className="hidden md:flex items-center space-x-1 cursor-pointer hover:opacity-80 transition-opacity duration-300">
                 <FaDownload size={14} />
                 <span>Download App</span>
               </div>
 
-              <div className="flex items-center space-x-1 cursor-pointer hover:opacity-80 transition-opacity duration-300" 
-                   onClick={() => handleCountryChange({ code: 'ae', name: 'UAE', flag: 'https://flagcdn.com/w40/ae.png' })}>
-                <img
-                  src={currentCountry.flag}
-                  alt={currentCountry.name}
-                  className="w-5 h-3"
-                />
-                <span className="hidden md:inline">{currentCountry.name}</span>
-                <IoMdArrowDropdown />
-              </div>
+              {/* Currency Selector */}
+              <CurrencySelector compact={true} className="text-white" />
 
+              {/* Language Selector */}
               <div className="flex items-center space-x-1 cursor-pointer hover:opacity-80 transition-opacity duration-300"
-                   onClick={() => handleLanguageChange({ code: 'ar', name: 'عربي' })}>
+                   onClick={() => handleLanguageChange({ code: 'en', name: 'English' })}>
                 <MdLanguage size={16} />
                 <span>{currentLanguage.name}</span>
               </div>
-            </div> */}
+            </div>
           </div>
         </div>
 
@@ -566,6 +553,13 @@ const Layout: React.FC<{ children?: React.ReactNode }> = ({ children }) => {
                   <FaShoppingCart className="mr-2" size={14} />
                   Cart {cartCount > 0 && <span className="ml-2 bg-red-500 text-white text-xs rounded-full px-2 py-1">{cartCount}</span>}
                 </Link>
+
+                {/* Currency Selector - Mobile */}
+                <div className="py-2">
+                  <p className="text-sm text-gray-600 mb-2">Select Currency</p>
+                  <CurrencySelector compact={true} />
+                </div>
+
                 <div className="pt-4 border-t border-gray-200">
                   {isAuthenticated && user ? (
                     <div className="space-y-2">

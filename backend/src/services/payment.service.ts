@@ -2,6 +2,7 @@ import { stripe, convertToStripeAmount, convertFromStripeAmount, getStripeCurren
 import { Order, User } from '../models';
 import Stripe from 'stripe';
 import logger from '../config/logger';
+import currencyService from './currency.service';
 
 export interface CreatePaymentIntentParams {
   amount: number;
@@ -10,6 +11,9 @@ export interface CreatePaymentIntentParams {
   vendorId?: string;
   customerId?: string;
   metadata?: Record<string, string>;
+  // Multi-currency support
+  displayCurrency?: string;
+  displayAmount?: number;
 }
 
 export interface PaymentRoutingInfo {
@@ -98,15 +102,41 @@ export class PaymentService {
     vendorId,
     customerId,
     metadata = {},
+    displayCurrency,
+    displayAmount,
   }: CreatePaymentIntentParams): Promise<PaymentIntentResult> {
     try {
-      const stripeAmount = convertToStripeAmount(amount, currency);
-      const stripeCurrency = getStripeCurrency(currency);
+      // Handle multi-currency conversion
+      let finalAmount = amount;
+      let finalCurrency = currency;
+      let exchangeRate = 1;
+      const baseCurrency = 'INR'; // Indian Stripe account base currency
+
+      // If display currency is provided and different from base currency
+      if (displayCurrency && displayCurrency !== baseCurrency) {
+        // Convert display amount to INR for charging
+        if (displayAmount) {
+          finalAmount = await currencyService.convertToINR(displayAmount, displayCurrency);
+          exchangeRate = await currencyService.getExchangeRate(displayCurrency, baseCurrency);
+          finalCurrency = baseCurrency;
+
+          logger.info('Currency conversion applied:', {
+            displayCurrency,
+            displayAmount,
+            chargedCurrency: baseCurrency,
+            chargedAmount: finalAmount,
+            exchangeRate
+          });
+        }
+      }
+
+      const stripeAmount = convertToStripeAmount(finalAmount, finalCurrency);
+      const stripeCurrency = getStripeCurrency(finalCurrency);
 
       // Determine payment routing if vendor is provided
       let routingInfo: PaymentRoutingInfo | null = null;
       if (vendorId) {
-        routingInfo = await this.getPaymentRouting(vendorId, amount);
+        routingInfo = await this.getPaymentRouting(vendorId, finalAmount);
         logger.info('Payment routing determined:', {
           vendorId,
           usesVendorStripe: routingInfo.usesVendorStripe,
@@ -118,8 +148,10 @@ export class PaymentService {
       const stripeInstance = routingInfo?.stripeInstance || stripe;
       logger.info('Creating PaymentIntent with:', {
         usesVendorStripe: routingInfo?.usesVendorStripe || false,
-        amount: convertToStripeAmount(amount, currency),
-        currency: getStripeCurrency(currency)
+        amount: stripeAmount,
+        currency: stripeCurrency,
+        displayCurrency: displayCurrency || finalCurrency,
+        displayAmount: displayAmount || finalAmount
       });
 
       const paymentIntentParams: Stripe.PaymentIntentCreateParams = {
@@ -132,7 +164,13 @@ export class PaymentService {
           orderId,
           vendorId: vendorId || 'platform',
           usesVendorStripe: String(routingInfo?.usesVendorStripe || false),
-          serviceFee: routingInfo?.serviceFee || 0,
+          serviceFee: String(routingInfo?.serviceFee || 0),
+          // Multi-currency metadata
+          displayCurrency: displayCurrency || finalCurrency,
+          displayAmount: String(displayAmount || finalAmount),
+          chargedCurrency: baseCurrency,
+          chargedAmount: String(finalAmount),
+          exchangeRate: String(exchangeRate),
           ...metadata,
         },
       };

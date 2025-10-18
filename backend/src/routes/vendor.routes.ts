@@ -16,6 +16,14 @@ import {
   updateVendorSocialMedia,
   getPublicVendorProfile,
   getVendorPaymentInfo,
+  getVendorEmployees,
+  getVendorEmployeeById,
+  createVendorEmployee,
+  updateVendorEmployee,
+  deleteVendorEmployee,
+  assignEmployeeToEvent,
+  removeEmployeeFromEvent,
+  exportVendorEmployees,
 } from '../controllers/vendor.controller';
 import {
   getVendorEventById,
@@ -163,5 +171,61 @@ router.put('/business-hours', updateVendorBusinessHours);
  * @access  Vendor only
  */
 router.put('/social-media', updateVendorSocialMedia);
+
+/**
+ * @route   GET /api/vendors/employees/export
+ * @desc    Export vendor employees to CSV or JSON
+ * @access  Vendor only
+ */
+router.get('/employees/export', exportVendorEmployees);
+
+/**
+ * @route   GET /api/vendors/employees/:id
+ * @desc    Get single employee by ID
+ * @access  Vendor only
+ */
+router.get('/employees/:id', getVendorEmployeeById);
+
+/**
+ * @route   PUT /api/vendors/employees/:id
+ * @desc    Update employee
+ * @access  Vendor only
+ */
+router.put('/employees/:id', updateVendorEmployee);
+
+/**
+ * @route   DELETE /api/vendors/employees/:id
+ * @desc    Delete/deactivate employee
+ * @access  Vendor only
+ */
+router.delete('/employees/:id', deleteVendorEmployee);
+
+/**
+ * @route   POST /api/vendors/employees/:id/assign-event
+ * @desc    Assign employee to an event
+ * @access  Vendor only
+ */
+router.post('/employees/:id/assign-event', assignEmployeeToEvent);
+
+/**
+ * @route   POST /api/vendors/employees/:id/remove-event
+ * @desc    Remove employee from an event
+ * @access  Vendor only
+ */
+router.post('/employees/:id/remove-event', removeEmployeeFromEvent);
+
+/**
+ * @route   GET /api/vendors/employees
+ * @desc    Get employees for the authenticated vendor
+ * @access  Vendor only
+ */
+router.get('/employees', getVendorEmployees);
+
+/**
+ * @route   POST /api/vendors/employees
+ * @desc    Create a new employee
+ * @access  Vendor only
+ */
+router.post('/employees', createVendorEmployee);
 
 export default router;
