@@ -25,6 +25,7 @@
     "db:seed-blogs": "ts-node src/scripts/seedBlogs.ts"
   },
   "dependencies": {
+    "20": "^3.1.9",
     "@types/bcryptjs": "^2.4.6",
     "@types/compression": "^1.7.5",
     "@types/cookie-parser": "^1.4.6",
