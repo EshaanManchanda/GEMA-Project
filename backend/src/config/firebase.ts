@@ -5,6 +5,7 @@ import { config } from './env';
  * Initialize Firebase Admin SDK
  */
 export const initializeFirebase = (): void => {
+  console.log('Inside initializeFirebase function.');
   try {
     // Check if Firebase is already initialized
     if (admin.apps.length === 0) {
@@ -18,7 +19,7 @@ export const initializeFirebase = (): void => {
         admin.initializeApp({
           credential: admin.credential.cert({
             projectId: config.firebase.projectId,
-            privateKey: config.firebase.privateKey.replace(/\\\\n/g, '\n'),
+            privateKey: config.firebase.privateKey.replace(/\\n/g, '\n'),
             clientEmail: config.firebase.clientEmail
           })
         });

@@ -1,6 +1,6 @@
 import { createSlice, createAsyncThunk, PayloadAction } from '@reduxjs/toolkit';
 import bookingAPI from '@services/api/bookingAPI';
-import { Event } from '@types/event';
+import { Event } from '../../types/event';
 import { toast } from 'react-hot-toast';
 import { generateBookingQRWithEventData, generateOrderQRWithEventData } from '@/utils/qrcode.utils';
 
@@ -19,7 +19,7 @@ export interface BookingParticipant {
   specialRequirements?: string;
   dietaryRestrictions?: string[];
   // Dynamic registration form data
-  registrationData?: Record<string, any>;
+  registrationData?: { fieldId: string; fieldLabel: string; fieldType: string; value: any; }[];
 }
 
 export interface BookingPayment {
@@ -65,7 +65,7 @@ export interface Booking {
   specialRequests?: string;
 
   // QR Code data
-  qrCode?: string;
+
   qrCodeData?: {
     bookingQR: string;
     orderQR: string;
@@ -308,7 +308,7 @@ export const requestRefund = createAsyncThunk(
     amount?: number;
   }, { rejectWithValue }) => {
     try {
-      const response = await bookingAPI.requestRefund(params.id, params.reason, params.amount);
+      const response = await bookingAPI.requestRefund(params.id, params.reason);
       toast.success('Refund request submitted successfully');
       return response;
     } catch (error: any) {
@@ -352,20 +352,25 @@ export const fetchBookingStats = createAsyncThunk(
 
 export const createPaymentIntent = createAsyncThunk(
   'bookings/createPaymentIntent',
-  async (params: {
-    eventId: string;
-    participants: number;
-    dateScheduleId?: string;
-    couponCode?: string;
-  }, { rejectWithValue }) => {
+  async (
+    params: {
+      eventId: string;
+      participants: number;
+      dateScheduleId?: string;
+      couponCode?: string;
+      currency?: string; // Add currency parameter
+    },
+    { rejectWithValue }
+  ) => {
     try {
       // Pass parameters directly to API - participants should be a number (count)
       // The actual participant data will be sent during booking confirmation
       const response = await bookingAPI.createPaymentIntent({
         eventId: params.eventId,
-        participants: params.participants,  // Keep as number (participant count)
+        participants: params.participants, // Keep as number (participant count)
         dateScheduleId: params.dateScheduleId,
-        couponCode: params.couponCode
+        couponCode: params.couponCode,
+        currency: params.currency, // Pass currency to the API
       });
       return response;
     } catch (error: any) {
@@ -474,7 +479,7 @@ const bookingsSlice = createSlice({
     // Update registration data for a participant
     updateParticipantRegistrationData: (state, action: PayloadAction<{
       index: number;
-      registrationData: Record<string, any>;
+      registrationData: { fieldId: string; fieldLabel: string; fieldType: string; value: any; }[];
     }>) => {
       const { index, registrationData } = action.payload;
       if (state.bookingFlow.participants[index]) {
@@ -821,7 +826,7 @@ export const selectUpcomingBookings = (state: { bookings: BookingsState }) => {
   const bookings = state.bookings?.bookings || [];
   return bookings.filter(booking => {
     try {
-      const eventDate = new Date(booking.event?.startDate || '');
+      const eventDate = new Date(booking.event?.dateSchedule?.[0]?.startDateTime || '');
       return eventDate > now && booking.status === 'confirmed';
     } catch {
       return false;
@@ -834,7 +839,7 @@ export const selectPastBookings = (state: { bookings: BookingsState }) => {
   const bookings = state.bookings?.bookings || [];
   return bookings.filter(booking => {
     try {
-      const eventDate = new Date(booking.event?.endDate || '');
+      const eventDate = new Date(booking.event?.dateSchedule?.[0]?.endDateTime || '');
       return eventDate < now;
     } catch {
       return false;

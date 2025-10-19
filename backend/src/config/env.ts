@@ -110,9 +110,9 @@ export const config: Config = {
     connectTimeoutMS: parseInt(process.env.MONGODB_CONNECT_TIMEOUT_MS || '30000', 10),
     socketTimeoutMS: parseInt(process.env.MONGODB_SOCKET_TIMEOUT_MS || '45000', 10),
     serverSelectionTimeoutMS: parseInt(process.env.MONGODB_SERVER_SELECTION_TIMEOUT_MS || '30000', 10),
-    maxPoolSize: parseInt(process.env.MONGODB_MAX_POOL_SIZE || '50', 10), // Increased from 10 to 50 for production load
-    minPoolSize: parseInt(process.env.MONGODB_MIN_POOL_SIZE || '5', 10), // Increased from 2 to 5
-    maxIdleTimeMS: parseInt(process.env.MONGODB_MAX_IDLE_TIME_MS || '60000', 10), // Increased from 30s to 60s
+    maxPoolSize: parseInt(process.env.MONGODB_MAX_POOL_SIZE || '50', 10),
+    minPoolSize: parseInt(process.env.MONGODB_MIN_POOL_SIZE || '5', 10),
+    maxIdleTimeMS: parseInt(process.env.MONGODB_MAX_IDLE_TIME_MS || '60000', 10),
     retryWrites: process.env.MONGODB_RETRY_WRITES !== 'false',
     retryReads: process.env.MONGODB_RETRY_READS !== 'false',
   },
@@ -121,8 +121,8 @@ export const config: Config = {
   jwtRefreshSecret: process.env.JWT_REFRESH_SECRET || 'default_jwt_refresh_secret',
   jwtRefreshExpiresIn: process.env.JWT_REFRESH_EXPIRES_IN || '30d',
   frontendUrl: process.env.FRONTEND_URL || 'http://localhost:3001',
-  rateLimitWindowMs: parseInt(process.env.RATE_LIMIT_WINDOW_MS || '900000', 10), // 15 minutes
-  rateLimitMax: parseInt(process.env.RATE_LIMIT_MAX || '500', 10), // Increased from 100 to 500
+  rateLimitWindowMs: parseInt(process.env.RATE_LIMIT_WINDOW_MS || '900000', 10),
+  rateLimitMax: parseInt(process.env.RATE_LIMIT_MAX || '500', 10),
   firebase: {
     projectId: process.env.FIREBASE_PROJECT_ID || '',
     privateKey: process.env.FIREBASE_PRIVATE_KEY?.replace(/\\n/g, '\n') || '',
@@ -146,7 +146,7 @@ export const config: Config = {
   },
   upload: {
     path: process.env.UPLOAD_PATH || 'uploads/',
-    maxFileSize: parseInt(process.env.MAX_FILE_SIZE || '5242880', 10), // 5MB default
+    maxFileSize: parseInt(process.env.MAX_FILE_SIZE || '5242880', 10),
     allowedFileTypes: process.env.ALLOWED_FILE_TYPES?.split(',') || ['image/jpeg', 'image/png', 'image/gif', 'application/pdf'],
     provider: (process.env.UPLOAD_PROVIDER as 'local' | 'cloudinary') || 'local'
   },
@@ -161,11 +161,11 @@ export const config: Config = {
     bcryptSaltRounds: parseInt(process.env.BCRYPT_SALT_ROUNDS || '12', 10),
     passwordMinLength: parseInt(process.env.PASSWORD_MIN_LENGTH || '8', 10),
     maxLoginAttempts: parseInt(process.env.MAX_LOGIN_ATTEMPTS || '5', 10),
-    lockoutDuration: parseInt(process.env.LOCKOUT_DURATION || '1800000', 10) // 30 minutes default
+    lockoutDuration: parseInt(process.env.LOCKOUT_DURATION || '1800000', 10)
   },
   session: {
     secret: process.env.SESSION_SECRET || 'default_session_secret',
-    maxAge: parseInt(process.env.SESSION_MAX_AGE || '86400000', 10) // 24 hours default
+    maxAge: parseInt(process.env.SESSION_MAX_AGE || '86400000', 10)
   },
   logging: {
     level: process.env.LOG_LEVEL || 'info',
@@ -180,7 +180,7 @@ export const config: Config = {
   ticket: {
     validityDays: parseInt(process.env.TICKET_VALIDITY_DAYS || '30', 10),
     transferEnabled: process.env.TICKET_TRANSFER_ENABLED === 'true',
-    resendCooldown: parseInt(process.env.TICKET_RESEND_COOLDOWN || '300000', 10) // 5 minutes default
+    resendCooldown: parseInt(process.env.TICKET_RESEND_COOLDOWN || '300000', 10)
   },
   event: {
     approvalRequired: process.env.EVENT_APPROVAL_REQUIRED === 'true',
@@ -195,7 +195,7 @@ export const config: Config = {
   review: {
     autoApproval: process.env.REVIEW_AUTO_APPROVAL === 'true',
     maxFlagsBeforeHide: parseInt(process.env.MAX_REVIEW_FLAGS_BEFORE_HIDE || '3', 10),
-    editTimeLimit: parseInt(process.env.REVIEW_EDIT_TIME_LIMIT || '24', 10) // hours
+    editTimeLimit: parseInt(process.env.REVIEW_EDIT_TIME_LIMIT || '24', 10)
   }
 };
 

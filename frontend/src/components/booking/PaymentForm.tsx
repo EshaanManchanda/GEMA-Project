@@ -1,15 +1,15 @@
 import React, { useState, useEffect, useMemo } from 'react';
 import { useDispatch, useSelector } from 'react-redux';
-import { Link, useLocation } from 'react-router-dom';
+import { Link } from 'react-router-dom';
 import { CreditCard, Shield, Lock, AlertCircle, CheckCircle, ChevronLeft, AlertTriangle, Info } from 'lucide-react';
 import toast from 'react-hot-toast';
 
 import { AppDispatch } from '../../store';
 import StripeElementsWrapper from '../payment/StripeElementsWrapper';
 import StripePaymentElement from '../payment/StripePaymentElement';
-import { getPaymentConfig, getRegionalPaymentMethods, getPreferredPaymentMethod, shouldShowRegulatoryWarning, getRegulatoryMessage } from '../../utils/paymentConfig';
+import { getRegionalPaymentMethods, getPreferredPaymentMethod, shouldShowRegulatoryWarning, getRegulatoryMessage } from '../../utils/paymentConfig';
 import { getEnvironmentInfo, getPaymentMethodAvailability } from '../../utils/environmentUtils';
-import { formatCurrency, getDefaultCurrency, getCurrencySymbol } from '../../utils/currencyUtils';
+import { formatCurrency, getDefaultCurrency } from '../../utils/currencyUtils';
 import {
   setPaymentMethod,
   setAgreedToTerms,
@@ -26,6 +26,7 @@ import { logger } from '../../utils/logger';
 
 import Button from '../ui/Button';
 import { Card, CardContent, CardHeader, CardTitle } from '../ui/Card';
+import { useCurrencyContext } from '../../contexts/CurrencyContext';
 
 interface PaymentFormProps {
   event: Event;
@@ -39,7 +40,6 @@ const PaymentForm: React.FC<PaymentFormProps> = ({
   onPrev
 }) => {
   const dispatch = useDispatch<AppDispatch>();
-  const location = useLocation();
   const bookingFlow = useSelector(selectBookingFlow);
   const participants = useSelector(selectBookingParticipants);
   const checkout = useSelector(selectCheckout);
@@ -56,8 +56,9 @@ const PaymentForm: React.FC<PaymentFormProps> = ({
   const [marketingConsent, setMarketingConsent] = useState(false);
   const [vendorPaymentInfo, setVendorPaymentInfo] = useState<VendorPaymentInfo | null>(null);
 
+  const { currencyInfo } = useCurrencyContext();
+
   // Payment methods configuration with environment-based settings
-  const paymentConfig = getPaymentConfig();
   const regionalMethods = getRegionalPaymentMethods();
   const environmentInfo = getEnvironmentInfo();
   const paymentAvailability = getPaymentMethodAvailability();
@@ -162,7 +163,8 @@ const PaymentForm: React.FC<PaymentFormProps> = ({
         dispatch(createPaymentIntent({
           eventId: event._id,
           participants: participants.length,
-          dateScheduleId: dateScheduleId
+          dateScheduleId: dateScheduleId,
+          currency: currencyInfo.code, // Pass the active currency code
         }));
       } else {
         logger.warn('No schedule ID found in booking flow. User must select a schedule.');
@@ -534,7 +536,7 @@ const PaymentForm: React.FC<PaymentFormProps> = ({
               <div className="flex justify-between text-sm text-green-600">
                 <span className="flex items-center">
                   Service Fee
-                  <Info className="w-3 h-3 ml-1" title="No service fee - vendor payment" />
+                  <Info className="w-3 h-3 ml-1" aria-label="No service fee - vendor payment" />
                 </span>
                 <span className="font-medium">Free</span>
               </div>
@@ -542,7 +544,7 @@ const PaymentForm: React.FC<PaymentFormProps> = ({
               <div className="flex justify-between text-sm text-gray-600">
                 <span className="flex items-center">
                   Service Fee ({serviceFeeRate}%)
-                  <Info className="w-3 h-3 ml-1" title="Platform payment processing fee" />
+                  <Info className="w-3 h-3 ml-1" aria-label="Platform payment processing fee" />
                 </span>
                 <span>{formatCurrency(serviceFee, event.currency || getDefaultCurrency())}</span>
               </div>

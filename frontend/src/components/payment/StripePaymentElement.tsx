@@ -22,7 +22,7 @@ const StripePaymentElement: React.FC<StripePaymentElementProps> = ({
   onFallbackToTestPayment,
   isProcessing = false,
   amount,
-  currency = 'USD'
+  currency = 'AED'
 }) => {
   const stripe = useStripe();
   const elements = useElements();

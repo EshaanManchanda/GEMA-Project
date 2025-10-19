@@ -1,12 +1,8 @@
 import React, { useState } from 'react';
 import {
-  FaDollarSign,
-  FaEuroSign,
-  FaPoundSign,
   FaChevronDown,
   FaGlobe,
   FaExchangeAlt,
-  FaRupeeSign
 } from 'react-icons/fa';
 import { useCurrencyContext } from '../../contexts/CurrencyContext';
 
@@ -26,9 +22,11 @@ const CurrencySelector: React.FC<CurrencySelectorProps> = ({
     changeCurrency,
     currencyInfo,
     supportedCurrencies,
-    exchangeRates,
     isAutoDetected,
-    isLoading: contextLoading
+    isLoading: contextLoading,
+    exchangeRates,
+    fromCurrency,
+    toCurrency
   } = useCurrencyContext();
 
   const [showDropdown, setShowDropdown] = useState(false);
@@ -36,17 +34,6 @@ const CurrencySelector: React.FC<CurrencySelectorProps> = ({
   const handleCurrencySelect = (currencyCode: string) => {
     changeCurrency(currencyCode as any);
     setShowDropdown(false);
-  };
-
-  const getCurrencyIcon = (code: string) => {
-    switch (code) {
-      case 'INR': return <FaRupeeSign />;
-      case 'USD': return <FaDollarSign />;
-      case 'EUR': return <FaEuroSign />;
-      case 'GBP': return <FaPoundSign />;
-      case 'AED': return <FaDollarSign />;
-      default: return <FaDollarSign />;
-    }
   };
 
   if (compact) {
@@ -71,7 +58,7 @@ const CurrencySelector: React.FC<CurrencySelectorProps> = ({
               className="fixed inset-0 z-40"
               onClick={() => setShowDropdown(false)}
             />
-            <div className="absolute top-full right-0 mt-1 w-56 bg-white border border-gray-200 rounded-md shadow-lg z-50">
+            <div className="absolute top-full right-0 mt-1 w-56 bg-white border border-gray-200 rounded-md shadow-lg" style={{ zIndex: 100}}>
               <div className="py-1 max-h-60 overflow-y-auto">
                 {supportedCurrencies.map((currency) => (
                   <button
@@ -140,9 +127,9 @@ const CurrencySelector: React.FC<CurrencySelectorProps> = ({
           </button>
         </div>
 
-        {showRates && exchangeRates[currencyInfo.code] && (
+        {showRates && (
           <div className="mt-3 text-xs text-gray-500">
-            1 INR = {exchangeRates[currencyInfo.code].toFixed(4)} {currencyInfo.code}
+            1 {fromCurrency} = {exchangeRates[toCurrency] / exchangeRates[fromCurrency]} {toCurrency}
           </div>
         )}
       </div>
@@ -168,9 +155,9 @@ const CurrencySelector: React.FC<CurrencySelectorProps> = ({
                 </div>
                 <div className="text-right">
                   <div className="font-medium text-gray-900">{currency.symbol}</div>
-                  {showRates && exchangeRates[currency.code] && (
+                  {showRates && exchangeRates && fromCurrency && toCurrency && (
                     <div className="text-xs text-gray-500">
-                      Rate: {exchangeRates[currency.code].toFixed(4)}
+                      Rate: {exchangeRates[currency.code] / exchangeRates[fromCurrency]}
                     </div>
                   )}
                 </div>

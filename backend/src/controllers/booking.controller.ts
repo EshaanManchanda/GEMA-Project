@@ -130,30 +130,22 @@ export const initiateBooking = async (req: AuthRequest, res: Response, next: Nex
     let displayCurrencyCode = event.currency;
     let exchangeRate = 1;
     let chargedAmount = total;
-    const chargedCurrency = 'INR'; // All payments go through Indian Stripe
+    const finalChargedCurrency = 'AED'; // Force final currency to AED
 
-    // If user selected a different display currency
-    if (displayCurrency && displayCurrency !== chargedCurrency) {
-      // Convert INR amount to display currency for showing to user
-      if (event.currency === chargedCurrency) {
-        displayAmount = await currencyService.convertCurrency(total, chargedCurrency, displayCurrency);
-      } else {
-        // Event is in another currency, convert to display currency
-        displayAmount = await currencyService.convertCurrency(total, event.currency, displayCurrency);
-      }
+    // Determine display amount and currency
+    if (displayCurrency && displayCurrency !== event.currency) {
+      displayAmount = await currencyService.convertCurrency(total, event.currency, displayCurrency);
       displayCurrencyCode = displayCurrency;
-      exchangeRate = await currencyService.getExchangeRate(displayCurrency, chargedCurrency);
+      exchangeRate = await currencyService.getExchangeRate(displayCurrency, finalChargedCurrency);
 
-      // The amount we charge (always in INR)
-      if (event.currency !== chargedCurrency) {
-        chargedAmount = await currencyService.convertToINR(total, event.currency);
-      }
+      // Calculate charged amount based on exchange rate
+      chargedAmount = displayAmount;
 
       logger.info('Multi-currency booking:', {
         eventCurrency: event.currency,
         displayCurrency: displayCurrencyCode,
         displayAmount,
-        chargedCurrency,
+        chargedCurrency: finalChargedCurrency,
         chargedAmount,
         exchangeRate
       });
@@ -181,7 +173,7 @@ export const initiateBooking = async (req: AuthRequest, res: Response, next: Nex
       displayCurrency: displayCurrencyCode,
       displayAmount,
       exchangeRate,
-      chargedCurrency,
+      chargedCurrency: finalChargedCurrency,
       chargedAmount,
       status: 'pending',
       paymentStatus: 'pending',
@@ -224,7 +216,7 @@ export const initiateBooking = async (req: AuthRequest, res: Response, next: Nex
       // Create Stripe payment session for real payments
       paymentSession = await PaymentService.createPaymentIntent({
         amount: chargedAmount, // Amount to charge (in INR)
-        currency: chargedCurrency, // Always INR for Indian Stripe
+        currency: finalChargedCurrency,
         orderId: tempOrder._id.toString(),
         vendorId: event.vendorId.toString(), // Add vendor ID for routing
         displayCurrency: displayCurrencyCode, // Currency shown to user
@@ -264,7 +256,7 @@ export const initiateBooking = async (req: AuthRequest, res: Response, next: Nex
         displayAmount,
         displayCurrency: displayCurrencyCode,
         chargedAmount,
-        chargedCurrency,
+        chargedCurrency: finalChargedCurrency,
         exchangeRate,
         expiresAt: new Date(Date.now() + 30 * 60 * 1000), // 30 minutes
       },

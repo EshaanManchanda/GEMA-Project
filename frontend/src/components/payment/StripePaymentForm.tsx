@@ -20,7 +20,7 @@ const StripePaymentForm: React.FC<StripePaymentFormProps> = ({
   onError,
   isProcessing = false,
   amount,
-  currency = 'USD'
+  currency = 'AED'
 }) => {
   const stripe = useStripe();
   const elements = useElements();

@@ -1,4 +1,4 @@
-import { stripe, convertToStripeAmount, convertFromStripeAmount, getStripeCurrency } from '../config/stripe';
+import { stripe, convertToStripeAmount, convertFromStripeAmount } from '../config/stripe';
 import { Order, User } from '../models';
 import Stripe from 'stripe';
 import logger from '../config/logger';
@@ -131,7 +131,7 @@ export class PaymentService {
       }
 
       const stripeAmount = convertToStripeAmount(finalAmount, finalCurrency);
-      const stripeCurrency = getStripeCurrency(finalCurrency);
+      const stripeCurrency = finalCurrency; // Directly use finalCurrency as it's always AED
 
       // Determine payment routing if vendor is provided
       let routingInfo: PaymentRoutingInfo | null = null;
@@ -168,9 +168,8 @@ export class PaymentService {
           // Multi-currency metadata
           displayCurrency: displayCurrency || finalCurrency,
           displayAmount: String(displayAmount || finalAmount),
-          chargedCurrency: baseCurrency,
+          chargedCurrency: finalCurrency,
           chargedAmount: String(finalAmount),
-          exchangeRate: String(exchangeRate),
           ...metadata,
         },
       };

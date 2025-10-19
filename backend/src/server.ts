@@ -1,4 +1,5 @@
-import express, { Express, Request, Response } from 'express';
+console.log('Server starting...');
+import express, { Express, Application, Request, Response, NextFunction } from 'express';
 import cors from 'cors';
 import helmet from 'helmet';
 import morgan from 'morgan';
@@ -21,7 +22,7 @@ initializeFirebase();
 connectDB();
 
 // Create Express app
-const app: Express = express();
+const app: Application = express();
 
 // Security middleware
 app.use(helmet());
@@ -121,6 +122,7 @@ scheduleTicketJobs();
 scheduleEventLifecycleJobs();
 
 // Start server
+console.log('Server starting...');
 const PORT = config.port;
 app.listen(PORT, () => {
   logger.info(`Server running in ${config.nodeEnv} mode on port ${PORT}`);

@@ -174,17 +174,17 @@ export class TicketGenerationService {
                 seatsAllocated: orderItem.quantity
               };
 
-              logger.info('🔧 TICKET GENERATION: Generating secure QR data', {
-                ticketNumber,
-                qrDataPayload
-              });
+              // logger.info('🔧 TICKET GENERATION: Generating secure QR data', {
+              //   ticketNumber,
+              //   qrDataPayload
+              // });
 
               const qrCodeData = generateSecureQRData(qrDataPayload);
-              logger.info('✅ TICKET GENERATION: QR data generated', {
-                ticketNumber,
-                qrCodeDataLength: qrCodeData.length,
-                qrCodePreview: qrCodeData.substring(0, 100) + '...'
-              });
+              // logger.info('✅ TICKET GENERATION: QR data generated', {
+              //   ticketNumber,
+              //   qrCodeDataLength: qrCodeData.length,
+              //   qrCodePreview: qrCodeData.substring(0, 100) + '...'
+              // });
 
               logger.info('🖼️ TICKET GENERATION: Generating QR code image', {
                 ticketNumber,
@@ -197,12 +197,12 @@ export class TicketGenerationService {
                 width: 300 // Slightly larger for better scanning
               });
 
-              logger.info('✅ TICKET GENERATION: QR code image generated', {
-                ticketNumber,
-                qrCodeImageLength: qrCodeImage?.length || 0,
-                qrCodeImageType: qrCodeImage?.startsWith('data:') ? 'data-uri' : 'unknown',
-                qrCodeImagePreview: qrCodeImage?.substring(0, 50) + '...'
-              });
+              // logger.info('✅ TICKET GENERATION: QR code image generated', {
+              //   ticketNumber,
+              //   qrCodeImageLength: qrCodeImage?.length || 0,
+              //   qrCodeImageType: qrCodeImage?.startsWith('data:') ? 'data-uri' : 'unknown',
+              //   qrCodeImagePreview: qrCodeImage?.substring(0, 50) + '...'
+              // });
 
               const ticketData = {
                 ticketNumber,
@@ -232,14 +232,14 @@ export class TicketGenerationService {
                 }
               };
 
-              logger.info('💾 TICKET GENERATION: Saving ticket to database', {
-                ticketNumber,
-                ticketData: {
-                  ...ticketData,
-                  qrCode: `${qrCodeData.substring(0, 50)}...`,
-                  qrCodeImage: `${qrCodeImage.substring(0, 50)}...`
-                }
-              });
+              // logger.info('💾 TICKET GENERATION: Saving ticket to database', {
+              //   ticketNumber,
+              //   ticketData: {
+              //     ...ticketData,
+              //     qrCode: `${qrCodeData.substring(0, 50)}...`,
+              //     qrCodeImage: `${qrCodeImage.substring(0, 50)}...`
+              //   }
+              // });
 
               const ticket = await Ticket.create(ticketData);
 
@@ -253,8 +253,6 @@ export class TicketGenerationService {
                 price: ticket.price,
                 currency: ticket.currency
               });
-
-              tickets.push(ticket);
 
               // Send email if requested (non-blocking)
               if (sendEmail) {

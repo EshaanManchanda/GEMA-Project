@@ -5,7 +5,7 @@ export interface InitiateBookingData {
   eventId: string;
   dateScheduleId: string;
   seats: number;
-  paymentMethod?: 'stripe' | 'paypal';
+  paymentMethod?: 'stripe' | 'paypal' | 'test';
   participants?: BookingParticipant[];
 }
 
@@ -196,6 +196,7 @@ const bookingAPI = {
     participants: number;
     dateScheduleId?: string;
     couponCode?: string;
+    currency?: string; // Add currency parameter
   }) => {
     try {
       const bookingParams = {

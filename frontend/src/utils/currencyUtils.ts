@@ -11,14 +11,6 @@ export interface CurrencyConfig {
 }
 
 export const SUPPORTED_CURRENCIES: Record<string, CurrencyConfig> = {
-  INR: {
-    code: 'INR',
-    symbol: '₹',
-    name: 'Indian Rupee',
-    decimals: 2,
-    locale: 'en-IN',
-    position: 'before',
-  },
   AED: {
     code: 'AED',
     symbol: 'د.إ',
@@ -27,38 +19,14 @@ export const SUPPORTED_CURRENCIES: Record<string, CurrencyConfig> = {
     locale: 'ar-AE',
     position: 'before',
   },
-  USD: {
-    code: 'USD',
-    symbol: '$',
-    name: 'US Dollar',
-    decimals: 2,
-    locale: 'en-US',
-    position: 'before',
-  },
-  EUR: {
-    code: 'EUR',
-    symbol: '€',
-    name: 'Euro',
-    decimals: 2,
-    locale: 'en-EU',
-    position: 'before',
-  },
-  GBP: {
-    code: 'GBP',
-    symbol: '£',
-    name: 'British Pound',
-    decimals: 2,
-    locale: 'en-GB',
-    position: 'before',
-  },
 };
 
 export const getDefaultCurrency = (): string => {
-  return import.meta.env.VITE_DEFAULT_CURRENCY || 'INR';
+  return 'AED';
 };
 
 export const getCurrencyConfig = (currencyCode: string): CurrencyConfig => {
-  return SUPPORTED_CURRENCIES[currencyCode] || SUPPORTED_CURRENCIES.INR;
+  return SUPPORTED_CURRENCIES[currencyCode] || SUPPORTED_CURRENCIES.AED;
 };
 
 export const formatCurrency = (
@@ -134,55 +102,7 @@ export const parseCurrencyAmount = (
   return isNaN(parsed) ? 0 : parsed;
 };
 
-export const convertCurrency = async (
-  amount: number,
-  fromCurrency: string,
-  toCurrency: string
-): Promise<number> => {
-  // For now, return the same amount as we don't have a conversion API
-  // In production, you would integrate with a currency conversion service
-  if (fromCurrency === toCurrency) {
-    return amount;
-  }
 
-  // Mock conversion rates based on INR (replace with real API)
-  // These are approximate rates from INR to other currencies
-  const mockRates: Record<string, Record<string, number>> = {
-    INR: {
-      AED: 0.044,   // 1 INR ≈ 0.044 AED
-      USD: 0.012,   // 1 INR ≈ 0.012 USD
-      EUR: 0.011,   // 1 INR ≈ 0.011 EUR
-      GBP: 0.0095,  // 1 INR ≈ 0.0095 GBP
-    },
-    AED: {
-      INR: 22.7,    // 1 AED ≈ 22.7 INR
-      USD: 0.27,    // 1 AED ≈ 0.27 USD
-      EUR: 0.25,    // 1 AED ≈ 0.25 EUR
-      GBP: 0.21,    // 1 AED ≈ 0.21 GBP
-    },
-    USD: {
-      INR: 83.3,    // 1 USD ≈ 83.3 INR
-      AED: 3.67,    // 1 USD ≈ 3.67 AED
-      EUR: 0.92,    // 1 USD ≈ 0.92 EUR
-      GBP: 0.79,    // 1 USD ≈ 0.79 GBP
-    },
-    EUR: {
-      INR: 90.9,    // 1 EUR ≈ 90.9 INR
-      AED: 4.00,    // 1 EUR ≈ 4.00 AED
-      USD: 1.09,    // 1 EUR ≈ 1.09 USD
-      GBP: 0.86,    // 1 EUR ≈ 0.86 GBP
-    },
-    GBP: {
-      INR: 105.3,   // 1 GBP ≈ 105.3 INR
-      AED: 4.76,    // 1 GBP ≈ 4.76 AED
-      USD: 1.27,    // 1 GBP ≈ 1.27 USD
-      EUR: 1.16,    // 1 GBP ≈ 1.16 EUR
-    },
-  };
-
-  const rate = mockRates[fromCurrency]?.[toCurrency] || 1;
-  return amount * rate;
-};
 
 export const validateCurrencyAmount = (
   amount: number,
@@ -233,8 +153,7 @@ export const getCurrencyName = (currencyCode: string): string => {
 };
 
 export const getSupportedCurrencies = (): CurrencyConfig[] => {
-  const supportedCodes = import.meta.env.VITE_SUPPORTED_CURRENCIES?.split(',') || ['AED'];
-  return supportedCodes.map(code => getCurrencyConfig(code.trim()));
+  return [getCurrencyConfig('AED')];
 };
 
 export const isValidCurrency = (currencyCode: string): boolean => {
@@ -257,6 +176,18 @@ export const formatCurrencyFromStripe = (
 ): number => {
   const config = getCurrencyConfig(currencyCode);
   return amount / Math.pow(10, config.decimals);
+};
+
+export const convertCurrency = (
+  amount: number,
+  fromCurrencyCode: string,
+  toCurrencyCode: string
+): number => {
+  // Placeholder for currency conversion logic
+  // In a real application, this would involve fetching exchange rates
+  // and performing the conversion.
+  console.warn(`Currency conversion from ${fromCurrencyCode} to ${toCurrencyCode} is not yet implemented. Returning original amount.`);
+  return amount;
 };
 
 export default {

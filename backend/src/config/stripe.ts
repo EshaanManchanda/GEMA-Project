@@ -76,10 +76,9 @@ export const getStripeConfig = () => {
 };
 
 // Stripe configuration constants
-// NOTE: All payments are processed in INR through Indian Stripe account
-// Other currencies are for display purposes only
+// NOTE: All payments are processed in AED.
 export const STRIPE_CONFIG = {
-  currency: 'inr', // Base currency for all Stripe transactions
+  currency: 'aed', // Base currency for all Stripe transactions
   automatic_payment_methods: {
     enabled: true,
   },
@@ -89,26 +88,14 @@ export const STRIPE_CONFIG = {
 
 // Currency mapping for multi-currency support
 export const CURRENCY_MAPPING = {
-  INR: 'inr',
   AED: 'aed',
-  USD: 'usd',
-  EUR: 'eur',
-  GBP: 'gbp',
-  EGP: 'egp',
-  CAD: 'cad',
 } as const;
-
-// Helper function to get Stripe currency code
-// NOTE: Always returns 'inr' as all payments are processed through Indian Stripe
-export const getStripeCurrency = (currency: string): string => {
-  return 'inr'; // Always use INR for Stripe transactions
-};
 
 // Helper function to convert amount to Stripe's smallest currency unit
 export const convertToStripeAmount = (amount: number, currency: string): number => {
   // Most currencies use cents (multiply by 100)
   // Some currencies like JPY don't have decimal places
-  const stripeCurrency = getStripeCurrency(currency);
+  const stripeCurrency = 'aed'; // Always AED
   
   // Currencies without decimal places
   const noDecimalCurrencies = ['jpy', 'krw'];
@@ -122,7 +109,7 @@ export const convertToStripeAmount = (amount: number, currency: string): number 
 
 // Helper function to convert from Stripe amount to regular amount
 export const convertFromStripeAmount = (amount: number, currency: string): number => {
-  const stripeCurrency = getStripeCurrency(currency);
+  const stripeCurrency = 'aed'; // Always AED
   const noDecimalCurrencies = ['jpy', 'krw'];
   
   if (noDecimalCurrencies.includes(stripeCurrency)) {
