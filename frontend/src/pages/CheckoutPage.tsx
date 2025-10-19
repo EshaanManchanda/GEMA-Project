@@ -9,9 +9,15 @@ import { orderService } from '../services/order.service';
 import { useCart } from '../contexts/CartContext';
 import LoadingSpinner from '../components/common/LoadingSpinner';
 import { FaArrowLeft, FaCreditCard, FaShieldAlt } from 'react-icons/fa';
+let stripePromise: Promise<any> | null = null;
 
 // Initialize Stripe
-const stripePromise = loadStripe(import.meta.env.VITE_STRIPE_PUBLISHABLE_KEY || 'pk_test_51Mc53pSCHTDPvxRRg7cq9G4Nv2Hq1qck7M0O4eg0b6umLEjXXMRTuYTBoandQkbGDlElWgONwNXfc9UiOtCRYUKl007v4H2fBQ');
+if (import.meta.env.VITE_PAYMENT_ENVIRONMENT !== 'development') {
+  stripePromise = loadStripe(import.meta.env.VITE_STRIPE_PUBLISHABLE_KEY);
+}
+else {
+  stripePromise = loadStripe(import.meta.env.VITE_STRIPE_TEST_PUBLISHABLE_KEY);
+}
 
 // Support both cart-based checkout and single-event booking
 interface BookingFormData {

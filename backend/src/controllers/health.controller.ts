@@ -340,6 +340,20 @@ async function checkFirebaseHealth(): Promise<ServiceStatus> {
 
 async function getSystemMetrics() {
   try {
+    // If database is not connected, return default metrics
+    if (mongoose.connection.readyState !== 1) {
+      return {
+        totalUsers: 0,
+        totalEvents: 0,
+        totalOrders: 0,
+        activeBookings: 0,
+        systemLoad: {
+          memory: { used: 0, total: 0, percentage: 0 },
+          cpu: { usage: 0 },
+        },
+      };
+    }
+
     // Get database counts
     const [totalUsers, totalEvents, totalOrders, activeBookings] = await Promise.all([
       User.countDocuments(),

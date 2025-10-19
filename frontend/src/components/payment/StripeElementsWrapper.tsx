@@ -13,7 +13,7 @@ const defaultStripePromise = loadStripe(stripeConfig.publicKey);
 
 interface StripeElementsWrapperProps {
   clientSecret: string;
-  children: React.ReactNode;
+  children: (isReady: boolean) => React.ReactNode; // Change children to a render prop
   vendorId?: string; // Optional: If provided, use vendor's Stripe key
 }
 
@@ -242,11 +242,11 @@ const StripeElementsWrapper: React.FC<StripeElementsWrapperProps> = ({
 
       {/* Stripe Elements - using stable ref to prevent prop change errors */}
       <Elements
-        key={clientSecret} // Only remount when clientSecret changes (new payment intent)
+        key={clientSecret}
         stripe={stripeInstanceRef.current}
         options={elementsOptions}
       >
-        {children}
+        {children(isReady)} {/* Pass isReady to children */}
       </Elements>
     </div>
   );

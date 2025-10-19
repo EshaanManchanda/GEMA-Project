@@ -6,6 +6,10 @@ const getStripeKeys = () => {
   const paymentEnv = process.env.PAYMENT_ENVIRONMENT || 'development';
   const useLiveKeys = process.env.USE_LIVE_KEYS === 'true';
 
+  console.log('Stripe Configuration Check:');
+  console.log('PAYMENT_ENVIRONMENT:', paymentEnv);
+  console.log('USE_LIVE_KEYS:', useLiveKeys);
+
   // Determine which keys to use
   let secretKey: string;
   let publishableKey: string;
@@ -19,6 +23,9 @@ const getStripeKeys = () => {
     publishableKey = config.stripe.testPublishableKey;
     console.log('🟡 Using TEST Stripe keys');
   }
+
+  console.log('Selected Secret Key (first 10 chars):', secretKey ? secretKey.substring(0, 10) : 'N/A');
+  console.log('Selected Publishable Key (first 10 chars):', publishableKey ? publishableKey.substring(0, 10) : 'N/A');
 
   return { secretKey, publishableKey };
 };

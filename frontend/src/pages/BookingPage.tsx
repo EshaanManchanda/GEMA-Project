@@ -409,7 +409,7 @@ const BookingPage: React.FC = () => {
       eventTitle: event.title,
       participantCount: bookingFlow.participants.length,
       paymentMethod: bookingFlow.paymentMethod,
-      totalPrice: event.price * (bookingFlow.participants.length || 1),
+      totalPrice: (routeState?.totalPrice || (event.price * (bookingFlow.participants.length || 1))).toString(), // Use routeState totalPrice or recalculate with event.price
       couponCode: bookingFlow.couponCode,
       scheduleId
     };
@@ -606,7 +606,7 @@ const BookingPage: React.FC = () => {
     if (!event) return { subtotal: 0, discount: 0, total: 0, discountPercentage: 0, serviceFee: 0, tax: 0, hasServiceFee: true };
 
     const participantCount = bookingFlow.participants.length || 1;
-    const pricePerTicket = event.price;
+    const pricePerTicket = routeState?.schedule?.price || event.price;
     const subtotal = pricePerTicket * participantCount;
 
     // For now, assume service fee applies (5%) - this could be made dynamic based on vendor

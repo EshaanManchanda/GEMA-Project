@@ -484,18 +484,38 @@ const PaymentForm: React.FC<PaymentFormProps> = ({
           clientSecret={checkout.clientSecret}
           vendorId={stableVendorId}
         >
-          <StripePaymentElement
-            onSuccess={handlePaymentSuccess}
-            onError={(error) => setPaymentError(error)}
-            onFallbackToTestPayment={handleFallbackToTestPayment}
-            isProcessing={processing}
-            amount={total}
-            currency={event.currency || 'USD'}
-          />
+          {(isReady) => (
+            isReady ? (
+              <StripePaymentElement
+                onSuccess={handlePaymentSuccess}
+                onError={(error) => setPaymentError(error)}
+                onFallbackToTestPayment={handleFallbackToTestPayment}
+                isProcessing={processing}
+                amount={total}
+                currency={event.currency || 'USD'}
+              />
+            ) : (
+              <Card>
+                <CardHeader>
+                  <CardTitle className="flex items-center">
+                    <Lock className="w-5 h-5 mr-2" />
+                    Card Information
+                  </CardTitle>
+                </CardHeader>
+                <CardContent>
+                  <div className="flex items-center justify-center py-8">
+                    <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
+                    <span className="ml-3 text-gray-600">Loading payment form...</span>
+                  </div>
+                </CardContent>
+              </Card>
+            )
+          )}
         </StripeElementsWrapper>
       )}
 
-      {/* Loading state for Stripe Elements */}
+      {/* Loading state for Stripe Elements - this block can now be removed or simplified if the above handles all loading */}
+      {/* The previous loading state for Stripe Elements is now handled within the StripeElementsWrapper render prop */}
       {selectedPaymentMethod === 'stripe' && !checkout?.clientSecret && (
         <Card>
           <CardHeader>

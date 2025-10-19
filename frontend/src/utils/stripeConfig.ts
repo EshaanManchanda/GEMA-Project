@@ -70,10 +70,10 @@ export const validateStripeKey = (key: string, expectedType?: 'live' | 'test'): 
 
 export const getStripeConfig = (): StripeConfig => {
   const environment = import.meta.env.VITE_PAYMENT_ENVIRONMENT || 'development';
-  const useLiveKeys = import.meta.env.VITE_USE_LIVE_KEYS === 'true';
+  const useLiveKeys = import.meta.env.VITE_USE_LIVE_KEYS === 'false';
   const forceTestMode = import.meta.env.VITE_FORCE_TEST_MODE === 'true';
   const enableWarning = import.meta.env.VITE_ENABLE_LIVE_KEY_WARNING === 'true';
-  const region = import.meta.env.VITE_PAYMENT_REGION || 'US';
+  const region = import.meta.env.VITE_PAYMENT_REGION || 'AE';
   const complianceMode = import.meta.env.VITE_STRIPE_COMPLIANCE_MODE || 'standard';
   
   // Check for vendor-specific Stripe key first
