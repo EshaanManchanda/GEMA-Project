@@ -1,6 +1,6 @@
 import React, { createContext, useContext, useState, useEffect } from 'react';
 
-const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:5000';
+const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:5001';
 
 type Currency = 'AED' | 'INR' | 'USD' | 'EUR' | 'GBP';
 
@@ -59,7 +59,7 @@ export const CurrencyProvider: React.FC<{ children: React.ReactNode }> = ({ chil
   const fetchExchangeRates = async () => {
     setIsLoading(true);
     try {
-      const response = await fetch(`${API_BASE_URL}/exchange-rates`);
+      const response = await fetch(`${API_BASE_URL}/currency/rates`);
       const data = await response.json();
       setExchangeRates(data.rates);
     } catch (error) {
