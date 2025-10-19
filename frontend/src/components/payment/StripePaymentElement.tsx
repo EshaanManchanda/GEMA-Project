@@ -5,6 +5,7 @@ import toast from 'react-hot-toast';
 import Button from '../ui/Button';
 import { Card, CardContent, CardHeader, CardTitle } from '../ui/Card';
 import { formatCurrency, getDefaultCurrency } from '../../utils/currencyUtils';
+import { useCurrencyContext } from '../../contexts/CurrencyContext';
 import { logger } from '../../utils/logger';
 
 interface StripePaymentElementProps {
@@ -30,6 +31,7 @@ const StripePaymentElement: React.FC<StripePaymentElementProps> = ({
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const [isRegulatoryError, setIsRegulatoryError] = useState(false);
   const [isElementReady, setIsElementReady] = useState(false);
+  const { currencyInfo } = useCurrencyContext();
 
   // Ref to prevent double submission (synchronous guard)
   const submittedRef = useRef(false);

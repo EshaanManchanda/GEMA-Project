@@ -10,6 +10,7 @@ import StripePaymentElement from '../payment/StripePaymentElement';
 import { getRegionalPaymentMethods, getPreferredPaymentMethod, shouldShowRegulatoryWarning, getRegulatoryMessage } from '../../utils/paymentConfig';
 import { getEnvironmentInfo, getPaymentMethodAvailability } from '../../utils/environmentUtils';
 import { formatCurrency, getDefaultCurrency } from '../../utils/currencyUtils';
+import { useCurrencyContext } from '../../contexts/CurrencyContext';
 import {
   setPaymentMethod,
   setAgreedToTerms,
@@ -26,18 +27,22 @@ import { logger } from '../../utils/logger';
 
 import Button from '../ui/Button';
 import { Card, CardContent, CardHeader, CardTitle } from '../ui/Card';
-import { useCurrencyContext } from '../../contexts/CurrencyContext';
+import { BookingFlowContext } from '../../contexts/BookingFlowContext';
+
+import { loadStripe } from '@stripe/stripe-js';
 
 interface PaymentFormProps {
   event: Event;
   onNext: () => void;
   onPrev: () => void;
+  schedulePrice: number;
 }
 
 const PaymentForm: React.FC<PaymentFormProps> = ({
   event,
   onNext,
-  onPrev
+  onPrev,
+  schedulePrice,
 }) => {
   const dispatch = useDispatch<AppDispatch>();
   const bookingFlow = useSelector(selectBookingFlow);
@@ -174,7 +179,7 @@ const PaymentForm: React.FC<PaymentFormProps> = ({
 
   // Calculate total amount
   const calculateTotal = () => {
-    const basePrice = event.price;
+    const basePrice = schedulePrice || event.price;
     const participantCount = participants.length;
     const subtotal = basePrice * participantCount;
 

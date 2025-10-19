@@ -31,6 +31,8 @@ import TicketModal from '@/components/booking/TicketModal';
 import QRCodeModal from '@/components/booking/QRCodeModal';
 import { Ticket } from '@/services/api/ticketAPI';
 import { generateOrderQRData, extractEventDates } from '@/utils/qrcode.utils';
+import formatPrice from '@/utils/currencyUtils';
+import { useCurrencyContext } from '@/contexts/CurrencyContext';
 
 interface BookingDetail {
   _id: string;
@@ -505,7 +507,7 @@ const BookingDetailPage: React.FC = () => {
                   <div className="flex justify-between">
                     <span className="text-gray-600">Price per ticket</span>
                     <span className="font-medium">
-                      {firstItem && booking?.currency ? formatPrice(firstItem.unitPrice || firstItem.price || 0, booking.currency) : 'N/A'}
+                      {firstItem && booking?.currency ? formatPrice((firstItem.unitPrice || firstItem.price || 0), booking.currency) : 'N/A'}
                     </span>
                   </div>
                   <div className="border-t pt-3">

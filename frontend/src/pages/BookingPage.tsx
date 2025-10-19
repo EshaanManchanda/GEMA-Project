@@ -690,10 +690,11 @@ const BookingPage: React.FC = () => {
           return (
             <ComponentErrorBoundary componentName="PaymentForm">
               {PaymentForm ? (
-                <PaymentForm 
+                <PaymentForm
                   event={event}
                   onNext={handleCompleteBooking}
                   onPrev={handlePrevStep}
+                  schedulePrice={calculatePricing().pricePerTicket}
                 />
               ) : (
                 <PaymentFormFallback 

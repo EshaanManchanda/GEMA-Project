@@ -119,10 +119,8 @@ export const initiateBooking = async (req: AuthRequest, res: Response, next: Nex
     // Calculate total amount based on vendor payment setup
     const unitPrice = schedule.price || event.price;
     const subtotal = unitPrice * seats;
-    const tax = subtotal * 0.05; // 5% tax
-
-    // Service fee only applies if using platform Stripe
     const serviceFee = paymentRouting.usesVendorStripe ? 0 : (subtotal * 0.05); // 5% service fee for platform payments
+    const tax = (subtotal + serviceFee) * 0.05; // 5% tax on subtotal + service fee
     const total = subtotal + tax + serviceFee;
 
     // Multi-currency support

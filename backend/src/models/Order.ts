@@ -597,7 +597,7 @@ orderSchema.pre('save', function (next) {
   this.subtotal = this.items.reduce((sum, item) => sum + item.totalPrice, 0);
 
   // Calculate total (subtotal + tax - discount - couponDiscount)
-  this.total = this.subtotal + (this.tax || 0) - (this.discount || 0) - (this.couponDiscount || 0);
+  this.total = this.subtotal + (this.tax || 0) + (this.serviceFee || 0) - (this.discount || 0) - (this.couponDiscount || 0);
 
   // Ensure total is not negative
   if (this.total < 0) {
