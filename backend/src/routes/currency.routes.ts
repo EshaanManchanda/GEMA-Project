@@ -2,8 +2,11 @@ import express from 'express';
 import { catchAsync } from '../middleware';
 import currencyService from '../services/currency.service';
 import { Request, Response, NextFunction } from 'express';
+import { detectCurrency } from '../controllers/currency.controller';
 
 const router = express.Router();
+
+router.get('/detect', detectCurrency);
 
 /**
  * @route   GET /api/currency/rates

@@ -51,10 +51,15 @@ export const CurrencyProvider: React.FC<{ children: React.ReactNode }> = ({ chil
     return (storedCurrency as Currency) || 'AED';
   });
   const [exchangeRates, setExchangeRates] = useState<ExchangeRates>({});
-  const [isAutoDetected, setIsAutoDetected] = useState<boolean>(false);
+  const [isAutoDetected, setIsAutoDetected] = useState<boolean>(() => {
+    const storedAutoDetected = localStorage.getItem('currencyAutoDetected');
+    return storedAutoDetected === 'true';
+  });
   const [isLoading, setIsLoading] = useState<boolean>(true);
   const [fromCurrency, setFromCurrency] = useState<Currency>('INR'); // Default from currency
   const [toCurrency, setToCurrency] = useState<Currency>('AED'); // Default to currency
+
+  const isInitialized = React.useRef(false);
 
   const fetchExchangeRates = async () => {
     setIsLoading(true);
@@ -70,49 +75,70 @@ export const CurrencyProvider: React.FC<{ children: React.ReactNode }> = ({ chil
   };
 
   const autoDetectCurrency = async () => {
+    // Prevent repeated auto-detection calls if already detected in the session
+    if (localStorage.getItem('currencyAutoDetected') === 'true') {
+      setIsLoading(false);
+      return;
+    }
+
     setIsLoading(true);
     try {
-      const response = await fetch('https://ipapi.co/json/');
+      const response = await fetch(`${API_BASE_URL}/currency/detect`);
       const data = await response.json();
-      const detectedCurrencyCode = data.currency as Currency;
+      const detectedCurrencyCode = data.data.currency as Currency;
 
       if (supportedCurrencies.some(c => c.code === detectedCurrencyCode)) {
         setCurrentCurrency(detectedCurrencyCode);
-        setIsAutoDetected(true);
+        localStorage.setItem('currencyAutoDetected', 'true'); // Persist auto-detected status
       } else {
         setCurrentCurrency('AED'); // Default to AED if detected currency is not supported
-        setIsAutoDetected(false);
+        localStorage.setItem('currencyAutoDetected', 'false');
       }
     } catch (error) {
       console.error('Error auto-detecting currency:', error);
       setCurrentCurrency('AED'); // Default to AED on error
-      setIsAutoDetected(false);
+      localStorage.setItem('currencyAutoDetected', 'false');
     } finally {
       setIsLoading(false);
     }
   };
 
   useEffect(() => {
+    console.log('CurrencyProvider useEffect triggered');
+    if (isInitialized.current) {
+      return;
+    }
+
     const initializeCurrency = async () => {
+      console.log('initializeCurrency called');
       await fetchExchangeRates();
 
       const manuallySet = localStorage.getItem('currencyManuallySet');
-      if (!manuallySet) {
+      const storedAutoDetected = localStorage.getItem('currencyAutoDetected');
+
+      if (!manuallySet && storedAutoDetected !== 'true') {
+        console.log('autoDetectCurrency called from initializeCurrency');
         await autoDetectCurrency();
       }
+      isInitialized.current = true;
     };
 
     initializeCurrency();
 
-    const refreshInterval = setInterval(fetchExchangeRates, 3600000); // Refresh every hour
-    return () => clearInterval(refreshInterval);
-  }, []);
+    const refreshInterval = setInterval(() => {
+      console.log('setInterval: fetchExchangeRates called');
+      fetchExchangeRates();
+    }, 3600000); // Refresh every hour
+    return () => {
+      console.log('CurrencyProvider useEffect cleanup');
+      clearInterval(refreshInterval);
+    };
+  }, []); // Empty dependency array to run only once on mount
 
   const changeCurrency = (currency: Currency) => {
     setCurrentCurrency(currency);
     localStorage.setItem('currency', currency);
     localStorage.setItem('currencyManuallySet', 'true');
-    setIsAutoDetected(false);
   };
 
   const convertCurrency = (amount: number, from: Currency, to: Currency): number => {

@@ -54,9 +54,9 @@ const BlogDetailPage: React.FC = () => {
         blogAPI.getRelatedBlogs(blogSlug, 4)
       ]);
 
-      if (blogResponse.success && blogResponse.data.blog) {
-        setBlog(blogResponse.data.blog);
-        setLikeCount(blogResponse.data.blog.likeCount);
+      if (blogResponse.blog) {
+        setBlog(blogResponse.blog);
+        setLikeCount(blogResponse.blog.likeCount);
       } else {
         throw new Error('Blog not found');
       }

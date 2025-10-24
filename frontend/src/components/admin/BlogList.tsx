@@ -16,7 +16,8 @@ import {
   ExternalLink,
   CheckSquare,
   Archive,
-  BookOpen
+  BookOpen,
+  MessageSquare
 } from 'lucide-react';
 import toast from 'react-hot-toast';
 import Button from '../ui/Button';
@@ -25,6 +26,7 @@ import Input from '../ui/Input';
 import Badge from '../ui/Badge';
 import DataTable from '../ui/DataTable';
 import BlogForm from './BlogForm';
+import BlogCommentManagement from './BlogCommentManagement';
 import blogAPI from '../../services/api/blogAPI';
 
 interface Blog {
@@ -64,14 +66,32 @@ interface BlogFilters {
   sortOrder: 'asc' | 'desc';
 }
 
+function useDebounce<T>(value: T, delay: number): T {
+  const [debouncedValue, setDebouncedValue] = useState<T>(value);
+
+  useEffect(() => {
+    const handler = setTimeout(() => {
+      setDebouncedValue(value);
+    }, delay);
+
+    return () => {
+      clearTimeout(handler);
+    };
+  }, [value, delay]);
+
+  return debouncedValue;
+}
+
 const BlogList: React.FC = () => {
   const [blogs, setBlogs] = useState<Blog[]>([]);
   const [categories, setCategories] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [selectedBlog, setSelectedBlog] = useState<Blog | null>(null);
   const [showBlogForm, setShowBlogForm] = useState(false);
+  const [showCommentManagement, setShowCommentManagement] = useState(false);
   const [selectedBlogs, setSelectedBlogs] = useState<string[]>([]);
   const [bulkLoading, setBulkLoading] = useState(false);
+  const [blogFormLoading, setBlogFormLoading] = useState(false);
   const [pagination, setPagination] = useState({
     currentPage: 1,
     totalPages: 1,
@@ -91,20 +111,37 @@ const BlogList: React.FC = () => {
     sortOrder: 'desc'
   });
 
+  const debouncedSearchTerm = useDebounce(filters.search, 500); // 500ms debounce
+
   useEffect(() => {
     fetchBlogs();
+  }, [filters.page, filters.limit, filters.status, filters.category, filters.sortBy, filters.sortOrder, debouncedSearchTerm]);
+
+  useEffect(() => {
     fetchCategories();
-  }, [filters]);
+  }, []);
 
   const fetchBlogs = async () => {
     try {
       setLoading(true);
       const response = await blogAPI.admin.getAllBlogs(filters);
-      setBlogs(response.data.blogs);
-      setPagination(response.data.pagination);
+
+      // Filter out any null or undefined blogs, and blogs without _id
+      const validBlogs = (response.blogs || []).filter((blog: Blog | null | undefined) => blog != null && blog._id);
+
+      setBlogs(validBlogs);
+      setPagination(response.pagination || {
+        currentPage: 1,
+        totalPages: 1,
+        totalBlogs: 0,
+        hasNextPage: false,
+        hasPrevPage: false,
+        limit: 10
+      });
     } catch (error) {
       toast.error('Failed to fetch blogs');
       console.error('Error fetching blogs:', error);
+      setBlogs([]);
     } finally {
       setLoading(false);
     }
@@ -113,9 +150,11 @@ const BlogList: React.FC = () => {
   const fetchCategories = async () => {
     try {
       const response = await blogAPI.admin.getAllCategories();
-      setCategories(response.data.categories);
+      setCategories(response || []);
     } catch (error) {
+      toast.error('Failed to fetch categories');
       console.error('Error fetching categories:', error);
+      setCategories([]);
     }
   };
 
@@ -124,9 +163,30 @@ const BlogList: React.FC = () => {
     setShowBlogForm(true);
   };
 
-  const handleEditBlog = (blog: Blog) => {
-    setSelectedBlog(blog);
-    setShowBlogForm(true);
+  const handleEditBlog = async (blog: Blog) => {
+    try {
+      setBlogFormLoading(true);
+      console.log('Fetching full blog details for editing:', blog._id);
+
+      // Fetch the complete blog with content field
+      const response = await blogAPI.admin.getBlogById(blog._id);
+      const fullBlog = response.data.blog;
+
+      console.log('Full blog data fetched:', {
+        id: fullBlog._id,
+        title: fullBlog.title,
+        hasContent: !!fullBlog.content,
+        contentLength: fullBlog.content?.length || 0
+      });
+
+      setSelectedBlog(fullBlog);
+      setShowBlogForm(true);
+    } catch (error) {
+      console.error('Error fetching blog details:', error);
+      toast.error('Failed to load blog details');
+    } finally {
+      setBlogFormLoading(false);
+    }
   };
 
   const handleDeleteBlog = async (blogId: string) => {
@@ -143,16 +203,30 @@ const BlogList: React.FC = () => {
     }
   };
 
+  const handleViewComments = (blogId: string) => {
+    setSelectedBlog(blogs.find(blog => blog._id === blogId) || null);
+    setShowCommentManagement(true);
+  };
+
   const handleSubmitBlog = async (data: any) => {
     try {
       if (selectedBlog) {
+        console.log('Updating blog:', selectedBlog._id, 'with data:', data);
         await blogAPI.admin.updateBlog(selectedBlog._id, data);
+        console.log('Blog updated successfully');
       } else {
+        console.log('Creating blog with data:', data);
         await blogAPI.admin.createBlog(data);
+        console.log('Blog created successfully');
       }
       fetchBlogs();
-    } catch (error) {
-      throw error;
+    } catch (error: any) {
+      console.error('Error submitting blog:', error);
+      console.error('Error response:', error.response?.data);
+      console.error('Error status:', error.response?.status);
+      // Re-throw with more details
+      const errorMessage = error.response?.data?.message || error.message || 'Failed to save blog';
+      throw new Error(errorMessage);
     }
   };
 
@@ -274,68 +348,78 @@ const BlogList: React.FC = () => {
           className="w-4 h-4 text-blue-600 border-gray-300 rounded focus:ring-blue-500"
         />
       ),
-      render: (blog: Blog) => (
-        <input
-          type="checkbox"
-          checked={selectedBlogs.includes(blog._id)}
-          onChange={() => handleSelectBlog(blog._id)}
-          className="w-4 h-4 text-blue-600 border-gray-300 rounded focus:ring-blue-500"
-        />
-      )
+      render: (_: any, blog: Blog) => {
+        if (!blog?._id) return null;
+        return (
+          <input
+            type="checkbox"
+            checked={selectedBlogs.includes(blog._id)}
+            onChange={() => handleSelectBlog(blog._id)}
+            className="w-4 h-4 text-blue-600 border-gray-300 rounded focus:ring-blue-500"
+          />
+        );
+      }
     },
     {
       key: 'title',
-      label: 'Title',
-      render: (blog: Blog) => (
-        <div className="flex items-start space-x-3">
-          <img
-            src={blog.featuredImage}
-            alt={blog.title}
-            className="w-12 h-12 object-cover rounded"
-            onError={(e) => {
-              e.currentTarget.src = '/assets/images/blog/placeholder.svg';
-            }}
-          />
-          <div className="flex-1 min-w-0">
-            <h3 className="text-sm font-medium text-gray-900 truncate">
-              {blog.title}
-            </h3>
-            <p className="text-sm text-gray-500 truncate">
-              {blog.excerpt}
-            </p>
-            <div className="flex items-center space-x-4 mt-1">
+      label: 'Blog Post',
+      render: (_: any, blog: Blog) => {
+        if (!blog) return null;
+        return (
+          <div className="flex items-start space-x-3 max-w-md">
+            <img
+              src={blog.featuredImage || '/assets/images/blog/placeholder.svg'}
+              alt={blog.title}
+              className="w-16 h-16 object-cover rounded-lg flex-shrink-0"
+              onError={(e) => {
+                e.currentTarget.src = '/assets/images/blog/placeholder.svg';
+              }}
+            />
+            <div className="flex-1 min-w-0">
+              <div className="flex items-center gap-2 mb-1">
+                <h3 className="text-sm font-semibold text-gray-900 line-clamp-1">
+                  {blog.title}
+                </h3>
+                {blog.featured && (
+                  <Badge variant="primary" size="sm">Featured</Badge>
+                )}
+              </div>
+              <p className="text-xs text-gray-500 line-clamp-2 mb-1">
+                {blog.excerpt}
+              </p>
               <span className="text-xs text-gray-400">
-                by {blog.author.name}
+                by {blog.author?.name || 'Unknown Author'}
               </span>
-              {blog.featured && (
-                <Badge variant="primary" size="sm">Featured</Badge>
-              )}
             </div>
           </div>
-        </div>
-      )
+        );
+      }
     },
     {
       key: 'category',
       label: 'Category',
-      render: (blog: Blog) => (
-        <Badge
-          variant="secondary"
-          style={{ backgroundColor: blog.category.color + '20', color: blog.category.color }}
-        >
-          {blog.category.name}
-        </Badge>
+      render: (_: any, blog: Blog) => (
+        blog.category && blog.category.color ? (
+          <Badge
+            variant="secondary"
+            style={{ backgroundColor: blog.category.color + '20', color: blog.category.color }}
+          >
+            {blog.category.name}
+          </Badge>
+        ) : (
+          <Badge variant="secondary">Uncategorized</Badge>
+        )
       )
     },
     {
       key: 'status',
       label: 'Status',
-      render: (blog: Blog) => getStatusBadge(blog.status)
+      render: (_: any, blog: Blog) => getStatusBadge(blog.status)
     },
     {
       key: 'stats',
       label: 'Stats',
-      render: (blog: Blog) => (
+      render: (_: any, blog: Blog) => (
         <div className="flex items-center space-x-3 text-sm text-gray-500">
           <div className="flex items-center">
             <Eye className="w-4 h-4 mr-1" />
@@ -355,7 +439,7 @@ const BlogList: React.FC = () => {
     {
       key: 'publishedAt',
       label: 'Published',
-      render: (blog: Blog) => (
+      render: (_: any, blog: Blog) => (
         <div className="text-sm text-gray-500">
           {blog.publishedAt ? formatDate(blog.publishedAt) : 'Not published'}
         </div>
@@ -364,46 +448,56 @@ const BlogList: React.FC = () => {
     {
       key: 'actions',
       label: 'Actions',
-      render: (blog: Blog) => (
-        <div className="flex items-center space-x-2">
-          <Button
-            variant="secondary"
-            size="sm"
-            onClick={() => window.open(`/blog/${blog.slug}`, '_blank')}
-          >
-            <ExternalLink className="w-4 h-4" />
-          </Button>
-          <Button
-            variant="secondary"
-            size="sm"
-            onClick={() => handleEditBlog(blog)}
-          >
-            <Edit className="w-4 h-4" />
-          </Button>
-          <Button
-            variant="danger"
-            size="sm"
-            onClick={() => handleDeleteBlog(blog._id)}
-          >
-            <Trash2 className="w-4 h-4" />
-          </Button>
-        </div>
-      )
+      render: (_: any, blog: Blog) => {
+        if (!blog?._id) return null;
+        return (
+          <div className="flex items-center space-x-2">
+            <Button
+              variant="secondary"
+              size="sm"
+              onClick={() => handleViewComments(blog._id)}
+            >
+              <MessageSquare className="w-4 h-4" />
+            </Button>
+            <Button
+              variant="secondary"
+              size="sm"
+              onClick={() => window.open(`/blog/${blog.slug}`, '_blank')}
+            >
+              <ExternalLink className="w-4 h-4" />
+            </Button>
+            <Button
+              variant="secondary"
+              size="sm"
+              onClick={() => handleEditBlog(blog)}
+            >
+              <Edit className="w-4 h-4" />
+            </Button>
+            <Button
+              variant="danger"
+              size="sm"
+              onClick={() => handleDeleteBlog(blog._id)}
+            >
+              <Trash2 className="w-4 h-4" />
+            </Button>
+          </div>
+        );
+      }
     }
   ];
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-6 p-6">
       {/* Header */}
-      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between">
+      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
         <div>
-          <h1 className="text-2xl font-bold text-gray-900">Blog Management</h1>
-          <p className="text-sm text-gray-600">
-            Manage your blog posts and categories
+          <h1 className="text-3xl font-bold text-gray-900">Blog Management</h1>
+          <p className="text-sm text-gray-600 mt-1">
+            Create, edit, and manage your blog posts
           </p>
         </div>
-        <Button onClick={handleCreateBlog}>
-          <Plus className="w-4 h-4 mr-2" />
+        <Button onClick={handleCreateBlog} size="md">
+          <Plus className="w-5 h-5 mr-2" />
           Create Blog Post
         </Button>
       </div>
@@ -533,10 +627,10 @@ const BlogList: React.FC = () => {
 
       {/* Bulk Actions */}
       {selectedBlogs.length > 0 && (
-        <Card>
+        <Card className="border-2 border-blue-200 bg-blue-50">
           <CardContent className="p-4">
             <div className="flex items-center justify-between">
-              <span className="text-sm text-gray-600">
+              <span className="text-sm font-medium text-blue-900">
                 {selectedBlogs.length} blog{selectedBlogs.length > 1 ? 's' : ''} selected
               </span>
               <div className="flex items-center space-x-2">
@@ -545,6 +639,7 @@ const BlogList: React.FC = () => {
                   size="sm"
                   onClick={handleBulkPublish}
                   loading={bulkLoading}
+                  disabled={bulkLoading}
                 >
                   <BookOpen className="w-4 h-4 mr-1" />
                   Publish
@@ -554,6 +649,7 @@ const BlogList: React.FC = () => {
                   size="sm"
                   onClick={handleBulkArchive}
                   loading={bulkLoading}
+                  disabled={bulkLoading}
                 >
                   <Archive className="w-4 h-4 mr-1" />
                   Archive
@@ -563,6 +659,7 @@ const BlogList: React.FC = () => {
                   size="sm"
                   onClick={handleBulkDelete}
                   loading={bulkLoading}
+                  disabled={bulkLoading}
                 >
                   <Trash2 className="w-4 h-4 mr-1" />
                   Delete
@@ -580,6 +677,7 @@ const BlogList: React.FC = () => {
             columns={columns}
             data={blogs}
             loading={loading}
+            rowKey="_id"
             pagination={{
               currentPage: pagination.currentPage,
               totalPages: pagination.totalPages,
@@ -593,10 +691,24 @@ const BlogList: React.FC = () => {
       <BlogForm
         blog={selectedBlog}
         isOpen={showBlogForm}
-        onClose={() => setShowBlogForm(false)}
+        onClose={() => {
+          setShowBlogForm(false);
+          setSelectedBlog(null); // Clear selected blog when closing
+        }}
         onSubmit={handleSubmitBlog}
         categories={categories}
+        loading={blogFormLoading}
       />
+
+      {/* Blog Comment Management Modal */}
+      {selectedBlog && (
+        <BlogCommentManagement
+          blogId={selectedBlog._id}
+          isOpen={showCommentManagement}
+          onClose={() => setShowCommentManagement(false)}
+        />
+      )}
+
     </div>
   );
 };

@@ -168,7 +168,16 @@ const blogAPI = {
       sortOrder?: 'asc' | 'desc';
     }) => {
       try {
-        const response = await ApiService.get('/admin/blogs', { params: filters });
+        const validFilters: Record<string, any> = {};
+        for (const key in filters) {
+          if (Object.prototype.hasOwnProperty.call(filters, key)) {
+            const value = (filters as Record<string, any>)[key];
+            if (value !== undefined && value !== '') {
+              validFilters[key] = value;
+            }
+          }
+        }
+        const response = await ApiService.get('/admin/blogs', { params: validFilters });
         return response.data;
       } catch (error) {
         throw error;
@@ -275,6 +284,33 @@ const blogAPI = {
       } catch (error) {
         throw error;
       }
+    },
+
+    // Approve a comment
+    approveComment: async (commentId: string) => {
+      try {
+        const response = await ApiService.put(`/admin/blog/comments/${commentId}/approve`);
+        return response.data;
+      } catch (error) {
+        throw error;
+      }
+    },
+
+    // Get all comments for a blog post (admin - includes all statuses)
+    getCommentsForBlog: async (postId: string, params?: {
+      page?: number;
+      limit?: number;
+      sort?: 'newest' | 'oldest';
+      statuses?: string; // comma-separated string like 'pending,active'
+    }) => {
+      try {
+        const response = await ApiService.get(`/blog/admin/posts/${postId}/comments`, {
+          params
+        });
+        return response.data;
+      } catch (error) {
+        throw error;
+      }
     }
   },
 
@@ -287,7 +323,7 @@ const blogAPI = {
       sort?: 'newest' | 'oldest' | 'likes';
     }) => {
       try {
-        const response = await ApiService.get(`/blog-comments/posts/${postId}/comments`, {
+        const response = await ApiService.get(`/blog/posts/${postId}/comments`, {
           params
         });
         return response.data;
@@ -299,7 +335,7 @@ const blogAPI = {
     // Create a new comment or reply
     createComment: async (postId: string, content: string, parentCommentId?: string) => {
       try {
-        const response = await ApiService.post(`/blog-comments/posts/${postId}/comments`, {
+        const response = await ApiService.post(`/blog/posts/${postId}/comments`, {
           content,
           parentComment: parentCommentId
         });
@@ -312,7 +348,7 @@ const blogAPI = {
     // Update a comment
     updateComment: async (commentId: string, content: string) => {
       try {
-        const response = await ApiService.put(`/blog-comments/comments/${commentId}`, {
+        const response = await ApiService.put(`/blog/comments/${commentId}`, {
           content
         });
         return response.data;
@@ -324,7 +360,7 @@ const blogAPI = {
     // Delete a comment
     deleteComment: async (commentId: string) => {
       try {
-        const response = await ApiService.delete(`/blog-comments/comments/${commentId}`);
+        const response = await ApiService.delete(`/blog/comments/${commentId}`);
         return response.data;
       } catch (error) {
         throw error;
@@ -334,7 +370,7 @@ const blogAPI = {
     // Like a comment
     likeComment: async (commentId: string) => {
       try {
-        const response = await ApiService.post(`/blog-comments/comments/${commentId}/like`);
+        const response = await ApiService.post(`/blog/comments/${commentId}/like`);
         return response.data;
       } catch (error) {
         throw error;
@@ -344,7 +380,7 @@ const blogAPI = {
     // Dislike a comment
     dislikeComment: async (commentId: string) => {
       try {
-        const response = await ApiService.post(`/blog-comments/comments/${commentId}/dislike`);
+        const response = await ApiService.post(`/blog/comments/${commentId}/dislike`);
         return response.data;
       } catch (error) {
         throw error;
@@ -354,7 +390,7 @@ const blogAPI = {
     // Report a comment
     reportComment: async (commentId: string, reason?: string) => {
       try {
-        const response = await ApiService.post(`/blog-comments/comments/${commentId}/report`, {
+        const response = await ApiService.post(`/blog/comments/${commentId}/report`, {
           reason
         });
         return response.data;
@@ -369,7 +405,7 @@ const blogAPI = {
       limit?: number;
     }) => {
       try {
-        const response = await ApiService.get(`/blog-comments/comments/${commentId}/replies`, {
+        const response = await ApiService.get(`/blog/comments/${commentId}/replies`, {
           params
         });
         return response.data;

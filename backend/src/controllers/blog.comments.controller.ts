@@ -1,14 +1,20 @@
 import { Request, Response, NextFunction } from 'express';
 import { AuthRequest } from '../types/express.d';
+import mongoose from 'mongoose';
 import Comment from '../models/Comment';
 import { Blog } from '../models/Blog';
 import { AppError } from '../middleware/error';
+import createDOMPurify from 'dompurify';
+import { JSDOM } from 'jsdom';
+
+const window = new JSDOM('').window;
+const DOMPurify = createDOMPurify(window);
 
 // Get comments for a blog post
 export const getComments = async (req: Request, res: Response, next: NextFunction) => {
   try {
     const { postId } = req.params;
-    const { page = 1, limit = 10, sort = 'newest' } = req.query;
+    const { page = 1, limit = 10, sort = 'newest', status = 'active' } = req.query;
 
     // Check if blog post exists
     const blogPost = await Blog.findById(postId);
@@ -16,19 +22,14 @@ export const getComments = async (req: Request, res: Response, next: NextFunctio
       return next(new AppError('Blog post not found', 404));
     }
 
-    // Build sort object
-    let sortObject: any = { createdAt: -1 }; // Default: newest first
-    if (sort === 'oldest') {
-      sortObject = { createdAt: 1 };
-    } else if (sort === 'likes') {
-      sortObject = { likes: -1, createdAt: -1 };
-    }
+    const pageNum = parseInt(page as string);
+    const limitNum = parseInt(limit as string);
 
     // Get comments with replies using the static method
-    const comments = await Comment.getCommentsWithReplies(postId);
+    const comments = await Comment.getCommentsWithReplies(postId, status as 'pending' | 'active' | 'flagged' | 'deleted', pageNum, limitNum, sort as 'newest' | 'oldest' | 'likes');
 
-    // Get comment stats
-    const stats = await Comment.getCommentStats(postId);
+    // Get comment stats filtered by the same status
+    const stats = await Comment.getCommentStats(postId, status as 'pending' | 'active' | 'flagged' | 'deleted');
 
     res.status(200).json({
       success: true,
@@ -37,9 +38,10 @@ export const getComments = async (req: Request, res: Response, next: NextFunctio
         comments,
         stats,
         pagination: {
-          page: parseInt(page as string),
-          limit: parseInt(limit as string),
-          total: stats.totalComments
+          page: pageNum,
+          limit: limitNum,
+          total: stats.totalComments,
+          pages: Math.ceil(stats.totalComments / limitNum)
         }
       }
     });
@@ -72,12 +74,17 @@ export const createComment = async (req: AuthRequest, res: Response, next: NextF
       }
     }
 
+    // Sanitize comment content
+    const sanitizedContent = DOMPurify.sanitize(content);
+
     // Create the comment
     const comment = new Comment({
       content,
+      sanitizedContent,
       author: userId,
       blogPost: postId,
-      parentComment: parentComment || null
+      parentComment: parentComment || null,
+      status: 'pending' // Set initial status to pending
     });
 
     await comment.save();
@@ -367,6 +374,126 @@ export const getCommentReplies = async (req: Request, res: Response, next: NextF
           limit: limitNum,
           total: totalReplies,
           pages: Math.ceil(totalReplies / limitNum)
+        }
+      }
+    });
+  } catch (error) {
+    next(error);
+  }
+};
+
+export const approveComment = async (req: Request, res: Response, next: NextFunction) => {
+  try {
+    const { commentId } = req.params;
+
+    const comment = await Comment.findById(commentId);
+
+    if (!comment) {
+      return next(new AppError('Comment not found', 404));
+    }
+
+    if (comment.status === 'active') {
+      return next(new AppError('Comment is already active', 400));
+    }
+
+    comment.status = 'active';
+    await comment.save();
+
+    res.status(200).json({
+      success: true,
+      message: 'Comment approved successfully!',
+      data: { comment }
+    });
+  } catch (error) {
+    next(error);
+  }
+};
+
+// Admin: Get all comments for a blog post (regardless of status)
+export const getCommentsForAdmin = async (req: Request, res: Response, next: NextFunction) => {
+  try {
+    const { postId } = req.params;
+    const { page = 1, limit = 50, sort = 'newest', statuses } = req.query;
+
+    // Check if blog post exists
+    const blogPost = await Blog.findById(postId);
+    if (!blogPost) {
+      return next(new AppError('Blog post not found', 404));
+    }
+
+    const pageNum = parseInt(page as string);
+    const limitNum = Math.min(parseInt(limit as string), 100); // Max 100 for admin
+    const skip = (pageNum - 1) * limitNum;
+
+    // Build status filter
+    let statusFilter: any = { $in: ['pending', 'active', 'flagged', 'deleted'] }; // Default: all statuses
+    if (statuses && typeof statuses === 'string') {
+      const statusArray = statuses.split(',');
+      statusFilter = { $in: statusArray };
+    }
+
+    // Build sort object
+    let sortObject: any = { createdAt: -1 }; // Default: newest first
+    if (sort === 'oldest') {
+      sortObject = { createdAt: 1 };
+    }
+
+    // Get comments with author populated
+    const comments = await Comment.find({
+      blogPost: postId,
+      parentComment: null, // Only top-level comments
+      status: statusFilter
+    })
+      .populate('author', 'name email avatar')
+      .populate({
+        path: 'replies',
+        populate: { path: 'author', select: 'name email avatar' }
+      })
+      .sort(sortObject)
+      .skip(skip)
+      .limit(limitNum);
+
+    // Get total count for pagination
+    const totalComments = await Comment.countDocuments({
+      blogPost: postId,
+      parentComment: null,
+      status: statusFilter
+    });
+
+    // Get stats breakdown by status
+    const statsBreakdown = await Comment.aggregate([
+      {
+        $match: {
+          blogPost: new mongoose.Types.ObjectId(postId)
+        }
+      },
+      {
+        $group: {
+          _id: '$status',
+          count: { $sum: 1 }
+        }
+      }
+    ]);
+
+    const stats = {
+      total: totalComments,
+      byStatus: statsBreakdown.reduce((acc: any, curr: any) => {
+        acc[curr._id] = curr.count;
+        return acc;
+      }, {})
+    };
+
+    res.status(200).json({
+      success: true,
+      message: 'Comments retrieved successfully',
+      data: {
+        comments,
+        stats,
+        pagination: {
+          page: pageNum,
+          limit: limitNum,
+          total: totalComments,
+          pages: Math.ceil(totalComments / limitNum)
         }
       }
     });

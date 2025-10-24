@@ -41,14 +41,13 @@ const CommentSection: React.FC<CommentSectionProps> = ({
       });
 
       if (response.success) {
-        setComments(response.data.comments || []);
-        setStats(response.data.stats || null);
-        setHasMore(response.data.pagination.page < Math.ceil(response.data.pagination.total / 10));
+        setComments(response.comments || []);
+        setStats(response.stats || null);
+        setHasMore(response.pagination.page < Math.ceil(response.pagination.total / 10));
         if (resetPagination) setPage(1);
       }
     } catch (err: any) {
-      console.error('Error fetching comments:', err);
-      setError(err.response?.data?.message || 'Failed to load comments');
+      setError(err.response?.message || 'Failed to load comments');
     } finally {
       setLoading(false);
     }
@@ -56,6 +55,7 @@ const CommentSection: React.FC<CommentSectionProps> = ({
 
   useEffect(() => {
     fetchComments(true);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [blogPostId, sortBy]);
 
   // Create new comment
@@ -98,7 +98,7 @@ const CommentSection: React.FC<CommentSectionProps> = ({
       // Refresh comments after delete
       await fetchComments(true);
     } catch (err: any) {
-      alert(err.response?.data?.message || 'Failed to delete comment');
+      alert(err.response?.message || 'Failed to delete comment');
     }
   };
 
@@ -109,7 +109,7 @@ const CommentSection: React.FC<CommentSectionProps> = ({
       // Refresh comments to update like counts
       await fetchComments();
     } catch (err: any) {
-      console.error('Error liking comment:', err);
+      // Silently handle like errors
     }
   };
 
@@ -120,7 +120,7 @@ const CommentSection: React.FC<CommentSectionProps> = ({
       // Refresh comments to update dislike counts
       await fetchComments();
     } catch (err: any) {
-      console.error('Error disliking comment:', err);
+      // Silently handle dislike errors
     }
   };
 

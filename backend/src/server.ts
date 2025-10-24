@@ -12,6 +12,7 @@ import { config, connectDB, initializeFirebase, logger } from './config';
 import { errorHandler, notFound } from './middleware';
 import routes from './routes';
 import healthRoutes from './routes/health.routes';
+import currencyRoutes from './routes/currency.routes';
 import { scheduleTicketJobs } from './utils/ticketExpiration';
 import { scheduleEventLifecycleJobs } from './utils/eventLifecycle';
 
@@ -89,6 +90,7 @@ app.use(morgan(config.nodeEnv === 'development' ? 'dev' : 'combined'));
 
 // API routes
 app.use('/api', routes);
+app.use('/api/currency', currencyRoutes);
 
 // Enhanced health check routes (also mounted under /api for API consistency)
 app.use('/api/health', healthRoutes);

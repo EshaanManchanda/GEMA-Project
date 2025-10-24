@@ -480,17 +480,17 @@ export const deleteCategory = catchAsync(async (req: Request, res: Response) => 
   });
 });
 
-export const getAllCategoriesAdmin = catchAsync(async (req: Request, res: Response) => {
-  const categories = await BlogCategory.find()
-    .sort({ name: 1 })
-    .lean();
-
-  res.status(200).json({
-    success: true,
-    message: 'Categories retrieved successfully',
-    data: { categories }
-  });
-});
+export const getAllCategoriesAdmin = async (req: Request, res: Response) => {
+  try {
+    console.log('getAllCategoriesAdmin: Received request to fetch all blog categories for admin.');
+    const categories = await BlogCategory.find({}).sort({ name: 1 });
+    console.log(`getAllCategoriesAdmin: Fetched ${categories.length} categories.`);
+    res.status(200).json({ success: true, data: categories });
+  } catch (error: any) {
+    console.error('getAllCategoriesAdmin: Error fetching blog categories:', error);
+    res.status(500).json({ success: false, message: error.message || 'Server Error' });
+  }
+};
 
 // Blog interaction controllers
 export const likeBlog = catchAsync(async (req: Request, res: Response) => {

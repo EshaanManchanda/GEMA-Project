@@ -102,7 +102,10 @@ router.use('/blogs', blogRoutes);
 router.use('/blog', blogCommentsRoutes);
 
 // Admin Blog Management routes
-router.use('/admin/blogs', adminBlogRoutes);
+router.use('/admin/blogs', (req, res, next) => {
+  console.log(`[DEBUG] Admin Blog Route - Path: ${req.path}, Method: ${req.method}`);
+  next();
+}, adminBlogRoutes);
 
 // New feature routes
 router.use('/categories', categoryRoutes);

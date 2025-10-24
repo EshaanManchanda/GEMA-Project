@@ -47,8 +47,14 @@ api.interceptors.request.use(
     const state = store.getState();
     const token = state.auth.token;
 
+    // Log token presence for debugging
+    console.log('[API Interceptor] Token available:', !!token);
+
     if (token) {
       config.headers.Authorization = `Bearer ${token}`;
+    } else {
+      // Handle missing token (e.g., redirect to login)
+      console.warn('[API Interceptor] No token found in store');
     }
 
     // Add request deduplication for GET requests (stats/dashboard endpoints)
@@ -336,3 +342,7 @@ export class ApiService {
 
 // Export the axios instance for direct use if needed
 export default api;
+
+export const getAdminBlogCategories = async () => {
+  return await api.get(`/admin/blogs/categories`);
+};

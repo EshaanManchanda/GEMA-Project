@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { useForm, Controller } from 'react-hook-form';
 import { yupResolver } from '@hookform/resolvers/yup';
 import * as yup from 'yup';
@@ -27,21 +27,26 @@ import SEOEditor from '../seo/SEOEditor';
 // Validation schema
 const blogSchema = yup.object().shape({
   title: yup.string().required('Title is required').max(200, 'Title cannot exceed 200 characters'),
+  slug: yup.string().optional(),
   excerpt: yup.string().required('Excerpt is required').max(500, 'Excerpt cannot exceed 500 characters'),
   content: yup.string().required('Content is required'),
   featuredImage: yup.string().required('Featured image is required'),
   category: yup.string().required('Category is required'),
-  'author.name': yup.string().required('Author name is required').max(100, 'Author name cannot exceed 100 characters'),
-  'author.email': yup.string().email('Must be a valid email').required('Author email is required'),
-  'author.avatar': yup.string().url('Must be a valid URL').optional(),
-  'author.bio': yup.string().max(500, 'Author bio cannot exceed 500 characters').optional(),
+  author: yup.object().shape({
+    name: yup.string().required('Author name is required').max(100, 'Author name cannot exceed 100 characters'),
+    email: yup.string().email('Must be a valid email').required('Author email is required'),
+    avatar: yup.string().url('Must be a valid URL').optional(),
+    bio: yup.string().max(500, 'Author bio cannot exceed 500 characters').optional(),
+  }),
   tags: yup.array().of(yup.string().max(50, 'Tag cannot exceed 50 characters')),
   status: yup.string().oneOf(['draft', 'published', 'archived']).optional(),
   featured: yup.boolean().optional(),
-  'seo.metaTitle': yup.string().max(60, 'Meta title cannot exceed 60 characters').optional(),
-  'seo.metaDescription': yup.string().max(160, 'Meta description cannot exceed 160 characters').optional(),
-  'seo.metaKeywords': yup.array().of(yup.string()).optional(),
-  'seo.canonicalUrl': yup.string().url('Must be a valid URL').optional(),
+  seo: yup.object().shape({
+    metaTitle: yup.string().max(60, 'Meta title cannot exceed 60 characters').optional(),
+    metaDescription: yup.string().max(160, 'Meta description cannot exceed 160 characters').optional(),
+    metaKeywords: yup.array().of(yup.string()).optional(),
+    canonicalUrl: yup.string().url('Must be a valid URL').optional(),
+  }),
 });
 
 interface BlogFormProps {
@@ -71,14 +76,21 @@ const BlogForm: React.FC<BlogFormProps> = ({
 
   // Update SEO data when blog changes
   useEffect(() => {
-    if (blog) {
+    if (isOpen && blog) {
+      console.log('Updating SEO data for blog');
       setSeoData({
         title: blog.seo?.metaTitle || '',
         description: blog.seo?.metaDescription || '',
         keywords: blog.seo?.metaKeywords || []
       });
+    } else if (isOpen && !blog) {
+      setSeoData({
+        title: '',
+        description: '',
+        keywords: []
+      });
     }
-  }, [blog]);
+  }, [blog, isOpen]);
 
   const {
     control,
@@ -91,6 +103,7 @@ const BlogForm: React.FC<BlogFormProps> = ({
     resolver: yupResolver(blogSchema),
     defaultValues: {
       title: '',
+      slug: '',
       excerpt: '',
       content: '',
       featuredImage: '',
@@ -117,10 +130,40 @@ const BlogForm: React.FC<BlogFormProps> = ({
   const watchedContent = watch('content');
   const watchedTitle = watch('title');
 
+  // Log validation errors for debugging
   useEffect(() => {
-    if (blog) {
-      reset({
+    if (Object.keys(errors).length > 0) {
+      console.error('Form validation errors:', errors);
+    }
+  }, [errors]);
+
+  // Memoized callback for SEO Editor to prevent infinite loops
+  const handleSeoDataChange = useCallback((newSeoData: any) => {
+    setSeoData(newSeoData);
+    setValue('seo.metaTitle', newSeoData.title);
+    setValue('seo.metaDescription', newSeoData.description);
+    setValue('seo.metaKeywords', newSeoData.keywords);
+    setValue('seo.canonicalUrl', newSeoData.canonicalUrl || '');
+  }, [setValue]);
+
+  // Reset form when blog changes or modal opens
+  useEffect(() => {
+    console.log('=== FORM RESET TRIGGERED ===');
+    console.log('isOpen:', isOpen);
+    console.log('blog exists:', !!blog);
+
+    if (isOpen && blog) {
+      console.log('Blog ID:', blog._id);
+      console.log('Blog title:', blog.title);
+      console.log('Blog content length:', blog.content?.length || 0);
+      console.log('Blog content preview:', blog.content?.substring(0, 100));
+      console.log('Blog excerpt:', blog.excerpt);
+      console.log('Blog category:', blog.category);
+      console.log('Blog tags:', blog.tags);
+
+      const formData = {
         title: blog.title || '',
+        slug: blog.slug || '',
         excerpt: blog.excerpt || '',
         content: blog.content || '',
         featuredImage: blog.featuredImage || '',
@@ -140,10 +183,16 @@ const BlogForm: React.FC<BlogFormProps> = ({
           metaKeywords: blog.seo?.metaKeywords || [],
           canonicalUrl: blog.seo?.canonicalUrl || ''
         }
-      });
-    } else {
+      };
+
+      console.log('Resetting form with data. Content field:', formData.content?.substring(0, 100));
+      reset(formData);
+      console.log('Form reset complete');
+    } else if (isOpen && !blog) {
+      console.log('Creating new blog, resetting to empty form');
       reset({
         title: '',
+        slug: '',
         excerpt: '',
         content: '',
         featuredImage: '',
@@ -165,7 +214,7 @@ const BlogForm: React.FC<BlogFormProps> = ({
         }
       });
     }
-  }, [blog, reset]);
+  }, [blog, reset, isOpen]);
 
   const handleAddTag = () => {
     if (newTag.trim() && !watchedTags.includes(newTag.trim())) {
@@ -179,14 +228,75 @@ const BlogForm: React.FC<BlogFormProps> = ({
     setValue('tags', updatedTags);
   };
 
-  const handleFormSubmit = async (data: any) => {
-    try {
-      await onSubmit(data);
-      onClose();
-      toast.success(blog ? 'Blog updated successfully!' : 'Blog created successfully!');
-    } catch (error) {
-      toast.error('An error occurred. Please try again.');
+  const handleClose = () => {
+    console.log('Closing modal...');
+
+    // Reset local states only (form will be reset when modal reopens based on blog prop)
+    setSeoData({
+      title: '',
+      description: '',
+      keywords: []
+    });
+    setPreviewMode(false);
+    setNewTag('');
+
+    // Call parent onClose - the form reset will happen in useEffect when modal reopens
+    onClose();
+  };
+
+  const cleanFormData = (data: any) => {
+    // Create a deep copy to avoid mutating original data
+    const cleaned = { ...data };
+
+    // Convert empty strings to undefined for optional fields
+    if (cleaned.slug === '') cleaned.slug = undefined;
+    if (cleaned.author) {
+      if (cleaned.author.avatar === '') cleaned.author.avatar = undefined;
+      if (cleaned.author.bio === '') cleaned.author.bio = undefined;
     }
+    if (cleaned.seo) {
+      if (cleaned.seo.metaTitle === '') cleaned.seo.metaTitle = undefined;
+      if (cleaned.seo.metaDescription === '') cleaned.seo.metaDescription = undefined;
+      if (cleaned.seo.canonicalUrl === '') cleaned.seo.canonicalUrl = undefined;
+      if (cleaned.seo.metaKeywords && cleaned.seo.metaKeywords.length === 0) {
+        cleaned.seo.metaKeywords = undefined;
+      }
+    }
+
+    return cleaned;
+  };
+
+  const handleFormSubmit = async (data: any) => {
+    console.log('=== FORM SUBMIT TRIGGERED ===');
+    console.log('Form is valid, submitting data...');
+    console.log('Raw form data:', data);
+
+    try {
+      const cleanedData = cleanFormData(data);
+      console.log('Cleaned form data:', cleanedData);
+      console.log('Calling onSubmit...');
+
+      await onSubmit(cleanedData);
+
+      console.log('onSubmit completed successfully');
+      toast.success(blog ? 'Blog updated successfully!' : 'Blog created successfully!');
+      onClose();
+    } catch (error: any) {
+      console.error('=== FORM SUBMISSION ERROR ===');
+      console.error('Error object:', error);
+      console.error('Error message:', error.message);
+      console.error('Error response:', error.response);
+
+      const errorMessage = error.message || 'An error occurred. Please try again.';
+      toast.error(errorMessage);
+    }
+  };
+
+  const handleSubmitClick = (e: React.MouseEvent) => {
+    console.log('=== SUBMIT BUTTON CLICKED ===');
+    console.log('Current errors:', errors);
+    console.log('Form is submitting:', isSubmitting);
+    console.log('Has validation errors:', Object.keys(errors).length > 0);
   };
 
   const renderPreview = () => (
@@ -199,14 +309,33 @@ const BlogForm: React.FC<BlogFormProps> = ({
     </div>
   );
 
+  const onFormSubmit = handleSubmit(
+    (data) => {
+      console.log('Form validation passed, calling handleFormSubmit');
+      handleFormSubmit(data);
+    },
+    (errors) => {
+      console.error('Form validation failed:', errors);
+      toast.error('Please fix the validation errors before submitting');
+    }
+  );
+
   return (
     <Modal
       isOpen={isOpen}
-      onClose={onClose}
+      onClose={handleClose}
       title={blog ? 'Edit Blog Post' : 'Create New Blog Post'}
-      size="xl"
+      size="full"
     >
-      <form onSubmit={handleSubmit(handleFormSubmit)} className="space-y-6">
+      {loading ? (
+        <div className="flex items-center justify-center py-12">
+          <div className="text-center">
+            <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto mb-4"></div>
+            <p className="text-gray-600">Loading blog data...</p>
+          </div>
+        </div>
+      ) : (
+        <form onSubmit={onFormSubmit} className="space-y-6 max-h-[calc(100vh-200px)] overflow-y-auto p-2">
         {/* Header with preview toggle */}
         <div className="flex justify-between items-center">
           <div className="flex space-x-2">
@@ -234,28 +363,44 @@ const BlogForm: React.FC<BlogFormProps> = ({
         {previewMode ? (
           renderPreview()
         ) : (
-          <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+          <div className="grid grid-cols-1 lg:grid-cols-[2fr,1fr] gap-6">
             {/* Main Content */}
-            <div className="lg:col-span-2 space-y-6">
+            <div className="space-y-4">
               {/* Basic Information */}
               <Card>
                 <CardHeader>
-                  <CardTitle>Basic Information</CardTitle>
+                  <CardTitle className="text-base">Basic Information</CardTitle>
                 </CardHeader>
-                <CardContent className="space-y-4">
-                  <Controller
-                    name="title"
-                    control={control}
-                    render={({ field }) => (
-                      <Input
-                        {...field}
-                        label="Title"
-                        placeholder="Enter blog title"
-                        error={errors.title?.message}
-                        required
-                      />
-                    )}
-                  />
+                <CardContent className="space-y-3">
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <Controller
+                      name="title"
+                      control={control}
+                      render={({ field }) => (
+                        <Input
+                          {...field}
+                          label="Title"
+                          placeholder="Enter blog title"
+                          error={errors.title?.message}
+                          required
+                        />
+                      )}
+                    />
+
+                    <Controller
+                      name="slug"
+                      control={control}
+                      render={({ field }) => (
+                        <Input
+                          {...field}
+                          label="Slug (URL)"
+                          placeholder="auto-generated-from-title"
+                          error={errors.slug?.message}
+                          helperText="Leave empty to auto-generate from title"
+                        />
+                      )}
+                    />
+                  </div>
 
                   <Controller
                     name="excerpt"
@@ -288,8 +433,8 @@ const BlogForm: React.FC<BlogFormProps> = ({
                         </label>
                         <textarea
                           {...field}
-                          className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-                          rows={15}
+                          className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 font-mono text-sm"
+                          rows={20}
                           placeholder="Write your blog content here (supports HTML)"
                         />
                         {errors.content && (
@@ -304,21 +449,21 @@ const BlogForm: React.FC<BlogFormProps> = ({
               {/* Author Information */}
               <Card>
                 <CardHeader>
-                  <CardTitle className="flex items-center">
+                  <CardTitle className="flex items-center text-base">
                     <User className="w-5 h-5 mr-2" />
                     Author Information
                   </CardTitle>
                 </CardHeader>
-                <CardContent className="space-y-4">
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <CardContent className="space-y-3">
+                  <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
                     <Controller
                       name="author.name"
                       control={control}
                       render={({ field }) => (
                         <Input
                           {...field}
-                          label="Author Name"
-                          placeholder="Enter author name"
+                          label="Name"
+                          placeholder="Author name"
                           error={errors.author?.name?.message}
                           required
                         />
@@ -332,28 +477,28 @@ const BlogForm: React.FC<BlogFormProps> = ({
                         <Input
                           {...field}
                           type="email"
-                          label="Author Email"
-                          placeholder="Enter author email"
+                          label="Email"
+                          placeholder="Author email"
                           error={errors.author?.email?.message}
                           required
                         />
                       )}
                     />
-                  </div>
 
-                  <Controller
-                    name="author.avatar"
-                    control={control}
-                    render={({ field }) => (
-                      <Input
-                        {...field}
-                        type="url"
-                        label="Author Avatar URL"
-                        placeholder="https://example.com/avatar.jpg"
-                        error={errors.author?.avatar?.message}
-                      />
-                    )}
-                  />
+                    <Controller
+                      name="author.avatar"
+                      control={control}
+                      render={({ field }) => (
+                        <Input
+                          {...field}
+                          type="url"
+                          label="Avatar URL"
+                          placeholder="https://example.com/avatar.jpg"
+                          error={errors.author?.avatar?.message}
+                        />
+                      )}
+                    />
+                  </div>
 
                   <Controller
                     name="author.bio"
@@ -361,13 +506,13 @@ const BlogForm: React.FC<BlogFormProps> = ({
                     render={({ field }) => (
                       <div>
                         <label className="block text-sm font-medium text-gray-700 mb-2">
-                          Author Bio
+                          Bio
                         </label>
                         <textarea
                           {...field}
-                          className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-                          rows={3}
-                          placeholder="Author biography"
+                          className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 text-sm"
+                          rows={2}
+                          placeholder="Brief author biography"
                         />
                         {errors.author?.bio && (
                           <p className="mt-1 text-sm text-red-600">{errors.author.bio.message}</p>
@@ -394,13 +539,7 @@ const BlogForm: React.FC<BlogFormProps> = ({
                     tags: watch('tags') || [],
                     type: 'blog'
                   }}
-                  onChange={(newSeoData) => {
-                    setSeoData(newSeoData);
-                    setValue('seo.metaTitle', newSeoData.title);
-                    setValue('seo.metaDescription', newSeoData.description);
-                    setValue('seo.metaKeywords', newSeoData.keywords);
-                    setValue('seo.canonicalUrl', newSeoData.canonicalUrl || '');
-                  }}
+                  onChange={handleSeoDataChange}
                   baseUrl={import.meta.env.VITE_APP_URL || 'https://gema-events.com'}
                   path={`/blog/${watch('slug') || 'new-post'}`}
                   ogImage={watch('featuredImage')}
@@ -410,27 +549,27 @@ const BlogForm: React.FC<BlogFormProps> = ({
             </div>
 
             {/* Sidebar */}
-            <div className="space-y-6">
-              {/* Publishing Options */}
+            <div className="space-y-4">
+              {/* Publishing Options & Category */}
               <Card>
                 <CardHeader>
-                  <CardTitle className="flex items-center">
+                  <CardTitle className="flex items-center text-base">
                     <Calendar className="w-5 h-5 mr-2" />
-                    Publishing
+                    Publishing & Category
                   </CardTitle>
                 </CardHeader>
-                <CardContent className="space-y-4">
+                <CardContent className="space-y-3">
                   <Controller
                     name="status"
                     control={control}
                     render={({ field }) => (
                       <div>
-                        <label className="block text-sm font-medium text-gray-700 mb-2">
+                        <label className="block text-sm font-medium text-gray-700 mb-1.5">
                           Status
                         </label>
                         <select
                           {...field}
-                          className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                          className="w-full px-3 py-2 text-sm border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
                         >
                           <option value="draft">Draft</option>
                           <option value="published">Published</option>
@@ -441,10 +580,36 @@ const BlogForm: React.FC<BlogFormProps> = ({
                   />
 
                   <Controller
+                    name="category"
+                    control={control}
+                    render={({ field }) => (
+                      <div>
+                        <label className="block text-sm font-medium text-gray-700 mb-1.5">
+                          Category
+                        </label>
+                        <select
+                          {...field}
+                          className="w-full px-3 py-2 text-sm border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                        >
+                          <option value="">Select Category</option>
+                          {categories.map((cat) => (
+                            <option key={cat._id} value={cat._id}>
+                              {cat.name}
+                            </option>
+                          ))}
+                        </select>
+                        {errors.category && (
+                          <p className="mt-1 text-sm text-red-600">{errors.category.message}</p>
+                        )}
+                      </div>
+                    )}
+                  />
+
+                  <Controller
                     name="featured"
                     control={control}
                     render={({ field }) => (
-                      <div className="flex items-center">
+                      <div className="flex items-center pt-1">
                         <input
                           {...field}
                           type="checkbox"
@@ -460,44 +625,15 @@ const BlogForm: React.FC<BlogFormProps> = ({
                 </CardContent>
               </Card>
 
-              {/* Category */}
-              <Card>
-                <CardHeader>
-                  <CardTitle>Category</CardTitle>
-                </CardHeader>
-                <CardContent>
-                  <Controller
-                    name="category"
-                    control={control}
-                    render={({ field }) => (
-                      <select
-                        {...field}
-                        className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-                      >
-                        <option value="">Select Category</option>
-                        {categories.map((cat) => (
-                          <option key={cat._id} value={cat._id}>
-                            {cat.name}
-                          </option>
-                        ))}
-                      </select>
-                    )}
-                  />
-                  {errors.category && (
-                    <p className="mt-1 text-sm text-red-600">{errors.category.message}</p>
-                  )}
-                </CardContent>
-              </Card>
-
               {/* Featured Image */}
               <Card>
                 <CardHeader>
-                  <CardTitle className="flex items-center">
+                  <CardTitle className="flex items-center text-base">
                     <Image className="w-5 h-5 mr-2" />
                     Featured Image
                   </CardTitle>
                 </CardHeader>
-                <CardContent className="space-y-4">
+                <CardContent className="space-y-3">
                   <Controller
                     name="featuredImage"
                     control={control}
@@ -517,8 +653,8 @@ const BlogForm: React.FC<BlogFormProps> = ({
                   />
 
                   {/* URL Input as fallback */}
-                  <div className="text-sm text-gray-600">
-                    <p className="mb-2">Or enter image URL:</p>
+                  <div className="text-xs text-gray-600">
+                    <p className="mb-1.5">Or enter image URL:</p>
                     <Controller
                       name="featuredImage"
                       control={control}
@@ -538,19 +674,19 @@ const BlogForm: React.FC<BlogFormProps> = ({
               {/* Tags */}
               <Card>
                 <CardHeader>
-                  <CardTitle className="flex items-center">
+                  <CardTitle className="flex items-center text-base">
                     <Hash className="w-5 h-5 mr-2" />
                     Tags
                   </CardTitle>
                 </CardHeader>
-                <CardContent className="space-y-3">
+                <CardContent className="space-y-2.5">
                   <div className="flex space-x-2">
                     <input
                       type="text"
                       value={newTag}
                       onChange={(e) => setNewTag(e.target.value)}
                       placeholder="Add tag"
-                      className="flex-1 px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                      className="flex-1 px-3 py-1.5 text-sm border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
                       onKeyPress={(e) => e.key === 'Enter' && (e.preventDefault(), handleAddTag())}
                     />
                     <Button
@@ -563,11 +699,11 @@ const BlogForm: React.FC<BlogFormProps> = ({
                     </Button>
                   </div>
 
-                  <div className="flex flex-wrap gap-2">
+                  <div className="flex flex-wrap gap-1.5">
                     {watchedTags.map((tag, index) => (
                       <span
                         key={index}
-                        className="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-blue-100 text-blue-800"
+                        className="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-blue-100 text-blue-800"
                       >
                         {tag}
                         <button
@@ -587,25 +723,46 @@ const BlogForm: React.FC<BlogFormProps> = ({
         )}
 
         {/* Form Actions */}
-        <div className="flex justify-end space-x-3 pt-6 border-t">
-          <Button
-            type="button"
-            variant="secondary"
-            onClick={onClose}
-            disabled={isSubmitting}
-          >
-            Cancel
-          </Button>
-          <Button
-            type="submit"
-            variant="primary"
-            loading={isSubmitting || loading}
-          >
-            <Save className="w-4 h-4 mr-2" />
-            {blog ? 'Update Blog' : 'Create Blog'}
-          </Button>
+        <div className="sticky bottom-0 bg-white border-t border-gray-200 pt-4 pb-2 -mx-2 px-2 mt-6">
+          {/* Validation Error Summary */}
+          {Object.keys(errors).length > 0 && (
+            <div className="mb-4 p-3 bg-red-50 border border-red-200 rounded-lg">
+              <p className="text-sm font-medium text-red-800 mb-2">
+                Please fix the following errors before submitting:
+              </p>
+              <ul className="list-disc list-inside text-sm text-red-700 space-y-1">
+                {Object.entries(errors).map(([key, error]: [string, any]) => (
+                  <li key={key}>
+                    {key}: {error?.message || 'Invalid value'}
+                  </li>
+                ))}
+              </ul>
+            </div>
+          )}
+
+          <div className="flex justify-end space-x-3">
+            <Button
+              type="button"
+              variant="secondary"
+              onClick={handleClose}
+              disabled={isSubmitting}
+            >
+              Cancel
+            </Button>
+            <Button
+              type="submit"
+              variant="primary"
+              loading={isSubmitting || loading}
+              onClick={handleSubmitClick}
+              animated={false}
+            >
+              <Save className="w-4 h-4 mr-2" />
+              {blog ? 'Update Blog' : 'Create Blog'}
+            </Button>
+          </div>
         </div>
-      </form>
+        </form>
+      )}
     </Modal>
   );
 };

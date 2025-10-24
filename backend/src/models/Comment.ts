@@ -11,14 +11,15 @@ export interface IComment extends Document {
   isEdited: boolean;
   isReported: boolean;
   reportCount: number;
-  status: 'active' | 'flagged' | 'deleted';
+  status: 'pending' | 'active' | 'flagged' | 'deleted';
+  sanitizedContent: string;
   createdAt: Date;
   updatedAt: Date;
 }
 
 export interface ICommentModel extends Model<IComment> {
-  getCommentsWithReplies(blogPostId: string): Promise<any[]>;
-  getCommentStats(blogPostId: string): Promise<any>;
+  getCommentsWithReplies(blogPostId: string, status: 'pending' | 'active' | 'flagged' | 'deleted', page: number, limit: number, sort: 'newest' | 'oldest' | 'likes'): Promise<{ comments: IComment[], totalComments: number }>;
+  getCommentStats(blogPostId: string, status?: 'pending' | 'active' | 'flagged' | 'deleted'): Promise<any>;
 }
 
 const commentSchema: Schema = new Schema(
@@ -28,6 +29,10 @@ const commentSchema: Schema = new Schema(
       required: [true, 'Comment content is required'],
       maxlength: [1000, 'Comment content cannot exceed 1000 characters'],
       trim: true
+    },
+    sanitizedContent: {
+      type: String,
+      required: true,
     },
     author: {
       type: Schema.Types.ObjectId,
@@ -71,8 +76,8 @@ const commentSchema: Schema = new Schema(
     },
     status: {
       type: String,
-      enum: ['active', 'flagged', 'deleted'],
-      default: 'active'
+      enum: ['pending', 'active', 'flagged', 'deleted'],
+      default: 'pending'
     }
   },
   {
@@ -130,14 +135,45 @@ commentSchema.pre('deleteOne', { document: true, query: false }, async function(
 });
 
 // Static method to get comments with replies
-commentSchema.statics.getCommentsWithReplies = async function(blogPostId: string) {
+commentSchema.statics.getCommentsWithReplies = async function(
+  blogPostId: string,
+  status: 'pending' | 'active' | 'flagged' | 'deleted' = 'pending',
+  page: number = 1,
+  limit: number = 10,
+  sort: 'newest' | 'oldest' | 'likes' = 'newest'
+) {
+  const skip = (page - 1) * limit;
+
+  let sortObject: any = { createdAt: -1 }; // Default: newest first
+  if (sort === 'oldest') {
+    sortObject = { createdAt: 1 };
+  } else if (sort === 'likes') {
+    sortObject = { likeCount: -1, createdAt: -1 }; // Sort by likeCount (virtual) then createdAt
+  }
+
   return this.aggregate([
     {
       $match: {
         blogPost: new mongoose.Types.ObjectId(blogPostId),
         parentComment: null,
-        status: 'active'
+        status: status, // Filter by status
+      },
+    },
+    {
+      $addFields: {
+        likeCount: { $size: '$likes' },
+        dislikeCount: { $size: '$dislikes' },
+        replyCount: { $size: '$replies' }
       }
+    },
+    {
+      $sort: sortObject
+    },
+    {
+      $skip: skip
+    },
+    {
+      $limit: limit
     },
     {
       $lookup: {
@@ -167,7 +203,17 @@ commentSchema.statics.getCommentsWithReplies = async function(blogPostId: string
         as: 'replies',
         pipeline: [
           {
-            $match: { status: 'active' }
+            $match: { status: status }
+          },
+          {
+            $addFields: {
+              likeCount: { $size: '$likes' },
+              dislikeCount: { $size: '$dislikes' },
+              replyCount: { $size: '$replies' }
+            }
+          },
+          {
+            $sort: { createdAt: 1 }
           },
           {
             $lookup: {
@@ -188,9 +234,6 @@ commentSchema.statics.getCommentsWithReplies = async function(blogPostId: string
           },
           {
             $unwind: '$author'
-          },
-          {
-            $sort: { createdAt: 1 }
           }
         ]
       }
@@ -209,13 +252,19 @@ commentSchema.statics.getCommentsWithReplies = async function(blogPostId: string
 };
 
 // Static method to get comment stats for a blog post
-commentSchema.statics.getCommentStats = async function(blogPostId: string) {
+commentSchema.statics.getCommentStats = async function(blogPostId: string, status?: 'pending' | 'active' | 'flagged' | 'deleted') {
+  const matchQuery: any = {
+    blogPost: new mongoose.Types.ObjectId(blogPostId)
+  };
+
+  // Only filter by status if provided, otherwise count all
+  if (status) {
+    matchQuery.status = status;
+  }
+
   const stats = await this.aggregate([
     {
-      $match: {
-        blogPost: new mongoose.Types.ObjectId(blogPostId),
-        status: 'active'
-      }
+      $match: matchQuery
     },
     {
       $group: {

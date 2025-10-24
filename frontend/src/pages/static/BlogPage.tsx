@@ -34,18 +34,19 @@ const BlogPage: React.FC = () => {
         }),
         page === 1 ? blogAPI.getBlogCategories() : Promise.resolve({ data: { categories } })
       ]);
-
-      if (blogsResponse.success) {
-        setBlogs(blogsResponse.data.blogs || []);
-        if (blogsResponse.data.pagination) {
-          setCurrentPage(blogsResponse.data.pagination.currentPage);
-          setTotalPages(blogsResponse.data.pagination.totalPages);
-          setHasMore(blogsResponse.data.pagination.hasNextPage);
+      console.log('blogsResponse', blogsResponse);
+      console.log('categoriesResponse', categoriesResponse);
+      if (blogsResponse.blogs) {
+        setBlogs(blogsResponse.blogs || []);
+        if (blogsResponse.pagination) {
+          setCurrentPage(blogsResponse.pagination.currentPage);
+          setTotalPages(blogsResponse.pagination.totalPages);
+          setHasMore(blogsResponse.pagination.hasNextPage);
         }
       }
 
-      if (page === 1 && categoriesResponse.success) {
-        setCategories(categoriesResponse.data.categories || []);
+      if (page === 1 && categoriesResponse.categories) {
+        setCategories(categoriesResponse.categories || []);
       }
     } catch (err: any) {
       console.error('Error fetching blog data:', err);

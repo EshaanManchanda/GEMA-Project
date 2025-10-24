@@ -1,6 +1,6 @@
 import { Router } from 'express';
 import { body, param, query } from 'express-validator';
-import { authenticate } from '../middleware/auth';
+import { authenticate, authorize } from '../middleware/auth';
 import { validateRequest } from '../middleware/validation';
 import {
   createComment,
@@ -10,7 +10,9 @@ import {
   likeComment,
   dislikeComment,
   reportComment,
-  getCommentReplies
+  getCommentReplies,
+  approveComment,
+  getCommentsForAdmin
 } from '../controllers/blog.comments.controller';
 
 const router = Router();
@@ -152,6 +154,50 @@ router.get(
   ],
   validateRequest,
   getCommentReplies
+);
+
+// Approve a comment (Admin/Superadmin only)
+router.put(
+  '/comments/:commentId/approve',
+  authenticate,
+  authorize(['admin', 'superadmin']),
+  [
+    param('commentId')
+      .isMongoId()
+      .withMessage('Invalid comment ID')
+  ],
+  validateRequest,
+  approveComment
+);
+
+// Get all comments for a blog post (Admin/Superadmin only - includes all statuses)
+router.get(
+  '/admin/posts/:postId/comments',
+  authenticate,
+  authorize(['admin', 'superadmin']),
+  [
+    param('postId')
+      .isMongoId()
+      .withMessage('Invalid blog post ID'),
+    query('page')
+      .optional()
+      .isInt({ min: 1 })
+      .withMessage('Page must be a positive integer'),
+    query('limit')
+      .optional()
+      .isInt({ min: 1, max: 100 })
+      .withMessage('Limit must be between 1 and 100'),
+    query('sort')
+      .optional()
+      .isIn(['newest', 'oldest'])
+      .withMessage('Sort must be newest or oldest'),
+    query('statuses')
+      .optional()
+      .isString()
+      .withMessage('Statuses must be a comma-separated string')
+  ],
+  validateRequest,
+  getCommentsForAdmin
 );
 
 export default router;

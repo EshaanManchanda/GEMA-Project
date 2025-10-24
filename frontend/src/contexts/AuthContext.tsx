@@ -41,18 +41,26 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     // Only run once on mount to avoid infinite loops
     const initializeAuth = async () => {
       const token = localStorage.getItem('token');
-      if (token && !user) {
+      if (token && !user && !isAuthenticated) {
         try {
-          // Clear any existing errors before attempting auth
           dispatch(clearError());
           await dispatch(getCurrentUser() as any);
         } catch (error) {
-          // Token might be invalid, clear it
           localStorage.removeItem('token');
           localStorage.removeItem('refreshToken');
-          // Clear auth errors since this is just initialization
           dispatch(clearError());
         }
+      };
+      try {
+        // Clear any existing errors before attempting auth
+        dispatch(clearError());
+        await dispatch(getCurrentUser() as any);
+      } catch (error) {
+        // Token might be invalid, clear it
+        localStorage.removeItem('token');
+        localStorage.removeItem('refreshToken');
+        // Clear auth errors since this is just initialization
+        dispatch(clearError());
       }
     };
 

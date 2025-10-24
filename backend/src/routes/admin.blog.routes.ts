@@ -22,6 +22,12 @@ const createBlogValidation = [
     .isString()
     .isLength({ min: 1, max: 200 })
     .withMessage('Title must be between 1 and 200 characters'),
+  body('slug')
+    .optional({ checkFalsy: true })
+    .isString()
+    .trim()
+    .isLength({ min: 1, max: 200 })
+    .withMessage('Slug must be between 1 and 200 characters'),
   body('excerpt')
     .isString()
     .isLength({ min: 1, max: 500 })
@@ -45,55 +51,138 @@ const createBlogValidation = [
     .isEmail()
     .withMessage('Author email must be valid'),
   body('author.avatar')
-    .optional()
+    .optional({ checkFalsy: true })
     .isURL()
     .withMessage('Author avatar must be a valid URL'),
   body('author.bio')
-    .optional()
+    .optional({ checkFalsy: true })
     .isString()
     .isLength({ max: 500 })
     .withMessage('Author bio cannot exceed 500 characters'),
   body('tags')
-    .optional()
+    .optional({ checkFalsy: true })
     .isArray()
     .withMessage('Tags must be an array'),
   body('tags.*')
-    .optional()
+    .optional({ checkFalsy: true })
     .isString()
     .trim()
     .isLength({ min: 1, max: 50 })
     .withMessage('Each tag must be between 1 and 50 characters'),
   body('status')
-    .optional()
+    .optional({ checkFalsy: true })
     .isIn(['draft', 'published', 'archived'])
     .withMessage('Status must be draft, published, or archived'),
   body('featured')
-    .optional()
+    .optional({ checkFalsy: true })
     .isBoolean()
     .withMessage('Featured must be a boolean'),
   body('seo.metaTitle')
-    .optional()
+    .optional({ checkFalsy: true })
     .isString()
     .isLength({ max: 60 })
     .withMessage('Meta title cannot exceed 60 characters'),
   body('seo.metaDescription')
-    .optional()
+    .optional({ checkFalsy: true })
     .isString()
     .isLength({ max: 160 })
     .withMessage('Meta description cannot exceed 160 characters'),
   body('seo.metaKeywords')
-    .optional()
+    .optional({ checkFalsy: true })
     .isArray()
     .withMessage('Meta keywords must be an array'),
   body('seo.canonicalUrl')
-    .optional()
+    .optional({ checkFalsy: true })
     .isURL()
     .withMessage('Canonical URL must be valid')
 ];
 
 const updateBlogValidation = [
   param('id').isMongoId().withMessage('Blog ID must be valid'),
-  ...createBlogValidation.map(validation => validation.optional())
+  body('title')
+    .optional({ checkFalsy: true })
+    .isString()
+    .isLength({ min: 1, max: 200 })
+    .withMessage('Title must be between 1 and 200 characters'),
+  body('slug')
+    .optional({ checkFalsy: true })
+    .isString()
+    .trim()
+    .isLength({ min: 1, max: 200 })
+    .withMessage('Slug must be between 1 and 200 characters'),
+  body('excerpt')
+    .optional({ checkFalsy: true })
+    .isString()
+    .isLength({ min: 1, max: 500 })
+    .withMessage('Excerpt must be between 1 and 500 characters'),
+  body('content')
+    .optional({ checkFalsy: true })
+    .isString()
+    .isLength({ min: 1 })
+    .withMessage('Content is required'),
+  body('featuredImage')
+    .optional({ checkFalsy: true })
+    .isString()
+    .isURL()
+    .withMessage('Featured image must be a valid URL'),
+  body('category')
+    .optional({ checkFalsy: true })
+    .isMongoId()
+    .withMessage('Category must be a valid ID'),
+  body('author.name')
+    .optional({ checkFalsy: true })
+    .isString()
+    .isLength({ min: 1, max: 100 })
+    .withMessage('Author name must be between 1 and 100 characters'),
+  body('author.email')
+    .optional({ checkFalsy: true })
+    .isEmail()
+    .withMessage('Author email must be valid'),
+  body('author.avatar')
+    .optional({ checkFalsy: true })
+    .isURL()
+    .withMessage('Author avatar must be a valid URL'),
+  body('author.bio')
+    .optional({ checkFalsy: true })
+    .isString()
+    .isLength({ max: 500 })
+    .withMessage('Author bio cannot exceed 500 characters'),
+  body('tags')
+    .optional({ checkFalsy: true })
+    .isArray()
+    .withMessage('Tags must be an array'),
+  body('tags.*')
+    .optional({ checkFalsy: true })
+    .isString()
+    .trim()
+    .isLength({ min: 1, max: 50 })
+    .withMessage('Each tag must be between 1 and 50 characters'),
+  body('status')
+    .optional({ checkFalsy: true })
+    .isIn(['draft', 'published', 'archived'])
+    .withMessage('Status must be draft, published, or archived'),
+  body('featured')
+    .optional({ checkFalsy: true })
+    .isBoolean()
+    .withMessage('Featured must be a boolean'),
+  body('seo.metaTitle')
+    .optional({ checkFalsy: true })
+    .isString()
+    .isLength({ max: 60 })
+    .withMessage('Meta title cannot exceed 60 characters'),
+  body('seo.metaDescription')
+    .optional({ checkFalsy: true })
+    .isString()
+    .isLength({ max: 160 })
+    .withMessage('Meta description cannot exceed 160 characters'),
+  body('seo.metaKeywords')
+    .optional({ checkFalsy: true })
+    .isArray()
+    .withMessage('Meta keywords must be an array'),
+  body('seo.canonicalUrl')
+    .optional({ checkFalsy: true })
+    .isURL()
+    .withMessage('Canonical URL must be valid')
 ];
 
 const createCategoryValidation = [
@@ -171,18 +260,19 @@ router.route('/')
   .get(getAllBlogsValidation, validateRequest, getAllBlogsAdmin)
   .post(createBlogValidation, validateRequest, createBlog);
 
-router.route('/:id')
-  .get(getBlogValidation, validateRequest, getBlogById)
-  .put(updateBlogValidation, validateRequest, updateBlog)
-  .delete(deleteBlogValidation, validateRequest, deleteBlog);
-
-// Blog category management routes
+// Blog category management routes (must come before /:id to avoid route conflicts)
 router.route('/categories')
-  .get(getAllCategoriesAdmin)
+  .get(validateRequest, getAllCategoriesAdmin)
   .post(createCategoryValidation, validateRequest, createCategory);
 
 router.route('/categories/:id')
   .put(updateCategoryValidation, validateRequest, updateCategory)
   .delete(deleteCategoryValidation, validateRequest, deleteCategory);
+
+// Blog ID routes (must come after specific routes like /categories)
+router.route('/:id')
+  .get(getBlogValidation, validateRequest, getBlogById)
+  .put(updateBlogValidation, validateRequest, updateBlog)
+  .delete(deleteBlogValidation, validateRequest, deleteBlog);
 
 export default router;
