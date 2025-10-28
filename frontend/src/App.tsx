@@ -71,6 +71,8 @@ const AdminUsersPage = React.lazy(() => import(/* webpackChunkName: "admin" */ '
 const AdminEventsPage = React.lazy(() => import(/* webpackChunkName: "admin" */ './pages/admin/AdminEventsPage'));
 const AdminEditEventPage = React.lazy(() => import(/* webpackChunkName: "admin" */ './pages/admin/AdminEditEventPage'));
 const AdminVenuesPage = React.lazy(() => import(/* webpackChunkName: "admin" */ './pages/admin/AdminVenuesPage'));
+const CreateVenuePage = React.lazy(() => import(/* webpackChunkName: "admin" */ './pages/admin/CreateVenuePage'));
+const EditVenuePage = React.lazy(() => import(/* webpackChunkName: "admin" */ './pages/admin/EditVenuePage'));
 const AdminCategoriesPage = React.lazy(() => import(/* webpackChunkName: "admin" */ './pages/admin/AdminCategoriesPage'));
 const AdminOrdersPage = React.lazy(() => import(/* webpackChunkName: "admin" */ './pages/admin/AdminOrdersPage'));
 const AdminPayoutsPage = React.lazy(() => import(/* webpackChunkName: "admin" */ './pages/admin/AdminPayoutsPage'));
@@ -667,6 +669,20 @@ function AppContent() {
               <AdminRoute>
                 <Suspense fallback={<LoadingSpinner />}>
                   <AdminVenuesPage />
+                </Suspense>
+              </AdminRoute>
+            } />
+            <Route path="venues/create" element={
+              <AdminRoute>
+                <Suspense fallback={<LoadingSpinner />}>
+                  <CreateVenuePage />
+                </Suspense>
+              </AdminRoute>
+            } />
+            <Route path="venues/:id/edit" element={
+              <AdminRoute>
+                <Suspense fallback={<LoadingSpinner />}>
+                  <EditVenuePage />
                 </Suspense>
               </AdminRoute>
             } />

@@ -88,6 +88,14 @@ export interface EmployeeWelcomeEmailOptions {
   role: string;
 }
 
+export interface ContactNotificationOptions {
+  name: string;
+  email: string;
+  subject: string;
+  message: string;
+  submittedAt: Date;
+}
+
 class EmailService {
   private transporter: nodemailer.Transporter;
 
@@ -789,6 +797,106 @@ class EmailService {
     await this.sendEmail({
       to: options.to,
       subject: `Welcome to ${options.vendorName} - Your Gema Employee Account`,
+      html,
+      text,
+    });
+  }
+
+  /**
+   * Send contact form notification to support team
+   */
+  async sendContactNotification(options: ContactNotificationOptions): Promise<void> {
+    const supportEmail = 'support@gemaevents.com';
+
+    const html = `
+      <!DOCTYPE html>
+      <html>
+      <head>
+        <meta charset="utf-8">
+        <meta name="viewport" content="width=device-width, initial-scale=1.0">
+        <title>New Contact Form Submission - Gema</title>
+        <style>
+          body { font-family: Arial, sans-serif; line-height: 1.6; color: #333; }
+          .container { max-width: 600px; margin: 0 auto; padding: 20px; }
+          .header { background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white; padding: 20px; text-align: center; border-radius: 8px 8px 0 0; }
+          .content { background: #f8f9fa; padding: 30px; border-radius: 0 0 8px 8px; }
+          .info-box { background: white; border: 2px solid #667eea; padding: 20px; border-radius: 8px; margin: 20px 0; }
+          .info-row { display: flex; padding: 10px 0; border-bottom: 1px solid #e0e0e0; }
+          .info-row:last-child { border-bottom: none; }
+          .info-label { font-weight: bold; color: #666; width: 120px; flex-shrink: 0; }
+          .info-value { color: #333; flex: 1; word-break: break-word; }
+          .message-box { background: #e3f2fd; border-left: 4px solid #2196f3; padding: 15px; border-radius: 5px; margin: 20px 0; }
+          .footer { text-align: center; margin-top: 20px; color: #666; font-size: 14px; }
+        </style>
+      </head>
+      <body>
+        <div class="container">
+          <div class="header">
+            <h1>📧 New Contact Form Submission</h1>
+          </div>
+          <div class="content">
+            <p>A new contact form has been submitted on the Gema Events website.</p>
+
+            <div class="info-box">
+              <h3 style="margin-top: 0; color: #667eea;">Contact Information</h3>
+              <div class="info-row">
+                <span class="info-label">Name:</span>
+                <span class="info-value">${options.name}</span>
+              </div>
+              <div class="info-row">
+                <span class="info-label">Email:</span>
+                <span class="info-value"><a href="mailto:${options.email}">${options.email}</a></span>
+              </div>
+              <div class="info-row">
+                <span class="info-label">Subject:</span>
+                <span class="info-value">${options.subject}</span>
+              </div>
+              <div class="info-row">
+                <span class="info-label">Submitted:</span>
+                <span class="info-value">${options.submittedAt.toLocaleString()}</span>
+              </div>
+            </div>
+
+            <div class="message-box">
+              <h4 style="margin-top: 0; color: #1976d2;">Message:</h4>
+              <p style="white-space: pre-wrap; margin: 0;">${options.message}</p>
+            </div>
+
+            <p style="background: #fff3cd; border: 1px solid #ffeaa7; padding: 15px; border-radius: 5px; margin: 20px 0;">
+              <strong>⚠️ Action Required:</strong> Please respond to this inquiry within 24 hours.
+            </p>
+          </div>
+          <div class="footer">
+            <p>This is an automated notification from Gema Events Contact Form</p>
+            <p><small>Submitted on ${options.submittedAt.toLocaleDateString()}</small></p>
+          </div>
+        </div>
+      </body>
+      </html>
+    `;
+
+    const text = `
+      NEW CONTACT FORM SUBMISSION
+
+      Contact Information:
+      --------------------
+      Name: ${options.name}
+      Email: ${options.email}
+      Subject: ${options.subject}
+      Submitted: ${options.submittedAt.toLocaleString()}
+
+      Message:
+      --------------------
+      ${options.message}
+
+      ACTION REQUIRED: Please respond to this inquiry within 24 hours.
+
+      This is an automated notification from Gema Events Contact Form.
+    `;
+
+    await this.sendEmail({
+      to: supportEmail,
+      subject: `New Contact Form: ${options.subject} - ${options.name}`,
       html,
       text,
     });

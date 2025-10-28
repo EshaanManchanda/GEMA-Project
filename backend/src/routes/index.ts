@@ -34,6 +34,7 @@ import adminStatsRoutes from './admin.stats.routes';
 import seoRoutes from './seo.routes';
 import registrationRoutes from './registration.routes';
 import currencyRoutes from './currency.routes';
+import contactRoutes from './contact.routes';
 import { Router } from 'express';
 
 const router = Router();
@@ -140,5 +141,8 @@ router.use('/registrations', registrationRoutes);
 
 // SEO routes (sitemap, robots.txt, etc.)
 router.use('/', seoRoutes);
+
+// Contact routes (contact form submissions)
+router.use('/contact', contactRoutes);
 
 export default router;

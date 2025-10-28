@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { motion } from 'framer-motion';
 import { FiMapPin, FiPhone, FiMail, FiClock, FiSend, FiCheckCircle } from 'react-icons/fi';
 import SEO from '@/components/common/SEO';
+import contactAPI from '@/services/api/contactAPI';
 
 const ContactPage: React.FC = () => {
   const [formData, setFormData] = useState({
@@ -27,21 +28,39 @@ const ContactPage: React.FC = () => {
     e.preventDefault();
     setIsSubmitting(true);
     setError('');
-    
+
     try {
-      // Simulate API call
-      await new Promise(resolve => setTimeout(resolve, 1500));
-      
-      console.log('Form submitted:', formData);
-      setIsSubmitted(true);
-      setFormData({
-        name: '',
-        email: '',
-        subject: '',
-        message: ''
-      });
-    } catch (err) {
-      setError('There was an error submitting your message. Please try again.');
+      // Submit contact form to backend API
+      const response = await contactAPI.submitContact(formData);
+
+      if (response.success) {
+        setIsSubmitted(true);
+        setFormData({
+          name: '',
+          email: '',
+          subject: '',
+          message: ''
+        });
+      } else {
+        setError('There was an error submitting your message. Please try again.');
+      }
+    } catch (err: any) {
+      // Handle validation errors and other API errors
+      let errorMessage = 'There was an error submitting your message. Please try again.';
+
+      if (err.response?.data?.errors) {
+        // Extract field-specific validation errors
+        const errors = err.response.data.errors;
+        const errorMessages = Object.values(errors) as string[];
+        errorMessage = errorMessages.join('. ');
+      } else if (err.response?.data?.message) {
+        errorMessage = err.response.data.message;
+      } else if (err.message) {
+        errorMessage = err.message;
+      }
+
+      setError(errorMessage);
+      console.error('Contact form submission error:', err);
     } finally {
       setIsSubmitting(false);
     }

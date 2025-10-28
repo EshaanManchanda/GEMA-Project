@@ -1,6 +1,6 @@
 import { Router } from 'express';
 import { body, param } from 'express-validator';
-import { authenticate } from '../middleware/auth';
+import { authenticate, requirePhoneVerification } from '../middleware';
 import {
   initiateBooking,
   confirmBooking,
@@ -52,10 +52,15 @@ const cancelBookingValidation = [
 ];
 
 // Routes
-router.post('/initiate', authenticate, initiateBookingValidation, initiateBooking);
-router.post('/confirm', authenticate, confirmBookingValidation, confirmBooking);
+// Phone verification required for booking operations (initiate and confirm)
+router.post('/initiate', authenticate, requirePhoneVerification, initiateBookingValidation, initiateBooking);
+router.post('/confirm', authenticate, requirePhoneVerification, confirmBookingValidation, confirmBooking);
+
+// Viewing bookings doesn't require phone verification
 router.get('/', authenticate, getUserBookings);
 router.get('/:id', authenticate, bookingIdValidation, getBookingById);
-router.put('/:id/cancel', authenticate, cancelBookingValidation, cancelBooking);
+
+// Canceling bookings requires phone verification for security
+router.put('/:id/cancel', authenticate, requirePhoneVerification, cancelBookingValidation, cancelBooking);
 
 export default router;

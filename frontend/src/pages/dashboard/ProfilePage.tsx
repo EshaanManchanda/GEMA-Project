@@ -59,6 +59,17 @@ import {
 } from '@/store/slices/authSlice';
 import EmailVerificationSection from '@/components/profile/EmailVerificationSection';
 import PhoneVerificationSection from '@/components/profile/PhoneVerificationSection';
+import ConfirmDialog from '@/components/common/ConfirmDialog';
+import PhoneInput, { Country } from 'react-phone-number-input';
+import 'react-phone-number-input/style.css';
+import '@/styles/phoneInput.css';
+import {
+  validatePhoneDetails,
+  getPhoneCountry,
+  getExamplePhone,
+  toE164,
+  isValidPhone,
+} from '@/utils/phoneUtils';
 import {
   UserProfile,
   UpdateProfileData,
@@ -205,23 +216,57 @@ const PersonalInfoTab: React.FC<{
   onUpdate: (data: UpdateProfileData) => void;
   isLoading: boolean;
 }> = ({ userProfile, onUpdate, isLoading }) => {
+  // Helper to sanitize phone to E.164 format
+  const sanitizePhoneForDisplay = (phone: string | undefined): string => {
+    if (!phone) return '';
+
+    // If already in E.164 format (starts with +), return as-is
+    if (phone.startsWith('+')) return phone;
+
+    // Try to convert to E.164 format
+    // For Indian numbers starting with 0, assume +91
+    if (phone.startsWith('0') && phone.length === 11) {
+      return `+91${phone.substring(1)}`;
+    }
+
+    // Try general conversion with default country
+    const e164 = toE164(phone, 'IN');
+    return e164 || phone;
+  };
+
   const [formData, setFormData] = useState({
     firstName: userProfile?.firstName || '',
     lastName: userProfile?.lastName || '',
-    phone: userProfile?.phone || '',
+    phone: sanitizePhoneForDisplay(userProfile?.phone),
     dateOfBirth: userProfile?.dateOfBirth || '',
     gender: userProfile?.gender || '',
     bio: userProfile?.bio || '',
   });
 
+  const [selectedCountry, setSelectedCountry] = useState<Country>('US');
+  const [phoneValidation, setPhoneValidation] = useState<{
+    isValid: boolean;
+    isMobile: boolean;
+    error?: string;
+  } | null>(null);
   const [errors, setErrors] = useState<Record<string, string>>({});
+
+  // Initialize country from existing phone
+  useEffect(() => {
+    if (userProfile?.phone) {
+      const country = getPhoneCountry(userProfile.phone);
+      if (country) {
+        setSelectedCountry(country);
+      }
+    }
+  }, [userProfile?.phone]);
 
   useEffect(() => {
     if (userProfile) {
       setFormData({
         firstName: userProfile.firstName || '',
         lastName: userProfile.lastName || '',
-        phone: userProfile.phone || '',
+        phone: sanitizePhoneForDisplay(userProfile.phone),
         dateOfBirth: userProfile.dateOfBirth || '',
         gender: userProfile.gender || '',
         bio: userProfile.bio || '',
@@ -229,13 +274,42 @@ const PersonalInfoTab: React.FC<{
     }
   }, [userProfile]);
 
+  // Real-time phone validation
+  useEffect(() => {
+    if (formData.phone && formData.phone.length > 3) {
+      const validation = validatePhoneDetails(formData.phone);
+      setPhoneValidation(validation);
+      if (!validation.isValid) {
+        setErrors(prev => ({ ...prev, phone: validation.error || 'Invalid phone number' }));
+      } else {
+        setErrors(prev => {
+          const newErrors = { ...prev };
+          delete newErrors.phone;
+          return newErrors;
+        });
+      }
+    } else {
+      setPhoneValidation(null);
+      setErrors(prev => {
+        const newErrors = { ...prev };
+        delete newErrors.phone;
+        return newErrors;
+      });
+    }
+  }, [formData.phone]);
+
   const validate = () => {
     const newErrors: Record<string, string> = {};
 
     if (!formData.firstName.trim()) newErrors.firstName = 'First name is required';
     if (!formData.lastName.trim()) newErrors.lastName = 'Last name is required';
-    if (formData.phone && !/^[\d\s\(\)\-\+]+$/.test(formData.phone)) {
-      newErrors.phone = 'Invalid phone number format';
+
+    // Enhanced phone validation
+    if (formData.phone) {
+      const validation = validatePhoneDetails(formData.phone);
+      if (!validation.isValid) {
+        newErrors.phone = validation.error || 'Invalid phone number format';
+      }
     }
 
     setErrors(newErrors);
@@ -256,6 +330,12 @@ const PersonalInfoTab: React.FC<{
       setErrors(prev => ({ ...prev, [name]: '' }));
     }
   };
+
+  const handlePhoneChange = (value: string | undefined) => {
+    setFormData(prev => ({ ...prev, phone: value || '' }));
+  };
+
+  const exampleNumber = selectedCountry ? getExamplePhone(selectedCountry) : '+1 234 567 8900';
 
   return (
     <HoverCard className="bg-white rounded-2xl p-8 shadow-lg border border-gray-100">
@@ -297,19 +377,58 @@ const PersonalInfoTab: React.FC<{
 
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-2">
-              Phone Number
+              Phone Number (Optional)
             </label>
-            <input
-              type="tel"
-              name="phone"
-              value={formData.phone}
-              onChange={handleChange}
-              className={`w-full px-4 py-3 border rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500 transition-colors ${
-                errors.phone ? 'border-red-500' : 'border-gray-200'
-              }`}
-              placeholder="Enter your phone number"
-            />
-            {errors.phone && <p className="text-red-500 text-sm mt-1">{errors.phone}</p>}
+            <div className="relative">
+              <PhoneInput
+                international
+                defaultCountry={selectedCountry}
+                value={formData.phone}
+                onChange={handlePhoneChange}
+                onCountryChange={(country) => country && setSelectedCountry(country)}
+                className={`phone-input-enhanced ${
+                  errors.phone
+                    ? 'border-red-500 focus-within:border-red-600 focus-within:ring-red-200'
+                    : phoneValidation?.isValid
+                    ? 'border-green-500 focus-within:border-green-600 focus-within:ring-green-200'
+                    : 'border-gray-300 focus-within:border-blue-500 focus-within:ring-blue-200'
+                }`}
+                disabled={isLoading}
+                placeholder="Enter phone number"
+              />
+              {/* Real-time validation icon */}
+              {formData.phone && formData.phone.length > 3 && (
+                <div className="absolute right-3 top-1/2 -translate-y-1/2 pointer-events-none">
+                  {phoneValidation?.isValid ? (
+                    <FaCheck className="text-green-500" />
+                  ) : (
+                    <FaTimes className="text-red-500" />
+                  )}
+                </div>
+              )}
+            </div>
+            {errors.phone && (
+              <motion.p
+                initial={{ opacity: 0, y: -10 }}
+                animate={{ opacity: 1, y: 0 }}
+                className="mt-2 text-sm text-red-600"
+              >
+                {errors.phone}
+              </motion.p>
+            )}
+            {phoneValidation?.isValid && !errors.phone && (
+              <motion.p
+                initial={{ opacity: 0, y: -10 }}
+                animate={{ opacity: 1, y: 0 }}
+                className="mt-2 text-sm text-green-600 flex items-center gap-1"
+              >
+                <FaCheck size={12} />
+                Valid phone number
+              </motion.p>
+            )}
+            <p className="mt-1 text-xs text-gray-500">
+              Example: {exampleNumber}
+            </p>
           </div>
 
           <div>
@@ -391,12 +510,16 @@ const AddressesTab: React.FC<{
 }> = ({ addresses, onAdd, onUpdate, onDelete, isLoading }) => {
   const [showAddForm, setShowAddForm] = useState(false);
   const [editingId, setEditingId] = useState<string | null>(null);
+  const [showDeleteDialog, setShowDeleteDialog] = useState(false);
+  const [addressToDelete, setAddressToDelete] = useState<string | null>(null);
   const [formData, setFormData] = useState({
     label: '',
     street: '',
     city: '',
     state: '',
-    postalCode: '',
+    zipCode: '',
+    poBox: '',
+    makaniNumber: '',
     country: '',
     isDefault: false,
   });
@@ -407,7 +530,9 @@ const AddressesTab: React.FC<{
       street: '',
       city: '',
       state: '',
-      postalCode: '',
+      zipCode: '',
+      poBox: '',
+      makaniNumber: '',
       country: '',
       isDefault: false,
     });
@@ -427,16 +552,36 @@ const AddressesTab: React.FC<{
 
   const startEdit = (address: Address) => {
     setFormData({
-      label: address.label,
+      label: address.label || '',
       street: address.street,
       city: address.city,
       state: address.state,
-      postalCode: address.postalCode,
+      zipCode: address.zipCode || '',
+      poBox: address.poBox || '',
+      makaniNumber: address.makaniNumber || '',
       country: address.country,
       isDefault: address.isDefault,
     });
     setEditingId(address.id || '');
     setShowAddForm(true);
+  };
+
+  const handleDeleteClick = (addressId: string) => {
+    setAddressToDelete(addressId);
+    setShowDeleteDialog(true);
+  };
+
+  const handleConfirmDelete = () => {
+    if (addressToDelete) {
+      onDelete(addressToDelete);
+      setShowDeleteDialog(false);
+      setAddressToDelete(null);
+    }
+  };
+
+  const handleCancelDelete = () => {
+    setShowDeleteDialog(false);
+    setAddressToDelete(null);
   };
 
   return (
@@ -469,7 +614,9 @@ const AddressesTab: React.FC<{
                 </div>
                 <p className="text-gray-600">
                   {address.street}<br />
-                  {address.city}, {address.state} {address.postalCode}<br />
+                  {address.city}, {address.state} {address.zipCode || address.poBox}<br />
+                  {address.poBox && <span>P.O. Box: {address.poBox}<br /></span>}
+                  {address.makaniNumber && <span>Makani: {address.makaniNumber}<br /></span>}
                   {address.country}
                 </p>
               </div>
@@ -481,7 +628,7 @@ const AddressesTab: React.FC<{
                   <FaEdit />
                 </button>
                 <button
-                  onClick={() => onDelete(address.id || '')}
+                  onClick={() => handleDeleteClick(address.id || '')}
                   className="p-2 text-red-600 hover:bg-red-50 rounded-lg transition-colors"
                   disabled={isLoading}
                 >
@@ -579,17 +726,62 @@ const AddressesTab: React.FC<{
                   </div>
                   <div>
                     <label className="block text-sm font-medium text-gray-700 mb-1">
-                      Postal Code *
+                      {formData.country?.toLowerCase() === 'united arab emirates' || formData.country?.toLowerCase() === 'uae'
+                        ? 'Postal Code / P.O. Box *'
+                        : 'Postal Code *'}
                     </label>
                     <input
                       type="text"
-                      value={formData.postalCode}
-                      onChange={(e) => setFormData(prev => ({ ...prev, postalCode: e.target.value }))}
+                      value={formData.zipCode}
+                      onChange={(e) => setFormData(prev => ({ ...prev, zipCode: e.target.value }))}
                       className="w-full px-3 py-2 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
-                      placeholder="Postal code"
-                      required
+                      placeholder={formData.country?.toLowerCase() === 'united arab emirates' || formData.country?.toLowerCase() === 'uae'
+                        ? 'Postal code or leave empty if using P.O. Box'
+                        : 'Postal code'}
+                      required={!formData.poBox}
                     />
+                    <p className="text-xs text-gray-500 mt-1">
+                      {formData.country?.toLowerCase() === 'united arab emirates' || formData.country?.toLowerCase() === 'uae'
+                        ? 'Enter postal code, or use P.O. Box field below for UAE addresses'
+                        : 'Enter your postal/zip code'}
+                    </p>
                   </div>
+
+                  {/* UAE-specific fields: Show when UAE is selected */}
+                  {(formData.country?.toLowerCase() === 'united arab emirates' || formData.country?.toLowerCase() === 'uae') && (
+                    <>
+                      <div>
+                        <label className="block text-sm font-medium text-gray-700 mb-1">
+                          P.O. Box {!formData.zipCode && '*'}
+                        </label>
+                        <input
+                          type="text"
+                          value={formData.poBox}
+                          onChange={(e) => setFormData(prev => ({ ...prev, poBox: e.target.value }))}
+                          className="w-full px-3 py-2 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                          placeholder="e.g., 12345"
+                          pattern="\d{4,6}"
+                          required={!formData.zipCode}
+                        />
+                        <p className="text-xs text-gray-500 mt-1">UAE P.O. Box (4-6 digits)</p>
+                      </div>
+
+                      <div>
+                        <label className="block text-sm font-medium text-gray-700 mb-1">
+                          Makani Number (Optional)
+                        </label>
+                        <input
+                          type="text"
+                          value={formData.makaniNumber}
+                          onChange={(e) => setFormData(prev => ({ ...prev, makaniNumber: e.target.value }))}
+                          className="w-full px-3 py-2 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                          placeholder="e.g., 1234567890"
+                          pattern="\d{10}"
+                        />
+                        <p className="text-xs text-gray-500 mt-1">Emirates Post code (10 digits)</p>
+                      </div>
+                    </>
+                  )}
                 </div>
 
                 <div className="flex items-center">
@@ -636,7 +828,226 @@ const AddressesTab: React.FC<{
           </motion.div>
         )}
       </AnimatePresence>
+
+      {/* Delete Confirmation Dialog */}
+      <ConfirmDialog
+        isOpen={showDeleteDialog}
+        onClose={handleCancelDelete}
+        onConfirm={handleConfirmDelete}
+        title="Delete Address"
+        message="Are you sure you want to delete this address? This action cannot be undone."
+        confirmText="Delete"
+        cancelText="Cancel"
+        type="danger"
+        isLoading={isLoading}
+      />
     </div>
+  );
+};
+
+const PreferencesTab: React.FC<{
+  userProfile: UserProfile | null;
+  onUpdate: (data: UpdateProfileData) => void;
+  isLoading: boolean;
+}> = ({ userProfile, onUpdate, isLoading }) => {
+  const [preferences, setPreferences] = useState({
+    email: userProfile?.preferences?.notifications?.email ?? true,
+    sms: userProfile?.preferences?.notifications?.sms ?? false,
+    push: userProfile?.preferences?.notifications?.push ?? true,
+    marketing: userProfile?.preferences?.notifications?.marketing ?? true,
+    security: userProfile?.preferences?.notifications?.security ?? true,
+    bookingReminders: userProfile?.preferences?.notifications?.bookingReminders ?? true,
+    eventUpdates: userProfile?.preferences?.notifications?.eventUpdates ?? true,
+  });
+
+  useEffect(() => {
+    if (userProfile?.preferences?.notifications) {
+      setPreferences({
+        email: userProfile.preferences.notifications.email ?? true,
+        sms: userProfile.preferences.notifications.sms ?? false,
+        push: userProfile.preferences.notifications.push ?? true,
+        marketing: userProfile.preferences.notifications.marketing ?? true,
+        security: userProfile.preferences.notifications.security ?? true,
+        bookingReminders: userProfile.preferences.notifications.bookingReminders ?? true,
+        eventUpdates: userProfile.preferences.notifications.eventUpdates ?? true,
+      });
+    }
+  }, [userProfile]);
+
+  const handleToggle = (key: keyof typeof preferences) => {
+    setPreferences(prev => ({ ...prev, [key]: !prev[key] }));
+  };
+
+  const handleSubmit = (e: React.FormEvent) => {
+    e.preventDefault();
+    onUpdate({
+      preferences: {
+        notifications: preferences
+      }
+    });
+  };
+
+  return (
+    <HoverCard className="bg-white rounded-2xl p-8 shadow-lg border border-gray-100">
+      <form onSubmit={handleSubmit}>
+        <h3 className="text-xl font-semibold text-gray-900 mb-6">Preferences</h3>
+        <div className="space-y-6">
+          <div>
+            <h4 className="font-medium mb-4 text-gray-900">Notification Settings</h4>
+            <p className="text-sm text-gray-600 mb-4">
+              Choose which notifications you want to receive
+            </p>
+            <div className="space-y-4">
+              <div className="flex items-center justify-between p-3 bg-gray-50 rounded-lg">
+                <div className="flex-1">
+                  <label htmlFor="email" className="font-medium text-gray-900 block">
+                    Email Notifications
+                  </label>
+                  <span className="text-sm text-gray-600">
+                    Receive notifications via email
+                  </span>
+                </div>
+                <input
+                  id="email"
+                  type="checkbox"
+                  checked={preferences.email}
+                  onChange={() => handleToggle('email')}
+                  className="h-5 w-5 text-blue-600 rounded border-gray-300 focus:ring-2 focus:ring-blue-500"
+                />
+              </div>
+
+              <div className="flex items-center justify-between p-3 bg-gray-50 rounded-lg">
+                <div className="flex-1">
+                  <label htmlFor="sms" className="font-medium text-gray-900 block">
+                    SMS Notifications
+                  </label>
+                  <span className="text-sm text-gray-600">
+                    Receive notifications via SMS
+                  </span>
+                </div>
+                <input
+                  id="sms"
+                  type="checkbox"
+                  checked={preferences.sms}
+                  onChange={() => handleToggle('sms')}
+                  className="h-5 w-5 text-blue-600 rounded border-gray-300 focus:ring-2 focus:ring-blue-500"
+                />
+              </div>
+
+              <div className="flex items-center justify-between p-3 bg-gray-50 rounded-lg">
+                <div className="flex-1">
+                  <label htmlFor="push" className="font-medium text-gray-900 block">
+                    Push Notifications
+                  </label>
+                  <span className="text-sm text-gray-600">
+                    Receive push notifications in your browser
+                  </span>
+                </div>
+                <input
+                  id="push"
+                  type="checkbox"
+                  checked={preferences.push}
+                  onChange={() => handleToggle('push')}
+                  className="h-5 w-5 text-blue-600 rounded border-gray-300 focus:ring-2 focus:ring-blue-500"
+                />
+              </div>
+
+              <div className="flex items-center justify-between p-3 bg-gray-50 rounded-lg">
+                <div className="flex-1">
+                  <label htmlFor="marketing" className="font-medium text-gray-900 block">
+                    Marketing Emails
+                  </label>
+                  <span className="text-sm text-gray-600">
+                    Receive promotional offers and updates
+                  </span>
+                </div>
+                <input
+                  id="marketing"
+                  type="checkbox"
+                  checked={preferences.marketing}
+                  onChange={() => handleToggle('marketing')}
+                  className="h-5 w-5 text-blue-600 rounded border-gray-300 focus:ring-2 focus:ring-blue-500"
+                />
+              </div>
+
+              <div className="flex items-center justify-between p-3 bg-gray-50 rounded-lg">
+                <div className="flex-1">
+                  <label htmlFor="security" className="font-medium text-gray-900 block">
+                    Security Alerts
+                  </label>
+                  <span className="text-sm text-gray-600">
+                    Important security notifications
+                  </span>
+                </div>
+                <input
+                  id="security"
+                  type="checkbox"
+                  checked={preferences.security}
+                  onChange={() => handleToggle('security')}
+                  className="h-5 w-5 text-blue-600 rounded border-gray-300 focus:ring-2 focus:ring-blue-500"
+                />
+              </div>
+
+              <div className="flex items-center justify-between p-3 bg-gray-50 rounded-lg">
+                <div className="flex-1">
+                  <label htmlFor="bookingReminders" className="font-medium text-gray-900 block">
+                    Booking Reminders
+                  </label>
+                  <span className="text-sm text-gray-600">
+                    Reminders about your upcoming bookings
+                  </span>
+                </div>
+                <input
+                  id="bookingReminders"
+                  type="checkbox"
+                  checked={preferences.bookingReminders}
+                  onChange={() => handleToggle('bookingReminders')}
+                  className="h-5 w-5 text-blue-600 rounded border-gray-300 focus:ring-2 focus:ring-blue-500"
+                />
+              </div>
+
+              <div className="flex items-center justify-between p-3 bg-gray-50 rounded-lg">
+                <div className="flex-1">
+                  <label htmlFor="eventUpdates" className="font-medium text-gray-900 block">
+                    Event Updates
+                  </label>
+                  <span className="text-sm text-gray-600">
+                    Updates about events you're interested in
+                  </span>
+                </div>
+                <input
+                  id="eventUpdates"
+                  type="checkbox"
+                  checked={preferences.eventUpdates}
+                  onChange={() => handleToggle('eventUpdates')}
+                  className="h-5 w-5 text-blue-600 rounded border-gray-300 focus:ring-2 focus:ring-blue-500"
+                />
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <div className="flex justify-end mt-6">
+          <AnimatedButton
+            type="submit"
+            disabled={isLoading}
+            className="bg-blue-600 text-white px-8 py-3 rounded-xl font-medium hover:bg-blue-700 transition-colors flex items-center gap-2"
+          >
+            {isLoading ? (
+              <>
+                <FaSpinner className="animate-spin" />
+                Saving...
+              </>
+            ) : (
+              <>
+                <FaSave />
+                Save Preferences
+              </>
+            )}
+          </AnimatedButton>
+        </div>
+      </form>
+    </HoverCard>
   );
 };
 
@@ -664,27 +1075,35 @@ const ProfilePage: React.FC = () => {
     dispatch(updateProfile(data) as any);
   }, [dispatch]);
 
-  const handleAvatarUpload = useCallback((file: File) => {
+  const handleAvatarUpload = useCallback(async (file: File) => {
     const avatarData: AvatarUploadData = { file };
-    dispatch(uploadAvatar(avatarData) as any);
+    await dispatch(uploadAvatar(avatarData) as any);
+    // Refresh profile to update completion percentage
+    dispatch(getFullProfile() as any);
   }, [dispatch]);
 
-  const handleAvatarRemove = useCallback(() => {
-    dispatch(removeAvatar() as any);
+  const handleAvatarRemove = useCallback(async () => {
+    await dispatch(removeAvatar() as any);
+    // Refresh profile to update completion percentage
+    dispatch(getFullProfile() as any);
   }, [dispatch]);
 
-  const handleAddAddress = useCallback((address: Omit<Address, 'id'>) => {
-    dispatch(addAddress(address) as any);
+  const handleAddAddress = useCallback(async (address: Omit<Address, 'id'>) => {
+    await dispatch(addAddress(address) as any);
+    // Refresh profile to update completion percentage
+    dispatch(getFullProfile() as any);
   }, [dispatch]);
 
-  const handleUpdateAddress = useCallback((addressId: string, address: Partial<Address>) => {
-    dispatch(updateAddress({ addressId, address }) as any);
+  const handleUpdateAddress = useCallback(async (addressId: string, address: Partial<Address>) => {
+    await dispatch(updateAddress({ addressId, address }) as any);
+    // Refresh profile to update completion percentage
+    dispatch(getFullProfile() as any);
   }, [dispatch]);
 
-  const handleDeleteAddress = useCallback((addressId: string) => {
-    if (window.confirm('Are you sure you want to delete this address?')) {
-      dispatch(deleteAddress(addressId) as any);
-    }
+  const handleDeleteAddress = useCallback(async (addressId: string) => {
+    await dispatch(deleteAddress(addressId) as any);
+    // Refresh profile to update completion percentage
+    dispatch(getFullProfile() as any);
   }, [dispatch]);
 
   // Error handling
@@ -916,28 +1335,11 @@ const ProfilePage: React.FC = () => {
                       exit={{ opacity: 0, y: -20 }}
                       transition={{ duration: 0.3 }}
                     >
-                      <HoverCard className="bg-white rounded-2xl p-8 shadow-lg border border-gray-100">
-                        <h3 className="text-xl font-semibold text-gray-900 mb-6">Preferences</h3>
-                        <div className="space-y-6">
-                          <div>
-                            <h4 className="font-medium mb-4">Notifications</h4>
-                            <div className="space-y-3">
-                              <div className="flex items-center justify-between">
-                                <span>Email notifications</span>
-                                <input type="checkbox" className="h-4 w-4 text-blue-600 rounded" defaultChecked />
-                              </div>
-                              <div className="flex items-center justify-between">
-                                <span>SMS notifications</span>
-                                <input type="checkbox" className="h-4 w-4 text-blue-600 rounded" />
-                              </div>
-                              <div className="flex items-center justify-between">
-                                <span>Marketing emails</span>
-                                <input type="checkbox" className="h-4 w-4 text-blue-600 rounded" />
-                              </div>
-                            </div>
-                          </div>
-                        </div>
-                      </HoverCard>
+                      <PreferencesTab
+                        userProfile={userProfile}
+                        onUpdate={handleProfileUpdate}
+                        isLoading={isLoading}
+                      />
                     </motion.div>
                   )}
                 </AnimatePresence>

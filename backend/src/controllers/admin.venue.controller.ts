@@ -245,6 +245,44 @@ export const getAllVenues = async (req: Request, res: Response, next: NextFuncti
 };
 
 /**
+ * Create new venue (Admin)
+ */
+export const createVenue = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
+  try {
+    const venueData = req.body as UpdateVenueRequest & { vendorId: string };
+
+    // Validate vendor ID
+    if (!venueData.vendorId || !mongoose.Types.ObjectId.isValid(venueData.vendorId)) {
+      return next(new AppError('Valid vendor ID is required', 400));
+    }
+
+    // Check if vendor exists
+    const vendor = await User.findById(venueData.vendorId);
+    if (!vendor) {
+      return next(new AppError('Vendor not found', 404));
+    }
+
+    // Create venue
+    const venue = await Venue.create(venueData);
+
+    // Populate vendor details
+    await venue.populate('vendorId', 'firstName lastName email');
+
+    const response: ApiResponse = {
+      success: true,
+      message: 'Venue created successfully',
+      data: {
+        venue: formatAdminVenueResponse(venue)
+      }
+    };
+
+    res.status(201).json(response);
+  } catch (error) {
+    next(error);
+  }
+};
+
+/**
  * Get venue by ID (Admin view - includes all details)
  */
 export const getVenueById = async (req: Request, res: Response, next: NextFunction): Promise<void> => {

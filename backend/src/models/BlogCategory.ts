@@ -59,7 +59,7 @@ blogCategorySchema.index({ isActive: 1 });
 
 // Pre-save middleware to generate slug
 blogCategorySchema.pre('save', function (next) {
-  if (this.isModified('name') && !this.slug) {
+  if (this.isModified('name')) {
     this.slug = this.name
       .toLowerCase()
       .replace(/[^a-z0-9]+/g, '-')

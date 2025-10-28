@@ -22,7 +22,7 @@ export interface Coupon {
   applicableCategories: string[];
   excludedEvents: string[];
   firstTimeOnly: boolean;
-  createdBy: string;
+  createdBy: string | null;
   usage: CouponUsage[];
   createdAt: string;
   updatedAt: string;
@@ -138,6 +138,7 @@ const couponAPI = {
       const response = await ApiService.get('/coupons', { params });
       return response.data;
     } catch (error) {
+      console.error('[couponAPI] GET /coupons error:', error);
       throw error;
     }
   },
@@ -158,6 +159,7 @@ const couponAPI = {
       const response = await ApiService.post('/coupons', couponData);
       return response.data;
     } catch (error) {
+      console.error('[couponAPI] POST /coupons error:', error);
       throw error;
     }
   },
@@ -168,6 +170,7 @@ const couponAPI = {
       const response = await ApiService.put(`/coupons/${id}`, couponData);
       return response.data;
     } catch (error) {
+      console.error(`[couponAPI] PUT /coupons/${id} error:`, error);
       throw error;
     }
   },
@@ -178,6 +181,7 @@ const couponAPI = {
       const response = await ApiService.delete(`/coupons/${id}`);
       return response.data;
     } catch (error) {
+      console.error(`[couponAPI] DELETE /coupons/${id} error:`, error);
       throw error;
     }
   },

@@ -193,9 +193,9 @@ const Modal: React.FC<ModalProps> = ({
               className={clsx(
                 'relative w-full bg-white rounded-xl shadow-2xl',
                 'focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2',
+                'flex flex-col',
                 modalSizes[size],
                 size === 'full' ? 'min-h-[90vh]' : 'max-h-[90vh]',
-                scrollable && size !== 'full' && 'overflow-hidden',
                 className
               )}
               variants={modalVariants}
@@ -236,7 +236,7 @@ const Modal: React.FC<ModalProps> = ({
               {/* Content */}
               <div
                 className={clsx(
-                  'flex-1',
+                  'flex-1 min-h-0',
                   scrollable && size !== 'full' && 'overflow-y-auto',
                   !title && !showCloseButton && 'pt-6',
                   footer ? 'pb-0' : 'pb-6',

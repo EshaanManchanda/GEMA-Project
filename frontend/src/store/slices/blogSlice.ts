@@ -273,7 +273,7 @@ export const fetchAdminCategories = createAsyncThunk(
   'blog/fetchAdminCategories',
   async () => {
     const response = await blogAPI.admin.getAllCategories();
-    return response.data.categories;
+    return response;
   }
 );
 

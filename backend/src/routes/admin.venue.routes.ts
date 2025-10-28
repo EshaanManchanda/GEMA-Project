@@ -4,6 +4,7 @@ import { UserRole } from '../models';
 import {
   getAllVenues,
   getVenueById,
+  createVenue,
   updateVenue,
   deleteVenue,
   approveVenue,
@@ -25,6 +26,13 @@ router.use(authorize([UserRole.ADMIN]));
  * @access  Admin only
  */
 router.get('/stats', getVenueStats);
+
+/**
+ * @route   POST /api/admin/venues
+ * @desc    Create new venue
+ * @access  Admin only
+ */
+router.post('/', createVenue);
 
 /**
  * @route   GET /api/admin/venues

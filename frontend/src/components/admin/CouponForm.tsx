@@ -53,8 +53,8 @@ const couponSchema = yup.object().shape({
   currency: yup.string()
     .when('type', {
       is: 'fixed_amount',
-      then: yup.string().required('Currency is required for fixed amount coupons'),
-      otherwise: yup.string()
+      then: (schema) => schema.required('Currency is required for fixed amount coupons'),
+      otherwise: (schema) => schema
     }),
   minimumAmount: yup.number()
     .min(0, 'Minimum amount cannot be negative'),
@@ -94,6 +94,9 @@ const CouponForm: React.FC<CouponFormProps> = ({
 }) => {
   const [selectedEvents, setSelectedEvents] = useState<string[]>([]);
   const [excludedEvents, setExcludedEvents] = useState<string[]>([]);
+
+  // Check if coupon has been used (prevents editing restricted fields)
+  const isUsedCoupon = coupon && coupon.usageCount > 0;
 
   const {
     control,
@@ -174,11 +177,19 @@ const CouponForm: React.FC<CouponFormProps> = ({
         validUntil: new Date(data.validUntil).toISOString()
       };
 
+      // For used coupons, don't send restricted fields (code, type, value)
+      // to prevent backend validation errors
+      if (isUsedCoupon) {
+        delete submitData.code;
+        delete submitData.type;
+        delete submitData.value;
+      }
+
       await onSubmit(submitData);
-      onClose();
-      toast.success(coupon ? 'Coupon updated successfully!' : 'Coupon created successfully!');
-    } catch (error) {
-      toast.error('An error occurred. Please try again.');
+      // Don't close modal here - let parent component handle it after success
+    } catch (error: any) {
+      // Error is already handled in parent component, just log it
+      console.error('[CouponForm] Form submission failed:', error);
     }
   };
 
@@ -232,6 +243,29 @@ const CouponForm: React.FC<CouponFormProps> = ({
       size="xl"
     >
       <form onSubmit={handleSubmit(handleFormSubmit)} className="space-y-6">
+        {/* Warning for used coupons */}
+        {isUsedCoupon && (
+          <div className="bg-yellow-50 border-l-4 border-yellow-400 p-4">
+            <div className="flex">
+              <div className="flex-shrink-0">
+                <AlertCircle className="h-5 w-5 text-yellow-400" />
+              </div>
+              <div className="ml-3">
+                <h3 className="text-sm font-medium text-yellow-800">
+                  Limited Editing - Coupon Has Been Used
+                </h3>
+                <div className="mt-2 text-sm text-yellow-700">
+                  <p>
+                    This coupon has been used {coupon?.usageCount} time{coupon?.usageCount !== 1 ? 's' : ''}.
+                    The <strong>code</strong>, <strong>type</strong>, and <strong>discount value</strong> cannot be modified to protect existing orders.
+                    You can still update other fields like dates, limits, and descriptions.
+                  </p>
+                </div>
+              </div>
+            </div>
+          </div>
+        )}
+
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
           {/* Main Content */}
           <div className="lg:col-span-2 space-y-6">
@@ -255,6 +289,7 @@ const CouponForm: React.FC<CouponFormProps> = ({
                           required
                           className="uppercase"
                           onChange={(e) => field.onChange(e.target.value.toUpperCase())}
+                          disabled={isUsedCoupon}
                         />
                       )}
                     />
@@ -265,6 +300,7 @@ const CouponForm: React.FC<CouponFormProps> = ({
                       variant="secondary"
                       size="sm"
                       onClick={generateCode}
+                      disabled={isUsedCoupon}
                     >
                       Generate
                     </Button>
@@ -334,11 +370,14 @@ const CouponForm: React.FC<CouponFormProps> = ({
                           <button
                             key={type.value}
                             type="button"
-                            onClick={() => field.onChange(type.value)}
+                            onClick={() => !isUsedCoupon && field.onChange(type.value)}
+                            disabled={isUsedCoupon}
                             className={`p-3 border rounded-lg flex flex-col items-center space-y-2 transition-colors ${
                               field.value === type.value
                                 ? 'border-blue-500 bg-blue-50 text-blue-700'
-                                : 'border-gray-300 hover:border-gray-400'
+                                : isUsedCoupon
+                                  ? 'border-gray-300 bg-gray-100 text-gray-400 cursor-not-allowed'
+                                  : 'border-gray-300 hover:border-gray-400'
                             }`}
                           >
                             {type.icon}
@@ -365,6 +404,7 @@ const CouponForm: React.FC<CouponFormProps> = ({
                         min="0"
                         max={watchedType === 'percentage' ? '100' : undefined}
                         suffix={watchedType === 'percentage' ? '%' : undefined}
+                        disabled={isUsedCoupon}
                       />
                     )}
                   />

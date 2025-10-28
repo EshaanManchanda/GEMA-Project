@@ -1,9 +1,19 @@
 import React, { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { toast } from 'react-hot-toast';
-import { FaPhone, FaCheck, FaTimes, FaSpinner, FaExclamationTriangle, FaEdit } from 'react-icons/fa';
+import { FaPhone, FaCheck, FaTimes, FaSpinner, FaExclamationTriangle, FaEdit, FaCheckCircle } from 'react-icons/fa';
+import PhoneInput, { Country } from 'react-phone-number-input';
+import 'react-phone-number-input/style.css';
+import '../../styles/phoneInput.css';
 import OTPInput from '../common/OTPInput';
 import { AnimatedButton } from '../animations';
+import {
+  validatePhoneDetails,
+  formatPhoneForDisplay,
+  getExamplePhone,
+  getPhoneCountry,
+  toE164,
+} from '../../utils/phoneUtils';
 
 interface PhoneVerificationSectionProps {
   phone?: string;
@@ -20,14 +30,48 @@ const PhoneVerificationSection: React.FC<PhoneVerificationSectionProps> = ({
   onVerifyPhone,
   onResendVerification,
 }) => {
+  // Helper to sanitize phone to E.164 format
+  const sanitizePhoneForDisplay = (phone: string | undefined): string => {
+    if (!phone) return '';
+
+    // If already in E.164 format (starts with +), return as-is
+    if (phone.startsWith('+')) return phone;
+
+    // Try to convert to E.164 format
+    // For Indian numbers starting with 0, assume +91
+    if (phone.startsWith('0') && phone.length === 11) {
+      return `+91${phone.substring(1)}`;
+    }
+
+    // Try general conversion with default country
+    const e164 = toE164(phone, 'IN');
+    return e164 || phone;
+  };
+
   const [showPhoneModal, setShowPhoneModal] = useState(false);
   const [showOTPModal, setShowOTPModal] = useState(false);
-  const [phoneNumber, setPhoneNumber] = useState(phone || '');
+  const [phoneNumber, setPhoneNumber] = useState<string | undefined>(sanitizePhoneForDisplay(phone));
+  const [selectedCountry, setSelectedCountry] = useState<Country>('US');
   const [otp, setOtp] = useState('');
   const [isLoading, setIsLoading] = useState(false);
   const [otpError, setOtpError] = useState(false);
   const [phoneError, setPhoneError] = useState('');
+  const [phoneValidation, setPhoneValidation] = useState<{
+    isValid: boolean;
+    isMobile: boolean;
+    error?: string;
+  } | null>(null);
   const [resendCooldown, setResendCooldown] = useState(0);
+
+  // Initialize country from existing phone
+  useEffect(() => {
+    if (phone) {
+      const country = getPhoneCountry(phone);
+      if (country) {
+        setSelectedCountry(country);
+      }
+    }
+  }, [phone]);
 
   // Resend cooldown timer
   useEffect(() => {
@@ -37,15 +81,26 @@ const PhoneVerificationSection: React.FC<PhoneVerificationSectionProps> = ({
     }
   }, [resendCooldown]);
 
-  // Validate phone number (basic E.164 format)
-  const validatePhone = (value: string): boolean => {
-    const phoneRegex = /^\+[1-9]\d{7,14}$/;
-    return phoneRegex.test(value);
-  };
+  // Real-time validation as user types
+  useEffect(() => {
+    if (phoneNumber && phoneNumber.length > 3) {
+      const validation = validatePhoneDetails(phoneNumber);
+      setPhoneValidation(validation);
+      if (!validation.isValid) {
+        setPhoneError(validation.error || '');
+      } else {
+        setPhoneError('');
+      }
+    } else {
+      setPhoneValidation(null);
+      setPhoneError('');
+    }
+  }, [phoneNumber]);
 
   const handleOpenPhoneModal = () => {
     setPhoneNumber(phone || '');
     setPhoneError('');
+    setPhoneValidation(null);
     setShowPhoneModal(true);
   };
 
@@ -55,8 +110,15 @@ const PhoneVerificationSection: React.FC<PhoneVerificationSectionProps> = ({
       return;
     }
 
-    if (!validatePhone(phoneNumber)) {
-      setPhoneError('Please enter a valid international phone number (e.g., +1234567890)');
+    const validation = validatePhoneDetails(phoneNumber);
+
+    if (!validation.isValid) {
+      setPhoneError(validation.error || 'Invalid phone number');
+      return;
+    }
+
+    if (!validation.isMobile) {
+      setPhoneError('Only mobile numbers can receive SMS verification codes');
       return;
     }
 
@@ -119,11 +181,12 @@ const PhoneVerificationSection: React.FC<PhoneVerificationSectionProps> = ({
     handleVerifyPhone(value);
   };
 
-  const handlePhoneChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const value = e.target.value;
+  const handlePhoneChange = (value: string | undefined) => {
     setPhoneNumber(value);
-    setPhoneError('');
   };
+
+  // Get example phone number for selected country
+  const exampleNumber = selectedCountry ? getExamplePhone(selectedCountry) : '+1 234 567 8900';
 
   return (
     <>
@@ -233,18 +296,36 @@ const PhoneVerificationSection: React.FC<PhoneVerificationSectionProps> = ({
                   <label className="block text-sm font-medium text-gray-700 mb-2">
                     Phone Number
                   </label>
-                  <input
-                    type="tel"
-                    value={phoneNumber}
-                    onChange={handlePhoneChange}
-                    placeholder="+1234567890"
-                    className={`w-full px-4 py-3 border rounded-xl focus:outline-none focus:ring-2 transition-colors ${
-                      phoneError
-                        ? 'border-red-500 focus:border-red-600 focus:ring-red-200'
-                        : 'border-gray-300 focus:border-blue-500 focus:ring-blue-200'
-                    }`}
-                    disabled={isLoading}
-                  />
+                  <div className="relative">
+                    <PhoneInput
+                      international
+                      defaultCountry={selectedCountry}
+                      value={phoneNumber}
+                      onChange={handlePhoneChange}
+                      onCountryChange={(country) => country && setSelectedCountry(country)}
+                      className={`phone-input-enhanced ${
+                        phoneError
+                          ? 'border-red-500 focus-within:border-red-600 focus-within:ring-red-200'
+                          : phoneValidation?.isValid
+                          ? 'border-green-500 focus-within:border-green-600 focus-within:ring-green-200'
+                          : 'border-gray-300 focus-within:border-blue-500 focus-within:ring-blue-200'
+                      }`}
+                      disabled={isLoading}
+                      placeholder="Enter phone number"
+                    />
+                    {/* Real-time validation icon */}
+                    {phoneNumber && phoneNumber.length > 3 && (
+                      <div className="absolute right-3 top-1/2 -translate-y-1/2 pointer-events-none">
+                        {phoneValidation?.isValid ? (
+                          <FaCheckCircle className="text-green-500 text-xl" />
+                        ) : (
+                          <FaTimes className="text-red-500 text-xl" />
+                        )}
+                      </div>
+                    )}
+                  </div>
+
+                  {/* Error message */}
                   {phoneError && (
                     <motion.p
                       initial={{ opacity: 0, y: -10 }}
@@ -255,8 +336,34 @@ const PhoneVerificationSection: React.FC<PhoneVerificationSectionProps> = ({
                       {phoneError}
                     </motion.p>
                   )}
+
+                  {/* Success message for mobile */}
+                  {phoneValidation?.isValid && phoneValidation?.isMobile && (
+                    <motion.p
+                      initial={{ opacity: 0, y: -10 }}
+                      animate={{ opacity: 1, y: 0 }}
+                      className="mt-2 text-sm text-green-600 flex items-center gap-1"
+                    >
+                      <FaCheckCircle size={12} />
+                      Valid mobile number
+                    </motion.p>
+                  )}
+
+                  {/* Warning for non-mobile */}
+                  {phoneValidation?.isValid && !phoneValidation?.isMobile && (
+                    <motion.p
+                      initial={{ opacity: 0, y: -10 }}
+                      animate={{ opacity: 1, y: 0 }}
+                      className="mt-2 text-sm text-yellow-600 flex items-center gap-1"
+                    >
+                      <FaExclamationTriangle size={12} />
+                      This appears to be a landline. Mobile number required for SMS.
+                    </motion.p>
+                  )}
+
+                  {/* Format example */}
                   <p className="mt-2 text-xs text-gray-500">
-                    Format: +[country code][number] (e.g., +1234567890)
+                    Example: {exampleNumber}
                   </p>
                 </div>
 

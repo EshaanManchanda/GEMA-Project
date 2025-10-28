@@ -154,6 +154,10 @@ const Banner = ({ categories }: { categories: any[] }) => {
     navigate(`/search?q=${encodeURIComponent(query)}`);
   };
 
+  const handleCategorySearch = (categoryName: string) => {
+    navigate(`/search?category=${encodeURIComponent(categoryName.toLowerCase())}`);
+  };
+
   return (
     <section
       className="relative w-full text-white overflow-hidden"
@@ -292,7 +296,7 @@ const Banner = ({ categories }: { categories: any[] }) => {
             {categories.slice(0, 2).map((category, index) => (
               <button
                 key={category._id || category.id || `category-${index}`}
-                onClick={() => handlePopularSearch(category.name)}
+                onClick={() => handleCategorySearch(category.name)}
                 className="text-white hover:text-white/80 transition-colors duration-300 underline underline-offset-2 cursor-pointer focus:outline-none focus:ring-2 focus:ring-white/50 rounded px-1"
                 aria-label={`Search for ${category.name}`}
               >

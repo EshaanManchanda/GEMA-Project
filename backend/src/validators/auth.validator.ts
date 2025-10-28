@@ -242,9 +242,33 @@ export const validate2FAVerification = [
 
 /**
  * Phone verification send OTP validation
+ * Enhanced with duplicate checking and mobile-only requirement
  */
 export const validateSendPhoneOTP = [
-  validatePhone('phone', true),
+  body('phone')
+    .trim()
+    .notEmpty()
+    .withMessage('Phone number is required')
+    .custom(async (value, { req }) => {
+      // Import the enhanced validation utility
+      const { validatePhoneForAPI } = await import('../utils/phoneValidation');
+
+      // Comprehensive validation with duplicate check
+      const validation = await validatePhoneForAPI(value, {
+        requireMobile: true, // Only mobile numbers can receive SMS
+        checkDuplicate: true, // Check if already registered
+        excludeUserId: req.user?.id, // Allow current user's own phone
+      });
+
+      if (!validation.isValid) {
+        throw new Error(validation.error || 'Invalid phone number');
+      }
+
+      // Store the E.164 formatted phone for later use
+      req.body.phone = validation.e164Format;
+
+      return true;
+    }),
 ];
 
 /**

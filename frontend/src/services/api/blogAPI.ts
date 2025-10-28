@@ -249,7 +249,7 @@ const blogAPI = {
     getAllCategories: async () => {
       try {
         const response = await ApiService.get('/admin/blogs/categories');
-        return response.data;
+        return response.data.categories;
       } catch (error) {
         throw error;
       }
@@ -280,6 +280,15 @@ const blogAPI = {
     deleteCategory: async (id: string) => {
       try {
         const response = await ApiService.delete(`/admin/blogs/categories/${id}`);
+        return response.data;
+      } catch (error) {
+        throw error;
+      }
+    },
+
+    toggleCategoryStatus: async (id: string) => {
+      try {
+        const response = await ApiService.patch(`/admin/blogs/categories/${id}/toggle-status`, {});
         return response.data;
       } catch (error) {
         throw error;

@@ -93,11 +93,13 @@ export interface ChangePasswordData {
 // Address interface
 export interface Address {
   id?: string;
-  label: string;
+  label?: string;
   street: string;
   city: string;
   state: string;
-  postalCode: string;
+  zipCode: string;
+  poBox?: string; // UAE P.O. Box number
+  makaniNumber?: string; // UAE Emirates Post code (Makani)
   country: string;
   isDefault: boolean;
   coordinates?: {

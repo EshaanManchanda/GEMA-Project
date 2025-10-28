@@ -102,6 +102,53 @@ const CouponUsageStats: React.FC<CouponUsageStatsProps> = ({
     return 'bg-green-100 text-green-800';
   };
 
+  const exportToCSV = () => {
+    if (!stats) return;
+
+    const csvData = [
+      ['Coupon Statistics Report'],
+      [''],
+      ['Coupon Code', coupon.code],
+      ['Coupon Name', coupon.name],
+      ['Description', coupon.description || 'N/A'],
+      ['Type', coupon.type],
+      ['Discount', getEffectiveDiscount()],
+      ['Status', coupon.status],
+      [''],
+      ['Statistics'],
+      ['Total Uses', stats.totalUses],
+      ['Unique Users', stats.uniqueUsers],
+      ['Total Discount Amount', formatCurrency(stats.totalDiscount)],
+      ['Average Discount', formatCurrency(stats.averageDiscount)],
+      ['Recent Uses', stats.recentUses],
+      ['Remaining Uses', stats.remainingUses !== null ? stats.remainingUses : 'Unlimited'],
+      [''],
+      ['Validity Period'],
+      ['Valid From', new Date(coupon.validFrom).toLocaleDateString()],
+      ['Valid Until', new Date(coupon.validUntil).toLocaleDateString()],
+      [''],
+      ['Restrictions'],
+      ['Minimum Amount', coupon.minimumAmount ? formatCurrency(coupon.minimumAmount) : 'None'],
+      ['Maximum Discount', coupon.maximumDiscount ? formatCurrency(coupon.maximumDiscount) : 'None'],
+      ['Usage Limit', coupon.usageLimit || 'Unlimited'],
+      ['User Usage Limit', coupon.userUsageLimit || 'Unlimited'],
+      ['First Time Only', coupon.firstTimeOnly ? 'Yes' : 'No'],
+    ];
+
+    const csvContent = csvData.map(row => row.join(',')).join('\n');
+    const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+    const link = document.createElement('a');
+    const url = URL.createObjectURL(blob);
+
+    link.setAttribute('href', url);
+    link.setAttribute('download', `coupon-stats-${coupon.code}-${new Date().toISOString().split('T')[0]}.csv`);
+    link.style.visibility = 'hidden';
+
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+  };
+
   if (!isOpen) return null;
 
   return (
@@ -159,9 +206,9 @@ const CouponUsageStats: React.FC<CouponUsageStatsProps> = ({
                 <Button
                   variant="secondary"
                   size="sm"
-                  onClick={() => {
-                    // TODO: Implement export functionality
-                  }}
+                  onClick={exportToCSV}
+                  disabled={!stats}
+                  title="Export to CSV"
                 >
                   <Download className="w-4 h-4" />
                 </Button>

@@ -31,10 +31,13 @@ export enum SocialProvider {
 
 // Interfaces
 export interface IAddress {
+  label?: string; // e.g., "Home", "Office", "Work"
   street: string;
   city: string;
   state: string;
   zipCode: string;
+  poBox?: string; // UAE P.O. Box number
+  makaniNumber?: string; // UAE Emirates Post code (Makani)
   country: string;
   isDefault?: boolean;
 }
@@ -109,6 +112,19 @@ export interface ILoginAttempt {
   success: boolean;
 }
 
+export interface INotificationPreferences {
+  email: boolean;
+  sms: boolean;
+  push: boolean;
+}
+
+export interface IPreferences {
+  language: string;
+  currency: string;
+  timezone: string;
+  notifications: INotificationPreferences;
+}
+
 // User Document Interface
 export interface IUser extends Document {
   _id: mongoose.Types.ObjectId;
@@ -137,9 +153,10 @@ export interface IUser extends Document {
   socialMedia?: ISocialMedia;
   vendorPaymentSettings?: IVendorPaymentSettings;
   favoriteEvents?: mongoose.Types.ObjectId[];
+  preferences?: IPreferences;
   createdAt: Date;
   updatedAt: Date;
-  
+
   // Methods
   comparePassword(password: string): Promise<boolean>;
   getFullName(): string;
@@ -180,10 +197,19 @@ const UserSchema = new Schema<IUser>(
       validate: {
         validator: function(v: string) {
           if (!v) return true; // Phone is optional
-          // Basic international phone validation: starts with + and contains 8-15 digits
-          return /^\+[1-9]\d{7,14}$/.test(v);
+
+          // Remove formatting characters (spaces, dashes, parentheses)
+          const cleaned = v.replace(/[\s\-\(\)]/g, '');
+
+          // Flexible phone validation - accepts both formats:
+          // - International: +918377012270 (8-15 digits with + prefix)
+          // - National: 08377012270 (8-15 digits without prefix)
+          const internationalFormat = /^\+[1-9]\d{7,14}$/;
+          const nationalFormat = /^[0-9]{8,15}$/;
+
+          return internationalFormat.test(cleaned) || nationalFormat.test(cleaned);
         },
-        message: 'Please enter a valid international phone number (e.g., +1234567890)'
+        message: 'Phone must be a valid phone number (8-15 digits, optionally with + prefix)'
       }
     },
     avatar: {
@@ -217,6 +243,10 @@ const UserSchema = new Schema<IUser>(
     },
     addresses: [
       {
+        label: {
+          type: String,
+          trim: true
+        },
         street: {
           type: String,
           required: true
@@ -231,7 +261,34 @@ const UserSchema = new Schema<IUser>(
         },
         zipCode: {
           type: String,
-          required: true
+          required: function(this: IAddress) {
+            // zipCode is required only if poBox is not provided
+            return !this.poBox;
+          }
+        },
+        poBox: {
+          type: String,
+          trim: true,
+          validate: {
+            validator: function(v: string) {
+              if (!v) return true; // Optional field
+              // UAE P.O. Box format: typically 4-6 digits
+              return /^\d{4,6}$/.test(v);
+            },
+            message: 'P.O. Box must be 4-6 digits for UAE addresses'
+          }
+        },
+        makaniNumber: {
+          type: String,
+          trim: true,
+          validate: {
+            validator: function(v: string) {
+              if (!v) return true; // Optional field
+              // Makani number format: 10 digits
+              return /^\d{10}$/.test(v);
+            },
+            message: 'Makani number must be 10 digits'
+          }
         },
         country: {
           type: String,
@@ -357,7 +414,35 @@ const UserSchema = new Schema<IUser>(
     favoriteEvents: [{
       type: mongoose.Schema.Types.ObjectId,
       ref: 'Event'
-    }]
+    }],
+    preferences: {
+      language: {
+        type: String,
+        default: 'en'
+      },
+      currency: {
+        type: String,
+        default: 'AED'
+      },
+      timezone: {
+        type: String,
+        default: 'Asia/Dubai'
+      },
+      notifications: {
+        email: {
+          type: Boolean,
+          default: true
+        },
+        sms: {
+          type: Boolean,
+          default: false
+        },
+        push: {
+          type: Boolean,
+          default: true
+        }
+      }
+    }
   },
   {
     timestamps: true

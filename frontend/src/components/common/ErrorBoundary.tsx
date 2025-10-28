@@ -32,9 +32,22 @@ class ErrorBoundary extends Component<Props, State> {
   }
 
   static getDerivedStateFromError(error: Error): State {
+    // Ignore hot module reload errors in development
+    if (import.meta.env.DEV && (
+      error.message?.includes('removeChild') ||
+      error.message?.includes('NotFoundError') ||
+      error.name === 'NotFoundError'
+    )) {
+      // Don't set error state for hot reload issues
+      return {
+        hasError: false,
+        errorId: ''
+      };
+    }
+
     // Generate unique error ID for tracking
     const errorId = `ERR_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
-    
+
     return {
       hasError: true,
       error,
@@ -43,6 +56,25 @@ class ErrorBoundary extends Component<Props, State> {
   }
 
   componentDidCatch(error: Error, errorInfo: ErrorInfo): void {
+    // Ignore hot module reload errors in development
+    if (import.meta.env.DEV && (
+      error.message.includes('removeChild') ||
+      error.message.includes('NotFoundError') ||
+      error.name === 'NotFoundError'
+    )) {
+      console.warn('[Dev Only] Hot module reload error (safe to ignore):', error.message);
+      // Reset error state silently
+      setTimeout(() => {
+        this.setState({
+          hasError: false,
+          error: undefined,
+          errorInfo: undefined,
+          errorId: ''
+        });
+      }, 100);
+      return;
+    }
+
     // Log error with context
     ErrorHandler.handleComponentError(error, errorInfo, {
       component: 'ErrorBoundary',

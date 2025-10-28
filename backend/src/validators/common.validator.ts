@@ -134,8 +134,8 @@ export const validateEmail = (field: string = 'email', required: boolean = true)
     .withMessage('Email cannot exceed 255 characters');
 };
 
-// Phone validation with international format
-export const validatePhone = (field: string = 'phone', required: boolean = false) => {
+// Phone validation with enhanced libphonenumber-js validation
+export const validatePhone = (field: string = 'phone', required: boolean = false, requireMobile: boolean = false) => {
   const validator = body(field).trim();
 
   if (required) {
@@ -145,8 +145,27 @@ export const validatePhone = (field: string = 'phone', required: boolean = false
   }
 
   return validator
-    .matches(/^\+[1-9]\d{1,14}$/)
-    .withMessage('Phone must be in international format (e.g., +1234567890)');
+    .custom(async (value) => {
+      if (!value) return true; // Allow empty if optional
+
+      // Import the enhanced validation utility
+      const { validatePhoneNumber, isMobileNumber, getPhoneValidationErrorMessage } = await import('../utils/phoneValidation');
+
+      // Validate the phone number
+      const validation = validatePhoneNumber(value);
+
+      if (!validation.isValid) {
+        const errorMessage = validation.error || 'Invalid phone number format';
+        throw new Error(errorMessage);
+      }
+
+      // Check if mobile is required
+      if (requireMobile && !validation.isMobile) {
+        throw new Error('Only mobile phone numbers are allowed. Landline numbers cannot receive SMS verification codes.');
+      }
+
+      return true;
+    });
 };
 
 // URL validation

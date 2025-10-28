@@ -19,7 +19,8 @@ import {
   BarChart3,
   AlertCircle,
   CheckCircle,
-  Clock
+  Clock,
+  RefreshCw
 } from 'lucide-react';
 import toast from 'react-hot-toast';
 import Button from '../ui/Button';
@@ -29,7 +30,9 @@ import Badge from '../ui/Badge';
 import DataTable from '../ui/DataTable';
 import CouponForm from './CouponForm';
 import CouponUsageStats from './CouponUsageStats';
+import ConfirmDialog from '../common/ConfirmDialog';
 import couponAPI from '../../services/api/couponAPI';
+import eventsAPI from '../../services/api/eventsAPI';
 
 interface Coupon {
   _id: string;
@@ -48,10 +51,11 @@ interface Coupon {
   userUsageLimit?: number;
   isActive: boolean;
   status: 'active' | 'inactive' | 'expired';
+  applicableCategories: string[];
   applicableEvents: string[];
   excludedEvents: string[];
   firstTimeOnly: boolean;
-  createdBy: string;
+  createdBy: string | null;
   usage: any[];
   createdAt: string;
   updatedAt: string;
@@ -65,14 +69,36 @@ interface CouponFilters {
   type: string;
 }
 
+// Debounce hook for search functionality
+function useDebounce<T>(value: T, delay: number): T {
+  const [debouncedValue, setDebouncedValue] = useState<T>(value);
+
+  useEffect(() => {
+    const handler = setTimeout(() => {
+      setDebouncedValue(value);
+    }, delay);
+
+    return () => {
+      clearTimeout(handler);
+    };
+  }, [value, delay]);
+
+  return debouncedValue;
+}
+
 const CouponList: React.FC = () => {
   const [coupons, setCoupons] = useState<Coupon[]>([]);
   const [events, setEvents] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
+  const [bulkActionLoading, setBulkActionLoading] = useState(false);
   const [selectedCoupon, setSelectedCoupon] = useState<Coupon | null>(null);
   const [showCouponForm, setShowCouponForm] = useState(false);
   const [showStatsModal, setShowStatsModal] = useState(false);
   const [selectedCoupons, setSelectedCoupons] = useState<string[]>([]);
+  const [searchInput, setSearchInput] = useState('');
+  const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
+  const [couponToDelete, setCouponToDelete] = useState<string | null>(null);
+  const [error, setError] = useState<string | null>(null);
   const [pagination, setPagination] = useState({
     page: 1,
     limit: 10,
@@ -88,20 +114,52 @@ const CouponList: React.FC = () => {
     type: ''
   });
 
+  // Debounce search input
+  const debouncedSearch = useDebounce(searchInput, 500);
+
   useEffect(() => {
     fetchCoupons();
-    // fetchEvents(); // Uncomment when events API is available
   }, [filters]);
+
+  // Fetch events once on component mount
+  useEffect(() => {
+    fetchEvents();
+  }, []);
+
+  // Update filters when debounced search changes
+  useEffect(() => {
+    setFilters(prev => ({
+      ...prev,
+      search: debouncedSearch,
+      page: 1 // Reset to first page on new search
+    }));
+  }, [debouncedSearch]);
 
   const fetchCoupons = async () => {
     try {
       setLoading(true);
+      setError(null);
       const response = await couponAPI.getAllCoupons(filters);
-      setCoupons(response.data.coupons);
-      setPagination(response.data.pagination);
-    } catch (error) {
-      toast.error('Failed to fetch coupons');
-      console.error('Error fetching coupons:', error);
+      setCoupons(response.coupons);
+      setPagination(response.pagination);
+    } catch (error: any) {
+      // Provide detailed error messages
+      let errorMessage = 'Failed to fetch coupons';
+
+      if (error.code === 'ERR_NETWORK' || error.message?.includes('Network Error')) {
+        errorMessage = 'Cannot connect to server. Please ensure backend is running.';
+      } else if (error.response?.status === 401) {
+        errorMessage = 'Unauthorized. Please login again.';
+      } else if (error.response?.status === 403) {
+        errorMessage = 'You do not have permission to view coupons';
+      } else if (error.response?.status === 404) {
+        errorMessage = 'Coupons endpoint not found.';
+      } else if (error.response?.data?.message) {
+        errorMessage = error.response.data.message;
+      }
+
+      setError(errorMessage);
+      toast.error(errorMessage);
     } finally {
       setLoading(false);
     }
@@ -109,11 +167,11 @@ const CouponList: React.FC = () => {
 
   const fetchEvents = async () => {
     try {
-      // TODO: Fetch events from API
-      // const response = await eventsAPI.getAllEvents();
-      // setEvents(response.data.events);
+      const response = await eventsAPI.getAllEvents({ limit: 100 });
+      setEvents(response.events || []);
     } catch (error) {
       console.error('Error fetching events:', error);
+      // Don't show error toast as this is not critical
     }
   };
 
@@ -127,21 +185,29 @@ const CouponList: React.FC = () => {
     setShowCouponForm(true);
   };
 
-  const handleDeleteCoupon = async (couponId: string) => {
-    if (!window.confirm('Are you sure you want to delete this coupon?')) {
-      return;
-    }
+  const handleDeleteCoupon = (couponId: string) => {
+    setCouponToDelete(couponId);
+    setShowDeleteConfirm(true);
+  };
+
+  const confirmDeleteCoupon = async () => {
+    if (!couponToDelete) return;
 
     try {
-      await couponAPI.deleteCoupon(couponId);
+      await couponAPI.deleteCoupon(couponToDelete);
       toast.success('Coupon deleted successfully');
       fetchCoupons();
     } catch (error: any) {
       if (error.response?.status === 400) {
         toast.error('Cannot delete coupon that has been used');
+      } else if (error.response?.data?.message) {
+        toast.error(`Error: ${error.response.data.message}`);
       } else {
         toast.error('Failed to delete coupon');
       }
+    } finally {
+      setShowDeleteConfirm(false);
+      setCouponToDelete(null);
     }
   };
 
@@ -149,11 +215,28 @@ const CouponList: React.FC = () => {
     try {
       if (selectedCoupon) {
         await couponAPI.updateCoupon(selectedCoupon._id, data);
+        toast.success('Coupon updated successfully');
       } else {
         await couponAPI.createCoupon(data);
+        toast.success('Coupon created successfully');
       }
       fetchCoupons();
-    } catch (error) {
+      setShowCouponForm(false);
+    } catch (error: any) {
+      console.error('[CouponList] Error submitting coupon:', error);
+
+      // Provide user-friendly error messages
+      const errorMessage = error.response?.data?.message;
+
+      if (errorMessage?.includes('Cannot modify code, type, or value')) {
+        toast.error('This coupon has been used and cannot have its code, type, or discount value modified.');
+      } else if (errorMessage) {
+        toast.error(errorMessage);
+      } else if (error.response?.status === 400) {
+        toast.error('Invalid coupon data. Please check your inputs.');
+      } else {
+        toast.error('Failed to save coupon. Please try again.');
+      }
       throw error;
     }
   };
@@ -165,12 +248,20 @@ const CouponList: React.FC = () => {
     }
 
     try {
+      setBulkActionLoading(true);
       await couponAPI.bulkUpdateCoupons(selectedCoupons, status);
-      toast.success(`${selectedCoupons.length} coupons updated successfully`);
+      toast.success(`${selectedCoupons.length} coupon(s) updated successfully`);
       setSelectedCoupons([]);
       fetchCoupons();
-    } catch (error) {
-      toast.error('Failed to update coupons');
+    } catch (error: any) {
+      console.error('[CouponList] Error bulk updating coupons:', error);
+      if (error.response?.data?.message) {
+        toast.error(`Error: ${error.response.data.message}`);
+      } else {
+        toast.error('Failed to update coupons');
+      }
+    } finally {
+      setBulkActionLoading(false);
     }
   };
 
@@ -183,7 +274,7 @@ const CouponList: React.FC = () => {
   };
 
   const handleSearch = (value: string) => {
-    handleFilterChange('search', value);
+    setSearchInput(value);
   };
 
   const copyToClipboard = (text: string) => {
@@ -261,132 +352,150 @@ const CouponList: React.FC = () => {
           className="w-4 h-4 text-blue-600 border-gray-300 rounded focus:ring-blue-500"
         />
       ),
-      render: (coupon: Coupon) => (
-        <input
-          type="checkbox"
-          checked={selectedCoupons.includes(coupon._id)}
-          onChange={(e) => {
-            if (e.target.checked) {
-              setSelectedCoupons([...selectedCoupons, coupon._id]);
-            } else {
-              setSelectedCoupons(selectedCoupons.filter(id => id !== coupon._id));
-            }
-          }}
-          className="w-4 h-4 text-blue-600 border-gray-300 rounded focus:ring-blue-500"
-        />
-      )
+      render: (value: any, coupon: Coupon) => {
+        if (!coupon) return null;
+        return (
+          <input
+            type="checkbox"
+            checked={selectedCoupons.includes(coupon._id)}
+            onChange={(e) => {
+              if (e.target.checked) {
+                setSelectedCoupons([...selectedCoupons, coupon._id]);
+              } else {
+                setSelectedCoupons(selectedCoupons.filter(id => id !== coupon._id));
+              }
+            }}
+            className="w-4 h-4 text-blue-600 border-gray-300 rounded focus:ring-blue-500"
+          />
+        );
+      }
     },
     {
       key: 'coupon',
       label: 'Coupon',
-      render: (coupon: Coupon) => (
-        <div className="flex items-start space-x-3">
-          <div className="p-2 bg-gray-100 rounded">
-            {getTypeIcon(coupon.type)}
-          </div>
-          <div className="flex-1 min-w-0">
-            <div className="flex items-center space-x-2">
-              <h3 className="text-sm font-medium text-gray-900">
-                {coupon.code}
-              </h3>
-              <button
-                onClick={() => copyToClipboard(coupon.code)}
-                className="text-gray-400 hover:text-gray-600"
-              >
-                <Copy className="w-3 h-3" />
-              </button>
+      render: (_value: any, coupon: Coupon) => {
+        if (!coupon) return null;
+        return (
+          <div className="flex items-start space-x-3">
+            <div className="p-2 bg-gray-100 rounded">
+              {getTypeIcon(coupon.type)}
             </div>
-            <p className="text-sm text-gray-600">{coupon.name}</p>
-            <div className="flex items-center space-x-2 mt-1">
-              <span className="text-xs font-medium text-green-600">
-                {formatDiscount(coupon)}
-              </span>
-              {coupon.firstTimeOnly && (
-                <Badge variant="secondary" size="sm">First-time</Badge>
-              )}
+            <div className="flex-1 min-w-0">
+              <div className="flex items-center space-x-2">
+                <h3 className="text-sm font-medium text-gray-900">
+                  {coupon.code}
+                </h3>
+                <button
+                  onClick={() => copyToClipboard(coupon.code)}
+                  className="text-gray-400 hover:text-gray-600"
+                >
+                  <Copy className="w-3 h-3" />
+                </button>
+              </div>
+              <p className="text-sm text-gray-600">{coupon.name}</p>
+              <div className="flex items-center space-x-2 mt-1">
+                <span className="text-xs font-medium text-green-600">
+                  {formatDiscount(coupon)}
+                </span>
+                {coupon.firstTimeOnly && (
+                  <Badge variant="secondary" size="sm">First-time</Badge>
+                )}
+              </div>
             </div>
           </div>
-        </div>
-      )
+        );
+      }
     },
     {
       key: 'validity',
       label: 'Validity',
-      render: (coupon: Coupon) => (
-        <div className="text-sm">
-          <div className="text-gray-900">
-            {formatDate(coupon.validFrom)} - {formatDate(coupon.validUntil)}
+      render: (_value: any, coupon: Coupon) => {
+        if (!coupon) return null;
+        return (
+          <div className="text-sm">
+            <div className="text-gray-900">
+              {formatDate(coupon.validFrom)} - {formatDate(coupon.validUntil)}
+            </div>
+            <div className="text-gray-500 text-xs">
+              {new Date(coupon.validUntil) > new Date()
+                ? `${Math.ceil((new Date(coupon.validUntil).getTime() - new Date().getTime()) / (1000 * 60 * 60 * 24))} days left`
+                : 'Expired'
+              }
+            </div>
           </div>
-          <div className="text-gray-500 text-xs">
-            {new Date(coupon.validUntil) > new Date()
-              ? `${Math.ceil((new Date(coupon.validUntil).getTime() - new Date().getTime()) / (1000 * 60 * 60 * 24))} days left`
-              : 'Expired'
-            }
-          </div>
-        </div>
-      )
+        );
+      }
     },
     {
       key: 'usage',
       label: 'Usage',
-      render: (coupon: Coupon) => (
-        <div className="text-sm">
-          <div className="flex items-center space-x-2">
-            <span className="font-medium">{coupon.usageCount}</span>
+      render: (_value: any, coupon: Coupon) => {
+        if (!coupon) return null;
+        return (
+          <div className="text-sm">
+            <div className="flex items-center space-x-2">
+              <span className="font-medium">{coupon.usageCount}</span>
+              {coupon.usageLimit && (
+                <span className="text-gray-500">/ {coupon.usageLimit}</span>
+              )}
+            </div>
             {coupon.usageLimit && (
-              <span className="text-gray-500">/ {coupon.usageLimit}</span>
+              <div className="w-full bg-gray-200 rounded-full h-1.5 mt-1">
+                <div
+                  className="bg-blue-600 h-1.5 rounded-full"
+                  style={{
+                    width: `${Math.min((coupon.usageCount / coupon.usageLimit) * 100, 100)}%`
+                  }}
+                />
+              </div>
             )}
           </div>
-          {coupon.usageLimit && (
-            <div className="w-full bg-gray-200 rounded-full h-1.5 mt-1">
-              <div
-                className="bg-blue-600 h-1.5 rounded-full"
-                style={{
-                  width: `${Math.min((coupon.usageCount / coupon.usageLimit) * 100, 100)}%`
-                }}
-              />
-            </div>
-          )}
-        </div>
-      )
+        );
+      }
     },
     {
       key: 'status',
       label: 'Status',
-      render: (coupon: Coupon) => getStatusBadge(coupon)
+      render: (_value: any, coupon: Coupon) => {
+        if (!coupon) return null;
+        return getStatusBadge(coupon);
+      }
     },
     {
       key: 'actions',
       label: 'Actions',
-      render: (coupon: Coupon) => (
-        <div className="flex items-center space-x-2">
-          <Button
-            variant="secondary"
-            size="sm"
-            onClick={() => {
-              setSelectedCoupon(coupon);
-              setShowStatsModal(true);
-            }}
-          >
-            <BarChart3 className="w-4 h-4" />
-          </Button>
-          <Button
-            variant="secondary"
-            size="sm"
-            onClick={() => handleEditCoupon(coupon)}
-          >
-            <Edit className="w-4 h-4" />
-          </Button>
-          <Button
-            variant="danger"
-            size="sm"
-            onClick={() => handleDeleteCoupon(coupon._id)}
-            disabled={coupon.usageCount > 0}
-          >
-            <Trash2 className="w-4 h-4" />
-          </Button>
-        </div>
-      )
+      render: (_value: any, coupon: Coupon) => {
+        if (!coupon) return null;
+        return (
+          <div className="flex items-center space-x-2">
+            <Button
+              variant="secondary"
+              size="sm"
+              onClick={() => {
+                setSelectedCoupon(coupon);
+                setShowStatsModal(true);
+              }}
+            >
+              <BarChart3 className="w-4 h-4" />
+            </Button>
+            <Button
+              variant="secondary"
+              size="sm"
+              onClick={() => handleEditCoupon(coupon)}
+            >
+              <Edit className="w-4 h-4" />
+            </Button>
+            <Button
+              variant="danger"
+              size="sm"
+              onClick={() => handleDeleteCoupon(coupon._id)}
+              disabled={coupon.usageCount > 0}
+            >
+              <Trash2 className="w-4 h-4" />
+            </Button>
+          </div>
+        );
+      }
     }
   ];
 
@@ -403,10 +512,15 @@ const CouponList: React.FC = () => {
         <div className="flex items-center space-x-3">
           {selectedCoupons.length > 0 && (
             <div className="flex items-center space-x-2">
+              <span className="text-sm text-gray-600">
+                {selectedCoupons.length} selected
+              </span>
               <Button
                 variant="secondary"
                 size="sm"
                 onClick={() => handleBulkStatusUpdate('active')}
+                disabled={bulkActionLoading}
+                loading={bulkActionLoading}
               >
                 <CheckCircle className="w-4 h-4 mr-1" />
                 Activate
@@ -415,6 +529,8 @@ const CouponList: React.FC = () => {
                 variant="secondary"
                 size="sm"
                 onClick={() => handleBulkStatusUpdate('inactive')}
+                disabled={bulkActionLoading}
+                loading={bulkActionLoading}
               >
                 <Clock className="w-4 h-4 mr-1" />
                 Deactivate
@@ -500,7 +616,7 @@ const CouponList: React.FC = () => {
                 <input
                   type="text"
                   placeholder="Search coupons..."
-                  value={filters.search}
+                  value={searchInput}
                   onChange={(e) => handleSearch(e.target.value)}
                   className="pl-10 pr-4 py-2 w-full border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
                 />
@@ -535,16 +651,48 @@ const CouponList: React.FC = () => {
       {/* Coupon Table */}
       <Card>
         <CardContent className="p-0">
-          <DataTable
-            columns={columns}
-            data={coupons}
-            loading={loading}
-            pagination={{
-              currentPage: pagination.page,
-              totalPages: pagination.pages,
-              onPageChange: (page) => handleFilterChange('page', page)
-            }}
-          />
+          {error && !loading ? (
+            <div className="flex flex-col items-center justify-center py-12 px-4">
+              <AlertCircle className="w-12 h-12 text-red-500 mb-4" />
+              <h3 className="text-lg font-medium text-gray-900 mb-2">Failed to Load Coupons</h3>
+              <p className="text-gray-600 mb-6 text-center max-w-md">{error}</p>
+              <Button onClick={fetchCoupons} variant="primary">
+                <RefreshCw className="w-4 h-4 mr-2" />
+                Retry
+              </Button>
+            </div>
+          ) : coupons.length === 0 && !loading && !error ? (
+            <div className="flex flex-col items-center justify-center py-12 px-4">
+              <Tag className="w-12 h-12 text-gray-400 mb-4" />
+              <h3 className="text-lg font-medium text-gray-900 mb-2">No Coupons Found</h3>
+              <p className="text-gray-600 mb-6 text-center max-w-md">
+                {searchInput || filters.status || filters.type
+                  ? 'No coupons match your current filters. Try adjusting your search criteria.'
+                  : 'Get started by creating your first coupon to offer discounts to your customers.'}
+              </p>
+              {!searchInput && !filters.status && !filters.type && (
+                <Button onClick={handleCreateCoupon} variant="primary">
+                  <Plus className="w-4 h-4 mr-2" />
+                  Create Your First Coupon
+                </Button>
+              )}
+            </div>
+          ) : (
+            <DataTable
+              columns={columns}
+              data={coupons}
+              loading={loading}
+              rowKey="_id"
+              pagination={{
+                page: pagination.page,
+                pageSize: pagination.limit,
+                total: pagination.total,
+                pageSizeOptions: [10, 25, 50, 100]
+              }}
+              onPageChange={(page) => handleFilterChange('page', page)}
+              onPageSizeChange={(limit) => handleFilterChange('limit', limit)}
+            />
+          )}
         </CardContent>
       </Card>
 
@@ -565,6 +713,21 @@ const CouponList: React.FC = () => {
           onClose={() => setShowStatsModal(false)}
         />
       )}
+
+      {/* Delete Confirmation Dialog */}
+      <ConfirmDialog
+        isOpen={showDeleteConfirm}
+        onClose={() => {
+          setShowDeleteConfirm(false);
+          setCouponToDelete(null);
+        }}
+        onConfirm={confirmDeleteCoupon}
+        title="Delete Coupon"
+        message="Are you sure you want to delete this coupon? This action cannot be undone."
+        confirmText="Delete"
+        cancelText="Cancel"
+        variant="danger"
+      />
     </div>
   );
 };

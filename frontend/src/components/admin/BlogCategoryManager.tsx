@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import { useForm, Controller } from 'react-hook-form';
 import { yupResolver } from '@hookform/resolvers/yup';
 import * as yup from 'yup';
@@ -11,7 +11,9 @@ import {
   X,
   Tag,
   Palette,
-  FileText
+  FileText,
+  Search,
+  Filter
 } from 'lucide-react';
 import Button from '../ui/Button';
 import { Card, CardContent, CardHeader, CardTitle } from '../ui/Card';
@@ -87,9 +89,8 @@ const CategoryForm: React.FC<CategoryFormProps> = ({
     try {
       await onSubmit(data);
       onClose();
-      toast.success(category ? 'Category updated successfully!' : 'Category created successfully!');
     } catch (error) {
-      toast.error('An error occurred. Please try again.');
+      // Error is already handled in parent component
     }
   };
 
@@ -213,6 +214,9 @@ const BlogCategoryManager: React.FC = () => {
   const [loading, setLoading] = useState(true);
   const [selectedCategory, setSelectedCategory] = useState<Category | null>(null);
   const [showCategoryForm, setShowCategoryForm] = useState(false);
+  const [searchQuery, setSearchQuery] = useState('');
+  const [statusFilter, setStatusFilter] = useState<'all' | 'active' | 'inactive'>('all');
+  const [sortBy, setSortBy] = useState<'name' | 'date' | 'posts'>('name');
 
   useEffect(() => {
     fetchCategories();
@@ -222,10 +226,12 @@ const BlogCategoryManager: React.FC = () => {
     try {
       setLoading(true);
       const response = await blogAPI.admin.getAllCategories();
-      setCategories(response.data.categories);
-    } catch (error) {
-      toast.error('Failed to fetch categories');
+      setCategories(response || []);
+    } catch (error: any) {
+      const errorMessage = error.response?.data?.message || 'Failed to load categories';
+      toast.error(errorMessage);
       console.error('Error fetching categories:', error);
+      setCategories([]);
     } finally {
       setLoading(false);
     }
@@ -241,21 +247,39 @@ const BlogCategoryManager: React.FC = () => {
     setShowCategoryForm(true);
   };
 
-  const handleDeleteCategory = async (categoryId: string) => {
-    if (!window.confirm('Are you sure you want to delete this category? This action cannot be undone.')) {
+  const handleDeleteCategory = async (category: Category) => {
+    const confirmMessage = category.postsCount > 0
+      ? `This category has ${category.postsCount} associated blog post(s) and cannot be deleted. Please reassign or delete those posts first.`
+      : `Are you sure you want to delete "${category.name}"? This action cannot be undone.`;
+
+    if (!window.confirm(confirmMessage)) {
+      return;
+    }
+
+    if (category.postsCount > 0) {
       return;
     }
 
     try {
-      await blogAPI.admin.deleteCategory(categoryId);
-      toast.success('Category deleted successfully');
+      await blogAPI.admin.deleteCategory(category._id);
+      toast.success(`Category "${category.name}" deleted successfully`);
       fetchCategories();
     } catch (error: any) {
-      if (error.response?.status === 400) {
-        toast.error('Cannot delete category with associated blogs');
-      } else {
-        toast.error('Failed to delete category');
-      }
+      const errorMessage = error.response?.data?.message || 'Failed to delete category';
+      toast.error(errorMessage);
+      console.error('Error deleting category:', error);
+    }
+  };
+
+  const handleToggleStatus = async (categoryId: string, categoryName: string, currentStatus: boolean) => {
+    try {
+      await blogAPI.admin.toggleCategoryStatus(categoryId);
+      toast.success(`"${categoryName}" ${currentStatus ? 'deactivated' : 'activated'} successfully`);
+      fetchCategories();
+    } catch (error: any) {
+      const errorMessage = error.response?.data?.message || 'Failed to toggle category status';
+      toast.error(errorMessage);
+      console.error('Error toggling category status:', error);
     }
   };
 
@@ -263,11 +287,17 @@ const BlogCategoryManager: React.FC = () => {
     try {
       if (selectedCategory) {
         await blogAPI.admin.updateCategory(selectedCategory._id, data);
+        toast.success(`Category "${data.name}" updated successfully`);
       } else {
         await blogAPI.admin.createCategory(data);
+        toast.success(`Category "${data.name}" created successfully`);
       }
       fetchCategories();
-    } catch (error) {
+    } catch (error: any) {
+      const errorMessage = error.response?.data?.message ||
+        `Failed to ${selectedCategory ? 'update' : 'create'} category`;
+      toast.error(errorMessage);
+      console.error('Error saving category:', error);
       throw error;
     }
   };
@@ -279,6 +309,40 @@ const BlogCategoryManager: React.FC = () => {
       day: 'numeric'
     });
   };
+
+  // Filter and sort categories
+  const filteredCategories = useMemo(() => {
+    let filtered = [...categories];
+
+    // Apply search filter
+    if (searchQuery) {
+      filtered = filtered.filter((category) =>
+        category.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
+        category.description?.toLowerCase().includes(searchQuery.toLowerCase())
+      );
+    }
+
+    // Apply status filter
+    if (statusFilter === 'active') {
+      filtered = filtered.filter((category) => category.isActive);
+    } else if (statusFilter === 'inactive') {
+      filtered = filtered.filter((category) => !category.isActive);
+    }
+
+    // Apply sorting
+    filtered.sort((a, b) => {
+      if (sortBy === 'name') {
+        return a.name.localeCompare(b.name);
+      } else if (sortBy === 'date') {
+        return new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime();
+      } else if (sortBy === 'posts') {
+        return b.postsCount - a.postsCount;
+      }
+      return 0;
+    });
+
+    return filtered;
+  }, [categories, searchQuery, statusFilter, sortBy]);
 
   if (loading) {
     return (
@@ -292,7 +356,7 @@ const BlogCategoryManager: React.FC = () => {
   return (
     <div className="space-y-6">
       {/* Header */}
-      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between">
+      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
         <div>
           <h2 className="text-xl font-semibold text-gray-900">Category Management</h2>
           <p className="text-sm text-gray-600">
@@ -305,10 +369,52 @@ const BlogCategoryManager: React.FC = () => {
         </Button>
       </div>
 
+      {/* Search and Filters */}
+      <div className="space-y-3">
+        <div className="flex flex-col sm:flex-row gap-4">
+          <div className="flex-1 relative">
+            <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-5 h-5" />
+            <input
+              type="text"
+              placeholder="Search categories..."
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+              className="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+            />
+          </div>
+          <div className="flex gap-2">
+            <select
+              value={statusFilter}
+              onChange={(e) => setStatusFilter(e.target.value as 'all' | 'active' | 'inactive')}
+              className="px-4 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+            >
+              <option value="all">All Status</option>
+              <option value="active">Active</option>
+              <option value="inactive">Inactive</option>
+            </select>
+            <select
+              value={sortBy}
+              onChange={(e) => setSortBy(e.target.value as 'name' | 'date' | 'posts')}
+              className="px-4 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+            >
+              <option value="name">Sort by Name</option>
+              <option value="date">Sort by Date</option>
+              <option value="posts">Sort by Posts</option>
+            </select>
+          </div>
+        </div>
+
+        {/* Results count */}
+        <div className="text-sm text-gray-600">
+          Showing <span className="font-semibold">{filteredCategories.length}</span> of{' '}
+          <span className="font-semibold">{categories.length}</span> categories
+        </div>
+      </div>
+
       {/* Categories Grid */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-        {categories.map((category) => (
-          <Card key={category._id} className="relative">
+        {filteredCategories.map((category) => (
+          <Card key={category._id} className={`relative ${!category.isActive ? 'opacity-60' : ''}`}>
             <CardHeader className="pb-3">
               <div className="flex items-start justify-between">
                 <div className="flex items-center space-x-3">
@@ -317,7 +423,14 @@ const BlogCategoryManager: React.FC = () => {
                     style={{ backgroundColor: category.color || '#3B82F6' }}
                   />
                   <div>
-                    <CardTitle className="text-lg">{category.name}</CardTitle>
+                    <div className="flex items-center space-x-2">
+                      <CardTitle className="text-lg">{category.name}</CardTitle>
+                      {!category.isActive && (
+                        <span className="text-xs bg-gray-200 text-gray-600 px-2 py-0.5 rounded">
+                          Inactive
+                        </span>
+                      )}
+                    </div>
                     <p className="text-sm text-gray-500">{category.slug}</p>
                   </div>
                 </div>
@@ -332,8 +445,7 @@ const BlogCategoryManager: React.FC = () => {
                   <Button
                     variant="danger"
                     size="sm"
-                    onClick={() => handleDeleteCategory(category._id)}
-                    disabled={category.postsCount > 0}
+                    onClick={() => handleDeleteCategory(category)}
                   >
                     <Trash2 className="w-4 h-4" />
                   </Button>
@@ -358,6 +470,24 @@ const BlogCategoryManager: React.FC = () => {
                   </span>
                 </div>
 
+                {/* Toggle Active Status */}
+                <div className="flex items-center justify-between pt-2 border-t">
+                  <span className="text-sm text-gray-600">Active Status</span>
+                  <button
+                    onClick={() => handleToggleStatus(category._id, category.name, category.isActive)}
+                    className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors ${
+                      category.isActive ? 'bg-blue-600' : 'bg-gray-300'
+                    }`}
+                    title={`Click to ${category.isActive ? 'deactivate' : 'activate'} this category`}
+                  >
+                    <span
+                      className={`inline-block h-4 w-4 transform rounded-full bg-white transition-transform ${
+                        category.isActive ? 'translate-x-6' : 'translate-x-1'
+                      }`}
+                    />
+                  </button>
+                </div>
+
                 {category.postsCount > 0 && (
                   <div className="text-xs text-amber-600 bg-amber-50 px-2 py-1 rounded">
                     Cannot delete - has associated posts
@@ -368,19 +498,36 @@ const BlogCategoryManager: React.FC = () => {
           </Card>
         ))}
 
-        {categories.length === 0 && (
+        {filteredCategories.length === 0 && (
           <div className="col-span-full">
             <Card>
               <CardContent className="text-center py-12">
                 <Tag className="w-12 h-12 text-gray-400 mx-auto mb-4" />
-                <h3 className="text-lg font-medium text-gray-900 mb-2">No categories yet</h3>
-                <p className="text-gray-500 mb-4">
-                  Create your first category to organize your blog posts.
-                </p>
-                <Button onClick={handleCreateCategory}>
-                  <Plus className="w-4 h-4 mr-2" />
-                  Create Category
-                </Button>
+                {categories.length === 0 ? (
+                  <>
+                    <h3 className="text-lg font-medium text-gray-900 mb-2">No categories yet</h3>
+                    <p className="text-gray-500 mb-4">
+                      Create your first category to organize your blog posts.
+                    </p>
+                    <Button onClick={handleCreateCategory}>
+                      <Plus className="w-4 h-4 mr-2" />
+                      Create Category
+                    </Button>
+                  </>
+                ) : (
+                  <>
+                    <h3 className="text-lg font-medium text-gray-900 mb-2">No categories found</h3>
+                    <p className="text-gray-500 mb-4">
+                      Try adjusting your search or filter criteria.
+                    </p>
+                    <Button onClick={() => {
+                      setSearchQuery('');
+                      setStatusFilter('all');
+                    }}>
+                      Clear Filters
+                    </Button>
+                  </>
+                )}
               </CardContent>
             </Card>
           </div>

@@ -70,6 +70,20 @@ export interface UpdateProfileRequest {
   dateOfBirth?: string;
   gender?: 'male' | 'female' | 'other' | 'prefer_not_to_say';
   bio?: string;
+  preferences?: {
+    language?: string;
+    currency?: string;
+    timezone?: string;
+    notifications?: {
+      email?: boolean;
+      sms?: boolean;
+      push?: boolean;
+      marketing?: boolean;
+      security?: boolean;
+      bookingReminders?: boolean;
+      eventUpdates?: boolean;
+    };
+  };
 }
 
 // Email verification request type

@@ -23,6 +23,7 @@ export { default as employeeAPI } from './employeeAPI';
 export { default as blogAPI } from './blogAPI';
 export { default as reviewsAPI } from './reviewsAPI';
 export { default as notificationAPI } from './notificationAPI';
+export { default as contactAPI } from './contactAPI';
 
 // Business Logic APIs
 export { default as couponAPI } from './couponAPI';
@@ -67,16 +68,21 @@ export type {
   DashboardStats, 
   AffiliateAnalytics 
 } from './affiliateAPI';
-export type { 
-  Payment, 
-  PaymentGateway, 
-  PaymentMethodType, 
+export type {
+  Payment,
+  PaymentGateway,
+  PaymentMethodType,
   PaymentStatus,
-  BillingAddress, 
-  PaymentRefund, 
-  CreatePaymentData, 
-  PaymentIntent, 
-  PaymentMethodInfo, 
-  RefundRequest, 
-  PaymentAnalytics 
+  BillingAddress,
+  PaymentRefund,
+  CreatePaymentData,
+  PaymentIntent,
+  PaymentMethodInfo,
+  RefundRequest,
+  PaymentAnalytics
 } from './paymentAPI';
+export type {
+  ContactFormData,
+  Contact,
+  ContactStats
+} from './contactAPI';

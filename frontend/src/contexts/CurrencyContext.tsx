@@ -64,11 +64,34 @@ export const CurrencyProvider: React.FC<{ children: React.ReactNode }> = ({ chil
   const fetchExchangeRates = async () => {
     setIsLoading(true);
     try {
-      const response = await fetch(`${API_BASE_URL}/currency/rates`);
+      // Add 5 second timeout to prevent hanging
+      const controller = new AbortController();
+      const timeoutId = setTimeout(() => controller.abort(), 5000);
+
+      const response = await fetch(`${API_BASE_URL}/currency/rates`, {
+        signal: controller.signal
+      });
+
+      clearTimeout(timeoutId);
+
+      if (!response.ok) {
+        throw new Error(`HTTP error! status: ${response.status}`);
+      }
+
       const data = await response.json();
       setExchangeRates(data.rates);
     } catch (error) {
-      console.error('Error fetching exchange rates:', error);
+      // Silently fail and use default exchange rates
+      console.warn('Currency rates unavailable, using default rates:', error);
+
+      // Set default exchange rates as fallback
+      setExchangeRates({
+        AED: 1,      // Base currency
+        USD: 0.27,   // 1 AED = 0.27 USD
+        EUR: 0.25,   // 1 AED = 0.25 EUR
+        GBP: 0.21,   // 1 AED = 0.21 GBP
+        INR: 22.5    // 1 AED = 22.5 INR
+      });
     } finally {
       setIsLoading(false);
     }
@@ -83,7 +106,20 @@ export const CurrencyProvider: React.FC<{ children: React.ReactNode }> = ({ chil
 
     setIsLoading(true);
     try {
-      const response = await fetch(`${API_BASE_URL}/currency/detect`);
+      // Add 5 second timeout to prevent hanging
+      const controller = new AbortController();
+      const timeoutId = setTimeout(() => controller.abort(), 5000);
+
+      const response = await fetch(`${API_BASE_URL}/currency/detect`, {
+        signal: controller.signal
+      });
+
+      clearTimeout(timeoutId);
+
+      if (!response.ok) {
+        throw new Error(`HTTP error! status: ${response.status}`);
+      }
+
       const data = await response.json();
       const detectedCurrencyCode = data.data.currency as Currency;
 
@@ -95,7 +131,7 @@ export const CurrencyProvider: React.FC<{ children: React.ReactNode }> = ({ chil
         localStorage.setItem('currencyAutoDetected', 'false');
       }
     } catch (error) {
-      console.error('Error auto-detecting currency:', error);
+      console.warn('Currency auto-detection unavailable, using default AED:', error);
       setCurrentCurrency('AED'); // Default to AED on error
       localStorage.setItem('currencyAutoDetected', 'false');
     } finally {

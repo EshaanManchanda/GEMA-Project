@@ -8,7 +8,8 @@ import {
   createCategory,
   updateCategory,
   deleteCategory,
-  getAllCategoriesAdmin
+  getAllCategoriesAdmin,
+  toggleCategoryStatus
 } from '../controllers/blog.controller';
 import { authenticate, authorize } from '../middleware/auth';
 import { validateRequest } from '../middleware/validation';
@@ -268,6 +269,12 @@ router.route('/categories')
 router.route('/categories/:id')
   .put(updateCategoryValidation, validateRequest, updateCategory)
   .delete(deleteCategoryValidation, validateRequest, deleteCategory);
+
+router.patch('/categories/:id/toggle-status',
+  param('id').isMongoId().withMessage('Invalid category ID'),
+  validateRequest,
+  toggleCategoryStatus
+);
 
 // Blog ID routes (must come after specific routes like /categories)
 router.route('/:id')

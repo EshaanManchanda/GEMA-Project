@@ -846,8 +846,14 @@ const AdminUsersPage: React.FC = () => {
                             <p className="font-medium text-gray-900">{address.label}</p>
                             <p className="text-sm text-gray-600">{address.street}</p>
                             <p className="text-sm text-gray-600">
-                              {address.city}, {address.state} {address.postalCode}
+                              {address.city}, {address.state} {address.zipCode}
                             </p>
+                            {address.poBox && (
+                              <p className="text-sm text-gray-600">P.O. Box: {address.poBox}</p>
+                            )}
+                            {address.makaniNumber && (
+                              <p className="text-sm text-gray-600">Makani: {address.makaniNumber}</p>
+                            )}
                             <p className="text-sm text-gray-600">{address.country}</p>
                             {address.isDefault && (
                               <span className="inline-flex px-2 py-1 text-xs font-semibold rounded bg-blue-100 text-blue-800 mt-2">

@@ -1,9 +1,10 @@
 import { Request, Response, NextFunction } from 'express';
 import { getAuth } from '../config/firebase';
 import { generateToken, generateRefreshToken } from '../config/jwt';
-import { User, UserStatus, RefreshToken, IUser, IAddress } from '../models';
+import { User, UserStatus, RefreshToken, IUser, IAddress, Gender } from '../models';
 import { AppError } from '../middleware';
 import { emailService } from '../services/email.service';
+import smsService from '../services/sms.service';
 import {
   AuthResponse,
   LoginRequest,
@@ -21,6 +22,7 @@ import {
 import bcrypt from 'bcryptjs';
 import crypto from 'crypto';
 import { generateOTP, getOTPExpiry } from '../utils/otp';
+import { sanitizeToE164, validatePhoneForAPI, isE164Format } from '../utils/phoneValidation';
 
 
 /**
@@ -464,24 +466,170 @@ export const getCurrentUser = async (req: Request, res: Response, next: NextFunc
  */
 export const updateProfile = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
   try {
-    const { firstName, lastName, phone }: UpdateProfileRequest = req.body;
+    const { firstName, lastName, phone, dateOfBirth, gender, bio, preferences }: UpdateProfileRequest = req.body;
     const user = req.user;
     if (!user) {
       throw new AppError('User not authenticated', 401);
     }
-    
-    // Update fields
+
+    // Update basic fields
     if (firstName) user.firstName = firstName;
     if (lastName) user.lastName = lastName;
-    if (phone) user.phone = phone;
-    
+
+    // Handle phone number with E.164 conversion and validation
+    if (phone !== undefined) {
+      if (phone === '' || phone === null) {
+        // Allow clearing the phone number
+        user.phone = undefined;
+        user.isPhoneVerified = false;
+        user.phoneVerification = undefined;
+      } else {
+        // Sanitize to E.164 format
+        const e164Phone = sanitizeToE164(phone);
+
+        if (!e164Phone) {
+          throw new AppError(
+            'Invalid phone number format. Please provide a valid international phone number (e.g., +1234567890)',
+            400
+          );
+        }
+
+        // Check if this phone is already used by another user
+        if (e164Phone !== user.phone) {
+          const existingUser = await User.findOne({
+            phone: e164Phone,
+            _id: { $ne: user._id }
+          });
+
+          if (existingUser) {
+            throw new AppError('This phone number is already registered to another account', 409);
+          }
+
+          // If changing phone, reset verification
+          user.phone = e164Phone;
+          user.isPhoneVerified = false;
+          user.phoneVerification = undefined;
+        } else {
+          // Same phone, just ensure it's in E.164 format
+          user.phone = e164Phone;
+        }
+      }
+    }
+
+    if (dateOfBirth) user.dateOfBirth = new Date(dateOfBirth);
+    if (gender) user.gender = gender as Gender;
+
+    // Update preferences if provided
+    if (preferences) {
+      if (!user.preferences) {
+        user.preferences = {
+          language: 'en',
+          currency: 'AED',
+          timezone: 'Asia/Dubai',
+          notifications: {
+            email: true,
+            sms: false,
+            push: true
+          }
+        };
+      }
+
+      if (preferences.language) user.preferences.language = preferences.language;
+      if (preferences.currency) user.preferences.currency = preferences.currency;
+      if (preferences.timezone) user.preferences.timezone = preferences.timezone;
+
+      if (preferences.notifications) {
+        user.preferences.notifications = {
+          ...user.preferences.notifications,
+          ...preferences.notifications
+        };
+      }
+    }
+
     await user.save();
-    
+
+    // Calculate profile completion
+    const calculateProfileCompletion = (user: IUser): number => {
+      let completedFields = 0;
+      const totalFields = 8;
+
+      if (user.firstName) completedFields++;
+      if (user.lastName) completedFields++;
+      if (user.email && user.isEmailVerified) completedFields++;
+      if (user.phone && user.isPhoneVerified) completedFields++;
+      if (user.avatar) completedFields++;
+      if (user.dateOfBirth) completedFields++;
+      if (user.addresses && user.addresses.length > 0) completedFields++;
+      if (user.gender) completedFields++;
+
+      return Math.round((completedFields / totalFields) * 100);
+    };
+
+    // Return full user profile
+    const userProfile = {
+      id: user._id.toString(),
+      firstName: user.firstName,
+      lastName: user.lastName,
+      email: user.email,
+      phone: user.phone || '',
+      avatar: user.avatar || '',
+      role: user.role,
+      isEmailVerified: user.isEmailVerified,
+      isPhoneVerified: user.isPhoneVerified || false,
+      dateOfBirth: user.dateOfBirth ? user.dateOfBirth.toISOString().split('T')[0] : '',
+      gender: user.gender || '',
+      bio: bio || '',
+      addresses: user.addresses || [],
+      socialLinks: {
+        facebook: user.socialMedia?.facebook || '',
+        instagram: user.socialMedia?.instagram || '',
+        twitter: user.socialMedia?.twitter || '',
+        linkedin: user.socialMedia?.linkedin || '',
+        website: user.socialMedia?.website || ''
+      },
+      securitySettings: {
+        twoFactorEnabled: user.twoFactorAuth?.enabled || false,
+        loginNotifications: true,
+        securityAlerts: true,
+        lastPasswordChange: user.updatedAt.toISOString(),
+        activeDevices: []
+      },
+      privacySettings: {
+        profileVisibility: 'public' as const,
+        showEmail: false,
+        showPhone: false,
+        showBirthDate: false,
+        dataProcessingConsent: true,
+        marketingEmails: true,
+        thirdPartySharing: false
+      },
+      preferences: {
+        language: user.preferences?.language || 'en',
+        currency: user.preferences?.currency || 'AED',
+        timezone: user.preferences?.timezone || 'Asia/Dubai',
+        theme: 'light' as const,
+        notifications: {
+          email: user.preferences?.notifications?.email ?? true,
+          sms: user.preferences?.notifications?.sms ?? false,
+          push: user.preferences?.notifications?.push ?? true,
+          marketing: user.preferences?.notifications?.email ?? true,
+          security: true,
+          bookingReminders: true,
+          eventUpdates: true
+        }
+      },
+      profileCompletion: calculateProfileCompletion(user),
+      lastActiveAt: user.updatedAt.toISOString(),
+      memberSince: user.createdAt.toISOString(),
+      createdAt: user.createdAt.toISOString(),
+      updatedAt: user.updatedAt.toISOString()
+    };
+
     res.status(200).json({
       success: true,
       message: 'Profile updated successfully',
-      data: formatUserResponse(user)
-    } as ApiResponse<UserResponse>);
+      data: userProfile
+    });
   } catch (error) {
     next(error);
   }
@@ -775,15 +923,15 @@ export const getFullProfile = async (req: Request, res: Response, next: NextFunc
         thirdPartySharing: false
       },
       preferences: {
-        language: 'en',
-        currency: 'AED',
-        timezone: 'Asia/Dubai',
+        language: user.preferences?.language || 'en',
+        currency: user.preferences?.currency || 'AED',
+        timezone: user.preferences?.timezone || 'Asia/Dubai',
         theme: 'light' as const,
         notifications: {
-          email: true,
-          sms: false,
-          push: true,
-          marketing: true,
+          email: user.preferences?.notifications?.email ?? true,
+          sms: user.preferences?.notifications?.sms ?? false,
+          push: user.preferences?.notifications?.push ?? true,
+          marketing: user.preferences?.notifications?.email ?? true,
           security: true,
           bookingReminders: true,
           eventUpdates: true
@@ -1020,21 +1168,23 @@ export const sendPhoneVerificationOTP = async (req: Request, res: Response, next
       throw new AppError('Phone number is required', 400);
     }
 
-    // Validate phone format (basic E.164 validation)
-    if (!/^\+[1-9]\d{7,14}$/.test(phone)) {
-      throw new AppError('Please provide a valid international phone number (e.g., +1234567890)', 400);
-    }
-
-    // Check if phone is already verified by another user
-    const existingUser = await User.findOne({
-      phone,
-      isPhoneVerified: true,
-      _id: { $ne: user._id }
+    // Comprehensive phone validation (format, mobile check, duplicate check)
+    const phoneValidation = await validatePhoneForAPI(phone, {
+      requireMobile: true,
+      checkDuplicate: true,
+      excludeUserId: user._id.toString()
     });
 
-    if (existingUser) {
-      throw new AppError('This phone number is already verified by another user', 400);
+    if (!phoneValidation.isValid) {
+      throw new AppError(
+        phoneValidation.error || 'Invalid phone number',
+        400,
+        phoneValidation.errorCode
+      );
     }
+
+    // Use the validated E.164 formatted phone number
+    const validatedPhone = phoneValidation.e164Format!;
 
     // Generate 6-digit OTP
     const verificationOTP = generateOTP();
@@ -1046,23 +1196,35 @@ export const sendPhoneVerificationOTP = async (req: Request, res: Response, next
       expiresAt: otpExpiry
     };
 
-    // Update phone if different
-    if (user.phone !== phone) {
-      user.phone = phone;
+    // Update phone if different (using validated E.164 format)
+    if (user.phone !== validatedPhone) {
+      user.phone = validatedPhone;
       user.isPhoneVerified = false; // Reset verification status
     }
 
     await user.save();
 
-    // In production, you would send SMS via Twilio, AWS SNS, or Firebase
-    // For now, we'll just return the OTP in development mode
+    // Send SMS with verification OTP
+    const smsResult = await smsService.sendVerificationOTP(validatedPhone, verificationOTP);
+
+    if (!smsResult.success) {
+      // SMS failed to send, but we've already saved the OTP to DB
+      // Log the error but still allow the user to proceed (they can resend)
+      console.error(`Failed to send OTP to ${phone}:`, smsResult.error);
+      throw new AppError(
+        'Failed to send verification code. Please try again or contact support.',
+        500
+      );
+    }
+
     const responseData: any = {
-      message: 'Verification OTP sent successfully'
+      message: 'Verification OTP sent successfully',
+      provider: smsService.getProviderName()
     };
 
-    // Only send OTP in response during development
+    // Only send OTP in response during development mode
     if (process.env.NODE_ENV === 'development') {
-      responseData.otp = verificationOTP; // Remove this in production
+      responseData.otp = verificationOTP; // For testing only - remove in production
       console.log(`[DEV] Phone verification OTP for ${phone}: ${verificationOTP}`);
     }
 
@@ -1166,14 +1328,25 @@ export const resendPhoneVerificationOTP = async (req: Request, res: Response, ne
 
     await user.save();
 
-    // In production, send SMS via Twilio, AWS SNS, or Firebase
+    // Send SMS with verification OTP
+    const smsResult = await smsService.sendVerificationOTP(user.phone, verificationOTP);
+
+    if (!smsResult.success) {
+      console.error(`Failed to resend OTP to ${user.phone}:`, smsResult.error);
+      throw new AppError(
+        'Failed to send verification code. Please try again or contact support.',
+        500
+      );
+    }
+
     const responseData: any = {
-      message: 'Verification OTP resent successfully'
+      message: 'Verification OTP resent successfully',
+      provider: smsService.getProviderName()
     };
 
-    // Only send OTP in response during development
+    // Only send OTP in response during development mode
     if (process.env.NODE_ENV === 'development') {
-      responseData.otp = verificationOTP; // Remove this in production
+      responseData.otp = verificationOTP; // For testing only - remove in production
       console.log(`[DEV] Phone verification OTP for ${user.phone}: ${verificationOTP}`);
     }
 

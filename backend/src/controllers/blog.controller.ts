@@ -485,12 +485,33 @@ export const getAllCategoriesAdmin = async (req: Request, res: Response) => {
     console.log('getAllCategoriesAdmin: Received request to fetch all blog categories for admin.');
     const categories = await BlogCategory.find({}).sort({ name: 1 });
     console.log(`getAllCategoriesAdmin: Fetched ${categories.length} categories.`);
-    res.status(200).json({ success: true, data: categories });
+    res.status(200).json({ success: true, data: { categories } });
   } catch (error: any) {
     console.error('getAllCategoriesAdmin: Error fetching blog categories:', error);
     res.status(500).json({ success: false, message: error.message || 'Server Error' });
   }
 };
+
+export const toggleCategoryStatus = catchAsync(async (req: Request, res: Response) => {
+  const { id } = req.params;
+
+  const category = await BlogCategory.findById(id);
+  if (!category) {
+    return res.status(404).json({
+      success: false,
+      message: 'Category not found'
+    });
+  }
+
+  category.isActive = !category.isActive;
+  await category.save();
+
+  res.status(200).json({
+    success: true,
+    message: `Category ${category.isActive ? 'activated' : 'deactivated'} successfully`,
+    data: { category }
+  });
+});
 
 // Blog interaction controllers
 export const likeBlog = catchAsync(async (req: Request, res: Response) => {

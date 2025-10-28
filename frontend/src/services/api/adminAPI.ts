@@ -288,7 +288,7 @@ const adminAPI = {
   getAllVenues: async (params?: any) => {
     try {
       const response = await ApiService.get('/admin/venues', { params });
-      return response.data;
+      return response;
     } catch (error) {
       throw error;
     }
@@ -297,7 +297,16 @@ const adminAPI = {
   getVenueById: async (id: string) => {
     try {
       const response = await ApiService.get(`/admin/venues/${id}`);
-      return response.data;
+      return response;
+    } catch (error) {
+      throw error;
+    }
+  },
+
+  createVenue: async (venueData: any) => {
+    try {
+      const response = await ApiService.post('/admin/venues', venueData);
+      return response;
     } catch (error) {
       throw error;
     }
@@ -306,7 +315,7 @@ const adminAPI = {
   updateVenue: async (id: string, venueData: any) => {
     try {
       const response = await ApiService.put(`/admin/venues/${id}`, venueData);
-      return response.data;
+      return response;
     } catch (error) {
       throw error;
     }
@@ -315,7 +324,7 @@ const adminAPI = {
   deleteVenue: async (id: string) => {
     try {
       const response = await ApiService.delete(`/admin/venues/${id}`);
-      return response.data;
+      return response;
     } catch (error) {
       throw error;
     }
@@ -324,7 +333,7 @@ const adminAPI = {
   approveVenue: async (id: string) => {
     try {
       const response = await ApiService.put(`/admin/venues/${id}/approve`);
-      return response.data;
+      return response;
     } catch (error) {
       throw error;
     }
@@ -333,7 +342,7 @@ const adminAPI = {
   rejectVenue: async (id: string, reason: string) => {
     try {
       const response = await ApiService.put(`/admin/venues/${id}/reject`, { reason });
-      return response.data;
+      return response;
     } catch (error) {
       throw error;
     }
@@ -342,7 +351,7 @@ const adminAPI = {
   updateVenueStatus: async (id: string, status: string) => {
     try {
       const response = await ApiService.put(`/admin/venues/${id}/status`, { status });
-      return response.data;
+      return response;
     } catch (error) {
       throw error;
     }
@@ -351,7 +360,7 @@ const adminAPI = {
   bulkUpdateVenues: async (venueIds: string[], updateData: any) => {
     try {
       const response = await ApiService.patch('/admin/venues/bulk', { venueIds, updateData });
-      return response.data;
+      return response;
     } catch (error) {
       throw error;
     }
@@ -360,7 +369,18 @@ const adminAPI = {
   getVenueStats: async () => {
     try {
       const response = await ApiService.get('/admin/venues/stats');
-      return response.data;
+      return response;
+    } catch (error) {
+      throw error;
+    }
+  },
+
+  getVendorsList: async () => {
+    try {
+      const response = await ApiService.get('/admin/users', {
+        params: { role: 'vendor', limit: 100 }
+      });
+      return response;
     } catch (error) {
       throw error;
     }

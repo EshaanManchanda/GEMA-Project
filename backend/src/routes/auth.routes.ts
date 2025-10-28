@@ -241,8 +241,21 @@ router.delete(
  */
 
 /**
+ * @route   POST /api/auth/upload-avatar
+ * @desc    Upload user avatar
+ * @access  Private
+ */
+router.post(
+  '/upload-avatar',
+  authenticate,
+  validateAvatarUpdate,
+  validate,
+  authController.updateAvatar
+);
+
+/**
  * @route   PUT /api/auth/avatar
- * @desc    Update user avatar
+ * @desc    Update user avatar (backward compatibility)
  * @access  Private
  */
 router.put(

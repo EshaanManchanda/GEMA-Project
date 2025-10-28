@@ -49,12 +49,88 @@ export const validateProfileUpdate = [
       }
       return true;
     }),
+
+  body('bio')
+    .optional()
+    .trim()
+    .isLength({ max: 500 })
+    .withMessage('Bio cannot exceed 500 characters'),
+
+  body('preferences')
+    .optional({ nullable: true, checkFalsy: false })
+    .custom((value) => {
+      // If preferences is provided, validate its structure
+      if (value === undefined || value === null) {
+        return true; // Optional field
+      }
+
+      if (typeof value !== 'object' || Array.isArray(value)) {
+        throw new Error('Preferences must be an object');
+      }
+
+      // Validate language
+      if (value.language !== undefined) {
+        if (typeof value.language !== 'string' || value.language.length > 10) {
+          throw new Error('Language code must be a string with max 10 characters');
+        }
+      }
+
+      // Validate currency
+      if (value.currency !== undefined) {
+        if (typeof value.currency !== 'string' || value.currency.length > 10) {
+          throw new Error('Currency code must be a string with max 10 characters');
+        }
+      }
+
+      // Validate timezone
+      if (value.timezone !== undefined) {
+        if (typeof value.timezone !== 'string' || value.timezone.length > 50) {
+          throw new Error('Timezone must be a string with max 50 characters');
+        }
+      }
+
+      // Validate notifications object
+      if (value.notifications !== undefined) {
+        if (typeof value.notifications !== 'object' || Array.isArray(value.notifications)) {
+          throw new Error('Notifications must be an object');
+        }
+
+        const validNotificationKeys = [
+          'email', 'sms', 'push', 'marketing',
+          'security', 'bookingReminders', 'eventUpdates'
+        ];
+
+        // Check each notification preference is a boolean
+        for (const key of validNotificationKeys) {
+          if (value.notifications[key] !== undefined && typeof value.notifications[key] !== 'boolean') {
+            throw new Error(`${key} notification preference must be a boolean`);
+          }
+        }
+
+        // Check for unexpected keys
+        const providedKeys = Object.keys(value.notifications);
+        for (const key of providedKeys) {
+          if (!validNotificationKeys.includes(key)) {
+            throw new Error(`Unknown notification preference: ${key}`);
+          }
+        }
+      }
+
+      return true;
+    }),
 ];
 
 /**
  * Address validation
  */
 export const validateAddress = [
+  body('label')
+    .optional()
+    .trim()
+    .isLength({ min: 1, max: 50 })
+    .withMessage('Label must be between 1 and 50 characters')
+    .escape(),
+
   body('street')
     .trim()
     .notEmpty()
@@ -81,10 +157,39 @@ export const validateAddress = [
 
   body('zipCode')
     .trim()
-    .notEmpty()
-    .withMessage('Zip code is required')
-    .isLength({ min: 1, max: 20 })
-    .withMessage('Zip code must be between 1 and 20 characters')
+    .custom((value, { req }) => {
+      // zipCode is required only if poBox is not provided
+      const poBox = req.body.poBox;
+      if (!value && !poBox) {
+        throw new Error('Either Zip code or P.O. Box is required');
+      }
+      if (value && (value.length < 1 || value.length > 20)) {
+        throw new Error('Zip code must be between 1 and 20 characters');
+      }
+      return true;
+    })
+    .escape(),
+
+  body('poBox')
+    .optional()
+    .trim()
+    .custom((value) => {
+      if (value && !/^\d{4,6}$/.test(value)) {
+        throw new Error('P.O. Box must be 4-6 digits for UAE addresses');
+      }
+      return true;
+    })
+    .escape(),
+
+  body('makaniNumber')
+    .optional()
+    .trim()
+    .custom((value) => {
+      if (value && !/^\d{10}$/.test(value)) {
+        throw new Error('Makani number must be 10 digits');
+      }
+      return true;
+    })
     .escape(),
 
   body('country')

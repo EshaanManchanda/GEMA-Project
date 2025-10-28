@@ -1,7 +1,9 @@
 import React, { useState, useEffect, useCallback } from 'react';
-import { Link } from 'react-router-dom';
+import { Link, useNavigate } from 'react-router-dom';
 import toast from 'react-hot-toast';
 import adminAPI from '../../services/api/adminAPI';
+import VenueDetailsModal from '../../components/admin/VenueDetailsModal';
+import ConfirmDialog from '../../components/common/ConfirmDialog';
 
 interface Venue {
   id: string;
@@ -98,6 +100,7 @@ interface ApiResponse {
 }
 
 const AdminVenuesPage: React.FC = () => {
+  const navigate = useNavigate();
   const [venues, setVenues] = useState<Venue[]>([]);
   const [stats, setStats] = useState<VenueStats | null>(null);
   const [pagination, setPagination] = useState<PaginationInfo>({
@@ -124,6 +127,14 @@ const AdminVenuesPage: React.FC = () => {
   const [selectedVenues, setSelectedVenues] = useState<string[]>([]);
   const [showStatsModal, setShowStatsModal] = useState<boolean>(false);
   const [error, setError] = useState<string | null>(null);
+
+  // New modal states
+  const [selectedVenue, setSelectedVenue] = useState<Venue | null>(null);
+  const [showDetailsModal, setShowDetailsModal] = useState<boolean>(false);
+  const [showDeleteConfirm, setShowDeleteConfirm] = useState<boolean>(false);
+  const [venueToDelete, setVenueToDelete] = useState<string | null>(null);
+  const [showBulkConfirm, setShowBulkConfirm] = useState<boolean>(false);
+  const [bulkAction, setBulkAction] = useState<string>('');
 
   const fetchVenues = useCallback(async (refresh = false) => {
     try {
@@ -304,76 +315,109 @@ const AdminVenuesPage: React.FC = () => {
     }
   }, [fetchVenues]);
 
-  const handleDelete = useCallback(async (venueId: string) => {
-    if (window.confirm('Are you sure you want to delete this venue? This action cannot be undone.')) {
-      try {
-        setIsRefreshing(true);
-        const response = await adminAPI.deleteVenue(venueId);
-        if (response.success) {
-          toast.success('Venue deleted successfully');
-          await fetchVenues(true);
-        } else {
-          throw new Error(response.message || 'Failed to delete venue');
-        }
-      } catch (error: any) {
-        console.error('Error deleting venue:', error);
-        toast.error(error.message || 'Failed to delete venue');
-      } finally {
-        setIsRefreshing(false);
-      }
-    }
-  }, [fetchVenues]);
+  const handleViewDetails = useCallback((venue: Venue) => {
+    setSelectedVenue(venue);
+    setShowDetailsModal(true);
+  }, []);
 
-  const handleBulkAction = useCallback(async (action: string) => {
+  const handleEditVenue = useCallback((venueId: string) => {
+    navigate(`/admin/venues/${venueId}/edit`);
+  }, [navigate]);
+
+  const handleDeleteClick = useCallback((venueId: string) => {
+    setVenueToDelete(venueId);
+    setShowDeleteConfirm(true);
+  }, []);
+
+  const handleDeleteConfirm = useCallback(async () => {
+    if (!venueToDelete) return;
+
+    try {
+      setIsRefreshing(true);
+      const response = await adminAPI.deleteVenue(venueToDelete);
+      if (response.success) {
+        toast.success('Venue deleted successfully');
+        setShowDeleteConfirm(false);
+        setVenueToDelete(null);
+        await fetchVenues(true);
+      } else {
+        throw new Error(response.message || 'Failed to delete venue');
+      }
+    } catch (error: any) {
+      console.error('Error deleting venue:', error);
+      toast.error(error.message || 'Failed to delete venue');
+    } finally {
+      setIsRefreshing(false);
+    }
+  }, [venueToDelete, fetchVenues]);
+
+  const handleBulkActionClick = useCallback((action: string) => {
     if (selectedVenues.length === 0) {
       toast.warning('Please select venues first');
       return;
     }
+    setBulkAction(action);
+    setShowBulkConfirm(true);
+  }, [selectedVenues.length]);
+
+  const handleBulkActionConfirm = useCallback(async () => {
+    if (selectedVenues.length === 0 || !bulkAction) return;
 
     let updateData: any = {};
-    let confirmMessage = '';
 
-    switch (action) {
+    switch (bulkAction) {
       case 'approve':
         updateData = { isApproved: true };
-        confirmMessage = `Are you sure you want to approve ${selectedVenues.length} venue(s)?`;
         break;
       case 'reject':
         updateData = { isApproved: false };
-        confirmMessage = `Are you sure you want to reject ${selectedVenues.length} venue(s)?`;
         break;
       case 'activate':
         updateData = { status: 'active' };
-        confirmMessage = `Are you sure you want to activate ${selectedVenues.length} venue(s)?`;
         break;
       case 'deactivate':
         updateData = { status: 'inactive' };
-        confirmMessage = `Are you sure you want to deactivate ${selectedVenues.length} venue(s)?`;
         break;
       default:
         toast.error('Invalid bulk action');
         return;
     }
 
-    if (window.confirm(confirmMessage)) {
-      try {
-        setIsRefreshing(true);
-        const response = await adminAPI.bulkUpdateVenues(selectedVenues, updateData);
-        if (response.success) {
-          toast.success(`${response.data.updatedCount} venue(s) updated successfully`);
-          setSelectedVenues([]);
-          await fetchVenues(true);
-        } else {
-          throw new Error(response.message || 'Failed to update venues');
-        }
-      } catch (error: any) {
-        console.error('Error in bulk action:', error);
-        toast.error(error.message || 'Failed to update venues');
-      } finally {
-        setIsRefreshing(false);
+    try {
+      setIsRefreshing(true);
+      const response = await adminAPI.bulkUpdateVenues(selectedVenues, updateData);
+      if (response.success) {
+        toast.success(`${response.data.updatedCount} venue(s) updated successfully`);
+        setSelectedVenues([]);
+        setShowBulkConfirm(false);
+        setBulkAction('');
+        await fetchVenues(true);
+      } else {
+        throw new Error(response.message || 'Failed to update venues');
       }
+    } catch (error: any) {
+      console.error('Error in bulk action:', error);
+      toast.error(error.message || 'Failed to update venues');
+    } finally {
+      setIsRefreshing(false);
     }
-  }, [selectedVenues, fetchVenues]);
+  }, [selectedVenues, bulkAction, fetchVenues]);
+
+  const getBulkActionMessage = useCallback(() => {
+    const count = selectedVenues.length;
+    switch (bulkAction) {
+      case 'approve':
+        return `Are you sure you want to approve ${count} venue(s)?`;
+      case 'reject':
+        return `Are you sure you want to reject ${count} venue(s)?`;
+      case 'activate':
+        return `Are you sure you want to activate ${count} venue(s)?`;
+      case 'deactivate':
+        return `Are you sure you want to deactivate ${count} venue(s)?`;
+      default:
+        return `Are you sure you want to perform this action on ${count} venue(s)?`;
+    }
+  }, [bulkAction, selectedVenues.length]);
 
   const formatDate = useCallback((dateString: string) => {
     const date = new Date(dateString);
@@ -444,7 +488,7 @@ const AdminVenuesPage: React.FC = () => {
         <h1 className="text-3xl font-bold text-gray-900 mb-4 md:mb-0">Venues Management</h1>
         <Link
           to="/admin/venues/create"
-          className="inline-flex items-center px-4 py-2 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-primary hover:bg-primary-dark focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-primary"
+          className="inline-flex items-center px-4 py-2 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-orange-500 hover:bg-orange-600 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-orange-500"
         >
           <svg xmlns="http://www.w3.org/2000/svg" className="-ml-1 mr-2 h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
             <path fillRule="evenodd" d="M10 3a1 1 0 011 1v5h5a1 1 0 110 2h-5v5a1 1 0 11-2 0v-5H4a1 1 0 110-2h5V4a1 1 0 011-1z" clipRule="evenodd" />
@@ -500,15 +544,52 @@ const AdminVenuesPage: React.FC = () => {
               onChange={(e) => setTypeFilter(e.target.value)}
             >
               <option value="all">All Types</option>
-              <option value="Convention Center">Convention Center</option>
-              <option value="Resort">Resort</option>
-              <option value="Hotel">Hotel</option>
-              <option value="Outdoor">Outdoor</option>
-              <option value="Restaurant">Restaurant</option>
+              <option value="indoor">Indoor</option>
+              <option value="outdoor">Outdoor</option>
+              <option value="hybrid">Hybrid</option>
             </select>
           </div>
         </div>
       </div>
+
+      {/* Bulk Actions Bar */}
+      {selectedVenues.length > 0 && (
+        <div className="bg-blue-50 border-l-4 border-blue-400 p-4 mb-4">
+          <div className="flex items-center justify-between">
+            <div className="flex items-center">
+              <p className="text-sm font-medium text-blue-800">
+                {selectedVenues.length} venue(s) selected
+              </p>
+            </div>
+            <div className="flex space-x-2">
+              <button
+                onClick={() => handleBulkActionClick('approve')}
+                className="px-3 py-1 bg-green-600 text-white text-sm rounded hover:bg-green-700"
+              >
+                Approve
+              </button>
+              <button
+                onClick={() => handleBulkActionClick('reject')}
+                className="px-3 py-1 bg-yellow-600 text-white text-sm rounded hover:bg-yellow-700"
+              >
+                Reject
+              </button>
+              <button
+                onClick={() => handleBulkActionClick('activate')}
+                className="px-3 py-1 bg-blue-600 text-white text-sm rounded hover:bg-blue-700"
+              >
+                Activate
+              </button>
+              <button
+                onClick={() => handleBulkActionClick('deactivate')}
+                className="px-3 py-1 bg-gray-600 text-white text-sm rounded hover:bg-gray-700"
+              >
+                Deactivate
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* Venues Table */}
       <div className="bg-white rounded-lg shadow-md overflow-hidden">
@@ -516,6 +597,14 @@ const AdminVenuesPage: React.FC = () => {
           <table className="min-w-full divide-y divide-gray-200">
             <thead className="bg-gray-50">
               <tr>
+                <th scope="col" className="px-6 py-3 text-left">
+                  <input
+                    type="checkbox"
+                    checked={selectedVenues.length === venues.length && venues.length > 0}
+                    onChange={handleSelectAll}
+                    className="h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300 rounded"
+                  />
+                </th>
                 <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                   <button
                     className="flex items-center focus:outline-none"
@@ -559,13 +648,21 @@ const AdminVenuesPage: React.FC = () => {
             <tbody className="bg-white divide-y divide-gray-200">
               {venues.length === 0 ? (
                 <tr>
-                  <td colSpan={8} className="px-6 py-4 text-center text-sm text-gray-500">
+                  <td colSpan={9} className="px-6 py-4 text-center text-sm text-gray-500">
                     No venues found matching your criteria
                   </td>
                 </tr>
               ) : (
                 venues.map((venue) => (
-                  <tr key={venue.id}>
+                  <tr key={venue.id} className="hover:bg-gray-50">
+                    <td className="px-6 py-4 whitespace-nowrap">
+                      <input
+                        type="checkbox"
+                        checked={selectedVenues.includes(venue.id)}
+                        onChange={() => handleSelectVenue(venue.id)}
+                        className="h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300 rounded"
+                      />
+                    </td>
                     <td className="px-6 py-4 whitespace-nowrap">
                       <div>
                         <div className="text-sm font-medium text-gray-900">{venue.name}</div>
@@ -577,7 +674,7 @@ const AdminVenuesPage: React.FC = () => {
                       <div className="text-sm text-gray-500">{venue.address.country}</div>
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap">
-                      <div className="text-sm text-gray-900">{venue.venueType}</div>
+                      <div className="text-sm text-gray-900 capitalize">{venue.venueType}</div>
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap">
                       <div className="text-sm text-gray-900">{venue.capacity.toLocaleString()}</div>
@@ -592,36 +689,37 @@ const AdminVenuesPage: React.FC = () => {
                       <span className={`px-2 inline-flex text-xs leading-5 font-semibold rounded-full ${getStatusBadgeClass(venue.status)}`}>
                         {venue.status.charAt(0).toUpperCase() + venue.status.slice(1)}
                       </span>
+                      <span className={`ml-2 px-2 inline-flex text-xs leading-5 font-semibold rounded-full ${getApprovalBadgeClass(venue.isApproved)}`}>
+                        {venue.isApproved ? 'Approved' : 'Pending'}
+                      </span>
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
                       {formatDate(venue.createdAt)}
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
                       <div className="flex justify-end space-x-2">
-                        <Link
-                          to={`/admin/venues/${venue.id}`}
-                          className="text-primary hover:text-primary-dark"
+                        <button
+                          onClick={() => handleViewDetails(venue)}
+                          className="text-blue-600 hover:text-blue-900"
                         >
                           View
-                        </Link>
-                        {venue.status === 'pending' && (
-                          <>
-                            <button
-                              onClick={() => handleApprove(venue.id)}
-                              className="text-green-600 hover:text-green-900"
-                            >
-                              Approve
-                            </button>
-                            <button
-                              onClick={() => handleReject(venue.id)}
-                              className="text-yellow-600 hover:text-yellow-900"
-                            >
-                              Reject
-                            </button>
-                          </>
+                        </button>
+                        <button
+                          onClick={() => handleEditVenue(venue.id)}
+                          className="text-indigo-600 hover:text-indigo-900"
+                        >
+                          Edit
+                        </button>
+                        {!venue.isApproved && (
+                          <button
+                            onClick={() => handleApprove(venue.id)}
+                            className="text-green-600 hover:text-green-900"
+                          >
+                            Approve
+                          </button>
                         )}
                         <button
-                          onClick={() => handleDelete(venue.id)}
+                          onClick={() => handleDeleteClick(venue.id)}
                           className="text-red-600 hover:text-red-900"
                         >
                           Delete
@@ -739,6 +837,52 @@ const AdminVenuesPage: React.FC = () => {
         )}
       </div>
       
+      {/* Venue Details Modal */}
+      <VenueDetailsModal
+        venue={selectedVenue}
+        isOpen={showDetailsModal}
+        onClose={() => {
+          setShowDetailsModal(false);
+          setSelectedVenue(null);
+        }}
+        onEdit={handleEditVenue}
+        onDelete={handleDeleteClick}
+        onApprove={handleApprove}
+        onReject={handleReject}
+      />
+
+      {/* Delete Confirmation Dialog */}
+      <ConfirmDialog
+        isOpen={showDeleteConfirm}
+        onClose={() => {
+          setShowDeleteConfirm(false);
+          setVenueToDelete(null);
+        }}
+        onConfirm={handleDeleteConfirm}
+        title="Delete Venue"
+        message="Are you sure you want to delete this venue? This action cannot be undone."
+        confirmText="Delete"
+        cancelText="Cancel"
+        type="danger"
+        isLoading={isRefreshing}
+      />
+
+      {/* Bulk Action Confirmation Dialog */}
+      <ConfirmDialog
+        isOpen={showBulkConfirm}
+        onClose={() => {
+          setShowBulkConfirm(false);
+          setBulkAction('');
+        }}
+        onConfirm={handleBulkActionConfirm}
+        title={`Bulk ${bulkAction.charAt(0).toUpperCase() + bulkAction.slice(1)}`}
+        message={getBulkActionMessage()}
+        confirmText="Confirm"
+        cancelText="Cancel"
+        type={bulkAction === 'reject' || bulkAction === 'deactivate' ? 'warning' : 'info'}
+        isLoading={isRefreshing}
+      />
+
       {/* Statistics Modal */}
       {showStatsModal && (
         <div className="fixed inset-0 bg-gray-600 bg-opacity-50 overflow-y-auto h-full w-full z-50" onClick={() => setShowStatsModal(false)}>

@@ -531,7 +531,7 @@ const SearchPage: React.FC = () => {
   // Update URL params when filters change
   useEffect(() => {
     const params = new URLSearchParams();
-    
+
     if (query) params.set('q', query);
     if (filters.category) params.set('category', filters.category);
     if (filters.type) params.set('type', filters.type);
@@ -548,8 +548,8 @@ const SearchPage: React.FC = () => {
     if (filters.sortBy && filters.sortBy !== 'createdAt') params.set('sortBy', filters.sortBy);
     if (filters.sortOrder && filters.sortOrder !== 'desc') params.set('sortOrder', filters.sortOrder);
     if (filters.page && filters.page !== 1) params.set('page', filters.page.toString());
-    
-    setSearchParams(params);
+
+    setSearchParams(params, { replace: false });
   }, [filters, query, setSearchParams]);
 
   // Handle search submission
@@ -558,7 +558,7 @@ const SearchPage: React.FC = () => {
     if (searchInput.trim()) {
       const params = new URLSearchParams(searchParams);
       params.set('q', searchInput.trim());
-      setSearchParams(params);
+      setSearchParams(params, { replace: false });
     } else {
       navigate('/');
     }
