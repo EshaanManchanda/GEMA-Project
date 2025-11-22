@@ -1,6 +1,9 @@
 export { default as User, UserRole, UserStatus, Gender, SocialProvider } from './User';
 export type { IUser, IAddress, ISocialLogin, ITwoFactorAuth } from './User';
 
+export { default as Vendor, VerificationStatus, PaymentMode, VendorSubscriptionStatus } from './Vendor';
+export type { IVendor, IBusinessHours, ISocialMedia, IContactPerson, ITaxInformation, IBusinessAddress, IBankAccountDetails, IStripeSettings, IPaymentSettings, IVerificationDocuments } from './Vendor';
+
 export { default as RefreshToken } from './RefreshToken';
 export type { IRefreshToken } from './RefreshToken';
 
@@ -61,6 +64,9 @@ export type { ICollection } from './Collection';
 export { default as RevenueTransaction, RevenueStream, TransactionStatus, PayoutStatus } from './RevenueTransaction';
 export type { IRevenueTransaction } from './RevenueTransaction';
 
+export { default as Payout, PayoutRequestStatus, PayoutMethodType } from './Payout';
+export type { IPayout, IBankDetails } from './Payout';
+
 export { default as VendorSubscription, SubscriptionPlan, SubscriptionStatus, BillingCycle } from './VendorSubscription';
 export type { IVendorSubscription, IPlanFeatures, IPlanPricing, IUsageTracking } from './VendorSubscription';
 
@@ -72,3 +78,15 @@ export type { IAdvertisingCampaign, ITargeting, IBudgetSettings, IPerformanceMet
 
 export { default as EventAddon, AddonType, AddonStatus, PricingModel, AvailabilityType } from './EventAddon';
 export type { IEventAddon, ITieredPricing, IAddonRequirements, IAvailabilitySchedule } from './EventAddon';
+// Commission Management Models
+export { default as CommissionConfig, ConfigStatus, CommissionRuleType, RecipientType, RuleStatus } from './CommissionConfig';
+export type { ICommissionConfig, ICommissionRule, IPlatformCommission, ITier, IRuleConditions, ILevelDistribution } from './CommissionConfig';
+
+export { default as CommissionTransaction, CommissionTransactionStatus, CommissionRecipientType } from './CommissionTransaction';
+export type { ICommissionTransaction, ICommissionDetail } from './CommissionTransaction';
+
+export { default as CancellationLog } from './CancellationLog';
+export type { ICancellationLog } from './CancellationLog';
+
+export { default as AffiliateEventClick } from './AffiliateEventClick';
+export type { IAffiliateEventClick } from './AffiliateEventClick';

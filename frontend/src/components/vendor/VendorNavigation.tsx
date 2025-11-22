@@ -5,10 +5,12 @@ import {
   FaTicketAlt,
   FaCalendarPlus,
   FaFileAlt,
+  FaMoneyBillWave,
   FaUsers,
   FaChartBar,
   FaCog,
-  FaHome
+  FaHome,
+  FaHandshake
 } from 'react-icons/fa';
 
 interface NavItem {
@@ -37,9 +39,19 @@ const VendorNavigation: React.FC = () => {
       icon: <FaCalendarPlus className="w-4 h-4" />
     },
     {
+      path: '/vendor/claimed-events',
+      label: 'Claimed Events',
+      icon: <FaHandshake className="w-4 h-4" />
+    },
+    {
       path: '/vendor/bookings',
       label: 'Bookings',
       icon: <FaFileAlt className="w-4 h-4" />
+    },
+    {
+      path: '/vendor/payouts',
+      label: 'Payouts',
+      icon: <FaMoneyBillWave className="w-4 h-4" />
     },
     {
       path: '/vendor/employees',

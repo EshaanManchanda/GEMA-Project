@@ -1,6 +1,7 @@
 import mongoose from 'mongoose';
 import Stripe from 'stripe';
 import RevenueTransaction, { PayoutStatus, TransactionStatus, RevenueStream } from '../models/RevenueTransaction';
+import Payout, { PayoutRequestStatus, PayoutMethodType } from '../models/Payout';
 import VendorSubscription from '../models/VendorSubscription';
 import AdminRevenueSettings from '../models/AdminRevenueSettings';
 import User, { UserRole, IUser } from '../models/User';
@@ -58,8 +59,11 @@ class PayoutService {
     try {
       const settings = await AdminRevenueSettings.getCurrentSettings();
       if (!settings) {
-        throw new AppError('Admin revenue settings not configured', 500);
+        console.warn('⚠️  [PayoutService] Admin revenue settings not found, using defaults');
+        // Use default minimum payout instead of throwing error
       }
+
+      const defaultMinimumPayout = 50; // Default minimum payout in AED
 
       // Get pending transactions grouped by vendor
       const pendingPayouts = await RevenueTransaction.aggregate([
@@ -97,10 +101,9 @@ class PayoutService {
 
       // Format results and check minimum payout requirements
       const eligibleVendors: VendorPayoutSummary[] = [];
-
       for (const payout of pendingPayouts) {
         const vendor = payout.vendor as IUser;
-        const minimumPayout = settings.getMinimumPayoutForVendor(vendor._id.toString());
+        const minimumPayout = settings ? settings.getMinimumPayoutForVendor(vendor._id.toString()) : defaultMinimumPayout;
 
         // Determine payout method
         let payoutMethod = 'bank_transfer';
@@ -479,6 +482,241 @@ class PayoutService {
       };
     } catch (error) {
       throw new AppError(`Failed to get payout history: ${(error as Error).message}`, 500);
+    }
+  }
+
+  /**
+   * Calculate vendor earnings (pending balance available for payout)
+   */
+  public async calculateVendorEarnings(vendorId: string): Promise<{
+    totalEarned: number;
+    totalPaidOut: number;
+    pendingBalance: number;
+    inProcessing: number;
+    currency: string;
+  }> {
+    try {
+      const [earned, paidOut, processing] = await Promise.all([
+        // Total earned (completed transactions that haven't been paid out)
+        RevenueTransaction.aggregate([
+          {
+            $match: {
+              vendorId: new mongoose.Types.ObjectId(vendorId),
+              status: TransactionStatus.COMPLETED
+            }
+          },
+          {
+            $group: {
+              _id: null,
+              total: { $sum: '$vendorPayout' }
+            }
+          }
+        ]),
+
+        // Total already paid out
+        RevenueTransaction.aggregate([
+          {
+            $match: {
+              vendorId: new mongoose.Types.ObjectId(vendorId),
+              payoutStatus: PayoutStatus.COMPLETED
+            }
+          },
+          {
+            $group: {
+              _id: null,
+              total: { $sum: '$vendorPayout' }
+            }
+          }
+        ]),
+
+        // In processing (approved or scheduled)
+        RevenueTransaction.aggregate([
+          {
+            $match: {
+              vendorId: new mongoose.Types.ObjectId(vendorId),
+              payoutStatus: { $in: [PayoutStatus.SCHEDULED, PayoutStatus.PROCESSING] }
+            }
+          },
+          {
+            $group: {
+              _id: null,
+              total: { $sum: '$vendorPayout' }
+            }
+          }
+        ])
+      ]);
+
+      const totalEarned = earned[0]?.total || 0;
+      const totalPaidOut = paidOut[0]?.total || 0;
+      const inProcessing = processing[0]?.total || 0;
+      const pendingBalance = totalEarned - totalPaidOut - inProcessing;
+
+      return {
+        totalEarned,
+        totalPaidOut,
+        pendingBalance: Math.max(0, pendingBalance),
+        inProcessing,
+        currency: 'AED'
+      };
+    } catch (error) {
+      throw new AppError(`Failed to calculate vendor earnings: ${(error as Error).message}`, 500);
+    }
+  }
+
+  /**
+   * Get vendor commission breakdown
+   */
+  public async getVendorCommissionBreakdown(
+    vendorId: string,
+    options?: {
+      startDate?: Date;
+      endDate?: Date;
+      limit?: number;
+      skip?: number;
+    }
+  ): Promise<{
+    transactions: any[];
+    total: number;
+    pagination: any;
+  }> {
+    try {
+      const query: any = {
+        vendorId: new mongoose.Types.ObjectId(vendorId),
+        status: TransactionStatus.COMPLETED
+      };
+
+      if (options?.startDate || options?.endDate) {
+        query.transactionDate = {};
+        if (options.startDate) query.transactionDate.$gte = options.startDate;
+        if (options.endDate) query.transactionDate.$lte = options.endDate;
+      }
+
+      const limit = options?.limit || 20;
+      const skip = options?.skip || 0;
+
+      const [transactions, total] = await Promise.all([
+        RevenueTransaction.find(query)
+          .populate('orderId', 'orderNumber total items')
+          .sort({ transactionDate: -1 })
+          .skip(skip)
+          .limit(limit)
+          .lean(),
+        RevenueTransaction.countDocuments(query)
+      ]);
+
+      return {
+        transactions: transactions.map(tx => ({
+          id: tx._id,
+          orderNumber: (tx.orderId as any)?.orderNumber,
+          totalAmount: tx.totalAmount,
+          adminCommission: tx.adminCommission,
+          vendorPayout: tx.vendorPayout,
+          commissionRate: tx.serviceFeeRate,
+          date: tx.transactionDate,
+          payoutStatus: tx.payoutStatus,
+          revenueStream: tx.revenueStream
+        })),
+        total,
+        pagination: {
+          currentPage: Math.floor(skip / limit) + 1,
+          totalPages: Math.ceil(total / limit),
+          hasNextPage: skip + limit < total,
+          hasPrevPage: skip > 0
+        }
+      };
+    } catch (error) {
+      throw new AppError(`Failed to get commission breakdown: ${(error as Error).message}`, 500);
+    }
+  }
+
+  /**
+   * Create payout request from vendor
+   */
+  public async createPayoutRequest(
+    vendorId: string,
+    amount?: number
+  ): Promise<{
+    success: boolean;
+    payout?: any;
+    error?: string;
+  }> {
+    try {
+      // Get vendor
+      const vendor = await User.findById(vendorId);
+      if (!vendor || vendor.role !== UserRole.VENDOR) {
+        return { success: false, error: 'Invalid vendor' };
+      }
+
+      // Calculate available balance
+      const earnings = await this.calculateVendorEarnings(vendorId);
+
+      // Check minimum payout requirement
+      const settings = await AdminRevenueSettings.getCurrentSettings();
+      const minimumPayout = vendor.vendorPaymentSettings?.minimumPayout || settings?.minimumPayoutAmount || 50;
+
+      if (earnings.pendingBalance < minimumPayout) {
+        return {
+          success: false,
+          error: `Minimum payout amount is ${minimumPayout} ${earnings.currency}. Current balance: ${earnings.pendingBalance}`
+        };
+      }
+
+      // Get pending transactions
+      const pendingTransactions = await RevenueTransaction.find({
+        vendorId,
+        status: TransactionStatus.COMPLETED,
+        payoutStatus: PayoutStatus.PENDING
+      }).select('_id');
+
+      const requestAmount = amount || earnings.pendingBalance;
+
+      if (requestAmount > earnings.pendingBalance) {
+        return {
+          success: false,
+          error: `Requested amount exceeds available balance of ${earnings.pendingBalance}`
+        };
+      }
+
+      // Determine payout method
+      let payoutMethod: PayoutMethodType = PayoutMethodType.BANK_TRANSFER;
+      if (vendor.vendorPaymentSettings?.preferredPayoutMethod) {
+        payoutMethod = vendor.vendorPaymentSettings.preferredPayoutMethod as PayoutMethodType;
+      }
+
+      // Create payout request
+      const payout = new Payout({
+        vendorId,
+        amount: requestAmount,
+        currency: earnings.currency,
+        status: PayoutRequestStatus.PENDING,
+        requestedBy: vendorId,
+        payoutMethod,
+        bankDetails: vendor.vendorPaymentSettings?.bankAccountDetails,
+        revenueTransactionIds: pendingTransactions.map(tx => tx._id),
+        totalOrders: pendingTransactions.length,
+        metadata: {
+          requestedBalance: earnings.pendingBalance,
+          totalEarned: earnings.totalEarned
+        }
+      });
+
+      await payout.save();
+
+      return {
+        success: true,
+        payout: {
+          id: payout._id,
+          amount: payout.amount,
+          currency: payout.currency,
+          status: payout.status,
+          requestedAt: payout.requestedAt
+        }
+      };
+    } catch (error) {
+      return {
+        success: false,
+        error: (error as Error).message
+      };
     }
   }
 

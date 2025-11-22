@@ -170,7 +170,18 @@ const BlogList: React.FC = () => {
 
       // Fetch the complete blog with content field
       const response = await blogAPI.admin.getBlogById(blog._id);
-      const fullBlog = response.data.blog;
+
+      console.log('API response received:', response);
+
+      // Handle multiple response formats:
+      // { data: { blog: {...} } } or { blog: {...} } or { data: {...} } or {...}
+      const fullBlog = response.data?.blog || response.blog || response.data || response;
+
+      if (!fullBlog || !fullBlog._id) {
+        console.error('Invalid blog data received:', response);
+        console.error('Extracted fullBlog:', fullBlog);
+        throw new Error('Blog data not found in response');
+      }
 
       console.log('Full blog data fetched:', {
         id: fullBlog._id,
@@ -181,9 +192,10 @@ const BlogList: React.FC = () => {
 
       setSelectedBlog(fullBlog);
       setShowBlogForm(true);
-    } catch (error) {
+    } catch (error: any) {
       console.error('Error fetching blog details:', error);
-      toast.error('Failed to load blog details');
+      console.error('Error details:', error.response?.data || error.message);
+      toast.error(error.response?.data?.message || 'Failed to load blog details');
     } finally {
       setBlogFormLoading(false);
     }
@@ -571,6 +583,8 @@ const BlogList: React.FC = () => {
                 <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-4 h-4" />
                 <input
                   type="text"
+                  id="blog-search"
+                  name="blogSearch"
                   placeholder="Search blogs..."
                   value={filters.search}
                   onChange={(e) => handleSearch(e.target.value)}
@@ -579,6 +593,8 @@ const BlogList: React.FC = () => {
               </div>
 
               <select
+                id="blog-filter-status"
+                name="blogFilterStatus"
                 value={filters.status}
                 onChange={(e) => handleFilterChange('status', e.target.value)}
                 className="px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"

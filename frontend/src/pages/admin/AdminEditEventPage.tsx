@@ -2,35 +2,84 @@ import React, { useState, useEffect, useCallback } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import eventsAPI from '../../services/api/eventsAPI';
 import adminAPI from '../../services/api/adminAPI';
-import SEOEditor from '../../components/seo/SEOEditor';
 import FormBuilder from '@/components/registration/FormBuilder';
+import BasicInfoTab from '../../components/admin/BasicInfoTab';
+import SchedulePricingTab from '../../components/admin/SchedulePricingTab';
+import AdvancedTab from '../../components/admin/AdvancedTab';
+import { ChevronLeft, ChevronRight } from 'lucide-react';
+
+interface Schedule {
+  id: string;
+  _id?: string;
+  startDate: string;
+  endDate: string;
+  startTime?: string;
+  endTime?: string;
+  availableSeats: string;
+  totalSeats?: string;
+  soldSeats?: string;
+  reservedSeats?: string;
+  price: string;
+  unlimitedSeats?: boolean;
+  isSpecialDate?: boolean;
+  specialDates?: string[];
+  priority?: number;
+  isOverride?: boolean;
+}
+
+interface FAQ {
+  id?: string;
+  _id?: string;
+  question: string;
+  answer: string;
+}
 
 interface EventFormData {
+  // Basic Info
   title: string;
   description: string;
   category: string;
-  type: 'Event' | 'Course' | 'Venue';
-  venueType: 'Indoor' | 'Outdoor';
+  type: 'Olympiad' | 'Championship' | 'Competition' | 'Event' | 'Course' | 'Venue';
+  venueType: 'Indoor' | 'Outdoor' | 'Online' | 'Offline';
   ageRangeMin: string;
   ageRangeMax: string;
+  tags: string;
+  images: File[];
+  imagePreviewUrls: string[];
+
+  // Admin-specific fields
+  isApproved: boolean;
+  isFeatured: boolean;
+  requirePhoneVerification: boolean;
+  status: 'draft' | 'published' | 'archived' | 'pending' | 'rejected';
+  isActive: boolean;
+  vendorId: string;
+
+  // Affiliate Event fields
+  isAffiliateEvent: boolean;
+  externalBookingLink: string;
+  claimStatus: 'unclaimed' | 'claimed' | 'not_claimable';
+
+  // Schedule & Pricing
+  basePrice: string;
+  currency: string;
+  capacity: string;
+
+  // Location (in Advanced tab)
   city: string;
   address: string;
   latitude: string;
   longitude: string;
-  price: string;
-  currency: string;
-  tags: string;
-  eventDate: string;
-  availableSeats: string;
-  schedulePrice: string;
-  unlimitedSeats: boolean;
-  images: File[];
-  imagePreviewUrls: string[];
+
+  // SEO
   seoMeta: {
     title: string;
     description: string;
     keywords: string[];
   };
+
+  // FAQs
+  faqs: FAQ[];
 }
 
 interface Category {
@@ -38,9 +87,20 @@ interface Category {
   name: string;
 }
 
+interface Vendor {
+  _id: string;
+  businessName: string;
+  email: string;
+}
+
+type TabType = 'basic' | 'schedule' | 'advanced' | 'registration';
+
 const AdminEditEventPage: React.FC = () => {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
+
+  const [activeTab, setActiveTab] = useState<TabType>('basic');
+  const [schedules, setSchedules] = useState<Schedule[]>([]);
 
   const [formData, setFormData] = useState<EventFormData>({
     title: '',
@@ -50,206 +110,449 @@ const AdminEditEventPage: React.FC = () => {
     venueType: 'Indoor',
     ageRangeMin: '',
     ageRangeMax: '',
+    tags: '',
+    images: [],
+    imagePreviewUrls: [],
+    isApproved: false,
+    isFeatured: false,
+    requirePhoneVerification: false,
+    status: 'pending',
+    isActive: true,
+    vendorId: '',
+    isAffiliateEvent: false,
+    externalBookingLink: '',
+    claimStatus: 'not_claimable',
+    basePrice: '',
+    currency: 'AED',
+    capacity: '',
     city: '',
     address: '',
     latitude: '',
     longitude: '',
-    price: '',
-    currency: 'USD',
-    tags: '',
-    eventDate: '',
-    availableSeats: '',
-    schedulePrice: '',
-    unlimitedSeats: false,
-    images: [],
-    imagePreviewUrls: [],
     seoMeta: {
       title: '',
       description: '',
       keywords: []
-    }
+    },
+    faqs: []
   });
 
   const [categories, setCategories] = useState<Category[]>([]);
+  const [vendors, setVendors] = useState<Vendor[]>([]);
   const [isLoading, setIsLoading] = useState<boolean>(true);
   const [isSaving, setIsSaving] = useState<boolean>(false);
-  const [errors, setErrors] = useState<Partial<Record<keyof EventFormData, string>>>({});
+  const [errors, setErrors] = useState<Record<string, string>>({});
   const [saveStatus, setSaveStatus] = useState<{ type: 'success' | 'error'; message: string } | null>(null);
-  const [activeTab, setActiveTab] = useState<'details' | 'registration'>('details');
 
+  // Fetch categories, vendors, and event data
   useEffect(() => {
-    // Fetch categories from backend
-    const fetchCategories = async () => {
+    const fetchData = async () => {
+      setIsLoading(true);
+
       try {
+        // Fetch categories
         const categoriesData = await eventsAPI.getEventCategories();
-        // Handle different response formats
         const categoriesArray = Array.isArray(categoriesData)
           ? categoriesData
           : (categoriesData?.categories || []);
-
-        // Transform backend data to expected format
         const transformedCategories: Category[] = categoriesArray.map((cat: any) => ({
           id: cat._id || cat.id || cat,
           name: cat.name || cat
         }));
         setCategories(transformedCategories);
-      } catch (error) {
-        console.error('Error fetching categories:', error);
-        // Fallback to basic categories if API fails
-        setCategories([
-          { id: 'arts', name: 'Arts & Crafts' },
-          { id: 'science', name: 'Science & Technology' },
-          { id: 'sports', name: 'Sports & Activities' },
-          { id: 'music', name: 'Music & Dance' },
-          { id: 'food', name: 'Food & Cooking' }
-        ]);
-      }
-    };
 
-    // Fetch event data
-    const fetchEventData = async () => {
-      if (!id) {
-        setIsLoading(false);
-        return;
-      }
+        // Fetch vendors
+        const vendorsResponse = await adminAPI.getVendorsList();
+        // Handle the response structure: data.vendors is the expected format from new endpoint
+        const vendorsData = vendorsResponse?.data?.vendors || vendorsResponse?.vendors || vendorsResponse?.users || vendorsResponse?.data || [];
+        // Extra safety: if vendorsData is not an array, make it an empty array
+        const vendorsArray = Array.isArray(vendorsData) ? vendorsData : [];
+        console.log('Loaded vendors:', vendorsArray);
+        setVendors(vendorsArray);
 
-      try {
-        setIsLoading(true);
+        // Fetch event data if editing
+        if (id) {
+          const response = await adminAPI.getEventById(id);
+          console.log("event data:",response)
+          const eventData = response.event || response;
 
-        // Fetch real event data from backend (admin can fetch any event)
-        const eventData = await adminAPI.getEventById(id);
-
-        // Transform backend data to form format
-        setFormData({
-          title: eventData.title,
-          description: eventData.description,
-          category: eventData.category,
-          type: eventData.type,
-          venueType: eventData.venueType,
-          ageRangeMin: eventData.ageRange?.[0]?.toString() || '',
-          ageRangeMax: eventData.ageRange?.[1]?.toString() || '',
-          city: eventData.location?.city || '',
-          address: eventData.location?.address || '',
-          latitude: eventData.location?.coordinates?.lat?.toString() || '',
-          longitude: eventData.location?.coordinates?.lng?.toString() || '',
-          price: eventData.price?.toString() || '',
-          currency: eventData.currency || 'USD',
-          tags: eventData.tags?.join(', ') || '',
-          eventDate: eventData.dateSchedule?.[0]?.date || '',
-          availableSeats: eventData.dateSchedule?.[0]?.availableSeats?.toString() || '',
-          schedulePrice: eventData.dateSchedule?.[0]?.price?.toString() || '',
-          unlimitedSeats: eventData.dateSchedule?.[0]?.unlimitedSeats || false,
-          images: [],
-          imagePreviewUrls: eventData.images || [],
-          seoMeta: {
-            title: eventData.seoMeta?.title || '',
-            description: eventData.seoMeta?.description || '',
-            keywords: eventData.seoMeta?.keywords || []
+          if (!eventData) {
+            setSaveStatus({
+              type: 'error',
+              message: 'Event not found or data is unavailable.'
+            });
+            return;
           }
-        });
-      } catch (error) {
-        console.error('Error fetching event data:', error);
+
+          // Transform event data to form format
+          setFormData({
+            title: eventData.title || '',
+            description: eventData.description || '',
+            category: eventData.category || '',
+            type: eventData.type || 'Event',
+            venueType: eventData.venueType || 'Indoor',
+            ageRangeMin: eventData.ageRange?.[0]?.toString() || '',
+            ageRangeMax: eventData.ageRange?.[1]?.toString() || '',
+            tags: eventData.tags?.join(', ') || '',
+            images: [],
+            imagePreviewUrls: eventData.images || [],
+            isApproved: eventData.isApproved || false,
+            isFeatured: eventData.isFeatured || false,
+            requirePhoneVerification: eventData.requirePhoneVerification || false,
+            status: eventData.status || 'pending',
+            isActive: eventData.isActive !== undefined ? eventData.isActive : true,
+            vendorId: typeof eventData.vendorId === 'object'
+              ? (eventData.vendorId?._id || '')
+              : (eventData.vendorId || ''),
+            isAffiliateEvent: eventData.isAffiliateEvent || false,
+            externalBookingLink: eventData.externalBookingLink || '',
+            claimStatus: eventData.claimStatus || 'not_claimable',
+            basePrice: eventData.price?.toString() || '',
+            currency: eventData.currency || 'AED',
+            capacity: eventData.dateSchedule?.[0]?.totalSeats?.toString()
+              || eventData.dateSchedule?.[0]?.availableSeats?.toString()
+              || '',
+            city: eventData.location?.city || '',
+            address: eventData.location?.address || '',
+            latitude: eventData.location?.coordinates?.lat?.toString() || '',
+            longitude: eventData.location?.coordinates?.lng?.toString() || '',
+            seoMeta: {
+              title: eventData.seoMeta?.title || '',
+              description: eventData.seoMeta?.description || '',
+              keywords: eventData.seoMeta?.keywords || []
+            },
+            faqs: eventData.faqs || []
+          });
+
+          // Transform schedules
+          const transformedSchedules: Schedule[] = (eventData.dateSchedule || []).map((schedule: any, index: number) => ({
+            id: schedule._id || `schedule-${index}`,
+            _id: schedule._id,
+            startDate: schedule.startDate
+              ? new Date(schedule.startDate).toISOString().split('T')[0]
+              : schedule.date
+                ? new Date(schedule.date).toISOString().split('T')[0]
+                : '',
+            endDate: schedule.endDate
+              ? new Date(schedule.endDate).toISOString().split('T')[0]
+              : schedule.date
+                ? new Date(schedule.date).toISOString().split('T')[0]
+                : '',
+            startTime: schedule.startTime || '',
+            endTime: schedule.endTime || '',
+            availableSeats: schedule.availableSeats?.toString() || '',
+            totalSeats: schedule.totalSeats?.toString() || schedule.availableSeats?.toString() || '',
+            soldSeats: schedule.soldSeats?.toString() || '0',
+            reservedSeats: schedule.reservedSeats?.toString() || '0',
+            price: schedule.price?.toString() || '',
+            unlimitedSeats: schedule.unlimitedSeats || false,
+            isSpecialDate: schedule.isSpecialDate || false,
+            specialDates: schedule.specialDates?.map((d: any) =>
+              new Date(d).toISOString().split('T')[0]
+            ) || [],
+            priority: schedule.priority || 0,
+            isOverride: schedule.isOverride || false
+          }));
+
+          setSchedules(transformedSchedules.length > 0 ? transformedSchedules : [{
+            id: 'schedule-1',
+            startDate: '',
+            endDate: '',
+            startTime: '',
+            endTime: '',
+            availableSeats: '',
+            totalSeats: '',
+            price: '',
+            unlimitedSeats: false,
+            isSpecialDate: false,
+            specialDates: [],
+            priority: 0,
+            isOverride: false
+          }]);
+        } else {
+          // Initialize with one empty schedule for new events
+          setSchedules([{
+            id: 'schedule-1',
+            startDate: '',
+            endDate: '',
+            startTime: '',
+            endTime: '',
+            availableSeats: '',
+            totalSeats: '',
+            price: '',
+            unlimitedSeats: false,
+            isSpecialDate: false,
+            specialDates: [],
+            priority: 0,
+            isOverride: false
+          }]);
+        }
+      } catch (error: any) {
+        console.error('Error fetching data:', error);
         setSaveStatus({
           type: 'error',
-          message: 'Failed to load event data. Please try again.'
+          message: error.response?.data?.message || 'Failed to load data. Please try again.'
         });
       } finally {
         setIsLoading(false);
       }
     };
 
-    fetchCategories();
-    fetchEventData();
+    fetchData();
   }, [id]);
 
-  const validateForm = (): boolean => {
-    const newErrors: Partial<Record<keyof EventFormData, string>> = {};
-
-    if (!formData.title.trim()) newErrors.title = 'Title is required';
-    if (!formData.description.trim()) newErrors.description = 'Description is required';
-    if (!formData.eventDate) newErrors.eventDate = 'Event date is required';
-    if (!formData.address.trim()) newErrors.address = 'Address is required';
-    if (!formData.city.trim()) newErrors.city = 'City is required';
-    if (!formData.category) newErrors.category = 'Category is required';
-    if (!formData.ageRangeMin.trim()) newErrors.ageRangeMin = 'Minimum age is required';
-    if (!formData.ageRangeMax.trim()) newErrors.ageRangeMax = 'Maximum age is required';
-    // Skip seat validation if unlimited capacity is enabled
-    if (!formData.unlimitedSeats && !formData.availableSeats.trim()) {
-      newErrors.availableSeats = 'Available seats is required';
-    }
-
-    // Price validation
-    if (!formData.price.trim()) {
-      newErrors.price = 'Price is required';
-    } else if (isNaN(parseFloat(formData.price)) || parseFloat(formData.price) < 0) {
-      newErrors.price = 'Price must be a valid number greater than or equal to 0';
-    }
-
-    // Available seats validation (skip for unlimited)
-    if (!formData.unlimitedSeats && formData.availableSeats.trim()) {
-      const seats = parseInt(formData.availableSeats);
-      if (isNaN(seats) || seats <= 0) {
-        newErrors.availableSeats = 'Available seats must be a positive number';
-      }
-    }
-
-    // Age range validation
-    if (formData.ageRangeMin.trim() && formData.ageRangeMax.trim()) {
-      const minAge = parseInt(formData.ageRangeMin);
-      const maxAge = parseInt(formData.ageRangeMax);
-      if (isNaN(minAge) || isNaN(maxAge)) {
-        newErrors.ageRangeMin = 'Age must be a valid number';
-      } else if (minAge >= maxAge) {
-        newErrors.ageRangeMax = 'Maximum age must be greater than minimum age';
-      }
-    }
-
-    setErrors(newErrors);
-    return Object.keys(newErrors).length === 0;
-  };
-
+  // Input change handlers
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>) => {
     const { name, value } = e.target;
     setFormData(prev => ({ ...prev, [name]: value }));
 
-    // Clear error for this field when user types
-    if (errors[name as keyof EventFormData]) {
+    // Clear error for this field
+    if (errors[name]) {
       setErrors(prev => ({ ...prev, [name]: undefined }));
     }
   };
 
-  const handleImageChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    if (e.target.files && e.target.files[0]) {
-      const file = e.target.files[0];
-      const reader = new FileReader();
+  const handleCheckboxChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const { name, checked } = e.target;
+    setFormData(prev => ({ ...prev, [name]: checked }));
+  };
 
-      reader.onloadend = () => {
-        setFormData(prev => ({
-          ...prev,
-          image: file,
-          imagePreview: reader.result as string
-        }));
-      };
+  const handleImagesChange = (images: File[], previewUrls: string[]) => {
+    setFormData(prev => ({
+      ...prev,
+      images: images,
+      imagePreviewUrls: previewUrls
+    }));
 
-      reader.readAsDataURL(file);
-
-      // Clear error for image when user uploads
-      if (errors.image) {
-        setErrors(prev => ({ ...prev, image: undefined }));
-      }
+    if (images.length > 0 && errors.images) {
+      setErrors(prev => {
+        const newErrors = { ...prev };
+        delete newErrors.images;
+        return newErrors;
+      });
     }
   };
 
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
+  const removeImage = (index: number) => {
+    setFormData(prev => {
+      const newImages = prev.images.filter((_, i) => i !== index);
+      const newImagePreviewUrls = prev.imagePreviewUrls.filter((_, i) => i !== index);
 
-    if (!validateForm()) {
-      // Scroll to the first error
-      const firstErrorField = Object.keys(errors)[0] as keyof EventFormData;
-      const element = document.querySelector(`[name="${firstErrorField}"]`);
-      if (element) {
-        element.scrollIntoView({ behavior: 'smooth', block: 'center' });
+      return {
+        ...prev,
+        images: newImages,
+        imagePreviewUrls: newImagePreviewUrls
+      };
+    });
+  };
+
+  // Schedule management
+  const handleScheduleChange = (index: number, field: keyof Schedule, value: string | boolean | string[] | number) => {
+    setSchedules(prev => {
+      const updated = [...prev];
+      updated[index] = { ...updated[index], [field]: value };
+      return updated;
+    });
+
+    // Clear schedule-specific errors
+    const errorKey = `schedule_${index}_${field}`;
+    if (errors[errorKey]) {
+      setErrors(prev => ({ ...prev, [errorKey]: undefined }));
+    }
+  };
+
+  const handleAddSchedule = (isSpecialDate: boolean = false) => {
+    const newSchedule: Schedule = {
+      id: `schedule-${Date.now()}`,
+      startDate: '',
+      endDate: '',
+      startTime: '',
+      endTime: '',
+      availableSeats: '',
+      totalSeats: '',
+      price: formData.basePrice || '',
+      unlimitedSeats: false,
+      isSpecialDate,
+      specialDates: [],
+      priority: 0,
+      isOverride: false
+    };
+    setSchedules(prev => [...prev, newSchedule]);
+  };
+
+  const handleRemoveSchedule = (index: number) => {
+    if (schedules.length > 1) {
+      setSchedules(prev => prev.filter((_, i) => i !== index));
+    }
+  };
+
+  // FAQ management
+  const handleFaqChange = (index: number, field: 'question' | 'answer', value: string) => {
+    setFormData(prev => {
+      const updatedFaqs = [...prev.faqs];
+      updatedFaqs[index] = { ...updatedFaqs[index], [field]: value };
+      return { ...prev, faqs: updatedFaqs };
+    });
+
+    const errorKey = `faq_${index}_${field}`;
+    if (errors[errorKey]) {
+      setErrors(prev => ({ ...prev, [errorKey]: undefined }));
+    }
+  };
+
+  const handleAddFaq = () => {
+    setFormData(prev => ({
+      ...prev,
+      faqs: [...prev.faqs, { id: `faq-${Date.now()}`, question: '', answer: '' }]
+    }));
+  };
+
+  const handleRemoveFaq = (index: number) => {
+    setFormData(prev => ({
+      ...prev,
+      faqs: prev.faqs.filter((_, i) => i !== index)
+    }));
+  };
+
+  // SEO change handler
+  const handleSeoChange = useCallback((seoData: any) => {
+    setFormData(prev => ({
+      ...prev,
+      seoMeta: {
+        title: seoData.title,
+        description: seoData.description,
+        keywords: seoData.keywords
       }
+    }));
+  }, []);
+
+  // Validation
+  const validateForm = (): { isValid: boolean; errors: Record<string, string> } => {
+    const newErrors: Record<string, string> = {};
+
+    // Basic Info validation
+    if (activeTab === 'basic' || activeTab === 'schedule') {
+      if (!formData.title?.trim()) newErrors.title = 'Title is required';
+      if (!formData.description?.trim()) newErrors.description = 'Description is required';
+      if (!formData.category) newErrors.category = 'Category is required';
+      if (!formData.isAffiliateEvent && (!formData.vendorId || formData.vendorId.trim() === '')) {
+        newErrors.vendorId = 'Vendor assignment is required';
+      }
+      if (!formData.ageRangeMin?.trim()) newErrors.ageRangeMin = 'Minimum age is required';
+      if (!formData.ageRangeMax?.trim()) newErrors.ageRangeMax = 'Maximum age is required';
+
+      // Age range validation
+      if (formData.ageRangeMin && formData.ageRangeMax) {
+        const minAge = parseInt(formData.ageRangeMin);
+        const maxAge = parseInt(formData.ageRangeMax);
+        if (isNaN(minAge) || isNaN(maxAge)) {
+          newErrors.ageRangeMin = 'Age must be a valid number';
+        } else if (minAge >= maxAge) {
+          newErrors.ageRangeMax = 'Maximum age must be greater than minimum age';
+        }
+      }
+    }
+
+    // Schedule validation
+    if (activeTab === 'schedule') {
+      if (!formData.basePrice?.trim()) {
+        newErrors.basePrice = 'Base price is required';
+      } else if (isNaN(parseFloat(formData.basePrice)) || parseFloat(formData.basePrice) < 0) {
+        newErrors.basePrice = 'Price must be a valid number greater than or equal to 0';
+      }
+
+      if (!formData.capacity?.trim()) {
+        newErrors.capacity = 'Event capacity is required';
+      }
+
+      // Validate each schedule
+      schedules.forEach((schedule, index) => {
+        if (!schedule.isSpecialDate) {
+          if (!schedule.startDate) {
+            newErrors[`schedule_${index}_startDate`] = 'Start date is required';
+          }
+          if (!schedule.endDate) {
+            newErrors[`schedule_${index}_endDate`] = 'End date is required';
+          }
+        }
+
+        if (!schedule.unlimitedSeats && !schedule.availableSeats) {
+          newErrors[`schedule_${index}_availableSeats`] = 'Available seats is required';
+        }
+
+        if (!schedule.price) {
+          newErrors[`schedule_${index}_price`] = 'Price is required';
+        }
+      });
+    }
+
+    // Advanced tab validation
+    if (activeTab === 'advanced') {
+      if (!formData.city?.trim()) newErrors.city = 'City is required';
+      if (!formData.address?.trim()) newErrors.address = 'Address is required';
+
+      // FAQ validation
+      formData.faqs.forEach((faq, index) => {
+        if (!faq.question.trim()) {
+          newErrors[`faq_${index}_question`] = 'Question is required';
+        }
+        if (!faq.answer.trim()) {
+          newErrors[`faq_${index}_answer`] = 'Answer is required';
+        }
+      });
+    }
+
+    setErrors(newErrors);
+    return {
+      isValid: Object.keys(newErrors).length === 0,
+      errors: newErrors
+    };
+  };
+
+  // Tab navigation
+  const handleNextTab = () => {
+    const validation = validateForm();
+
+    if (!validation.isValid) {
+      // Find first error and show message
+      const firstError = Object.keys(validation.errors)[0];
+      setSaveStatus({
+        type: 'error',
+        message: `Please fix validation errors before proceeding: ${validation.errors[firstError]}`
+      });
+      return;
+    }
+
+    const tabs: TabType[] = ['basic', 'schedule', 'advanced', 'registration'];
+    const currentIndex = tabs.indexOf(activeTab);
+    if (currentIndex < tabs.length - 1) {
+      setActiveTab(tabs[currentIndex + 1]);
+      window.scrollTo({ top: 0, behavior: 'smooth' });
+    }
+  };
+
+  const handlePreviousTab = () => {
+    const tabs: TabType[] = ['basic', 'schedule', 'advanced', 'registration'];
+    const currentIndex = tabs.indexOf(activeTab);
+    if (currentIndex > 0) {
+      setActiveTab(tabs[currentIndex - 1]);
+      window.scrollTo({ top: 0, behavior: 'smooth' });
+    }
+  };
+
+  // Form submission
+  const handleSubmit = async (e?: React.FormEvent) => {
+    if (e) e.preventDefault();
+
+    const validation = validateForm();
+
+    if (!validation.isValid) {
+      const firstErrorField = Object.keys(validation.errors)[0];
+      setSaveStatus({
+        type: 'error',
+        message: `Please fix validation errors: ${validation.errors[firstErrorField]}`
+      });
+      window.scrollTo({ top: 0, behavior: 'smooth' });
       return;
     }
 
@@ -273,16 +576,42 @@ const AdminEditEventPage: React.FC = () => {
             lng: parseFloat(formData.longitude) || 0
           }
         },
-        price: parseFloat(formData.price),
+        vendorId: formData.vendorId,
+        price: parseFloat(formData.basePrice),
         currency: formData.currency,
         tags: formData.tags.split(',').map(tag => tag.trim()).filter(tag => tag.length > 0),
-        dateSchedule: [{
-          date: formData.eventDate,
-          availableSeats: formData.unlimitedSeats ? 999999 : parseInt(formData.availableSeats),
-          price: parseFloat(formData.schedulePrice || formData.price),
-          unlimitedSeats: formData.unlimitedSeats
-        }],
-        images: [], // Images will be handled separately if upload service is implemented
+
+        // Admin-specific fields
+        isApproved: formData.isApproved,
+        isFeatured: formData.isFeatured,
+        requirePhoneVerification: formData.requirePhoneVerification,
+        status: formData.status,
+        isActive: formData.isActive,
+
+        // Affiliate Event fields
+        isAffiliateEvent: formData.isAffiliateEvent,
+        externalBookingLink: formData.isAffiliateEvent ? formData.externalBookingLink : undefined,
+        claimStatus: formData.isAffiliateEvent ? formData.claimStatus : 'not_claimable',
+
+        // Multiple schedules
+        dateSchedule: schedules.map(schedule => ({
+          ...(schedule._id && { _id: schedule._id }),
+          startDate: schedule.startDate,
+          endDate: schedule.endDate,
+          startTime: schedule.startTime || '',
+          endTime: schedule.endTime || '',
+          availableSeats: schedule.unlimitedSeats ? 999999 : parseInt(schedule.availableSeats),
+          totalSeats: schedule.totalSeats ? parseInt(schedule.totalSeats) : undefined,
+          price: parseFloat(schedule.price),
+          unlimitedSeats: schedule.unlimitedSeats || false,
+          isSpecialDate: schedule.isSpecialDate || false,
+          specialDates: schedule.specialDates || [],
+          priority: schedule.priority || 0,
+          isOverride: schedule.isOverride || false
+        })),
+
+        images: formData.imagePreviewUrls,
+
         seoMeta: {
           title: formData.seoMeta.title || formData.title,
           description: formData.seoMeta.description || formData.description.substring(0, 160),
@@ -290,19 +619,21 @@ const AdminEditEventPage: React.FC = () => {
             ? formData.seoMeta.keywords
             : formData.tags.split(',').map(tag => tag.trim()).filter(tag => tag.length > 0)
         },
-        faqs: []
+
+        faqs: formData.faqs.map(faq => ({
+          ...(faq._id && { _id: faq._id }),
+          question: faq.question,
+          answer: faq.answer
+        }))
       };
 
-      // Admin uses adminAPI to update event
       await adminAPI.updateEvent(id!, eventData);
 
-      // Success message
       setSaveStatus({
         type: 'success',
         message: 'Event updated successfully!'
       });
 
-      // Redirect after successful update
       setTimeout(() => {
         navigate('/admin/events');
       }, 2000);
@@ -312,25 +643,15 @@ const AdminEditEventPage: React.FC = () => {
         type: 'error',
         message: error.response?.data?.message || 'Failed to update event. Please try again.'
       });
+      window.scrollTo({ top: 0, behavior: 'smooth' });
     } finally {
       setIsSaving(false);
     }
   };
 
   const handleCancel = () => {
-    navigate('/admin/events'); // Go back to admin events page
+    navigate('/admin/events');
   };
-
-  const handleSeoChange = useCallback((seoData: any) => {
-    setFormData(prev => ({
-      ...prev,
-      seoMeta: {
-        title: seoData.title,
-        description: seoData.description,
-        keywords: seoData.keywords
-      }
-    }));
-  }, []);
 
   if (isLoading) {
     return (
@@ -345,475 +666,136 @@ const AdminEditEventPage: React.FC = () => {
 
   return (
     <div className="min-h-screen bg-gray-50">
-        <div className="container mx-auto px-4 py-8">
-          <div className="max-w-4xl mx-auto bg-white rounded-lg shadow-md overflow-hidden">
-            <div className="px-6 py-4 bg-gray-50 border-b border-gray-200">
-              <h1 className="text-2xl font-bold text-gray-900 mb-4">
-                Edit Event (Admin)
-              </h1>
+      <div className="container mx-auto px-4 py-8">
+        <div className="max-w-6xl mx-auto bg-white rounded-lg shadow-md overflow-hidden">
+          {/* Header */}
+          <div className="px-6 py-4 bg-gray-50 border-b border-gray-200">
+            <h1 className="text-2xl font-bold text-gray-900 mb-4">
+              Edit Event (Admin)
+            </h1>
 
-              {/* Tabs */}
-              <div className="flex space-x-1">
-                <button
-                  onClick={() => setActiveTab('details')}
-                  className={`
-                    px-4 py-2 rounded-t-lg font-medium text-sm transition-colors
-                    ${activeTab === 'details'
-                      ? 'bg-white text-blue-700 border-b-2 border-blue-700'
-                      : 'text-gray-600 hover:text-gray-900 hover:bg-gray-100'
-                    }
-                  `}
-                >
-                  Event Details
-                </button>
-                <button
-                  onClick={() => setActiveTab('registration')}
-                  className={`
-                    px-4 py-2 rounded-t-lg font-medium text-sm transition-colors
-                    ${activeTab === 'registration'
-                      ? 'bg-white text-blue-700 border-b-2 border-blue-700'
-                      : 'text-gray-600 hover:text-gray-900 hover:bg-gray-100'
-                    }
-                  `}
-                >
-                  Registration Form
-                </button>
-              </div>
+            {/* Tabs */}
+            <div className="flex space-x-1 overflow-x-auto">
+              <button
+                onClick={() => setActiveTab('basic')}
+                className={`
+                  px-4 py-2 rounded-t-lg font-medium text-sm transition-colors whitespace-nowrap
+                  ${activeTab === 'basic'
+                    ? 'bg-white text-blue-700 border-b-2 border-blue-700'
+                    : 'text-gray-600 hover:text-gray-900 hover:bg-gray-100'
+                  }
+                `}
+              >
+                Basic Info
+              </button>
+              <button
+                onClick={() => setActiveTab('schedule')}
+                className={`
+                  px-4 py-2 rounded-t-lg font-medium text-sm transition-colors whitespace-nowrap
+                  ${activeTab === 'schedule'
+                    ? 'bg-white text-blue-700 border-b-2 border-blue-700'
+                    : 'text-gray-600 hover:text-gray-900 hover:bg-gray-100'
+                  }
+                `}
+              >
+                Schedule & Pricing
+              </button>
+              <button
+                onClick={() => setActiveTab('advanced')}
+                className={`
+                  px-4 py-2 rounded-t-lg font-medium text-sm transition-colors whitespace-nowrap
+                  ${activeTab === 'advanced'
+                    ? 'bg-white text-blue-700 border-b-2 border-blue-700'
+                    : 'text-gray-600 hover:text-gray-900 hover:bg-gray-100'
+                  }
+                `}
+              >
+                Advanced
+              </button>
+              <button
+                onClick={() => setActiveTab('registration')}
+                className={`
+                  px-4 py-2 rounded-t-lg font-medium text-sm transition-colors whitespace-nowrap
+                  ${activeTab === 'registration'
+                    ? 'bg-white text-blue-700 border-b-2 border-blue-700'
+                    : 'text-gray-600 hover:text-gray-900 hover:bg-gray-100'
+                  }
+                `}
+              >
+                Registration Form
+              </button>
             </div>
+          </div>
 
-            {saveStatus && (
-              <div className={`p-4 ${saveStatus.type === 'success' ? 'bg-green-100 text-green-700' : 'bg-red-100 text-red-700'}`}>
-                {saveStatus.message}
-              </div>
+          {/* Status Messages */}
+          {saveStatus && (
+            <div className={`p-4 ${saveStatus.type === 'success' ? 'bg-green-100 text-green-700' : 'bg-red-100 text-red-700'}`}>
+              {saveStatus.message}
+            </div>
+          )}
+
+          {/* Tab Content */}
+          <div className="p-6">
+            {activeTab === 'basic' && (
+              <BasicInfoTab
+                formData={formData}
+                categories={categories}
+                vendors={vendors}
+                errors={errors}
+                onInputChange={handleInputChange}
+                onCheckboxChange={handleCheckboxChange}
+                onImagesChange={handleImagesChange}
+                onRemoveImage={removeImage}
+              />
             )}
 
-            {/* Tab Content */}
-            {activeTab === 'details' ? (
-              <form onSubmit={handleSubmit} className="p-6">
-              <div className="space-y-6">
-                {/* Event Details Section */}
-                <div>
-                  <h2 className="text-xl font-semibold text-gray-900 mb-4">Event Details</h2>
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                    <div className="md:col-span-2">
-                      <label htmlFor="title" className="block text-sm font-medium text-gray-700 mb-1">
-                        Event Title*
-                      </label>
-                      <input
-                        type="text"
-                        id="title"
-                        name="title"
-                        value={formData.title}
-                        onChange={handleInputChange}
-                        className={`w-full px-3 py-2 border ${errors.title ? 'border-red-500' : 'border-gray-300'} rounded-md shadow-sm focus:outline-none focus:ring-primary focus:border-primary`}
-                        placeholder="Enter event title"
-                      />
-                      {errors.title && <p className="mt-1 text-sm text-red-600">{errors.title}</p>}
-                    </div>
-
-                    <div className="md:col-span-2">
-                      <label htmlFor="description" className="block text-sm font-medium text-gray-700 mb-1">
-                        Event Description*
-                      </label>
-                      <textarea
-                        id="description"
-                        name="description"
-                        value={formData.description}
-                        onChange={handleInputChange}
-                        rows={4}
-                        className={`w-full px-3 py-2 border ${errors.description ? 'border-red-500' : 'border-gray-300'} rounded-md shadow-sm focus:outline-none focus:ring-primary focus:border-primary`}
-                        placeholder="Describe your event"
-                      />
-                      {errors.description && <p className="mt-1 text-sm text-red-600">{errors.description}</p>}
-                    </div>
-
-                    <div>
-                      <label htmlFor="eventDate" className="block text-sm font-medium text-gray-700 mb-1">
-                        Event Date*
-                      </label>
-                      <input
-                        type="date"
-                        id="eventDate"
-                        name="eventDate"
-                        value={formData.eventDate}
-                        onChange={handleInputChange}
-                        className={`w-full px-3 py-2 border ${errors.eventDate ? 'border-red-500' : 'border-gray-300'} rounded-md shadow-sm focus:outline-none focus:ring-primary focus:border-primary`}
-                      />
-                      {errors.eventDate && <p className="mt-1 text-sm text-red-600">{errors.eventDate}</p>}
-                    </div>
-
-                    <div>
-                      <label htmlFor="availableSeats" className="block text-sm font-medium text-gray-700 mb-1">
-                        Available Seats{!formData.unlimitedSeats && '*'}
-                      </label>
-                      <input
-                        type="number"
-                        id="availableSeats"
-                        name="availableSeats"
-                        value={formData.unlimitedSeats ? '' : formData.availableSeats}
-                        onChange={handleInputChange}
-                        disabled={formData.unlimitedSeats}
-                        min="1"
-                        className={`w-full px-3 py-2 border ${errors.availableSeats ? 'border-red-500' : 'border-gray-300'} rounded-md shadow-sm focus:outline-none focus:ring-primary focus:border-primary ${
-                          formData.unlimitedSeats ? 'bg-gray-100 cursor-not-allowed' : ''
-                        }`}
-                        placeholder={formData.unlimitedSeats ? 'Unlimited' : 'Enter number of seats'}
-                      />
-                      {errors.availableSeats && <p className="mt-1 text-sm text-red-600">{errors.availableSeats}</p>}
-
-                      {/* Unlimited Capacity Checkbox */}
-                      <div className="mt-2">
-                        <label className="flex items-center text-sm text-gray-600">
-                          <input
-                            type="checkbox"
-                            checked={formData.unlimitedSeats}
-                            onChange={(e) => {
-                              setFormData(prev => ({
-                                ...prev,
-                                unlimitedSeats: e.target.checked,
-                                availableSeats: e.target.checked ? '999999' : prev.availableSeats
-                              }));
-                            }}
-                            className="mr-2 h-4 w-4 text-primary focus:ring-primary border-gray-300 rounded"
-                          />
-                          Unlimited Capacity (ideal for online events)
-                        </label>
-                      </div>
-                    </div>
-
-                    <div>
-                      <label htmlFor="category" className="block text-sm font-medium text-gray-700 mb-1">
-                        Category*
-                      </label>
-                      <select
-                        id="category"
-                        name="category"
-                        value={formData.category}
-                        onChange={handleInputChange}
-                        className={`w-full px-3 py-2 border ${errors.category ? 'border-red-500' : 'border-gray-300'} rounded-md shadow-sm focus:outline-none focus:ring-primary focus:border-primary`}
-                      >
-                        <option value="">Select a category</option>
-                        {categories.map(category => (
-                          <option key={category.id} value={category.name}>
-                            {category.name}
-                          </option>
-                        ))}
-                      </select>
-                      {errors.category && <p className="mt-1 text-sm text-red-600">{errors.category}</p>}
-                    </div>
-
-                    <div>
-                      <label htmlFor="price" className="block text-sm font-medium text-gray-700 mb-1">
-                        Ticket Price ($)*
-                      </label>
-                      <input
-                        type="text"
-                        id="price"
-                        name="price"
-                        value={formData.price}
-                        onChange={handleInputChange}
-                        className={`w-full px-3 py-2 border ${errors.price ? 'border-red-500' : 'border-gray-300'} rounded-md shadow-sm focus:outline-none focus:ring-primary focus:border-primary`}
-                        placeholder="0.00"
-                      />
-                      {errors.price && <p className="mt-1 text-sm text-red-600">{errors.price}</p>}
-                    </div>
-
-                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
-                      <div>
-                        <label htmlFor="type" className="block text-sm font-medium text-gray-700 mb-1">
-                          Event Type*
-                        </label>
-                        <select
-                          id="type"
-                          name="type"
-                          value={formData.type}
-                          onChange={handleInputChange}
-                          className={`w-full px-3 py-2 border ${errors.type ? 'border-red-500' : 'border-gray-300'} rounded-md shadow-sm focus:outline-none focus:ring-primary focus:border-primary`}
-                        >
-                          <option value="Event">Event</option>
-                          <option value="Course">Course</option>
-                          <option value="Venue">Venue</option>
-                        </select>
-                        {errors.type && <p className="mt-1 text-sm text-red-600">{errors.type}</p>}
-                      </div>
-
-                      <div>
-                        <label htmlFor="venueType" className="block text-sm font-medium text-gray-700 mb-1">
-                          Venue Type*
-                        </label>
-                        <select
-                          id="venueType"
-                          name="venueType"
-                          value={formData.venueType}
-                          onChange={handleInputChange}
-                          className={`w-full px-3 py-2 border ${errors.venueType ? 'border-red-500' : 'border-gray-300'} rounded-md shadow-sm focus:outline-none focus:ring-primary focus:border-primary`}
-                        >
-                          <option value="Indoor">Indoor</option>
-                          <option value="Outdoor">Outdoor</option>
-                        </select>
-                        {errors.venueType && <p className="mt-1 text-sm text-red-600">{errors.venueType}</p>}
-                      </div>
-                    </div>
-
-                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
-                      <div>
-                        <label htmlFor="ageRangeMin" className="block text-sm font-medium text-gray-700 mb-1">
-                          Minimum Age*
-                        </label>
-                        <input
-                          type="number"
-                          id="ageRangeMin"
-                          name="ageRangeMin"
-                          value={formData.ageRangeMin}
-                          onChange={handleInputChange}
-                          min="0"
-                          max="100"
-                          className={`w-full px-3 py-2 border ${errors.ageRangeMin ? 'border-red-500' : 'border-gray-300'} rounded-md shadow-sm focus:outline-none focus:ring-primary focus:border-primary`}
-                          placeholder="e.g. 5"
-                        />
-                        {errors.ageRangeMin && <p className="mt-1 text-sm text-red-600">{errors.ageRangeMin}</p>}
-                      </div>
-
-                      <div>
-                        <label htmlFor="ageRangeMax" className="block text-sm font-medium text-gray-700 mb-1">
-                          Maximum Age*
-                        </label>
-                        <input
-                          type="number"
-                          id="ageRangeMax"
-                          name="ageRangeMax"
-                          value={formData.ageRangeMax}
-                          onChange={handleInputChange}
-                          min="0"
-                          max="100"
-                          className={`w-full px-3 py-2 border ${errors.ageRangeMax ? 'border-red-500' : 'border-gray-300'} rounded-md shadow-sm focus:outline-none focus:ring-primary focus:border-primary`}
-                          placeholder="e.g. 12"
-                        />
-                        {errors.ageRangeMax && <p className="mt-1 text-sm text-red-600">{errors.ageRangeMax}</p>}
-                      </div>
-                    </div>
-
-                    <div>
-                      <label htmlFor="tags" className="block text-sm font-medium text-gray-700 mb-1">
-                        Tags <span className="text-gray-500">(comma separated)</span>
-                      </label>
-                      <input
-                        type="text"
-                        id="tags"
-                        name="tags"
-                        value={formData.tags}
-                        onChange={handleInputChange}
-                        className={`w-full px-3 py-2 border ${errors.tags ? 'border-red-500' : 'border-gray-300'} rounded-md shadow-sm focus:outline-none focus:ring-primary focus:border-primary`}
-                        placeholder="e.g. kids, science, fun, educational"
-                      />
-                      {errors.tags && <p className="mt-1 text-sm text-red-600">{errors.tags}</p>}
-                    </div>
+            {activeTab === 'schedule' && (
+              isLoading ? (
+                <div className="flex items-center justify-center py-12">
+                  <div className="text-center">
+                    <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto mb-4"></div>
+                    <p className="text-gray-600">Loading schedule data...</p>
                   </div>
                 </div>
+              ) : (
+                <SchedulePricingTab
+                  schedules={schedules || []}
+                  currency={formData.currency || 'AED'}
+                  capacity={formData.capacity || ''}
+                  basePrice={formData.basePrice || ''}
+                  errors={errors}
+                  onScheduleChange={handleScheduleChange}
+                  onAddSchedule={handleAddSchedule}
+                  onRemoveSchedule={handleRemoveSchedule}
+                  onCurrencyChange={handleInputChange}
+                  onCapacityChange={handleInputChange}
+                  onBasePriceChange={handleInputChange}
+                />
+              )
+            )}
 
-                {/* Location Section */}
-                <div>
-                  <h2 className="text-xl font-semibold text-gray-900 mb-4">Location</h2>
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                    <div>
-                      <label htmlFor="address" className="block text-sm font-medium text-gray-700 mb-1">
-                        Street Address*
-                      </label>
-                      <input
-                        type="text"
-                        id="address"
-                        name="address"
-                        value={formData.address}
-                        onChange={handleInputChange}
-                        className={`w-full px-3 py-2 border ${errors.address ? 'border-red-500' : 'border-gray-300'} rounded-md shadow-sm focus:outline-none focus:ring-primary focus:border-primary`}
-                        placeholder="Enter street address"
-                      />
-                      {errors.address && <p className="mt-1 text-sm text-red-600">{errors.address}</p>}
-                    </div>
+            {activeTab === 'advanced' && (
+              <AdvancedTab
+                formData={formData}
+                eventData={{
+                  title: formData.title,
+                  description: formData.description,
+                  category: formData.category,
+                  tags: formData.tags,
+                  _id: id
+                }}
+                errors={errors}
+                onInputChange={handleInputChange}
+                onFaqChange={handleFaqChange}
+                onAddFaq={handleAddFaq}
+                onRemoveFaq={handleRemoveFaq}
+                onSeoChange={handleSeoChange}
+                imagePreviewUrl={formData.imagePreviewUrls[0]}
+              />
+            )}
 
-                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
-                      <div>
-                        <label htmlFor="city" className="block text-sm font-medium text-gray-700 mb-1">
-                          City*
-                        </label>
-                        <input
-                          type="text"
-                          id="city"
-                          name="city"
-                          value={formData.city}
-                          onChange={handleInputChange}
-                          className={`w-full px-3 py-2 border ${errors.city ? 'border-red-500' : 'border-gray-300'} rounded-md shadow-sm focus:outline-none focus:ring-primary focus:border-primary`}
-                          placeholder="Enter city"
-                        />
-                        {errors.city && <p className="mt-1 text-sm text-red-600">{errors.city}</p>}
-                      </div>
-
-                      <div>
-                        <label htmlFor="currency" className="block text-sm font-medium text-gray-700 mb-1">
-                          Currency
-                        </label>
-                        <select
-                          id="currency"
-                          name="currency"
-                          value={formData.currency}
-                          onChange={handleInputChange}
-                          className={`w-full px-3 py-2 border ${errors.currency ? 'border-red-500' : 'border-gray-300'} rounded-md shadow-sm focus:outline-none focus:ring-primary focus:border-primary`}
-                        >
-                          <option value="USD">USD ($)</option>
-                          <option value="EUR">EUR (€)</option>
-                          <option value="GBP">GBP (£)</option>
-                        </select>
-                        {errors.currency && <p className="mt-1 text-sm text-red-600">{errors.currency}</p>}
-                      </div>
-                    </div>
-
-                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
-                      <div>
-                        <label htmlFor="latitude" className="block text-sm font-medium text-gray-700 mb-1">
-                          Latitude <span className="text-gray-500">(optional)</span>
-                        </label>
-                        <input
-                          type="text"
-                          id="latitude"
-                          name="latitude"
-                          value={formData.latitude}
-                          onChange={handleInputChange}
-                          className={`w-full px-3 py-2 border ${errors.latitude ? 'border-red-500' : 'border-gray-300'} rounded-md shadow-sm focus:outline-none focus:ring-primary focus:border-primary`}
-                          placeholder="e.g. 40.7128"
-                        />
-                        {errors.latitude && <p className="mt-1 text-sm text-red-600">{errors.latitude}</p>}
-                      </div>
-
-                      <div>
-                        <label htmlFor="longitude" className="block text-sm font-medium text-gray-700 mb-1">
-                          Longitude <span className="text-gray-500">(optional)</span>
-                        </label>
-                        <input
-                          type="text"
-                          id="longitude"
-                          name="longitude"
-                          value={formData.longitude}
-                          onChange={handleInputChange}
-                          className={`w-full px-3 py-2 border ${errors.longitude ? 'border-red-500' : 'border-gray-300'} rounded-md shadow-sm focus:outline-none focus:ring-primary focus:border-primary`}
-                          placeholder="e.g. -74.0060"
-                        />
-                        {errors.longitude && <p className="mt-1 text-sm text-red-600">{errors.longitude}</p>}
-                      </div>
-                    </div>
-                  </div>
-                </div>
-
-                {/* Image Upload Section */}
-                <div>
-                  <h2 className="text-xl font-semibold text-gray-900 mb-4">Event Image</h2>
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                    <div>
-                      <label className="block text-sm font-medium text-gray-700 mb-1">
-                        Upload Image
-                      </label>
-                      <div className="mt-1 flex justify-center px-6 pt-5 pb-6 border-2 border-gray-300 border-dashed rounded-md">
-                        <div className="space-y-1 text-center">
-                          <svg className="mx-auto h-12 w-12 text-gray-400" stroke="currentColor" fill="none" viewBox="0 0 48 48" aria-hidden="true">
-                            <path d="M28 8H12a4 4 0 00-4 4v20m32-12v8m0 0v8a4 4 0 01-4 4H12a4 4 0 01-4-4v-4m32-4l-3.172-3.172a4 4 0 00-5.656 0L28 28M8 32l9.172-9.172a4 4 0 015.656 0L28 28m0 0l4 4m4-24h8m-4-4v8m-12 4h.02" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
-                          </svg>
-                          <div className="flex text-sm text-gray-600">
-                            <label htmlFor="image" className="relative cursor-pointer bg-white rounded-md font-medium text-primary hover:text-primary-dark focus-within:outline-none focus-within:ring-2 focus-within:ring-offset-2 focus-within:ring-primary">
-                              <span>Upload a file</span>
-                              <input
-                                id="image"
-                                name="image"
-                                type="file"
-                                className="sr-only"
-                                accept="image/*"
-                                onChange={handleImageChange}
-                              />
-                            </label>
-                            <p className="pl-1">or drag and drop</p>
-                          </div>
-                          <p className="text-xs text-gray-500">
-                            PNG, JPG, GIF up to 10MB
-                          </p>
-                        </div>
-                      </div>
-                      {errors.image && <p className="mt-1 text-sm text-red-600">{errors.image}</p>}
-                    </div>
-
-                    <div>
-                      {formData.imagePreviewUrls.length > 0 && (
-                        <div>
-                          <p className="block text-sm font-medium text-gray-700 mb-1">Image Preview</p>
-                          <div className="grid grid-cols-2 sm:grid-cols-3 gap-4 mt-2">
-                            {formData.imagePreviewUrls.map((url, index) => (
-                              <img
-                                key={index}
-                                src={url}
-                                alt={`Event preview ${index + 1}`}
-                                className="h-32 w-full object-cover rounded-md"
-                              />
-                            ))}
-                          </div>
-                        </div>
-                      )}
-                    </div>
-                  </div>
-                </div>
-
-                {/* SEO Settings */}
-                <div className="mt-8">
-                  <SEOEditor
-                    initialData={{
-                      title: formData.seoMeta.title,
-                      description: formData.seoMeta.description,
-                      keywords: formData.seoMeta.keywords
-                    }}
-                    contentData={{
-                      title: formData.title,
-                      description: formData.description,
-                      category: formData.category,
-                      location: formData.city,
-                      tags: formData.tags.split(',').map(tag => tag.trim()).filter(tag => tag.length > 0),
-                      type: 'event'
-                    }}
-                    onChange={handleSeoChange}
-                    baseUrl={import.meta.env.VITE_APP_URL || 'https://gema-events.com'}
-                    path={`/events/${id || 'new-event'}`}
-                    ogImage={formData.imagePreviewUrls[0]}
-                    disabled={isSaving}
-                  />
-                </div>
-
-                {/* Form Actions */}
-                <div className="flex justify-end space-x-3 pt-4 border-t border-gray-200">
-                  <button
-                    type="button"
-                    onClick={handleCancel}
-                    className="px-4 py-2 border border-gray-300 rounded-md shadow-sm text-sm font-medium text-gray-700 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-primary"
-                    disabled={isSaving}
-                  >
-                    Cancel
-                  </button>
-                  <button
-                    type="submit"
-                    className="px-4 py-2 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-primary hover:bg-primary-dark focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-primary"
-                    disabled={isSaving}
-                  >
-                    {isSaving ? (
-                      <>
-                        <svg className="animate-spin -ml-1 mr-2 h-4 w-4 text-white inline-block" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
-                          <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
-                          <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
-                        </svg>
-                        Saving...
-                      </>
-                    ) : (
-                      <>Save Changes</>
-                    )}
-                  </button>
-                </div>
-              </div>
-            </form>
-            ) : (
-              <div className="p-6">
+            {activeTab === 'registration' && (
+              <div>
                 {id && (
                   <FormBuilder
                     eventId={id}
@@ -829,8 +811,69 @@ const AdminEditEventPage: React.FC = () => {
               </div>
             )}
           </div>
+
+          {/* Footer Navigation */}
+          <div className="px-6 py-4 bg-gray-50 border-t border-gray-200">
+            <div className="flex justify-between items-center">
+              <button
+                type="button"
+                onClick={handlePreviousTab}
+                disabled={activeTab === 'basic'}
+                className={`inline-flex items-center px-4 py-2 border border-gray-300 rounded-md shadow-sm text-sm font-medium ${
+                  activeTab === 'basic'
+                    ? 'text-gray-400 bg-gray-100 cursor-not-allowed'
+                    : 'text-gray-700 bg-white hover:bg-gray-50'
+                } focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-primary`}
+              >
+                <ChevronLeft className="w-4 h-4 mr-1" />
+                Previous
+              </button>
+
+              <div className="flex space-x-3">
+                <button
+                  type="button"
+                  onClick={handleCancel}
+                  className="px-4 py-2 border border-gray-300 rounded-md shadow-sm text-sm font-medium text-gray-700 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-primary"
+                  disabled={isSaving}
+                >
+                  Cancel
+                </button>
+
+                {activeTab === 'registration' ? (
+                  <button
+                    type="button"
+                    onClick={handleSubmit}
+                    className="px-6 py-2 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-primary hover:bg-primary-dark focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-primary"
+                    disabled={isSaving}
+                  >
+                    {isSaving ? (
+                      <>
+                        <svg className="animate-spin -ml-1 mr-2 h-4 w-4 text-white inline-block" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                          <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                          <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                        </svg>
+                        Saving...
+                      </>
+                    ) : (
+                      'Save Event'
+                    )}
+                  </button>
+                ) : (
+                  <button
+                    type="button"
+                    onClick={handleNextTab}
+                    className="inline-flex items-center px-4 py-2 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-green-600 hover:bg-green-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-green-500"
+                  >
+                    Next
+                    <ChevronRight className="w-4 h-4 ml-1" />
+                  </button>
+                )}
+              </div>
+            </div>
+          </div>
         </div>
       </div>
+    </div>
   );
 };
 

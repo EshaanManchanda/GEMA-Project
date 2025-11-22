@@ -236,7 +236,8 @@ export default defineConfig({
           // CRITICAL: Router and React-dependent libraries must load with main chunk
           // react-router-dom calls createContext at module parse time (not runtime)
           // These libraries MUST have React available before they load
-          if (id.includes('node_modules/react-router-dom')) {
+          if (id.includes('node_modules/react-router-dom') ||
+              id.includes('node_modules/react-router')) {
             return undefined; // Bundle with main entry chunk to guarantee React is available
           }
 
@@ -304,6 +305,11 @@ export default defineConfig({
     modulePreload: {
       polyfill: true,
       resolveDependencies: (filename, deps, { hostId, hostType }) => {
+        // Ensure main chunk (with React and Router) loads before any app chunks
+        if (filename.includes('App') || filename.includes('VendorRoute') ||
+            filename.includes('AdminRoute') || filename.includes('EmployeeRoute')) {
+          return deps.filter(dep => dep.includes('index-'));
+        }
         // Ensure main chunk (with React) loads before misc/router chunks
         if (filename.includes('misc') || filename.includes('router')) {
           return deps.filter(dep => dep.includes('index-'));
@@ -318,6 +324,7 @@ export default defineConfig({
       'react',
       'react-dom',
       'react-router-dom',
+      'react-router',
       '@reduxjs/toolkit',
       'react-redux',
       'redux-persist',

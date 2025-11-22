@@ -52,7 +52,6 @@ const BookingSchema = new Schema<IBooking>({
 });
 
 // Indexes for performance optimization
-BookingSchema.index({ userId: 1 }); // User's bookings
 BookingSchema.index({ eventId: 1 }); // Event's bookings
 BookingSchema.index({ status: 1 }); // Filter by status
 BookingSchema.index({ createdAt: -1 }); // Sort by creation date

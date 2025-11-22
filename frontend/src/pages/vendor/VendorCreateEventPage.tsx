@@ -12,8 +12,8 @@ interface EventFormData {
   title: string;
   description: string;
   category: string;
-  type: 'Event' | 'Course' | 'Venue';
-  venueType: 'Indoor' | 'Outdoor';
+  type: 'Olympiad' | 'Championship' | 'Competition' | 'Event' | 'Course' | 'Venue';
+  venueType: 'Indoor' | 'Outdoor' | 'Online' | 'Offline';
   ageRangeMin: string;
   ageRangeMax: string;
   city: string;
@@ -24,6 +24,7 @@ interface EventFormData {
   tags: string;
   capacity: string;
   featured: boolean;
+  requirePhoneVerification: boolean;
   images: File[];
   imagePreviewUrls: string[];
   seoMeta: {
@@ -37,8 +38,15 @@ interface Schedule {
   id: string;
   startDate: string;
   endDate: string;
+  startTime?: string;
+  endTime?: string;
   availableSeats: string;
   price: string;
+  unlimitedSeats?: boolean;
+  isSpecialDate?: boolean;
+  specialDates?: string[];
+  priority?: number;
+  isOverride?: boolean;
 }
 
 interface Category {
@@ -66,6 +74,7 @@ const VendorCreateEventPage: React.FC = () => {
     tags: '',
     capacity: '',
     featured: false,
+    requirePhoneVerification: false,
     images: [],
     imagePreviewUrls: [],
     seoMeta: {
@@ -80,6 +89,8 @@ const VendorCreateEventPage: React.FC = () => {
       id: uuidv4(),
       startDate: '',
       endDate: '',
+      startTime: '',
+      endTime: '',
       availableSeats: '',
       price: ''
     }
@@ -153,40 +164,20 @@ const VendorCreateEventPage: React.FC = () => {
     setFormData(prev => ({ ...prev, [name]: checked }));
   };
 
-  const handleImageUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
-    if (e.target.files) {
-      const filesArray = Array.from(e.target.files);
+  const handleImagesChange = (images: File[], previewUrls: string[]) => {
+    setFormData(prev => ({
+      ...prev,
+      images: images,
+      imagePreviewUrls: previewUrls
+    }));
 
-      const validFiles = filesArray.filter(file => {
-        const isValidType = ['image/jpeg', 'image/png', 'image/jpg'].includes(file.type);
-        const isValidSize = file.size <= 5 * 1024 * 1024;
-
-        if (!isValidType) {
-          setErrors(prev => ({ ...prev, images: 'Only JPG, JPEG, and PNG files are allowed.' }));
-        } else if (!isValidSize) {
-          setErrors(prev => ({ ...prev, images: 'Image size should not exceed 5MB.' }));
-        }
-
-        return isValidType && isValidSize;
+    // Clear errors if images are added
+    if (images.length > 0 && errors.images) {
+      setErrors(prev => {
+        const newErrors = { ...prev };
+        delete newErrors.images;
+        return newErrors;
       });
-
-      if (validFiles.length > 0) {
-        const newImagePreviewUrls = validFiles.map(file => URL.createObjectURL(file));
-
-        setFormData(prev => ({
-          ...prev,
-          images: [...prev.images, ...validFiles],
-          imagePreviewUrls: [...prev.imagePreviewUrls, ...newImagePreviewUrls]
-        }));
-
-        if (errors.images) {
-          setErrors(prev => {
-            const newErrors = { ...prev };
-            delete newErrors.images;
-            return newErrors;
-          });
-        }
-      }
     }
   };
 
@@ -208,7 +199,7 @@ const VendorCreateEventPage: React.FC = () => {
     });
   };
 
-  const handleScheduleChange = (index: number, field: keyof Schedule, value: string) => {
+  const handleScheduleChange = (index: number, field: keyof Schedule, value: string | boolean | string[] | number) => {
     setSchedules(prev => {
       const updated = [...prev];
       updated[index] = { ...updated[index], [field]: value };
@@ -225,13 +216,18 @@ const VendorCreateEventPage: React.FC = () => {
     }
   };
 
-  const handleAddSchedule = () => {
+  const handleAddSchedule = (isSpecialDate: boolean = false) => {
     setSchedules(prev => [...prev, {
       id: uuidv4(),
       startDate: '',
       endDate: '',
+      startTime: '',
+      endTime: '',
       availableSeats: '',
-      price: ''
+      price: '',
+      isSpecialDate,
+      specialDates: [],
+      priority: isSpecialDate ? 1 : 0
     }]);
   };
 
@@ -283,7 +279,7 @@ const VendorCreateEventPage: React.FC = () => {
           newErrors[`schedule_${index}_endDate`] = 'End date must be after start date';
         }
       }
-      if (!schedule.availableSeats || parseInt(schedule.availableSeats) <= 0) {
+      if (!schedule.unlimitedSeats && (!schedule.availableSeats || parseInt(schedule.availableSeats) <= 0)) {
         newErrors[`schedule_${index}_availableSeats`] = 'Available seats must be greater than 0';
       }
       if (!schedule.price || parseFloat(schedule.price) < 0) {
@@ -310,9 +306,9 @@ const VendorCreateEventPage: React.FC = () => {
       const firstErrorField = Object.keys(errors)[0];
 
       // Navigate to tab containing the error
-      if (firstErrorField.includes('schedule') || firstErrorField === 'capacity') {
+      if (firstErrorField && (firstErrorField.includes('schedule') || firstErrorField === 'capacity')) {
         setActiveTab('schedule');
-      } else if (['city', 'address', 'latitude', 'longitude', 'seoTitle', 'seoDescription', 'seoKeywords'].includes(firstErrorField)) {
+      } else if (firstErrorField && ['city', 'address', 'latitude', 'longitude', 'seoTitle', 'seoDescription', 'seoKeywords'].includes(firstErrorField)) {
         setActiveTab('advanced');
       } else {
         setActiveTab('basic');
@@ -352,13 +348,17 @@ const VendorCreateEventPage: React.FC = () => {
         price: minPrice,
         currency: formData.currency,
         capacity: parseInt(formData.capacity),
-        featured: formData.featured,
+        requirePhoneVerification: formData.requirePhoneVerification,
         tags: formData.tags.split(',').map(tag => tag.trim()).filter(tag => tag.length > 0),
         dateSchedule: schedules.map(schedule => ({
           startDate: schedule.startDate,
           endDate: schedule.endDate,
-          availableSeats: parseInt(schedule.availableSeats),
-          price: parseFloat(schedule.price)
+          startTime: schedule.startTime || '',
+          endTime: schedule.endTime || '',
+          availableSeats: schedule.unlimitedSeats ? 999999 : parseInt(schedule.availableSeats),
+          price: parseFloat(schedule.price),
+          unlimitedSeats: schedule.unlimitedSeats || false,
+          isOverride: schedule.isOverride || false
         })),
         images: [],
         seoMeta: {
@@ -375,7 +375,7 @@ const VendorCreateEventPage: React.FC = () => {
 
       setSubmitStatus('success');
       setSubmitMessage('Event created successfully!');
-      setCreatedEventId(response.data.event._id || response.data.event.id);
+      setCreatedEventId(response.event._id || response.event.id);
 
     } catch (error: any) {
       console.error('Error creating event:', error);
@@ -475,16 +475,16 @@ const VendorCreateEventPage: React.FC = () => {
           {submitStatus !== 'success' && (
             <form onSubmit={handleSubmit} className="bg-white shadow-md rounded-lg overflow-hidden">
               {/* Tabs */}
-              <div className="border-b border-gray-200">
-                <div className="flex space-x-1 p-2">
+              <div className="border-b border-gray-200 bg-gray-50">
+                <div className="flex space-x-2 p-3">
                   <button
                     type="button"
                     onClick={() => setActiveTab('basic')}
                     className={`
-                      px-4 py-2 rounded-lg font-medium text-sm transition-colors flex items-center
+                      px-5 py-2.5 rounded-lg font-medium text-sm transition-all duration-200 flex items-center
                       ${activeTab === 'basic'
-                        ? 'bg-primary text-white'
-                        : 'text-gray-600 hover:bg-gray-100'
+                        ? 'bg-gradient-to-r from-primary-500 to-primary-700 text-white shadow-md'
+                        : 'text-gray-600 hover:text-primary-600 hover:bg-white hover:shadow-sm border border-transparent hover:border-gray-200'
                       }
                     `}
                   >
@@ -499,10 +499,10 @@ const VendorCreateEventPage: React.FC = () => {
                     type="button"
                     onClick={() => setActiveTab('schedule')}
                     className={`
-                      px-4 py-2 rounded-lg font-medium text-sm transition-colors flex items-center
+                      px-5 py-2.5 rounded-lg font-medium text-sm transition-all duration-200 flex items-center
                       ${activeTab === 'schedule'
-                        ? 'bg-primary text-white'
-                        : 'text-gray-600 hover:bg-gray-100'
+                        ? 'bg-gradient-to-r from-primary-500 to-primary-700 text-white shadow-md'
+                        : 'text-gray-600 hover:text-primary-600 hover:bg-white hover:shadow-sm border border-transparent hover:border-gray-200'
                       }
                     `}
                   >
@@ -517,10 +517,10 @@ const VendorCreateEventPage: React.FC = () => {
                     type="button"
                     onClick={() => setActiveTab('advanced')}
                     className={`
-                      px-4 py-2 rounded-lg font-medium text-sm transition-colors flex items-center
+                      px-5 py-2.5 rounded-lg font-medium text-sm transition-all duration-200 flex items-center
                       ${activeTab === 'advanced'
-                        ? 'bg-primary text-white'
-                        : 'text-gray-600 hover:bg-gray-100'
+                        ? 'bg-gradient-to-r from-primary-500 to-primary-700 text-white shadow-md'
+                        : 'text-gray-600 hover:text-primary-600 hover:bg-white hover:shadow-sm border border-transparent hover:border-gray-200'
                       }
                     `}
                   >
@@ -543,7 +543,7 @@ const VendorCreateEventPage: React.FC = () => {
                     errors={errors}
                     onInputChange={handleInputChange}
                     onCheckboxChange={handleCheckboxChange}
-                    onImageUpload={handleImageUpload}
+                    onImagesChange={handleImagesChange}
                     onRemoveImage={removeImage}
                   />
                 )}
@@ -567,6 +567,7 @@ const VendorCreateEventPage: React.FC = () => {
                     formData={formData}
                     errors={errors}
                     onInputChange={handleInputChange}
+                    onCheckboxChange={handleCheckboxChange}
                   />
                 )}
               </div>
@@ -601,7 +602,7 @@ const VendorCreateEventPage: React.FC = () => {
                         if (activeTab === 'basic') setActiveTab('schedule');
                         else if (activeTab === 'schedule') setActiveTab('advanced');
                       }}
-                      className="inline-flex justify-center py-2 px-4 border border-transparent shadow-sm text-sm font-medium rounded-md text-white bg-primary hover:bg-primary-dark focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-primary"
+                      className="inline-flex justify-center py-2 px-4 border border-transparent shadow-sm text-sm font-medium rounded-md text-white bg-primary-600 hover:bg-primary-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-primary"
                     >
                       Next
                     </button>
@@ -609,7 +610,7 @@ const VendorCreateEventPage: React.FC = () => {
                     <button
                       type="submit"
                       disabled={isLoading}
-                      className="inline-flex justify-center py-2 px-4 border border-transparent shadow-sm text-sm font-medium rounded-md text-white bg-primary hover:bg-primary-dark focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-primary disabled:opacity-50"
+                      className="inline-flex justify-center py-2 px-4 border border-transparent shadow-sm text-sm font-medium rounded-md text-white bg-primary-600 hover:bg-primary-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-primary disabled:opacity-50"
                     >
                       {isLoading ? (
                         <>

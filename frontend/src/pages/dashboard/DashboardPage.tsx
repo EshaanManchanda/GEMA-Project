@@ -8,6 +8,7 @@ import eventsAPI from '../../services/api/eventsAPI';
 import favoritesAPI from '../../services/api/favoritesAPI';
 import { SkeletonDashboardTab, SkeletonGrid, SkeletonEventCard } from '../../components/common/SkeletonLoader';
 import useApiRetry from '../../hooks/useApiRetry';
+import CancelOrderModal from '../../components/order/CancelOrderModal';
 
 interface Event {
   _id: string;
@@ -68,6 +69,8 @@ const DashboardPage: React.FC = () => {
   const [isLoading, setIsLoading] = useState<boolean>(true);
   const [error, setError] = useState<string | null>(null);
   const [refreshing, setRefreshing] = useState<boolean>(false);
+  const [selectedBookingForCancel, setSelectedBookingForCancel] = useState<Booking | null>(null);
+  const [isCancelModalOpen, setIsCancelModalOpen] = useState(false);
 
   const { user, isAuthenticated } = useSelector((state: RootState) => state.auth);
   const retryState = useApiRetry();
@@ -408,11 +411,14 @@ const DashboardPage: React.FC = () => {
                                   >
                                     View Details
                                   </Link>
-                                  {booking.status !== 'cancelled' && booking.status !== 'refunded' && (
+                                  {(booking.status === 'confirmed' || booking.status === 'pending') && (
                                     <button
-                                      onClick={() => handleCancelBooking(booking._id)}
+                                      onClick={() => {
+                                        setSelectedBookingForCancel(booking);
+                                        setIsCancelModalOpen(true);
+                                      }}
                                       disabled={refreshing}
-                                      className="inline-flex items-center px-3 py-1.5 border border-transparent text-xs font-medium rounded text-white bg-red-600 hover:bg-red-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-red-500 disabled:opacity-50"
+                                      className="inline-flex items-center px-3 py-1.5 border border-red-300 text-xs font-medium rounded text-red-700 bg-white hover:bg-red-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-red-500 disabled:opacity-50"
                                     >
                                       Cancel
                                     </button>
@@ -562,6 +568,29 @@ const DashboardPage: React.FC = () => {
           )}
         </div>
       </div>
+
+      {/* Cancel Order Modal */}
+      {selectedBookingForCancel && (
+        <CancelOrderModal
+          isOpen={isCancelModalOpen}
+          onClose={() => {
+            setIsCancelModalOpen(false);
+            setSelectedBookingForCancel(null);
+          }}
+          orderId={selectedBookingForCancel._id}
+          orderNumber={selectedBookingForCancel.orderNumber}
+          eventTitle={getBookingEventTitle(selectedBookingForCancel)}
+          eventDate={getBookingEventDate(selectedBookingForCancel)}
+          totalAmount={selectedBookingForCancel.total || 0}
+          subtotal={selectedBookingForCancel.subtotal || 0}
+          serviceFee={selectedBookingForCancel.serviceFee || 0}
+          tax={selectedBookingForCancel.tax || 0}
+          currency={selectedBookingForCancel.currency?.toUpperCase() || 'AED'}
+          onSuccess={() => {
+            fetchDashboardData(); // Refresh dashboard after cancellation
+          }}
+        />
+      )}
     </div>
   );
 };

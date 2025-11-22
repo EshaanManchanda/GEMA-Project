@@ -1,6 +1,8 @@
-import cron from 'node-cron';
+import cron, { ScheduledTask } from 'node-cron';
 import mongoose from 'mongoose';
 import { Event } from '../models';
+import { cacheService } from '../services/cache.service';
+import { getEventCacheKey, getEventListCachePattern } from './event.utils';
 
 // Function to archive expired events using raw MongoDB queries for reliability
 export const archiveExpiredEvents = async () => {
@@ -21,7 +23,8 @@ export const archiveExpiredEvents = async () => {
       isDeleted: false
     }).toArray();
 
-    let archivedCount = 0;
+    // Collect event IDs that need to be archived (optimized approach)
+    const eventIdsToArchive: any[] = [];
 
     for (const event of activeEvents) {
       // Get the latest endDate from dateSchedule array
@@ -45,21 +48,37 @@ export const archiveExpiredEvents = async () => {
         const isExpired = now > expirationDate;
 
         if (isExpired) {
-          // Archive the event
-          await eventsCollection.updateOne(
-            { _id: event._id },
-            {
-              $set: {
-                isActive: false,
-                status: 'archived'
-              }
-            }
-          );
-
-          archivedCount++;
-          console.log(`Archived expired event: ${event.title} (ID: ${event._id})`);
+          eventIdsToArchive.push(event._id);
+          console.log(`Marking event for archival: ${event.title} (ID: ${event._id})`);
         }
       }
+    }
+
+    // Bulk update all expired events in a single operation (much faster!)
+    let archivedCount = 0;
+    if (eventIdsToArchive.length > 0) {
+      const result = await eventsCollection.updateMany(
+        { _id: { $in: eventIdsToArchive } },
+        {
+          $set: {
+            isActive: false,
+            status: 'archived'
+          }
+        }
+      );
+      archivedCount = result.modifiedCount || 0;
+
+      // Invalidate cache for archived events
+      console.log('Invalidating cache for archived events...');
+      for (const eventId of eventIdsToArchive) {
+        const cacheKey = getEventCacheKey(eventId.toString());
+        await cacheService.delete(cacheKey);
+      }
+
+      // Invalidate event list caches
+      const listPattern = getEventListCachePattern();
+      const deletedListKeys = await cacheService.deletePattern(listPattern);
+      console.log(`Invalidated ${deletedListKeys} event list cache entries`);
     }
 
     console.log(`Event expiration job completed. Archived ${archivedCount} events.`);
@@ -92,19 +111,42 @@ export const reactivateValidEvents = async () => {
       isDeleted: false
     });
 
-    let reactivatedCount = 0;
+    // Collect event IDs that need to be reactivated (optimized approach)
+    const eventIdsToReactivate: any[] = [];
 
     for (const event of archivedEvents) {
       // Check if event is actually not expired
       if (!event.isExpired()) {
-        // Reactivate the event
-        event.isActive = true;
-        event.status = 'published';
-        await event.save();
-        reactivatedCount++;
-
-        console.log(`Reactivated valid event: ${event.title} (ID: ${event._id})`);
+        eventIdsToReactivate.push(event._id);
+        console.log(`Marking event for reactivation: ${event.title} (ID: ${event._id})`);
       }
+    }
+
+    // Bulk update all events that need reactivation in a single operation (much faster!)
+    let reactivatedCount = 0;
+    if (eventIdsToReactivate.length > 0) {
+      const result = await Event.updateMany(
+        { _id: { $in: eventIdsToReactivate } },
+        {
+          $set: {
+            isActive: true,
+            status: 'published'
+          }
+        }
+      );
+      reactivatedCount = result.modifiedCount || 0;
+
+      // Invalidate cache for reactivated events
+      console.log('Invalidating cache for reactivated events...');
+      for (const eventId of eventIdsToReactivate) {
+        const cacheKey = getEventCacheKey(eventId.toString());
+        await cacheService.delete(cacheKey);
+      }
+
+      // Invalidate event list caches
+      const listPattern = getEventListCachePattern();
+      const deletedListKeys = await cacheService.deletePattern(listPattern);
+      console.log(`Invalidated ${deletedListKeys} event list cache entries`);
     }
 
     console.log(`Event reactivation check completed. Reactivated ${reactivatedCount} events.`);
@@ -199,14 +241,18 @@ export const runEventLifecycleMaintenance = async () => {
   }
 };
 
+// Store cron task references for cleanup
+let lifecycleMaintenanceTask: ScheduledTask | null = null;
+let quickExpirationTask: ScheduledTask | null = null;
+
 // Schedule event lifecycle jobs
 export const scheduleEventLifecycleJobs = () => {
   try {
     // Run event lifecycle maintenance daily at midnight (00:00)
-    cron.schedule('0 0 * * *', runEventLifecycleMaintenance);
+    lifecycleMaintenanceTask = cron.schedule('0 0 * * *', runEventLifecycleMaintenance);
 
     // Run a quick check every 6 hours to catch any urgent expirations
-    cron.schedule('0 */6 * * *', archiveExpiredEvents);
+    quickExpirationTask = cron.schedule('0 */6 * * *', archiveExpiredEvents);
 
     console.log('Event lifecycle management jobs scheduled successfully');
     console.log('- Full maintenance: Daily at 00:00 UTC');
@@ -216,6 +262,19 @@ export const scheduleEventLifecycleJobs = () => {
   } catch (error) {
     console.error('Error scheduling event lifecycle jobs:', error);
     return false;
+  }
+};
+
+// Cleanup function to stop all cron jobs (call on shutdown)
+export const stopEventLifecycleJobs = () => {
+  if (lifecycleMaintenanceTask) {
+    lifecycleMaintenanceTask.stop();
+    console.log('Event lifecycle maintenance job stopped');
+  }
+
+  if (quickExpirationTask) {
+    quickExpirationTask.stop();
+    console.log('Quick expiration check job stopped');
   }
 };
 

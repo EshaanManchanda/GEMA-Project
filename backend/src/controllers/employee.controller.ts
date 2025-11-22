@@ -4,7 +4,7 @@ import { AppError } from '../middleware/error';
 
 export const createEmployee = async (req: Request, res: Response, next: NextFunction) => {
   const { firstName, lastName, email, phone, role, permissions, assignedEvents, assignedVenues } = req.body;
-  const vendorId = req.user?.id; // Assuming the vendor creating the employee is authenticated
+  const vendorId = req.user?._id || req.user?.id; // Assuming the vendor creating the employee is authenticated
   if (!vendorId) {
     return next(new AppError('Unauthorized - vendor ID not found', 401));
   }
@@ -64,7 +64,7 @@ export const createEmployee = async (req: Request, res: Response, next: NextFunc
 
 export const getEmployeeDetails = async (req: Request, res: Response, next: NextFunction) => {
   const { employeeId } = req.params;
-  const vendorId = req.user?.id; // Assuming authenticated vendor
+  const vendorId = req.user?._id || req.user?.id; // Assuming authenticated vendor
   if (!vendorId) {
     return next(new AppError('Unauthorized - vendor ID not found', 401));
   }
@@ -92,7 +92,7 @@ export const getEmployeeDetails = async (req: Request, res: Response, next: Next
 
 export const updateEmployee = async (req: Request, res: Response, next: NextFunction) => {
   const { employeeId } = req.params;
-  const vendorId = req.user?.id;
+  const vendorId = req.user?._id || req.user?.id;
   if (!vendorId) {
     return next(new AppError('Unauthorized - vendor ID not found', 401));
   }
@@ -127,7 +127,7 @@ export const updateEmployee = async (req: Request, res: Response, next: NextFunc
 
 export const deleteEmployee = async (req: Request, res: Response, next: NextFunction) => {
   const { employeeId } = req.params;
-  const vendorId = req.user?.id;
+  const vendorId = req.user?._id || req.user?.id;
   if (!vendorId) {
     return next(new AppError('Unauthorized - vendor ID not found', 401));
   }
@@ -154,7 +154,7 @@ export const deleteEmployee = async (req: Request, res: Response, next: NextFunc
 
 export const assignEmployeeToEvent = async (req: Request, res: Response, next: NextFunction) => {
   const { employeeId, eventId } = req.body;
-  const vendorId = req.user?.id;
+  const vendorId = req.user?._id || req.user?.id;
   if (!vendorId) {
     return next(new AppError('Unauthorized - vendor ID not found', 401));
   }
@@ -184,7 +184,7 @@ export const assignEmployeeToEvent = async (req: Request, res: Response, next: N
 
 export const removeEmployeeFromEvent = async (req: Request, res: Response, next: NextFunction) => {
   const { employeeId, eventId } = req.body;
-  const vendorId = req.user?.id;
+  const vendorId = req.user?._id || req.user?.id;
   if (!vendorId) {
     return next(new AppError('Unauthorized - vendor ID not found', 401));
   }

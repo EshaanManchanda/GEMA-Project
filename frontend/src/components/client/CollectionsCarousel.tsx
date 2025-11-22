@@ -263,8 +263,8 @@ const CollectionsCarousel: React.FC = () => {
                   <p className="text-base font-semibold mb-1" style={{ color: 'var(--primary-color, #008EC7)' }}>
                     {item.title}
                   </p>
-                  <p className="text-xs text-gray-500 mb-2">{item.count}</p>
-                  <p className="text-sm text-gray-600 mb-4 line-clamp-2">{item.description}</p>
+                  <p className="text-xs text-gray-700 mb-2">{item.count}</p>
+                  <p className="text-sm text-gray-700 mb-4 line-clamp-2">{item.description}</p>
                   <button
                     className="mt-auto w-10 h-10 rounded-full shadow-md flex items-center justify-center transition-all duration-300 group-hover:shadow-lg focus:outline-none focus:ring-2 focus:ring-offset-2"
                     style={{ backgroundColor: 'var(--accent-color, #FF6B00)', color: 'white' }}

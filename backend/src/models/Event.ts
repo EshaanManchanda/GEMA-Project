@@ -20,6 +20,7 @@ export interface IEvent extends Document {
   currency: string;
   isApproved: boolean;
   isActive: boolean;
+  requirePhoneVerification: boolean;
   status: 'draft' | 'published' | 'archived' | 'pending' | 'rejected';
   affiliateCode?: string;
   tags: string[];
@@ -27,12 +28,18 @@ export interface IEvent extends Document {
     date?: Date; // Legacy field for backward compatibility
     startDate?: Date;
     endDate?: Date;
+    startTime?: string; // Time in HH:mm format (e.g., "09:00")
+    endTime?: string; // Time in HH:mm format (e.g., "17:00")
     availableSeats: number;
     totalSeats?: number;
     soldSeats?: number;
     reservedSeats?: number;
     price: number;
     unlimitedSeats?: boolean; // For online events with no capacity limit
+    isSpecialDate?: boolean; // Flag for special date pricing
+    specialDates?: Date[]; // Array of specific dates for special pricing
+    priority?: number; // Higher priority overrides base schedules
+    isOverride?: boolean; // When true, this schedule takes precedence over overlapping schedules
     _id?: mongoose.Types.ObjectId;
   }>;
   seoMeta: {
@@ -90,6 +97,32 @@ export interface IEvent extends Document {
       customMessage?: string;
     };
   };
+  // Cancellation fields
+  cancellationStatus: 'active' | 'cancelled';
+  cancellationReason?: string;
+  cancelledAt?: Date;
+  cancelledBy?: mongoose.Types.ObjectId;
+  cancellationNotification?: {
+    notified: boolean;
+    notifiedAt?: Date;
+    totalAttendees: number;
+    notifiedCount: number;
+    failedCount: number;
+  };
+
+  // Affiliate Event fields
+  isAffiliateEvent: boolean;
+  externalBookingLink?: string;
+  affiliateClickTracking: {
+    totalClicks: number;
+    uniqueClicks: number;
+    lastClickedAt?: Date;
+  };
+  claimStatus: 'unclaimed' | 'claimed' | 'not_claimable';
+  claimedBy?: mongoose.Types.ObjectId;
+  claimedAt?: Date;
+  originalAffiliateVendorId?: mongoose.Types.ObjectId;
+
   createdAt: Date;
   updatedAt: Date;
 
@@ -98,6 +131,8 @@ export interface IEvent extends Document {
   reduceSeats(date: Date, quantity: number): boolean;
   getEndDate(): Date | null;
   isExpired(): boolean;
+  cancelEvent(reason: string, cancelledBy: mongoose.Types.ObjectId): Promise<IEvent>;
+  isCancellable(): boolean;
 }
 
 const eventSchema = new Schema<IEvent>(
@@ -166,7 +201,7 @@ const eventSchema = new Schema<IEvent>(
     },
     vendorId: {
       type: Schema.Types.ObjectId,
-      ref: 'User',
+      ref: 'Vendor', // Changed from 'User' to 'Vendor'
       required: [true, 'Vendor ID is required'],
     },
     price: {
@@ -187,6 +222,10 @@ const eventSchema = new Schema<IEvent>(
     isActive: {
       type: Boolean,
       default: true,
+    },
+    requirePhoneVerification: {
+      type: Boolean,
+      default: false,
     },
     status: {
       type: String,
@@ -225,6 +264,15 @@ const eventSchema = new Schema<IEvent>(
           type: Date,
           required: false,
         },
+        // Time fields (stored as strings in HH:mm format)
+        startTime: {
+          type: String,
+          required: false,
+        },
+        endTime: {
+          type: String,
+          required: false,
+        },
         // Seat management
         availableSeats: {
           type: Number,
@@ -252,6 +300,23 @@ const eventSchema = new Schema<IEvent>(
         },
         // Unlimited capacity flag (for online events)
         unlimitedSeats: {
+          type: Boolean,
+          default: false,
+        },
+        // Special date pricing fields
+        isSpecialDate: {
+          type: Boolean,
+          default: false,
+        },
+        specialDates: {
+          type: [Date],
+          default: [],
+        },
+        priority: {
+          type: Number,
+          default: 0,
+        },
+        isOverride: {
           type: Boolean,
           default: false,
         },
@@ -307,6 +372,44 @@ const eventSchema = new Schema<IEvent>(
     isDeleted: {
       type: Boolean,
       default: false,
+    },
+    // Cancellation fields
+    cancellationStatus: {
+      type: String,
+      enum: ['active', 'cancelled'],
+      default: 'active',
+    },
+    cancellationReason: {
+      type: String,
+      maxlength: [500, 'Cancellation reason cannot exceed 500 characters'],
+    },
+    cancelledAt: {
+      type: Date,
+    },
+    cancelledBy: {
+      type: Schema.Types.ObjectId,
+      ref: 'User',
+    },
+    cancellationNotification: {
+      notified: {
+        type: Boolean,
+        default: false,
+      },
+      notifiedAt: {
+        type: Date,
+      },
+      totalAttendees: {
+        type: Number,
+        default: 0,
+      },
+      notifiedCount: {
+        type: Number,
+        default: 0,
+      },
+      failedCount: {
+        type: Number,
+        default: 0,
+      },
     },
     reviewCount: {
       type: Number,
@@ -423,6 +526,52 @@ const eventSchema = new Schema<IEvent>(
       required: false,
       default: undefined,
     },
+    // Affiliate Event fields
+    isAffiliateEvent: {
+      type: Boolean,
+      default: false,
+    },
+    externalBookingLink: {
+      type: String,
+      trim: true,
+      validate: {
+        validator: function(this: IEvent, v: string) {
+          if (!this.isAffiliateEvent) return true;
+          return v && /^https?:\/\/.+/.test(v);
+        },
+        message: 'External booking link is required for affiliate events and must be a valid URL'
+      }
+    },
+    affiliateClickTracking: {
+      totalClicks: {
+        type: Number,
+        default: 0,
+        min: [0, 'Total clicks cannot be negative']
+      },
+      uniqueClicks: {
+        type: Number,
+        default: 0,
+        min: [0, 'Unique clicks cannot be negative']
+      },
+      lastClickedAt: Date
+    },
+    claimStatus: {
+      type: String,
+      enum: {
+        values: ['unclaimed', 'claimed', 'not_claimable'],
+        message: 'Claim status must be unclaimed, claimed, or not_claimable'
+      },
+      default: 'not_claimable',
+    },
+    claimedBy: {
+      type: Schema.Types.ObjectId,
+      ref: 'Vendor'
+    },
+    claimedAt: Date,
+    originalAffiliateVendorId: {
+      type: Schema.Types.ObjectId,
+      ref: 'Vendor'
+    },
   },
   {
     timestamps: true,
@@ -439,6 +588,7 @@ const eventSchema = new Schema<IEvent>(
 eventSchema.index({ vendorId: 1 });
 eventSchema.index({ isApproved: 1, isDeleted: 1 });
 eventSchema.index({ isActive: 1, isApproved: 1, isDeleted: 1 });
+eventSchema.index({ cancellationStatus: 1 }); // For filtering cancelled events
 eventSchema.index({ status: 1 });
 eventSchema.index({ category: 1 });
 eventSchema.index({ type: 1 });
@@ -451,6 +601,15 @@ eventSchema.index({ tags: 1 });
 eventSchema.index({ averageRating: -1 });
 eventSchema.index({ reviewCount: -1 });
 eventSchema.index({ averageRating: -1, reviewCount: -1 });
+
+// Additional compound indexes for KVM1 optimization - faster admin dashboard queries
+eventSchema.index({ isApproved: 1, status: 1, createdAt: -1 }); // Dashboard event stats by approval and status
+eventSchema.index({ vendorId: 1, isApproved: 1, createdAt: -1 }); // Vendor-specific event queries
+
+// Affiliate event indexes
+eventSchema.index({ isAffiliateEvent: 1, claimStatus: 1 }); // For filtering affiliate events by claim status
+eventSchema.index({ claimedBy: 1 }); // For vendor's claimed events
+eventSchema.index({ 'affiliateClickTracking.totalClicks': -1 }); // For analytics and sorting by popularity
 
 // Text search index
 eventSchema.index({
@@ -484,6 +643,117 @@ eventSchema.pre('save', function (next) {
   next();
 });
 
+// Post-save middleware to invalidate cache when event changes
+eventSchema.post('save', async function (doc) {
+  try {
+    // Import cache service and utilities dynamically to avoid circular dependencies
+    const { cacheService } = await import('../services/cache.service');
+    const { getEventCacheKey, getEventListCachePattern } = await import('../utils/event.utils');
+
+    // Invalidate individual event cache
+    const cacheKey = getEventCacheKey(doc._id.toString());
+    await cacheService.delete(cacheKey);
+
+    // If any public-facing field changed, invalidate event list caches
+    const fieldsAffectingLists = ['isApproved', 'isActive', 'status', 'isDeleted', 'isFeatured'];
+    if (fieldsAffectingLists.some(field => doc.isModified(field))) {
+      const listPattern = getEventListCachePattern();
+      await cacheService.deletePattern(listPattern);
+    }
+  } catch (error) {
+    console.error('Error invalidating event cache:', error);
+    // Don't throw - cache invalidation failures shouldn't break saves
+  }
+});
+
+// Post-remove middleware to invalidate cache when event is deleted
+eventSchema.post('findOneAndUpdate', async function (doc) {
+  if (!doc) return;
+
+  try {
+    const { cacheService } = await import('../services/cache.service');
+    const { getEventCacheKey, getEventListCachePattern } = await import('../utils/event.utils');
+
+    // Invalidate individual event cache
+    const cacheKey = getEventCacheKey(doc._id.toString());
+    await cacheService.delete(cacheKey);
+
+    // Invalidate event list caches
+    const listPattern = getEventListCachePattern();
+    await cacheService.deletePattern(listPattern);
+  } catch (error) {
+    console.error('Error invalidating event cache after update:', error);
+  }
+});
+
+// Post-delete middleware to invalidate cache when event is deleted
+eventSchema.post('findOneAndDelete', async function (doc) {
+  if (!doc) return;
+
+  try {
+    const { cacheService } = await import('../services/cache.service');
+    const { getEventCacheKey, getEventListCachePattern } = await import('../utils/event.utils');
+
+    // Invalidate individual event cache
+    const cacheKey = getEventCacheKey(doc._id.toString());
+    await cacheService.delete(cacheKey);
+
+    // Invalidate event list caches
+    const listPattern = getEventListCachePattern();
+    await cacheService.deletePattern(listPattern);
+  } catch (error) {
+    console.error('Error invalidating event cache after delete:', error);
+  }
+});
+
+// Post-updateMany middleware to invalidate cache for bulk updates
+eventSchema.post('updateMany', async function () {
+  try {
+    const { cacheService } = await import('../services/cache.service');
+    const { getEventListCachePattern } = await import('../utils/event.utils');
+
+    // For bulk updates, we can't easily track individual events
+    // So we invalidate all event list caches
+    const listPattern = getEventListCachePattern();
+    await cacheService.deletePattern(listPattern);
+  } catch (error) {
+    console.error('Error invalidating cache after bulk update:', error);
+  }
+});
+
+// Helper to check if a schedule contains a target date
+const scheduleContainsDate = (s: any, targetDate: Date): boolean => {
+  if (s.startDate && s.endDate) {
+    // New format: check if target date falls within the start-end range
+    const startDate = new Date(s.startDate);
+    const endDate = new Date(s.endDate);
+    startDate.setHours(0, 0, 0, 0);
+    endDate.setHours(23, 59, 59, 999);
+    return targetDate >= startDate && targetDate <= endDate;
+  } else if (s.date) {
+    // Legacy format: exact date match
+    const scheduleDate = new Date(s.date);
+    scheduleDate.setHours(0, 0, 0, 0);
+    return scheduleDate.getTime() === targetDate.getTime();
+  } else if (s.startDate) {
+    // Only startDate available: treat as single day event
+    const startDate = new Date(s.startDate);
+    startDate.setHours(0, 0, 0, 0);
+    return startDate.getTime() === targetDate.getTime();
+  }
+  return false;
+};
+
+// Helper to find the best matching schedule (prefers override schedules)
+const findBestScheduleForDate = (dateSchedule: any[], targetDate: Date): any => {
+  const matchingSchedules = dateSchedule.filter((s: any) => scheduleContainsDate(s, targetDate));
+  if (matchingSchedules.length === 0) return null;
+
+  // Prefer override schedule if one exists
+  const overrideSchedule = matchingSchedules.find((s: any) => s.isOverride === true);
+  return overrideSchedule || matchingSchedules[0];
+};
+
 // Method to check if event has available seats for a specific date
 eventSchema.methods.hasAvailableSeats = function (date: Date, quantity: number = 1): boolean {
   if (!date || !(date instanceof Date) || isNaN(date.getTime())) {
@@ -494,30 +764,7 @@ eventSchema.methods.hasAvailableSeats = function (date: Date, quantity: number =
   const targetDate = new Date(date);
   targetDate.setHours(0, 0, 0, 0); // Normalize to start of day
 
-  const schedule = this.dateSchedule.find((s: any) => {
-    // Handle both legacy 'date' field and new 'startDate'/'endDate' fields
-    if (s.startDate && s.endDate) {
-      // New format: check if target date falls within the start-end range
-      const startDate = new Date(s.startDate);
-      const endDate = new Date(s.endDate);
-      startDate.setHours(0, 0, 0, 0);
-      endDate.setHours(23, 59, 59, 999);
-
-      return targetDate >= startDate && targetDate <= endDate;
-    } else if (s.date) {
-      // Legacy format: exact date match
-      const scheduleDate = new Date(s.date);
-      scheduleDate.setHours(0, 0, 0, 0);
-      return scheduleDate.getTime() === targetDate.getTime();
-    } else if (s.startDate) {
-      // Only startDate available: treat as single day event
-      const startDate = new Date(s.startDate);
-      startDate.setHours(0, 0, 0, 0);
-      return startDate.getTime() === targetDate.getTime();
-    }
-
-    return false;
-  });
+  const schedule = findBestScheduleForDate(this.dateSchedule, targetDate);
 
   // Unlimited seats always have availability
   if (schedule && schedule.unlimitedSeats) {
@@ -560,30 +807,8 @@ eventSchema.methods.reduceSeats = function (date: Date, quantity: number): boole
   const targetDate = new Date(date);
   targetDate.setHours(0, 0, 0, 0); // Normalize to start of day
 
-  const schedule = this.dateSchedule.find((s: any) => {
-    // Handle both legacy 'date' field and new 'startDate'/'endDate' fields
-    if (s.startDate && s.endDate) {
-      // New format: check if target date falls within the start-end range
-      const startDate = new Date(s.startDate);
-      const endDate = new Date(s.endDate);
-      startDate.setHours(0, 0, 0, 0);
-      endDate.setHours(23, 59, 59, 999);
-
-      return targetDate >= startDate && targetDate <= endDate;
-    } else if (s.date) {
-      // Legacy format: exact date match
-      const scheduleDate = new Date(s.date);
-      scheduleDate.setHours(0, 0, 0, 0);
-      return scheduleDate.getTime() === targetDate.getTime();
-    } else if (s.startDate) {
-      // Only startDate available: treat as single day event
-      const startDate = new Date(s.startDate);
-      startDate.setHours(0, 0, 0, 0);
-      return startDate.getTime() === targetDate.getTime();
-    }
-
-    return false;
-  });
+  // Use helper to find best schedule (prefers override schedules)
+  const schedule = findBestScheduleForDate(this.dateSchedule, targetDate);
 
   // Unlimited seats - no need to reduce availability, just track sold count
   if (schedule && schedule.unlimitedSeats) {
@@ -661,6 +886,44 @@ eventSchema.methods.isExpired = function (): boolean {
   return now > expirationDate;
 };
 
+// Method to check if event can be cancelled
+eventSchema.methods.isCancellable = function (): boolean {
+  // Cannot cancel if already cancelled
+  if (this.cancellationStatus === 'cancelled') {
+    return false;
+  }
+
+  // Cannot cancel draft or rejected events
+  if (this.status === 'draft' || this.status === 'rejected') {
+    return false;
+  }
+
+  // Cannot cancel if event has already started
+  const now = new Date();
+  const startDate = this.dateSchedule?.[0]?.startDate || this.dateSchedule?.[0]?.date;
+  if (startDate && new Date(startDate) <= now) {
+    return false;
+  }
+
+  return true;
+};
+
+// Method to cancel the event
+eventSchema.methods.cancelEvent = async function (reason: string, cancelledBy: mongoose.Types.ObjectId): Promise<IEvent> {
+  if (!this.isCancellable()) {
+    throw new Error('Event cannot be cancelled');
+  }
+
+  this.cancellationStatus = 'cancelled';
+  this.cancellationReason = reason;
+  this.cancelledAt = new Date();
+  this.cancelledBy = cancelledBy;
+  this.isActive = false;
+  this.status = 'archived';
+
+  return this.save();
+};
+
 // Static method to find approved and active events (for public API)
 eventSchema.statics.findApproved = function () {
   return this.find({ isApproved: true, isActive: true, isDeleted: false });
@@ -689,6 +952,8 @@ eventSchema.statics.findActivePublished = function () {
 // Static method to find public events (approved, active, published, not deleted, not expired)
 eventSchema.statics.findPublic = function (extraFilters: any = {}) {
   const now = new Date();
+  // Add 24-hour buffer to match buildPublicEventFilter and lifecycle job behavior
+  const bufferTime = new Date(now.getTime() - 24 * 60 * 60 * 1000);
 
   return this.find({
     isApproved: true,
@@ -696,10 +961,10 @@ eventSchema.statics.findPublic = function (extraFilters: any = {}) {
     status: 'published',
     isDeleted: false,
     $or: [
-      // New format: check endDate
-      { 'dateSchedule.endDate': { $gte: now } },
-      // Legacy format: check date field
-      { 'dateSchedule.date': { $gte: now } },
+      // New format: check endDate with 24-hour buffer
+      { 'dateSchedule.endDate': { $gte: bufferTime } },
+      // Legacy format: check date field with 24-hour buffer
+      { 'dateSchedule.date': { $gte: bufferTime } },
     ],
     ...extraFilters
   });

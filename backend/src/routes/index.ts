@@ -12,10 +12,15 @@ import analyticsRoutes from './analytics.routes';
 import adminUserRoutes from './admin.user.routes';
 import adminEventRoutes from './admin.event.routes';
 import adminVenueRoutes from './admin.venue.routes';
+import adminVendorRoutes from './admin.vendor.routes';
 import adminDashboardRoutes from './admin.dashboard.routes';
 import adminModerationRoutes from './admin.moderation.routes';
 import adminPayoutRoutes from './admin.payout.routes';
+import adminSettingsRoutes from './admin.settings.routes';
+import adminCommissionRoutes from './admin.commission.routes';
 import vendorRoutes from './vendor.routes';
+import vendorPayoutRoutes from './vendor.payout.routes';
+import vendorPaymentRoutes from './vendor.payment.routes';
 import blogRoutes from './blog.routes';
 import adminBlogRoutes from './admin.blog.routes';
 import blogCommentsRoutes from './blog.comments.routes';
@@ -35,6 +40,8 @@ import seoRoutes from './seo.routes';
 import registrationRoutes from './registration.routes';
 import currencyRoutes from './currency.routes';
 import contactRoutes from './contact.routes';
+import cancellationRoutes from './event.cancellation.routes';
+import eventAffiliateRoutes from './event.affiliate.routes';
 import { Router } from 'express';
 
 const router = Router();
@@ -86,6 +93,9 @@ router.use('/admin/events', adminEventRoutes);
 // Admin Venue Management routes
 router.use('/admin/venues', adminVenueRoutes);
 
+// Admin Vendor Management routes
+router.use('/admin/vendors', adminVendorRoutes);
+
 // Admin Dashboard routes
 router.use('/admin/dashboard', adminDashboardRoutes);
 
@@ -95,8 +105,20 @@ router.use('/admin/moderation', adminModerationRoutes);
 // Admin Payout routes
 router.use('/admin', adminPayoutRoutes);
 
+// Admin Commission routes
+router.use('/admin', adminCommissionRoutes);
+
+// Admin Settings routes
+router.use('/admin', adminSettingsRoutes);
+
 // Vendor routes
 router.use('/vendors', vendorRoutes);
+
+// Vendor Payout routes
+router.use('/vendors/payouts', vendorPayoutRoutes);
+
+// Vendor Payment Settings routes
+router.use('/vendors/payment-settings', vendorPaymentRoutes);
 
 // Blog routes
 router.use('/blogs', blogRoutes);
@@ -144,5 +166,11 @@ router.use('/', seoRoutes);
 
 // Contact routes (contact form submissions)
 router.use('/contact', contactRoutes);
+
+// Cancellation routes (event and order cancellations with refunds)
+router.use('/', cancellationRoutes);
+
+// Event Affiliate routes (affiliate event tracking and claiming)
+router.use('/', eventAffiliateRoutes);
 
 export default router;

@@ -291,7 +291,7 @@ export const createEvent = async (req: AuthRequest, res: Response, next: NextFun
       return next(new AppError('Validation failed', 400, errors.array()));
     }
 
-    const userId = req.user?.id;
+    const userId = req.user?._id || req.user?.id;
     if (!userId) {
       return next(new AppError('User not authenticated', 401));
     }
@@ -336,7 +336,7 @@ export const updateEvent = async (req: AuthRequest, res: Response, next: NextFun
     }
 
     const { id } = req.params;
-    const userId = req.user?.id;
+    const userId = req.user?._id || req.user?.id;
 
     const event = await Event.findOne({
       _id: id,
@@ -387,7 +387,7 @@ export const updateEvent = async (req: AuthRequest, res: Response, next: NextFun
 export const deleteEvent = async (req: AuthRequest, res: Response, next: NextFunction) => {
   try {
     const { id } = req.params;
-    const userId = req.user?.id;
+    const userId = req.user?._id || req.user?.id;
 
     const event = await Event.findOne({
       _id: id,
@@ -418,7 +418,7 @@ export const deleteEvent = async (req: AuthRequest, res: Response, next: NextFun
 // @access  Private (Vendor only)
 export const getVendorEvents = async (req: AuthRequest, res: Response, next: NextFunction) => {
   try {
-    const userId = req.user?.id;
+    const userId = req.user?._id || req.user?.id;
     const {
       page = 1,
       limit = 12,
@@ -512,7 +512,7 @@ export const getEventCategories = async (req: Request, res: Response, next: Next
 // @access  Private (Vendor only)
 export const getVendorEventAnalytics = async (req: AuthRequest, res: Response, next: NextFunction) => {
   try {
-    const userId = req.user?.id;
+    const userId = req.user?._id || req.user?.id;
 
     const analytics = await Event.aggregate([
       {

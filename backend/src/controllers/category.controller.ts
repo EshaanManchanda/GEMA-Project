@@ -3,9 +3,13 @@ import mongoose from 'mongoose';
 import { Category, Event, ICategory } from '../models';
 import { AppError } from '../middleware';
 import { ApiResponse } from '../types';
+import { cacheService } from '../services/cache.service';
 
 /**
  * Get all categories (tree structure)
+ *
+ * OPTIMIZATION: Aggressive caching (1 hour TTL) - categories rarely change
+ * Critical for reducing repeated tree rebuilding on KVM1
  */
 export const getCategories = async (
   req: Request,
@@ -14,13 +18,32 @@ export const getCategories = async (
 ): Promise<void> => {
   try {
     const { tree = 'true', includeInactive = 'false' } = req.query;
-    
+
+    // Generate cache key based on query parameters
+    const cacheKey = `categories:${tree}:${includeInactive}`;
+
+    // Try to get cached data first
+    const cached = await cacheService.get(cacheKey);
+    if (cached) {
+      res.status(200).json({
+        success: true,
+        cached: true,
+        data: cached,
+        message: 'Categories retrieved successfully (cached)'
+      });
+      return;
+    }
+
     if (tree === 'true') {
       // Get categories as tree structure
       const categoryTree = await Category.getCategoryTree();
-      
+
+      // Cache for 1 hour (3600 seconds) - categories rarely change
+      await cacheService.set(cacheKey, categoryTree, { ttl: 3600 });
+
       res.status(200).json({
         success: true,
+        cached: false,
         data: categoryTree,
         message: 'Categories retrieved successfully'
       });
@@ -30,13 +53,17 @@ export const getCategories = async (
       if (includeInactive !== 'true') {
         query.isActive = true;
       }
-      
+
       const categories = await Category.find(query)
         .sort({ level: 1, sortOrder: 1, name: 1 })
         .populate('parentId', 'name slug');
-      
+
+      // Cache for 1 hour
+      await cacheService.set(cacheKey, categories, { ttl: 3600 });
+
       res.status(200).json({
         success: true,
+        cached: false,
         data: categories,
         message: 'Categories retrieved successfully'
       });
@@ -136,9 +163,12 @@ export const createCategory = async (
     
     const category = new Category(categoryData);
     await category.save();
-    
+
+    // Invalidate category cache after creation
+    await cacheService.deletePattern('categories:*');
+
     await category.populate('parentId', 'name slug');
-    
+
     res.status(201).json({
       success: true,
       data: category,
@@ -199,9 +229,12 @@ export const updateCategory = async (
     
     Object.assign(category, updateData);
     await category.save();
-    
+
+    // Invalidate category cache after update
+    await cacheService.deletePattern('categories:*');
+
     await category.populate('parentId', 'name slug');
-    
+
     res.status(200).json({
       success: true,
       data: category,
@@ -251,7 +284,10 @@ export const deleteCategory = async (
     // Soft delete by setting inactive
     category.isActive = false;
     await category.save();
-    
+
+    // Invalidate category cache after deletion
+    await cacheService.deletePattern('categories:*');
+
     res.status(200).json({
       success: true,
       data: null,

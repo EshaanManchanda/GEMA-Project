@@ -1,18 +1,23 @@
-import { Event, Category } from '../models';
+import { Event, Category, Vendor } from '../models';
 import { AppError, catchAsync } from '../middleware';
 import { AuthRequest } from '../types';
 import { NextFunction, Response } from 'express';
+import { getOrCreateVendorProfile } from '../utils/vendorHelpers';
 
 // @desc    Get single event by ID (vendor's own event)
 // @route   GET /api/vendors/events/:id
 // @access  Private (Vendor only)
 export const getVendorEventById = catchAsync(async (req: AuthRequest, res: Response, next: NextFunction) => {
-  const vendorId = req.user?.id;
+  const userId = req.user?._id || req.user?.id;
   const { id } = req.params;
 
-  if (!vendorId) {
-    return next(new AppError('Vendor ID not found', 401));
+  if (!userId) {
+    return next(new AppError('User ID not found', 401));
   }
+
+  // Get vendor profile to get Vendor._id
+  const vendorProfile = await getOrCreateVendorProfile(userId);
+  const vendorId = vendorProfile._id;
 
   const event = await Event.findOne({ _id: id, vendorId, isDeleted: false });
 
@@ -31,11 +36,15 @@ export const getVendorEventById = catchAsync(async (req: AuthRequest, res: Respo
 // @route   POST /api/vendors/events
 // @access  Private (Vendor only)
 export const createVendorEvent = catchAsync(async (req: AuthRequest, res: Response, next: NextFunction) => {
-  const vendorId = req.user?.id;
+  const userId = req.user?._id || req.user?.id;
 
-  if (!vendorId) {
-    return next(new AppError('Vendor ID not found', 401));
+  if (!userId) {
+    return next(new AppError('User ID not found', 401));
   }
+
+  // Get vendor profile to get Vendor._id
+  const vendorProfile = await getOrCreateVendorProfile(userId);
+  const vendorId = vendorProfile._id;
 
   const {
     title,
@@ -101,6 +110,7 @@ export const createVendorEvent = catchAsync(async (req: AuthRequest, res: Respon
       totalSeats: schedule.unlimitedSeats ? 999999 : (schedule.totalSeats || schedule.availableSeats || 0),
       price: schedule.price || price || 0,
       unlimitedSeats: schedule.unlimitedSeats || false,
+      isOverride: schedule.isOverride || false,
     })),
     seoMeta: seoMeta || undefined,
     faqs: faqs || undefined,
@@ -123,12 +133,16 @@ export const createVendorEvent = catchAsync(async (req: AuthRequest, res: Respon
 // @route   PUT /api/vendors/events/:id
 // @access  Private (Vendor only)
 export const updateVendorEvent = catchAsync(async (req: AuthRequest, res: Response, next: NextFunction) => {
-  const vendorId = req.user?.id;
+  const userId = req.user?._id || req.user?.id;
   const { id } = req.params;
 
-  if (!vendorId) {
-    return next(new AppError('Vendor ID not found', 401));
+  if (!userId) {
+    return next(new AppError('User ID not found', 401));
   }
+
+  // Get vendor profile to get Vendor._id
+  const vendorProfile = await getOrCreateVendorProfile(userId);
+  const vendorId = vendorProfile._id;
 
   // Find event and verify ownership
   const event = await Event.findOne({ _id: id, vendorId });
@@ -191,6 +205,7 @@ export const updateVendorEvent = catchAsync(async (req: AuthRequest, res: Respon
       totalSeats: schedule.unlimitedSeats ? 999999 : (schedule.totalSeats || schedule.availableSeats || 0),
       price: schedule.price || event.price || 0,
       unlimitedSeats: schedule.unlimitedSeats || false,
+      isOverride: schedule.isOverride || false,
     }));
   }
   if (seoMeta) event.seoMeta = seoMeta;
@@ -210,13 +225,17 @@ export const updateVendorEvent = catchAsync(async (req: AuthRequest, res: Respon
 // @route   DELETE /api/vendors/events/:id
 // @access  Private (Vendor only)
 export const deleteVendorEvent = catchAsync(async (req: AuthRequest, res: Response, next: NextFunction) => {
-  const vendorId = req.user?.id;
+  const userId = req.user?._id || req.user?.id;
   const { id } = req.params;
   const { permanent } = req.query;
 
-  if (!vendorId) {
-    return next(new AppError('Vendor ID not found', 401));
+  if (!userId) {
+    return next(new AppError('User ID not found', 401));
   }
+
+  // Get vendor profile to get Vendor._id
+  const vendorProfile = await getOrCreateVendorProfile(userId);
+  const vendorId = vendorProfile._id;
 
   // Find event and verify ownership
   const event = await Event.findOne({ _id: id, vendorId });
@@ -251,12 +270,16 @@ export const deleteVendorEvent = catchAsync(async (req: AuthRequest, res: Respon
 // @route   PUT /api/vendors/events/:id/restore
 // @access  Private (Vendor only)
 export const restoreVendorEvent = catchAsync(async (req: AuthRequest, res: Response, next: NextFunction) => {
-  const vendorId = req.user?.id;
+  const userId = req.user?._id || req.user?.id;
   const { id } = req.params;
 
-  if (!vendorId) {
-    return next(new AppError('Vendor ID not found', 401));
+  if (!userId) {
+    return next(new AppError('User ID not found', 401));
   }
+
+  // Get vendor profile to get Vendor._id
+  const vendorProfile = await getOrCreateVendorProfile(userId);
+  const vendorId = vendorProfile._id;
 
   // Find event and verify ownership
   const event = await Event.findOne({ _id: id, vendorId, isDeleted: true });

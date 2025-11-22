@@ -1,10 +1,12 @@
-import { Request, Response, NextFunction } from 'express';
+import { Request, Response, NextFunction, CookieOptions } from 'express';
 import { getAuth } from '../config/firebase';
 import { generateToken, generateRefreshToken } from '../config/jwt';
 import { User, UserStatus, RefreshToken, IUser, IAddress, Gender } from '../models';
 import { AppError } from '../middleware';
 import { emailService } from '../services/email.service';
 import smsService from '../services/sms.service';
+import { cacheService } from '../services/cache.service';
+import { getOrCreateVendorProfile } from '../utils/vendorHelpers';
 import {
   AuthResponse,
   LoginRequest,
@@ -23,7 +25,53 @@ import bcrypt from 'bcryptjs';
 import crypto from 'crypto';
 import { generateOTP, getOTPExpiry } from '../utils/otp';
 import { sanitizeToE164, validatePhoneForAPI, isE164Format } from '../utils/phoneValidation';
+import { toISOStringSafe, toDateStringSafe } from '../utils/dateHelpers';
+import { config } from '../config';
 
+/**
+ * Cookie configuration for auth tokens
+ */
+const getCookieOptions = (): CookieOptions => {
+  const isProduction = config.nodeEnv === 'production';
+
+  return {
+    httpOnly: true,  // Prevents JavaScript access (XSS protection)
+    secure: isProduction,  // Only send over HTTPS in production
+    sameSite: isProduction ? 'none' : 'lax',  // CSRF protection, 'none' for cross-site in production
+    domain: isProduction ? undefined : undefined,  // Let browser handle domain
+    path: '/',
+    maxAge: 7 * 24 * 60 * 60 * 1000  // 7 days in milliseconds
+  };
+};
+
+const getRefreshCookieOptions = (): CookieOptions => {
+  const isProduction = config.nodeEnv === 'production';
+
+  return {
+    httpOnly: true,
+    secure: isProduction,
+    sameSite: isProduction ? 'none' : 'lax',
+    domain: isProduction ? undefined : undefined,
+    path: '/',
+    maxAge: 30 * 24 * 60 * 60 * 1000  // 30 days in milliseconds
+  };
+};
+
+/**
+ * Set auth cookies on response
+ */
+const setAuthCookies = (res: Response, accessToken: string, refreshToken: string): void => {
+  res.cookie('accessToken', accessToken, getCookieOptions());
+  res.cookie('refreshToken', refreshToken, getRefreshCookieOptions());
+};
+
+/**
+ * Clear auth cookies on response
+ */
+const clearAuthCookies = (res: Response): void => {
+  res.clearCookie('accessToken', getCookieOptions());
+  res.clearCookie('refreshToken', getRefreshCookieOptions());
+};
 
 /**
  * Format user for response
@@ -39,8 +87,8 @@ const formatUserResponse = (user: IUser): UserResponse => {
     role: user.role, // role is now a string
     isEmailVerified: user.isEmailVerified,
     isPhoneVerified: user.isPhoneVerified,
-    createdAt: user.createdAt.toISOString(),
-    updatedAt: user.updatedAt.toISOString()
+    createdAt: toISOStringSafe(user.createdAt),
+    updatedAt: toISOStringSafe(user.updatedAt)
   };
 };
 
@@ -57,16 +105,27 @@ const generateAuthTokens = async (userId: string, req: Request): Promise<{ acces
   // Calculate expiry date (from JWT config)
   const expiresAt = new Date();
   expiresAt.setDate(expiresAt.getDate() + 30); // 30 days from now
-  
-  // Save refresh token to database
-  await RefreshToken.create({
-    token: refreshToken,
-    user: userId,
-    expiresAt,
-    ipAddress: req.ip,
-    userAgent: req.headers['user-agent']
-  });
-  
+
+  // Save refresh token to database with duplicate handling for race conditions
+  try {
+    await RefreshToken.create({
+      token: refreshToken,
+      user: userId,
+      expiresAt,
+      ipAddress: req.ip,
+      userAgent: req.headers['user-agent']
+    });
+  } catch (error: any) {
+    // Handle duplicate key errors from race conditions (multiple simultaneous requests)
+    if (error.code === 11000) {
+      console.log('[Auth] Refresh token already exists (race condition), continuing...');
+      // Token already exists in DB, which is fine - the operation succeeded in another request
+    } else {
+      // Re-throw other errors
+      throw error;
+    }
+  }
+
   return { accessToken, refreshToken };
 };
 
@@ -127,27 +186,41 @@ export const register = async (req: Request, res: Response, next: NextFunction):
       passwordHashLength: user.passwordHash?.length,
       passwordHashStart: user.passwordHash?.substring(0, 10) + '***'
     });
-    
+
+    // Auto-create Vendor profile if user is registering as vendor
+    if (userRole === 'vendor') {
+      try {
+        await getOrCreateVendorProfile(user._id);
+        console.log('[REGISTER] Vendor profile auto-created for user:', user._id);
+      } catch (vendorError) {
+        console.error('[REGISTER] Failed to create vendor profile:', vendorError);
+        // Don't fail registration if vendor profile creation fails
+        // It will be created on first access via getOrCreateVendorProfile
+      }
+    }
+
     // Generate tokens
     const tokens = await generateAuthTokens(user._id.toString(), req);
-    
+
+    // Set httpOnly cookies
+    setAuthCookies(res, tokens.accessToken, tokens.refreshToken);
+
     // Send verification email
     await emailService.sendVerificationEmail({
       to: user.email,
       firstName: user.firstName,
       otp: verificationOTP,
     });
-    
+
     // Return response
     console.log('Registration successful');
     res.status(201).json({
       success: true,
-      message: 'User registered successfully',
+      message: 'User registered successfully. Auth cookies have been set.',
       data: {
-        user: formatUserResponse(user),
-        tokens
+        user: formatUserResponse(user)
       }
-    } as ApiResponse<AuthResponse>);
+    });
   } catch (error) {
     next(error);
   }
@@ -202,6 +275,9 @@ export const registerAdmin = async (req: Request, res: Response, next: NextFunct
     // Generate tokens
     const tokens = await generateAuthTokens(user._id.toString(), req);
 
+    // Set httpOnly cookies
+    setAuthCookies(res, tokens.accessToken, tokens.refreshToken);
+
     // Optionally send welcome email (you can customize this)
     try {
       await emailService.sendVerificationEmail({
@@ -217,12 +293,11 @@ export const registerAdmin = async (req: Request, res: Response, next: NextFunct
     // Return response
     res.status(201).json({
       success: true,
-      message: 'Admin user registered successfully',
+      message: 'Admin user registered successfully. Auth cookies have been set.',
       data: {
-        user: formatUserResponse(user),
-        tokens
+        user: formatUserResponse(user)
       }
-    } as ApiResponse<AuthResponse>);
+    });
   } catch (error) {
     next(error);
   }
@@ -342,19 +417,21 @@ export const login = async (req: Request, res: Response, next: NextFunction): Pr
     });
     user.lastLogin = new Date();
     await user.save();
-    
+
     // Generate tokens
     const tokens = await generateAuthTokens(user._id.toString(), req);
-    
+
+    // Set httpOnly cookies
+    setAuthCookies(res, tokens.accessToken, tokens.refreshToken);
+
     // Return response
     res.status(200).json({
       success: true,
-      message: 'Login successful',
+      message: 'Login successful. Auth cookies have been set.',
       data: {
-        user: formatUserResponse(user),
-        tokens
+        user: formatUserResponse(user)
       }
-    } as ApiResponse<AuthResponse>);
+    });
   } catch (error) {
     next(error);
   }
@@ -367,8 +444,9 @@ export const login = async (req: Request, res: Response, next: NextFunction): Pr
  */
 export const logout = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
   try {
-    const refreshToken = req.body.refreshToken;
-    
+    // Get refresh token from cookie or body (for backward compatibility)
+    const refreshToken = req.cookies.refreshToken || req.body.refreshToken;
+
     if (refreshToken) {
       // Revoke the refresh token
       await RefreshToken.findOneAndUpdate(
@@ -376,10 +454,13 @@ export const logout = async (req: Request, res: Response, next: NextFunction): P
         { isRevoked: true }
       );
     }
-    
+
+    // Clear auth cookies
+    clearAuthCookies(res);
+
     res.status(200).json({
       success: true,
-      message: 'Logout successful'
+      message: 'Logout successful. Auth cookies have been cleared.'
     } as ApiResponse);
   } catch (error) {
     next(error);
@@ -393,45 +474,57 @@ export const logout = async (req: Request, res: Response, next: NextFunction): P
  */
 export const refreshToken = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
   try {
-    const { refreshToken: token }: RefreshTokenRequest = req.body;
-    
+    // Get refresh token from cookie or body (for backward compatibility)
+    const token = req.cookies.refreshToken || req.body.refreshToken;
+
+    if (!token) {
+      throw new AppError('No refresh token provided', 401);
+    }
+
     // Find the refresh token in the database
     const refreshTokenDoc = await RefreshToken.findOne({ token, isRevoked: false });
     if (!refreshTokenDoc) {
+      // Clear invalid cookies
+      clearAuthCookies(res);
       throw new AppError('Invalid or expired refresh token', 401);
     }
-    
+
     // Check if token is expired
     if (refreshTokenDoc.expiresAt < new Date()) {
       // Mark as revoked
       refreshTokenDoc.isRevoked = true;
       await refreshTokenDoc.save();
-      
+
+      // Clear expired cookies
+      clearAuthCookies(res);
+
       throw new AppError('Refresh token expired', 401);
     }
-    
+
     // Get user
     const user = await User.findById(refreshTokenDoc.user);
     if (!user) {
       throw new AppError('User not found', 404);
     }
-    
+
     // Generate new tokens
     const tokens = await generateAuthTokens(user._id.toString(), req);
-    
+
+    // Set new httpOnly cookies
+    setAuthCookies(res, tokens.accessToken, tokens.refreshToken);
+
     // Revoke old refresh token
     refreshTokenDoc.isRevoked = true;
     await refreshTokenDoc.save();
-    
+
     // Return response
     res.status(200).json({
       success: true,
-      message: 'Token refreshed successfully',
+      message: 'Token refreshed successfully. New auth cookies have been set.',
       data: {
-        user: formatUserResponse(user),
-        tokens
+        user: formatUserResponse(user)
       }
-    } as ApiResponse<AuthResponse>);
+    });
   } catch (error) {
     next(error);
   }
@@ -467,9 +560,15 @@ export const getCurrentUser = async (req: Request, res: Response, next: NextFunc
 export const updateProfile = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
   try {
     const { firstName, lastName, phone, dateOfBirth, gender, bio, preferences }: UpdateProfileRequest = req.body;
-    const user = req.user;
-    if (!user) {
+    const userId = req.user?._id || req.user?.id;
+    if (!userId) {
       throw new AppError('User not authenticated', 401);
+    }
+
+    // Fetch user from database as Mongoose document (not from cache)
+    const user = await User.findById(userId);
+    if (!user) {
+      throw new AppError('User not found', 404);
     }
 
     // Update basic fields
@@ -494,8 +593,11 @@ export const updateProfile = async (req: Request, res: Response, next: NextFunct
           );
         }
 
-        // Check if this phone is already used by another user
-        if (e164Phone !== user.phone) {
+        // Normalize current user's phone for comparison
+        const currentUserPhone = user.phone ? sanitizeToE164(user.phone) : null;
+
+        // Check if this phone is already used by another user (only if it's different from current)
+        if (e164Phone !== currentUserPhone) {
           const existingUser = await User.findOne({
             phone: e164Phone,
             _id: { $ne: user._id }
@@ -548,6 +650,10 @@ export const updateProfile = async (req: Request, res: Response, next: NextFunct
 
     await user.save();
 
+    // Invalidate user cache to ensure fresh data on next request
+    const cacheKey = `user:${userId}`;
+    await cacheService.delete(cacheKey);
+
     // Calculate profile completion
     const calculateProfileCompletion = (user: IUser): number => {
       let completedFields = 0;
@@ -576,7 +682,7 @@ export const updateProfile = async (req: Request, res: Response, next: NextFunct
       role: user.role,
       isEmailVerified: user.isEmailVerified,
       isPhoneVerified: user.isPhoneVerified || false,
-      dateOfBirth: user.dateOfBirth ? user.dateOfBirth.toISOString().split('T')[0] : '',
+      dateOfBirth: toDateStringSafe(user.dateOfBirth),
       gender: user.gender || '',
       bio: bio || '',
       addresses: user.addresses || [],
@@ -591,7 +697,7 @@ export const updateProfile = async (req: Request, res: Response, next: NextFunct
         twoFactorEnabled: user.twoFactorAuth?.enabled || false,
         loginNotifications: true,
         securityAlerts: true,
-        lastPasswordChange: user.updatedAt.toISOString(),
+        lastPasswordChange: toISOStringSafe(user.updatedAt),
         activeDevices: []
       },
       privacySettings: {
@@ -619,10 +725,10 @@ export const updateProfile = async (req: Request, res: Response, next: NextFunct
         }
       },
       profileCompletion: calculateProfileCompletion(user),
-      lastActiveAt: user.updatedAt.toISOString(),
-      memberSince: user.createdAt.toISOString(),
-      createdAt: user.createdAt.toISOString(),
-      updatedAt: user.updatedAt.toISOString()
+      lastActiveAt: toISOStringSafe(user.updatedAt),
+      memberSince: toISOStringSafe(user.createdAt),
+      createdAt: toISOStringSafe(user.createdAt),
+      updatedAt: toISOStringSafe(user.updatedAt)
     };
 
     res.status(200).json({
@@ -841,19 +947,31 @@ export const firebaseAuth = async (req: Request, res: Response, next: NextFuncti
         isEmailVerified: firebaseUser.emailVerified
       });
     }
-    
+
+    // Auto-create Vendor profile if user is a vendor
+    if (user.role === 'vendor') {
+      try {
+        await getOrCreateVendorProfile(user._id);
+        console.log('[FIREBASE_AUTH] Vendor profile auto-created for user:', user._id);
+      } catch (vendorError) {
+        console.error('[FIREBASE_AUTH] Failed to create vendor profile:', vendorError);
+      }
+    }
+
     // Generate tokens
     const tokens = await generateAuthTokens(user._id.toString(), req);
-    
+
+    // Set httpOnly cookies
+    setAuthCookies(res, tokens.accessToken, tokens.refreshToken);
+
     // Return response
     res.status(200).json({
       success: true,
-      message: 'Firebase authentication successful',
+      message: 'Firebase authentication successful. Auth cookies have been set.',
       data: {
-        user: formatUserResponse(user),
-        tokens
+        user: formatUserResponse(user)
       }
-    } as ApiResponse<AuthResponse>);
+    });
   } catch (error) {
     next(error);
   }
@@ -895,7 +1013,7 @@ export const getFullProfile = async (req: Request, res: Response, next: NextFunc
       role: user.role,
       isEmailVerified: user.isEmailVerified,
       isPhoneVerified: user.isPhoneVerified || false,
-      dateOfBirth: user.dateOfBirth ? user.dateOfBirth.toISOString().split('T')[0] : '',
+      dateOfBirth: toDateStringSafe(user.dateOfBirth),
       gender: user.gender || '',
       bio: '',
       addresses: user.addresses || [],
@@ -910,7 +1028,7 @@ export const getFullProfile = async (req: Request, res: Response, next: NextFunc
         twoFactorEnabled: user.twoFactorAuth?.enabled || false,
         loginNotifications: true,
         securityAlerts: true,
-        lastPasswordChange: user.updatedAt.toISOString(),
+        lastPasswordChange: toISOStringSafe(user.updatedAt),
         activeDevices: []
       },
       privacySettings: {
@@ -938,10 +1056,10 @@ export const getFullProfile = async (req: Request, res: Response, next: NextFunc
         }
       },
       profileCompletion: calculateProfileCompletion(user),
-      lastActiveAt: user.updatedAt.toISOString(),
-      memberSince: user.createdAt.toISOString(),
-      createdAt: user.createdAt.toISOString(),
-      updatedAt: user.updatedAt.toISOString()
+      lastActiveAt: toISOStringSafe(user.updatedAt),
+      memberSince: toISOStringSafe(user.createdAt),
+      createdAt: toISOStringSafe(user.createdAt),
+      updatedAt: toISOStringSafe(user.updatedAt)
     };
 
     res.status(200).json({
@@ -959,9 +1077,15 @@ export const getFullProfile = async (req: Request, res: Response, next: NextFunc
  */
 export const addAddress = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
   try {
-    const user = req.user;
-    if (!user) {
+    const userId = req.user?._id || req.user?.id;
+    if (!userId) {
       throw new AppError('User not authenticated', 401);
+    }
+
+    // Fetch user from database as Mongoose document (not from cache)
+    const user = await User.findById(userId);
+    if (!user) {
+      throw new AppError('User not found', 404);
     }
 
     const { street, city, state, zipCode, country, isDefault }: IAddress = req.body;
@@ -988,7 +1112,14 @@ export const addAddress = async (req: Request, res: Response, next: NextFunction
     }
     user.addresses.push(newAddress);
 
+    // Mark addresses array as modified for Mongoose to detect the change
+    user.markModified('addresses');
+
     await user.save();
+
+    // Invalidate user cache to ensure fresh data on next request
+    const cacheKey = `user:${userId}`;
+    await cacheService.delete(cacheKey);
 
     res.status(201).json({
       success: true,
@@ -1007,9 +1138,15 @@ export const addAddress = async (req: Request, res: Response, next: NextFunction
  */
 export const updateAddress = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
   try {
-    const user = req.user;
-    if (!user) {
+    const userId = req.user?._id || req.user?.id;
+    if (!userId) {
       throw new AppError('User not authenticated', 401);
+    }
+
+    // Fetch user from database as Mongoose document (not from cache)
+    const user = await User.findById(userId);
+    if (!user) {
+      throw new AppError('User not found', 404);
     }
 
     const { addressIndex } = req.params;
@@ -1039,7 +1176,14 @@ export const updateAddress = async (req: Request, res: Response, next: NextFunct
       isDefault: isDefault !== undefined ? isDefault : user.addresses[index].isDefault
     };
 
+    // Mark addresses array as modified for Mongoose to detect the change
+    user.markModified('addresses');
+
     await user.save();
+
+    // Invalidate user cache to ensure fresh data on next request
+    const cacheKey = `user:${userId}`;
+    await cacheService.delete(cacheKey);
 
     res.status(200).json({
       success: true,
@@ -1058,9 +1202,15 @@ export const updateAddress = async (req: Request, res: Response, next: NextFunct
  */
 export const deleteAddress = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
   try {
-    const user = req.user;
-    if (!user) {
+    const userId = req.user?._id || req.user?.id;
+    if (!userId) {
       throw new AppError('User not authenticated', 401);
+    }
+
+    // Fetch user from database as Mongoose document (not from cache)
+    const user = await User.findById(userId);
+    if (!user) {
+      throw new AppError('User not found', 404);
     }
 
     const { addressIndex } = req.params;
@@ -1075,12 +1225,19 @@ export const deleteAddress = async (req: Request, res: Response, next: NextFunct
     // Remove the address
     user.addresses.splice(index, 1);
 
+    // Mark addresses array as modified for Mongoose to detect the change
+    user.markModified('addresses');
+
     // If the deleted address was default and there are still addresses, set the first one as default
     if (wasDefault && user.addresses.length > 0) {
       user.addresses[0].isDefault = true;
     }
 
     await user.save();
+
+    // Invalidate user cache to ensure fresh data on next request
+    const cacheKey = `user:${userId}`;
+    await cacheService.delete(cacheKey);
 
     res.status(200).json({
       success: true,
@@ -1099,9 +1256,15 @@ export const deleteAddress = async (req: Request, res: Response, next: NextFunct
  */
 export const updateAvatar = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
   try {
-    const user = req.user;
-    if (!user) {
+    const userId = req.user?._id || req.user?.id;
+    if (!userId) {
       throw new AppError('User not authenticated', 401);
+    }
+
+    // Fetch user from database as Mongoose document (not from cache)
+    const user = await User.findById(userId);
+    if (!user) {
+      throw new AppError('User not found', 404);
     }
 
     const { avatar }: { avatar: string } = req.body;
@@ -1112,6 +1275,10 @@ export const updateAvatar = async (req: Request, res: Response, next: NextFuncti
 
     user.avatar = avatar;
     await user.save();
+
+    // Invalidate user cache to ensure fresh data on next request
+    const cacheKey = `user:${userId}`;
+    await cacheService.delete(cacheKey);
 
     res.status(200).json({
       success: true,
@@ -1130,13 +1297,23 @@ export const updateAvatar = async (req: Request, res: Response, next: NextFuncti
  */
 export const deleteAvatar = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
   try {
-    const user = req.user;
-    if (!user) {
+    const userId = req.user?._id || req.user?.id;
+    if (!userId) {
       throw new AppError('User not authenticated', 401);
+    }
+
+    // Fetch user from database as Mongoose document (not from cache)
+    const user = await User.findById(userId);
+    if (!user) {
+      throw new AppError('User not found', 404);
     }
 
     user.avatar = undefined;
     await user.save();
+
+    // Invalidate user cache to ensure fresh data on next request
+    const cacheKey = `user:${userId}`;
+    await cacheService.delete(cacheKey);
 
     res.status(200).json({
       success: true,

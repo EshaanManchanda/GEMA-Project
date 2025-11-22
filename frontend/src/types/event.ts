@@ -32,6 +32,7 @@ export interface EventDateSchedule {
   reservedSeats: number;
   price?: number;
   unlimitedSeats?: boolean;
+  isOverride?: boolean;
 }
 
 export interface EventFaq {
@@ -103,13 +104,19 @@ export interface EventsApiResponse extends ApiResponse {
   };
 }
 
+export interface AffiliateClickTracking {
+  totalClicks: number;
+  uniqueClicks: number;
+  lastClickedAt?: string;
+}
+
 export interface Event {
   _id: string;
   title: string;
   description: string;
   category: string;
-  type: 'Event' | 'Course' | 'Venue';
-  venueType: 'Indoor' | 'Outdoor';
+  type: 'Olympiad' | 'Championship' | 'Competition' | 'Event' | 'Course' | 'Venue';
+  venueType: 'Indoor' | 'Outdoor' | 'Online' | 'Offline';
   ageRange: [number, number];
   location: EventLocation;
   seoMeta: EventSeoMeta;
@@ -129,6 +136,14 @@ export interface Event {
   updatedAt: string;
   affiliateCode: string;
   registrationConfig?: RegistrationConfig;
+  // Affiliate Event fields
+  isAffiliateEvent?: boolean;
+  externalBookingLink?: string;
+  affiliateClickTracking?: AffiliateClickTracking;
+  claimStatus?: 'unclaimed' | 'claimed' | 'not_claimable';
+  claimedBy?: string;
+  claimedAt?: string;
+  originalAffiliateVendorId?: string;
 }
 
 export interface EventsResponse {
@@ -167,8 +182,8 @@ export interface EventSearchFilters {
   page?: number;
   limit?: number;
   category?: string;
-  type?: 'Event' | 'Course' | 'Venue';
-  venueType?: 'Indoor' | 'Outdoor';
+  type?: 'Olympiad' | 'Championship' | 'Competition' | 'Event' | 'Course' | 'Venue';
+  venueType?: 'Indoor' | 'Outdoor' | 'Online' | 'Offline';
   city?: string;
   minPrice?: number;
   maxPrice?: number;

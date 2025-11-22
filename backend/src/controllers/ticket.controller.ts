@@ -756,7 +756,7 @@ export const downloadTicketPDF = async (req: AuthRequest, res: Response, next: N
 export const generateMissingTickets = async (req: AuthRequest, res: Response, next: NextFunction) => {
   try {
     const { orderId } = req.body;
-    const userId = req.user?.id;
+    const userId = req.user?._id || req.user?.id;
 
     if (!orderId) {
       return next(new AppError('Order ID is required', 400));

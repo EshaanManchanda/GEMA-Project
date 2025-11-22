@@ -99,11 +99,11 @@ export const validateLogin = [
 
 /**
  * Refresh token validation
+ * Accepts refresh token from either body (for backward compatibility) or httpOnly cookies
  */
 export const validateRefreshToken = [
   body('refreshToken')
-    .notEmpty()
-    .withMessage('Refresh token is required')
+    .optional() // Make it optional since it can come from cookies
     .isString()
     .withMessage('Refresh token must be a string'),
 ];

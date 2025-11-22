@@ -13,7 +13,7 @@ export const applyAffiliate = async (
   next: NextFunction
 ): Promise<void> => {
   try {
-    const userId = req.user?.id;
+    const userId = req.user?._id || req.user?.id;
     const applicationData = req.body;
     
     if (!userId) {
@@ -56,7 +56,7 @@ export const getMyAffiliate = async (
   next: NextFunction
 ): Promise<void> => {
   try {
-    const userId = req.user?.id;
+    const userId = req.user?._id || req.user?.id;
     
     if (!userId) {
       return next(new AppError('Authentication required', 401));
@@ -101,7 +101,7 @@ export const updateAffiliateProfile = async (
   next: NextFunction
 ): Promise<void> => {
   try {
-    const userId = req.user?.id;
+    const userId = req.user?._id || req.user?.id;
     const updateData = req.body;
     
     if (!userId) {
@@ -143,7 +143,7 @@ export const generateTrackingUrl = async (
   next: NextFunction
 ): Promise<void> => {
   try {
-    const userId = req.user?.id;
+    const userId = req.user?._id || req.user?.id;
     const { eventId, customParams } = req.body;
     
     if (!userId) {
@@ -225,7 +225,7 @@ export const getDashboardStats = async (
   next: NextFunction
 ): Promise<void> => {
   try {
-    const userId = req.user?.id;
+    const userId = req.user?._id || req.user?.id;
     const { period = '30' } = req.query; // days
     
     if (!userId) {
@@ -329,7 +329,7 @@ export const getCommissions = async (
   next: NextFunction
 ): Promise<void> => {
   try {
-    const userId = req.user?.id;
+    const userId = req.user?._id || req.user?.id;
     const { 
       page = 1, 
       limit = 20, 
@@ -470,7 +470,7 @@ export const updateAffiliateStatus = async (
   try {
     const { id } = req.params;
     const { status, rejectionReason } = req.body;
-    const adminId = req.user?.id;
+    const adminId = req.user?._id || req.user?.id;
     
     const affiliate = await Affiliate.findById(id).populate('userId', 'firstName lastName email');
     if (!affiliate) {

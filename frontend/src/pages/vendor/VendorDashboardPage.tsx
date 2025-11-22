@@ -47,7 +47,7 @@ const VendorDashboardPage: React.FC = () => {
         
         // Handle API response format - extract data if it's wrapped in response object
         setEvents(Array.isArray(eventsData) ? eventsData : []);
-        setRecentBookings(Array.isArray(bookingsData) ? bookingsData : []);
+        setRecentBookings(Array.isArray(bookingsData) ? bookingsData : bookingsData?.bookings || []);
         setStats(statsData?.data || statsData);
       } catch (err) {
         console.error('Error fetching dashboard data:', err);
@@ -141,16 +141,15 @@ const VendorDashboardPage: React.FC = () => {
           }
         ];
         
-        const mockRecentBookings: Booking[] = [
+        const mockRecentBookings: any[] = [
           {
-            id: '101',
-            eventId: '1',
-            eventTitle: 'Summer Art Camp for Kids',
-            customerName: 'John Smith',
-            customerEmail: 'john.smith@example.com',
-            ticketCount: 2,
-            totalAmount: 120,
-            bookingDate: '2023-07-28',
+            _id: '101',
+            orderNumber: 'GM-MOCK-001',
+            userId: { firstName: 'John', lastName: 'Smith', email: 'john.smith@example.com' },
+            items: [{ quantity: 2 }],
+            total: 120,
+            displayCurrency: 'AED',
+            createdAt: '2023-07-28',
             status: 'confirmed'
           }
         ];
@@ -451,26 +450,28 @@ const VendorDashboardPage: React.FC = () => {
                 </div>
               ) : (
                 <div className="space-y-4">
-                  {Array.isArray(recentBookings) && recentBookings.map((booking) => (
-                    <div key={booking.id} className="border rounded-lg p-4 hover:shadow-sm transition-shadow duration-200">
+                  {Array.isArray(recentBookings) && recentBookings.map((booking: any) => (
+                    <div key={booking._id} className="border rounded-lg p-4 hover:shadow-sm transition-shadow duration-200">
                       <div className="flex justify-between items-start">
                         <div>
-                          <h4 className="font-medium text-gray-900">{booking.customerName}</h4>
-                          <p className="text-sm text-gray-500">{booking.customerEmail}</p>
+                          <h4 className="font-medium text-gray-900">
+                            {booking.userId?.firstName || ''} {booking.userId?.lastName || ''}
+                          </h4>
+                          <p className="text-sm text-gray-500">{booking.userId?.email || 'N/A'}</p>
                         </div>
                         <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${getStatusBadgeClass(booking.status)}`}>
-                          {booking.status.charAt(0).toUpperCase() + booking.status.slice(1)}
+                          {booking.status?.charAt(0).toUpperCase() + booking.status?.slice(1)}
                         </span>
                       </div>
                       <div className="mt-2 text-sm text-gray-500">
-                        <p><span className="font-medium">Event:</span> {booking.eventTitle}</p>
-                        <p><span className="font-medium">Tickets:</span> {booking.ticketCount}</p>
-                        <p><span className="font-medium">Total:</span> ${booking.totalAmount.toFixed(2)}</p>
-                        <p><span className="font-medium">Booked on:</span> {formatDate(booking.bookingDate)}</p>
+                        <p><span className="font-medium">Order:</span> {booking.orderNumber || 'N/A'}</p>
+                        <p><span className="font-medium">Tickets:</span> {booking.items?.reduce((sum: number, item: any) => sum + (item.quantity || 0), 0) || 0}</p>
+                        <p><span className="font-medium">Total:</span> {booking.displayCurrency || '$'} {(booking.total ?? 0).toFixed(2)}</p>
+                        <p><span className="font-medium">Booked on:</span> {formatDate(booking.createdAt)}</p>
                       </div>
                       <div className="mt-3">
-                        <Link 
-                          to={`/vendor/bookings/${booking.id}`}
+                        <Link
+                          to={`/vendor/bookings/${booking._id}`}
                           className="text-xs text-primary hover:text-primary-dark font-medium"
                         >
                           View details

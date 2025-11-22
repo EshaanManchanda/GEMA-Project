@@ -11,6 +11,7 @@ interface DateSchedule {
   reservedSeats: number;
   price: number;
   _id?: string;
+  isOverride?: boolean;
 }
 
 interface EventDatePickerProps {
@@ -71,17 +72,24 @@ const EventDatePicker: React.FC<EventDatePickerProps> = ({
     );
   };
   
-  // Get the schedule for a specific date
+  // Get the schedule for a specific date (prefers override schedules)
   const getScheduleForDate = (date: Date) => {
     if (!date || !dateSchedules || !Array.isArray(dateSchedules)) return null;
 
-    return dateSchedules.find(schedule => {
+    const targetDate = startOfDay(date);
+
+    // Find all schedules that contain this date
+    const matchingSchedules = dateSchedules.filter(schedule => {
       const startDate = startOfDay(new Date(schedule.startDate));
       const endDate = startOfDay(new Date(schedule.endDate));
-      const targetDate = startOfDay(date);
-      
       return !isBefore(targetDate, startDate) && !isAfter(targetDate, endDate);
     });
+
+    if (matchingSchedules.length === 0) return null;
+
+    // Prefer override schedule if one exists
+    const overrideSchedule = matchingSchedules.find((s: any) => s.isOverride === true);
+    return overrideSchedule || matchingSchedules[0];
   };
   
   // Check if a date is an event date (has schedule)

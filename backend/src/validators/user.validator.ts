@@ -35,7 +35,7 @@ export const validateProfileUpdate = [
     .withMessage('Gender must be male, female, other, or prefer_not_to_say'),
 
   body('dateOfBirth')
-    .optional()
+    .optional({ nullable: true, checkFalsy: true })
     .isISO8601()
     .withMessage('Date of birth must be a valid date')
     .toDate()
@@ -128,32 +128,28 @@ export const validateAddress = [
     .optional()
     .trim()
     .isLength({ min: 1, max: 50 })
-    .withMessage('Label must be between 1 and 50 characters')
-    .escape(),
+    .withMessage('Label must be between 1 and 50 characters'),
 
   body('street')
     .trim()
     .notEmpty()
     .withMessage('Street address is required')
     .isLength({ min: 1, max: 200 })
-    .withMessage('Street address must be between 1 and 200 characters')
-    .escape(),
+    .withMessage('Street address must be between 1 and 200 characters'),
 
   body('city')
     .trim()
     .notEmpty()
     .withMessage('City is required')
     .isLength({ min: 1, max: 100 })
-    .withMessage('City must be between 1 and 100 characters')
-    .escape(),
+    .withMessage('City must be between 1 and 100 characters'),
 
   body('state')
     .trim()
     .notEmpty()
     .withMessage('State is required')
     .isLength({ min: 1, max: 100 })
-    .withMessage('State must be between 1 and 100 characters')
-    .escape(),
+    .withMessage('State must be between 1 and 100 characters'),
 
   body('zipCode')
     .trim()
@@ -167,8 +163,7 @@ export const validateAddress = [
         throw new Error('Zip code must be between 1 and 20 characters');
       }
       return true;
-    })
-    .escape(),
+    }),
 
   body('poBox')
     .optional()
@@ -178,8 +173,7 @@ export const validateAddress = [
         throw new Error('P.O. Box must be 4-6 digits for UAE addresses');
       }
       return true;
-    })
-    .escape(),
+    }),
 
   body('makaniNumber')
     .optional()
@@ -189,16 +183,14 @@ export const validateAddress = [
         throw new Error('Makani number must be 10 digits');
       }
       return true;
-    })
-    .escape(),
+    }),
 
   body('country')
     .trim()
     .notEmpty()
     .withMessage('Country is required')
     .isLength({ min: 2, max: 100 })
-    .withMessage('Country must be between 2 and 100 characters')
-    .escape(),
+    .withMessage('Country must be between 2 and 100 characters'),
 
   body('isDefault')
     .optional()

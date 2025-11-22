@@ -262,9 +262,11 @@ const EventCreateModal: React.FC<EventCreateModalProps> = ({ isOpen, onClose, on
           {activeTab === 'basic' && (
             <div className="space-y-4">
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">Title *</label>
+                <label htmlFor="event-title" className="block text-sm font-medium text-gray-700 mb-2">Title *</label>
                 <input
                   type="text"
+                  id="event-title"
+                  name="title"
                   value={title}
                   onChange={(e) => setTitle(e.target.value)}
                   className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
@@ -273,8 +275,10 @@ const EventCreateModal: React.FC<EventCreateModalProps> = ({ isOpen, onClose, on
               </div>
 
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">Description *</label>
+                <label htmlFor="event-description" className="block text-sm font-medium text-gray-700 mb-2">Description *</label>
                 <textarea
+                  id="event-description"
+                  name="description"
                   value={description}
                   onChange={(e) => setDescription(e.target.value)}
                   className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
@@ -285,8 +289,10 @@ const EventCreateModal: React.FC<EventCreateModalProps> = ({ isOpen, onClose, on
 
               <div className="grid grid-cols-2 gap-4">
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">Category *</label>
+                  <label htmlFor="event-category" className="block text-sm font-medium text-gray-700 mb-2">Category *</label>
                   <select
+                    id="event-category"
+                    name="category"
                     value={category}
                     onChange={(e) => setCategory(e.target.value)}
                     className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
@@ -357,9 +363,11 @@ const EventCreateModal: React.FC<EventCreateModalProps> = ({ isOpen, onClose, on
               </div>
 
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">Tags (comma-separated)</label>
+                <label htmlFor="event-tags" className="block text-sm font-medium text-gray-700 mb-2">Tags (comma-separated)</label>
                 <input
                   type="text"
+                  id="event-tags"
+                  name="tags"
                   value={tags}
                   onChange={(e) => setTags(e.target.value)}
                   className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
@@ -368,8 +376,10 @@ const EventCreateModal: React.FC<EventCreateModalProps> = ({ isOpen, onClose, on
               </div>
 
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">Images (comma-separated URLs)</label>
+                <label htmlFor="event-images" className="block text-sm font-medium text-gray-700 mb-2">Images (comma-separated URLs)</label>
                 <textarea
+                  id="event-images"
+                  name="images"
                   value={images}
                   onChange={(e) => setImages(e.target.value)}
                   className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
@@ -385,9 +395,11 @@ const EventCreateModal: React.FC<EventCreateModalProps> = ({ isOpen, onClose, on
             <div className="space-y-4">
               <div className="grid grid-cols-2 gap-4">
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">City *</label>
+                  <label htmlFor="event-city" className="block text-sm font-medium text-gray-700 mb-2">City *</label>
                   <input
                     type="text"
+                    id="event-city"
+                    name="city"
                     value={city}
                     onChange={(e) => setCity(e.target.value)}
                     className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
@@ -395,8 +407,10 @@ const EventCreateModal: React.FC<EventCreateModalProps> = ({ isOpen, onClose, on
                 </div>
 
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">Currency *</label>
+                  <label htmlFor="event-currency" className="block text-sm font-medium text-gray-700 mb-2">Currency *</label>
                   <select
+                    id="event-currency"
+                    name="currency"
                     value={currency}
                     onChange={(e) => setCurrency(e.target.value)}
                     className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"

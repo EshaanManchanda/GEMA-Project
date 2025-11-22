@@ -14,11 +14,11 @@ import { toast } from 'react-hot-toast';
 import { loginWithGoogle } from '@/services/firebaseAuth';
 import { redirectToRoleDashboard, type UserRole } from '@/utils/roleRedirect';
 
+// Note: Tokens are now stored in httpOnly cookies (server-side) for security
+// They are no longer stored in Redux state
 interface AuthState {
   user: User | null;
   userProfile: UserProfile | null;
-  token: string | null;
-  refreshToken: string | null;
   isAuthenticated: boolean;
   isLoading: boolean; // Single source of truth for loading state
   isProfileLoading: boolean;
@@ -32,8 +32,6 @@ interface AuthState {
 const initialState: AuthState = {
   user: null,
   userProfile: null,
-  token: null,
-  refreshToken: null,
   isAuthenticated: false,
   isLoading: false,
   isProfileLoading: false,
@@ -102,15 +100,14 @@ export const logoutUser = createAsyncThunk(
   }
 );
 
+// Refresh token is now handled via httpOnly cookies
+// No need to pass refresh token from state
 export const refreshToken = createAsyncThunk(
   'auth/refreshToken',
-  async (_, { getState, rejectWithValue }) => {
+  async (_, { rejectWithValue }) => {
     try {
-      const state = getState() as { auth: AuthState };
-      if (!state.auth.refreshToken) {
-        throw new Error('No refresh token available');
-      }
-      const response = await authAPI.refreshToken(state.auth.refreshToken);
+      // Refresh token is automatically sent via httpOnly cookie
+      const response = await authAPI.refreshToken();
       return response;
     } catch (error: any) {
       const message = error.response?.data?.message || 'Token refresh failed';
@@ -309,11 +306,11 @@ export const addAddress = createAsyncThunk(
 
 export const updateAddress = createAsyncThunk(
   'auth/updateAddress',
-  async ({ addressId, address }: { addressId: string; address: Partial<Address> }, { rejectWithValue }) => {
+  async ({ addressIndex, address }: { addressIndex: number; address: Partial<Address> }, { rejectWithValue }) => {
     try {
-      const response = await authAPI.updateAddress(addressId, address);
+      const response = await authAPI.updateAddress(addressIndex, address);
       toast.success('Address updated successfully!');
-      return response;
+      return { index: addressIndex, address: response };
     } catch (error: any) {
       const message = error.response?.data?.message || 'Failed to update address';
       toast.error(message);
@@ -324,11 +321,11 @@ export const updateAddress = createAsyncThunk(
 
 export const deleteAddress = createAsyncThunk(
   'auth/deleteAddress',
-  async (addressId: string, { rejectWithValue }) => {
+  async (addressIndex: number, { rejectWithValue }) => {
     try {
-      await authAPI.deleteAddress(addressId);
+      await authAPI.deleteAddress(addressIndex);
       toast.success('Address deleted successfully!');
-      return addressId;
+      return addressIndex;
     } catch (error: any) {
       const message = error.response?.data?.message || 'Failed to delete address';
       toast.error(message);
@@ -422,12 +419,11 @@ const authSlice = createSlice({
     },
     clearAuth: (state) => {
       state.user = null;
-      state.token = null;
-      state.refreshToken = null;
       state.isAuthenticated = false;
       state.isEmailVerified = false;
       state.lastLoginTime = null;
       state.error = null;
+      // Note: Cookies are cleared by the server logout endpoint
     },
   },
   extraReducers: (builder) => {
@@ -440,12 +436,11 @@ const authSlice = createSlice({
       .addCase(loginUser.fulfilled, (state, action: PayloadAction<AuthResponse>) => {
         state.isLoading = false;
         state.user = action.payload.user;
-        state.token = action.payload.tokens?.accessToken || action.payload.token || null;
-        state.refreshToken = action.payload.tokens?.refreshToken || action.payload.refreshToken || null;
         state.isAuthenticated = true;
         state.isEmailVerified = action.payload.user.isEmailVerified;
         state.lastLoginTime = new Date().toISOString();
         state.error = null;
+        // Note: Tokens are set in httpOnly cookies by the server
       })
       .addCase(loginUser.rejected, (state, action) => {
         state.isLoading = false;
@@ -461,11 +456,10 @@ const authSlice = createSlice({
       .addCase(registerUser.fulfilled, (state, action: PayloadAction<AuthResponse>) => {
         state.isLoading = false;
         state.user = action.payload.user;
-        state.token = action.payload.tokens?.accessToken || action.payload.token || null;
-        state.refreshToken = action.payload.tokens?.refreshToken || action.payload.refreshToken || null;
         state.isAuthenticated = true;
         state.isEmailVerified = action.payload.user.isEmailVerified;
         state.error = null;
+        // Note: Tokens are set in httpOnly cookies by the server
       })
       .addCase(registerUser.rejected, (state, action) => {
         state.isLoading = false;
@@ -475,29 +469,26 @@ const authSlice = createSlice({
       // Logout
       .addCase(logoutUser.fulfilled, (state) => {
         state.user = null;
-        state.token = null;
-        state.refreshToken = null;
         state.isAuthenticated = false;
         state.isEmailVerified = false;
         state.lastLoginTime = null;
         state.error = null;
         state.isLoading = false;
+        // Note: Cookies are cleared by the server logout endpoint
       })
-      
+
       // Refresh Token
       .addCase(refreshToken.fulfilled, (state, action: PayloadAction<AuthResponse>) => {
-        state.token = action.payload.tokens?.accessToken || action.payload.token || null;
-        state.refreshToken = action.payload.tokens?.refreshToken || action.payload.refreshToken || null;
         state.user = action.payload.user;
         state.isAuthenticated = true;
         state.error = null;
+        // Note: New tokens are set in httpOnly cookies by the server
       })
       .addCase(refreshToken.rejected, (state) => {
         state.user = null;
-        state.token = null;
-        state.refreshToken = null;
         state.isAuthenticated = false;
         state.isEmailVerified = false;
+        // Note: Invalid cookies are cleared by the server
       })
       
       // Google Login
@@ -508,12 +499,11 @@ const authSlice = createSlice({
       .addCase(loginWithGoogleThunk.fulfilled, (state, action: PayloadAction<AuthResponse>) => {
         state.isLoading = false;
         state.user = action.payload.user;
-        state.token = action.payload.tokens?.accessToken || action.payload.token || null;
-        state.refreshToken = action.payload.tokens?.refreshToken || action.payload.refreshToken || null;
         state.isAuthenticated = true;
         state.isEmailVerified = action.payload.user.isEmailVerified;
         state.lastLoginTime = new Date().toISOString();
         state.error = null;
+        // Note: Tokens are set in httpOnly cookies by the server
       })
       .addCase(loginWithGoogleThunk.rejected, (state, action) => {
         state.isLoading = false;
@@ -632,19 +622,16 @@ const authSlice = createSlice({
       })
 
       // Update Address
-      .addCase(updateAddress.fulfilled, (state, action: PayloadAction<Address>) => {
+      .addCase(updateAddress.fulfilled, (state, action: PayloadAction<{ index: number; address: Address }>) => {
         if (state.userProfile) {
-          const index = state.userProfile.addresses.findIndex(addr => addr.id === action.payload.id);
-          if (index !== -1) {
-            state.userProfile.addresses[index] = action.payload;
-          }
+          state.userProfile.addresses[action.payload.index] = action.payload.address;
         }
       })
 
       // Delete Address
-      .addCase(deleteAddress.fulfilled, (state, action: PayloadAction<string>) => {
+      .addCase(deleteAddress.fulfilled, (state, action: PayloadAction<number>) => {
         if (state.userProfile) {
-          state.userProfile.addresses = state.userProfile.addresses.filter(addr => addr.id !== action.payload);
+          state.userProfile.addresses.splice(action.payload, 1);
         }
       })
       
@@ -663,11 +650,10 @@ const authSlice = createSlice({
       .addCase(getCurrentUser.rejected, (state) => {
         state.isLoading = false;
         state.user = null;
-        state.token = null;
-        state.refreshToken = null;
         state.isAuthenticated = false;
         state.isEmailVerified = false;
         state.error = null; // Explicitly clear errors for failed auth checks
+        // Note: Invalid cookies should be cleared by calling logout
       });
   },
 });
@@ -694,9 +680,9 @@ export const selectIsLoading = (state: { auth: AuthState }) => state.auth.isLoad
 export const selectIsProfileLoading = (state: { auth: AuthState }) => state.auth.isProfileLoading;
 export const selectError = (state: { auth: AuthState }) => state.auth.error;
 export const selectProfileError = (state: { auth: AuthState }) => state.auth.profileError;
-export const selectToken = (state: { auth: AuthState }) => state.auth.token;
 export const selectIsEmailVerified = (state: { auth: AuthState }) => state.auth.isEmailVerified;
 export const selectProfileCompletion = (state: { auth: AuthState }) => state.auth.profileCompletion;
+// Note: selectToken removed - tokens are now in httpOnly cookies
 
 // Helper selectors
 export const selectUserRole = (state: { auth: AuthState }): UserRole | null => {

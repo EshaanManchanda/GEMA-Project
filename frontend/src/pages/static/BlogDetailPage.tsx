@@ -394,11 +394,9 @@ const BlogDetailPage: React.FC = () => {
 
       {/* Blog content */}
       <article className="prose prose-lg max-w-none mb-12">
-        <div 
+        <div
           className="blog-content"
-          dangerouslySetInnerHTML={{ 
-            __html: blog.content.replace(/\n/g, '<br>').replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>') 
-          }}
+          dangerouslySetInnerHTML={{ __html: blog.content }}
         />
       </article>
 

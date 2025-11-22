@@ -46,6 +46,10 @@ export const getCoupons = async (
       Coupon.find(query)
         .populate('createdBy', 'firstName lastName email')
         .populate('applicableEvents', 'title')
+        .populate('applicableCategories', 'name slug')
+        .populate('excludedCategories', 'name slug')
+        .populate('applicableVendors', 'firstName lastName email businessName')
+        .populate('excludedVendors', 'firstName lastName email businessName')
         .sort({ createdAt: -1 })
         .skip(skip)
         .limit(parseInt(limit as string)),
@@ -84,6 +88,10 @@ export const getCoupon = async (
     const coupon = await Coupon.findById(id)
       .populate('createdBy', 'firstName lastName email')
       .populate('applicableEvents', 'title slug price')
+      .populate('applicableCategories', 'name slug')
+      .populate('excludedCategories', 'name slug')
+      .populate('applicableVendors', 'firstName lastName email businessName')
+      .populate('excludedVendors', 'firstName lastName email businessName')
       .populate('usage.userId', 'firstName lastName email')
       .populate('usage.orderId', 'orderNumber total');
     
@@ -112,7 +120,7 @@ export const createCoupon = async (
   try {
     const couponData = {
       ...req.body,
-      createdBy: req.user?.id
+      createdBy: req.user?._id || req.user?.id
     };
     
     // Validate commission tiers if type is tiered
@@ -154,19 +162,7 @@ export const updateCoupon = async (
     if (!coupon) {
       return next(new AppError('Coupon not found', 404));
     }
-    
-    // Don't allow updating if coupon has been used
-    if (coupon.usageCount > 0) {
-      const restrictedFields = ['code', 'type', 'value'];
-      const hasRestrictedUpdate = restrictedFields.some(field => 
-        updateData.hasOwnProperty(field) && updateData[field] !== coupon[field]
-      );
-      
-      if (hasRestrictedUpdate) {
-        return next(new AppError('Cannot modify code, type, or value of used coupon', 400));
-      }
-    }
-    
+
     Object.assign(coupon, updateData);
     await coupon.save();
     
@@ -200,12 +196,7 @@ export const deleteCoupon = async (
     if (!coupon) {
       return next(new AppError('Coupon not found', 404));
     }
-    
-    // Don't allow deletion if coupon has been used
-    if (coupon.usageCount > 0) {
-      return next(new AppError('Cannot delete coupon that has been used', 400));
-    }
-    
+
     await Coupon.findByIdAndDelete(id);
     
     res.status(200).json({
@@ -229,7 +220,7 @@ export const validateCoupon = async (
   try {
     const { code } = req.params;
     const { orderAmount, eventIds } = req.body;
-    const userId = req.user?.id;
+    const userId = req.user?._id || req.user?.id;
     
     if (!userId) {
       return next(new AppError('Authentication required', 401));
@@ -246,9 +237,16 @@ export const validateCoupon = async (
     if (!isValidForUser) {
       return next(new AppError('Coupon is not valid for this user', 400));
     }
-    
+
+    // Fetch event details if event IDs are provided
+    let events: any[] = [];
+    if (eventIds && eventIds.length > 0) {
+      const Event = require('../models/Event').default;
+      events = await Event.find({ _id: { $in: eventIds } }).select('category vendorId type price');
+    }
+
     // Check if coupon is valid for order
-    const isValidForOrder = coupon.isValidForOrder(orderAmount, eventIds || []);
+    const isValidForOrder = coupon.isValidForOrder(orderAmount, eventIds || [], events);
     if (!isValidForOrder) {
       return next(new AppError('Coupon is not applicable to this order', 400));
     }
@@ -288,7 +286,7 @@ export const applyCoupon = async (
 ): Promise<void> => {
   try {
     const { couponId, orderId } = req.body;
-    const userId = req.user?.id;
+    const userId = req.user?._id || req.user?.id;
     
     if (!userId) {
       return next(new AppError('Authentication required', 401));
@@ -318,9 +316,14 @@ export const applyCoupon = async (
     if (!isValidForUser) {
       return next(new AppError('Coupon is not valid for this user', 400));
     }
-    
+
     const eventIds = order.items.map(item => item.eventId);
-    const isValidForOrder = coupon.isValidForOrder(order.subtotal, eventIds);
+
+    // Fetch event details for validation
+    const Event = require('../models/Event').default;
+    const events = await Event.find({ _id: { $in: eventIds } }).select('category vendorId type price');
+
+    const isValidForOrder = coupon.isValidForOrder(order.subtotal, eventIds, events);
     if (!isValidForOrder) {
       return next(new AppError('Coupon is not applicable to this order', 400));
     }
@@ -426,7 +429,7 @@ export const getUserCouponHistory = async (
   next: NextFunction
 ): Promise<void> => {
   try {
-    const userId = req.user?.id;
+    const userId = req.user?._id || req.user?.id;
     const { page = 1, limit = 10 } = req.query;
     
     if (!userId) {

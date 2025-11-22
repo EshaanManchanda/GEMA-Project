@@ -193,9 +193,9 @@ function CategoryCarousel({ categories = [] }: CategoryCarouselProps) {
                       </span>
                     </div>
                     <p className="text-base font-semibold mb-1" style={{ color: 'var(--primary-color)' }}>{cat.name}</p>
-                    <p className="text-xs text-gray-500">{cat.count}</p>
+                    <p className="text-xs text-gray-700">{cat.count}</p>
                     {cat.description && (
-                      <p className="text-xs text-gray-400 mt-1 line-clamp-2">{cat.description}</p>
+                      <p className="text-xs text-gray-700 mt-1 line-clamp-2">{cat.description}</p>
                     )}
                     <div 
                       className="mt-4 w-8 h-8 rounded-full flex items-center justify-center opacity-0 group-hover:opacity-100 transition-all duration-300"

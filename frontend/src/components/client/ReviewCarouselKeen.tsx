@@ -144,7 +144,7 @@ export default function ReviewCarouselSwiper() {
             <span className="font-semibold" style={{ color: 'var(--primary-color)' }}>Testimonials</span>
           </div>
           <h2 className="text-3xl md:text-4xl font-bold mb-4">Kids Activities Reviews by Real Parents</h2>
-          <p className="text-gray-600 max-w-2xl mx-auto">See what families are saying about their experiences with activities booked through Kidzapp</p>
+          <p className="text-gray-700 max-w-2xl mx-auto">See what families are saying about their experiences with activities booked through Kidzapp</p>
         </div>
 
         {loading ? (
@@ -200,7 +200,7 @@ export default function ReviewCarouselSwiper() {
                   </div>
                   <h4 className="font-semibold text-lg line-clamp-1" style={{ color: 'var(--primary-color)' }}>{review.title}</h4>
                   <h3 className="text-xl font-bold">"My kids loved it!"</h3>
-                  <p className="text-gray-600 flex-grow line-clamp-4">{review.comment}</p>
+                  <p className="text-gray-700 flex-grow line-clamp-4">{review.comment}</p>
                   <div className="pt-4 mt-auto border-t border-gray-100 flex gap-4 items-center">
                     <div className="w-12 h-12 rounded-full overflow-hidden bg-gray-200 flex items-center justify-center" style={{ backgroundColor: 'rgba(0, 142, 199, 0.1)' }}>
                       {review.user.avatar ? (
@@ -213,10 +213,10 @@ export default function ReviewCarouselSwiper() {
                     </div>
                     <div>
                       <p className="font-semibold">{review.user.name}</p>
-                      <p className="text-sm text-gray-400">{review.date}</p>
+                      <p className="text-sm text-gray-700">{review.date}</p>
                       <div className="flex items-center gap-2">
                         {renderStars(review.rating)}
-                        <span className="text-sm text-gray-500">{review.rating.toFixed(1)}</span>
+                        <span className="text-sm text-gray-700">{review.rating.toFixed(1)}</span>
                       </div>
                     </div>
                   </div>
@@ -228,7 +228,7 @@ export default function ReviewCarouselSwiper() {
         
         {usingFallback && (
           <div className="mt-4 text-center">
-            <p className="text-sm text-gray-500">
+            <p className="text-sm text-gray-700">
               {error ? 'Showing sample reviews. ' : 'Loading latest reviews...'}
               <span className="text-blue-600">Real reviews coming soon!</span>
             </p>

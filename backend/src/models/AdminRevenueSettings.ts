@@ -142,6 +142,10 @@ export interface IAdminRevenueSettings extends Document {
   // Platform fees
   platformFees: IPlatformFees;
 
+  // Vendor subscription settings
+  vendorSubscriptionFee: number; // Monthly subscription fee for vendors using custom Stripe (default 150 AED)
+  vendorSubscriptionCurrency: string;
+
   // Promotional and marketing
   promotionalSettings: IPromotionalSettings;
 
@@ -513,6 +517,18 @@ const AdminRevenueSettingsSchema = new Schema<IAdminRevenueSettings>(
         enum: ['AED', 'USD', 'EUR', 'GBP']
       }
     },
+    vendorSubscriptionFee: {
+      type: Number,
+      default: 150, // 150 AED per month for vendors using custom Stripe
+      min: [0, 'Vendor subscription fee cannot be negative'],
+      required: true
+    },
+    vendorSubscriptionCurrency: {
+      type: String,
+      default: 'AED',
+      enum: ['AED', 'USD', 'EUR', 'GBP'],
+      required: true
+    },
     promotionalSettings: {
       platformCouponsEnabled: {
         type: Boolean,
@@ -844,8 +860,16 @@ AdminRevenueSettingsSchema.methods.validateRevenueSplit = function(
 };
 
 // Static method to get current active settings
-AdminRevenueSettingsSchema.statics.getCurrentSettings = function() {
-  return this.findOne({ isActive: true }).sort({ version: -1 });
+AdminRevenueSettingsSchema.statics.getCurrentSettings = async function() {
+  // First try to find active settings
+  let settings = await this.findOne({ isActive: true }).sort({ version: -1 });
+  
+  // If no active settings, find any settings
+  if (!settings) {
+    settings = await this.findOne().sort({ version: -1 });
+  }
+  
+  return settings;
 };
 
 // Define interface for static methods

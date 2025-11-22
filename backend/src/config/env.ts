@@ -99,6 +99,9 @@ interface Config {
     maxFlagsBeforeHide: number;
     editTimeLimit: number;
   };
+  phoneVerification: {
+    required: boolean;
+  };
 }
 
 // Define and export the configuration object
@@ -110,7 +113,33 @@ export const config: Config = {
     connectTimeoutMS: parseInt(process.env.MONGODB_CONNECT_TIMEOUT_MS || '30000', 10),
     socketTimeoutMS: parseInt(process.env.MONGODB_SOCKET_TIMEOUT_MS || '45000', 10),
     serverSelectionTimeoutMS: parseInt(process.env.MONGODB_SERVER_SELECTION_TIMEOUT_MS || '30000', 10),
-    maxPoolSize: parseInt(process.env.MONGODB_MAX_POOL_SIZE || '50', 10),
+
+    /**
+     * Connection Pool Optimization for KVM2 Hostinger Hosting
+     *
+     * IMPORTANT: When using PM2 cluster mode with N instances, each instance creates its own pool.
+     * Total connections = maxPoolSize × number_of_instances
+     *
+     * Example with 4 PM2 instances and maxPoolSize=10: Total = 40 connections
+     *
+     * Recommended Settings by Server Setup:
+     *
+     * Single Instance (no clustering):
+     *   maxPoolSize: 50, minPoolSize: 10
+     *
+     * 2 PM2 Instances (2 CPU cores):
+     *   maxPoolSize: 20, minPoolSize: 5  (Total: 40 connections)
+     *
+     * 4 PM2 Instances (4 CPU cores) - RECOMMENDED for 500-1000 users:
+     *   maxPoolSize: 10, minPoolSize: 3  (Total: 40 connections)
+     *
+     * MongoDB Atlas Free Tier Limit: 500 connections
+     * MongoDB Atlas M10: 1500 connections
+     *
+     * Setting too high = wasted memory per instance
+     * Setting too low = connection queuing under load
+     */
+    maxPoolSize: parseInt(process.env.MONGODB_MAX_POOL_SIZE || '20', 10), // Optimized for 2-4 instances
     minPoolSize: parseInt(process.env.MONGODB_MIN_POOL_SIZE || '5', 10),
     maxIdleTimeMS: parseInt(process.env.MONGODB_MAX_IDLE_TIME_MS || '60000', 10),
     retryWrites: process.env.MONGODB_RETRY_WRITES !== 'false',
@@ -196,6 +225,9 @@ export const config: Config = {
     autoApproval: process.env.REVIEW_AUTO_APPROVAL === 'true',
     maxFlagsBeforeHide: parseInt(process.env.MAX_REVIEW_FLAGS_BEFORE_HIDE || '3', 10),
     editTimeLimit: parseInt(process.env.REVIEW_EDIT_TIME_LIMIT || '24', 10)
+  },
+  phoneVerification: {
+    required: process.env.REQUIRE_PHONE_VERIFICATION !== 'false' // Default true for backward compatibility
   }
 };
 

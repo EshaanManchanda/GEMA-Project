@@ -21,6 +21,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '../ui/Card';
 import Input from '../ui/Input';
 import Modal from '../ui/Modal';
 import ImageUpload from '../ui/ImageUpload';
+import TipTapEditor from '../common/TipTapEditor';
 import blogAPI from '../../services/api/blogAPI';
 import SEOEditor from '../seo/SEOEditor';
 
@@ -35,7 +36,18 @@ const blogSchema = yup.object().shape({
   author: yup.object().shape({
     name: yup.string().required('Author name is required').max(100, 'Author name cannot exceed 100 characters'),
     email: yup.string().email('Must be a valid email').required('Author email is required'),
-    avatar: yup.string().url('Must be a valid URL').optional(),
+    avatar: yup.string()
+      .transform((value) => value === '' ? undefined : value)
+      .test('is-url', 'Must be a valid URL', function(value) {
+        if (!value) return true; // Optional field
+        try {
+          new URL(value);
+          return true;
+        } catch {
+          return false;
+        }
+      })
+      .optional(),
     bio: yup.string().max(500, 'Author bio cannot exceed 500 characters').optional(),
   }),
   tags: yup.array().of(yup.string().max(50, 'Tag cannot exceed 50 characters')),
@@ -45,7 +57,18 @@ const blogSchema = yup.object().shape({
     metaTitle: yup.string().max(60, 'Meta title cannot exceed 60 characters').optional(),
     metaDescription: yup.string().max(160, 'Meta description cannot exceed 160 characters').optional(),
     metaKeywords: yup.array().of(yup.string()).optional(),
-    canonicalUrl: yup.string().url('Must be a valid URL').optional(),
+    canonicalUrl: yup.string()
+      .transform((value) => value === '' ? undefined : value)
+      .test('is-url', 'Must be a valid URL', function(value) {
+        if (!value) return true; // Optional field
+        try {
+          new URL(value);
+          return true;
+        } catch {
+          return false;
+        }
+      })
+      .optional(),
   }),
 });
 
@@ -140,10 +163,16 @@ const BlogForm: React.FC<BlogFormProps> = ({
   // Memoized callback for SEO Editor to prevent infinite loops
   const handleSeoDataChange = useCallback((newSeoData: any) => {
     setSeoData(newSeoData);
-    setValue('seo.metaTitle', newSeoData.title);
-    setValue('seo.metaDescription', newSeoData.description);
-    setValue('seo.metaKeywords', newSeoData.keywords);
-    setValue('seo.canonicalUrl', newSeoData.canonicalUrl || '');
+    // Set entire SEO object at once to ensure proper validation structure
+    // Convert empty strings to undefined for optional fields
+    setValue('seo', {
+      metaTitle: newSeoData.title || undefined,
+      metaDescription: newSeoData.description || undefined,
+      metaKeywords: newSeoData.keywords?.length > 0 ? newSeoData.keywords : undefined,
+      canonicalUrl: newSeoData.canonicalUrl && newSeoData.canonicalUrl.trim() !== ''
+        ? newSeoData.canonicalUrl
+        : undefined
+    }, { shouldValidate: true });
   }, [setValue]);
 
   // Reset form when blog changes or modal opens
@@ -431,11 +460,10 @@ const BlogForm: React.FC<BlogFormProps> = ({
                         <label className="block text-sm font-medium text-gray-700 mb-2">
                           Content *
                         </label>
-                        <textarea
-                          {...field}
-                          className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 font-mono text-sm"
-                          rows={20}
-                          placeholder="Write your blog content here (supports HTML)"
+                        <TipTapEditor
+                          content={field.value || ''}
+                          onChange={field.onChange}
+                          placeholder="Start writing your blog content... Use the toolbar to format text, add images, videos, and links."
                         />
                         {errors.content && (
                           <p className="mt-1 text-sm text-red-600">{errors.content.message}</p>
@@ -644,6 +672,7 @@ const BlogForm: React.FC<BlogFormProps> = ({
                           currentImage={field.value}
                           placeholder="Upload featured image"
                           maxFileSize={5}
+                          category="blogs"
                         />
                         {errors.featuredImage && (
                           <p className="mt-2 text-sm text-red-600">{errors.featuredImage.message}</p>
@@ -683,6 +712,8 @@ const BlogForm: React.FC<BlogFormProps> = ({
                   <div className="flex space-x-2">
                     <input
                       type="text"
+                      id="new-tag"
+                      name="newTag"
                       value={newTag}
                       onChange={(e) => setNewTag(e.target.value)}
                       placeholder="Add tag"

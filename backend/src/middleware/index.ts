@@ -4,6 +4,7 @@ export { default as catchAsync } from '../utils/catchAsync';
 export { validate } from './validation';
 export {
   requirePhoneVerification,
+  conditionalPhoneVerification,
   optionalPhoneVerification,
   requirePhoneVerificationCustom,
   checkPhoneVerificationStatus,

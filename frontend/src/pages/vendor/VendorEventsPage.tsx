@@ -5,7 +5,6 @@ import VendorNavigation from '../../components/vendor/VendorNavigation';
 import vendorAPI from '../../services/api/vendorAPI';
 import categoriesAPI, { Category } from '../../services/api/categoriesAPI';
 import VendorEventCreateModal from '../../components/vendor/VendorEventCreateModal';
-import VendorEventEditModal from '../../components/vendor/VendorEventEditModal';
 import VendorEventViewModal from '../../components/vendor/VendorEventViewModal';
 
 interface Event {
@@ -71,7 +70,6 @@ const VendorEventsPage: React.FC = () => {
 
   // Modal states
   const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
-  const [isEditModalOpen, setIsEditModalOpen] = useState(false);
   const [isViewModalOpen, setIsViewModalOpen] = useState(false);
   const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);
   const [selectedEvent, setSelectedEvent] = useState<Event | null>(null);
@@ -394,10 +392,7 @@ const VendorEventsPage: React.FC = () => {
                             {!event.isDeleted && (
                               <>
                                 <button
-                                  onClick={() => {
-                                    setSelectedEvent(event);
-                                    setIsEditModalOpen(true);
-                                  }}
+                                  onClick={() => navigate(`/vendor/events/${event._id}/edit`)}
                                   className="text-emerald-600 hover:text-emerald-900"
                                   title="Edit Event"
                                 >
@@ -455,21 +450,6 @@ const VendorEventsPage: React.FC = () => {
         }}
       />
 
-      {/* Edit Modal */}
-      {isEditModalOpen && selectedEvent && (
-        <VendorEventEditModal
-          event={selectedEvent}
-          isOpen={isEditModalOpen}
-          onClose={() => {
-            setIsEditModalOpen(false);
-            setSelectedEvent(null);
-          }}
-          onSave={() => {
-            fetchEvents();
-          }}
-        />
-      )}
-
       {/* View Modal */}
       {isViewModalOpen && selectedEvent && (
         <VendorEventViewModal
@@ -481,7 +461,9 @@ const VendorEventsPage: React.FC = () => {
           }}
           onEdit={() => {
             setIsViewModalOpen(false);
-            setIsEditModalOpen(true);
+            if (selectedEvent) {
+              navigate(`/vendor/events/${selectedEvent._id}/edit`);
+            }
           }}
         />
       )}

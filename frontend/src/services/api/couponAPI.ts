@@ -21,6 +21,14 @@ export interface Coupon {
   applicableEvents: string[];
   applicableCategories: string[];
   excludedEvents: string[];
+  excludedCategories: string[];
+  applicableVendors: string[];
+  excludedVendors: string[];
+  applicableEventTypes: string[];
+  priceRange?: {
+    min?: number;
+    max?: number;
+  };
   firstTimeOnly: boolean;
   createdBy: string | null;
   usage: CouponUsage[];
@@ -51,6 +59,14 @@ export interface CreateCouponData {
   applicableEvents?: string[];
   applicableCategories?: string[];
   excludedEvents?: string[];
+  excludedCategories?: string[];
+  applicableVendors?: string[];
+  excludedVendors?: string[];
+  applicableEventTypes?: string[];
+  priceRange?: {
+    min?: number;
+    max?: number;
+  };
   firstTimeOnly?: boolean;
 }
 

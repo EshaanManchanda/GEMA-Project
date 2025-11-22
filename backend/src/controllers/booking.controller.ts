@@ -1,8 +1,8 @@
 import { Request, Response, NextFunction } from 'express';
 import { validationResult } from 'express-validator';
 import { Order, Event, User, Ticket } from '../models';
+import AdminRevenueSettings from '../models/AdminRevenueSettings';
 import { AppError } from '../middleware';
-import { AuthRequest } from '../types';
 import { PaymentService } from '../services/payment.service';
 import { logger } from '../config';
 import { generateQRCode, generateSecureQRData } from '../utils/qrcode';
@@ -27,14 +27,15 @@ const generateUniqueTicketNumber = async (): Promise<string> => {
 // @desc    Initiate booking with Stripe payment session
 // @route   POST /api/bookings/initiate
 // @access  Private
-export const initiateBooking = async (req: AuthRequest, res: Response, next: NextFunction) => {
+export const initiateBooking = async (req: Request, res: Response, next: NextFunction) => {
   try {
     const errors = validationResult(req);
     if (!errors.isEmpty()) {
       return next(new AppError('Validation failed', 400, errors.array()));
     }
 
-    const userId = req.user?.id;
+    // Handle both _id (MongoDB native) and id (formatted) properties
+    const userId = req.user?._id?.toString() || req.user?.id;
     if (!userId) {
       return next(new AppError('User not authenticated', 401));
     }
@@ -116,11 +117,16 @@ export const initiateBooking = async (req: AuthRequest, res: Response, next: Nex
     // Get payment routing info to determine if service fee applies
     const paymentRouting = await PaymentService.getPaymentRouting(event.vendorId.toString(), 0); // Amount doesn't matter for routing decision
 
+    // Get fee rates from AdminRevenueSettings
+    const adminSettings = await AdminRevenueSettings.findOne({});
+    const serviceFeeRate = paymentRouting.usesVendorStripe ? 0 : (adminSettings?.defaultCommissionRate || 5);
+    const taxRate = adminSettings?.taxSettings?.vatRate || 5;
+
     // Calculate total amount based on vendor payment setup
     const unitPrice = schedule.price || event.price;
     const subtotal = unitPrice * seats;
-    const serviceFee = paymentRouting.usesVendorStripe ? 0 : (subtotal * 0.05); // 5% service fee for platform payments
-    const tax = (subtotal + serviceFee) * 0.05; // 5% tax on subtotal + service fee
+    const serviceFee = subtotal * (serviceFeeRate / 100);
+    const tax = (subtotal + serviceFee) * (taxRate / 100);
     const total = subtotal + tax + serviceFee;
 
     // Multi-currency support
@@ -165,6 +171,8 @@ export const initiateBooking = async (req: AuthRequest, res: Response, next: Nex
       subtotal,
       tax,
       serviceFee: serviceFee,
+      serviceFeeRate,
+      taxRate,
       total,
       currency: event.currency,
       // Multi-currency fields
@@ -268,14 +276,14 @@ export const initiateBooking = async (req: AuthRequest, res: Response, next: Nex
 // @desc    Confirm booking after successful payment
 // @route   POST /api/bookings/confirm
 // @access  Private
-export const confirmBooking = async (req: AuthRequest, res: Response, next: NextFunction) => {
+export const confirmBooking = async (req: Request, res: Response, next: NextFunction) => {
   try {
     const { paymentIntentId, orderId } = req.body;
 
     logger.info('Starting booking confirmation', {
       paymentIntentId: paymentIntentId?.substring(0, 20) + '...',
       orderId,
-      userId: req.user?.id
+      userId: req.user?._id?.toString() || req.user?.id
     });
 
     // Validate required fields
@@ -604,10 +612,10 @@ export const confirmBooking = async (req: AuthRequest, res: Response, next: Next
 // @desc    Get booking by ID
 // @route   GET /api/bookings/:id
 // @access  Private
-export const getBookingById = async (req: AuthRequest, res: Response, next: NextFunction) => {
+export const getBookingById = async (req: Request, res: Response, next: NextFunction) => {
   try {
     const { id } = req.params;
-    const userId = req.user?.id;
+    const userId = req.user?._id?.toString() || req.user?.id;
 
     const order = await Order.findOne({
       $or: [{ _id: id }, { orderNumber: id }],
@@ -633,11 +641,11 @@ export const getBookingById = async (req: AuthRequest, res: Response, next: Next
 // @desc    Cancel booking
 // @route   PUT /api/bookings/:id/cancel
 // @access  Private
-export const cancelBooking = async (req: AuthRequest, res: Response, next: NextFunction) => {
+export const cancelBooking = async (req: Request, res: Response, next: NextFunction) => {
   try {
     const { id } = req.params;
     const { reason } = req.body;
-    const userId = req.user?.id;
+    const userId = req.user?._id?.toString() || req.user?.id;
 
     const order = await Order.findOne({
       $or: [{ _id: id }, { orderNumber: id }],
@@ -699,9 +707,9 @@ export const cancelBooking = async (req: AuthRequest, res: Response, next: NextF
 // @desc    Get user bookings
 // @route   GET /api/bookings
 // @access  Private
-export const getUserBookings = async (req: AuthRequest, res: Response, next: NextFunction) => {
+export const getUserBookings = async (req: Request, res: Response, next: NextFunction) => {
   try {
-    const userId = req.user?.id;
+    const userId = req.user?._id?.toString() || req.user?.id;
     const { page = 1, limit = 10, status, sortBy = 'createdAt', sortOrder = 'desc' } = req.query;
 
     const pageNum = parseInt(page as string);

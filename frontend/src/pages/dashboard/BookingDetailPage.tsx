@@ -29,6 +29,8 @@ import bookingAPI from '@/services/api/bookingAPI';
 import TicketCard from '@/components/booking/TicketCard';
 import TicketModal from '@/components/booking/TicketModal';
 import QRCodeModal from '@/components/booking/QRCodeModal';
+import CancelOrderModal from '@/components/order/CancelOrderModal';
+import RefundStatusTracker from '@/components/order/RefundStatusTracker';
 import { Ticket } from '@/services/api/ticketAPI';
 import { generateOrderQRData, extractEventDates } from '@/utils/qrcode.utils';
 import formatPrice from '@/utils/currencyUtils';
@@ -102,6 +104,7 @@ const BookingDetailPage: React.FC = () => {
   const [isGeneratingTickets, setIsGeneratingTickets] = useState(false);
   const [showOrderQRModal, setShowOrderQRModal] = useState(false);
   const [showTicketQRModal, setShowTicketQRModal] = useState(false);
+  const [showCancelModal, setShowCancelModal] = useState(false);
 
   useEffect(() => {
     if (id) {
@@ -574,14 +577,24 @@ const BookingDetailPage: React.FC = () => {
               </div>
             </div>
 
+            {/* Refund Status Tracker - Show for cancelled/refunded bookings */}
+            {(booking?.status === 'cancelled' || booking?.status === 'refunded' || booking?.refundStatus) && (
+              <div className="bg-white rounded-lg shadow-md border border-gray-200">
+                <div className="p-6">
+                  <h2 className="text-lg font-semibold text-gray-900 mb-4">Refund Status</h2>
+                  <RefundStatusTracker orderId={booking._id} />
+                </div>
+              </div>
+            )}
+
             {/* Actions */}
             <div className="bg-white rounded-lg shadow-md border border-gray-200">
               <div className="p-6">
                 <h2 className="text-lg font-semibold text-gray-900 mb-4">Actions</h2>
                 <div className="space-y-3">
-                  {booking?.status === 'confirmed' && (
+                  {(booking?.status === 'confirmed' || booking?.status === 'pending') && (
                     <button
-                      onClick={handleCancelBooking}
+                      onClick={() => setShowCancelModal(true)}
                       className="w-full px-4 py-2 border border-red-300 text-red-700 rounded-lg hover:bg-red-50 transition-colors"
                     >
                       Cancel Booking
@@ -660,6 +673,26 @@ const BookingDetailPage: React.FC = () => {
             }}
             size={300}
             title={`Ticket QR Code - #${selectedTicket.ticketNumber.slice(-8)}`}
+          />
+        )}
+
+        {/* Cancel Booking Modal */}
+        {booking && (
+          <CancelOrderModal
+            isOpen={showCancelModal}
+            onClose={() => setShowCancelModal(false)}
+            orderId={booking._id}
+            orderNumber={booking.orderNumber}
+            eventTitle={event?.title || 'Event'}
+            eventDate={firstItem?.scheduleDate || event?.dateSchedule?.[0]?.startDate || new Date()}
+            totalAmount={booking.total || 0}
+            subtotal={booking.subtotal || 0}
+            serviceFee={booking.serviceFee || 0}
+            tax={booking.tax || 0}
+            currency={booking.currency?.toUpperCase() || 'AED'}
+            onSuccess={() => {
+              fetchBookingDetails(); // Refresh booking details after cancellation
+            }}
           />
         )}
       </div>

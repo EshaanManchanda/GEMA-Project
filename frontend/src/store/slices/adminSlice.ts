@@ -1,4 +1,4 @@
-import { createSlice, createAsyncThunk, PayloadAction } from '@reduxjs/toolkit';
+import { createSlice, createAsyncThunk, PayloadAction, createSelector } from '@reduxjs/toolkit';
 import adminAPI from '@services/api/adminAPI';
 import { Event } from '@types/event';
 import { User } from '@types/user';
@@ -1615,25 +1615,22 @@ export const selectTopEarningVendors = (state: { admin: AdminState }) => {
     .slice(0, 5);
 };
 
-export const selectPayoutSummary = (state: { admin: AdminState }) => {
-  const stats = state.admin.payoutStats;
-  const pending = state.admin.pendingPayouts;
-  
-  return {
+// Memoized selector using createSelector
+export const selectPayoutSummary = createSelector(
+  [selectPayoutStats, selectPendingPayouts],
+  (stats, pending) => ({
     totalRequests: stats?.totalPayouts || 0,
     pendingRequests: pending.length,
     totalAmount: stats?.totalAmount || 0,
     pendingAmount: stats?.pendingAmount || 0,
     completedAmount: stats?.completedAmount || 0,
     currency: stats?.currency || 'AED',
-  };
-};
+  })
+);
 
-export const selectCommissionSummary = (state: { admin: AdminState }) => {
-  const stats = state.admin.commissionStats;
-  const pending = state.admin.pendingCommissions;
-  
-  return {
+export const selectCommissionSummary = createSelector(
+  [selectCommissionStats, selectPendingCommissions],
+  (stats, pending) => ({
     totalCommissions: stats?.totalCommissions || 0,
     pendingCommissions: pending.length,
     totalAmount: stats?.totalAmount || 0,
@@ -1641,5 +1638,5 @@ export const selectCommissionSummary = (state: { admin: AdminState }) => {
     approvedAmount: stats?.approvedAmount || 0,
     averageRate: stats?.averageCommissionRate || 0,
     currency: stats?.currency || 'AED',
-  };
-};
+  })
+);

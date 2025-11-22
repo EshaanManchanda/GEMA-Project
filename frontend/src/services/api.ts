@@ -39,22 +39,20 @@ const api: AxiosInstance = axios.create({
   headers: {
     'Content-Type': 'application/json',
   },
+  withCredentials: true, // IMPORTANT: Send cookies with every request for httpOnly cookie auth
 });
 
-// Request interceptor to add auth token and handle deduplication
+// Request interceptor for deduplication and logging
+// Note: Auth tokens are now sent via httpOnly cookies automatically (no need to set Authorization header)
 api.interceptors.request.use(
   (config) => {
-    const state = store.getState();
-    const token = state.auth.token;
-
-    // Log token presence for debugging
-    console.log('[API Interceptor] Token available:', !!token);
-
-    if (token) {
-      config.headers.Authorization = `Bearer ${token}`;
-    } else {
-      // Handle missing token (e.g., redirect to login)
-      console.warn('[API Interceptor] No token found in store');
+    // Log request for debugging
+    if (import.meta.env.MODE === 'development') {
+      console.log('[API Interceptor] Request:', {
+        method: config.method?.toUpperCase(),
+        url: config.url,
+        withCredentials: config.withCredentials // Cookies are sent automatically
+      });
     }
 
     // Add request deduplication for GET requests (stats/dashboard endpoints)
@@ -78,38 +76,45 @@ api.interceptors.request.use(
 const delay = (ms: number) => new Promise(resolve => setTimeout(resolve, ms));
 
 // Response interceptor to handle token refresh and retries
+// Note: Token refresh now uses httpOnly cookies - no need to manually set tokens
 api.interceptors.response.use(
   (response: AxiosResponse) => {
     return response;
   },
   async (error) => {
     const originalRequest = error.config;
-    
-    // Handle 401 (Unauthorized) errors
+
+    // Handle 401 (Unauthorized) errors with automatic token refresh
     if (error.response?.status === 401 && !originalRequest._retry) {
       originalRequest._retry = true;
-      
+
+      // Skip refresh for auth endpoints (login, register, etc.)
+      if (
+        originalRequest.url?.includes('/auth/login') ||
+        originalRequest.url?.includes('/auth/register') ||
+        originalRequest.url?.includes('/auth/refresh-token')
+      ) {
+        return Promise.reject(error);
+      }
+
       try {
-        const state = store.getState();
-        const refreshTokenValue = state.auth.refreshToken;
-        
-        if (refreshTokenValue) {
-          // Attempt to refresh token
-          await store.dispatch(refreshToken()).unwrap();
-          
-          // Retry original request with new token
-          const newState = store.getState();
-          const newToken = newState.auth.token;
-          
-          if (newToken) {
-            originalRequest.headers.Authorization = `Bearer ${newToken}`;
-            return api(originalRequest);
-          }
-        }
+        console.log('[API] 401 error - Attempting token refresh via httpOnly cookie...');
+
+        // Attempt to refresh token (refreshToken cookie is sent automatically)
+        await store.dispatch(refreshToken()).unwrap();
+
+        console.log('[API] Token refresh successful - Retrying original request...');
+
+        // Retry original request (new accessToken cookie is sent automatically)
+        return api(originalRequest);
       } catch (refreshError) {
-        // Refresh failed, logout user
+        console.error('[API] Token refresh failed - Logging out user:', refreshError);
+
+        // Refresh failed, logout user and redirect to login
         store.dispatch(logoutUser());
-        window.location.href = '/login';
+        if (!window.location.pathname.includes('/login')) {
+          window.location.href = '/login';
+        }
         return Promise.reject(refreshError);
       }
     }

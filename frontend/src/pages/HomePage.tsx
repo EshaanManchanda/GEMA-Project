@@ -128,7 +128,7 @@ const LazyImage: React.FC<{
         </div>
       )}
       {hasError && (
-        <div className="absolute inset-0 flex items-center justify-center bg-gray-100 text-gray-500">
+        <div className="absolute inset-0 flex items-center justify-center bg-gray-100 text-gray-700">
           <div className="text-center">
             <div className="text-2xl mb-2">📷</div>
             <p className="text-sm">Image unavailable</p>
@@ -246,8 +246,10 @@ const Banner = ({ categories }: { categories: any[] }) => {
             <div className="flex w-full max-w-2xl rounded-2xl overflow-hidden bg-white/95 backdrop-blur-sm shadow-2xl transition-all duration-500 hover:shadow-3xl hover:bg-white group">
               <input
                 type="text"
+                id="homepage-search"
+                name="homepage-search"
                 placeholder="Find the best kids' activities..."
-                className="flex-grow px-6 py-5 text-gray-700 placeholder-gray-400 focus:outline-none focus:ring-0 bg-transparent text-lg" 
+                className="flex-grow px-6 py-5 text-gray-700 placeholder-gray-400 focus:outline-none focus:ring-0 bg-transparent text-lg"
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
                 aria-label="Search for kids activities"
@@ -341,19 +343,18 @@ const FeaturedEventsCarousel: React.FC<{ featuredEvents: FeaturedEvent[] }> = ({
         <div>
           <SlideIn direction="left">
             <div className="inline-block mb-4 px-4 py-2 rounded-full" style={{ backgroundColor: 'rgba(0, 142, 199, 0.1)' }}>
-              <span className="font-semibold" style={{ color: 'var(--primary-color)' }}>Featured</span>
+              <span className="font-semibold text-gray-900">Featured</span>
             </div>
           </SlideIn>
           <FadeIn delay={0.1}>
             <h2 className="text-3xl font-bold mb-2">✨ Featured Events</h2>
           </FadeIn>
           <FadeIn delay={0.2}>
-            <p className="text-gray-600">Discover our most popular activities for kids</p>
+            <p className="text-gray-700">Discover our most popular activities for kids</p>
           </FadeIn>
         </div>
-        <AnimatedButton 
-          className="mt-4 md:mt-0 flex items-center gap-2 font-medium hover:underline focus:outline-none focus:ring-2 focus:ring-blue-500 rounded px-2 py-1" 
-          style={{ color: 'var(--primary-color)' }}
+        <AnimatedButton
+          className="mt-4 md:mt-0 flex items-center gap-2 font-medium text-gray-900 hover:underline focus:outline-none focus:ring-2 focus:ring-blue-500 rounded px-2 py-1"
           onClick={() => navigate('/search')}
           aria-label="View all events"
         >
@@ -376,7 +377,7 @@ const FeaturedEventsCarousel: React.FC<{ featuredEvents: FeaturedEvent[] }> = ({
                   fallbackSrc={getPlaceholderUrl('eventCard', 'Event Image')}
                 />
                 <ScaleIn delay={0.1 * index}>
-                  <div className="absolute top-4 left-4 bg-white/90 backdrop-blur-sm rounded-full px-3 py-1 text-sm font-semibold shadow-sm" style={{ color: 'var(--primary-color)' }}>
+                  <div className="absolute top-4 left-4 bg-white/90 backdrop-blur-sm rounded-full px-3 py-1 text-sm font-semibold text-gray-900 shadow-sm">
                     Featured
                   </div>
                 </ScaleIn>
@@ -387,7 +388,7 @@ const FeaturedEventsCarousel: React.FC<{ featuredEvents: FeaturedEvent[] }> = ({
                 </FadeIn>
                 {event.description && (
                   <FadeIn delay={0.15}>
-                    <p className="text-gray-600 text-sm mb-4 line-clamp-2">{event.description}</p>
+                    <p className="text-gray-700 text-sm mb-4 line-clamp-2">{event.description}</p>
                   </FadeIn>
                 )}
                 <div className="flex flex-col gap-3 mb-4">
@@ -403,14 +404,14 @@ const FeaturedEventsCarousel: React.FC<{ featuredEvents: FeaturedEvent[] }> = ({
                   {(event.dateSchedule?.length > 0 || event.location) && (
                     <div className="flex flex-col gap-1">
                       {(event.dateSchedule?.[0]?.startDate || event.dateSchedule?.[0]?.date) && (
-                        <div className="flex items-center text-sm text-gray-500">
-                          <FaCalendar size={12} className="mr-2" style={{ color: 'var(--primary-color)' }} />
+                        <div className="flex items-center text-sm text-gray-700">
+                          <FaCalendar size={12} className="mr-2 text-gray-900" />
                           <span>{new Date(event.dateSchedule[0].startDate || event.dateSchedule[0].date).toLocaleDateString()}</span>
                         </div>
                       )}
                       {event.location?.city && (
-                        <div className="flex items-center text-sm text-gray-500">
-                          <FaMapMarkerAlt size={12} className="mr-2" style={{ color: 'var(--primary-color)' }} />
+                        <div className="flex items-center text-sm text-gray-700">
+                          <FaMapMarkerAlt size={12} className="mr-2 text-gray-900" />
                           <span>{event.location.city}</span>
                         </div>
                       )}
@@ -421,7 +422,7 @@ const FeaturedEventsCarousel: React.FC<{ featuredEvents: FeaturedEvent[] }> = ({
                   <FadeIn delay={0.25}>
                     <div className="flex items-center gap-2">
                       <div className="w-8 h-8 rounded-full flex items-center justify-center" style={{ backgroundColor: 'rgba(0, 142, 199, 0.1)' }}>
-                        <FaStar size={14} style={{ color: 'var(--primary-color)' }} />
+                        <FaStar size={14} className="text-gray-900" />
                       </div>
                       <span className="text-sm font-medium">4.8 (120 reviews)</span>
                     </div>
@@ -444,10 +445,10 @@ const FeaturedEventsCarousel: React.FC<{ featuredEvents: FeaturedEvent[] }> = ({
               <FadeIn>
                 <div className="text-center py-16 px-6">
                   <div className="w-24 h-24 mx-auto mb-6 rounded-full flex items-center justify-center" style={{ backgroundColor: 'rgba(0, 142, 199, 0.1)' }}>
-                    <div className="text-4xl" style={{ color: 'var(--primary-color)' }}>🎪</div>
+                    <div className="text-4xl">🎪</div>
                   </div>
                   <h3 className="text-xl font-semibold mb-3 text-gray-700">No Events Yet</h3>
-                  <p className="text-gray-500 mb-6 max-w-md mx-auto">We're working on bringing you amazing events. Check back soon for exciting activities!</p>
+                  <p className="text-gray-700 mb-6 max-w-md mx-auto">We're working on bringing you amazing events. Check back soon for exciting activities!</p>
                   <AnimatedButton 
                     onClick={() => navigate('/search')} 
                     className="px-6 py-3 text-white rounded-lg font-medium transition-all duration-300 hover:shadow-lg focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-orange-500"
@@ -467,16 +468,14 @@ const FeaturedEventsCarousel: React.FC<{ featuredEvents: FeaturedEvent[] }> = ({
             <div className="flex justify-center gap-3 mt-6">
               <AnimatedButton
                 onClick={() => instanceRef.current?.prev()}
-                className="w-10 h-10 rounded-full flex items-center justify-center border transition-all duration-300"
-                style={{ borderColor: 'var(--primary-color)', color: 'var(--primary-color)' }}
+                className="w-10 h-10 rounded-full flex items-center justify-center border border-gray-900 text-gray-900 transition-all duration-300"
                 aria-label="Previous events"
               >
                 <FaChevronLeft size={14} />
               </AnimatedButton>
               <AnimatedButton
                 onClick={() => instanceRef.current?.next()}
-                className="w-10 h-10 rounded-full flex items-center justify-center border transition-all duration-300"
-                style={{ borderColor: 'var(--primary-color)', color: 'var(--primary-color)' }}
+                className="w-10 h-10 rounded-full flex items-center justify-center border border-gray-900 text-gray-900 transition-all duration-300"
                 aria-label="Next events"
               >
                 <FaChevronRight size={14} />
@@ -496,17 +495,17 @@ const StatsSection = ({ stats }: { stats: any }) => {
         <StaggerContainer className="text-center mb-12">
           <SlideIn direction="down">
             <div className="inline-block mb-4 px-4 py-2 rounded-full" style={{ backgroundColor: 'rgba(0, 142, 199, 0.1)' }}>
-              <span className="font-semibold" style={{ color: 'var(--primary-color)' }}>Our Impact</span>
+              <span className="font-semibold text-gray-900">Our Impact</span>
             </div>
           </SlideIn>
           <FadeIn delay={0.1}>
             <h2 className="text-3xl font-bold mb-4">Trusted by families across UAE</h2>
           </FadeIn>
           <FadeIn delay={0.2}>
-            <p className="text-gray-600 max-w-2xl mx-auto">Helping parents discover and book the best activities for their children since 2017</p>
+            <p className="text-gray-700 max-w-2xl mx-auto">Helping parents discover and book the best activities for their children since 2017</p>
           </FadeIn>
         </StaggerContainer>
-        
+
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-8">
           {/* Trusted Partners Card */}
           <HoverCard className="bg-white rounded-2xl shadow-lg hover:shadow-2xl p-8 flex flex-col items-center text-center transition-all duration-500 border border-gray-100 hover:border-gray-200 transform hover:-translate-y-2">
@@ -518,42 +517,42 @@ const StatsSection = ({ stats }: { stats: any }) => {
               </div>
             </div>
             <p className="text-xl font-semibold mb-2">
-              Trusted by over <span style={{ color: 'var(--primary-color)' }}>
+              Trusted by over <span className="text-gray-900">
                 <NumberCounter to={stats?.totalVendors || 750} suffix="+" />
               </span>
             </p>
-            <p className="text-gray-600">partners since 2017</p>
+            <p className="text-gray-700">partners since 2017</p>
           </HoverCard>
-          
+
           {/* Stats Cards */}
           <HoverCard className="bg-white rounded-2xl shadow-lg hover:shadow-2xl p-8 flex flex-col items-center text-center transition-all duration-500 border border-gray-100 hover:border-gray-200 transform hover:-translate-y-2">
             <div className="w-12 h-12 rounded-full mb-4 flex items-center justify-center" style={{ backgroundColor: 'rgba(0, 142, 199, 0.1)' }}>
-              <span className="text-xl font-bold" style={{ color: 'var(--primary-color)' }}>🎯</span>
+              <span className="text-xl font-bold">🎯</span>
             </div>
-            <p className="text-3xl font-bold mb-2" style={{ color: 'var(--primary-color)' }}>
+            <p className="text-3xl font-bold text-gray-900 mb-2">
               <NumberCounter to={stats?.totalEvents || 2500} suffix="+" />
             </p>
-            <p className="text-gray-600">Experiences</p>
+            <p className="text-gray-700">Experiences</p>
           </HoverCard>
-          
+
           <HoverCard className="bg-white rounded-2xl shadow-lg hover:shadow-2xl p-8 flex flex-col items-center text-center transition-all duration-500 border border-gray-100 hover:border-gray-200 transform hover:-translate-y-2">
             <div className="w-12 h-12 rounded-full mb-4 flex items-center justify-center" style={{ backgroundColor: 'rgba(0, 142, 199, 0.1)' }}>
-              <span className="text-xl font-bold" style={{ color: 'var(--primary-color)' }}>🏢</span>
+              <span className="text-xl font-bold">🏢</span>
             </div>
-            <p className="text-3xl font-bold mb-2" style={{ color: 'var(--primary-color)' }}>
+            <p className="text-3xl font-bold text-gray-900 mb-2">
               <NumberCounter to={stats?.totalVenues || 500} suffix="+" />
             </p>
-            <p className="text-gray-600">Venue & Events</p>
+            <p className="text-gray-700">Venue & Events</p>
           </HoverCard>
-          
+
           <HoverCard className="bg-white rounded-2xl shadow-lg hover:shadow-2xl p-8 flex flex-col items-center text-center transition-all duration-500 border border-gray-100 hover:border-gray-200 transform hover:-translate-y-2">
             <div className="w-12 h-12 rounded-full mb-4 flex items-center justify-center" style={{ backgroundColor: 'rgba(0, 142, 199, 0.1)' }}>
-              <span className="text-xl font-bold" style={{ color: 'var(--primary-color)' }}>🎓</span>
+              <span className="text-xl font-bold">🎓</span>
             </div>
-            <p className="text-3xl font-bold mb-2" style={{ color: 'var(--primary-color)' }}>
+            <p className="text-3xl font-bold text-gray-900 mb-2">
               <NumberCounter to={stats?.totalClasses || stats?.totalEvents || 1000} suffix="+" />
             </p>
-            <p className="text-gray-600">Classes</p>
+            <p className="text-gray-700">Classes</p>
           </HoverCard>
         </div>
       </div>
@@ -765,7 +764,7 @@ const HomePage: React.FC = () => {
                     <p className="font-semibold text-orange-600">
                       {error?.includes('waking up') || error?.includes('starting up') ? 'Backend Starting' : 'Connection Issue'}
                     </p>
-                    <p className="text-sm text-gray-600">{error}</p>
+                    <p className="text-sm text-gray-700">{error}</p>
                   </div>
                 </div>
                 <AnimatedButton

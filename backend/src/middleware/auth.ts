@@ -4,6 +4,7 @@ import { config } from '../config';
 import { AppError } from './error';
 import { User, IUser } from '../models'; // Removed Role import
 import { getAuth } from 'firebase-admin/auth';
+import { cacheService } from '../services/cache.service';
 
 interface JwtPayload {
   id: string;
@@ -20,24 +21,31 @@ declare global {
 
 /**
  * Middleware to authenticate users via JWT
+ * Supports both httpOnly cookies (preferred) and Authorization header (for API clients)
  */
 export const authenticate = async (req: Request, res: Response, next: NextFunction) => {
   let token;
 
-  // Extract token from Authorization header
-  if (req.headers.authorization && req.headers.authorization.startsWith('Bearer')) {
+  // Try to get token from httpOnly cookie first (more secure)
+  if (req.cookies && req.cookies.accessToken) {
+    token = req.cookies.accessToken;
+  }
+  // Fall back to Authorization header for API clients
+  else if (req.headers.authorization && req.headers.authorization.startsWith('Bearer')) {
     token = req.headers.authorization.split(' ')[1];
   }
 
   // Log for debugging
   console.log(`Auth attempt on ${req.method} ${req.path}:`, {
     hasAuthHeader: !!req.headers.authorization,
+    hasCookie: !!req.cookies?.accessToken,
+    tokenSource: req.cookies?.accessToken ? 'cookie' : (req.headers.authorization ? 'header' : 'none'),
     tokenLength: token ? token.length : 0,
     userAgent: req.headers['user-agent']?.substring(0, 50)
   });
 
   if (!token) {
-    console.log('No token provided');
+    console.log('No token provided (checked both cookie and header)');
     return next(new AppError('Not authorized to access this route', 401));
   }
 
@@ -69,11 +77,27 @@ export const authenticate = async (req: Request, res: Response, next: NextFuncti
       clockTolerance: 60 // Allow 60 seconds clock skew
     }) as JwtPayload;
 
-    const user = await User.findById(decoded.id);
+    // Try to get user from cache first (huge performance boost!)
+    const cacheKey = `user:${decoded.id}`;
+    let user = await cacheService.get<IUser>(cacheKey);
 
     if (!user) {
-      console.log(`User not found for ID: ${decoded.id}`);
-      return next(new AppError('User not found', 404));
+      // Cache miss - fetch from database
+      console.log(`Cache miss for user ${decoded.id}, fetching from DB...`);
+      const userDoc = await User.findById(decoded.id);
+
+      if (!userDoc) {
+        console.log(`User not found for ID: ${decoded.id}`);
+        return next(new AppError('User not found', 404));
+      }
+
+      user = userDoc.toObject() as IUser;
+
+      // Cache user data for 10 minutes (600 seconds)
+      await cacheService.set(cacheKey, user, { ttl: 600 });
+      console.log(`User ${decoded.id} cached for 10 minutes`);
+    } else {
+      console.log(`Cache hit for user ${decoded.id}`);
     }
 
     console.log(`Authentication successful for user: ${user.email}`);

@@ -48,7 +48,7 @@ export interface IEmployee extends Document {
 }
 
 const EmployeeSchema = new Schema<IEmployee>({
-  vendorId: { type: Schema.Types.ObjectId, ref: 'User', required: true }, // Assuming Vendor is a User with role 'vendor'
+  vendorId: { type: Schema.Types.ObjectId, ref: 'Vendor', required: true }, // Changed from 'User' to 'Vendor'
   userId: { type: Schema.Types.ObjectId, ref: 'User', required: true, unique: true },
   employeeId: { type: String, required: true, unique: true },
   firstName: { type: String, required: true },
@@ -91,6 +91,28 @@ const EmployeeSchema = new Schema<IEmployee>({
   },
   hiredAt: { type: Date },
 }, { timestamps: true });
+
+// ===================== INDEXES FOR PERFORMANCE =====================
+
+// Single field indexes for common queries
+EmployeeSchema.index({ vendorId: 1 }); // List all employees for a vendor
+EmployeeSchema.index({ role: 1 }); // Filter by role
+EmployeeSchema.index({ status: 1 }); // Filter by status
+EmployeeSchema.index({ assignedEvents: 1 }); // Filter by assigned events
+
+// Compound indexes for common query patterns
+EmployeeSchema.index({ vendorId: 1, status: 1 }); // Vendor employees by status
+EmployeeSchema.index({ vendorId: 1, role: 1 }); // Vendor employees by role
+EmployeeSchema.index({ vendorId: 1, createdAt: -1 }); // Recent employees for vendor
+EmployeeSchema.index({ vendorId: 1, email: 1 }); // Search by email within vendor
+
+// Text index for search functionality across multiple fields
+EmployeeSchema.index({
+  firstName: 'text',
+  lastName: 'text',
+  email: 'text',
+  employeeId: 'text',
+});
 
 const Employee = model<IEmployee>('Employee', EmployeeSchema);
 

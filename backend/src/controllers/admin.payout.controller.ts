@@ -204,7 +204,7 @@ export const approvePayoutRequest = async (
       payoutRequest.metadata = {
         ...payoutRequest.metadata,
         adminNotes: notes,
-        approvedBy: req.user?.id,
+        approvedBy: req.user?._id || req.user?.id,
         approvedAt: new Date()
       };
       await payoutRequest.save();
@@ -246,7 +246,7 @@ export const rejectPayoutRequest = async (
     payoutRequest.metadata = {
       ...payoutRequest.metadata,
       rejectionReason: reason,
-      rejectedBy: req.user?.id,
+      rejectedBy: req.user?._id || req.user?.id,
       rejectedAt: new Date()
     };
     await payoutRequest.save();
@@ -285,7 +285,7 @@ export const processPayoutRequest = async (
     payoutRequest.metadata = {
       ...payoutRequest.metadata,
       adminNotes: notes,
-      processedBy: req.user?.id,
+      processedBy: req.user?._id || req.user?.id,
       processedAt: new Date()
     };
     await payoutRequest.save();
@@ -380,7 +380,7 @@ export const bulkRejectPayouts = async (
         $set: {
           payoutStatus: PayoutStatus.FAILED,
           'metadata.rejectionReason': reason,
-          'metadata.rejectedBy': req.user?.id,
+          'metadata.rejectedBy': req.user?._id || req.user?.id,
           'metadata.rejectedAt': new Date()
         }
       }

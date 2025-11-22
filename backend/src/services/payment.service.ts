@@ -1,5 +1,6 @@
 import { stripe, convertToStripeAmount, convertFromStripeAmount } from '../config/stripe';
-import { Order, User } from '../models';
+import { Order } from '../models';
+import Vendor, { PaymentMode } from '../models/Vendor';
 import Stripe from 'stripe';
 import logger from '../config/logger';
 import currencyService from './currency.service';
@@ -33,40 +34,46 @@ export interface PaymentIntentResult {
 export class PaymentService {
   /**
    * Determine payment routing based on vendor settings
+   * @param vendorId - The Vendor._id (NOT User._id)
    */
   static async getPaymentRouting(vendorId: string, amount: number): Promise<PaymentRoutingInfo> {
     try {
       // Fetch vendor with payment settings (select secret keys explicitly)
-      const vendor = await User.findById(vendorId)
-        .select('+vendorPaymentSettings.stripeSecretKey')
-        .select('+vendorPaymentSettings.stripeApiKey');
+      const vendor = await Vendor.findById(vendorId)
+        .select('+paymentSettings.stripeSettings.stripeSecretKey');
 
-      if (!vendor || vendor.role !== 'vendor') {
+      if (!vendor) {
         throw new Error('Vendor not found');
       }
 
-      const paymentSettings = vendor.vendorPaymentSettings;
+      const paymentSettings = vendor.paymentSettings;
+      const stripeSettings = paymentSettings.stripeSettings;
 
-      // Check if vendor has custom Stripe account
-      // Prefer stripeSecretKey over legacy stripeApiKey
-      const vendorSecretKey = paymentSettings?.stripeSecretKey || paymentSettings?.stripeApiKey;
-      if (paymentSettings?.hasCustomStripeAccount && vendorSecretKey) {
-        // Use vendor's Stripe account - no service fee
-        const vendorStripe = new Stripe(vendorSecretKey, {
-          apiVersion: '2025-07-30.basil',
-        });
+      // Check if vendor uses custom Stripe (with active subscription)
+      const usesCustomStripe = paymentSettings.paymentMode === PaymentMode.CUSTOM_STRIPE;
+      const hasSubscription = vendor.isSubscriptionActive();
+
+      // Check if vendor has Stripe Connect or manual keys
+      const hasStripeConnect = stripeSettings.stripeConnectOnboardingComplete && stripeSettings.stripeConnectAccountId;
+      const vendorSecretKey = stripeSettings.stripeSecretKey;
+
+      if (usesCustomStripe && hasSubscription && (hasStripeConnect || vendorSecretKey)) {
+        // Use vendor's Stripe account - no commission (they pay subscription instead)
+        const vendorStripe = vendorSecretKey
+          ? new Stripe(vendorSecretKey, { apiVersion: '2025-07-30.basil' })
+          : stripe; // Use platform Stripe for Stripe Connect
 
         return {
           usesVendorStripe: true,
           stripeInstance: vendorStripe,
-          vendorStripeAccountId: paymentSettings.stripeAccountId,
+          vendorStripeAccountId: stripeSettings.stripeConnectAccountId,
           platformCommission: 0,
           serviceFee: 0,
           vendorPayout: amount,
         };
       } else {
-        // Use platform Stripe with service fee
-        const commissionRate = paymentSettings?.commissionRate || 5; // Default 5%
+        // Use platform Stripe with commission
+        const commissionRate = vendor.getEffectiveCommissionRate();
         const serviceFee = Math.round((amount * commissionRate) / 100 * 100) / 100; // Round to 2 decimals
         const vendorPayout = amount - serviceFee;
 
@@ -80,8 +87,8 @@ export class PaymentService {
       }
     } catch (error) {
       logger.error('Error determining payment routing:', error);
-      // Fallback to platform Stripe
-      const serviceFee = Math.round((amount * 5) / 100 * 100) / 100; // 5% default
+      // Fallback to platform Stripe with default 5% commission
+      const serviceFee = Math.round((amount * 5) / 100 * 100) / 100;
       return {
         usesVendorStripe: false,
         stripeInstance: stripe,

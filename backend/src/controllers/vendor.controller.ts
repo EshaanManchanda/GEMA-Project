@@ -1,19 +1,27 @@
-import { Event, Booking, IBooking, User, Order, Employee, UserRole } from '../models';
+import { Event, Booking, IBooking, User, Order, Employee, UserRole, Vendor, VerificationStatus } from '../models';
  import { AppError, catchAsync } from '../middleware';
  import { uploadSingle, getFileInfo } from '../middleware/upload';
  import { AuthRequest } from '../types';
  import { NextFunction, Response } from 'express';
  import emailService from '../services/email.service';
+import mongoose from 'mongoose';
+import { getOrCreateVendorProfile } from '../utils/vendorHelpers';
+import { generateOTP } from '../utils/otp';
+import smsService from '../services/sms.service';
 
 // @desc    Get vendor dashboard statistics
 // @route   GET /api/vendors/stats
 // @access  Private (Vendor only)
 export const getVendorDashboardStats = catchAsync(async (req: AuthRequest, res: Response, next: NextFunction) => {
-  const vendorId = req.user?.id;
+  const userId = req.user?._id || req.user?.id;
 
-  if (!vendorId) {
-    return next(new AppError('Vendor ID not found', 401));
+  if (!userId) {
+    return next(new AppError('User not authenticated', 401));
   }
+
+  // Get vendor profile (this gives us the Vendor._id)
+  const vendorProfile = await getOrCreateVendorProfile(userId);
+  const vendorId = vendorProfile._id;
 
   // Get total events created by vendor
   const totalEvents = await Event.countDocuments({ vendorId });
@@ -42,11 +50,15 @@ export const getVendorDashboardStats = catchAsync(async (req: AuthRequest, res: 
 // @route   GET /api/vendors/events
 // @access  Private (Vendor only)
 export const getVendorEvents = catchAsync(async (req: AuthRequest, res: Response, next: NextFunction) => {
-  const vendorId = req.user?.id;
+  const userId = req.user?._id || req.user?.id;
 
-  if (!vendorId) {
-    return next(new AppError('Vendor ID not found', 401));
+  if (!userId) {
+    return next(new AppError('User not authenticated', 401));
   }
+
+  // Get vendor profile to get Vendor._id
+  const vendorProfile = await getOrCreateVendorProfile(userId);
+  const vendorId = vendorProfile._id;
 
   const events = await Event.find({ vendorId, isDeleted: false }).sort({ createdAt: -1 });
 
@@ -61,11 +73,15 @@ export const getVendorEvents = catchAsync(async (req: AuthRequest, res: Response
 // @route   GET /api/vendors/bookings
 // @access  Private (Vendor only)
 export const getVendorBookings = catchAsync(async (req: AuthRequest, res: Response, next: NextFunction) => {
-  const vendorId = req.user?.id;
+  const userId = req.user?._id || req.user?.id;
 
-  if (!vendorId) {
-    return next(new AppError('Vendor ID not found', 401));
+  if (!userId) {
+    return next(new AppError('User not authenticated', 401));
   }
+
+  // Get vendor profile to get Vendor._id
+  const vendorProfile = await getOrCreateVendorProfile(userId);
+  const vendorId = vendorProfile._id;
 
   // Get all event IDs for this vendor
   const vendorEvents = await Event.find({ vendorId }).select('_id title');
@@ -220,12 +236,16 @@ export const getVendorBookings = catchAsync(async (req: AuthRequest, res: Respon
 // @route   GET /api/vendors/bookings/:id
 // @access  Private (Vendor only)
 export const getVendorBookingById = catchAsync(async (req: AuthRequest, res: Response, next: NextFunction) => {
-  const vendorId = req.user?.id;
+  const userId = req.user?._id || req.user?.id;
   const { id } = req.params;
 
-  if (!vendorId) {
-    return next(new AppError('Vendor ID not found', 401));
+  if (!userId) {
+    return next(new AppError('User not authenticated', 401));
   }
+
+  // Get vendor profile to get Vendor._id
+  const vendorProfile = await getOrCreateVendorProfile(userId);
+  const vendorId = vendorProfile._id;
 
   // Get all event IDs for this vendor
   const vendorEvents = await Event.find({ vendorId }).select('_id');
@@ -254,13 +274,17 @@ export const getVendorBookingById = catchAsync(async (req: AuthRequest, res: Res
 // @route   PUT /api/vendors/bookings/:id
 // @access  Private (Vendor only)
 export const updateVendorBooking = catchAsync(async (req: AuthRequest, res: Response, next: NextFunction) => {
-  const vendorId = req.user?.id;
+  const userId = req.user?._id || req.user?.id;
   const { id } = req.params;
   const { vendorNotes, vendorStatus, isFulfilled } = req.body;
 
-  if (!vendorId) {
-    return next(new AppError('Vendor ID not found', 401));
+  if (!userId) {
+    return next(new AppError('User not authenticated', 401));
   }
+
+  // Get vendor profile to get Vendor._id
+  const vendorProfile = await getOrCreateVendorProfile(userId);
+  const vendorId = vendorProfile._id;
 
   // Get all event IDs for this vendor
   const vendorEvents = await Event.find({ vendorId }).select('_id');
@@ -305,11 +329,15 @@ export const updateVendorBooking = catchAsync(async (req: AuthRequest, res: Resp
 // @route   GET /api/vendors/bookings/export
 // @access  Private (Vendor only)
 export const exportVendorBookings = catchAsync(async (req: AuthRequest, res: Response, next: NextFunction) => {
-  const vendorId = req.user?.id;
+  const userId = req.user?._id || req.user?.id;
 
-  if (!vendorId) {
-    return next(new AppError('Vendor ID not found', 401));
+  if (!userId) {
+    return next(new AppError('User not authenticated', 401));
   }
+
+  // Get vendor profile to get Vendor._id
+  const vendorProfile = await getOrCreateVendorProfile(userId);
+  const vendorId = vendorProfile._id;
 
   const { format = 'csv', ...filters } = req.query;
 
@@ -428,11 +456,15 @@ export const exportVendorBookings = catchAsync(async (req: AuthRequest, res: Res
 // @route   POST /api/vendors/bookings/import
 // @access  Private (Vendor only)
 export const importVendorBookings = catchAsync(async (req: AuthRequest, res: Response, next: NextFunction) => {
-  const vendorId = req.user?.id;
+  const userId = req.user?._id || req.user?.id;
 
-  if (!vendorId) {
-    return next(new AppError('Vendor ID not found', 401));
+  if (!userId) {
+    return next(new AppError('User not authenticated', 401));
   }
+
+  // Get vendor profile to get Vendor._id
+  const vendorProfile = await getOrCreateVendorProfile(userId);
+  const vendorId = vendorProfile._id;
 
   const { csvData } = req.body;
 
@@ -554,22 +586,25 @@ export const importVendorBookings = catchAsync(async (req: AuthRequest, res: Res
 // @route   GET /api/vendors/profile
 // @access  Private (Vendor only)
 export const getVendorProfile = catchAsync(async (req: AuthRequest, res: Response, next: NextFunction) => {
-  const vendorId = req.user?.id;
+  const userId = req.user?._id || req.user?.id;
 
-  if (!vendorId) {
-    return next(new AppError('Vendor ID not found', 401));
+  if (!userId) {
+    return next(new AppError('User not authenticated', 401));
   }
 
-  const vendor = await User.findById(vendorId).select('-passwordHash -twoFactorAuth.secret -passwordReset -emailVerification -phoneVerification -loginAttempts');
+  // Get or create vendor profile
+  const vendor = await getOrCreateVendorProfile(userId);
 
-  if (!vendor) {
-    return next(new AppError('Vendor not found', 404));
-  }
+  // Also get user data for basic info
+  const user = await User.findById(userId).select('-passwordHash -twoFactorAuth.secret -passwordReset -emailVerification -phoneVerification -loginAttempts');
 
   res.status(200).json({
     success: true,
     message: 'Vendor profile retrieved successfully',
-    data: { vendor },
+    data: {
+      vendor,
+      user
+    },
   });
 });
 
@@ -577,37 +612,57 @@ export const getVendorProfile = catchAsync(async (req: AuthRequest, res: Respons
 // @route   PUT /api/vendors/profile
 // @access  Private (Vendor only)
 export const updateVendorProfile = catchAsync(async (req: AuthRequest, res: Response, next: NextFunction) => {
-  const vendorId = req.user?.id;
+  const userId = req.user?._id || req.user?.id;
 
-  if (!vendorId) {
-    return next(new AppError('Vendor ID not found', 401));
+  if (!userId) {
+    return next(new AppError('User not authenticated', 401));
   }
 
-  const { firstName, lastName, phone, gender, dateOfBirth, addresses } = req.body;
+  const {
+    // User fields
+    firstName, lastName, phone, gender, dateOfBirth, addresses,
+    // Vendor fields
+    businessName, description, category, address, location, website
+  } = req.body;
 
-  // Validate that the user is updating allowed fields only
-  const allowedUpdates = ['firstName', 'lastName', 'phone', 'gender', 'dateOfBirth', 'addresses'];
-  const updates = Object.keys(req.body);
-  const isValidOperation = updates.every(update => allowedUpdates.includes(update));
+  // Update User model with basic profile fields
+  const userUpdates: any = {};
+  if (firstName !== undefined) userUpdates.firstName = firstName;
+  if (lastName !== undefined) userUpdates.lastName = lastName;
+  if (phone !== undefined) userUpdates.phone = phone;
+  if (gender !== undefined) userUpdates.gender = gender;
+  if (dateOfBirth !== undefined) userUpdates.dateOfBirth = dateOfBirth;
+  if (addresses !== undefined) userUpdates.addresses = addresses;
 
-  if (!isValidOperation) {
-    return next(new AppError('Invalid update fields', 400));
-  }
-
-  const vendor = await User.findByIdAndUpdate(
-    vendorId,
-    { firstName, lastName, phone, gender, dateOfBirth, addresses },
+  const user = await User.findByIdAndUpdate(
+    userId,
+    { $set: userUpdates },
     { new: true, runValidators: true }
   ).select('-passwordHash -twoFactorAuth.secret -passwordReset -emailVerification -phoneVerification -loginAttempts');
 
-  if (!vendor) {
-    return next(new AppError('Vendor not found', 404));
+  if (!user) {
+    return next(new AppError('User not found', 404));
   }
+
+  // Update Vendor model with business fields
+  const vendor = await getOrCreateVendorProfile(userId);
+
+  if (businessName !== undefined) vendor.businessName = businessName;
+  if (description !== undefined) vendor.description = description;
+  if (category !== undefined) vendor.category = category;
+  if (address !== undefined) vendor.address = address;
+  if (location !== undefined) vendor.location = location;
+  if (website !== undefined) vendor.website = website;
+
+  await vendor.save();
 
   res.status(200).json({
     success: true,
     message: 'Vendor profile updated successfully',
-    data: { vendor },
+    data: {
+      user,
+      vendor
+    },
   });
 });
 
@@ -615,12 +670,12 @@ export const updateVendorProfile = catchAsync(async (req: AuthRequest, res: Resp
 // @route   POST /api/vendors/upload-image
 // @access  Private (Vendor only)
 export const uploadVendorImage = [
-  uploadSingle('avatar'),
+  uploadSingle('image'),
   catchAsync(async (req: AuthRequest, res: Response, next: NextFunction) => {
-    const vendorId = req.user?.id;
+    const userId = req.user?._id || req.user?.id;
 
-    if (!vendorId) {
-      return next(new AppError('Vendor ID not found', 401));
+    if (!userId) {
+      return next(new AppError('User ID not found', 401));
     }
 
     if (!req.file) {
@@ -628,23 +683,26 @@ export const uploadVendorImage = [
     }
 
     const fileInfo = getFileInfo(req.file);
-    
-    // Update vendor's avatar with the uploaded image URL
-    const vendor = await User.findByIdAndUpdate(
-      vendorId,
-      { avatar: fileInfo.url },
-      { new: true }
-    ).select('-passwordHash -twoFactorAuth.secret -passwordReset -emailVerification -phoneVerification -loginAttempts');
+    const imageType = req.body.imageType || 'logo'; // 'logo' or 'coverImage'
 
-    if (!vendor) {
-      return next(new AppError('Vendor not found', 404));
+    // Get vendor profile
+    const vendorProfile = await getOrCreateVendorProfile(userId);
+
+    // Update vendor's logo or coverImage with the uploaded image URL
+    if (imageType === 'coverImage') {
+      vendorProfile.coverImage = fileInfo.url;
+    } else {
+      vendorProfile.logo = fileInfo.url;
     }
+
+    await vendorProfile.save();
 
     res.status(200).json({
       success: true,
-      message: 'Vendor image uploaded successfully',
-      data: { 
-        vendor,
+      message: `Vendor ${imageType} uploaded successfully`,
+      data: {
+        logo: vendorProfile.logo,
+        coverImage: vendorProfile.coverImage,
         uploadedFile: fileInfo
       },
     });
@@ -655,10 +713,10 @@ export const uploadVendorImage = [
 // @route   PUT /api/vendors/business-hours
 // @access  Private (Vendor only)
 export const updateVendorBusinessHours = catchAsync(async (req: AuthRequest, res: Response, next: NextFunction) => {
-  const vendorId = req.user?.id;
+  const userId = req.user?._id || req.user?.id;
 
-  if (!vendorId) {
-    return next(new AppError('Vendor ID not found', 401));
+  if (!userId) {
+    return next(new AppError('User not authenticated', 401));
   }
 
   const { businessHours } = req.body;
@@ -672,8 +730,8 @@ export const updateVendorBusinessHours = catchAsync(async (req: AuthRequest, res
   const isValidBusinessHours = Object.keys(businessHours).every(day => {
     if (!daysOfWeek.includes(day.toLowerCase())) return false;
     const dayData = businessHours[day];
-    return dayData && typeof dayData === 'object' && 
-           'isOpen' in dayData && 
+    return dayData && typeof dayData === 'object' &&
+           'isOpen' in dayData &&
            (!dayData.isOpen || ('openTime' in dayData && 'closeTime' in dayData));
   });
 
@@ -681,24 +739,17 @@ export const updateVendorBusinessHours = catchAsync(async (req: AuthRequest, res
     return next(new AppError('Invalid business hours format', 400));
   }
 
-  // For now, we'll store business hours in a custom field (could be extended to User model)
-  const vendor = await User.findById(vendorId);
-  
-  if (!vendor) {
-    return next(new AppError('Vendor not found', 404));
-  }
+  // Get or create vendor profile
+  const vendor = await getOrCreateVendorProfile(userId);
 
-  // Add business hours to vendor (using a custom field approach for now)
-  const updatedVendor = await User.findByIdAndUpdate(
-    vendorId,
-    { $set: { businessHours } },
-    { new: true, runValidators: true }
-  ).select('-passwordHash -twoFactorAuth.secret -passwordReset -emailVerification -phoneVerification -loginAttempts');
+  // Update business hours
+  vendor.businessHours = businessHours;
+  await vendor.save();
 
   res.status(200).json({
     success: true,
     message: 'Vendor business hours updated successfully',
-    data: { vendor: updatedVendor },
+    data: { vendor },
   });
 });
 
@@ -706,10 +757,10 @@ export const updateVendorBusinessHours = catchAsync(async (req: AuthRequest, res
 // @route   PUT /api/vendors/social-media
 // @access  Private (Vendor only)
 export const updateVendorSocialMedia = catchAsync(async (req: AuthRequest, res: Response, next: NextFunction) => {
-  const vendorId = req.user?.id;
+  const userId = req.user?._id || req.user?.id;
 
-  if (!vendorId) {
-    return next(new AppError('Vendor ID not found', 401));
+  if (!userId) {
+    return next(new AppError('User not authenticated', 401));
   }
 
   const { socialMedia } = req.body;
@@ -739,23 +790,17 @@ export const updateVendorSocialMedia = catchAsync(async (req: AuthRequest, res: 
     return next(new AppError('Invalid social media URLs or platforms', 400));
   }
 
-  const vendor = await User.findById(vendorId);
-  
-  if (!vendor) {
-    return next(new AppError('Vendor not found', 404));
-  }
+  // Get or create vendor profile
+  const vendor = await getOrCreateVendorProfile(userId);
 
-  // Add social media links to vendor (using a custom field approach for now)
-  const updatedVendor = await User.findByIdAndUpdate(
-    vendorId,
-    { $set: { socialMedia } },
-    { new: true, runValidators: true }
-  ).select('-passwordHash -twoFactorAuth.secret -passwordReset -emailVerification -phoneVerification -loginAttempts');
+  // Update social media links
+  vendor.socialMedia = socialMedia;
+  await vendor.save();
 
   res.status(200).json({
     success: true,
     message: 'Vendor social media links updated successfully',
-    data: { vendor: updatedVendor },
+    data: { vendor },
   });
 });
 
@@ -765,16 +810,20 @@ export const updateVendorSocialMedia = catchAsync(async (req: AuthRequest, res: 
 export const getPublicVendorProfile = catchAsync(async (req: AuthRequest, res: Response, next: NextFunction) => {
   const { id } = req.params;
 
-  // Find vendor with only public information
-  const vendor = await User.findOne({
+  // Find user with vendor role
+  const user = await User.findOne({
     _id: id,
     role: 'vendor',
     status: 'active'
-  }).select('firstName lastName email phone avatar socialMedia businessHours createdAt');
+  }).select('firstName lastName email phone avatar createdAt');
 
-  if (!vendor) {
+  if (!user) {
     return next(new AppError('Vendor not found', 404));
   }
+
+  // Find vendor business profile
+  const vendorProfile = await Vendor.findOne({ userId: id })
+    .select('businessName description category address location website socialMedia businessHours stats');
 
   // Get vendor's published events
   const events = await Event.find({
@@ -803,7 +852,8 @@ export const getPublicVendorProfile = catchAsync(async (req: AuthRequest, res: R
     success: true,
     message: 'Vendor profile retrieved successfully',
     data: {
-      vendor,
+      user,
+      vendor: vendorProfile,
       events,
       stats: {
         totalEvents,
@@ -824,16 +874,12 @@ export const getVendorPaymentInfo = catchAsync(async (req: AuthRequest, res: Res
     return next(new AppError('Vendor ID is required', 400));
   }
 
-  // Fetch vendor with payment settings
-  // IMPORTANT: Only select safe fields - never expose secret keys
-  const vendor = await User.findById(vendorId)
-    .select('role vendorPaymentSettings.hasCustomStripeAccount')
-    .select('vendorPaymentSettings.stripePublishableKey')
-    .select('vendorPaymentSettings.commissionRate');
+  // Check if user exists and is a vendor
+  const user = await User.findById(vendorId).select('role');
 
   // If vendor not found or not a vendor, return platform defaults instead of 404
   // This allows the payment flow to continue with platform payment settings
-  if (!vendor || vendor.role !== 'vendor') {
+  if (!user || user.role !== 'vendor') {
     return res.status(200).json({
       success: true,
       message: 'Using platform payment settings',
@@ -847,17 +893,39 @@ export const getVendorPaymentInfo = catchAsync(async (req: AuthRequest, res: Res
     });
   }
 
-  const paymentSettings = vendor.vendorPaymentSettings;
+  // Fetch vendor payment settings from Vendor model
+  // IMPORTANT: Only select safe fields - never expose secret keys
+  const vendorProfile = await Vendor.findOne({ userId: vendorId })
+    .select('paymentSettings.paymentMode paymentSettings.stripeSettings.stripePublishableKey paymentSettings.subscriptionStatus');
+
+  // If no vendor profile, use platform defaults
+  if (!vendorProfile) {
+    return res.status(200).json({
+      success: true,
+      message: 'Using platform payment settings',
+      data: {
+        vendorId,
+        hasCustomStripe: false,
+        stripePublishableKey: null,
+        serviceFeeRate: 5,
+        usePlatformStripe: true,
+      },
+    });
+  }
+
+  const paymentSettings = vendorProfile.paymentSettings;
+  const isCustomStripe = paymentSettings.paymentMode === 'custom_stripe' &&
+                         paymentSettings.subscriptionStatus === 'active';
 
   res.status(200).json({
     success: true,
     message: 'Vendor payment information retrieved successfully',
     data: {
       vendorId,
-      hasCustomStripe: paymentSettings?.hasCustomStripeAccount || false,
-      stripePublishableKey: paymentSettings?.stripePublishableKey || null,
-      serviceFeeRate: paymentSettings?.hasCustomStripeAccount ? 0 : (paymentSettings?.commissionRate || 5),
-      usePlatformStripe: !paymentSettings?.hasCustomStripeAccount,
+      hasCustomStripe: isCustomStripe,
+      stripePublishableKey: isCustomStripe ? paymentSettings.stripeSettings?.stripePublishableKey : null,
+      serviceFeeRate: isCustomStripe ? 0 : vendorProfile.getEffectiveCommissionRate(),
+      usePlatformStripe: !isCustomStripe,
     },
   });
 });
@@ -868,11 +936,15 @@ export const getVendorPaymentInfo = catchAsync(async (req: AuthRequest, res: Res
 // @route   GET /api/vendors/employees
 // @access  Private (Vendor only)
 export const getVendorEmployees = catchAsync(async (req: AuthRequest, res: Response, next: NextFunction) => {
-  const vendorId = req.user?.id;
+  const userId = req.user?._id || req.user?.id;
 
-  if (!vendorId) {
-    return next(new AppError('Vendor ID not found', 401));
+  if (!userId) {
+    return next(new AppError('User ID not found', 401));
   }
+
+  // Get vendor profile to get Vendor._id
+  const vendorProfile = await getOrCreateVendorProfile(userId);
+  const vendorId = vendorProfile._id;
 
   // Extract query parameters
   const {
@@ -974,7 +1046,7 @@ export const getVendorEmployees = catchAsync(async (req: AuthRequest, res: Respo
     data: {
       employees,
       pagination: {
-        currentPage: pageNum,
+        page: pageNum,
         totalPages: Math.ceil(total / limitNum),
         totalEmployees: total,
         hasNextPage: pageNum < Math.ceil(total / limitNum),
@@ -999,7 +1071,7 @@ export const getVendorEmployees = catchAsync(async (req: AuthRequest, res: Respo
 // @route   GET /api/vendors/employees/:id
 // @access  Private (Vendor only)
 export const getVendorEmployeeById = catchAsync(async (req: AuthRequest, res: Response, next: NextFunction) => {
-  const vendorId = req.user?.id;
+  const vendorId = req.user?._id || req.user?.id;
   const { id } = req.params;
 
   if (!vendorId) {
@@ -1026,11 +1098,15 @@ export const getVendorEmployeeById = catchAsync(async (req: AuthRequest, res: Re
 // @route   POST /api/vendors/employees
 // @access  Private (Vendor only)
 export const createVendorEmployee = catchAsync(async (req: AuthRequest, res: Response, next: NextFunction) => {
-  const vendorId = req.user?.id;
+  const userId = req.user?._id || req.user?.id;
 
-  if (!vendorId) {
-    return next(new AppError('Vendor ID not found', 401));
+  if (!userId) {
+    return next(new AppError('User ID not found', 401));
   }
+
+  // Get vendor profile to get Vendor._id
+  const vendorProfile = await getOrCreateVendorProfile(userId);
+  const vendorId = vendorProfile._id;
 
   const {
     firstName,
@@ -1159,12 +1235,16 @@ export const createVendorEmployee = catchAsync(async (req: AuthRequest, res: Res
 // @route   PUT /api/vendors/employees/:id
 // @access  Private (Vendor only)
 export const updateVendorEmployee = catchAsync(async (req: AuthRequest, res: Response, next: NextFunction) => {
-  const vendorId = req.user?.id;
+  const userId = req.user?._id || req.user?.id;
   const { id } = req.params;
 
-  if (!vendorId) {
-    return next(new AppError('Vendor ID not found', 401));
+  if (!userId) {
+    return next(new AppError('User ID not found', 401));
   }
+
+  // Get vendor profile to get Vendor._id
+  const vendorProfile = await getOrCreateVendorProfile(userId);
+  const vendorId = vendorProfile._id;
 
   // Find employee belonging to this vendor
   const employee = await Employee.findOne({ _id: id, vendorId });
@@ -1229,13 +1309,17 @@ export const updateVendorEmployee = catchAsync(async (req: AuthRequest, res: Res
 // @route   DELETE /api/vendors/employees/:id
 // @access  Private (Vendor only)
 export const deleteVendorEmployee = catchAsync(async (req: AuthRequest, res: Response, next: NextFunction) => {
-  const vendorId = req.user?.id;
+  const userId = req.user?._id || req.user?.id;
   const { id } = req.params;
-  const { permanent } = req.query;
+  const { hard } = req.query;
 
-  if (!vendorId) {
-    return next(new AppError('Vendor ID not found', 401));
+  if (!userId) {
+    return next(new AppError('User ID not found', 401));
   }
+
+  // Get vendor profile to get Vendor._id
+  const vendorProfile = await getOrCreateVendorProfile(userId);
+  const vendorId = vendorProfile._id;
 
   // Find employee belonging to this vendor
   const employee = await Employee.findOne({ _id: id, vendorId });
@@ -1244,8 +1328,8 @@ export const deleteVendorEmployee = catchAsync(async (req: AuthRequest, res: Res
     return next(new AppError('Employee not found', 404));
   }
 
-  if (permanent === 'true') {
-    // Permanently delete employee
+  if (hard === 'true') {
+    // Hard delete - permanently remove employee
     await Employee.findByIdAndDelete(id);
 
     // Optionally deactivate the user account as well
@@ -1254,6 +1338,7 @@ export const deleteVendorEmployee = catchAsync(async (req: AuthRequest, res: Res
     res.status(200).json({
       success: true,
       message: 'Employee permanently deleted',
+      data: null,
     });
   } else {
     // Soft delete - just set status to inactive
@@ -1271,66 +1356,117 @@ export const deleteVendorEmployee = catchAsync(async (req: AuthRequest, res: Res
   }
 });
 
-// @desc    Assign employee to an event
+// @desc    Assign employee to one or more events
 // @route   POST /api/vendors/employees/:id/assign-event
 // @access  Private (Vendor only)
 export const assignEmployeeToEvent = catchAsync(async (req: AuthRequest, res: Response, next: NextFunction) => {
-  const vendorId = req.user?.id;
+  const userId = req.user?._id || req.user?.id;
   const { id } = req.params;
-  const { eventId } = req.body;
+  const { eventIds } = req.body;
 
-  if (!vendorId) {
-    return next(new AppError('Vendor ID not found', 401));
+  if (!userId) {
+    return next(new AppError('User ID not found', 401));
   }
 
-  if (!eventId) {
-    return next(new AppError('Event ID is required', 400));
+  // Get vendor profile to get Vendor._id
+  const vendorProfile = await getOrCreateVendorProfile(userId);
+  const vendorId = vendorProfile._id;
+
+  if (!eventIds || !Array.isArray(eventIds) || eventIds.length === 0) {
+    return next(new AppError('eventIds array is required and must not be empty', 400));
   }
 
-  // Verify the event belongs to this vendor
-  const event = await Event.findOne({ _id: eventId, vendorId });
-  if (!event) {
-    return next(new AppError('Event not found or does not belong to you', 404));
+  // Validate all event IDs are valid ObjectIds
+  const invalidIds = eventIds.filter(eid => !mongoose.Types.ObjectId.isValid(eid));
+  if (invalidIds.length > 0) {
+    return next(new AppError(`Invalid event IDs: ${invalidIds.join(', ')}`, 400));
   }
 
-  // Find employee belonging to this vendor
-  const employee = await Employee.findOne({ _id: id, vendorId });
-  if (!employee) {
-    return next(new AppError('Employee not found', 404));
+  // Start a session for transaction
+  const session = await mongoose.startSession();
+  session.startTransaction();
+
+  try {
+    // Find employee belonging to this vendor
+    const employee = await Employee.findOne({ _id: id, vendorId }).session(session);
+    if (!employee) {
+      await session.abortTransaction();
+      session.endSession();
+      return next(new AppError('Employee not found', 404));
+    }
+
+    // Verify all events belong to this vendor
+    const events = await Event.find({
+      _id: { $in: eventIds },
+      vendorId
+    }).session(session);
+
+    if (events.length !== eventIds.length) {
+      const foundEventIds = events.map(e => e._id.toString());
+      const notFoundIds = eventIds.filter(eid => !foundEventIds.includes(eid.toString()));
+      await session.abortTransaction();
+      session.endSession();
+      return next(new AppError(`Events not found or do not belong to you: ${notFoundIds.join(', ')}`, 404));
+    }
+
+    // Add events to assigned events (avoid duplicates)
+    const currentEventIds = employee.assignedEvents.map(e => e.toString());
+    const newEventIds = eventIds.filter(eid => !currentEventIds.includes(eid.toString()));
+
+    if (newEventIds.length === 0) {
+      await session.abortTransaction();
+      session.endSession();
+      return res.status(200).json({
+        success: true,
+        message: 'All events are already assigned to this employee',
+        data: {
+          employee: await Employee.findById(id)
+            .populate('userId', 'firstName lastName email phone avatar')
+            .populate('assignedEvents', 'title startDate endDate category location')
+        },
+      });
+    }
+
+    // Update employee with new events
+    employee.assignedEvents.push(...newEventIds);
+    await employee.save({ session });
+
+    // Commit transaction
+    await session.commitTransaction();
+    session.endSession();
+
+    // Populate and return
+    const updatedEmployee = await Employee.findById(id)
+      .populate('userId', 'firstName lastName email phone avatar')
+      .populate('assignedEvents', 'title startDate endDate category location');
+
+    res.status(200).json({
+      success: true,
+      message: `Employee assigned to ${newEventIds.length} event(s) successfully`,
+      data: { employee: updatedEmployee },
+    });
+  } catch (error) {
+    await session.abortTransaction();
+    session.endSession();
+    throw error;
   }
-
-  // Check if already assigned
-  if (employee.assignedEvents.includes(eventId)) {
-    return next(new AppError('Employee is already assigned to this event', 400));
-  }
-
-  // Add event to assigned events
-  employee.assignedEvents.push(eventId);
-  await employee.save();
-
-  // Populate and return
-  const updatedEmployee = await Employee.findById(id)
-    .populate('userId', 'firstName lastName email phone avatar')
-    .populate('assignedEvents', 'title startDate endDate category location');
-
-  res.status(200).json({
-    success: true,
-    message: 'Employee assigned to event successfully',
-    data: { employee: updatedEmployee },
-  });
 });
 
 // @desc    Remove employee from an event
 // @route   POST /api/vendors/employees/:id/remove-event
 // @access  Private (Vendor only)
 export const removeEmployeeFromEvent = catchAsync(async (req: AuthRequest, res: Response, next: NextFunction) => {
-  const vendorId = req.user?.id;
+  const userId = req.user?._id || req.user?.id;
   const { id } = req.params;
   const { eventId } = req.body;
 
-  if (!vendorId) {
-    return next(new AppError('Vendor ID not found', 401));
+  if (!userId) {
+    return next(new AppError('User ID not found', 401));
   }
+
+  // Get vendor profile to get Vendor._id
+  const vendorProfile = await getOrCreateVendorProfile(userId);
+  const vendorId = vendorProfile._id;
 
   if (!eventId) {
     return next(new AppError('Event ID is required', 400));
@@ -1361,21 +1497,21 @@ export const removeEmployeeFromEvent = catchAsync(async (req: AuthRequest, res: 
 });
 
 // @desc    Export vendor employees to CSV or JSON
-// @route   GET /api/vendors/employees/export
+// @route   POST /api/vendors/employees/export
 // @access  Private (Vendor only)
 export const exportVendorEmployees = catchAsync(async (req: AuthRequest, res: Response, next: NextFunction) => {
-  const vendorId = req.user?.id;
+  const vendorId = req.user?._id || req.user?.id;
 
   if (!vendorId) {
     return next(new AppError('Vendor ID not found', 401));
   }
 
-  const { format = 'csv', ...filters } = req.query;
+  const { format = 'csv', filters = {} } = req.body;
 
   // Build filter query
   const filter: any = { vendorId };
 
-  // Apply filters
+  // Apply filters from request body
   if (filters.role) filter.role = filters.role;
   if (filters.status) filter.status = filters.status;
   if (filters.assignedEvent) filter.assignedEvents = filters.assignedEvent;
@@ -1452,4 +1588,315 @@ export const exportVendorEmployees = catchAsync(async (req: AuthRequest, res: Re
     res.setHeader('Content-Disposition', `attachment; filename="employees-${Date.now()}.csv"`);
     return res.send(csvContent);
   }
+});
+
+// ==================== NEW VENDOR PROFILE ENDPOINTS ====================
+
+// @desc    Send phone verification OTP for vendor
+// @route   POST /api/vendors/verify-phone/send
+// @access  Private (Vendor only)
+export const sendVendorPhoneVerificationOTP = catchAsync(async (req: AuthRequest, res: Response, next: NextFunction) => {
+  const userId = req.user?._id || req.user?.id;
+  const { phone } = req.body;
+
+  if (!userId) {
+    return next(new AppError('User not authenticated', 401));
+  }
+
+  if (!phone) {
+    return next(new AppError('Phone number is required', 400));
+  }
+
+  // Generate OTP
+  const otp = generateOTP();
+  const expiresAt = new Date(Date.now() + 10 * 60 * 1000); // 10 minutes
+
+  // Update user with phone verification OTP
+  await User.findByIdAndUpdate(userId, {
+    'phoneVerification.code': otp,
+    'phoneVerification.expiresAt': expiresAt,
+  });
+
+  // Send OTP via SMS
+  try {
+    await smsService.sendSMS(phone, `Your GEMA verification code is: ${otp}. Valid for 10 minutes.`);
+  } catch (error) {
+    console.error('Failed to send SMS:', error);
+    return next(new AppError('Failed to send verification code', 500));
+  }
+
+  res.status(200).json({
+    success: true,
+    message: 'Verification code sent successfully',
+    data: { expiresAt },
+  });
+});
+
+// @desc    Verify phone OTP for vendor
+// @route   POST /api/vendors/verify-phone/confirm
+// @access  Private (Vendor only)
+export const verifyVendorPhoneOTP = catchAsync(async (req: AuthRequest, res: Response, next: NextFunction) => {
+  const userId = req.user?._id || req.user?.id;
+  const { otp } = req.body;
+
+  if (!userId) {
+    return next(new AppError('User not authenticated', 401));
+  }
+
+  if (!otp) {
+    return next(new AppError('Verification code is required', 400));
+  }
+
+  const user = await User.findById(userId);
+
+  if (!user) {
+    return next(new AppError('User not found', 404));
+  }
+
+  // Check if OTP is valid
+  if (
+    !user.phoneVerification?.code ||
+    user.phoneVerification.code !== otp ||
+    !user.phoneVerification.expiresAt ||
+    user.phoneVerification.expiresAt < new Date()
+  ) {
+    return next(new AppError('Invalid or expired verification code', 400));
+  }
+
+  // Mark phone as verified
+  user.isPhoneVerified = true;
+  user.phoneVerification = undefined;
+  await user.save();
+
+  res.status(200).json({
+    success: true,
+    message: 'Phone verified successfully',
+    data: { isPhoneVerified: true },
+  });
+});
+
+// @desc    Update vendor bank details
+// @route   PUT /api/vendors/bank-details
+// @access  Private (Vendor only)
+export const updateVendorBankDetails = catchAsync(async (req: AuthRequest, res: Response, next: NextFunction) => {
+  const userId = req.user?._id || req.user?.id;
+
+  if (!userId) {
+    return next(new AppError('User not authenticated', 401));
+  }
+
+  const { accountHolderName, bankName, accountNumber, routingNumber, iban, swiftCode, accountType, country } = req.body;
+
+  // Validate required fields
+  if (!accountHolderName || !bankName || !accountNumber || !country) {
+    return next(new AppError('Account holder name, bank name, account number, and country are required', 400));
+  }
+
+  // Get vendor profile
+  const vendor = await getOrCreateVendorProfile(userId);
+
+  // Update bank details in paymentSettings
+  if (!vendor.paymentSettings.bankAccountDetails) {
+    vendor.paymentSettings.bankAccountDetails = {};
+  }
+
+  vendor.paymentSettings.bankAccountDetails = {
+    accountHolderName,
+    bankName,
+    accountNumber,
+    routingNumber,
+    iban,
+    swiftCode,
+    isVerified: false,
+  };
+
+  await vendor.save();
+
+  res.status(200).json({
+    success: true,
+    message: 'Bank details updated successfully',
+    data: { bankAccountDetails: vendor.paymentSettings.bankAccountDetails },
+  });
+});
+
+// @desc    Upload vendor verification document
+// @route   POST /api/vendors/documents/upload
+// @access  Private (Vendor only)
+export const uploadVendorDocument = [
+  uploadSingle('document'),
+  catchAsync(async (req: AuthRequest, res: Response, next: NextFunction) => {
+    const userId = req.user?._id || req.user?.id;
+    const { type } = req.body; // businessLicense, taxCertificate, identityDocument
+
+    if (!userId) {
+      return next(new AppError('User not authenticated', 401));
+    }
+
+    if (!req.file) {
+      return next(new AppError('No document file provided', 400));
+    }
+
+    if (!type || !['businessLicense', 'taxCertificate', 'identityDocument'].includes(type)) {
+      return next(new AppError('Valid document type is required (businessLicense, taxCertificate, identityDocument)', 400));
+    }
+
+    const fileInfo = getFileInfo(req.file);
+
+    // Get vendor profile
+    const vendor = await getOrCreateVendorProfile(userId);
+
+    // Initialize verificationDocuments if not exists
+    if (!vendor.verificationDocuments) {
+      vendor.verificationDocuments = {};
+    }
+
+    // Update document
+    vendor.verificationDocuments[type] = {
+      url: fileInfo.url,
+      status: VerificationStatus.PENDING,
+      uploadedAt: new Date(),
+    };
+
+    // If this is the first document upload, update verification status to pending
+    if (vendor.verificationStatus === VerificationStatus.UNVERIFIED) {
+      vendor.verificationStatus = VerificationStatus.PENDING;
+    }
+
+    await vendor.save();
+
+    res.status(200).json({
+      success: true,
+      message: 'Document uploaded successfully',
+      data: {
+        type,
+        document: vendor.verificationDocuments[type],
+      },
+    });
+  }),
+];
+
+// @desc    Delete vendor verification document
+// @route   DELETE /api/vendors/documents/:type
+// @access  Private (Vendor only)
+export const deleteVendorDocument = catchAsync(async (req: AuthRequest, res: Response, next: NextFunction) => {
+  const userId = req.user?._id || req.user?.id;
+  const { type } = req.params;
+
+  if (!userId) {
+    return next(new AppError('User not authenticated', 401));
+  }
+
+  if (!type || !['businessLicense', 'taxCertificate', 'identityDocument'].includes(type)) {
+    return next(new AppError('Valid document type is required', 400));
+  }
+
+  // Get vendor profile
+  const vendor = await getOrCreateVendorProfile(userId);
+
+  if (!vendor.verificationDocuments || !vendor.verificationDocuments[type]) {
+    return next(new AppError('Document not found', 404));
+  }
+
+  // Delete document
+  vendor.verificationDocuments[type] = undefined;
+  await vendor.save();
+
+  res.status(200).json({
+    success: true,
+    message: 'Document deleted successfully',
+  });
+});
+
+// @desc    Get vendor documents status
+// @route   GET /api/vendors/documents
+// @access  Private (Vendor only)
+export const getVendorDocuments = catchAsync(async (req: AuthRequest, res: Response, next: NextFunction) => {
+  const userId = req.user?._id || req.user?.id;
+
+  if (!userId) {
+    return next(new AppError('User not authenticated', 401));
+  }
+
+  // Get vendor profile
+  const vendor = await getOrCreateVendorProfile(userId);
+
+  // Transform documents to array format
+  const documents = [];
+  if (vendor.verificationDocuments) {
+    ['businessLicense', 'taxCertificate', 'identityDocument'].forEach((type) => {
+      const doc = vendor.verificationDocuments[type];
+      if (doc && doc.url) {
+        documents.push({
+          type,
+          url: doc.url,
+          status: doc.status || 'not_uploaded',
+          uploadedAt: doc.uploadedAt,
+          rejectionReason: doc.rejectionReason,
+        });
+      } else {
+        documents.push({
+          type,
+          status: 'not_uploaded',
+        });
+      }
+    });
+  }
+
+  res.status(200).json({
+    success: true,
+    message: 'Documents retrieved successfully',
+    data: { documents },
+  });
+});
+
+// @desc    Initialize Stripe Connect onboarding
+// @route   POST /api/vendors/stripe-connect/onboard
+// @access  Private (Vendor only)
+export const initializeStripeConnectOnboarding = catchAsync(async (req: AuthRequest, res: Response, next: NextFunction) => {
+  const userId = req.user?._id || req.user?.id;
+
+  if (!userId) {
+    return next(new AppError('User not authenticated', 401));
+  }
+
+  // TODO: Implement Stripe Connect account creation and onboarding link generation
+  // This is a placeholder implementation
+  res.status(200).json({
+    success: true,
+    message: 'Stripe Connect onboarding initialized',
+    data: {
+      url: 'https://connect.stripe.com/setup/placeholder', // Replace with actual Stripe onboarding URL
+    },
+  });
+});
+
+// @desc    Get Stripe Connect account status
+// @route   GET /api/vendors/stripe-connect/status
+// @access  Private (Vendor only)
+export const getStripeConnectStatus = catchAsync(async (req: AuthRequest, res: Response, next: NextFunction) => {
+  const userId = req.user?._id || req.user?.id;
+
+  if (!userId) {
+    return next(new AppError('User not authenticated', 401));
+  }
+
+  // Get vendor profile
+  const vendor = await getOrCreateVendorProfile(userId);
+
+  // Check if Stripe is connected
+  const stripeSettings = vendor.paymentSettings?.stripeSettings;
+  const isConnected = !!stripeSettings?.stripeConnectAccountId;
+
+  res.status(200).json({
+    success: true,
+    message: 'Stripe Connect status retrieved',
+    data: {
+      isConnected,
+      accountId: stripeSettings?.stripeConnectAccountId,
+      onboardingComplete: stripeSettings?.stripeConnectOnboardingComplete || false,
+      chargesEnabled: stripeSettings?.stripeConnectCapabilities?.card_payments === 'active',
+      payoutsEnabled: stripeSettings?.stripeConnectCapabilities?.transfers === 'active',
+      detailsSubmitted: stripeSettings?.stripeConnectOnboardingComplete || false,
+    },
+  });
 });

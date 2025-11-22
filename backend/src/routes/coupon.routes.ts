@@ -99,6 +99,65 @@ const createCouponValidation = [
     .optional()
     .isMongoId()
     .withMessage('Event ID must be valid'),
+  body('applicableCategories')
+    .optional()
+    .isArray()
+    .withMessage('Applicable categories must be an array'),
+  body('applicableCategories.*')
+    .optional()
+    .isMongoId()
+    .withMessage('Category ID must be valid'),
+  body('excludedCategories')
+    .optional()
+    .isArray()
+    .withMessage('Excluded categories must be an array'),
+  body('excludedCategories.*')
+    .optional()
+    .isMongoId()
+    .withMessage('Category ID must be valid'),
+  body('applicableVendors')
+    .optional()
+    .isArray()
+    .withMessage('Applicable vendors must be an array'),
+  body('applicableVendors.*')
+    .optional()
+    .isMongoId()
+    .withMessage('Vendor ID must be valid'),
+  body('excludedVendors')
+    .optional()
+    .isArray()
+    .withMessage('Excluded vendors must be an array'),
+  body('excludedVendors.*')
+    .optional()
+    .isMongoId()
+    .withMessage('Vendor ID must be valid'),
+  body('applicableEventTypes')
+    .optional()
+    .isArray()
+    .withMessage('Applicable event types must be an array'),
+  body('applicableEventTypes.*')
+    .optional()
+    .isIn(['Olympiad', 'Championship', 'Competition', 'Event', 'Course', 'Venue'])
+    .withMessage('Event type must be valid'),
+  body('priceRange')
+    .optional()
+    .isObject()
+    .withMessage('Price range must be an object'),
+  body('priceRange.min')
+    .optional()
+    .isNumeric()
+    .custom(value => value >= 0)
+    .withMessage('Minimum price cannot be negative'),
+  body('priceRange.max')
+    .optional()
+    .isNumeric()
+    .custom((value, { req }) => {
+      if (req.body.priceRange?.min !== undefined && value < req.body.priceRange.min) {
+        throw new Error('Maximum price must be greater than or equal to minimum price');
+      }
+      return value >= 0;
+    })
+    .withMessage('Maximum price cannot be negative'),
   body('firstTimeOnly')
     .optional()
     .isBoolean()

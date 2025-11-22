@@ -1,10 +1,12 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import { useParams, Link, useNavigate } from 'react-router-dom';
 import { useDispatch, useSelector } from 'react-redux';
 import { useCart } from '@/contexts/CartContext';
+import { useAuthContext } from '@/contexts/AuthContext';
 import toast from 'react-hot-toast';
 import { format } from 'date-fns';
 import eventsAPI from '../services/api/eventsAPI';
+import affiliateEventAPI from '../services/api/affiliateEventAPI';
 import { useErrorHandler } from '../utils/errorHandler';
 import { ComponentErrorBoundary } from '../components/common/ErrorBoundary';
 import { EventSEO } from '@/components/common/SEO';
@@ -117,6 +119,7 @@ const EventDetailPage: React.FC = () => {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
   const dispatch = useDispatch<AppDispatch>();
+  const { user } = useAuthContext();
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [event, setEvent] = useState<any>(null);
@@ -124,7 +127,44 @@ const EventDetailPage: React.FC = () => {
   const [quantity, setQuantity] = useState(1);
   const [selectedDate, setSelectedDate] = useState<Date | null>(null);
   const [activeTab, setActiveTab] = useState('about'); // 'about', 'location', 'reviews', 'faqs'
+  const [isClaimingEvent, setIsClaimingEvent] = useState(false);
   const { addItemToCart, isItemInCart } = useCart();
+
+  // Memoized schedule calculations - must be before any early returns
+  const currentSchedule = useMemo(() => {
+    if (!event?.dateSchedule || event.dateSchedule.length === 0) return null;
+
+    if (selectedDate) {
+      // Use local date to avoid timezone issues
+      const year = selectedDate.getFullYear();
+      const month = String(selectedDate.getMonth() + 1).padStart(2, '0');
+      const day = String(selectedDate.getDate()).padStart(2, '0');
+      const targetDate = `${year}-${month}-${day}`;
+
+      // Find all schedules that contain the selected date
+      const matchingSchedules = event.dateSchedule.filter((schedule: any) => {
+        const startDate = new Date(schedule.startDate).toISOString().split('T')[0];
+        const endDate = new Date(schedule.endDate).toISOString().split('T')[0];
+        return targetDate >= startDate && targetDate <= endDate;
+      });
+
+      if (matchingSchedules.length === 0) return event.dateSchedule[0];
+
+      // Prefer override schedule if one exists
+      const overrideSchedule = matchingSchedules.find((s: any) => s.isOverride === true);
+      return overrideSchedule || matchingSchedules[0];
+    }
+
+    return event.dateSchedule[0];
+  }, [event?.dateSchedule, selectedDate]);
+
+  const currentPrice = useMemo(() => {
+    return currentSchedule?.price || event?.price || 0;
+  }, [currentSchedule, event?.price]);
+
+  const currentAvailableSeats = useMemo(() => {
+    return currentSchedule?.availableSeats || event?.availableSpots || 0;
+  }, [currentSchedule, event?.availableSpots]);
 
   // Favorites state
   const favorites = useSelector((state: RootState) => state.favorites.items);
@@ -153,21 +193,24 @@ const EventDetailPage: React.FC = () => {
         const getScheduleDate = (schedule: any) =>
           schedule?.date || schedule?.startDate || new Date().toISOString();
 
-        // Helper to format time (handles both single date and date range formats)
+        // Helper to format time (handles startTime/endTime fields or falls back to date-based extraction)
         const getScheduleTime = (schedule: any) => {
-          if (!schedule) return '10:00 AM - 4:00 PM';
+          if (!schedule) return 'Time TBD';
 
-          if (schedule.startDate && schedule.endDate) {
-            const start = new Date(schedule.startDate).toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit', hour12: true });
-            const end = new Date(schedule.endDate).toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit', hour12: true });
-            return `${start} - ${end}`;
+          // Use explicit time fields if available
+          if (schedule.startTime && schedule.endTime) {
+            const formatTime = (time: string) => {
+              const [hours, minutes] = time.split(':');
+              const hour = parseInt(hours);
+              const ampm = hour >= 12 ? 'PM' : 'AM';
+              const hour12 = hour % 12 || 12;
+              return `${hour12}:${minutes} ${ampm}`;
+            };
+            return `${formatTime(schedule.startTime)} - ${formatTime(schedule.endTime)}`;
           }
 
-          if (schedule.date) {
-            return new Date(schedule.date).toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit', hour12: true });
-          }
-
-          return '10:00 AM - 4:00 PM';
+          // Fallback for legacy data without time fields
+          return 'Time TBD';
         };
 
         const firstSchedule = eventData.dateSchedule?.[0];
@@ -280,34 +323,10 @@ const EventDetailPage: React.FC = () => {
     );
   }
   
-  // Get current schedule based on selected date or default to first schedule
-  const getCurrentSchedule = () => {
-    if (!event?.dateSchedule || event.dateSchedule.length === 0) return null;
-    
-    if (selectedDate) {
-      const targetDate = selectedDate.toISOString().split('T')[0];
-      const schedule = event.dateSchedule.find((schedule: any) => {
-        const startDate = new Date(schedule.startDate).toISOString().split('T')[0];
-        const endDate = new Date(schedule.endDate).toISOString().split('T')[0];
-        return targetDate >= startDate && targetDate <= endDate;
-      });
-      return schedule || event.dateSchedule[0];
-    }
-    
-    return event.dateSchedule[0];
-  };
-
-  // Get current price based on selected schedule
-  const getCurrentPrice = () => {
-    const schedule = getCurrentSchedule();
-    return schedule?.price || event?.price || 0;
-  };
-
-  // Get current available seats
-  const getCurrentAvailableSeats = () => {
-    const schedule = getCurrentSchedule();
-    return schedule?.availableSeats || event?.availableSpots || 0;
-  };
+  // Legacy functions for compatibility - use memoized values from top of component
+  const getCurrentSchedule = () => currentSchedule;
+  const getCurrentPrice = () => currentPrice;
+  const getCurrentAvailableSeats = () => currentAvailableSeats;
 
   // Format date for display
   const formatEventDate = (dateString: string, timeString: string) => {
@@ -329,14 +348,44 @@ const EventDetailPage: React.FC = () => {
   };
 
   // Handle booking
-  const handleBookNow = () => {
-    if (!selectedDate) {
-      toast.error('Please select a date for your booking');
+  const handleBookNow = async () => {
+    if (!event || !id) {
+      toast.error('Event information is not available');
       return;
     }
 
-    if (!event || !id) {
-      toast.error('Event information is not available');
+    // Handle affiliate events - redirect to external booking link
+    if (event.isAffiliateEvent && event.externalBookingLink) {
+      try {
+        // Generate session ID for tracking
+        const sessionId = `${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
+
+        // Track the click
+        await fetch(`${import.meta.env.VITE_API_URL}/events/${id}/track-click`, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({ sessionId }),
+        });
+
+        // Confirm before redirecting
+        if (window.confirm('You will be redirected to an external website to complete your booking. Continue?')) {
+          window.open(event.externalBookingLink, '_blank', 'noopener,noreferrer');
+        }
+      } catch (error) {
+        console.error('Error tracking affiliate click:', error);
+        // Still redirect even if tracking fails
+        if (window.confirm('You will be redirected to an external website to complete your booking. Continue?')) {
+          window.open(event.externalBookingLink, '_blank', 'noopener,noreferrer');
+        }
+      }
+      return;
+    }
+
+    // Regular event booking flow
+    if (!selectedDate) {
+      toast.error('Please select a date for your booking');
       return;
     }
 
@@ -390,8 +439,35 @@ const EventDetailPage: React.FC = () => {
         currency: event.currency || 'AED'
       }
     });
-    
+
     toast.success('Starting your booking process...');
+  };
+
+  // Handle claiming affiliate event
+  const handleClaimEvent = async () => {
+    if (!id) {
+      toast.error('Event information is not available');
+      return;
+    }
+
+    if (!window.confirm('Are you sure you want to claim this event? Once claimed, it will be associated with your vendor account.')) {
+      return;
+    }
+
+    setIsClaimingEvent(true);
+    try {
+      await affiliateEventAPI.claimEvent(id);
+      toast.success('Event claimed successfully! Redirecting to your dashboard...');
+      setTimeout(() => {
+        navigate('/vendor/dashboard');
+      }, 2000);
+    } catch (error: any) {
+      console.error('Error claiming event:', error);
+      const errorMessage = error.response?.data?.message || error.message || 'Failed to claim event';
+      toast.error(errorMessage);
+    } finally {
+      setIsClaimingEvent(false);
+    }
   };
 
   // Handle add to cart
@@ -641,7 +717,7 @@ const EventDetailPage: React.FC = () => {
               <div className="flex items-center justify-between">
                 <span className="text-sm text-gray-600">Starting from</span>
                 <div className="text-3xl font-bold bg-gradient-to-r from-primary-600 to-primary-800 bg-clip-text text-transparent">
-                  {event.currency || 'AED'} {getCurrentPrice()}
+                  {event.currency || 'AED'} {currentPrice}
                 </div>
               </div>
               
@@ -717,7 +793,7 @@ const EventDetailPage: React.FC = () => {
                     </svg>
                     Tickets × {quantity}
                   </span>
-                  <span className="font-semibold text-gray-900">{event.currency || 'AED'} {(getCurrentPrice() * quantity).toFixed(2)}</span>
+                  <span className="font-semibold text-gray-900">{event.currency || 'AED'} {(currentPrice * quantity).toFixed(2)}</span>
                 </div>
                 <div className="flex justify-between text-sm items-center">
                   <span className="text-gray-600 flex items-center">
@@ -726,12 +802,12 @@ const EventDetailPage: React.FC = () => {
                     </svg>
                     Service Fee (10%)
                   </span>
-                  <span className="font-semibold text-gray-900">{event.currency || 'AED'} {(getCurrentPrice() * quantity * 0.1).toFixed(2)}</span>
+                  <span className="font-semibold text-gray-900">{event.currency || 'AED'} {(currentPrice * quantity * 0.1).toFixed(2)}</span>
                 </div>
                 <div className="border-t border-gray-300 pt-3">
                   <div className="flex justify-between font-bold text-lg items-center">
                     <span className="text-gray-900">Total</span>
-                    <span className="text-primary-600 text-2xl">{event.currency || 'AED'} {(getCurrentPrice() * quantity * 1.1).toFixed(2)}</span>
+                    <span className="text-primary-600 text-2xl">{event.currency || 'AED'} {(currentPrice * quantity * 1.1).toFixed(2)}</span>
                   </div>
                 </div>
               </div>
@@ -772,9 +848,65 @@ const EventDetailPage: React.FC = () => {
               </div>
             </CardContent>
           </Card>
+
+          {/* Affiliate Event Claim Card - Only show for unclaimed affiliate events */}
+          {event.isAffiliateEvent && event.claimStatus === 'unclaimed' && user?.role === 'vendor' && (
+            <Card variant="elevated" className="mt-6 border-2 border-orange-200 bg-gradient-to-br from-orange-50 to-yellow-50">
+              <CardHeader>
+                <CardTitle className="flex items-center text-orange-800">
+                  <svg className="w-6 h-6 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4M7.835 4.697a3.42 3.42 0 001.946-.806 3.42 3.42 0 014.438 0 3.42 3.42 0 001.946.806 3.42 3.42 0 013.138 3.138 3.42 3.42 0 00.806 1.946 3.42 3.42 0 010 4.438 3.42 3.42 0 00-.806 1.946 3.42 3.42 0 01-3.138 3.138 3.42 3.42 0 00-1.946.806 3.42 3.42 0 01-4.438 0 3.42 3.42 0 00-1.946-.806 3.42 3.42 0 01-3.138-3.138 3.42 3.42 0 00-.806-1.946 3.42 3.42 0 010-4.438 3.42 3.42 0 00.806-1.946 3.42 3.42 0 013.138-3.138z" />
+                  </svg>
+                  Claim This Event
+                </CardTitle>
+              </CardHeader>
+              <CardContent className="space-y-4">
+                <p className="text-sm text-gray-700">
+                  This is an unclaimed affiliate event. As a verified vendor, you can claim this event and manage it under your account.
+                </p>
+                <div className="bg-white rounded-lg p-3 space-y-2 text-sm">
+                  <div className="flex items-start">
+                    <svg className="w-5 h-5 text-green-500 mr-2 flex-shrink-0 mt-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+                    </svg>
+                    <span>Manage event details and settings</span>
+                  </div>
+                  <div className="flex items-start">
+                    <svg className="w-5 h-5 text-green-500 mr-2 flex-shrink-0 mt-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+                    </svg>
+                    <span>Track bookings and analytics</span>
+                  </div>
+                  <div className="flex items-start">
+                    <svg className="w-5 h-5 text-green-500 mr-2 flex-shrink-0 mt-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+                    </svg>
+                    <span>Become the official event provider</span>
+                  </div>
+                </div>
+                <button
+                  onClick={handleClaimEvent}
+                  disabled={isClaimingEvent}
+                  className="w-full py-3 bg-gradient-to-r from-orange-500 to-yellow-500 hover:from-orange-600 hover:to-yellow-600 text-white font-bold rounded-xl shadow-lg hover:shadow-xl transition-all duration-300 transform hover:-translate-y-0.5 disabled:opacity-50 disabled:cursor-not-allowed disabled:transform-none"
+                >
+                  {isClaimingEvent ? (
+                    <span className="flex items-center justify-center">
+                      <svg className="animate-spin -ml-1 mr-3 h-5 w-5 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                        <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                        <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                      </svg>
+                      Claiming...
+                    </span>
+                  ) : (
+                    '🎯 Claim This Event'
+                  )}
+                </button>
+              </CardContent>
+            </Card>
+          )}
         </div>
       </div>
-      
+
       {/* Event Image Gallery */}
       <div className="mb-12">
         <div className="relative rounded-2xl overflow-hidden shadow-2xl group">

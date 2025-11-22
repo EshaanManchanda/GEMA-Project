@@ -17,7 +17,7 @@ export const createOrUpdateRegistrationConfig = async (req: AuthRequest, res: Re
     }
 
     const { eventId } = req.params;
-    const userId = req.user?.id;
+    const userId = req.user?._id || req.user?.id;
     const userRole = req.user?.role;
     const { enabled, fields, maxRegistrations, registrationDeadline, requiresApproval, emailNotifications } = req.body;
 
@@ -107,7 +107,7 @@ export const getRegistrationConfig = async (req: AuthRequest, res: Response, nex
     }
 
     // If user is authenticated and is the vendor/admin, return full config
-    const userId = req.user?.id;
+    const userId = req.user?._id || req.user?.id;
     const userRole = req.user?.role;
     const isOwner = userId && event.vendorId.toString() === userId;
     const isAdmin = userRole === 'admin';
@@ -144,7 +144,7 @@ export const getRegistrationConfig = async (req: AuthRequest, res: Response, nex
 export const disableRegistration = async (req: AuthRequest, res: Response, next: NextFunction) => {
   try {
     const { eventId } = req.params;
-    const userId = req.user?.id;
+    const userId = req.user?._id || req.user?.id;
     const userRole = req.user?.role;
 
     const event = await Event.findById(eventId);
@@ -192,7 +192,7 @@ export const duplicateRegistrationConfig = async (req: AuthRequest, res: Respons
   try {
     const { eventId } = req.params;
     const { sourceEventId } = req.body;
-    const userId = req.user?.id;
+    const userId = req.user?._id || req.user?.id;
     const userRole = req.user?.role;
 
     // Find both events

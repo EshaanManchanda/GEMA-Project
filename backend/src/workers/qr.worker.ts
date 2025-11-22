@@ -55,9 +55,9 @@ const qrWorker = new Worker(
   },
   {
     connection: redisConnection,
-    concurrency: 10, // Process 10 QR codes concurrently
+    concurrency: 2, // OPTIMIZED for KVM1 single core: reduced from 10 to 2
     limiter: {
-      max: 100, // Max 100 jobs
+      max: 50, // Reduced from 100 for single core
       duration: 1000, // per second
     },
   }

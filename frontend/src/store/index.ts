@@ -13,6 +13,7 @@ import uiSlice from './slices/uiSlice';
 import searchSlice from './slices/searchSlice';
 import bookingsSlice from './slices/bookingsSlice';
 import vendorSlice from './slices/vendorSlice';
+import vendorPayoutSlice from './slices/vendorPayoutSlice';
 import adminSlice from './slices/adminSlice';
 // import notificationsSlice from './slices/notificationsSlice'; // Commented out - notification system disabled
 import couponsSlice from './slices/couponsSlice';
@@ -28,15 +29,16 @@ const persistConfig = {
   storage,
   // Note: auth and cart use custom persist configs below, so exclude them here
   whitelist: ['favorites', 'ui'], // Only persist these slices
-  blacklist: ['events', 'categories', 'search', 'bookings', 'vendor', 'admin', 'coupons', 'affiliates', 'payments', 'tickets', 'blog', 'registrations'], // Don't persist these (notifications removed - system disabled)
+  blacklist: ['events', 'categories', 'search', 'bookings', 'vendor', 'vendorPayout', 'admin', 'coupons', 'affiliates', 'payments', 'tickets', 'blog', 'registrations'], // Don't persist these (notifications removed - system disabled)
 };
 
 // Auth persist config (separate for sensitive data)
+// Note: Tokens are now stored in httpOnly cookies (more secure), not in Redux
 const authPersistConfig = {
   key: 'auth',
   storage,
-  whitelist: ['user', 'token', 'refreshToken', 'isAuthenticated', 'isEmailVerified'], // Only persist essential auth data
-  blacklist: ['isLoading', 'loading', 'error', 'profileError', 'isProfileLoading'], // Don't persist loading states and errors
+  whitelist: ['user', 'isAuthenticated', 'isEmailVerified'], // Only persist essential auth data (no tokens!)
+  blacklist: ['token', 'refreshToken', 'isLoading', 'loading', 'error', 'profileError', 'isProfileLoading'], // Don't persist tokens, loading states, and errors
 };
 
 // Cart persist config
@@ -58,6 +60,7 @@ const rootReducer = combineReducers({
   search: searchSlice,
   bookings: bookingsSlice,
   vendor: vendorSlice,
+  vendorPayout: vendorPayoutSlice,
   admin: adminSlice,
   // notifications: notificationsSlice, // Commented out - notification system disabled
   coupons: couponsSlice,
@@ -115,6 +118,7 @@ export * from './slices/uiSlice';
 export * from './slices/searchSlice';
 export * from './slices/bookingsSlice';
 export * from './slices/vendorSlice';
+export * from './slices/vendorPayoutSlice';
 export * from './slices/adminSlice';
 // export * from './slices/notificationsSlice'; // Commented out - notification system disabled
 export * from './slices/couponsSlice';

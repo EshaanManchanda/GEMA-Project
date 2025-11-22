@@ -5,6 +5,8 @@ import { QrCode } from 'lucide-react';
 import { AppDispatch, RootState } from '@/store';
 import { fetchBookings } from '@/store/slices/bookingsSlice';
 import QRCodeModal from '@/components/booking/QRCodeModal';
+import CancelOrderModal from '@/components/order/CancelOrderModal';
+import RefundStatusTracker from '@/components/order/RefundStatusTracker';
 
 interface Booking {
   id: string;
@@ -26,6 +28,8 @@ const BookingsPage: React.FC = () => {
   const [activeTab, setActiveTab] = useState<'upcoming' | 'past' | 'cancelled'>('upcoming');
   const [selectedBookingForQR, setSelectedBookingForQR] = useState<Booking | null>(null);
   const [isQRModalOpen, setIsQRModalOpen] = useState(false);
+  const [selectedBookingForCancel, setSelectedBookingForCancel] = useState<any | null>(null);
+  const [isCancelModalOpen, setIsCancelModalOpen] = useState(false);
 
   useEffect(() => {
     dispatch(fetchBookings({}));
@@ -211,14 +215,12 @@ const BookingsPage: React.FC = () => {
                                 </button>
                               )}
 
-                              {booking.status === 'confirmed' && (
+                              {(booking.status === 'confirmed' || booking.status === 'pending') && (
                                 <button
-                                  className="inline-flex items-center justify-center px-4 py-2 border border-gray-300 text-sm font-medium rounded-md text-gray-700 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-primary"
+                                  className="inline-flex items-center justify-center px-4 py-2 border border-red-300 text-sm font-medium rounded-md text-red-700 bg-white hover:bg-red-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-red-500"
                                   onClick={() => {
-                                    if (window.confirm('Are you sure you want to cancel this booking?')) {
-                                      console.log('Booking cancelled:', booking._id || booking.id);
-                                      // TODO: Implement cancel booking functionality with Redux
-                                    }
+                                    setSelectedBookingForCancel(booking);
+                                    setIsCancelModalOpen(true);
                                   }}
                                 >
                                   Cancel Booking
@@ -235,6 +237,13 @@ const BookingsPage: React.FC = () => {
                               )}
                             </div>
                           </div>
+
+                          {/* Show refund status for cancelled/refunded bookings */}
+                          {(booking.status === 'cancelled' || booking.status === 'refunded' || booking.refundStatus) && (
+                            <div className="mt-4 pt-4 border-t border-gray-200">
+                              <RefundStatusTracker orderId={booking._id || booking.id} />
+                            </div>
+                          )}
                         </div>
                       </div>
                     </div>
@@ -263,6 +272,29 @@ const BookingsPage: React.FC = () => {
             }}
             size={300}
             title={`Booking QR Code - ${selectedBookingForQR.eventTitle}`}
+          />
+        )}
+
+        {/* Cancel Order Modal */}
+        {selectedBookingForCancel && (
+          <CancelOrderModal
+            isOpen={isCancelModalOpen}
+            onClose={() => {
+              setIsCancelModalOpen(false);
+              setSelectedBookingForCancel(null);
+            }}
+            orderId={selectedBookingForCancel._id || selectedBookingForCancel.id}
+            orderNumber={selectedBookingForCancel.orderNumber || selectedBookingForCancel._id}
+            eventTitle={selectedBookingForCancel.items?.[0]?.eventId?.title || 'Event'}
+            eventDate={selectedBookingForCancel.items?.[0]?.scheduleDate || new Date()}
+            totalAmount={selectedBookingForCancel.total || 0}
+            subtotal={selectedBookingForCancel.subtotal || 0}
+            serviceFee={selectedBookingForCancel.serviceFee || 0}
+            tax={selectedBookingForCancel.tax || 0}
+            currency={selectedBookingForCancel.currency?.toUpperCase() || 'AED'}
+            onSuccess={() => {
+              dispatch(fetchBookings({})); // Refresh bookings after cancellation
+            }}
           />
         )}
       </div>

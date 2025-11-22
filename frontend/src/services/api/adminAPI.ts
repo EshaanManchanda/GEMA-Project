@@ -19,6 +19,15 @@ const adminAPI = {
     }
   },
 
+  getTopPerformers: async () => {
+    try {
+      const response = await ApiService.get('/admin/dashboard/top-performers');
+      return response;
+    } catch (error) {
+      throw error;
+    }
+  },
+
   // User management
   getAllUsers: async (params?: any) => {
     try {
@@ -377,8 +386,8 @@ const adminAPI = {
 
   getVendorsList: async () => {
     try {
-      const response = await ApiService.get('/admin/users', {
-        params: { role: 'vendor', limit: 100 }
+      const response = await ApiService.get('/admin/vendors/list', {
+        params: { limit: 100 }
       });
       return response;
     } catch (error) {

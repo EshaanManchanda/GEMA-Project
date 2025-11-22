@@ -320,9 +320,11 @@ const EventEditModal: React.FC<EventEditModalProps> = ({ event, isOpen, onClose,
           {activeTab === 'basic' && (
             <div className="space-y-4">
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">Title *</label>
+                <label htmlFor="edit-event-title" className="block text-sm font-medium text-gray-700 mb-2">Title *</label>
                 <input
                   type="text"
+                  id="edit-event-title"
+                  name="title"
                   value={formData.title}
                   onChange={(e) => handleInputChange('title', e.target.value)}
                   className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
@@ -331,8 +333,10 @@ const EventEditModal: React.FC<EventEditModalProps> = ({ event, isOpen, onClose,
               </div>
 
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">Description *</label>
+                <label htmlFor="edit-event-description" className="block text-sm font-medium text-gray-700 mb-2">Description *</label>
                 <textarea
+                  id="edit-event-description"
+                  name="description"
                   value={formData.description}
                   onChange={(e) => handleInputChange('description', e.target.value)}
                   className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
@@ -343,8 +347,10 @@ const EventEditModal: React.FC<EventEditModalProps> = ({ event, isOpen, onClose,
 
               <div className="grid grid-cols-2 gap-4">
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">Category *</label>
+                  <label htmlFor="edit-event-category" className="block text-sm font-medium text-gray-700 mb-2">Category *</label>
                   <select
+                    id="edit-event-category"
+                    name="category"
                     value={formData.category}
                     onChange={(e) => handleInputChange('category', e.target.value)}
                     className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
@@ -415,9 +421,11 @@ const EventEditModal: React.FC<EventEditModalProps> = ({ event, isOpen, onClose,
               </div>
 
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">Tags (comma-separated)</label>
+                <label htmlFor="edit-event-tags" className="block text-sm font-medium text-gray-700 mb-2">Tags (comma-separated)</label>
                 <input
                   type="text"
+                  id="edit-event-tags"
+                  name="tags"
                   value={formData.tags.join(', ')}
                   onChange={(e) => handleTagsChange(e.target.value)}
                   className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
@@ -426,8 +434,10 @@ const EventEditModal: React.FC<EventEditModalProps> = ({ event, isOpen, onClose,
               </div>
 
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">Images (comma-separated URLs)</label>
+                <label htmlFor="edit-event-images" className="block text-sm font-medium text-gray-700 mb-2">Images (comma-separated URLs)</label>
                 <textarea
+                  id="edit-event-images"
+                  name="images"
                   value={formData.images.join(', ')}
                   onChange={(e) => handleImageChange(e.target.value)}
                   className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
@@ -443,9 +453,11 @@ const EventEditModal: React.FC<EventEditModalProps> = ({ event, isOpen, onClose,
             <div className="space-y-4">
               <div className="grid grid-cols-2 gap-4">
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">City *</label>
+                  <label htmlFor="edit-event-city" className="block text-sm font-medium text-gray-700 mb-2">City *</label>
                   <input
                     type="text"
+                    id="edit-event-city"
+                    name="city"
                     value={formData.location.city}
                     onChange={(e) => handleLocationChange('city', e.target.value)}
                     className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
@@ -453,8 +465,10 @@ const EventEditModal: React.FC<EventEditModalProps> = ({ event, isOpen, onClose,
                 </div>
 
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">Currency *</label>
+                  <label htmlFor="edit-event-currency" className="block text-sm font-medium text-gray-700 mb-2">Currency *</label>
                   <select
+                    id="edit-event-currency"
+                    name="currency"
                     value={formData.currency}
                     onChange={(e) => handleInputChange('currency', e.target.value)}
                     className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"

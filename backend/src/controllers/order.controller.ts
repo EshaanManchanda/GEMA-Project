@@ -1,6 +1,7 @@
 import { Request, Response, NextFunction } from 'express';
 import { validationResult } from 'express-validator';
 import { Order, Event, Ticket, User } from '../models';
+import AdminRevenueSettings from '../models/AdminRevenueSettings';
 import { AppError } from '../middleware';
 import { AuthRequest } from '../types';
 import { emailService } from '../services/email.service';
@@ -15,7 +16,7 @@ export const createOrder = async (req: AuthRequest, res: Response, next: NextFun
       return next(new AppError('Validation failed', 400, errors.array()));
     }
 
-    const userId = req.user?.id;
+    const userId = req.user?._id || req.user?.id;
     if (!userId) {
       return next(new AppError('User not authenticated', 401));
     }
@@ -26,12 +27,22 @@ export const createOrder = async (req: AuthRequest, res: Response, next: NextFun
     const processedItems = [];
     let subtotal = 0;
 
+    // Extract all unique event IDs (Fix N+1 query - fetch all events in one query)
+    const eventIds = [...new Set(items.map((item: any) => item.eventId))];
+
+    // Fetch all events in a single query instead of one per item
+    const events = await Event.find({
+      _id: { $in: eventIds },
+      isApproved: true,
+      isDeleted: false,
+    });
+
+    // Create a map for quick event lookup by ID
+    const eventMap = new Map(events.map(event => [event._id.toString(), event]));
+
+    // Process each item using the pre-fetched events
     for (const item of items) {
-      const event = await Event.findOne({
-        _id: item.eventId,
-        isApproved: true,
-        isDeleted: false,
-      });
+      const event = eventMap.get(item.eventId.toString());
 
       if (!event) {
         return next(new AppError(`Event ${item.eventId} not found or not available`, 404));
@@ -73,9 +84,14 @@ export const createOrder = async (req: AuthRequest, res: Response, next: NextFun
       // Implement coupon logic here
     }
 
-    // Calculate tax (implement based on business requirements)
-    const taxRate = 0.05; // 5% tax
-    const tax = subtotal * taxRate;
+    // Get fee rates from AdminRevenueSettings
+    const adminSettings = await AdminRevenueSettings.findOne({});
+    const serviceFeeRate = adminSettings?.defaultCommissionRate || 5;
+    const taxRate = adminSettings?.taxSettings?.vatRate || 5;
+
+    // Calculate fees
+    const serviceFee = subtotal * (serviceFeeRate / 100);
+    const tax = (subtotal + serviceFee) * (taxRate / 100);
 
     // Create order
     const orderData = {
@@ -83,6 +99,9 @@ export const createOrder = async (req: AuthRequest, res: Response, next: NextFun
       items: processedItems,
       subtotal,
       tax,
+      serviceFee,
+      serviceFeeRate,
+      taxRate,
       discount: 0,
       couponDiscount,
       currency: processedItems[0].currency, // Assuming all items have same currency
@@ -109,7 +128,7 @@ export const createOrder = async (req: AuthRequest, res: Response, next: NextFun
 // @access  Private (Customer only)
 export const getUserOrders = async (req: AuthRequest, res: Response, next: NextFunction) => {
   try {
-    const userId = req.user?.id;
+    const userId = req.user?._id || req.user?.id;
     const {
       page = 1,
       limit = 10,
@@ -168,7 +187,7 @@ export const getUserOrders = async (req: AuthRequest, res: Response, next: NextF
 export const getOrder = async (req: AuthRequest, res: Response, next: NextFunction) => {
   try {
     const { id } = req.params;
-    const userId = req.user?.id;
+    const userId = req.user?._id || req.user?.id;
 
     const order = await Order.findOne({
       _id: id,
@@ -195,7 +214,7 @@ export const getOrder = async (req: AuthRequest, res: Response, next: NextFuncti
 export const cancelOrder = async (req: AuthRequest, res: Response, next: NextFunction) => {
   try {
     const { id } = req.params;
-    const userId = req.user?.id;
+    const userId = req.user?._id || req.user?.id;
     const { reason } = req.body;
 
     const order = await Order.findOne({
@@ -207,19 +226,26 @@ export const cancelOrder = async (req: AuthRequest, res: Response, next: NextFun
       return next(new AppError('Order not found', 404));
     }
 
-    if (order.status !== 'pending') {
-      return next(new AppError('Only pending orders can be cancelled', 400));
+    // Check if order can be cancelled using the model method
+    const cancelCheck = order.canBeCancelledByCustomer();
+    if (!cancelCheck.canCancel) {
+      return next(new AppError(cancelCheck.reason || 'Order cannot be cancelled', 400));
     }
 
     // Return seats to events
     for (const item of order.items) {
       const event = await Event.findById(item.eventId);
       if (event) {
-        const schedule = event.dateSchedule.find(
-          (s: any) => s.date.toDateString() === item.scheduleDate.toDateString()
-        );
-        if (schedule) {
-          schedule.availableSeats += item.quantity;
+        const schedule = event.dateSchedule.find((s: any) => {
+          const scheduleDate = s.startDate || s.date;
+          if (!scheduleDate || !item.scheduleDate) return false;
+          return new Date(scheduleDate).toDateString() === new Date(item.scheduleDate).toDateString();
+        });
+        if (schedule && !schedule.unlimitedSeats) {
+          schedule.availableSeats = (schedule.availableSeats || 0) + item.quantity;
+          if (schedule.soldSeats !== undefined) {
+            schedule.soldSeats = Math.max(0, schedule.soldSeats - item.quantity);
+          }
           await event.save();
         }
       }
@@ -243,7 +269,7 @@ export const cancelOrder = async (req: AuthRequest, res: Response, next: NextFun
 export const processPayment = async (req: AuthRequest, res: Response, next: NextFunction) => {
   try {
     const { id } = req.params;
-    const userId = req.user?.id;
+    const userId = req.user?._id || req.user?.id;
     const { paymentMethod, paymentIntentId } = req.body;
 
     const order = await Order.findOne({
@@ -489,7 +515,7 @@ export const getOrderAnalytics = async (req: AuthRequest, res: Response, next: N
 // @access  Private (Vendor only)
 export const getVendorOrders = async (req: AuthRequest, res: Response, next: NextFunction) => {
   try {
-    const vendorId = req.user?.id;
+    const vendorId = req.user?._id || req.user?.id;
     const {
       page = 1,
       limit = 10,

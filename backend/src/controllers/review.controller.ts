@@ -15,7 +15,7 @@ export const createReview = async (req: AuthRequest, res: Response, next: NextFu
       return next(new AppError('Validation failed', 400, errors.array()));
     }
 
-    const userId = req.user?.id;
+    const userId = req.user?._id || req.user?.id;
     if (!userId) {
       return next(new AppError('User not authenticated', 401));
     }
@@ -221,7 +221,7 @@ export const getReviews = async (req: Request, res: Response, next: NextFunction
 // @access  Private
 export const getUserReviews = async (req: AuthRequest, res: Response, next: NextFunction) => {
   try {
-    const userId = req.user?.id;
+    const userId = req.user?._id || req.user?.id;
     const {
       page = 1,
       limit = 10,
@@ -284,7 +284,7 @@ export const updateReview = async (req: AuthRequest, res: Response, next: NextFu
     }
 
     const { id } = req.params;
-    const userId = req.user?.id;
+    const userId = req.user?._id || req.user?.id;
 
     const review = await Review.findOne({
       _id: id,
@@ -332,7 +332,7 @@ export const updateReview = async (req: AuthRequest, res: Response, next: NextFu
 export const deleteReview = async (req: AuthRequest, res: Response, next: NextFunction) => {
   try {
     const { id } = req.params;
-    const userId = req.user?.id;
+    const userId = req.user?._id || req.user?.id;
 
     const review = await Review.findOne({
       _id: id,
@@ -367,7 +367,7 @@ export const voteReview = async (req: AuthRequest, res: Response, next: NextFunc
   try {
     const { id } = req.params;
     const { helpful } = req.body;
-    const userId = req.user?.id;
+    const userId = req.user?._id || req.user?.id;
 
     if (typeof helpful !== 'boolean') {
       return next(new AppError('helpful must be a boolean value', 400));
@@ -411,7 +411,7 @@ export const flagReview = async (req: AuthRequest, res: Response, next: NextFunc
   try {
     const { id } = req.params;
     const { reason, description } = req.body;
-    const userId = req.user?.id;
+    const userId = req.user?._id || req.user?.id;
 
     if (!Object.values(FlagReason).includes(reason)) {
       return next(new AppError('Invalid flag reason', 400));
@@ -457,7 +457,7 @@ export const respondToReview = async (req: AuthRequest, res: Response, next: Nex
   try {
     const { id } = req.params;
     const { message } = req.body;
-    const userId = req.user?.id;
+    const userId = req.user?._id || req.user?.id;
 
     if (!message || message.trim().length === 0) {
       return next(new AppError('Response message is required', 400));
@@ -572,7 +572,7 @@ export const moderateReview = async (req: AuthRequest, res: Response, next: Next
   try {
     const { id } = req.params;
     const { status, notes } = req.body;
-    const moderatorId = req.user?.id;
+    const moderatorId = req.user?._id || req.user?.id;
 
     if (!Object.values(ReviewStatus).includes(status)) {
       return next(new AppError('Invalid review status', 400));

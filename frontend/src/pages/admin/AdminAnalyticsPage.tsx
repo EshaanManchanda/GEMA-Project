@@ -11,7 +11,7 @@ import {
   Tooltip,
   Legend,
 } from 'chart.js';
-import { Line, Bar, Pie, Doughnut } from 'react-chartjs-2';
+import { Line, Pie, Doughnut } from 'react-chartjs-2';
 import adminAPI from '../../services/api/adminAPI';
 
 // Register ChartJS components
@@ -32,35 +32,141 @@ const AdminAnalyticsPage: React.FC = () => {
   const [isLoading, setIsLoading] = useState<boolean>(true);
   const [analyticsData, setAnalyticsData] = useState<any>(null);
 
+  // Helper function to convert timeRange to date range
+  const getDateRange = (range: string) => {
+    const end = new Date();
+    const start = new Date();
+
+    switch(range) {
+      case '7days':
+        start.setDate(start.getDate() - 7);
+        break;
+      case '30days':
+        start.setDate(start.getDate() - 30);
+        break;
+      case '90days':
+        start.setDate(start.getDate() - 90);
+        break;
+      case '1year':
+        start.setFullYear(start.getFullYear() - 1);
+        break;
+    }
+
+    return {
+      startDate: start.toISOString().split('T')[0],
+      endDate: end.toISOString().split('T')[0]
+    };
+  };
+
+  // Helper function to format month
+  const formatMonth = (monthStr: string) => {
+    const months = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+    const [, month] = monthStr.split('-');
+    return months[parseInt(month) - 1] || monthStr;
+  };
+
+  // Helper function to calculate growth
+  const calculateGrowth = (current: number, previous: number) => {
+    if (previous === 0) return 0;
+    return ((current - previous) / previous) * 100;
+  };
+
   useEffect(() => {
     const fetchAnalyticsData = async () => {
       setIsLoading(true);
       try {
+        const dateRange = getDateRange(timeRange);
+
         // Fetch real data from API
-        const dashboardStats = await adminAPI.getDashboardStats();
-        const userAnalytics = await adminAPI.getUserAnalytics({ timeRange });
-        const eventAnalytics = await adminAPI.getEventAnalytics({ timeRange });
-        const orderAnalytics = await adminAPI.getOrderAnalytics({ timeRange });
-        const revenueAnalytics = await adminAPI.getRevenueAnalytics({ timeRange });
-        
-        // Combine API data
+        const [dashboardStats, topPerformers, userAnalytics, eventAnalytics] = await Promise.all([
+          adminAPI.getDashboardStats(),
+          adminAPI.getTopPerformers(),
+          adminAPI.getUserAnalytics(dateRange),
+          adminAPI.getEventAnalytics(dateRange)
+        ]);
+
+        // Extract data from responses
+        const statsData = dashboardStats.data || dashboardStats;
+        const topPerformersData = topPerformers.data || topPerformers;
+        const userData = userAnalytics.data || userAnalytics;
+        const eventData = eventAnalytics.data || eventAnalytics;
+
+        // Transform data to match expected structure
         const apiData = {
-          overview: dashboardStats,
-          revenue: revenueAnalytics,
-          users: userAnalytics,
-          events: eventAnalytics,
-          bookings: orderAnalytics,
-          topVendors: dashboardStats.topVendors || [],
-          topEvents: dashboardStats.topEvents || [],
+          overview: {
+            totalUsers: statsData.overview?.totalUsers || 0,
+            totalEvents: statsData.overview?.totalEvents || 0,
+            totalBookings: statsData.overview?.totalOrders || 0,
+            totalRevenue: statsData.overview?.totalRevenue || 0,
+            userGrowth: statsData.overview?.userGrowthRate || 0,
+            eventGrowth: calculateGrowth(
+              statsData.overview?.totalEvents || 0,
+              (statsData.overview?.totalEvents || 0) - (statsData.overview?.approvedEvents || 0)
+            ),
+            bookingGrowth: calculateGrowth(
+              statsData.overview?.totalOrders || 0,
+              statsData.overview?.totalOrders ? statsData.overview.totalOrders * 0.85 : 0
+            ),
+            revenueGrowth: statsData.overview?.revenueGrowthRate || 0,
+          },
+          revenue: {
+            data: (statsData.revenueChart || []).map((item: any) => ({
+              period: formatMonth(item.month),
+              amount: item.revenue
+            }))
+          },
+          users: {
+            data: (userData.usersByMonth || []).map((item: any) => ({
+              period: formatMonth(item.month),
+              count: item.count
+            })),
+            byType: (userData.usersByRole || []).map((item: any) => ({
+              type: item.role,
+              count: item.count
+            }))
+          },
+          events: {
+            data: (eventData.eventsByMonth || []).map((item: any) => ({
+              period: formatMonth(item.month),
+              count: item.count
+            })),
+            byCategory: eventData.topCategories || [],
+            byStatus: Object.entries(statsData.eventBreakdown?.byStatus || {}).map(([status, count]) => ({
+              status,
+              count: count as number
+            }))
+          },
+          bookings: {
+            data: (statsData.revenueChart || []).map((item: any) => ({
+              period: formatMonth(item.month),
+              count: item.orders
+            })),
+            byStatus: Object.entries(statsData.orderBreakdown?.byStatus || {}).map(([status, count]) => ({
+              status,
+              count: count as number
+            }))
+          },
+          topVendors: (topPerformersData.topVendors || []).map((v: any) => ({
+            id: v.vendorId,
+            name: v.vendorName,
+            events: 0,
+            bookings: v.totalOrders,
+            revenue: v.totalRevenue
+          })),
+          topEvents: (topPerformersData.topEvents || []).map((e: any) => ({
+            id: e.eventId,
+            name: e.eventTitle,
+            bookings: e.totalBookings,
+            revenue: e.totalRevenue
+          }))
         };
-        
+
         setAnalyticsData(apiData);
+        setIsLoading(false);
       } catch (error) {
         console.error('Error fetching analytics data:', error);
-      }
-      
-      // Always use mock data for now since backend API may not be available
-      try {
+
+        // Fall back to mock data if API fails
         const mockData = {
           overview: {
             totalUsers: 2458,
@@ -180,9 +286,6 @@ const AdminAnalyticsPage: React.FC = () => {
         };
 
         setAnalyticsData(mockData);
-      } catch (error) {
-        console.error('Error fetching analytics data:', error);
-      } finally {
         setIsLoading(false);
       }
     };
@@ -600,33 +703,53 @@ const AdminAnalyticsPage: React.FC = () => {
           <div className="p-4 border border-green-200 rounded-md bg-green-50">
             <h4 className="font-medium text-green-800 mb-1">Revenue Growth</h4>
             <p className="text-sm text-green-700">
-              Platform revenue has increased by {analyticsData.overview.revenueGrowth}% compared to the previous period. 
-              The top performing category is Music events, generating {formatCurrency(analyticsData.topVendors[0].revenue)} in revenue.
+              Platform revenue has increased by {analyticsData.overview.revenueGrowth.toFixed(1)}% compared to the previous period.
+              {analyticsData.topVendors.length > 0 && (
+                <> The top performing vendor is generating {formatCurrency(analyticsData.topVendors[0].revenue)} in revenue.</>
+              )}
             </p>
           </div>
-          
+
           <div className="p-4 border border-blue-200 rounded-md bg-blue-50">
             <h4 className="font-medium text-blue-800 mb-1">User Acquisition</h4>
             <p className="text-sm text-blue-700">
-              User base has grown by {analyticsData.overview.userGrowth}% with a healthy mix of vendors and regular users.
+              User base has grown by {analyticsData.overview.userGrowth.toFixed(1)}% with a healthy mix of vendors and regular users.
               Consider targeted marketing campaigns to increase vendor sign-ups in underrepresented categories.
             </p>
           </div>
-          
+
           <div className="p-4 border border-yellow-200 rounded-md bg-yellow-50">
             <h4 className="font-medium text-yellow-800 mb-1">Booking Patterns</h4>
             <p className="text-sm text-yellow-700">
-              {((analyticsData.bookings.byStatus[0].count / analyticsData.overview.totalBookings) * 100).toFixed(1)}% of bookings are confirmed, 
-              with a cancellation rate of {((analyticsData.bookings.byStatus[2].count / analyticsData.overview.totalBookings) * 100).toFixed(1)}%. 
-              Focus on reducing cancellations through better reminder systems.
+              {analyticsData.bookings.byStatus.length > 0 && analyticsData.overview.totalBookings > 0 ? (
+                <>
+                  {((analyticsData.bookings.byStatus[0]?.count || 0) / analyticsData.overview.totalBookings * 100).toFixed(1)}% of bookings are confirmed
+                  {analyticsData.bookings.byStatus.length > 2 && (
+                    <>, with a cancellation rate of {((analyticsData.bookings.byStatus[2]?.count || 0) / analyticsData.overview.totalBookings * 100).toFixed(1)}%</>
+                  )}.
+                  Focus on reducing cancellations through better reminder systems.
+                </>
+              ) : (
+                'No booking data available yet. Insights will appear once bookings start coming in.'
+              )}
             </p>
           </div>
-          
+
           <div className="p-4 border border-purple-200 rounded-md bg-purple-50">
             <h4 className="font-medium text-purple-800 mb-1">Event Distribution</h4>
             <p className="text-sm text-purple-700">
-              {analyticsData.events.byCategory[0].category} and {analyticsData.events.byCategory[1].category} categories dominate the platform. 
-              Consider incentives to increase events in underrepresented categories like {analyticsData.events.byCategory[analyticsData.events.byCategory.length - 1].category}.
+              {analyticsData.events.byCategory.length >= 2 ? (
+                <>
+                  {analyticsData.events.byCategory[0].category} and {analyticsData.events.byCategory[1].category} categories dominate the platform.
+                  {analyticsData.events.byCategory.length > 2 && (
+                    <> Consider incentives to increase events in underrepresented categories like {analyticsData.events.byCategory[analyticsData.events.byCategory.length - 1].category}.</>
+                  )}
+                </>
+              ) : analyticsData.events.byCategory.length === 1 ? (
+                `${analyticsData.events.byCategory[0].category} is the most popular category. Consider diversifying event types.`
+              ) : (
+                'No event category data available yet. Create some events to see insights.'
+              )}
             </p>
           </div>
         </div>

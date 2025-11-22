@@ -18,7 +18,7 @@ export const submitRegistration = async (req: AuthRequest, res: Response, next: 
       return next(new AppError('Validation failed', 400, errors.array()));
     }
 
-    const userId = req.user?.id;
+    const userId = req.user?._id || req.user?.id;
     if (!userId) {
       return next(new AppError('User not authenticated', 401));
     }
@@ -179,7 +179,7 @@ export const confirmRegistrationPayment = async (req: AuthRequest, res: Response
   try {
     const { id } = req.params;
     const { paymentIntentId } = req.body;
-    const userId = req.user?.id;
+    const userId = req.user?._id || req.user?.id;
 
     const registration = await Registration.findOne({ _id: id, userId }).populate('eventId', 'title registrationConfig');
     if (!registration) {
@@ -235,7 +235,7 @@ export const confirmRegistrationPayment = async (req: AuthRequest, res: Response
 export const getRegistrationById = async (req: AuthRequest, res: Response, next: NextFunction) => {
   try {
     const { id } = req.params;
-    const userId = req.user?.id;
+    const userId = req.user?._id || req.user?.id;
     const userRole = req.user?.role;
 
     const registration = await Registration.findById(id)
@@ -273,7 +273,7 @@ export const getRegistrationById = async (req: AuthRequest, res: Response, next:
 // @access  Private
 export const getUserRegistrations = async (req: AuthRequest, res: Response, next: NextFunction) => {
   try {
-    const userId = req.user?.id;
+    const userId = req.user?._id || req.user?.id;
     const { page = 1, limit = 10, status } = req.query;
 
     const pageNum = parseInt(page as string);
@@ -317,7 +317,7 @@ export const getUserRegistrations = async (req: AuthRequest, res: Response, next
 export const getEventRegistrations = async (req: AuthRequest, res: Response, next: NextFunction) => {
   try {
     const { eventId } = req.params;
-    const userId = req.user?.id;
+    const userId = req.user?._id || req.user?.id;
     const userRole = req.user?.role;
     const { page = 1, limit = 20, status, search } = req.query;
 
@@ -390,7 +390,7 @@ export const getEventRegistrations = async (req: AuthRequest, res: Response, nex
 export const updateRegistration = async (req: AuthRequest, res: Response, next: NextFunction) => {
   try {
     const { id } = req.params;
-    const userId = req.user?.id;
+    const userId = req.user?._id || req.user?.id;
     const { registrationData } = req.body;
 
     const registration = await Registration.findOne({ _id: id, userId });
@@ -450,7 +450,7 @@ export const updateRegistration = async (req: AuthRequest, res: Response, next: 
 export const withdrawRegistration = async (req: AuthRequest, res: Response, next: NextFunction) => {
   try {
     const { id } = req.params;
-    const userId = req.user?.id;
+    const userId = req.user?._id || req.user?.id;
     const { reason } = req.body;
 
     const registration = await Registration.findOne({ _id: id, userId });
@@ -498,7 +498,7 @@ export const withdrawRegistration = async (req: AuthRequest, res: Response, next
 export const reviewRegistration = async (req: AuthRequest, res: Response, next: NextFunction) => {
   try {
     const { id } = req.params;
-    const userId = req.user?.id;
+    const userId = req.user?._id || req.user?.id;
     const userRole = req.user?.role;
     const { status, remarks } = req.body;
 
@@ -556,7 +556,7 @@ export const reviewRegistration = async (req: AuthRequest, res: Response, next: 
 export const downloadRegistrationFile = async (req: AuthRequest, res: Response, next: NextFunction) => {
   try {
     const { id, fileId } = req.params;
-    const userId = req.user?.id;
+    const userId = req.user?._id || req.user?.id;
     const userRole = req.user?.role;
 
     const registration = await Registration.findById(id).populate('eventId');

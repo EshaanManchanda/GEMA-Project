@@ -53,42 +53,6 @@ export interface ITwoFactorAuth {
   backupCodes?: string[];
 }
 
-export interface IBusinessHours {
-  [key: string]: {
-    isOpen: boolean;
-    openTime?: string;
-    closeTime?: string;
-  };
-}
-
-export interface ISocialMedia {
-  facebook?: string;
-  instagram?: string;
-  twitter?: string;
-  linkedin?: string;
-  youtube?: string;
-  website?: string;
-}
-
-export interface IVendorPaymentSettings {
-  stripeAccountId?: string;
-  stripePublishableKey?: string; // pk_live_... or pk_test_... (safe for frontend)
-  stripeSecretKey?: string; // sk_live_... or sk_test_... (NEVER send to frontend)
-  stripeApiKey?: string; // Legacy field, same as stripeSecretKey
-  hasCustomStripeAccount: boolean;
-  acceptsPlatformPayments: boolean;
-  commissionRate?: number;
-  payoutSchedule?: 'daily' | 'weekly' | 'monthly';
-  minimumPayout?: number;
-  bankAccountDetails?: {
-    accountHolderName?: string;
-    bankName?: string;
-    accountNumber?: string;
-    routingNumber?: string;
-    iban?: string;
-    swiftCode?: string;
-  };
-}
 
 export interface IPasswordReset {
   token: string;
@@ -125,6 +89,34 @@ export interface IPreferences {
   notifications: INotificationPreferences;
 }
 
+export interface ISocialMedia {
+  facebook?: string;
+  instagram?: string;
+  twitter?: string;
+  linkedin?: string;
+  website?: string;
+}
+
+export interface IVendorPaymentSettings {
+  hasCustomStripeAccount?: boolean;
+  stripeAccountId?: string;
+  stripePublishableKey?: string;
+  stripeSecretKey?: string;
+  subscriptionActive?: boolean;
+  preferredPayoutMethod?: 'bank_transfer' | 'stripe' | 'paypal';
+  minimumPayout?: number;
+  payoutSchedule?: 'daily' | 'weekly' | 'monthly';
+  bankAccountDetails?: {
+    accountHolderName?: string;
+    bankName?: string;
+    accountNumber?: string;
+    routingNumber?: string;
+    iban?: string;
+    swiftCode?: string;
+    isVerified?: boolean;
+  };
+}
+
 // User Document Interface
 export interface IUser extends Document {
   _id: mongoose.Types.ObjectId;
@@ -149,11 +141,10 @@ export interface IUser extends Document {
   loginAttempts?: ILoginAttempt[];
   lastLogin?: Date;
   firebaseUid?: string;
-  businessHours?: IBusinessHours;
-  socialMedia?: ISocialMedia;
-  vendorPaymentSettings?: IVendorPaymentSettings;
   favoriteEvents?: mongoose.Types.ObjectId[];
   preferences?: IPreferences;
+  socialMedia?: ISocialMedia;
+  vendorPaymentSettings?: IVendorPaymentSettings;
   createdAt: Date;
   updatedAt: Date;
 
@@ -351,66 +342,6 @@ const UserSchema = new Schema<IUser>(
       type: String,
       sparse: true
     },
-    businessHours: {
-      type: Object,
-      default: {}
-    },
-    socialMedia: {
-      type: Object,
-      default: {}
-    },
-    vendorPaymentSettings: {
-      stripeAccountId: {
-        type: String,
-        sparse: true
-      },
-      stripePublishableKey: {
-        type: String,
-        sparse: true
-        // This is safe to expose to frontend
-      },
-      stripeSecretKey: {
-        type: String,
-        sparse: true,
-        select: false // NEVER send to frontend
-      },
-      stripeApiKey: {
-        type: String,
-        sparse: true,
-        select: false // Legacy field, don't include in queries by default for security
-      },
-      hasCustomStripeAccount: {
-        type: Boolean,
-        default: false
-      },
-      acceptsPlatformPayments: {
-        type: Boolean,
-        default: true
-      },
-      commissionRate: {
-        type: Number,
-        min: 0,
-        max: 100,
-        default: 5 // 5% default commission
-      },
-      payoutSchedule: {
-        type: String,
-        enum: ['daily', 'weekly', 'monthly'],
-        default: 'weekly'
-      },
-      minimumPayout: {
-        type: Number,
-        default: 50 // Minimum AED 50 for payout
-      },
-      bankAccountDetails: {
-        accountHolderName: String,
-        bankName: String,
-        accountNumber: String,
-        routingNumber: String,
-        iban: String,
-        swiftCode: String
-      }
-    },
     favoriteEvents: [{
       type: mongoose.Schema.Types.ObjectId,
       ref: 'Event'
@@ -442,6 +373,38 @@ const UserSchema = new Schema<IUser>(
           default: true
         }
       }
+    },
+    socialMedia: {
+      facebook: String,
+      instagram: String,
+      twitter: String,
+      linkedin: String,
+      website: String
+    },
+    vendorPaymentSettings: {
+      hasCustomStripeAccount: Boolean,
+      stripeAccountId: String,
+      stripePublishableKey: String,
+      stripeSecretKey: String,
+      subscriptionActive: Boolean,
+      preferredPayoutMethod: {
+        type: String,
+        enum: ['bank_transfer', 'stripe', 'paypal']
+      },
+      minimumPayout: Number,
+      payoutSchedule: {
+        type: String,
+        enum: ['daily', 'weekly', 'monthly']
+      },
+      bankAccountDetails: {
+        accountHolderName: String,
+        bankName: String,
+        accountNumber: String,
+        routingNumber: String,
+        iban: String,
+        swiftCode: String,
+        isVerified: Boolean
+      }
     }
   },
   {
@@ -452,6 +415,12 @@ const UserSchema = new Schema<IUser>(
 // Indexes
 UserSchema.index({ email: 1 });
 UserSchema.index({ 'socialLogins.provider': 1, 'socialLogins.providerId': 1 });
+
+// Additional indexes for KVM1 optimization - faster admin dashboard queries
+UserSchema.index({ role: 1, status: 1 }); // Admin user filtering by role and status
+UserSchema.index({ status: 1, createdAt: -1 }); // Recent active users
+UserSchema.index({ role: 1, isEmailVerified: 1 }); // Verified users by role
+UserSchema.index({ createdAt: -1 }); // Recent signups (most common query)
 
 // Virtual for full name
 UserSchema.virtual('fullName').get(function(this: IUser) {

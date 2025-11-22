@@ -56,18 +56,20 @@ const NewsletterSubscription: React.FC = () => {
 
   return (
     <div className="col-span-1">
-      <h3 className="font-semibold mb-4" style={{ color: 'var(--primary-color)' }}>
+      <h3 className="font-semibold mb-4 text-gray-900">
         Newsletter
       </h3>
-      <p className="text-gray-600 text-sm mb-4">
+      <p className="text-gray-700 text-sm mb-4">
         Subscribe to our newsletter for updates on new activities and promotions.
       </p>
-      
+
       <form onSubmit={handleSubscribe} className="space-y-3">
         <div className="flex flex-col sm:flex-row gap-2">
           <div className="flex-grow relative">
             <input
               type="email"
+              id="newsletter-email"
+              name="newsletter-email"
               value={email}
               onChange={(e) => setEmail(e.target.value)}
               placeholder="Enter your email"
@@ -76,12 +78,12 @@ const NewsletterSubscription: React.FC = () => {
             />
             <FaEnvelope className="absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-4 h-4" />
           </div>
-          
+
           <button
             type="submit"
             disabled={isSubscribing || isSubscribed}
             className="px-6 py-2 rounded-lg text-white text-sm font-medium transition-all duration-200 flex items-center justify-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed min-w-[120px]"
-            style={{ 
+            style={{
               backgroundColor: isSubscribed ? '#10B981' : 'var(--accent-color)',
               ':hover': { backgroundColor: isSubscribed ? '#059669' : undefined }
             }}
@@ -101,9 +103,9 @@ const NewsletterSubscription: React.FC = () => {
             )}
           </button>
         </div>
-        
-        <p className="text-xs text-gray-500">
-          By subscribing, you agree to receive marketing emails from us. 
+
+        <p className="text-xs text-gray-700">
+          By subscribing, you agree to receive marketing emails from us.
           You can unsubscribe at any time.
         </p>
       </form>

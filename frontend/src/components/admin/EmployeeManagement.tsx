@@ -557,6 +557,8 @@ const EmployeeManagement: React.FC<EmployeeManagementProps> = ({
                 <FaSearch className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400" size={14} />
                 <input
                   type="text"
+                  id="employee-search"
+                  name="employeeSearch"
                   placeholder="Search employees..."
                   value={filters.search}
                   onChange={(e) => setFilters(prev => ({ ...prev, search: e.target.value }))}
@@ -565,6 +567,8 @@ const EmployeeManagement: React.FC<EmployeeManagementProps> = ({
               </div>
 
               <select
+                id="filter-role"
+                name="filterRole"
                 value={filters.role}
                 onChange={(e) => setFilters(prev => ({ ...prev, role: e.target.value as EmployeeFilters['role'] }))}
                 className="px-3 py-2 border border-gray-300 rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
@@ -845,17 +849,21 @@ const EmployeeManagement: React.FC<EmployeeManagementProps> = ({
           <div className="space-y-4">
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">First Name</label>
+                <label htmlFor="employee-first-name" className="block text-sm font-medium text-gray-700 mb-1">First Name</label>
                 <input
                   type="text"
+                  id="employee-first-name"
+                  name="firstName"
                   className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
                   placeholder="Enter first name"
                 />
               </div>
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">Last Name</label>
+                <label htmlFor="employee-last-name" className="block text-sm font-medium text-gray-700 mb-1">Last Name</label>
                 <input
                   type="text"
+                  id="employee-last-name"
+                  name="lastName"
                   className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
                   placeholder="Enter last name"
                 />

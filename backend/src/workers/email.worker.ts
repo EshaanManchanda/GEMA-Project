@@ -1,10 +1,14 @@
-import { Worker, Job } from 'bullmq';
-import { QUEUE_NAMES, redisConnection } from '../config/queue';
+import { Worker, Job, Queue } from 'bullmq';
+import { QUEUE_NAMES, redisConnection, emailQueue as configEmailQueue } from '../config/queue';
 import logger from '../config/logger';
 import { emailService } from '../services/email.service';
 
+// Re-export the email queue for use by other modules
+export const emailQueue = configEmailQueue;
+
 export interface EmailJobData {
-  type: 'verification' | 'passwordReset' | 'orderConfirmation' | 'ticket' | 'generic';
+  type: 'verification' | 'passwordReset' | 'orderConfirmation' | 'ticket' | 'generic' |
+        'cancellationConfirmation' | 'eventCancellation' | 'refundProcessed' | 'refundFailed';
   to: string | string[];
   subject?: string;
   html?: string;
@@ -68,6 +72,57 @@ const emailWorker = new Worker(
           });
           break;
 
+        case 'cancellationConfirmation':
+          result = await emailService.sendCancellationConfirmationEmail({
+            to: data.to as string,
+            firstName: data.templateData.firstName,
+            orderNumber: data.templateData.orderNumber,
+            refundAmount: data.templateData.refundAmount,
+            nonRefundableAmount: data.templateData.nonRefundableAmount,
+            serviceFee: data.templateData.serviceFee,
+            tax: data.templateData.tax,
+            currency: data.templateData.currency,
+            reason: data.templateData.reason,
+          });
+          break;
+
+        case 'eventCancellation':
+          result = await emailService.sendEventCancellationEmail({
+            to: data.to as string,
+            firstName: data.templateData.firstName,
+            eventTitle: data.templateData.eventTitle,
+            eventDate: data.templateData.eventDate,
+            orderNumber: data.templateData.orderNumber,
+            reason: data.templateData.reason,
+            refundAmount: data.templateData.refundAmount,
+            nonRefundableAmount: data.templateData.nonRefundableAmount,
+            currency: data.templateData.currency,
+            serviceFee: data.templateData.serviceFee,
+            tax: data.templateData.tax,
+          });
+          break;
+
+        case 'refundProcessed':
+          result = await emailService.sendRefundProcessedEmail({
+            to: data.to as string,
+            firstName: data.templateData.firstName,
+            orderNumber: data.templateData.orderNumber,
+            refundAmount: data.templateData.refundAmount,
+            currency: data.templateData.currency,
+            refundTransactionId: data.templateData.refundTransactionId,
+          });
+          break;
+
+        case 'refundFailed':
+          result = await emailService.sendRefundFailedEmail({
+            to: data.to as string,
+            firstName: data.templateData.firstName,
+            orderNumber: data.templateData.orderNumber,
+            refundAmount: data.templateData.refundAmount,
+            currency: data.templateData.currency,
+          });
+          break;
+
         case 'generic':
         default:
           result = await emailService.sendEmail({
@@ -94,10 +149,10 @@ const emailWorker = new Worker(
   },
   {
     connection: redisConnection,
-    concurrency: 5, // Process 5 emails concurrently (be careful with email provider limits)
+    concurrency: 2, // OPTIMIZED for KVM1 single core: reduced from 5 to 2
     limiter: {
-      max: 50, // Max 50 emails
-      duration: 60000, // per minute (respect email provider limits)
+      max: 30, // Reduced from 50 for single core (respects email provider limits)
+      duration: 60000, // per minute
     },
   }
 );

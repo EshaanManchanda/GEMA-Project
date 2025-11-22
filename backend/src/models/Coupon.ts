@@ -36,8 +36,16 @@ export interface ICoupon extends Document {
   isActive: boolean;
   status: CouponStatus;
   applicableEvents: mongoose.Types.ObjectId[];
-  applicableCategories: string[];
+  applicableCategories: mongoose.Types.ObjectId[];
   excludedEvents: mongoose.Types.ObjectId[];
+  excludedCategories: mongoose.Types.ObjectId[];
+  applicableVendors: mongoose.Types.ObjectId[];
+  excludedVendors: mongoose.Types.ObjectId[];
+  applicableEventTypes: string[];
+  priceRange?: {
+    min?: number;
+    max?: number;
+  };
   firstTimeOnly: boolean;
   createdBy: mongoose.Types.ObjectId;
   usage: ICouponUsage[];
@@ -46,7 +54,7 @@ export interface ICoupon extends Document {
 
   // Methods
   isValidForUser(userId: mongoose.Types.ObjectId): Promise<boolean>;
-  isValidForOrder(orderAmount: number, eventIds: mongoose.Types.ObjectId[]): boolean;
+  isValidForOrder(orderAmount: number, eventIds: mongoose.Types.ObjectId[], events?: any[]): boolean;
   calculateDiscount(orderAmount: number): number;
   canBeUsed(): boolean;
   incrementUsage(userId: mongoose.Types.ObjectId, orderId: mongoose.Types.ObjectId, discountAmount: number): Promise<void>;
@@ -179,13 +187,49 @@ const couponSchema = new Schema<ICoupon>(
       ref: 'Event',
     }],
     applicableCategories: [{
-      type: String,
-      trim: true,
+      type: Schema.Types.ObjectId,
+      ref: 'Category',
     }],
     excludedEvents: [{
       type: Schema.Types.ObjectId,
       ref: 'Event',
     }],
+    excludedCategories: [{
+      type: Schema.Types.ObjectId,
+      ref: 'Category',
+    }],
+    applicableVendors: [{
+      type: Schema.Types.ObjectId,
+      ref: 'User',
+    }],
+    excludedVendors: [{
+      type: Schema.Types.ObjectId,
+      ref: 'User',
+    }],
+    applicableEventTypes: [{
+      type: String,
+      enum: ['Olympiad', 'Championship', 'Competition', 'Event', 'Course', 'Venue'],
+      trim: true,
+    }],
+    priceRange: {
+      min: {
+        type: Number,
+        min: [0, 'Minimum price cannot be negative'],
+      },
+      max: {
+        type: Number,
+        min: [0, 'Maximum price cannot be negative'],
+        validate: {
+          validator: function(this: ICoupon, v: number) {
+            if (this.priceRange?.min && v) {
+              return v >= this.priceRange.min;
+            }
+            return true;
+          },
+          message: 'Maximum price must be greater than or equal to minimum price',
+        },
+      },
+    },
     firstTimeOnly: {
       type: Boolean,
       default: false,
@@ -214,6 +258,11 @@ couponSchema.index({ status: 1, isActive: 1 });
 couponSchema.index({ validFrom: 1, validUntil: 1 });
 couponSchema.index({ createdBy: 1 });
 couponSchema.index({ 'usage.userId': 1 });
+couponSchema.index({ applicableCategories: 1 });
+couponSchema.index({ excludedCategories: 1 });
+couponSchema.index({ applicableVendors: 1 });
+couponSchema.index({ excludedVendors: 1 });
+couponSchema.index({ applicableEventTypes: 1 });
 
 // Pre-save middleware to update status
 couponSchema.pre('save', function (next) {
@@ -270,7 +319,7 @@ couponSchema.methods.isValidForUser = async function (userId: mongoose.Types.Obj
 };
 
 // Method to check if coupon is valid for order
-couponSchema.methods.isValidForOrder = function (orderAmount: number, eventIds: mongoose.Types.ObjectId[]): boolean {
+couponSchema.methods.isValidForOrder = function (orderAmount: number, eventIds: mongoose.Types.ObjectId[], events: any[] = []): boolean {
   // Check minimum amount
   if (this.minimumAmount && orderAmount < this.minimumAmount) {
     return false;
@@ -278,7 +327,7 @@ couponSchema.methods.isValidForOrder = function (orderAmount: number, eventIds: 
 
   // Check applicable events (if specified)
   if (this.applicableEvents.length > 0) {
-    const hasApplicableEvent = eventIds.some(eventId => 
+    const hasApplicableEvent = eventIds.some(eventId =>
       this.applicableEvents.some(applicableId => applicableId.toString() === eventId.toString())
     );
     if (!hasApplicableEvent) {
@@ -288,11 +337,88 @@ couponSchema.methods.isValidForOrder = function (orderAmount: number, eventIds: 
 
   // Check excluded events
   if (this.excludedEvents.length > 0) {
-    const hasExcludedEvent = eventIds.some(eventId => 
+    const hasExcludedEvent = eventIds.some(eventId =>
       this.excludedEvents.some(excludedId => excludedId.toString() === eventId.toString())
     );
     if (hasExcludedEvent) {
       return false;
+    }
+  }
+
+  // If events data is provided, check additional restrictions
+  if (events && events.length > 0) {
+    // Check applicable categories
+    if (this.applicableCategories.length > 0) {
+      const hasApplicableCategory = events.some(event =>
+        this.applicableCategories.some(catId =>
+          event.category?.toString() === catId.toString() || event.category?._id?.toString() === catId.toString()
+        )
+      );
+      if (!hasApplicableCategory) {
+        return false;
+      }
+    }
+
+    // Check excluded categories
+    if (this.excludedCategories.length > 0) {
+      const hasExcludedCategory = events.some(event =>
+        this.excludedCategories.some(catId =>
+          event.category?.toString() === catId.toString() || event.category?._id?.toString() === catId.toString()
+        )
+      );
+      if (hasExcludedCategory) {
+        return false;
+      }
+    }
+
+    // Check applicable vendors
+    if (this.applicableVendors.length > 0) {
+      const hasApplicableVendor = events.some(event =>
+        this.applicableVendors.some(vendorId =>
+          event.vendorId?.toString() === vendorId.toString()
+        )
+      );
+      if (!hasApplicableVendor) {
+        return false;
+      }
+    }
+
+    // Check excluded vendors
+    if (this.excludedVendors.length > 0) {
+      const hasExcludedVendor = events.some(event =>
+        this.excludedVendors.some(vendorId =>
+          event.vendorId?.toString() === vendorId.toString()
+        )
+      );
+      if (hasExcludedVendor) {
+        return false;
+      }
+    }
+
+    // Check applicable event types
+    if (this.applicableEventTypes.length > 0) {
+      const hasApplicableType = events.some(event =>
+        this.applicableEventTypes.includes(event.type)
+      );
+      if (!hasApplicableType) {
+        return false;
+      }
+    }
+
+    // Check price range
+    if (this.priceRange) {
+      if (this.priceRange.min !== undefined) {
+        const hasMinPrice = events.every(event => event.price >= this.priceRange.min);
+        if (!hasMinPrice) {
+          return false;
+        }
+      }
+      if (this.priceRange.max !== undefined) {
+        const hasMaxPrice = events.every(event => event.price <= this.priceRange.max);
+        if (!hasMaxPrice) {
+          return false;
+        }
+      }
     }
   }
 

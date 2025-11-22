@@ -142,18 +142,18 @@ export const authAPI = {
     }
   },
 
-  updateAddress: async (addressId: string, address: Partial<Address>): Promise<Address> => {
+  updateAddress: async (addressIndex: number, address: Partial<Address>): Promise<Address> => {
     try {
-      const response = await ApiService.put(`/auth/addresses/${addressId}`, address);
+      const response = await ApiService.put(`/auth/addresses/${addressIndex}`, address);
       return response.data;
     } catch (error) {
       throw error;
     }
   },
 
-  deleteAddress: async (addressId: string): Promise<{ success: boolean }> => {
+  deleteAddress: async (addressIndex: number): Promise<{ success: boolean }> => {
     try {
-      const response = await ApiService.delete(`/auth/addresses/${addressId}`);
+      const response = await ApiService.delete(`/auth/addresses/${addressIndex}`);
       return response.data;
     } catch (error) {
       throw error;
@@ -277,9 +277,10 @@ export const authAPI = {
       throw error;
     }
   },
-  refreshToken: async (refreshToken: string): Promise<AuthResponse> => {
+  // Refresh token is now sent via httpOnly cookie automatically
+  refreshToken: async (): Promise<AuthResponse> => {
     try {
-      const response = await ApiService.post('/auth/refresh-token', { refreshToken });
+      const response = await ApiService.post('/auth/refresh-token');
       return response.data;
     } catch (error) {
       throw error;

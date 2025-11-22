@@ -1,6 +1,7 @@
 import { Request, Response, NextFunction } from 'express';
 import { validationResult } from 'express-validator';
 import { PaymentService } from '../services/payment.service';
+import CommissionService from '../services/commission.service';
 import { Order, User } from '../models';
 import { AppError } from '../middleware';
 import { AuthRequest } from '../types';
@@ -16,7 +17,7 @@ export const createPaymentIntent = async (req: AuthRequest, res: Response, next:
       return next(new AppError('Validation failed', 400, errors.array()));
     }
 
-    const userId = req.user?.id;
+    const userId = req.user?._id || req.user?.id;
     const { orderId } = req.body;
 
     if (!userId) {
@@ -90,7 +91,7 @@ export const confirmPayment = async (req: AuthRequest, res: Response, next: Next
       return next(new AppError('Validation failed', 400, errors.array()));
     }
 
-    const userId = req.user?.id;
+    const userId = req.user?._id || req.user?.id;
     const { paymentIntentId, paymentMethodId } = req.body;
 
     if (!userId) {
@@ -118,6 +119,15 @@ export const confirmPayment = async (req: AuthRequest, res: Response, next: Next
       // Payment successful - this will also be handled by webhook
       await order.markAsPaid(paymentIntentId, 'stripe');
       await order.confirm(); // This will automatically generate tickets
+
+      // Calculate commission for this order
+      try {
+        await CommissionService.calculateCommissionForOrder(order._id.toString());
+        console.log(`✅ Commission calculated for order ${order._id}`);
+      } catch (commissionError) {
+        console.error(`⚠️  Failed to calculate commission for order ${order._id}:`, commissionError);
+        // Continue anyway - don't fail the payment confirmation
+      }
 
       res.status(200).json({
         success: true,
@@ -162,7 +172,7 @@ export const cancelPayment = async (req: AuthRequest, res: Response, next: NextF
       return next(new AppError('Validation failed', 400, errors.array()));
     }
 
-    const userId = req.user?.id;
+    const userId = req.user?._id || req.user?.id;
     const { paymentIntentId } = req.body;
 
     if (!userId) {
@@ -249,7 +259,7 @@ export const processRefund = async (req: AuthRequest, res: Response, next: NextF
 // @access  Private (Customer only)
 export const getPaymentMethods = async (req: AuthRequest, res: Response, next: NextFunction) => {
   try {
-    const userId = req.user?.id;
+    const userId = req.user?._id || req.user?.id;
 
     if (!userId) {
       return next(new AppError('User not authenticated', 401));
@@ -289,7 +299,7 @@ export const getPaymentMethods = async (req: AuthRequest, res: Response, next: N
 export const removePaymentMethod = async (req: AuthRequest, res: Response, next: NextFunction) => {
   try {
     const { id } = req.params;
-    const userId = req.user?.id;
+    const userId = req.user?._id || req.user?.id;
 
     if (!userId) {
       return next(new AppError('User not authenticated', 401));

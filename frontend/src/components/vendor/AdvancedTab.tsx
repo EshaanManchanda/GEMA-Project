@@ -1,5 +1,5 @@
 import React from 'react';
-import { MapPin, Globe } from 'lucide-react';
+import { MapPin, Globe, Shield } from 'lucide-react';
 
 interface AdvancedTabProps {
   formData: {
@@ -7,6 +7,7 @@ interface AdvancedTabProps {
     address: string;
     latitude: string;
     longitude: string;
+    requirePhoneVerification?: boolean;
     seoMeta?: {
       title: string;
       description: string;
@@ -15,12 +16,14 @@ interface AdvancedTabProps {
   };
   errors: Record<string, string>;
   onInputChange: (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => void;
+  onCheckboxChange?: (e: React.ChangeEvent<HTMLInputElement>) => void;
 }
 
 const AdvancedTab: React.FC<AdvancedTabProps> = ({
   formData,
   errors,
   onInputChange,
+  onCheckboxChange,
 }) => {
   return (
     <div className="space-y-8">
@@ -168,6 +171,42 @@ const AdvancedTab: React.FC<AdvancedTabProps> = ({
               placeholder="e.g. kids activities, science workshop, Dubai events"
             />
             {errors.seoKeywords && <p className="mt-1 text-sm text-red-500">{errors.seoKeywords}</p>}
+          </div>
+        </div>
+      </div>
+
+      {/* Security Section */}
+      <div className="border-t pt-8">
+        <h3 className="text-lg font-semibold text-gray-900 mb-4">
+          <Shield className="inline w-5 h-5 mr-2" />
+          Security & Verification
+        </h3>
+        <div className="space-y-4">
+          <div className="bg-amber-50 border border-amber-200 rounded-lg p-4">
+            <p className="text-sm text-amber-800">
+              <strong>Note:</strong> Phone verification adds an extra layer of security for bookings. When enabled, users must verify their phone number before they can book this event.
+            </p>
+          </div>
+
+          <div className="flex items-start">
+            <div className="flex items-center h-5">
+              <input
+                type="checkbox"
+                id="requirePhoneVerification"
+                name="requirePhoneVerification"
+                checked={formData.requirePhoneVerification || false}
+                onChange={onCheckboxChange}
+                className="w-4 h-4 text-primary border-gray-300 rounded focus:ring-primary"
+              />
+            </div>
+            <div className="ml-3">
+              <label htmlFor="requirePhoneVerification" className="text-sm font-medium text-gray-700">
+                Require Phone Verification for Bookings
+              </label>
+              <p className="text-xs text-gray-500 mt-1">
+                Users will need to verify their phone number before they can book tickets for this event. This helps prevent fraud and ensures you can reach attendees if needed.
+              </p>
+            </div>
           </div>
         </div>
       </div>

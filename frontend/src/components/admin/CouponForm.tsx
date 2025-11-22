@@ -14,8 +14,7 @@ import {
   Tag,
   Settings,
   Plus,
-  Trash2,
-  AlertCircle
+  Trash2
 } from 'lucide-react';
 import Button from '../ui/Button';
 import { Card, CardContent, CardHeader, CardTitle } from '../ui/Card';
@@ -23,6 +22,8 @@ import Input from '../ui/Input';
 import Modal from '../ui/Modal';
 import Badge from '../ui/Badge';
 import couponAPI from '../../services/api/couponAPI';
+import categoriesAPI from '../../services/api/categoriesAPI';
+import adminAPI from '../../services/api/adminAPI';
 
 // Validation schema
 const couponSchema = yup.object().shape({
@@ -94,9 +95,48 @@ const CouponForm: React.FC<CouponFormProps> = ({
 }) => {
   const [selectedEvents, setSelectedEvents] = useState<string[]>([]);
   const [excludedEvents, setExcludedEvents] = useState<string[]>([]);
+  const [selectedCategories, setSelectedCategories] = useState<string[]>([]);
+  const [excludedCategories, setExcludedCategories] = useState<string[]>([]);
+  const [selectedVendors, setSelectedVendors] = useState<string[]>([]);
+  const [excludedVendors, setExcludedVendors] = useState<string[]>([]);
+  const [selectedEventTypes, setSelectedEventTypes] = useState<string[]>([]);
+  const [priceMin, setPriceMin] = useState<number | undefined>();
+  const [priceMax, setPriceMax] = useState<number | undefined>();
 
-  // Check if coupon has been used (prevents editing restricted fields)
-  const isUsedCoupon = coupon && coupon.usageCount > 0;
+  const [categories, setCategories] = useState<any[]>([]);
+  const [vendors, setVendors] = useState<any[]>([]);
+  const [categoriesLoading, setCategoriesLoading] = useState(false);
+  const [vendorsLoading, setVendorsLoading] = useState(false);
+
+  // Search states
+  const [eventSearch, setEventSearch] = useState('');
+  const [excludedEventSearch, setExcludedEventSearch] = useState('');
+  const [categorySearch, setCategorySearch] = useState('');
+  const [excludedCategorySearch, setExcludedCategorySearch] = useState('');
+  const [vendorSearch, setVendorSearch] = useState('');
+  const [excludedVendorSearch, setExcludedVendorSearch] = useState('');
+
+  // Filtered lists
+  const filteredEvents = events.filter(event =>
+    event.title?.toLowerCase().includes(eventSearch.toLowerCase())
+  );
+  const filteredExcludedEvents = events.filter(event =>
+    event.title?.toLowerCase().includes(excludedEventSearch.toLowerCase())
+  );
+  const filteredCategories = categories.filter(category =>
+    category.name?.toLowerCase().includes(categorySearch.toLowerCase())
+  );
+  const filteredExcludedCategories = categories.filter(category =>
+    category.name?.toLowerCase().includes(excludedCategorySearch.toLowerCase())
+  );
+  const filteredVendors = vendors.filter(vendor =>
+    (vendor.businessName?.toLowerCase().includes(vendorSearch.toLowerCase()) ||
+     `${vendor.firstName} ${vendor.lastName}`.toLowerCase().includes(vendorSearch.toLowerCase()))
+  );
+  const filteredExcludedVendors = vendors.filter(vendor =>
+    (vendor.businessName?.toLowerCase().includes(excludedVendorSearch.toLowerCase()) ||
+     `${vendor.firstName} ${vendor.lastName}`.toLowerCase().includes(excludedVendorSearch.toLowerCase()))
+  );
 
   const {
     control,
@@ -144,8 +184,15 @@ const CouponForm: React.FC<CouponFormProps> = ({
         userUsageLimit: coupon.userUsageLimit || 1,
         firstTimeOnly: coupon.firstTimeOnly || false
       });
-      setSelectedEvents(coupon.applicableEvents || []);
-      setExcludedEvents(coupon.excludedEvents || []);
+      setSelectedEvents(coupon.applicableEvents?.map((e: any) => e._id || e) || []);
+      setExcludedEvents(coupon.excludedEvents?.map((e: any) => e._id || e) || []);
+      setSelectedCategories(coupon.applicableCategories?.map((c: any) => c._id || c) || []);
+      setExcludedCategories(coupon.excludedCategories?.map((c: any) => c._id || c) || []);
+      setSelectedVendors(coupon.applicableVendors?.map((v: any) => v._id || v) || []);
+      setExcludedVendors(coupon.excludedVendors?.map((v: any) => v._id || v) || []);
+      setSelectedEventTypes(coupon.applicableEventTypes || []);
+      setPriceMin(coupon.priceRange?.min);
+      setPriceMax(coupon.priceRange?.max);
     } else {
       reset({
         code: '',
@@ -164,8 +211,70 @@ const CouponForm: React.FC<CouponFormProps> = ({
       });
       setSelectedEvents([]);
       setExcludedEvents([]);
+      setSelectedCategories([]);
+      setExcludedCategories([]);
+      setSelectedVendors([]);
+      setExcludedVendors([]);
+      setSelectedEventTypes([]);
+      setPriceMin(undefined);
+      setPriceMax(undefined);
     }
   }, [coupon, reset]);
+
+  // Fetch categories and vendors on mount
+  useEffect(() => {
+    const fetchData = async () => {
+      try {
+        setCategoriesLoading(true);
+        const categoriesResponse = await categoriesAPI.getAllCategories();
+        setCategories(categoriesResponse.categories || categoriesResponse || []);
+      } catch (error) {
+        console.error('Error fetching categories:', error);
+        toast.error('Failed to load categories');
+      } finally {
+        setCategoriesLoading(false);
+      }
+
+      try {
+        setVendorsLoading(true);
+
+        // Fetch all vendors with pagination (max 100 per page)
+        const allVendors: any[] = [];
+        let page = 1;
+        let hasMore = true;
+
+        while (hasMore) {
+          const vendorsResponse = await adminAPI.getAllUsers({
+            role: 'vendor',
+            limit: 100,
+            page
+          });
+
+          const vendors = vendorsResponse.data?.users || vendorsResponse.data || [];
+          allVendors.push(...vendors);
+
+          // Check if there are more pages
+          const total = vendorsResponse.data?.total || vendorsResponse.total || 0;
+          hasMore = allVendors.length < total;
+          page++;
+
+          // Safety limit to prevent infinite loops
+          if (page > 50) break;
+        }
+
+        setVendors(allVendors);
+      } catch (error) {
+        console.error('Error fetching vendors:', error);
+        toast.error('Failed to load vendors');
+      } finally {
+        setVendorsLoading(false);
+      }
+    };
+
+    if (isOpen) {
+      fetchData();
+    }
+  }, [isOpen]);
 
   const handleFormSubmit = async (data: any) => {
     try {
@@ -173,17 +282,18 @@ const CouponForm: React.FC<CouponFormProps> = ({
         ...data,
         applicableEvents: selectedEvents,
         excludedEvents: excludedEvents,
+        applicableCategories: selectedCategories,
+        excludedCategories: excludedCategories,
+        applicableVendors: selectedVendors,
+        excludedVendors: excludedVendors,
+        applicableEventTypes: selectedEventTypes,
+        priceRange: (priceMin !== undefined || priceMax !== undefined) ? {
+          min: priceMin,
+          max: priceMax
+        } : undefined,
         validFrom: new Date(data.validFrom).toISOString(),
         validUntil: new Date(data.validUntil).toISOString()
       };
-
-      // For used coupons, don't send restricted fields (code, type, value)
-      // to prevent backend validation errors
-      if (isUsedCoupon) {
-        delete submitData.code;
-        delete submitData.type;
-        delete submitData.value;
-      }
 
       await onSubmit(submitData);
       // Don't close modal here - let parent component handle it after success
@@ -243,29 +353,6 @@ const CouponForm: React.FC<CouponFormProps> = ({
       size="xl"
     >
       <form onSubmit={handleSubmit(handleFormSubmit)} className="space-y-6">
-        {/* Warning for used coupons */}
-        {isUsedCoupon && (
-          <div className="bg-yellow-50 border-l-4 border-yellow-400 p-4">
-            <div className="flex">
-              <div className="flex-shrink-0">
-                <AlertCircle className="h-5 w-5 text-yellow-400" />
-              </div>
-              <div className="ml-3">
-                <h3 className="text-sm font-medium text-yellow-800">
-                  Limited Editing - Coupon Has Been Used
-                </h3>
-                <div className="mt-2 text-sm text-yellow-700">
-                  <p>
-                    This coupon has been used {coupon?.usageCount} time{coupon?.usageCount !== 1 ? 's' : ''}.
-                    The <strong>code</strong>, <strong>type</strong>, and <strong>discount value</strong> cannot be modified to protect existing orders.
-                    You can still update other fields like dates, limits, and descriptions.
-                  </p>
-                </div>
-              </div>
-            </div>
-          </div>
-        )}
-
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
           {/* Main Content */}
           <div className="lg:col-span-2 space-y-6">
@@ -289,7 +376,6 @@ const CouponForm: React.FC<CouponFormProps> = ({
                           required
                           className="uppercase"
                           onChange={(e) => field.onChange(e.target.value.toUpperCase())}
-                          disabled={isUsedCoupon}
                         />
                       )}
                     />
@@ -300,7 +386,6 @@ const CouponForm: React.FC<CouponFormProps> = ({
                       variant="secondary"
                       size="sm"
                       onClick={generateCode}
-                      disabled={isUsedCoupon}
                     >
                       Generate
                     </Button>
@@ -370,14 +455,11 @@ const CouponForm: React.FC<CouponFormProps> = ({
                           <button
                             key={type.value}
                             type="button"
-                            onClick={() => !isUsedCoupon && field.onChange(type.value)}
-                            disabled={isUsedCoupon}
+                            onClick={() => field.onChange(type.value)}
                             className={`p-3 border rounded-lg flex flex-col items-center space-y-2 transition-colors ${
                               field.value === type.value
                                 ? 'border-blue-500 bg-blue-50 text-blue-700'
-                                : isUsedCoupon
-                                  ? 'border-gray-300 bg-gray-100 text-gray-400 cursor-not-allowed'
-                                  : 'border-gray-300 hover:border-gray-400'
+                                : 'border-gray-300 hover:border-gray-400'
                             }`}
                           >
                             {type.icon}
@@ -404,7 +486,6 @@ const CouponForm: React.FC<CouponFormProps> = ({
                         min="0"
                         max={watchedType === 'percentage' ? '100' : undefined}
                         suffix={watchedType === 'percentage' ? '%' : undefined}
-                        disabled={isUsedCoupon}
                       />
                     )}
                   />
@@ -478,54 +559,525 @@ const CouponForm: React.FC<CouponFormProps> = ({
               </CardHeader>
               <CardContent className="space-y-4">
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">
-                    Applicable Events (Leave empty for all events)
-                  </label>
-                  <div className="max-h-40 overflow-y-auto border rounded-md p-3">
-                    {events.map((event) => (
-                      <div key={event._id} className="flex items-center justify-between py-2">
-                        <span className="text-sm">{event.title}</span>
-                        <input
-                          type="checkbox"
-                          checked={selectedEvents.includes(event._id)}
-                          onChange={(e) => {
-                            if (e.target.checked) {
-                              addEvent(event._id);
-                            } else {
-                              removeEvent(event._id);
-                            }
-                          }}
-                          className="w-4 h-4 text-blue-600 border-gray-300 rounded focus:ring-blue-500"
-                        />
-                      </div>
-                    ))}
+                  <div className="flex items-center justify-between mb-2">
+                    <label className="text-sm font-medium text-gray-700">
+                      Applicable Events {selectedEvents.length > 0 && (
+                        <Badge variant="primary" className="ml-2">{selectedEvents.length} selected</Badge>
+                      )}
+                    </label>
+                    <div className="flex gap-2">
+                      <button
+                        type="button"
+                        onClick={() => setSelectedEvents(events.map(e => e._id))}
+                        className="text-xs text-blue-600 hover:text-blue-800"
+                      >
+                        Select All
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => setSelectedEvents([])}
+                        className="text-xs text-gray-600 hover:text-gray-800"
+                      >
+                        Clear
+                      </button>
+                    </div>
                   </div>
+                  <input
+                    type="text"
+                    id="event-search"
+                    name="eventSearch"
+                    placeholder="Search events..."
+                    value={eventSearch}
+                    onChange={(e) => setEventSearch(e.target.value)}
+                    className="w-full px-3 py-2 text-sm border border-gray-300 rounded-md mb-2 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  />
+                  <div className="max-h-40 overflow-y-auto border rounded-md p-3">
+                    {filteredEvents.length > 0 ? (
+                      filteredEvents.map((event) => (
+                        <div key={event._id} className="flex items-center justify-between py-2">
+                          <span className="text-sm">{event.title}</span>
+                          <input
+                            type="checkbox"
+                            checked={selectedEvents.includes(event._id)}
+                            onChange={(e) => {
+                              if (e.target.checked) {
+                                addEvent(event._id);
+                              } else {
+                                removeEvent(event._id);
+                              }
+                            }}
+                            className="w-4 h-4 text-blue-600 border-gray-300 rounded focus:ring-blue-500"
+                          />
+                        </div>
+                      ))
+                    ) : (
+                      <p className="text-sm text-gray-500 text-center py-4">
+                        {eventSearch ? 'No events match your search' : 'No events available'}
+                      </p>
+                    )}
+                  </div>
+                  <p className="text-xs text-gray-500 mt-1">Leave empty to apply to all events</p>
                 </div>
 
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">
-                    Excluded Events
-                  </label>
+                  <div className="flex items-center justify-between mb-2">
+                    <label className="text-sm font-medium text-gray-700">
+                      Excluded Events {excludedEvents.length > 0 && (
+                        <Badge variant="danger" className="ml-2">{excludedEvents.length} excluded</Badge>
+                      )}
+                    </label>
+                    <div className="flex gap-2">
+                      <button
+                        type="button"
+                        onClick={() => setExcludedEvents(events.map(e => e._id))}
+                        className="text-xs text-red-600 hover:text-red-800"
+                      >
+                        Select All
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => setExcludedEvents([])}
+                        className="text-xs text-gray-600 hover:text-gray-800"
+                      >
+                        Clear
+                      </button>
+                    </div>
+                  </div>
+                  <input
+                    type="text"
+                    id="excluded-event-search"
+                    name="excludedEventSearch"
+                    placeholder="Search events..."
+                    value={excludedEventSearch}
+                    onChange={(e) => setExcludedEventSearch(e.target.value)}
+                    className="w-full px-3 py-2 text-sm border border-gray-300 rounded-md mb-2 focus:outline-none focus:ring-2 focus:ring-red-500"
+                  />
                   <div className="max-h-40 overflow-y-auto border rounded-md p-3">
-                    {events.map((event) => (
-                      <div key={event._id} className="flex items-center justify-between py-2">
-                        <span className="text-sm">{event.title}</span>
-                        <input
-                          type="checkbox"
-                          checked={excludedEvents.includes(event._id)}
-                          onChange={(e) => {
-                            if (e.target.checked) {
-                              addEvent(event._id, true);
-                            } else {
-                              removeEvent(event._id, true);
-                            }
-                          }}
-                          className="w-4 h-4 text-red-600 border-gray-300 rounded focus:ring-red-500"
-                        />
-                      </div>
-                    ))}
+                    {filteredExcludedEvents.length > 0 ? (
+                      filteredExcludedEvents.map((event) => (
+                        <div key={event._id} className="flex items-center justify-between py-2">
+                          <span className="text-sm">{event.title}</span>
+                          <input
+                            type="checkbox"
+                            checked={excludedEvents.includes(event._id)}
+                            onChange={(e) => {
+                              if (e.target.checked) {
+                                addEvent(event._id, true);
+                              } else {
+                                removeEvent(event._id, true);
+                              }
+                            }}
+                            className="w-4 h-4 text-red-600 border-gray-300 rounded focus:ring-red-500"
+                          />
+                        </div>
+                      ))
+                    ) : (
+                      <p className="text-sm text-gray-500 text-center py-4">
+                        {excludedEventSearch ? 'No events match your search' : 'No events available'}
+                      </p>
+                    )}
                   </div>
                 </div>
+              </CardContent>
+            </Card>
+
+            {/* Category Restrictions */}
+            <Card>
+              <CardHeader>
+                <CardTitle>Category Restrictions</CardTitle>
+              </CardHeader>
+              <CardContent className="space-y-4">
+                <div>
+                  <div className="flex items-center justify-between mb-2">
+                    <label className="text-sm font-medium text-gray-700">
+                      Applicable Categories {selectedCategories.length > 0 && (
+                        <Badge variant="primary" className="ml-2">{selectedCategories.length} selected</Badge>
+                      )}
+                    </label>
+                    <div className="flex gap-2">
+                      <button
+                        type="button"
+                        onClick={() => setSelectedCategories(categories.map(c => c._id))}
+                        className="text-xs text-blue-600 hover:text-blue-800"
+                        disabled={categoriesLoading}
+                      >
+                        Select All
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => setSelectedCategories([])}
+                        className="text-xs text-gray-600 hover:text-gray-800"
+                      >
+                        Clear
+                      </button>
+                    </div>
+                  </div>
+                  {categoriesLoading ? (
+                    <div className="animate-pulse space-y-2">
+                      {[1, 2, 3].map(i => (
+                        <div key={i} className="h-8 bg-gray-200 rounded"></div>
+                      ))}
+                    </div>
+                  ) : (
+                    <>
+                      <input
+                        type="text"
+                        id="category-search"
+                        name="categorySearch"
+                        placeholder="Search categories..."
+                        value={categorySearch}
+                        onChange={(e) => setCategorySearch(e.target.value)}
+                        className="w-full px-3 py-2 text-sm border border-gray-300 rounded-md mb-2 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                      />
+                      <div className="max-h-40 overflow-y-auto border rounded-md p-3">
+                        {filteredCategories.length > 0 ? (
+                          filteredCategories.map((category) => (
+                            <div key={category._id} className="flex items-center justify-between py-2">
+                              <span className="text-sm">{category.name}</span>
+                              <input
+                                type="checkbox"
+                                checked={selectedCategories.includes(category._id)}
+                                onChange={(e) => {
+                                  if (e.target.checked) {
+                                    setSelectedCategories([...selectedCategories, category._id]);
+                                  } else {
+                                    setSelectedCategories(selectedCategories.filter(id => id !== category._id));
+                                  }
+                                }}
+                                className="w-4 h-4 text-blue-600 border-gray-300 rounded focus:ring-blue-500"
+                              />
+                            </div>
+                          ))
+                        ) : (
+                          <p className="text-sm text-gray-500 text-center py-4">
+                            {categorySearch ? 'No categories match your search' : 'No categories available'}
+                          </p>
+                        )}
+                      </div>
+                      <p className="text-xs text-gray-500 mt-1">Leave empty to apply to all categories</p>
+                    </>
+                  )}
+                </div>
+
+                <div>
+                  <div className="flex items-center justify-between mb-2">
+                    <label className="text-sm font-medium text-gray-700">
+                      Excluded Categories {excludedCategories.length > 0 && (
+                        <Badge variant="danger" className="ml-2">{excludedCategories.length} excluded</Badge>
+                      )}
+                    </label>
+                    <div className="flex gap-2">
+                      <button
+                        type="button"
+                        onClick={() => setExcludedCategories(categories.map(c => c._id))}
+                        className="text-xs text-red-600 hover:text-red-800"
+                        disabled={categoriesLoading}
+                      >
+                        Select All
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => setExcludedCategories([])}
+                        className="text-xs text-gray-600 hover:text-gray-800"
+                      >
+                        Clear
+                      </button>
+                    </div>
+                  </div>
+                  {categoriesLoading ? (
+                    <div className="animate-pulse space-y-2">
+                      {[1, 2, 3].map(i => (
+                        <div key={i} className="h-8 bg-gray-200 rounded"></div>
+                      ))}
+                    </div>
+                  ) : (
+                    <>
+                      <input
+                        type="text"
+                        id="excluded-category-search"
+                        name="excludedCategorySearch"
+                        placeholder="Search categories..."
+                        value={excludedCategorySearch}
+                        onChange={(e) => setExcludedCategorySearch(e.target.value)}
+                        className="w-full px-3 py-2 text-sm border border-gray-300 rounded-md mb-2 focus:outline-none focus:ring-2 focus:ring-red-500"
+                      />
+                      <div className="max-h-40 overflow-y-auto border rounded-md p-3">
+                        {filteredExcludedCategories.length > 0 ? (
+                          filteredExcludedCategories.map((category) => (
+                            <div key={category._id} className="flex items-center justify-between py-2">
+                              <span className="text-sm">{category.name}</span>
+                              <input
+                                type="checkbox"
+                                checked={excludedCategories.includes(category._id)}
+                                onChange={(e) => {
+                                  if (e.target.checked) {
+                                    setExcludedCategories([...excludedCategories, category._id]);
+                                  } else {
+                                    setExcludedCategories(excludedCategories.filter(id => id !== category._id));
+                                  }
+                                }}
+                                className="w-4 h-4 text-red-600 border-gray-300 rounded focus:ring-red-500"
+                              />
+                            </div>
+                          ))
+                        ) : (
+                          <p className="text-sm text-gray-500 text-center py-4">
+                            {excludedCategorySearch ? 'No categories match your search' : 'No categories available'}
+                          </p>
+                        )}
+                      </div>
+                    </>
+                  )}
+                </div>
+              </CardContent>
+            </Card>
+
+            {/* Vendor Restrictions */}
+            <Card>
+              <CardHeader>
+                <CardTitle>Vendor Restrictions</CardTitle>
+              </CardHeader>
+              <CardContent className="space-y-4">
+                <div>
+                  <div className="flex items-center justify-between mb-2">
+                    <label className="text-sm font-medium text-gray-700">
+                      Applicable Vendors {selectedVendors.length > 0 && (
+                        <Badge variant="primary" className="ml-2">{selectedVendors.length} selected</Badge>
+                      )}
+                    </label>
+                    <div className="flex gap-2">
+                      <button
+                        type="button"
+                        onClick={() => setSelectedVendors(vendors.map(v => v._id))}
+                        className="text-xs text-blue-600 hover:text-blue-800"
+                        disabled={vendorsLoading}
+                      >
+                        Select All
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => setSelectedVendors([])}
+                        className="text-xs text-gray-600 hover:text-gray-800"
+                      >
+                        Clear
+                      </button>
+                    </div>
+                  </div>
+                  {vendorsLoading ? (
+                    <div className="animate-pulse space-y-2">
+                      {[1, 2, 3].map(i => (
+                        <div key={i} className="h-8 bg-gray-200 rounded"></div>
+                      ))}
+                    </div>
+                  ) : (
+                    <>
+                      <input
+                        type="text"
+                        id="vendor-search"
+                        name="vendorSearch"
+                        placeholder="Search vendors..."
+                        value={vendorSearch}
+                        onChange={(e) => setVendorSearch(e.target.value)}
+                        className="w-full px-3 py-2 text-sm border border-gray-300 rounded-md mb-2 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                      />
+                      <div className="max-h-40 overflow-y-auto border rounded-md p-3">
+                        {filteredVendors.length > 0 ? (
+                          filteredVendors.map((vendor) => (
+                            <div key={vendor._id} className="flex items-center justify-between py-2">
+                              <span className="text-sm">
+                                {vendor.businessName || `${vendor.firstName} ${vendor.lastName}`}
+                              </span>
+                              <input
+                                type="checkbox"
+                                checked={selectedVendors.includes(vendor._id)}
+                                onChange={(e) => {
+                                  if (e.target.checked) {
+                                    setSelectedVendors([...selectedVendors, vendor._id]);
+                                  } else {
+                                    setSelectedVendors(selectedVendors.filter(id => id !== vendor._id));
+                                  }
+                                }}
+                                className="w-4 h-4 text-blue-600 border-gray-300 rounded focus:ring-blue-500"
+                              />
+                            </div>
+                          ))
+                        ) : (
+                          <p className="text-sm text-gray-500 text-center py-4">
+                            {vendorSearch ? 'No vendors match your search' : 'No vendors available'}
+                          </p>
+                        )}
+                      </div>
+                      <p className="text-xs text-gray-500 mt-1">Leave empty to apply to all vendors</p>
+                    </>
+                  )}
+                </div>
+
+                <div>
+                  <div className="flex items-center justify-between mb-2">
+                    <label className="text-sm font-medium text-gray-700">
+                      Excluded Vendors {excludedVendors.length > 0 && (
+                        <Badge variant="danger" className="ml-2">{excludedVendors.length} excluded</Badge>
+                      )}
+                    </label>
+                    <div className="flex gap-2">
+                      <button
+                        type="button"
+                        onClick={() => setExcludedVendors(vendors.map(v => v._id))}
+                        className="text-xs text-red-600 hover:text-red-800"
+                        disabled={vendorsLoading}
+                      >
+                        Select All
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => setExcludedVendors([])}
+                        className="text-xs text-gray-600 hover:text-gray-800"
+                      >
+                        Clear
+                      </button>
+                    </div>
+                  </div>
+                  {vendorsLoading ? (
+                    <div className="animate-pulse space-y-2">
+                      {[1, 2, 3].map(i => (
+                        <div key={i} className="h-8 bg-gray-200 rounded"></div>
+                      ))}
+                    </div>
+                  ) : (
+                    <>
+                      <input
+                        type="text"
+                        id="excluded-vendor-search"
+                        name="excludedVendorSearch"
+                        placeholder="Search vendors..."
+                        value={excludedVendorSearch}
+                        onChange={(e) => setExcludedVendorSearch(e.target.value)}
+                        className="w-full px-3 py-2 text-sm border border-gray-300 rounded-md mb-2 focus:outline-none focus:ring-2 focus:ring-red-500"
+                      />
+                      <div className="max-h-40 overflow-y-auto border rounded-md p-3">
+                        {filteredExcludedVendors.length > 0 ? (
+                          filteredExcludedVendors.map((vendor) => (
+                            <div key={vendor._id} className="flex items-center justify-between py-2">
+                              <span className="text-sm">
+                                {vendor.businessName || `${vendor.firstName} ${vendor.lastName}`}
+                              </span>
+                              <input
+                                type="checkbox"
+                                checked={excludedVendors.includes(vendor._id)}
+                                onChange={(e) => {
+                                  if (e.target.checked) {
+                                    setExcludedVendors([...excludedVendors, vendor._id]);
+                                  } else {
+                                    setExcludedVendors(excludedVendors.filter(id => id !== vendor._id));
+                                  }
+                                }}
+                                className="w-4 h-4 text-red-600 border-gray-300 rounded focus:ring-red-500"
+                              />
+                            </div>
+                          ))
+                        ) : (
+                          <p className="text-sm text-gray-500 text-center py-4">
+                            {excludedVendorSearch ? 'No vendors match your search' : 'No vendors available'}
+                          </p>
+                        )}
+                      </div>
+                    </>
+                  )}
+                </div>
+              </CardContent>
+            </Card>
+
+            {/* Event Type Restrictions */}
+            <Card>
+              <CardHeader>
+                <CardTitle>Event Type Restrictions</CardTitle>
+              </CardHeader>
+              <CardContent>
+                <div className="flex items-center justify-between mb-3">
+                  <label className="text-sm font-medium text-gray-700">
+                    Applicable Event Types {selectedEventTypes.length > 0 && (
+                      <Badge variant="primary" className="ml-2">{selectedEventTypes.length} selected</Badge>
+                    )}
+                  </label>
+                  <div className="flex gap-2">
+                    <button
+                      type="button"
+                      onClick={() => setSelectedEventTypes(['Olympiad', 'Championship', 'Competition', 'Event', 'Course', 'Venue'])}
+                      className="text-xs text-blue-600 hover:text-blue-800"
+                    >
+                      Select All
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setSelectedEventTypes([])}
+                      className="text-xs text-gray-600 hover:text-gray-800"
+                    >
+                      Clear
+                    </button>
+                  </div>
+                </div>
+                <div className="grid grid-cols-2 gap-3">
+                  {['Olympiad', 'Championship', 'Competition', 'Event', 'Course', 'Venue'].map((type) => (
+                    <label key={type} className="flex items-center space-x-2 cursor-pointer p-2 border rounded hover:bg-gray-50 transition-colors">
+                      <input
+                        type="checkbox"
+                        checked={selectedEventTypes.includes(type)}
+                        onChange={(e) => {
+                          if (e.target.checked) {
+                            setSelectedEventTypes([...selectedEventTypes, type]);
+                          } else {
+                            setSelectedEventTypes(selectedEventTypes.filter(t => t !== type));
+                          }
+                        }}
+                        className="w-4 h-4 text-blue-600 border-gray-300 rounded focus:ring-blue-500"
+                      />
+                      <span className="text-sm text-gray-700">{type}</span>
+                    </label>
+                  ))}
+                </div>
+                <p className="text-xs text-gray-500 mt-2">Leave empty to apply to all event types</p>
+              </CardContent>
+            </Card>
+
+            {/* Price Range Restrictions */}
+            <Card>
+              <CardHeader>
+                <CardTitle>Price Range Restrictions</CardTitle>
+              </CardHeader>
+              <CardContent>
+                <div className="grid grid-cols-2 gap-4">
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-2">
+                      Minimum Price (AED)
+                    </label>
+                    <input
+                      type="number"
+                      value={priceMin ?? ''}
+                      onChange={(e) => setPriceMin(e.target.value ? parseFloat(e.target.value) : undefined)}
+                      placeholder="0"
+                      min="0"
+                      step="0.01"
+                      className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-2">
+                      Maximum Price (AED)
+                    </label>
+                    <input
+                      type="number"
+                      value={priceMax ?? ''}
+                      onChange={(e) => setPriceMax(e.target.value ? parseFloat(e.target.value) : undefined)}
+                      placeholder="No limit"
+                      min="0"
+                      step="0.01"
+                      className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                    />
+                  </div>
+                </div>
+                <p className="text-xs text-gray-500 mt-2">
+                  Coupon will only apply to events within this price range
+                </p>
               </CardContent>
             </Card>
           </div>

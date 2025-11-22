@@ -6,13 +6,31 @@ import {
   AdvertisingCampaign, VendorSubscription, CheckinLog
 } from '../models';
 import { AppError } from '../middleware';
+import { cacheService } from '../services/cache.service';
 
 /**
  * Get comprehensive dashboard statistics
+ *
+ * OPTIMIZATION: Aggressive caching (5 minutes TTL) to handle 40+ parallel database queries
+ * Critical for KVM1 single-core performance
  */
 export const getDashboardStats = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
   try {
     const { startDate, endDate, period = 'month' } = req.query;
+
+    // Generate cache key based on query parameters
+    const cacheKey = `admin:dashboard:stats:${startDate || 'default'}:${endDate || 'default'}:${period}`;
+
+    // Try to get cached data first (HUGE performance improvement!)
+    const cached = await cacheService.get(cacheKey);
+    if (cached) {
+      res.status(200).json({
+        success: true,
+        cached: true,
+        data: cached
+      });
+      return;
+    }
 
     // Calculate date range
     let dateFilter: any = {};
@@ -45,6 +63,8 @@ export const getDashboardStats = async (req: Request, res: Response, next: NextF
       pendingEvents,
       rejectedEvents,
       totalOrders,
+      newOrders,
+      previousPeriodOrders,
       paidOrders,
       pendingOrders,
       cancelledOrders,
@@ -74,6 +94,9 @@ export const getDashboardStats = async (req: Request, res: Response, next: NextF
       totalAffiliates,
       activeCoupons,
       totalRevenueTransactions,
+      totalEventViews,
+      recentOrders,
+      topEventsByRevenue,
       
       // Performance metrics
       conversionRateData,
@@ -113,6 +136,8 @@ export const getDashboardStats = async (req: Request, res: Response, next: NextF
       Event.countDocuments({ status: 'pending', isDeleted: false }),
       Event.countDocuments({ status: 'rejected', isDeleted: false }),
       Order.countDocuments(),
+      Order.countDocuments(dateFilter),
+      Order.countDocuments(previousPeriodFilter),
       Order.countDocuments({ paymentStatus: 'paid' }),
       Order.countDocuments({ paymentStatus: 'pending' }),
       Order.countDocuments({ status: 'cancelled' }),
@@ -193,6 +218,53 @@ export const getDashboardStats = async (req: Request, res: Response, next: NextF
       Affiliate.countDocuments(),
       Coupon.countDocuments({ isActive: true }),
       RevenueTransaction.countDocuments(),
+
+      // Event views aggregation
+      Event.aggregate([
+        { $match: { isDeleted: false } },
+        { $group: { _id: null, totalViews: { $sum: '$viewsCount' } } },
+      ]),
+
+      // Recent orders with user details
+      Order.find()
+        .sort({ createdAt: -1 })
+        .limit(10)
+        .populate('userId', 'firstName lastName email')
+        .select('orderNumber total paymentStatus status createdAt userId')
+        .lean(),
+
+      // Top events by revenue
+      Order.aggregate([
+        { $match: { paymentStatus: 'paid' } },
+        { $unwind: '$items' },
+        {
+          $group: {
+            _id: '$items.eventId',
+            totalRevenue: { $sum: { $multiply: ['$items.price', '$items.quantity'] } },
+            totalBookings: { $sum: '$items.quantity' },
+          },
+        },
+        {
+          $lookup: {
+            from: 'events',
+            localField: '_id',
+            foreignField: '_id',
+            as: 'event',
+          },
+        },
+        { $unwind: '$event' },
+        {
+          $project: {
+            eventId: '$_id',
+            eventTitle: '$event.title',
+            eventType: '$event.type',
+            totalRevenue: 1,
+            totalBookings: 1,
+          },
+        },
+        { $sort: { totalRevenue: -1 } },
+        { $limit: 10 },
+      ]),
       
       // Performance metrics
       Order.aggregate([
@@ -278,12 +350,16 @@ export const getDashboardStats = async (req: Request, res: Response, next: NextF
     ]);
 
     // Calculate growth percentages
-    const userGrowthRate = previousPeriodUsers > 0 
-      ? ((newUsers - previousPeriodUsers) / previousPeriodUsers) * 100 
+    const userGrowthRate = previousPeriodUsers > 0
+      ? ((newUsers - previousPeriodUsers) / previousPeriodUsers) * 100
       : 0;
-    
-    const revenueGrowthRate = previousPeriodRevenue[0]?.total > 0 
-      ? ((totalRevenue[0]?.total - previousPeriodRevenue[0]?.total) / previousPeriodRevenue[0]?.total) * 100 
+
+    const revenueGrowthRate = previousPeriodRevenue[0]?.total > 0
+      ? ((totalRevenue[0]?.total - previousPeriodRevenue[0]?.total) / previousPeriodRevenue[0]?.total) * 100
+      : 0;
+
+    const ordersGrowthRate = previousPeriodOrders > 0
+      ? ((newOrders - previousPeriodOrders) / previousPeriodOrders) * 100
       : 0;
 
     // Calculate additional metrics
@@ -305,6 +381,9 @@ export const getDashboardStats = async (req: Request, res: Response, next: NextF
         rejectedEvents,
         eventApprovalRate: Math.round(eventApprovalRate * 100) / 100,
         totalOrders,
+        newOrders,
+        previousPeriodOrders,
+        ordersGrowthRate: Math.round(ordersGrowthRate * 100) / 100,
         paidOrders,
         pendingOrders,
         cancelledOrders,
@@ -313,6 +392,7 @@ export const getDashboardStats = async (req: Request, res: Response, next: NextF
         revenueGrowthRate: Math.round(revenueGrowthRate * 100) / 100,
         totalReviews,
         averageRating: Math.round((avgRating[0]?.avgRating || 0) * 100) / 100,
+        totalEventViews: totalEventViews[0]?.totalViews || 0,
         conversionRate: Math.round(conversionRate * 100) / 100,
         averageOrderValue: Math.round(averageOrderValue * 100) / 100,
         customerRetentionRate: Math.round(customerRetentionRate * 100) / 100,
@@ -395,6 +475,25 @@ export const getDashboardStats = async (req: Request, res: Response, next: NextF
         activeCoupons,
         totalRevenueTransactions,
       },
+
+      recentOrders: recentOrders.map((order: any) => ({
+        orderId: order._id,
+        orderNumber: order.orderNumber,
+        customerName: order.userId ? `${order.userId.firstName || ''} ${order.userId.lastName || ''}`.trim() : 'Guest',
+        customerEmail: order.userId?.email || 'N/A',
+        total: order.total,
+        status: order.status,
+        paymentStatus: order.paymentStatus,
+        createdAt: order.createdAt,
+      })),
+
+      topEvents: topEventsByRevenue.map((item: any) => ({
+        eventId: item.eventId,
+        eventTitle: item.eventTitle,
+        eventType: item.eventType,
+        totalBookings: item.totalBookings,
+        totalRevenue: item.totalRevenue,
+      })),
       
       revenueChart: revenueByMonth.map((item: any) => ({
         month: `${item._id.year}-${String(item._id.month).padStart(2, '0')}`,
@@ -417,9 +516,14 @@ export const getDashboardStats = async (req: Request, res: Response, next: NextF
       },
     };
 
+    // Cache the result for 5 minutes (300 seconds)
+    // This dramatically reduces load - 40+ queries cached!
+    await cacheService.set(cacheKey, dashboardStats, { ttl: 300 });
+
     res.status(200).json({
       success: true,
       message: 'Dashboard statistics retrieved successfully',
+      cached: false,
       data: dashboardStats,
     });
   } catch (error) {
@@ -429,6 +533,9 @@ export const getDashboardStats = async (req: Request, res: Response, next: NextF
 
 /**
  * Get recent activity logs
+ *
+ * OPTIMIZATION: Caching (2 minutes TTL) for recent activity
+ * Reduces 9+ parallel queries per request
  */
 export const getRecentActivity = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
   try {
@@ -436,6 +543,20 @@ export const getRecentActivity = async (req: Request, res: Response, next: NextF
     const pageNum = parseInt(page as string, 10);
     const limitNum = parseInt(limit as string, 10);
     const skip = (pageNum - 1) * limitNum;
+
+    // Generate cache key based on query parameters
+    const cacheKey = `admin:activity:${page}:${limit}:${type || 'all'}`;
+
+    // Try to get cached data first
+    const cached = await cacheService.get(cacheKey);
+    if (cached) {
+      res.status(200).json({
+        success: true,
+        cached: true,
+        data: cached
+      });
+      return;
+    }
 
     // Get recent activities from multiple sources
     const [
@@ -710,19 +831,26 @@ export const getRecentActivity = async (req: Request, res: Response, next: NextF
       }, {}),
     };
 
+    const responseData = {
+      activities: paginatedActivities,
+      summary: activitySummary,
+      pagination: {
+        page: pageNum,
+        limit: limitNum,
+        total: filteredActivities.length,
+        pages: Math.ceil(filteredActivities.length / limitNum),
+      },
+    };
+
+    // Cache the result for 2 minutes (120 seconds)
+    // Short TTL since activity data changes frequently
+    await cacheService.set(cacheKey, responseData, { ttl: 120 });
+
     res.status(200).json({
       success: true,
       message: 'Recent activity retrieved successfully',
-      data: {
-        activities: paginatedActivities,
-        summary: activitySummary,
-        pagination: {
-          page: pageNum,
-          limit: limitNum,
-          total: filteredActivities.length,
-          pages: Math.ceil(filteredActivities.length / limitNum),
-        },
-      },
+      cached: false,
+      data: responseData,
     });
   } catch (error) {
     next(error);
@@ -870,10 +998,30 @@ export const getTopPerformers = async (req: Request, res: Response, next: NextFu
 /**
  * Get comprehensive analytics and insights
  */
+/**
+ * Get advanced analytics
+ *
+ * OPTIMIZATION: Aggressive caching (15 minutes TTL) due to 40+ complex aggregations
+ * Critical for KVM1 single-core performance
+ */
 export const getAnalytics = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
   try {
     const { period = '30d', metric } = req.query;
-    
+
+    // Generate cache key based on query parameters
+    const cacheKey = `admin:analytics:${period}:${metric || 'all'}`;
+
+    // Try to get cached data first (CRITICAL for performance!)
+    const cached = await cacheService.get(cacheKey);
+    if (cached) {
+      res.status(200).json({
+        success: true,
+        cached: true,
+        data: cached
+      });
+      return;
+    }
+
     // Calculate date range based on period
     const now = new Date();
     let startDate: Date;
@@ -1305,9 +1453,14 @@ export const getAnalytics = async (req: Request, res: Response, next: NextFuncti
       },
     };
 
+    // Cache the result for 15 minutes (900 seconds)
+    // Longer TTL than dashboard since analytics change less frequently
+    await cacheService.set(cacheKey, analytics, { ttl: 900 });
+
     res.status(200).json({
       success: true,
       message: 'Analytics retrieved successfully',
+      cached: false,
       data: analytics,
     });
   } catch (error) {

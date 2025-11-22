@@ -104,14 +104,36 @@ router.post(
           throw new Error('Date schedule must be an array');
         }
         for (const schedule of value) {
-          if (!schedule.date || !schedule.availableSeats || !schedule.price) {
-            throw new Error('Each schedule must have date, availableSeats, and price');
+          // Accept either legacy 'date' OR new 'startDate/endDate' format
+          const hasLegacyDate = schedule.date;
+          const hasNewDates = schedule.startDate && schedule.endDate;
+
+          if (!hasLegacyDate && !hasNewDates) {
+            throw new Error('Each schedule must have either date OR startDate+endDate');
           }
-          if (new Date(schedule.date) < new Date()) {
+
+          // Allow unlimited seats (skip availableSeats validation)
+          if (!schedule.unlimitedSeats && (!schedule.availableSeats || schedule.availableSeats < 0)) {
+            throw new Error('Each schedule must have valid availableSeats or unlimitedSeats flag');
+          }
+
+          if (schedule.price === undefined || schedule.price === null || schedule.price < 0) {
+            throw new Error('Each schedule must have a non-negative price');
+          }
+
+          // Validate date is not in the past
+          const dateToCheck = schedule.startDate || schedule.date;
+          const now = new Date();
+          now.setHours(0, 0, 0, 0);
+          if (new Date(dateToCheck) < now) {
             throw new Error('Schedule date cannot be in the past');
           }
-          if (schedule.availableSeats < 0 || schedule.price < 0) {
-            throw new Error('Available seats and price must be non-negative');
+
+          // Validate endDate is after startDate if both present
+          if (schedule.startDate && schedule.endDate) {
+            if (new Date(schedule.endDate) < new Date(schedule.startDate)) {
+              throw new Error('End date must be after start date');
+            }
           }
         }
         return true;

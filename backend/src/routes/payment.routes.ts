@@ -11,7 +11,7 @@ import {
   getStripeConfig,
   getPaymentAnalytics,
 } from '../controllers/payment.controller';
-import { authenticate, authorize, requirePhoneVerification } from '../middleware';
+import { authenticate, authorize, conditionalPhoneVerification } from '../middleware';
 
 const router = Router();
 
@@ -29,11 +29,11 @@ router.post(
 // Protected routes
 router.use(authenticate);
 
-// Customer routes - Phone verification required for all payment operations
+// Customer routes - Phone verification conditionally required (based on global + event settings)
 router.post(
   '/create-intent',
   authorize(['customer']),
-  requirePhoneVerification,
+  conditionalPhoneVerification,
   [
     body('orderId')
       .isMongoId()
@@ -45,7 +45,7 @@ router.post(
 router.post(
   '/confirm',
   authorize(['customer']),
-  requirePhoneVerification,
+  conditionalPhoneVerification,
   [
     body('paymentIntentId')
       .trim()

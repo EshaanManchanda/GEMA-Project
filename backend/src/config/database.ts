@@ -75,9 +75,23 @@ export const connectDB = async (retryCount = 0, maxRetries = 5): Promise<void> =
 };
 
 /**
+ * Track if connection handlers have been set up to prevent memory leaks
+ */
+let handlersSetUp = false;
+
+/**
  * Set up MongoDB connection event handlers
+ * Prevents memory leaks by ensuring handlers are only registered once
  */
 const setupConnectionHandlers = (): void => {
+  // Only set up handlers once to prevent memory leaks from duplicate listeners
+  if (handlersSetUp) {
+    logger.debug('Connection handlers already set up, skipping...');
+    return;
+  }
+
+  logger.info('Setting up MongoDB connection event handlers...');
+
   // Handle MongoDB connection errors after initial connection
   mongoose.connection.on('error', (err) => {
     logger.error('MongoDB connection error after initial connection', {
@@ -122,6 +136,10 @@ const setupConnectionHandlers = (): void => {
   mongoose.connection.on('close', () => {
     logger.info('MongoDB connection closed');
   });
+
+  // Mark handlers as set up
+  handlersSetUp = true;
+  logger.info('MongoDB connection event handlers registered successfully');
 };
 
 /**

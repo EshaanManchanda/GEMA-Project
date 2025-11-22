@@ -4,13 +4,15 @@ import fs from 'fs';
 import { config } from '../config/env';
 import { AuthRequest } from '../types/express.d';
 import { AppError } from '../middleware/error';
-import { 
-  uploadSingle, 
-  uploadMultiple, 
+import {
+  uploadSingle,
+  uploadMultiple,
   uploadEventImages,
   uploadVenueImages,
   uploadUserAvatar,
   uploadDocument,
+  uploadBlogFeaturedImage,
+  uploadBlogContentMedia,
   handleUploadError,
   getFileInfo,
   deleteFile
@@ -179,6 +181,48 @@ router.post('/document', authenticate, uploadDocument, handleUploadError, (req: 
       success: true,
       message: 'Document uploaded successfully',
       data: fileInfo
+    });
+  } catch (error) {
+    next(error);
+  }
+});
+
+// Blog featured image upload
+router.post('/blog-featured-image', authenticate, uploadBlogFeaturedImage, handleUploadError, (req: AuthRequest, res: Response, next: NextFunction) => {
+  try {
+    if (!req.file) {
+      return next(new AppError('No featured image uploaded', 400));
+    }
+
+    const fileInfo = getFileInfo(req.file);
+
+    res.status(200).json({
+      success: true,
+      message: 'Blog featured image uploaded successfully',
+      data: fileInfo
+    });
+  } catch (error) {
+    next(error);
+  }
+});
+
+// Blog content media upload (images/videos within blog content)
+router.post('/blog-content-media', authenticate, uploadBlogContentMedia, handleUploadError, (req: AuthRequest, res: Response, next: NextFunction) => {
+  try {
+    if (!req.file) {
+      return next(new AppError('No media uploaded', 400));
+    }
+
+    const fileInfo = getFileInfo(req.file);
+    const isVideo = req.file.mimetype.startsWith('video/');
+
+    res.status(200).json({
+      success: true,
+      message: `Blog ${isVideo ? 'video' : 'image'} uploaded successfully`,
+      data: {
+        ...fileInfo,
+        mediaType: isVideo ? 'video' : 'image'
+      }
     });
   } catch (error) {
     next(error);

@@ -70,12 +70,12 @@ export default function NewsletterSubscribe() {
       >
         {/* Left Content */}
         <div className="max-w-xl">
-          <motion.div 
+          <motion.div
             variants={itemVariants}
-            className="inline-block mb-4 px-4 py-2 rounded-full" 
+            className="inline-block mb-4 px-4 py-2 rounded-full"
             style={{ backgroundColor: 'rgba(0, 142, 199, 0.1)' }}
           >
-            <span className="font-semibold" style={{ color: 'var(--primary-color)' }}>Stay Updated</span>
+            <span className="font-semibold text-gray-900">Stay Updated</span>
           </motion.div>
           
           <motion.h2 
@@ -99,6 +99,8 @@ export default function NewsletterSubscribe() {
           >
             <input
               type="email"
+              id="homepage-newsletter-email"
+              name="homepage-newsletter-email"
               value={email}
               onChange={(e) => setEmail(e.target.value)}
               placeholder="Enter your email..."
@@ -129,9 +131,9 @@ export default function NewsletterSubscribe() {
             </motion.button>
           </motion.form>
           
-          <motion.p 
+          <motion.p
             variants={itemVariants}
-            className="text-sm text-gray-500 mt-4"
+            className="text-sm text-gray-700 mt-4"
           >
             By subscribing, you agree to our <a href="#" className="underline hover:text-blue-600">Privacy Policy</a> and consent to receive updates from Kidzapp.
           </motion.p>

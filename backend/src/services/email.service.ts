@@ -96,6 +96,50 @@ export interface ContactNotificationOptions {
   submittedAt: Date;
 }
 
+// Cancellation email interfaces
+export interface CancellationConfirmationEmailOptions {
+  to: string;
+  firstName: string;
+  orderNumber: string;
+  refundAmount: number;
+  nonRefundableAmount: number;
+  serviceFee: number;
+  tax: number;
+  currency: string;
+  reason: string;
+}
+
+export interface EventCancellationEmailOptions {
+  to: string;
+  firstName: string;
+  eventTitle: string;
+  eventDate: Date;
+  orderNumber: string;
+  reason: string;
+  refundAmount: number;
+  nonRefundableAmount: number;
+  currency: string;
+  serviceFee: number;
+  tax: number;
+}
+
+export interface RefundProcessedEmailOptions {
+  to: string;
+  firstName: string;
+  orderNumber: string;
+  refundAmount: number;
+  currency: string;
+  refundTransactionId: string;
+}
+
+export interface RefundFailedEmailOptions {
+  to: string;
+  firstName: string;
+  orderNumber: string;
+  refundAmount: number;
+  currency: string;
+}
+
 class EmailService {
   private transporter: nodemailer.Transporter;
 
@@ -899,6 +943,293 @@ class EmailService {
       subject: `New Contact Form: ${options.subject} - ${options.name}`,
       html,
       text,
+    });
+  }
+
+  /**
+   * Send order cancellation confirmation email (customer-initiated)
+   */
+  async sendCancellationConfirmationEmail(options: CancellationConfirmationEmailOptions): Promise<void> {
+    const html = `
+      <!DOCTYPE html>
+      <html>
+      <head>
+        <meta charset="utf-8">
+        <meta name="viewport" content="width=device-width, initial-scale=1.0">
+        <title>Order Cancellation Confirmation - Gema</title>
+        <style>
+          body { font-family: Arial, sans-serif; line-height: 1.6; color: #333; }
+          .container { max-width: 600px; margin: 0 auto; padding: 20px; }
+          .header { background: linear-gradient(135deg, #ef4444 0%, #dc2626 100%); color: white; padding: 20px; text-align: center; border-radius: 8px 8px 0 0; }
+          .content { background: #f8f9fa; padding: 30px; border-radius: 0 0 8px 8px; }
+          .refund-box { background: white; border: 2px solid #10b981; padding: 20px; border-radius: 8px; margin: 20px 0; }
+          .warning-box { background: #fef3c7; border: 1px solid #fbbf24; padding: 15px; border-radius: 5px; margin: 15px 0; }
+          .footer { text-align: center; margin-top: 20px; color: #666; font-size: 14px; }
+        </style>
+      </head>
+      <body>
+        <div class="container">
+          <div class="header">
+            <h1>Order Cancellation Confirmed</h1>
+          </div>
+          <div class="content">
+            <h2>Hi ${options.firstName}!</h2>
+            <p>Your order has been successfully cancelled as requested.</p>
+
+            <div class="refund-box">
+              <h3 style="margin-top: 0; color: #10b981;">💰 Refund Details</h3>
+              <table style="width: 100%; font-size: 14px;">
+                <tr>
+                  <td style="padding: 8px; font-weight: 500;">Order Number:</td>
+                  <td style="padding: 8px;"><strong>${options.orderNumber}</strong></td>
+                </tr>
+                <tr>
+                  <td style="padding: 8px; font-weight: 500;">Ticket Price (Refundable):</td>
+                  <td style="padding: 8px;"><strong style="color: #10b981; font-size: 18px;">${options.currency} ${options.refundAmount.toFixed(2)}</strong></td>
+                </tr>
+                <tr>
+                  <td style="padding: 8px; font-weight: 500;">Service Fee:</td>
+                  <td style="padding: 8px;">${options.currency} ${options.serviceFee.toFixed(2)}</td>
+                </tr>
+                ${options.tax > 0 ? `
+                <tr>
+                  <td style="padding: 8px; font-weight: 500;">Tax:</td>
+                  <td style="padding: 8px;">${options.currency} ${options.tax.toFixed(2)}</td>
+                </tr>
+                ` : ''}
+                <tr style="border-top: 1px solid #e5e7eb;">
+                  <td style="padding: 8px; font-weight: 600; color: #dc2626;">Non-refundable Total:</td>
+                  <td style="padding: 8px; color: #dc2626; font-weight: 600;">${options.currency} ${options.nonRefundableAmount.toFixed(2)}</td>
+                </tr>
+              </table>
+            </div>
+
+            <div class="warning-box">
+              <strong>⏱️ Refund Timeline:</strong>
+              <p style="margin: 10px 0 0 0;">Your refund will be processed within <strong>5-10 business days</strong> and credited back to your original payment method.</p>
+            </div>
+
+            <p><strong>Cancellation Reason:</strong> ${options.reason}</p>
+
+            <p>If you have any questions about your refund, please don't hesitate to contact our support team.</p>
+          </div>
+          <div class="footer">
+            <p>Best regards,<br>The Gema Team</p>
+            <p><small>Order cancellation #${options.orderNumber}</small></p>
+          </div>
+        </div>
+      </body>
+      </html>
+    `;
+
+    await this.sendEmail({
+      to: options.to,
+      subject: `Order Cancelled - ${options.orderNumber}`,
+      html,
+    });
+  }
+
+  /**
+   * Send event cancellation notification email (vendor/admin cancelled event)
+   */
+  async sendEventCancellationEmail(options: EventCancellationEmailOptions): Promise<void> {
+    const eventDateStr = options.eventDate ? new Date(options.eventDate).toLocaleDateString() : 'N/A';
+
+    const html = `
+      <!DOCTYPE html>
+      <html>
+      <head>
+        <meta charset="utf-8">
+        <meta name="viewport" content="width=device-width, initial-scale=1.0">
+        <title>Event Cancellation Notice - Gema</title>
+        <style>
+          body { font-family: Arial, sans-serif; line-height: 1.6; color: #333; }
+          .container { max-width: 600px; margin: 0 auto; padding: 20px; }
+          .header { background: linear-gradient(135deg, #ef4444 0%, #dc2626 100%); color: white; padding: 20px; text-align: center; border-radius: 8px 8px 0 0; }
+          .content { background: #f8f9fa; padding: 30px; border-radius: 0 0 8px 8px; }
+          .event-box { background: white; border-left: 4px solid #ef4444; padding: 20px; margin: 20px 0; }
+          .refund-box { background: #ecfdf5; border: 2px solid #10b981; padding: 20px; border-radius: 8px; margin: 20px 0; }
+          .info-box { background: #dbeafe; border: 1px solid #3b82f6; padding: 15px; border-radius: 5px; margin: 15px 0; }
+          .footer { text-align: center; margin-top: 20px; color: #666; font-size: 14px; }
+        </style>
+      </head>
+      <body>
+        <div class="container">
+          <div class="header">
+            <h1>⚠️ Event Cancellation Notice</h1>
+          </div>
+          <div class="content">
+            <h2>Hi ${options.firstName}!</h2>
+            <p>We regret to inform you that the following event has been cancelled:</p>
+
+            <div class="event-box">
+              <h3 style="margin-top: 0; color: #ef4444;">${options.eventTitle}</h3>
+              <p><strong>Original Date:</strong> ${eventDateStr}</p>
+              <p><strong>Order Number:</strong> ${options.orderNumber}</p>
+            </div>
+
+            <p><strong>Reason for Cancellation:</strong> ${options.reason}</p>
+
+            <div class="refund-box">
+              <h3 style="margin-top: 0; color: #10b981;">💰 Your Refund</h3>
+              <p>We're automatically processing a refund for your booking:</p>
+              <table style="width: 100%; font-size: 14px;">
+                <tr>
+                  <td style="padding: 8px; font-weight: 500;">Ticket Price (Refundable):</td>
+                  <td style="padding: 8px;"><strong style="color: #10b981; font-size: 20px;">${options.currency} ${options.refundAmount.toFixed(2)}</strong></td>
+                </tr>
+                <tr>
+                  <td style="padding: 8px; font-weight: 500;">Service Fee:</td>
+                  <td style="padding: 8px;">${options.currency} ${options.serviceFee.toFixed(2)}</td>
+                </tr>
+                ${options.tax > 0 ? `
+                <tr>
+                  <td style="padding: 8px; font-weight: 500;">Tax:</td>
+                  <td style="padding: 8px;">${options.currency} ${options.tax.toFixed(2)}</td>
+                </tr>
+                ` : ''}
+                <tr style="border-top: 1px solid #e5e7eb;">
+                  <td style="padding: 8px; font-weight: 600; color: #dc2626;">Non-refundable Total:</td>
+                  <td style="padding: 8px; color: #dc2626; font-weight: 600;">${options.currency} ${options.nonRefundableAmount.toFixed(2)}</td>
+                </tr>
+              </table>
+            </div>
+
+            <div class="info-box">
+              <strong>📋 What Happens Next:</strong>
+              <ul style="margin: 10px 0; padding-left: 20px;">
+                <li>Your refund will be processed within <strong>5-10 business days</strong></li>
+                <li>The refund will be credited to your original payment method</li>
+                <li>You'll receive a confirmation email once the refund is complete</li>
+              </ul>
+            </div>
+
+            <p>We sincerely apologize for any inconvenience this may cause. If you have any questions, please contact our support team.</p>
+          </div>
+          <div class="footer">
+            <p>Best regards,<br>The Gema Team</p>
+            <p><small>Order #${options.orderNumber}</small></p>
+          </div>
+        </div>
+      </body>
+      </html>
+    `;
+
+    await this.sendEmail({
+      to: options.to,
+      subject: `Event Cancelled: ${options.eventTitle} - Refund Processing`,
+      html,
+    });
+  }
+
+  /**
+   * Send refund processed confirmation email
+   */
+  async sendRefundProcessedEmail(options: RefundProcessedEmailOptions): Promise<void> {
+    const html = `
+      <!DOCTYPE html>
+      <html>
+      <head>
+        <meta charset="utf-8">
+        <meta name="viewport" content="width=device-width, initial-scale=1.0">
+        <title>Refund Processed - Gema</title>
+        <style>
+          body { font-family: Arial, sans-serif; line-height: 1.6; color: #333; }
+          .container { max-width: 600px; margin: 0 auto; padding: 20px; }
+          .header { background: linear-gradient(135deg, #10b981 0%, #059669 100%); color: white; padding: 20px; text-align: center; border-radius: 8px 8px 0 0; }
+          .content { background: #f8f9fa; padding: 30px; border-radius: 0 0 8px 8px; }
+          .success-box { background: #ecfdf5; border: 2px solid #10b981; padding: 20px; border-radius: 8px; margin: 20px 0; text-align: center; }
+          .footer { text-align: center; margin-top: 20px; color: #666; font-size: 14px; }
+        </style>
+      </head>
+      <body>
+        <div class="container">
+          <div class="header">
+            <h1>✅ Refund Completed!</h1>
+          </div>
+          <div class="content">
+            <h2>Hi ${options.firstName}!</h2>
+            <p>Great news! Your refund has been successfully processed.</p>
+
+            <div class="success-box">
+              <h3 style="margin-top: 0; color: #10b981;">Refund Amount</h3>
+              <p style="font-size: 32px; font-weight: bold; color: #10b981; margin: 10px 0;">
+                ${options.currency} ${options.refundAmount.toFixed(2)}
+              </p>
+              <p style="margin: 0;">Order: ${options.orderNumber}</p>
+              <p style="margin: 5px 0; font-size: 12px; color: #666;">Transaction ID: ${options.refundTransactionId}</p>
+            </div>
+
+            <p>The refund has been sent to your original payment method. Please allow 3-5 business days for the funds to appear in your account, depending on your bank.</p>
+
+            <p>Thank you for your patience. We hope to see you at future events!</p>
+          </div>
+          <div class="footer">
+            <p>Best regards,<br>The Gema Team</p>
+          </div>
+        </div>
+      </body>
+      </html>
+    `;
+
+    await this.sendEmail({
+      to: options.to,
+      subject: `Refund Completed - ${options.orderNumber}`,
+      html,
+    });
+  }
+
+  /**
+   * Send refund failed notification email
+   */
+  async sendRefundFailedEmail(options: RefundFailedEmailOptions): Promise<void> {
+    const html = `
+      <!DOCTYPE html>
+      <html>
+      <head>
+        <meta charset="utf-8">
+        <meta name="viewport" content="width=device-width, initial-scale=1.0">
+        <title>Refund Issue - Gema</title>
+        <style>
+          body { font-family: Arial, sans-serif; line-height: 1.6; color: #333; }
+          .container { max-width: 600px; margin: 0 auto; padding: 20px; }
+          .header { background: linear-gradient(135deg, #f59e0b 0%, #d97706 100%); color: white; padding: 20px; text-align: center; border-radius: 8px 8px 0 0; }
+          .content { background: #f8f9fa; padding: 30px; border-radius: 0 0 8px 8px; }
+          .warning-box { background: #fef3c7; border: 2px solid #f59e0b; padding: 20px; border-radius: 8px; margin: 20px 0; }
+          .footer { text-align: center; margin-top: 20px; color: #666; font-size: 14px; }
+        </style>
+      </head>
+      <body>
+        <div class="container">
+          <div class="header">
+            <h1>⚠️ Refund Processing Issue</h1>
+          </div>
+          <div class="content">
+            <h2>Hi ${options.firstName}!</h2>
+            <p>We encountered an issue while processing your refund for order <strong>${options.orderNumber}</strong>.</p>
+
+            <div class="warning-box">
+              <h3 style="margin-top: 0; color: #d97706;">Refund Amount: ${options.currency} ${options.refundAmount.toFixed(2)}</h3>
+              <p>Don't worry - our team is actively working to resolve this issue. We will automatically retry the refund, and you don't need to take any action.</p>
+            </div>
+
+            <p>If you don't receive your refund within 7 business days, please contact our support team with your order number.</p>
+
+            <p>We apologize for any inconvenience and appreciate your patience.</p>
+          </div>
+          <div class="footer">
+            <p>Best regards,<br>The Gema Team</p>
+            <p><small>Order #${options.orderNumber}</small></p>
+          </div>
+        </div>
+      </body>
+      </html>
+    `;
+
+    await this.sendEmail({
+      to: options.to,
+      subject: `Refund Processing Issue - ${options.orderNumber}`,
+      html,
     });
   }
 

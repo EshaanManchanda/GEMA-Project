@@ -120,7 +120,6 @@ const TicketSchema = new Schema<ITicket>({
 TicketSchema.index({ ticketNumber: 1 }, { unique: true }); // Unique ticket number
 TicketSchema.index({ orderId: 1 });
 TicketSchema.index({ eventId: 1 });
-TicketSchema.index({ userId: 1 });
 TicketSchema.index({ vendorId: 1 });
 TicketSchema.index({ attendeeEmail: 1 });
 TicketSchema.index({ status: 1 });

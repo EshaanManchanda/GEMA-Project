@@ -1,5 +1,6 @@
 import { Router } from 'express';
 import { authenticate, authorize } from '../middleware/auth';
+import { validate } from '../middleware/validation';
 import { UserRole } from '../models';
 import {
   getVendorDashboardStats,
@@ -16,15 +17,24 @@ import {
   updateVendorSocialMedia,
   getPublicVendorProfile,
   getVendorPaymentInfo,
-  // TODO: Implement employee management functions
-  // getVendorEmployees,
-  // getVendorEmployeeById,
-  // createVendorEmployee,
-  // updateVendorEmployee,
-  // deleteVendorEmployee,
-  // assignEmployeeToEvent,
-  // removeEmployeeFromEvent,
-  // exportVendorEmployees,
+  // Employee management functions
+  getVendorEmployees,
+  getVendorEmployeeById,
+  createVendorEmployee,
+  updateVendorEmployee,
+  deleteVendorEmployee,
+  assignEmployeeToEvent,
+  removeEmployeeFromEvent,
+  exportVendorEmployees,
+  // New profile endpoints
+  sendVendorPhoneVerificationOTP,
+  verifyVendorPhoneOTP,
+  updateVendorBankDetails,
+  uploadVendorDocument,
+  deleteVendorDocument,
+  getVendorDocuments,
+  initializeStripeConnectOnboarding,
+  getStripeConnectStatus,
 } from '../controllers/vendor.controller';
 import {
   getVendorEventById,
@@ -33,6 +43,16 @@ import {
   deleteVendorEvent,
   restoreVendorEvent,
 } from '../controllers/vendor.event.controller';
+import {
+  validateEmployeeListQuery,
+  validateCreateEmployee,
+  validateUpdateEmployee,
+  validateAssignEvents,
+  validateExportEmployees,
+  validateGetEmployeeById,
+  validateDeleteEmployee,
+  validateRemoveFromEvent,
+} from '../validators/employee.validator';
 
 const router = Router();
 
@@ -173,61 +193,120 @@ router.put('/business-hours', updateVendorBusinessHours);
  */
 router.put('/social-media', updateVendorSocialMedia);
 
-// TODO: Uncomment when employee management is implemented
-// /**
-//  * @route   GET /api/vendors/employees/export
-//  * @desc    Export vendor employees to CSV or JSON
-//  * @access  Vendor only
-//  */
-// router.get('/employees/export', exportVendorEmployees);
+// ===================== EMPLOYEE MANAGEMENT ROUTES =====================
 
-// /**
-//  * @route   GET /api/vendors/employees/:id
-//  * @desc    Get single employee by ID
-//  * @access  Vendor only
-//  */
-// router.get('/employees/:id', getVendorEmployeeById);
+/**
+ * @route   POST /api/vendors/employees/export
+ * @desc    Export vendor employees to CSV or JSON
+ * @access  Vendor only
+ */
+router.post('/employees/export', validateExportEmployees, validate, exportVendorEmployees);
 
-// /**
-//  * @route   PUT /api/vendors/employees/:id
-//  * @desc    Update employee
-//  * @access  Vendor only
-//  */
-// router.put('/employees/:id', updateVendorEmployee);
+/**
+ * @route   GET /api/vendors/employees/:id
+ * @desc    Get single employee by ID
+ * @access  Vendor only
+ */
+router.get('/employees/:id', validateGetEmployeeById, validate, getVendorEmployeeById);
 
-// /**
-//  * @route   DELETE /api/vendors/employees/:id
-//  * @desc    Delete/deactivate employee
-//  * @access  Vendor only
-//  */
-// router.delete('/employees/:id', deleteVendorEmployee);
+/**
+ * @route   PUT /api/vendors/employees/:id
+ * @desc    Update employee
+ * @access  Vendor only
+ */
+router.put('/employees/:id', validateUpdateEmployee, validate, updateVendorEmployee);
 
-// /**
-//  * @route   POST /api/vendors/employees/:id/assign-event
-//  * @desc    Assign employee to an event
-//  * @access  Vendor only
-//  */
-// router.post('/employees/:id/assign-event', assignEmployeeToEvent);
+/**
+ * @route   DELETE /api/vendors/employees/:id
+ * @desc    Delete/deactivate employee (soft or hard delete)
+ * @access  Vendor only
+ */
+router.delete('/employees/:id', validateDeleteEmployee, validate, deleteVendorEmployee);
 
-// /**
-//  * @route   POST /api/vendors/employees/:id/remove-event
-//  * @desc    Remove employee from an event
-//  * @access  Vendor only
-//  */
-// router.post('/employees/:id/remove-event', removeEmployeeFromEvent);
+/**
+ * @route   POST /api/vendors/employees/:id/assign-event
+ * @desc    Assign employee to one or more events
+ * @access  Vendor only
+ */
+router.post('/employees/:id/assign-event', validateAssignEvents, validate, assignEmployeeToEvent);
 
-// /**
-//  * @route   GET /api/vendors/employees
-//  * @desc    Get employees for the authenticated vendor
-//  * @access  Vendor only
-//  */
-// router.get('/employees', getVendorEmployees);
+/**
+ * @route   POST /api/vendors/employees/:id/remove-event
+ * @desc    Remove employee from an event
+ * @access  Vendor only
+ */
+router.post('/employees/:id/remove-event', validateRemoveFromEvent, validate, removeEmployeeFromEvent);
 
-// /**
-//  * @route   POST /api/vendors/employees
-//  * @desc    Create a new employee
-//  * @access  Vendor only
-//  */
-// router.post('/employees', createVendorEmployee);
+/**
+ * @route   GET /api/vendors/employees
+ * @desc    Get employees for the authenticated vendor with filters and pagination
+ * @access  Vendor only
+ */
+router.get('/employees', validateEmployeeListQuery, validate, getVendorEmployees);
+
+/**
+ * @route   POST /api/vendors/employees
+ * @desc    Create a new employee
+ * @access  Vendor only
+ */
+router.post('/employees', validateCreateEmployee, validate, createVendorEmployee);
+
+// ===================== NEW VENDOR PROFILE ROUTES =====================
+
+/**
+ * @route   POST /api/vendors/verify-phone/send
+ * @desc    Send phone verification OTP for vendor
+ * @access  Vendor only
+ */
+router.post('/verify-phone/send', sendVendorPhoneVerificationOTP);
+
+/**
+ * @route   POST /api/vendors/verify-phone/confirm
+ * @desc    Verify phone OTP for vendor
+ * @access  Vendor only
+ */
+router.post('/verify-phone/confirm', verifyVendorPhoneOTP);
+
+/**
+ * @route   PUT /api/vendors/bank-details
+ * @desc    Update vendor bank details
+ * @access  Vendor only
+ */
+router.put('/bank-details', updateVendorBankDetails);
+
+/**
+ * @route   GET /api/vendors/documents
+ * @desc    Get vendor documents status
+ * @access  Vendor only
+ */
+router.get('/documents', getVendorDocuments);
+
+/**
+ * @route   POST /api/vendors/documents/upload
+ * @desc    Upload vendor verification document
+ * @access  Vendor only
+ */
+router.post('/documents/upload', uploadVendorDocument);
+
+/**
+ * @route   DELETE /api/vendors/documents/:type
+ * @desc    Delete vendor verification document
+ * @access  Vendor only
+ */
+router.delete('/documents/:type', deleteVendorDocument);
+
+/**
+ * @route   POST /api/vendors/stripe-connect/onboard
+ * @desc    Initialize Stripe Connect onboarding
+ * @access  Vendor only
+ */
+router.post('/stripe-connect/onboard', initializeStripeConnectOnboarding);
+
+/**
+ * @route   GET /api/vendors/stripe-connect/status
+ * @desc    Get Stripe Connect account status
+ * @access  Vendor only
+ */
+router.get('/stripe-connect/status', getStripeConnectStatus);
 
 export default router;

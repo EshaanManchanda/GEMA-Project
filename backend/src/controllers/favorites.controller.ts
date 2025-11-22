@@ -1,15 +1,15 @@
 import { Request, Response, NextFunction } from 'express';
 import { User, Event, IUser } from '../models';
 import { AppError } from '../middleware';
-import { AuthRequest } from '../types';
 import { logger } from '../config';
 
 // @desc    Get user's favorite events
 // @route   GET /api/favorites
 // @access  Private
-export const getFavoriteEvents = async (req: AuthRequest, res: Response, next: NextFunction) => {
+export const getFavoriteEvents = async (req: Request, res: Response, next: NextFunction) => {
   try {
-    const userId = req.user?.id;
+    // Handle both _id (MongoDB native) and id (formatted) properties
+    const userId = req.user?._id || req.user?.id;
     if (!userId) {
       return next(new AppError('User not authenticated', 401));
     }
@@ -45,10 +45,11 @@ export const getFavoriteEvents = async (req: AuthRequest, res: Response, next: N
 // @desc    Add event to favorites
 // @route   POST /api/favorites/:eventId
 // @access  Private
-export const addToFavorites = async (req: AuthRequest, res: Response, next: NextFunction) => {
+export const addToFavorites = async (req: Request, res: Response, next: NextFunction) => {
   try {
     const { eventId } = req.params;
-    const userId = req.user?.id;
+    // Handle both _id (MongoDB native) and id (formatted) properties
+    const userId = req.user?._id || req.user?.id;
 
     if (!userId) {
       return next(new AppError('User not authenticated', 401));
@@ -93,10 +94,11 @@ export const addToFavorites = async (req: AuthRequest, res: Response, next: Next
 // @desc    Remove event from favorites
 // @route   DELETE /api/favorites/:eventId
 // @access  Private
-export const removeFromFavorites = async (req: AuthRequest, res: Response, next: NextFunction) => {
+export const removeFromFavorites = async (req: Request, res: Response, next: NextFunction) => {
   try {
     const { eventId } = req.params;
-    const userId = req.user?.id;
+    // Handle both _id (MongoDB native) and id (formatted) properties
+    const userId = req.user?._id || req.user?.id;
 
     if (!userId) {
       return next(new AppError('User not authenticated', 401));
@@ -136,10 +138,11 @@ export const removeFromFavorites = async (req: AuthRequest, res: Response, next:
 // @desc    Check if event is in user's favorites
 // @route   GET /api/favorites/check/:eventId
 // @access  Private
-export const checkIfFavorite = async (req: AuthRequest, res: Response, next: NextFunction) => {
+export const checkIfFavorite = async (req: Request, res: Response, next: NextFunction) => {
   try {
     const { eventId } = req.params;
-    const userId = req.user?.id;
+    // Handle both _id (MongoDB native) and id (formatted) properties
+    const userId = req.user?._id || req.user?.id;
 
     if (!userId) {
       return next(new AppError('User not authenticated', 401));

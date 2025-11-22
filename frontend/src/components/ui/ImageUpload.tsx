@@ -2,6 +2,7 @@ import React, { useState, useRef } from 'react';
 import { Upload, X, Image, Loader2 } from 'lucide-react';
 import Button from './Button';
 import toast from 'react-hot-toast';
+import { UploadAPI } from '../../services/api/uploadAPI';
 
 interface ImageUploadProps {
   onImageUpload: (imageUrl: string) => void;
@@ -9,6 +10,7 @@ interface ImageUploadProps {
   placeholder?: string;
   maxFileSize?: number; // in MB
   acceptedFormats?: string[];
+  category?: string; // Upload category (e.g., 'blogs', 'events', 'users')
 }
 
 const ImageUpload: React.FC<ImageUploadProps> = ({
@@ -16,7 +18,8 @@ const ImageUpload: React.FC<ImageUploadProps> = ({
   currentImage,
   placeholder = "Upload an image",
   maxFileSize = 5,
-  acceptedFormats = ['image/jpeg', 'image/jpg', 'image/png', 'image/webp']
+  acceptedFormats = ['image/jpeg', 'image/jpg', 'image/png', 'image/webp'],
+  category = 'misc'
 }) => {
   const [isUploading, setIsUploading] = useState(false);
   const [dragActive, setDragActive] = useState(false);
@@ -40,29 +43,27 @@ const ImageUpload: React.FC<ImageUploadProps> = ({
     setIsUploading(true);
 
     try {
-      // Create FormData for file upload
-      const formData = new FormData();
-      formData.append('file', file);
+      // Upload to backend using UploadAPI (supports both Cloudinary and local storage)
+      const response = await UploadAPI.uploadSingle(file, category);
 
-      // Upload to backend
-      const response = await fetch('/api/uploads/single', {
-        method: 'POST',
-        body: formData,
-        headers: {
-          'Authorization': `Bearer ${localStorage.getItem('token')}`
+      console.log('Upload response:', response);
+
+      if (response.success && response.data) {
+        // Get URL from response (Cloudinary or local)
+        const imageUrl = response.data.url || response.data.cloudinaryUrl;
+
+        if (!imageUrl) {
+          throw new Error('No URL returned from upload');
         }
-      });
 
-      if (!response.ok) {
-        throw new Error('Upload failed');
+        onImageUpload(imageUrl);
+        toast.success('Image uploaded successfully!');
+      } else {
+        throw new Error('Upload failed: Invalid response');
       }
-
-      const data = await response.json();
-      onImageUpload(data.data.url);
-      toast.success('Image uploaded successfully!');
-    } catch (error) {
+    } catch (error: any) {
       console.error('Image upload error:', error);
-      toast.error('Failed to upload image. Please try again.');
+      toast.error(error.response?.data?.message || error.message || 'Failed to upload image. Please try again.');
     } finally {
       setIsUploading(false);
     }

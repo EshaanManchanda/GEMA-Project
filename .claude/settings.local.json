@@ -1,16 +1,13 @@
 {
   "permissions": {
     "allow": [
+      "Bash(cat \"E:\\coding\\gema\\frontend\\.env\")",
+      "Bash(cat \"E:\\coding\\gema\\frontend\\.env.local\")",
+      "Bash(npm run ts-node:*)",
+      "Bash(node src/scripts/seedAffiliateVendor.ts)",
       "Bash(npm run:*)",
-      "Bash(curl:*)",
-      "Bash(npx tsc:*)",
-      "mcp__ide__getDiagnostics",
-      "Bash(vercel:*)",
-      "WebFetch(domain:gema-project.onrender.com)",
-      "WebFetch(domain:kidrove-frontend.vercel.app)",
-      "Bash(python:*)",
-      "Bash(node:*)",
-      "Bash(ls -la \"E:\\coding\\gema\\backend\\src\\routes\"\" | grep -E \".ts$ \")"
+      "Bash(npx tsx:*)",
+      "Bash(npx tsc:*)"
     ],
     "deny": [],
     "ask": []

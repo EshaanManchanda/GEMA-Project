@@ -231,38 +231,33 @@ const Layout: React.FC<{ children?: React.ReactNode }> = ({ children }) => {
 
             {/* Desktop Nav Links */}
             <nav className="hidden md:flex space-x-8">
-              <Link 
-                to="/search" 
-                className={`text-sm font-medium hover:opacity-80 transition-opacity duration-300 ${scrolled ? 'text-white' : ''}`}
-                style={{ color: scrolled ? 'white' : 'var(--primary-color)' }}
+              <Link
+                to="/search"
+                className={`text-sm font-medium hover:opacity-80 transition-opacity duration-300 ${scrolled ? 'text-white' : 'text-gray-900'}`}
               >
                 Find Activities
               </Link>
-              <Link 
-                to="/blog" 
-                className={`text-sm font-medium hover:opacity-80 transition-opacity duration-300 ${scrolled ? 'text-white' : ''}`}
-                style={{ color: scrolled ? 'white' : 'var(--primary-color)' }}
+              <Link
+                to="/blog"
+                className={`text-sm font-medium hover:opacity-80 transition-opacity duration-300 ${scrolled ? 'text-white' : 'text-gray-900'}`}
               >
                 Blog
               </Link>
-              <Link 
-                to="/about" 
-                className={`text-sm font-medium hover:opacity-80 transition-opacity duration-300 ${scrolled ? 'text-white' : ''}`}
-                style={{ color: scrolled ? 'white' : 'var(--primary-color)' }}
+              <Link
+                to="/about"
+                className={`text-sm font-medium hover:opacity-80 transition-opacity duration-300 ${scrolled ? 'text-white' : 'text-gray-900'}`}
               >
                 Kidzapp Go
               </Link>
-              <Link 
-                to="/faq" 
-                className={`text-sm font-medium hover:opacity-80 transition-opacity duration-300 ${scrolled ? 'text-white' : ''}`}
-                style={{ color: scrolled ? 'white' : 'var(--primary-color)' }}
+              <Link
+                to="/faq"
+                className={`text-sm font-medium hover:opacity-80 transition-opacity duration-300 ${scrolled ? 'text-white' : 'text-gray-900'}`}
               >
                 FAQ
               </Link>
-              <Link 
-                to="/contact" 
-                className={`text-sm font-medium hover:opacity-80 transition-opacity duration-300 ${scrolled ? 'text-white' : ''}`}
-                style={{ color: scrolled ? 'white' : 'var(--primary-color)' }}
+              <Link
+                to="/contact"
+                className={`text-sm font-medium hover:opacity-80 transition-opacity duration-300 ${scrolled ? 'text-white' : 'text-gray-900'}`}
               >
                 Get In Touch
               </Link>
@@ -336,8 +331,8 @@ const Layout: React.FC<{ children?: React.ReactNode }> = ({ children }) => {
                     <div className="absolute right-0 mt-2 w-56 bg-white rounded-lg shadow-lg border border-gray-200 py-2 z-50">
                       <div className="px-4 py-3 border-b border-gray-200">
                         <p className="text-sm font-medium text-gray-900">{getUserDisplayName()}</p>
-                        <p className="text-sm text-gray-500">{user.email}</p>
-                        <span className="inline-block px-2 py-1 text-xs rounded-full mt-1" 
+                        <p className="text-sm text-gray-700">{user.email}</p>
+                        <span className="inline-block px-2 py-1 text-xs rounded-full mt-1"
                               style={{ backgroundColor: 'var(--primary-color)', color: 'white' }}>
                           {user.role}
                         </span>
@@ -545,18 +540,18 @@ const Layout: React.FC<{ children?: React.ReactNode }> = ({ children }) => {
           {mobileMenuOpen && (
             <div className="md:hidden bg-white shadow-lg absolute w-full">
               <div className="px-4 py-6 space-y-4">
-                <Link to="/search" className="block py-2 text-base font-medium" style={{ color: 'var(--primary-color)' }}>Find Activities</Link>
-                <Link to="/blog" className="block py-2 text-base font-medium" style={{ color: 'var(--primary-color)' }}>Blog</Link>
-                <Link to="/about" className="block py-2 text-base font-medium" style={{ color: 'var(--primary-color)' }}>Kidzapp Go</Link>
-                <Link to="/contact" className="block py-2 text-base font-medium" style={{ color: 'var(--primary-color)' }}>Get In Touch</Link>
-                <Link to="/cart" className="flex items-center py-2 text-base font-medium" style={{ color: 'var(--primary-color)' }}>
+                <Link to="/search" className="block py-2 text-base font-medium text-gray-900">Find Activities</Link>
+                <Link to="/blog" className="block py-2 text-base font-medium text-gray-900">Blog</Link>
+                <Link to="/about" className="block py-2 text-base font-medium text-gray-900">Kidzapp Go</Link>
+                <Link to="/contact" className="block py-2 text-base font-medium text-gray-900">Get In Touch</Link>
+                <Link to="/cart" className="flex items-center py-2 text-base font-medium text-gray-900">
                   <FaShoppingCart className="mr-2" size={14} />
                   Cart {cartCount > 0 && <span className="ml-2 bg-red-500 text-white text-xs rounded-full px-2 py-1">{cartCount}</span>}
                 </Link>
 
                 {/* Currency Selector - Mobile */}
                 <div className="py-2">
-                  <p className="text-sm text-gray-600 mb-2">Select Currency</p>
+                  <p className="text-sm text-gray-700 mb-2">Select Currency</p>
                   <CurrencySelector compact={true} />
                 </div>
 
@@ -565,46 +560,42 @@ const Layout: React.FC<{ children?: React.ReactNode }> = ({ children }) => {
                     <div className="space-y-2">
                       <div className="px-4 py-3 bg-gray-50 rounded-lg">
                         <p className="text-sm font-medium text-gray-900">{getUserDisplayName()}</p>
-                        <p className="text-sm text-gray-500">{user.email}</p>
-                        <span className="inline-block px-2 py-1 text-xs rounded-full mt-1" 
+                        <p className="text-sm text-gray-700">{user.email}</p>
+                        <span className="inline-block px-2 py-1 text-xs rounded-full mt-1"
                               style={{ backgroundColor: 'var(--primary-color)', color: 'white' }}>
                           {user.role}
                         </span>
                       </div>
                       
-                      <Link 
+                      <Link
                         to={getDashboardPath()}
-                        className="block py-2 text-base font-medium" 
-                        style={{ color: 'var(--primary-color)' }}
+                        className="block py-2 text-base font-medium text-gray-900"
                         onClick={() => setMobileMenuOpen(false)}
                       >
                         Dashboard
                       </Link>
                       
-                      <Link 
-                        to="/profile" 
-                        className="block py-2 text-base font-medium" 
-                        style={{ color: 'var(--primary-color)' }}
+                      <Link
+                        to="/profile"
+                        className="block py-2 text-base font-medium text-gray-900"
                         onClick={() => setMobileMenuOpen(false)}
                       >
                         View Profile
                       </Link>
-                      
+
                       {(user.role === 'customer') && (
                         <>
-                          <Link 
-                            to="/bookings" 
-                            className="block py-2 text-base font-medium" 
-                            style={{ color: 'var(--primary-color)' }}
+                          <Link
+                            to="/bookings"
+                            className="block py-2 text-base font-medium text-gray-900"
                             onClick={() => setMobileMenuOpen(false)}
                           >
                             My Bookings
                           </Link>
-                          
-                          <Link 
-                            to="/favorites" 
-                            className="block py-2 text-base font-medium" 
-                            style={{ color: 'var(--primary-color)' }}
+
+                          <Link
+                            to="/favorites"
+                            className="block py-2 text-base font-medium text-gray-900"
                             onClick={() => setMobileMenuOpen(false)}
                           >
                             Favorites
@@ -654,7 +645,7 @@ const Layout: React.FC<{ children?: React.ReactNode }> = ({ children }) => {
             {/* Logo and About */}
             <div className="col-span-1">
               <img src={kidroveLogo} alt="Kidzapp Logo" className="h-8 w-auto mb-4" />
-              <p className="text-gray-600 text-sm mb-4">
+              <p className="text-gray-700 text-sm mb-4">
                 Discover and book the best activities for your kids in the UAE.
               </p>
               <div className="flex space-x-3">
@@ -672,19 +663,19 @@ const Layout: React.FC<{ children?: React.ReactNode }> = ({ children }) => {
             
             {/* Quick Links */}
             <div className="col-span-1">
-              <h3 className="font-semibold mb-4" style={{ color: 'var(--primary-color)' }}>Quick Links</h3>
+              <h3 className="font-semibold mb-4 text-gray-900">Quick Links</h3>
               <ul className="space-y-2">
-                <li><Link to="/about" className="text-gray-600 hover:text-gray-900 text-sm">About Us</Link></li>
-                <li><Link to="/blog" className="text-gray-600 hover:text-gray-900 text-sm">Blog</Link></li>
-                <li><Link to="/contact" className="text-gray-600 hover:text-gray-900 text-sm">Contact Us</Link></li>
-                <li><Link to="/faq" className="text-gray-600 hover:text-gray-900 text-sm">FAQs</Link></li>
-                <li><Link to="/partner-with-us" className="text-gray-600 hover:text-gray-900 text-sm">Partner with Us</Link></li>
+                <li><Link to="/about" className="text-gray-700 hover:text-gray-900 text-sm">About Us</Link></li>
+                <li><Link to="/blog" className="text-gray-700 hover:text-gray-900 text-sm">Blog</Link></li>
+                <li><Link to="/contact" className="text-gray-700 hover:text-gray-900 text-sm">Contact Us</Link></li>
+                <li><Link to="/faq" className="text-gray-700 hover:text-gray-900 text-sm">FAQs</Link></li>
+                <li><Link to="/partner-with-us" className="text-gray-700 hover:text-gray-900 text-sm">Partner with Us</Link></li>
               </ul>
             </div>
-            
+
             {/* Categories - Dynamic */}
             <div className="col-span-1">
-              <h3 className="font-semibold mb-4" style={{ color: 'var(--primary-color)' }}>Categories</h3>
+              <h3 className="font-semibold mb-4 text-gray-900">Categories</h3>
               <ul className="space-y-2">
                 {categoriesLoading ? (
                   <div className="space-y-2">
@@ -697,9 +688,9 @@ const Layout: React.FC<{ children?: React.ReactNode }> = ({ children }) => {
                 ) : (
                   featuredCategories.slice(0, 4).map((category) => (
                     <li key={category._id}>
-                      <Link 
-                        to={`/categories/${category.slug}`} 
-                        className="text-gray-600 hover:text-gray-900 text-sm transition-colors duration-200"
+                      <Link
+                        to={`/categories/${category.slug}`}
+                        className="text-gray-700 hover:text-gray-900 text-sm transition-colors duration-200"
                       >
                         {category.name}
                       </Link>
@@ -707,22 +698,22 @@ const Layout: React.FC<{ children?: React.ReactNode }> = ({ children }) => {
                   ))
                 )}
                 {featuredCategories.length === 0 && !categoriesLoading && (
-                  <li className="text-gray-500 text-sm italic">No categories available</li>
+                  <li className="text-gray-700 text-sm italic">No categories available</li>
                 )}
               </ul>
             </div>
-            
+
             {/* Newsletter */}
             <NewsletterSubscription />
           </div>
-          
+
           <div className="border-t border-gray-200 mt-8 pt-8 flex flex-col md:flex-row justify-between items-center">
-            <p className="text-gray-500 text-sm">
+            <p className="text-gray-700 text-sm">
               &copy; {new Date().getFullYear()} Kidzapp. All rights reserved.
             </p>
             <div className="mt-4 md:mt-0 flex space-x-6">
-              <Link to="/privacy" className="text-gray-500 hover:text-gray-700 text-sm">Privacy Policy</Link>
-              <Link to="/terms" className="text-gray-500 hover:text-gray-700 text-sm">Terms of Service</Link>
+              <Link to="/privacy" className="text-gray-700 hover:text-gray-900 text-sm">Privacy Policy</Link>
+              <Link to="/terms" className="text-gray-700 hover:text-gray-900 text-sm">Terms of Service</Link>
             </div>
           </div>
         </div>

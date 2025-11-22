@@ -166,25 +166,25 @@ const EventCard: React.FC<EventCardProps> = ({
         </h3>
         
         {event.description && variant !== 'compact' && (
-          <p className="text-sm text-gray-600 mb-3 line-clamp-2">
+          <p className="text-sm text-gray-700 mb-3 line-clamp-2">
             {event.description}
           </p>
         )}
 
         <div className="space-y-2 mb-3">
-          <div className="flex items-center text-gray-500 text-sm">
+          <div className="flex items-center text-gray-700 text-sm">
             <FaMapMarkerAlt className="mr-2 flex-shrink-0" style={{ color: 'var(--primary-color)' }} />
             <p className="truncate">{getEventLocation(event.location)}</p>
           </div>
           
           {variant !== 'compact' && (
             <>
-              <div className="flex items-center text-gray-500 text-sm">
+              <div className="flex items-center text-gray-700 text-sm">
                 <FaCalendar className="mr-2 flex-shrink-0" style={{ color: 'var(--primary-color)' }} />
                 <p>{getEventDate(event)}</p>
               </div>
               
-              <div className="flex items-center text-gray-500 text-sm">
+              <div className="flex items-center text-gray-700 text-sm">
                 <FaClock className="mr-2 flex-shrink-0" style={{ color: 'var(--primary-color)' }} />
                 <p>{getEventTime(event)}</p>
               </div>
@@ -194,7 +194,7 @@ const EventCard: React.FC<EventCardProps> = ({
 
         {/* Stats display for popular events */}
         {showStats && (event.viewsCount || event.rating) && (
-          <div className="flex items-center justify-between text-xs text-gray-500 mb-3">
+          <div className="flex items-center justify-between text-xs text-gray-700 mb-3">
             {event.viewsCount && (
               <div className="flex items-center gap-1">
                 <FaEye className="text-blue-500" />
@@ -206,7 +206,7 @@ const EventCard: React.FC<EventCardProps> = ({
                 <FaStar className="text-yellow-500" />
                 <span>{formatRating(event.rating)}</span>
                 {event.reviewsCount && (
-                  <span className="text-gray-400">({event.reviewsCount})</span>
+                  <span className="text-gray-700">({event.reviewsCount})</span>
                 )}
               </div>
             )}
@@ -217,13 +217,13 @@ const EventCard: React.FC<EventCardProps> = ({
           <div>
             {event.price ? (
               <>
-                <span className="text-xs text-gray-500">Starting from</span>
+                <span className="text-xs text-gray-700">Starting from</span>
                 <div className="font-bold text-lg" style={{ color: 'var(--primary-color)' }}>
                   {formatPrice(event.price, event.currency)}
                 </div>
               </>
             ) : (
-              <div className="text-sm text-gray-500">
+              <div className="text-sm text-gray-700">
                 {getEventDate(event)}
               </div>
             )}
@@ -246,7 +246,7 @@ const EventCard: React.FC<EventCardProps> = ({
 
         {event.vendorId?.businessName && variant === 'featured' && (
           <div className="mt-3 pt-3 border-t border-gray-100">
-            <p className="text-xs text-gray-500">
+            <p className="text-xs text-gray-700">
               By <span className="font-medium">{event.vendorId.businessName}</span>
             </p>
           </div>

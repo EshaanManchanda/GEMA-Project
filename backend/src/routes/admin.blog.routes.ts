@@ -94,8 +94,19 @@ const createBlogValidation = [
     .withMessage('Meta keywords must be an array'),
   body('seo.canonicalUrl')
     .optional({ checkFalsy: true })
-    .isURL()
-    .withMessage('Canonical URL must be valid')
+    .custom((value) => {
+      if (!value) return true; // Optional field
+      try {
+        const url = new URL(value);
+        // Allow http and https protocols
+        if (!['http:', 'https:'].includes(url.protocol)) {
+          throw new Error('Invalid protocol');
+        }
+        return true;
+      } catch {
+        throw new Error('Canonical URL must be valid');
+      }
+    })
 ];
 
 const updateBlogValidation = [
@@ -182,8 +193,19 @@ const updateBlogValidation = [
     .withMessage('Meta keywords must be an array'),
   body('seo.canonicalUrl')
     .optional({ checkFalsy: true })
-    .isURL()
-    .withMessage('Canonical URL must be valid')
+    .custom((value) => {
+      if (!value) return true; // Optional field
+      try {
+        const url = new URL(value);
+        // Allow http and https protocols
+        if (!['http:', 'https:'].includes(url.protocol)) {
+          throw new Error('Invalid protocol');
+        }
+        return true;
+      } catch {
+        throw new Error('Canonical URL must be valid');
+      }
+    })
 ];
 
 const createCategoryValidation = [

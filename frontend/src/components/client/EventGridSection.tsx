@@ -83,11 +83,11 @@ const EventGridSection: React.FC<EventGridSectionProps> = ({ events = [] }) => {
             <span className="font-semibold" style={{ color: 'var(--primary-color)' }}>Explore</span>
           </div>
           <h2 className="text-3xl font-bold mb-2">🎉 Most Popular Experiences</h2>
-          <p className="text-gray-600">
+          <p className="text-gray-700">
             Discover the most viewed and loved kids activities in Dubai, Abu Dhabi and the UAE
           </p>
           {filteredEvents.length > 0 && (
-            <p className="text-sm text-gray-500 mt-1">
+            <p className="text-sm text-gray-700 mt-1">
               Showing top {filteredEvents.length} most viewed experiences
             </p>
           )}
@@ -118,7 +118,7 @@ const EventGridSection: React.FC<EventGridSectionProps> = ({ events = [] }) => {
         <div className="text-center py-16">
           <div className="text-6xl mb-4">🎪</div>
           <h3 className="text-xl font-semibold text-gray-700 mb-2">No events found</h3>
-          <p className="text-gray-500 mb-6">
+          <p className="text-gray-700 mb-6">
             No popular events are currently available.
           </p>
         </div>
@@ -139,7 +139,7 @@ const EventGridSection: React.FC<EventGridSectionProps> = ({ events = [] }) => {
       
       {!hasMoreEvents && filteredEvents.length > 0 && (
         <div className="mt-12 text-center">
-          <p className="text-gray-500 text-sm">
+          <p className="text-gray-700 text-sm">
             Showing all {filteredEvents.length} experiences
           </p>
           <button 

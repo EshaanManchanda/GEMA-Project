@@ -60,6 +60,15 @@ export interface IOrder extends Document {
   couponCode?: string;
   couponDiscount?: number;
   serviceFee?: number;
+  serviceFeeRate?: number;
+  taxRate?: number;
+
+  // Vendor management fields
+  vendorNotes?: string;
+  vendorStatus?: 'processing' | 'preparing' | 'ready' | 'completed' | 'issue';
+  isFulfilled?: boolean;
+  lastModifiedBy?: mongoose.Types.ObjectId;
+  lastModifiedAt?: Date;
 
   // Payment routing fields
   paymentRouting: {
@@ -86,6 +95,12 @@ export interface IOrder extends Document {
   refundedAt?: Date;
   confirmedAt?: Date;
   cancelledAt?: Date;
+
+  // Enhanced refund tracking
+  refundStatus?: 'pending' | 'processing' | 'completed' | 'failed';
+  refundTransactionId?: string;
+  cancellationType?: 'user_requested' | 'event_cancelled' | 'admin_cancelled';
+  serviceFeeRefunded?: boolean; // Track if service fee was refunded (should be false by policy)
   
   // Enhanced features from Booking model
   specialRequests?: string;
@@ -141,8 +156,9 @@ export interface IOrder extends Document {
   refund(amount: number, reason?: string): Promise<IOrder>;
   checkInOrder(checkedInBy: mongoose.Types.ObjectId, notes?: string): Promise<IOrder>;
   addCommunication(type: string, message: string, subject?: string): void;
-  calculateRefundAmount(): number;
-  calculateAdminCommission(rate?: number): number;
+  calculateRefundAmount(cancellationType?: 'user_requested' | 'event_cancelled' | 'admin_cancelled'): number;
+  canBeCancelledByCustomer(): { canCancel: boolean; reason?: string };
+  calculateAdminCommission(rate?: number): Promise<number>;
   createRevenueTransaction(): Promise<mongoose.Types.ObjectId>;
   updateCommissionTracking(): Promise<IOrder>;
 }
@@ -356,6 +372,40 @@ const orderSchema = new Schema<IOrder>(
       default: 0,
       min: [0, 'Service fee cannot be negative'],
     },
+    serviceFeeRate: {
+      type: Number,
+      default: 5,
+      min: [0, 'Service fee rate cannot be negative'],
+      max: [100, 'Service fee rate cannot exceed 100%'],
+    },
+    taxRate: {
+      type: Number,
+      default: 5,
+      min: [0, 'Tax rate cannot be negative'],
+      max: [100, 'Tax rate cannot exceed 100%'],
+    },
+    // Vendor management fields
+    vendorNotes: {
+      type: String,
+      trim: true,
+      maxlength: [500, 'Vendor notes cannot exceed 500 characters'],
+    },
+    vendorStatus: {
+      type: String,
+      enum: ['processing', 'preparing', 'ready', 'completed', 'issue'],
+      default: 'processing',
+    },
+    isFulfilled: {
+      type: Boolean,
+      default: false,
+    },
+    lastModifiedBy: {
+      type: Schema.Types.ObjectId,
+      ref: 'User',
+    },
+    lastModifiedAt: {
+      type: Date,
+    },
     paymentRouting: {
       usesVendorStripe: {
         type: Boolean,
@@ -449,7 +499,25 @@ const orderSchema = new Schema<IOrder>(
     refundedAt: Date,
     confirmedAt: Date,
     cancelledAt: Date,
-    
+
+    // Enhanced refund tracking
+    refundStatus: {
+      type: String,
+      enum: ['pending', 'processing', 'completed', 'failed'],
+    },
+    refundTransactionId: {
+      type: String,
+      trim: true,
+    },
+    cancellationType: {
+      type: String,
+      enum: ['user_requested', 'event_cancelled', 'admin_cancelled'],
+    },
+    serviceFeeRefunded: {
+      type: Boolean,
+      default: false,
+    },
+
     // Enhanced features
     specialRequests: {
       type: String,
@@ -563,7 +631,6 @@ const orderSchema = new Schema<IOrder>(
 );
 
 // Indexes for performance
-orderSchema.index({ userId: 1 });
 orderSchema.index({ orderNumber: 1 }, { unique: true });
 orderSchema.index({ status: 1 });
 orderSchema.index({ paymentStatus: 1 });
@@ -581,6 +648,10 @@ orderSchema.index({ paymentStatus: 1, createdAt: -1 }); // Orders by payment sta
 orderSchema.index({ 'items.eventId': 1 }); // Orders by event
 orderSchema.index({ userId: 1, paymentStatus: 1 }); // User orders by payment status
 
+// Additional indexes for KVM1 optimization - faster dashboard revenue queries
+orderSchema.index({ paymentStatus: 1, 'items.eventId': 1 }); // Event revenue lookup by paid status
+orderSchema.index({ createdAt: 1, paymentStatus: 1, total: 1 }); // Revenue trends over time
+
 // Pre-save middleware to generate order number
 orderSchema.pre('save', function (next) {
   if (!this.orderNumber) {
@@ -592,7 +663,7 @@ orderSchema.pre('save', function (next) {
 });
 
 // Pre-save middleware to calculate totals and commission
-orderSchema.pre('save', function (next) {
+orderSchema.pre('save', async function (next) {
   // Calculate subtotal from items
   this.subtotal = this.items.reduce((sum, item) => sum + item.totalPrice, 0);
 
@@ -604,9 +675,9 @@ orderSchema.pre('save', function (next) {
     this.total = 0;
   }
 
-  // Calculate admin commission if not already set
+  // Calculate admin commission if not already set (now async)
   if (this.isNew || this.isModified('total') || this.isModified('adminCommission.rate')) {
-    this.adminCommission.amount = this.calculateAdminCommission();
+    this.adminCommission.amount = await this.calculateAdminCommission();
     this.adminCommission.calculatedAt = new Date();
   }
 
@@ -631,7 +702,7 @@ orderSchema.methods.cancel = function (reason?: string) {
 };
 
 // Method to mark payment as paid
-orderSchema.methods.markAsPaid = function (transactionId?: string, paymentMethod?: string) {
+orderSchema.methods.markAsPaid = async function (transactionId?: string, paymentMethod?: string) {
   this.paymentStatus = 'paid';
   if (transactionId) {
     this.transactionId = transactionId;
@@ -639,7 +710,25 @@ orderSchema.methods.markAsPaid = function (transactionId?: string, paymentMethod
   if (paymentMethod) {
     this.paymentMethod = paymentMethod as any;
   }
-  return this.save();
+
+  // Save the order first
+  await this.save();
+
+  // Automatically create revenue transaction when order is marked as paid
+  try {
+    if (!this.adminCommission.revenueTransactionId) {
+      console.log(`Creating revenue transaction for order ${this._id}`);
+      const revenueTransactionId = await this.createRevenueTransaction();
+      this.adminCommission.revenueTransactionId = revenueTransactionId;
+      await this.save();
+    }
+  } catch (error) {
+    console.error(`Failed to create revenue transaction for order ${this._id}:`, error);
+    // Don't fail the payment marking if revenue transaction creation fails
+    // This can be retried later
+  }
+
+  return this;
 };
 
 // Method to process refund
@@ -686,9 +775,45 @@ orderSchema.methods.addCommunication = function (type: string, message: string, 
 };
 
 // Method to calculate admin commission
-orderSchema.methods.calculateAdminCommission = function (rate?: number): number {
-  const commissionRate = rate || this.adminCommission?.rate || 5; // Default 5%
-  return (this.total * commissionRate) / 100;
+orderSchema.methods.calculateAdminCommission = async function (rate?: number): Promise<number> {
+  try {
+    // If rate is explicitly provided, use it
+    if (rate !== undefined) {
+      return (this.total * rate) / 100;
+    }
+
+    // Get the vendor to check their payment settings
+    const Event = mongoose.model('Event');
+    const User = mongoose.model('User');
+
+    const firstEvent = await Event.findById(this.items[0]?.eventId).select('vendorId');
+    if (!firstEvent) {
+      // Fallback to default rate if event not found
+      return (this.total * (this.adminCommission?.rate || 5)) / 100;
+    }
+
+    const vendor = await User.findById(firstEvent.vendorId).select('vendorPaymentSettings');
+    if (!vendor) {
+      // Fallback to default rate if vendor not found
+      return (this.total * (this.adminCommission?.rate || 5)) / 100;
+    }
+
+    // Determine commission based on vendor payment setup
+    if (vendor.vendorPaymentSettings?.hasCustomStripeAccount &&
+        vendor.vendorPaymentSettings?.subscriptionActive) {
+      // Vendor uses their own Stripe account and has active subscription
+      // Return 0 commission, but subscription fee will be charged separately
+      return 0;
+    } else {
+      // Vendor uses platform payment gateway - charge commission
+      const commissionRate = vendor.vendorPaymentSettings?.commissionRate || 5; // Default 5%
+      return (this.total * commissionRate) / 100;
+    }
+  } catch (error) {
+    console.error('Error calculating admin commission:', error);
+    // Fallback to default rate on error
+    return (this.total * (this.adminCommission?.rate || 5)) / 100;
+  }
 };
 
 // Method to create revenue transaction
@@ -739,7 +864,9 @@ orderSchema.methods.updateCommissionTracking = async function (): Promise<IOrder
 };
 
 // Method to calculate refund amount based on cancellation policy
-orderSchema.methods.calculateRefundAmount = function (): number {
+// Policy: Event price is refundable, 10% service charge is NOT refundable
+// Customer can only cancel 24 hours or more before event
+orderSchema.methods.calculateRefundAmount = function (cancellationType?: 'user_requested' | 'event_cancelled' | 'admin_cancelled'): number {
   if (this.paymentStatus !== 'paid') {
     return 0;
   }
@@ -753,21 +880,58 @@ orderSchema.methods.calculateRefundAmount = function (): number {
   const timeDiff = earliestEventDate.getTime() - now.getTime();
   const hoursDiff = timeDiff / (1000 * 3600);
 
-  // Refund policy based on time before event
-  let refundPercentage = 0;
-
-  if (hoursDiff > 168) { // More than 7 days
-    refundPercentage = 100;
-  } else if (hoursDiff > 72) { // 3-7 days
-    refundPercentage = 75;
-  } else if (hoursDiff > 24) { // 1-3 days
-    refundPercentage = 50;
+  // For user-requested cancellations, must be at least 24 hours before event
+  if (cancellationType === 'user_requested' && hoursDiff < 24) {
+    return 0; // No refund if less than 24 hours before event
   }
 
-  const refundAmount = (this.total * refundPercentage) / 100;
-  const processingFee = Math.min(refundAmount * 0.03, 10); // 3% or $10 max
+  // Calculate the event price (subtotal) without the service fee
+  const eventPrice = this.subtotal - (this.couponDiscount || 0);
 
-  return Math.max(0, refundAmount - processingFee);
+  // Service fee (10%) is NOT refundable
+  // Refund only the event price portion
+  const refundAmount = eventPrice;
+
+  return Math.max(0, refundAmount);
+};
+
+// Method to check if order can be cancelled by customer
+orderSchema.methods.canBeCancelledByCustomer = function (): { canCancel: boolean; reason?: string } {
+  // Already cancelled or refunded - cannot cancel
+  if (this.status === 'cancelled' || this.status === 'refunded') {
+    return { canCancel: false, reason: 'Order is already cancelled or refunded' };
+  }
+
+  // Completed orders cannot be cancelled
+  if (this.status === 'completed') {
+    return { canCancel: false, reason: 'Completed orders cannot be cancelled' };
+  }
+
+  // Pending orders can always be cancelled (no payment made yet)
+  if (this.status === 'pending') {
+    return { canCancel: true };
+  }
+
+  // Confirmed orders - check 24-hour rule before event
+  if (this.status === 'confirmed') {
+    // Find the earliest event date
+    const earliestEventDate = this.items.reduce((earliest: Date, item: IOrderItem) => {
+      return item.scheduleDate < earliest ? item.scheduleDate : earliest;
+    }, this.items[0]?.scheduleDate || new Date());
+
+    const now = new Date();
+    const timeDiff = earliestEventDate.getTime() - now.getTime();
+    const hoursDiff = timeDiff / (1000 * 3600);
+
+    if (hoursDiff < 24) {
+      return { canCancel: false, reason: 'Cannot cancel within 24 hours of the event' };
+    }
+
+    return { canCancel: true };
+  }
+
+  // Default: cannot cancel
+  return { canCancel: false, reason: 'Order cannot be cancelled' };
 };
 
 // Static method to find orders by user
@@ -790,16 +954,8 @@ orderSchema.virtual('totalTickets').get(function () {
 });
 
 // Instance method implementations
-orderSchema.methods.markAsPaid = function(transactionId?: string, paymentMethod?: string) {
-  this.paymentStatus = 'paid';
-  if (transactionId) {
-    this.transactionId = transactionId;
-  }
-  if (paymentMethod) {
-    this.paymentMethod = paymentMethod;
-  }
-  return this.save();
-};
+// NOTE: This is a duplicate - the main implementation is above
+// Keeping for backwards compatibility, but it delegates to the method defined earlier
 
 orderSchema.methods.confirm = async function() {
   this.status = 'confirmed';

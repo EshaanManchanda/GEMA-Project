@@ -504,14 +504,14 @@ const PersonalInfoTab: React.FC<{
 const AddressesTab: React.FC<{
   addresses: Address[];
   onAdd: (address: Omit<Address, 'id'>) => void;
-  onUpdate: (id: string, address: Partial<Address>) => void;
-  onDelete: (id: string) => void;
+  onUpdate: (index: number, address: Partial<Address>) => void;
+  onDelete: (index: number) => void;
   isLoading: boolean;
 }> = ({ addresses, onAdd, onUpdate, onDelete, isLoading }) => {
   const [showAddForm, setShowAddForm] = useState(false);
-  const [editingId, setEditingId] = useState<string | null>(null);
+  const [editingIndex, setEditingIndex] = useState<number | null>(null);
   const [showDeleteDialog, setShowDeleteDialog] = useState(false);
-  const [addressToDelete, setAddressToDelete] = useState<string | null>(null);
+  const [addressToDelete, setAddressToDelete] = useState<number | null>(null);
   const [formData, setFormData] = useState({
     label: '',
     street: '',
@@ -537,20 +537,20 @@ const AddressesTab: React.FC<{
       isDefault: false,
     });
     setShowAddForm(false);
-    setEditingId(null);
+    setEditingIndex(null);
   };
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    if (editingId) {
-      onUpdate(editingId, formData);
+    if (editingIndex !== null) {
+      onUpdate(editingIndex, formData);
     } else {
       onAdd(formData);
     }
     resetForm();
   };
 
-  const startEdit = (address: Address) => {
+  const startEdit = (address: Address, index: number) => {
     setFormData({
       label: address.label || '',
       street: address.street,
@@ -562,17 +562,17 @@ const AddressesTab: React.FC<{
       country: address.country,
       isDefault: address.isDefault,
     });
-    setEditingId(address.id || '');
+    setEditingIndex(index);
     setShowAddForm(true);
   };
 
-  const handleDeleteClick = (addressId: string) => {
-    setAddressToDelete(addressId);
+  const handleDeleteClick = (index: number) => {
+    setAddressToDelete(index);
     setShowDeleteDialog(true);
   };
 
   const handleConfirmDelete = () => {
-    if (addressToDelete) {
+    if (addressToDelete !== null) {
       onDelete(addressToDelete);
       setShowDeleteDialog(false);
       setAddressToDelete(null);
@@ -622,13 +622,13 @@ const AddressesTab: React.FC<{
               </div>
               <div className="flex gap-2">
                 <button
-                  onClick={() => startEdit(address)}
+                  onClick={() => startEdit(address, index)}
                   className="p-2 text-blue-600 hover:bg-blue-50 rounded-lg transition-colors"
                 >
                   <FaEdit />
                 </button>
                 <button
-                  onClick={() => handleDeleteClick(address.id || '')}
+                  onClick={() => handleDeleteClick(index)}
                   className="p-2 text-red-600 hover:bg-red-50 rounded-lg transition-colors"
                   disabled={isLoading}
                 >
@@ -1094,14 +1094,14 @@ const ProfilePage: React.FC = () => {
     dispatch(getFullProfile() as any);
   }, [dispatch]);
 
-  const handleUpdateAddress = useCallback(async (addressId: string, address: Partial<Address>) => {
-    await dispatch(updateAddress({ addressId, address }) as any);
+  const handleUpdateAddress = useCallback(async (addressIndex: number, address: Partial<Address>) => {
+    await dispatch(updateAddress({ addressIndex, address }) as any);
     // Refresh profile to update completion percentage
     dispatch(getFullProfile() as any);
   }, [dispatch]);
 
-  const handleDeleteAddress = useCallback(async (addressId: string) => {
-    await dispatch(deleteAddress(addressId) as any);
+  const handleDeleteAddress = useCallback(async (addressIndex: number) => {
+    await dispatch(deleteAddress(addressIndex) as any);
     // Refresh profile to update completion percentage
     dispatch(getFullProfile() as any);
   }, [dispatch]);

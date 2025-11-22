@@ -54,6 +54,22 @@ export const uploadPresets = {
       { quality: 'auto', fetch_format: 'auto' }
     ],
     allowed_formats: ['jpg', 'jpeg', 'png', 'pdf', 'zip', 'doc', 'docx']
+  },
+  blogs: {
+    folder: 'gema/blogs',
+    transformation: [
+      { quality: 'auto', fetch_format: 'auto' },
+      { width: 1920, height: 1080, crop: 'limit' }
+    ],
+    allowed_formats: ['jpg', 'jpeg', 'png', 'webp', 'gif']
+  },
+  blogContent: {
+    folder: 'gema/blogs/content',
+    resource_type: 'auto', // Supports images and videos
+    transformation: [
+      { quality: 'auto', fetch_format: 'auto' }
+    ],
+    allowed_formats: ['jpg', 'jpeg', 'png', 'webp', 'gif', 'mp4', 'webm', 'mov']
   }
 };
 

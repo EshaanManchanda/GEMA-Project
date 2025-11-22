@@ -1,16 +1,36 @@
 import mongoose from 'mongoose';
 
 /**
+ * Generate cache key for a single event
+ */
+export const getEventCacheKey = (eventId: string): string => {
+  return `event:${eventId}`;
+};
+
+/**
+ * Generate cache key pattern for event lists
+ * (used for invalidating all event list caches)
+ */
+export const getEventListCachePattern = (): string => {
+  return 'events:list:*';
+};
+
+/**
  * Build filter for public event queries
  * Only returns events that are:
  * - Approved by admin
  * - Active
  * - Published
  * - Not deleted
- * - Not expired (endDate is in the future)
+ * - Not expired (endDate + 24 hours buffer is in the future)
+ *
+ * Note: Uses 24-hour buffer to match the lifecycle job behavior
  */
 export const buildPublicEventFilter = (additionalFilters: any = {}) => {
   const now = new Date();
+  // Add 24-hour buffer: events remain visible 24 hours after their end date
+  // This aligns with the lifecycle job which archives events 24 hours after expiration
+  const bufferTime = new Date(now.getTime() - 24 * 60 * 60 * 1000);
 
   const baseFilter: any = {
     isApproved: true,
@@ -19,13 +39,14 @@ export const buildPublicEventFilter = (additionalFilters: any = {}) => {
     isDeleted: false,
   };
 
-  // Add expiration filter - event must have at least one future date
-  // Check if any dateSchedule entry has endDate or date >= now
+  // Add expiration filter - event must have at least one future date (with 24h buffer)
+  // Event is visible if: endDate >= (now - 24 hours)
+  // This means events remain visible until 24 hours after their actual end date
   baseFilter.$or = [
-    // New format: check endDate
-    { 'dateSchedule.endDate': { $gte: now } },
-    // Legacy format: check date field
-    { 'dateSchedule.date': { $gte: now } },
+    // New format: check endDate with buffer
+    { 'dateSchedule.endDate': { $gte: bufferTime } },
+    // Legacy format: check date field with buffer
+    { 'dateSchedule.date': { $gte: bufferTime } },
   ];
 
   // Merge with any additional filters provided
@@ -82,9 +103,11 @@ export const isEventPubliclyVisible = (event: any): boolean => {
   }
 
   const now = new Date();
+  // Use 24-hour buffer to match buildPublicEventFilter behavior
+  const bufferTime = new Date(now.getTime() - 24 * 60 * 60 * 1000);
   const hasValidDate = event.dateSchedule.some((schedule: any) => {
     const dateToCheck = schedule.endDate || schedule.date;
-    return dateToCheck && new Date(dateToCheck) >= now;
+    return dateToCheck && new Date(dateToCheck) >= bufferTime;
   });
 
   return hasValidDate;

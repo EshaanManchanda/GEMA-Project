@@ -257,30 +257,30 @@ export const generateAutoSEO = (content: {
   tags?: string[];
   type: 'event' | 'blog';
 }): { title: string; description: string; keywords: string[] } => {
-  const { title, description, category, location, tags = [], type } = content;
+  const { title = '', description = '', category, location, tags = [], type } = content;
 
   // Generate SEO title
-  let seoTitle = title;
-  if (type === 'event') {
+  let seoTitle = title || '';
+  if (seoTitle && type === 'event') {
     if (!seoTitle.toLowerCase().includes('gema')) {
       seoTitle = `${title} | Kids ${category || 'Activities'} in ${location || 'UAE'} | Gema Events`;
     }
-  } else {
+  } else if (seoTitle) {
     if (!seoTitle.toLowerCase().includes('gema')) {
       seoTitle = `${title} | Kids Activities Guide | Gema Events`;
     }
   }
 
   // Ensure title is within limits
-  if (seoTitle.length > SEO_LIMITS.TITLE.MAX) {
-    seoTitle = `${title} | Gema Events`;
+  if (seoTitle && seoTitle.length > SEO_LIMITS.TITLE.MAX) {
+    seoTitle = title ? `${title} | Gema Events` : 'Gema Events';
   }
 
   // Generate SEO description
-  let seoDescription = description;
-  if (seoDescription.length > SEO_LIMITS.DESCRIPTION.MAX) {
+  let seoDescription = description || '';
+  if (seoDescription && seoDescription.length > SEO_LIMITS.DESCRIPTION.MAX) {
     seoDescription = `${description.substring(0, 157)}...`;
-  } else if (seoDescription.length < SEO_LIMITS.DESCRIPTION.MIN) {
+  } else if (seoDescription && seoDescription.length < SEO_LIMITS.DESCRIPTION.MIN) {
     const suffix = type === 'event'
       ? ` Book now for an unforgettable experience with Gema Events in ${location || 'UAE'}.`
       : ' Discover expert tips and guides for family activities with Gema Events.';

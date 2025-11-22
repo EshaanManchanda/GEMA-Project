@@ -114,6 +114,12 @@ const SEOEditor: React.FC<SEOEditorProps> = ({
   const handleAutoGenerate = () => {
     if (!contentData) return;
 
+    // Verify that we have at least title and description
+    if (!contentData.title || !contentData.description) {
+      console.warn('Cannot auto-generate SEO: title or description is missing');
+      return;
+    }
+
     const autoSEO = generateAutoSEO(contentData);
     setSeoData(prev => ({
       ...prev,
@@ -189,9 +195,15 @@ const SEOEditor: React.FC<SEOEditorProps> = ({
                       variant="outline"
                       size="sm"
                       onClick={handleAutoGenerate}
-                      disabled={isActuallyDisabled}
+                      disabled={isActuallyDisabled || !contentData.title || !contentData.description}
                       className="text-xs"
-                      title={!canEditSEO.allowed ? canEditSEO.message : undefined}
+                      title={
+                        !canEditSEO.allowed
+                          ? canEditSEO.message
+                          : (!contentData.title || !contentData.description)
+                            ? 'Please fill in event title and description first'
+                            : undefined
+                      }
                     >
                       <Zap className="w-3 h-3 mr-1" />
                       Auto-Generate

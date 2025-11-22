@@ -37,36 +37,30 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const error = useSelector(selectError);
 
   useEffect(() => {
-    // Check if user is already authenticated from stored token
-    // Only run once on mount to avoid infinite loops
+    // Initialize auth on mount - check if user is authenticated via httpOnly cookies
+    // Note: Tokens are now stored in httpOnly cookies, not localStorage
     const initializeAuth = async () => {
-      const token = localStorage.getItem('token');
-      if (token && !user && !isAuthenticated) {
+      // Only attempt to get user if we don't already have user data
+      // This prevents unnecessary API calls after login/register
+      if (!user && !isAuthenticated) {
         try {
+          // Clear any existing errors before attempting auth
           dispatch(clearError());
+
+          // Try to get current user (cookies sent automatically)
           await dispatch(getCurrentUser() as any);
         } catch (error) {
-          localStorage.removeItem('token');
-          localStorage.removeItem('refreshToken');
+          // If getCurrentUser fails, it means no valid auth cookies exist
+          // Clear auth state (cookies are already cleared by server or don't exist)
           dispatch(clearError());
+          console.log('[AuthContext] No valid auth session found');
         }
-      };
-      try {
-        // Clear any existing errors before attempting auth
-        dispatch(clearError());
-        await dispatch(getCurrentUser() as any);
-      } catch (error) {
-        // Token might be invalid, clear it
-        localStorage.removeItem('token');
-        localStorage.removeItem('refreshToken');
-        // Clear auth errors since this is just initialization
-        dispatch(clearError());
       }
     };
 
     initializeAuth();
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [dispatch]); // Removed 'user' to prevent infinite loop
+  }, [dispatch]); // Only run once on mount
 
   const login = async (credentials: LoginCredentials) => {
     try {

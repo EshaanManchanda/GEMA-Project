@@ -1,5 +1,5 @@
 import React, { Suspense, useEffect, lazy } from 'react';
-import { Routes, Route, useLocation, Outlet } from 'react-router-dom';
+import { Routes, Route, useLocation, Outlet, Navigate } from 'react-router-dom';
 import { AnimatePresence } from 'framer-motion';
 import { Toaster } from 'react-hot-toast';
 // Stripe Elements are handled by StripeElementsWrapper in payment components
@@ -58,8 +58,10 @@ const VendorBookingsPage = React.lazy(() => import(/* webpackChunkName: "vendor"
 const VendorEmployeesPage = React.lazy(() => import(/* webpackChunkName: "vendor" */ './pages/vendor/VendorEmployeesPage'));
 const VendorCreateEmployeePage = React.lazy(() => import(/* webpackChunkName: "vendor" */ './pages/vendor/VendorCreateEmployeePage'));
 const VendorEditEmployeePage = React.lazy(() => import(/* webpackChunkName: "vendor" */ './pages/vendor/VendorEditEmployeePage'));
+const VendorPayoutsDashboard = React.lazy(() => import(/* webpackChunkName: "vendor" */ './pages/vendor/VendorPayoutsDashboard'));
 // const VendorAnalyticsPage = React.lazy(() => import(/* webpackChunkName: "vendor" */ './pages/vendor/VendorAnalyticsPage'));
 const VendorProfilePage = React.lazy(() => import(/* webpackChunkName: "vendor" */ './pages/vendor/VendorProfilePage'));
+const VendorClaimedEventsPage = React.lazy(() => import(/* webpackChunkName: "vendor" */ './pages/vendor/VendorClaimedEventsPage'));
 
 // Vendor Registration Pages
 const VendorRegistrationsDashboard = React.lazy(() => import(/* webpackChunkName: "vendor" */ './pages/vendor/VendorRegistrationsDashboard'));
@@ -68,6 +70,7 @@ const FormBuilderPage = React.lazy(() => import(/* webpackChunkName: "vendor" */
 // Admin Dashboard Pages
 const AdminDashboardPage = React.lazy(() => import(/* webpackChunkName: "admin" */ './pages/admin/AdminDashboardPage'));
 const AdminUsersPage = React.lazy(() => import(/* webpackChunkName: "admin" */ './pages/admin/AdminUsersPage'));
+const AdminVendorsPage = React.lazy(() => import(/* webpackChunkName: "admin" */ './pages/admin/AdminVendorsPage'));
 const AdminEventsPage = React.lazy(() => import(/* webpackChunkName: "admin" */ './pages/admin/AdminEventsPage'));
 const AdminEditEventPage = React.lazy(() => import(/* webpackChunkName: "admin" */ './pages/admin/AdminEditEventPage'));
 const AdminVenuesPage = React.lazy(() => import(/* webpackChunkName: "admin" */ './pages/admin/AdminVenuesPage'));
@@ -80,9 +83,10 @@ const AdminCommissionsPage = React.lazy(() => import(/* webpackChunkName: "admin
 const AdminBlogsPage = React.lazy(() => import(/* webpackChunkName: "admin" */ './pages/admin/AdminBlogsPage'));
 const AdminBlogCategoriesPage = React.lazy(() => import(/* webpackChunkName: "admin" */ './pages/admin/AdminBlogCategoriesPage'));
 const AdminCouponsPage = React.lazy(() => import(/* webpackChunkName: "admin" */ './pages/admin/AdminCouponsPage'));
-// const AdminAnalyticsPage = React.lazy(() => import(/* webpackChunkName: "admin" */ './pages/admin/AdminAnalyticsPage'));
+const AdminAnalyticsPage = React.lazy(() => import(/* webpackChunkName: "admin" */ './pages/admin/AdminAnalyticsPage'));
 const AdminSettingsPage = React.lazy(() => import(/* webpackChunkName: "admin" */ './pages/admin/AdminSettingsPage'));
 const EmployeeManagement = React.lazy(() => import(/* webpackChunkName: "admin" */ './pages/admin/EmployeeManagement'));
+const AdminAffiliateAnalyticsPage = React.lazy(() => import(/* webpackChunkName: "admin" */ './pages/admin/AdminAffiliateAnalyticsPage'));
 
 // Analytics Pages
 const AnalyticsDashboard = React.lazy(() => import(/* webpackChunkName: "analytics" */ './pages/analytics/AnalyticsDashboard'));
@@ -489,7 +493,16 @@ function AppContent() {
                 </Suspense>
               </VendorRoute>
             } />
-            
+
+            {/* Claimed Affiliate Events */}
+            <Route path="claimed-events" element={
+              <VendorRoute>
+                <Suspense fallback={<LoadingSpinner />}>
+                  <VendorClaimedEventsPage />
+                </Suspense>
+              </VendorRoute>
+            } />
+
             {/* Booking Management */}
             <Route path="bookings" element={
               <VendorRoute>
@@ -553,6 +566,22 @@ function AppContent() {
                 <Suspense fallback={<LoadingSpinner />}>
                   <VendorProfilePage />
                 </Suspense>
+              </VendorRoute>
+            } />
+
+            {/* Payouts */}
+            <Route path="payouts" element={
+              <VendorRoute>
+                <Suspense fallback={<LoadingSpinner />}>
+                  <VendorPayoutsDashboard />
+                </Suspense>
+              </VendorRoute>
+            } />
+
+            {/* Payment Settings - Redirect to Profile */}
+            <Route path="payment-settings" element={
+              <VendorRoute>
+                <Navigate to="/vendor/profile" replace />
               </VendorRoute>
             } />
 
@@ -640,7 +669,16 @@ function AppContent() {
                 </Suspense>
               </AdminRoute>
             } />
-            
+
+            {/* Vendor Management */}
+            <Route path="vendors" element={
+              <AdminRoute>
+                <Suspense fallback={<LoadingSpinner />}>
+                  <AdminVendorsPage />
+                </Suspense>
+              </AdminRoute>
+            } />
+
             {/* Event Management */}
             <Route path="events" element={
               <AdminRoute>
@@ -754,7 +792,7 @@ function AppContent() {
             <Route path="analytics" element={
               <AdminRoute>
                 <Suspense fallback={<LoadingSpinner />}>
-                  <AnalyticsDashboard />
+                  <AdminAnalyticsPage />
                 </Suspense>
               </AdminRoute>
             } />
@@ -762,6 +800,13 @@ function AppContent() {
               <AdminRoute>
                 <Suspense fallback={<LoadingSpinner />}>
                   <EventPerformance />
+                </Suspense>
+              </AdminRoute>
+            } />
+            <Route path="analytics/affiliate-events" element={
+              <AdminRoute>
+                <Suspense fallback={<LoadingSpinner />}>
+                  <AdminAffiliateAnalyticsPage />
                 </Suspense>
               </AdminRoute>
             } />

@@ -16,7 +16,7 @@ if (!fs.existsSync(uploadDir)) {
 
 // Create subdirectories for different file types
 const createSubDirectories = () => {
-  const subDirs = ['events', 'venues', 'users', 'tickets', 'documents', 'registrations'];
+  const subDirs = ['events', 'venues', 'users', 'tickets', 'documents', 'registrations', 'blogs'];
   subDirs.forEach(dir => {
     const subDirPath = path.join(uploadDir, dir);
     if (!fs.existsSync(subDirPath)) {
@@ -35,6 +35,7 @@ const getCategoryFromRequest = (req: Request): string => {
   if (req.path.includes('/tickets')) return 'tickets';
   if (req.path.includes('/document')) return 'documents';
   if (req.path.includes('/registration')) return 'registrations';
+  if (req.path.includes('/blog')) return req.path.includes('/content') ? 'blogContent' : 'blogs';
   if (req.body.category) return req.body.category;
   return 'misc';
 };
@@ -44,10 +45,14 @@ const cloudinaryStorage = new CloudinaryStorage({
   cloudinary: cloudinary,
   params: (req: Request, file) => {
     const category = getCategoryFromRequest(req);
+    const isVideo = file.mimetype.startsWith('video/');
     return {
       folder: `gema/${category}`,
-      allowed_formats: ['jpg', 'jpeg', 'png', 'gif', 'pdf', 'doc', 'docx'],
-      transformation: [{ quality: 'auto', fetch_format: 'auto' }],
+      allowed_formats: category === 'blogContent'
+        ? ['jpg', 'jpeg', 'png', 'gif', 'webp', 'mp4', 'webm', 'mov']
+        : ['jpg', 'jpeg', 'png', 'gif', 'pdf', 'doc', 'docx'],
+      resource_type: isVideo ? 'video' : 'auto',
+      transformation: isVideo ? [] : [{ quality: 'auto', fetch_format: 'auto' }],
       public_id: `${category}-${Date.now()}-${Math.round(Math.random() * 1E9)}`
     };
   }
@@ -135,6 +140,12 @@ export const uploadQRCode = upload.single('qrCode');
 
 // Registration files upload middleware (supports multiple dynamic fields)
 export const uploadRegistrationFiles = upload.any();
+
+// Blog-specific upload middleware
+export const uploadBlogFeaturedImage = upload.single('featuredImage');
+
+// Blog content media upload (images and videos within content)
+export const uploadBlogContentMedia = upload.single('media');
 
 // Error handling middleware for multer errors
 export const handleUploadError = (error: any, req: Request, res: any, next: any) => {

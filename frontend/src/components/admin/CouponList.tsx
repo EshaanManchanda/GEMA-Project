@@ -198,9 +198,7 @@ const CouponList: React.FC = () => {
       toast.success('Coupon deleted successfully');
       fetchCoupons();
     } catch (error: any) {
-      if (error.response?.status === 400) {
-        toast.error('Cannot delete coupon that has been used');
-      } else if (error.response?.data?.message) {
+      if (error.response?.data?.message) {
         toast.error(`Error: ${error.response.data.message}`);
       } else {
         toast.error('Failed to delete coupon');
@@ -228,9 +226,7 @@ const CouponList: React.FC = () => {
       // Provide user-friendly error messages
       const errorMessage = error.response?.data?.message;
 
-      if (errorMessage?.includes('Cannot modify code, type, or value')) {
-        toast.error('This coupon has been used and cannot have its code, type, or discount value modified.');
-      } else if (errorMessage) {
+      if (errorMessage) {
         toast.error(errorMessage);
       } else if (error.response?.status === 400) {
         toast.error('Invalid coupon data. Please check your inputs.');
@@ -489,7 +485,6 @@ const CouponList: React.FC = () => {
               variant="danger"
               size="sm"
               onClick={() => handleDeleteCoupon(coupon._id)}
-              disabled={coupon.usageCount > 0}
             >
               <Trash2 className="w-4 h-4" />
             </Button>
@@ -615,6 +610,8 @@ const CouponList: React.FC = () => {
                 <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-4 h-4" />
                 <input
                   type="text"
+                  id="coupon-search"
+                  name="couponSearch"
                   placeholder="Search coupons..."
                   value={searchInput}
                   onChange={(e) => handleSearch(e.target.value)}
@@ -623,6 +620,8 @@ const CouponList: React.FC = () => {
               </div>
 
               <select
+                id="filter-status"
+                name="filterStatus"
                 value={filters.status}
                 onChange={(e) => handleFilterChange('status', e.target.value)}
                 className="px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"

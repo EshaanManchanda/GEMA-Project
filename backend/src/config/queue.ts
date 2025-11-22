@@ -15,7 +15,7 @@ export const redisConnection = {
   port: parseInt(process.env.REDIS_PORT || '6379', 10),
   username: process.env.REDIS_USERNAME || undefined,
   password: process.env.REDIS_PASSWORD || undefined,
-  db: parseInt(process.env.REDIS_QUEUE_DB || '1', 10), // Use separate DB for queues
+  db: parseInt(process.env.REDIS_QUEUE_DB || '0', 10), // Use DB 0 (some Redis instances don't support multiple DBs)
   tls: process.env.REDIS_TLS === 'true' ? {
     // Set to false for self-signed certs, true for production with valid certs
     rejectUnauthorized: process.env.REDIS_TLS_REJECT_UNAUTHORIZED !== 'false',
@@ -25,7 +25,7 @@ export const redisConnection = {
   enableOfflineQueue: false,
 };
 
-// Queue configuration
+// Queue configuration (optimized for KVM1 - reduced retention for lower memory usage)
 const queueConfig = {
   connection: redisConnection,
   defaultJobOptions: {
@@ -35,11 +35,11 @@ const queueConfig = {
       delay: 2000,
     },
     removeOnComplete: {
-      age: 24 * 3600, // Keep completed jobs for 24 hours
-      count: 1000,
+      age: 3600, // OPTIMIZED: Keep completed jobs for 1 hour only (reduced from 24h)
+      count: 100, // OPTIMIZED: Keep max 100 recent jobs (reduced from 1000)
     },
     removeOnFail: {
-      age: 7 * 24 * 3600, // Keep failed jobs for 7 days
+      age: 24 * 3600, // Keep failed jobs for 1 day (reduced from 7 days) for debugging
     },
   },
 };
