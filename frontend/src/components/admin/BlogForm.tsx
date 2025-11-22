@@ -3,6 +3,7 @@ import { useForm, Controller } from 'react-hook-form';
 import { yupResolver } from '@hookform/resolvers/yup';
 import * as yup from 'yup';
 import toast from 'react-hot-toast';
+import DOMPurify from 'isomorphic-dompurify';
 import {
   Save,
   X,
@@ -333,7 +334,13 @@ const BlogForm: React.FC<BlogFormProps> = ({
       <h1 className="text-3xl font-bold mb-4">{watchedTitle || 'Blog Title'}</h1>
       <div
         className="blog-content"
-        dangerouslySetInnerHTML={{ __html: watchedContent || 'Blog content will appear here...' }}
+        dangerouslySetInnerHTML={{
+          __html: DOMPurify.sanitize(watchedContent || 'Blog content will appear here...', {
+            ADD_ATTR: ['style', 'class'],
+            ADD_TAGS: ['iframe'],
+            ALLOWED_ATTR: ['style', 'class', 'href', 'src', 'alt', 'title', 'target', 'rel', 'width', 'height', 'id']
+          })
+        }}
       />
     </div>
   );

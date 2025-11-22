@@ -3,7 +3,6 @@ import { FaSearch, FaEdit, FaTrash, FaEye, FaCheck, FaTimes, FaStar, FaUndo, FaP
 import { useNavigate } from 'react-router-dom';
 import adminAPI from '../../services/api/adminAPI';
 import EventEditModal from '../../components/admin/EventEditModal';
-import EventCreateModal from '../../components/admin/EventCreateModal';
 import categoriesAPI, { Category } from '../../services/api/categoriesAPI';
 
 interface Event {
@@ -81,7 +80,6 @@ const AdminEventsPage: React.FC = () => {
   const [isApprovalModalOpen, setIsApprovalModalOpen] = useState(false);
   const [isViewModalOpen, setIsViewModalOpen] = useState(false);
   const [isEditModalOpen, setIsEditModalOpen] = useState(false);
-  const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
   const [eventToDelete, setEventToDelete] = useState<string | null>(null);
   const [eventToApprove, setEventToApprove] = useState<string | null>(null);
   const [selectedEvent, setSelectedEvent] = useState<Event | null>(null);
@@ -300,7 +298,7 @@ const AdminEventsPage: React.FC = () => {
               <p className="text-gray-600">Manage and moderate events from vendors</p>
             </div>
             <button
-              onClick={() => setIsCreateModalOpen(true)}
+              onClick={() => navigate('/admin/events/create')}
               className="flex items-center px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
             >
               <FaPlus className="mr-2" />
@@ -963,15 +961,6 @@ const AdminEventsPage: React.FC = () => {
               }}
             />
           )}
-
-          {/* Event Create Modal */}
-          <EventCreateModal
-            isOpen={isCreateModalOpen}
-            onClose={() => setIsCreateModalOpen(false)}
-            onSave={() => {
-              fetchEvents();
-            }}
-          />
         </div>
       </div>
   );

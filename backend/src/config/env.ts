@@ -176,7 +176,7 @@ export const config: Config = {
   upload: {
     path: process.env.UPLOAD_PATH || 'uploads/',
     maxFileSize: parseInt(process.env.MAX_FILE_SIZE || '5242880', 10),
-    allowedFileTypes: process.env.ALLOWED_FILE_TYPES?.split(',') || ['image/jpeg', 'image/png', 'image/gif', 'application/pdf'],
+    allowedFileTypes: process.env.ALLOWED_FILE_TYPES?.split(',') || ['image/jpeg', 'image/png', 'image/gif', 'image/webp', 'application/pdf'],
     provider: (process.env.UPLOAD_PROVIDER as 'local' | 'cloudinary') || 'local'
   },
   cloudinary: {

@@ -23,7 +23,7 @@ import {
   validateChangeEventVendor,
   validateBulkUpdateEvents
 } from '../validators/admin.validator';
-import { validateCreateEvent, validateUpdateEvent } from '../validators/event.validator';
+import { validateAdminCreateEvent, validateAdminUpdateEvent } from '../validators/event.validator';
 import { validateMongoId } from '../validators/common.validator';
 
 const router = Router();
@@ -60,7 +60,7 @@ router.get('/', validateGetAllEvents, validate, getAllEvents);
  * @desc    Create new event (Admin can assign to any vendor)
  * @access  Admin only
  */
-router.post('/', validateCreateEvent, validate, createEvent);
+router.post('/', validateAdminCreateEvent, validate, createEvent);
 
 /**
  * @route   GET /api/admin/events/:id
@@ -74,7 +74,7 @@ router.get('/:id', validateMongoId('id', 'param'), validate, getEventById);
  * @desc    Update event (Admin can update any field)
  * @access  Admin only
  */
-router.put('/:id', validateUpdateEvent, validate, updateEvent);
+router.put('/:id', validateAdminUpdateEvent, validate, updateEvent);
 
 /**
  * @route   PUT /api/admin/events/:id/vendor

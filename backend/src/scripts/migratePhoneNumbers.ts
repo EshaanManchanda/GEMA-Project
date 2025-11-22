@@ -50,7 +50,7 @@ async function migratePhoneNumbers(): Promise<MigrationResult> {
   try {
     // Find all users with phone numbers
     const users = await User.find({
-      phone: { $exists: true, $ne: null, $ne: '' }
+      phone: { $exists: true, $nin: [null, ''] }
     });
 
     result.total = users.length;
@@ -124,7 +124,7 @@ async function main() {
   try {
     // Connect to MongoDB
     console.log('Connecting to MongoDB...');
-    await mongoose.connect(config.mongoUri);
+    await mongoose.connect(config.mongodbUri);
     console.log('✓ Connected to MongoDB\n');
 
     // Run migration

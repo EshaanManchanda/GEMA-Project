@@ -687,6 +687,13 @@ function AppContent() {
                 </Suspense>
               </AdminRoute>
             } />
+            <Route path="events/create" element={
+              <AdminRoute>
+                <Suspense fallback={<LoadingSpinner />}>
+                  <AdminEditEventPage />
+                </Suspense>
+              </AdminRoute>
+            } />
             <Route path="events/:id/edit" element={
               <AdminRoute>
                 <Suspense fallback={<LoadingSpinner />}>

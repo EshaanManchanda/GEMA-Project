@@ -55,7 +55,7 @@ const blogSchema = new Schema<IBlog>(
     content: {
       type: String,
       required: [true, 'Blog content is required'],
-      trim: true,
+      // trim removed - HTML content must be preserved
     },
     featuredImage: {
       type: String,

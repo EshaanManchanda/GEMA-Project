@@ -50,7 +50,7 @@ const cloudinaryStorage = new CloudinaryStorage({
       folder: `gema/${category}`,
       allowed_formats: category === 'blogContent'
         ? ['jpg', 'jpeg', 'png', 'gif', 'webp', 'mp4', 'webm', 'mov']
-        : ['jpg', 'jpeg', 'png', 'gif', 'pdf', 'doc', 'docx'],
+        : ['jpg', 'jpeg', 'png', 'gif', 'webp', 'pdf', 'doc', 'docx'],
       resource_type: isVideo ? 'video' : 'auto',
       transformation: isVideo ? [] : [{ quality: 'auto', fetch_format: 'auto' }],
       public_id: `${category}-${Date.now()}-${Math.round(Math.random() * 1E9)}`

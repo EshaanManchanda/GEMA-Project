@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { useParams, Link, useNavigate } from 'react-router-dom';
 import { Helmet } from 'react-helmet-async';
 import { motion } from 'framer-motion';
+import DOMPurify from 'isomorphic-dompurify';
 import {
   FaArrowLeft,
   FaCalendar,
@@ -396,7 +397,13 @@ const BlogDetailPage: React.FC = () => {
       <article className="prose prose-lg max-w-none mb-12">
         <div
           className="blog-content"
-          dangerouslySetInnerHTML={{ __html: blog.content }}
+          dangerouslySetInnerHTML={{
+            __html: DOMPurify.sanitize(blog.content, {
+              ADD_ATTR: ['style', 'class'],
+              ADD_TAGS: ['iframe'],
+              ALLOWED_ATTR: ['style', 'class', 'href', 'src', 'alt', 'title', 'target', 'rel', 'width', 'height', 'id']
+            })
+          }}
         />
       </article>
 

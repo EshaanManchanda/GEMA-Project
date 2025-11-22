@@ -122,10 +122,9 @@ const formatAdminEventResponse = (event: any) => {
     location: event.location,
     vendor: event.vendorId ? {
       id: event.vendorId._id?.toString() || event.vendorId.id,
-      firstName: event.vendorId.firstName,
-      lastName: event.vendorId.lastName,
+      businessName: event.vendorId.businessName,
       email: event.vendorId.email,
-      fullName: `${event.vendorId.firstName} ${event.vendorId.lastName}`
+      fullName: event.vendorId.businessName
     } : null,
     price: event.price,
     currency: event.currency,
@@ -223,7 +222,7 @@ export const getAllEvents = async (req: Request, res: Response, next: NextFuncti
     // Execute query
     const [events, totalEvents] = await Promise.all([
       Event.find(query)
-        .populate('vendorId', 'firstName lastName email')
+        .populate('vendorId', 'businessName email phone')
         .sort(sortObj)
         .skip(skip)
         .limit(limitNum)
@@ -285,7 +284,7 @@ export const getEventById = async (req: Request, res: Response, next: NextFuncti
     }
 
     const event = await Event.findById(id)
-      .populate('vendorId', 'firstName lastName email phone avatar');
+      .populate('vendorId', 'businessName email phone');
 
     if (!event) {
       return next(new AppError('Event not found', 404));
@@ -355,7 +354,7 @@ export const createEvent = async (req: Request, res: Response, next: NextFunctio
 
     // Populate vendor information
     const populatedEvent = await Event.findById(newEvent._id)
-      .populate('vendorId', 'firstName lastName email');
+      .populate('vendorId', 'businessName email phone');
 
     const response: ApiResponse = {
       success: true,
@@ -411,7 +410,7 @@ export const changeEventVendor = async (req: Request, res: Response, next: NextF
       id,
       { vendorId },
       { new: true, runValidators: true }
-    ).populate('vendorId', 'firstName lastName email');
+    ).populate('vendorId', 'businessName email phone');
 
     const response: ApiResponse = {
       success: true,
@@ -475,7 +474,7 @@ export const updateEvent = async (req: Request, res: Response, next: NextFunctio
       id,
       updateData,
       { new: true, runValidators: true }
-    ).populate('vendorId', 'firstName lastName email');
+    ).populate('vendorId', 'businessName email phone');
 
     const response: ApiResponse = {
       success: true,
@@ -553,7 +552,7 @@ export const restoreEvent = async (req: Request, res: Response, next: NextFuncti
       id,
       { isDeleted: false },
       { new: true, runValidators: true }
-    ).populate('vendorId', 'firstName lastName email');
+    ).populate('vendorId', 'businessName email phone');
 
     const response: ApiResponse = {
       success: true,
@@ -586,7 +585,7 @@ export const approveEvent = async (req: Request, res: Response, next: NextFuncti
       id,
       { isApproved: true, status: 'published' },
       { new: true, runValidators: true }
-    ).populate('vendorId', 'firstName lastName email');
+    ).populate('vendorId', 'businessName email phone');
 
     if (!event) {
       return next(new AppError('Event not found', 404));
@@ -628,7 +627,7 @@ export const rejectEvent = async (req: Request, res: Response, next: NextFunctio
         // You could add a rejectionReason field to the Event model if needed
       },
       { new: true, runValidators: true }
-    ).populate('vendorId', 'firstName lastName email');
+    ).populate('vendorId', 'businessName email phone');
 
     if (!event) {
       return next(new AppError('Event not found', 404));
@@ -672,7 +671,7 @@ export const toggleFeatured = async (req: Request, res: Response, next: NextFunc
       id,
       { isFeatured: !currentEvent.isFeatured },
       { new: true, runValidators: true }
-    ).populate('vendorId', 'firstName lastName email');
+    ).populate('vendorId', 'businessName email phone');
 
     const response: ApiResponse = {
       success: true,
@@ -791,7 +790,7 @@ export const getEventStats = async (req: Request, res: Response, next: NextFunct
         { $group: { _id: '$type', count: { $sum: 1 } } }
       ]),
       Event.find({ isDeleted: false })
-        .populate('vendorId', 'firstName lastName email')
+        .populate('vendorId', 'businessName email phone')
         .sort({ createdAt: -1 })
         .limit(5)
         .lean()

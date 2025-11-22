@@ -182,8 +182,8 @@ export const createMockQuery = (result: any) => {
   };
 
   // Make the query thenable (Promise-like)
-  query.then = (resolve: Function) => {
-    return Promise.resolve(result).then(resolve);
+  query.then = (resolve: any, reject?: any) => {
+    return Promise.resolve(result).then(resolve, reject);
   };
 
   return query;

@@ -106,7 +106,7 @@ async function main() {
   try {
     // Connect to MongoDB
     console.log('🔌 Connecting to MongoDB...');
-    await mongoose.connect(config.mongodb.uri);
+    await mongoose.connect(config.mongodbUri);
     console.log('✅ Connected to MongoDB\n');
 
     // Run migration

@@ -40,7 +40,7 @@ export const uploadPresets = {
     transformation: [
       { quality: 'auto', fetch_format: 'auto' }
     ],
-    allowed_formats: ['jpg', 'jpeg', 'png', 'pdf']
+    allowed_formats: ['jpg', 'jpeg', 'png', 'webp', 'pdf']
   },
   documents: {
     folder: 'gema/documents',
@@ -53,7 +53,7 @@ export const uploadPresets = {
     transformation: [
       { quality: 'auto', fetch_format: 'auto' }
     ],
-    allowed_formats: ['jpg', 'jpeg', 'png', 'pdf', 'zip', 'doc', 'docx']
+    allowed_formats: ['jpg', 'jpeg', 'png', 'webp', 'pdf', 'zip', 'doc', 'docx']
   },
   blogs: {
     folder: 'gema/blogs',

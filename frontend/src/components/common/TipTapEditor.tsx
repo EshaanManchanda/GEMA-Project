@@ -1,4 +1,4 @@
-import React, { useCallback } from 'react';
+import React, { useCallback, useState } from 'react';
 import { useEditor, EditorContent, BubbleMenu } from '@tiptap/react';
 import StarterKit from '@tiptap/starter-kit';
 import Image from '@tiptap/extension-image';
@@ -7,12 +7,16 @@ import Youtube from '@tiptap/extension-youtube';
 import Placeholder from '@tiptap/extension-placeholder';
 import Underline from '@tiptap/extension-underline';
 import TextAlign from '@tiptap/extension-text-align';
+import TextStyle from '@tiptap/extension-text-style';
+import Color from '@tiptap/extension-color';
+import HtmlInsertModal from './HtmlInsertModal';
 import {
   Bold,
   Italic,
   Underline as UnderlineIcon,
   Strikethrough,
   Code,
+  Code2,
   Heading1,
   Heading2,
   Heading3,
@@ -46,6 +50,8 @@ const TipTapEditor: React.FC<TipTapEditorProps> = ({
   placeholder = 'Start writing your blog content...',
   editable = true
 }) => {
+  const [showHtmlModal, setShowHtmlModal] = useState(false);
+
   const editor = useEditor({
     extensions: [
       StarterKit.configure({
@@ -54,6 +60,8 @@ const TipTapEditor: React.FC<TipTapEditorProps> = ({
         }
       }),
       Underline,
+      TextStyle,
+      Color,
       TextAlign.configure({
         types: ['heading', 'paragraph']
       }),
@@ -182,6 +190,17 @@ const TipTapEditor: React.FC<TipTapEditorProps> = ({
     }
 
     editor?.chain().focus().extendMarkRange('link').setLink({ href: url }).run();
+  }, [editor]);
+
+  const handleInsertHtml = useCallback((html: string) => {
+    if (!editor) return;
+
+    try {
+      editor.chain().focus().insertContent(html).run();
+    } catch (error) {
+      console.error('Error inserting HTML:', error);
+      toast.error('Failed to insert HTML content');
+    }
   }, [editor]);
 
   if (!editor) {
@@ -404,6 +423,14 @@ const TipTapEditor: React.FC<TipTapEditorProps> = ({
               >
                 <LinkIcon size={18} />
               </button>
+              <button
+                onClick={() => setShowHtmlModal(true)}
+                className="p-2 rounded hover:bg-gray-200"
+                title="Insert HTML"
+                type="button"
+              >
+                <Code2 size={18} />
+              </button>
             </div>
 
             {/* Undo/Redo */}
@@ -465,6 +492,13 @@ const TipTapEditor: React.FC<TipTapEditorProps> = ({
       <div className="bg-white">
         <EditorContent editor={editor} />
       </div>
+
+      {/* HTML Insert Modal */}
+      <HtmlInsertModal
+        isOpen={showHtmlModal}
+        onClose={() => setShowHtmlModal(false)}
+        onInsert={handleInsertHtml}
+      />
     </div>
   );
 };

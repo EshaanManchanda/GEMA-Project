@@ -142,7 +142,8 @@ const AdminEditEventPage: React.FC = () => {
   const [isLoading, setIsLoading] = useState<boolean>(true);
   const [isSaving, setIsSaving] = useState<boolean>(false);
   const [errors, setErrors] = useState<Record<string, string>>({});
-  const [saveStatus, setSaveStatus] = useState<{ type: 'success' | 'error'; message: string } | null>(null);
+  const [saveStatus, setSaveStatus] = useState<{ type: 'success' | 'error'; message: string; validationErrors?: Record<string, string> } | null>(null);
+  const isCreateMode = !id;
 
   // Fetch categories, vendors, and event data
   useEffect(() => {
@@ -627,22 +628,70 @@ const AdminEditEventPage: React.FC = () => {
         }))
       };
 
-      await adminAPI.updateEvent(id!, eventData);
+      if (isCreateMode) {
+        const response = await adminAPI.createEvent(eventData);
+        const newEventId = response?.data?.event?.id || response?.event?.id;
 
-      setSaveStatus({
-        type: 'success',
-        message: 'Event updated successfully!'
-      });
+        setErrors({});
+        setSaveStatus({
+          type: 'success',
+          message: 'Event created successfully!'
+        });
 
-      setTimeout(() => {
-        navigate('/admin/events');
-      }, 2000);
+        setTimeout(() => {
+          if (newEventId) {
+            navigate(`/admin/events/${newEventId}/edit`);
+          } else {
+            navigate('/admin/events');
+          }
+        }, 2000);
+      } else {
+        await adminAPI.updateEvent(id!, eventData);
+
+        setErrors({});
+        setSaveStatus({
+          type: 'success',
+          message: 'Event updated successfully!'
+        });
+
+        setTimeout(() => {
+          navigate('/admin/events');
+        }, 2000);
+      }
     } catch (error: any) {
       console.error('Error saving event:', error);
-      setSaveStatus({
-        type: 'error',
-        message: error.response?.data?.message || 'Failed to update event. Please try again.'
-      });
+
+      // Check if the error contains validation errors
+      const validationErrors = error.response?.data?.errors;
+      if (validationErrors && typeof validationErrors === 'object') {
+        // Extract and format validation errors
+        const errorMessages: Record<string, string> = {};
+        Object.keys(validationErrors).forEach((field) => {
+          const fieldErrors = validationErrors[field];
+          if (Array.isArray(fieldErrors) && fieldErrors.length > 0) {
+            errorMessages[field] = fieldErrors[0].msg || fieldErrors[0];
+          } else if (typeof fieldErrors === 'string') {
+            errorMessages[field] = fieldErrors;
+          }
+        });
+
+        setErrors(errorMessages);
+
+        // Create a comprehensive error message
+        const errorCount = Object.keys(errorMessages).length;
+        setSaveStatus({
+          type: 'error',
+          message: `Validation failed: ${errorCount} field${errorCount > 1 ? 's' : ''} ${errorCount > 1 ? 'have' : 'has'} errors. Please review and correct the highlighted fields.`,
+          validationErrors: errorMessages
+        });
+      } else {
+        // Generic error handling
+        setSaveStatus({
+          type: 'error',
+          message: error.response?.data?.message || `Failed to ${isCreateMode ? 'create' : 'update'} event. Please try again.`
+        });
+      }
+
       window.scrollTo({ top: 0, behavior: 'smooth' });
     } finally {
       setIsSaving(false);
@@ -671,7 +720,7 @@ const AdminEditEventPage: React.FC = () => {
           {/* Header */}
           <div className="px-6 py-4 bg-gray-50 border-b border-gray-200">
             <h1 className="text-2xl font-bold text-gray-900 mb-4">
-              Edit Event (Admin)
+              {isCreateMode ? 'Create New Event (Admin)' : 'Edit Event (Admin)'}
             </h1>
 
             {/* Tabs */}
@@ -730,7 +779,16 @@ const AdminEditEventPage: React.FC = () => {
           {/* Status Messages */}
           {saveStatus && (
             <div className={`p-4 ${saveStatus.type === 'success' ? 'bg-green-100 text-green-700' : 'bg-red-100 text-red-700'}`}>
-              {saveStatus.message}
+              <p className="font-medium">{saveStatus.message}</p>
+              {saveStatus.validationErrors && Object.keys(saveStatus.validationErrors).length > 0 && (
+                <ul className="mt-2 ml-4 list-disc space-y-1">
+                  {Object.entries(saveStatus.validationErrors).map(([field, error]) => (
+                    <li key={field} className="text-sm">
+                      <span className="font-semibold">{field}:</span> {error}
+                    </li>
+                  ))}
+                </ul>
+              )}
             </div>
           )}
 
@@ -796,7 +854,61 @@ const AdminEditEventPage: React.FC = () => {
 
             {activeTab === 'registration' && (
               <div>
-                {id && (
+                {!id ? (
+                  <div className="p-6">
+                    <div className="max-w-2xl mx-auto">
+                      <div className="bg-blue-50 border border-blue-200 rounded-lg p-8 text-center">
+                        <div className="mx-auto flex items-center justify-center h-12 w-12 rounded-full bg-blue-100 mb-4">
+                          <svg className="h-6 w-6 text-blue-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+                          </svg>
+                        </div>
+                        <h3 className="text-lg font-medium text-gray-900 mb-2">
+                          Registration Form Not Available Yet
+                        </h3>
+                        <p className="text-gray-600 mb-6">
+                          Registration forms can only be configured after the event has been created and saved.
+                          Please complete the basic event information and save it first.
+                        </p>
+                        <div className="bg-white rounded-md p-4 mb-6 text-left">
+                          <p className="text-sm text-gray-700 font-medium mb-2">Next steps:</p>
+                          <ol className="text-sm text-gray-600 space-y-1 list-decimal list-inside">
+                            <li>Fill out the required fields in the Basic Info tab</li>
+                            <li>Add at least one schedule in Schedule & Pricing</li>
+                            <li>Click "Create Event" to save your event</li>
+                            <li>After creation, you'll be able to configure the registration form</li>
+                          </ol>
+                        </div>
+                        <button
+                          type="button"
+                          onClick={handleSubmit}
+                          className="inline-flex items-center px-6 py-3 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500"
+                          disabled={isSaving}
+                        >
+                          {isSaving ? (
+                            <>
+                              <svg className="animate-spin -ml-1 mr-2 h-4 w-4 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                                <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                                <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                              </svg>
+                              Creating Event...
+                            </>
+                          ) : (
+                            <>
+                              <svg className="h-5 w-5 mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+                              </svg>
+                              Save Event & Continue
+                            </>
+                          )}
+                        </button>
+                        <p className="text-xs text-gray-500 mt-3">
+                          You'll be redirected to edit mode where you can configure the registration form
+                        </p>
+                      </div>
+                    </div>
+                  </div>
+                ) : (
                   <FormBuilder
                     eventId={id}
                     onSaveSuccess={() => {
@@ -855,7 +967,7 @@ const AdminEditEventPage: React.FC = () => {
                         Saving...
                       </>
                     ) : (
-                      'Save Event'
+                      isCreateMode ? 'Create Event' : 'Save Event'
                     )}
                   </button>
                 ) : (

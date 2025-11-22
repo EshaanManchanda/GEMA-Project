@@ -380,6 +380,131 @@ export const validateEventApproval = [
 ];
 
 /**
+ * Admin-specific field validations
+ */
+const adminSpecificFields = [
+  // Vendor ID (required for admin create)
+  body('vendorId')
+    .notEmpty()
+    .withMessage('Vendor ID is required')
+    .isMongoId()
+    .withMessage('Invalid vendor ID format'),
+
+  // Admin control fields
+  body('isApproved')
+    .optional()
+    .isBoolean()
+    .withMessage('isApproved must be a boolean')
+    .toBoolean(),
+
+  body('isFeatured')
+    .optional()
+    .isBoolean()
+    .withMessage('isFeatured must be a boolean')
+    .toBoolean(),
+
+  body('requirePhoneVerification')
+    .optional()
+    .isBoolean()
+    .withMessage('requirePhoneVerification must be a boolean')
+    .toBoolean(),
+
+  body('isActive')
+    .optional()
+    .isBoolean()
+    .withMessage('isActive must be a boolean')
+    .toBoolean(),
+
+  // Affiliate event fields
+  body('isAffiliateEvent')
+    .optional()
+    .isBoolean()
+    .withMessage('isAffiliateEvent must be a boolean')
+    .toBoolean(),
+
+  body('externalBookingLink')
+    .optional()
+    .trim()
+    .isURL({ protocols: ['http', 'https'], require_protocol: true })
+    .withMessage('External booking link must be a valid URL'),
+
+  body('claimStatus')
+    .optional()
+    .isIn(['unclaimed', 'claimed', 'not_claimable'])
+    .withMessage('Claim status must be one of: unclaimed, claimed, not_claimable'),
+];
+
+/**
+ * Admin-specific field validations for updates (vendorId optional)
+ */
+const adminSpecificFieldsUpdate = [
+  // Vendor ID (optional for updates)
+  body('vendorId')
+    .optional()
+    .isMongoId()
+    .withMessage('Invalid vendor ID format'),
+
+  // Admin control fields
+  body('isApproved')
+    .optional()
+    .isBoolean()
+    .withMessage('isApproved must be a boolean')
+    .toBoolean(),
+
+  body('isFeatured')
+    .optional()
+    .isBoolean()
+    .withMessage('isFeatured must be a boolean')
+    .toBoolean(),
+
+  body('requirePhoneVerification')
+    .optional()
+    .isBoolean()
+    .withMessage('requirePhoneVerification must be a boolean')
+    .toBoolean(),
+
+  body('isActive')
+    .optional()
+    .isBoolean()
+    .withMessage('isActive must be a boolean')
+    .toBoolean(),
+
+  // Affiliate event fields
+  body('isAffiliateEvent')
+    .optional()
+    .isBoolean()
+    .withMessage('isAffiliateEvent must be a boolean')
+    .toBoolean(),
+
+  body('externalBookingLink')
+    .optional()
+    .trim()
+    .isURL({ protocols: ['http', 'https'], require_protocol: true })
+    .withMessage('External booking link must be a valid URL'),
+
+  body('claimStatus')
+    .optional()
+    .isIn(['unclaimed', 'claimed', 'not_claimable'])
+    .withMessage('Claim status must be one of: unclaimed, claimed, not_claimable'),
+];
+
+/**
+ * Admin create event validation (extends base validation with admin fields)
+ */
+export const validateAdminCreateEvent = [
+  ...validateCreateEvent,
+  ...adminSpecificFields,
+];
+
+/**
+ * Admin update event validation (extends base validation with admin fields)
+ */
+export const validateAdminUpdateEvent = [
+  ...validateUpdateEvent,
+  ...adminSpecificFieldsUpdate,
+];
+
+/**
  * Export all event validators
  */
 export default {
@@ -389,4 +514,6 @@ export default {
   validateEventSEO,
   validateEventSearch,
   validateEventApproval,
+  validateAdminCreateEvent,
+  validateAdminUpdateEvent,
 };

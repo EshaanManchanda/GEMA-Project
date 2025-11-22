@@ -148,10 +148,11 @@ function sanitizeObject(obj: any): any {
         const skipSanitization = ['description', 'content', 'bio', 'answer'];
 
         if (skipSanitization.includes(key)) {
-          // Basic sanitization only - remove script tags
+          // Basic sanitization only - remove script tags but preserve HTML
+          // Do NOT recursively sanitize or call sanitizeObject on whitelisted fields
           sanitized[key] = typeof obj[key] === 'string'
             ? removeScriptTags(obj[key])
-            : sanitizeObject(obj[key]);
+            : obj[key]; // ← FIXED: Return as-is, don't recursively sanitize
         } else {
           sanitized[key] = sanitizeObject(obj[key]);
         }

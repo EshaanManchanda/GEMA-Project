@@ -22,7 +22,7 @@ const ImageUpload: React.FC<ImageUploadProps> = ({
   error,
   maxSize = 5,
   maxFiles = 10,
-  acceptedTypes = ['image/jpeg', 'image/png', 'image/jpg'],
+  acceptedTypes = ['image/jpeg', 'image/png', 'image/jpg', 'image/webp'],
   label = 'Event Images',
   required = false
 }) => {
@@ -45,7 +45,7 @@ const ImageUpload: React.FC<ImageUploadProps> = ({
         const isValidSize = file.size <= maxSize * 1024 * 1024;
 
         if (!isValidType) {
-          alert(`File ${file.name} is not a valid image type. Only JPG, JPEG, and PNG files are allowed.`);
+          alert(`File ${file.name} is not a valid image type. Only JPG, JPEG, PNG, and WEBP files are allowed.`);
         } else if (!isValidSize) {
           alert(`File ${file.name} exceeds the ${maxSize}MB size limit.`);
         }
@@ -138,7 +138,7 @@ const ImageUpload: React.FC<ImageUploadProps> = ({
                 <p className="pl-1">or drag and drop</p>
               </div>
               <p className="text-xs text-gray-500">
-                PNG, JPG, JPEG up to {maxSize}MB (max {maxFiles} images)
+                PNG, JPG, JPEG, WEBP up to {maxSize}MB (max {maxFiles} images)
               </p>
             </>
           )}
