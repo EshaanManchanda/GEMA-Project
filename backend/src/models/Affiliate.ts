@@ -241,6 +241,7 @@ const affiliateSchema = new Schema<IAffiliate>(
       type: Schema.Types.ObjectId,
       ref: 'User',
       required: [true, 'User ID is required'],
+      unique: true,
     },
     affiliateCode: {
       type: String,
@@ -469,7 +470,6 @@ const affiliateSchema = new Schema<IAffiliate>(
 );
 
 // Indexes for performance
-affiliateSchema.index({ userId: 1 }, { unique: true });
 affiliateSchema.index({ affiliateCode: 1 }, { unique: true });
 affiliateSchema.index({ status: 1 });
 affiliateSchema.index({ 'clicks.clickId': 1 }, { unique: true, sparse: true });
