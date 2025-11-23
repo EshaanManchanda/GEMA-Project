@@ -40,21 +40,19 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     // Initialize auth on mount - check if user is authenticated via httpOnly cookies
     // Note: Tokens are now stored in httpOnly cookies, not localStorage
     const initializeAuth = async () => {
-      // Only attempt to get user if we don't already have user data
-      // This prevents unnecessary API calls after login/register
-      if (!user && !isAuthenticated) {
-        try {
-          // Clear any existing errors before attempting auth
-          dispatch(clearError());
+      try {
+        // Clear any existing errors before attempting auth
+        dispatch(clearError());
 
-          // Try to get current user (cookies sent automatically)
-          await dispatch(getCurrentUser() as any);
-        } catch (error) {
-          // If getCurrentUser fails, it means no valid auth cookies exist
-          // Clear auth state (cookies are already cleared by server or don't exist)
-          dispatch(clearError());
-          console.log('[AuthContext] No valid auth session found');
-        }
+        // ALWAYS verify server session on mount to ensure cookies are valid
+        // This is critical because auth state is not persisted in localStorage
+        // The server will validate the httpOnly cookies and return user data if valid
+        await dispatch(getCurrentUser() as any);
+      } catch (error) {
+        // If getCurrentUser fails, it means no valid auth cookies exist
+        // The authSlice will automatically clear the auth state
+        dispatch(clearError());
+        console.log('[AuthContext] No valid auth session found');
       }
     };
 

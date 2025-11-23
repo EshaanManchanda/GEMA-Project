@@ -184,7 +184,7 @@ commentSchema.statics.getCommentsWithReplies = async function(
         pipeline: [
           {
             $project: {
-              name: 1,
+              name: { $concat: ['$firstName', ' ', '$lastName'] },
               email: 1,
               avatar: 1
             }
@@ -224,7 +224,7 @@ commentSchema.statics.getCommentsWithReplies = async function(
               pipeline: [
                 {
                   $project: {
-                    name: 1,
+                    name: { $concat: ['$firstName', ' ', '$lastName'] },
                     email: 1,
                     avatar: 1
                   }

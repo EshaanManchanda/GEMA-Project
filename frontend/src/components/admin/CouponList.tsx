@@ -167,8 +167,8 @@ const CouponList: React.FC = () => {
 
   const fetchEvents = async () => {
     try {
-      const response = await eventsAPI.getAllEvents({ limit: 100 });
-      setEvents(response.events || []);
+      const response = await eventsAPI.getAllEvents({ limit: 100 }) as any;
+      setEvents(Array.isArray(response) ? response : (response.events || response.data?.events || []));
     } catch (error) {
       console.error('Error fetching events:', error);
       // Don't show error toast as this is not critical
@@ -725,7 +725,7 @@ const CouponList: React.FC = () => {
         message="Are you sure you want to delete this coupon? This action cannot be undone."
         confirmText="Delete"
         cancelText="Cancel"
-        variant="danger"
+        type="danger"
       />
     </div>
   );

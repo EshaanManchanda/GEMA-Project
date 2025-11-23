@@ -620,7 +620,7 @@ export const getBookingById = async (req: Request, res: Response, next: NextFunc
     const order = await Order.findOne({
       $or: [{ _id: id }, { orderNumber: id }],
       userId,
-    }).populate('items.eventId', 'title images location');
+    }).populate('items.eventId', 'title images location dateSchedule');
 
     if (!order) {
       return next(new AppError('Booking not found', 404));
@@ -723,7 +723,7 @@ export const getUserBookings = async (req: Request, res: Response, next: NextFun
     sortOption[sortBy as string] = sortOrder === 'asc' ? 1 : -1;
 
     const bookings = await Order.find(filter)
-      .populate('items.eventId', 'title images location')
+      .populate('items.eventId', 'title images location dateSchedule')
       .sort(sortOption)
       .skip(skip)
       .limit(limitNum);

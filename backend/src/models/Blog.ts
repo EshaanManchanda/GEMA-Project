@@ -20,6 +20,8 @@ export interface IBlog extends Document {
   readTime: number;
   viewCount: number;
   likeCount: number;
+  likedBy: mongoose.Types.ObjectId[];
+  likedByIPs: string[];
   shareCount: number;
   commentsCount: number;
   seo: {
@@ -121,6 +123,14 @@ const blogSchema = new Schema<IBlog>(
       default: 0,
       min: [0, 'Like count cannot be negative'],
     },
+    likedBy: [{
+      type: Schema.Types.ObjectId,
+      ref: 'User',
+    }],
+    likedByIPs: [{
+      type: String,
+      trim: true,
+    }],
     shareCount: {
       type: Number,
       default: 0,
@@ -177,6 +187,7 @@ blogSchema.index({ publishedAt: -1 });
 blogSchema.index({ createdAt: -1 });
 blogSchema.index({ tags: 1 });
 blogSchema.index({ 'author.email': 1 });
+blogSchema.index({ likedByIPs: 1 });
 
 // Compound indexes for common queries
 blogSchema.index({ status: 1, featured: -1, publishedAt: -1 });

@@ -298,7 +298,7 @@ const blogAPI = {
     // Approve a comment
     approveComment: async (commentId: string) => {
       try {
-        const response = await ApiService.put(`/admin/blog/comments/${commentId}/approve`);
+        const response = await ApiService.put(`/blog/comments/${commentId}/approve`);
         return response.data;
       } catch (error) {
         throw error;

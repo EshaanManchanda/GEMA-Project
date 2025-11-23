@@ -95,8 +95,10 @@ const transformCategory = (category: Category): Category => {
 function CategoryCarousel({ categories = [] }: CategoryCarouselProps) {
   const navigate = useNavigate();
 
-  // Transform API categories and use provided categories or fallback to default
-  const transformedApiCategories = categories.map(transformCategory);
+  // Transform API categories and filter out categories with 0 events
+  const transformedApiCategories = categories
+    .map(transformCategory)
+    .filter(category => category.eventCount === undefined || category.eventCount > 0);
   const displayCategories = transformedApiCategories.length > 0 ? transformedApiCategories : defaultCategories;
 
   // Debug logging in development
@@ -123,16 +125,16 @@ function CategoryCarousel({ categories = [] }: CategoryCarouselProps) {
       <div className="max-w-screen-xl mx-auto">
         <div className="flex flex-col md:flex-row justify-between items-start md:items-center mb-8">
           <div className="mb-4 md:mb-0">
-            <div className="inline-block px-3 py-1 rounded-full text-xs font-medium mb-2" 
-              style={{ backgroundColor: 'rgba(255,255,255,0.2)', color: 'white' }}>
+            <div className="inline-block px-3 py-1 rounded-full text-xs font-medium mb-2"
+              style={{ backgroundColor: 'rgba(255,255,255,0.9)', color: 'var(--primary-color)' }}>
               EXPLORE
             </div>
-            <h2 className="text-3xl font-bold text-white">Browse By Categories</h2>
-            <p className="text-white/80 mt-2 max-w-md">Discover the perfect activities for your kids based on their interests</p>
+            <h2 className="text-3xl font-bold text-gray-900">Browse By Categories</h2>
+            <p className="text-gray-700 mt-2 max-w-md">Discover the perfect activities for your kids based on their interests</p>
           </div>
-          <button 
+          <button
             onClick={handleViewAllCategories}
-            className="flex items-center gap-2 text-white bg-white/20 hover:bg-white/30 transition-all duration-300 px-4 py-2 rounded-full font-medium"
+            className="flex items-center gap-2 text-gray-900 bg-white hover:bg-gray-50 transition-all duration-300 px-4 py-2 rounded-full font-medium shadow-sm"
           >
             View All Categories <FaArrowRight size={14} />
           </button>

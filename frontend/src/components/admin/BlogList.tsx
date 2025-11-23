@@ -60,9 +60,9 @@ interface BlogFilters {
   page: number;
   limit: number;
   search: string;
-  status: string;
+  status: '' | 'draft' | 'published' | 'archived';
   category: string;
-  sortBy: string;
+  sortBy: '' | 'createdAt' | 'updatedAt' | 'publishedAt' | 'viewCount' | 'likeCount';
   sortOrder: 'asc' | 'desc';
 }
 
@@ -124,13 +124,21 @@ const BlogList: React.FC = () => {
   const fetchBlogs = async () => {
     try {
       setLoading(true);
-      const response = await blogAPI.admin.getAllBlogs(filters);
+      const response = await blogAPI.admin.getAllBlogs({
+        page: filters.page,
+        limit: filters.limit,
+        search: filters.search || undefined,
+        status: filters.status || undefined,
+        category: filters.category || undefined,
+        sortBy: filters.sortBy || undefined,
+        sortOrder: filters.sortOrder
+      });
 
       // Filter out any null or undefined blogs, and blogs without _id
-      const validBlogs = (response.blogs || []).filter((blog: Blog | null | undefined) => blog != null && blog._id);
+      const validBlogs = (response?.data?.blogs || response?.blogs || []).filter((blog: Blog | null | undefined) => blog != null && blog._id);
 
       setBlogs(validBlogs);
-      setPagination(response.pagination || {
+      setPagination(response?.data?.pagination || response?.pagination || {
         currentPage: 1,
         totalPages: 1,
         totalBlogs: 0,
@@ -333,12 +341,13 @@ const BlogList: React.FC = () => {
   };
 
   const getStatusBadge = (status: string) => {
-    const variants = {
+    const variants: Record<string, 'secondary' | 'success' | 'warning' | 'default'> = {
       draft: 'secondary',
       published: 'success',
       archived: 'warning'
     };
-    return <Badge variant={variants[status as keyof typeof variants]}>{status}</Badge>;
+    const variant = variants[status] || 'default';
+    return <Badge variant={variant}>{status}</Badge>;
   };
 
   const formatDate = (dateString: string) => {
@@ -695,10 +704,11 @@ const BlogList: React.FC = () => {
             loading={loading}
             rowKey="_id"
             pagination={{
-              currentPage: pagination.currentPage,
-              totalPages: pagination.totalPages,
-              onPageChange: (page) => handleFilterChange('page', page)
+              page: pagination.currentPage,
+              pageSize: pagination.limit,
+              total: pagination.totalBlogs
             }}
+            onPageChange={(page: number) => handleFilterChange('page', page)}
           />
         </CardContent>
       </Card>

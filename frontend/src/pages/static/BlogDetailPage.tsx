@@ -58,6 +58,8 @@ const BlogDetailPage: React.FC = () => {
       if (blogResponse.blog) {
         setBlog(blogResponse.blog);
         setLikeCount(blogResponse.blog.likeCount);
+        // Initialize liked state from API response
+        setLiked(blogResponse.hasLiked || false);
       } else {
         throw new Error('Blog not found');
       }
@@ -78,16 +80,24 @@ const BlogDetailPage: React.FC = () => {
   };
 
   const handleLike = async () => {
-    if (!blog || liked) return;
+    if (!blog) return;
+
+    // If already liked, show message
+    if (liked) {
+      alert('You have already liked this blog post');
+      return;
+    }
 
     try {
       const response = await blogAPI.likeBlog(blog.slug);
       if (response.success) {
-        setLiked(true);
+        setLiked(response.data.hasLiked || true);
         setLikeCount(response.data.likeCount);
       }
-    } catch (err) {
+    } catch (err: any) {
       console.error('Error liking blog:', err);
+      const message = err?.response?.data?.message || 'Failed to like blog post';
+      alert(message);
     }
   };
 
@@ -303,11 +313,13 @@ const BlogDetailPage: React.FC = () => {
           <div className="flex items-center gap-4">
             <button
               onClick={handleLike}
+              disabled={liked}
               className={`flex items-center gap-2 px-4 py-2 rounded-lg transition-colors ${
-                liked 
-                  ? 'bg-red-50 text-red-600' 
-                  : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
+                liked
+                  ? 'bg-red-50 text-red-600 cursor-not-allowed'
+                  : 'bg-gray-100 text-gray-600 hover:bg-gray-200 cursor-pointer'
               }`}
+              title={liked ? 'You have already liked this post' : 'Like this post'}
             >
               <FaHeart className={liked ? 'text-red-500' : ''} />
               <span>{likeCount}</span>

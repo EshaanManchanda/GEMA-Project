@@ -110,11 +110,48 @@ api.interceptors.response.use(
       } catch (refreshError) {
         console.error('[API] Token refresh failed - Logging out user:', refreshError);
 
-        // Refresh failed, logout user and redirect to login
+        // Refresh failed, logout user
         store.dispatch(logoutUser());
-        if (!window.location.pathname.includes('/login')) {
+
+        // Define public routes that should NOT redirect to login
+        const publicPaths = [
+          '/',
+          '/events',
+          '/blog',
+          '/search',
+          '/about',
+          '/contact',
+          '/faq',
+          '/terms',
+          '/privacy',
+          '/help',
+          '/partner-with-us',
+          '/categories',
+          '/collections',
+          '/vendors',
+          '/cart',
+          '/payment/success',
+          '/payment/cancel'
+        ];
+
+        const currentPath = window.location.pathname;
+
+        // Check if current route is public
+        const isPublicRoute = publicPaths.some(path => currentPath === path) ||
+          currentPath.startsWith('/events/') ||
+          currentPath.startsWith('/blog/') ||
+          currentPath.startsWith('/categories/') ||
+          currentPath.startsWith('/collections/') ||
+          currentPath.startsWith('/vendors/');
+
+        // Only redirect to login if we're on a protected route
+        if (!isPublicRoute && !currentPath.includes('/login')) {
+          console.log('[API] On protected route - Redirecting to login');
           window.location.href = '/login';
+        } else if (isPublicRoute) {
+          console.log('[API] On public route - Allowing access without redirect');
         }
+
         return Promise.reject(refreshError);
       }
     }

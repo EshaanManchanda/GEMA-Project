@@ -25,23 +25,49 @@ const app: Application = express();
 // Security middleware
 app.use(helmet());
 app.use(cors({
-  origin: [
-    config.frontendUrl,
-    'http://localhost:3000',
-    'http://localhost:3001',
-    'http://localhost:3002',
-    'http://localhost:4200',
-    'http://localhost:4201',
-    /\.vercel\.app$/,  // Allow all Vercel app domains
-    'https://kidrove-frontend.vercel.app', // Current frontend Vercel URL
-    'https://kidrove-frontend-git-main-eshaanmanchandas-projects.vercel.app/',
-    'https://gema-project-bnp5xge4w-eshaanmanchandas-projects.vercel.app',
-    'https://kidrove.netlify.app/',
-    'https://lightcoral-snail-365363.hostingersite.com/'
-  ],
+  origin: function (origin, callback) {
+    // Build allowed origins from environment variables
+    const allowedOrigins = [
+      config.frontendUrl,
+      ...(process.env.ADDITIONAL_ALLOWED_ORIGINS?.split(',').map(url => url.trim()) || [])
+    ].filter(Boolean);
+
+    // In development, allow localhost origins
+    if (process.env.NODE_ENV === 'development') {
+      allowedOrigins.push(
+        'http://localhost:3000',
+        'http://localhost:3001',
+        'http://localhost:3002',
+        'http://localhost:4200',
+        'http://localhost:4201',
+        'http://localhost:5173', // Vite default port
+        'http://localhost:5174'
+      );
+    }
+
+    // Allow requests with no origin (like mobile apps, Postman, curl) - only in development
+    if (!origin && process.env.NODE_ENV === 'development') {
+      console.log('[CORS] Request with no origin - allowing (dev mode)');
+      return callback(null, true);
+    }
+
+    // Check if origin is allowed (check strings and regex separately)
+    const isAllowed = allowedOrigins.some(allowedOrigin => {
+      return origin === allowedOrigin || origin === allowedOrigin.replace(/\/$/, '');
+    }) || (origin && /\.vercel\.app$/.test(origin));
+
+    if (isAllowed) {
+      console.log('[CORS] Origin allowed:', origin);
+      callback(null, true);
+    } else {
+      console.log('[CORS] Origin rejected:', origin);
+      callback(new Error('Not allowed by CORS'));
+    }
+  },
   credentials: true,
   methods: ['GET', 'POST', 'PUT', 'DELETE', 'PATCH', 'OPTIONS'],
-  allowedHeaders: ['Content-Type', 'Authorization', 'X-Requested-With'],
+  allowedHeaders: ['Content-Type', 'Authorization', 'X-Requested-With', 'Cookie'],
+  exposedHeaders: ['Set-Cookie'],
   preflightContinue: false,
   optionsSuccessStatus: 200
 }));
@@ -262,4 +288,5 @@ process.on('SIGINT', () => {
 startServer();
 
 export default app;
+
 

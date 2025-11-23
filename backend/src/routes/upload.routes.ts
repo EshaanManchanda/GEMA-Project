@@ -20,6 +20,7 @@ import {
 import { authenticate } from '../middleware/auth';
 import uploadService from '../services/upload.service';
 import { getOptimizedImageUrl, extractPublicId } from '../config/cloudinary';
+import logger from '../config/logger';
 
 const router = Router();
 
@@ -152,6 +153,8 @@ router.post('/venue-images', authenticate, uploadVenueImages, handleUploadError,
 
 // User avatar upload
 router.post('/avatar', authenticate, uploadUserAvatar, handleUploadError, (req: AuthRequest, res: Response, next: NextFunction) => {
+  const startTime = Date.now();
+
   try {
     if (!req.file) {
       return next(new AppError('No avatar image uploaded', 400));
@@ -159,12 +162,37 @@ router.post('/avatar', authenticate, uploadUserAvatar, handleUploadError, (req: 
 
     const fileInfo = getFileInfo(req.file);
 
+    const uploadDuration = Date.now() - startTime;
+
+    // Log performance metrics for monitoring
+    logger.debug(`Avatar upload completed`, {
+      userId: req.user?.id,
+      duration: `${uploadDuration}ms`,
+      fileSize: `${(req.file.size / 1024).toFixed(2)}KB`,
+      mimeType: req.file.mimetype,
+      provider: config.upload.provider
+    });
+
+    // Warn if upload is slow (> 5 seconds)
+    if (uploadDuration > 5000) {
+      logger.warn(`Slow avatar upload detected`, {
+        userId: req.user?.id,
+        duration: `${uploadDuration}ms`,
+        fileSize: `${(req.file.size / 1024).toFixed(2)}KB`
+      });
+    }
+
     res.status(200).json({
       success: true,
       message: 'Avatar uploaded successfully',
       data: fileInfo
     });
   } catch (error) {
+    const duration = Date.now() - startTime;
+    logger.error(`Avatar upload failed after ${duration}ms`, {
+      userId: req.user?.id,
+      error
+    });
     next(error);
   }
 });

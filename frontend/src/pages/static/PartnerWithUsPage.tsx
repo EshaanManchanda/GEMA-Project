@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import { motion } from 'framer-motion';
+import api from '../../services/api';
 import { 
   FiUsers, 
   FiTrendingUp, 
@@ -83,35 +84,60 @@ const PartnerWithUsPage: React.FC = () => {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    
+
     if (!validateForm()) {
       return;
     }
-    
+
     setIsSubmitting(true);
     setFormErrors({});
-    
+
     try {
-      // Simulate API call - replace with actual API call
-      await new Promise(resolve => setTimeout(resolve, 2000));
-      
-      setSubmitSuccess(true);
-      setFormData({
-        name: '',
-        email: '',
-        phone: '',
-        organization: '',
-        partnershipType: 'vendor',
-        website: '',
-        message: '',
-        agreeToTerms: false
+      // Submit partnership inquiry to API
+      const response = await api.post('/partnerships', {
+        name: formData.name,
+        email: formData.email,
+        phone: formData.phone || undefined,
+        organization: formData.organization || undefined,
+        partnershipType: formData.partnershipType,
+        website: formData.website || undefined,
+        message: formData.message,
+        agreeToTerms: formData.agreeToTerms
       });
-      
-      // Reset success message after 5 seconds
-      setTimeout(() => setSubmitSuccess(false), 5000);
-    } catch (error) {
+
+      if (response.data.success) {
+        setSubmitSuccess(true);
+        setFormData({
+          name: '',
+          email: '',
+          phone: '',
+          organization: '',
+          partnershipType: 'vendor',
+          website: '',
+          message: '',
+          agreeToTerms: false
+        });
+
+        // Reset success message after 5 seconds
+        setTimeout(() => setSubmitSuccess(false), 5000);
+      }
+    } catch (error: any) {
       console.error('Form submission error:', error);
-      setFormErrors({ submit: 'Something went wrong. Please try again.' });
+
+      // Handle validation errors from backend
+      if (error.response?.data?.errors && Array.isArray(error.response.data.errors)) {
+        const backendErrors: Record<string, string> = {};
+        error.response.data.errors.forEach((err: any) => {
+          if (err.path) {
+            backendErrors[err.path] = err.msg;
+          }
+        });
+        setFormErrors(backendErrors);
+      } else {
+        setFormErrors({
+          submit: error.response?.data?.message || 'Something went wrong. Please try again.'
+        });
+      }
     } finally {
       setIsSubmitting(false);
     }

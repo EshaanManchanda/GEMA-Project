@@ -1,5 +1,5 @@
-import React, { Suspense, useEffect, lazy } from 'react';
-import { Routes, Route, useLocation, Outlet, Navigate } from 'react-router-dom';
+import React, { Suspense, useEffect } from 'react';
+import { Routes, Route, useLocation, Navigate } from 'react-router-dom';
 import { AnimatePresence } from 'framer-motion';
 import { Toaster } from 'react-hot-toast';
 // Stripe Elements are handled by StripeElementsWrapper in payment components
@@ -87,6 +87,7 @@ const AdminAnalyticsPage = React.lazy(() => import(/* webpackChunkName: "admin" 
 const AdminSettingsPage = React.lazy(() => import(/* webpackChunkName: "admin" */ './pages/admin/AdminSettingsPage'));
 const EmployeeManagement = React.lazy(() => import(/* webpackChunkName: "admin" */ './pages/admin/EmployeeManagement'));
 const AdminAffiliateAnalyticsPage = React.lazy(() => import(/* webpackChunkName: "admin" */ './pages/admin/AdminAffiliateAnalyticsPage'));
+const AdminPartnershipsPage = React.lazy(() => import(/* webpackChunkName: "admin" */ './pages/admin/AdminPartnershipsPage'));
 
 // Analytics Pages
 const AnalyticsDashboard = React.lazy(() => import(/* webpackChunkName: "analytics" */ './pages/analytics/AnalyticsDashboard'));
@@ -791,6 +792,15 @@ function AppContent() {
               <AdminRoute>
                 <Suspense fallback={<LoadingSpinner />}>
                   <AdminCouponsPage />
+                </Suspense>
+              </AdminRoute>
+            } />
+
+            {/* Partnership Management */}
+            <Route path="partnerships" element={
+              <AdminRoute>
+                <Suspense fallback={<LoadingSpinner />}>
+                  <AdminPartnershipsPage />
                 </Suspense>
               </AdminRoute>
             } />

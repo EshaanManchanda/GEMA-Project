@@ -233,9 +233,9 @@ After restarting the backend, test the following:
 ### Images Not Uploading
 1. Check Cloudinary credentials in `backend/.env`:
    ```
-   CLOUDINARY_CLOUD_NAME=ditxik56f
-   CLOUDINARY_API_KEY=678385949912239
-   CLOUDINARY_API_SECRET=rQUULGU6rPoHmBW6yvQPdDkol2k
+   CLOUDINARY_CLOUD_NAME=your_cloudinary_cloud_name
+   CLOUDINARY_API_KEY=your_cloudinary_api_key
+   CLOUDINARY_API_SECRET=your_cloudinary_api_secret
    UPLOAD_PROVIDER=cloudinary
    ```
 2. Ensure backend server is running

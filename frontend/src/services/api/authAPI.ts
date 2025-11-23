@@ -69,9 +69,9 @@ export const authAPI = {
     }
   },
 
-  resetPassword: async (token: string, password: string) => {
+  resetPassword: async (email: string, otp: string, newPassword: string) => {
     try {
-      const response = await ApiService.post('/auth/reset-password', { token, password });
+      const response = await ApiService.post('/auth/reset-password', { email, otp, newPassword });
       return response.data;
     } catch (error) {
       throw error;
@@ -105,22 +105,77 @@ export const authAPI = {
     }
   },
 
-  uploadAvatar: async (data: AvatarUploadData): Promise<{ avatarUrl: string }> => {
+  uploadAvatar: async (
+    data: AvatarUploadData,
+    onProgress?: (progress: number, stage: string) => void,
+    retryAttempt: number = 0
+  ): Promise<{ avatarUrl: string }> => {
+    const MAX_RETRIES = 1;
+    const MAX_FILE_SIZE = 5 * 1024 * 1024; // 5MB
+
     try {
-      const formData = new FormData();
-      formData.append('avatar', data.file);
-      if (data.cropData) {
-        formData.append('cropData', JSON.stringify(data.cropData));
+      // Validate file size
+      if (data.file.size > MAX_FILE_SIZE) {
+        throw new Error('File size exceeds 5MB limit. Please choose a smaller image.');
       }
 
-      const response = await ApiService.post('/auth/upload-avatar', formData, {
+      // Validate file type
+      const validTypes = ['image/jpeg', 'image/jpg', 'image/png', 'image/webp'];
+      if (!validTypes.includes(data.file.type)) {
+        throw new Error('Invalid file type. Please upload a JPG, PNG, or WebP image.');
+      }
+
+      onProgress?.(5, 'Preparing upload...');
+
+      // Step 1: Upload the file to get the URL
+      const formData = new FormData();
+      formData.append('avatar', data.file);
+
+      onProgress?.(10, 'Uploading to server...');
+
+      const uploadResponse = await ApiService.post('/uploads/avatar', formData, {
         headers: {
           'Content-Type': 'multipart/form-data',
         },
+        onUploadProgress: (progressEvent) => {
+          if (progressEvent.total) {
+            // Map upload progress from 10% to 70%
+            const percentCompleted = Math.round((progressEvent.loaded * 60) / progressEvent.total) + 10;
+            onProgress?.(percentCompleted, 'Uploading and processing image...');
+          }
+        },
       });
-      return response.data;
-    } catch (error) {
-      throw error;
+
+      const avatarUrl = uploadResponse.data.url;
+      onProgress?.(80, 'Updating profile...');
+
+      // Step 2: Update the user's profile with the avatar URL
+      const profileResponse = await ApiService.put('/auth/avatar', { avatar: avatarUrl });
+
+      onProgress?.(100, 'Upload complete!');
+
+      return { avatarUrl: profileResponse.data.avatar || avatarUrl };
+    } catch (error: any) {
+      // Retry logic for network errors
+      if (retryAttempt < MAX_RETRIES && error.code === 'ERR_NETWORK') {
+        console.log(`Retrying avatar upload (attempt ${retryAttempt + 1}/${MAX_RETRIES})...`);
+        onProgress?.(0, 'Retrying upload...');
+        await new Promise(resolve => setTimeout(resolve, 1000)); // Wait 1 second before retry
+        return authAPI.uploadAvatar(data, onProgress, retryAttempt + 1);
+      }
+
+      // Enhance error messages
+      if (error.response?.status === 413) {
+        throw new Error('File too large. Please choose a smaller image.');
+      } else if (error.response?.status === 415) {
+        throw new Error('Unsupported file type. Please upload a JPG, PNG, or WebP image.');
+      } else if (error.code === 'ERR_NETWORK') {
+        throw new Error('Network error. Please check your connection and try again.');
+      } else if (error.message) {
+        throw error;
+      } else {
+        throw new Error('Upload failed. Please try again.');
+      }
     }
   },
 

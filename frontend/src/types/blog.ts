@@ -75,6 +75,7 @@ export interface SingleBlogResponse {
   message: string;
   data: {
     blog: Blog;
+    hasLiked?: boolean;
   };
 }
 
@@ -175,6 +176,7 @@ export interface BlogInteractionResponse {
   data: {
     likeCount?: number;
     shareCount?: number;
+    hasLiked?: boolean;
   };
 }
 
@@ -245,7 +247,7 @@ export interface BlogComment {
   isEdited: boolean;
   isReported: boolean;
   reportCount: number;
-  status: 'active' | 'flagged' | 'deleted';
+  status: 'pending' | 'active' | 'flagged' | 'deleted';
   createdAt: string;
   updatedAt: string;
 }

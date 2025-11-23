@@ -96,6 +96,7 @@ export const getAllBlogs = catchAsync(async (req: Request, res: Response) => {
 
 export const getBlogBySlug = catchAsync(async (req: Request, res: Response) => {
   const { slug } = req.params;
+  const userId = req.user?._id?.toString() || req.user?.id;
 
   const blog = await Blog.findOne({ slug, status: 'published' })
     .populate('category', 'name slug color description')
@@ -108,13 +109,21 @@ export const getBlogBySlug = catchAsync(async (req: Request, res: Response) => {
     });
   }
 
+  // Check if current user has liked this blog (if user is logged in)
+  const hasLiked = userId
+    ? blog.likedBy?.some((id: any) => id.toString() === userId) || false
+    : false;
+
   // Increment view count (fire and forget)
   Blog.findByIdAndUpdate(blog._id, { $inc: { viewCount: 1 } }).exec();
 
   res.status(200).json({
     success: true,
     message: 'Blog retrieved successfully',
-    data: { blog }
+    data: {
+      blog,
+      hasLiked
+    }
   });
 });
 
@@ -513,15 +522,33 @@ export const toggleCategoryStatus = catchAsync(async (req: Request, res: Respons
   });
 });
 
+// Helper function to get client IP address
+const getClientIP = (req: Request): string => {
+  // Check for X-Forwarded-For header (proxy/load balancer)
+  const forwardedFor = req.headers['x-forwarded-for'];
+  if (forwardedFor) {
+    const ips = typeof forwardedFor === 'string' ? forwardedFor.split(',') : forwardedFor;
+    return ips[0].trim();
+  }
+
+  // Check for X-Real-IP header
+  const realIP = req.headers['x-real-ip'];
+  if (realIP && typeof realIP === 'string') {
+    return realIP.trim();
+  }
+
+  // Fall back to req.ip or connection remote address
+  return req.ip || req.socket.remoteAddress || 'unknown';
+};
+
 // Blog interaction controllers
 export const likeBlog = catchAsync(async (req: Request, res: Response) => {
   const { slug } = req.params;
+  const userId = req.user?._id?.toString() || req.user?.id;
+  const clientIP = getClientIP(req);
 
-  const blog = await Blog.findOneAndUpdate(
-    { slug, status: 'published' },
-    { $inc: { likeCount: 1 } },
-    { new: true }
-  ).select('likeCount');
+  // Find the blog first
+  const blog = await Blog.findOne({ slug, status: 'published' });
 
   if (!blog) {
     return res.status(404).json({
@@ -530,10 +557,60 @@ export const likeBlog = catchAsync(async (req: Request, res: Response) => {
     });
   }
 
+  // Initialize arrays if they don't exist
+  blog.likedBy = blog.likedBy || [];
+  blog.likedByIPs = blog.likedByIPs || [];
+
+  let alreadyLiked = false;
+
+  // Check if user is authenticated
+  if (userId) {
+    // Check if authenticated user already liked this blog
+    alreadyLiked = blog.likedBy.some(id => id.toString() === userId);
+
+    if (alreadyLiked) {
+      return res.status(200).json({
+        success: true,
+        message: 'You have already liked this blog',
+        data: {
+          hasLiked: true,
+          likeCount: blog.likeCount
+        }
+      });
+    }
+
+    // Add authenticated user to likedBy array
+    blog.likedBy.push(new mongoose.Types.ObjectId(userId));
+  } else {
+    // Anonymous user - check if IP already liked this blog
+    alreadyLiked = blog.likedByIPs.includes(clientIP);
+
+    if (alreadyLiked) {
+      return res.status(200).json({
+        success: true,
+        message: 'You have already liked this blog',
+        data: {
+          hasLiked: true,
+          likeCount: blog.likeCount
+        }
+      });
+    }
+
+    // Add anonymous user's IP to likedByIPs array
+    blog.likedByIPs.push(clientIP);
+  }
+
+  // Increment like count
+  blog.likeCount += 1;
+  await blog.save();
+
   res.status(200).json({
     success: true,
     message: 'Blog liked successfully',
-    data: { likeCount: blog.likeCount }
+    data: {
+      hasLiked: true,
+      likeCount: blog.likeCount
+    }
   });
 });
 

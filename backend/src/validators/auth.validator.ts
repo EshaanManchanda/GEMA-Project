@@ -142,11 +142,15 @@ export const validateForgotPassword = [
  * Reset password validation
  */
 export const validateResetPassword = [
-  body('token')
+  validateEmail('email', true),
+
+  body('otp')
     .notEmpty()
-    .withMessage('Reset token is required')
-    .isString()
-    .withMessage('Reset token must be a string'),
+    .withMessage('Verification OTP is required')
+    .isLength({ min: 4, max: 4 })
+    .withMessage('OTP must be exactly 4 digits')
+    .isNumeric()
+    .withMessage('OTP must contain only numbers'),
 
   body('newPassword')
     .notEmpty()
@@ -154,7 +158,7 @@ export const validateResetPassword = [
     .isLength({ min: PASSWORD_MIN_LENGTH })
     .withMessage(`Password must be at least ${PASSWORD_MIN_LENGTH} characters long`)
     .matches(PASSWORD_REGEX)
-    .withMessage('Password must contain at least one uppercase letter, one lowercase letter, one number, and one special character (!@#$%^&*)'),
+    .withMessage('Password must contain at least one uppercase letter, one lowercase letter, one number, and one special character (!@#$%^&*)'),      
 ];
 
 /**

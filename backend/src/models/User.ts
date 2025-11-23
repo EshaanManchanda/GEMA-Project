@@ -59,6 +59,11 @@ export interface IPasswordReset {
   expiresAt: Date;
 }
 
+export interface IPasswordResetOTP {
+  otp: string;
+  expiresAt: Date;
+}
+
 export interface IEmailVerification {
   otp: string;
   expiresAt: Date;
@@ -136,6 +141,7 @@ export interface IUser extends Document {
   socialLogins?: ISocialLogin[];
   twoFactorAuth: ITwoFactorAuth;
   passwordReset?: IPasswordReset;
+  passwordResetOTP?: IPasswordResetOTP;
   emailVerification?: IEmailVerification;
   phoneVerification?: IPhoneVerification;
   loginAttempts?: ILoginAttempt[];
@@ -314,6 +320,10 @@ const UserSchema = new Schema<IUser>(
     },
     passwordReset: {
       token: String,
+      expiresAt: Date
+    },
+    passwordResetOTP: {
+      otp: String,
       expiresAt: Date
     },
     emailVerification: {

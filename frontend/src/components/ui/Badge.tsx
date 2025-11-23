@@ -1,14 +1,16 @@
 import React from 'react';
 
-type BadgeVariant = 
-  | 'default' 
-  | 'secondary' 
-  | 'success' 
-  | 'warning' 
-  | 'error' 
-  | 'outline' 
-  | 'featured' 
-  | 'outdoor' 
+type BadgeVariant =
+  | 'default'
+  | 'primary'
+  | 'secondary'
+  | 'success'
+  | 'warning'
+  | 'error'
+  | 'danger'
+  | 'outline'
+  | 'featured'
+  | 'outdoor'
   | 'indoor';
 
 type BadgeSize = 'sm' | 'md' | 'lg';
@@ -22,10 +24,12 @@ export interface BadgeProps extends React.HTMLAttributes<HTMLDivElement> {
 const getVariantClasses = (variant: BadgeVariant): string => {
   const variants = {
     default: 'border-transparent bg-primary-600 text-white hover:bg-primary-700',
+    primary: 'border-transparent bg-blue-600 text-white hover:bg-blue-700',
     secondary: 'border-transparent bg-gray-100 text-gray-900 hover:bg-gray-200',
     success: 'border-transparent bg-green-100 text-green-800 hover:bg-green-200',
     warning: 'border-transparent bg-yellow-100 text-yellow-800 hover:bg-yellow-200',
     error: 'border-transparent bg-red-100 text-red-800 hover:bg-red-200',
+    danger: 'border-transparent bg-red-600 text-white hover:bg-red-700',
     outline: 'border-gray-200 text-gray-900 hover:bg-gray-100',
     featured: 'border-transparent bg-gradient-to-r from-orange-400 to-pink-400 text-white hover:from-orange-500 hover:to-pink-500',
     outdoor: 'border-transparent bg-green-500 text-white hover:bg-green-600',

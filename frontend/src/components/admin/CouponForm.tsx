@@ -61,13 +61,16 @@ const couponSchema = yup.object().shape({
     .min(0, 'Minimum amount cannot be negative'),
   maximumDiscount: yup.number()
     .min(0, 'Maximum discount cannot be negative'),
-  validFrom: yup.date()
-    .required('Valid from date is required'),
-  validUntil: yup.date()
+  validFrom: yup.string()
+    .required('Valid from date is required')
+    .matches(/^\d{4}-\d{2}-\d{2}$/, 'Invalid date format'),
+  validUntil: yup.string()
     .required('Valid until date is required')
+    .matches(/^\d{4}-\d{2}-\d{2}$/, 'Invalid date format')
     .test('date-order', 'Valid until must be after valid from', function(value) {
       const { validFrom } = this.parent;
-      return value > validFrom;
+      if (!validFrom || !value) return true;
+      return new Date(value) > new Date(validFrom);
     }),
   usageLimit: yup.number()
     .min(1, 'Usage limit must be at least 1'),
@@ -254,7 +257,7 @@ const CouponForm: React.FC<CouponFormProps> = ({
           allVendors.push(...vendors);
 
           // Check if there are more pages
-          const total = vendorsResponse.data?.total || vendorsResponse.total || 0;
+          const total = vendorsResponse.data?.pagination?.total || vendorsResponse.data?.total || 0;
           hasMore = allVendors.length < total;
           page++;
 
@@ -485,7 +488,6 @@ const CouponForm: React.FC<CouponFormProps> = ({
                         required
                         min="0"
                         max={watchedType === 'percentage' ? '100' : undefined}
-                        suffix={watchedType === 'percentage' ? '%' : undefined}
                       />
                     )}
                   />
@@ -1165,12 +1167,12 @@ const CouponForm: React.FC<CouponFormProps> = ({
                 <Controller
                   name="firstTimeOnly"
                   control={control}
-                  render={({ field }) => (
+                  render={({ field: { value, ...field } }) => (
                     <div className="flex items-center">
                       <input
                         {...field}
                         type="checkbox"
-                        checked={field.value}
+                        checked={value}
                         className="w-4 h-4 text-blue-600 border-gray-300 rounded focus:ring-blue-500"
                       />
                       <label className="ml-2 text-sm font-medium text-gray-700">

@@ -18,7 +18,7 @@ import LoadingSpinner from '../common/LoadingSpinner';
 
 export interface TableColumn<T = any> {
   key: string;
-  label: string;
+  label: string | React.ReactNode;
   sortable?: boolean;
   searchable?: boolean;
   width?: string | number;

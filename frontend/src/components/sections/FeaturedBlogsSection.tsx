@@ -217,7 +217,7 @@ const FeaturedBlogsSection: React.FC = () => {
                   {blog.excerpt}
                 </p>
 
-                <div className="flex items-center justify-between text-sm text-gray-500">
+                <div className="flex items-center justify-between text-sm text-gray-700">
                   <div className="flex items-center space-x-2">
                     <FaUser size={12} />
                     <span>{blog.author.name}</span>

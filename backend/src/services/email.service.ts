@@ -22,7 +22,7 @@ export interface VerificationEmailOptions {
 export interface PasswordResetEmailOptions {
   to: string;
   firstName: string;
-  resetToken: string;
+  resetOTP: string;
 }
 
 export interface OrderConfirmationEmailOptions {
@@ -94,6 +94,23 @@ export interface ContactNotificationOptions {
   subject: string;
   message: string;
   submittedAt: Date;
+}
+
+export interface PartnershipNotificationOptions {
+  name: string;
+  email: string;
+  phone?: string;
+  organization?: string;
+  partnershipType: string;
+  website?: string;
+  message: string;
+  submittedAt: Date;
+}
+
+export interface PartnershipConfirmationOptions {
+  name: string;
+  email: string;
+  partnershipType: string;
 }
 
 // Cancellation email interfaces
@@ -253,11 +270,9 @@ class EmailService {
   }
 
   /**
-   * Send password reset email
+   * Send password reset email with OTP
    */
   async sendPasswordResetEmail(options: PasswordResetEmailOptions): Promise<void> {
-    const resetUrl = `${config.frontendUrl}/reset-password?token=${options.resetToken}`;
-    
     const html = `
       <!DOCTYPE html>
       <html>
@@ -270,7 +285,8 @@ class EmailService {
           .container { max-width: 600px; margin: 0 auto; padding: 20px; }
           .header { background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white; padding: 20px; text-align: center; border-radius: 8px 8px 0 0; }
           .content { background: #f8f9fa; padding: 30px; border-radius: 0 0 8px 8px; }
-          .btn { display: inline-block; background: #dc3545; color: white; padding: 12px 24px; text-decoration: none; border-radius: 5px; margin: 20px 0; }
+          .otp-box { background: white; border: 2px dashed #667eea; border-radius: 8px; padding: 20px; text-align: center; margin: 20px 0; }
+          .otp-code { font-size: 32px; font-weight: bold; color: #667eea; letter-spacing: 8px; font-family: 'Courier New', monospace; }
           .footer { text-align: center; margin-top: 20px; color: #666; font-size: 14px; }
           .warning { background: #fff3cd; border: 1px solid #ffeaa7; padding: 15px; border-radius: 5px; margin: 15px 0; }
         </style>
@@ -283,17 +299,18 @@ class EmailService {
           <div class="content">
             <h2>Hi ${options.firstName}!</h2>
             <p>We received a request to reset the password for your Gema account.</p>
-            <p>If you made this request, click the button below to reset your password:</p>
-            <div style="text-align: center;">
-              <a href="${resetUrl}" class="btn">Reset My Password</a>
+            <p>If you made this request, use the following verification code to reset your password:</p>
+            <div class="otp-box">
+              <p style="margin: 0; color: #666; font-size: 14px;">Your verification code is:</p>
+              <div class="otp-code">${options.resetOTP}</div>
+              <p style="margin: 10px 0 0 0; color: #666; font-size: 12px;">This code will expire in 10 minutes</p>
             </div>
-            <p>If the button doesn't work, you can also copy and paste this link into your browser:</p>
-            <p style="word-break: break-all; color: #dc3545;">${resetUrl}</p>
             <div class="warning">
               <strong>⚠️ Important:</strong>
               <ul>
-                <li>This password reset link will expire in 1 hour</li>
-                <li>For security reasons, this link can only be used once</li>
+                <li>This verification code will expire in 10 minutes</li>
+                <li>For security reasons, this code can only be used once</li>
+                <li>Never share this code with anyone</li>
                 <li>If you didn't request this password reset, please ignore this email</li>
               </ul>
             </div>
@@ -310,16 +327,18 @@ class EmailService {
 
     const text = `
       Hi ${options.firstName}!
-      
+
       We received a request to reset the password for your Gema account.
-      
-      If you made this request, visit this link to reset your password:
-      ${resetUrl}
-      
-      This password reset link will expire in 1 hour and can only be used once.
-      
+
+      If you made this request, use the following verification code to reset your password:
+
+      ${options.resetOTP}
+
+      This verification code will expire in 10 minutes and can only be used once.
+      Never share this code with anyone.
+
       If you didn't request this password reset, please ignore this email.
-      
+
       Best regards,
       The Gema Team
     `;
@@ -941,6 +960,245 @@ class EmailService {
     await this.sendEmail({
       to: supportEmail,
       subject: `New Contact Form: ${options.subject} - ${options.name}`,
+      html,
+      text,
+    });
+  }
+
+  /**
+   * Send partnership inquiry notification to support team
+   */
+  async sendPartnershipNotification(options: PartnershipNotificationOptions): Promise<void> {
+    const supportEmail = 'support@gemaevents.com';
+
+    const partnershipTypeLabels: Record<string, string> = {
+      vendor: 'Vendor Partnership',
+      influencer: 'Influencer Partnership',
+      school: 'School Partnership',
+      affiliate: 'Affiliate Partnership',
+      other: 'Other Partnership'
+    };
+
+    const html = `
+      <!DOCTYPE html>
+      <html>
+      <head>
+        <meta charset="utf-8">
+        <meta name="viewport" content="width=device-width, initial-scale=1.0">
+        <title>New Partnership Inquiry - Gema</title>
+        <style>
+          body { font-family: Arial, sans-serif; line-height: 1.6; color: #333; }
+          .container { max-width: 600px; margin: 0 auto; padding: 20px; }
+          .header { background: linear-gradient(135deg, #28a745 0%, #20c997 100%); color: white; padding: 20px; text-align: center; border-radius: 8px 8px 0 0; }
+          .content { background: #f8f9fa; padding: 30px; border-radius: 0 0 8px 8px; }
+          .info-box { background: white; border: 2px solid #28a745; padding: 20px; border-radius: 8px; margin: 20px 0; }
+          .info-row { display: flex; padding: 10px 0; border-bottom: 1px solid #e0e0e0; }
+          .info-row:last-child { border-bottom: none; }
+          .info-label { font-weight: bold; color: #666; width: 140px; flex-shrink: 0; }
+          .info-value { color: #333; flex: 1; word-break: break-word; }
+          .message-box { background: #d1ecf1; border-left: 4px solid #0c5460; padding: 15px; border-radius: 5px; margin: 20px 0; }
+          .badge { display: inline-block; background: #28a745; color: white; padding: 5px 15px; border-radius: 20px; font-size: 14px; font-weight: bold; }
+          .footer { text-align: center; margin-top: 20px; color: #666; font-size: 14px; }
+        </style>
+      </head>
+      <body>
+        <div class="container">
+          <div class="header">
+            <h1>🤝 New Partnership Inquiry</h1>
+          </div>
+          <div class="content">
+            <p>A new partnership inquiry has been submitted on the Gema Events website.</p>
+
+            <div style="margin: 20px 0;">
+              <span class="badge">${partnershipTypeLabels[options.partnershipType] || options.partnershipType}</span>
+            </div>
+
+            <div class="info-box">
+              <h3 style="margin-top: 0; color: #28a745;">Contact Information</h3>
+              <div class="info-row">
+                <span class="info-label">Name:</span>
+                <span class="info-value">${options.name}</span>
+              </div>
+              <div class="info-row">
+                <span class="info-label">Email:</span>
+                <span class="info-value"><a href="mailto:${options.email}">${options.email}</a></span>
+              </div>
+              ${options.phone ? `
+              <div class="info-row">
+                <span class="info-label">Phone:</span>
+                <span class="info-value">${options.phone}</span>
+              </div>
+              ` : ''}
+              ${options.organization ? `
+              <div class="info-row">
+                <span class="info-label">Organization:</span>
+                <span class="info-value">${options.organization}</span>
+              </div>
+              ` : ''}
+              ${options.website ? `
+              <div class="info-row">
+                <span class="info-label">Website:</span>
+                <span class="info-value"><a href="${options.website}" target="_blank">${options.website}</a></span>
+              </div>
+              ` : ''}
+              <div class="info-row">
+                <span class="info-label">Partnership Type:</span>
+                <span class="info-value">${partnershipTypeLabels[options.partnershipType] || options.partnershipType}</span>
+              </div>
+              <div class="info-row">
+                <span class="info-label">Submitted:</span>
+                <span class="info-value">${options.submittedAt.toLocaleString()}</span>
+              </div>
+            </div>
+
+            <div class="message-box">
+              <h4 style="margin-top: 0; color: #0c5460;">Message:</h4>
+              <p style="white-space: pre-wrap; margin: 0;">${options.message}</p>
+            </div>
+
+            <p style="background: #fff3cd; border: 1px solid #ffeaa7; padding: 15px; border-radius: 5px; margin: 20px 0;">
+              <strong>⚠️ Action Required:</strong> Please review this partnership inquiry and respond within 48 hours.
+            </p>
+          </div>
+          <div class="footer">
+            <p>This is an automated notification from Gema Events Partnership Form</p>
+            <p><small>Submitted on ${options.submittedAt.toLocaleDateString()}</small></p>
+          </div>
+        </div>
+      </body>
+      </html>
+    `;
+
+    const text = `
+      NEW PARTNERSHIP INQUIRY
+
+      Partnership Type: ${partnershipTypeLabels[options.partnershipType] || options.partnershipType}
+
+      Contact Information:
+      --------------------
+      Name: ${options.name}
+      Email: ${options.email}
+      ${options.phone ? `Phone: ${options.phone}` : ''}
+      ${options.organization ? `Organization: ${options.organization}` : ''}
+      ${options.website ? `Website: ${options.website}` : ''}
+      Submitted: ${options.submittedAt.toLocaleString()}
+
+      Message:
+      --------------------
+      ${options.message}
+
+      ACTION REQUIRED: Please review this partnership inquiry and respond within 48 hours.
+
+      This is an automated notification from Gema Events Partnership Form.
+    `;
+
+    await this.sendEmail({
+      to: supportEmail,
+      subject: `New Partnership Inquiry: ${partnershipTypeLabels[options.partnershipType]} - ${options.name}`,
+      html,
+      text,
+    });
+  }
+
+  /**
+   * Send partnership confirmation email to the applicant
+   */
+  async sendPartnershipConfirmation(options: PartnershipConfirmationOptions): Promise<void> {
+    const partnershipTypeLabels: Record<string, string> = {
+      vendor: 'Vendor Partnership',
+      influencer: 'Influencer Partnership',
+      school: 'School Partnership',
+      affiliate: 'Affiliate Partnership',
+      other: 'Other Partnership'
+    };
+
+    const html = `
+      <!DOCTYPE html>
+      <html>
+      <head>
+        <meta charset="utf-8">
+        <meta name="viewport" content="width=device-width, initial-scale=1.0">
+        <title>Partnership Inquiry Received - Gema</title>
+        <style>
+          body { font-family: Arial, sans-serif; line-height: 1.6; color: #333; }
+          .container { max-width: 600px; margin: 0 auto; padding: 20px; }
+          .header { background: linear-gradient(135deg, #28a745 0%, #20c997 100%); color: white; padding: 30px; text-align: center; border-radius: 8px 8px 0 0; }
+          .content { background: #f8f9fa; padding: 30px; border-radius: 0 0 8px 8px; }
+          .success-icon { font-size: 64px; margin-bottom: 10px; }
+          .info-box { background: white; border-left: 4px solid #28a745; padding: 20px; border-radius: 5px; margin: 20px 0; }
+          .footer { text-align: center; margin-top: 20px; color: #666; font-size: 14px; }
+        </style>
+      </head>
+      <body>
+        <div class="container">
+          <div class="header">
+            <div class="success-icon">✅</div>
+            <h1>Partnership Inquiry Received!</h1>
+          </div>
+          <div class="content">
+            <p>Dear ${options.name},</p>
+
+            <p>Thank you for your interest in partnering with Gema Events! We have successfully received your ${partnershipTypeLabels[options.partnershipType].toLowerCase()} inquiry.</p>
+
+            <div class="info-box">
+              <h3 style="margin-top: 0; color: #28a745;">What Happens Next?</h3>
+              <ul style="margin: 10px 0; padding-left: 20px;">
+                <li>Our partnership team will review your submission within 48 hours</li>
+                <li>We'll evaluate how we can collaborate to create amazing experiences</li>
+                <li>You'll receive a personalized response to discuss next steps</li>
+              </ul>
+            </div>
+
+            <p>We're excited about the possibility of working together and will be in touch soon!</p>
+
+            <p style="background: #e3f2fd; border: 1px solid #90caf9; padding: 15px; border-radius: 5px; margin: 20px 0;">
+              <strong>📧 Keep an eye on your inbox:</strong> Our team will reach out to you at <strong>${options.email}</strong>
+            </p>
+
+            <p>In the meantime, feel free to explore more about Gema Events at <a href="https://gemaevents.com">gemaevents.com</a>.</p>
+
+            <p>Best regards,<br>
+            <strong>The Gema Events Partnership Team</strong></p>
+          </div>
+          <div class="footer">
+            <p>Gema Events - Creating Unforgettable Experiences</p>
+            <p><small>This is an automated confirmation email</small></p>
+          </div>
+        </div>
+      </body>
+      </html>
+    `;
+
+    const text = `
+      PARTNERSHIP INQUIRY RECEIVED!
+
+      Dear ${options.name},
+
+      Thank you for your interest in partnering with Gema Events! We have successfully received your ${partnershipTypeLabels[options.partnershipType].toLowerCase()} inquiry.
+
+      WHAT HAPPENS NEXT?
+
+      - Our partnership team will review your submission within 48 hours
+      - We'll evaluate how we can collaborate to create amazing experiences
+      - You'll receive a personalized response to discuss next steps
+
+      We're excited about the possibility of working together and will be in touch soon!
+
+      Keep an eye on your inbox - our team will reach out to you at ${options.email}
+
+      In the meantime, feel free to explore more about Gema Events at https://gemaevents.com
+
+      Best regards,
+      The Gema Events Partnership Team
+
+      ---
+      Gema Events - Creating Unforgettable Experiences
+      This is an automated confirmation email
+    `;
+
+    await this.sendEmail({
+      to: options.email,
+      subject: 'Partnership Inquiry Received - Gema Events',
       html,
       text,
     });

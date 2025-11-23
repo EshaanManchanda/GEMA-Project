@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import { Link } from 'react-router-dom';
+import { authAPI } from '../../services/api/authAPI';
 
 interface ForgotPasswordFormData {
   email: string;
@@ -63,28 +64,11 @@ const ForgotPasswordPage: React.FC = () => {
     setRequestSuccess(false);
 
     try {
-      // In a real app, you would call your password reset API
-      // const response = await fetch('/api/auth/forgot-password', {
-      //   method: 'POST',
-      //   headers: { 'Content-Type': 'application/json' },
-      //   body: JSON.stringify({
-      //     email: formData.email
-      //   })
-      // });
-      
-      // if (!response.ok) {
-      //   const errorData = await response.json();
-      //   throw new Error(errorData.message || 'Password reset request failed');
-      // }
-
-      // Simulate API call delay
-      await new Promise(resolve => setTimeout(resolve, 1000));
-
-      // For demo purposes, always show success
+      await authAPI.forgotPassword(formData.email);
       setRequestSuccess(true);
-    } catch (error) {
+    } catch (error: any) {
       console.error('Password reset request error:', error);
-      setRequestError(error instanceof Error ? error.message : 'An unexpected error occurred');
+      setRequestError(error?.response?.data?.message || error.message || 'An unexpected error occurred');
     } finally {
       setIsLoading(false);
     }
@@ -98,7 +82,7 @@ const ForgotPasswordPage: React.FC = () => {
             <img src="/assets/animations/loading.svg" alt="Logo" className="h-12 w-12 mx-auto mb-4" />
             <h2 className="text-center text-2xl font-bold text-neutral-800">Reset your password</h2>
             <p className="mt-2 text-center text-sm text-neutral-600">
-              Enter your email address and we'll send you a link to reset your password.
+              Enter your email address and we'll send you a verification code to reset your password.
             </p>
           </div>
         
@@ -118,16 +102,16 @@ const ForgotPasswordPage: React.FC = () => {
                 <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clipRule="evenodd" />
               </svg>
               <div className="ml-3">
-                <h3 className="text-sm font-medium text-success-800">Password reset link sent!</h3>
+                <h3 className="text-sm font-medium text-success-800">Verification code sent!</h3>
                 <p className="mt-2 text-sm text-success-700">
-                  We've sent an email to <strong>{formData.email}</strong> with instructions to reset your password. Please check your inbox.
+                  We've sent a verification code to <strong>{formData.email}</strong>. Please check your inbox and use the code to reset your password.
                 </p>
                 <div className="mt-4">
-                  <Link to="/login" className="font-medium text-primary-600 hover:text-primary-700 transition-colors flex items-center">
+                  <Link to="/reset-password" className="font-medium text-primary-600 hover:text-primary-700 transition-colors flex items-center">
                     <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4 mr-1" viewBox="0 0 20 20" fill="currentColor">
-                      <path fillRule="evenodd" d="M9.707 16.707a1 1 0 01-1.414 0l-6-6a1 1 0 010-1.414l6-6a1 1 0 011.414 1.414L5.414 9H17a1 1 0 110 2H5.414l4.293 4.293a1 1 0 010 1.414z" clipRule="evenodd" />
+                      <path fillRule="evenodd" d="M10.293 3.293a1 1 0 011.414 0l6 6a1 1 0 010 1.414l-6 6a1 1 0 01-1.414-1.414L14.586 11H3a1 1 0 110-2h11.586l-4.293-4.293a1 1 0 010-1.414z" clipRule="evenodd" />
                     </svg>
-                    Return to login
+                    Continue to reset password
                   </Link>
                 </div>
               </div>
@@ -178,10 +162,10 @@ const ForgotPasswordPage: React.FC = () => {
                 ) : (
                   <>
                     <svg className="h-5 w-5 text-white" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor">
-                      <path fillRule="evenodd" d="M2.125 8.471A.75.75 0 012.5 8h11a.75.75 0 01.614 1.182l-4.11 6a.75.75 0 01-1.228 0l-4.11-6a.75.75 0 01.353-1.182z" clipRule="evenodd" />
-                      <path fillRule="evenodd" d="M2.125 4.5A.75.75 0 012.5 4h11a.75.75 0 01.614 1.182l-4.11 6a.75.75 0 01-1.228 0l-4.11-6A.75.75 0 012.5 4.5z" clipRule="evenodd" />
+                      <path d="M3 4a2 2 0 00-2 2v1.161l8.441 4.221a1.25 1.25 0 001.118 0L19 7.162V6a2 2 0 00-2-2H3z" />
+                      <path d="M19 8.839l-7.77 3.885a2.75 2.75 0 01-2.46 0L1 8.839V14a2 2 0 002 2h14a2 2 0 002-2V8.839z" />
                     </svg>
-                    <span>Send reset link</span>
+                    <span>Send verification code</span>
                   </>
                 )}
               </button>

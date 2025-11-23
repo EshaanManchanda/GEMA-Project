@@ -84,17 +84,23 @@ export const registerUser = createAsyncThunk(
 
 export const logoutUser = createAsyncThunk(
   'auth/logout',
-  async (_, { getState, rejectWithValue }) => {
+  async (_, { rejectWithValue }) => {
     try {
-      const state = getState() as { auth: AuthState };
-      if (state.auth.token) {
-        await authAPI.logout();
-      }
+      // Always call logout API to clear httpOnly cookies on the server
+      await authAPI.logout();
+
+      // Clear persisted auth state from localStorage
+      localStorage.removeItem('persist:auth');
+
       toast.success('Logged out successfully');
       return null;
     } catch (error: any) {
       // Even if logout fails on server, we should clear local state
       console.error('Logout error:', error);
+
+      // Still clear persisted state even on error
+      localStorage.removeItem('persist:auth');
+
       return null;
     }
   }
@@ -261,14 +267,18 @@ export const updateProfile = createAsyncThunk(
 
 export const uploadAvatar = createAsyncThunk(
   'auth/uploadAvatar',
-  async (data: AvatarUploadData, { rejectWithValue }) => {
+  async (
+    data: AvatarUploadData & { onProgress?: (progress: number, stage: string) => void },
+    { rejectWithValue }
+  ) => {
     try {
-      const response = await authAPI.uploadAvatar(data);
-      toast.success('Avatar updated successfully!');
+      const { onProgress, ...uploadData } = data;
+      const response = await authAPI.uploadAvatar(uploadData, onProgress);
+      toast.success('Avatar updated successfully!', { duration: 5000 }); // Extended duration
       return response.avatarUrl;
     } catch (error: any) {
-      const message = error.response?.data?.message || 'Avatar upload failed';
-      toast.error(message);
+      const message = error.message || error.response?.data?.message || 'Avatar upload failed';
+      toast.error(message, { duration: 5000 }); // Extended duration for errors too
       return rejectWithValue(message);
     }
   }

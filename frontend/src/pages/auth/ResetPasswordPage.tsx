@@ -1,16 +1,19 @@
-import React, { useState, useEffect } from 'react';
-import { Link, useNavigate, useLocation } from 'react-router-dom';
+import React, { useState } from 'react';
+import { Link, useNavigate } from 'react-router-dom';
+import { authAPI } from '../../services/api/authAPI';
 
 interface ResetPasswordFormData {
+  email: string;
+  otp: string;
   password: string;
   confirmPassword: string;
 }
 
 const ResetPasswordPage: React.FC = () => {
   const navigate = useNavigate();
-  const location = useLocation();
-  const [token, setToken] = useState<string | null>(null);
   const [formData, setFormData] = useState<ResetPasswordFormData>({
+    email: '',
+    otp: '',
     password: '',
     confirmPassword: ''
   });
@@ -18,42 +21,26 @@ const ResetPasswordPage: React.FC = () => {
   const [isLoading, setIsLoading] = useState<boolean>(false);
   const [resetError, setResetError] = useState<string | null>(null);
   const [resetSuccess, setResetSuccess] = useState<boolean>(false);
-  const [tokenError, setTokenError] = useState<boolean>(false);
-
-  useEffect(() => {
-    // Extract token from URL query parameters
-    const queryParams = new URLSearchParams(location.search);
-    const resetToken = queryParams.get('token');
-    
-    if (!resetToken) {
-      setTokenError(true);
-    } else {
-      setToken(resetToken);
-      
-      // In a real app, you would validate the token here
-      // const validateToken = async () => {
-      //   try {
-      //     const response = await fetch(`/api/auth/validate-reset-token?token=${resetToken}`);
-      //     if (!response.ok) {
-      //       setTokenError(true);
-      //     }
-      //   } catch (error) {
-      //     console.error('Token validation error:', error);
-      //     setTokenError(true);
-      //   }
-      // };
-      // validateToken();
-      
-      // For demo purposes, validate token format (should be at least 20 chars)
-      if (resetToken.length < 20) {
-        setTokenError(true);
-      }
-    }
-  }, [location]);
 
   const validateForm = (): boolean => {
     const newErrors: Partial<ResetPasswordFormData> = {};
     let isValid = true;
+
+    if (!formData.email) {
+      newErrors.email = 'Email is required';
+      isValid = false;
+    } else if (!/\S+@\S+\.\S+/.test(formData.email)) {
+      newErrors.email = 'Email is invalid';
+      isValid = false;
+    }
+
+    if (!formData.otp) {
+      newErrors.otp = 'Verification code is required';
+      isValid = false;
+    } else if (formData.otp.length !== 4) {
+      newErrors.otp = 'Verification code must be 4 digits';
+      isValid = false;
+    }
 
     if (!formData.password) {
       newErrors.password = 'Password is required';
@@ -99,7 +86,7 @@ const ResetPasswordPage: React.FC = () => {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
 
-    if (!validateForm() || !token) {
+    if (!validateForm()) {
       return;
     }
 
@@ -107,74 +94,20 @@ const ResetPasswordPage: React.FC = () => {
     setResetError(null);
 
     try {
-      // In a real app, you would call your password reset API
-      // const response = await fetch('/api/auth/reset-password', {
-      //   method: 'POST',
-      //   headers: { 'Content-Type': 'application/json' },
-      //   body: JSON.stringify({
-      //     token,
-      //     password: formData.password
-      //   })
-      // });
-      
-      // if (!response.ok) {
-      //   const errorData = await response.json();
-      //   throw new Error(errorData.message || 'Password reset failed');
-      // }
-
-      // Simulate API call delay
-      await new Promise(resolve => setTimeout(resolve, 1000));
-
-      // For demo purposes, always show success
+      await authAPI.resetPassword(formData.email, formData.otp, formData.password);
       setResetSuccess(true);
-    } catch (error) {
+
+      // Redirect to login after 2 seconds
+      setTimeout(() => {
+        navigate('/login');
+      }, 2000);
+    } catch (error: any) {
       console.error('Password reset error:', error);
-      setResetError(error instanceof Error ? error.message : 'An unexpected error occurred');
+      setResetError(error?.response?.data?.message || error.message || 'An unexpected error occurred');
     } finally {
       setIsLoading(false);
     }
   };
-
-  if (tokenError) {
-    return (
-      <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-primary-50 to-white py-12 px-4 sm:px-6 lg:px-8">
-        <div className="max-w-md w-full space-y-6 animate-fade-in-up">
-          <div className="bg-white p-8 rounded-xl shadow-medium border border-neutral-200">
-            <div className="text-center">
-              <svg className="h-12 w-12 mx-auto mb-4 text-warning-500" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
-              </svg>
-              <h2 className="text-center text-2xl font-bold text-neutral-800">Invalid Reset Link</h2>
-              <p className="mt-2 text-center text-sm text-neutral-600">
-                The password reset link is invalid or has expired.
-              </p>
-            </div>
-            
-            <div className="alert alert-warning mt-4" role="alert">
-              <div className="flex items-center">
-                <svg className="h-5 w-5 text-warning-500 flex-shrink-0" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor">
-                  <path fillRule="evenodd" d="M8.257 3.099c.765-1.36 2.722-1.36 3.486 0l5.58 9.92c.75 1.334-.213 2.98-1.742 2.98H4.42c-1.53 0-2.493-1.646-1.743-2.98l5.58-9.92zM11 13a1 1 0 11-2 0 1 1 0 012 0zm-1-8a1 1 0 00-1 1v3a1 1 0 002 0V6a1 1 0 00-1-1z" clipRule="evenodd" />
-                </svg>
-                <span className="ml-2 text-sm font-medium text-warning-700">Please request a new password reset link.</span>
-              </div>
-            </div>
-            
-            <div className="text-center mt-6">
-              <Link 
-                to="/forgot-password" 
-                className="btn btn-primary inline-flex items-center justify-center px-4 py-2 text-sm font-medium"
-              >
-                <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4 mr-2" viewBox="0 0 20 20" fill="currentColor">
-                  <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm1-11a1 1 0 10-2 0v3.586L7.707 9.293a1 1 0 00-1.414 1.414l3 3a1 1 0 001.414 0l3-3a1 1 0 00-1.414-1.414L11 10.586V7z" clipRule="evenodd" />
-                </svg>
-                Request new reset link
-              </Link>
-            </div>
-          </div>
-        </div>
-      </div>
-    );
-  }
 
   return (
     <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-primary-50 to-white py-12 px-4 sm:px-6 lg:px-8">
@@ -184,7 +117,7 @@ const ResetPasswordPage: React.FC = () => {
             <img src="/assets/animations/loading.svg" alt="Logo" className="h-12 w-12 mx-auto mb-4" />
             <h2 className="text-center text-2xl font-bold text-neutral-800">Reset your password</h2>
             <p className="mt-2 text-center text-sm text-neutral-600">
-              Enter your new password below.
+              Enter your email, verification code, and new password below.
             </p>
           </div>
         
@@ -221,6 +154,59 @@ const ResetPasswordPage: React.FC = () => {
           </div>
         ) : (
           <form className="mt-6 space-y-6" onSubmit={handleSubmit}>
+            <div className="form-group">
+              <label htmlFor="email" className="form-label text-sm font-medium text-neutral-700">Email address</label>
+              <div className="relative mt-1">
+                <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                  <svg className="h-5 w-5 text-neutral-400" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor">
+                    <path d="M2.003 5.884L10 9.882l7.997-3.998A2 2 0 0016 4H4a2 2 0 00-1.997 1.884z" />
+                    <path d="M18 8.118l-8 4-8-4V14a2 2 0 002 2h12a2 2 0 002-2V8.118z" />
+                  </svg>
+                </div>
+                <input
+                  id="email"
+                  name="email"
+                  type="email"
+                  autoComplete="email"
+                  required
+                  className={`input pl-10 w-full ${errors.email ? 'input-error' : 'border-neutral-300'}`}
+                  placeholder="you@example.com"
+                  value={formData.email}
+                  onChange={handleInputChange}
+                />
+                {errors.email && (
+                  <p className="form-error mt-1">{errors.email}</p>
+                )}
+              </div>
+            </div>
+
+            <div className="form-group">
+              <label htmlFor="otp" className="form-label text-sm font-medium text-neutral-700">Verification code</label>
+              <div className="relative mt-1">
+                <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                  <svg className="h-5 w-5 text-neutral-400" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor">
+                    <path fillRule="evenodd" d="M10 1a4.5 4.5 0 00-4.5 4.5V9H5a2 2 0 00-2 2v6a2 2 0 002 2h10a2 2 0 002-2v-6a2 2 0 00-2-2h-.5V5.5A4.5 4.5 0 0010 1zm3 8V5.5a3 3 0 10-6 0V9h6z" clipRule="evenodd" />
+                  </svg>
+                </div>
+                <input
+                  id="otp"
+                  name="otp"
+                  type="text"
+                  inputMode="numeric"
+                  pattern="[0-9]*"
+                  maxLength={4}
+                  required
+                  className={`input pl-10 w-full ${errors.otp ? 'input-error' : 'border-neutral-300'}`}
+                  placeholder="Enter 4-digit code"
+                  value={formData.otp}
+                  onChange={handleInputChange}
+                />
+                {errors.otp && (
+                  <p className="form-error mt-1">{errors.otp}</p>
+                )}
+              </div>
+            </div>
+
             <div className="form-group">
               <label htmlFor="password" className="form-label text-sm font-medium text-neutral-700">New password</label>
               <div className="relative mt-1">

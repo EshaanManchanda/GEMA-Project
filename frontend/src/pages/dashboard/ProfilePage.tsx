@@ -83,7 +83,10 @@ const ProfileHeader: React.FC<{
   onAvatarUpload: (file: File) => void;
   onAvatarRemove: () => void;
   isLoading: boolean;
-}> = ({ userProfile, onAvatarUpload, onAvatarRemove, isLoading }) => {
+  uploadProgress?: number;
+  uploadStage?: string;
+  previewUrl?: string | null;
+}> = ({ userProfile, onAvatarUpload, onAvatarRemove, isLoading, uploadProgress = 0, uploadStage = '', previewUrl }) => {
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   const handleFileSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -92,6 +95,8 @@ const ProfileHeader: React.FC<{
       onAvatarUpload(file);
     }
   };
+
+  const displayAvatar = previewUrl || userProfile?.avatar;
 
   return (
     <div className="relative bg-gradient-to-br from-blue-600 via-blue-700 to-indigo-800 rounded-3xl p-8 text-white overflow-hidden">
@@ -105,15 +110,49 @@ const ProfileHeader: React.FC<{
         {/* Avatar Section */}
         <div className="relative group">
           <div className="w-32 h-32 rounded-full overflow-hidden bg-white/20 backdrop-blur-sm border-4 border-white/30">
-            {userProfile?.avatar ? (
+            {displayAvatar ? (
               <img
-                src={userProfile.avatar}
+                src={displayAvatar}
                 alt="Profile"
                 className="w-full h-full object-cover"
               />
             ) : (
               <div className="w-full h-full flex items-center justify-center text-white/60">
                 <FaUser size={48} />
+              </div>
+            )}
+
+            {/* Upload progress overlay */}
+            {isLoading && uploadProgress > 0 && (
+              <div className="absolute inset-0 bg-black/70 flex flex-col items-center justify-center">
+                <div className="w-20 h-20 mb-2">
+                  <svg className="transform -rotate-90" viewBox="0 0 100 100">
+                    <circle
+                      cx="50"
+                      cy="50"
+                      r="40"
+                      stroke="rgba(255,255,255,0.2)"
+                      strokeWidth="8"
+                      fill="none"
+                    />
+                    <circle
+                      cx="50"
+                      cy="50"
+                      r="40"
+                      stroke="white"
+                      strokeWidth="8"
+                      fill="none"
+                      strokeDasharray={`${2 * Math.PI * 40}`}
+                      strokeDashoffset={`${2 * Math.PI * 40 * (1 - uploadProgress / 100)}`}
+                      strokeLinecap="round"
+                      className="transition-all duration-300"
+                    />
+                  </svg>
+                  <div className="absolute inset-0 flex items-center justify-center">
+                    <span className="text-white text-sm font-bold">{uploadProgress}%</span>
+                  </div>
+                </div>
+                <p className="text-white text-xs text-center px-2">{uploadStage}</p>
               </div>
             )}
           </div>
@@ -240,7 +279,6 @@ const PersonalInfoTab: React.FC<{
     phone: sanitizePhoneForDisplay(userProfile?.phone),
     dateOfBirth: userProfile?.dateOfBirth || '',
     gender: userProfile?.gender || '',
-    bio: userProfile?.bio || '',
   });
 
   const [selectedCountry, setSelectedCountry] = useState<Country>('US');
@@ -269,7 +307,6 @@ const PersonalInfoTab: React.FC<{
         phone: sanitizePhoneForDisplay(userProfile.phone),
         dateOfBirth: userProfile.dateOfBirth || '',
         gender: userProfile.gender || '',
-        bio: userProfile.bio || '',
       });
     }
   }, [userProfile]);
@@ -463,20 +500,6 @@ const PersonalInfoTab: React.FC<{
           </div>
         </div>
 
-        <div>
-          <label className="block text-sm font-medium text-gray-700 mb-2">
-            Bio
-          </label>
-          <textarea
-            name="bio"
-            value={formData.bio}
-            onChange={handleChange}
-            rows={4}
-            className="w-full px-4 py-3 border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500 transition-colors resize-none"
-            placeholder="Tell us about yourself..."
-          />
-        </div>
-
         <div className="flex justify-end">
           <AnimatedButton
             type="submit"
@@ -651,7 +674,7 @@ const AddressesTab: React.FC<{
           >
             <HoverCard className="bg-white p-6 rounded-2xl border border-gray-200">
               <h4 className="text-lg font-semibold mb-4">
-                {editingId ? 'Edit Address' : 'Add New Address'}
+                {editingIndex !== null ? 'Edit Address' : 'Add New Address'}
               </h4>
               <form onSubmit={handleSubmit} className="space-y-4">
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
@@ -818,7 +841,7 @@ const AddressesTab: React.FC<{
                     ) : (
                       <>
                         <FaSave />
-                        {editingId ? 'Update' : 'Add'} Address
+                        {editingIndex !== null ? 'Update' : 'Add'} Address
                       </>
                     )}
                   </AnimatedButton>
@@ -1062,6 +1085,10 @@ const ProfilePage: React.FC = () => {
   const user = useSelector(selectUser);
 
   const [activeTab, setActiveTab] = useState('personal');
+  const [uploadProgress, setUploadProgress] = useState(0);
+  const [uploadStage, setUploadStage] = useState('');
+  const [previewUrl, setPreviewUrl] = useState<string | null>(null);
+  const [isUploading, setIsUploading] = useState(false);
 
   // Load profile on component mount
   useEffect(() => {
@@ -1070,17 +1097,66 @@ const ProfilePage: React.FC = () => {
     }
   }, [dispatch, userProfile]);
 
+  // Prevent navigation during upload
+  useEffect(() => {
+    if (isUploading) {
+      const handleBeforeUnload = (e: BeforeUnloadEvent) => {
+        e.preventDefault();
+        e.returnValue = 'Upload in progress. Are you sure you want to leave?';
+      };
+      window.addEventListener('beforeunload', handleBeforeUnload);
+      return () => window.removeEventListener('beforeunload', handleBeforeUnload);
+    }
+  }, [isUploading]);
+
   // Profile update handlers
   const handleProfileUpdate = useCallback((data: UpdateProfileData) => {
     dispatch(updateProfile(data) as any);
   }, [dispatch]);
 
   const handleAvatarUpload = useCallback(async (file: File) => {
-    const avatarData: AvatarUploadData = { file };
-    await dispatch(uploadAvatar(avatarData) as any);
-    // Refresh profile to update completion percentage
-    dispatch(getFullProfile() as any);
-  }, [dispatch]);
+    // Prevent multiple simultaneous uploads
+    if (isUploading) {
+      toast.error('Upload already in progress. Please wait.');
+      return;
+    }
+
+    // Create preview URL for optimistic UI
+    const preview = URL.createObjectURL(file);
+    setPreviewUrl(preview);
+    setIsUploading(true);
+    setUploadProgress(0);
+    setUploadStage('Preparing...');
+
+    try {
+      const avatarData: AvatarUploadData & { onProgress?: (progress: number, stage: string) => void } = {
+        file,
+        onProgress: (progress: number, stage: string) => {
+          setUploadProgress(progress);
+          setUploadStage(stage);
+        }
+      };
+
+      await dispatch(uploadAvatar(avatarData) as any).unwrap();
+
+      // Refresh profile to update completion percentage
+      dispatch(getFullProfile() as any);
+
+      // Cleanup preview URL after success
+      setTimeout(() => {
+        URL.revokeObjectURL(preview);
+        setPreviewUrl(null);
+      }, 1000);
+    } catch (error) {
+      // Revert preview on error
+      URL.revokeObjectURL(preview);
+      setPreviewUrl(null);
+    } finally {
+      setIsUploading(false);
+      setUploadProgress(0);
+      setUploadStage('');
+    }
+  }, [dispatch, isUploading]);
 
   const handleAvatarRemove = useCallback(async () => {
     await dispatch(removeAvatar() as any);
@@ -1165,7 +1241,10 @@ const ProfilePage: React.FC = () => {
                 userProfile={userProfile}
                 onAvatarUpload={handleAvatarUpload}
                 onAvatarRemove={handleAvatarRemove}
-                isLoading={isLoading}
+                isLoading={isLoading || isUploading}
+                uploadProgress={uploadProgress}
+                uploadStage={uploadStage}
+                previewUrl={previewUrl}
               />
             </FadeIn>
 

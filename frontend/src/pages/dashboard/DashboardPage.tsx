@@ -297,7 +297,7 @@ const DashboardPage: React.FC = () => {
             Refresh
           </button>
           <Link
-            to="/events"
+            to="/search"
             className="inline-flex items-center px-4 py-2 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-primary hover:bg-primary-dark focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-primary"
           >
             Browse Events
@@ -375,7 +375,7 @@ const DashboardPage: React.FC = () => {
                   {upcomingBookings.length === 0 ? (
                     <div className="text-center py-8">
                       <p className="text-gray-500">You don't have any upcoming events.</p>
-                      <Link to="/events" className="mt-4 inline-flex items-center px-4 py-2 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-primary hover:bg-primary-dark focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-primary">
+                      <Link to="/search" className="mt-4 inline-flex items-center px-4 py-2 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-primary hover:bg-primary-dark focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-primary">
                         Browse Events
                       </Link>
                     </div>
@@ -500,7 +500,7 @@ const DashboardPage: React.FC = () => {
                     <div className="text-center py-8">
                       <p className="text-gray-500">You don't have any saved events yet.</p>
                       <p className="text-gray-400 text-sm mt-2">Save events to your favorites to see them here.</p>
-                      <Link to="/events" className="mt-4 inline-flex items-center px-4 py-2 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-primary hover:bg-primary-dark focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-primary">
+                      <Link to="/search" className="mt-4 inline-flex items-center px-4 py-2 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-primary hover:bg-primary-dark focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-primary">
                         Browse Events
                       </Link>
                     </div>

@@ -90,7 +90,12 @@ export const createComment = async (req: AuthRequest, res: Response, next: NextF
     await comment.save();
 
     // Populate author details
-    await comment.populate('author', 'name email avatar');
+    await comment.populate('author', 'firstName lastName email avatar');
+
+    // Create name field from firstName and lastName
+    if (comment.author && typeof comment.author === 'object') {
+      (comment.author as any).name = `${(comment.author as any).firstName} ${(comment.author as any).lastName}`;
+    }
 
     // Update blog post comment count
     await Blog.findByIdAndUpdate(postId, {
@@ -136,7 +141,12 @@ export const updateComment = async (req: AuthRequest, res: Response, next: NextF
     await comment.save();
 
     // Populate author details
-    await comment.populate('author', 'name email avatar');
+    await comment.populate('author', 'firstName lastName email avatar');
+
+    // Create name field from firstName and lastName
+    if (comment.author && typeof comment.author === 'object') {
+      (comment.author as any).name = `${(comment.author as any).firstName} ${(comment.author as any).lastName}`;
+    }
 
     res.status(200).json({
       success: true,
@@ -354,10 +364,17 @@ export const getCommentReplies = async (req: Request, res: Response, next: NextF
       parentComment: commentId,
       status: 'active'
     })
-      .populate('author', 'name email avatar')
+      .populate('author', 'firstName lastName email avatar')
       .sort({ createdAt: 1 })
       .skip(skip)
       .limit(limitNum);
+
+    // Create name field from firstName and lastName for each reply
+    replies.forEach(reply => {
+      if (reply.author && typeof reply.author === 'object') {
+        (reply.author as any).name = `${(reply.author as any).firstName} ${(reply.author as any).lastName}`;
+      }
+    });
 
     const totalReplies = await Comment.countDocuments({
       parentComment: commentId,
@@ -398,6 +415,14 @@ export const approveComment = async (req: Request, res: Response, next: NextFunc
 
     comment.status = 'active';
     await comment.save();
+
+    // Populate author data for response
+    await comment.populate('author', 'firstName lastName email avatar');
+
+    // Create name field from firstName and lastName
+    if (comment.author && typeof comment.author === 'object') {
+      (comment.author as any).name = `${(comment.author as any).firstName} ${(comment.author as any).lastName}`;
+    }
 
     res.status(200).json({
       success: true,
@@ -444,14 +469,30 @@ export const getCommentsForAdmin = async (req: Request, res: Response, next: Nex
       parentComment: null, // Only top-level comments
       status: statusFilter
     })
-      .populate('author', 'name email avatar')
+      .populate('author', 'firstName lastName email avatar')
       .populate({
         path: 'replies',
-        populate: { path: 'author', select: 'name email avatar' }
+        populate: { path: 'author', select: 'firstName lastName email avatar' }
       })
       .sort(sortObject)
       .skip(skip)
       .limit(limitNum);
+
+    // Create name field from firstName and lastName for each comment and reply
+    comments.forEach(comment => {
+      if (comment.author && typeof comment.author === 'object') {
+        (comment.author as any).name = `${(comment.author as any).firstName} ${(comment.author as any).lastName}`;
+      }
+
+      // Process replies
+      if (comment.replies && Array.isArray(comment.replies)) {
+        comment.replies.forEach((reply: any) => {
+          if (reply.author && typeof reply.author === 'object') {
+            reply.author.name = `${reply.author.firstName} ${reply.author.lastName}`;
+          }
+        });
+      }
+    });
 
     // Get total count for pagination
     const totalComments = await Comment.countDocuments({

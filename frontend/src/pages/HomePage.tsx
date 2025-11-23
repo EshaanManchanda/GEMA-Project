@@ -235,7 +235,7 @@ const Banner = ({ categories }: { categories: any[] }) => {
 
         {/* Subheading */}
         <FadeIn delay={0.3}>
-          <p className="mt-4 text-white/90 font-medium text-lg sm:text-xl max-w-2xl mx-auto">
+          <p className="mt-4 text-white font-medium text-lg sm:text-xl max-w-2xl mx-auto">
             Our pick of the best kids activities in Dubai, Abu Dhabi and the rest of the UAE
           </p>
         </FadeIn>
@@ -271,30 +271,6 @@ const Banner = ({ categories }: { categories: any[] }) => {
         <FadeIn delay={0.5}>
           <div className="mt-4 flex flex-wrap justify-center gap-2 text-sm">
             <span key="popular-label" className="text-white/70">Popular:</span>
-            <button
-              key="summer-camps"
-              onClick={() => handlePopularSearch('Summer Camps')}
-              className="text-white hover:text-white/80 transition-colors duration-300 underline underline-offset-2 cursor-pointer focus:outline-none focus:ring-2 focus:ring-white/50 rounded px-1"
-              aria-label="Search for Summer Camps"
-            >
-              Summer Camps
-            </button>
-            <button
-              key="indoor-play-areas"
-              onClick={() => handlePopularSearch('Indoor Play Areas')}
-              className="text-white hover:text-white/80 transition-colors duration-300 underline underline-offset-2 cursor-pointer focus:outline-none focus:ring-2 focus:ring-white/50 rounded px-1"
-              aria-label="Search for Indoor Play Areas"
-            >
-              Indoor Play Areas
-            </button>
-            <button
-              key="swimming-classes"
-              onClick={() => handlePopularSearch('Swimming Classes')}
-              className="text-white hover:text-white/80 transition-colors duration-300 underline underline-offset-2 cursor-pointer focus:outline-none focus:ring-2 focus:ring-white/50 rounded px-1"
-              aria-label="Search for Swimming Classes"
-            >
-              Swimming Classes
-            </button>
             {categories.slice(0, 2).map((category, index) => (
               <button
                 key={category._id || category.id || `category-${index}`}
@@ -384,7 +360,7 @@ const FeaturedEventsCarousel: React.FC<{ featuredEvents: FeaturedEvent[] }> = ({
               </div>
               <div className="p-6">
                 <FadeIn delay={0.1}>
-                  <h3 className="text-xl font-semibold mb-4 line-clamp-2">{event.title}</h3>
+                  <h3 className="text-xl font-semibold mb-4 line-clamp-2 text-gray-900">{event.title}</h3>
                 </FadeIn>
                 {event.description && (
                   <FadeIn delay={0.15}>

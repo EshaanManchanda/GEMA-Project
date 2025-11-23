@@ -68,20 +68,30 @@ export const securityHeaders = helmet({
 /**
  * CORS configuration
  */
-const allowedOrigins = [
-  'http://localhost:3000',
-  'http://localhost:5173',
-  'https://gema-project.onrender.com',
-  'https://kidrove-frontend.vercel.app',
-  process.env.FRONTEND_URL,
-].filter(Boolean);
+const buildAllowedOrigins = () => {
+  const origins = [
+    process.env.FRONTEND_URL,
+    ...(process.env.ADDITIONAL_ALLOWED_ORIGINS?.split(',').map(url => url.trim()) || [])
+  ].filter(Boolean);
+
+  // In development, add localhost origins
+  if (process.env.NODE_ENV === 'development') {
+    origins.push('http://localhost:3000', 'http://localhost:5173');
+  }
+
+  return origins;
+};
+
+const allowedOrigins = buildAllowedOrigins();
 
 export const corsOptions = cors({
   origin: (origin, callback) => {
-    // Allow requests with no origin (mobile apps, Postman, etc.)
-    if (!origin) return callback(null, true);
+    // Allow requests with no origin only in development
+    if (!origin && process.env.NODE_ENV === 'development') {
+      return callback(null, true);
+    }
 
-    if (allowedOrigins.includes(origin) || process.env.NODE_ENV === 'development') {
+    if (allowedOrigins.includes(origin!) || (origin && /\.vercel\.app$/.test(origin))) {
       callback(null, true);
     } else {
       console.warn(`CORS blocked request from origin: ${origin}`);

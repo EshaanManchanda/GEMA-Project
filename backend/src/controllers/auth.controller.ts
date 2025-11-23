@@ -27,6 +27,7 @@ import { generateOTP, getOTPExpiry } from '../utils/otp';
 import { sanitizeToE164, validatePhoneForAPI, isE164Format } from '../utils/phoneValidation';
 import { toISOStringSafe, toDateStringSafe } from '../utils/dateHelpers';
 import { config } from '../config';
+import logger from '../config/logger';
 
 /**
  * Cookie configuration for auth tokens
@@ -34,11 +35,13 @@ import { config } from '../config';
 const getCookieOptions = (): CookieOptions => {
   const isProduction = config.nodeEnv === 'production';
 
+  console.log('[COOKIE_CONFIG] Environment:', config.nodeEnv, 'isProduction:', isProduction);
+
   return {
     httpOnly: true,  // Prevents JavaScript access (XSS protection)
-    secure: isProduction,  // Only send over HTTPS in production
-    sameSite: isProduction ? 'none' : 'lax',  // CSRF protection, 'none' for cross-site in production
-    domain: isProduction ? undefined : undefined,  // Let browser handle domain
+    secure: isProduction,  // true in production (HTTPS), false in development (HTTP)
+    sameSite: isProduction ? 'none' : 'lax',  // 'lax' for localhost development, 'none' for cross-domain production
+    domain: undefined,  // Don't set domain - let browser handle it for localhost
     path: '/',
     maxAge: 7 * 24 * 60 * 60 * 1000  // 7 days in milliseconds
   };
@@ -49,9 +52,9 @@ const getRefreshCookieOptions = (): CookieOptions => {
 
   return {
     httpOnly: true,
-    secure: isProduction,
-    sameSite: isProduction ? 'none' : 'lax',
-    domain: isProduction ? undefined : undefined,
+    secure: isProduction,  // true in production (HTTPS), false in development (HTTP)
+    sameSite: isProduction ? 'none' : 'lax',  // 'lax' for localhost development, 'none' for cross-domain production
+    domain: undefined,  // Don't set domain - let browser handle it for localhost
     path: '/',
     maxAge: 30 * 24 * 60 * 60 * 1000  // 30 days in milliseconds
   };
@@ -61,8 +64,20 @@ const getRefreshCookieOptions = (): CookieOptions => {
  * Set auth cookies on response
  */
 const setAuthCookies = (res: Response, accessToken: string, refreshToken: string): void => {
-  res.cookie('accessToken', accessToken, getCookieOptions());
-  res.cookie('refreshToken', refreshToken, getRefreshCookieOptions());
+  const cookieOptions = getCookieOptions();
+  const refreshOptions = getRefreshCookieOptions();
+
+  console.log('[SET_COOKIES] Setting auth cookies with options:', {
+    cookieOptions,
+    refreshOptions,
+    accessTokenLength: accessToken.length,
+    refreshTokenLength: refreshToken.length
+  });
+
+  res.cookie('accessToken', accessToken, cookieOptions);
+  res.cookie('refreshToken', refreshToken, refreshOptions);
+
+  console.log('[SET_COOKIES] Cookies set successfully');
 };
 
 /**
@@ -559,7 +574,7 @@ export const getCurrentUser = async (req: Request, res: Response, next: NextFunc
  */
 export const updateProfile = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
   try {
-    const { firstName, lastName, phone, dateOfBirth, gender, bio, preferences }: UpdateProfileRequest = req.body;
+    const { firstName, lastName, phone, dateOfBirth, gender, preferences }: UpdateProfileRequest = req.body;
     const userId = req.user?._id || req.user?.id;
     if (!userId) {
       throw new AppError('User not authenticated', 401);
@@ -684,7 +699,7 @@ export const updateProfile = async (req: Request, res: Response, next: NextFunct
       isPhoneVerified: user.isPhoneVerified || false,
       dateOfBirth: toDateStringSafe(user.dateOfBirth),
       gender: user.gender || '',
-      bio: bio || '',
+      bio: '',
       addresses: user.addresses || [],
       socialLinks: {
         facebook: user.socialMedia?.facebook || '',
@@ -749,10 +764,18 @@ export const updateProfile = async (req: Request, res: Response, next: NextFunct
 export const changePassword = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
   try {
     const { currentPassword, newPassword }: ChangePasswordRequest = req.body;
-    const user = req.user;
-    if (!user) {
+    // const user = req.user;
+     // Get user ID from cached user object
+    const userId = req.user?._id || req.user?.id;
+    if (!userId) {
       throw new AppError('User not authenticated', 401);
     }
+    // Re-fetch user from database to get Mongoose document with methods
+    const user = await User.findById(userId).select('+passwordHash');
+    if (!user) {
+      throw new AppError('User not found', 404);
+    }
+     
     
     // Verify current password
     const isMatch = await user.comparePassword(currentPassword);
@@ -781,40 +804,39 @@ export const changePassword = async (req: Request, res: Response, next: NextFunc
 export const forgotPassword = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
   try {
     const { email }: ForgotPasswordRequest = req.body;
-    
+
     // Find user by email
     const user = await User.findOne({ email });
     if (!user) {
       // Don't reveal that the user doesn't exist
       res.status(200).json({
         success: true,
-        message: 'If your email is registered, you will receive a password reset link'
+        message: 'If your email is registered, you will receive a password reset code'
       } as ApiResponse);
       return;
     }
-    
-    // Generate reset token
-    const resetToken = crypto.randomBytes(32).toString('hex');
-    const tokenExpiry = new Date();
-    tokenExpiry.setHours(tokenExpiry.getHours() + 1); // 1 hour from now
-    
-    // Save reset token to user
-    user.passwordReset = {
-      token: resetToken,
-      expiresAt: tokenExpiry
+
+    // Generate OTP for password reset
+    const otp = generateOTP();
+    const otpExpiry = getOTPExpiry(); // 10 minutes from now
+
+    // Save OTP to user
+    user.passwordResetOTP = {
+      otp,
+      expiresAt: otpExpiry
     };
     await user.save();
-    
-    // Send password reset email
+
+    // Send password reset email with OTP
     await emailService.sendPasswordResetEmail({
       to: user.email,
       firstName: user.firstName,
-      resetToken,
+      resetOTP: otp,
     });
-    
+
     res.status(200).json({
       success: true,
-      message: 'If your email is registered, you will receive a password reset link'
+      message: 'If your email is registered, you will receive a password reset code'
     } as ApiResponse);
   } catch (error) {
     next(error);
@@ -822,29 +844,35 @@ export const forgotPassword = async (req: Request, res: Response, next: NextFunc
 };
 
 /**
- * @desc    Reset password
+ * @desc    Reset password with OTP
  * @route   POST /api/auth/reset-password
  * @access  Public
  */
 export const resetPassword = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
   try {
-    const { token, newPassword }: ResetPasswordRequest = req.body;
-    
-    // Find user by reset token
-    const user = await User.findOne({
-      'passwordReset.token': token,
-      'passwordReset.expiresAt': { $gt: new Date() }
-    });
-    
-    if (!user) {
-      throw new AppError('Invalid or expired reset token', 400);
+    const { email, otp, newPassword }: { email: string; otp: string; newPassword: string } = req.body;
+
+    // Validate input
+    if (!email || !otp || !newPassword) {
+      throw new AppError('Email, OTP, and new password are required', 400);
     }
-    
+
+    // Find user by email and OTP
+    const user = await User.findOne({
+      email,
+      'passwordResetOTP.otp': otp,
+      'passwordResetOTP.expiresAt': { $gt: new Date() }
+    });
+
+    if (!user) {
+      throw new AppError('Invalid or expired OTP code', 400);
+    }
+
     // Update password
     user.passwordHash = newPassword; // Will be hashed by pre-save hook
-    user.passwordReset = undefined; // Clear reset token
+    user.passwordResetOTP = undefined; // Clear OTP
     await user.save();
-    
+
     res.status(200).json({
       success: true,
       message: 'Password reset successful'
@@ -1255,16 +1283,12 @@ export const deleteAddress = async (req: Request, res: Response, next: NextFunct
  * Update user avatar
  */
 export const updateAvatar = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
+  const startTime = Date.now();
+
   try {
     const userId = req.user?._id || req.user?.id;
     if (!userId) {
       throw new AppError('User not authenticated', 401);
-    }
-
-    // Fetch user from database as Mongoose document (not from cache)
-    const user = await User.findById(userId);
-    if (!user) {
-      throw new AppError('User not found', 404);
     }
 
     const { avatar }: { avatar: string } = req.body;
@@ -1273,12 +1297,26 @@ export const updateAvatar = async (req: Request, res: Response, next: NextFuncti
       throw new AppError('Avatar URL is required', 400);
     }
 
-    user.avatar = avatar;
-    await user.save();
+    // Use findByIdAndUpdate for atomic operation (faster than find + save)
+    const user = await User.findByIdAndUpdate(
+      userId,
+      { avatar },
+      { new: true, runValidators: true, select: 'avatar' } // Only select avatar field for efficiency
+    );
+
+    if (!user) {
+      throw new AppError('User not found', 404);
+    }
 
     // Invalidate user cache to ensure fresh data on next request
     const cacheKey = `user:${userId}`;
     await cacheService.delete(cacheKey);
+
+    const duration = Date.now() - startTime;
+    logger.debug(`Avatar update completed in ${duration}ms`, {
+      userId,
+      duration
+    });
 
     res.status(200).json({
       success: true,
@@ -1288,6 +1326,8 @@ export const updateAvatar = async (req: Request, res: Response, next: NextFuncti
       }
     });
   } catch (error) {
+    const duration = Date.now() - startTime;
+    logger.error(`Avatar update failed after ${duration}ms`, { error });
     next(error);
   }
 };

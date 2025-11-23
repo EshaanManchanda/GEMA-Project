@@ -72,9 +72,9 @@ router.post(
 /**
  * @route   POST /api/auth/logout
  * @desc    Logout user
- * @access  Private
+ * @access  Public (no auth required - if no token, already logged out)
  */
-router.post('/logout', authenticate, authController.logout);
+router.post('/logout', authController.logout);
 
 /**
  * @route   POST /api/auth/refresh-token

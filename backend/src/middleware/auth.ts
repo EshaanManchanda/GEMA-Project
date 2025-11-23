@@ -26,21 +26,32 @@ declare global {
 export const authenticate = async (req: Request, res: Response, next: NextFunction) => {
   let token;
 
+  // Log all cookies received (for debugging)
+  console.log('[AUTH] Cookies received:', {
+    cookieHeader: req.headers.cookie ? req.headers.cookie.substring(0, 100) + '...' : 'none',
+    parsedCookies: req.cookies ? Object.keys(req.cookies) : [],
+    hasAccessToken: !!req.cookies?.accessToken,
+    hasRefreshToken: !!req.cookies?.refreshToken
+  });
+
   // Try to get token from httpOnly cookie first (more secure)
   if (req.cookies && req.cookies.accessToken) {
     token = req.cookies.accessToken;
+    console.log('[AUTH] Token found in cookie');
   }
   // Fall back to Authorization header for API clients
   else if (req.headers.authorization && req.headers.authorization.startsWith('Bearer')) {
     token = req.headers.authorization.split(' ')[1];
+    console.log('[AUTH] Token found in Authorization header');
   }
 
   // Log for debugging
-  console.log(`Auth attempt on ${req.method} ${req.path}:`, {
+  console.log(`[AUTH] Auth attempt on ${req.method} ${req.path}:`, {
     hasAuthHeader: !!req.headers.authorization,
     hasCookie: !!req.cookies?.accessToken,
     tokenSource: req.cookies?.accessToken ? 'cookie' : (req.headers.authorization ? 'header' : 'none'),
     tokenLength: token ? token.length : 0,
+    origin: req.headers.origin,
     userAgent: req.headers['user-agent']?.substring(0, 50)
   });
 

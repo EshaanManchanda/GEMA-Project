@@ -40,6 +40,7 @@ import seoRoutes from './seo.routes';
 import registrationRoutes from './registration.routes';
 import currencyRoutes from './currency.routes';
 import contactRoutes from './contact.routes';
+import partnershipRoutes from './partnership.routes';
 import cancellationRoutes from './event.cancellation.routes';
 import eventAffiliateRoutes from './event.affiliate.routes';
 import { Router } from 'express';
@@ -166,6 +167,9 @@ router.use('/', seoRoutes);
 
 // Contact routes (contact form submissions)
 router.use('/contact', contactRoutes);
+
+// Partnership routes (partnership inquiry submissions)
+router.use('/partnerships', partnershipRoutes);
 
 // Cancellation routes (event and order cancellations with refunds)
 router.use('/', cancellationRoutes);

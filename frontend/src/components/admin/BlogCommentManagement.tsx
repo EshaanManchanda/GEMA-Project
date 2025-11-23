@@ -124,9 +124,11 @@ const BlogCommentManagement: React.FC<BlogCommentManagementProps> = ({ blogId, i
       isOpen={isOpen}
       onClose={onClose}
       title="Manage Blog Comments"
-      description="Review and approve pending comments for this blog post."
       size="lg"
     >
+      <p className="text-sm text-gray-600 mb-4">
+        Review and approve pending comments for this blog post.
+      </p>
       <div className="py-4 max-h-[70vh] overflow-y-auto">
         {loading ? (
           <div className="text-center text-gray-500">Loading comments...</div>

@@ -151,7 +151,9 @@ const FileManager: React.FC = () => {
             category={activeCategory}
             onFileDelete={handleFileDelete}
             cloudinaryConfig={
-              providerInfo?.cloudinaryEnabled ? { cloudName: 'ditxik56f' } : undefined
+              providerInfo?.cloudinaryEnabled && providerInfo?.cloudinaryCloudName
+                ? { cloudName: providerInfo.cloudinaryCloudName }
+                : undefined
             }
           />
         </div>

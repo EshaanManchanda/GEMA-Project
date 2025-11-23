@@ -11,7 +11,11 @@
       "mcp__ide__getDiagnostics",
       "Bash(cat:*)",
       "Bash(find:*)",
-      "Bash(node -e:*)"
+      "Bash(node -e:*)",
+      "Bash(git -C /e/coding/gema check-ignore:*)",
+      "Bash(git -C /e/coding/gema ls-files:*)",
+      "Bash(git -C /e/coding/gema diff --name-only HEAD)",
+      "WebSearch"
     ],
     "deny": [],
     "ask": []

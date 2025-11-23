@@ -30,10 +30,17 @@ export const uploadPresets = {
   users: {
     folder: 'gema/users',
     transformation: [
-      { quality: 'auto', fetch_format: 'auto' },
+      { quality: 'auto:good', fetch_format: 'auto' }, // Balanced quality/speed
       { width: 400, height: 400, crop: 'fill', gravity: 'face' }
     ],
-    allowed_formats: ['jpg', 'jpeg', 'png', 'webp']
+    // Eager transformations for immediate availability
+    eager: [
+      { width: 150, height: 150, crop: 'fill', gravity: 'face', quality: 'auto' }, // Thumbnail
+      { width: 400, height: 400, crop: 'fill', gravity: 'face', quality: 'auto:good' } // Standard
+    ],
+    eager_async: true, // Process eager transformations asynchronously (faster upload)
+    allowed_formats: ['jpg', 'jpeg', 'png', 'webp'],
+    timeout: 30000 // 30 second timeout for Cloudinary upload
   },
   tickets: {
     folder: 'gema/tickets',

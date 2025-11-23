@@ -34,11 +34,12 @@ const persistConfig = {
 
 // Auth persist config (separate for sensitive data)
 // Note: Tokens are now stored in httpOnly cookies (more secure), not in Redux
+// Auth state is NOT persisted - httpOnly cookies are the single source of truth
 const authPersistConfig = {
   key: 'auth',
   storage,
-  whitelist: ['user', 'isAuthenticated', 'isEmailVerified'], // Only persist essential auth data (no tokens!)
-  blacklist: ['token', 'refreshToken', 'isLoading', 'loading', 'error', 'profileError', 'isProfileLoading'], // Don't persist tokens, loading states, and errors
+  whitelist: [], // Don't persist any auth state - rely on server cookies
+  blacklist: ['user', 'isAuthenticated', 'isEmailVerified', 'token', 'refreshToken', 'isLoading', 'loading', 'error', 'profileError', 'isProfileLoading'],
 };
 
 // Cart persist config

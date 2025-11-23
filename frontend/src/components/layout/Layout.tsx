@@ -106,14 +106,12 @@ const Layout: React.FC<{ children?: React.ReactNode }> = ({ children }) => {
 
   const handleLogout = async () => {
     try {
+      // Logout action now handles:
+      // 1. Clearing httpOnly cookies on the server
+      // 2. Clearing persisted auth state from localStorage
+      // 3. Clearing Redux state
       await dispatch(logoutUser());
-      
-      // Clear localStorage
-      localStorage.removeItem('token');
-      localStorage.removeItem('refreshToken');
-      localStorage.removeItem('user');
-      localStorage.removeItem('rememberMe');
-      
+
       setProfileDropdownOpen(false);
       navigate('/');
     } catch (error) {
@@ -194,22 +192,22 @@ const Layout: React.FC<{ children?: React.ReactNode }> = ({ children }) => {
             </div>
 
             {/* Right: Download App, Currency, Language */}
-            <div className="flex items-center space-x-4 md:space-x-6">
+            {/* <div className="flex items-center space-x-4 md:space-x-6">
               <div className="hidden md:flex items-center space-x-1 cursor-pointer hover:opacity-80 transition-opacity duration-300">
                 <FaDownload size={14} />
                 <span>Download App</span>
-              </div>
+              </div> */}
 
               {/* Currency Selector */}
-              <CurrencySelector compact={true} className="text-white" />
+              {/* <CurrencySelector compact={true} className="text-white" /> */}
 
               {/* Language Selector */}
-              <div className="flex items-center space-x-1 cursor-pointer hover:opacity-80 transition-opacity duration-300"
+              {/* <div className="flex items-center space-x-1 cursor-pointer hover:opacity-80 transition-opacity duration-300"
                    onClick={() => handleLanguageChange({ code: 'en', name: 'English' })}>
                 <MdLanguage size={16} />
                 <span>{currentLanguage.name}</span>
-              </div>
-            </div>
+              </div> */}
+            {/* </div> */}
           </div>
         </div>
 
@@ -279,7 +277,7 @@ const Layout: React.FC<{ children?: React.ReactNode }> = ({ children }) => {
               >
                 <FaHeart size={14} />
               </Link>
-              <Link 
+              {/* <Link 
                 to="/cart"
                 className="p-2 rounded-full hover:bg-gray-100 transition-all duration-300 relative"
                 style={{ color: scrolled ? 'white' : 'var(--primary-color)' }}
@@ -292,7 +290,7 @@ const Layout: React.FC<{ children?: React.ReactNode }> = ({ children }) => {
                     {cartCount}
                   </span>
                 )}
-              </Link>
+              </Link> */}
 
               {/* Notifications - Commented out - notification system disabled */}
               {/* {isAuthenticated && (
@@ -512,7 +510,7 @@ const Layout: React.FC<{ children?: React.ReactNode }> = ({ children }) => {
               >
                 <FaSearch size={14} />
               </Link>
-              <Link 
+              {/* <Link 
                 to="/cart"
                 className="p-2 rounded-full transition-all duration-300 relative"
                 style={{ color: scrolled ? 'white' : 'var(--primary-color)' }}
@@ -525,7 +523,7 @@ const Layout: React.FC<{ children?: React.ReactNode }> = ({ children }) => {
                     {cartCount}
                   </span>
                 )}
-              </Link>
+              </Link> */}
               <button 
                 onClick={toggleMobileMenu}
                 className="p-2 rounded-full transition-all duration-300"
@@ -544,16 +542,16 @@ const Layout: React.FC<{ children?: React.ReactNode }> = ({ children }) => {
                 <Link to="/blog" className="block py-2 text-base font-medium text-gray-900">Blog</Link>
                 <Link to="/about" className="block py-2 text-base font-medium text-gray-900">Kidzapp Go</Link>
                 <Link to="/contact" className="block py-2 text-base font-medium text-gray-900">Get In Touch</Link>
-                <Link to="/cart" className="flex items-center py-2 text-base font-medium text-gray-900">
+                {/* <Link to="/cart" className="flex items-center py-2 text-base font-medium text-gray-900">
                   <FaShoppingCart className="mr-2" size={14} />
                   Cart {cartCount > 0 && <span className="ml-2 bg-red-500 text-white text-xs rounded-full px-2 py-1">{cartCount}</span>}
-                </Link>
+                </Link> */}
 
                 {/* Currency Selector - Mobile */}
-                <div className="py-2">
+                {/* <div className="py-2">
                   <p className="text-sm text-gray-700 mb-2">Select Currency</p>
                   <CurrencySelector compact={true} />
-                </div>
+                </div> */}
 
                 <div className="pt-4 border-t border-gray-200">
                   {isAuthenticated && user ? (
