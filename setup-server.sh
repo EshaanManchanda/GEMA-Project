@@ -141,6 +141,49 @@ apt install -y certbot python3-certbot-nginx
 success "Certbot installed"
 
 ###############################################################################
+# Install Redis
+###############################################################################
+
+log "Installing Redis..."
+apt install -y redis-server
+
+# Configure Redis
+log "Configuring Redis..."
+# Enable Redis to start on boot
+systemctl enable redis-server
+
+# Update Redis configuration for production
+REDIS_CONF="/etc/redis/redis.conf"
+if [ -f "$REDIS_CONF" ]; then
+    # Backup original config
+    cp "$REDIS_CONF" "$REDIS_CONF.backup"
+
+    # Set supervised to systemd
+    sed -i 's/^supervised no/supervised systemd/' "$REDIS_CONF"
+
+    # Set maxmemory to 256MB (adjust for KVM1)
+    if ! grep -q "^maxmemory" "$REDIS_CONF"; then
+        echo "maxmemory 256mb" >> "$REDIS_CONF"
+    fi
+
+    # Set maxmemory-policy to allkeys-lru
+    if ! grep -q "^maxmemory-policy" "$REDIS_CONF"; then
+        echo "maxmemory-policy allkeys-lru" >> "$REDIS_CONF"
+    fi
+fi
+
+# Start Redis
+systemctl restart redis-server
+
+# Verify Redis is running
+if systemctl is-active --quiet redis-server; then
+    success "Redis installed and running"
+    log "Redis version: $(redis-cli --version)"
+else
+    error "Redis installation failed"
+fi
+
+###############################################################################
 # Configure Firewall (UFW)
 ###############################################################################
 

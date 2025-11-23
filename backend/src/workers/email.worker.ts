@@ -49,7 +49,7 @@ const emailWorker = new Worker(
           result = await emailService.sendPasswordResetEmail({
             to: data.to as string,
             firstName: data.templateData.firstName,
-            resetToken: data.templateData.resetToken,
+            resetOTP: data.templateData.resetOTP,
           });
           break;
 

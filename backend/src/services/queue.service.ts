@@ -74,11 +74,11 @@ export class QueueService {
   /**
    * Send password reset email (async via queue)
    */
-  static async sendPasswordResetEmail(to: string, firstName: string, resetToken: string) {
+  static async sendPasswordResetEmail(to: string, firstName: string, resetOTP: string) {
     return this.addEmailJob({
       type: 'passwordReset',
       to,
-      templateData: { firstName, resetToken },
+      templateData: { firstName, resetOTP },
     });
   }
 
