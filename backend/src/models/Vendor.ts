@@ -566,7 +566,7 @@ const VendorSchema = new Schema<IVendor>(
 );
 
 // Indexes for performance
-VendorSchema.index({ userId: 1 });
+// Note: userId already has unique:true which creates an index automatically
 VendorSchema.index({ email: 1 });
 VendorSchema.index({ verificationStatus: 1 });
 VendorSchema.index({ isActive: 1, isSuspended: 1 });

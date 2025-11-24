@@ -9,7 +9,7 @@ if (areQueuesDisabled) {
   logger.warn('Queues are disabled because Redis is not available');
 }
 
-// Redis connection options for BullMQ
+// Redis connection options for BullMQ with connection pooling
 export const redisConnection = {
   host: process.env.REDIS_HOST || 'localhost',
   port: parseInt(process.env.REDIS_PORT || '6379', 10),
@@ -23,6 +23,10 @@ export const redisConnection = {
   maxRetriesPerRequest: null, // Required for BullMQ
   enableReadyCheck: false,
   enableOfflineQueue: false,
+  // Connection pooling to prevent connection exhaustion
+  lazyConnect: false,
+  // Reduce connection timeout for faster failure
+  connectTimeout: 5000,
 };
 
 // Queue configuration (optimized for KVM1 - reduced retention for lower memory usage)
@@ -68,41 +72,12 @@ export const analyticsQueue = areQueuesDisabled ? null : new Queue(QUEUE_NAMES.A
 // Notifications Queue
 export const notificationsQueue = areQueuesDisabled ? null : new Queue(QUEUE_NAMES.NOTIFICATIONS, queueConfig);
 
-// Queue Events for monitoring (only if queues are enabled)
-const qrQueueEvents = areQueuesDisabled ? null : new QueueEvents(QUEUE_NAMES.QR_GENERATION, { connection: redisConnection });
-const emailQueueEvents = areQueuesDisabled ? null : new QueueEvents(QUEUE_NAMES.EMAIL, { connection: redisConnection });
-const ticketQueueEvents = areQueuesDisabled ? null : new QueueEvents(QUEUE_NAMES.TICKET_GENERATION, { connection: redisConnection });
-
-// Event listeners for monitoring (only if queue events are enabled)
-if (qrQueueEvents) {
-  qrQueueEvents.on('completed', ({ jobId }) => {
-    logger.info(`QR generation job ${jobId} completed`);
-  });
-
-  qrQueueEvents.on('failed', ({ jobId, failedReason }) => {
-    logger.error(`QR generation job ${jobId} failed: ${failedReason}`);
-  });
-}
-
-if (emailQueueEvents) {
-  emailQueueEvents.on('completed', ({ jobId }) => {
-    logger.info(`Email job ${jobId} completed`);
-  });
-
-  emailQueueEvents.on('failed', ({ jobId, failedReason }) => {
-    logger.error(`Email job ${jobId} failed: ${failedReason}`);
-  });
-}
-
-if (ticketQueueEvents) {
-  ticketQueueEvents.on('completed', ({ jobId }) => {
-    logger.info(`Ticket generation job ${jobId} completed`);
-  });
-
-  ticketQueueEvents.on('failed', ({ jobId, failedReason }) => {
-    logger.error(`Ticket generation job ${jobId} failed: ${failedReason}`);
-  });
-}
+// Queue Events DISABLED to reduce Redis connections (each QueueEvents = 1 connection)
+// Workers already handle logging, so these are redundant
+// If monitoring is needed, re-enable selectively or use a dedicated monitoring service
+// const qrQueueEvents = areQueuesDisabled ? null : new QueueEvents(QUEUE_NAMES.QR_GENERATION, { connection: redisConnection });
+// const emailQueueEvents = areQueuesDisabled ? null : new QueueEvents(QUEUE_NAMES.EMAIL, { connection: redisConnection });
+// const ticketQueueEvents = areQueuesDisabled ? null : new QueueEvents(QUEUE_NAMES.TICKET_GENERATION, { connection: redisConnection });
 
 // Graceful shutdown
 const gracefulShutdown = async () => {
@@ -119,9 +94,6 @@ const gracefulShutdown = async () => {
     ticketQueue?.close(),
     analyticsQueue?.close(),
     notificationsQueue?.close(),
-    qrQueueEvents?.close(),
-    emailQueueEvents?.close(),
-    ticketQueueEvents?.close(),
   ].filter(Boolean);
 
   await Promise.all(closePromises);
