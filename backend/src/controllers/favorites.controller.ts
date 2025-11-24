@@ -1,7 +1,7 @@
 import { Request, Response, NextFunction } from 'express';
-import { User, Event, IUser } from '../models';
+import { User, Event, IUser } from '../models/index';
 import { AppError } from '../middleware/index';
-import { logger } from '../config';
+import { logger } from '../config/index';
 
 // @desc    Get user's favorite events
 // @route   GET /api/favorites

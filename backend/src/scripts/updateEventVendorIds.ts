@@ -9,8 +9,8 @@
  */
 
 import mongoose from 'mongoose';
-import { Event, User, Vendor } from '../models';
-import { config } from '../config';
+import { Event, User, Vendor } from '../models/index';
+import { config } from '../config/index';
 
 interface MigrationResult {
   totalEvents: number;

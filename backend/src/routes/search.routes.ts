@@ -1,6 +1,6 @@
 import { Router } from 'express';
 import { query } from 'express-validator';
-import { Event, Category, User } from '../models';
+import { Event, Category, User } from '../models/index';
 import { AppError } from '../middleware/index';
 
 const router = Router();

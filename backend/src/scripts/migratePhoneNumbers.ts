@@ -13,7 +13,7 @@
  */
 
 import mongoose from 'mongoose';
-import { config } from '../config';
+import { config } from '../config/index';
 import User from '../models/User';
 import { sanitizeToE164, isE164Format } from '../utils/phoneValidation';
 

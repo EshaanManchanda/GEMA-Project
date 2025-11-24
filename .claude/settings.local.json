@@ -15,7 +15,9 @@
       "Bash(git -C /e/coding/gema check-ignore:*)",
       "Bash(git -C /e/coding/gema ls-files:*)",
       "Bash(git -C /e/coding/gema diff --name-only HEAD)",
-      "WebSearch"
+      "WebSearch",
+      "Bash({ grep -r \"from [''''\"\"]\\.\\.\\/config[''''\"\"]\" --include=\"*.ts\" --include=\"*.js\" . -l)",
+      "Bash(})"
     ],
     "deny": [],
     "ask": []

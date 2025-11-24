@@ -1,7 +1,7 @@
 import { Request, Response, NextFunction } from 'express';
-import { Affiliate, User, Order, Event, IAffiliate, AffiliateStatus } from '../models';
+import { Affiliate, User, Order, Event, IAffiliate, AffiliateStatus } from '../models/index';
 import { AppError } from '../middleware/index';
-import { ApiResponse } from '../types';
+import { ApiResponse } from '../types/index';
 import * as crypto from 'crypto';
 
 /**

@@ -1,6 +1,6 @@
 import mongoose from 'mongoose';
-import { config, connectDB, logger } from '../config';
-import { User, Event, Venue, Order, Ticket, Review, Employee, CheckinLog } from '../models';
+import { config, connectDB, logger } from '../config/index';
+import { User, Event, Venue, Order, Ticket, Review, Employee, CheckinLog } from '../models/index';
 import { UserRole, UserStatus } from '../models/User';
 import { VenueType, VenueStatus } from '../models/Venue';
 import { ReviewType, ReviewStatus } from '../models/Review';

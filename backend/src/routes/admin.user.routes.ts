@@ -1,6 +1,6 @@
 import { Router } from 'express';
 import { authenticate, authorize, validate, adminLimiter } from '../middleware/index';
-import { UserRole } from '../models';
+import { UserRole } from '../models/index';
 import {
   getAllUsers,
   getUserById,

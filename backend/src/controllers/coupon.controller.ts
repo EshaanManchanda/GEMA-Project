@@ -1,7 +1,7 @@
 import { Request, Response, NextFunction } from 'express';
-import { Coupon, Order, ICoupon, CouponStatus } from '../models';
+import { Coupon, Order, ICoupon, CouponStatus } from '../models/index';
 import { AppError } from '../middleware/index';
-import { ApiResponse } from '../types';
+import { ApiResponse } from '../types/index';
 
 /**
  * Get all coupons (admin only)

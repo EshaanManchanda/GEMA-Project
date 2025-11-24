@@ -1,9 +1,9 @@
 import { Types } from 'mongoose';
-import { Ticket, Event, User, Order } from '../models';
+import { Ticket, Event, User, Order } from '../models/index';
 import { generateQRCode, generateSecureQRData } from '../utils/qrcode';
 import { sendTicketByEmail } from '../utils/mailer';
 import { v4 as uuidv4 } from 'uuid';
-import { logger } from '../config';
+import { logger } from '../config/index';
 
 export interface TicketGenerationResult {
   success: boolean;

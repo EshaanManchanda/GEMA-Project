@@ -1,9 +1,9 @@
 import { Request, Response, NextFunction } from 'express';
 import { validationResult } from 'express-validator';
-import { Event, User } from '../models';
+import { Event, User } from '../models/index';
 import { AppError } from '../middleware/index';
-import { AuthRequest } from '../types';
-import { config, checkDBHealth } from '../config';
+import { AuthRequest } from '../types/index';
+import { config, checkDBHealth } from '../config/index';
 import { buildPublicEventFilter, sanitizeEventOutput, sanitizeEventsOutput } from '../utils/event.utils';
 import { cacheService } from '../services/cache.service';
 import { invalidateEventCaches } from '../utils/cache.utils';

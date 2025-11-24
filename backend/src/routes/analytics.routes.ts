@@ -1,5 +1,5 @@
 import { Router, Response, NextFunction } from 'express';
-import { AuthRequest } from '../types';
+import { AuthRequest } from '../types/index';
 import { AppError } from '../middleware/error';
 import { authenticate, authorize } from '../middleware/auth';
 import { analyticsService } from '../services/analytics.service';

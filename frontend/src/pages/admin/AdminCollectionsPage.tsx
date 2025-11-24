@@ -37,7 +37,7 @@ const AdminCollectionsPage: React.FC = () => {
 
   // State for filters
   const [searchQuery, setSearchQuery] = useState('');
-  const [categoryFilter, setCategory Filter] = useState('');
+  const [categoryFilter, setCategoryFilter] = useState('');
   const [statusFilter, setStatusFilter] = useState<'all' | 'active' | 'inactive'>('all');
   const [sortBy, setSortBy] = useState<'sortOrder' | 'title' | 'createdAt' | 'category'>('sortOrder');
   const [sortOrder, setSortOrder] = useState<'asc' | 'desc'>('asc');

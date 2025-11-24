@@ -1,5 +1,5 @@
 import { archiveExpiredEvents } from '../utils/eventLifecycle';
-import { connectDB, logger } from '../config';
+import { connectDB, logger } from '../config/index';
 
 async function runManualExpiration() {
   try {

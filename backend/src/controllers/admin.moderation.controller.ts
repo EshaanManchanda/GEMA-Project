@@ -1,5 +1,5 @@
 import { Request, Response, NextFunction } from 'express';
-import { Review, Event, User } from '../models';
+import { Review, Event, User } from '../models/index';
 import { AppError } from '../middleware/index';
 
 /**

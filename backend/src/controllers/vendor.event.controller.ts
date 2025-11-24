@@ -1,6 +1,6 @@
-import { Event, Category, Vendor } from '../models';
+import { Event, Category, Vendor } from '../models/index';
 import { AppError, catchAsync } from '../middleware/index';
-import { AuthRequest } from '../types';
+import { AuthRequest } from '../types/index';
 import { NextFunction, Response } from 'express';
 import { getOrCreateVendorProfile } from '../utils/vendorHelpers';
 

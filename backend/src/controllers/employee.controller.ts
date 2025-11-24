@@ -1,5 +1,5 @@
 import { Request, Response, NextFunction } from 'express';
-import { Employee, User } from '../models';
+import { Employee, User } from '../models/index';
 import { AppError } from '../middleware/error';
 
 export const createEmployee = async (req: Request, res: Response, next: NextFunction) => {

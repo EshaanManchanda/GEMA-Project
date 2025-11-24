@@ -1,7 +1,7 @@
 import { Request, Response, NextFunction } from 'express';
-import { Venue, User, IVenue } from '../models';
+import { Venue, User, IVenue } from '../models/index';
 import { AppError } from '../middleware/index';
-import { ApiResponse } from '../types';
+import { ApiResponse } from '../types/index';
 import mongoose from 'mongoose';
 
 /**

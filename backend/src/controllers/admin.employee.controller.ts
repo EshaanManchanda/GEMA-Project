@@ -1,8 +1,8 @@
 import { Request, Response, NextFunction } from 'express';
 import Employee, { IEmployee } from '../models/Employee';
-import { User, UserRole, UserStatus } from '../models';
+import { User, UserRole, UserStatus } from '../models/index';
 import { AppError } from '../middleware/index';
-import { ApiResponse } from '../types';
+import { ApiResponse } from '../types/index';
 import * as bcrypt from 'bcryptjs';
 import mongoose from 'mongoose';
 

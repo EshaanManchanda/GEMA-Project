@@ -1,7 +1,7 @@
 import { Router } from 'express';
 import { authenticate, authorize } from '../middleware/auth';
 import { validate } from '../middleware/validation';
-import { UserRole } from '../models';
+import { UserRole } from '../models/index';
 import {
   getVendorDashboardStats,
   getVendorEvents,

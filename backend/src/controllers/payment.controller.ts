@@ -2,10 +2,10 @@ import { Request, Response, NextFunction } from 'express';
 import { validationResult } from 'express-validator';
 import { PaymentService } from '../services/payment.service';
 import CommissionService from '../services/commission.service';
-import { Order, User } from '../models';
+import { Order, User } from '../models/index';
 import { AppError } from '../middleware/index';
-import { AuthRequest } from '../types';
-import { config } from '../config';
+import { AuthRequest } from '../types/index';
+import { config } from '../config/index';
 
 // @desc    Create payment intent for order
 // @route   POST /api/payments/create-intent

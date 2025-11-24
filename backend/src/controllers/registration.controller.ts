@@ -1,10 +1,10 @@
 import { Request, Response, NextFunction } from 'express';
 import { validationResult } from 'express-validator';
-import { Registration, Event, User, RegistrationStatus, RegistrationPaymentStatus } from '../models';
+import { Registration, Event, User, RegistrationStatus, RegistrationPaymentStatus } from '../models/index';
 import { AppError } from '../middleware/index';
-import { AuthRequest } from '../types';
+import { AuthRequest } from '../types/index';
 import { PaymentService } from '../services/payment.service';
-import { logger } from '../config';
+import { logger } from '../config/index';
 import cloudinary from '../config/cloudinary';
 import { getFileInfo } from '../middleware/upload';
 

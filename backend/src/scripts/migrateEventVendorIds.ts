@@ -1,5 +1,5 @@
 import mongoose from 'mongoose';
-import { Event, Vendor, User } from '../models';
+import { Event, Vendor, User } from '../models/index';
 import dotenv from 'dotenv';
 
 dotenv.config();

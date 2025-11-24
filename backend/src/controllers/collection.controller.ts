@@ -1,9 +1,9 @@
 import { Request, Response, NextFunction } from 'express';
 import { validationResult } from 'express-validator';
 import Collection from '../models/Collection';
-import { Event } from '../models';
+import { Event } from '../models/index';
 import { AppError } from '../middleware/index';
-import { AuthRequest } from '../types';
+import { AuthRequest } from '../types/index';
 import { getFileUrl, getFileInfo } from '../middleware/upload';
 
 // @desc    Get all collections

@@ -1,4 +1,4 @@
-import { Order, Event, User } from '../models';
+import { Order, Event, User } from '../models/index';
 import CancellationLog from '../models/CancellationLog';
 import { PaymentService } from './payment.service';
 import { convertToStripeAmount } from '../config/stripe';

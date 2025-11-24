@@ -1,7 +1,7 @@
 import { Request, Response, NextFunction } from 'express';
-import { User, UserRole, UserStatus, IUser } from '../models';
+import { User, UserRole, UserStatus, IUser } from '../models/index';
 import { AppError } from '../middleware/index';
-import { ApiResponse } from '../types';
+import { ApiResponse } from '../types/index';
 import * as bcrypt from 'bcryptjs';
 import mongoose from 'mongoose';
 import { generateOTP, getOTPExpiry, isOTPExpired } from '../utils/otp';

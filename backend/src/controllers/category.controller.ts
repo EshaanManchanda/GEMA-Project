@@ -1,8 +1,8 @@
 import { Request, Response, NextFunction } from 'express';
 import mongoose from 'mongoose';
-import { Category, Event, ICategory } from '../models';
+import { Category, Event, ICategory } from '../models/index';
 import { AppError } from '../middleware/index';
-import { ApiResponse } from '../types';
+import { ApiResponse } from '../types/index';
 import { cacheService } from '../services/cache.service';
 
 /**

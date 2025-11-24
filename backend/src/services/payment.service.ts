@@ -1,5 +1,5 @@
 import { stripe, convertToStripeAmount, convertFromStripeAmount } from '../config/stripe';
-import { Order } from '../models';
+import { Order } from '../models/index';
 import Vendor, { PaymentMode } from '../models/Vendor';
 import Stripe from 'stripe';
 import logger from '../config/logger';

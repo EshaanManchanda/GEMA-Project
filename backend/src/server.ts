@@ -10,7 +10,7 @@ import hpp from 'hpp';
 import { config, connectDB, initializeFirebase, logger } from './config/index';
 import { errorHandler, notFound } from './middleware/index';
 import { performanceMonitor, startPerformanceMonitoring, logPerformanceSummary } from './middleware/performance';
-import routes from './routes';
+import routes from './routes/index';
 import healthRoutes from './routes/health.routes';
 import currencyRoutes from './routes/currency.routes';
 import { scheduleTicketJobs, stopTicketJobs } from './utils/ticketExpiration';

@@ -1,6 +1,6 @@
 import { Request, Response, NextFunction } from 'express';
 import { validationResult, ValidationChain } from 'express-validator';
-import { ApiResponse } from '../types';
+import { ApiResponse } from '../types/index';
 
 /**
  * Middleware to validate request data using express-validator

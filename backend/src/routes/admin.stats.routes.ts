@@ -1,5 +1,5 @@
 import { Router, Response, NextFunction } from 'express';
-import { AuthRequest } from '../types';
+import { AuthRequest } from '../types/index';
 import { authenticate, authorize, validate } from '../middleware/index';
 import { UserRole } from '../models/User';
 import { validateDashboardDateRange } from '../validators/admin.validator';

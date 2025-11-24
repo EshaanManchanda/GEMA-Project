@@ -1,6 +1,6 @@
 import { Router } from 'express';
 import { authenticate, authorize } from '../middleware/auth';
-import { UserRole } from '../models';
+import { UserRole } from '../models/index';
 import {
   getAllVenues,
   getVenueById,

@@ -1,5 +1,5 @@
 import mongoose from 'mongoose';
-import { connectDB } from '../config';
+import { connectDB } from '../config/index';
 
 async function archiveExpiredEventsRaw() {
   try {

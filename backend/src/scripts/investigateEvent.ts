@@ -1,5 +1,5 @@
 import mongoose from 'mongoose';
-import { Event } from '../models';
+import { Event } from '../models/index';
 import { config } from '../config/env';
 import { buildPublicEventFilter } from '../utils/event.utils';
 

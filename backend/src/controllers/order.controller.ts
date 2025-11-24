@@ -1,9 +1,9 @@
 import { Request, Response, NextFunction } from 'express';
 import { validationResult } from 'express-validator';
-import { Order, Event, Ticket, User } from '../models';
+import { Order, Event, Ticket, User } from '../models/index';
 import AdminRevenueSettings from '../models/AdminRevenueSettings';
 import { AppError } from '../middleware/index';
-import { AuthRequest } from '../types';
+import { AuthRequest } from '../types/index';
 import { emailService } from '../services/email.service';
 
 // @desc    Create new order

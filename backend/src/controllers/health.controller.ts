@@ -1,7 +1,7 @@
 import { Request, Response } from 'express';
 import mongoose from 'mongoose';
-import { config, logger, checkRedisHealth, isRedisEnabled } from '../config';
-import { Event, User, Order } from '../models';
+import { config, logger, checkRedisHealth, isRedisEnabled } from '../config/index';
+import { Event, User, Order } from '../models/index';
 
 interface HealthStatus {
   status: 'ok' | 'degraded' | 'down';

@@ -1,9 +1,9 @@
 import { Request, Response, NextFunction } from 'express';
 import { validationResult } from 'express-validator';
-import { Event } from '../models';
+import { Event } from '../models/index';
 import { AppError } from '../middleware/index';
-import { AuthRequest } from '../types';
-import { logger } from '../config';
+import { AuthRequest } from '../types/index';
+import { logger } from '../config/index';
 import { v4 as uuidv4 } from 'uuid';
 
 // @desc    Create or update event registration configuration

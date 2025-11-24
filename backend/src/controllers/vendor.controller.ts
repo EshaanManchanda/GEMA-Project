@@ -1,7 +1,7 @@
-import { Event, Booking, IBooking, User, Order, Employee, UserRole, Vendor, VerificationStatus } from '../models';
+import { Event, Booking, IBooking, User, Order, Employee, UserRole, Vendor, VerificationStatus } from '../models/index';
  import { AppError, catchAsync } from '../middleware/index';
  import { uploadSingle, getFileInfo } from '../middleware/upload';
- import { AuthRequest } from '../types';
+ import { AuthRequest } from '../types/index';
  import { NextFunction, Response } from 'express';
  import emailService from '../services/email.service';
 import mongoose from 'mongoose';

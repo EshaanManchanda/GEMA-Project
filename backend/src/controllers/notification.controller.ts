@@ -1,7 +1,7 @@
 // import { Request, Response, NextFunction } from 'express';
-// import {  User } from '../models';
+// import {  User } from '../models/index';
 // import { AppError } from '../middleware/index';
-// import { ApiResponse } from '../types';
+// import { ApiResponse } from '../types/index';
 
 // /**
 //  * Get user's notifications

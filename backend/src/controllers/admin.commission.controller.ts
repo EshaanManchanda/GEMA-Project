@@ -1,6 +1,6 @@
 import { Response, NextFunction } from 'express';
 import { AppError } from '../middleware/index';
-import { AuthRequest } from '../types';
+import { AuthRequest } from '../types/index';
 import CommissionConfig, { ConfigStatus } from '../models/CommissionConfig';
 import CommissionTransaction, { CommissionTransactionStatus } from '../models/CommissionTransaction';
 import mongoose from 'mongoose';

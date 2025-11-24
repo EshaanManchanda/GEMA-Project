@@ -1,5 +1,5 @@
 import cron, { ScheduledTask } from 'node-cron';
-import { Ticket, Event } from '../models';
+import { Ticket, Event } from '../models/index';
 
 // Function to expire tickets for past events
 export const expireOldTickets = async () => {

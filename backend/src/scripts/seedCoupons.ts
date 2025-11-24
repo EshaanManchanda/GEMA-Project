@@ -1,8 +1,8 @@
 import mongoose from 'mongoose';
 import fs from 'fs';
 import path from 'path';
-import { Coupon } from '../models';
-import { config } from '../config';
+import { Coupon } from '../models/index';
+import { config } from '../config/index';
 
 const MONGODB_URI = config.mongodbUri;
 

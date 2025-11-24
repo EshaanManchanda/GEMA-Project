@@ -1,4 +1,4 @@
-import { UserRole } from '../models';
+import { UserRole } from '../models/index';
 
 // User type for API responses
 export interface UserResponse {

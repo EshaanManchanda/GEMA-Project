@@ -1,6 +1,6 @@
 import { Request, Response } from 'express';
 import mongoose from 'mongoose';
-import { Blog, BlogCategory } from '../models';
+import { Blog, BlogCategory } from '../models/index';
 import { IBlog } from '../models/Blog';
 import { IBlogCategory } from '../models/BlogCategory';
 import catchAsync from '../utils/catchAsync';

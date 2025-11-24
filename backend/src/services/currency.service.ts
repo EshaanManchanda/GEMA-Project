@@ -1,4 +1,4 @@
-import { logger } from '../config';
+import { logger } from '../config/index';
 
 export interface ExchangeRates {
   [currency: string]: number;

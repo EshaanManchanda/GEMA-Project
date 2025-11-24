@@ -1,5 +1,5 @@
 import { Request, Response, NextFunction } from 'express';
-import { Event, Order, User } from '../models';
+import { Event, Order, User } from '../models/index';
 import CancellationLog from '../models/CancellationLog';
 import { RefundService } from '../services/refund.service';
 import { emailQueue } from '../config/queue';

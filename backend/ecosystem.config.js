@@ -27,7 +27,7 @@ module.exports = {
     exec_mode: 'fork',
 
     // Current working directory
-    cwd: '/var/www/gema/backend',
+    cwd: '/var/www/GEMA-Project/backend',
 
     // Environment Variables - Production
     env_production: {
@@ -139,7 +139,7 @@ module.exports = {
     exec_mode: 'fork',
 
     // Current working directory
-    cwd: '/var/www/gema/backend',
+    cwd: '/var/www/GEMA-Project/backend',
 
     // Environment Variables - Production
     env_production: {
@@ -194,7 +194,7 @@ module.exports = {
       host: 'your-server-ip',
       ref: 'origin/main', // or 'origin/backend_auth'
       repo: 'https://github.com/EshaanManchanda/GEMA-Project.git',
-      path: '/var/www/gema',
+      path: '/var/www/GEMA-Project',
 
       // Post-deployment commands
       'post-deploy': 'cd backend && npm install && npm run build && pm2 reload ecosystem.config.js --env production',
@@ -210,7 +210,7 @@ module.exports = {
       host: 'your-staging-server-ip',
       ref: 'origin/backend_auth',
       repo: 'https://github.com/EshaanManchanda/GEMA-Project.git',
-      path: '/var/www/gema-staging',
+      path: '/var/www/GEMA-Project-staging',
       'post-deploy': 'cd backend && npm install && npm run build && pm2 reload ecosystem.config.js --env development',
       env: {
         NODE_ENV: 'staging'

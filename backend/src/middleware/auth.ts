@@ -1,8 +1,8 @@
 import { Request, Response, NextFunction } from 'express';
 import jwt from 'jsonwebtoken';
-import { config } from '../config';
+import { config } from '../config/index';
 import { AppError } from './error';
-import { User, IUser } from '../models'; // Removed Role import
+import { User, IUser } from '../models/index'; // Removed Role import
 import { getAuth } from 'firebase-admin/auth';
 import { cacheService } from '../services/cache.service';
 

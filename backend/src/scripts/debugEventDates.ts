@@ -1,5 +1,5 @@
-import { Event } from '../models';
-import { connectDB } from '../config';
+import { Event } from '../models/index';
+import { connectDB } from '../config/index';
 
 async function debugEventDates() {
   try {

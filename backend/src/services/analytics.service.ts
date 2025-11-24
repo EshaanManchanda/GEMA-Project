@@ -1,5 +1,5 @@
 import mongoose from 'mongoose';
-import { Event, Order, Ticket, User, Venue, Review } from '../models';
+import { Event, Order, Ticket, User, Venue, Review } from '../models/index';
 
 // Analytics interfaces
 export interface EventAnalytics {

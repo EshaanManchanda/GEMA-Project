@@ -1,5 +1,5 @@
 import { Request, Response, NextFunction } from 'express';
-import { Ticket, CheckinLog, Employee } from '../models';
+import { Ticket, CheckinLog, Employee } from '../models/index';
 import { AppError } from '../middleware/error';
 
 export const checkInTicket = async (req: Request, res: Response, next: NextFunction) => {

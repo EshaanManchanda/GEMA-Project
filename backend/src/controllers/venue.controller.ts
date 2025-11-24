@@ -1,7 +1,7 @@
 import { Request, Response, NextFunction } from 'express';
-import { Venue } from '../models';
+import { Venue } from '../models/index';
 import { AppError } from '../middleware/error';
-import { AuthRequest } from '../types';
+import { AuthRequest } from '../types/index';
 
 export const createVenue = async (req: AuthRequest, res: Response, next: NextFunction) => {
   const { name, address, coordinates, capacity, venueType, facilities, checkInGates, accessRules, wifiCredentials } = req.body;

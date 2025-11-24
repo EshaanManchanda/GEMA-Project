@@ -1,7 +1,7 @@
 import { Request, Response, NextFunction } from 'express';
-import { Ticket, User, Event, Employee } from '../models';
+import { Ticket, User, Event, Employee } from '../models/index';
 import { AppError } from '../middleware/error';
-import { AuthRequest } from '../types';
+import { AuthRequest } from '../types/index';
 import { generateQRCode, generateSecureQRData, validateQRData } from '../utils/qrcode';
 import { TicketGenerationService } from '../services/ticketGeneration.service';
 import { sendTicketByEmail } from '../utils/mailer';

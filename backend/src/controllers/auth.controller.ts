@@ -1,7 +1,7 @@
 import { Request, Response, NextFunction, CookieOptions } from 'express';
 import { getAuth } from '../config/firebase';
 import { generateToken, generateRefreshToken } from '../config/jwt';
-import { User, UserStatus, RefreshToken, IUser, IAddress, Gender } from '../models';
+import { User, UserStatus, RefreshToken, IUser, IAddress, Gender } from '../models/index';
 import { AppError } from '../middleware/index';
 import { emailService } from '../services/email.service';
 import smsService from '../services/sms.service';
@@ -20,13 +20,13 @@ import {
   FirebaseAuthRequest,
   ApiResponse,
   UserResponse
-} from '../types';
+} from '../types/index';
 import bcrypt from 'bcryptjs';
 import crypto from 'crypto';
 import { generateOTP, getOTPExpiry } from '../utils/otp';
 import { sanitizeToE164, validatePhoneForAPI, isE164Format } from '../utils/phoneValidation';
 import { toISOStringSafe, toDateStringSafe } from '../utils/dateHelpers';
-import { config } from '../config';
+import { config } from '../config/index';
 import logger from '../config/logger';
 
 /**

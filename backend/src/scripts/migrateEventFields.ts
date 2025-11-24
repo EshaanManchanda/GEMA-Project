@@ -1,6 +1,6 @@
 import mongoose from 'mongoose';
-import { Event } from '../models';
-import { config, connectDB, logger } from '../config';
+import { Event } from '../models/index';
+import { config, connectDB, logger } from '../config/index';
 
 /**
  * Migration script to update existing events with new lifecycle fields

@@ -13,7 +13,7 @@ import {
   moderateReview,
 } from '../controllers/review.controller';
 import { authenticate, authorize } from '../middleware/auth';
-import { ReviewType, FlagReason, ReviewStatus } from '../models';
+import { ReviewType, FlagReason, ReviewStatus } from '../models/index';
 
 const router = Router();
 

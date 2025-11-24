@@ -1,10 +1,10 @@
 import { Request, Response, NextFunction } from 'express';
 import { validationResult } from 'express-validator';
-import { Order, Event, User, Ticket } from '../models';
+import { Order, Event, User, Ticket } from '../models/index';
 import AdminRevenueSettings from '../models/AdminRevenueSettings';
 import { AppError } from '../middleware/index';
 import { PaymentService } from '../services/payment.service';
-import { logger } from '../config';
+import { logger } from '../config/index';
 import { generateQRCode, generateSecureQRData } from '../utils/qrcode';
 import { TicketGenerationService } from '../services/ticketGeneration.service';
 import { v4 as uuidv4 } from 'uuid';

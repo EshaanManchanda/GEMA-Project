@@ -1,9 +1,9 @@
 import { Request, Response, NextFunction } from 'express';
 import { validationResult } from 'express-validator';
 import mongoose from 'mongoose';
-import { Review, Order, Event, User, ReviewType, ReviewStatus, FlagReason } from '../models';
+import { Review, Order, Event, User, ReviewType, ReviewStatus, FlagReason } from '../models/index';
 import { AppError } from '../middleware/index';
-import { AuthRequest } from '../types';
+import { AuthRequest } from '../types/index';
 
 // @desc    Create new review
 // @route   POST /api/reviews

@@ -1,6 +1,6 @@
 import { Request, Response, NextFunction } from 'express';
-import { config, logger } from '../config';
-import { ErrorResponse } from '../types';
+import { config, logger } from '../config/index';
+import { ErrorResponse } from '../types/index';
 
 /**
  * Error handler middleware

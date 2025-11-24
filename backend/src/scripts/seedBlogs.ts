@@ -1,7 +1,7 @@
 import mongoose from 'mongoose';
-import { Blog, BlogCategory } from '../models';
+import { Blog, BlogCategory } from '../models/index';
 import { IBlogCategory } from '../models/BlogCategory';
-import { config } from '../config';
+import { config } from '../config/index';
 
 const MONGODB_URI = config.mongodbUri;
 

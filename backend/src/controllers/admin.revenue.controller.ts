@@ -1,6 +1,6 @@
 import { Request, Response, NextFunction } from 'express';
 import { AppError } from '../middleware/index';
-import { ApiResponse } from '../types';
+import { ApiResponse } from '../types/index';
 import mongoose from 'mongoose';
 import RevenueTransaction, { RevenueStream, TransactionStatus, PayoutStatus } from '../models/RevenueTransaction';
 import VendorSubscription, { SubscriptionStatus } from '../models/VendorSubscription';
