@@ -1,5 +1,5 @@
 import { Request, Response, NextFunction } from 'express';
-import { AppError } from '../middleware';
+import { AppError } from '../middleware/index';
 import { ApiResponse } from '../types';
 import mongoose from 'mongoose';
 import RevenueTransaction, { RevenueStream, TransactionStatus, PayoutStatus } from '../models/RevenueTransaction';

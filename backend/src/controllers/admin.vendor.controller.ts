@@ -1,6 +1,6 @@
 import { Request, Response, NextFunction } from 'express';
 import mongoose from 'mongoose';
-import { AppError } from '../middleware';
+import { AppError } from '../middleware/index';
 import { ApiResponse, AuthRequest } from '../types';
 import Vendor, { PaymentMode, VendorSubscriptionStatus } from '../models/Vendor';
 import User from '../models/User';

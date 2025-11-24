@@ -1,6 +1,6 @@
 import { Request, Response, NextFunction } from 'express';
 import { Review, Event, User } from '../models';
-import { AppError } from '../middleware';
+import { AppError } from '../middleware/index';
 
 /**
  * Get all reviews pending moderation

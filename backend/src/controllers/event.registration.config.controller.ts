@@ -1,7 +1,7 @@
 import { Request, Response, NextFunction } from 'express';
 import { validationResult } from 'express-validator';
 import { Event } from '../models';
-import { AppError } from '../middleware';
+import { AppError } from '../middleware/index';
 import { AuthRequest } from '../types';
 import { logger } from '../config';
 import { v4 as uuidv4 } from 'uuid';

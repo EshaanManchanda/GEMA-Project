@@ -1,5 +1,5 @@
 import { Response, NextFunction } from 'express';
-import { AppError } from '../middleware';
+import { AppError } from '../middleware/index';
 import { AuthRequest } from '../types';
 import PayoutService from '../services/payout.service';
 import Payout, { PayoutRequestStatus } from '../models/Payout';

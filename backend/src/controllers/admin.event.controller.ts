@@ -1,7 +1,7 @@
 import { Request, Response, NextFunction } from 'express';
 import { Event, User, IEvent, UserRole } from '../models';
 import Vendor from '../models/Vendor';
-import { AppError } from '../middleware';
+import { AppError } from '../middleware/index';
 import { ApiResponse, AuthRequest } from '../types';
 import mongoose from 'mongoose';
 import { validationResult } from 'express-validator';

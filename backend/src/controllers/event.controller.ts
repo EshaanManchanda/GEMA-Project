@@ -1,7 +1,7 @@
 import { Request, Response, NextFunction } from 'express';
 import { validationResult } from 'express-validator';
 import { Event, User } from '../models';
-import { AppError } from '../middleware';
+import { AppError } from '../middleware/index';
 import { AuthRequest } from '../types';
 import { config, checkDBHealth } from '../config';
 import { buildPublicEventFilter, sanitizeEventOutput, sanitizeEventsOutput } from '../utils/event.utils';

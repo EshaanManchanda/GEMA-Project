@@ -2,7 +2,7 @@ import { Request, Response, NextFunction } from 'express';
 import { validationResult } from 'express-validator';
 import mongoose from 'mongoose';
 import { Review, Order, Event, User, ReviewType, ReviewStatus, FlagReason } from '../models';
-import { AppError } from '../middleware';
+import { AppError } from '../middleware/index';
 import { AuthRequest } from '../types';
 
 // @desc    Create new review

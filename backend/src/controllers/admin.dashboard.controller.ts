@@ -5,7 +5,7 @@ import {
   Affiliate, Coupon, RevenueTransaction, AdminRevenueSettings,
   AdvertisingCampaign, VendorSubscription, CheckinLog
 } from '../models';
-import { AppError } from '../middleware';
+import { AppError } from '../middleware/index';
 import { cacheService } from '../services/cache.service';
 
 /**

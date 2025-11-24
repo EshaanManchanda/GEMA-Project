@@ -2,7 +2,7 @@ import { Request, Response, NextFunction, CookieOptions } from 'express';
 import { getAuth } from '../config/firebase';
 import { generateToken, generateRefreshToken } from '../config/jwt';
 import { User, UserStatus, RefreshToken, IUser, IAddress, Gender } from '../models';
-import { AppError } from '../middleware';
+import { AppError } from '../middleware/index';
 import { emailService } from '../services/email.service';
 import smsService from '../services/sms.service';
 import { cacheService } from '../services/cache.service';

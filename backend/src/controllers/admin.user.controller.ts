@@ -1,6 +1,6 @@
 import { Request, Response, NextFunction } from 'express';
 import { User, UserRole, UserStatus, IUser } from '../models';
-import { AppError } from '../middleware';
+import { AppError } from '../middleware/index';
 import { ApiResponse } from '../types';
 import * as bcrypt from 'bcryptjs';
 import mongoose from 'mongoose';

@@ -1,6 +1,6 @@
 import { Request, Response, NextFunction } from 'express';
 import { User, Event, IUser } from '../models';
-import { AppError } from '../middleware';
+import { AppError } from '../middleware/index';
 import { logger } from '../config';
 
 // @desc    Get user's favorite events

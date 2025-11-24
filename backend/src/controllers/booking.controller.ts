@@ -2,7 +2,7 @@ import { Request, Response, NextFunction } from 'express';
 import { validationResult } from 'express-validator';
 import { Order, Event, User, Ticket } from '../models';
 import AdminRevenueSettings from '../models/AdminRevenueSettings';
-import { AppError } from '../middleware';
+import { AppError } from '../middleware/index';
 import { PaymentService } from '../services/payment.service';
 import { logger } from '../config';
 import { generateQRCode, generateSecureQRData } from '../utils/qrcode';

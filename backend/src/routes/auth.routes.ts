@@ -6,7 +6,7 @@ import {
   authLimiter,
   passwordResetLimiter,
   emailVerificationLimiter,
-} from '../middleware';
+} from '../middleware/index';
 import {
   validateRegistration,
   validateAdminRegistration,

@@ -1,7 +1,7 @@
 import { Request, Response, NextFunction } from 'express';
 import { validationResult } from 'express-validator';
 import { Registration, Event, User, RegistrationStatus, RegistrationPaymentStatus } from '../models';
-import { AppError } from '../middleware';
+import { AppError } from '../middleware/index';
 import { AuthRequest } from '../types';
 import { PaymentService } from '../services/payment.service';
 import { logger } from '../config';

@@ -1,5 +1,5 @@
 import { Response, NextFunction } from 'express';
-import { AppError } from '../middleware';
+import { AppError } from '../middleware/index';
 import { AuthRequest } from '../types';
 import AdminRevenueSettings from '../models/AdminRevenueSettings';
 

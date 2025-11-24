@@ -1,5 +1,5 @@
 import express from 'express';
-import { catchAsync } from '../middleware';
+import { catchAsync } from '../middleware/index';
 import currencyService from '../services/currency.service';
 import { Request, Response, NextFunction } from 'express';
 import { detectCurrency } from '../controllers/currency.controller';

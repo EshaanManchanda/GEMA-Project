@@ -1,5 +1,5 @@
 import { Event, Booking, IBooking, User, Order, Employee, UserRole, Vendor, VerificationStatus } from '../models';
- import { AppError, catchAsync } from '../middleware';
+ import { AppError, catchAsync } from '../middleware/index';
  import { uploadSingle, getFileInfo } from '../middleware/upload';
  import { AuthRequest } from '../types';
  import { NextFunction, Response } from 'express';

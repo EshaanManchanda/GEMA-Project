@@ -11,7 +11,7 @@ import {
   getStripeConfig,
   getPaymentAnalytics,
 } from '../controllers/payment.controller';
-import { authenticate, authorize, conditionalPhoneVerification } from '../middleware';
+import { authenticate, authorize, conditionalPhoneVerification } from '../middleware/index';
 
 const router = Router();
 

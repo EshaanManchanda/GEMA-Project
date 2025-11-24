@@ -11,7 +11,7 @@ import {
   addEventToCollection,
   removeEventFromCollection
 } from '../controllers/collection.controller';
-import { authenticate, authorize, validate } from '../middleware';
+import { authenticate, authorize, validate } from '../middleware/index';
 import { uploadFields } from '../middleware/upload';
 
 const router = Router();

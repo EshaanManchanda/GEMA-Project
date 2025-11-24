@@ -2,7 +2,7 @@ import { Request, Response, NextFunction } from 'express';
 import { validationResult } from 'express-validator';
 import { Order, Event, Ticket, User } from '../models';
 import AdminRevenueSettings from '../models/AdminRevenueSettings';
-import { AppError } from '../middleware';
+import { AppError } from '../middleware/index';
 import { AuthRequest } from '../types';
 import { emailService } from '../services/email.service';
 

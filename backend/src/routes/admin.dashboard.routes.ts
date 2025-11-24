@@ -1,5 +1,5 @@
 import { Router } from 'express';
-import { authenticate, authorize, validate, adminLimiter } from '../middleware';
+import { authenticate, authorize, validate, adminLimiter } from '../middleware/index';
 import { UserRole } from '../models';
 import {
   getDashboardStats,

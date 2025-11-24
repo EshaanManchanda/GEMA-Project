@@ -5,7 +5,7 @@ import Payout, { PayoutRequestStatus, PayoutMethodType } from '../models/Payout'
 import VendorSubscription from '../models/VendorSubscription';
 import AdminRevenueSettings from '../models/AdminRevenueSettings';
 import User, { UserRole, IUser } from '../models/User';
-import { AppError } from '../middleware';
+import { AppError } from '../middleware/index';
 
 // Initialize Stripe (will be configured from admin settings)
 let stripe: Stripe | null = null;

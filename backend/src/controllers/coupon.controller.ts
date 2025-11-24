@@ -1,6 +1,6 @@
 import { Request, Response, NextFunction } from 'express';
 import { Coupon, Order, ICoupon, CouponStatus } from '../models';
-import { AppError } from '../middleware';
+import { AppError } from '../middleware/index';
 import { ApiResponse } from '../types';
 
 /**

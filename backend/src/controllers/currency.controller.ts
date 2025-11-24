@@ -1,6 +1,6 @@
 import { Request, Response, NextFunction } from 'express';
 import axios from 'axios';
-import { catchAsync } from '../middleware';
+import { catchAsync } from '../middleware/index';
 
 export const detectCurrency = catchAsync(async (req: Request, res: Response, next: NextFunction) => {
   try {

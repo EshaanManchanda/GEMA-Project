@@ -9,7 +9,7 @@ import {
   addEventToCollection,
   removeEventFromCollection
 } from '../controllers/collection.controller';
-import { authenticate, authorize, validate } from '../middleware';
+import { authenticate, authorize, validate } from '../middleware/index';
 
 const router = Router();
 

@@ -3,7 +3,7 @@ import { validationResult } from 'express-validator';
 import { PaymentService } from '../services/payment.service';
 import CommissionService from '../services/commission.service';
 import { Order, User } from '../models';
-import { AppError } from '../middleware';
+import { AppError } from '../middleware/index';
 import { AuthRequest } from '../types';
 import { config } from '../config';
 

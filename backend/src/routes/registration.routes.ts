@@ -1,5 +1,5 @@
 import { Router } from 'express';
-import { authenticate, validate } from '../middleware';
+import { authenticate, validate } from '../middleware/index';
 import { uploadRegistrationFiles } from '../middleware/upload';
 import * as registrationController from '../controllers/registration.controller';
 import * as registrationConfigController from '../controllers/event.registration.config.controller';

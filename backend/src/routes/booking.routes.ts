@@ -1,6 +1,6 @@
 import { Router } from 'express';
 import { body, param } from 'express-validator';
-import { authenticate, conditionalPhoneVerification } from '../middleware';
+import { authenticate, conditionalPhoneVerification } from '../middleware/index';
 import {
   initiateBooking,
   confirmBooking,
