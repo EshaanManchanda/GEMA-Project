@@ -150,7 +150,7 @@ class VendorPaymentService {
 
       // Check if we're in development environment
       const isDevEnvironment = import.meta.env.VITE_PAYMENT_ENVIRONMENT !== 'production' &&
-                                import.meta.env.MODE === 'development';
+                                import.meta.env.VITE_MODE === 'development';
 
       // Ensure paymentInfo is valid before accessing properties
       if (!paymentInfo) {

@@ -13,9 +13,10 @@ const VendorRoute: React.FC<VendorRouteProps> = ({
   children,
   redirectPath = '/login',
 }) => {
-  const { isAuthenticated, user, loading } = useSelector((state: RootState) => state.auth);
+  const { isAuthenticated, isInitialized, user, loading } = useSelector((state: RootState) => state.auth);
 
-  if (loading) {
+  // Wait for auth initialization before making routing decisions
+  if (!isInitialized || loading) {
     return (
       <div className="flex justify-center items-center h-[50vh]">
         <LoadingSpinner size="large" text="Loading..." />

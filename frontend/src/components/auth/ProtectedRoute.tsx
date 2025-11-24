@@ -14,10 +14,11 @@ const ProtectedRoute: React.FC<ProtectedRouteProps> = ({
   children,
   redirectPath = '/login',
 }) => {
-  const { isAuthenticated, loading, user } = useSelector((state: RootState) => state.auth);
+  const { isAuthenticated, isInitialized, loading, user } = useSelector((state: RootState) => state.auth);
   const location = useLocation();
 
-  if (loading) {
+  // Wait for auth initialization before making routing decisions
+  if (!isInitialized || loading) {
     return (
       <div className="flex justify-center items-center h-[50vh]">
         <LoadingSpinner size="large" text="Loading..." />

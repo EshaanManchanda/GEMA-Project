@@ -355,7 +355,7 @@ const AdminPayoutsPage: React.FC = () => {
                   <select
                     value={filters.status}
                     onChange={(e) => setFilters({ ...filters, status: e.target.value })}
-                    className="w-full border border-gray-300 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                    className="w-full border border-gray-300 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white text-gray-900"
                   >
                     <option value="all">All Statuses</option>
                     <option value="pending">Pending</option>
@@ -371,7 +371,7 @@ const AdminPayoutsPage: React.FC = () => {
                   <select
                     value={filters.priority}
                     onChange={(e) => setFilters({ ...filters, priority: e.target.value })}
-                    className="w-full border border-gray-300 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                    className="w-full border border-gray-300 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white text-gray-900"
                   >
                     <option value="all">All Priorities</option>
                     <option value="high">High</option>
@@ -387,7 +387,7 @@ const AdminPayoutsPage: React.FC = () => {
                     value={filters.vendorSearch}
                     onChange={(e) => setFilters({ ...filters, vendorSearch: e.target.value })}
                     placeholder="Search by vendor name or email..."
-                    className="w-full border border-gray-300 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                    className="w-full border border-gray-300 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white text-gray-900"
                   />
                 </div>
 
@@ -398,7 +398,7 @@ const AdminPayoutsPage: React.FC = () => {
                     value={filters.minAmount}
                     onChange={(e) => setFilters({ ...filters, minAmount: e.target.value })}
                     placeholder="0"
-                    className="w-full border border-gray-300 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                    className="w-full border border-gray-300 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white text-gray-900"
                   />
                 </div>
 
@@ -409,7 +409,7 @@ const AdminPayoutsPage: React.FC = () => {
                     value={filters.maxAmount}
                     onChange={(e) => setFilters({ ...filters, maxAmount: e.target.value })}
                     placeholder="∞"
-                    className="w-full border border-gray-300 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                    className="w-full border border-gray-300 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white text-gray-900"
                   />
                 </div>
               </div>
@@ -762,7 +762,7 @@ const AdminPayoutsPage: React.FC = () => {
                     onChange={(e) => setRejectionReason(e.target.value)}
                     placeholder="Please provide a reason for rejection..."
                     rows={3}
-                    className="w-full border border-gray-300 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                    className="w-full border border-gray-300 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white text-gray-900"
                   />
                 </div>
                 <div className="flex justify-center space-x-3 mt-6">
@@ -819,7 +819,7 @@ const AdminPayoutsPage: React.FC = () => {
                       value={paymentData.transactionId}
                       onChange={(e) => setPaymentData({ ...paymentData, transactionId: e.target.value })}
                       placeholder="Enter transaction ID..."
-                      className="w-full border border-gray-300 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                      className="w-full border border-gray-300 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white text-gray-900"
                     />
                   </div>
                   <div>
@@ -831,7 +831,7 @@ const AdminPayoutsPage: React.FC = () => {
                       onChange={(e) => setPaymentData({ ...paymentData, notes: e.target.value })}
                       placeholder="Additional notes..."
                       rows={2}
-                      className="w-full border border-gray-300 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                      className="w-full border border-gray-300 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white text-gray-900"
                     />
                   </div>
                 </div>

@@ -136,7 +136,7 @@ export class ErrorHandler {
     });
 
     // In development, also log to console for easier debugging
-    if (import.meta.env.MODE === 'development') {
+    if (import.meta.env.VITE_MODE === 'development') {
       console.error('Component Error:', error);
       console.error('Error Info:', errorInfo);
     }

@@ -60,7 +60,18 @@ const venueSchema = yup.object().shape({
       .email('Please enter a valid email'),
     website: yup.string()
       .matches(/^https?:\/\/.+/, 'Please enter a valid URL')
-  }).nullable()
+  }).nullable(),
+  isAffiliateVenue: yup.boolean(),
+  externalBookingLink: yup.string()
+    .when('isAffiliateVenue', {
+      is: true,
+      then: (schema) => schema
+        .required('External booking link is required for affiliate venues')
+        .matches(/^https?:\/\/.+/, 'Please enter a valid URL'),
+      otherwise: (schema) => schema.nullable()
+    }),
+  claimStatus: yup.string()
+    .oneOf(['unclaimed', 'claimed', 'not_claimable'])
 });
 
 interface VenueFormProps {
@@ -78,6 +89,7 @@ const VenueForm: React.FC<VenueFormProps> = ({
 }) => {
   const [vendors, setVendors] = useState<any[]>([]);
   const [loadingVendors, setLoadingVendors] = useState(true);
+  const [affiliateVendor, setAffiliateVendor] = useState<any>(null);
   const [facilities, setFacilities] = useState<string[]>(venue?.facilities || []);
   const [amenities, setAmenities] = useState<string[]>(venue?.amenities || []);
   const [safetyFeatures, setSafetyFeatures] = useState<string[]>(venue?.safetyFeatures || []);
@@ -124,7 +136,10 @@ const VenueForm: React.FC<VenueFormProps> = ({
         openTime: '09:00',
         closeTime: '17:00',
         isClosed: false
-      }))
+      })),
+      isAffiliateVenue: venue?.isAffiliateVenue || false,
+      externalBookingLink: venue?.externalBookingLink || '',
+      claimStatus: venue?.claimStatus || 'not_claimable'
     }
   });
 
@@ -142,7 +157,25 @@ const VenueForm: React.FC<VenueFormProps> = ({
       setLoadingVendors(true);
       const response = await adminAPI.getVendorsList();
       if (response.success) {
-        setVendors(response.data.users || []);
+        // Transform vendors to ensure consistent id field
+        const vendorsList = response.data.users || response.data.vendors || [];
+        const transformedVendors = vendorsList.map((v: any) => ({
+          id: v._id || v.id, // Handle both _id and id formats
+          firstName: v.firstName || '',
+          lastName: v.lastName || v.businessName || '',
+          email: v.email,
+          businessName: v.businessName
+        }));
+
+        setVendors(transformedVendors);
+
+        // Find and set the Platform Affiliate vendor
+        const platformAffiliate = transformedVendors.find(
+          (v: any) => v.businessName === 'Platform Affiliate' || v.email === 'affiliate@kidrove-system.com'
+        );
+        if (platformAffiliate) {
+          setAffiliateVendor(platformAffiliate);
+        }
       }
     } catch (error: any) {
       console.error('Error fetching vendors:', error);
@@ -237,7 +270,7 @@ const VenueForm: React.FC<VenueFormProps> = ({
         <CardHeader>
           <CardTitle>Basic Information</CardTitle>
         </CardHeader>
-        <CardContent className="space-y-4">
+        <CardContent className="space-y-4 text-gray-900">
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-1">
@@ -266,21 +299,26 @@ const VenueForm: React.FC<VenueFormProps> = ({
                 render={({ field }) => (
                   <select
                     {...field}
-                    disabled={loadingVendors}
+                    disabled={loadingVendors || watch('isAffiliateVenue')}
                     className={`block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm ${
                       errors.vendorId ? 'border-red-500' : ''
-                    }`}
+                    } ${watch('isAffiliateVenue') ? 'bg-gray-100' : ''}`}
                   >
                     <option value="">Select vendor</option>
                     {vendors.map((vendor) => (
                       <option key={vendor.id} value={vendor.id}>
-                        {vendor.firstName} {vendor.lastName} ({vendor.email})
+                        {vendor.businessName || `${vendor.firstName} ${vendor.lastName}`} ({vendor.email})
                       </option>
                     ))}
                   </select>
                 )}
               />
               {errors.vendorId && <p className="mt-1 text-sm text-red-600">{errors.vendorId.message}</p>}
+              {watch('isAffiliateVenue') && (
+                <p className="mt-1 text-xs text-gray-500">
+                  Vendor is automatically set to "Platform Affiliate" for affiliate venues
+                </p>
+              )}
             </div>
 
             <div>
@@ -366,6 +404,81 @@ const VenueForm: React.FC<VenueFormProps> = ({
             </div>
           </div>
 
+          {/* Affiliate Venue Section */}
+          <div className="border-t pt-4 mt-4">
+            <Controller
+              name="isAffiliateVenue"
+              control={control}
+              render={({ field: { value, onChange } }) => (
+                <label className="flex items-center mb-3 cursor-pointer">
+                  <input
+                    type="checkbox"
+                    checked={value}
+                    onChange={(e) => {
+                      onChange(e.target.checked);
+                      // Auto-select Platform Affiliate vendor when affiliate venue is enabled
+                      if (e.target.checked && affiliateVendor) {
+                        setValue('vendorId', affiliateVendor.id);
+                      }
+                    }}
+                    className="h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300 rounded"
+                  />
+                  <span className="ml-2 text-sm font-medium text-gray-700">
+                    This is an Affiliate Venue (External Booking Link)
+                  </span>
+                </label>
+              )}
+            />
+
+            {watch('isAffiliateVenue') && (
+              <div className="space-y-3 pl-6 border-l-4 border-blue-300 ml-1">
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">
+                    External Booking Link <span className="text-red-500">*</span>
+                  </label>
+                  <Controller
+                    name="externalBookingLink"
+                    control={control}
+                    render={({ field }) => (
+                      <Input
+                        {...field}
+                        type="url"
+                        placeholder="https://example.com/book-venue"
+                        error={errors.externalBookingLink?.message}
+                      />
+                    )}
+                  />
+                  <p className="mt-1 text-xs text-gray-500">
+                    Visitors will be redirected to this URL when they try to book this venue
+                  </p>
+                </div>
+
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">
+                    Claim Status
+                  </label>
+                  <Controller
+                    name="claimStatus"
+                    control={control}
+                    render={({ field }) => (
+                      <select
+                        {...field}
+                        className="block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm"
+                      >
+                        <option value="not_claimable">Not Claimable</option>
+                        <option value="unclaimed">Unclaimed (Vendors Can Claim)</option>
+                        <option value="claimed">Claimed</option>
+                      </select>
+                    )}
+                  />
+                  <p className="mt-1 text-xs text-gray-500">
+                    Control whether vendors can claim this affiliate venue
+                  </p>
+                </div>
+              </div>
+            )}
+          </div>
+
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-1">
               Description
@@ -397,7 +510,7 @@ const VenueForm: React.FC<VenueFormProps> = ({
             Address
           </CardTitle>
         </CardHeader>
-        <CardContent className="space-y-4">
+        <CardContent className="space-y-4 text-gray-900">
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <div className="md:col-span-2">
               <label className="block text-sm font-medium text-gray-700 mb-1">
@@ -536,7 +649,7 @@ const VenueForm: React.FC<VenueFormProps> = ({
           </CardTitle>
         </CardHeader>
         <CardContent>
-          <div className="space-y-3">
+          <div className="space-y-3 text-gray-900">
             {operatingHoursFields.map((field, index) => (
               <div key={field.id} className="grid grid-cols-12 gap-3 items-center">
                 <div className="col-span-3">
@@ -599,7 +712,7 @@ const VenueForm: React.FC<VenueFormProps> = ({
           <CardTitle>Facilities</CardTitle>
         </CardHeader>
         <CardContent>
-          <div className="flex gap-2 mb-3">
+          <div className="flex gap-2 mb-3 text-gray-900">
             <Input
               value={newItem.facilities}
               onChange={(e) => setNewItem({ ...newItem, facilities: e.target.value })}
@@ -615,7 +728,7 @@ const VenueForm: React.FC<VenueFormProps> = ({
               <Plus className="w-4 h-4" />
             </Button>
           </div>
-          <div className="flex flex-wrap gap-2">
+          <div className="flex flex-wrap gap-2 text-gray-900">
             {facilities.map((facility, index) => (
               <span key={index} className="inline-flex items-center px-3 py-1 bg-blue-100 text-blue-800 text-sm rounded-full">
                 {facility}

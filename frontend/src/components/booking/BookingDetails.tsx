@@ -160,7 +160,14 @@ const BookingDetails: React.FC<BookingDetailsProps> = ({
         [event._id] // Pass event ID for event-specific validation
       );
 
-      if (response.success && response.data.isValid) {
+      // Debug logging for response structure
+      console.log('[Coupon Validation] Full response:', response);
+      console.log('[Coupon Validation] response.success:', response?.success, typeof response?.success);
+      console.log('[Coupon Validation] response.data:', response?.data);
+      console.log('[Coupon Validation] response.data.isValid:', response?.data?.isValid, typeof response?.data?.isValid);
+
+      // Explicit boolean checks with defensive validation
+      if (response && response.success === true && response.data && response.data.isValid === true) {
         const validationData = response.data;
 
         // Store validated coupon data
@@ -169,12 +176,20 @@ const BookingDetails: React.FC<BookingDetailsProps> = ({
         dispatch(setCouponCode(validationData.coupon.code));
         setCouponError(null);
 
-        // Show success message with coupon details
-        toast.success(
-          `${validationData.coupon.name} applied! Saved ${event.currency} ${validationData.discountAmount.toFixed(2)}`
-        );
+        // Special handling for free_shipping type
+        if (validationData.coupon.type === 'free_shipping') {
+          toast.success(
+            `${validationData.coupon.name} applied! Free shipping included.`
+          );
+        } else {
+          // Show success message with discount amount
+          toast.success(
+            `${validationData.coupon.name} applied! Saved ${event.currency} ${validationData.discountAmount.toFixed(2)}`
+          );
+        }
       } else {
-        // Validation failed
+        // Validation failed - log why
+        console.error('[Coupon Validation] Failed - response:', response);
         setCouponError('Coupon validation failed');
         setAppliedDiscount(0);
         setValidatedCoupon(null);

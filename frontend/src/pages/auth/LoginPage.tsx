@@ -47,11 +47,11 @@ const LoginPage: React.FC = () => {
 
   // Check backend connection on mount (development only)
   useEffect(() => {
-    if (import.meta.env.DEV) {
+    if (import.meta.env.VITE_NODE_ENV === 'development') {
       const apiBaseUrl = import.meta.env.VITE_API_BASE_URL || 'http://localhost:5001/api';
       console.log('🔗 Login Page Loaded');
       console.log('📡 API Base URL:', apiBaseUrl);
-      console.log('🌐 Environment:', import.meta.env.MODE);
+      console.log('🌐 Environment:', import.meta.env.VITE_NODE_ENV);
       setBackendStatus('connected');
     }
   }, []);
@@ -242,7 +242,7 @@ const LoginPage: React.FC = () => {
         </div>
 
         {/* Development: Backend Status & Test Accounts */}
-        {import.meta.env.DEV && (
+        {import.meta.env.VITE_NODE_ENV === 'development' && (
           <div className="space-y-2">
             {/* Backend Status */}
             <div className="flex items-center justify-between p-3 bg-neutral-50 rounded-lg border border-neutral-200 text-xs">

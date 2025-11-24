@@ -2,7 +2,7 @@
 
 export const devTools = {
   // Check if we're in development mode
-  isDev: import.meta.env.DEV,
+  isDev: import.meta.env.VITE_DEV,
 
   // Test API connectivity
   async testAPIConnectivity() {
@@ -25,7 +25,7 @@ export const devTools = {
     try {
       // Test proxied connection
       console.log('Testing proxied connection...');
-      const proxiedResponse = await fetch('/api/health', { 
+      const proxiedResponse = await fetch('/api/health', {
         method: 'GET'
       });
       console.log('✅ Proxied connection:', proxiedResponse.status, proxiedResponse.statusText);
@@ -35,9 +35,9 @@ export const devTools = {
 
     console.log('Environment variables:');
     console.log('- VITE_API_BASE_URL:', import.meta.env.VITE_API_BASE_URL);
-    console.log('- NODE_ENV:', import.meta.env.NODE_ENV);
-    console.log('- MODE:', import.meta.env.MODE);
-    
+    console.log('- NODE_ENV:', import.meta.env.VITE_NODE_ENV);
+    console.log('- MODE:', import.meta.env.VITE_MODE);
+
     console.groupEnd();
   },
 

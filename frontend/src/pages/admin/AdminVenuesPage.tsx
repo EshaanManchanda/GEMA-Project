@@ -511,7 +511,7 @@ const AdminVenuesPage: React.FC = () => {
               <input
                 type="text"
                 id="search"
-                className="focus:ring-primary focus:border-primary block w-full pl-10 sm:text-sm border-gray-300 rounded-md"
+                className="focus:ring-primary focus:border-primary block w-full pl-10 sm:text-sm border-gray-300 rounded-md bg-white text-gray-900"
                 placeholder="Search by name, email, or city"
                 value={searchTerm}
                 onChange={(e) => setSearchTerm(e.target.value)}
@@ -523,7 +523,7 @@ const AdminVenuesPage: React.FC = () => {
             <label htmlFor="status-filter" className="block text-sm font-medium text-gray-700 mb-1">Status</label>
             <select
               id="status-filter"
-              className="mt-1 block w-full pl-3 pr-10 py-2 text-base border-gray-300 focus:outline-none focus:ring-primary focus:border-primary sm:text-sm rounded-md"
+              className="mt-1 block w-full pl-3 pr-10 py-2 text-base border-gray-300 focus:outline-none focus:ring-primary focus:border-primary sm:text-sm rounded-md bg-white text-gray-900"
               value={statusFilter}
               onChange={(e) => setStatusFilter(e.target.value)}
             >
@@ -539,7 +539,7 @@ const AdminVenuesPage: React.FC = () => {
             <label htmlFor="type-filter" className="block text-sm font-medium text-gray-700 mb-1">Type</label>
             <select
               id="type-filter"
-              className="mt-1 block w-full pl-3 pr-10 py-2 text-base border-gray-300 focus:outline-none focus:ring-primary focus:border-primary sm:text-sm rounded-md"
+              className="mt-1 block w-full pl-3 pr-10 py-2 text-base border-gray-300 focus:outline-none focus:ring-primary focus:border-primary sm:text-sm rounded-md bg-white text-gray-900"
               value={typeFilter}
               onChange={(e) => setTypeFilter(e.target.value)}
             >

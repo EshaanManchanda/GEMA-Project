@@ -20,6 +20,7 @@ interface AuthState {
   user: User | null;
   userProfile: UserProfile | null;
   isAuthenticated: boolean;
+  isInitialized: boolean; // Tracks if initial auth check has completed
   isLoading: boolean; // Single source of truth for loading state
   isProfileLoading: boolean;
   error: string | null;
@@ -33,6 +34,7 @@ const initialState: AuthState = {
   user: null,
   userProfile: null,
   isAuthenticated: false,
+  isInitialized: false,
   isLoading: false,
   isProfileLoading: false,
   error: null,
@@ -408,6 +410,9 @@ const authSlice = createSlice({
     setProfileLoading: (state, action: PayloadAction<boolean>) => {
       state.isProfileLoading = action.payload;
     },
+    setInitialized: (state, action: PayloadAction<boolean>) => {
+      state.isInitialized = action.payload;
+    },
     updateUser: (state, action: PayloadAction<Partial<User>>) => {
       if (state.user) {
         state.user = { ...state.user, ...action.payload };
@@ -433,6 +438,7 @@ const authSlice = createSlice({
       state.isEmailVerified = false;
       state.lastLoginTime = null;
       state.error = null;
+      state.isInitialized = true; // Keep initialized - auth cleared intentionally
       // Note: Cookies are cleared by the server logout endpoint
     },
   },
@@ -484,6 +490,7 @@ const authSlice = createSlice({
         state.lastLoginTime = null;
         state.error = null;
         state.isLoading = false;
+        state.isInitialized = true; // Keep initialized - logout is intentional, no need to re-verify
         // Note: Cookies are cleared by the server logout endpoint
       })
 
@@ -652,6 +659,7 @@ const authSlice = createSlice({
       })
       .addCase(getCurrentUser.fulfilled, (state, action: PayloadAction<User>) => {
         state.isLoading = false;
+        state.isInitialized = true;
         state.user = action.payload;
         state.isAuthenticated = true;
         state.isEmailVerified = action.payload.isEmailVerified;
@@ -659,6 +667,7 @@ const authSlice = createSlice({
       })
       .addCase(getCurrentUser.rejected, (state) => {
         state.isLoading = false;
+        state.isInitialized = true;
         state.user = null;
         state.isAuthenticated = false;
         state.isEmailVerified = false;
@@ -672,6 +681,7 @@ export const {
   clearError,
   setLoading,
   setProfileLoading,
+  setInitialized,
   updateUser,
   updateUserProfile,
   setEmailVerified,
@@ -686,6 +696,7 @@ export const selectAuth = (state: { auth: AuthState }) => state.auth;
 export const selectUser = (state: { auth: AuthState }) => state.auth.user;
 export const selectUserProfile = (state: { auth: AuthState }) => state.auth.userProfile;
 export const selectIsAuthenticated = (state: { auth: AuthState }) => state.auth.isAuthenticated;
+export const selectIsInitialized = (state: { auth: AuthState }) => state.auth.isInitialized;
 export const selectIsLoading = (state: { auth: AuthState }) => state.auth.isLoading;
 export const selectIsProfileLoading = (state: { auth: AuthState }) => state.auth.isProfileLoading;
 export const selectError = (state: { auth: AuthState }) => state.auth.error;

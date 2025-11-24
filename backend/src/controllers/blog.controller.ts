@@ -247,6 +247,12 @@ export const createBlog = catchAsync(async (req: Request, res: Response) => {
     });
   }
 
+  // Calculate read time based on content (200 words per minute)
+  if (blogData.content && !blogData.readTime) {
+    const wordCount = blogData.content.trim().split(/\s+/).length;
+    blogData.readTime = Math.max(1, Math.ceil(wordCount / 200));
+  }
+
   const blog = new Blog(blogData);
   await blog.save();
 
@@ -289,7 +295,13 @@ export const updateBlog = catchAsync(async (req: Request, res: Response) => {
   }
 
   const oldCategoryId = (blog.category as any).toString();
-  
+
+  // Calculate read time if content is being updated
+  if (updateData.content) {
+    const wordCount = updateData.content.trim().split(/\s+/).length;
+    updateData.readTime = Math.max(1, Math.ceil(wordCount / 200));
+  }
+
   Object.assign(blog, updateData);
   await blog.save();
 

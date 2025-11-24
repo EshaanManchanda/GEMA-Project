@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useCallback } from 'react';
-import { FaSearch, FaEdit, FaTrash, FaPlus, FaSort, FaEye, FaUsers, FaChevronLeft, FaChevronRight, FaShieldAlt, FaCreditCard, FaHistory, FaDatabase, FaCheck, FaTimes } from 'react-icons/fa';
+import { FaSearch, FaEdit, FaTrash, FaPlus, FaSort, FaEye, FaUsers, FaChevronLeft, FaChevronRight, FaShieldAlt, FaCreditCard, FaHistory, FaDatabase, FaCheck, FaTimes, FaKey } from 'react-icons/fa';
 import { format } from 'date-fns';
 import toast from 'react-hot-toast';
 import adminAPI from '@services/api/adminAPI';
@@ -40,6 +40,14 @@ const AdminUsersPage: React.FC = () => {
   const [viewModalTab, setViewModalTab] = useState<string>('basic');
   const [editModalTab, setEditModalTab] = useState<string>('basic');
   const [selectedRole, setSelectedRole] = useState<'customer' | 'vendor' | 'employee' | 'admin'>('customer');
+
+  // Password reset modal states
+  const [showPasswordResetModal, setShowPasswordResetModal] = useState<boolean>(false);
+  const [passwordResetUser, setPasswordResetUser] = useState<AdminUser | null>(null);
+  const [passwordResetStep, setPasswordResetStep] = useState<'init' | 'verify'>('init');
+  const [otpCode, setOtpCode] = useState<string>('');
+  const [newPassword, setNewPassword] = useState<string>('');
+  const [confirmPassword, setConfirmPassword] = useState<string>('');
 
   // Debounce search input
   useEffect(() => {
@@ -147,6 +155,74 @@ const AdminUsersPage: React.FC = () => {
     setIsCreateModalOpen(true);
   };
 
+  const handleResetPassword = (user: AdminUser) => {
+    setPasswordResetUser(user);
+    setPasswordResetStep('init');
+    setOtpCode('');
+    setNewPassword('');
+    setConfirmPassword('');
+    setShowPasswordResetModal(true);
+  };
+
+  const handleInitiatePasswordReset = async () => {
+    if (!passwordResetUser) return;
+
+    try {
+      setActionLoading({ ...actionLoading, password_reset_initiate: true });
+      const response = await adminAPI.initiatePasswordReset(passwordResetUser.id);
+
+      if (response.success) {
+        toast.success(response.message || 'Verification code sent to your email');
+        setPasswordResetStep('verify');
+      }
+    } catch (error: any) {
+      console.error('Error initiating password reset:', error);
+      toast.error(error?.response?.data?.message || 'Failed to send verification code');
+    } finally {
+      setActionLoading({ ...actionLoading, password_reset_initiate: false });
+    }
+  };
+
+  const handleConfirmPasswordReset = async () => {
+    if (!passwordResetUser) return;
+
+    // Validate inputs
+    if (!otpCode || otpCode.length !== 4) {
+      toast.error('Please enter a valid 4-digit verification code');
+      return;
+    }
+
+    if (!newPassword || newPassword.length < 8) {
+      toast.error('Password must be at least 8 characters long');
+      return;
+    }
+
+    if (newPassword !== confirmPassword) {
+      toast.error('Passwords do not match');
+      return;
+    }
+
+    try {
+      setActionLoading({ ...actionLoading, password_reset_confirm: true });
+      const response = await adminAPI.confirmPasswordReset(passwordResetUser.id, otpCode, newPassword);
+
+      if (response.success) {
+        toast.success(response.message || 'Password updated successfully');
+        setShowPasswordResetModal(false);
+        setPasswordResetUser(null);
+        setPasswordResetStep('init');
+        setOtpCode('');
+        setNewPassword('');
+        setConfirmPassword('');
+      }
+    } catch (error: any) {
+      console.error('Error confirming password reset:', error);
+      toast.error(error?.response?.data?.message || 'Failed to update password');
+    } finally {
+      setActionLoading({ ...actionLoading, password_reset_confirm: false });
+    }
+  };
+
   const getRoleBadgeClass = (role: string) => {
     switch (role) {
       case 'admin':
@@ -226,22 +302,22 @@ const AdminUsersPage: React.FC = () => {
 
       {/* Filters */}
       <div className="bg-gradient-to-br from-white to-gray-50 rounded-2xl shadow-xl shadow-gray-200/50 p-6 border border-white/20 backdrop-blur-sm">
-        <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
-          <div className="relative">
-            <div className="absolute left-4 top-1/2 transform -translate-y-1/2">
+        <div className="grid grid-cols-1 md:grid-cols-4 gap-6 items-center">
+          <div className="relative h-[50px]">
+            <div className="absolute left-4 top-0 h-full flex items-center pointer-events-none">
               <FaSearch className="h-5 w-5 text-gray-400" />
             </div>
             <input
               type="text"
               placeholder="Search users by name, email, or phone..."
-              className="w-full pl-12 pr-4 py-3 border-2 border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all duration-300 bg-white/80 backdrop-blur-sm"
+              className="w-full h-full pl-12 pr-4 py-3 border-2 border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all duration-300 bg-white text-gray-900"
               value={searchTerm}
               onChange={(e) => setSearchTerm(e.target.value)}
             />
           </div>
 
           <select
-            className="px-4 py-3 border-2 border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all duration-300 bg-white/80 backdrop-blur-sm font-medium"
+            className="h-[50px] px-4 py-3 border-2 border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all duration-300 bg-white font-medium text-gray-900"
             value={roleFilter}
             onChange={(e) => {
               setRoleFilter(e.target.value);
@@ -256,7 +332,7 @@ const AdminUsersPage: React.FC = () => {
           </select>
 
           <select
-            className="px-4 py-3 border-2 border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all duration-300 bg-white/80 backdrop-blur-sm font-medium"
+            className="h-[50px] px-4 py-3 border-2 border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all duration-300 bg-white font-medium text-gray-900"
             value={statusFilter}
             onChange={(e) => {
               setStatusFilter(e.target.value);
@@ -270,10 +346,10 @@ const AdminUsersPage: React.FC = () => {
             <option value="suspended">Suspended</option>
           </select>
 
-          <div className="flex items-center justify-center bg-gradient-to-r from-blue-50 to-indigo-50 rounded-xl p-3 border border-blue-100">
+          <div className="h-[50px] flex items-center justify-center bg-gradient-to-r from-blue-50 to-indigo-50 rounded-xl px-4 border border-blue-100">
             <div className="text-center">
-              <div className="text-2xl font-bold text-blue-600">{pagination.totalUsers}</div>
-              <div className="text-sm text-blue-700 font-medium">Total Users</div>
+              <div className="text-xl font-bold text-blue-600 leading-tight">{pagination.totalUsers}</div>
+              <div className="text-xs text-blue-700 font-medium">Total Users</div>
             </div>
           </div>
         </div>
@@ -389,21 +465,28 @@ const AdminUsersPage: React.FC = () => {
                     <td className="px-8 py-6 whitespace-nowrap text-sm font-medium">
                       <div className="flex items-center gap-2">
                         <button
-                          className="p-2 text-blue-600 hover:text-white hover:bg-blue-600 rounded-lg transition-all duration-300 hover:scale-110 hover:shadow-lg"
+                          className="p-2.5 bg-blue-50 text-blue-600 hover:text-white hover:bg-blue-600 rounded-lg transition-all duration-200 hover:scale-105 hover:shadow-md border border-blue-200"
                           onClick={() => handleViewUser(user)}
                           title="View User"
                         >
                           <FaEye className="w-4 h-4" />
                         </button>
                         <button
-                          className="p-2 text-green-600 hover:text-white hover:bg-green-600 rounded-lg transition-all duration-300 hover:scale-110 hover:shadow-lg"
+                          className="p-2.5 bg-green-50 text-green-600 hover:text-white hover:bg-green-600 rounded-lg transition-all duration-200 hover:scale-105 hover:shadow-md border border-green-200"
                           onClick={() => handleEditUser(user)}
                           title="Edit User"
                         >
                           <FaEdit className="w-4 h-4" />
                         </button>
                         <button
-                          className="p-2 text-red-600 hover:text-white hover:bg-red-600 rounded-lg transition-all duration-300 hover:scale-110 hover:shadow-lg disabled:opacity-50 disabled:cursor-not-allowed"
+                          className="p-2.5 bg-orange-50 text-orange-600 hover:text-white hover:bg-orange-600 rounded-lg transition-all duration-200 hover:scale-105 hover:shadow-md border border-orange-200"
+                          onClick={() => handleResetPassword(user)}
+                          title="Reset Password"
+                        >
+                          <FaKey className="w-4 h-4" />
+                        </button>
+                        <button
+                          className="p-2.5 bg-red-50 text-red-600 hover:text-white hover:bg-red-600 rounded-lg transition-all duration-200 hover:scale-105 hover:shadow-md border border-red-200 disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:scale-100"
                           onClick={() => {
                             setUserToDelete(user.id);
                             setIsDeleteModalOpen(true);
@@ -1117,7 +1200,7 @@ const AdminUsersPage: React.FC = () => {
                             name="firstName"
                             defaultValue={selectedUser?.firstName || ''}
                             required
-                            className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                            className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white text-gray-900"
                           />
                         </div>
 
@@ -1128,7 +1211,7 @@ const AdminUsersPage: React.FC = () => {
                             name="lastName"
                             defaultValue={selectedUser?.lastName || ''}
                             required
-                            className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                            className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white text-gray-900"
                           />
                         </div>
 
@@ -1137,7 +1220,7 @@ const AdminUsersPage: React.FC = () => {
                           <select
                             name="gender"
                             defaultValue={selectedUser?.gender || ''}
-                            className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                            className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white text-gray-900"
                           >
                             <option value="">Select Gender</option>
                             <option value="male">Male</option>
@@ -1153,7 +1236,7 @@ const AdminUsersPage: React.FC = () => {
                             type="date"
                             name="dateOfBirth"
                             defaultValue={selectedUser?.dateOfBirth ? selectedUser.dateOfBirth.split('T')[0] : ''}
-                            className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                            className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white text-gray-900"
                           />
                         </div>
 
@@ -1164,7 +1247,7 @@ const AdminUsersPage: React.FC = () => {
                             name="avatar"
                             defaultValue={selectedUser?.avatar || ''}
                             placeholder="https://example.com/avatar.jpg"
-                            className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                            className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white text-gray-900"
                           />
                           <p className="text-xs text-gray-500 mt-1">Enter a valid image URL for the user's avatar</p>
                         </div>
@@ -1182,7 +1265,7 @@ const AdminUsersPage: React.FC = () => {
                             name="email"
                             defaultValue={selectedUser?.email || ''}
                             required
-                            className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                            className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white text-gray-900"
                           />
                         </div>
 
@@ -1193,7 +1276,7 @@ const AdminUsersPage: React.FC = () => {
                             name="phone"
                             defaultValue={selectedUser?.phone || ''}
                             placeholder="+971501234567"
-                            className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                            className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white text-gray-900"
                           />
                           <p className="text-xs text-gray-500 mt-1">International format with country code</p>
                         </div>
@@ -1211,7 +1294,7 @@ const AdminUsersPage: React.FC = () => {
                               type="password"
                               name="password"
                               placeholder="Leave empty for default password"
-                              className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                              className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white text-gray-900"
                             />
                             <p className="text-xs text-gray-500 mt-1">Default: TempPass123!</p>
                           </div>
@@ -1254,7 +1337,7 @@ const AdminUsersPage: React.FC = () => {
                               const role = e.target.value;
                               setSelectedRole(role as any);
                             }}
-                            className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                            className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white text-gray-900"
                           >
                             <option value="customer">Customer</option>
                             <option value="vendor">Vendor</option>
@@ -1269,7 +1352,7 @@ const AdminUsersPage: React.FC = () => {
                             name="status"
                             defaultValue={selectedUser?.status || 'active'}
                             required
-                            className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                            className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white text-gray-900"
                           >
                             <option value="active">Active</option>
                             <option value="inactive">Inactive</option>
@@ -1294,7 +1377,7 @@ const AdminUsersPage: React.FC = () => {
                               type="text"
                               name="employeeId"
                               placeholder="Auto-generated if left empty"
-                              className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                              className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white text-gray-900"
                             />
                             <p className="text-xs text-gray-500 mt-1">Leave empty to auto-generate</p>
                           </div>
@@ -1304,7 +1387,7 @@ const AdminUsersPage: React.FC = () => {
                             <select
                               name="employeeRole"
                               required={selectedRole === 'employee'}
-                              className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                              className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white text-gray-900"
                             >
                               <option value="">Select Role</option>
                               <option value="manager">Manager</option>
@@ -1319,7 +1402,7 @@ const AdminUsersPage: React.FC = () => {
                             <input
                               type="date"
                               name="hiredAt"
-                              className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                              className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white text-gray-900"
                             />
                           </div>
 
@@ -1331,7 +1414,7 @@ const AdminUsersPage: React.FC = () => {
                                 <input
                                   type="text"
                                   name="emergencyContactName"
-                                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white text-gray-900"
                                 />
                               </div>
                               <div>
@@ -1340,7 +1423,7 @@ const AdminUsersPage: React.FC = () => {
                                   type="tel"
                                   name="emergencyContactPhone"
                                   placeholder="+971501234567"
-                                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white text-gray-900"
                                 />
                               </div>
                               <div>
@@ -1349,7 +1432,7 @@ const AdminUsersPage: React.FC = () => {
                                   type="text"
                                   name="emergencyContactRelationship"
                                   placeholder="e.g., Spouse, Parent"
-                                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white text-gray-900"
                                 />
                               </div>
                             </div>
@@ -1399,7 +1482,7 @@ const AdminUsersPage: React.FC = () => {
                                 max="100"
                                 step="0.1"
                                 defaultValue="5"
-                                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-purple-500"
+                                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-purple-500 bg-white text-gray-900"
                               />
                             </div>
 
@@ -1408,7 +1491,7 @@ const AdminUsersPage: React.FC = () => {
                               <select
                                 name="payoutSchedule"
                                 defaultValue="weekly"
-                                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-purple-500"
+                                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-purple-500 bg-white text-gray-900"
                               >
                                 <option value="daily">Daily</option>
                                 <option value="weekly">Weekly</option>
@@ -1423,7 +1506,7 @@ const AdminUsersPage: React.FC = () => {
                                 name="minimumPayout"
                                 min="0"
                                 defaultValue="50"
-                                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-purple-500"
+                                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-purple-500 bg-white text-gray-900"
                               />
                             </div>
                           </div>
@@ -1439,7 +1522,7 @@ const AdminUsersPage: React.FC = () => {
                                 type="url"
                                 name="socialMediaFacebook"
                                 placeholder="https://facebook.com/..."
-                                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-purple-500"
+                                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-purple-500 bg-white text-gray-900"
                               />
                             </div>
                             <div>
@@ -1448,7 +1531,7 @@ const AdminUsersPage: React.FC = () => {
                                 type="url"
                                 name="socialMediaInstagram"
                                 placeholder="https://instagram.com/..."
-                                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-purple-500"
+                                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-purple-500 bg-white text-gray-900"
                               />
                             </div>
                             <div>
@@ -1457,7 +1540,7 @@ const AdminUsersPage: React.FC = () => {
                                 type="url"
                                 name="socialMediaTwitter"
                                 placeholder="https://twitter.com/..."
-                                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-purple-500"
+                                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-purple-500 bg-white text-gray-900"
                               />
                             </div>
                             <div>
@@ -1466,7 +1549,7 @@ const AdminUsersPage: React.FC = () => {
                                 type="url"
                                 name="socialMediaLinkedin"
                                 placeholder="https://linkedin.com/..."
-                                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-purple-500"
+                                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-purple-500 bg-white text-gray-900"
                               />
                             </div>
                             <div className="col-span-2">
@@ -1475,7 +1558,7 @@ const AdminUsersPage: React.FC = () => {
                                 type="url"
                                 name="socialMediaWebsite"
                                 placeholder="https://example.com"
-                                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-purple-500"
+                                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-purple-500 bg-white text-gray-900"
                               />
                             </div>
                           </div>
@@ -1574,7 +1657,7 @@ const AdminUsersPage: React.FC = () => {
                             max="100"
                             step="0.1"
                             defaultValue={selectedUser?.vendorPaymentSettings?.commissionRate || 5}
-                            className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                            className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white text-gray-900"
                           />
                         </div>
 
@@ -1583,7 +1666,7 @@ const AdminUsersPage: React.FC = () => {
                           <select
                             name="payoutSchedule"
                             defaultValue={selectedUser?.vendorPaymentSettings?.payoutSchedule || 'weekly'}
-                            className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                            className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white text-gray-900"
                           >
                             <option value="daily">Daily</option>
                             <option value="weekly">Weekly</option>
@@ -1599,7 +1682,7 @@ const AdminUsersPage: React.FC = () => {
                             min="0"
                             step="1"
                             defaultValue={selectedUser?.vendorPaymentSettings?.minimumPayout || 50}
-                            className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                            className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white text-gray-900"
                           />
                         </div>
                       </div>
@@ -1631,6 +1714,153 @@ const AdminUsersPage: React.FC = () => {
                 </button>
               </div>
             </form>
+          </div>
+        </div>
+      )}
+
+      {/* Password Reset Modal */}
+      {showPasswordResetModal && passwordResetUser && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+          <div className="bg-white rounded-xl shadow-2xl max-w-md w-full">
+            <div className="p-6">
+              {/* Header */}
+              <div className="flex items-center justify-between mb-6">
+                <div className="flex items-center">
+                  <div className="w-12 h-12 bg-orange-100 rounded-full flex items-center justify-center mr-4">
+                    <FaKey className="w-6 h-6 text-orange-600" />
+                  </div>
+                  <div>
+                    <h3 className="text-lg font-semibold text-gray-900">Reset User Password</h3>
+                    <p className="text-sm text-gray-500">
+                      {passwordResetStep === 'init' ? 'Step 1 of 2' : 'Step 2 of 2'}
+                    </p>
+                  </div>
+                </div>
+                <button
+                  onClick={() => {
+                    setShowPasswordResetModal(false);
+                    setPasswordResetUser(null);
+                    setPasswordResetStep('init');
+                    setOtpCode('');
+                    setNewPassword('');
+                    setConfirmPassword('');
+                  }}
+                  className="text-gray-400 hover:text-gray-600"
+                >
+                  <FaTimes className="w-5 h-5" />
+                </button>
+              </div>
+
+              {/* Step 1: Initiate Password Reset */}
+              {passwordResetStep === 'init' && (
+                <div className="space-y-4">
+                  <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
+                    <p className="text-sm text-gray-700 mb-2">
+                      You are about to reset the password for:
+                    </p>
+                    <p className="font-semibold text-gray-900">
+                      {passwordResetUser.firstName} {passwordResetUser.lastName}
+                    </p>
+                    <p className="text-sm text-gray-600">{passwordResetUser.email}</p>
+                  </div>
+
+                  <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-3">
+                    <p className="text-sm text-yellow-800">
+                      <strong>Security Verification:</strong> A 4-digit verification code will be sent to <strong>your admin email</strong> to confirm this action.
+                    </p>
+                  </div>
+
+                  <div className="flex gap-3 mt-6">
+                    <button
+                      onClick={() => {
+                        setShowPasswordResetModal(false);
+                        setPasswordResetUser(null);
+                      }}
+                      className="flex-1 px-4 py-2 border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50"
+                    >
+                      Cancel
+                    </button>
+                    <button
+                      onClick={handleInitiatePasswordReset}
+                      disabled={actionLoading.password_reset_initiate}
+                      className="flex-1 px-4 py-2 bg-orange-600 text-white rounded-lg hover:bg-orange-700 disabled:opacity-50"
+                    >
+                      {actionLoading.password_reset_initiate ? 'Sending...' : 'Send Code'}
+                    </button>
+                  </div>
+                </div>
+              )}
+
+              {/* Step 2: Verify OTP and Set New Password */}
+              {passwordResetStep === 'verify' && (
+                <div className="space-y-4">
+                  <div className="bg-green-50 border border-green-200 rounded-lg p-3 mb-4">
+                    <p className="text-sm text-green-800">
+                      ✓ Verification code sent to your email. Please check your inbox.
+                    </p>
+                  </div>
+
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">
+                      Verification Code *
+                    </label>
+                    <input
+                      type="text"
+                      value={otpCode}
+                      onChange={(e) => setOtpCode(e.target.value.replace(/\D/g, '').slice(0, 4))}
+                      placeholder="Enter 4-digit code"
+                      maxLength={4}
+                      className="w-full px-3 py-2 border border-gray-300 text-gray-900 rounded-lg focus:outline-none focus:ring-2 focus:ring-orange-500 text-center text-2xl tracking-widest font-mono"
+                    />
+                    <p className="text-xs text-gray-500 mt-1">Enter the 4-digit code sent to your email</p>
+                  </div>
+
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">
+                      New Password *
+                    </label>
+                    <input
+                      type="password"
+                      value={newPassword}
+                      onChange={(e) => setNewPassword(e.target.value)}
+                      placeholder="Enter new password"
+                      className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-orange-500 text-gray-900"
+                    />
+                    <p className="text-xs text-gray-500 mt-1">Minimum 8 characters</p>
+                  </div>
+
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">
+                      Confirm Password *
+                    </label>
+                    <input
+                      type="password"
+                      value={confirmPassword}
+                      onChange={(e) => setConfirmPassword(e.target.value)}
+                      placeholder="Confirm new password"
+                      className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-orange-500 text-gray-900"
+                    />
+                  </div>
+
+                  <div className="flex gap-3 mt-6">
+                    <button
+                      onClick={() => setPasswordResetStep('init')}
+                      className="flex-1 px-4 py-2 border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50"
+                      disabled={actionLoading.password_reset_confirm}
+                    >
+                      Back
+                    </button>
+                    <button
+                      onClick={handleConfirmPasswordReset}
+                      disabled={actionLoading.password_reset_confirm}
+                      className="flex-1 px-4 py-2 bg-orange-600 text-white rounded-lg hover:bg-orange-700 disabled:opacity-50"
+                    >
+                      {actionLoading.password_reset_confirm ? 'Updating...' : 'Update Password'}
+                    </button>
+                  </div>
+                </div>
+              )}
+            </div>
           </div>
         </div>
       )}

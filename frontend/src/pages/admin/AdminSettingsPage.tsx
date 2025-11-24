@@ -1,6 +1,9 @@
 import React, { useState, useEffect } from 'react';
+import { useDispatch } from 'react-redux';
 import { FiSave, FiRefreshCw, FiAlertTriangle, FiCheckCircle } from 'react-icons/fi';
 import adminAPI from '../../services/api/adminAPI';
+import { fetchSocialSettings } from '../../store/slices/settingsSlice';
+import { AppDispatch } from '../../store';
 
 interface SystemSettings {
   siteName: string;
@@ -59,6 +62,7 @@ interface SocialSettings {
 }
 
 const AdminSettingsPage: React.FC = () => {
+  const dispatch = useDispatch<AppDispatch>();
   const [activeTab, setActiveTab] = useState<string>('system');
   const [isSaving, setIsSaving] = useState<boolean>(false);
   const [saveSuccess, setSaveSuccess] = useState<boolean>(false);
@@ -131,11 +135,11 @@ const AdminSettingsPage: React.FC = () => {
     const fetchSettings = async () => {
       try {
         // Fetch all settings from API
-        const settingsResponse = await adminAPI.getSettings();
-        
+        const settingsResponse = await adminAPI.getAppSettings();
+
         if (settingsResponse.success) {
           const { systemSettings: fetchedSystemSettings, emailSettings: fetchedEmailSettings, paymentSettings: fetchedPaymentSettings, socialSettings: fetchedSocialSettings } = settingsResponse.data;
-          
+
           // Update state with fetched data
           if (fetchedSystemSettings) setSystemSettings(prev => ({ ...prev, ...fetchedSystemSettings }));
           if (fetchedEmailSettings) setEmailSettings(prev => ({ ...prev, ...fetchedEmailSettings }));
@@ -203,12 +207,15 @@ const AdminSettingsPage: React.FC = () => {
       };
       
       // Call the API to update settings
-      const response = await adminAPI.updateSettings(settingsData);
-      
+      const response = await adminAPI.updateAppSettings(settingsData);
+
       if (response.success) {
         setSaveSuccess(true);
         console.log('Settings saved successfully:', response.data);
-        
+
+        // Refresh social settings in Redux to sync across all components
+        dispatch(fetchSocialSettings());
+
         // Reset success message after 3 seconds
         setTimeout(() => {
           setSaveSuccess(false);
@@ -295,8 +302,9 @@ const AdminSettingsPage: React.FC = () => {
       </div>
       
       {saveSuccess && (
-        <div className="mb-4 p-3 bg-green-100 text-green-700 rounded-md">
-          Settings saved successfully!
+        <div className="mb-4 p-3 bg-green-100 text-green-700 rounded-md flex items-center">
+          <FiCheckCircle className="mr-2" />
+          Settings saved successfully and synced across the app!
         </div>
       )}
       
@@ -347,7 +355,7 @@ const AdminSettingsPage: React.FC = () => {
                     name="siteName"
                     value={systemSettings.siteName}
                     onChange={handleSystemSettingsChange}
-                    className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-1 focus:ring-primary"
+                    className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-1 focus:ring-primary bg-white text-gray-900"
                   />
                 </div>
                 
@@ -358,7 +366,7 @@ const AdminSettingsPage: React.FC = () => {
                     name="contactEmail"
                     value={systemSettings.contactEmail}
                     onChange={handleSystemSettingsChange}
-                    className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-1 focus:ring-primary"
+                    className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-1 focus:ring-primary bg-white text-gray-900"
                   />
                 </div>
               </div>
@@ -370,7 +378,7 @@ const AdminSettingsPage: React.FC = () => {
                   value={systemSettings.siteDescription}
                   onChange={handleSystemSettingsChange}
                   rows={3}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-1 focus:ring-primary"
+                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-1 focus:ring-primary bg-white text-gray-900"
                 ></textarea>
               </div>
               
@@ -381,7 +389,7 @@ const AdminSettingsPage: React.FC = () => {
                     name="defaultLanguage"
                     value={systemSettings.defaultLanguage}
                     onChange={handleSystemSettingsChange}
-                    className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-1 focus:ring-primary"
+                    className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-1 focus:ring-primary bg-white text-gray-900"
                   >
                     <option value="en">English</option>
                     <option value="es">Spanish</option>
@@ -397,7 +405,7 @@ const AdminSettingsPage: React.FC = () => {
                     name="timeZone"
                     value={systemSettings.timeZone}
                     onChange={handleSystemSettingsChange}
-                    className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-1 focus:ring-primary"
+                    className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-1 focus:ring-primary bg-white text-gray-900"
                   >
                     <option value="UTC">UTC</option>
                     <option value="America/New_York">Eastern Time (ET)</option>
@@ -416,7 +424,7 @@ const AdminSettingsPage: React.FC = () => {
                     name="currency"
                     value={systemSettings.currency}
                     onChange={handleSystemSettingsChange}
-                    className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-1 focus:ring-primary"
+                    className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-1 focus:ring-primary bg-white text-gray-900"
                   >
                     <option value="USD">USD ($)</option>
                     <option value="EUR">EUR (€)</option>
@@ -438,7 +446,7 @@ const AdminSettingsPage: React.FC = () => {
                     min="0"
                     max="100"
                     step="0.1"
-                    className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-1 focus:ring-primary"
+                    className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-1 focus:ring-primary bg-white text-gray-900"
                   />
                 </div>
                 
@@ -452,7 +460,7 @@ const AdminSettingsPage: React.FC = () => {
                     min="0"
                     max="100"
                     step="0.1"
-                    className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-1 focus:ring-primary"
+                    className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-1 focus:ring-primary bg-white text-gray-900"
                   />
                 </div>
                 
@@ -465,7 +473,7 @@ const AdminSettingsPage: React.FC = () => {
                     onChange={handleSystemSettingsChange}
                     min="0"
                     step="0.01"
-                    className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-1 focus:ring-primary"
+                    className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-1 focus:ring-primary bg-white text-gray-900"
                   />
                 </div>
               </div>
@@ -601,7 +609,7 @@ const AdminSettingsPage: React.FC = () => {
                     name="smtpHost"
                     value={emailSettings.smtpHost}
                     onChange={handleEmailSettingsChange}
-                    className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-1 focus:ring-primary"
+                    className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-1 focus:ring-primary bg-white text-gray-900"
                   />
                 </div>
                 
@@ -612,7 +620,7 @@ const AdminSettingsPage: React.FC = () => {
                     name="smtpPort"
                     value={emailSettings.smtpPort}
                     onChange={handleEmailSettingsChange}
-                    className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-1 focus:ring-primary"
+                    className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-1 focus:ring-primary bg-white text-gray-900"
                   />
                 </div>
               </div>
@@ -625,7 +633,7 @@ const AdminSettingsPage: React.FC = () => {
                     name="smtpUser"
                     value={emailSettings.smtpUser}
                     onChange={handleEmailSettingsChange}
-                    className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-1 focus:ring-primary"
+                    className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-1 focus:ring-primary bg-white text-gray-900"
                   />
                 </div>
                 
@@ -636,7 +644,7 @@ const AdminSettingsPage: React.FC = () => {
                     name="smtpPassword"
                     value={emailSettings.smtpPassword}
                     onChange={handleEmailSettingsChange}
-                    className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-1 focus:ring-primary"
+                    className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-1 focus:ring-primary bg-white text-gray-900"
                   />
                 </div>
               </div>
@@ -648,7 +656,7 @@ const AdminSettingsPage: React.FC = () => {
                     name="smtpEncryption"
                     value={emailSettings.smtpEncryption}
                     onChange={handleEmailSettingsChange}
-                    className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-1 focus:ring-primary"
+                    className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-1 focus:ring-primary bg-white text-gray-900"
                   >
                     <option value="none">None</option>
                     <option value="ssl">SSL</option>
@@ -663,7 +671,7 @@ const AdminSettingsPage: React.FC = () => {
                     name="senderName"
                     value={emailSettings.senderName}
                     onChange={handleEmailSettingsChange}
-                    className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-1 focus:ring-primary"
+                    className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-1 focus:ring-primary bg-white text-gray-900"
                   />
                 </div>
                 
@@ -674,7 +682,7 @@ const AdminSettingsPage: React.FC = () => {
                     name="senderEmail"
                     value={emailSettings.senderEmail}
                     onChange={handleEmailSettingsChange}
-                    className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-1 focus:ring-primary"
+                    className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-1 focus:ring-primary bg-white text-gray-900"
                   />
                 </div>
               </div>
@@ -686,7 +694,7 @@ const AdminSettingsPage: React.FC = () => {
                   value={emailSettings.welcomeEmailTemplate}
                   onChange={handleEmailSettingsChange}
                   rows={4}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-1 focus:ring-primary font-mono text-sm"
+                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-1 focus:ring-primary font-mono text-sm bg-white text-gray-900"
                 ></textarea>
               </div>
               
@@ -697,7 +705,7 @@ const AdminSettingsPage: React.FC = () => {
                   value={emailSettings.bookingConfirmationTemplate}
                   onChange={handleEmailSettingsChange}
                   rows={4}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-1 focus:ring-primary font-mono text-sm"
+                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-1 focus:ring-primary font-mono text-sm bg-white text-gray-900"
                 ></textarea>
               </div>
               
@@ -708,7 +716,7 @@ const AdminSettingsPage: React.FC = () => {
                   value={emailSettings.passwordResetTemplate}
                   onChange={handleEmailSettingsChange}
                   rows={4}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-1 focus:ring-primary font-mono text-sm"
+                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-1 focus:ring-primary font-mono text-sm bg-white text-gray-900"
                 ></textarea>
               </div>
               
@@ -790,7 +798,7 @@ const AdminSettingsPage: React.FC = () => {
                       value={paymentSettings.stripePublicKey}
                       onChange={handlePaymentSettingsChange}
                       disabled={!paymentSettings.stripeEnabled}
-                      className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-1 focus:ring-primary disabled:bg-gray-100 disabled:text-gray-500"
+                      className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-1 focus:ring-primary disabled:bg-gray-100 disabled:text-gray-500 bg-white text-gray-900"
                     />
                   </div>
                   
@@ -802,7 +810,7 @@ const AdminSettingsPage: React.FC = () => {
                       value={paymentSettings.stripeSecretKey}
                       onChange={handlePaymentSettingsChange}
                       disabled={!paymentSettings.stripeEnabled}
-                      className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-1 focus:ring-primary disabled:bg-gray-100 disabled:text-gray-500"
+                      className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-1 focus:ring-primary disabled:bg-gray-100 disabled:text-gray-500 bg-white text-gray-900"
                     />
                   </div>
                 </div>
@@ -835,7 +843,7 @@ const AdminSettingsPage: React.FC = () => {
                       value={paymentSettings.paypalClientId}
                       onChange={handlePaymentSettingsChange}
                       disabled={!paymentSettings.paypalEnabled}
-                      className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-1 focus:ring-primary disabled:bg-gray-100 disabled:text-gray-500"
+                      className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-1 focus:ring-primary disabled:bg-gray-100 disabled:text-gray-500 bg-white text-gray-900"
                     />
                   </div>
                   
@@ -847,7 +855,7 @@ const AdminSettingsPage: React.FC = () => {
                       value={paymentSettings.paypalSecret}
                       onChange={handlePaymentSettingsChange}
                       disabled={!paymentSettings.paypalEnabled}
-                      className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-1 focus:ring-primary disabled:bg-gray-100 disabled:text-gray-500"
+                      className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-1 focus:ring-primary disabled:bg-gray-100 disabled:text-gray-500 bg-white text-gray-900"
                     />
                   </div>
                 </div>
@@ -879,7 +887,7 @@ const AdminSettingsPage: React.FC = () => {
                     onChange={handlePaymentSettingsChange}
                     disabled={!paymentSettings.bankTransferEnabled}
                     rows={4}
-                    className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-1 focus:ring-primary disabled:bg-gray-100 disabled:text-gray-500"
+                    className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-1 focus:ring-primary disabled:bg-gray-100 disabled:text-gray-500 bg-white text-gray-900"
                   ></textarea>
                 </div>
               </div>
@@ -916,7 +924,7 @@ const AdminSettingsPage: React.FC = () => {
                     name="facebookUrl"
                     value={socialSettings.facebookUrl}
                     onChange={handleSocialSettingsChange}
-                    className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-1 focus:ring-primary"
+                    className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-1 focus:ring-primary bg-white text-gray-900"
                   />
                 </div>
                 
@@ -927,7 +935,7 @@ const AdminSettingsPage: React.FC = () => {
                     name="twitterUrl"
                     value={socialSettings.twitterUrl}
                     onChange={handleSocialSettingsChange}
-                    className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-1 focus:ring-primary"
+                    className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-1 focus:ring-primary bg-white text-gray-900"
                   />
                 </div>
                 
@@ -938,7 +946,7 @@ const AdminSettingsPage: React.FC = () => {
                     name="instagramUrl"
                     value={socialSettings.instagramUrl}
                     onChange={handleSocialSettingsChange}
-                    className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-1 focus:ring-primary"
+                    className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-1 focus:ring-primary bg-white text-gray-900"
                   />
                 </div>
                 
@@ -949,7 +957,7 @@ const AdminSettingsPage: React.FC = () => {
                     name="youtubeUrl"
                     value={socialSettings.youtubeUrl}
                     onChange={handleSocialSettingsChange}
-                    className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-1 focus:ring-primary"
+                    className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-1 focus:ring-primary bg-white text-gray-900"
                   />
                 </div>
                 
@@ -960,7 +968,7 @@ const AdminSettingsPage: React.FC = () => {
                     name="linkedinUrl"
                     value={socialSettings.linkedinUrl}
                     onChange={handleSocialSettingsChange}
-                    className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-1 focus:ring-primary"
+                    className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-1 focus:ring-primary bg-white text-gray-900"
                   />
                 </div>
               </div>

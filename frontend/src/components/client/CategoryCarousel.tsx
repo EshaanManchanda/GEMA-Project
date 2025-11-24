@@ -102,7 +102,7 @@ function CategoryCarousel({ categories = [] }: CategoryCarouselProps) {
   const displayCategories = transformedApiCategories.length > 0 ? transformedApiCategories : defaultCategories;
 
   // Debug logging in development
-  if (import.meta.env.DEV && import.meta.env.VITE_DEBUG_API === 'true') {
+  if (import.meta.env.VITE_DEV && import.meta.env.VITE_DEBUG_API === 'true') {
     console.log('CategoryCarousel - Original categories:', categories);
     console.log('CategoryCarousel - Transformed categories:', transformedApiCategories);
   }

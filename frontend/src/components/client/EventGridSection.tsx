@@ -61,7 +61,7 @@ const EventGridSection: React.FC<EventGridSectionProps> = ({ events = [] }) => {
   });
 
   // Debug logging (only in development with debug flag)
-  if (import.meta.env.DEV && import.meta.env.VITE_DEBUG_COMPONENTS === 'true') {
+  if (import.meta.env.VITE_DEV && import.meta.env.VITE_DEBUG_COMPONENTS === 'true') {
     console.log('EventGridSection:', {
       receivedEvents: events?.length || 0,
       safeEvents: safeEvents.length,
@@ -82,7 +82,7 @@ const EventGridSection: React.FC<EventGridSectionProps> = ({ events = [] }) => {
           <div className="inline-block mb-4 px-4 py-2 rounded-full" style={{ backgroundColor: 'rgba(0, 142, 199, 0.1)' }}>
             <span className="font-semibold" style={{ color: 'var(--primary-color)' }}>Explore</span>
           </div>
-          <h2 className="text-3xl font-bold mb-2">🎉 Most Popular Experiences</h2>
+          <h2 className="text-3xl font-bold mb-2 text-gray-900">🎉 Most Popular Experiences</h2>
           <p className="text-gray-700">
             Discover the most viewed and loved kids activities in Dubai, Abu Dhabi and the UAE
           </p>
@@ -93,7 +93,7 @@ const EventGridSection: React.FC<EventGridSectionProps> = ({ events = [] }) => {
           )}
         </div>
         <button 
-          onClick={() => navigate('/events')}
+          onClick={() => navigate('/search')}
           className="mt-4 md:mt-0 flex items-center gap-2 font-medium hover:underline" 
           style={{ color: 'var(--primary-color)' }}
         >
@@ -143,7 +143,7 @@ const EventGridSection: React.FC<EventGridSectionProps> = ({ events = [] }) => {
             Showing all {filteredEvents.length} experiences
           </p>
           <button 
-            onClick={() => navigate('/events')}
+            onClick={() => navigate('/search')}
             className="mt-3 px-6 py-2 rounded-lg font-medium transition-all duration-300 hover:shadow-md"
             style={{ backgroundColor: 'var(--primary-color)', color: 'white' }}
           >

@@ -56,7 +56,7 @@ const CollectionDetailPage: React.FC = () => {
       const response = await collectionsAPI.getCollectionById(id);
       const collectionData = response.collection as CollectionWithEvents;
 
-      if (import.meta.env.DEV && import.meta.env.VITE_DEBUG_API === 'true') {
+      if (import.meta.env.VITE_DEV && import.meta.env.VITE_DEBUG_API === 'true') {
         console.log('Collection detail fetched:', collectionData);
       }
 

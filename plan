@@ -1,303 +1,128 @@
-User approved Claude's plan
-  ⎿  Complete Hostinger KVM1 Deployment Preparation Plan
+fix @frontend\src\pages\EventDetailPage.tsx "Uncaught InvalidCharacterError: Failed to execute 'btoa' on 'Window': The string to be encoded 
+contains characters outside of the Latin1 range.
+    at generateFallbackImage (imageFallbacks.ts:30:39)
+    at getEventImage (imageFallbacks.ts:51:10)
+    at EventDetailPage (EventDetailPage.tsx:925:46)
+    at renderWithHooks (chunk-WUVWK3JO.js?v=9e13fbec:11568:26)
+    at updateFunctionComponent (chunk-WUVWK3JO.js?v=9e13fbec:14602:28)
+    at beginWork (chunk-WUVWK3JO.js?v=9e13fbec:15944:22)
+    at HTMLUnknownElement.callCallback2 (chunk-WUVWK3JO.js?v=9e13fbec:3674:22)
+    at Object.invokeGuardedCallbackDev (chunk-WUVWK3JO.js?v=9e13fbec:3699:24)
+    at invokeGuardedCallback (chunk-WUVWK3JO.js?v=9e13fbec:3733:39)
+    at beginWork$1 (chunk-WUVWK3JO.js?v=9e13fbec:19793:15)
+installHook.js:1 The above error occurred in the <EventDetailPage> component:
 
-     Phase 1: Create Deployment Configuration Files (30 mins)
+    at EventDetailPage (http://localhost:3000/src/pages/EventDetailPage.tsx:131:18)
+    at Suspense
+    at RenderedRoute (http://localhost:3000/node_modules/.vite/deps/chunk-W2QLWDYY.js?v=9e13fbec:4096:5)
+    at Outlet (http://localhost:3000/node_modules/.vite/deps/chunk-W2QLWDYY.js?v=9e13fbec:4574:26)
+    at div
+    at ErrorBoundary (http://localhost:3000/src/components/common/ErrorBoundary.tsx:30:5)
+    at main
+    at div
+    at Layout (http://localhost:3000/src/components/layout/Layout.tsx:54:19)
+    at RenderedRoute (http://localhost:3000/node_modules/.vite/deps/chunk-W2QLWDYY.js?v=9e13fbec:4096:5)
+    at Routes (http://localhost:3000/node_modules/.vite/deps/chunk-W2QLWDYY.js?v=9e13fbec:4638:5)
+    at PresenceChild (http://localhost:3000/node_modules/.vite/deps/framer-motion.js?v=6af31d0d:7103:24)
+    at AnimatePresence (http://localhost:3000/node_modules/.vite/deps/framer-motion.js?v=6af31d0d:7169:26)
+    at AppContent (http://localhost:3000/src/App.tsx:429:20)
+    at App
+    at CartProvider (http://localhost:3000/src/contexts/CartContext.tsx:47:32)
+    at AuthProvider (http://localhost:3000/src/contexts/AuthContext.tsx:34:32)
+    at CurrencyProvider (http://localhost:3000/src/contexts/CurrencyContext.tsx:28:36)
+    at LanguageProvider (http://localhost:3000/src/contexts/LanguageContext.tsx:21:36)
+    at ThemeProvider (http://localhost:3000/src/contexts/ThemeContext.tsx:20:33)
+    at r2 (http://localhost:3000/node_modules/.vite/deps/react-helmet-async.js?v=11e15a04:326:21)
+    at Router (http://localhost:3000/node_modules/.vite/deps/chunk-W2QLWDYY.js?v=9e13fbec:4581:15)
+    at BrowserRouter (http://localhost:3000/node_modules/.vite/deps/react-router-dom.js?v=6af31d0d:559:5)
+    at QueryClientProvider (http://localhost:3000/node_modules/.vite/deps/chunk-ACQGZORS.js?v=9e13fbec:3103:3)
+    at PersistGate2 (http://localhost:3000/node_modules/.vite/deps/redux-persist_integration_react.js?v=7e872cf9:90:5)
+    at Provider (http://localhost:3000/node_modules/.vite/deps/react-redux.js?v=6af31d0d:1293:3)
+    at ErrorBoundary (http://localhost:3000/src/components/common/ErrorBoundary.tsx:30:5)
 
-     1. NGINX Configuration (deployment/nginx/gema.conf)
-       - Frontend static file serving with SPA routing
-       - Backend API reverse proxy
-       - SSL/HTTPS configuration
-       - Gzip compression
-       - Security headers
-     2. PM2 Ecosystem File (backend/ecosystem.config.js)
-       - Process management configuration
-       - Memory limits optimized for KVM1 (4GB RAM)
-       - Clustering for single vCPU
-       - Log management
-       - Auto-restart policies
-     3. Frontend Production Environment (frontend/.env.production)
-       - Production API URL configuration
-       - Stripe publishable key
-       - Other production environment variables
-     4. Deployment Script (deploy.sh)
-       - Automated deployment workflow
-       - Git pull, build, and restart
-       - Health check validation
-       - Rollback capability
-     5. Server Setup Script (setup-server.sh)
-       - One-command server initialization
-       - Install Node.js, PM2, NGINX, Certbot
-       - Initial deployment
-
-     Phase 2: Fix Critical TypeScript Errors (8-12 hours)
-
-     Priority 1 - Forms & Data Handling (16 errors):
-     - Fix date type handling in CouponForm (6 errors)
-     - Fix checkbox value props in BlogForm & CouponForm (2 errors)
-     - Fix API response type mismatches (5 errors)
-     - Fix component prop mismatches (Modal, Input, Dialog - 3 errors)
-
-     Priority 2 - UI Components (12 errors):
-     - Fix Badge variant types (10 errors)
-     - Fix Table column type definitions (2 errors)
-
-     Approach:
-     - Fix file by file with verification
-     - Test affected components
-     - Update type definitions where needed
-     - Run npm run type-check after each fix
-
-     Phase 3: MongoDB Atlas Setup Guide (15 mins)
-
-     Create comprehensive guide covering:
-     - MongoDB Atlas account creation
-     - Cluster configuration for free tier
-     - Network access (IP whitelist)
-     - Database user setup
-     - Connection string generation
-     - Index creation for performance
-     - Backup configuration
-
-     Phase 4: Create Comprehensive Deployment Guide (1 hour)
-
-     Step-by-step documentation (DEPLOYMENT_GUIDE.md):
-     - Prerequisites checklist
-     - Server access and preparation
-     - Backend deployment walkthrough
-     - Frontend deployment walkthrough
-     - SSL certificate setup
-     - Environment variables configuration
-     - Testing and validation
-     - Monitoring setup
-     - Troubleshooting common issues
-
-     Phase 5: Final Verification & Documentation
-
-     1. Verify all deployment files are correct
-     2. Create deployment checklist
-     3. Test deployment script syntax
-     4. Update README.md with deployment links
-     5. Create HOSTINGER_DEPLOYMENT.md quick reference
-
-     ---
-     Deliverables
-
-     New Files Created:
-     - deployment/nginx/gema.conf - NGINX configuration
-     - backend/ecosystem.config.js - PM2 process management
-     - frontend/.env.production - Production environment template
-     - deploy.sh - Automated deployment script
-     - setup-server.sh - Server initialization script
-     - DEPLOYMENT_GUIDE.md - Complete deployment walkthrough
-     - MONGODB_ATLAS_SETUP.md - Database configuration guide
-     - HOSTINGER_DEPLOYMENT.md - Quick reference guide
-
-     Files Modified:
-     - Fix 16-28 TypeScript errors across component files
-     - Update README.md with deployment section
-     - Update .gitignore for deployment artifacts
-
-     Estimated Total Time: 10-14 hours
-
-     Order of Execution:
-     1. Create deployment files (can deploy immediately after)
-     2. Generate documentation (reference while deploying)
-     3. Fix TypeScript errors (can be done after initial deployment)
-     4. MongoDB setup (needed before first deployment)
-
-     Note: Phases 1, 2, and 4 can proceed in parallel if you deploy to staging first, then fix TypeScript errors while monitoring.
-
-● Excellent! Let me start by creating the todo list and then begin with the deployment files.
-
-● Now let me start creating the deployment files. First, I'll create the deployment directory structure:
-
-● Bash(mkdir -p deployment/nginx)
-  ⎿  Error: Exit code 1
-     mkdir: cannot create directory ‘deployment’: Permission denied
-
-● Let me check the current directory and permissions:
-
-● Bash(pwd && ls -la | head -20)
-  ⎿  /e/coding/gema
-     total 125
-     drwxr-xr-x 1 eshaa 197609     0 Nov 22 23:34 .
-     … +14 lines (ctrl+o to expand)
-
-● The directory looks fine. Let me try creating the deployment folder with proper Windows path handling:
-
-● Bash(mkdir deployment && mkdir deployment/nginx && echo "Deployment directories created successfully")
-  ⎿  Error: Exit code 1
-     /usr/bin/bash: line 1: /tmp/claude-76e7-cwd: Permission denied
-
-     Deployment directories created successfully
-
-● Good! The directory was created despite the permission warning. Let me verify and continue:
-
-● Bash(ls -la deployment/)
-  ⎿  Error: Exit code 1
-     /usr/bin/bash: line 1: /tmp/claude-9e07-cwd: Permission denied
-
-     total 8
-     drwxr-xr-x 1 eshaa 197609 0 Nov 22 23:54 .
-     drwxr-xr-x 1 eshaa 197609 0 Nov 22 23:54 ..
-     drwxr-xr-x 1 eshaa 197609 0 Nov 22 23:54 nginx
-
-● Perfect! Now let me update the todo and create the NGINX configuration file:
-
-● Now let me create the NGINX configuration file:
-
-● Write(deployment\nginx\gema.conf)
-  ⎿  Wrote 1 lines to deployment\nginx\gema.conf
-     # GEMA Event Management Platform - NGINX Configuration
-     # Optimized for Hostinger KVM1 VPS
-     #
-     # Installation Instructions:
-     # 1. Copy this file to: /etc/nginx/sites-available/gema
-     # 2. Create symlink: sudo ln -s /etc/nginx/sites-available/gema /etc/nginx/sites-enabled/
-     # 3. Test configuration: sudo nginx -t
-     # 4. Reload NGINX: sudo systemctl reload nginx
-     # 5. Setup SSL: sudo certbot --nginx -d your-domain.com
-
-● Now let me create the PM2 ecosystem file:
-
-● Write(backend\ecosystem.config.js)
-  ⎿  Wrote 1 lines to backend\ecosystem.config.js
-     /**
-      * PM2 Ecosystem Configuration for GEMA Backend
-      * Optimized for Hostinger KVM1 VPS (4GB RAM, 1 vCPU)
-      *
-      * Usage:
-      *   pm2 start ecosystem.config.js --env production
-      *   pm2 reload ecosystem.config.js --env production
-      *   pm2 stop gema-backend
-      *   pm2 delete gema-backend
-      *   pm2 logs gema-backend
-
-● Now let me check the frontend .env.example to create the production environment file:
-
-● Read(frontend\.env.example)
-  ⎿  Read 104 lines
-
-● Now let me create the frontend production environment file:
-
-● Write(frontend\.env.production)
-  ⎿  Wrote 1 lines to frontend\.env.production
-     # GEMA Frontend - Production Environment Variables
-     # Copy this file and fill in your production values
-     # DO NOT commit actual production values to git!
-     # =============================================================================
-     # CRITICAL - MUST CONFIGURE BEFORE DEPLOYMENT
-     # =============================================================================
-     # API Configuration (REQUIRED)
-     VITE_API_BASE_URL=https://your-domain.com/api
-
-● Now let me create the automated deployment script:
-
-● Write(deploy.sh)
-  ⎿  Wrote 1 lines to deploy.sh
-     #!/bin/bash
-     ###############################################################################
-     # GEMA Deployment Script
-     # Automated deployment for Hostinger KVM1 VPS
-     #
-     # Usage:
-     #   ./deploy.sh                 # Deploy both frontend and backend
-     #   ./deploy.sh --backend-only  # Deploy backend only
-     #   ./deploy.sh --frontend-only # Deploy frontend only
-
-● Now let me make the script executable and create the server setup script:
-
-● Now let me create the server setup script:
-
-● Write(setup-server.sh)
-  ⎿  Wrote 1 lines to setup-server.sh
-     #!/bin/bash
-     ###############################################################################
-     # GEMA Server Setup Script
-     # Initial server configuration for Hostinger KVM1 VPS
-     #
-     # Usage:
-     #   wget https://raw.githubusercontent.com/YourRepo/GEMA/main/setup-server.sh
-     #   chmod +x setup-server.sh
-     #   sudo ./setup-server.sh
-
-● Now let me create the MongoDB Atlas setup guide:
-
-● Write(MONGODB_ATLAS_SETUP.md)
-  ⎿  Wrote 1 lines to MONGODB_ATLAS_SETUP.md
-     # MongoDB Atlas Setup Guide for GEMA
-     Complete guide to setting up MongoDB Atlas for your GEMA production deployment.
-     ---
-     ## Table of Contents
-     1. [Create MongoDB Atlas Account](#1-create-mongodb-atlas-account)
-     2. [Create a Cluster](#2-create-a-cluster)
-
-● Excellent! Now let me update the todo and create the comprehensive deployment guide. This will be a detailed document:
-
-● Due to the length of the comprehensive deployment guide, let me create it in sections. I'll create the main DEPLOYMENT_GUIDE.md now:
-
-● Write(DEPLOYMENT_GUIDE.md)
-  ⎿  Wrote 1 lines to DEPLOYMENT_GUIDE.md
-     # GEMA Deployment Guide - Hostinger KVM1 VPS
-     Complete step-by-step guide for deploying the GEMA Event Management Platform to a Hostinger KVM1 VPS server.
-     ---
-     ## Table of Contents
-     1. [Overview](#overview)
-     2. [Prerequisites](#prerequisites)
-
-● Excellent! Now let me update the todo and create the Hostinger quick reference guide:
-
-● Now let me create the Hostinger quick reference guide:
-
-● Write(HOSTINGER_DEPLOYMENT.md)
-  ⎿  Wrote 1 lines to HOSTINGER_DEPLOYMENT.md
-     # GEMA - Hostinger KVM1 Quick Deployment Reference
-     **Fast deployment guide for experienced developers deploying GEMA to Hostinger KVM1 VPS.**
-     For detailed instructions, see: [`DEPLOYMENT_GUIDE.md`](./DEPLOYMENT_GUIDE.md)
-     ---
-     ## ⚡ Quick Start (10 Minutes)
-
-● Perfect! Now I need to move on to fixing the TypeScript errors. Let me update the todo list and start with the highest priority fixes. Let me
-  first read the CouponForm.tsx to understand the date handling errors:
-
-● Now let me check the TypeScript errors report to see the specific line numbers for the date handling errors in CouponForm:
-
-● Search(pattern: "validFrom|validUntil", path: "frontend\src\components\admin\CouponForm.tsx", output_mode: "content", head_limit: 30)
-  ⎿  Found 16 lines (ctrl+o to expand)
-
-● Good! I can see the pattern. Let me read the specific sections around lines 1097-1118 to see the Input component usage:
-
-● Read(frontend\src\components\admin\CouponForm.tsx)
-  ⎿  Read 50 lines
-
-● Perfect! I can see the issue. The field object from React Hook Form's Controller contains a value property that could be a Date object, but the       
-  Input component with type="date" expects a string in YYYY-MM-DD format. Looking at the initialization (lines 159-160), the form is already setting    
-   these as strings, so the fix is to ensure the value is always converted to string format.
-
-  Given that this is a large file and I need to be precise, let me use a Task agent to handle all the TypeScript fixes efficiently:
-
-● Task(Fix critical TypeScript errors)
-  ⎿  Done (71 tool uses · 0 tokens · 16m 29s)
-  ⎿  Session limit reached ∙ resets 3:30am
-     /upgrade to increase your usage limit.
-
-  Todos
-  ☒ Create deployment directory structure
-  ☒ Create NGINX configuration file (deployment/nginx/gema.conf)
-  ☒ Create PM2 ecosystem file (backend/ecosystem.config.js)
-  ☒ Create frontend production environment file (frontend/.env.production)
-  ☒ Create automated deployment script (deploy.sh)
-  ☒ Create server setup script (setup-server.sh)
-  ☒ Create MongoDB Atlas setup guide (MONGODB_ATLAS_SETUP.md)
-  ☒ Create comprehensive deployment guide (DEPLOYMENT_GUIDE.md)
-  ☒ Create Hostinger quick reference (HOSTINGER_DEPLOYMENT.md)
-  ☐ Fix date type handling in CouponForm (6 errors)
-  ☐ Fix checkbox value props in BlogForm and CouponForm (2 errors)
-  ☐ Fix API response type mismatches (5 errors)
-  ☐ Fix component prop mismatches (Modal, Input, Dialog - 3 errors)
-  ☐ Fix Badge variant types (10 errors)
-  ☐ Fix Table column type definitions (2 errors)
-  ☐ Update README.md with deployment section
-  ☐ Update .gitignore for deployment artifacts
-  ☐ Run type-check verification on frontend
-  ☐ Create final deployment checklist
+React will try to recreate this component tree from scratch using the error boundary you provided, ErrorBoundary.
+overrideMethod @ installHook.js:1
+installHook.js:1 Component Error Object Error Component Stack
+    at ErrorBoundary (ErrorBoundary.tsx:27:5)
+    at main (<anonymous>)
+    at div (<anonymous>)
+    at Layout (Layout.tsx:54:61)
+    at RenderedRoute (chunk-W2QLWDYY.js?v=9e13fbec:4096:5)
+    at Routes (chunk-W2QLWDYY.js?v=9e13fbec:4638:5)
+    at PresenceChild (framer-motion.js?v=6af31d0d:7103:24)
+    at AnimatePresence (framer-motion.js?v=6af31d0d:7169:26)
+    at AppContent (App.tsx:129:20)
+    at App (<anonymous>)
+    at CartProvider (CartContext.tsx:63:61)
+    at AuthProvider (AuthContext.tsx:34:73)
+    at CurrencyProvider (CurrencyContext.tsx:48:77)
+    at LanguageProvider (LanguageContext.tsx:14:77)
+    at ThemeProvider (ThemeContext.tsx:14:74)
+    at r2 (react-helmet-async.js?v=11e15a04:326:21)
+    at Router (chunk-W2QLWDYY.js?v=9e13fbec:4581:15)
+    at BrowserRouter (react-router-dom.js?v=6af31d0d:559:5)
+    at QueryClientProvider (chunk-ACQGZORS.js?v=9e13fbec:3103:3)
+    at PersistGate2 (redux-persist_integration_react.js?v=7e872cf9:90:5)
+    at Provider (react-redux.js?v=6af31d0d:1293:3)
+    at ErrorBoundary (ErrorBoundary.tsx:27:5)
+overrideMethod @ installHook.js:1
+installHook.js:1 Component Error: InvalidCharacterError: Failed to execute 'btoa' on 'Window': The string to be encoded contains characters outside     
+of the Latin1 range.
+    at generateFallbackImage (imageFallbacks.ts:30:39)
+    at getEventImage (imageFallbacks.ts:51:10)
+    at EventDetailPage (EventDetailPage.tsx:925:46)
+    at renderWithHooks (chunk-WUVWK3JO.js?v=9e13fbec:11568:26)
+    at updateFunctionComponent (chunk-WUVWK3JO.js?v=9e13fbec:14602:28)
+    at beginWork (chunk-WUVWK3JO.js?v=9e13fbec:15944:22)
+    at beginWork$1 (chunk-WUVWK3JO.js?v=9e13fbec:19781:22)
+    at performUnitOfWork (chunk-WUVWK3JO.js?v=9e13fbec:19226:20)
+    at workLoopSync (chunk-WUVWK3JO.js?v=9e13fbec:19165:13)
+    at renderRootSync (chunk-WUVWK3JO.js?v=9e13fbec:19144:15) Error Component Stack
+    at ErrorBoundary (ErrorBoundary.tsx:27:5)
+    at main (<anonymous>)
+    at div (<anonymous>)
+    at Layout (Layout.tsx:54:61)
+    at RenderedRoute (chunk-W2QLWDYY.js?v=9e13fbec:4096:5)
+    at Routes (chunk-W2QLWDYY.js?v=9e13fbec:4638:5)
+    at PresenceChild (framer-motion.js?v=6af31d0d:7103:24)
+    at AnimatePresence (framer-motion.js?v=6af31d0d:7169:26)
+    at AppContent (App.tsx:129:20)
+    at App (<anonymous>)
+    at CartProvider (CartContext.tsx:63:61)
+    at AuthProvider (AuthContext.tsx:34:73)
+    at CurrencyProvider (CurrencyContext.tsx:48:77)
+    at LanguageProvider (LanguageContext.tsx:14:77)
+    at ThemeProvider (ThemeContext.tsx:14:74)
+    at r2 (react-helmet-async.js?v=11e15a04:326:21)
+    at Router (chunk-W2QLWDYY.js?v=9e13fbec:4581:15)
+    at BrowserRouter (react-router-dom.js?v=6af31d0d:559:5)
+    at QueryClientProvider (chunk-ACQGZORS.js?v=9e13fbec:3103:3)
+    at PersistGate2 (redux-persist_integration_react.js?v=7e872cf9:90:5)
+    at Provider (react-redux.js?v=6af31d0d:1293:3)
+    at ErrorBoundary (ErrorBoundary.tsx:27:5)
+overrideMethod @ installHook.js:1
+installHook.js:1 Error Info: Object Error Component Stack
+    at ErrorBoundary (ErrorBoundary.tsx:27:5)
+    at main (<anonymous>)
+    at div (<anonymous>)
+    at Layout (Layout.tsx:54:61)
+    at RenderedRoute (chunk-W2QLWDYY.js?v=9e13fbec:4096:5)
+    at Routes (chunk-W2QLWDYY.js?v=9e13fbec:4638:5)
+    at PresenceChild (framer-motion.js?v=6af31d0d:7103:24)
+    at AnimatePresence (framer-motion.js?v=6af31d0d:7169:26)
+    at AppContent (App.tsx:129:20)
+    at App (<anonymous>)
+    at CartProvider (CartContext.tsx:63:61)
+    at AuthProvider (AuthContext.tsx:34:73)
+    at CurrencyProvider (CurrencyContext.tsx:48:77)
+    at LanguageProvider (LanguageContext.tsx:14:77)
+    at ThemeProvider (ThemeContext.tsx:14:74)
+    at r2 (react-helmet-async.js?v=11e15a04:326:21)
+    at Router (chunk-W2QLWDYY.js?v=9e13fbec:4581:15)
+    at BrowserRouter (react-router-dom.js?v=6af31d0d:559:5)
+    at QueryClientProvider (chunk-ACQGZORS.js?v=9e13fbec:3103:3)
+    at PersistGate2 (redux-persist_integration_react.js?v=7e872cf9:90:5)
+    at Provider (react-redux.js?v=6af31d0d:1293:3)
+    at ErrorBoundary (ErrorBoundary.tsx:27:5)
+overrideMethod @ installHook.js:1
+EventDetailPage.tsx:184 Received event data: " and home page event cards also " it show html as plain text" 

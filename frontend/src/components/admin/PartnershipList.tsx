@@ -307,7 +307,7 @@ const PartnershipList: React.FC = () => {
               <select
                 value={filters.status}
                 onChange={(e) => setFilters({ ...filters, status: e.target.value, page: 1 })}
-                className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent bg-white text-gray-900"
               >
                 <option value="">All Statuses</option>
                 <option value="pending">Pending</option>
@@ -324,7 +324,7 @@ const PartnershipList: React.FC = () => {
               <select
                 value={filters.partnershipType}
                 onChange={(e) => setFilters({ ...filters, partnershipType: e.target.value, page: 1 })}
-                className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent bg-white text-gray-900"
               >
                 <option value="">All Types</option>
                 <option value="vendor">Vendor</option>
@@ -342,7 +342,7 @@ const PartnershipList: React.FC = () => {
               <select
                 value={filters.limit}
                 onChange={(e) => setFilters({ ...filters, limit: Number(e.target.value), page: 1 })}
-                className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent bg-white text-gray-900"
               >
                 <option value="10">10</option>
                 <option value="20">20</option>

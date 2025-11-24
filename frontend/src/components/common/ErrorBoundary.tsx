@@ -33,7 +33,7 @@ class ErrorBoundary extends Component<Props, State> {
 
   static getDerivedStateFromError(error: Error): State {
     // Ignore hot module reload errors in development
-    if (import.meta.env.DEV && (
+    if (import.meta.env.VITE_DEV && (
       error.message?.includes('removeChild') ||
       error.message?.includes('NotFoundError') ||
       error.name === 'NotFoundError'
@@ -57,7 +57,7 @@ class ErrorBoundary extends Component<Props, State> {
 
   componentDidCatch(error: Error, errorInfo: ErrorInfo): void {
     // Ignore hot module reload errors in development
-    if (import.meta.env.DEV && (
+    if (import.meta.env.VITE_DEV && (
       error.message.includes('removeChild') ||
       error.message.includes('NotFoundError') ||
       error.name === 'NotFoundError'
@@ -147,7 +147,7 @@ class ErrorBoundary extends Component<Props, State> {
             </div>
 
             {/* Error Details (Development Only) */}
-            {this.props.showDetails && import.meta.env.MODE === 'development' && this.state.error && (
+            {this.props.showDetails && import.meta.env.VITE_MODE === 'development' && this.state.error && (
               <div className="bg-red-50 border border-red-200 rounded-lg p-4 mb-6">
                 <h3 className="text-sm font-semibold text-red-800 mb-2">
                   Error Details (Development Only)

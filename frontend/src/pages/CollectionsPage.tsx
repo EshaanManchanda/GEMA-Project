@@ -86,7 +86,7 @@ const CollectionsPage: React.FC = () => {
       const response = await collectionsAPI.getAllCollections({ limit: 50 });
       const fetchedCollections = response.collections || [];
 
-      if (import.meta.env.DEV && import.meta.env.VITE_DEBUG_API === 'true') {
+      if (import.meta.env.VITE_DEV && import.meta.env.VITE_DEBUG_API === 'true') {
         console.log('Collections fetched:', fetchedCollections.length);
       }
 

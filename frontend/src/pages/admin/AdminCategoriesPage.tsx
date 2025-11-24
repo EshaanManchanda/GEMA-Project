@@ -293,7 +293,7 @@ const AdminCategoriesPage: React.FC = () => {
               <input
                 type="text"
                 id="search"
-                className="focus:ring-primary focus:border-primary block w-full pl-10 sm:text-sm border-gray-300 rounded-md"
+                className="focus:ring-primary focus:border-primary block w-full pl-10 sm:text-sm border-gray-300 rounded-md bg-white text-gray-900"
                 placeholder="Search by name or description"
                 value={searchTerm}
                 onChange={(e) => setSearchTerm(e.target.value)}
@@ -577,7 +577,7 @@ const AdminCategoriesPage: React.FC = () => {
                       {editingCategory ? 'Edit Category' : 'Add Category'}
                     </h3>
                   </div>
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-gray-900">
                     <div>
                       <label htmlFor="name" className="block text-sm font-medium text-gray-700 mb-1">
                         Name <span className="text-red-500">*</span>

@@ -1,4 +1,3 @@
-console.log('Server starting...');
 import express, { Express, Application, Request, Response, NextFunction } from 'express';
 import cors from 'cors';
 import helmet from 'helmet';
@@ -17,7 +16,11 @@ import currencyRoutes from './routes/currency.routes';
 import { scheduleTicketJobs, stopTicketJobs } from './utils/ticketExpiration';
 import { ensureDefaultCommissionConfig } from './scripts/seedCommissions';
 import { ensureAdminRevenueSettings } from './scripts/seedAdminSettings';
+import { ensureAffiliateVendor } from './scripts/seedAffiliateVendor';
 import { scheduleEventLifecycleJobs, stopEventLifecycleJobs } from './utils/eventLifecycle';
+import { devLog } from './utils/devLogger';
+
+devLog.log('Server starting...');
 
 // Create Express app
 const app: Application = express();
@@ -47,7 +50,7 @@ app.use(cors({
 
     // Allow requests with no origin (like mobile apps, Postman, curl) - only in development
     if (!origin && process.env.NODE_ENV === 'development') {
-      console.log('[CORS] Request with no origin - allowing (dev mode)');
+      devLog.tagged('CORS', 'Request with no origin - allowing (dev mode)');
       return callback(null, true);
     }
 
@@ -57,7 +60,7 @@ app.use(cors({
     }) || (origin && /\.vercel\.app$/.test(origin));
 
     if (isAllowed) {
-      console.log('[CORS] Origin allowed:', origin);
+      devLog.tagged('CORS', 'Origin allowed:', origin);
       callback(null, true);
     } else {
       console.log('[CORS] Origin rejected:', origin);
@@ -215,6 +218,15 @@ async function startServer() {
       // Continue anyway - not critical for server startup
     }
 
+    // Step 3.7: Ensure affiliate vendor exists
+    logger.info('Initializing affiliate vendor...');
+    try {
+      await ensureAffiliateVendor();
+      logger.info('✓ Affiliate vendor initialized');
+    } catch (error) {
+      logger.error('⚠️  Failed to initialize affiliate vendor:', error);
+      // Continue anyway - not critical for server startup
+    }
 
     // Step 4: Initialize scheduled jobs (only after DB is ready)
     logger.info('Initializing scheduled jobs...');

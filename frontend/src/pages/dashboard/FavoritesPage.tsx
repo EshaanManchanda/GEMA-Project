@@ -4,6 +4,7 @@ import { useDispatch, useSelector } from 'react-redux';
 import { AppDispatch, RootState } from '@/store';
 import { fetchFavorites, removeFromFavorites } from '@/store/slices/favoritesSlice';
 import { Event } from '@/types/event';
+import DOMPurify from 'isomorphic-dompurify';
 
 const FavoritesPage: React.FC = () => {
   const dispatch = useDispatch<AppDispatch>();
@@ -162,14 +163,19 @@ const FavoritesPage: React.FC = () => {
                       </svg>
                       {getEventLocation(event)}
                     </p>
-                    {event.description && (
-                      <p className="flex items-start mb-1">
-                        <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4 mr-1 mt-0.5 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
-                        </svg>
-                        <span className="text-xs line-clamp-2">{event.description}</span>
-                      </p>
-                    )}
+                    {/* {event.description && (
+                      <div
+                      className="text-xs line-clamp-2"
+                      dangerouslySetInnerHTML={{
+                        __html: DOMPurify.sanitize(event.description || '', {
+                          ADD_ATTR: ['style', 'class'],
+                          ADD_TAGS: ['iframe'],
+                          ALLOWED_ATTR: ['style', 'class', 'href', 'src', 'alt', 'title', 'target', 'rel', 'width', 'height', 'id', 'frameborder', 'allow', 'allowfullscreen']
+                        })
+                      }}
+                    />
+                    )} */}
+
                   </div>
                   <div className="flex justify-between items-center">
                     <Link

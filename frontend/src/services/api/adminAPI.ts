@@ -101,9 +101,95 @@ const adminAPI = {
     }
   },
 
+  // Admin password reset with OTP verification
+  initiatePasswordReset: async (userId: string) => {
+    try {
+      const response = await ApiService.post(`/admin/users/${userId}/reset-password/initiate`);
+      return response;
+    } catch (error) {
+      throw error;
+    }
+  },
+
+  confirmPasswordReset: async (userId: string, otp: string, newPassword: string) => {
+    try {
+      const response = await ApiService.post(`/admin/users/${userId}/reset-password/confirm`, {
+        otp,
+        newPassword
+      });
+      return response;
+    } catch (error) {
+      throw error;
+    }
+  },
+
   getUserStats: async () => {
     try {
       const response = await ApiService.get('/admin/users/stats');
+      return response;
+    } catch (error) {
+      throw error;
+    }
+  },
+
+  // Employee management
+  getAllEmployees: async (params?: any) => {
+    try {
+      const response = await ApiService.get('/admin/employees', { params });
+      return response;
+    } catch (error) {
+      throw error;
+    }
+  },
+
+  getEmployeeById: async (id: string) => {
+    try {
+      const response = await ApiService.get(`/admin/employees/${id}`);
+      return response;
+    } catch (error) {
+      throw error;
+    }
+  },
+
+  createEmployee: async (employeeData: any) => {
+    try {
+      const response = await ApiService.post('/admin/employees', employeeData);
+      return response;
+    } catch (error) {
+      throw error;
+    }
+  },
+
+  updateEmployee: async (id: string, employeeData: any) => {
+    try {
+      const response = await ApiService.put(`/admin/employees/${id}`, employeeData);
+      return response;
+    } catch (error) {
+      throw error;
+    }
+  },
+
+  deleteEmployee: async (id: string) => {
+    try {
+      const response = await ApiService.delete(`/admin/employees/${id}`);
+      return response;
+    } catch (error) {
+      throw error;
+    }
+  },
+
+  bulkUpdateEmployees: async (employeeIds: string[], updateData: any) => {
+    try {
+      const response = await ApiService.patch('/admin/employees/bulk', { employeeIds, updateData });
+      return response;
+    } catch (error) {
+      throw error;
+    }
+  },
+
+  getEmployeeStats: async () => {
+    try {
+      const response = await ApiService.get('/admin/employees/stats');
       return response;
     } catch (error) {
       throw error;
@@ -450,11 +536,11 @@ const adminAPI = {
     }
   },
 
-  // Settings management
+  // Revenue Settings management (AdminRevenueSettings)
   getSettings: async () => {
     try {
       const response = await ApiService.get('/admin/settings');
-      return response.data;
+      return response;
     } catch (error) {
       throw error;
     }
@@ -463,7 +549,26 @@ const adminAPI = {
   updateSettings: async (settings: any) => {
     try {
       const response = await ApiService.put('/admin/settings', settings);
-      return response.data;
+      return response;
+    } catch (error) {
+      throw error;
+    }
+  },
+
+  // Application Settings management (System, Email, Payment, Social)
+  getAppSettings: async () => {
+    try {
+      const response = await ApiService.get('/admin/app-settings');
+      return response;
+    } catch (error) {
+      throw error;
+    }
+  },
+
+  updateAppSettings: async (settings: any) => {
+    try {
+      const response = await ApiService.put('/admin/app-settings', settings);
+      return response;
     } catch (error) {
       throw error;
     }
@@ -525,8 +630,8 @@ const adminAPI = {
 
   testEmailConnection: async () => {
     try {
-      const response = await ApiService.post('/admin/settings/email/test-connection');
-      return response.data;
+      const response = await ApiService.post('/admin/app-settings/email/test-connection');
+      return response;
     } catch (error) {
       throw error;
     }
@@ -534,8 +639,8 @@ const adminAPI = {
 
   sendTestEmail: async (emailData: any) => {
     try {
-      const response = await ApiService.post('/admin/settings/email/send-test', emailData);
-      return response.data;
+      const response = await ApiService.post('/admin/app-settings/email/send-test', emailData);
+      return response;
     } catch (error) {
       throw error;
     }

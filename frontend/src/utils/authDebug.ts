@@ -40,7 +40,7 @@ export const debugAuthState = () => {
  * Create a test user token for debugging (development only)
  */
 export const createTestUserToken = () => {
-  if (process.env.NODE_ENV !== 'development') {
+  if (import.meta.env.VITE_NODE_ENV !== 'development') {
     console.warn('Test tokens can only be created in development mode');
     return null;
   }
@@ -63,7 +63,7 @@ export const createTestUserToken = () => {
  * Manually set auth state for testing
  */
 export const setTestAuthState = () => {
-  if (process.env.NODE_ENV !== 'development') {
+  if (import.meta.env.VITE_NODE_ENV !== 'development') {
     console.warn('Test auth state can only be set in development mode');
     return;
   }
@@ -94,7 +94,7 @@ export const clearAuthState = () => {
 };
 
 // Make debugging functions available globally in development
-if (process.env.NODE_ENV === 'development') {
+if (import.meta.env.VITE_NODE_ENV === 'development') {
   (window as any).authDebug = {
     debugAuthState,
     setTestAuthState,

@@ -9,6 +9,7 @@ import {
   selectFeaturedCategories,
   selectCategoriesLoading
 } from '@/store/slices/categoriesSlice';
+import { selectSocialSettings } from '@/store/slices/settingsSlice';
 // Commented out - notification system disabled
 // import {
 //   fetchNotifications,
@@ -29,6 +30,7 @@ import {
   FaWhatsapp,
   FaInstagram,
   FaYoutube,
+  FaLinkedinIn,
   FaDownload,
   // FaGlobe,
   FaSearch,
@@ -61,8 +63,9 @@ const Layout: React.FC<{ children?: React.ReactNode }> = ({ children }) => {
   const { isAuthenticated, user } = useSelector((state: RootState) => state.auth);
   const featuredCategories = useSelector(selectFeaturedCategories);
   const categoriesLoading = useSelector(selectCategoriesLoading);
+  const socialSettings = useSelector(selectSocialSettings);
   // const unreadNotificationsCount = useSelector(selectUnreadCount); // Commented out - notification system disabled
-  
+
   const dispatch = useDispatch<AppDispatch>();
   const navigate = useNavigate();
   const dropdownRef = useRef<HTMLDivElement>(null);
@@ -167,21 +170,31 @@ const Layout: React.FC<{ children?: React.ReactNode }> = ({ children }) => {
           <div className="max-w-screen-xl mx-auto px-4 sm:px-6 lg:px-8 py-3 flex justify-center items-center text-sm">
             {/* Left: Social Icons */}
             <div className="hidden md:flex space-x-4">
-              <a href="#" className="hover:opacity-80 transition-opacity duration-300 flex items-center justify-center w-7 h-7 rounded-full bg-white/10">
-                <FaFacebookF size={14} />
-              </a>
-              <a href="#" className="hover:opacity-80 transition-opacity duration-300 flex items-center justify-center w-7 h-7 rounded-full bg-white/10">
-                <FaTwitter size={14} />
-              </a>
-              <a href="#" className="hover:opacity-80 transition-opacity duration-300 flex items-center justify-center w-7 h-7 rounded-full bg-white/10">
-                <FaWhatsapp size={14} />
-              </a>
-              <a href="#" className="hover:opacity-80 transition-opacity duration-300 flex items-center justify-center w-7 h-7 rounded-full bg-white/10">
-                <FaInstagram size={14} />
-              </a>
-              <a href="#" className="hover:opacity-80 transition-opacity duration-300 flex items-center justify-center w-7 h-7 rounded-full bg-white/10">
-                <FaYoutube size={14} />
-              </a>
+              {socialSettings.facebookUrl && (
+                <a href={socialSettings.facebookUrl} target="_blank" rel="noopener noreferrer" className="hover:opacity-80 transition-opacity duration-300 flex items-center justify-center w-7 h-7 rounded-full bg-white/10">
+                  <FaFacebookF size={14} />
+                </a>
+              )}
+              {socialSettings.twitterUrl && (
+                <a href={socialSettings.twitterUrl} target="_blank" rel="noopener noreferrer" className="hover:opacity-80 transition-opacity duration-300 flex items-center justify-center w-7 h-7 rounded-full bg-white/10">
+                  <FaTwitter size={14} />
+                </a>
+              )}
+              {socialSettings.instagramUrl && (
+                <a href={socialSettings.instagramUrl} target="_blank" rel="noopener noreferrer" className="hover:opacity-80 transition-opacity duration-300 flex items-center justify-center w-7 h-7 rounded-full bg-white/10">
+                  <FaInstagram size={14} />
+                </a>
+              )}
+              {socialSettings.youtubeUrl && (
+                <a href={socialSettings.youtubeUrl} target="_blank" rel="noopener noreferrer" className="hover:opacity-80 transition-opacity duration-300 flex items-center justify-center w-7 h-7 rounded-full bg-white/10">
+                  <FaYoutube size={14} />
+                </a>
+              )}
+              {socialSettings.linkedinUrl && (
+                <a href={socialSettings.linkedinUrl} target="_blank" rel="noopener noreferrer" className="hover:opacity-80 transition-opacity duration-300 flex items-center justify-center w-7 h-7 rounded-full bg-white/10">
+                  <FaLinkedinIn size={14} />
+                </a>
+              )}
             </div>
 
             {/* Mobile: Logo */}
@@ -647,15 +660,31 @@ const Layout: React.FC<{ children?: React.ReactNode }> = ({ children }) => {
                 Discover and book the best activities for your kids in the UAE.
               </p>
               <div className="flex space-x-3">
-                <a href="https://facebook.com" target="_blank" rel="noopener noreferrer" className="hover:opacity-80 transition-opacity duration-300 flex items-center justify-center w-8 h-8 rounded-full" style={{ backgroundColor: 'var(--primary-color)', color: 'white' }}>
-                  <FaFacebookF size={14} />
-                </a>
-                <a href="https://twitter.com" target="_blank" rel="noopener noreferrer" className="hover:opacity-80 transition-opacity duration-300 flex items-center justify-center w-8 h-8 rounded-full" style={{ backgroundColor: 'var(--primary-color)', color: 'white' }}>
-                  <FaTwitter size={14} />
-                </a>
-                <a href="https://instagram.com" target="_blank" rel="noopener noreferrer" className="hover:opacity-80 transition-opacity duration-300 flex items-center justify-center w-8 h-8 rounded-full" style={{ backgroundColor: 'var(--primary-color)', color: 'white' }}>
-                  <FaInstagram size={14} />
-                </a>
+                {socialSettings.facebookUrl && (
+                  <a href={socialSettings.facebookUrl} target="_blank" rel="noopener noreferrer" className="hover:opacity-80 transition-opacity duration-300 flex items-center justify-center w-8 h-8 rounded-full" style={{ backgroundColor: 'var(--primary-color)', color: 'white' }}>
+                    <FaFacebookF size={14} />
+                  </a>
+                )}
+                {socialSettings.twitterUrl && (
+                  <a href={socialSettings.twitterUrl} target="_blank" rel="noopener noreferrer" className="hover:opacity-80 transition-opacity duration-300 flex items-center justify-center w-8 h-8 rounded-full" style={{ backgroundColor: 'var(--primary-color)', color: 'white' }}>
+                    <FaTwitter size={14} />
+                  </a>
+                )}
+                {socialSettings.instagramUrl && (
+                  <a href={socialSettings.instagramUrl} target="_blank" rel="noopener noreferrer" className="hover:opacity-80 transition-opacity duration-300 flex items-center justify-center w-8 h-8 rounded-full" style={{ backgroundColor: 'var(--primary-color)', color: 'white' }}>
+                    <FaInstagram size={14} />
+                  </a>
+                )}
+                {socialSettings.youtubeUrl && (
+                  <a href={socialSettings.youtubeUrl} target="_blank" rel="noopener noreferrer" className="hover:opacity-80 transition-opacity duration-300 flex items-center justify-center w-8 h-8 rounded-full" style={{ backgroundColor: 'var(--primary-color)', color: 'white' }}>
+                    <FaYoutube size={14} />
+                  </a>
+                )}
+                {socialSettings.linkedinUrl && (
+                  <a href={socialSettings.linkedinUrl} target="_blank" rel="noopener noreferrer" className="hover:opacity-80 transition-opacity duration-300 flex items-center justify-center w-8 h-8 rounded-full" style={{ backgroundColor: 'var(--primary-color)', color: 'white' }}>
+                    <FaLinkedinIn size={14} />
+                  </a>
+                )}
               </div>
             </div>
             

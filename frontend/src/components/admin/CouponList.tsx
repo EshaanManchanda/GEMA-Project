@@ -546,7 +546,7 @@ const CouponList: React.FC = () => {
             <div className="flex items-center">
               <div className="flex-1">
                 <p className="text-sm text-gray-600">Total Coupons</p>
-                <p className="text-2xl font-bold">{pagination.total}</p>
+                <p className="text-2xl font-bold text-blue-600">{pagination.total}</p>
               </div>
               <div className="p-2 bg-blue-100 rounded-full">
                 <Tag className="w-6 h-6 text-blue-600" />
@@ -559,7 +559,7 @@ const CouponList: React.FC = () => {
             <div className="flex items-center">
               <div className="flex-1">
                 <p className="text-sm text-gray-600">Active</p>
-                <p className="text-2xl font-bold">
+                <p className="text-2xl font-bold text-green-600">
                   {coupons.filter(c => c.status === 'active' && c.isActive).length}
                 </p>
               </div>
@@ -574,7 +574,7 @@ const CouponList: React.FC = () => {
             <div className="flex items-center">
               <div className="flex-1">
                 <p className="text-sm text-gray-600">Used</p>
-                <p className="text-2xl font-bold">
+                <p className="text-2xl font-bold text-purple-600">
                   {coupons.reduce((sum, c) => sum + c.usageCount, 0)}
                 </p>
               </div>
@@ -589,7 +589,7 @@ const CouponList: React.FC = () => {
             <div className="flex items-center">
               <div className="flex-1">
                 <p className="text-sm text-gray-600">Expired</p>
-                <p className="text-2xl font-bold">
+                <p className="text-2xl font-bold text-red-600">
                   {coupons.filter(c => new Date(c.validUntil) < new Date() || c.status === 'expired').length}
                 </p>
               </div>
@@ -615,7 +615,7 @@ const CouponList: React.FC = () => {
                   placeholder="Search coupons..."
                   value={searchInput}
                   onChange={(e) => handleSearch(e.target.value)}
-                  className="pl-10 pr-4 py-2 w-full border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  className="pl-10 pr-4 py-2 w-full border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white text-gray-900"
                 />
               </div>
 
@@ -624,7 +624,7 @@ const CouponList: React.FC = () => {
                 name="filterStatus"
                 value={filters.status}
                 onChange={(e) => handleFilterChange('status', e.target.value)}
-                className="px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                className="px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white text-gray-900"
               >
                 <option value="">All Status</option>
                 <option value="active">Active</option>
@@ -635,7 +635,7 @@ const CouponList: React.FC = () => {
               <select
                 value={filters.type}
                 onChange={(e) => handleFilterChange('type', e.target.value)}
-                className="px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                className="px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white text-gray-900"
               >
                 <option value="">All Types</option>
                 <option value="percentage">Percentage</option>

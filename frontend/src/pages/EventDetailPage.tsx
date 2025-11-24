@@ -5,6 +5,7 @@ import { useCart } from '@/contexts/CartContext';
 import { useAuthContext } from '@/contexts/AuthContext';
 import toast from 'react-hot-toast';
 import { format } from 'date-fns';
+import DOMPurify from 'isomorphic-dompurify';
 import eventsAPI from '../services/api/eventsAPI';
 import affiliateEventAPI from '../services/api/affiliateEventAPI';
 import { useErrorHandler } from '../utils/errorHandler';
@@ -596,10 +597,17 @@ const EventDetailPage: React.FC = () => {
           <h1 className="text-3xl md:text-5xl lg:text-6xl font-bold bg-gradient-to-r from-gray-900 to-gray-700 bg-clip-text text-transparent mb-4 leading-tight">
             {event.title}
           </h1>
-          
-          <p className="text-lg text-gray-600 mb-6 leading-relaxed">
-            {event.description}
-          </p>
+
+          <div
+            className="text-lg text-gray-600 mb-6 leading-relaxed prose max-w-none"
+            dangerouslySetInnerHTML={{
+              __html: DOMPurify.sanitize(event.description || '', {
+                ADD_ATTR: ['style', 'class'],
+                ADD_TAGS: ['iframe'],
+                ALLOWED_ATTR: ['style', 'class', 'href', 'src', 'alt', 'title', 'target', 'rel', 'width', 'height', 'id', 'frameborder', 'allow', 'allowfullscreen']
+              })
+            }}
+          />
           
           {/* Event Meta Information */}
           <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-4 mb-6">
@@ -1018,42 +1026,51 @@ const EventDetailPage: React.FC = () => {
               {/* About Tab */}
               {activeTab === 'about' && (
                 <div>
-                  <h2 className="text-2xl font-bold mb-4">About This Event</h2>
-                  <p className="text-gray-700 mb-6 leading-relaxed">{event.description}</p>
+                  <h2 className="text-2xl font-bold mb-4 text-blue-600">About This Event</h2>
+                  <div
+                    className="text-gray-700 mb-6 leading-relaxed prose max-w-none"
+                    dangerouslySetInnerHTML={{
+                      __html: DOMPurify.sanitize(event.description || '', {
+                        ADD_ATTR: ['style', 'class'],
+                        ADD_TAGS: ['iframe'],
+                        ALLOWED_ATTR: ['style', 'class', 'href', 'src', 'alt', 'title', 'target', 'rel', 'width', 'height', 'id', 'frameborder', 'allow', 'allowfullscreen']
+                      })
+                    }}
+                  />
                   
                   <div className="bg-gray-50 p-4 rounded-lg mb-6 border border-gray-200">
-                    <h3 className="text-lg font-semibold mb-3">Event Schedule</h3>
+                    <h3 className="text-lg font-semibold mb-3 text-blue-600">Event Schedule</h3>
                     <div className="flex items-center mb-2">
                       <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 text-primary mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
                       </svg>
-                      <span className="font-medium">{getDisplayDate()}</span>
+                      <span className="font-medium text-gray-900">{getDisplayDate()}</span>
                     </div>
                     <p className="text-gray-600 text-sm">Doors open 30 minutes before the event starts. Please arrive on time.</p>
                   </div>
                   
-                  <h3 className="text-xl font-semibold mb-3">Event Features</h3>
+                  <h3 className="text-xl font-semibold mb-3 text-blue-600">Event Features</h3>
                   <ul className="grid grid-cols-1 md:grid-cols-2 gap-3 mb-6">
                     {event.features.map((feature: string, index: number) => (
                       <li key={index} className="flex items-center bg-gray-50 p-3 rounded-lg border border-gray-100">
                         <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 text-green-500 mr-3 flex-shrink-0" viewBox="0 0 20 20" fill="currentColor">
                           <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clipRule="evenodd" />
                         </svg>
-                        <span>{feature}</span>
+                        <span className='text-gray-900'>{feature}</span>
                       </li>
                     ))}
                   </ul>
                   
                   <div className="bg-gray-50 p-4 rounded-lg border border-gray-200">
-                    <h3 className="text-lg font-semibold mb-3">Additional Information</h3>
+                    <h3 className="text-lg font-semibold mb-3 text-blue-600">Additional Information</h3>
                     <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                       <div>
                         <div className="text-sm text-gray-500 mb-1">Age Range</div>
-                        <div className="font-medium">{event.ageRange}</div>
+                        <div className="font-medium text-gray-900">{event.ageRange}</div>
                       </div>
                       <div>
                         <div className="text-sm text-gray-500 mb-1">Capacity</div>
-                        <div className="font-medium">{event.capacity} participants</div>
+                        <div className="font-medium text-gray-900">{event.capacity} participants</div>
                       </div>
                     </div>
                   </div>
@@ -1063,7 +1080,7 @@ const EventDetailPage: React.FC = () => {
               {/* Location Tab */}
               {activeTab === 'location' && (
                 <div>
-                  <h2 className="text-2xl font-bold mb-4">Event Location</h2>
+                  <h2 className="text-2xl font-bold mb-4 text-blue-600">Event Location</h2>
                   <div className="bg-gray-50 p-4 rounded-lg mb-6 border border-gray-200">
                     <div className="flex items-center mb-4">
                       <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6 text-primary mr-3" fill="none" viewBox="0 0 24 24" stroke="currentColor">
@@ -1071,7 +1088,7 @@ const EventDetailPage: React.FC = () => {
                         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 11a3 3 0 11-6 0 3 3 0 016 0z" />
                       </svg>
                       <div>
-                        <h3 className="font-medium">
+                        <h3 className="font-medium text-gray-900">
                           {event.location?.city && event.location?.address
                             ? `${event.location.city}, ${event.location.address}`
                             : event.location?.city || event.location?.address || 'Location TBD'}
@@ -1100,7 +1117,7 @@ const EventDetailPage: React.FC = () => {
                       </button>
                     </div>
                   </div>
-                  <div className="bg-gray-50 p-4 rounded-lg border border-gray-200">
+                  <div className="bg-gray-50 p-4 rounded-lg border border-gray-200 text-gray-900">
                     <h3 className="font-bold mb-3">Transportation Options</h3>
                     <ul className="space-y-3">
                       <li className="flex items-center">
@@ -1124,7 +1141,7 @@ const EventDetailPage: React.FC = () => {
               {activeTab === 'reviews' && (
                 <div>
                   <div className="flex justify-between items-center mb-6">
-                    <h2 className="text-2xl font-bold">Customer Reviews</h2>
+                    <h2 className="text-2xl font-bold text-blue-600">Customer Reviews</h2>
                     <button className="bg-primary text-white px-4 py-2 rounded-md hover:bg-primary-dark transition-colors">
                       Write a Review
                     </button>
@@ -1358,13 +1375,13 @@ const EventDetailPage: React.FC = () => {
               </CardTitle>
             </CardHeader>
             <CardContent className="space-y-3">
-              <div className="flex justify-between items-center py-2 border-b border-gray-100">
+              <div className="flex justify-between items-center py-2 border-b border-gray-100 text-gray-900">
                 <span className="text-sm text-gray-600">Created</span>
                 <span className="text-sm font-medium">{format(new Date(event.createdAt), 'MMM d, yyyy')}</span>
               </div>
               <div className="flex justify-between items-center py-2 border-b border-gray-100">
                 <span className="text-sm text-gray-600">Last Updated</span>
-                <span className="text-sm font-medium">{format(new Date(event.updatedAt), 'MMM d, yyyy')}</span>
+                <span className="text-sm font-medium text-gray-900">{format(new Date(event.updatedAt), 'MMM d, yyyy')}</span>
               </div>
               <div className="flex justify-between items-center py-2 border-b border-gray-100">
                 <span className="text-sm text-gray-600">Event Type</span>

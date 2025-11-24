@@ -77,7 +77,7 @@ const CardTitle = React.forwardRef<HTMLHeadingElement, CardTitleProps>(
     return (
       <Component 
         ref={ref} 
-        className={`text-lg font-semibold leading-none tracking-tight ${className}`} 
+        className={`text-lg font-semibold leading-none text-gray-900 tracking-tight ${className}`} 
         {...props}
       >
         {children}
@@ -93,7 +93,7 @@ interface CardDescriptionProps extends React.HTMLAttributes<HTMLParagraphElement
 const CardDescription = React.forwardRef<HTMLParagraphElement, CardDescriptionProps>(
   ({ className = '', children, ...props }, ref) => {
     return (
-      <p ref={ref} className={`text-sm text-gray-600 ${className}`} {...props}>
+      <p ref={ref} className={`text-sm text-gray-900 ${className}`} {...props}>
         {children}
       </p>
     );

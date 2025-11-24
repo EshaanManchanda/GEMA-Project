@@ -351,7 +351,25 @@ export const CollectionSEO: React.FC<{ collection: any; breadcrumbs?: SEOProps['
   return <SEO {...seoData} />;
 };
 
-export const HomeSEO: React.FC<{ breadcrumbs?: SEOProps['breadcrumbs'] }> = ({ breadcrumbs }) => {
+export const HomeSEO: React.FC<{
+  breadcrumbs?: SEOProps['breadcrumbs'];
+  socialSettings?: {
+    facebookUrl?: string;
+    twitterUrl?: string;
+    instagramUrl?: string;
+    youtubeUrl?: string;
+    linkedinUrl?: string;
+  };
+}> = ({ breadcrumbs, socialSettings }) => {
+  // Build sameAs array from social settings, filtering out empty values
+  const sameAsLinks = socialSettings ? [
+    socialSettings.facebookUrl,
+    socialSettings.twitterUrl,
+    socialSettings.instagramUrl,
+    socialSettings.youtubeUrl,
+    socialSettings.linkedinUrl
+  ].filter(Boolean) : [];
+
   const organizationStructuredData = {
     '@context': 'https://schema.org',
     '@type': 'Organization',
@@ -364,11 +382,7 @@ export const HomeSEO: React.FC<{ breadcrumbs?: SEOProps['breadcrumbs'] }> = ({ b
       contactType: 'customer service',
       email: 'info@gema-events.com'
     },
-    sameAs: [
-      'https://www.facebook.com/gemaevents',
-      'https://www.instagram.com/gemaevents',
-      'https://www.twitter.com/gemaevents'
-    ],
+    ...(sameAsLinks.length > 0 && { sameAs: sameAsLinks }),
     areaServed: {
       '@type': 'Country',
       name: 'United Arab Emirates'

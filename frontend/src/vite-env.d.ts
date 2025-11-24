@@ -13,10 +13,10 @@ interface ImportMetaEnv {
   readonly VITE_FIREBASE_APP_ID: string
   readonly VITE_APP_NAME: string
   readonly VITE_APP_VERSION: string
-  readonly NODE_ENV: string
-  readonly MODE: string
-  readonly DEV: boolean
-  readonly PROD: boolean
+  readonly VITE_NODE_ENV: string
+  readonly VITE_MODE: string
+  readonly VITE_DEV: boolean
+  readonly VITE_PROD: boolean
 }
 
 interface ImportMeta {

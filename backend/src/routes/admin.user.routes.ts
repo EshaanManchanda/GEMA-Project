@@ -10,7 +10,9 @@ import {
   updateUserStatus,
   updateUserRole,
   bulkUpdateUsers,
-  getUserStats
+  getUserStats,
+  adminInitiatePasswordReset,
+  adminConfirmPasswordReset
 } from '../controllers/admin.user.controller';
 import {
   validateGetAllUsers,
@@ -92,5 +94,19 @@ router.patch('/:id/role', validateUpdateUserRole, validate, updateUserRole);
  * @access  Admin only
  */
 router.patch('/bulk', validateBulkUpdateUsers, validate, bulkUpdateUsers);
+
+/**
+ * @route   POST /api/admin/users/:id/reset-password/initiate
+ * @desc    Admin-initiated password reset - Send OTP to admin's email
+ * @access  Admin only
+ */
+router.post('/:id/reset-password/initiate', validateMongoId('id', 'param'), validate, adminInitiatePasswordReset);
+
+/**
+ * @route   POST /api/admin/users/:id/reset-password/confirm
+ * @desc    Admin-initiated password reset - Verify OTP and set new password
+ * @access  Admin only
+ */
+router.post('/:id/reset-password/confirm', validateMongoId('id', 'param'), validate, adminConfirmPasswordReset);
 
 export default router;

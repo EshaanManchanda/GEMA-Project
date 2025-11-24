@@ -3,7 +3,7 @@
  * Only logs in development, suppresses in production
  */
 
-const isDevelopment = import.meta.env.MODE === 'development';
+const isDevelopment = import.meta.env.VITE_MODE === 'development';
 
 export const console = {
   log: (...args: any[]) => {

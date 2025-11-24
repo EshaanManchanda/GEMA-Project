@@ -34,7 +34,7 @@ class PWAService {
     }
 
     // Disable service worker in development to prevent API request interference
-    if (import.meta.env.DEV) {
+    if (import.meta.env.VITE_DEV) {
       console.log('[PWA] Service Worker disabled in development mode');
       // Unregister any existing service worker in development
       await this.unregister();

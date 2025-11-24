@@ -12,6 +12,7 @@ const useAuth = () => {
   return {
     user: auth.user,
     isAuthenticated: auth.isAuthenticated,
+    isInitialized: auth.isInitialized,
     loading: auth.loading,
     error: auth.error,
     login: auth.login,

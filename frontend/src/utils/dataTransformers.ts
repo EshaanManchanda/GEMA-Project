@@ -17,10 +17,7 @@ export interface EventData {
   } | string;
   category?: string;
   categories?: string[];
-  ageRange?: {
-    min: number;
-    max: number;
-  };
+  ageRange?: [number, number];
   ageGroup?: string;
   dateSchedule?: Array<{
     startDate: string;
@@ -74,7 +71,7 @@ export const getEventImage = (event: EventData): string => {
 export const getAgeGroup = (event: EventData): string => {
   if (event.ageGroup) return event.ageGroup;
   if (event.ageRange) {
-    return `${event.ageRange.min}-${event.ageRange.max} years`;
+    return `${event.ageRange[0]}-${event.ageRange[1]} years`;
   }
   return '';
 };

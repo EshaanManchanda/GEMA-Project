@@ -48,7 +48,7 @@ const HtmlInsertModal: React.FC<HtmlInsertModalProps> = ({ isOpen, onClose, onIn
           <textarea
             value={htmlContent}
             onChange={(e) => setHtmlContent(e.target.value)}
-            className="w-full min-h-[400px] p-4 font-mono text-sm border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 resize-y"
+            className="w-full min-h-[400px] p-4 font-mono text-sm border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 resize-y text-gray-900"
             placeholder="<h1>Your heading here</h1>
 <p>Your paragraph with <strong>bold text</strong>.</p>
 <ul>

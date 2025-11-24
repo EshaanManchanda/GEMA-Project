@@ -4,31 +4,34 @@ import path from 'path';
 import bcrypt from 'bcryptjs';
 import Vendor from '../models/Vendor';
 import User from '../models/User';
+import logger from '../config/logger';
 
 // Load environment variables
 dotenv.config({ path: path.resolve(__dirname, '../../.env') });
 
-const AFFILIATE_VENDOR_EMAIL = 'affiliate@gema-system.com';
+const AFFILIATE_VENDOR_EMAIL = 'affiliate@kidrove-system.com';
 const AFFILIATE_VENDOR_BUSINESS_NAME = 'Platform Affiliate';
 
-async function seedAffiliateVendor() {
+/**
+ * Ensures the affiliate vendor exists in the database.
+ * This function is called during backend startup.
+ * It's idempotent and safe to call multiple times.
+ *
+ * @returns The existing or newly created vendor document
+ */
+export async function ensureAffiliateVendor() {
   try {
-    // Connect to MongoDB
-    const mongoUri = process.env.MONGODB_URI || 'mongodb://localhost:27017/gema';
-    await mongoose.connect(mongoUri);
-    console.log('✓ Connected to MongoDB');
-
     // Check if affiliate vendor already exists
     const existingVendor = await Vendor.findOne({
       email: AFFILIATE_VENDOR_EMAIL
     });
 
     if (existingVendor) {
-      console.log('✓ Affiliate vendor already exists');
-      console.log('Vendor ID:', existingVendor._id);
-      console.log('Business Name:', existingVendor.businessName);
-      await mongoose.disconnect();
-      return;
+      logger.info('Affiliate vendor already exists', {
+        vendorId: existingVendor._id,
+        businessName: existingVendor.businessName
+      });
+      return existingVendor;
     }
 
     // Check if a user exists with this email
@@ -36,7 +39,9 @@ async function seedAffiliateVendor() {
     let userId: mongoose.Types.ObjectId;
 
     if (existingUser) {
-      console.log('✓ Found existing user with affiliate email');
+      logger.info('Found existing user with affiliate email', {
+        userId: existingUser._id
+      });
       userId = existingUser._id as mongoose.Types.ObjectId;
     } else {
       // Create system user for affiliate vendor
@@ -57,7 +62,9 @@ async function seedAffiliateVendor() {
           enabled: false,
         },
       });
-      console.log('✓ Created affiliate system user');
+      logger.info('Created affiliate system user', {
+        userId: affiliateUser._id
+      });
       userId = affiliateUser._id as mongoose.Types.ObjectId;
     }
 
@@ -124,12 +131,36 @@ async function seedAffiliateVendor() {
       },
     });
 
-    console.log('✅ Successfully created affiliate vendor');
-    console.log('Vendor ID:', affiliateVendor._id);
-    console.log('User ID:', userId);
-    console.log('Business Name:', affiliateVendor.businessName);
-    console.log('Email:', affiliateVendor.email);
+    logger.info('Successfully created affiliate vendor', {
+      vendorId: affiliateVendor._id,
+      userId,
+      businessName: affiliateVendor.businessName,
+      email: affiliateVendor.email
+    });
+
+    return affiliateVendor;
+  } catch (error) {
+    logger.error('Error ensuring affiliate vendor exists', { error });
+    throw error;
+  }
+}
+
+/**
+ * Standalone function for manual seeding.
+ * Connects to MongoDB, creates the vendor, and disconnects.
+ */
+async function seedAffiliateVendor() {
+  try {
+    // Connect to MongoDB
+    const mongoUri = process.env.MONGODB_URI || 'mongodb://localhost:27017/gema';
+    await mongoose.connect(mongoUri);
+    console.log('✓ Connected to MongoDB');
+
+    // Use the shared ensure function
+    const vendor = await ensureAffiliateVendor();
+
     console.log('\n📋 Use this Vendor ID when creating affiliate events in the admin panel');
+    console.log('Vendor ID:', vendor._id);
 
     await mongoose.disconnect();
     console.log('✓ Disconnected from MongoDB');

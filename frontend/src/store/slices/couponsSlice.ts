@@ -165,14 +165,16 @@ export const validateCoupon = createAsyncThunk(
   'coupons/validateCoupon',
   async (params: {
     code: string;
-    orderId?: string;
-    orderAmount?: number;
+    orderAmount: number;
+    eventIds?: string[];
   }, { rejectWithValue }) => {
     try {
-      const response = await couponAPI.validateCoupon(params.code, {
-        orderId: params.orderId,
-        orderAmount: params.orderAmount
-      });
+      // Call API with correct parameter order: (code, orderAmount, eventIds)
+      const response = await couponAPI.validateCoupon(
+        params.code,
+        params.orderAmount,
+        params.eventIds
+      );
       return response.data || response;
     } catch (error: any) {
       const message = error.response?.data?.message || 'Failed to validate coupon';

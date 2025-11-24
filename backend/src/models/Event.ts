@@ -4,7 +4,7 @@ export interface IEvent extends Document {
   title: string;
   description: string;
   category: string;
-  type: 'Olympiad' | 'Championship' | 'Competition' | 'Event' | 'Course' | 'Venue';
+  type: 'Olympiad' | 'Championship' | 'Competition' | 'Event' | 'Course' | 'Venue' | 'Workshop';
   venueType: 'Indoor' | 'Outdoor' | 'Online' | 'Offline';
   ageRange: [number, number];
   location: {
@@ -146,7 +146,8 @@ const eventSchema = new Schema<IEvent>(
     description: {
       type: String,
       required: [true, 'Event description is required'],
-      maxlength: [2000, 'Description cannot exceed 2000 characters'],
+      // maxlength removed to support rich HTML content with images, videos, and formatting
+      // trim removed - HTML content must be preserved
     },
     category: {
       type: String,
@@ -155,7 +156,7 @@ const eventSchema = new Schema<IEvent>(
     },
     type: {
       type: String,
-      enum: ['Olympiad', 'Championship', 'Competition', 'Event', 'Course', 'Venue'],
+      enum: ['Olympiad', 'Championship', 'Competition', 'Event', 'Course', 'Venue', 'Workshop'],
       required: [true, 'Event type is required'],
     },
     venueType: {

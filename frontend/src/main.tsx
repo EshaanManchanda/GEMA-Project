@@ -42,7 +42,7 @@ import '@/i18n/config';
 import { initializePWA } from './services/pwaService';
 
 // Development-only auth debugging
-if (process.env.NODE_ENV === 'development') {
+if (import.meta.env.VITE_NODE_ENV === 'development') {
   import('./utils/authDebug');
 }
 
@@ -88,7 +88,7 @@ ReactDOM.createRoot(document.getElementById('root')!).render(
                       <AuthProvider>
                         <CartProvider>
                           <App />
-                          {process.env.NODE_ENV === 'development' && (
+                          {import.meta.env.VITE_NODE_ENV === 'development' && (
                             <Suspense fallback={null}>
                               <ReactQueryDevtools initialIsOpen={false} />
                             </Suspense>

@@ -14,8 +14,8 @@ export interface EnvironmentInfo {
 export const getEnvironmentInfo = (): EnvironmentInfo => {
   const location = window.location;
   const isHTTPS = location.protocol === 'https:';
-  const isDevelopment = import.meta.env.DEV || location.hostname === 'localhost' || location.hostname === '127.0.0.1';
-  const isProduction = import.meta.env.PROD && !isDevelopment;
+  const isDevelopment = import.meta.env.VITE_DEV || location.hostname === 'localhost' || location.hostname === '127.0.0.1';
+  const isProduction = import.meta.env.VITE_PROD && !isDevelopment;
   const isLocalhost = location.hostname === 'localhost' || location.hostname === '127.0.0.1' || location.hostname.includes('192.168.');
 
   return {

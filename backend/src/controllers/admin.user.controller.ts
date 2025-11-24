@@ -4,6 +4,14 @@ import { AppError } from '../middleware';
 import { ApiResponse } from '../types';
 import * as bcrypt from 'bcryptjs';
 import mongoose from 'mongoose';
+import { generateOTP, getOTPExpiry, isOTPExpired } from '../utils/otp';
+import QueueService from '../services/queue.service';
+
+/**
+ * Temporary storage for admin password reset OTPs
+ * Key: adminUserId, Value: { otp, targetUserId, expiresAt }
+ */
+const adminPasswordResetOTPs = new Map<string, { otp: string; targetUserId: string; expiresAt: Date }>();
 
 /**
  * Interface for user creation request
@@ -32,6 +40,8 @@ interface UpdateUserRequest {
   role?: UserRole;
   status?: UserStatus;
   avatar?: string;
+  gender?: string;
+  dateOfBirth?: Date;
   isEmailVerified?: boolean;
   isPhoneVerified?: boolean;
 }
@@ -61,6 +71,8 @@ const formatAdminUserResponse = (user: any) => {
     email: user.email,
     phone: user.phone,
     avatar: user.avatar,
+    gender: user.gender,
+    dateOfBirth: user.dateOfBirth,
     role: user.role,
     status: user.status,
     isEmailVerified: user.isEmailVerified,
@@ -356,6 +368,11 @@ export const updateUser = async (req: Request, res: Response, next: NextFunction
       updateData.phone = updateData.phone && updateData.phone.trim() !== '' ? updateData.phone.trim() : undefined;
     }
 
+    // Convert dateOfBirth string to Date if provided
+    if ('dateOfBirth' in updateData && updateData.dateOfBirth) {
+      updateData.dateOfBirth = new Date(updateData.dateOfBirth as any);
+    }
+
     // Update user
     Object.assign(user, updateData);
     await user.save();
@@ -576,6 +593,154 @@ export const getUserStats = async (req: Request, res: Response, next: NextFuncti
           return acc;
         }, {}),
         recentUsers: recentUsers.map(user => formatAdminUserResponse(user as IUser))
+      }
+    };
+
+    res.status(200).json(response);
+  } catch (error) {
+    next(error);
+  }
+};
+
+/**
+ * Admin-initiated password reset - Step 1: Send OTP to admin's email
+ */
+export const adminInitiatePasswordReset = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
+  try {
+    const { id } = req.params; // Target user ID
+    const adminUser = req.user; // Current logged-in admin
+
+    if (!adminUser) {
+      return next(new AppError('Unauthorized', 401));
+    }
+
+    // Validate ObjectId
+    if (!mongoose.Types.ObjectId.isValid(id)) {
+      return next(new AppError('Invalid user ID', 400));
+    }
+
+    // Find target user
+    const targetUser = await User.findById(id);
+    if (!targetUser) {
+      return next(new AppError('User not found', 404));
+    }
+
+    // Generate OTP
+    const otp = generateOTP();
+    const otpExpiry = getOTPExpiry();
+
+    // Store OTP in memory with admin's ID as key
+    adminPasswordResetOTPs.set(adminUser.id, {
+      otp,
+      targetUserId: id,
+      expiresAt: otpExpiry
+    });
+
+    // Send OTP to admin's email for verification
+    await QueueService.sendPasswordResetEmail(
+      adminUser.email,
+      adminUser.firstName,
+      otp
+    );
+
+    const response: ApiResponse = {
+      success: true,
+      message: `Verification code sent to your email (${adminUser.email})`,
+      data: {
+        adminEmail: adminUser.email,
+        targetUser: {
+          id: targetUser.id,
+          name: `${targetUser.firstName} ${targetUser.lastName}`,
+          email: targetUser.email
+        },
+        expiresIn: '10 minutes'
+      }
+    };
+
+    res.status(200).json(response);
+  } catch (error) {
+    next(error);
+  }
+};
+
+/**
+ * Admin-initiated password reset - Step 2: Verify OTP and set new password
+ */
+export const adminConfirmPasswordReset = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
+  try {
+    const { id } = req.params; // Target user ID
+    const { otp, newPassword } = req.body;
+    const adminUser = req.user; // Current logged-in admin
+
+    if (!adminUser) {
+      return next(new AppError('Unauthorized', 401));
+    }
+
+    // Validate inputs
+    if (!otp || !newPassword) {
+      return next(new AppError('OTP and new password are required', 400));
+    }
+
+    if (!mongoose.Types.ObjectId.isValid(id)) {
+      return next(new AppError('Invalid user ID', 400));
+    }
+
+    // Retrieve stored OTP for this admin
+    const storedOTPData = adminPasswordResetOTPs.get(adminUser.id);
+
+    if (!storedOTPData) {
+      return next(new AppError('No password reset request found. Please request a new OTP.', 400));
+    }
+
+    // Verify OTP matches and hasn't expired
+    if (storedOTPData.otp !== otp) {
+      return next(new AppError('Invalid verification code', 400));
+    }
+
+    if (isOTPExpired(storedOTPData.expiresAt)) {
+      // Clean up expired OTP
+      adminPasswordResetOTPs.delete(adminUser.id);
+      return next(new AppError('Verification code has expired. Please request a new one.', 400));
+    }
+
+    // Verify the target user ID matches
+    if (storedOTPData.targetUserId !== id) {
+      return next(new AppError('Invalid password reset request', 400));
+    }
+
+    // Find target user
+    const targetUser = await User.findById(id);
+    if (!targetUser) {
+      // Clean up OTP
+      adminPasswordResetOTPs.delete(adminUser.id);
+      return next(new AppError('User not found', 404));
+    }
+
+    // Validate password strength
+    if (newPassword.length < 8) {
+      return next(new AppError('Password must be at least 8 characters long', 400));
+    }
+
+    // Hash new password
+    const salt = await bcrypt.genSalt(12);
+    const hashedPassword = await bcrypt.hash(newPassword, salt);
+
+    // Update user's password
+    targetUser.passwordHash = hashedPassword;
+    await targetUser.save();
+
+    // Clean up OTP from memory
+    adminPasswordResetOTPs.delete(adminUser.id);
+
+    const response: ApiResponse = {
+      success: true,
+      message: `Password updated successfully for ${targetUser.firstName} ${targetUser.lastName}`,
+      data: {
+        user: {
+          id: targetUser.id,
+          name: `${targetUser.firstName} ${targetUser.lastName}`,
+          email: targetUser.email
+        }
       }
     };
 

@@ -10,6 +10,7 @@ import reviewRoutes from './review.routes';
 import uploadRoutes from './upload.routes';
 import analyticsRoutes from './analytics.routes';
 import adminUserRoutes from './admin.user.routes';
+import adminEmployeeRoutes from './admin.employee.routes';
 import adminEventRoutes from './admin.event.routes';
 import adminVenueRoutes from './admin.venue.routes';
 import adminVendorRoutes from './admin.vendor.routes';
@@ -27,6 +28,7 @@ import blogCommentsRoutes from './blog.comments.routes';
 // New routes
 import categoryRoutes from './category.routes';
 import couponRoutes from './coupon.routes';
+import adminCollectionRoutes from './admin.collection.routes';
 // import notificationRoutes from './notification.routes';
 import affiliateRoutes from './affiliate.routes';
 import bookingRoutes from './booking.routes';
@@ -43,6 +45,7 @@ import contactRoutes from './contact.routes';
 import partnershipRoutes from './partnership.routes';
 import cancellationRoutes from './event.cancellation.routes';
 import eventAffiliateRoutes from './event.affiliate.routes';
+import publicSettingsRoutes from './public.settings.routes';
 import { Router } from 'express';
 
 const router = Router();
@@ -88,6 +91,9 @@ router.use('/analytics', analyticsRoutes);
 // Admin User Management routes
 router.use('/admin/users', adminUserRoutes);
 
+// Admin Employee Management routes
+router.use('/admin/employees', adminEmployeeRoutes);
+
 // Admin Event Management routes
 router.use('/admin/events', adminEventRoutes);
 
@@ -111,6 +117,9 @@ router.use('/admin', adminCommissionRoutes);
 
 // Admin Settings routes
 router.use('/admin', adminSettingsRoutes);
+
+// Admin Collection Management routes
+router.use('/admin/collections', adminCollectionRoutes);
 
 // Vendor routes
 router.use('/vendors', vendorRoutes);
@@ -170,6 +179,9 @@ router.use('/contact', contactRoutes);
 
 // Partnership routes (partnership inquiry submissions)
 router.use('/partnerships', partnershipRoutes);
+
+// Public Settings routes (no authentication required)
+router.use('/public/settings', publicSettingsRoutes);
 
 // Cancellation routes (event and order cancellations with refunds)
 router.use('/', cancellationRoutes);

@@ -333,7 +333,7 @@ const BlogForm: React.FC<BlogFormProps> = ({
     <div className="prose max-w-none">
       <h1 className="text-3xl font-bold mb-4">{watchedTitle || 'Blog Title'}</h1>
       <div
-        className="blog-content"
+        className="blog-content text-gray-900"
         dangerouslySetInnerHTML={{
           __html: DOMPurify.sanitize(watchedContent || 'Blog content will appear here...', {
             ADD_ATTR: ['style', 'class'],
@@ -399,7 +399,7 @@ const BlogForm: React.FC<BlogFormProps> = ({
         {previewMode ? (
           renderPreview()
         ) : (
-          <div className="grid grid-cols-1 lg:grid-cols-[2fr,1fr] gap-6">
+          <div className="grid grid-cols-1 lg:grid-cols-[2fr,1fr] gap-6 text-gray-900">
             {/* Main Content */}
             <div className="space-y-4">
               {/* Basic Information */}

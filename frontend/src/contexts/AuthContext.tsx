@@ -9,6 +9,7 @@ import {
   getCurrentUser,
   clearError,
   selectIsAuthenticated,
+  selectIsInitialized,
   selectUser,
   selectIsLoading,
   selectError
@@ -17,6 +18,7 @@ import { User, LoginCredentials, RegisterData } from '@/types/auth';
 
 interface AuthContextType {
   isAuthenticated: boolean;
+  isInitialized: boolean;
   user: User | null;
   loading: boolean;
   error: string | null;
@@ -32,6 +34,7 @@ const AuthContext = createContext<AuthContextType | undefined>(undefined);
 export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const dispatch = useDispatch();
   const isAuthenticated = useSelector(selectIsAuthenticated);
+  const isInitialized = useSelector(selectIsInitialized);
   const user = useSelector(selectUser);
   const loading = useSelector(selectIsLoading);
   const error = useSelector(selectError);
@@ -40,11 +43,17 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     // Initialize auth on mount - check if user is authenticated via httpOnly cookies
     // Note: Tokens are now stored in httpOnly cookies, not localStorage
     const initializeAuth = async () => {
+      // Skip initialization if already initialized (e.g., after logout)
+      if (isInitialized) {
+        console.log('[AuthContext] Already initialized, skipping auth check');
+        return;
+      }
+
       try {
         // Clear any existing errors before attempting auth
         dispatch(clearError());
 
-        // ALWAYS verify server session on mount to ensure cookies are valid
+        // Verify server session on mount to ensure cookies are valid
         // This is critical because auth state is not persisted in localStorage
         // The server will validate the httpOnly cookies and return user data if valid
         await dispatch(getCurrentUser() as any);
@@ -58,7 +67,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
     initializeAuth();
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [dispatch]); // Only run once on mount
+  }, [dispatch, isInitialized]); // Re-run if isInitialized changes
 
   const login = async (credentials: LoginCredentials) => {
     try {
@@ -109,6 +118,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     <AuthContext.Provider
       value={{
         isAuthenticated,
+        isInitialized,
         user,
         loading,
         error,

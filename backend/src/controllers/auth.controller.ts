@@ -34,13 +34,25 @@ import logger from '../config/logger';
  */
 const getCookieOptions = (): CookieOptions => {
   const isProduction = config.nodeEnv === 'production';
+  const frontendUrl = config.frontendUrl || '';
+  const isLocalhost = frontendUrl.includes('localhost') || frontendUrl.includes('127.0.0.1');
 
-  console.log('[COOKIE_CONFIG] Environment:', config.nodeEnv, 'isProduction:', isProduction);
+  // Use secure cookies only if in production AND not localhost
+  // This allows testing production mode locally without HTTPS
+  const useSecureCookies = isProduction && !isLocalhost;
+
+  console.log('[COOKIE_CONFIG] Environment:', config.nodeEnv, {
+    isProduction,
+    frontendUrl,
+    isLocalhost,
+    secure: useSecureCookies,
+    sameSite: useSecureCookies ? 'none' : 'lax'
+  });
 
   return {
     httpOnly: true,  // Prevents JavaScript access (XSS protection)
-    secure: isProduction,  // true in production (HTTPS), false in development (HTTP)
-    sameSite: isProduction ? 'none' : 'lax',  // 'lax' for localhost development, 'none' for cross-domain production
+    secure: useSecureCookies,  // true only for production with HTTPS (not localhost)
+    sameSite: useSecureCookies ? 'none' : 'lax',  // 'lax' for localhost, 'none' for cross-domain HTTPS
     domain: undefined,  // Don't set domain - let browser handle it for localhost
     path: '/',
     maxAge: 7 * 24 * 60 * 60 * 1000  // 7 days in milliseconds
@@ -49,11 +61,16 @@ const getCookieOptions = (): CookieOptions => {
 
 const getRefreshCookieOptions = (): CookieOptions => {
   const isProduction = config.nodeEnv === 'production';
+  const frontendUrl = config.frontendUrl || '';
+  const isLocalhost = frontendUrl.includes('localhost') || frontendUrl.includes('127.0.0.1');
+
+  // Use secure cookies only if in production AND not localhost
+  const useSecureCookies = isProduction && !isLocalhost;
 
   return {
     httpOnly: true,
-    secure: isProduction,  // true in production (HTTPS), false in development (HTTP)
-    sameSite: isProduction ? 'none' : 'lax',  // 'lax' for localhost development, 'none' for cross-domain production
+    secure: useSecureCookies,  // true only for production with HTTPS (not localhost)
+    sameSite: useSecureCookies ? 'none' : 'lax',  // 'lax' for localhost, 'none' for cross-domain HTTPS
     domain: undefined,  // Don't set domain - let browser handle it for localhost
     path: '/',
     maxAge: 30 * 24 * 60 * 60 * 1000  // 30 days in milliseconds
@@ -64,6 +81,17 @@ const getRefreshCookieOptions = (): CookieOptions => {
  * Set auth cookies on response
  */
 const setAuthCookies = (res: Response, accessToken: string, refreshToken: string): void => {
+  // Validate tokens before setting cookies
+  if (!accessToken || accessToken.trim() === '') {
+    logger.error('[SET_COOKIES] Attempted to set empty accessToken');
+    throw new AppError('Invalid access token generated', 500);
+  }
+
+  if (!refreshToken || refreshToken.trim() === '') {
+    logger.error('[SET_COOKIES] Attempted to set empty refreshToken');
+    throw new AppError('Invalid refresh token generated', 500);
+  }
+
   const cookieOptions = getCookieOptions();
   const refreshOptions = getRefreshCookieOptions();
 
@@ -81,11 +109,31 @@ const setAuthCookies = (res: Response, accessToken: string, refreshToken: string
 };
 
 /**
+ * Get cookie options for clearing (without maxAge to avoid Express deprecation warning)
+ */
+const getClearCookieOptions = (): CookieOptions => {
+  const isProduction = config.nodeEnv === 'production';
+  const frontendUrl = config.frontendUrl || '';
+  const isLocalhost = frontendUrl.includes('localhost') || frontendUrl.includes('127.0.0.1');
+  const useSecureCookies = isProduction && !isLocalhost;
+
+  return {
+    httpOnly: true,
+    secure: useSecureCookies,
+    sameSite: useSecureCookies ? 'none' : 'lax',
+    domain: undefined,
+    path: '/'
+    // maxAge intentionally omitted - Express 5.x will set expiry automatically
+  };
+};
+
+/**
  * Clear auth cookies on response
  */
 const clearAuthCookies = (res: Response): void => {
-  res.clearCookie('accessToken', getCookieOptions());
-  res.clearCookie('refreshToken', getRefreshCookieOptions());
+  const clearOptions = getClearCookieOptions();
+  res.clearCookie('accessToken', clearOptions);
+  res.clearCookie('refreshToken', clearOptions);
 };
 
 /**

@@ -19,10 +19,7 @@ export interface EventCardProps {
   } | string;
   category?: string;
   categories?: string[];
-  ageRange?: {
-    min: number;
-    max: number;
-  };
+  ageRange?: [number, number];
   ageGroup?: string;
   dateSchedule?: Array<{
     startDate: string;
@@ -65,9 +62,10 @@ const getEventImage = (event: EventCardProps): string => {
 };
 
 const getAgeGroup = (event: EventCardProps): string => {
+  console.log("event",event);
   if (event.ageGroup) return event.ageGroup;
   if (event.ageRange) {
-    return `${event.ageRange.min}-${event.ageRange.max} years`;
+    return `${event.ageRange[0]}-${event.ageRange[1]} years`;
   }
   return '';
 };
@@ -161,15 +159,15 @@ const EventCard: React.FC<EventCardProps> = ({
       </div>
       
       <div className="p-5">
-        <h3 className="text-lg font-semibold mb-2 line-clamp-2 min-h-[3.5rem] group-hover:text-blue-600 transition-colors">
+        <h3 className="text-lg font-semibold mb-2 line-clamp-2 min-h-[3.5rem] text-gray-900 group-hover:text-blue-600 transition-colors">
           {event.title}
         </h3>
         
-        {event.description && variant !== 'compact' && (
+        {/* {event.description && variant !== 'compact' && (
           <p className="text-sm text-gray-700 mb-3 line-clamp-2">
             {event.description}
           </p>
-        )}
+        )} */}
 
         <div className="space-y-2 mb-3">
           <div className="flex items-center text-gray-700 text-sm">

@@ -3,6 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import { FaSearch, FaChevronLeft, FaChevronRight, FaStar, FaMapMarkerAlt, FaRedo, FaWifi, FaCalendar } from 'react-icons/fa';
 import { PageTransition, FadeIn, SlideIn, ScaleIn, StaggerContainer, NumberCounter, ScrollReveal, HoverCard, AnimatedButton } from '@/components/animations';
 import { useDispatch, useSelector } from 'react-redux';
+import DOMPurify from 'isomorphic-dompurify';
 import { useKeenSlider } from 'keen-slider/react';
 import 'keen-slider/keen-slider.min.css';
 import EventGridSection from '@/components/client/EventGridSection';
@@ -14,6 +15,7 @@ import categoriesAPI from '../services/api/categoriesAPI';
 import ReviewCarouselSwiper from '@/components/client/ReviewCarouselKeen';
 import FeaturedBlogsSection from '@/components/sections/FeaturedBlogsSection';
 import { HomeSEO } from '@/components/common/SEO';
+import { selectSocialSettings } from '@/store/slices/settingsSlice';
 import { Event } from '../types/event';
 import { Review } from '../types/review';
 import { getPlaceholderUrl, handleImageError } from '../utils/placeholderImage';
@@ -323,7 +325,7 @@ const FeaturedEventsCarousel: React.FC<{ featuredEvents: FeaturedEvent[] }> = ({
             </div>
           </SlideIn>
           <FadeIn delay={0.1}>
-            <h2 className="text-3xl font-bold mb-2">✨ Featured Events</h2>
+            <h2 className="text-3xl font-bold mb-2 text-gray-900">✨ Featured Events</h2>
           </FadeIn>
           <FadeIn delay={0.2}>
             <p className="text-gray-700">Discover our most popular activities for kids</p>
@@ -362,11 +364,16 @@ const FeaturedEventsCarousel: React.FC<{ featuredEvents: FeaturedEvent[] }> = ({
                 <FadeIn delay={0.1}>
                   <h3 className="text-xl font-semibold mb-4 line-clamp-2 text-gray-900">{event.title}</h3>
                 </FadeIn>
-                {event.description && (
-                  <FadeIn delay={0.15}>
-                    <p className="text-gray-700 text-sm mb-4 line-clamp-2">{event.description}</p>
-                  </FadeIn>
-                )}
+                {event.description && ( <div
+                  className="text-gray-700 text-sm mb-4 line-clamp-2"
+                  dangerouslySetInnerHTML={{
+                    __html: DOMPurify.sanitize(event.description, {
+                      ADD_ATTR: ['style', 'class'],
+                      ADD_TAGS: ['iframe'],
+                      ALLOWED_ATTR: ['style', 'class', 'href', 'src', 'alt', 'title', 'target', 'rel', 'width', 'height', 'id']
+                    })
+                  }}
+                />)}
                 <div className="flex flex-col gap-3 mb-4">
                   {event.price && (
                     <FadeIn delay={0.2}>
@@ -395,14 +402,14 @@ const FeaturedEventsCarousel: React.FC<{ featuredEvents: FeaturedEvent[] }> = ({
                   )}
                 </div>
                 <div className="flex justify-between items-center">
-                  <FadeIn delay={0.25}>
+                  {event.reviewCount>0 && (<FadeIn delay={0.25}>
                     <div className="flex items-center gap-2">
                       <div className="w-8 h-8 rounded-full flex items-center justify-center" style={{ backgroundColor: 'rgba(0, 142, 199, 0.1)' }}>
                         <FaStar size={14} className="text-gray-900" />
                       </div>
-                      <span className="text-sm font-medium">4.8 (120 reviews)</span>
+                      <span className="text-sm font-medium">{event.reviewCount}</span>
                     </div>
-                  </FadeIn>
+                  </FadeIn>)}
                   <AnimatedButton
                     style={{
                       backgroundColor: 'var(--accent-color, #FF6B00)',
@@ -539,6 +546,7 @@ const StatsSection = ({ stats }: { stats: any }) => {
 
 const HomePage: React.FC = () => {
   const navigate = useNavigate();
+  const socialSettings = useSelector(selectSocialSettings);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [events, setEvents] = useState(mockEvents);
@@ -564,11 +572,13 @@ const HomePage: React.FC = () => {
       
       // Extract data using utility functions for consistency
       const events = eventsData || [];
+      // console.log('event data', eventsData);
       const featuredEventsRaw = featuredEventsData?.events || [];
+      console.log("featuredEventsData",featuredEventsData);
       const categories = Array.isArray(categoriesData) ? categoriesData : [];
 
       // Debug logging (only in development)
-      if (import.meta.env.DEV && import.meta.env.VITE_DEBUG_API === 'true') {
+      if (import.meta.env.VITE_DEV && import.meta.env.VITE_DEBUG_API === 'true') {
         console.log('HomePage Debug - Processed Data:');
         console.log('events length:', events.length);
         console.log('featuredEvents length:', featuredEventsRaw.length);
@@ -723,7 +733,7 @@ const HomePage: React.FC = () => {
   
   return (
     <PageTransition>
-      <HomeSEO />
+      <HomeSEO socialSettings={socialSettings} />
       <div className="w-full bg-gray-50">
         {usingMockData && (
           <SlideIn direction="right">

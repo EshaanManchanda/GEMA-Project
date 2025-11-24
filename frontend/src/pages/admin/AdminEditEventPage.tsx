@@ -2,6 +2,7 @@ import React, { useState, useEffect, useCallback } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import eventsAPI from '../../services/api/eventsAPI';
 import adminAPI from '../../services/api/adminAPI';
+import categoriesAPI from '../../services/api/categoriesAPI';
 import FormBuilder from '@/components/registration/FormBuilder';
 import BasicInfoTab from '../../components/admin/BasicInfoTab';
 import SchedulePricingTab from '../../components/admin/SchedulePricingTab';
@@ -39,7 +40,7 @@ interface EventFormData {
   title: string;
   description: string;
   category: string;
-  type: 'Olympiad' | 'Championship' | 'Competition' | 'Event' | 'Course' | 'Venue';
+  type: 'Olympiad' | 'Championship' | 'Competition' | 'Event' | 'Course' | 'Venue' | 'Workshop';
   venueType: 'Indoor' | 'Outdoor' | 'Online' | 'Offline';
   ageRangeMin: string;
   ageRangeMax: string;
@@ -151,14 +152,12 @@ const AdminEditEventPage: React.FC = () => {
       setIsLoading(true);
 
       try {
-        // Fetch categories
-        const categoriesData = await eventsAPI.getEventCategories();
-        const categoriesArray = Array.isArray(categoriesData)
-          ? categoriesData
-          : (categoriesData?.categories || []);
+        // Fetch categories from Category model (not from events)
+        const categoriesData = await categoriesAPI.getAllCategories({ tree: false });
+        const categoriesArray = Array.isArray(categoriesData) ? categoriesData : [];
         const transformedCategories: Category[] = categoriesArray.map((cat: any) => ({
-          id: cat._id || cat.id || cat,
-          name: cat.name || cat
+          id: cat._id || cat.id,
+          name: cat.name
         }));
         setCategories(transformedCategories);
 
@@ -793,7 +792,7 @@ const AdminEditEventPage: React.FC = () => {
           )}
 
           {/* Tab Content */}
-          <div className="p-6">
+          <div className="p-6 text-gray-900">
             {activeTab === 'basic' && (
               <BasicInfoTab
                 formData={formData}

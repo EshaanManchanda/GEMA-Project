@@ -103,13 +103,13 @@ const registrationSchema = new Schema<IRegistration>(
       type: Schema.Types.ObjectId,
       ref: 'Event',
       required: [true, 'Event ID is required'],
-      index: true,
+      // index removed - compound indexes below provide better performance
     },
     userId: {
       type: Schema.Types.ObjectId,
       ref: 'User',
       required: [true, 'User ID is required'],
-      index: true,
+      // index removed - compound indexes below provide better performance
     },
     registrationData: [
       {

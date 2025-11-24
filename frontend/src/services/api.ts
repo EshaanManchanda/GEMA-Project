@@ -7,13 +7,13 @@ const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || import.meta.env.VITE_A
 const API_TIMEOUT = Number(import.meta.env.VITE_API_TIMEOUT) || 60000; // 60 seconds - increased to handle Render.com cold starts
 
 // Debug logging (development only)
-if (import.meta.env.MODE === 'development' && typeof window !== 'undefined') {
+if (import.meta.env.VITE_MODE === 'development' && typeof window !== 'undefined') {
   console.log('🔧 API Configuration Debug:');
   console.log('- VITE_API_BASE_URL:', import.meta.env.VITE_API_BASE_URL);
   console.log('- VITE_API_URL:', import.meta.env.VITE_API_URL);
   console.log('- Final API_BASE_URL:', API_BASE_URL);
-  console.log('- Environment Mode:', import.meta.env.MODE);
-  console.log('- Is Dev:', import.meta.env.DEV);
+  console.log('- Environment Mode:', import.meta.env.VITE_MODE);
+  console.log('- Is Dev:', import.meta.env.VITE_DEV);
   console.log('- Build Time:', __BUILD_TIME__);
   console.log('- Cache Bust ID:', __CACHE_BUST__);
   console.log('- Window Origin:', window.location.origin);
@@ -47,7 +47,7 @@ const api: AxiosInstance = axios.create({
 api.interceptors.request.use(
   (config) => {
     // Log request for debugging
-    if (import.meta.env.MODE === 'development') {
+    if (import.meta.env.VITE_MODE === 'development') {
       console.log('[API Interceptor] Request:', {
         method: config.method?.toUpperCase(),
         url: config.url,
@@ -92,7 +92,8 @@ api.interceptors.response.use(
       if (
         originalRequest.url?.includes('/auth/login') ||
         originalRequest.url?.includes('/auth/register') ||
-        originalRequest.url?.includes('/auth/refresh-token')
+        originalRequest.url?.includes('/auth/refresh-token') ||
+        originalRequest.url?.includes('/auth/current') // Skip for getCurrentUser to avoid "No refresh token" error after logout
       ) {
         return Promise.reject(error);
       }

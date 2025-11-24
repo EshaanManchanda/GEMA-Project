@@ -403,7 +403,7 @@ const AdminCommissionsPage: React.FC = () => {
                   <select
                     value={filters.status}
                     onChange={(e) => setFilters({ ...filters, status: e.target.value })}
-                    className="w-full border border-gray-300 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                    className="w-full border border-gray-300 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white text-gray-900"
                   >
                     <option value="all">All Statuses</option>
                     <option value="calculated">Calculated</option>
@@ -420,7 +420,7 @@ const AdminCommissionsPage: React.FC = () => {
                     value={filters.vendor}
                     onChange={(e) => setFilters({ ...filters, vendor: e.target.value })}
                     placeholder="Search vendor..."
-                    className="w-full border border-gray-300 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                    className="w-full border border-gray-300 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white text-gray-900"
                   />
                 </div>
 
@@ -429,7 +429,7 @@ const AdminCommissionsPage: React.FC = () => {
                   <select
                     value={filters.dateRange}
                     onChange={(e) => setFilters({ ...filters, dateRange: e.target.value })}
-                    className="w-full border border-gray-300 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                    className="w-full border border-gray-300 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white text-gray-900"
                   >
                     <option value="all">All Time</option>
                     <option value="today">Today</option>
@@ -445,7 +445,7 @@ const AdminCommissionsPage: React.FC = () => {
                     value={filters.minAmount}
                     onChange={(e) => setFilters({ ...filters, minAmount: e.target.value })}
                     placeholder="0"
-                    className="w-full border border-gray-300 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                    className="w-full border border-gray-300 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white text-gray-900"
                   />
                 </div>
 
@@ -456,7 +456,7 @@ const AdminCommissionsPage: React.FC = () => {
                     value={filters.maxAmount}
                     onChange={(e) => setFilters({ ...filters, maxAmount: e.target.value })}
                     placeholder="∞"
-                    className="w-full border border-gray-300 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                    className="w-full border border-gray-300 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white text-gray-900"
                   />
                 </div>
               </div>

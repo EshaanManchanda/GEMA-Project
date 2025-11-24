@@ -6,6 +6,7 @@ import { SearchEvent, SearchFilters, CategoryOption, FilterOptions } from '../ty
 import { ApiService } from '../services/api';
 import debounce from 'lodash/debounce'; // Import only debounce (not entire lodash library)
 import SEO from '@/components/common/SEO';
+import DOMPurify from 'isomorphic-dompurify';
 
 // FilterContent Component
 interface FilterContentProps {
@@ -177,7 +178,7 @@ const FilterContent: React.FC<FilterContentProps> = ({
         <select
           value={filters.currency || ''}
           onChange={(e) => setFilters({ ...filters, currency: e.target.value, page: 1 })}
-          className="w-full px-3 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-primary"
+          className="w-full px-3 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-primary bg-white text-gray-900"
           disabled={loading}
         >
           <option value="">All Currencies</option>
@@ -244,7 +245,7 @@ const FilterContent: React.FC<FilterContentProps> = ({
               type="date"
               value={filters.dateFrom || ''}
               onChange={(e) => setFilters({ ...filters, dateFrom: e.target.value, page: 1 })}
-              className="w-full px-3 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-primary"
+              className="w-full px-3 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-primary bg-white text-gray-900"
               disabled={loading}
             />
           </div>
@@ -254,7 +255,7 @@ const FilterContent: React.FC<FilterContentProps> = ({
               type="date"
               value={filters.dateTo || ''}
               onChange={(e) => setFilters({ ...filters, dateTo: e.target.value, page: 1 })}
-              className="w-full px-3 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-primary"
+              className="w-full px-3 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-primary bg-white text-gray-900"
               disabled={loading}
             />
           </div>
@@ -288,7 +289,7 @@ const FilterContent: React.FC<FilterContentProps> = ({
             const [sortBy, sortOrder] = e.target.value.split('-');
             setFilters({ ...filters, sortBy, sortOrder: sortOrder as 'asc' | 'desc', page: 1 });
           }}
-          className="w-full px-4 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-primary"
+          className="w-full px-4 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-primary bg-white text-gray-900"
           disabled={loading}
         >
           <option value="createdAt-desc">Newest First</option>
@@ -628,7 +629,7 @@ const SearchPage: React.FC = () => {
                 value={searchInput}
                 onChange={(e) => setSearchInput(e.target.value)}
                 placeholder="Search for events, workshops, conferences..."
-                className="w-full pl-10 pr-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent"
+                className="w-full pl-10 pr-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent bg-white text-gray-900"
               />
             </div>
             <button 
@@ -679,7 +680,7 @@ const SearchPage: React.FC = () => {
                 const [sortBy, sortOrder] = e.target.value.split('-');
                 setFilters(prev => ({ ...prev, sortBy, sortOrder: sortOrder as 'asc' | 'desc', page: 1 }));
               }}
-              className="border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary"
+              className="border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary bg-white text-gray-900"
               disabled={loading}
             >
               <option value="createdAt-desc">Newest First</option>
@@ -737,7 +738,7 @@ const SearchPage: React.FC = () => {
 
         {/* Desktop Filters Sidebar */}
         <div className="hidden lg:block lg:col-span-1">
-          <div className="bg-white p-6 rounded-lg shadow-sm sticky top-24">
+          <div className="bg-white p-6 rounded-lg shadow-sm sticky top-24 text-gray-900">
             <div className="flex justify-between items-center mb-6">
               <h2 className="text-xl font-bold">Filters</h2>
               <button
@@ -837,10 +838,19 @@ const SearchPage: React.FC = () => {
                           </div>
                         </div>
                         <div className="p-4">
-                          <h3 className="font-bold text-lg mb-2 line-clamp-2 group-hover:text-primary transition-colors">
+                          <h3 className="font-bold text-lg mb-2 line-clamp-2 group-hover:text-primary transition-colors text-primary">
                             {event.title}
                           </h3>
-                          <p className="text-gray-600 mb-3 text-sm line-clamp-2">{event.description}</p>
+                          {/* <div
+                            className="text-gray-600 mb-3 text-sm line-clamp-2"
+                            dangerouslySetInnerHTML={{
+                              __html: DOMPurify.sanitize(event.description || '', {
+                                ADD_ATTR: ['style', 'class'],
+                                ADD_TAGS: ['iframe'],
+                                ALLOWED_ATTR: ['style', 'class', 'href', 'src', 'alt', 'title', 'target', 'rel', 'width', 'height', 'id', 'frameborder', 'allow', 'allowfullscreen']
+                              })
+                            }}
+                          /> */}
                           
                           {nextDate && (
                             <div className="flex items-center text-gray-500 text-sm mb-2">

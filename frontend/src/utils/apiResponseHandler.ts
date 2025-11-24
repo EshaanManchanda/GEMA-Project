@@ -124,7 +124,7 @@ export const extractBookingData = (response: any): any => {
  * Logs API response for debugging (only in development with debug flag)
  */
 export const logApiResponse = (endpoint: string, response: any, error?: any): void => {
-  if (import.meta.env.DEV && import.meta.env.VITE_DEBUG_API === 'true') {
+  if (import.meta.env.VITE_DEV && import.meta.env.VITE_DEBUG_API === 'true') {
     if (error) {
       console.error(`[API Error] ${endpoint}:`, error);
     } else {

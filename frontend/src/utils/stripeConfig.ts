@@ -285,7 +285,7 @@ export const shouldRecommendTestPayment = (): boolean => {
 };
 
 // Initialize configuration logging in development
-if (import.meta.env.MODE === 'development') {
+if (import.meta.env.VITE_MODE === 'development') {
   logStripeConfiguration();
 }
 

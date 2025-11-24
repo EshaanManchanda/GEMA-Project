@@ -126,6 +126,64 @@ module.exports = {
     // PM2 will automatically load .env file if present
     // Or specify path:
     // env_file: '.env',
+  },
+  {
+    // Worker Process for Background Jobs
+    name: 'gema-worker',
+
+    // Script to run
+    script: './dist/workers/index.js',
+
+    // Single instance for worker
+    instances: 1,
+    exec_mode: 'fork',
+
+    // Current working directory
+    cwd: '/var/www/gema/backend',
+
+    // Environment Variables - Production
+    env_production: {
+      NODE_ENV: 'production',
+      // Worker will use same .env file as API server
+    },
+
+    // Environment Variables - Development
+    env_development: {
+      NODE_ENV: 'development',
+    },
+
+    // Auto-restart configuration
+    autorestart: true,
+    watch: false,
+    max_restarts: 10,
+    min_uptime: '10s',
+
+    // Memory Management (Conservative for worker process)
+    max_memory_restart: '400M', // Worker gets 400MB (less than API server)
+
+    // Logging Configuration (separate logs for worker)
+    error_file: './logs/worker-error.log',
+    out_file: './logs/worker-output.log',
+    log_file: './logs/worker-combined.log',
+    log_date_format: 'YYYY-MM-DD HH:mm:ss Z',
+    merge_logs: true,
+
+    // Process Management
+    kill_timeout: 5000,
+    listen_timeout: 3000,
+    shutdown_with_message: true,
+
+    // Source Map Support
+    source_map_support: true,
+
+    // Exponential backoff restart delay
+    exp_backoff_restart_delay: 100,
+
+    // Force restart if app crashes this many times in 1 minute
+    max_restarts_within_min: 5,
+
+    // Instance variables
+    instance_var: 'INSTANCE_ID',
   }],
 
   // Deployment Configuration (Optional - for PM2 Deploy)
@@ -164,26 +222,36 @@ module.exports = {
 /**
  * PM2 Commands Cheat Sheet:
  *
- * # Start application
+ * # Start all applications (API + Worker)
  * pm2 start ecosystem.config.js --env production
  *
  * # Reload (zero-downtime restart)
- * pm2 reload gema-backend
+ * pm2 reload gema-backend        # API server only
+ * pm2 reload gema-worker          # Worker only
+ * pm2 reload all                  # Both processes
  *
  * # Restart (with downtime)
  * pm2 restart gema-backend
+ * pm2 restart gema-worker
+ * pm2 restart all
  *
  * # Stop
  * pm2 stop gema-backend
+ * pm2 stop gema-worker
+ * pm2 stop all
  *
  * # Delete from PM2
  * pm2 delete gema-backend
+ * pm2 delete gema-worker
+ * pm2 delete all
  *
  * # View logs
- * pm2 logs gema-backend
- * pm2 logs gema-backend --lines 100
- * pm2 logs gema-backend --err
- * pm2 logs gema-backend --out
+ * pm2 logs gema-backend           # API server logs
+ * pm2 logs gema-worker            # Worker logs (email/QR jobs)
+ * pm2 logs                        # All logs (combined)
+ * pm2 logs gema-worker --lines 100
+ * pm2 logs gema-worker --err
+ * pm2 logs gema-worker --out
  *
  * # Monitor
  * pm2 monit
@@ -191,6 +259,7 @@ module.exports = {
  * # Status
  * pm2 status
  * pm2 info gema-backend
+ * pm2 info gema-worker
  *
  * # Save current process list
  * pm2 save

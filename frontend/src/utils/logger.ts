@@ -10,7 +10,7 @@ interface LogEntry {
 }
 
 class Logger {
-  private isDevelopment = import.meta.env.MODE === 'development';
+  private isDevelopment = import.meta.env.VITE_MODE === 'development';
   private logs: LogEntry[] = [];
   private maxLogs = 100;
 

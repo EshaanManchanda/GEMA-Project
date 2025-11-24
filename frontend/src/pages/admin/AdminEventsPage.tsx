@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { FaSearch, FaEdit, FaTrash, FaEye, FaCheck, FaTimes, FaStar, FaUndo, FaPlus, FaWpforms } from 'react-icons/fa';
 import { useNavigate } from 'react-router-dom';
+import DOMPurify from 'isomorphic-dompurify';
 import adminAPI from '../../services/api/adminAPI';
 import EventEditModal from '../../components/admin/EventEditModal';
 import categoriesAPI, { Category } from '../../services/api/categoriesAPI';
@@ -10,7 +11,7 @@ interface Event {
   title: string;
   description: string;
   category: string;
-  type: 'Olympiad' | 'Championship' | 'Competition' | 'Event' | 'Course' | 'Venue';
+  type: 'Olympiad' | 'Championship' | 'Competition' | 'Event' | 'Course' | 'Venue' | 'Workshop';
   venueType: 'Indoor' | 'Outdoor' | 'Online' | 'Offline';
   ageRange: [number, number];
   location: {
@@ -336,7 +337,7 @@ const AdminEventsPage: React.FC = () => {
                     placeholder="Search events..."
                     value={searchTerm}
                     onChange={(e) => setSearchTerm(e.target.value)}
-                    className="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                    className="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 bg-white text-gray-900"
                   />
                 </div>
               </div>
@@ -346,7 +347,7 @@ const AdminEventsPage: React.FC = () => {
                 <select
                   value={statusFilter}
                   onChange={(e) => setStatusFilter(e.target.value)}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 bg-white text-gray-900"
                 >
                   <option value="all">All Status</option>
                   <option value="approved">Approved</option>
@@ -360,7 +361,7 @@ const AdminEventsPage: React.FC = () => {
                 <select
                   value={typeFilter}
                   onChange={(e) => setTypeFilter(e.target.value)}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 bg-white text-gray-900"
                 >
                   <option value="all">All Types</option>
                   <option value="Olympiad">Olympiad</option>
@@ -377,7 +378,7 @@ const AdminEventsPage: React.FC = () => {
                 <select
                   value={featuredFilter}
                   onChange={(e) => setFeaturedFilter(e.target.value)}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 bg-white text-gray-900"
                 >
                   <option value="all">All Events</option>
                   <option value="featured">Featured Only</option>
@@ -392,7 +393,7 @@ const AdminEventsPage: React.FC = () => {
               <select
                 value={categoryFilter}
                 onChange={(e) => setCategoryFilter(e.target.value)}
-                className="w-full md:w-1/3 px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                className="w-full md:w-1/3 px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 bg-white text-gray-900"
               >
                 <option value="all">All Categories</option>
                 {categories.map((cat) => (
@@ -415,7 +416,7 @@ const AdminEventsPage: React.FC = () => {
                   <select
                     value={bulkAction}
                     onChange={(e) => setBulkAction(e.target.value)}
-                    className="px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                    className="px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 bg-white text-gray-900"
                   >
                     <option value="">Select action...</option>
                     <option value="approve">Approve</option>
@@ -682,7 +683,7 @@ const AdminEventsPage: React.FC = () => {
                     <textarea
                       value={rejectionReason}
                       onChange={(e) => setRejectionReason(e.target.value)}
-                      className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
+                      className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 bg-white text-gray-900"
                       rows={3}
                       placeholder="Please provide a reason for rejection..."
                     />
@@ -813,7 +814,16 @@ const AdminEventsPage: React.FC = () => {
 
                   <div className="mb-4">
                     <p className="text-sm font-medium text-gray-700 mb-2">Description</p>
-                    <p className="text-gray-900 text-sm">{selectedEvent.description}</p>
+                    <div
+                      className="text-gray-900 text-sm prose max-w-none"
+                      dangerouslySetInnerHTML={{
+                        __html: DOMPurify.sanitize(selectedEvent.description || '', {
+                          ADD_ATTR: ['style', 'class'],
+                          ADD_TAGS: ['iframe'],
+                          ALLOWED_ATTR: ['style', 'class', 'href', 'src', 'alt', 'title', 'target', 'rel', 'width', 'height', 'id', 'frameborder', 'allow', 'allowfullscreen']
+                        })
+                      }}
+                    />
                   </div>
 
                   {/* Tags */}

@@ -115,7 +115,20 @@ export interface IVenue extends Document {
   
   // Approval
   isApproved: boolean;
-  
+
+  // Affiliate Venue fields
+  isAffiliateVenue: boolean;
+  externalBookingLink?: string;
+  affiliateClickTracking: {
+    totalClicks: number;
+    uniqueClicks: number;
+    lastClickedAt?: Date;
+  };
+  claimStatus: 'unclaimed' | 'claimed' | 'not_claimable';
+  claimedBy?: Types.ObjectId;
+  claimedAt?: Date;
+  originalAffiliateVendorId?: Types.ObjectId;
+
   createdAt: Date;
   updatedAt: Date;
   
@@ -383,6 +396,52 @@ const VenueSchema = new Schema<IVenue>({
     type: Boolean,
     default: false,
   },
+
+  // Affiliate Venue fields
+  isAffiliateVenue: {
+    type: Boolean,
+    default: false,
+  },
+  externalBookingLink: {
+    type: String,
+    trim: true,
+    validate: {
+      validator: function(this: IVenue, v: string) {
+        // If not an affiliate venue, external booking link is not required
+        if (!this.isAffiliateVenue) return true;
+        // If it's an affiliate venue, validate the URL format
+        return v && /^https?:\/\/.+/.test(v);
+      },
+      message: 'External booking link is required for affiliate venues and must be a valid URL'
+    }
+  },
+  affiliateClickTracking: {
+    totalClicks: {
+      type: Number,
+      default: 0,
+      min: 0,
+    },
+    uniqueClicks: {
+      type: Number,
+      default: 0,
+      min: 0,
+    },
+    lastClickedAt: Date,
+  },
+  claimStatus: {
+    type: String,
+    enum: ['unclaimed', 'claimed', 'not_claimable'],
+    default: 'not_claimable',
+  },
+  claimedBy: {
+    type: Schema.Types.ObjectId,
+    ref: 'User',
+  },
+  claimedAt: Date,
+  originalAffiliateVendorId: {
+    type: Schema.Types.ObjectId,
+    ref: 'User',
+  },
 }, {
   timestamps: true,
   toJSON: { virtuals: true },
@@ -399,6 +458,8 @@ VenueSchema.index({ 'address.country': 1 });
 VenueSchema.index({ capacity: 1 });
 VenueSchema.index({ averageRating: -1 });
 VenueSchema.index({ totalEvents: -1 });
+VenueSchema.index({ isAffiliateVenue: 1 });
+VenueSchema.index({ claimStatus: 1 });
 
 // Compound indexes
 VenueSchema.index({ 'address.city': 1, venueType: 1, status: 1 });

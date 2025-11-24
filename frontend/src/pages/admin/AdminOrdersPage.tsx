@@ -278,7 +278,7 @@ const AdminOrdersPage: React.FC = () => {
                   setSearchTerm(e.target.value);
                   setCurrentPage(1);
                 }}
-                className="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary focus:border-transparent"
+                className="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary focus:border-transparent bg-white text-gray-900"
               />
             </div>
 
@@ -289,7 +289,7 @@ const AdminOrdersPage: React.FC = () => {
                 setStatusFilter(e.target.value);
                 setCurrentPage(1);
               }}
-              className="px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary focus:border-transparent"
+              className="px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary focus:border-transparent bg-white text-gray-900"
             >
               <option value="all">All Statuses</option>
               <option value="pending">Pending</option>
@@ -305,7 +305,7 @@ const AdminOrdersPage: React.FC = () => {
                 setPaymentStatusFilter(e.target.value);
                 setCurrentPage(1);
               }}
-              className="px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary focus:border-transparent"
+              className="px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary focus:border-transparent bg-white text-gray-900"
             >
               <option value="all">All Payment Statuses</option>
               <option value="pending">Payment Pending</option>
@@ -321,7 +321,7 @@ const AdminOrdersPage: React.FC = () => {
                 setLimit(Number(e.target.value));
                 setCurrentPage(1);
               }}
-              className="px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary focus:border-transparent"
+              className="px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary focus:border-transparent bg-white text-gray-900"
             >
               <option value="10">10 per page</option>
               <option value="20">20 per page</option>
@@ -616,7 +616,7 @@ const AdminOrdersPage: React.FC = () => {
                     value={refundAmount}
                     onChange={(e) => setRefundAmount(e.target.value)}
                     placeholder="Leave empty for full refund"
-                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary focus:border-transparent"
+                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary focus:border-transparent bg-white text-gray-900"
                   />
                 </div>
                 <div>
@@ -628,7 +628,7 @@ const AdminOrdersPage: React.FC = () => {
                     onChange={(e) => setRefundReason(e.target.value)}
                     placeholder="Enter reason for refund..."
                     rows={3}
-                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary focus:border-transparent"
+                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary focus:border-transparent bg-white text-gray-900"
                   />
                 </div>
               </div>
