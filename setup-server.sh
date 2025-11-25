@@ -1,11 +1,11 @@
 #!/bin/bash
 
 ###############################################################################
-# GEMA Server Setup Script
+# kidrove Server Setup Script
 # Initial server configuration for Hostinger KVM1 VPS
 #
 # Usage:
-#   wget https://raw.githubusercontent.com/YourRepo/GEMA/main/setup-server.sh
+#   wget https://raw.githubusercontent.com/YourRepo/kidrove/main/setup-server.sh
 #   chmod +x setup-server.sh
 #   sudo ./setup-server.sh
 #
@@ -32,10 +32,10 @@ BLUE='\033[0;34m'
 NC='\033[0m' # No Color
 
 # Configuration (UPDATE THESE)
-GIT_REPO="https://github.com/EshaanManchanda/GEMA-Project.git"
+GIT_REPO="https://github.com/EshaanManchanda/kidrove-Project.git"
 GIT_BRANCH="backend_auth"  # or "main" depending on your branch
-DOMAIN_NAME=""  # Leave empty if not ready
-PROJECT_ROOT="/var/www/gema"
+DOMAIN_NAME="kidrove.com"  # Leave empty if not ready
+PROJECT_ROOT="/var/www/kidrove"
 
 ###############################################################################
 # Helper Functions
@@ -216,7 +216,7 @@ success "Project directory created: $PROJECT_ROOT"
 # Clone Repository
 ###############################################################################
 
-log "Cloning GEMA repository..."
+log "Cloning kidrove repository..."
 
 if [ -d "$PROJECT_ROOT/.git" ]; then
     warning "Repository already exists, pulling latest changes..."
@@ -243,7 +243,7 @@ mkdir -p logs
 if [ ! -f .env ]; then
     cp .env.example .env
     warning "Created .env file from .env.example"
-    warning "IMPORTANT: Edit /var/www/gema/backend/.env with your production values"
+    warning "IMPORTANT: Edit /var/www/kidrove/backend/.env with your production values"
 else
     warning ".env file already exists, skipping..."
 fi
@@ -272,7 +272,7 @@ if [ ! -f .env.production ]; then
         cp .env.production .env.production
     else
         warning "No .env.production template found"
-        warning "IMPORTANT: Create /var/www/gema/frontend/.env.production"
+        warning "IMPORTANT: Create /var/www/kidrove/frontend/.env.production"
     fi
 fi
 
@@ -292,21 +292,21 @@ success "Frontend setup complete"
 
 log "Setting up NGINX configuration..."
 
-if [ -f "$PROJECT_ROOT/deployment/nginx/gema.conf" ]; then
+if [ -f "$PROJECT_ROOT/deployment/nginx/kidrove.conf" ]; then
     # Copy NGINX config
-    cp "$PROJECT_ROOT/deployment/nginx/gema.conf" /etc/nginx/sites-available/gema
+    cp "$PROJECT_ROOT/deployment/nginx/kidrove.conf" /etc/nginx/sites-available/kidrove
 
     # Update domain name if provided
     if [ -n "$DOMAIN_NAME" ]; then
-        sed -i "s/your-domain.com/$DOMAIN_NAME/g" /etc/nginx/sites-available/gema
+        sed -i "s/your-domain.com/$DOMAIN_NAME/g" /etc/nginx/sites-available/kidrove
         success "NGINX config updated with domain: $DOMAIN_NAME"
     else
         warning "Domain name not set - using default config"
-        warning "Edit /etc/nginx/sites-available/gema and replace 'your-domain.com'"
+        warning "Edit /etc/nginx/sites-available/kidrove and replace 'your-domain.com'"
     fi
 
     # Enable site
-    ln -sf /etc/nginx/sites-available/gema /etc/nginx/sites-enabled/
+    ln -sf /etc/nginx/sites-available/kidrove /etc/nginx/sites-enabled/
 
     # Remove default site
     rm -f /etc/nginx/sites-enabled/default
@@ -317,7 +317,7 @@ if [ -f "$PROJECT_ROOT/deployment/nginx/gema.conf" ]; then
         success "NGINX configured successfully"
     else
         error "NGINX configuration test failed"
-        error "Check /etc/nginx/sites-available/gema for errors"
+        error "Check /etc/nginx/sites-available/kidrove for errors"
     fi
 else
     warning "NGINX config template not found in repository"
@@ -364,7 +364,7 @@ else
     warning "Domain not configured - SSL not set up"
     warning "To setup SSL later:"
     warning "1. Point your domain to this server's IP"
-    warning "2. Update /etc/nginx/sites-available/gema with your domain"
+    warning "2. Update /etc/nginx/sites-available/kidrove with your domain"
     warning "3. Run: sudo certbot --nginx -d your-domain.com"
 fi
 
@@ -394,7 +394,7 @@ success "Automatic security updates enabled"
 
 log ""
 log "========================================="
-log "  GEMA Server Setup Complete!"
+log "  kidrove Server Setup Complete!"
 log "========================================="
 log ""
 
@@ -433,7 +433,7 @@ warning "   - Copy connection string to backend/.env"
 warning ""
 warning "4. If domain not configured:"
 warning "   - Point your domain DNS to: $SERVER_IP"
-warning "   - Update /etc/nginx/sites-available/gema"
+warning "   - Update /etc/nginx/sites-available/kidrove"
 warning "   - Run: sudo certbot --nginx -d your-domain.com"
 warning ""
 warning "5. After configuring .env files:"
@@ -446,9 +446,9 @@ success "========================================="
 success ""
 success "PM2 Commands:"
 success "  pm2 status                 - View running processes"
-success "  pm2 logs gema-backend      - View logs"
+success "  pm2 logs kidrove-backend      - View logs"
 success "  pm2 monit                  - Monitor resources"
-success "  pm2 restart gema-backend   - Restart backend"
+success "  pm2 restart kidrove-backend   - Restart backend"
 success ""
 success "Deployment:"
 success "  cd $PROJECT_ROOT"
@@ -462,7 +462,7 @@ success "  sudo systemctl status nginx - Check status"
 success ""
 success "Logs:"
 success "  tail -f $PROJECT_ROOT/backend/logs/combined.log"
-success "  tail -f /var/log/nginx/gema_error.log"
+success "  tail -f /var/log/nginx/kidrove_error.log"
 success ""
 success "========================================="
 success "Setup completed at: $(date +'%Y-%m-%d %H:%M:%S')"

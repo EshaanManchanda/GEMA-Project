@@ -84,11 +84,11 @@ Complete step-by-step guide for deploying the GEMA Event Management Platform to 
 
 ### 2. Domain & DNS
 
-- ✅ Domain name registered (e.g., `gema-events.com`)
+- ✅ Domain name registered (e.g., `kidrove.com`)
 - ✅ DNS A record pointing to server IP
-  - `gema-events.com` → `YOUR_SERVER_IP`
-  - `www.gema-events.com` → `YOUR_SERVER_IP`
-- ✅ DNS propagation completed (check with `nslookup your-domain.com`)
+  - `kidrove.com` → `YOUR_SERVER_IP`
+  - `www.kidrove.com` → `YOUR_SERVER_IP`
+- ✅ DNS propagation completed (check with `nslookup kidrove.com`)
 
 ### 3. External Services
 
@@ -159,7 +159,7 @@ Print this checklist and check off each item:
 - [ ] Domain DNS pointing to server IP
 
 ### Deployment Files
-- [ ] `deployment/nginx/gema.conf` reviewed
+- [ ] `deployment/nginx/kidrove.conf` reviewed
 - [ ] `backend/ecosystem.config.js` configured
 - [ ] `frontend/.env.production` template ready
 - [ ] `deploy.sh` script reviewed
@@ -176,7 +176,7 @@ Use the automated setup script for initial configuration:
 #### Step 1: SSH into Server
 
 ```bash
-ssh root@YOUR_SERVER_IP
+ssh root@93.127.185.245
 ```
 
 #### Step 2: Download and Run Setup Script
@@ -434,7 +434,7 @@ ls -la dist/
 ### Step 4: Create Logs Directory
 
 ```bash
-mkdir -p /var/www/gema/backend/logs
+mkdir -p /var/www/Gema-Project/backend/logs
 ```
 
 ### Step 5: Start with PM2
@@ -548,7 +548,7 @@ du -sh dist/
 
 ```bash
 # Copy NGINX configuration
-cp /var/www/gema/deployment/nginx/gema.conf /etc/nginx/sites-available/gema
+cp /var/www/GEMA-Project/deployment/nginx/gema.conf /etc/nginx/sites-available/gema
 
 # Update domain name in config
 nano /etc/nginx/sites-available/gema
