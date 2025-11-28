@@ -35,6 +35,13 @@ export interface Blog {
   excerpt: string;
   content: string;
   featuredImage: string;
+  featuredImageThumbnail?: string;  // For performance/preview
+  featuredImageVariations?: {  // For responsive images
+    thumbnail?: string;
+    small?: string;
+    medium?: string;
+    large?: string;
+  };
   category: string | BlogCategory;
   author: BlogAuthor;
   tags: string[];
@@ -187,6 +194,7 @@ export interface BlogCard {
   slug: string;
   excerpt: string;
   featuredImage: string;
+  featuredImageThumbnail?: string;  // For performance/preview
   category: BlogCategory;
   author: {
     name: string;
@@ -205,6 +213,7 @@ export interface BlogSearchResult {
   slug: string;
   excerpt: string;
   featuredImage: string;
+  featuredImageThumbnail?: string;  // For performance/preview
   category: BlogCategory;
   publishedAt: string;
   readTime: number;

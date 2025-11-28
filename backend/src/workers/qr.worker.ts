@@ -1,5 +1,5 @@
 import { Worker, Job } from 'bullmq';
-import { QUEUE_NAMES, redisConnection } from '../config/queue';
+import { QUEUE_NAMES, bullMQConnection } from '../config/queue';
 import logger from '../config/logger';
 import { generateQRCode, generateSecureQRData } from '../utils/qrcode';
 
@@ -54,7 +54,7 @@ const qrWorker = new Worker(
     }
   },
   {
-    connection: redisConnection,
+    connection: bullMQConnection, // Use shared connection
     concurrency: 2, // OPTIMIZED for KVM1 single core: reduced from 10 to 2
     limiter: {
       max: 50, // Reduced from 100 for single core

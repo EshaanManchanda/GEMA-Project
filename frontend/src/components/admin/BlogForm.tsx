@@ -21,10 +21,11 @@ import Button from '../ui/Button';
 import { Card, CardContent, CardHeader, CardTitle } from '../ui/Card';
 import Input from '../ui/Input';
 import Modal from '../ui/Modal';
-import ImageUpload from '../ui/ImageUpload';
+import MediaPickerModal from './media/MediaPickerModal';
 import TipTapEditor from '../common/TipTapEditor';
-import blogAPI from '../../services/api/blogAPI';
 import SEOEditor from '../seo/SEOEditor';
+import { MediaAsset } from '../../store/slices/mediaSlice';
+import { config } from '../../config';
 
 // Validation schema
 const blogSchema = yup.object().shape({
@@ -32,8 +33,10 @@ const blogSchema = yup.object().shape({
   slug: yup.string().optional(),
   excerpt: yup.string().required('Excerpt is required').max(500, 'Excerpt cannot exceed 500 characters'),
   content: yup.string().required('Content is required'),
-  featuredImage: yup.string().required('Featured image is required'),
+  featuredImage: yup.string().optional(),            // Old field, optional
+  featuredImageAsset: yup.string().optional(),       // New field, optional
   category: yup.string().required('Category is required'),
+  readTime: yup.number().min(1, 'Read time must be at least 1 minute').optional(),
   author: yup.object().shape({
     name: yup.string().required('Author name is required').max(100, 'Author name cannot exceed 100 characters'),
     email: yup.string().email('Must be a valid email').required('Author email is required'),
@@ -91,6 +94,8 @@ const BlogForm: React.FC<BlogFormProps> = ({
   loading = false
 }) => {
   const [newTag, setNewTag] = useState('');
+  const [showMediaPicker, setShowMediaPicker] = useState(false);
+  const [selectedFeaturedImageAsset, setSelectedFeaturedImageAsset] = useState<MediaAsset | null>(null);
   const [seoData, setSeoData] = useState({
     title: blog?.seo?.metaTitle || '',
     description: blog?.seo?.metaDescription || '',
@@ -132,6 +137,7 @@ const BlogForm: React.FC<BlogFormProps> = ({
       content: '',
       featuredImage: '',
       category: '',
+      readTime: 1,
       author: {
         name: '',
         email: '',
@@ -198,6 +204,7 @@ const BlogForm: React.FC<BlogFormProps> = ({
         content: blog.content || '',
         featuredImage: blog.featuredImage || '',
         category: blog.category?._id || '',
+        readTime: blog.readTime || 1,
         author: {
           name: blog.author?.name || '',
           email: blog.author?.email || '',
@@ -227,11 +234,12 @@ const BlogForm: React.FC<BlogFormProps> = ({
         content: '',
         featuredImage: '',
         category: '',
+        readTime: 1,
         author: {
-          name: '',
-          email: '',
-          avatar: '',
-          bio: ''
+          name: config.defaultAuthor.name,
+          email: config.defaultAuthor.email,
+          avatar: config.defaultAuthor.avatar,
+          bio: config.defaultAuthor.bio
         },
         tags: [],
         status: 'draft',
@@ -245,6 +253,39 @@ const BlogForm: React.FC<BlogFormProps> = ({
       });
     }
   }, [blog, reset, isOpen]);
+
+  // Auto-calculate and set readTime when content changes
+  useEffect(() => {
+    const content = watch('content');
+    if (content && content.trim()) {
+      // Calculate word count from content (strip HTML tags)
+      const wordCount = content
+        .replace(/<[^>]*>/g, ' ') // Strip HTML tags
+        .trim()
+        .split(/\s+/)
+        .filter(Boolean).length;
+      const calculatedReadTime = Math.max(1, Math.ceil(wordCount / 200));
+
+      // Only auto-set if user hasn't manually set a custom readTime
+      const currentReadTime = watch('readTime');
+      if (!currentReadTime || currentReadTime === 0) {
+        setValue('readTime', calculatedReadTime, { shouldValidate: false });
+      }
+    }
+  }, [watchedContent, setValue, watch]);
+
+  // Initialize featured image preview on edit mode
+  useEffect(() => {
+    if (blog && blog.featuredImageAsset) {
+      // If blog has populated featuredImageAsset object, use it for preview
+      if (typeof blog.featuredImageAsset === 'object' && blog.featuredImageAsset.url) {
+        setSelectedFeaturedImageAsset(blog.featuredImageAsset as MediaAsset);
+      }
+    } else if (!blog) {
+      // Clear preview when creating new blog
+      setSelectedFeaturedImageAsset(null);
+    }
+  }, [blog]);
 
   const handleAddTag = () => {
     if (newTag.trim() && !watchedTags.includes(newTag.trim())) {
@@ -280,16 +321,30 @@ const BlogForm: React.FC<BlogFormProps> = ({
 
     // Convert empty strings to undefined for optional fields
     if (cleaned.slug === '') cleaned.slug = undefined;
+    if (cleaned.featuredImage === '') cleaned.featuredImage = undefined;
     if (cleaned.author) {
       if (cleaned.author.avatar === '') cleaned.author.avatar = undefined;
       if (cleaned.author.bio === '') cleaned.author.bio = undefined;
     }
+
+    // Handle SEO object - remove entirely if all fields are empty/undefined
     if (cleaned.seo) {
       if (cleaned.seo.metaTitle === '') cleaned.seo.metaTitle = undefined;
       if (cleaned.seo.metaDescription === '') cleaned.seo.metaDescription = undefined;
       if (cleaned.seo.canonicalUrl === '') cleaned.seo.canonicalUrl = undefined;
       if (cleaned.seo.metaKeywords && cleaned.seo.metaKeywords.length === 0) {
         cleaned.seo.metaKeywords = undefined;
+      }
+
+      // Check if all SEO fields are undefined
+      const hasAnySeoData = cleaned.seo.metaTitle ||
+                            cleaned.seo.metaDescription ||
+                            cleaned.seo.canonicalUrl ||
+                            (cleaned.seo.metaKeywords && cleaned.seo.metaKeywords.length > 0);
+
+      // Remove entire seo object if all fields are undefined
+      if (!hasAnySeoData) {
+        cleaned.seo = undefined;
       }
     }
 
@@ -303,6 +358,27 @@ const BlogForm: React.FC<BlogFormProps> = ({
 
     try {
       const cleanedData = cleanFormData(data);
+
+      // Extract category ID if object was populated
+      if (cleanedData.category && typeof cleanedData.category === 'object') {
+        cleanedData.category = cleanedData.category._id;
+      }
+
+      // Extract MediaAsset ID if object was populated
+      if (cleanedData.featuredImageAsset && typeof cleanedData.featuredImageAsset === 'object') {
+        cleanedData.featuredImageAsset = cleanedData.featuredImageAsset._id;
+      }
+
+      // Calculate readTime if missing (defensive fallback)
+      if (!cleanedData.readTime && cleanedData.content) {
+        const wordCount = cleanedData.content
+          .replace(/<[^>]*>/g, ' ') // Strip HTML tags
+          .trim()
+          .split(/\s+/)
+          .length;
+        cleanedData.readTime = Math.max(1, Math.ceil(wordCount / 200));
+      }
+
       console.log('Cleaned form data:', cleanedData);
       console.log('Calling onSubmit...');
 
@@ -471,6 +547,9 @@ const BlogForm: React.FC<BlogFormProps> = ({
                           content={field.value || ''}
                           onChange={field.onChange}
                           placeholder="Start writing your blog content... Use the toolbar to format text, add images, videos, and links."
+                          mediaCategory="blog"
+                          mediaFolder="blogs"
+                          characterLimit={10000}
                         />
                         {errors.content && (
                           <p className="mt-1 text-sm text-red-600">{errors.content.message}</p>
@@ -575,7 +654,7 @@ const BlogForm: React.FC<BlogFormProps> = ({
                     type: 'blog'
                   }}
                   onChange={handleSeoDataChange}
-                  baseUrl={import.meta.env.VITE_APP_URL || 'https://gema-events.com'}
+                  baseUrl={config.appUrl}
                   path={`/blog/${watch('slug') || 'new-post'}`}
                   ogImage={watch('featuredImage')}
                   disabled={loading}
@@ -670,40 +749,57 @@ const BlogForm: React.FC<BlogFormProps> = ({
                 </CardHeader>
                 <CardContent className="space-y-3">
                   <Controller
-                    name="featuredImage"
+                    name="featuredImageAsset"
                     control={control}
                     render={({ field }) => (
                       <div>
-                        <ImageUpload
-                          onImageUpload={(imageUrl) => field.onChange(imageUrl)}
-                          currentImage={field.value}
-                          placeholder="Upload featured image"
-                          maxFileSize={5}
-                          category="blogs"
-                        />
-                        {errors.featuredImage && (
-                          <p className="mt-2 text-sm text-red-600">{errors.featuredImage.message}</p>
+                        {/* Preview */}
+                        {(selectedFeaturedImageAsset || field.value) && (
+                          <div className="relative mb-3">
+                            <img
+                              src={
+                                selectedFeaturedImageAsset
+                                  ? selectedFeaturedImageAsset.url
+                                  : typeof field.value === 'object'
+                                  ? field.value.url
+                                  : field.value
+                              }
+                              alt="Featured"
+                              className="w-full h-48 object-cover rounded-lg"
+                            />
+                            <button
+                              type="button"
+                              onClick={() => {
+                                setValue('featuredImageAsset', '');
+                                setValue('featuredImage', '');
+                                setSelectedFeaturedImageAsset(null);
+                              }}
+                              className="absolute top-2 right-2 p-2 bg-red-500 text-white rounded-full hover:bg-red-600"
+                            >
+                              <X className="w-4 h-4" />
+                            </button>
+                          </div>
+                        )}
+
+                        {/* Media Picker Button */}
+                        <Button
+                          type="button"
+                          variant="outline"
+                          onClick={() => setShowMediaPicker(true)}
+                          className="w-full"
+                        >
+                          <Image className="w-4 h-4 mr-2" />
+                          {field.value ? 'Change Image' : 'Select from Library'}
+                        </Button>
+
+                        {errors.featuredImageAsset && (
+                          <p className="mt-2 text-sm text-red-600">
+                            {errors.featuredImageAsset.message}
+                          </p>
                         )}
                       </div>
                     )}
                   />
-
-                  {/* URL Input as fallback */}
-                  <div className="text-xs text-gray-600">
-                    <p className="mb-1.5">Or enter image URL:</p>
-                    <Controller
-                      name="featuredImage"
-                      control={control}
-                      render={({ field }) => (
-                        <Input
-                          {...field}
-                          type="url"
-                          placeholder="https://example.com/image.jpg"
-                          size="sm"
-                        />
-                      )}
-                    />
-                  </div>
                 </CardContent>
               </Card>
 
@@ -801,6 +897,29 @@ const BlogForm: React.FC<BlogFormProps> = ({
         </div>
         </form>
       )}
+
+      {/* Media Picker Modal */}
+      <MediaPickerModal
+        isOpen={showMediaPicker}
+        onClose={() => setShowMediaPicker(false)}
+        onSelect={(assets) => {
+          if (assets.length > 0) {
+            // Store full asset object for preview
+            setSelectedFeaturedImageAsset(assets[0]);
+
+            // Set the MediaAsset ID reference for backend submission
+            setValue('featuredImageAsset', assets[0]._id);
+
+            // Clear old field
+            setValue('featuredImage', '');
+          }
+          setShowMediaPicker(false);
+        }}
+        category="blog"
+        folder="blogs"
+        multiple={false}
+        title="Select Featured Image"
+      />
     </Modal>
   );
 };

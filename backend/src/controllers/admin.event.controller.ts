@@ -5,6 +5,7 @@ import { AppError } from '../middleware/index';
 import { ApiResponse, AuthRequest } from '../types/index';
 import mongoose from 'mongoose';
 import { validationResult } from 'express-validator';
+import { transformEventResponse } from '../utils/event.utils';
 
 /**
  * Interface for event query parameters
@@ -111,35 +112,47 @@ interface CreateEventRequest {
  * Format event for admin response (includes all information)
  */
 const formatAdminEventResponse = (event: any) => {
+  // Apply transformation to extract image URLs from MediaAssets
+  const transformedEvent = transformEventResponse(event);
+
   return {
-    id: event._id?.toString() || event.id,
-    title: event.title,
-    description: event.description,
-    category: event.category,
-    type: event.type,
-    venueType: event.venueType,
-    ageRange: event.ageRange,
-    location: event.location,
-    vendor: event.vendorId ? {
-      id: event.vendorId._id?.toString() || event.vendorId.id,
-      businessName: event.vendorId.businessName,
-      email: event.vendorId.email,
-      fullName: event.vendorId.businessName
+    id: transformedEvent._id?.toString() || transformedEvent.id,
+    title: transformedEvent.title,
+    description: transformedEvent.description,
+    category: transformedEvent.category,
+    type: transformedEvent.type,
+    venueType: transformedEvent.venueType,
+    ageRange: transformedEvent.ageRange,
+    location: transformedEvent.location,
+    vendor: transformedEvent.vendorId ? {
+      id: transformedEvent.vendorId._id?.toString() || transformedEvent.vendorId.id,
+      businessName: transformedEvent.vendorId.businessName,
+      email: transformedEvent.vendorId.email,
+      fullName: transformedEvent.vendorId.businessName
     } : null,
-    price: event.price,
-    currency: event.currency,
-    isApproved: event.isApproved,
-    isFeatured: event.isFeatured,
-    affiliateCode: event.affiliateCode,
-    tags: event.tags,
-    dateSchedule: event.dateSchedule,
-    seoMeta: event.seoMeta,
-    faqs: event.faqs,
-    viewsCount: event.viewsCount,
-    images: event.images,
-    isDeleted: event.isDeleted,
-    createdAt: typeof event.createdAt === 'string' ? event.createdAt : event.createdAt?.toISOString(),
-    updatedAt: typeof event.updatedAt === 'string' ? event.updatedAt : event.updatedAt?.toISOString()
+    price: transformedEvent.price,
+    currency: transformedEvent.currency,
+    isApproved: transformedEvent.isApproved,
+    isFeatured: transformedEvent.isFeatured,
+    affiliateCode: transformedEvent.affiliateCode,
+    tags: transformedEvent.tags,
+    dateSchedule: transformedEvent.dateSchedule,
+    seoMeta: transformedEvent.seoMeta,
+    faqs: transformedEvent.faqs,
+    viewsCount: transformedEvent.viewsCount,
+    images: transformedEvent.images || [],
+    imageAssets: transformedEvent.imageAssets || [],
+    isDeleted: transformedEvent.isDeleted,
+    createdAt: typeof transformedEvent.createdAt === 'string' ? transformedEvent.createdAt : transformedEvent.createdAt?.toISOString(),
+    updatedAt: typeof transformedEvent.updatedAt === 'string' ? transformedEvent.updatedAt : transformedEvent.updatedAt?.toISOString(),
+
+    // Admin-specific fields
+    isActive: transformedEvent.isActive !== undefined ? transformedEvent.isActive : true,
+    requirePhoneVerification: transformedEvent.requirePhoneVerification || false,
+    status: transformedEvent.status || 'pending',
+    isAffiliateEvent: transformedEvent.isAffiliateEvent || false,
+    externalBookingLink: transformedEvent.externalBookingLink || '',
+    claimStatus: transformedEvent.claimStatus || 'not_claimable'
   };
 };
 
@@ -219,10 +232,11 @@ export const getAllEvents = async (req: Request, res: Response, next: NextFuncti
     const sortObj: any = {};
     sortObj[sortBy] = sortOrder === 'asc' ? 1 : -1;
 
-    // Execute query
+    //Execute query
     const [events, totalEvents] = await Promise.all([
       Event.find(query)
         .populate('vendorId', 'businessName email phone')
+        .populate('imageAssets', 'url thumbnailUrl variations provider')
         .sort(sortObj)
         .skip(skip)
         .limit(limitNum)
@@ -284,7 +298,8 @@ export const getEventById = async (req: Request, res: Response, next: NextFuncti
     }
 
     const event = await Event.findById(id)
-      .populate('vendorId', 'businessName email phone');
+        .populate('vendorId', 'businessName email phone')
+        .populate('imageAssets', 'url thumbnailUrl variations provider');
 
     if (!event) {
       return next(new AppError('Event not found', 404));

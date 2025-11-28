@@ -18,8 +18,21 @@ const redisOptions: RedisOptions = {
   enableReadyCheck: true,
   enableOfflineQueue: true,
 
-  // Reconnection strategy
+  // Auto-pipelining for better performance with shared connection
+  // Automatically batches commands sent in the same event loop tick
+  enableAutoPipelining: true,
+  autoPipeliningIgnoredCommands: ['ping'], // Don't pipeline health checks
+
+  // Connection limits and lifecycle
+  lazyConnect: false, // Connect eagerly on startup to fail fast
+  maxLoadingRetryTime: 10000, // Max time to retry loading scripts
+
+  // Reconnection strategy with limits
   retryStrategy(times: number) {
+    if (times > 10) {
+      logger.error('Redis max reconnection attempts reached (10 attempts)');
+      return null; // Stop retrying after 10 attempts
+    }
     const delay = Math.min(times * 50, 2000);
     logger.warn(`Redis reconnecting... Attempt ${times}, delay: ${delay}ms`);
     return delay;
@@ -30,6 +43,10 @@ const redisOptions: RedisOptions = {
 
   // Keep alive
   keepAlive: 30000,
+
+  // Prevent connection leak on errors
+  autoResubscribe: false, // Don't auto-resubscribe to pub/sub (not used)
+  autoResendUnfulfilledCommands: true, // Resend commands after reconnection
 
   // TLS for production (if using Redis Cloud, Upstash, etc.)
   tls: process.env.REDIS_TLS === 'true' ? {

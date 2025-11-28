@@ -213,14 +213,31 @@ export const validateAddressIndex = [
 
 /**
  * Avatar update validation
+ * Accepts both UUID-based media URLs and full URLs
  */
 export const validateAvatarUpdate = [
   body('avatar')
     .trim()
     .notEmpty()
     .withMessage('Avatar URL is required')
-    .isURL({ protocols: ['http', 'https'], require_protocol: true })
-    .withMessage('Avatar must be a valid URL with http or https protocol')
+    .custom((value) => {
+      // Accept UUID-based media URL
+      const uuidPattern = /^\/api\/media\/file\/[a-f0-9]{8}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{12}$/i;
+      if (uuidPattern.test(value)) {
+        return true;
+      }
+
+      // Accept full URL with protocol
+      try {
+        const url = new URL(value);
+        if (!['http:', 'https:'].includes(url.protocol)) {
+          throw new Error('URL must use http or https protocol');
+        }
+        return true;
+      } catch (error) {
+        throw new Error('Avatar must be either a UUID-based media URL (/api/media/file/{uuid}) or a full URL with http/https protocol');
+      }
+    })
     .isLength({ max: 500 })
     .withMessage('Avatar URL cannot exceed 500 characters'),
 ];

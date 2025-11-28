@@ -33,6 +33,13 @@ interface Event {
   isFeatured: boolean;
   viewsCount: number;
   images: string[];
+  imageUrls?: string[];
+  imageAssets?: Array<{
+    id: string;
+    url: string;
+    thumbnailUrl?: string;
+    variations?: any;
+  }>;
   isDeleted: boolean;
   tags: string[];
   dateSchedule: Array<{
@@ -500,7 +507,7 @@ const AdminEventsPage: React.FC = () => {
                           <div className="flex-shrink-0 h-10 w-10">
                             <img
                               className="h-10 w-10 rounded-full object-cover"
-                              src={event.images[0] || '/default-event.jpg'}
+                              src={event.imageUrls?.[0] || event.images?.[0] || '/default-event.jpg'}
                               alt=""
                             />
                           </div>
@@ -760,25 +767,25 @@ const AdminEventsPage: React.FC = () => {
                     </span>
                   </div>
 
-                  {/* Images */}
-                  {selectedEvent.images && selectedEvent.images.length > 0 && (
-                    <div className="mb-4">
-                      <p className="text-sm font-medium text-gray-700 mb-2">Images</p>
-                      <div className="grid grid-cols-3 gap-2">
-                        {selectedEvent.images.slice(0, 3).map((img, idx) => (
-                          <img
-                            key={idx}
-                            src={img}
-                            alt={`Event ${idx + 1}`}
-                            className="w-full h-32 object-cover rounded-lg"
-                            onError={(e) => {
-                              e.currentTarget.src = '/default-event.jpg';
-                            }}
-                          />
-                        ))}
+                   {/* Images */}
+                   {selectedEvent.imageUrls && selectedEvent.imageUrls.length > 0 && (
+                      <div className="mb-4">
+                        <p className="text-sm font-medium text-gray-700 mb-2">Images</p>
+                        <div className="grid grid-cols-3 gap-2">
+                          {selectedEvent.imageUrls.slice(0, 3).map((imgUrl, idx) => (
+                            <img
+                              key={idx}
+                              src={imgUrl}
+                              alt={`Event ${idx + 1}`}
+                              className="w-full h-32 object-cover rounded-lg"
+                              onError={(e) => {
+                                e.currentTarget.src = '/default-event.jpg';
+                              }}
+                            />
+                          ))}
+                        </div>
                       </div>
-                    </div>
-                  )}
+                    )}
 
                   <div className="grid grid-cols-2 gap-4 mb-4">
                     <div>

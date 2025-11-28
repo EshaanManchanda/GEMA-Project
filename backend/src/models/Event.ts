@@ -54,8 +54,10 @@ export interface IEvent extends Document {
   }>;
   viewsCount: number;
   isFeatured: boolean;
-  images: string[];
+  images: string[];                         // OLD - deprecated, keep for backward compatibility
+  imageAssets?: mongoose.Types.ObjectId[];  // NEW - shadow field for migration
   isDeleted: boolean;
+  deletedAt?: Date;
   reviewCount: number;
   averageRating: number;
   ratingDistribution: {
@@ -363,6 +365,7 @@ const eventSchema = new Schema<IEvent>(
     images: {
       type: [String],
       default: [],
+      required: false,  // Optional during migration
       validate: {
         validator: function (v: string[]) {
           return v.length <= 10;
@@ -370,9 +373,16 @@ const eventSchema = new Schema<IEvent>(
         message: 'Cannot have more than 10 images',
       },
     },
+    imageAssets: [{
+      type: Schema.Types.ObjectId,
+      ref: 'MediaAsset'
+    }],
     isDeleted: {
       type: Boolean,
       default: false,
+    },
+    deletedAt: {
+      type: Date,
     },
     // Cancellation fields
     cancellationStatus: {

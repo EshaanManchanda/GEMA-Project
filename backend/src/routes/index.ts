@@ -46,6 +46,7 @@ import partnershipRoutes from './partnership.routes';
 import cancellationRoutes from './event.cancellation.routes';
 import eventAffiliateRoutes from './event.affiliate.routes';
 import publicSettingsRoutes from './public.settings.routes';
+import mediaRoutes from './media.routes';
 import { Router } from 'express';
 
 const router = Router();
@@ -84,6 +85,9 @@ router.use('/reviews', reviewRoutes);
 
 // Upload routes
 router.use('/uploads', uploadRoutes);
+
+// Media Management routes (Admin-only)
+router.use('/media', mediaRoutes);
 
 // Analytics routes
 router.use('/analytics', analyticsRoutes);

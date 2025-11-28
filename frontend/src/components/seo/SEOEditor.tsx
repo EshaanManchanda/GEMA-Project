@@ -16,6 +16,7 @@ import {
   type SEOAnalysis
 } from '../../utils/seoUtils';
 import { isSEOFeatureAvailable } from '../../utils/permissions';
+import { config } from '../../config';
 
 interface SEOData {
   title: string;
@@ -46,7 +47,7 @@ const SEOEditor: React.FC<SEOEditorProps> = ({
   initialData = {},
   contentData,
   onChange,
-  baseUrl = 'https://gema-events.com',
+  baseUrl = config.appUrl,
   path = '',
   ogImage,
   disabled = false,
@@ -192,6 +193,7 @@ const SEOEditor: React.FC<SEOEditorProps> = ({
                 {contentData && isFeatureAvailable('auto-generate') && (
                   <>
                     <Button
+                      type="button"
                       variant="outline"
                       size="sm"
                       onClick={handleAutoGenerate}
@@ -209,6 +211,7 @@ const SEOEditor: React.FC<SEOEditorProps> = ({
                       Auto-Generate
                     </Button>
                     <Button
+                      type="button"
                       variant="outline"
                       size="sm"
                       onClick={handleExtractKeywords}
@@ -222,6 +225,7 @@ const SEOEditor: React.FC<SEOEditorProps> = ({
                   </>
                 )}
                 <Button
+                  type="button"
                   variant="outline"
                   size="sm"
                   onClick={() => setShowPreview(!showPreview)}
@@ -340,6 +344,7 @@ const SEOEditor: React.FC<SEOEditorProps> = ({
                   title={!canEditSEO.allowed ? canEditSEO.message : undefined}
                 />
                 <Button
+                  type="button"
                   onClick={handleAddKeyword}
                   disabled={!keywordInput.trim()}
                   size="sm"
@@ -359,7 +364,7 @@ const SEOEditor: React.FC<SEOEditorProps> = ({
             <Input
               value={seoData.canonicalUrl}
               onChange={(e) => updateSeoData('canonicalUrl', e.target.value)}
-              placeholder="https://gema-events.com/..."
+              placeholder={`${config.appUrl}/...`}
               disabled={isActuallyDisabled}
               title={!canEditSEO.allowed ? canEditSEO.message : undefined}
             />

@@ -1,6 +1,7 @@
 import { Router, Request, Response, NextFunction } from 'express';
 import path from 'path';
 import fs from 'fs';
+import mongoose from 'mongoose';
 import { config } from '../config/env';
 import { AuthRequest } from '../types/express.d';
 import { AppError } from '../middleware/error';
@@ -19,6 +20,7 @@ import {
 } from '../middleware/upload';
 import { authenticate } from '../middleware/auth';
 import uploadService from '../services/upload.service';
+import mediaService from '../services/media.service';
 import { getOptimizedImageUrl, extractPublicId } from '../config/cloudinary';
 import logger from '../config/logger';
 
@@ -56,10 +58,12 @@ router.use('/files', (req: Request, res: Response, next: NextFunction) => {
   
   const mimeType = mimeTypes[ext] || 'application/octet-stream';
   res.setHeader('Content-Type', mimeType);
-  
-  // Cache headers
+
+  // Cache and CORS headers
   res.setHeader('Cache-Control', 'public, max-age=31536000'); // 1 year
-  
+  res.setHeader('Access-Control-Allow-Origin', '*'); // Allow all origins for public media
+  res.setHeader('Cross-Origin-Resource-Policy', 'cross-origin'); // Allow cross-origin access
+
   res.sendFile(normalizedPath);
 });
 
@@ -152,7 +156,7 @@ router.post('/venue-images', authenticate, uploadVenueImages, handleUploadError,
 });
 
 // User avatar upload
-router.post('/avatar', authenticate, uploadUserAvatar, handleUploadError, (req: AuthRequest, res: Response, next: NextFunction) => {
+router.post('/avatar', authenticate, uploadUserAvatar, handleUploadError, async (req: AuthRequest, res: Response, next: NextFunction) => {
   const startTime = Date.now();
 
   try {
@@ -160,13 +164,34 @@ router.post('/avatar', authenticate, uploadUserAvatar, handleUploadError, (req: 
       return next(new AppError('No avatar image uploaded', 400));
     }
 
-    const fileInfo = getFileInfo(req.file);
+    const userId = req.user?._id || req.user?.id;
+    if (!userId) {
+      return next(new AppError('User not authenticated', 401));
+    }
+
+    // Upload using MediaService with 'profile' category
+    const mediaAsset = await mediaService.uploadMedia(req.file, {
+      category: 'profile',
+      folder: 'profile.avatars',
+      uploadedBy: userId.toString(),
+      tags: ['avatar', 'user-profile']
+    });
+
+    // Track usage immediately
+    await mediaService.trackUsage(
+      mediaAsset._id.toString(),
+      'User',
+      'avatar',
+      new mongoose.Types.ObjectId(userId)
+    );
 
     const uploadDuration = Date.now() - startTime;
 
     // Log performance metrics for monitoring
     logger.debug(`Avatar upload completed`, {
       userId: req.user?.id,
+      mediaAssetId: mediaAsset._id,
+      uuid: mediaAsset.uuid,
       duration: `${uploadDuration}ms`,
       fileSize: `${(req.file.size / 1024).toFixed(2)}KB`,
       mimeType: req.file.mimetype,
@@ -185,7 +210,14 @@ router.post('/avatar', authenticate, uploadUserAvatar, handleUploadError, (req: 
     res.status(200).json({
       success: true,
       message: 'Avatar uploaded successfully',
-      data: fileInfo
+      data: {
+        url: mediaAsset.url, // UUID-based URL
+        mediaAssetId: mediaAsset._id,
+        uuid: mediaAsset.uuid,
+        filename: mediaAsset.filename,
+        size: mediaAsset.size,
+        mimeType: mediaAsset.mimeType
+      }
     });
   } catch (error) {
     const duration = Date.now() - startTime;

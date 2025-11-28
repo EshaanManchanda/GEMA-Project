@@ -48,6 +48,59 @@ export const SEO_LIMITS = {
 };
 
 /**
+ * Get site name from environment variables
+ */
+const getSiteName = (): string => {
+  return import.meta.env.VITE_APP_NAME || 'Kidrove';
+};
+
+/**
+ * Get full site name from environment variables
+ */
+const getFullSiteName = (): string => {
+  return import.meta.env.VITE_SITE_NAME || 'Kidrove - UAE Events & Activities Platform';
+};
+
+/**
+ * Strip HTML tags and decode entities to get plain text
+ */
+export const stripHtmlTags = (html: string): string => {
+  if (!html || typeof html !== 'string') return '';
+
+  // Create a temporary div element to leverage browser's HTML parsing
+  const tmp = document.createElement('div');
+  tmp.innerHTML = html;
+
+  // Get text content (automatically strips all tags)
+  let text = tmp.textContent || tmp.innerText || '';
+
+  // Normalize whitespace
+  text = text.replace(/\s+/g, ' ').trim();
+
+  return text;
+};
+
+/**
+ * Alternative implementation without DOM (for SSR/Node environments)
+ */
+export const stripHtmlTagsRegex = (html: string): string => {
+  if (!html || typeof html !== 'string') return '';
+
+  return html
+    .replace(/<style[^>]*>.*?<\/style>/gi, '')  // Remove style tags and content
+    .replace(/<script[^>]*>.*?<\/script>/gi, '') // Remove script tags and content
+    .replace(/<[^>]+>/g, '')                     // Remove all HTML tags
+    .replace(/&nbsp;/g, ' ')                     // Replace &nbsp; with space
+    .replace(/&amp;/g, '&')                      // Decode &amp;
+    .replace(/&lt;/g, '<')                       // Decode &lt;
+    .replace(/&gt;/g, '>')                       // Decode &gt;
+    .replace(/&quot;/g, '"')                     // Decode &quot;
+    .replace(/&#39;/g, "'")                      // Decode &#39;
+    .replace(/\s+/g, ' ')                        // Normalize whitespace
+    .trim();
+};
+
+/**
  * Validate SEO fields and provide optimization suggestions
  */
 export const validateSEO = (seoData: {
@@ -81,8 +134,9 @@ export const validateSEO = (seoData: {
     }
 
     // Check for brand mention
-    if (!title.toLowerCase().includes('gema')) {
-      suggestions.push('Consider including "Gema Events" in your title for brand recognition.');
+    const siteName = import.meta.env.VITE_SITE_NAME || 'Kidrove';
+    if (!title.toLowerCase().includes(siteName.toLowerCase().split(' ')[0].toLowerCase())) {
+      suggestions.push(`Consider including "${siteName}" in your title for brand recognition.`);
     }
 
     // Check for location
@@ -202,9 +256,10 @@ export const generateSEOSuggestions = (
       message: 'Add a compelling title that includes your main keywords'
     });
   } else if (title.length < SEO_LIMITS.TITLE.MIN) {
+    const siteName = getSiteName();
     const suggestion = type === 'event'
-      ? `${title} | Kids ${category} in ${location || 'UAE'} | Gema Events`
-      : `${title} | Kids Activities Guide | Gema Events`;
+      ? `${title} | Kids ${category} in ${location || 'UAE'} | ${siteName}`
+      : `${title} | Kids Activities Guide | ${siteName}`;
 
     suggestions.push({
       type: 'title',
@@ -260,30 +315,32 @@ export const generateAutoSEO = (content: {
   const { title = '', description = '', category, location, tags = [], type } = content;
 
   // Generate SEO title
+  const siteName = getSiteName();
+  const siteNameLower = siteName.toLowerCase();
   let seoTitle = title || '';
   if (seoTitle && type === 'event') {
-    if (!seoTitle.toLowerCase().includes('gema')) {
-      seoTitle = `${title} | Kids ${category || 'Activities'} in ${location || 'UAE'} | Gema Events`;
+    if (!seoTitle.toLowerCase().includes(siteNameLower)) {
+      seoTitle = `${title} | Kids ${category || 'Activities'} in ${location || 'UAE'} | ${siteName}`;
     }
   } else if (seoTitle) {
-    if (!seoTitle.toLowerCase().includes('gema')) {
-      seoTitle = `${title} | Kids Activities Guide | Gema Events`;
+    if (!seoTitle.toLowerCase().includes(siteNameLower)) {
+      seoTitle = `${title} | Kids Activities Guide | ${siteName}`;
     }
   }
 
   // Ensure title is within limits
   if (seoTitle && seoTitle.length > SEO_LIMITS.TITLE.MAX) {
-    seoTitle = title ? `${title} | Gema Events` : 'Gema Events';
+    seoTitle = title ? `${title} | ${siteName}` : siteName;
   }
 
   // Generate SEO description
-  let seoDescription = description || '';
+  let seoDescription = stripHtmlTags(description) || '';
   if (seoDescription && seoDescription.length > SEO_LIMITS.DESCRIPTION.MAX) {
-    seoDescription = `${description.substring(0, 157)}...`;
+    seoDescription = `${seoDescription.substring(0, 157)}...`;
   } else if (seoDescription && seoDescription.length < SEO_LIMITS.DESCRIPTION.MIN) {
     const suffix = type === 'event'
-      ? ` Book now for an unforgettable experience with Gema Events in ${location || 'UAE'}.`
-      : ' Discover expert tips and guides for family activities with Gema Events.';
+      ? ` Book now for an unforgettable experience with ${siteName} in ${location || 'UAE'}.`
+      : ` Discover expert tips and guides for family activities with ${siteName}.`;
 
     if (seoDescription.length + suffix.length <= SEO_LIMITS.DESCRIPTION.MAX) {
       seoDescription += suffix;

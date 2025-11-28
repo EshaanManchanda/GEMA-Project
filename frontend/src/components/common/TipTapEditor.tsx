@@ -9,7 +9,10 @@ import Underline from '@tiptap/extension-underline';
 import TextAlign from '@tiptap/extension-text-align';
 import TextStyle from '@tiptap/extension-text-style';
 import Color from '@tiptap/extension-color';
+import CharacterCount from '@tiptap/extension-character-count';
 import HtmlInsertModal from './HtmlInsertModal';
+import MediaPickerModal from '../admin/media/MediaPickerModal';
+import { MediaAsset } from '../../store/slices/mediaSlice';
 import {
   Bold,
   Italic,
@@ -42,15 +45,25 @@ interface TipTapEditorProps {
   onChange: (content: string) => void;
   placeholder?: string;
   editable?: boolean;
+  mediaCategory?: 'blog' | 'event' | 'profile' | 'document' | 'misc';
+  mediaFolder?: string;
+  characterLimit?: number;
+  showCharacterCount?: boolean;
 }
 
 const TipTapEditor: React.FC<TipTapEditorProps> = ({
   content,
   onChange,
   placeholder = 'Start writing your blog content...',
-  editable = true
+  editable = true,
+  mediaCategory = 'misc',
+  mediaFolder = 'content',
+  characterLimit,
+  showCharacterCount = true
 }) => {
   const [showHtmlModal, setShowHtmlModal] = useState(false);
+  const [showMediaPicker, setShowMediaPicker] = useState(false);
+  const [mediaPickerMode, setMediaPickerMode] = useState<'image' | 'video'>('image');
 
   const editor = useEditor({
     extensions: [
@@ -85,6 +98,9 @@ const TipTapEditor: React.FC<TipTapEditorProps> = ({
       }),
       Placeholder.configure({
         placeholder
+      }),
+      CharacterCount.configure({
+        limit: characterLimit,
       })
     ],
     content,
@@ -99,74 +115,58 @@ const TipTapEditor: React.FC<TipTapEditorProps> = ({
     }
   });
 
-  const handleImageUpload = useCallback(async () => {
-    const input = document.createElement('input');
-    input.type = 'file';
-    input.accept = 'image/*';
-    input.onchange = async (e: Event) => {
-      const file = (e.target as HTMLInputElement).files?.[0];
-      if (!file) return;
+  const handleInsertMediaFromLibrary = useCallback((type: 'image' | 'video') => {
+    setMediaPickerMode(type);
+    setShowMediaPicker(true);
+  }, []);
 
-      const formData = new FormData();
-      formData.append('media', file);
+  const handleMediaSelect = useCallback((assets: MediaAsset[]) => {
+    if (assets.length === 0 || !editor) return;
 
-      try {
-        const response = await api.post('/uploads/blog-content-media', formData, {
-          headers: { 'Content-Type': 'multipart/form-data' }
-        });
+    const asset = assets[0];
 
-        if (response.data.success && response.data.data.url) {
-          editor?.chain().focus().setImage({ src: response.data.data.url }).run();
-          toast.success('Image uploaded successfully');
-        }
-      } catch (error) {
-        console.error('Image upload error:', error);
-        toast.error('Failed to upload image');
-      }
-    };
-    input.click();
-  }, [editor]);
+    if (mediaPickerMode === 'image') {
+      // Use medium variation for balance of quality and performance
+      const imageUrl = asset.variations?.medium || asset.variations?.large || asset.url;
+      editor
+        .chain()
+        .focus()
+        .setImage({
+          src: imageUrl,
+          alt: asset.originalName,
+          title: asset.originalName
+        })
+        .run();
+      toast.success('Image inserted successfully');
+    } else if (mediaPickerMode === 'video' && asset.mimeType.startsWith('video/')) {
+      // Insert video as HTML5 video element
+      editor
+        .chain()
+        .focus()
+        .insertContent(
+          `<video controls class="w-full my-4 rounded-lg">
+            <source src="${asset.url}" type="${asset.mimeType}">
+            Your browser does not support the video tag.
+          </video>`
+        )
+        .run();
+      toast.success('Video inserted successfully');
+    }
+
+    setShowMediaPicker(false);
+  }, [editor, mediaPickerMode]);
 
   const handleImageUrl = useCallback(() => {
-    const url = window.prompt('Enter image URL:');
-    if (url) {
-      editor?.chain().focus().setImage({ src: url }).run();
-    }
-  }, [editor]);
-
-  const handleVideoUpload = useCallback(async () => {
-    const input = document.createElement('input');
-    input.type = 'file';
-    input.accept = 'video/*';
-    input.onchange = async (e: Event) => {
-      const file = (e.target as HTMLInputElement).files?.[0];
-      if (!file) return;
-
-      const formData = new FormData();
-      formData.append('media', file);
-
+    const url = window.prompt('Enter external image URL (or use Media Library for uploaded images):');
+    if (url && url.trim()) {
       try {
-        const response = await api.post('/uploads/blog-content-media', formData, {
-          headers: { 'Content-Type': 'multipart/form-data' }
-        });
-
-        if (response.data.success && response.data.data.url) {
-          // Insert video as an HTML5 video element
-          editor
-            ?.chain()
-            .focus()
-            .insertContent(
-              `<video controls class="w-full my-4 rounded-lg"><source src="${response.data.data.url}" type="${file.type}">Your browser does not support the video tag.</video>`
-            )
-            .run();
-          toast.success('Video uploaded successfully');
-        }
+        new URL(url); // Validate URL format
+        editor?.chain().focus().setImage({ src: url }).run();
+        toast.success('External image inserted');
       } catch (error) {
-        console.error('Video upload error:', error);
-        toast.error('Failed to upload video');
+        toast.error('Invalid URL format');
       }
-    };
-    input.click();
+    }
   }, [editor]);
 
   const handleYoutubeEmbed = useCallback(() => {
@@ -382,25 +382,25 @@ const TipTapEditor: React.FC<TipTapEditorProps> = ({
             {/* Media */}
             <div className="flex gap-0.5 border-r border-gray-300 pr-2">
               <button
-                onClick={handleImageUpload}
+                onClick={() => handleInsertMediaFromLibrary('image')}
                 className="p-2 rounded hover:bg-gray-200"
-                title="Upload Image"
-                type="button"
-              >
-                <Upload size={18} />
-              </button>
-              <button
-                onClick={handleImageUrl}
-                className="p-2 rounded hover:bg-gray-200"
-                title="Insert Image URL"
+                title="Insert Image from Media Library"
                 type="button"
               >
                 <ImageIcon size={18} />
               </button>
               <button
-                onClick={handleVideoUpload}
+                onClick={handleImageUrl}
                 className="p-2 rounded hover:bg-gray-200"
-                title="Upload Video"
+                title="Insert External Image URL"
+                type="button"
+              >
+                <Upload size={18} className="text-gray-600" />
+              </button>
+              <button
+                onClick={() => handleInsertMediaFromLibrary('video')}
+                className="p-2 rounded hover:bg-gray-200"
+                title="Insert Video from Media Library"
                 type="button"
               >
                 <Upload size={18} className="text-red-600" />
@@ -493,11 +493,64 @@ const TipTapEditor: React.FC<TipTapEditorProps> = ({
         <EditorContent editor={editor} />
       </div>
 
+      {/* Character and Word Count Display */}
+      {editor && showCharacterCount && (
+        <div className={`border-t px-4 py-2 flex items-center justify-between text-xs transition-colors ${
+          characterLimit && editor.storage.characterCount.characters() > characterLimit
+            ? 'bg-red-50 border-red-200'
+            : characterLimit && editor.storage.characterCount.characters() > characterLimit * 0.9
+            ? 'bg-yellow-50 border-yellow-200'
+            : 'bg-gray-50 border-gray-200'
+        }`}>
+          <div className="flex items-center gap-4">
+            <span className={`font-medium ${
+              characterLimit && editor.storage.characterCount.characters() > characterLimit
+                ? 'text-red-700'
+                : characterLimit && editor.storage.characterCount.characters() > characterLimit * 0.9
+                ? 'text-yellow-700'
+                : 'text-gray-700'
+            }`}>
+              {editor.storage.characterCount.characters().toLocaleString()}
+              {characterLimit && ` / ${characterLimit.toLocaleString()}`} characters
+            </span>
+            <span className="text-gray-600">
+              {editor.storage.characterCount.words().toLocaleString()} words
+            </span>
+            {characterLimit && editor.storage.characterCount.characters() > characterLimit * 0.9 && (
+              <span className={`text-xs font-medium px-2 py-0.5 rounded ${
+                editor.storage.characterCount.characters() > characterLimit
+                  ? 'bg-red-100 text-red-700'
+                  : 'bg-yellow-100 text-yellow-700'
+              }`}>
+                {editor.storage.characterCount.characters() > characterLimit
+                  ? `${(editor.storage.characterCount.characters() - characterLimit).toLocaleString()} over limit`
+                  : `${(characterLimit - editor.storage.characterCount.characters()).toLocaleString()} remaining`
+                }
+              </span>
+            )}
+          </div>
+          <div className="text-gray-500">
+            ~{Math.ceil(editor.storage.characterCount.words() / 200)} min read
+          </div>
+        </div>
+      )}
+
       {/* HTML Insert Modal */}
       <HtmlInsertModal
         isOpen={showHtmlModal}
         onClose={() => setShowHtmlModal(false)}
         onInsert={handleInsertHtml}
+      />
+
+      {/* Media Picker Modal */}
+      <MediaPickerModal
+        isOpen={showMediaPicker}
+        onClose={() => setShowMediaPicker(false)}
+        onSelect={handleMediaSelect}
+        category={mediaCategory}
+        folder={mediaFolder}
+        multiple={false}
+        title={mediaPickerMode === 'image' ? 'Select Image' : 'Select Video'}
       />
     </div>
   );

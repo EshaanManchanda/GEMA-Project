@@ -49,8 +49,12 @@ interface Config {
   upload: {
     path: string;
     maxFileSize: number;
+    maxImageSize: number;
+    maxVideoSize: number;
+    maxDocumentSize: number;
     allowedFileTypes: string[];
     provider: 'local' | 'cloudinary';
+    baseUrl: string;
   };
   cloudinary: {
     cloudName: string;
@@ -175,9 +179,13 @@ export const config: Config = {
   },
   upload: {
     path: process.env.UPLOAD_PATH || 'uploads/',
-    maxFileSize: parseInt(process.env.MAX_FILE_SIZE || '5242880', 10),
-    allowedFileTypes: process.env.ALLOWED_FILE_TYPES?.split(',') || ['image/jpeg', 'image/png', 'image/gif', 'image/webp', 'application/pdf'],
-    provider: (process.env.UPLOAD_PROVIDER as 'local' | 'cloudinary') || 'local'
+    maxFileSize: parseInt(process.env.MAX_FILE_SIZE || '10485760', 10), // 10MB default
+    maxImageSize: parseInt(process.env.MAX_IMAGE_SIZE || '10485760', 10), // 10MB
+    maxVideoSize: parseInt(process.env.MAX_VIDEO_SIZE || '524288000', 10), // 500MB
+    maxDocumentSize: parseInt(process.env.MAX_DOCUMENT_SIZE || '20971520', 10), // 20MB
+    allowedFileTypes: process.env.ALLOWED_FILE_TYPES?.split(',') || ['image/jpeg', 'image/png', 'image/gif', 'image/webp', 'application/pdf', 'video/mp4', 'video/webm'],
+    provider: (process.env.UPLOAD_PROVIDER as 'local' | 'cloudinary') || 'local',
+    baseUrl: process.env.BASE_URL || `http://localhost:${process.env.PORT || '5001'}`
   },
   cloudinary: {
     cloudName: process.env.CLOUDINARY_CLOUD_NAME || '',
@@ -259,6 +267,19 @@ const validateEnv = (): void => {
       }
     }
   }
+};
+
+// SEO Configuration
+export const SEO_CONFIG = {
+  siteName: process.env.SITE_NAME || 'Kidrove',
+  siteDomain: process.env.APP_DOMAIN || 'kidrove.com',
+  siteUrl: process.env.APP_URL || 'https://kidrove.com',
+  siteDescription: process.env.SITE_DESCRIPTION || 'Discover and book amazing family events and kids activities across the UAE',
+  contactEmail: process.env.CONTACT_EMAIL || process.env.EMAIL_FROM || 'contact@kidrove.com',
+  supportEmail: process.env.SUPPORT_EMAIL || process.env.EMAIL_FROM || 'contact@kidrove.com',
+  twitterHandle: process.env.TWITTER_HANDLE || '@kidrove',
+  facebookPage: process.env.FACEBOOK_PAGE || 'kidrove',
+  instagramHandle: process.env.INSTAGRAM_HANDLE || 'kidrove',
 };
 
 validateEnv();

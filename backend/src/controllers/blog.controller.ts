@@ -4,6 +4,8 @@ import { Blog, BlogCategory } from '../models/index';
 import { IBlog } from '../models/Blog';
 import { IBlogCategory } from '../models/BlogCategory';
 import catchAsync from '../utils/catchAsync';
+import { blogService } from '../services/blog.service';
+import { transformBlogResponse, transformBlogsResponse } from '../utils/blog.utils';
 
 // Public blog controllers
 export const getAllBlogs = catchAsync(async (req: Request, res: Response) => {
@@ -65,6 +67,7 @@ export const getAllBlogs = catchAsync(async (req: Request, res: Response) => {
   const [blogs, totalBlogs] = await Promise.all([
     Blog.find(filter)
       .populate('category', 'name slug color')
+      .populate('featuredImageAsset', 'url thumbnailUrl variations')
       .select('-content') // Exclude content for list view
       .sort(sortQuery)
       .skip(skip)
@@ -77,11 +80,14 @@ export const getAllBlogs = catchAsync(async (req: Request, res: Response) => {
   const hasNextPage = pageNumber < totalPages;
   const hasPrevPage = pageNumber > 1;
 
+  // Transform to extract image URLs from featuredImageAsset
+  const transformedBlogs = transformBlogsResponse(blogs);
+
   res.status(200).json({
     success: true,
     message: 'Blogs retrieved successfully',
     data: {
-      blogs,
+      blogs: transformedBlogs,
       pagination: {
         currentPage: pageNumber,
         totalPages,
@@ -100,6 +106,7 @@ export const getBlogBySlug = catchAsync(async (req: Request, res: Response) => {
 
   const blog = await Blog.findOne({ slug, status: 'published' })
     .populate('category', 'name slug color description')
+    .populate('featuredImageAsset', 'url thumbnailUrl variations')
     .lean();
 
   if (!blog) {
@@ -108,6 +115,9 @@ export const getBlogBySlug = catchAsync(async (req: Request, res: Response) => {
       message: 'Blog post not found'
     });
   }
+
+  // Transform to extract image URL from featuredImageAsset
+  const transformedBlog = transformBlogResponse(blog);
 
   // Check if current user has liked this blog (if user is logged in)
   const hasLiked = userId
@@ -121,7 +131,7 @@ export const getBlogBySlug = catchAsync(async (req: Request, res: Response) => {
     success: true,
     message: 'Blog retrieved successfully',
     data: {
-      blog,
+      blog: transformedBlog,
       hasLiked
     }
   });
@@ -131,20 +141,24 @@ export const getFeaturedBlogs = catchAsync(async (req: Request, res: Response) =
   const { limit = 6 } = req.query;
   const limitNumber = Math.min(20, Math.max(1, Number(limit)));
 
-  const blogs = await Blog.find({ 
-    status: 'published', 
-    featured: true 
+  const blogs = await Blog.find({
+    status: 'published',
+    featured: true
   })
     .populate('category', 'name slug color')
+    .populate('featuredImageAsset', 'url thumbnailUrl variations')
     .select('-content')
     .sort({ publishedAt: -1 })
     .limit(limitNumber)
     .lean();
 
+  // Transform to extract image URLs from featuredImageAsset
+  const transformedBlogs = transformBlogsResponse(blogs);
+
   res.status(200).json({
     success: true,
     message: 'Featured blogs retrieved successfully',
-    data: { blogs }
+    data: { blogs: transformedBlogs }
   });
 });
 
@@ -166,15 +180,19 @@ export const getPopularBlogs = catchAsync(async (req: Request, res: Response) =>
 
   const blogs = await Blog.find({ status: 'published' })
     .populate('category', 'name slug color')
+    .populate('featuredImageAsset', 'url thumbnailUrl variations')
     .select('-content')
     .sort({ viewCount: -1, likeCount: -1 })
     .limit(limitNumber)
     .lean();
 
+  // Transform to extract image URLs from featuredImageAsset
+  const transformedBlogs = transformBlogsResponse(blogs);
+
   res.status(200).json({
     success: true,
     message: 'Popular blogs retrieved successfully',
-    data: { blogs }
+    data: { blogs: transformedBlogs }
   });
 });
 
@@ -184,15 +202,19 @@ export const getRecentBlogs = catchAsync(async (req: Request, res: Response) => 
 
   const blogs = await Blog.find({ status: 'published' })
     .populate('category', 'name slug color')
+    .populate('featuredImageAsset', 'url thumbnailUrl variations')
     .select('-content')
     .sort({ publishedAt: -1 })
     .limit(limitNumber)
     .lean();
 
+  // Transform to extract image URLs from featuredImageAsset
+  const transformedBlogs = transformBlogsResponse(blogs);
+
   res.status(200).json({
     success: true,
     message: 'Recent blogs retrieved successfully',
-    data: { blogs }
+    data: { blogs: transformedBlogs }
   });
 });
 
@@ -222,15 +244,19 @@ export const getRelatedBlogs = catchAsync(async (req: Request, res: Response) =>
     ]
   })
     .populate('category', 'name slug color')
+    .populate('featuredImageAsset', 'url thumbnailUrl variations')
     .select('-content')
     .sort({ publishedAt: -1 })
     .limit(limitNumber)
     .lean();
 
+  // Transform to extract image URLs from featuredImageAsset
+  const transformedBlogs = transformBlogsResponse(relatedBlogs);
+
   res.status(200).json({
     success: true,
     message: 'Related blogs retrieved successfully',
-    data: { blogs: relatedBlogs }
+    data: { blogs: transformedBlogs }
   });
 });
 
@@ -253,8 +279,8 @@ export const createBlog = catchAsync(async (req: Request, res: Response) => {
     blogData.readTime = Math.max(1, Math.ceil(wordCount / 200));
   }
 
-  const blog = new Blog(blogData);
-  await blog.save();
+  // USE SERVICE LAYER (handles media tracking)
+  const blog = await blogService.createBlog(blogData);
 
   // Update category posts count
   await BlogCategory.findByIdAndUpdate(
@@ -263,6 +289,7 @@ export const createBlog = catchAsync(async (req: Request, res: Response) => {
   );
 
   await blog.populate('category', 'name slug color');
+  await blog.populate('featuredImageAsset', 'url thumbnailUrl variations');
 
   res.status(201).json({
     success: true,
@@ -286,15 +313,15 @@ export const updateBlog = catchAsync(async (req: Request, res: Response) => {
     }
   }
 
-  const blog = await Blog.findById(id);
-  if (!blog) {
+  const oldBlog = await Blog.findById(id);
+  if (!oldBlog) {
     return res.status(404).json({
       success: false,
       message: 'Blog not found'
     });
   }
 
-  const oldCategoryId = (blog.category as any).toString();
+  const oldCategoryId = (oldBlog.category as any).toString();
 
   // Calculate read time if content is being updated
   if (updateData.content) {
@@ -302,8 +329,8 @@ export const updateBlog = catchAsync(async (req: Request, res: Response) => {
     updateData.readTime = Math.max(1, Math.ceil(wordCount / 200));
   }
 
-  Object.assign(blog, updateData);
-  await blog.save();
+  // USE SERVICE LAYER (handles media tracking)
+  const blog = await blogService.updateBlog(id, updateData);
 
   // Update category posts count if category changed
   if (updateData.category && oldCategoryId !== updateData.category) {
@@ -314,6 +341,7 @@ export const updateBlog = catchAsync(async (req: Request, res: Response) => {
   }
 
   await blog.populate('category', 'name slug color');
+  await blog.populate('featuredImageAsset', 'url thumbnailUrl variations');
 
   res.status(200).json({
     success: true,
@@ -333,13 +361,14 @@ export const deleteBlog = catchAsync(async (req: Request, res: Response) => {
     });
   }
 
+  // USE SERVICE LAYER (handles media cleanup)
+  await blogService.deleteBlog(id);
+
   // Update category posts count
   await BlogCategory.findByIdAndUpdate(
     blog.category,
     { $inc: { postsCount: -1 } }
   );
-
-  await Blog.findByIdAndDelete(id);
 
   res.status(200).json({
     success: true,
@@ -392,6 +421,7 @@ export const getAllBlogsAdmin = catchAsync(async (req: Request, res: Response) =
   const [blogs, totalBlogs] = await Promise.all([
     Blog.find(filter)
       .populate('category', 'name slug color')
+      .populate('featuredImageAsset', 'url thumbnailUrl variations')
       .select('-content')
       .sort(sortQuery)
       .skip(skip)
@@ -402,11 +432,14 @@ export const getAllBlogsAdmin = catchAsync(async (req: Request, res: Response) =
 
   const totalPages = Math.ceil(totalBlogs / limitNumber);
 
+  // Transform to extract image URLs from featuredImageAsset
+  const transformedBlogs = transformBlogsResponse(blogs);
+
   res.status(200).json({
     success: true,
     message: 'Blogs retrieved successfully',
     data: {
-      blogs,
+      blogs: transformedBlogs,
       pagination: {
         currentPage: pageNumber,
         totalPages,
@@ -424,6 +457,7 @@ export const getBlogById = catchAsync(async (req: Request, res: Response) => {
 
   const blog = await Blog.findById(id)
     .populate('category', 'name slug color description')
+    .populate('featuredImageAsset', 'url thumbnailUrl variations')
     .lean();
 
   if (!blog) {
@@ -433,10 +467,13 @@ export const getBlogById = catchAsync(async (req: Request, res: Response) => {
     });
   }
 
+  // Transform to extract image URL from featuredImageAsset
+  const transformedBlog = transformBlogResponse(blog);
+
   res.status(200).json({
     success: true,
     message: 'Blog retrieved successfully',
-    data: { blog }
+    data: { blog: transformedBlog }
   });
 });
 

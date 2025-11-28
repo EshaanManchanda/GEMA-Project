@@ -33,15 +33,15 @@ const SystemSettingsSchema = new Schema<ISystemSettings>(
   {
     siteName: {
       type: String,
-      default: 'Gema Events'
+      default: process.env.SITE_NAME || 'Kidrove'
     },
     siteDescription: {
       type: String,
-      default: 'Find and book the best events for kids'
+      default: process.env.SITE_DESCRIPTION || 'Discover and book amazing family events and kids activities across the UAE'
     },
     contactEmail: {
       type: String,
-      default: 'contact@gemaevents.com'
+      default: process.env.CONTACT_EMAIL || process.env.EMAIL_FROM || 'contact@kidrove.com'
     },
     supportPhone: {
       type: String,

@@ -1,7 +1,12 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { FaTimes, FaPlus, FaTrash, FaSave, FaMapMarkerAlt } from 'react-icons/fa';
 import adminAPI from '../../services/api/adminAPI';
 import categoriesAPI, { Category } from '../../services/api/categoriesAPI';
+import TipTapEditor from '../common/TipTapEditor';
+import MediaPickerModal from './media/MediaPickerModal';
+import { MediaAsset } from '../../store/slices/mediaSlice';
+import SEOEditor from '../seo/SEOEditor';
+import { config } from '../../config';
 
 interface Vendor {
   id: string;
@@ -73,10 +78,35 @@ const EventEditModal: React.FC<EventEditModalProps> = ({ event, isOpen, onClose,
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [activeTab, setActiveTab] = useState<'basic' | 'location' | 'schedule' | 'seo' | 'advanced'>('basic');
+  const [selectedImageAssets, setSelectedImageAssets] = useState<MediaAsset[]>([]);
+  const [showMediaPicker, setShowMediaPicker] = useState(false);
+  const [seoData, setSeoData] = useState({
+    title: '',
+    description: '',
+    keywords: [] as string[],
+    canonicalUrl: ''
+  });
+
+  const handleSeoDataChange = useCallback((data: any) => {
+    setSeoData(data);
+  }, []);
 
   useEffect(() => {
     if (isOpen) {
       setFormData(event);
+      // Initialize selected image assets
+      if (event.imageAssets && event.imageAssets.length > 0) {
+        setSelectedImageAssets(event.imageAssets as MediaAsset[]);
+      } else {
+        setSelectedImageAssets([]);
+      }
+      // Initialize SEO data
+      setSeoData({
+        title: event.seoMeta?.title || '',
+        description: event.seoMeta?.description || '',
+        keywords: event.seoMeta?.keywords || [],
+        canonicalUrl: ''
+      });
       fetchVendors();
       fetchCategories();
     }
@@ -233,13 +263,16 @@ const EventEditModal: React.FC<EventEditModalProps> = ({ event, isOpen, onClose,
         isFeatured: formData.isFeatured,
         tags: formData.tags,
         dateSchedule: formData.dateSchedule,
-        images: formData.images
+        imageAssets: selectedImageAssets.map(a => a._id)  // Send MediaAsset IDs
       };
 
-      // Add optional fields if they exist
-      if (formData.seoMeta) {
-        updateData.seoMeta = formData.seoMeta;
-      }
+      // Add SEO data
+      updateData.seo = {
+        metaTitle: seoData.title,
+        metaDescription: seoData.description,
+        keywords: seoData.keywords,
+        canonicalUrl: seoData.canonicalUrl
+      };
       if (formData.faqs && formData.faqs.length > 0) {
         updateData.faqs = formData.faqs;
       }
@@ -334,14 +367,13 @@ const EventEditModal: React.FC<EventEditModalProps> = ({ event, isOpen, onClose,
 
               <div>
                 <label htmlFor="edit-event-description" className="block text-sm font-medium text-gray-700 mb-2">Description *</label>
-                <textarea
-                  id="edit-event-description"
-                  name="description"
-                  value={formData.description}
-                  onChange={(e) => handleInputChange('description', e.target.value)}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-                  rows={4}
-                  maxLength={2000}
+                <TipTapEditor
+                  content={formData.description}
+                  onChange={(content) => handleInputChange('description', content)}
+                  placeholder="Describe your event in detail... Use the toolbar to format text, add images from media library, embed videos, and create engaging content."
+                  editable={true}
+                  mediaCategory="event"
+                  mediaFolder="events"
                 />
               </div>
 
@@ -433,17 +465,42 @@ const EventEditModal: React.FC<EventEditModalProps> = ({ event, isOpen, onClose,
                 />
               </div>
 
+              {/* Event Images */}
               <div>
-                <label htmlFor="edit-event-images" className="block text-sm font-medium text-gray-700 mb-2">Images (comma-separated URLs)</label>
-                <textarea
-                  id="edit-event-images"
-                  name="images"
-                  value={formData.images.join(', ')}
-                  onChange={(e) => handleImageChange(e.target.value)}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-                  rows={2}
-                  placeholder="https://example.com/image1.jpg, https://example.com/image2.jpg"
-                />
+                <label className="block text-sm font-medium text-gray-700 mb-2">
+                  Event Images
+                </label>
+
+                {selectedImageAssets.length > 0 && (
+                  <div className="grid grid-cols-3 gap-3 mb-3">
+                    {selectedImageAssets.map((asset, index) => (
+                      <div key={asset._id} className="relative group">
+                        <img
+                          src={asset.url}
+                          alt={asset.originalName}
+                          className="h-24 w-full object-cover rounded"
+                        />
+                        <button
+                          type="button"
+                          onClick={() => {
+                            setSelectedImageAssets(prev => prev.filter((_, i) => i !== index));
+                          }}
+                          className="absolute top-1 right-1 bg-red-500 text-white rounded-full w-5 h-5 text-xs opacity-0 group-hover:opacity-100"
+                        >
+                          ×
+                        </button>
+                      </div>
+                    ))}
+                  </div>
+                )}
+
+                <button
+                  type="button"
+                  onClick={() => setShowMediaPicker(true)}
+                  className="px-4 py-2 bg-blue-500 text-white rounded hover:bg-blue-600"
+                >
+                  {selectedImageAssets.length > 0 ? 'Add More' : 'Select Images'}
+                </button>
               </div>
             </div>
           )}
@@ -628,54 +685,28 @@ const EventEditModal: React.FC<EventEditModalProps> = ({ event, isOpen, onClose,
 
           {/* SEO & FAQs Tab */}
           {activeTab === 'seo' && (
-            <div className="space-y-4">
+            <div className="space-y-6">
               <div>
-                <h3 className="text-lg font-medium text-gray-900 mb-3">SEO Meta</h3>
-                <div className="space-y-3">
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-2">SEO Title</label>
-                    <input
-                      type="text"
-                      value={formData.seoMeta?.title || ''}
-                      onChange={(e) => setFormData(prev => ({
-                        ...prev,
-                        seoMeta: { ...(prev.seoMeta || { description: '', keywords: [] }), title: e.target.value }
-                      }))}
-                      className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-                      maxLength={60}
-                    />
-                  </div>
-
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-2">SEO Description</label>
-                    <textarea
-                      value={formData.seoMeta?.description || ''}
-                      onChange={(e) => setFormData(prev => ({
-                        ...prev,
-                        seoMeta: { ...(prev.seoMeta || { title: '', keywords: [] }), description: e.target.value }
-                      }))}
-                      className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-                      rows={2}
-                      maxLength={160}
-                    />
-                  </div>
-
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-2">SEO Keywords (comma-separated)</label>
-                    <input
-                      type="text"
-                      value={formData.seoMeta?.keywords?.join(', ') || ''}
-                      onChange={(e) => {
-                        const keywords = e.target.value.split(',').map(k => k.trim()).filter(k => k);
-                        setFormData(prev => ({
-                          ...prev,
-                          seoMeta: { ...(prev.seoMeta || { title: '', description: '' }), keywords }
-                        }));
-                      }}
-                      className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-                    />
-                  </div>
-                </div>
+                <h3 className="text-lg font-medium text-gray-900 mb-3">SEO Optimization</h3>
+                <SEOEditor
+                  initialData={{
+                    title: seoData.title,
+                    description: seoData.description,
+                    keywords: seoData.keywords,
+                    canonicalUrl: seoData.canonicalUrl
+                  }}
+                  contentData={{
+                    title: formData.title,
+                    description: formData.description,
+                    category: categories.find(c => c._id === formData.category || c.slug === formData.category)?.name || formData.category,
+                    tags: formData.tags,
+                    type: 'event'
+                  }}
+                  onChange={handleSeoDataChange}
+                  baseUrl={config.appUrl}
+                  path={`/events/${formData.title.toLowerCase().replace(/\s+/g, '-')}`}
+                  ogImage={selectedImageAssets[0]?.url || ''}
+                />
               </div>
 
               <div className="pt-4 border-t">
@@ -831,6 +862,20 @@ const EventEditModal: React.FC<EventEditModalProps> = ({ event, isOpen, onClose,
           </button>
         </div>
       </div>
+
+      {/* Media Picker Modal */}
+      <MediaPickerModal
+        isOpen={showMediaPicker}
+        onClose={() => setShowMediaPicker(false)}
+        onSelect={(assets) => {
+          setSelectedImageAssets(assets);
+          setShowMediaPicker(false);
+        }}
+        category="event"
+        folder="events"
+        multiple={true}
+        title="Select Event Images"
+      />
     </div>
   );
 };

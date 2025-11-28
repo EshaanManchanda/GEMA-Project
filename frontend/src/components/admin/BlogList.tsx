@@ -36,7 +36,12 @@ interface Blog {
   slug: string;
   status: 'draft' | 'published' | 'archived';
   featured: boolean;
-  featuredImage: string;
+  featuredImage?: string;  // OLD - deprecated
+  featuredImageAsset?: {   // NEW - populated MediaAsset
+    _id: string;
+    url: string;
+    thumbnailUrl?: string;
+  };
   category: {
     _id: string;
     name: string;
@@ -244,9 +249,21 @@ const BlogList: React.FC = () => {
       console.error('Error submitting blog:', error);
       console.error('Error response:', error.response?.data);
       console.error('Error status:', error.response?.status);
-      // Re-throw with more details
-      const errorMessage = error.response?.data?.message || error.message || 'Failed to save blog';
-      throw new Error(errorMessage);
+
+      // Extract specific validation errors
+      if (error.response?.data?.errors) {
+        const validationErrors = error.response.data.errors;
+        const errorMessages = Object.entries(validationErrors)
+          .map(([field, message]) => `${field}: ${message}`)
+          .join('\n');
+
+        toast.error(`Validation failed:\n${errorMessages}`, { duration: 5000 });
+        throw new Error(error.response?.data?.message || 'Validation failed');
+      } else {
+        const errorMessage = error.response?.data?.message || error.message || 'Failed to save blog';
+        toast.error(errorMessage);
+        throw new Error(errorMessage);
+      }
     }
   };
 
@@ -386,10 +403,15 @@ const BlogList: React.FC = () => {
       label: 'Blog Post',
       render: (_: any, blog: Blog) => {
         if (!blog) return null;
+        // Prefer new field, fallback to old
+        const imageUrl = blog.featuredImageAsset?.url
+          || blog.featuredImage
+          || '/assets/images/blog/placeholder.svg';
+
         return (
           <div className="flex items-start space-x-3 max-w-md">
             <img
-              src={blog.featuredImage || '/assets/images/blog/placeholder.svg'}
+              src={imageUrl}
               alt={blog.title}
               className="w-16 h-16 object-cover rounded-lg flex-shrink-0"
               onError={(e) => {

@@ -20,7 +20,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '../ui/Card';
 import Input from '../ui/Input';
 import Modal from '../ui/Modal';
 import Badge from '../ui/Badge';
-import collectionsAPI, { Collection, CollectionFormData } from '../../services/api/collectionsAPI';
+import { Collection, CollectionFormData } from '../../services/api/collectionsAPI';
 import adminAPI from '../../services/api/adminAPI';
 
 // Validation schema
@@ -37,6 +37,7 @@ const collectionSchema = yup.object().shape({
       then: (schema) => schema.required('Icon URL or file is required'),
       otherwise: (schema) => schema
     }),
+  featuredImage: yup.string().optional(),
   count: yup.string()
     .max(50, 'Count text cannot exceed 50 characters'),
   category: yup.string()
@@ -44,8 +45,27 @@ const collectionSchema = yup.object().shape({
   sortOrder: yup.number()
     .min(0, 'Sort order cannot be negative')
     .integer('Sort order must be a whole number'),
+  isActive: yup.boolean().optional(),
   slug: yup.string()
     .matches(/^[a-z0-9-]*$/, 'Slug can only contain lowercase letters, numbers, and hyphens'),
+  metaTitle: yup.string()
+    .max(70, 'Meta title cannot exceed 70 characters')
+    .optional(),
+  metaDescription: yup.string()
+    .max(160, 'Meta description cannot exceed 160 characters')
+    .optional(),
+  canonicalUrl: yup.string()
+    .transform((value) => value === '' ? undefined : value)
+    .test('is-url', 'Must be a valid URL', function(value) {
+      if (!value) return true; // Optional field
+      try {
+        new URL(value);
+        return true;
+      } catch {
+        return false;
+      }
+    })
+    .optional(),
 });
 
 interface CollectionFormProps {

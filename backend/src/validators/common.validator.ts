@@ -321,6 +321,58 @@ export const createFileValidation = (options: {
   };
 };
 
+/**
+ * Strip HTML tags and get plain text content
+ */
+export const stripHtmlTags = (html: string): string => {
+  if (!html || typeof html !== 'string') return '';
+
+  // Simple regex-based approach (fast, no dependencies)
+  return html
+    .replace(/<[^>]*>/g, '')  // Remove all HTML tags
+    .replace(/&nbsp;/g, ' ')  // Replace &nbsp; with space
+    .replace(/&amp;/g, '&')   // Decode common entities
+    .replace(/&lt;/g, '<')
+    .replace(/&gt;/g, '>')
+    .replace(/&quot;/g, '"')
+    .replace(/&#39;/g, "'")
+    .replace(/\s+/g, ' ')     // Normalize whitespace
+    .trim();
+};
+
+/**
+ * Validate HTML content by checking plain text length
+ */
+export const validateHtmlLength = (
+  field: string,
+  min: number,
+  max: number,
+  required: boolean = true
+) => {
+  return body(field)
+    .custom((value) => {
+      if (!value || value.trim() === '') {
+        if (required) {
+          throw new Error(`${field} is required`);
+        }
+        return true;
+      }
+
+      const plainText = stripHtmlTags(value);
+      const length = plainText.length;
+
+      if (length < min) {
+        throw new Error(`${field} must be at least ${min} characters (currently ${length})`);
+      }
+
+      if (length > max) {
+        throw new Error(`${field} must not exceed ${max} characters (currently ${length})`);
+      }
+
+      return true;
+    });
+};
+
 // Export all validators as a convenience
 export default {
   validateMongoId,
@@ -341,4 +393,6 @@ export default {
   sanitizeHtml,
   validateCoordinates,
   createFileValidation,
+  stripHtmlTags,
+  validateHtmlLength,
 };

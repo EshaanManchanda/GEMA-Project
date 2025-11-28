@@ -10,7 +10,8 @@ import {
   validateArray,
   validateStringLength,
   validateNumericRange,
-  sanitizeHtml
+  sanitizeHtml,
+  validateHtmlLength
 } from './common.validator';
 
 /**
@@ -29,12 +30,7 @@ export const CURRENCIES = ['AED', 'EGP', 'CAD', 'USD'];
 export const validateCreateEvent = [
   validateStringLength('title', 1, 200, true),
 
-  body('description')
-    .trim()
-    .notEmpty()
-    .withMessage('Description is required')
-    .isLength({ min: 20, max: 2000 })
-    .withMessage('Description must be between 20 and 2000 characters'),
+  validateHtmlLength('description', 20, 2000, true),
 
   sanitizeHtml('description'),
 
@@ -190,11 +186,7 @@ export const validateCreateEvent = [
 export const validateUpdateEvent = [
   validateStringLength('title', 1, 200, false),
 
-  body('description')
-    .optional()
-    .trim()
-    .isLength({ min: 20, max: 2000 })
-    .withMessage('Description must be between 20 and 2000 characters'),
+  validateHtmlLength('description', 20, 2000, false),
 
   sanitizeHtml('description'),
 

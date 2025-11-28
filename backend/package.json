@@ -24,10 +24,15 @@
     "db:seed": "ts-node src/scripts/seed.ts",
     "db:seed-blogs": "ts-node src/scripts/seedBlogs.ts",
     "db:seed-coupons": "ts-node src/scripts/seedCoupons.ts",
-    "db:seed-affiliate": "ts-node src/scripts/seedAffiliateVendor.ts"
+    "db:seed-affiliate": "ts-node src/scripts/seedAffiliateVendor.ts",
+    "migrate:cloudinary": "ts-node src/scripts/migrate-cloudinary-assets.ts",
+    "migrate:blog-images": "ts-node src/scripts/migrate-blog-images.ts",
+    "migrate:event-images": "ts-node src/scripts/migrate-event-images.ts",
+    "migrate:uuid": "ts-node src/scripts/migrate-add-uuid-to-media.ts",
+    "migrate:cloudinary-urls": "ts-node src/scripts/migrate-cloudinary-urls-to-uuid.ts",
+    "script:cleanup-media": "ts-node src/scripts/cleanup-orphaned-media.ts"
   },
   "dependencies": {
-    "20": "^3.1.9",
     "@types/bcryptjs": "^2.4.6",
     "@types/compression": "^1.7.5",
     "@types/cookie-parser": "^1.4.6",
@@ -41,7 +46,7 @@
     "@types/node-cron": "^3.0.11",
     "@types/nodemailer": "^6.4.17",
     "@types/qrcode": "^1.5.5",
-    "@types/uuid": "^10.0.0",
+    "@types/uuid": "^9.0.8",
     "axios": "^1.12.2",
     "bcryptjs": "^2.4.3",
     "bullmq": "^5.60.0",
@@ -74,6 +79,7 @@
     "redlock": "^5.0.0-beta.2",
     "stripe": "^18.4.0",
     "typescript": "^5.3.3",
+    "uuid": "^9.0.1",
     "winston": "^3.11.0",
     "xss-clean": "^0.1.4"
   },

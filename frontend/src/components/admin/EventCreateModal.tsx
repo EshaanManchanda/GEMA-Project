@@ -1,7 +1,12 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { FaTimes, FaPlus, FaTrash, FaSave } from 'react-icons/fa';
 import adminAPI from '../../services/api/adminAPI';
 import categoriesAPI, { Category } from '../../services/api/categoriesAPI';
+import TipTapEditor from '../common/TipTapEditor';
+import MediaPickerModal from './media/MediaPickerModal';
+import { MediaAsset } from '../../store/slices/mediaSlice';
+import SEOEditor from '../seo/SEOEditor';
+import { config } from '../../config';
 
 interface Vendor {
   id: string;
@@ -28,7 +33,7 @@ const EventCreateModal: React.FC<EventCreateModalProps> = ({ isOpen, onClose, on
   const [categories, setCategories] = useState<Category[]>([]);
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [activeTab, setActiveTab] = useState<'basic' | 'location' | 'schedule' | 'advanced'>('basic');
+  const [activeTab, setActiveTab] = useState<'basic' | 'location' | 'schedule' | 'seo' | 'advanced'>('basic');
 
   // Form data
   const [title, setTitle] = useState('');
@@ -46,11 +51,23 @@ const EventCreateModal: React.FC<EventCreateModalProps> = ({ isOpen, onClose, on
   const [vendorId, setVendorId] = useState('');
   const [tags, setTags] = useState('');
   const [images, setImages] = useState('');
+  const [selectedImageAssets, setSelectedImageAssets] = useState<MediaAsset[]>([]);
+  const [showMediaPicker, setShowMediaPicker] = useState(false);
+  const [seoData, setSeoData] = useState({
+    title: '',
+    description: '',
+    keywords: [] as string[],
+    canonicalUrl: ''
+  });
   const [dateSchedule, setDateSchedule] = useState<DateSchedule[]>([
     { startDate: '', endDate: '', availableSeats: 0, totalSeats: 0, price: 0 }
   ]);
   const [isApproved, setIsApproved] = useState(true);
   const [isFeatured, setIsFeatured] = useState(false);
+
+  const handleSeoDataChange = useCallback((data: any) => {
+    setSeoData(data);
+  }, []);
 
   useEffect(() => {
     if (isOpen) {
@@ -99,6 +116,8 @@ const EventCreateModal: React.FC<EventCreateModalProps> = ({ isOpen, onClose, on
     setVendorId('');
     setTags('');
     setImages('');
+    setSelectedImageAssets([]);
+    setSeoData({ title: '', description: '', keywords: [], canonicalUrl: '' });
     setDateSchedule([{ startDate: '', endDate: '', availableSeats: 0, totalSeats: 0, price: 0 }]);
     setIsApproved(true);
     setIsFeatured(false);
@@ -176,10 +195,16 @@ const EventCreateModal: React.FC<EventCreateModalProps> = ({ isOpen, onClose, on
         currency,
         vendorId,
         tags: tags.split(',').map(t => t.trim()).filter(t => t),
-        images: images.split(',').map(img => img.trim()).filter(img => img),
+        imageAssets: selectedImageAssets.map(a => a._id),  // Send MediaAsset IDs
         dateSchedule,
         isApproved,
-        isFeatured
+        isFeatured,
+        seo: {
+          metaTitle: seoData.title,
+          metaDescription: seoData.description,
+          keywords: seoData.keywords,
+          canonicalUrl: seoData.canonicalUrl
+        }
       };
 
       // Create event using admin API
@@ -239,6 +264,7 @@ const EventCreateModal: React.FC<EventCreateModalProps> = ({ isOpen, onClose, on
               { key: 'basic', label: 'Basic Info' },
               { key: 'location', label: 'Location & Pricing' },
               { key: 'schedule', label: 'Date Schedules' },
+              { key: 'seo', label: 'SEO' },
               { key: 'advanced', label: 'Advanced' }
             ].map(tab => (
               <button
@@ -276,14 +302,13 @@ const EventCreateModal: React.FC<EventCreateModalProps> = ({ isOpen, onClose, on
 
               <div>
                 <label htmlFor="event-description" className="block text-sm font-medium text-gray-700 mb-2">Description *</label>
-                <textarea
-                  id="event-description"
-                  name="description"
-                  value={description}
-                  onChange={(e) => setDescription(e.target.value)}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-                  rows={4}
-                  maxLength={2000}
+                <TipTapEditor
+                  content={description}
+                  onChange={setDescription}
+                  placeholder="Describe your event in detail... Use the toolbar to format text, add images from media library, embed videos, and create engaging content."
+                  editable={true}
+                  mediaCategory="event"
+                  mediaFolder="events"
                 />
               </div>
 
@@ -375,17 +400,42 @@ const EventCreateModal: React.FC<EventCreateModalProps> = ({ isOpen, onClose, on
                 />
               </div>
 
+              {/* Event Images */}
               <div>
-                <label htmlFor="event-images" className="block text-sm font-medium text-gray-700 mb-2">Images (comma-separated URLs)</label>
-                <textarea
-                  id="event-images"
-                  name="images"
-                  value={images}
-                  onChange={(e) => setImages(e.target.value)}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-                  rows={2}
-                  placeholder="https://example.com/image1.jpg, https://example.com/image2.jpg"
-                />
+                <label className="block text-sm font-medium text-gray-700 mb-2">
+                  Event Images
+                </label>
+
+                {selectedImageAssets.length > 0 && (
+                  <div className="grid grid-cols-3 gap-3 mb-3">
+                    {selectedImageAssets.map((asset, index) => (
+                      <div key={asset._id} className="relative group">
+                        <img
+                          src={asset.url}
+                          alt={asset.originalName}
+                          className="h-24 w-full object-cover rounded"
+                        />
+                        <button
+                          type="button"
+                          onClick={() => {
+                            setSelectedImageAssets(prev => prev.filter((_, i) => i !== index));
+                          }}
+                          className="absolute top-1 right-1 bg-red-500 text-white rounded-full w-5 h-5 text-xs opacity-0 group-hover:opacity-100"
+                        >
+                          ×
+                        </button>
+                      </div>
+                    ))}
+                  </div>
+                )}
+
+                <button
+                  type="button"
+                  onClick={() => setShowMediaPicker(true)}
+                  className="px-4 py-2 bg-blue-500 text-white rounded hover:bg-blue-600"
+                >
+                  {selectedImageAssets.length > 0 ? 'Add More' : 'Select Images'}
+                </button>
               </div>
             </div>
           )}
@@ -562,6 +612,31 @@ const EventCreateModal: React.FC<EventCreateModalProps> = ({ isOpen, onClose, on
             </div>
           )}
 
+          {/* SEO Tab */}
+          {activeTab === 'seo' && (
+            <div className="space-y-6">
+              <SEOEditor
+                initialData={{
+                  title: seoData.title,
+                  description: seoData.description,
+                  keywords: seoData.keywords,
+                  canonicalUrl: seoData.canonicalUrl
+                }}
+                contentData={{
+                  title: title,
+                  description: description,
+                  category: categories.find(c => c._id === category)?.name || category,
+                  tags: tags.split(',').map(t => t.trim()).filter(Boolean),
+                  type: 'event'
+                }}
+                onChange={handleSeoDataChange}
+                baseUrl={config.appUrl}
+                path={`/events/${title.toLowerCase().replace(/\s+/g, '-')}`}
+                ogImage={selectedImageAssets[0]?.url || ''}
+              />
+            </div>
+          )}
+
           {/* Advanced Tab */}
           {activeTab === 'advanced' && (
             <div className="space-y-4">
@@ -634,6 +709,20 @@ const EventCreateModal: React.FC<EventCreateModalProps> = ({ isOpen, onClose, on
           </button>
         </div>
       </div>
+
+      {/* Media Picker Modal */}
+      <MediaPickerModal
+        isOpen={showMediaPicker}
+        onClose={() => setShowMediaPicker(false)}
+        onSelect={(assets) => {
+          setSelectedImageAssets(assets);
+          setShowMediaPicker(false);
+        }}
+        category="event"
+        folder="events"
+        multiple={true}
+        title="Select Event Images"
+      />
     </div>
   );
 };

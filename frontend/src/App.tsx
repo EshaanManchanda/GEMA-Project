@@ -72,7 +72,8 @@ const AdminDashboardPage = React.lazy(() => import(/* webpackChunkName: "admin" 
 const AdminUsersPage = React.lazy(() => import(/* webpackChunkName: "admin" */ './pages/admin/AdminUsersPage'));
 const AdminVendorsPage = React.lazy(() => import(/* webpackChunkName: "admin" */ './pages/admin/AdminVendorsPage'));
 const AdminEventsPage = React.lazy(() => import(/* webpackChunkName: "admin" */ './pages/admin/AdminEventsPage'));
-const AdminEditEventPage = React.lazy(() => import(/* webpackChunkName: "admin" */ './pages/admin/AdminEditEventPage'));
+// Temporarily using eager loading to debug import issue
+import AdminEditEventPage from './pages/admin/AdminEditEventPage';
 const AdminVenuesPage = React.lazy(() => import(/* webpackChunkName: "admin" */ './pages/admin/AdminVenuesPage'));
 const CreateVenuePage = React.lazy(() => import(/* webpackChunkName: "admin" */ './pages/admin/CreateVenuePage'));
 const EditVenuePage = React.lazy(() => import(/* webpackChunkName: "admin" */ './pages/admin/EditVenuePage'));
@@ -89,6 +90,7 @@ const AdminSettingsPage = React.lazy(() => import(/* webpackChunkName: "admin" *
 const EmployeeManagement = React.lazy(() => import(/* webpackChunkName: "admin" */ './pages/admin/EmployeeManagement'));
 const AdminAffiliateAnalyticsPage = React.lazy(() => import(/* webpackChunkName: "admin" */ './pages/admin/AdminAffiliateAnalyticsPage'));
 const AdminPartnershipsPage = React.lazy(() => import(/* webpackChunkName: "admin" */ './pages/admin/AdminPartnershipsPage'));
+const AdminMediaPage = React.lazy(() => import(/* webpackChunkName: "admin" */ './pages/admin/AdminMediaPage'));
 
 // Analytics Pages
 const AnalyticsDashboard = React.lazy(() => import(/* webpackChunkName: "analytics" */ './pages/analytics/AnalyticsDashboard'));
@@ -713,16 +715,12 @@ function AppContent() {
             } />
             <Route path="events/create" element={
               <AdminRoute>
-                <Suspense fallback={<LoadingSpinner />}>
-                  <AdminEditEventPage />
-                </Suspense>
+                <AdminEditEventPage />
               </AdminRoute>
             } />
             <Route path="events/:id/edit" element={
               <AdminRoute>
-                <Suspense fallback={<LoadingSpinner />}>
-                  <AdminEditEventPage />
-                </Suspense>
+                <AdminEditEventPage />
               </AdminRoute>
             } />
             <Route path="events/:eventId/registration/builder" element={
@@ -815,6 +813,15 @@ function AppContent() {
               <AdminRoute>
                 <Suspense fallback={<LoadingSpinner />}>
                   <AdminBlogCategoriesPage />
+                </Suspense>
+              </AdminRoute>
+            } />
+
+            {/* Media Library */}
+            <Route path="media" element={
+              <AdminRoute>
+                <Suspense fallback={<LoadingSpinner />}>
+                  <AdminMediaPage />
                 </Suspense>
               </AdminRoute>
             } />

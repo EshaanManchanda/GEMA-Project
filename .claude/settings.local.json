@@ -1,23 +1,8 @@
 {
   "permissions": {
     "allow": [
-      "Bash(cat \"E:\\coding\\gema\\frontend\\.env\")",
-      "Bash(cat \"E:\\coding\\gema\\frontend\\.env.local\")",
-      "Bash(npm run ts-node:*)",
-      "Bash(node src/scripts/seedAffiliateVendor.ts)",
-      "Bash(npm run:*)",
-      "Bash(npx tsx:*)",
-      "Bash(npx tsc:*)",
-      "mcp__ide__getDiagnostics",
       "Bash(cat:*)",
-      "Bash(find:*)",
-      "Bash(node -e:*)",
-      "Bash(git -C /e/coding/gema check-ignore:*)",
-      "Bash(git -C /e/coding/gema ls-files:*)",
-      "Bash(git -C /e/coding/gema diff --name-only HEAD)",
-      "WebSearch",
-      "Bash({ grep -r \"from [''''\"\"]\\.\\.\\/config[''''\"\"]\" --include=\"*.ts\" --include=\"*.js\" . -l)",
-      "Bash(})"
+      "Bash(find:*)"
     ],
     "deny": [],
     "ask": []

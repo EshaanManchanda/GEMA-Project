@@ -1,5 +1,6 @@
 import { useEffect } from 'react';
 import { useLocation } from 'react-router-dom';
+import { config } from '../config';
 
 export interface SEOData {
   title?: string;
@@ -24,14 +25,16 @@ export interface BreadcrumbItem {
  */
 export const useSEO = (seoData: SEOData = {}) => {
   const location = useLocation();
-  const baseUrl = import.meta.env.VITE_APP_URL || 'https://gema-events.com';
+  const baseUrl = config.appUrl;
 
   useEffect(() => {
     // Set default values
     const {
-      title = 'Gema Events - Discover Amazing Kids Activities & Events in UAE',
-      description = 'Find and book the best kids activities, educational programs, and family events in the UAE. Safe, fun, and memorable experiences for children of all ages.',
-      keywords = ['kids activities', 'events', 'UAE', 'Dubai', 'family fun', 'children', 'booking'],
+      title = import.meta.env.VITE_SITE_NAME
+        ? `${import.meta.env.VITE_SITE_NAME} - Discover Amazing Kids Activities & Events in UAE`
+        : 'Kidrove - Discover Amazing Kids Activities & Events in UAE',
+      description = import.meta.env.VITE_SITE_DESCRIPTION || 'Find and book the best kids activities, educational programs, and family events in the UAE. Safe, fun, and memorable experiences for children of all ages.',
+      keywords = import.meta.env.VITE_SITE_KEYWORDS?.split(',') || ['kids activities', 'events', 'UAE', 'Dubai', 'family fun', 'children', 'booking'],
       canonicalUrl = `${baseUrl}${location.pathname}`,
       ogImage = `${baseUrl}/assets/images/og-default.jpg`,
       ogType = 'website',

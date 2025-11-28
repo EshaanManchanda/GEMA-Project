@@ -21,7 +21,7 @@ export interface StructuredData {
 export class SEOService {
   private baseUrl: string;
 
-  constructor(baseUrl: string = process.env.CLIENT_URL || 'https://gema-events.com') {
+  constructor(baseUrl: string = process.env.APP_URL || 'https://kidrove.com') {
     this.baseUrl = baseUrl.replace(/\/$/, ''); // Remove trailing slash
   }
 

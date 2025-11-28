@@ -19,6 +19,8 @@ import { ensureAdminRevenueSettings } from './scripts/seedAdminSettings';
 import { ensureAffiliateVendor } from './scripts/seedAffiliateVendor';
 import { scheduleEventLifecycleJobs, stopEventLifecycleJobs } from './utils/eventLifecycle';
 import { devLog } from './utils/devLogger';
+import { redisClient } from './config/redis';
+import { qrQueue, emailQueue, ticketQueue, analyticsQueue, notificationsQueue, bullMQClient } from './config/queue';
 
 devLog.log('Server starting...');
 
@@ -180,6 +182,9 @@ app.use(notFound);
 // Error handler
 app.use(errorHandler);
 
+// Server variable for graceful shutdown access
+let server: any;
+
 // Async startup function to handle initialization
 async function startServer() {
   try {
@@ -241,7 +246,7 @@ async function startServer() {
 
     // Step 6: Start Express server
     const PORT = config.port;
-    const server = app.listen(PORT, () => {
+    server = app.listen(PORT, () => {
       logger.info(`✓ Server running in ${config.nodeEnv} mode on port ${PORT}`);
       logger.info(`✓ Ready to accept connections`);
     });
@@ -273,28 +278,68 @@ process.on('uncaughtException', (err: Error) => {
   process.exit(1);
 });
 
-// Graceful shutdown
-process.on('SIGTERM', () => {
-  logger.info('SIGTERM signal received: closing HTTP server');
-  logger.info('Logging performance summary...');
-  logPerformanceSummary();
-  logger.info('Stopping scheduled jobs...');
-  stopTicketJobs();
-  stopEventLifecycleJobs();
-  logger.info('Scheduled jobs stopped successfully');
-  process.exit(0);
-});
+// Graceful shutdown handler
+const gracefulShutdown = async (signal: string) => {
+  logger.info(`${signal} signal received: starting graceful shutdown`);
 
-process.on('SIGINT', () => {
-  logger.info('SIGINT signal received: closing HTTP server');
-  logger.info('Logging performance summary...');
-  logPerformanceSummary();
-  logger.info('Stopping scheduled jobs...');
-  stopTicketJobs();
-  stopEventLifecycleJobs();
-  logger.info('Scheduled jobs stopped successfully');
-  process.exit(0);
-});
+  try {
+    // 1. Log performance summary
+    logger.info('Logging performance summary...');
+    logPerformanceSummary();
+
+    // 2. Close HTTP server (stop accepting new requests)
+    if (server) {
+      await new Promise<void>((resolve) => {
+        server.close(() => {
+          logger.info('HTTP server closed');
+          resolve();
+        });
+      });
+    }
+
+    // 3. Stop scheduled jobs
+    logger.info('Stopping scheduled jobs...');
+    stopTicketJobs();
+    stopEventLifecycleJobs();
+    logger.info('Scheduled jobs stopped');
+
+    // 4. Close BullMQ queues (wait for in-flight jobs to complete)
+    logger.info('Closing BullMQ queues...');
+    const queueClosePromises = [
+      qrQueue?.close(),
+      emailQueue?.close(),
+      ticketQueue?.close(),
+      analyticsQueue?.close(),
+      notificationsQueue?.close(),
+    ].filter(Boolean);
+
+    await Promise.allSettled(queueClosePromises);
+    logger.info('All queues closed');
+
+    // 5. Close BullMQ Redis client
+    if (bullMQClient) {
+      logger.info('Closing BullMQ Redis connection...');
+      await bullMQClient.quit();
+      logger.info('BullMQ Redis connection closed');
+    }
+
+    // 6. Close main Redis connection (last step!)
+    if (redisClient) {
+      logger.info('Closing main Redis connection...');
+      await redisClient.quit();
+      logger.info('Main Redis connection closed');
+    }
+
+    logger.info('Graceful shutdown complete');
+    process.exit(0);
+  } catch (error) {
+    logger.error('Error during graceful shutdown:', error);
+    process.exit(1);
+  }
+};
+
+process.on('SIGTERM', () => gracefulShutdown('SIGTERM'));
+process.on('SIGINT', () => gracefulShutdown('SIGINT'));
 
 // Start the server
 startServer();

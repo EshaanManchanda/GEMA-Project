@@ -54,14 +54,37 @@ export const buildPublicEventFilter = (additionalFilters: any = {}) => {
 };
 
 /**
- * Sanitize event output by removing internal fields
- * Removes: __v, isDeleted, internal metadata
+ * Transform event document to include proper image URLs
+ * Handles both old (images array) and new (imageAssets references) formats
+ *
+ * @param event - Event document (can be mongoose document or plain object)
+ * @returns Transformed event with image URLs extracted from MediaAssets
  */
-export const sanitizeEventOutput = (event: any) => {
+export const transformEventResponse = (event: any) => {
   if (!event) return null;
 
   // Convert to plain object if it's a mongoose document
-  const eventObj = event.toObject ? event.toObject() : event;
+  const eventObj = event.toObject ? event.toObject() : { ...event };
+
+  // Extract image URLs from imageAssets if populated
+  if (eventObj.imageAssets && Array.isArray(eventObj.imageAssets) && eventObj.imageAssets.length > 0) {
+    const firstAsset = eventObj.imageAssets[0];
+
+    // Check if imageAssets are populated (objects with url) vs just ObjectIds
+    if (typeof firstAsset === 'object' && firstAsset !== null && firstAsset.url) {
+      // New format: extract URLs from populated MediaAssets
+      eventObj.images = eventObj.imageAssets
+        .map((asset: any) => asset.url || asset.thumbnailUrl)
+        .filter(Boolean);
+
+      // Optionally include variations for responsive images
+      eventObj.imageVariations = eventObj.imageAssets
+        .map((asset: any) => asset.variations)
+        .filter(Boolean);
+    }
+    // else: imageAssets not populated (just IDs), keep existing images array
+  }
+  // else: use existing images array (backward compatibility)
 
   // Remove internal fields
   const { __v, ...sanitized } = eventObj;
@@ -70,10 +93,29 @@ export const sanitizeEventOutput = (event: any) => {
 };
 
 /**
+ * Transform array of events
+ *
+ * @param events - Array of event documents
+ * @returns Array of transformed events
+ */
+export const transformEventsResponse = (events: any[]) => {
+  return events.map(transformEventResponse);
+};
+
+/**
+ * Sanitize event output by removing internal fields
+ * Removes: __v, isDeleted, internal metadata
+ */
+export const sanitizeEventOutput = (event: any) => {
+  if (!event) return null;
+  return transformEventResponse(event);
+};
+
+/**
  * Sanitize array of events
  */
 export const sanitizeEventsOutput = (events: any[]) => {
-  return events.map(sanitizeEventOutput);
+  return transformEventsResponse(events);
 };
 
 /**

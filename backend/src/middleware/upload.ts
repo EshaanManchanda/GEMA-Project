@@ -101,7 +101,7 @@ const upload = multer({
   storage,
   fileFilter,
   limits: {
-    fileSize: config.upload.maxFileSize,
+    fileSize: config.upload.maxVideoSize, // Use largest limit (500MB for videos)
     files: 10, // Maximum 10 files per request
   },
 });

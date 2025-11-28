@@ -355,13 +355,13 @@ const BookingDetails: React.FC<BookingDetailsProps> = ({
               {event.title}
             </h3>
             <div className="flex flex-wrap items-center gap-2">
-              <Badge variant="primary" className="bg-white/20 backdrop-blur-sm text-white border-white/30">
+              <Badge variant="primary" className="bg-gray-900/60 backdrop-blur-sm text-white border-white/30">
                 {event.category}
               </Badge>
-              <Badge variant="secondary" className="bg-white/20 backdrop-blur-sm text-white border-white/30">
+              <Badge variant="secondary" className="bg-gray-900/60 backdrop-blur-sm text-white border-white/30">
                 {event.type}
               </Badge>
-              <Badge variant="outline" className="bg-white/20 backdrop-blur-sm text-white border-white/30">
+              <Badge variant="outline" className="bg-gray-900/60 backdrop-blur-sm text-white border-white/30">
                 {event.venueType}
               </Badge>
             </div>

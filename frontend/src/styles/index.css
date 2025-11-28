@@ -14,12 +14,6 @@
     --secondary-color: #6DB0E1;
     --accent-color: #FF6B00;
   }
-  
-  .dark {
-    --border: 217.2 32.6% 17.5%;
-    --background: 222.2 84% 4.9%;
-    --foreground: 210 40% 98%;
-  }
   * {
     @apply border-border;
   }
@@ -68,19 +62,6 @@
   
   ::-webkit-scrollbar-thumb:hover {
     @apply bg-neutral-400;
-  }
-  
-  /* Dark mode scrollbar */
-  .dark ::-webkit-scrollbar-track {
-    @apply bg-neutral-800;
-  }
-  
-  .dark ::-webkit-scrollbar-thumb {
-    @apply bg-neutral-600;
-  }
-  
-  .dark ::-webkit-scrollbar-thumb:hover {
-    @apply bg-neutral-500;
   }
 }
 
@@ -507,13 +488,6 @@
   box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
 }
 
-/* Dark mode styles */
-@media (prefers-color-scheme: dark) {
-  .dark {
-    color-scheme: dark;
-  }
-}
-
 /* Print styles */
 @media print {
   .no-print {
@@ -646,13 +620,48 @@
 }
 
 /* Swiper overrides */
+.swiper-pagination-bullet {
+  @apply bg-white opacity-50 transition-all duration-300;
+}
+
 .swiper-pagination-bullet-active {
-  @apply bg-primary-600;
+  @apply bg-primary-600 opacity-100;
 }
 
 .swiper-button-next,
 .swiper-button-prev {
-  @apply text-primary-600;
+  @apply text-white transition-all duration-300;
+  background: rgba(0, 0, 0, 0.3);
+  backdrop-filter: blur(8px);
+  width: 44px !important;
+  height: 44px !important;
+  border-radius: 50%;
+}
+
+.swiper-button-next:hover,
+.swiper-button-prev:hover {
+  background: rgba(0, 0, 0, 0.5);
+  transform: scale(1.1);
+}
+
+.swiper-button-next::after,
+.swiper-button-prev::after {
+  font-size: 20px !important;
+  font-weight: bold;
+}
+
+/* Event carousel specific styles */
+.event-carousel .swiper-pagination {
+  @apply bottom-4;
+}
+
+.event-carousel .swiper-pagination-bullet {
+  @apply w-2 h-2 mx-1;
+}
+
+.event-carousel .swiper-button-next,
+.event-carousel .swiper-button-prev {
+  @apply text-white;
 }
 
 /* TipTap Editor Styles */

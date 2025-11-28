@@ -1,5 +1,6 @@
 import { Queue, Worker, QueueEvents, Job } from 'bullmq';
-import { redisClient, isRedisEnabled } from './redis';
+import Redis from 'ioredis';
+import { isRedisEnabled } from './redis';
 import logger from './logger';
 
 // Check if queues should be disabled
@@ -9,29 +10,73 @@ if (areQueuesDisabled) {
   logger.warn('Queues are disabled because Redis is not available');
 }
 
-// Redis connection options for BullMQ with connection pooling
-export const redisConnection = {
+// IMPORTANT: BullMQ Connection Sharing Strategy
+// Create a separate BullMQ-specific Redis client shared across ALL queues and workers
+// This is separate from the cache client because BullMQ requires maxRetriesPerRequest: null
+// Result: 2 total connections (1 for cache + 1 shared for all BullMQ) instead of 8-10!
+
+export const bullMQClient = areQueuesDisabled ? null : new Redis({
   host: process.env.REDIS_HOST || 'localhost',
   port: parseInt(process.env.REDIS_PORT || '6379', 10),
   username: process.env.REDIS_USERNAME || undefined,
   password: process.env.REDIS_PASSWORD || undefined,
-  db: parseInt(process.env.REDIS_QUEUE_DB || '0', 10), // Use DB 0 (some Redis instances don't support multiple DBs)
-  tls: process.env.REDIS_TLS === 'true' ? {
-    // Set to false for self-signed certs, true for production with valid certs
-    rejectUnauthorized: process.env.REDIS_TLS_REJECT_UNAUTHORIZED !== 'false',
-  } : undefined,
-  maxRetriesPerRequest: null, // Required for BullMQ
+  db: parseInt(process.env.REDIS_DB || '0', 10),
+
+  // BullMQ requirements
+  maxRetriesPerRequest: null, // REQUIRED by BullMQ - cannot use redisClient which has maxRetriesPerRequest: 3
   enableReadyCheck: false,
   enableOfflineQueue: false,
-  // Connection pooling to prevent connection exhaustion
+
+  // Connection optimization
   lazyConnect: false,
-  // Reduce connection timeout for faster failure
+  enableAutoPipelining: true, // Better performance with shared connection
+
+  // Reconnection strategy
+  retryStrategy(times: number) {
+    if (times > 10) {
+      logger.error('BullMQ Redis: Max reconnection attempts reached (10)');
+      return null;
+    }
+    const delay = Math.min(times * 50, 2000);
+    logger.warn(`BullMQ Redis reconnecting... Attempt ${times}, delay: ${delay}ms`);
+    return delay;
+  },
+
+  // Connection timeout
   connectTimeout: 5000,
-};
+  keepAlive: 30000,
+
+  // TLS for production
+  tls: process.env.REDIS_TLS === 'true' ? {
+    rejectUnauthorized: process.env.REDIS_TLS_REJECT_UNAUTHORIZED !== 'false',
+  } : undefined,
+});
+
+// Event handlers for BullMQ client
+if (bullMQClient) {
+  bullMQClient.on('connect', () => {
+    logger.info('BullMQ Redis: Connecting...');
+  });
+
+  bullMQClient.on('ready', () => {
+    logger.info('BullMQ Redis: Connected and ready');
+  });
+
+  bullMQClient.on('error', (err) => {
+    logger.error('BullMQ Redis error:', err);
+  });
+
+  bullMQClient.on('close', () => {
+    logger.warn('BullMQ Redis: Connection closed');
+  });
+}
+
+// Share the BullMQ client across all queues/workers
+export const bullMQConnection = bullMQClient;
 
 // Queue configuration (optimized for KVM1 - reduced retention for lower memory usage)
 const queueConfig = {
-  connection: redisConnection,
+  connection: bullMQConnection, // Use shared connection!
   defaultJobOptions: {
     attempts: 3,
     backoff: {

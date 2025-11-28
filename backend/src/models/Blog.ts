@@ -1,13 +1,15 @@
 import mongoose, { Document, Schema, model } from 'mongoose';
 import { IBlogCategory } from './BlogCategory';
+import { IMediaAsset } from './MediaAsset';
 
 export interface IBlog extends Document {
   title: string;
   slug: string;
   excerpt: string;
   content: string;
-  featuredImage: string;
-  category: IBlogCategory['_id'];
+  featuredImage?: string;                    // OLD - deprecated, keep for backward compatibility
+  featuredImageAsset?: mongoose.Types.ObjectId;   // NEW - shadow field for migration
+  category: mongoose.Types.ObjectId;
   author: {
     name: string;
     email: string;
@@ -61,7 +63,12 @@ const blogSchema = new Schema<IBlog>(
     },
     featuredImage: {
       type: String,
-      required: [true, 'Featured image is required'],
+      required: false,  // Make optional during migration
+    },
+    featuredImageAsset: {
+      type: Schema.Types.ObjectId,
+      ref: 'MediaAsset',
+      required: false,  // Will become required after migration complete
     },
     category: {
       type: Schema.Types.ObjectId,
@@ -264,6 +271,14 @@ blogSchema.virtual('categoryDetails', {
   localField: 'category',
   foreignField: '_id',
   justOne: true,
+});
+
+// Virtual for backward compatibility - prefer new field, fallback to old
+blogSchema.virtual('featuredImageUrl').get(function() {
+  if (this.featuredImageAsset && typeof this.featuredImageAsset === 'object') {
+    return (this.featuredImageAsset as any).url;
+  }
+  return this.featuredImage || '';
 });
 
 export const Blog = model<IBlog>('Blog', blogSchema);

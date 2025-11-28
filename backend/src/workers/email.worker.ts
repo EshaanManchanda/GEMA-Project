@@ -1,5 +1,5 @@
 import { Worker, Job, Queue } from 'bullmq';
-import { QUEUE_NAMES, redisConnection, emailQueue as configEmailQueue } from '../config/queue';
+import { QUEUE_NAMES, bullMQConnection, emailQueue as configEmailQueue } from '../config/queue';
 import logger from '../config/logger';
 import { emailService } from '../services/email.service';
 
@@ -148,7 +148,7 @@ const emailWorker = new Worker(
     }
   },
   {
-    connection: redisConnection,
+    connection: bullMQConnection, // Use shared connection
     concurrency: 2, // OPTIMIZED for KVM1 single core: reduced from 5 to 2
     limiter: {
       max: 30, // Reduced from 50 for single core (respects email provider limits)

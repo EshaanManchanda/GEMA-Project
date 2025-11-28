@@ -40,6 +40,9 @@ export type { IBlog } from './Blog';
 export { BlogCategory } from './BlogCategory';
 export type { IBlogCategory } from './BlogCategory';
 
+export { default as MediaAsset } from './MediaAsset';
+export type { IMediaAsset } from './MediaAsset';
+
 // New Models
 export { default as Category } from './Category';
 export type { ICategory } from './Category';

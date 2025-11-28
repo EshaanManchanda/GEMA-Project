@@ -93,7 +93,7 @@ interface CardDescriptionProps extends React.HTMLAttributes<HTMLParagraphElement
 const CardDescription = React.forwardRef<HTMLParagraphElement, CardDescriptionProps>(
   ({ className = '', children, ...props }, ref) => {
     return (
-      <p ref={ref} className={`text-sm text-gray-900 ${className}`} {...props}>
+      <p ref={ref} className={`text-sm text-gray-600 ${className}`} {...props}>
         {children}
       </p>
     );

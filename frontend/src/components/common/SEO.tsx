@@ -1,6 +1,7 @@
 import React from 'react';
 import { Helmet } from 'react-helmet-async';
 import { useLocation } from 'react-router-dom';
+import { config } from '../../config';
 
 export interface SEOProps {
   title?: string;
@@ -36,12 +37,14 @@ const SEO: React.FC<SEOProps> = ({
   breadcrumbs
 }) => {
   const location = useLocation();
-  const baseUrl = import.meta.env.VITE_APP_URL || 'https://gema-events.com';
+  const baseUrl = config.appUrl;
 
   // Default values
-  const defaultTitle = 'Gema Events - Discover Amazing Kids Activities & Events in UAE';
-  const defaultDescription = 'Find and book the best kids activities, educational programs, and family events in the UAE. Safe, fun, and memorable experiences for children of all ages.';
-  const defaultKeywords = ['kids activities', 'events', 'UAE', 'Dubai', 'family fun', 'children', 'booking'];
+  const defaultTitle = import.meta.env.VITE_SITE_NAME
+    ? `${import.meta.env.VITE_SITE_NAME} - Discover Amazing Kids Activities & Events in UAE`
+    : 'Kidrove - Discover Amazing Kids Activities & Events in UAE';
+  const defaultDescription = import.meta.env.VITE_SITE_DESCRIPTION || 'Find and book the best kids activities, educational programs, and family events in the UAE. Safe, fun, and memorable experiences for children of all ages.';
+  const defaultKeywords = import.meta.env.VITE_SITE_KEYWORDS?.split(',') || ['kids activities', 'events', 'UAE', 'Dubai', 'family fun', 'children', 'booking'];
   const defaultImage = `${baseUrl}/assets/images/og-default.jpg`;
 
   // Construct final values
@@ -95,7 +98,7 @@ const SEO: React.FC<SEOProps> = ({
       <meta property="og:type" content={ogType} />
       <meta property="og:url" content={finalCanonicalUrl} />
       <meta property="og:image" content={finalOgImage} />
-      <meta property="og:site_name" content="Gema Events" />
+      <meta property="og:site_name" content={import.meta.env.VITE_SITE_NAME || "Kidrove"} />
       <meta property="og:locale" content="en_US" />
 
       {/* Twitter Card Meta Tags */}

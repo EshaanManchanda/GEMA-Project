@@ -187,7 +187,7 @@ const CollectionsCarousel: React.FC = () => {
               </div>
               <button
                 onClick={() => fetchCollections(true)}
-                className="flex items-center space-x-1 text-xs bg-white/20 hover:bg-white/30 px-2 py-1 rounded transition-colors"
+                className="flex items-center space-x-1 text-xs bg-black/30 hover:bg-black/40 text-white px-2 py-1 rounded transition-colors"
               >
                 <FaRedo size={10} />
                 <span>Retry</span>
@@ -199,7 +199,7 @@ const CollectionsCarousel: React.FC = () => {
         <div className="flex flex-col md:flex-row justify-between items-start md:items-center mb-8">
           <div className="mb-4 md:mb-0">
             <div className="inline-block px-3 py-1 rounded-full text-xs font-medium mb-2"
-              style={{ backgroundColor: 'rgba(255,255,255,0.2)', color: 'white' }}>
+              style={{ backgroundColor: 'rgba(0,0,0,0.3)', color: 'white' }}>
               COLLECTIONS
             </div>
             <h2 className="text-white text-3xl font-bold">Kidzapproved Collections</h2>
@@ -214,7 +214,7 @@ const CollectionsCarousel: React.FC = () => {
           </div>
           <button
             onClick={handleViewAllClick}
-            className="flex items-center gap-2 text-white bg-white/20 hover:bg-white/30 transition-all duration-300 px-4 py-2 rounded-full font-medium focus:outline-none focus:ring-2 focus:ring-white/50"
+            className="flex items-center gap-2 text-white bg-black/30 hover:bg-black/40 transition-all duration-300 px-4 py-2 rounded-full font-medium focus:outline-none focus:ring-2 focus:ring-white/50"
           >
             View All Collections <FaArrowRight size={14} />
           </button>
@@ -283,7 +283,7 @@ const CollectionsCarousel: React.FC = () => {
                   <p className="text-white/80 mb-4">We're working on curating amazing collections for you!</p>
                   <button
                     onClick={() => fetchCollections(true)}
-                    className="bg-white/20 hover:bg-white/30 text-white px-4 py-2 rounded-lg transition-colors"
+                    className="bg-black/30 hover:bg-black/40 text-white px-4 py-2 rounded-lg transition-colors"
                   >
                     Try Again
                   </button>

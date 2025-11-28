@@ -107,27 +107,56 @@ export class CacheService {
       });
 
       return new Promise((resolve, reject) => {
+        let streamClosed = false;
+
+        const cleanup = () => {
+          if (!streamClosed) {
+            streamClosed = true;
+            stream.destroy(); // Ensure stream is destroyed
+          }
+        };
+
         stream.on('data', (resultKeys: string[]) => {
           keys.push(...resultKeys);
         });
 
         stream.on('end', async () => {
+          cleanup();
           try {
             if (keys.length === 0) {
               resolve(0);
               return;
             }
 
-            await redisClient!.del(...keys);
-            resolve(keys.length);
+            // Delete in batches of 1000 to avoid blocking Redis
+            const batchSize = 1000;
+            let deletedCount = 0;
+
+            for (let i = 0; i < keys.length; i += batchSize) {
+              const batch = keys.slice(i, i + batchSize);
+              await redisClient!.del(...batch);
+              deletedCount += batch.length;
+            }
+
+            resolve(deletedCount);
           } catch (error) {
             reject(error);
           }
         });
 
         stream.on('error', (error) => {
+          cleanup();
+          logger.error(`scanStream error for pattern ${pattern}:`, error);
           reject(error);
         });
+
+        // Add timeout to prevent hanging
+        setTimeout(() => {
+          if (!streamClosed) {
+            cleanup();
+            reject(new Error(`scanStream timeout for pattern ${pattern}`));
+          }
+        }, 30000); // 30 second timeout
       });
     } catch (error) {
       logger.error(`Cache delete pattern error for ${pattern}:`, error);

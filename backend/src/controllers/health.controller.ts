@@ -1,6 +1,7 @@
 import { Request, Response } from 'express';
 import mongoose from 'mongoose';
 import { config, logger, checkRedisHealth, isRedisEnabled } from '../config/index';
+import { redisClient } from '../config/redis';
 import { Event, User, Order } from '../models/index';
 
 interface HealthStatus {
@@ -127,7 +128,7 @@ export const getHealthStatus = async (req: Request, res: Response) => {
 export const getBasicHealthStatus = async (req: Request, res: Response) => {
   try {
     const isDbConnected = mongoose.connection.readyState === 1;
-    
+
     res.status(isDbConnected ? 200 : 503).json({
       status: isDbConnected ? 'ok' : 'down',
       timestamp: new Date().toISOString(),
@@ -141,6 +142,76 @@ export const getBasicHealthStatus = async (req: Request, res: Response) => {
       timestamp: new Date().toISOString(),
       environment: config.nodeEnv,
       error: 'Basic health check failed',
+    });
+  }
+};
+
+// @desc    Get Redis connection statistics
+// @route   GET /health/redis
+// @access  Public
+export const getRedisConnectionStats = async (req: Request, res: Response) => {
+  try {
+    if (!isRedisEnabled || !redisClient) {
+      return res.status(200).json({
+        success: true,
+        data: {
+          enabled: false,
+          message: 'Redis is disabled',
+        },
+      });
+    }
+
+    // Get Redis INFO for clients
+    const info = await redisClient.info('clients');
+    const stats = await redisClient.info('stats');
+
+    // Parse client info
+    const clientsMatch = info.match(/connected_clients:(\d+)/);
+    const connectedClients = clientsMatch ? parseInt(clientsMatch[1]) : 0;
+
+    const maxClientsMatch = info.match(/maxclients:(\d+)/);
+    const maxClients = maxClientsMatch ? parseInt(maxClientsMatch[1]) : 0;
+
+    // Get client list
+    const clientList = (await redisClient.call('CLIENT', 'LIST')) as string;
+    const clients = clientList.split('\n').filter(Boolean).map((line) => {
+      const attrs: any = {};
+      line.split(' ').forEach((pair) => {
+        const [key, value] = pair.split('=');
+        attrs[key] = value;
+      });
+      return attrs;
+    });
+
+    // Count by name/type
+    const clientsByName = clients.reduce((acc: any, client: any) => {
+      const name = client.name || 'unnamed';
+      acc[name] = (acc[name] || 0) + 1;
+      return acc;
+    }, {});
+
+    res.status(200).json({
+      success: true,
+      data: {
+        enabled: true,
+        connected: redisClient.status === 'ready',
+        connectedClients,
+        maxClients,
+        utilizationPercent: ((connectedClients / maxClients) * 100).toFixed(2),
+        clientsByName,
+        clients: clients.slice(0, 20), // Show first 20 clients
+        totalClientsInList: clients.length,
+        info: {
+          clients: info,
+          stats: stats,
+        },
+      },
+    });
+  } catch (error) {
+    logger.error('Redis connection stats error:', error);
+    res.status(500).json({
+      success: false,
+      error: 'Failed to get Redis connection stats',
     });
   }
 };

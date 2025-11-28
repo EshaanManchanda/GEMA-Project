@@ -8,6 +8,8 @@ import BasicInfoTab from '../../components/admin/BasicInfoTab';
 import SchedulePricingTab from '../../components/admin/SchedulePricingTab';
 import AdvancedTab from '../../components/admin/AdvancedTab';
 import { ChevronLeft, ChevronRight } from 'lucide-react';
+import MediaPickerModal from '@/components/admin/media/MediaPickerModal';
+import { MediaAsset } from '@/store/slices/mediaSlice';
 
 interface Schedule {
   id: string;
@@ -45,7 +47,7 @@ interface EventFormData {
   ageRangeMin: string;
   ageRangeMax: string;
   tags: string;
-  images: File[];
+  images: string[];  // MediaAsset IDs
   imagePreviewUrls: string[];
 
   // Admin-specific fields
@@ -102,6 +104,8 @@ const AdminEditEventPage: React.FC = () => {
 
   const [activeTab, setActiveTab] = useState<TabType>('basic');
   const [schedules, setSchedules] = useState<Schedule[]>([]);
+  const [selectedImageAssets, setSelectedImageAssets] = useState<MediaAsset[]>([]);
+  const [showMediaPicker, setShowMediaPicker] = useState(false);
 
   const [formData, setFormData] = useState<EventFormData>({
     title: '',
@@ -194,8 +198,8 @@ const AdminEditEventPage: React.FC = () => {
             ageRangeMin: eventData.ageRange?.[0]?.toString() || '',
             ageRangeMax: eventData.ageRange?.[1]?.toString() || '',
             tags: eventData.tags?.join(', ') || '',
-            images: [],
-            imagePreviewUrls: eventData.images || [],
+            images: eventData.imageAssets?.map((a: MediaAsset) => a._id) || [],
+            imagePreviewUrls: eventData.imageAssets?.map((a: MediaAsset) => a.url) || eventData.images || [],
             isApproved: eventData.isApproved || false,
             isFeatured: eventData.isFeatured || false,
             requirePhoneVerification: eventData.requirePhoneVerification || false,
@@ -223,6 +227,11 @@ const AdminEditEventPage: React.FC = () => {
             },
             faqs: eventData.faqs || []
           });
+
+          // Set selected image assets for MediaPickerModal
+          if (eventData.imageAssets && eventData.imageAssets.length > 0) {
+            setSelectedImageAssets(eventData.imageAssets);
+          }
 
           // Transform schedules
           const transformedSchedules: Schedule[] = (eventData.dateSchedule || []).map((schedule: any, index: number) => ({
@@ -317,14 +326,15 @@ const AdminEditEventPage: React.FC = () => {
     setFormData(prev => ({ ...prev, [name]: checked }));
   };
 
-  const handleImagesChange = (images: File[], previewUrls: string[]) => {
+  const handleImagesChange = (assets: MediaAsset[]) => {
+    setSelectedImageAssets(assets);
     setFormData(prev => ({
       ...prev,
-      images: images,
-      imagePreviewUrls: previewUrls
+      images: assets.map(a => a._id),           // Store MediaAsset IDs
+      imagePreviewUrls: assets.map(a => a.url)  // Store URLs for preview
     }));
 
-    if (images.length > 0 && errors.images) {
+    if (assets.length > 0 && errors.images) {
       setErrors(prev => {
         const newErrors = { ...prev };
         delete newErrors.images;
@@ -334,6 +344,7 @@ const AdminEditEventPage: React.FC = () => {
   };
 
   const removeImage = (index: number) => {
+    setSelectedImageAssets(prev => prev.filter((_, i) => i !== index));
     setFormData(prev => {
       const newImages = prev.images.filter((_, i) => i !== index);
       const newImagePreviewUrls = prev.imagePreviewUrls.filter((_, i) => i !== index);
@@ -610,7 +621,7 @@ const AdminEditEventPage: React.FC = () => {
           isOverride: schedule.isOverride || false
         })),
 
-        images: formData.imagePreviewUrls,
+        imageAssets: formData.images,  // Send MediaAsset IDs
 
         seoMeta: {
           title: formData.seoMeta.title || formData.title,
@@ -803,6 +814,10 @@ const AdminEditEventPage: React.FC = () => {
                 onCheckboxChange={handleCheckboxChange}
                 onImagesChange={handleImagesChange}
                 onRemoveImage={removeImage}
+                showMediaPicker={showMediaPicker}
+                onOpenMediaPicker={() => setShowMediaPicker(true)}
+                onCloseMediaPicker={() => setShowMediaPicker(false)}
+                selectedImageAssets={selectedImageAssets}
               />
             )}
 

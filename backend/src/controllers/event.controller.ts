@@ -7,6 +7,7 @@ import { config, checkDBHealth } from '../config/index';
 import { buildPublicEventFilter, sanitizeEventOutput, sanitizeEventsOutput } from '../utils/event.utils';
 import { cacheService } from '../services/cache.service';
 import { invalidateEventCaches } from '../utils/cache.utils';
+import { eventService } from '../services/event.service';
 
 /**
  * Wrapper to add timeout to database operations
@@ -142,6 +143,7 @@ export const getEvents = async (req: Request, res: Response, next: NextFunction)
     const [events, total] = await Promise.all([
       Event.find(filter)
         .populate('vendorId', 'firstName lastName email')
+        .populate('imageAssets', 'url thumbnailUrl variations')
         .select('-dateSchedule.price')
         .sort(sort)
         .skip(skip)
@@ -231,7 +233,9 @@ export const getEvent = async (req: Request, res: Response, next: NextFunction) 
 
     // Add timeout to the main query - only show active, published, non-expired events
     const event = await withTimeout(
-      Event.findOne(filter).populate('vendorId', 'firstName lastName email phone avatar'),
+      Event.findOne(filter)
+        .populate('vendorId', 'firstName lastName email phone avatar')
+        .populate('imageAssets', 'url thumbnailUrl variations'),
       config.mongodb.socketTimeoutMS,
       'Event lookup'
     );
@@ -310,7 +314,8 @@ export const createEvent = async (req: AuthRequest, res: Response, next: NextFun
       status: 'pending', // Status starts as pending approval
     };
 
-    const event = await Event.create(eventData);
+    // USE SERVICE LAYER (handles media tracking)
+    const event = await eventService.createEvent(eventData);
 
     // Invalidate event caches
     await invalidateEventCaches();
@@ -361,10 +366,8 @@ export const updateEvent = async (req: AuthRequest, res: Response, next: NextFun
       ...(requiresReapproval && { isApproved: false }),
     };
 
-    const updatedEvent = await Event.findByIdAndUpdate(id, updateData, {
-      new: true,
-      runValidators: true,
-    });
+    // USE SERVICE LAYER (handles media tracking)
+    const updatedEvent = await eventService.updateEvent(id, updateData);
 
     // Invalidate event caches
     await invalidateEventCaches(id);
@@ -387,6 +390,7 @@ export const updateEvent = async (req: AuthRequest, res: Response, next: NextFun
 export const deleteEvent = async (req: AuthRequest, res: Response, next: NextFunction) => {
   try {
     const { id } = req.params;
+    const { permanent } = req.query; // Support ?permanent=true for hard delete
     const userId = req.user?._id || req.user?.id;
 
     const event = await Event.findOne({
@@ -399,14 +403,20 @@ export const deleteEvent = async (req: AuthRequest, res: Response, next: NextFun
       return next(new AppError('Event not found or unauthorized', 404));
     }
 
-    await Event.findByIdAndUpdate(id, { isDeleted: true });
+    if (permanent === 'true') {
+      // Admin emptying the trash - hard delete with media cleanup
+      await eventService.hardDeleteEvent(id);
+    } else {
+      // Standard user action - soft delete (archive)
+      await eventService.softDeleteEvent(id);
+    }
 
     // Invalidate event caches
     await invalidateEventCaches(id);
 
     res.status(200).json({
       success: true,
-      message: 'Event deleted successfully',
+      message: permanent === 'true' ? 'Event permanently deleted' : 'Event deleted successfully',
     });
   } catch (error) {
     next(error);
@@ -458,6 +468,7 @@ export const getVendorEvents = async (req: AuthRequest, res: Response, next: Nex
     // Execute query
     const [events, total] = await Promise.all([
       Event.find(filter)
+        .populate('imageAssets', 'url thumbnailUrl variations')
         .sort(sort)
         .skip(skip)
         .limit(limitNum),
@@ -603,6 +614,7 @@ export const getAdminEvents = async (req: AuthRequest, res: Response, next: Next
     const [events, total] = await Promise.all([
       Event.find(filter)
         .populate('vendorId', 'firstName lastName email')
+        .populate('imageAssets', 'url thumbnailUrl variations')
         .sort(sort)
         .skip(skip)
         .limit(limitNum),

@@ -1,128 +1,645 @@
-fix @frontend\src\pages\EventDetailPage.tsx "Uncaught InvalidCharacterError: Failed to execute 'btoa' on 'Window': The string to be encoded 
-contains characters outside of the Latin1 range.
-    at generateFallbackImage (imageFallbacks.ts:30:39)
-    at getEventImage (imageFallbacks.ts:51:10)
-    at EventDetailPage (EventDetailPage.tsx:925:46)
-    at renderWithHooks (chunk-WUVWK3JO.js?v=9e13fbec:11568:26)
-    at updateFunctionComponent (chunk-WUVWK3JO.js?v=9e13fbec:14602:28)
-    at beginWork (chunk-WUVWK3JO.js?v=9e13fbec:15944:22)
-    at HTMLUnknownElement.callCallback2 (chunk-WUVWK3JO.js?v=9e13fbec:3674:22)
-    at Object.invokeGuardedCallbackDev (chunk-WUVWK3JO.js?v=9e13fbec:3699:24)
-    at invokeGuardedCallback (chunk-WUVWK3JO.js?v=9e13fbec:3733:39)
-    at beginWork$1 (chunk-WUVWK3JO.js?v=9e13fbec:19793:15)
-installHook.js:1 The above error occurred in the <EventDetailPage> component:
+Here is Claude's plan:
+╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌
+ Production Deployment Plan - GEMA Platform
 
-    at EventDetailPage (http://localhost:3000/src/pages/EventDetailPage.tsx:131:18)
-    at Suspense
-    at RenderedRoute (http://localhost:3000/node_modules/.vite/deps/chunk-W2QLWDYY.js?v=9e13fbec:4096:5)
-    at Outlet (http://localhost:3000/node_modules/.vite/deps/chunk-W2QLWDYY.js?v=9e13fbec:4574:26)
-    at div
-    at ErrorBoundary (http://localhost:3000/src/components/common/ErrorBoundary.tsx:30:5)
-    at main
-    at div
-    at Layout (http://localhost:3000/src/components/layout/Layout.tsx:54:19)
-    at RenderedRoute (http://localhost:3000/node_modules/.vite/deps/chunk-W2QLWDYY.js?v=9e13fbec:4096:5)
-    at Routes (http://localhost:3000/node_modules/.vite/deps/chunk-W2QLWDYY.js?v=9e13fbec:4638:5)
-    at PresenceChild (http://localhost:3000/node_modules/.vite/deps/framer-motion.js?v=6af31d0d:7103:24)
-    at AnimatePresence (http://localhost:3000/node_modules/.vite/deps/framer-motion.js?v=6af31d0d:7169:26)
-    at AppContent (http://localhost:3000/src/App.tsx:429:20)
-    at App
-    at CartProvider (http://localhost:3000/src/contexts/CartContext.tsx:47:32)
-    at AuthProvider (http://localhost:3000/src/contexts/AuthContext.tsx:34:32)
-    at CurrencyProvider (http://localhost:3000/src/contexts/CurrencyContext.tsx:28:36)
-    at LanguageProvider (http://localhost:3000/src/contexts/LanguageContext.tsx:21:36)
-    at ThemeProvider (http://localhost:3000/src/contexts/ThemeContext.tsx:20:33)
-    at r2 (http://localhost:3000/node_modules/.vite/deps/react-helmet-async.js?v=11e15a04:326:21)
-    at Router (http://localhost:3000/node_modules/.vite/deps/chunk-W2QLWDYY.js?v=9e13fbec:4581:15)
-    at BrowserRouter (http://localhost:3000/node_modules/.vite/deps/react-router-dom.js?v=6af31d0d:559:5)
-    at QueryClientProvider (http://localhost:3000/node_modules/.vite/deps/chunk-ACQGZORS.js?v=9e13fbec:3103:3)
-    at PersistGate2 (http://localhost:3000/node_modules/.vite/deps/redux-persist_integration_react.js?v=7e872cf9:90:5)
-    at Provider (http://localhost:3000/node_modules/.vite/deps/react-redux.js?v=6af31d0d:1293:3)
-    at ErrorBoundary (http://localhost:3000/src/components/common/ErrorBoundary.tsx:30:5)
+ Executive Summary
 
-React will try to recreate this component tree from scratch using the error boundary you provided, ErrorBoundary.
-overrideMethod @ installHook.js:1
-installHook.js:1 Component Error Object Error Component Stack
-    at ErrorBoundary (ErrorBoundary.tsx:27:5)
-    at main (<anonymous>)
-    at div (<anonymous>)
-    at Layout (Layout.tsx:54:61)
-    at RenderedRoute (chunk-W2QLWDYY.js?v=9e13fbec:4096:5)
-    at Routes (chunk-W2QLWDYY.js?v=9e13fbec:4638:5)
-    at PresenceChild (framer-motion.js?v=6af31d0d:7103:24)
-    at AnimatePresence (framer-motion.js?v=6af31d0d:7169:26)
-    at AppContent (App.tsx:129:20)
-    at App (<anonymous>)
-    at CartProvider (CartContext.tsx:63:61)
-    at AuthProvider (AuthContext.tsx:34:73)
-    at CurrencyProvider (CurrencyContext.tsx:48:77)
-    at LanguageProvider (LanguageContext.tsx:14:77)
-    at ThemeProvider (ThemeContext.tsx:14:74)
-    at r2 (react-helmet-async.js?v=11e15a04:326:21)
-    at Router (chunk-W2QLWDYY.js?v=9e13fbec:4581:15)
-    at BrowserRouter (react-router-dom.js?v=6af31d0d:559:5)
-    at QueryClientProvider (chunk-ACQGZORS.js?v=9e13fbec:3103:3)
-    at PersistGate2 (redux-persist_integration_react.js?v=7e872cf9:90:5)
-    at Provider (react-redux.js?v=6af31d0d:1293:3)
-    at ErrorBoundary (ErrorBoundary.tsx:27:5)
-overrideMethod @ installHook.js:1
-installHook.js:1 Component Error: InvalidCharacterError: Failed to execute 'btoa' on 'Window': The string to be encoded contains characters outside     
-of the Latin1 range.
-    at generateFallbackImage (imageFallbacks.ts:30:39)
-    at getEventImage (imageFallbacks.ts:51:10)
-    at EventDetailPage (EventDetailPage.tsx:925:46)
-    at renderWithHooks (chunk-WUVWK3JO.js?v=9e13fbec:11568:26)
-    at updateFunctionComponent (chunk-WUVWK3JO.js?v=9e13fbec:14602:28)
-    at beginWork (chunk-WUVWK3JO.js?v=9e13fbec:15944:22)
-    at beginWork$1 (chunk-WUVWK3JO.js?v=9e13fbec:19781:22)
-    at performUnitOfWork (chunk-WUVWK3JO.js?v=9e13fbec:19226:20)
-    at workLoopSync (chunk-WUVWK3JO.js?v=9e13fbec:19165:13)
-    at renderRootSync (chunk-WUVWK3JO.js?v=9e13fbec:19144:15) Error Component Stack
-    at ErrorBoundary (ErrorBoundary.tsx:27:5)
-    at main (<anonymous>)
-    at div (<anonymous>)
-    at Layout (Layout.tsx:54:61)
-    at RenderedRoute (chunk-W2QLWDYY.js?v=9e13fbec:4096:5)
-    at Routes (chunk-W2QLWDYY.js?v=9e13fbec:4638:5)
-    at PresenceChild (framer-motion.js?v=6af31d0d:7103:24)
-    at AnimatePresence (framer-motion.js?v=6af31d0d:7169:26)
-    at AppContent (App.tsx:129:20)
-    at App (<anonymous>)
-    at CartProvider (CartContext.tsx:63:61)
-    at AuthProvider (AuthContext.tsx:34:73)
-    at CurrencyProvider (CurrencyContext.tsx:48:77)
-    at LanguageProvider (LanguageContext.tsx:14:77)
-    at ThemeProvider (ThemeContext.tsx:14:74)
-    at r2 (react-helmet-async.js?v=11e15a04:326:21)
-    at Router (chunk-W2QLWDYY.js?v=9e13fbec:4581:15)
-    at BrowserRouter (react-router-dom.js?v=6af31d0d:559:5)
-    at QueryClientProvider (chunk-ACQGZORS.js?v=9e13fbec:3103:3)
-    at PersistGate2 (redux-persist_integration_react.js?v=7e872cf9:90:5)
-    at Provider (react-redux.js?v=6af31d0d:1293:3)
-    at ErrorBoundary (ErrorBoundary.tsx:27:5)
-overrideMethod @ installHook.js:1
-installHook.js:1 Error Info: Object Error Component Stack
-    at ErrorBoundary (ErrorBoundary.tsx:27:5)
-    at main (<anonymous>)
-    at div (<anonymous>)
-    at Layout (Layout.tsx:54:61)
-    at RenderedRoute (chunk-W2QLWDYY.js?v=9e13fbec:4096:5)
-    at Routes (chunk-W2QLWDYY.js?v=9e13fbec:4638:5)
-    at PresenceChild (framer-motion.js?v=6af31d0d:7103:24)
-    at AnimatePresence (framer-motion.js?v=6af31d0d:7169:26)
-    at AppContent (App.tsx:129:20)
-    at App (<anonymous>)
-    at CartProvider (CartContext.tsx:63:61)
-    at AuthProvider (AuthContext.tsx:34:73)
-    at CurrencyProvider (CurrencyContext.tsx:48:77)
-    at LanguageProvider (LanguageContext.tsx:14:77)
-    at ThemeProvider (ThemeContext.tsx:14:74)
-    at r2 (react-helmet-async.js?v=11e15a04:326:21)
-    at Router (chunk-W2QLWDYY.js?v=9e13fbec:4581:15)
-    at BrowserRouter (react-router-dom.js?v=6af31d0d:559:5)
-    at QueryClientProvider (chunk-ACQGZORS.js?v=9e13fbec:3103:3)
-    at PersistGate2 (redux-persist_integration_react.js?v=7e872cf9:90:5)
-    at Provider (react-redux.js?v=6af31d0d:1293:3)
-    at ErrorBoundary (ErrorBoundary.tsx:27:5)
-overrideMethod @ installHook.js:1
-EventDetailPage.tsx:184 Received event data: " and home page event cards also " it show html as plain text" 
+ Both frontend and backend have deployment blockers that must be resolved before going live. The good news: Redis connection leak fixes are properly implemented. The issues are  
+ primarily TypeScript errors, configuration cleanup, and environment setup.
+
+ Timeline: ~4-6 hours of fixes + testing before deployment
+
+ Overall Status:
+ - Backend: 90% ready - 3 critical fixes needed
+ - Frontend: 85% ready - Form schema fixes + config cleanup needed
+ - Infrastructure: Ready (PM2, NGINX, deployment docs all present)
+
+ ---
+ Critical Blockers Summary
+
+ Backend (3 CRITICAL)
+
+ 1. TypeScript Build Failure - cleanup-orphaned-media.ts won't compile
+ 2. Invalid Dependency - "20": "^3.1.9" in package.json
+ 3. Missing Export - MediaAsset not in models/index.ts
+
+ Frontend (2 CRITICAL + MEDIUM)
+
+ 1. Form Schema Mismatches - BlogForm and CollectionForm have incorrect field definitions
+ 2. Hardcoded URLs - Render.com URLs in config files
+ 3. Environment Config - Test Stripe keys in production, inconsistent .env files
+
+ ---
+ Phase 1: Backend Critical Fixes (Priority 1 - 1 hour)
+
+ Fix 1.1: Repair cleanup-orphaned-media.ts
+
+ File: backend/src/scripts/cleanup-orphaned-media.ts
+
+ 3 Compilation Errors:
+
+ // Line 17: WRONG import path
+ import { cloudinaryService } from '../services/storage/cloudinary.service';
+ // FIX: Change to
+ import { CloudinaryProvider } from '../services/storage/CloudinaryProvider';
+
+ // Line 30: WRONG config property
+ await mongoose.connect(config.database.uri);
+ // FIX: Change to
+ await mongoose.connect(config.mongodbUri);
+
+ // Lines 61, 85, 86: WRONG field name
+ asset.cloudinaryPublicId
+ // FIX: Change to
+ asset.publicId
+
+ Full fixes:
+ 1. Update import: CloudinaryProvider not cloudinaryService
+ 2. Update variable usage: Use new CloudinaryProvider() or import existing instance
+ 3. Change config.database.uri → config.mongodbUri
+ 4. Change asset.cloudinaryPublicId → asset.publicId (3 occurrences)
+
+ Fix 1.2: Remove Invalid Dependency
+
+ File: backend/package.json
+
+ // Line 36: REMOVE this invalid entry
+ "20": "^3.1.9",
+
+ This appears to be a typo or merge conflict artifact. Simply delete the entire line.
+
+ Fix 1.3: Export MediaAsset Model
+
+ File: backend/src/models/index.ts
+
+ Add this export for consistency:
+ export { default as MediaAsset } from './MediaAsset';
+
+ ---
+ Phase 2: Frontend Critical Fixes (Priority 1 - 2 hours)
+
+ Fix 2.1: BlogForm Schema Mismatch
+
+ File: frontend/src/components/admin/BlogForm.tsx
+
+ Issue: Form uses readTime field but schema doesn't include it
+
+ Solution Option A - Add to Schema (if needed):
+ // Update the blog schema/type to include readTime
+ interface BlogFormData {
+   // ... existing fields ...
+   readTime?: number;  // Add this
+ }
+
+ Solution Option B - Remove Usage (if not needed):
+ // Line 140, 237, 270-272: Remove all readTime references
+ // Delete these lines if readTime isn't needed
+
+ Recommendation: Check if readTime is actually used. If not, remove it. If yes, add to schema.
+
+ Fix 2.2: CollectionForm Schema Fixes
+
+ File: frontend/src/components/admin/CollectionForm.tsx
+
+ Issues:
+ 1. Uses featuredImage but not in schema
+ 2. Uses metaTitle, metaDescription, canonicalUrl but not in schema
+ 3. Uses isActive but type mismatch
+
+ Solution - Add Missing Fields to Schema:
+ interface CollectionFormData {
+   title: string;
+   description: string;
+   slug?: string;
+   sortOrder?: number;
+   category?: string;
+   icon?: string;
+   count?: string;
+   // ADD THESE:
+   featuredImage?: string;
+   isActive?: boolean;
+   metaTitle?: string;
+   metaDescription?: string;
+   canonicalUrl?: string;
+ }
+
+ Fix 2.3: Remove Hardcoded URLs
+
+ Files to update:
+
+ frontend/vite.config.ts:
+ // Line 43: REMOVE hardcoded Render.com URL from PWA config
+ // Use environment variable instead
+
+ // Line 99: REMOVE hardcoded proxy target
+ target: process.env.VITE_API_BASE_URL || 'http://localhost:5001',
+
+ frontend/vercel.json:
+ // Line 118: REMOVE hardcoded destination
+ "destination": process.env.VITE_API_BASE_URL || "https://api.kidrove.com/api/:path*"
+
+ frontend/src/services/api.ts:
+ // Line 6: Update fallback
+ const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:5001/api';
+ // Remove Render.com fallback entirely
+
+ Fix 2.4: Clean Up Unused Imports
+
+ Multiple files - These are TS6133 warnings, low priority but good to fix:
+
+ Quick fix command:
+ # Auto-remove unused imports (if using ESLint auto-fix)
+ npm run lint -- --fix
+
+ Manual fixes needed in:
+ - BasicInfoTab.tsx
+ - BlogCategoryManager.tsx
+ - BlogForm.tsx
+ - CollectionForm.tsx
+ - CouponForm.tsx
+ - etc.
+
+ Just delete the unused import statements.
+
+ ---
+ Phase 3: Environment Configuration (Priority 2 - 30 min)
+
+ Backend Environment Setup
+
+ File: backend/.env.production (create if doesn't exist)
+
+ # Server
+ NODE_ENV=production
+ PORT=5000
+
+ # Database
+ MONGODB_URI=mongodb+srv://...your-atlas-connection...
+
+ # JWT
+ JWT_SECRET=your-production-secret-min-32-chars
+ JWT_REFRESH_SECRET=your-production-refresh-secret
+ JWT_EXPIRE=1d
+ JWT_REFRESH_EXPIRE=30d
+
+ # Frontend
+ FRONTEND_URL=https://kidrove.com
+
+ # Redis (Production)
+ REDIS_HOST=your-redis-cloud-host
+ REDIS_PORT=18932
+ REDIS_PASSWORD=your-redis-password
+ REDIS_TLS=true
+ REDIS_TLS_REJECT_UNAUTHORIZED=true
+
+ # Stripe (LIVE KEYS)
+ STRIPE_SECRET_KEY=sk_live_...
+ STRIPE_PUBLISHABLE_KEY=pk_live_...
+ STRIPE_WEBHOOK_SECRET=whsec_...
+
+ # Cloudinary
+ CLOUDINARY_CLOUD_NAME=dmer8oqdq
+ CLOUDINARY_API_KEY=986847489829259
+ CLOUDINARY_API_SECRET=your-secret
+
+ # Firebase
+ FIREBASE_PROJECT_ID=your-project
+ FIREBASE_PRIVATE_KEY=your-private-key
+ FIREBASE_CLIENT_EMAIL=your-service-account@...
+
+ # Email (Production)
+ EMAIL_HOST=smtp.gmail.com
+ EMAIL_PORT=587
+ EMAIL_USERNAME=your-email
+ EMAIL_PASSWORD=your-app-password
+ EMAIL_FROM=noreply@kidrove.com
+
+ Frontend Environment Setup
+
+ File: frontend/.env.production
+
+ # API
+ VITE_API_BASE_URL=https://api.kidrove.com/api
+ VITE_APP_URL=https://kidrove.com
+
+ # Stripe (LIVE KEYS - NOT TEST)
+ VITE_STRIPE_PUBLISHABLE_KEY=pk_live_...
+
+ # Firebase
+ VITE_FIREBASE_API_KEY=...
+ VITE_FIREBASE_AUTH_DOMAIN=...
+ VITE_FIREBASE_PROJECT_ID=...
+ VITE_FIREBASE_STORAGE_BUCKET=...
+ VITE_FIREBASE_MESSAGING_SENDER_ID=...
+ VITE_FIREBASE_APP_ID=...
+ VITE_FIREBASE_MEASUREMENT_ID=...
+
+ # Cloudinary
+ VITE_CLOUDINARY_CLOUD_NAME=dmer8oqdq
+ VITE_CLOUDINARY_API_KEY=986847489829259
+
+ # Build
+ NODE_ENV=production
+
+ Action: Delete or consolidate these files:
+ - .env.ProductionDev (confusing name, outdated)
+ - Keep only: .env, .env.production, .env.example, .env.local
+
+ ---
+ Phase 4: Pre-Deployment Validation (Priority 2 - 1 hour)
+
+ Backend Build Test
+
+ cd backend
+
+ # 1. Install dependencies
+ npm install
+
+ # 2. Build TypeScript
+ npm run build
+ # MUST succeed - no errors
+
+ # 3. Check output
+ ls -la dist/
+ # Should see: server.js, workers/, config/, etc.
+
+ # 4. Test build locally
+ NODE_ENV=production node dist/server.js
+ # Should start without errors
+
+ Expected output:
+ ✓ Firebase Admin SDK initialized
+ ✓ MongoDB connected
+ ✓ Redis: Connected and ready
+ ✓ BullMQ Redis: Connected and ready
+ ✓ Server running in production mode on port 5000
+
+ Frontend Build Test
+
+ cd frontend
+
+ # 1. Type check
+ npm run type-check
+ # MUST pass - 0 errors
+
+ # 2. Build
+ npm run build
+ # MUST succeed
+
+ # 3. Check bundle size
+ # Post-build script will show sizes
+ # Look for warnings >3MB
+
+ # 4. Preview production build
+ npm run preview
+ # Test locally on http://localhost:4173
+
+ Test checklist:
+ - Homepage loads
+ - Login works
+ - Admin dashboard accessible
+ - Events list displays
+ - API calls reach backend
+ - No console errors
+
+ ---
+ Phase 5: Deployment Execution (Priority 3 - Variable)
+
+ Backend Deployment (PM2 + NGINX)
+
+ Prerequisites:
+ - Ubuntu server with Node.js 20+
+ - PM2 installed globally
+ - NGINX configured (use nginx.conf.template)
+ - MongoDB Atlas cluster ready
+ - Redis Cloud instance ready
+ - SSL certificates (Let's Encrypt)
+
+ Deployment Steps:
+
+ # 1. Clone/pull latest code
+ cd /path/to/gema/backend
+ git pull origin main
+
+ # 2. Install dependencies
+ npm install --production
+
+ # 3. Build
+ npm run build
+
+ # 4. Set environment variables
+ cp .env.example .env
+ nano .env  # Update with production values
+
+ # 5. Start with PM2
+ pm2 start ecosystem.config.js --env production
+
+ # 6. Save PM2 config
+ pm2 save
+ pm2 startup
+
+ # 7. Check status
+ pm2 status
+ pm2 logs gema-backend --lines 50
+
+ # 8. Monitor
+ pm2 monit
+
+ NGINX Configuration:
+ - Use the provided nginx.conf.template
+ - SSL: Certbot for Let's Encrypt
+ - Proxy: api.kidrove.com → localhost:5000
+ - Rate limiting: Already configured in server.ts
+
+ Frontend Deployment (Vercel or Netlify)
+
+ Option A: Vercel (Recommended)
+
+ cd frontend
+
+ # 1. Install Vercel CLI
+ npm i -g vercel
+
+ # 2. Login
+ vercel login
+
+ # 3. Deploy
+ vercel --prod
+
+ # 4. Set environment variables in Vercel dashboard
+ # Go to project settings → Environment Variables
+ # Add all VITE_* variables from .env.production
+
+ Option B: Netlify
+
+ cd frontend
+
+ # 1. Install Netlify CLI
+ npm i -g netlify-cli
+
+ # 2. Login
+ netlify login
+
+ # 3. Build
+ npm run build
+
+ # 4. Deploy
+ netlify deploy --prod
+
+ # 5. Set environment variables in Netlify dashboard
+
+ Post-Deployment:
+ 1. Configure custom domain (kidrove.com)
+ 2. Verify SSL certificate auto-provisioned
+ 3. Test from production URL
+ 4. Check: API calls work, payments work, auth works
+
+ ---
+ Phase 6: Post-Deployment Validation (Priority 3 - 30 min)
+
+ Health Checks
+
+ Backend:
+ # Basic health
+ curl https://api.kidrove.com/api/health/basic
+
+ # Full health check
+ curl https://api.kidrove.com/api/health
+
+ # Redis connection stats
+ curl https://api.kidrove.com/api/health/redis
+ # Should show: 2 connections (cache + BullMQ)
+
+ Frontend:
+ - Visit https://kidro
+ - Check browser console for errors
+ - Test user registration
+ - Test event browsing
+ - Test ticket purchase (test mode first!)
+
+ Monitor Redis Connections
+
+ # Connect to Redis Cloud
+ redis-cli -h <host> -p <port> -a <password> --tls
+
+ # Check connections
+ CLIENT LIST | wc -l
+ # Expected: 2 per backend instance (not 8-10!)
+
+ PM2 Monitoring
+
+ # Check processes
+ pm2 status
+
+ # View logs
+ pm2 logs gema-backend
+ pm2 logs gema-worker
+
+ # Monitor resources
+ pm2 monit
+
+ # Application metrics (if PM2 Plus configured)
+ pm2 plus
+
+ ---
+ Rollback Plan
+
+ If Backend Deployment Fails
+
+ # 1. Stop PM2 processes
+ pm2 stop all
+
+ # 2. Revert git
+ git reset --hard <previous-commit-hash>
+
+ # 3. Rebuild
+ npm run build
+
+ # 4. Restart
+ pm2 restart all
+
+ If Frontend Deployment Fails
+
+ Vercel:
+ # Rollback to previous deployment
+ vercel rollback <deployment-url>
+
+ Netlify:
+ # Use Netlify dashboard → Deploys → Restore previous deploy
+
+ ---
+ Critical Files to Modify
+
+ Backend (3 files)
+
+ | File                                          | Issue              | Fix Effort |
+ |-----------------------------------------------|--------------------|------------|
+ | backend/src/scripts/cleanup-orphaned-media.ts | 3 compile errors   | 5 minutes  |
+ | backend/package.json                          | Invalid dependency | 1 minute   |
+ | backend/src/models/index.ts                   | Missing export     | 1 minute   |
+
+ Frontend (5 files + cleanup)
+
+ | File                                             | Issue                      | Fix Effort            |
+ |--------------------------------------------------|----------------------------|-----------------------|
+ | frontend/src/components/admin/BlogForm.tsx       | readTime schema mismatch   | 10 minutes            |
+ | frontend/src/components/admin/CollectionForm.tsx | Multiple schema mismatches | 15 minutes            |
+ | frontend/vite.config.ts                          | Hardcoded URLs             | 5 minutes             |
+ | frontend/vercel.json                             | Hardcoded URL              | 5 minutes             |
+ | frontend/src/services/api.ts                     | Hardcoded fallback         | 2 minutes             |
+ | frontend/.env.*                                  | Clean up + production keys | 10 minutes            |
+ | Multiple admin components                        | Unused imports             | 15 minutes (auto-fix) |
+
+ Total Fix Time: ~70 minutes of actual coding
+
+ ---
+ Success Criteria
+
+ Build Success
+
+ - Backend: npm run build completes with 0 errors
+ - Frontend: npm run type-check completes with 0 errors
+ - Frontend: npm run build completes successfully
+
+ Runtime Success
+
+ - Backend starts without errors
+ - Frontend loads in browser
+ - Health checks return status 200
+ - Redis connections = 2 (not 8-10)
+
+ Functional Success
+
+ - User registration works
+ - Login/logout works
+ - Events display correctly
+ - Ticket purchase completes
+ - Email sending works
+ - QR code generation works
+ - Admin dashboard accessible
+
+ Performance Success
+
+ - Frontend loads < 3 seconds
+ - API response times < 500ms
+ - No memory leaks (PM2 monitor)
+ - Redis connection stable
+
+ ---
+ Timeline Estimate
+
+ | Phase               | Duration | When      |
+ |---------------------|----------|-----------|
+ | Backend fixes       | 10 min   | Hour 1    |
+ | Frontend fixes      | 50 min   | Hours 1-2 |
+ | Environment setup   | 30 min   | Hour 2    |
+ | Build validation    | 30 min   | Hour 3    |
+ | Backend deployment  | 30 min   | Hour 3-4  |
+ | Frontend deployment | 15 min   | Hour 4    |
+ | Post-deploy testing | 30 min   | Hour 4    |
+ | Monitoring & tweaks | 30 min   | Hour 4-5  |
+
+ Total: 4-5 hours from start to fully deployed and validated
+
+ ---
+ Key Insights
+
+ 1. Redis Fixes Already Done: The connection leak fixes are properly implemented - bullMQClient with correct settings
+ 2. TypeScript Strictness: Most "errors" are unused import warnings - actual blockers are form schema mismatches
+ 3. Environment Confusion: Multiple .env files with conflicting values need consolidation
+ 4. Production Keys: Critical - must swap test Stripe keys for live keys
+ 5. Deployment Infrastructure: Excellent - PM2 config, NGINX templates, comprehensive docs all present
+ 6. Connection Monitoring: New /health/redis endpoint will be valuable for production monitoring
+
+ ---
+ Deployment Day Checklist
+
+ Morning of Deployment:
+ - All fixes committed and pushed
+ - Production environment variables configured
+ - Database backups configured in MongoDB Atlas
+ - Redis Cloud instance verified
+ - SSL certificates ready
+ - Domain DNS configured (api.kidrove.com, kidrove.com)
+ - Stripe webhook endpoint configured
+ - Email service credentials verified
+
+ During Deployment:
+ - Deploy backend first (test with health checks)
+ - Deploy frontend second (verify API connectivity)
+ - Test critical user flows
+ - Monitor error logs for 30 minutes
+ - Check PM2 metrics
+
+ After Deployment:
+ - Monitor for 24 hours
+ - Check Redis connection count stays at 2
+ - Review error logs daily
+ - Set up uptime monitoring (UptimeRobot)
+ - Configure backup jobs
+
+ ---
+ Notes
+
+ - Redis Connection Leak: FIXED ✅ - bullMQClient properly configured with maxRetriesPerRequest: null
+ - TypeScript Errors: Count = 60+ but most are unused imports (warnings), ~10 are actual blockers
+ - Deployment Docs: Excellent quality in backend/publish.md - follow exactly
+ - Infrastructure: Ready for KVM1 server (MongoDB pool sized correctly, PM2 optimized)
+
+
+
+
+ ===================
+
+ here's still a compilation error. Let me check the CloudinaryProvider to see what method I should use:
+
+● Read(backend\src\services\storage\CloudinaryProvider.ts)
+  ⎿  Read 187 lines
+
+● I see the issue - the method is called delete(), not deleteAsset(). Let me fix that:
+
+● Update(backend\src\scripts\cleanup-orphaned-media.ts)
+  ⎿  Updated backend\src\scripts\cleanup-orphaned-media.ts with 1 addition and 1 removal
+       86            try {
+       87              // Delete from Cloudinary
+       88              if (asset.publicId) {
+       89 -              await cloudinaryProvider.deleteAsset(asset.publicId);
+       89 +              await cloudinaryProvider.delete(asset.publicId);
+       90                console.log(`✓ Deleted from Cloudinary: ${asset.originalName}`);
+       91              }
+       92
+
+● Now let me try building again:
+
+● Bash(cd backend && npm run build)
+  ⎿  > gema-backend@1.0.0 build
+     > npm install && tsc
+     … +2 lines (ctrl+o to expand)
+
+● Perfect! The backend build succeeded with no errors! All Phase 1 backend fixes are complete and verified. Let me update the todo list and check on the frontend type-check      
+  that's been running:
+
+● BashOutput(Reading shell output)
+  ⎿  > Kidrove@1.0.2 type-check
+     > tsc --noEmit
+     … +152 lines (ctrl+o to expand)
+
+● Perfect! I can see the frontend errors. The critical ones are the form schema mismatches in BlogForm and CollectionForm. Let me start fixing the BlogForm schema first. Let     
+  me read the file to understand the readTime usage:
+
+● Read(frontend\src\components\admin\BlogForm.tsx)
+  ⎿  Read 50 lines
+
+● Read(frontend\src\components\admin\BlogForm.tsx)
+  ⎿  Read 100 lines
+  ⎿  5-hour limit reached · resets 4:30am (Asia/Calcutta) · /upgrade to Max or turn on /extra-usage
+     /upgrade to increase your usage limit.
+
+  Todos
+  ☒ Fix cleanup-orphaned-media.ts TypeScript errors (3 compilation errors)
+  ☒ Remove invalid '20' dependency from backend/package.json
+  ☒ Export MediaAsset model from backend/src/models/index.ts
+  ☒ Verify backend builds successfully (npm run build)
+  ☐ Fix BlogForm schema mismatch (readTime field)
+  ☐ Fix CollectionForm schema mismatches (5 missing fields)
+  ☐ Remove hardcoded URLs from frontend config files
+  ☐ Clean up unused imports in frontend

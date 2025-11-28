@@ -205,5 +205,4 @@ export default {
     require('@tailwindcss/aspect-ratio'),
     // @tailwindcss/line-clamp is now built-in as of Tailwind CSS v3.3
   ],
-  darkMode: 'class',
 }

@@ -1,4 +1,5 @@
 import { Router } from 'express';
+import mongoose from 'mongoose';
 import {
   createBlog,
   updateBlog,
@@ -38,9 +39,26 @@ const createBlogValidation = [
     .isLength({ min: 1 })
     .withMessage('Content is required'),
   body('featuredImage')
+    .optional({ checkFalsy: true })
     .isString()
-    .isURL()
-    .withMessage('Featured image must be a valid URL'),
+    .custom((value) => {
+      if (!value) return true; // Allow empty/undefined
+      try {
+        new URL(value);
+        return true;
+      } catch {
+        throw new Error('Featured image must be a valid URL');
+      }
+    }),
+  body('featuredImageAsset')
+    .optional({ checkFalsy: true })
+    .custom((value) => {
+      if (!value) return true;
+      if (mongoose.Types.ObjectId.isValid(value)) {
+        return true;
+      }
+      throw new Error('Featured image asset must be a valid MongoDB ObjectId');
+    }),
   body('category')
     .isMongoId()
     .withMessage('Category must be a valid ID'),
@@ -135,8 +153,24 @@ const updateBlogValidation = [
   body('featuredImage')
     .optional({ checkFalsy: true })
     .isString()
-    .isURL()
-    .withMessage('Featured image must be a valid URL'),
+    .custom((value) => {
+      if (!value) return true;
+      try {
+        new URL(value);
+        return true;
+      } catch {
+        throw new Error('Featured image must be a valid URL');
+      }
+    }),
+  body('featuredImageAsset')
+    .optional({ checkFalsy: true })
+    .custom((value) => {
+      if (!value) return true;
+      if (mongoose.Types.ObjectId.isValid(value)) {
+        return true;
+      }
+      throw new Error('Featured image asset must be a valid MongoDB ObjectId');
+    }),
   body('category')
     .optional({ checkFalsy: true })
     .isMongoId()

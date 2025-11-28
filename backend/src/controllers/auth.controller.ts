@@ -1,11 +1,14 @@
 import { Request, Response, NextFunction, CookieOptions } from 'express';
+import mongoose from 'mongoose';
 import { getAuth } from '../config/firebase';
 import { generateToken, generateRefreshToken } from '../config/jwt';
 import { User, UserStatus, RefreshToken, IUser, IAddress, Gender } from '../models/index';
+import MediaAsset from '../models/MediaAsset';
 import { AppError } from '../middleware/index';
 import { emailService } from '../services/email.service';
 import smsService from '../services/sms.service';
 import { cacheService } from '../services/cache.service';
+import mediaService from '../services/media.service';
 import { getOrCreateVendorProfile } from '../utils/vendorHelpers';
 import {
   AuthResponse,
@@ -1345,25 +1348,89 @@ export const updateAvatar = async (req: Request, res: Response, next: NextFuncti
       throw new AppError('Avatar URL is required', 400);
     }
 
-    // Use findByIdAndUpdate for atomic operation (faster than find + save)
-    const user = await User.findByIdAndUpdate(
-      userId,
-      { avatar },
-      { new: true, runValidators: true, select: 'avatar' } // Only select avatar field for efficiency
-    );
-
+    // Fetch current user to get old avatar
+    const user = await User.findById(userId);
     if (!user) {
       throw new AppError('User not found', 404);
     }
 
-    // Invalidate user cache to ensure fresh data on next request
+    const oldAvatarUrl = user.avatar;
+
+    // Extract UUID from avatar URL if it's a UUID-based URL
+    let newMediaAssetId: string | null = null;
+    const uuidMatch = avatar.match(/\/api\/media\/file\/([a-f0-9-]+)/i);
+
+    if (uuidMatch) {
+      // UUID-based URL - verify MediaAsset exists
+      const uuid = uuidMatch[1];
+      const mediaAsset = await MediaAsset.findOne({ uuid });
+
+      if (!mediaAsset) {
+        throw new AppError('Avatar media asset not found', 404);
+      }
+
+      // Verify it's an image
+      if (!mediaAsset.mimeType.startsWith('image/')) {
+        throw new AppError('Avatar must be an image file', 400);
+      }
+
+      // Verify it belongs to this user (security check)
+      if (mediaAsset.uploadedBy.toString() !== userId.toString()) {
+        throw new AppError('You can only use avatars you uploaded', 403);
+      }
+
+      newMediaAssetId = mediaAsset._id.toString();
+
+      // Track usage for new avatar
+      await mediaService.trackUsage(
+        newMediaAssetId,
+        'User',
+        'avatar',
+        new mongoose.Types.ObjectId(userId)
+      );
+    }
+    // else: Full URL (backward compatibility) - just store it
+
+    // Update user's avatar
+    user.avatar = avatar;
+    await user.save();
+
+    // Clean up old avatar if it was a MediaAsset
+    if (oldAvatarUrl) {
+      const oldUuidMatch = oldAvatarUrl.match(/\/api\/media\/file\/([a-f0-9-]+)/i);
+      if (oldUuidMatch) {
+        const oldUuid = oldUuidMatch[1];
+        const oldMediaAsset = await MediaAsset.findOne({ uuid: oldUuid });
+
+        if (oldMediaAsset) {
+          // Untrack usage from old avatar
+          await mediaService.untrackUsage(
+            oldMediaAsset._id.toString(),
+            'User',
+            new mongoose.Types.ObjectId(userId)
+          );
+
+          // Optional: Delete old avatar if no longer used anywhere
+          if (oldMediaAsset.usageCount === 0) {
+            logger.info(`Auto-deleting unused avatar MediaAsset ${oldMediaAsset._id}`);
+            await mediaService.deleteMedia(oldMediaAsset._id.toString(), false);
+          }
+        }
+      }
+    }
+
+    // Invalidate user cache
     const cacheKey = `user:${userId}`;
     await cacheService.delete(cacheKey);
 
     const duration = Date.now() - startTime;
-    logger.debug(`Avatar update completed in ${duration}ms`, {
+
+    logger.info(`Avatar updated successfully`, {
       userId,
-      duration
+      newAvatar: avatar,
+      oldAvatar: oldAvatarUrl,
+      duration: `${duration}ms`,
+      isMediaAsset: !!newMediaAssetId
     });
 
     res.status(200).json({
@@ -1390,18 +1457,50 @@ export const deleteAvatar = async (req: Request, res: Response, next: NextFuncti
       throw new AppError('User not authenticated', 401);
     }
 
-    // Fetch user from database as Mongoose document (not from cache)
     const user = await User.findById(userId);
     if (!user) {
       throw new AppError('User not found', 404);
     }
 
+    const currentAvatar = user.avatar;
+
+    // Clean up MediaAsset if avatar is UUID-based
+    if (currentAvatar) {
+      const uuidMatch = currentAvatar.match(/\/api\/media\/file\/([a-f0-9-]+)/i);
+
+      if (uuidMatch) {
+        const uuid = uuidMatch[1];
+        const mediaAsset = await MediaAsset.findOne({ uuid });
+
+        if (mediaAsset) {
+          // Untrack usage
+          await mediaService.untrackUsage(
+            mediaAsset._id.toString(),
+            'User',
+            new mongoose.Types.ObjectId(userId)
+          );
+
+          // Delete MediaAsset if no longer used
+          if (mediaAsset.usageCount === 0) {
+            logger.info(`Deleting unused avatar MediaAsset ${mediaAsset._id} after user deletion`);
+            await mediaService.deleteMedia(mediaAsset._id.toString(), false);
+          }
+        }
+      }
+    }
+
+    // Remove avatar from user
     user.avatar = undefined;
     await user.save();
 
-    // Invalidate user cache to ensure fresh data on next request
+    // Invalidate user cache
     const cacheKey = `user:${userId}`;
     await cacheService.delete(cacheKey);
+
+    logger.info(`Avatar deleted successfully`, {
+      userId,
+      deletedAvatar: currentAvatar
+    });
 
     res.status(200).json({
       success: true,
