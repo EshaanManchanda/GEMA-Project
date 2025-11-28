@@ -27,6 +27,13 @@ devLog.log('Server starting...');
 // Create Express app
 const app: Application = express();
 
+// Trust proxy - REQUIRED when behind reverse proxy/load balancer (nginx, etc.)
+// This allows Express to correctly handle X-Forwarded-* headers for:
+// - Rate limiting (identifies real client IPs)
+// - HTTPS detection (req.protocol)
+// - Client IP tracking (req.ip)
+app.set('trust proxy', 1); // Trust first proxy only
+
 // Security middleware
 app.use(helmet());
 app.use(cors({
@@ -36,6 +43,11 @@ app.use(cors({
       config.frontendUrl,
       ...(process.env.ADDITIONAL_ALLOWED_ORIGINS?.split(',').map(url => url.trim()) || [])
     ].filter(Boolean);
+
+    // Debug logging for CORS issues
+    if (process.env.NODE_ENV === 'production') {
+      console.log('🔍 CORS Check - Origin:', origin, '| Allowed:', allowedOrigins);
+    }
 
     // In development, allow localhost origins
     if (process.env.NODE_ENV === 'development') {
@@ -50,9 +62,16 @@ app.use(cors({
       );
     }
 
-    // Allow requests with no origin (like mobile apps, Postman, curl) - only in development
-    if (!origin && process.env.NODE_ENV === 'development') {
-      devLog.tagged('CORS', 'Request with no origin - allowing (dev mode)');
+    // Allow requests with no origin (direct browser navigation, favicon, health checks)
+    // These requests don't have CORS implications as they don't access response data
+    if (!origin) {
+      // In development, allow all no-origin requests
+      if (process.env.NODE_ENV === 'development') {
+        devLog.tagged('CORS', 'Request with no origin - allowing (dev mode)');
+        return callback(null, true);
+      }
+      // In production, allow no-origin for safe methods (GET, HEAD, OPTIONS)
+      // This allows favicon, direct navigation, monitoring while maintaining security
       return callback(null, true);
     }
 
