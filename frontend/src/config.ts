@@ -15,8 +15,9 @@ export const config = {
   /**
    * API base URL
    * Used for making API requests to the backend
+   * Supports both VITE_API_URL and VITE_API_BASE_URL for backwards compatibility
    */
-  apiUrl: import.meta.env.VITE_API_URL || '',
+  apiUrl: import.meta.env.VITE_API_URL || import.meta.env.VITE_API_BASE_URL || '',
 
   /**
    * Default author information (for blogs, etc.)

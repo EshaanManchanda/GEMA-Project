@@ -55,6 +55,9 @@ export interface IMediaAsset extends Document {
   createdAt: Date;
   updatedAt: Date;
   lastAccessedAt?: Date;
+
+  // Virtual fields
+  directUrl?: string; // Computed: Direct Cloudinary CDN URL or backend API URL
 }
 
 const mediaAssetSchema = new Schema<IMediaAsset>(
@@ -204,6 +207,23 @@ mediaAssetSchema.index({
   filename: 'text',
   originalName: 'text',
   tags: 'text'
+});
+
+// Virtual field for direct access URL (optimized for Cloudinary)
+// Returns Cloudinary CDN URL directly for Cloudinary assets, bypassing backend proxy
+mediaAssetSchema.virtual('directUrl').get(function(this: IMediaAsset) {
+  // For Cloudinary assets, return direct CDN URL for better performance
+  if (this.provider === 'cloudinary' && this.publicId) {
+    const cloudName = process.env.CLOUDINARY_CLOUD_NAME;
+    if (cloudName) {
+      // Use Cloudinary's CDN URL directly (no backend proxy needed)
+      return `https://res.cloudinary.com/${cloudName}/image/upload/${this.publicId}`;
+    }
+  }
+
+  // Fallback to backend API URL for local files or if Cloudinary config missing
+  const baseUrl = process.env.BASE_URL || `http://localhost:${process.env.PORT || '5001'}`;
+  return `${baseUrl}/api/media/file/${this.uuid}`;
 });
 
 // Static method to find unused media
