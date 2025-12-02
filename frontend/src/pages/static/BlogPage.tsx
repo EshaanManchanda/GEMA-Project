@@ -5,6 +5,7 @@ import { Link } from 'react-router-dom';
 import blogAPI from '../../services/api/blogAPI';
 import { Blog, BlogCategory, BlogsResponse, BlogCategoriesResponse } from '../../types/blog';
 import SEO from '../../components/common/SEO';
+import { getAppNameFull, getTeamName } from '../../utils/brandConfig';
 
 
 const BlogPage: React.FC = () => {
@@ -104,8 +105,8 @@ const BlogPage: React.FC = () => {
     const categoryName = isFiltered ? selectedCategory : '';
 
     const title = isFiltered
-      ? `${categoryName} Articles | Kids Activities Blog | Gema Events`
-      : 'Kids Activities Blog - Tips, Ideas & Event Guides | Gema Events';
+      ? `${categoryName} Articles | Kids Activities Blog | ${getAppNameFull()}`
+      : `Kids Activities Blog - Tips, Ideas & Event Guides | ${getAppNameFull()}`;
 
     const description = isFiltered
       ? `Discover ${categoryName.toLowerCase()} articles about kids activities, events, and family fun in the UAE. Expert tips and guides for parents.`
@@ -132,12 +133,12 @@ const BlogPage: React.FC = () => {
     const structuredData = {
       '@context': 'https://schema.org',
       '@type': 'Blog',
-      name: 'Gema Events Blog',
+      name: `${getAppNameFull()} Blog`,
       description: 'Expert tips and guides for kids activities, events, and family fun',
       url: `${baseUrl}/blog`,
       publisher: {
         '@type': 'Organization',
-        name: 'Gema Events',
+        name: getAppNameFull(),
         url: baseUrl,
         logo: {
           '@type': 'ImageObject',
@@ -154,7 +155,7 @@ const BlogPage: React.FC = () => {
           dateModified: blog.updatedAt,
           author: {
             '@type': 'Person',
-            name: blog.author?.name || 'Gema Events Team'
+            name: blog.author?.name || getTeamName()
           },
           image: blog.featuredImage,
           wordCount: blog.content ? blog.content.split(' ').length : undefined

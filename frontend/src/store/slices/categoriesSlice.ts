@@ -1,11 +1,10 @@
 import { createSlice, createAsyncThunk, PayloadAction } from '@reduxjs/toolkit';
-import categoriesAPI from '@services/api/categoriesAPI';
-import { Category, CreateCategoryData, UpdateCategoryData } from '@types/category';
+import categoriesAPI from '../../services/api/categoriesAPI';
+import { Category, CreateCategoryData, UpdateCategoryData, GetCategoriesParams } from '../../types/category';
 import { toast } from 'react-hot-toast';
 
 interface CategoriesState {
   categories: Category[];
-  featuredCategories: Category[];
   currentCategory: Category | null;
   categoryTree: Category[];
   isLoading: boolean;
@@ -17,7 +16,6 @@ interface CategoriesState {
 
 const initialState: CategoriesState = {
   categories: [],
-  featuredCategories: [],
   currentCategory: null,
   categoryTree: [],
   isLoading: false,
@@ -30,17 +28,12 @@ const initialState: CategoriesState = {
 // Async thunks
 export const fetchCategories = createAsyncThunk(
   'categories/fetchCategories',
-  async (params: {
-    featured?: boolean;
-    parent?: string;
-    level?: number;
-    isActive?: boolean;
-  } = {}, { rejectWithValue }) => {
+  async (params: GetCategoriesParams = {}, { rejectWithValue }) => {
     try {
-      const response = await categoriesAPI.getCategories(params);
+      const response = await categoriesAPI.getAllCategories(params);
       return response;
     } catch (error: any) {
-      const message = error.response?.data?.message || 'Failed to fetch categories';
+      const message = error.response?.data?.message || error.message || 'Failed to fetch categories';
       return rejectWithValue(message);
     }
   }
@@ -50,23 +43,13 @@ export const fetchCategoryTree = createAsyncThunk(
   'categories/fetchCategoryTree',
   async (_, { rejectWithValue }) => {
     try {
-      const response = await categoriesAPI.getCategoryTree();
+      const response = await categoriesAPI.getAllCategories({
+        tree: true,
+        includeInactive: false
+      });
       return response;
     } catch (error: any) {
-      const message = error.response?.data?.message || 'Failed to fetch category tree';
-      return rejectWithValue(message);
-    }
-  }
-);
-
-export const fetchFeaturedCategories = createAsyncThunk(
-  'categories/fetchFeaturedCategories',
-  async (limit: number = 8, { rejectWithValue }) => {
-    try {
-      const response = await categoriesAPI.getFeaturedCategories(limit);
-      return response;
-    } catch (error: any) {
-      const message = error.response?.data?.message || 'Failed to fetch featured categories';
+      const message = error.response?.data?.message || error.message || 'Failed to fetch category tree';
       return rejectWithValue(message);
     }
   }
@@ -79,20 +62,46 @@ export const fetchCategoryById = createAsyncThunk(
       const response = await categoriesAPI.getCategoryById(id);
       return response;
     } catch (error: any) {
-      const message = error.response?.data?.message || 'Failed to fetch category';
+      const message = error.response?.data?.message || error.message || 'Failed to fetch category';
       return rejectWithValue(message);
     }
   }
 );
 
-export const fetchCategoryBySlug = createAsyncThunk(
-  'categories/fetchCategoryBySlug',
-  async (slug: string, { rejectWithValue }) => {
+export const fetchRootCategories = createAsyncThunk(
+  'categories/fetchRootCategories',
+  async (_, { rejectWithValue }) => {
     try {
-      const response = await categoriesAPI.getCategoryBySlug(slug);
+      const response = await categoriesAPI.getRootCategories();
       return response;
     } catch (error: any) {
-      const message = error.response?.data?.message || 'Failed to fetch category';
+      const message = error.response?.data?.message || error.message || 'Failed to fetch root categories';
+      return rejectWithValue(message);
+    }
+  }
+);
+
+export const fetchCategoriesByParent = createAsyncThunk(
+  'categories/fetchCategoriesByParent',
+  async (parentId: string | null, { rejectWithValue }) => {
+    try {
+      const response = await categoriesAPI.getCategoriesByParent(parentId);
+      return response;
+    } catch (error: any) {
+      const message = error.response?.data?.message || error.message || 'Failed to fetch categories';
+      return rejectWithValue(message);
+    }
+  }
+);
+
+export const searchCategories = createAsyncThunk(
+  'categories/searchCategories',
+  async ({ query, limit }: { query: string; limit?: number }, { rejectWithValue }) => {
+    try {
+      const response = await categoriesAPI.searchCategories(query, limit);
+      return response;
+    } catch (error: any) {
+      const message = error.response?.data?.message || error.message || 'Search failed';
       return rejectWithValue(message);
     }
   }
@@ -106,7 +115,7 @@ export const createCategory = createAsyncThunk(
       toast.success('Category created successfully!');
       return response;
     } catch (error: any) {
-      const message = error.response?.data?.message || 'Failed to create category';
+      const message = error.response?.data?.message || error.message || 'Failed to create category';
       toast.error(message);
       return rejectWithValue(message);
     }
@@ -121,7 +130,7 @@ export const updateCategory = createAsyncThunk(
       toast.success('Category updated successfully!');
       return response;
     } catch (error: any) {
-      const message = error.response?.data?.message || 'Failed to update category';
+      const message = error.response?.data?.message || error.message || 'Failed to update category';
       toast.error(message);
       return rejectWithValue(message);
     }
@@ -136,65 +145,22 @@ export const deleteCategory = createAsyncThunk(
       toast.success('Category deleted successfully!');
       return id;
     } catch (error: any) {
-      const message = error.response?.data?.message || 'Failed to delete category';
+      const message = error.response?.data?.message || error.message || 'Failed to delete category';
       toast.error(message);
       return rejectWithValue(message);
     }
   }
 );
 
-export const toggleCategoryStatus = createAsyncThunk(
-  'categories/toggleCategoryStatus',
-  async ({ id, isActive }: { id: string; isActive: boolean }, { rejectWithValue }) => {
+export const updateSortOrder = createAsyncThunk(
+  'categories/updateSortOrder',
+  async (categories: Array<{ id: string; sortOrder: number }>, { rejectWithValue }) => {
     try {
-      const response = await categoriesAPI.updateCategoryStatus(id, isActive);
-      toast.success(`Category ${isActive ? 'activated' : 'deactivated'}!`);
-      return response;
-    } catch (error: any) {
-      const message = error.response?.data?.message || 'Failed to update category status';
-      toast.error(message);
-      return rejectWithValue(message);
-    }
-  }
-);
-
-export const toggleFeaturedStatus = createAsyncThunk(
-  'categories/toggleFeaturedStatus',
-  async ({ id, isFeatured }: { id: string; isFeatured: boolean }, { rejectWithValue }) => {
-    try {
-      const response = await categoriesAPI.updateFeaturedStatus(id, isFeatured);
-      toast.success(`Category ${isFeatured ? 'featured' : 'unfeatured'}!`);
-      return response;
-    } catch (error: any) {
-      const message = error.response?.data?.message || 'Failed to update featured status';
-      toast.error(message);
-      return rejectWithValue(message);
-    }
-  }
-);
-
-export const searchCategories = createAsyncThunk(
-  'categories/searchCategories',
-  async (query: string, { rejectWithValue }) => {
-    try {
-      const response = await categoriesAPI.searchCategories(query);
-      return response;
-    } catch (error: any) {
-      const message = error.response?.data?.message || 'Search failed';
-      return rejectWithValue(message);
-    }
-  }
-);
-
-export const reorderCategories = createAsyncThunk(
-  'categories/reorderCategories',
-  async (categoryIds: string[], { rejectWithValue }) => {
-    try {
-      const response = await categoriesAPI.reorderCategories(categoryIds);
+      await categoriesAPI.updateSortOrder(categories);
       toast.success('Categories reordered successfully!');
-      return response;
+      return categories;
     } catch (error: any) {
-      const message = error.response?.data?.message || 'Failed to reorder categories';
+      const message = error.response?.data?.message || error.message || 'Failed to reorder categories';
       toast.error(message);
       return rejectWithValue(message);
     }
@@ -220,13 +186,7 @@ const categoriesSlice = createSlice({
       if (index !== -1) {
         state.categories[index] = action.payload;
       }
-      
-      // Update in featured categories if exists
-      const featuredIndex = state.featuredCategories.findIndex(category => category._id === action.payload._id);
-      if (featuredIndex !== -1) {
-        state.featuredCategories[featuredIndex] = action.payload;
-      }
-      
+
       // Update in category tree if exists
       const updateInTree = (categories: Category[]): Category[] => {
         return categories.map(category => {
@@ -246,8 +206,7 @@ const categoriesSlice = createSlice({
     },
     removeCategoryFromList: (state, action: PayloadAction<string>) => {
       state.categories = state.categories.filter(category => category._id !== action.payload);
-      state.featuredCategories = state.featuredCategories.filter(category => category._id !== action.payload);
-      
+
       // Remove from category tree
       const removeFromTree = (categories: Category[]): Category[] => {
         return categories.filter(category => {
@@ -279,17 +238,32 @@ const categoriesSlice = createSlice({
         state.isLoading = false;
         state.error = action.payload as string;
       })
-      
+
       // Fetch Category Tree
+      .addCase(fetchCategoryTree.pending, (state) => {
+        state.isLoading = true;
+        state.error = null;
+      })
       .addCase(fetchCategoryTree.fulfilled, (state, action: PayloadAction<Category[]>) => {
+        state.isLoading = false;
         state.categoryTree = action.payload;
+        state.error = null;
       })
-      
-      // Fetch Featured Categories
-      .addCase(fetchFeaturedCategories.fulfilled, (state, action: PayloadAction<Category[]>) => {
-        state.featuredCategories = action.payload;
+      .addCase(fetchCategoryTree.rejected, (state, action) => {
+        state.isLoading = false;
+        state.error = action.payload as string;
       })
-      
+
+      // Fetch Root Categories
+      .addCase(fetchRootCategories.fulfilled, (state, action: PayloadAction<Category[]>) => {
+        state.categories = action.payload;
+      })
+
+      // Fetch Categories By Parent
+      .addCase(fetchCategoriesByParent.fulfilled, (state, action: PayloadAction<Category[]>) => {
+        state.categories = action.payload;
+      })
+
       // Fetch Category by ID
       .addCase(fetchCategoryById.pending, (state) => {
         state.isLoading = true;
@@ -305,23 +279,22 @@ const categoriesSlice = createSlice({
         state.error = action.payload as string;
         state.currentCategory = null;
       })
-      
-      // Fetch Category by Slug
-      .addCase(fetchCategoryBySlug.pending, (state) => {
+
+      // Search Categories
+      .addCase(searchCategories.pending, (state) => {
         state.isLoading = true;
         state.error = null;
       })
-      .addCase(fetchCategoryBySlug.fulfilled, (state, action: PayloadAction<Category>) => {
+      .addCase(searchCategories.fulfilled, (state, action: PayloadAction<Category[]>) => {
         state.isLoading = false;
-        state.currentCategory = action.payload;
+        state.categories = action.payload;
         state.error = null;
       })
-      .addCase(fetchCategoryBySlug.rejected, (state, action) => {
+      .addCase(searchCategories.rejected, (state, action) => {
         state.isLoading = false;
         state.error = action.payload as string;
-        state.currentCategory = null;
       })
-      
+
       // Create Category
       .addCase(createCategory.pending, (state) => {
         state.isCreating = true;
@@ -336,7 +309,7 @@ const categoriesSlice = createSlice({
         state.isCreating = false;
         state.error = action.payload as string;
       })
-      
+
       // Update Category
       .addCase(updateCategory.pending, (state) => {
         state.isUpdating = true;
@@ -357,7 +330,7 @@ const categoriesSlice = createSlice({
         state.isUpdating = false;
         state.error = action.payload as string;
       })
-      
+
       // Delete Category
       .addCase(deleteCategory.pending, (state) => {
         state.isDeleting = true;
@@ -375,49 +348,11 @@ const categoriesSlice = createSlice({
         state.isDeleting = false;
         state.error = action.payload as string;
       })
-      
-      // Toggle Category Status
-      .addCase(toggleCategoryStatus.fulfilled, (state, action: PayloadAction<Category>) => {
-        const index = state.categories.findIndex(category => category._id === action.payload._id);
-        if (index !== -1) {
-          state.categories[index] = action.payload;
-        }
-        if (state.currentCategory && state.currentCategory._id === action.payload._id) {
-          state.currentCategory = action.payload;
-        }
-      })
-      
-      // Toggle Featured Status
-      .addCase(toggleFeaturedStatus.fulfilled, (state, action: PayloadAction<Category>) => {
-        const index = state.categories.findIndex(category => category._id === action.payload._id);
-        if (index !== -1) {
-          state.categories[index] = action.payload;
-        }
-        if (state.currentCategory && state.currentCategory._id === action.payload._id) {
-          state.currentCategory = action.payload;
-        }
-        
-        // Update featured categories list
-        if (action.payload.isFeatured) {
-          const featuredIndex = state.featuredCategories.findIndex(category => category._id === action.payload._id);
-          if (featuredIndex === -1) {
-            state.featuredCategories.push(action.payload);
-          } else {
-            state.featuredCategories[featuredIndex] = action.payload;
-          }
-        } else {
-          state.featuredCategories = state.featuredCategories.filter(category => category._id !== action.payload._id);
-        }
-      })
-      
-      // Search Categories
-      .addCase(searchCategories.fulfilled, (state, action: PayloadAction<Category[]>) => {
-        state.categories = action.payload;
-      })
-      
-      // Reorder Categories
-      .addCase(reorderCategories.fulfilled, (state, action: PayloadAction<Category[]>) => {
-        state.categories = action.payload;
+
+      // Update Sort Order
+      .addCase(updateSortOrder.fulfilled, (state) => {
+        // Optionally refetch categories after reordering
+        state.error = null;
       });
   },
 });
@@ -434,7 +369,6 @@ export default categoriesSlice.reducer;
 
 // Selectors
 export const selectCategories = (state: { categories: CategoriesState }) => state.categories.categories;
-export const selectFeaturedCategories = (state: { categories: CategoriesState }) => state.categories.featuredCategories;
 export const selectCurrentCategory = (state: { categories: CategoriesState }) => state.categories.currentCategory;
 export const selectCategoryTree = (state: { categories: CategoriesState }) => state.categories.categoryTree;
 export const selectCategoriesLoading = (state: { categories: CategoriesState }) => state.categories.isLoading;
@@ -446,12 +380,12 @@ export const selectCategoriesOperations = (state: { categories: CategoriesState 
 });
 
 // Helper selectors
-export const selectCategoriesByParent = (parentId: string | null) => (state: { categories: CategoriesState }) => {
-  return state.categories.categories.filter(category => category.parent === parentId);
+export const selectCategoriesByParentId = (parentId: string | null) => (state: { categories: CategoriesState }) => {
+  return state.categories.categories.filter(category => category.parentId === parentId);
 };
 
 export const selectRootCategories = (state: { categories: CategoriesState }) => {
-  return state.categories.categories.filter(category => !category.parent || category.level === 0);
+  return state.categories.categories.filter(category => !category.parentId || category.level === 0);
 };
 
 export const selectCategoryById = (id: string) => (state: { categories: CategoriesState }) => {

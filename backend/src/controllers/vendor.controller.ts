@@ -1619,7 +1619,7 @@ export const sendVendorPhoneVerificationOTP = catchAsync(async (req: AuthRequest
 
   // Send OTP via SMS
   try {
-    await smsService.sendSMS(phone, `Your GEMA verification code is: ${otp}. Valid for 10 minutes.`);
+    await smsService.sendSMS(phone, `Your ${process.env.APP_NAME || 'Kidrove'} verification code is: ${otp}. Valid for 10 minutes.`);
   } catch (error) {
     console.error('Failed to send SMS:', error);
     return next(new AppError('Failed to send verification code', 500));

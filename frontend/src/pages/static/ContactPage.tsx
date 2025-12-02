@@ -6,6 +6,7 @@ import { FaFacebookF, FaTwitter, FaInstagram, FaYoutube, FaLinkedinIn } from 're
 import SEO from '@/components/common/SEO';
 import contactAPI from '@/services/api/contactAPI';
 import { selectSocialSettings } from '@/store/slices/settingsSlice';
+import { getAppNameFull, getContactEmail } from '../../utils/brandConfig';
 
 const ContactPage: React.FC = () => {
   const socialSettings = useSelector(selectSocialSettings);
@@ -101,18 +102,18 @@ const ContactPage: React.FC = () => {
   return (
     <>
       <SEO
-        title="Contact Gema Events - Get in Touch for Kids Activities & Events"
-        description="Contact Gema Events for questions about kids activities, event bookings, partnerships, or support. We're here to help create amazing experiences for your children in the UAE."
+        title="Contact ${getAppNameFull()} - Get in Touch for Kids Activities & Events"
+        description="Contact ${getAppNameFull()} for questions about kids activities, event bookings, partnerships, or support. We're here to help create amazing experiences for your children in the UAE."
         keywords={['contact gema events', 'customer support', 'kids activities help', 'event booking assistance', 'UAE contact']}
         breadcrumbs={breadcrumbs}
         structuredData={{
           '@context': 'https://schema.org',
           '@type': 'ContactPage',
-          name: 'Contact Gema Events',
-          description: 'Get in touch with Gema Events for kids activities and event support',
+          name: 'Contact ${getAppNameFull()}',
+          description: 'Get in touch with ${getAppNameFull()} for kids activities and event support',
           mainEntity: {
             '@type': 'Organization',
-            name: 'Gema Events',
+            name: '${getAppNameFull()}',
             contactPoint: {
               '@type': 'ContactPoint',
               contactType: 'customer service',
@@ -177,8 +178,8 @@ const ContactPage: React.FC = () => {
                   </div>
                   <div className="ml-4">
                     <h3 className="text-lg font-semibold text-gray-800">Email</h3>
-                    <p className="text-gray-600 mt-1">info@gemaevents.com</p>
-                    <p className="text-gray-600">support@gemaevents.com</p>
+                    <p className="text-gray-600 mt-1">${getContactEmail()}</p>
+                    <p className="text-gray-600">${getContactEmail()}</p>
                   </div>
                 </div>
                 

@@ -501,10 +501,10 @@ affiliateSchema.virtual('pendingCommissionAmount').get(function () {
 
 // Method to generate tracking URL
 affiliateSchema.methods.generateTrackingUrl = function (
-  eventId?: mongoose.Types.ObjectId, 
+  eventId?: mongoose.Types.ObjectId,
   customParams?: Record<string, string>
 ): string {
-  const baseUrl = process.env.FRONTEND_URL || 'https://gema.com';
+  const baseUrl = process.env.FRONTEND_URL || 'https://kidrove.com';
   const params = new URLSearchParams({
     ref: this.affiliateCode,
     ...customParams,

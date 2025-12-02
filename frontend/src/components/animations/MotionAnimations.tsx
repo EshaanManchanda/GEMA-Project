@@ -1,5 +1,5 @@
-import React, { ReactNode } from 'react';
-import { motion, AnimatePresence, Variants } from 'framer-motion';
+import React, { ReactNode, useRef, useEffect } from 'react';
+import { motion, AnimatePresence, Variants, useSpring, useTransform, useInView } from 'framer-motion';
 
 // Fade In Animation
 export const FadeIn: React.FC<{
@@ -131,5 +131,94 @@ export const PageTransition: React.FC<{
         {children}
       </motion.div>
     </AnimatePresence>
+  );
+};
+
+// Hover Card with scale and shadow animation
+export const HoverCard: React.FC<{
+  children: ReactNode;
+  className?: string;
+}> = ({ children, className = '' }) => {
+  return (
+    <motion.div
+      className={className}
+      whileHover={{
+        scale: 1.02,
+        boxShadow: '0 10px 20px rgba(0, 0, 0, 0.15)'
+      }}
+      transition={{ duration: 0.3, ease: 'easeOut' }}
+    >
+      {children}
+    </motion.div>
+  );
+};
+
+// Button with hover and tap animations
+export const AnimatedButton: React.FC<
+  React.ButtonHTMLAttributes<HTMLButtonElement> & { children: ReactNode }
+> = ({ children, className = '', style, ...rest }) => {
+  return (
+    <motion.button
+      className={className}
+      style={style}
+      whileHover={{ scale: 1.05 }}
+      whileTap={{ scale: 0.95 }}
+      transition={{ duration: 0.2, ease: 'easeOut' }}
+      {...rest}
+    >
+      {children}
+    </motion.button>
+  );
+};
+
+// Scroll-triggered reveal animation
+export const ScrollReveal: React.FC<{
+  children: ReactNode;
+  className?: string;
+  threshold?: number;
+}> = ({ children, className = '', threshold = 0.1 }) => {
+  return (
+    <motion.div
+      className={className}
+      initial={{ opacity: 0, y: 50 }}
+      whileInView={{ opacity: 1, y: 0 }}
+      viewport={{ once: true, amount: threshold }}
+      transition={{ duration: 0.6, ease: 'easeOut' }}
+    >
+      {children}
+    </motion.div>
+  );
+};
+
+// Animated number counter
+export const NumberCounter: React.FC<{
+  to: number;
+  duration?: number;
+  className?: string;
+  prefix?: string;
+  suffix?: string;
+}> = ({ to, duration = 2, className = '', prefix = '', suffix = '' }) => {
+  const ref = useRef<HTMLSpanElement>(null);
+  const isInView = useInView(ref, { once: true });
+  const motionValue = useSpring(0, {
+    duration: duration * 1000,
+    bounce: 0
+  });
+  const rounded = useTransform(motionValue, (latest) =>
+    Math.floor(latest).toLocaleString()
+  );
+
+  useEffect(() => {
+    if (isInView) {
+      motionValue.set(to);
+    }
+  }, [isInView, to, motionValue]);
+
+  return (
+    <span ref={ref} className={className}>
+      {prefix}
+      <motion.span>{rounded}</motion.span>
+      {suffix}
+    </span>
   );
 };

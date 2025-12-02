@@ -2,7 +2,6 @@ import { useEffect, useRef, useCallback, useState } from 'react';
 import { useDispatch, useSelector } from 'react-redux';
 import { RootState, AppDispatch } from '@/store';
 import { fetchUserNotifications } from '@/store/slices/notificationsSlice';
-import { fetchFeaturedCategories } from '@/store/slices/categoriesSlice';
 
 interface UseRealTimeDataOptions {
   enableNotifications?: boolean;
@@ -60,11 +59,7 @@ export const useRealTimeData = (options: UseRealTimeDataOptions = {}) => {
     }
   }, [dispatch, isAuthenticated, enableNotifications, connectionError, notificationInterval]);
 
-  const refreshCategories = useCallback(() => {
-    if (enableCategories) {
-      dispatch(fetchFeaturedCategories(4));
-    }
-  }, [dispatch, enableCategories]);
+  // Categories removed - they don't change frequently and don't need real-time updates
 
   // Setup real-time notifications refresh
   useEffect(() => {
@@ -86,33 +81,15 @@ export const useRealTimeData = (options: UseRealTimeDataOptions = {}) => {
     };
   }, [enableNotifications, isAuthenticated, refreshNotifications, currentNotificationInterval]);
 
-  // Setup categories refresh
-  useEffect(() => {
-    if (enableCategories) {
-      refreshCategories();
-      
-      categoryIntervalRef.current = setInterval(
-        refreshCategories,
-        categoryInterval
-      );
-    }
-
-    return () => {
-      if (categoryIntervalRef.current) {
-        clearInterval(categoryIntervalRef.current);
-      }
-    };
-  }, [enableCategories, refreshCategories, categoryInterval]);
+  // Categories refresh removed - not needed for real-time updates
 
   // Manual refresh functions
   const manualRefresh = useCallback(() => {
     if (enableNotifications) refreshNotifications();
-    if (enableCategories) refreshCategories();
-  }, [enableNotifications, enableCategories, refreshNotifications, refreshCategories]);
+  }, [enableNotifications, refreshNotifications]);
 
   return {
     refreshNotifications,
-    refreshCategories,
     manualRefresh,
     connectionError,
     currentNotificationInterval,

@@ -1,6 +1,6 @@
 {
-  "name": "Gema Event Management",
-  "short_name": "Gema Events",
+  "name": "Kidrove Event Management",
+  "short_name": "Kidrove Events",
   "description": "Discover and book amazing kids' activities and family events in the UAE",
   "theme_color": "#3b82f6",
   "background_color": "#ffffff",
@@ -8,7 +8,7 @@
   "orientation": "portrait-primary",
   "scope": "/",
   "start_url": "/",
-  "id": "com.gema.events",
+  "id": "com.kidrove.events",
   "lang": "en-US",
   "dir": "ltr",
   "categories": ["entertainment", "lifestyle", "kids", "family"],
@@ -115,7 +115,7 @@
   },
   "protocol_handlers": [
     {
-      "protocol": "web+gema",
+      "protocol": "web+kidrove",
       "url": "/events/%s"
     }
   ],

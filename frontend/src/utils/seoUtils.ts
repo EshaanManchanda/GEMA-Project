@@ -2,6 +2,8 @@
  * SEO Utilities for validation, optimization, and content generation
  */
 
+import { getBrandConfig } from './brandConfig';
+
 export interface SEOValidationResult {
   isValid: boolean;
   warnings: string[];
@@ -48,17 +50,17 @@ export const SEO_LIMITS = {
 };
 
 /**
- * Get site name from environment variables
+ * Get site name from centralized brand configuration
  */
 const getSiteName = (): string => {
-  return import.meta.env.VITE_APP_NAME || 'Kidrove';
+  return getBrandConfig().appName;
 };
 
 /**
- * Get full site name from environment variables
+ * Get full site name from centralized brand configuration
  */
 const getFullSiteName = (): string => {
-  return import.meta.env.VITE_SITE_NAME || 'Kidrove - UAE Events & Activities Platform';
+  return getBrandConfig().siteName;
 };
 
 /**
@@ -134,7 +136,7 @@ export const validateSEO = (seoData: {
     }
 
     // Check for brand mention
-    const siteName = import.meta.env.VITE_SITE_NAME || 'Kidrove';
+    const siteName = getBrandConfig().appName;
     if (!title.toLowerCase().includes(siteName.toLowerCase().split(' ')[0].toLowerCase())) {
       suggestions.push(`Consider including "${siteName}" in your title for brand recognition.`);
     }
@@ -310,7 +312,7 @@ export const generateAutoSEO = (content: {
   category?: string;
   location?: string;
   tags?: string[];
-  type: 'event' | 'blog';
+  type: 'event' | 'blog' | 'category' | 'collection';
 }): { title: string; description: string; keywords: string[] } => {
   const { title = '', description = '', category, location, tags = [], type } = content;
 
@@ -318,13 +320,16 @@ export const generateAutoSEO = (content: {
   const siteName = getSiteName();
   const siteNameLower = siteName.toLowerCase();
   let seoTitle = title || '';
-  if (seoTitle && type === 'event') {
-    if (!seoTitle.toLowerCase().includes(siteNameLower)) {
+
+  if (seoTitle && !seoTitle.toLowerCase().includes(siteNameLower)) {
+    if (type === 'event') {
       seoTitle = `${title} | Kids ${category || 'Activities'} in ${location || 'UAE'} | ${siteName}`;
-    }
-  } else if (seoTitle) {
-    if (!seoTitle.toLowerCase().includes(siteNameLower)) {
+    } else if (type === 'blog') {
       seoTitle = `${title} | Kids Activities Guide | ${siteName}`;
+    } else if (type === 'category') {
+      seoTitle = `${title} Events for Kids | ${siteName}`;
+    } else if (type === 'collection') {
+      seoTitle = `${title} Collection | ${siteName}`;
     }
   }
 
@@ -338,9 +343,16 @@ export const generateAutoSEO = (content: {
   if (seoDescription && seoDescription.length > SEO_LIMITS.DESCRIPTION.MAX) {
     seoDescription = `${seoDescription.substring(0, 157)}...`;
   } else if (seoDescription && seoDescription.length < SEO_LIMITS.DESCRIPTION.MIN) {
-    const suffix = type === 'event'
-      ? ` Book now for an unforgettable experience with ${siteName} in ${location || 'UAE'}.`
-      : ` Discover expert tips and guides for family activities with ${siteName}.`;
+    let suffix = '';
+    if (type === 'event') {
+      suffix = ` Book now for an unforgettable experience with ${siteName} in ${location || 'UAE'}.`;
+    } else if (type === 'blog') {
+      suffix = ` Discover expert tips and guides for family activities with ${siteName}.`;
+    } else if (type === 'category') {
+      suffix = ` Explore amazing ${title.toLowerCase()} activities for kids with ${siteName}.`;
+    } else if (type === 'collection') {
+      suffix = ` Curated by ${siteName} for amazing family experiences in the UAE.`;
+    }
 
     if (seoDescription.length + suffix.length <= SEO_LIMITS.DESCRIPTION.MAX) {
       seoDescription += suffix;
@@ -348,9 +360,18 @@ export const generateAutoSEO = (content: {
   }
 
   // Generate keywords
-  const baseKeywords = type === 'event'
-    ? ['kids activities', 'events', 'family fun']
-    : ['kids activities', 'parenting tips', 'family guide'];
+  let baseKeywords: string[];
+  if (type === 'event') {
+    baseKeywords = ['kids activities', 'events', 'family fun', siteName.toLowerCase()];
+  } else if (type === 'blog') {
+    baseKeywords = ['kids activities', 'parenting tips', 'family guide', siteName.toLowerCase()];
+  } else if (type === 'category') {
+    baseKeywords = ['kids activities', title.toLowerCase(), 'UAE events', siteName.toLowerCase()];
+  } else if (type === 'collection') {
+    baseKeywords = ['kids activities', 'curated events', 'family fun', siteName.toLowerCase()];
+  } else {
+    baseKeywords = ['kids activities', siteName.toLowerCase()];
+  }
 
   const contextKeywords = [
     location || 'UAE',

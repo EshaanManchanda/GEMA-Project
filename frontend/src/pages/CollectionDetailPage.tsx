@@ -1,10 +1,11 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { useParams, useNavigate, Link } from 'react-router-dom';
 import { FaArrowLeft, FaChevronRight, FaMapMarkerAlt, FaCalendarAlt, FaUsers, FaRedo } from 'react-icons/fa';
 import collectionsAPI, { Collection } from '../services/api/collectionsAPI';
 import { getPlaceholderUrl } from '../utils/placeholderImage';
 import { format } from 'date-fns';
 import { CollectionSEO } from '@/components/common/SEO';
+import { HoverCard, AnimatedButton } from '@/components/animations';
 
 interface Event {
   _id: string;
@@ -34,6 +35,59 @@ const getEventDate = (schedule?: Array<{ date?: string; startDate?: string; endD
   if (!schedule || schedule.length === 0) return null;
   const firstSchedule = schedule[0];
   return firstSchedule.date || firstSchedule.startDate || null;
+};
+
+// Enhanced image component with lazy loading and fallback
+const LazyImage: React.FC<{
+  src: string;
+  alt: string;
+  className?: string;
+  fallbackSrc?: string;
+}> = ({ src, alt, className = '', fallbackSrc = getPlaceholderUrl('eventCard', 'Loading...') }) => {
+  const [imageSrc, setImageSrc] = useState(fallbackSrc);
+  const [isLoading, setIsLoading] = useState(true);
+  const [hasError, setHasError] = useState(false);
+  const imgRef = useRef<HTMLImageElement>(null);
+
+  useEffect(() => {
+    const img = new Image();
+    img.onload = () => {
+      setImageSrc(src);
+      setIsLoading(false);
+    };
+    img.onerror = () => {
+      setHasError(true);
+      setIsLoading(false);
+    };
+    img.src = src;
+  }, [src]);
+
+  return (
+    <div className={`relative overflow-hidden ${className}`}>
+      <img
+        ref={imgRef}
+        src={imageSrc}
+        alt={alt}
+        className={`w-full h-full object-cover transition-all duration-500 ${
+          isLoading ? 'blur-sm opacity-70' : 'opacity-100'
+        }`}
+        loading="lazy"
+      />
+      {isLoading && (
+        <div className="absolute inset-0 flex items-center justify-center bg-gray-100">
+          <div className="animate-spin rounded-full h-8 w-8 border-t-2 border-b-2" style={{ borderColor: 'var(--primary-color)' }}></div>
+        </div>
+      )}
+      {hasError && (
+        <div className="absolute inset-0 flex items-center justify-center bg-gray-100 text-gray-700">
+          <div className="text-center">
+            <div className="text-2xl mb-2">📷</div>
+            <p className="text-sm">Image unavailable</p>
+          </div>
+        </div>
+      )}
+    </div>
+  );
 };
 
 const CollectionDetailPage: React.FC = () => {
@@ -262,81 +316,95 @@ const CollectionDetailPage: React.FC = () => {
         {collection.events && collection.events.length > 0 ? (
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
             {collection.events.map((event) => (
-              <div
+              <HoverCard
                 key={event._id}
+                className="bg-white rounded-2xl shadow-lg hover:shadow-2xl overflow-hidden group transition-all duration-500 border border-gray-100 hover:border-gray-200 transform hover:-translate-y-2 cursor-pointer"
                 onClick={() => handleEventClick(event)}
-                className="bg-white rounded-lg shadow-md overflow-hidden hover:shadow-xl transition-all duration-300 cursor-pointer group"
               >
                 {/* Event Image */}
-                <div className="relative h-48 overflow-hidden">
-                  <img
+                <div className="relative overflow-hidden">
+                  <LazyImage
                     src={event.images?.[0] || getPlaceholderUrl('eventCard', event.title)}
                     alt={event.title}
-                    className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
-                    loading="lazy"
+                    className="w-full h-64 transition-transform duration-500 group-hover:scale-105"
+                    fallbackSrc={getPlaceholderUrl('eventCard', 'Event Image')}
                   />
-                  {event.price !== undefined && (
-                    <div className="absolute top-4 right-4 bg-white bg-opacity-90 px-2 py-1 rounded-lg">
-                      <span className="text-lg font-bold text-green-600">
-                        {event.price === 0 ? 'Free' : `$${event.price}`}
-                      </span>
+                  {event.category && (
+                    <div className="absolute top-4 left-4 bg-white/90 backdrop-blur-sm rounded-full px-3 py-1 text-sm font-semibold text-gray-900 shadow-sm">
+                      {event.category}
                     </div>
                   )}
                 </div>
 
                 {/* Event Info */}
-                <div className="p-4">
-                  <h3 className="text-lg font-semibold text-gray-900 mb-2 group-hover:text-blue-600 transition-colors">
+                <div className="p-6">
+                  <h3 className="text-xl font-semibold mb-4 line-clamp-2 text-gray-900 group-hover:text-blue-600 transition-colors">
                     {event.title}
                   </h3>
 
                   {event.description && (
-                    <p className="text-gray-600 text-sm mb-3 line-clamp-2">
+                    <p className="text-gray-700 text-sm mb-4 line-clamp-2">
                       {event.description}
                     </p>
                   )}
 
-                  <div className="space-y-2">
-                    {/* Location */}
-                    {event.location && (event.location.city || event.location.address) && (
-                      <div className="flex items-center text-sm text-gray-500">
-                        <FaMapMarkerAlt className="mr-2" size={12} />
-                        <span>{event.location.city || event.location.address}</span>
+                  <div className="flex flex-col gap-3 mb-4">
+                    {event.price !== undefined && (
+                      <div className="flex items-center gap-2">
+                        <span className="text-lg font-bold" style={{ color: 'var(--accent-color)' }}>
+                          {event.price === 0 ? 'Free' : `AED ${event.price}`}
+                        </span>
                       </div>
                     )}
 
-                    {/* Date */}
-                    {event.dateSchedule && event.dateSchedule.length > 0 && (() => {
-                      const eventDate = getEventDate(event.dateSchedule);
-                      return eventDate ? (
-                        <div className="flex items-center text-sm text-gray-500">
-                          <FaCalendarAlt className="mr-2" size={12} />
-                          <span>
-                            {format(new Date(eventDate), 'MMM dd, yyyy')}
-                          </span>
+                    <div className="flex flex-col gap-1">
+                      {/* Date */}
+                      {event.dateSchedule && event.dateSchedule.length > 0 && (() => {
+                        const eventDate = getEventDate(event.dateSchedule);
+                        return eventDate ? (
+                          <div className="flex items-center text-sm text-gray-700">
+                            <FaCalendarAlt size={12} className="mr-2 text-gray-900" />
+                            <span>{format(new Date(eventDate), 'MMM dd, yyyy')}</span>
+                          </div>
+                        ) : null;
+                      })()}
+
+                      {/* Location */}
+                      {event.location && (event.location.city || event.location.address) && (
+                        <div className="flex items-center text-sm text-gray-700">
+                          <FaMapMarkerAlt size={12} className="mr-2 text-gray-900" />
+                          <span>{event.location.city || event.location.address}</span>
                         </div>
-                      ) : null;
-                    })()}
-
-                    {/* Views */}
-                    {event.viewsCount !== undefined && (
-                      <div className="flex items-center text-sm text-gray-500">
-                        <FaUsers className="mr-2" size={12} />
-                        <span>{event.viewsCount} views</span>
-                      </div>
-                    )}
+                      )}
+                    </div>
                   </div>
 
-                  {/* Category */}
-                  {event.category && (
-                    <div className="mt-3">
-                      <span className="inline-block px-2 py-1 rounded-full text-xs font-medium bg-gray-100 text-gray-700">
-                        {event.category}
-                      </span>
-                    </div>
-                  )}
+                  <div className="flex justify-between items-center">
+                    {event.viewsCount !== undefined && (
+                      <div className="flex items-center gap-2">
+                        <div className="w-8 h-8 rounded-full flex items-center justify-center" style={{ backgroundColor: 'rgba(0, 142, 199, 0.1)' }}>
+                          <FaUsers size={14} className="text-gray-900" />
+                        </div>
+                        <span className="text-sm font-medium">{event.viewsCount} views</span>
+                      </div>
+                    )}
+                    <AnimatedButton
+                      style={{
+                        backgroundColor: 'var(--accent-color, #FF6B00)',
+                        boxShadow: '0 4px 14px 0 rgba(255, 107, 0, 0.3)'
+                      }}
+                      className="text-white px-6 py-3 rounded-xl font-semibold transition-all duration-300 hover:opacity-90 hover:shadow-lg hover:scale-105 focus:outline-none focus:ring-2 focus:ring-offset-2 active:scale-95 whitespace-nowrap"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        handleEventClick(event);
+                      }}
+                      aria-label={`View details for ${event.title}`}
+                    >
+                      View Details
+                    </AnimatedButton>
+                  </div>
                 </div>
-              </div>
+              </HoverCard>
             ))}
           </div>
         ) : (

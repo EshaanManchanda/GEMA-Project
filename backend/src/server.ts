@@ -54,12 +54,8 @@ app.use(cors({
       allowedOrigins.push(
         'http://localhost:3000',
         'http://localhost:3001',
-        'http://localhost:3002',
-        'http://localhost:4200',
-        'http://localhost:4201',
-        'http://localhost:5173', // Vite default port
-        'http://localhost:5174'
-      );
+        'http://localhost:5173' // Vite default port 
+        );
     }
 
     // Allow requests with no origin (direct browser navigation, favicon, health checks)
@@ -182,7 +178,7 @@ app.use('/health', healthRoutes);
 // Root route handler
 app.get('/', (req: Request, res: Response) => {
   res.status(200).json({
-    message: 'Welcome to the Gema Backend API',
+    message: `Welcome to the ${process.env.APP_NAME || 'Kidrove'} Backend API`,
     version: '1.0.0',
     status: 'running',
     endpoints: {

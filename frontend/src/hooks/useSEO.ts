@@ -1,6 +1,7 @@
 import { useEffect } from 'react';
 import { useLocation } from 'react-router-dom';
 import { config } from '../config';
+import { getAppNameFull, getTeamName } from '../utils/brandConfig';
 
 export interface SEOData {
   title?: string;
@@ -98,7 +99,7 @@ export const useSEO = (seoData: SEOData = {}) => {
     updateMetaTag('og:type', ogType, true);
     updateMetaTag('og:url', canonicalUrl, true);
     updateMetaTag('og:image', ogImage, true);
-    updateMetaTag('og:site_name', 'Gema Events', true);
+    updateMetaTag('og:site_name', getAppNameFull(), true);
 
     // Twitter Card tags
     updateMetaTag('twitter:card', twitterCard);
@@ -130,7 +131,7 @@ export const useSEO = (seoData: SEOData = {}) => {
 
   // Helper functions that can be used by components
   const generateEventSEO = (event: any): SEOData => {
-    const eventTitle = `${event.title} | Kids Events in ${event.location?.city || 'UAE'} | Gema Events`;
+    const eventTitle = `${event.title} | Kids Events in ${event.location?.city || 'UAE'} | ${getAppNameFull()}`;
     const eventDescription = event.description.length > 160
       ? `${event.description.substring(0, 157)}...`
       : event.description;
@@ -167,7 +168,7 @@ export const useSEO = (seoData: SEOData = {}) => {
         },
         organizer: {
           '@type': 'Organization',
-          name: 'Gema Events',
+          name: getAppNameFull(),
           url: baseUrl
         }
       }
@@ -176,7 +177,7 @@ export const useSEO = (seoData: SEOData = {}) => {
 
   const generateBlogSEO = (blog: any): SEOData => {
     return {
-      title: blog.seo?.metaTitle || `${blog.title} | Gema Events Blog`,
+      title: blog.seo?.metaTitle || `${blog.title} | ${getAppNameFull()} Blog`,
       description: blog.seo?.metaDescription || blog.excerpt,
       keywords: blog.seo?.metaKeywords || ['kids activities', 'events', 'UAE', 'parenting', ...blog.tags].filter(Boolean),
       canonicalUrl: blog.seo?.canonicalUrl || `${baseUrl}/blog/${blog.slug}`,
@@ -192,11 +193,11 @@ export const useSEO = (seoData: SEOData = {}) => {
         dateModified: blog.updatedAt,
         author: {
           '@type': 'Person',
-          name: blog.author?.name || 'Gema Events Team'
+          name: blog.author?.name || getTeamName()
         },
         publisher: {
           '@type': 'Organization',
-          name: 'Gema Events',
+          name: getAppNameFull(),
           logo: {
             '@type': 'ImageObject',
             url: `${baseUrl}/assets/images/logo.png`
@@ -208,7 +209,7 @@ export const useSEO = (seoData: SEOData = {}) => {
 
   const generateCategorySEO = (category: any): SEOData => {
     return {
-      title: `${category.name} Events for Kids | Gema Events`,
+      title: `${category.name} Events for Kids | ${getAppNameFull()}`,
       description: category.seoMeta?.description || `Discover amazing ${category.name.toLowerCase()} activities and events for children in the UAE. Book now for unforgettable experiences.`,
       keywords: category.seoMeta?.keywords || ['kids activities', 'events', 'UAE', category.name.toLowerCase(), 'activities'],
       canonicalUrl: `${baseUrl}/categories/${category.slug || category._id}`,

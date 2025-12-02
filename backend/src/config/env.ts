@@ -106,6 +106,13 @@ interface Config {
   phoneVerification: {
     required: boolean;
   };
+  brand: {
+    appName: string;
+    appNameFull: string;
+    siteName: string;
+    siteDescription: string;
+    contactEmail: string;
+  };
 }
 
 // Define and export the configuration object
@@ -174,8 +181,8 @@ export const config: Config = {
     port: parseInt(process.env.EMAIL_PORT || '587', 10),
     username: process.env.EMAIL_USERNAME || '',
     password: process.env.EMAIL_PASSWORD || '',
-    from: process.env.EMAIL_FROM || 'noreply@gema.com',
-    fromName: process.env.EMAIL_FROM_NAME || 'Gema Events'
+    from: process.env.EMAIL_FROM || 'contact@kidrove.com',
+    fromName: process.env.EMAIL_FROM_NAME || process.env.APP_NAME || 'Kidrove'
   },
   upload: {
     path: process.env.UPLOAD_PATH || 'uploads/',
@@ -236,6 +243,13 @@ export const config: Config = {
   },
   phoneVerification: {
     required: process.env.REQUIRE_PHONE_VERIFICATION !== 'false' // Default true for backward compatibility
+  },
+  brand: {
+    appName: process.env.APP_NAME || 'Kidrove',
+    appNameFull: process.env.APP_NAME_FULL || 'Kidrove Events',
+    siteName: process.env.SITE_NAME || 'Kidrove',
+    siteDescription: process.env.SITE_DESCRIPTION || 'Discover and book amazing family events and kids activities across the UAE',
+    contactEmail: process.env.CONTACT_EMAIL || process.env.EMAIL_FROM || 'contact@kidrove.com'
   }
 };
 

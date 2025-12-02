@@ -2,6 +2,8 @@ import Event from '../models/Event';
 import { Blog } from '../models/Blog';
 import Category from '../models/Category';
 import Collection from '../models/Collection';
+import { SEO_CONFIG } from '../config/env';
+import { getBrandConfig } from '../utils/brandConfig';
 
 export interface SEOMetaData {
   title: string;
@@ -192,7 +194,7 @@ Crawl-delay: 1`;
       },
       organizer: {
         '@type': 'Organization',
-        name: 'Gema Events',
+        name: SEO_CONFIG.siteName,
         url: this.baseUrl
       }
     };
@@ -226,12 +228,12 @@ Crawl-delay: 1`;
       dateModified: blog.updatedAt,
       author: {
         '@type': 'Person',
-        name: blog.author?.name || author?.name || 'Gema Events Team',
+        name: blog.author?.name || author?.name || `${SEO_CONFIG.siteName} Team`,
         ...(blog.author?.avatar && { image: blog.author.avatar })
       },
       publisher: {
         '@type': 'Organization',
-        name: 'Gema Events',
+        name: SEO_CONFIG.siteName,
         logo: {
           '@type': 'ImageObject',
           url: `${this.baseUrl}/assets/images/logo.png`
@@ -253,22 +255,23 @@ Crawl-delay: 1`;
    * Generate structured data for organization/business
    */
   generateOrganizationStructuredData(): StructuredData {
+    const brand = getBrandConfig();
     return {
       '@context': 'https://schema.org',
       '@type': 'Organization',
-      name: 'Gema Events',
+      name: brand.appNameFull,
       description: 'Discover and book amazing kids activities, events, and educational programs in the UAE',
       url: this.baseUrl,
       logo: `${this.baseUrl}/assets/images/logo.png`,
       contactPoint: {
         '@type': 'ContactPoint',
         contactType: 'customer service',
-        email: 'info@gema-events.com'
+        email: brand.contactEmail
       },
       sameAs: [
-        'https://www.facebook.com/gemaevents',
-        'https://www.instagram.com/gemaevents',
-        'https://www.twitter.com/gemaevents'
+        'https://www.facebook.com/kidrove',
+        'https://www.instagram.com/kidrove',
+        'https://www.twitter.com/kidrove'
       ],
       areaServed: {
         '@type': 'Country',
@@ -292,7 +295,7 @@ Crawl-delay: 1`;
     switch (type) {
       case 'event':
         return {
-          title: `${data.title} | Kids Events in ${data.location?.city || 'UAE'} | Gema Events`,
+          title: `${data.title} | Kids Events in ${data.location?.city || 'UAE'} | ${SEO_CONFIG.siteName}`,
           description: data.description.length > 160
             ? `${data.description.substring(0, 157)}...`
             : data.description,
@@ -304,7 +307,7 @@ Crawl-delay: 1`;
 
       case 'blog':
         return {
-          title: data.seo?.metaTitle || `${data.title} | Gema Events Blog`,
+          title: data.seo?.metaTitle || `${data.title} | ${SEO_CONFIG.siteName} Blog`,
           description: data.seo?.metaDescription || data.excerpt,
           keywords: data.seo?.metaKeywords || [...baseKeywords, ...data.tags].filter(Boolean),
           canonicalUrl: data.seo?.canonicalUrl || `${this.baseUrl}/blog/${data.slug}`,
@@ -314,7 +317,7 @@ Crawl-delay: 1`;
 
       case 'category':
         return {
-          title: `${data.name} Events for Kids | Gema Events`,
+          title: `${data.name} Events for Kids | ${SEO_CONFIG.siteName}`,
           description: `Discover amazing ${data.name.toLowerCase()} activities and events for children in the UAE. Book now for unforgettable experiences.`,
           keywords: [...baseKeywords, data.name.toLowerCase(), 'activities'],
           canonicalUrl: `${this.baseUrl}/categories/${data.slug || data._id}`,
@@ -323,7 +326,7 @@ Crawl-delay: 1`;
 
       case 'homepage':
         return {
-          title: 'Gema Events - Discover Amazing Kids Activities & Events in UAE',
+          title: `${SEO_CONFIG.siteName} - Discover Amazing Kids Activities & Events in UAE`,
           description: 'Find and book the best kids activities, educational programs, and family events in the UAE. Safe, fun, and memorable experiences for children of all ages.',
           keywords: [...baseKeywords, 'education', 'entertainment', 'family activities'],
           canonicalUrl: this.baseUrl,
@@ -332,7 +335,7 @@ Crawl-delay: 1`;
 
       default:
         return {
-          title: 'Gema Events - Kids Activities & Family Entertainment',
+          title: `${SEO_CONFIG.siteName} - Kids Activities & Family Entertainment`,
           description: 'Discover amazing kids activities and family events in the UAE',
           keywords: baseKeywords,
           canonicalUrl: this.baseUrl,
@@ -380,7 +383,7 @@ Crawl-delay: 1`;
    */
   validateSEOData(seoData: Partial<SEOMetaData>): SEOMetaData {
     return {
-      title: this.truncateText(seoData.title || 'Gema Events', 60),
+      title: this.truncateText(seoData.title || SEO_CONFIG.siteName, 60),
       description: this.truncateText(seoData.description || '', 160),
       keywords: (seoData.keywords || []).slice(0, 10), // Limit to 10 keywords
       canonicalUrl: seoData.canonicalUrl,

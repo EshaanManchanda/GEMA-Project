@@ -72,9 +72,9 @@ const AdminSettingsPage: React.FC = () => {
   
   // System Settings
   const [systemSettings, setSystemSettings] = useState<SystemSettings>({
-    siteName: 'Gema Events',
+    siteName: import.meta.env.VITE_APP_NAME_FULL || 'Kidrove Events',
     siteDescription: 'Find and book the best events for kids',
-    contactEmail: 'contact@gemaevents.com',
+    contactEmail: 'contact@kidrove.com',
     supportPhone: '+1 (555) 123-4567',
     maintenanceMode: false,
     allowRegistration: true,
@@ -98,12 +98,12 @@ const AdminSettingsPage: React.FC = () => {
   const [emailSettings, setEmailSettings] = useState<EmailSettings>({
     smtpHost: 'smtp.example.com',
     smtpPort: 587,
-    smtpUser: 'notifications@gemaevents.com',
+    smtpUser: 'notifications@kidrove.com',
     smtpPassword: '********',
     smtpEncryption: 'tls',
-    senderName: 'Gema Events',
-    senderEmail: 'no-reply@gemaevents.com',
-    welcomeEmailTemplate: '<h1>Welcome to Gema Events!</h1><p>Thank you for joining our platform.</p>',
+    senderName: import.meta.env.VITE_APP_NAME_FULL || 'Kidrove Events',
+    senderEmail: import.meta.env.VITE_CONTACT_EMAIL || 'contact@kidrove.com',
+    welcomeEmailTemplate: `<h1>Welcome to ${import.meta.env.VITE_APP_NAME_FULL || 'Kidrove Events'}!</h1><p>Thank you for joining our platform.</p>`,
     bookingConfirmationTemplate: '<h1>Booking Confirmed!</h1><p>Your booking has been confirmed.</p>',
     passwordResetTemplate: '<h1>Password Reset</h1><p>Click the link below to reset your password.</p>',
   });
@@ -266,7 +266,7 @@ const AdminSettingsPage: React.FC = () => {
     try {
       const testEmailData = {
         to: emailSettings.senderEmail,
-        subject: 'Test Email from Gema Events Admin',
+        subject: `Test Email from ${import.meta.env.VITE_APP_NAME_FULL || 'Kidrove Events'} Admin`,
         body: 'This is a test email to verify that your email configuration is working correctly.'
       };
       

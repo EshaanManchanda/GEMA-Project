@@ -12,6 +12,7 @@ import CategoryCarousel from '@/components/client/CategoryCarousel';
 import NewsletterSubscribe from '@/components/client/NewsletterSubscribe';
 import eventsAPI from '../services/api/eventsAPI';
 import categoriesAPI from '../services/api/categoriesAPI';
+import statsAPI from '../services/api/statsAPI';
 import ReviewCarouselSwiper from '@/components/client/ReviewCarouselKeen';
 import FeaturedBlogsSection from '@/components/sections/FeaturedBlogsSection';
 import { HomeSEO } from '@/components/common/SEO';
@@ -55,11 +56,11 @@ const mockEvents = [
 ];
 
 const mockCategories = [
-  { id: '1', name: 'Entertainment', icon: '🎭' },
-  { id: '2', name: 'Education', icon: '📚' },
-  { id: '3', name: 'Arts', icon: '🎨' },
-  { id: '4', name: 'Sports', icon: '⚽' },
-  { id: '5', name: 'Adventure', icon: '🏕️' }
+  { _id: '1', id: '1', name: 'Entertainment', slug: 'entertainment', icon: '🎭', eventCount: 0, isActive: true, level: 0, sortOrder: 0 },
+  { _id: '2', id: '2', name: 'Education', slug: 'education', icon: '📚', eventCount: 0, isActive: true, level: 0, sortOrder: 1 },
+  { _id: '3', id: '3', name: 'Arts', slug: 'arts', icon: '🎨', eventCount: 0, isActive: true, level: 0, sortOrder: 2 },
+  { _id: '4', id: '4', name: 'Sports', slug: 'sports', icon: '⚽', eventCount: 0, isActive: true, level: 0, sortOrder: 3 },
+  { _id: '5', id: '5', name: 'Adventure', slug: 'adventure', icon: '🏕️', eventCount: 0, isActive: true, level: 0, sortOrder: 4 }
 ];
 
 // Helper function to get category icons
@@ -162,10 +163,11 @@ const Banner = ({ categories }: { categories: any[] }) => {
 
   return (
     <section
-      className="relative w-full text-white overflow-hidden"
+      className="relative w-full text-white overflow-hidden min-h-[600px] md:min-h-[700px]"
       style={{
-        background: 'linear-gradient(135deg, var(--primary-color) 0%, #1e40af 50%, var(--secondary-color) 100%)',
-        backgroundSize: '400% 400%',
+        backgroundImage: 'url(/assets/images/header-background.png), linear-gradient(135deg, var(--primary-color) 0%, #1e40af 50%, var(--secondary-color) 100%)',
+        backgroundSize: 'cover, 400% 400%',
+        backgroundPosition: 'center, 0% 50%',
         animation: 'gradientShift 8s ease infinite'
       }}
     >
@@ -178,32 +180,34 @@ const Banner = ({ categories }: { categories: any[] }) => {
       {/* Enhanced decorative elements */}
       <div className="absolute inset-0 overflow-hidden pointer-events-none">
         <ScaleIn delay={0.3}>
-          <div className="absolute top-0 right-0 w-96 h-96 rounded-full opacity-20" 
-            style={{ 
-              background: 'radial-gradient(circle, var(--accent-color) 0%, transparent 70%)', 
-              filter: 'blur(60px)', 
+          <div className="absolute top-0 right-0 w-64 h-64 rounded-full opacity-10"
+            style={{
+              background: 'radial-gradient(circle, var(--accent-color) 0%, transparent 70%)',
+              filter: 'blur(60px)',
               transform: 'translate(20%, -30%)',
               animation: 'float 6s ease-in-out infinite'
             }}>
           </div>
         </ScaleIn>
         <ScaleIn delay={0.5}>
-          <div className="absolute bottom-0 left-0 w-80 h-80 rounded-full opacity-15" 
-            style={{ 
-              background: 'radial-gradient(circle, #ffffff 0%, transparent 70%)', 
-              filter: 'blur(70px)', 
+          <div className="absolute bottom-0 left-0 w-52 h-52 rounded-full"
+            style={{
+              background: 'radial-gradient(circle, #ffffff 0%, transparent 70%)',
+              filter: 'blur(70px)',
               transform: 'translate(-30%, 30%)',
-              animation: 'float 8s ease-in-out infinite reverse'
+              animation: 'float 8s ease-in-out infinite reverse',
+              opacity: 0.08
             }}>
           </div>
         </ScaleIn>
         <ScaleIn delay={0.7}>
-          <div className="absolute top-1/2 left-1/2 w-40 h-40 rounded-full opacity-10" 
-            style={{ 
-              background: 'var(--accent-color)', 
-              filter: 'blur(40px)', 
+          <div className="absolute top-1/2 left-1/2 w-24 h-24 rounded-full"
+            style={{
+              background: 'var(--accent-color)',
+              filter: 'blur(40px)',
               transform: 'translate(-50%, -50%)',
-              animation: 'pulse 4s ease-in-out infinite'
+              animation: 'pulse 4s ease-in-out infinite',
+              opacity: 0.05
             }}>
           </div>
         </ScaleIn>
@@ -307,6 +311,9 @@ const FeaturedEventsCarousel: React.FC<{ featuredEvents: FeaturedEvent[] }> = ({
         slides: { perView: 3, spacing: 30 },
       },
     },
+    defaultAnimation: {
+      duration: 0
+    },
     slideChanged(slider) {
       setCurrentSlide(slider.track.details.rel);
     },
@@ -317,19 +324,13 @@ const FeaturedEventsCarousel: React.FC<{ featuredEvents: FeaturedEvent[] }> = ({
 
   return (
     <div className="px-6 py-16 max-w-screen-xl mx-auto">
-      <StaggerContainer className="flex flex-col md:flex-row justify-between items-start md:items-center mb-8">
+      <div className="flex flex-col md:flex-row justify-between items-start md:items-center mb-8">
         <div>
-          <SlideIn direction="left">
-            <div className="inline-block mb-4 px-4 py-2 rounded-full" style={{ backgroundColor: 'rgba(0, 142, 199, 0.1)' }}>
-              <span className="font-semibold text-gray-900">Featured</span>
-            </div>
-          </SlideIn>
-          <FadeIn delay={0.1}>
-            <h2 className="text-3xl font-bold mb-2 text-gray-900">✨ Featured Events</h2>
-          </FadeIn>
-          <FadeIn delay={0.2}>
-            <p className="text-gray-700">Discover our most popular activities for kids</p>
-          </FadeIn>
+          <div className="inline-block mb-4 px-4 py-2 rounded-full" style={{ backgroundColor: 'rgba(0, 142, 199, 0.1)' }}>
+            <span className="font-semibold text-gray-900">Featured</span>
+          </div>
+          <h2 className="text-3xl font-bold mb-2 text-gray-900">✨ Featured Events</h2>
+          <p className="text-gray-700">Discover our most popular activities for kids</p>
         </div>
         <AnimatedButton
           className="mt-4 md:mt-0 flex items-center gap-2 font-medium text-gray-900 hover:underline focus:outline-none focus:ring-2 focus:ring-blue-500 rounded px-2 py-1"
@@ -338,14 +339,14 @@ const FeaturedEventsCarousel: React.FC<{ featuredEvents: FeaturedEvent[] }> = ({
         >
           View All Events <FaChevronRight size={14} aria-hidden="true" />
         </AnimatedButton>
-      </StaggerContainer>
+      </div>
       
       <div className="relative">
         <div ref={sliderRef} className="keen-slider min-h-[400px]">
           {featuredEvents && featuredEvents.length > 0 ? featuredEvents.map((event, index) => (
             <HoverCard
               key={index}
-              className="keen-slider__slide bg-white rounded-2xl shadow-lg hover:shadow-2xl overflow-hidden group transition-all duration-500 border border-gray-100 hover:border-gray-200 transform hover:-translate-y-2"
+              className="keen-slider__slide bg-white rounded-2xl shadow-lg hover:shadow-2xl overflow-hidden group border border-gray-100 hover:border-gray-200"
             >
               <div className="relative overflow-hidden">
                 <LazyImage
@@ -354,16 +355,12 @@ const FeaturedEventsCarousel: React.FC<{ featuredEvents: FeaturedEvent[] }> = ({
                   className="w-full h-64 transition-transform duration-500 group-hover:scale-105"
                   fallbackSrc={getPlaceholderUrl('eventCard', 'Event Image')}
                 />
-                <ScaleIn delay={0.1 * index}>
-                  <div className="absolute top-4 left-4 bg-white/90 backdrop-blur-sm rounded-full px-3 py-1 text-sm font-semibold text-gray-900 shadow-sm">
-                    Featured
-                  </div>
-                </ScaleIn>
+                <div className="absolute top-4 left-4 bg-white/90 backdrop-blur-sm rounded-full px-3 py-1 text-sm font-semibold text-gray-900 shadow-sm">
+                  Featured
+                </div>
               </div>
               <div className="p-6">
-                <FadeIn delay={0.1}>
-                  <h3 className="text-xl font-semibold mb-4 line-clamp-2 text-gray-900">{event.title}</h3>
-                </FadeIn>
+                <h3 className="text-xl font-semibold mb-4 line-clamp-2 text-gray-900">{event.title}</h3>
                 {event.description && ( <div
                   className="text-gray-700 text-sm mb-4 line-clamp-2"
                   dangerouslySetInnerHTML={{
@@ -376,13 +373,11 @@ const FeaturedEventsCarousel: React.FC<{ featuredEvents: FeaturedEvent[] }> = ({
                 />)}
                 <div className="flex flex-col gap-3 mb-4">
                   {event.price && (
-                    <FadeIn delay={0.2}>
-                      <div className="flex items-center gap-2">
-                        <span className="text-lg font-bold" style={{ color: 'var(--accent-color)' }}>
-                          {event.currency || 'AED'} {event.price}
-                        </span>
-                      </div>
-                    </FadeIn>
+                    <div className="flex items-center gap-2">
+                      <span className="text-lg font-bold" style={{ color: 'var(--accent-color)' }}>
+                        {event.currency || 'AED'} {event.price}
+                      </span>
+                    </div>
                   )}
                   {(event.dateSchedule?.length > 0 || event.location) && (
                     <div className="flex flex-col gap-1">
@@ -402,14 +397,14 @@ const FeaturedEventsCarousel: React.FC<{ featuredEvents: FeaturedEvent[] }> = ({
                   )}
                 </div>
                 <div className="flex justify-between items-center">
-                  {event.reviewCount>0 && (<FadeIn delay={0.25}>
+                  {event.reviewCount>0 && (
                     <div className="flex items-center gap-2">
                       <div className="w-8 h-8 rounded-full flex items-center justify-center" style={{ backgroundColor: 'rgba(0, 142, 199, 0.1)' }}>
                         <FaStar size={14} className="text-gray-900" />
                       </div>
                       <span className="text-sm font-medium">{event.reviewCount}</span>
                     </div>
-                  </FadeIn>)}
+                  )}
                   <AnimatedButton
                     style={{
                       backgroundColor: 'var(--accent-color, #FF6B00)',
@@ -425,46 +420,42 @@ const FeaturedEventsCarousel: React.FC<{ featuredEvents: FeaturedEvent[] }> = ({
             </HoverCard>
           )) : (
             <div className="keen-slider__slide flex items-center justify-center p-8">
-              <FadeIn>
-                <div className="text-center py-16 px-6">
-                  <div className="w-24 h-24 mx-auto mb-6 rounded-full flex items-center justify-center" style={{ backgroundColor: 'rgba(0, 142, 199, 0.1)' }}>
-                    <div className="text-4xl">🎪</div>
-                  </div>
-                  <h3 className="text-xl font-semibold mb-3 text-gray-700">No Events Yet</h3>
-                  <p className="text-gray-700 mb-6 max-w-md mx-auto">We're working on bringing you amazing events. Check back soon for exciting activities!</p>
-                  <AnimatedButton 
-                    onClick={() => navigate('/search')} 
-                    className="px-6 py-3 text-white rounded-lg font-medium transition-all duration-300 hover:shadow-lg focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-orange-500"
-                    style={{ backgroundColor: 'var(--accent-color)' }}
-                    aria-label="Explore all events"
-                  >
-                    Explore All Events
-                  </AnimatedButton>
+              <div className="text-center py-16 px-6">
+                <div className="w-24 h-24 mx-auto mb-6 rounded-full flex items-center justify-center" style={{ backgroundColor: 'rgba(0, 142, 199, 0.1)' }}>
+                  <div className="text-4xl">🎪</div>
                 </div>
-              </FadeIn>
+                <h3 className="text-xl font-semibold mb-3 text-gray-700">No Events Yet</h3>
+                <p className="text-gray-700 mb-6 max-w-md mx-auto">We're working on bringing you amazing events. Check back soon for exciting activities!</p>
+                <AnimatedButton
+                  onClick={() => navigate('/search')}
+                  className="px-6 py-3 text-white rounded-lg font-medium transition-all duration-300 hover:shadow-lg focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-orange-500"
+                  style={{ backgroundColor: 'var(--accent-color)' }}
+                  aria-label="Explore all events"
+                >
+                  Explore All Events
+                </AnimatedButton>
+              </div>
             </div>
           )}
         </div>
         
         {loaded && instanceRef.current && (
-          <FadeIn delay={0.3}>
-            <div className="flex justify-center gap-3 mt-6">
-              <AnimatedButton
-                onClick={() => instanceRef.current?.prev()}
-                className="w-10 h-10 rounded-full flex items-center justify-center border border-gray-900 text-gray-900 transition-all duration-300"
-                aria-label="Previous events"
-              >
-                <FaChevronLeft size={14} />
-              </AnimatedButton>
-              <AnimatedButton
-                onClick={() => instanceRef.current?.next()}
-                className="w-10 h-10 rounded-full flex items-center justify-center border border-gray-900 text-gray-900 transition-all duration-300"
-                aria-label="Next events"
-              >
-                <FaChevronRight size={14} />
-              </AnimatedButton>
-            </div>
-          </FadeIn>
+          <div className="flex justify-center gap-3 mt-6">
+            <button
+              onClick={() => instanceRef.current?.prev()}
+              className="w-10 h-10 rounded-full flex items-center justify-center border border-gray-900 text-gray-900"
+              aria-label="Previous events"
+            >
+              <FaChevronLeft size={14} />
+            </button>
+            <button
+              onClick={() => instanceRef.current?.next()}
+              className="w-10 h-10 rounded-full flex items-center justify-center border border-gray-900 text-gray-900"
+              aria-label="Next events"
+            >
+              <FaChevronRight size={14} />
+            </button>
+          </div>
         )}
       </div>
     </div>
@@ -473,7 +464,11 @@ const FeaturedEventsCarousel: React.FC<{ featuredEvents: FeaturedEvent[] }> = ({
 
 const StatsSection = ({ stats }: { stats: any }) => {
   return (
-    <section className="w-full py-16 px-6" style={{ backgroundColor: 'rgba(0, 142, 199, 0.05)' }}>
+    <section className="w-full py-16 px-6" style={{
+      backgroundImage: 'url(/assets/images/trust-with-kidrove.png)',
+      backgroundSize: 'cover',
+      backgroundPosition: 'bottom'
+    }}>
       <div className="max-w-6xl mx-auto">
         <StaggerContainer className="text-center mb-12">
           <SlideIn direction="down">
@@ -564,12 +559,13 @@ const HomePage: React.FC = () => {
       setError(null);
       
       // Fetch real data from backend using API services
-      const [eventsData, featuredEventsData, categoriesData] = await Promise.all([
+      const [eventsData, featuredEventsData, categoriesData, statsData] = await Promise.all([
         eventsAPI.getAllEvents({ limit: 12 }),
         eventsAPI.getFeaturedEvents(),
-        categoriesAPI.getAllCategories({ tree: false }) // Fetch full category objects from /categories endpoint
+        categoriesAPI.getAllCategories({ tree: false }), // Fetch full category objects from /categories endpoint
+        statsAPI.getPublicStats()
       ]);
-      
+
       // Extract data using utility functions for consistency
       const events = eventsData || [];
       // console.log('event data', eventsData);
@@ -607,7 +603,7 @@ const HomePage: React.FC = () => {
       );
       // Categories now come from /categories API with full object structure
       setCategories(Array.isArray(categories) ? categories : []);
-      setStats(null);
+      setStats(statsData);
       setUsingMockData(false);
       
     } catch (err: any) {
@@ -645,6 +641,12 @@ const HomePage: React.FC = () => {
         status: 'published'
       })));
       setCategories(mockCategories);
+      setStats({
+        totalEvents: 2500,
+        totalVendors: 750,
+        totalVenues: 500,
+        totalReviews: 1000
+      });
       setUsingMockData(true);
       setError(errorMsg);
     } finally {

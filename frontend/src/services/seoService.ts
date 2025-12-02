@@ -2,6 +2,7 @@ import eventsAPI from './api/eventsAPI';
 import blogAPI from './api/blogAPI';
 import collectionsAPI from './api/collectionsAPI';
 import vendorsAPI from './api/vendorsAPI';
+import { getBrandConfig } from '../utils/brandConfig';
 
 interface ImageSitemapEntry {
   loc: string;
@@ -457,22 +458,23 @@ ${xmlEntries}
    * Generate structured data for organization
    */
   generateOrganizationStructuredData() {
+    const brand = getBrandConfig();
     return {
       '@context': 'https://schema.org',
       '@type': 'Organization',
-      name: 'Gema Events',
+      name: brand.appNameFull,
       description: 'Discover and book amazing kids activities, events, and educational programs in the UAE',
       url: this.baseUrl,
       logo: `${this.baseUrl}/assets/images/logo.png`,
       contactPoint: {
         '@type': 'ContactPoint',
         contactType: 'customer service',
-        email: 'info@gema-events.com'
+        email: brand.contactEmail
       },
       sameAs: [
-        'https://www.facebook.com/gemaevents',
-        'https://www.instagram.com/gemaevents',
-        'https://www.twitter.com/gemaevents'
+        'https://www.facebook.com/kidrove',
+        'https://www.instagram.com/kidrove',
+        'https://www.twitter.com/kidrove'
       ],
       areaServed: {
         '@type': 'Country',

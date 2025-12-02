@@ -1,27 +1,24 @@
 import React, { useState, useEffect } from 'react';
 import { useSelector, useDispatch } from 'react-redux';
 import { DragDropContext, Droppable, Draggable, DropResult } from 'react-beautiful-dnd';
-import { 
-  FaChevronRight, 
-  FaChevronDown, 
-  FaEdit, 
-  FaTrash, 
-  FaPlus, 
-  FaEye, 
+import {
+  FaChevronRight,
+  FaChevronDown,
+  FaEdit,
+  FaTrash,
+  FaPlus,
+  FaEye,
   FaEyeSlash,
-  FaDrag,
-  FaStar,
-  FaRegStar
+  FaDrag
 } from 'react-icons/fa';
 import { toast } from 'react-hot-toast';
 import { RootState, AppDispatch } from '../../store';
-import { 
+import {
   fetchCategoryTree,
   fetchCategories,
-  toggleCategoryStatus,
-  toggleFeaturedStatus,
+  updateCategory,
+  updateSortOrder,
   deleteCategory,
-  reorderCategories,
   selectCategoryTree,
   selectCategoriesLoading
 } from '../../store/slices/categoriesSlice';
@@ -53,7 +50,6 @@ interface TreeNodeProps {
   onDelete: (category: Category) => void;
   onAddChild: (parentId: string) => void;
   onToggleStatus: (category: Category) => void;
-  onToggleFeatured: (category: Category) => void;
   expandedNodes: Set<string>;
   showActions: boolean;
   draggable: boolean;
@@ -71,7 +67,6 @@ const TreeNode: React.FC<TreeNodeProps> = ({
   onDelete,
   onAddChild,
   onToggleStatus,
-  onToggleFeatured,
   expandedNodes,
   showActions,
   draggable,
@@ -113,11 +108,6 @@ const TreeNode: React.FC<TreeNodeProps> = ({
   const handleToggleStatus = (e: React.MouseEvent) => {
     e.stopPropagation();
     onToggleStatus(category);
-  };
-
-  const handleToggleFeatured = (e: React.MouseEvent) => {
-    e.stopPropagation();
-    onToggleFeatured(category);
   };
 
   return (
@@ -176,13 +166,6 @@ const TreeNode: React.FC<TreeNodeProps> = ({
 
             {/* Category badges */}
             <div className="flex items-center space-x-1 mr-2">
-              {category.isFeatured && (
-                <span className="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-yellow-100 text-yellow-800">
-                  <FaStar size={10} className="mr-1" />
-                  Featured
-                </span>
-              )}
-              
               {!category.isActive && (
                 <span className="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-red-100 text-red-800">
                   Inactive
@@ -208,18 +191,6 @@ const TreeNode: React.FC<TreeNodeProps> = ({
                     <FaPlus size={12} />
                   </button>
                 )}
-                
-                <button
-                  onClick={handleToggleFeatured}
-                  className={`p-1 rounded transition-colors ${
-                    category.isFeatured 
-                      ? 'text-yellow-600 hover:bg-yellow-100' 
-                      : 'text-gray-400 hover:bg-gray-100'
-                  }`}
-                  title={category.isFeatured ? 'Remove from featured' : 'Add to featured'}
-                >
-                  {category.isFeatured ? <FaStar size={12} /> : <FaRegStar size={12} />}
-                </button>
 
                 <button
                   onClick={handleToggleStatus}
@@ -271,7 +242,6 @@ const TreeNode: React.FC<TreeNodeProps> = ({
                   onDelete={onDelete}
                   onAddChild={onAddChild}
                   onToggleStatus={onToggleStatus}
-                  onToggleFeatured={onToggleFeatured}
                   expandedNodes={expandedNodes}
                   showActions={showActions}
                   draggable={draggable}
@@ -367,32 +337,37 @@ const CategoryTree: React.FC<CategoryTreeProps> = ({
 
   const handleToggleStatus = async (category: Category) => {
     try {
-      await dispatch(toggleCategoryStatus({ id: category._id, isActive: !category.isActive })).unwrap();
+      await dispatch(updateCategory({
+        id: category._id,
+        categoryData: { isActive: !category.isActive }
+      })).unwrap();
+      toast.success(`Category ${!category.isActive ? 'activated' : 'deactivated'}`);
     } catch (error) {
-      // Error handled in slice
+      toast.error('Failed to update category status');
     }
   };
 
-  const handleToggleFeatured = async (category: Category) => {
-    try {
-      await dispatch(toggleFeaturedStatus({ id: category._id, isFeatured: !category.isFeatured })).unwrap();
-    } catch (error) {
-      // Error handled in slice
-    }
-  };
+  // handleToggleFeatured removed - categories don't have featured status
 
   const handleDragEnd = async (result: DropResult) => {
     if (!result.destination) return;
 
-    // Extract category IDs in new order
-    const categoryIds = categoryTree.map(cat => cat._id);
-    const [removed] = categoryIds.splice(result.source.index, 1);
-    categoryIds.splice(result.destination.index, 0, removed);
+    // Reorder categories in local state
+    const reordered = Array.from(categoryTree);
+    const [removed] = reordered.splice(result.source.index, 1);
+    reordered.splice(result.destination.index, 0, removed);
+
+    // Create update payload with new sort orders
+    const updates = reordered.map((cat, index) => ({
+      id: cat._id,
+      sortOrder: index
+    }));
 
     try {
-      await dispatch(reorderCategories(categoryIds)).unwrap();
+      await dispatch(updateSortOrder(updates)).unwrap();
+      toast.success('Categories reordered successfully');
     } catch (error) {
-      // Error handled in slice
+      toast.error('Failed to reorder categories');
     }
   };
 
@@ -500,7 +475,6 @@ const CategoryTree: React.FC<CategoryTreeProps> = ({
                       onDelete={handleDeleteCategory}
                       onAddChild={handleCreateCategory}
                       onToggleStatus={handleToggleStatus}
-                      onToggleFeatured={handleToggleFeatured}
                       expandedNodes={expandedNodes}
                       showActions={showActions}
                       draggable={draggable}

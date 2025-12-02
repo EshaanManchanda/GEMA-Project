@@ -22,6 +22,9 @@ import Modal from '../ui/Modal';
 import Badge from '../ui/Badge';
 import { Collection, CollectionFormData } from '../../services/api/collectionsAPI';
 import adminAPI from '../../services/api/adminAPI';
+import MediaPickerModal from './media/MediaPickerModal';
+import SEOEditor from '../seo/SEOEditor';
+import { config } from '../../config';
 
 // Validation schema
 const collectionSchema = yup.object().shape({
@@ -31,13 +34,6 @@ const collectionSchema = yup.object().shape({
   description: yup.string()
     .required('Description is required')
     .max(500, 'Description cannot exceed 500 characters'),
-  icon: yup.string()
-    .when(['$iconFile'], {
-      is: (iconFile: any) => !iconFile,
-      then: (schema) => schema.required('Icon URL or file is required'),
-      otherwise: (schema) => schema
-    }),
-  featuredImage: yup.string().optional(),
   count: yup.string()
     .max(50, 'Count text cannot exceed 50 characters'),
   category: yup.string()
@@ -89,19 +85,19 @@ const CollectionForm: React.FC<CollectionFormProps> = ({
   const [eventsLoading, setEventsLoading] = useState(false);
   const [eventSearch, setEventSearch] = useState('');
 
-  // Image preview states
-  const [iconPreview, setIconPreview] = useState<string>('');
-  const [featuredImagePreview, setFeaturedImagePreview] = useState<string>('');
-  const [iconFile, setIconFile] = useState<File | null>(null);
-  const [featuredImageFile, setFeaturedImageFile] = useState<File | null>(null);
+  // MediaAsset states
+  const [showIconPicker, setShowIconPicker] = useState(false);
+  const [showFeaturedImagePicker, setShowFeaturedImagePicker] = useState(false);
+  const [selectedIconAsset, setSelectedIconAsset] = useState<any | null>(null);
+  const [selectedFeaturedImageAsset, setSelectedFeaturedImageAsset] = useState<any | null>(null);
 
-  // Image mode (url or file)
-  const [iconMode, setIconMode] = useState<'url' | 'file'>('url');
-  const [featuredImageMode, setFeaturedImageMode] = useState<'url' | 'file'>('url');
-
-  // SEO keywords array
-  const [seoKeywords, setSeoKeywords] = useState<string[]>([]);
-  const [keywordInput, setKeywordInput] = useState('');
+  // SEO data for SEOEditor
+  const [seoData, setSeoData] = useState({
+    title: '',
+    description: '',
+    keywords: [] as string[],
+    canonicalUrl: ''
+  });
 
   const {
     control,
@@ -112,12 +108,9 @@ const CollectionForm: React.FC<CollectionFormProps> = ({
     formState: { errors, isSubmitting }
   } = useForm({
     resolver: yupResolver(collectionSchema),
-    context: { iconFile },
     defaultValues: {
       title: '',
       description: '',
-      icon: '',
-      featuredImage: '',
       count: '',
       category: '',
       sortOrder: 0,
@@ -131,16 +124,15 @@ const CollectionForm: React.FC<CollectionFormProps> = ({
 
   const watchedTitle = watch('title');
   const watchedDescription = watch('description');
-  const watchedIcon = watch('icon');
-  const watchedFeaturedImage = watch('featuredImage');
 
   // Load events
   useEffect(() => {
     const fetchEvents = async () => {
       try {
         setEventsLoading(true);
-        const response = await adminAPI.getAllEvents({ limit: 1000, isApproved: true });
-        setEvents(response.data?.events || []);
+        const response = await adminAPI.getAllEvents({ limit: 100, status: 'published'});
+        setEvents(response.events || []);
+        console.log(response.events);
       } catch (error) {
         console.error('Error fetching events:', error);
         toast.error('Failed to load events');
@@ -160,8 +152,6 @@ const CollectionForm: React.FC<CollectionFormProps> = ({
       reset({
         title: collection.title || '',
         description: collection.description || '',
-        icon: collection.icon || '',
-        featuredImage: collection.featuredImage || '',
         count: collection.count || '',
         category: collection.category || '',
         sortOrder: collection.sortOrder || 0,
@@ -172,17 +162,30 @@ const CollectionForm: React.FC<CollectionFormProps> = ({
         canonicalUrl: collection.seo?.canonicalUrl || ''
       });
       setSelectedEvents(collection.events?.map((e: any) => e._id || e) || []);
-      setSeoKeywords(collection.seo?.metaKeywords || []);
-      setIconPreview(collection.icon || '');
-      setFeaturedImagePreview(collection.featuredImage || '');
-      setIconFile(null);
-      setFeaturedImageFile(null);
+      setSeoData({
+        title: collection.seo?.metaTitle || '',
+        description: collection.seo?.metaDescription || '',
+        keywords: collection.seo?.metaKeywords || [],
+        canonicalUrl: collection.seo?.canonicalUrl || ''
+      });
+
+      // Initialize icon asset preview
+      if (collection.iconAsset && typeof collection.iconAsset === 'object') {
+        setSelectedIconAsset(collection.iconAsset);
+      } else {
+        setSelectedIconAsset(null);
+      }
+
+      // Initialize featured image asset preview
+      if (collection.featuredImageAsset && typeof collection.featuredImageAsset === 'object') {
+        setSelectedFeaturedImageAsset(collection.featuredImageAsset);
+      } else {
+        setSelectedFeaturedImageAsset(null);
+      }
     } else {
       reset({
         title: '',
         description: '',
-        icon: '',
-        featuredImage: '',
         count: '',
         category: '',
         sortOrder: 0,
@@ -193,11 +196,14 @@ const CollectionForm: React.FC<CollectionFormProps> = ({
         canonicalUrl: ''
       });
       setSelectedEvents([]);
-      setSeoKeywords([]);
-      setIconPreview('');
-      setFeaturedImagePreview('');
-      setIconFile(null);
-      setFeaturedImageFile(null);
+      setSeoData({
+        title: '',
+        description: '',
+        keywords: [],
+        canonicalUrl: ''
+      });
+      setSelectedIconAsset(null);
+      setSelectedFeaturedImageAsset(null);
     }
   }, [collection, reset]);
 
@@ -231,57 +237,14 @@ const CollectionForm: React.FC<CollectionFormProps> = ({
     }
   }, [watchedDescription, collection, setValue, watch]);
 
-  // Handle icon file change
-  const handleIconFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    if (file) {
-      setIconFile(file);
-      const reader = new FileReader();
-      reader.onloadend = () => {
-        setIconPreview(reader.result as string);
-      };
-      reader.readAsDataURL(file);
-    }
-  };
 
-  // Handle featured image file change
-  const handleFeaturedImageFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    if (file) {
-      setFeaturedImageFile(file);
-      const reader = new FileReader();
-      reader.onloadend = () => {
-        setFeaturedImagePreview(reader.result as string);
-      };
-      reader.readAsDataURL(file);
-    }
-  };
-
-  // Handle icon URL change
-  useEffect(() => {
-    if (iconMode === 'url' && watchedIcon) {
-      setIconPreview(watchedIcon);
-    }
-  }, [watchedIcon, iconMode]);
-
-  // Handle featured image URL change
-  useEffect(() => {
-    if (featuredImageMode === 'url' && watchedFeaturedImage) {
-      setFeaturedImagePreview(watchedFeaturedImage);
-    }
-  }, [watchedFeaturedImage, featuredImageMode]);
-
-  // Handle keyword add
-  const handleAddKeyword = () => {
-    if (keywordInput.trim() && seoKeywords.length < 10) {
-      setSeoKeywords([...seoKeywords, keywordInput.trim()]);
-      setKeywordInput('');
-    }
-  };
-
-  // Handle keyword remove
-  const handleRemoveKeyword = (index: number) => {
-    setSeoKeywords(seoKeywords.filter((_, i) => i !== index));
+  // Handle SEO data change from SEOEditor
+  const handleSeoDataChange = (newSeoData: any) => {
+    setSeoData(newSeoData);
+    // Sync with form values
+    setValue('metaTitle', newSeoData.title || '');
+    setValue('metaDescription', newSeoData.description || '');
+    setValue('canonicalUrl', newSeoData.canonicalUrl || '');
   };
 
   // Filter events
@@ -301,6 +264,12 @@ const CollectionForm: React.FC<CollectionFormProps> = ({
   // Handle form submit
   const handleFormSubmit = async (data: any) => {
     try {
+      // Validate icon selection - only require for new collections or if they removed the existing icon
+      if (!selectedIconAsset && !collection?.icon) {
+        toast.error('Please select an icon');
+        return;
+      }
+
       const formData: CollectionFormData = {
         title: data.title,
         description: data.description,
@@ -311,25 +280,23 @@ const CollectionForm: React.FC<CollectionFormProps> = ({
         slug: data.slug,
         events: selectedEvents,
         seo: {
-          metaTitle: data.metaTitle,
-          metaDescription: data.metaDescription,
-          metaKeywords: seoKeywords,
-          canonicalUrl: data.canonicalUrl
+          metaTitle: seoData.title || data.metaTitle,
+          metaDescription: seoData.description || data.metaDescription,
+          metaKeywords: seoData.keywords,
+          canonicalUrl: seoData.canonicalUrl || data.canonicalUrl
         }
       };
 
-      // Handle icon
-      if (iconMode === 'file' && iconFile) {
-        formData.iconFile = iconFile;
-      } else if (iconMode === 'url' && data.icon) {
-        formData.icon = data.icon;
+      console.log('Submitting collection with event IDs:', selectedEvents);
+
+      // Only send iconAsset if a new asset was selected
+      if (selectedIconAsset) {
+        formData.iconAsset = selectedIconAsset._id;
       }
 
-      // Handle featured image
-      if (featuredImageMode === 'file' && featuredImageFile) {
-        formData.featuredImageFile = featuredImageFile;
-      } else if (featuredImageMode === 'url' && data.featuredImage) {
-        formData.featuredImage = data.featuredImage;
+      // Only send featuredImageAsset if one was selected
+      if (selectedFeaturedImageAsset) {
+        formData.featuredImageAsset = selectedFeaturedImageAsset._id;
       }
 
       await onSubmit(formData);
@@ -428,58 +395,41 @@ const CollectionForm: React.FC<CollectionFormProps> = ({
               <label className="block text-sm font-medium text-gray-700 mb-2">
                 Icon <span className="text-red-500">*</span>
               </label>
-              <div className="flex gap-2 mb-2">
-                <button
-                  type="button"
-                  onClick={() => setIconMode('url')}
-                  className={`px-3 py-1 rounded text-sm ${
-                    iconMode === 'url' ? 'bg-blue-500 text-white' : 'bg-gray-200 text-gray-700'
-                  }`}
-                >
-                  URL
-                </button>
-                <button
-                  type="button"
-                  onClick={() => setIconMode('file')}
-                  className={`px-3 py-1 rounded text-sm ${
-                    iconMode === 'file' ? 'bg-blue-500 text-white' : 'bg-gray-200 text-gray-700'
-                  }`}
-                >
-                  Upload File
-                </button>
-              </div>
 
-              {iconMode === 'url' ? (
-                <Controller
-                  name="icon"
-                  control={control}
-                  render={({ field }) => (
-                    <Input
-                      {...field}
-                      placeholder="https://example.com/icon.png"
-                      error={errors.icon?.message}
+              {selectedIconAsset ? (
+                <div className="flex items-center gap-3 p-3 border border-gray-200 rounded-md">
+                  <div className="w-16 h-16 rounded-full overflow-hidden border-2 border-gray-200 flex-shrink-0">
+                    <img
+                      src={selectedIconAsset.variations?.thumbnail || selectedIconAsset.url}
+                      alt="Icon"
+                      className="w-full h-full object-cover"
                     />
-                  )}
-                />
-              ) : (
-                <div>
-                  <input
-                    type="file"
-                    accept="image/*"
-                    onChange={handleIconFileChange}
-                    className="block w-full text-sm text-gray-500 file:mr-4 file:py-2 file:px-4 file:rounded file:border-0 file:text-sm file:font-semibold file:bg-blue-50 file:text-blue-700 hover:file:bg-blue-100"
-                  />
-                </div>
-              )}
-
-              {/* Icon Preview */}
-              {iconPreview && (
-                <div className="mt-2">
-                  <p className="text-xs text-gray-500 mb-1">Preview:</p>
-                  <div className="w-16 h-16 rounded-full overflow-hidden border border-gray-200">
-                    <img src={iconPreview} alt="Icon preview" className="w-full h-full object-cover" />
                   </div>
+                  <div className="flex-1 min-w-0">
+                    <p className="text-sm font-medium text-gray-900 truncate">{selectedIconAsset.originalName}</p>
+                    <p className="text-xs text-gray-500">
+                      {(selectedIconAsset.size / 1024).toFixed(2)} KB
+                    </p>
+                  </div>
+                  <Button
+                    type="button"
+                    variant="ghost"
+                    size="sm"
+                    onClick={() => setSelectedIconAsset(null)}
+                  >
+                    <Trash2 className="h-4 w-4" />
+                  </Button>
                 </div>
+              ) : (
+                <Button
+                  type="button"
+                  variant="outline"
+                  onClick={() => setShowIconPicker(true)}
+                  className="w-full"
+                >
+                  <Upload className="h-4 w-4 mr-2" />
+                  Select from Media Library
+                </Button>
               )}
             </div>
 
@@ -488,57 +438,41 @@ const CollectionForm: React.FC<CollectionFormProps> = ({
               <label className="block text-sm font-medium text-gray-700 mb-2">
                 Featured Image (Optional)
               </label>
-              <div className="flex gap-2 mb-2">
-                <button
-                  type="button"
-                  onClick={() => setFeaturedImageMode('url')}
-                  className={`px-3 py-1 rounded text-sm ${
-                    featuredImageMode === 'url' ? 'bg-blue-500 text-white' : 'bg-gray-200 text-gray-700'
-                  }`}
-                >
-                  URL
-                </button>
-                <button
-                  type="button"
-                  onClick={() => setFeaturedImageMode('file')}
-                  className={`px-3 py-1 rounded text-sm ${
-                    featuredImageMode === 'file' ? 'bg-blue-500 text-white' : 'bg-gray-200 text-gray-700'
-                  }`}
-                >
-                  Upload File
-                </button>
-              </div>
 
-              {featuredImageMode === 'url' ? (
-                <Controller
-                  name="featuredImage"
-                  control={control}
-                  render={({ field }) => (
-                    <Input
-                      {...field}
-                      placeholder="https://example.com/featured-image.png"
+              {selectedFeaturedImageAsset ? (
+                <div className="flex items-center gap-3 p-3 border border-gray-200 rounded-md">
+                  <div className="w-20 h-16 rounded overflow-hidden border-2 border-gray-200 flex-shrink-0">
+                    <img
+                      src={selectedFeaturedImageAsset.variations?.thumbnail || selectedFeaturedImageAsset.url}
+                      alt="Featured"
+                      className="w-full h-full object-cover"
                     />
-                  )}
-                />
-              ) : (
-                <div>
-                  <input
-                    type="file"
-                    accept="image/*"
-                    onChange={handleFeaturedImageFileChange}
-                    className="block w-full text-sm text-gray-500 file:mr-4 file:py-2 file:px-4 file:rounded file:border-0 file:text-sm file:font-semibold file:bg-blue-50 file:text-blue-700 hover:file:bg-blue-100"
-                  />
-                </div>
-              )}
-
-              {/* Featured Image Preview */}
-              {featuredImagePreview && (
-                <div className="mt-2">
-                  <p className="text-xs text-gray-500 mb-1">Preview:</p>
-                  <div className="w-32 h-20 rounded overflow-hidden border border-gray-200">
-                    <img src={featuredImagePreview} alt="Featured image preview" className="w-full h-full object-cover" />
                   </div>
+                  <div className="flex-1 min-w-0">
+                    <p className="text-sm font-medium text-gray-900 truncate">{selectedFeaturedImageAsset.originalName}</p>
+                    <p className="text-xs text-gray-500">
+                      {(selectedFeaturedImageAsset.size / 1024).toFixed(2)} KB
+                    </p>
+                  </div>
+                  <Button
+                    type="button"
+                    variant="ghost"
+                    size="sm"
+                    onClick={() => setSelectedFeaturedImageAsset(null)}
+                  >
+                    <Trash2 className="h-4 w-4" />
+                  </Button>
                 </div>
+              ) : (
+                <Button
+                  type="button"
+                  variant="outline"
+                  onClick={() => setShowFeaturedImagePicker(true)}
+                  className="w-full"
+                >
+                  <Upload className="h-4 w-4 mr-2" />
+                  Select from Media Library
+                </Button>
               )}
             </div>
 
@@ -672,27 +606,73 @@ const CollectionForm: React.FC<CollectionFormProps> = ({
                 ) : filteredEvents.length === 0 ? (
                   <div className="p-4 text-center text-gray-500">No events found</div>
                 ) : (
-                  <div className="divide-y divide-gray-200">
-                    {filteredEvents.map((event) => (
-                      <div
-                        key={event._id}
-                        className="p-3 flex items-center hover:bg-gray-50 cursor-pointer"
-                        onClick={() => handleEventToggle(event._id)}
-                      >
-                        <input
-                          type="checkbox"
-                          checked={selectedEvents.includes(event._id)}
-                          onChange={() => handleEventToggle(event._id)}
-                          className="h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300 rounded"
-                        />
-                        <div className="ml-3 flex-1">
-                          <p className="text-sm font-medium text-gray-900">{event.title}</p>
-                          {event.category && (
-                            <p className="text-xs text-gray-500">{event.category}</p>
-                          )}
+                  <div className="divide-y divide-gray-100">
+                    {filteredEvents.map((event) => {
+                      const eventId = event._id || event.id;
+                      return (
+                        <div
+                          key={eventId}
+                          className="p-3 flex items-center hover:bg-gray-50 cursor-pointer border-b border-gray-100"
+                          onClick={() => handleEventToggle(eventId)}
+                        >
+                          <input
+                            type="checkbox"
+                            checked={selectedEvents.includes(eventId)}
+                            onChange={() => handleEventToggle(eventId)}
+                            className="h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300 rounded"
+                          />
+
+                        {/* Event thumbnail */}
+                        {event.images && event.images[0] && (
+                          <div className="ml-3 w-12 h-12 rounded overflow-hidden border border-gray-200 flex-shrink-0">
+                            <img
+                              src={event.images[0]}
+                              alt={event.title}
+                              className="w-full h-full object-cover"
+                            />
+                          </div>
+                        )}
+
+                        <div className="ml-3 flex-1 min-w-0">
+                          <p className="text-sm font-medium text-gray-900 truncate">{event.title}</p>
+                          <div className="flex items-center gap-2 mt-1 flex-wrap">
+                            {/* Type Badge */}
+                            {event.type && (
+                              <Badge variant="secondary" className="text-xs">
+                                {event.type}
+                              </Badge>
+                            )}
+
+                            {/* Category */}
+                            {event.category && (
+                              <span className="text-xs text-gray-500">{event.category}</span>
+                            )}
+
+                            {/* Price */}
+                            {event.price !== undefined && event.currency && (
+                              <span className="text-xs font-medium text-green-600">
+                                {event.currency} {event.price}
+                              </span>
+                            )}
+
+                            {/* Vendor name */}
+                            {event.vendorId && (
+                              <span className="text-xs text-gray-500">
+                                by {event.vendorId.firstName || event.vendorId.businessName}
+                              </span>
+                            )}
+
+                            {/* Approval Status */}
+                            {event.isApproved ? (
+                              <Badge variant="success" className="text-xs">Approved</Badge>
+                            ) : (
+                              <Badge variant="warning" className="text-xs">Pending</Badge>
+                            )}
+                          </div>
                         </div>
                       </div>
-                    ))}
+                    );
+                    })}
                   </div>
                 )}
               </div>
@@ -703,121 +683,24 @@ const CollectionForm: React.FC<CollectionFormProps> = ({
         {/* SEO Tab */}
         {activeTab === 'seo' && (
           <div className="space-y-4">
-            <p className="text-sm text-gray-500">
-              Optimize this collection for search engines. Fields are auto-populated but can be customized.
-            </p>
-
-            {/* Meta Title */}
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">
-                Meta Title (max 70 characters)
-              </label>
-              <Controller
-                name="metaTitle"
-                control={control}
-                render={({ field }) => (
-                  <Input
-                    {...field}
-                    placeholder="Auto-generated from title"
-                    maxLength={70}
-                  />
-                )}
-              />
-              <p className="mt-1 text-xs text-gray-500">
-                Characters: {watch('metaTitle')?.length || 0}/70
-              </p>
-            </div>
-
-            {/* Meta Description */}
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">
-                Meta Description (max 160 characters)
-              </label>
-              <Controller
-                name="metaDescription"
-                control={control}
-                render={({ field }) => (
-                  <textarea
-                    {...field}
-                    rows={3}
-                    maxLength={160}
-                    placeholder="Auto-generated from description"
-                    className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                  />
-                )}
-              />
-              <p className="mt-1 text-xs text-gray-500">
-                Characters: {watch('metaDescription')?.length || 0}/160
-              </p>
-            </div>
-
-            {/* Meta Keywords */}
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">
-                Meta Keywords (max 10)
-              </label>
-              <div className="flex gap-2 mb-2">
-                <input
-                  type="text"
-                  value={keywordInput}
-                  onChange={(e) => setKeywordInput(e.target.value)}
-                  onKeyPress={(e) => {
-                    if (e.key === 'Enter') {
-                      e.preventDefault();
-                      handleAddKeyword();
-                    }
-                  }}
-                  placeholder="Add keyword and press Enter"
-                  className="flex-1 px-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                  disabled={seoKeywords.length >= 10}
-                />
-                <Button
-                  type="button"
-                  onClick={handleAddKeyword}
-                  disabled={!keywordInput.trim() || seoKeywords.length >= 10}
-                  variant="secondary"
-                >
-                  Add
-                </Button>
-              </div>
-              <div className="flex flex-wrap gap-2">
-                {seoKeywords.map((keyword, index) => (
-                  <Badge key={index} variant="secondary" className="flex items-center gap-1">
-                    {keyword}
-                    <button
-                      type="button"
-                      onClick={() => handleRemoveKeyword(index)}
-                      className="ml-1 hover:text-red-600"
-                    >
-                      <X size={12} />
-                    </button>
-                  </Badge>
-                ))}
-              </div>
-              <p className="mt-1 text-xs text-gray-500">
-                Keywords: {seoKeywords.length}/10
-              </p>
-            </div>
-
-            {/* Canonical URL */}
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">
-                Canonical URL (Optional)
-              </label>
-              <Controller
-                name="canonicalUrl"
-                control={control}
-                render={({ field }) => (
-                  <Input
-                    {...field}
-                    placeholder="https://example.com/collections/summer-camps"
-                  />
-                )}
-              />
-              <p className="mt-1 text-xs text-gray-500">
-                Leave empty to use the default collection URL
-              </p>
-            </div>
+            <SEOEditor
+              initialData={{
+                title: seoData.title,
+                description: seoData.description,
+                keywords: seoData.keywords,
+                canonicalUrl: seoData.canonicalUrl
+              }}
+              contentData={{
+                title: watch('title') || '',
+                description: watch('description') || '',
+                category: watch('category') || '',
+                type: 'collection'
+              }}
+              onChange={handleSeoDataChange}
+              baseUrl={config.appUrl}
+              path={`/collections/${watch('slug') || 'new-collection'}`}
+              disabled={isSubmitting}
+            />
           </div>
         )}
 
@@ -842,6 +725,37 @@ const CollectionForm: React.FC<CollectionFormProps> = ({
           </Button>
         </div>
       </form>
+
+      {/* Media Picker Modals */}
+      <MediaPickerModal
+        isOpen={showIconPicker}
+        onClose={() => setShowIconPicker(false)}
+        onSelect={(assets) => {
+          if (assets.length > 0) {
+            setSelectedIconAsset(assets[0]);
+          }
+          setShowIconPicker(false);
+        }}
+        category="misc"
+        folder="collections.icons"
+        multiple={false}
+        title="Select Collection Icon"
+      />
+
+      <MediaPickerModal
+        isOpen={showFeaturedImagePicker}
+        onClose={() => setShowFeaturedImagePicker(false)}
+        onSelect={(assets) => {
+          if (assets.length > 0) {
+            setSelectedFeaturedImageAsset(assets[0]);
+          }
+          setShowFeaturedImagePicker(false);
+        }}
+        category="misc"
+        folder="collections.featured"
+        multiple={false}
+        title="Select Featured Image"
+      />
     </Modal>
   );
 };

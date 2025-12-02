@@ -3,7 +3,8 @@ import mongoose, { Document, Schema } from 'mongoose';
 export interface ICollection extends Document {
   title: string;
   description: string;
-  icon: string; // URL to icon image
+  icon: string; // OLD: URL to icon image (deprecated)
+  iconAsset?: mongoose.Types.ObjectId; // NEW: MediaAsset ref
   count: string; // Display text like "45+ activities"
   category?: string; // Optional category filter
   events: mongoose.Types.ObjectId[]; // Associated event IDs
@@ -16,7 +17,8 @@ export interface ICollection extends Document {
     metaKeywords?: string[];
     canonicalUrl?: string;
   };
-  featuredImage?: string;
+  featuredImage?: string; // OLD: URL (deprecated)
+  featuredImageAsset?: mongoose.Types.ObjectId; // NEW: MediaAsset ref
   createdAt: Date;
   updatedAt: Date;
 
@@ -39,8 +41,13 @@ const CollectionSchema: Schema<ICollection> = new Schema({
   },
   icon: {
     type: String,
-    required: [true, 'Collection icon is required'],
+    required: false, // Optional during migration
     trim: true
+  },
+  iconAsset: {
+    type: mongoose.Schema.Types.ObjectId,
+    ref: 'MediaAsset',
+    required: false // Will become required after migration
   },
   count: {
     type: String,
@@ -99,6 +106,11 @@ const CollectionSchema: Schema<ICollection> = new Schema({
   featuredImage: {
     type: String,
     trim: true,
+  },
+  featuredImageAsset: {
+    type: mongoose.Schema.Types.ObjectId,
+    ref: 'MediaAsset',
+    required: false
   }
 }, {
   timestamps: true,
@@ -146,6 +158,24 @@ CollectionSchema.pre('save', async function(next) {
 
   if (!this.seo.metaDescription) {
     this.seo.metaDescription = this.description.length > 160 ? `${this.description.substring(0, 157)}...` : this.description;
+  }
+
+  // Auto-populate icon URL from MediaAsset for backward compatibility
+  if (this.isModified('iconAsset') && this.iconAsset && !this.icon) {
+    const MediaAsset = mongoose.model('MediaAsset');
+    const asset = await MediaAsset.findById(this.iconAsset);
+    if (asset) {
+      this.icon = (asset as any).url;
+    }
+  }
+
+  // Auto-populate featuredImage URL from MediaAsset for backward compatibility
+  if (this.isModified('featuredImageAsset') && this.featuredImageAsset && !this.featuredImage) {
+    const MediaAsset = mongoose.model('MediaAsset');
+    const asset = await MediaAsset.findById(this.featuredImageAsset);
+    if (asset) {
+      this.featuredImage = (asset as any).url;
+    }
   }
 
   // Always update count display (not just when events modified)

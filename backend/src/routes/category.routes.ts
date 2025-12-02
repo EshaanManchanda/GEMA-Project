@@ -40,8 +40,15 @@ const createCategoryValidation = [
   body('icon')
     .optional()
     .isString()
-    .matches(/^[a-zA-Z-]+$/)
-    .withMessage('Icon must be a valid FontAwesome icon name'),
+    .withMessage('Icon must be a string (legacy field)'),
+  body('iconAsset')
+    .optional()
+    .isMongoId()
+    .withMessage('Icon asset must be a valid MongoDB ObjectId'),
+  body('featuredImageAsset')
+    .optional()
+    .isMongoId()
+    .withMessage('Featured image asset must be a valid MongoDB ObjectId'),
   body('color')
     .optional()
     .matches(/^#[0-9A-F]{6}$/i)
@@ -50,6 +57,18 @@ const createCategoryValidation = [
     .optional()
     .isInt({ min: 0 })
     .withMessage('Sort order must be a non-negative integer'),
+  body('order')
+    .optional()
+    .isInt({ min: 0 })
+    .withMessage('Order must be a non-negative integer (alias for sortOrder)'),
+  body('seoMeta')
+    .optional()
+    .isObject()
+    .withMessage('SEO meta must be an object'),
+  body('seo')
+    .optional()
+    .isObject()
+    .withMessage('SEO must be an object (alias for seoMeta)'),
   body('isActive')
     .optional()
     .isBoolean()

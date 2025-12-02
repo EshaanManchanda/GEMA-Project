@@ -12,7 +12,6 @@ import {
   removeEventFromCollection
 } from '../controllers/collection.controller';
 import { authenticate, authorize, validate } from '../middleware/index';
-import { uploadFields } from '../middleware/upload';
 
 const router = Router();
 
@@ -78,13 +77,9 @@ router.get(
   getAdminCollections
 );
 
-// Create collection with file uploads
+// Create collection
 router.post(
   '/',
-  uploadFields([
-    { name: 'icon', maxCount: 1 },
-    { name: 'featuredImage', maxCount: 1 }
-  ]),
   [
     body('title')
       .trim()
@@ -98,12 +93,14 @@ router.post(
       .withMessage('Description is required')
       .isLength({ max: 500 })
       .withMessage('Description cannot exceed 500 characters'),
-    body('icon')
+    body('iconAsset')
       .optional()
-      .trim(),
-    body('featuredImage')
+      .isMongoId()
+      .withMessage('Icon asset must be a valid MediaAsset ID'),
+    body('featuredImageAsset')
       .optional()
-      .trim(),
+      .isMongoId()
+      .withMessage('Featured image asset must be a valid MediaAsset ID'),
     body('count')
       .optional()
       .trim()
@@ -142,13 +139,9 @@ router.get(
   getCollectionById
 );
 
-// Update collection with file uploads
+// Update collection
 router.put(
   '/:id',
-  uploadFields([
-    { name: 'icon', maxCount: 1 },
-    { name: 'featuredImage', maxCount: 1 }
-  ]),
   [
     param('id').isMongoId().withMessage('Invalid collection ID'),
     body('title')
@@ -165,12 +158,14 @@ router.put(
       .withMessage('Description cannot be empty')
       .isLength({ max: 500 })
       .withMessage('Description cannot exceed 500 characters'),
-    body('icon')
+    body('iconAsset')
       .optional()
-      .trim(),
-    body('featuredImage')
+      .custom((value) => value === null || value === '' || /^[a-f\d]{24}$/i.test(value))
+      .withMessage('Icon asset must be a valid MediaAsset ID or null'),
+    body('featuredImageAsset')
       .optional()
-      .trim(),
+      .custom((value) => value === null || value === '' || /^[a-f\d]{24}$/i.test(value))
+      .withMessage('Featured image asset must be a valid MediaAsset ID or null'),
     body('count')
       .optional()
       .trim()

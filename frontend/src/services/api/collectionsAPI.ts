@@ -6,8 +6,10 @@ export interface Collection {
   id: string;
   title: string;
   description: string;
-  icon: string;
-  featuredImage?: string;
+  icon: string; // OLD: URL (deprecated)
+  iconAsset?: any; // NEW: MediaAsset ref (populated or ID)
+  featuredImage?: string; // OLD: URL (deprecated)
+  featuredImageAsset?: any; // NEW: MediaAsset ref (populated or ID)
   count: string;
   category?: string;
   events: any[];
@@ -28,10 +30,8 @@ export interface Collection {
 export interface CollectionFormData {
   title: string;
   description: string;
-  icon?: string;
-  iconFile?: File;
-  featuredImage?: string;
-  featuredImageFile?: File;
+  iconAsset?: string; // MediaAsset._id
+  featuredImageAsset?: string; // MediaAsset._id
   count?: string;
   category?: string;
   events?: string[];
@@ -118,48 +118,24 @@ const collectionsAPI = {
     }
   },
 
-  // Create collection with file uploads
+  // Create collection
   createCollection: async (formData: CollectionFormData): Promise<{ collection: Collection }> => {
     try {
-      const data = new FormData();
+      const payload = {
+        title: formData.title,
+        description: formData.description,
+        count: formData.count,
+        category: formData.category,
+        sortOrder: formData.sortOrder,
+        isActive: formData.isActive,
+        slug: formData.slug,
+        iconAsset: formData.iconAsset,
+        featuredImageAsset: formData.featuredImageAsset,
+        events: formData.events,
+        seo: formData.seo
+      };
 
-      // Add text fields
-      data.append('title', formData.title);
-      data.append('description', formData.description);
-
-      if (formData.count) data.append('count', formData.count);
-      if (formData.category) data.append('category', formData.category);
-      if (formData.sortOrder !== undefined) data.append('sortOrder', String(formData.sortOrder));
-      if (formData.isActive !== undefined) data.append('isActive', String(formData.isActive));
-      if (formData.slug) data.append('slug', formData.slug);
-
-      // Add icon (file or URL)
-      if (formData.iconFile) {
-        data.append('icon', formData.iconFile);
-      } else if (formData.icon) {
-        data.append('icon', formData.icon);
-      }
-
-      // Add featured image (file or URL)
-      if (formData.featuredImageFile) {
-        data.append('featuredImage', formData.featuredImageFile);
-      } else if (formData.featuredImage) {
-        data.append('featuredImage', formData.featuredImage);
-      }
-
-      // Add events array
-      if (formData.events && formData.events.length > 0) {
-        data.append('events', JSON.stringify(formData.events));
-      }
-
-      // Add SEO data
-      if (formData.seo) {
-        data.append('seo', JSON.stringify(formData.seo));
-      }
-
-      const response = await ApiService.post('/admin/collections', data, {
-        headers: { 'Content-Type': 'multipart/form-data' }
-      });
+      const response = await ApiService.post('/admin/collections', payload);
       logApiResponse('POST /admin/collections', response);
       return extractApiData(response);
     } catch (error) {
@@ -168,47 +144,25 @@ const collectionsAPI = {
     }
   },
 
-  // Update collection with file uploads
+  // Update collection
   updateCollection: async (id: string, formData: CollectionFormData): Promise<{ collection: Collection }> => {
     try {
-      const data = new FormData();
+      const payload: any = {};
 
-      // Add text fields (only if provided)
-      if (formData.title) data.append('title', formData.title);
-      if (formData.description) data.append('description', formData.description);
-      if (formData.count !== undefined) data.append('count', formData.count);
-      if (formData.category !== undefined) data.append('category', formData.category);
-      if (formData.sortOrder !== undefined) data.append('sortOrder', String(formData.sortOrder));
-      if (formData.isActive !== undefined) data.append('isActive', String(formData.isActive));
-      if (formData.slug !== undefined) data.append('slug', formData.slug);
+      // Only add fields that are provided
+      if (formData.title !== undefined) payload.title = formData.title;
+      if (formData.description !== undefined) payload.description = formData.description;
+      if (formData.count !== undefined) payload.count = formData.count;
+      if (formData.category !== undefined) payload.category = formData.category;
+      if (formData.sortOrder !== undefined) payload.sortOrder = formData.sortOrder;
+      if (formData.isActive !== undefined) payload.isActive = formData.isActive;
+      if (formData.slug !== undefined) payload.slug = formData.slug;
+      if (formData.iconAsset !== undefined) payload.iconAsset = formData.iconAsset;
+      if (formData.featuredImageAsset !== undefined) payload.featuredImageAsset = formData.featuredImageAsset;
+      if (formData.events !== undefined) payload.events = formData.events;
+      if (formData.seo !== undefined) payload.seo = formData.seo;
 
-      // Add icon (file or URL)
-      if (formData.iconFile) {
-        data.append('icon', formData.iconFile);
-      } else if (formData.icon !== undefined) {
-        data.append('icon', formData.icon);
-      }
-
-      // Add featured image (file or URL)
-      if (formData.featuredImageFile) {
-        data.append('featuredImage', formData.featuredImageFile);
-      } else if (formData.featuredImage !== undefined) {
-        data.append('featuredImage', formData.featuredImage);
-      }
-
-      // Add events array
-      if (formData.events !== undefined) {
-        data.append('events', JSON.stringify(formData.events));
-      }
-
-      // Add SEO data
-      if (formData.seo !== undefined) {
-        data.append('seo', JSON.stringify(formData.seo));
-      }
-
-      const response = await ApiService.put(`/admin/collections/${id}`, data, {
-        headers: { 'Content-Type': 'multipart/form-data' }
-      });
+      const response = await ApiService.put(`/admin/collections/${id}`, payload);
       logApiResponse(`PUT /admin/collections/${id}`, response);
       return extractApiData(response);
     } catch (error) {

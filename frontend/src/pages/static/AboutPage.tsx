@@ -2,6 +2,7 @@ import React from 'react';
 import { motion } from 'framer-motion';
 import { FiUsers, FiCalendar, FiMapPin, FiAward, FiHeart } from 'react-icons/fi';
 import SEO from '@/components/common/SEO';
+import { getAppNameFull } from '../../utils/brandConfig';
 
 const AboutPage: React.FC = () => {
   // Animation variants
@@ -34,18 +35,18 @@ const AboutPage: React.FC = () => {
   return (
     <>
       <SEO
-        title="About Gema Events - Leading Kids Activities Platform in UAE"
-        description="Learn about Gema Events, the UAE's trusted platform for discovering and booking amazing kids activities, educational programs, and family events. Our mission is to create memorable experiences for children."
+        title={`About ${getAppNameFull()} - Leading Kids Activities Platform in UAE`}
+        description={`Learn about ${getAppNameFull()}, the UAE's trusted platform for discovering and booking amazing kids activities, educational programs, and family events. Our mission is to create memorable experiences for children.`}
         keywords={['about gema events', 'kids activities UAE', 'family events', 'children entertainment', 'about us']}
         breadcrumbs={breadcrumbs}
         structuredData={{
           '@context': 'https://schema.org',
           '@type': 'AboutPage',
-          name: 'About Gema Events',
-          description: 'Learn about Gema Events, the UAE\'s leading platform for kids activities and family events.',
+          name: `About ${getAppNameFull()}`,
+          description: `Learn about ${getAppNameFull()}, the UAE's leading platform for kids activities and family events.`,
           mainEntity: {
             '@type': 'Organization',
-            name: 'Gema Events',
+            name: getAppNameFull(),
             description: 'Leading platform for kids activities and family events in the UAE',
             foundingDate: '2023',
             areaServed: 'United Arab Emirates',
@@ -62,7 +63,7 @@ const AboutPage: React.FC = () => {
       >
         {/* Hero Section */}
         <motion.div variants={itemVariants} className="text-center mb-16">
-          <h1 className="text-4xl md:text-5xl font-bold mb-6 text-gray-800">About Gema Events</h1>
+          <h1 className="text-4xl md:text-5xl font-bold mb-6 text-gray-800">About {getAppNameFull()}</h1>
           <p className="text-xl text-gray-600 mb-8">Connecting families with amazing experiences for children</p>
           <div className="w-24 h-1 bg-primary mx-auto"></div>
         </motion.div>
@@ -72,7 +73,7 @@ const AboutPage: React.FC = () => {
           <h2 className="text-3xl font-bold mb-6 text-gray-800">Our Story</h2>
           <div className="bg-white rounded-lg shadow-md p-8">
             <p className="text-gray-600 mb-4">
-              Gema Events was founded in 2020 with a simple mission: to help parents discover and book the best activities and events for their children. As parents ourselves, we understood the challenge of finding quality, age-appropriate experiences that children would love and remember.
+              {getAppNameFull()} was founded in 2020 with a simple mission: to help parents discover and book the best activities and events for their children. As parents ourselves, we understood the challenge of finding quality, age-appropriate experiences that children would love and remember.
             </p>
             <p className="text-gray-600 mb-4">
               What started as a small platform with just a handful of local vendors has grown into a comprehensive marketplace connecting thousands of families with hundreds of event providers across the country.

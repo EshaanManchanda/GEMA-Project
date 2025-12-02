@@ -17,6 +17,12 @@ const defaultCategories = [
   { id: '5', name: 'Adventure', icon: '🏕️', image: 'https://images.unsplash.com/photo-1464349095431-e9a21285b5f3?w=80&h=80&fit=crop&crop=center', count: '28+ activities' },
 ];
 
+interface MediaAsset {
+  url: string;
+  publicId?: string;
+  altText?: string;
+}
+
 interface Category {
   _id?: string;
   id?: string;
@@ -24,8 +30,10 @@ interface Category {
   slug?: string;
   description?: string;
   icon?: string;
+  iconAsset?: MediaAsset;
   color?: string;
   featuredImage?: string;
+  featuredImageAsset?: MediaAsset;
   eventCount?: number;
   count?: string;
   image?: string;
@@ -37,25 +45,37 @@ interface CategoryCarouselProps {
 
 // Utility functions for category data transformation
 const getCategoryImage = (category: Category): string => {
-  if (category.featuredImage) return category.featuredImage;
-  if (category.image) return category.image;
-  // Return default image based on category name
-  const imageMap: Record<string, string> = {
-    'Entertainment': 'https://images.unsplash.com/photo-1466781783364-36c955e42a7f?w=80&h=80&fit=crop&crop=center',
-    'Education': 'https://images.unsplash.com/photo-1490750967868-88aa4486c946?w=80&h=80&fit=crop&crop=center',
-    'Arts': 'https://images.unsplash.com/photo-1607462109225-6b64ae2dd3cb?w=80&h=80&fit=crop&crop=center',
-    'Sports': 'https://images.unsplash.com/photo-1506905925346-21bda4d32df4?w=80&h=80&fit=crop&crop=center',
-    'Adventure': 'https://images.unsplash.com/photo-1464349095431-e9a21285b5f3?w=80&h=80&fit=crop&crop=center',
-  };
-  // Use fallback for unknown categories
+  // Priority 1: featuredImageAsset from backend (MediaAsset object)
+  if (category.featuredImageAsset?.url) {
+    return category.featuredImageAsset.url;
+  }
+
+  // Priority 2: Legacy featuredImage URL
+  if (category.featuredImage) {
+    return category.featuredImage;
+  }
+
+  // Priority 3: Generic image property
+  if (category.image) {
+    return category.image;
+  }
+
+  // Priority 4: Generate placeholder from category initials
   const initials = category.name.slice(0, 2).toUpperCase();
   const svg = `<svg width="80" height="80" xmlns="http://www.w3.org/2000/svg"><rect width="100%" height="100%" fill="#3b82f6"/><text x="50%" y="50%" font-family="Arial, sans-serif" font-size="14" font-weight="500" text-anchor="middle" dominant-baseline="middle" fill="#ffffff">${initials}</text></svg>`;
-  return imageMap[category.name] || `data:image/svg+xml;base64,${btoa(svg)}`;
+  return `data:image/svg+xml;base64,${btoa(svg)}`;
 };
 
 const getCategoryIcon = (category: Category): string => {
+  // Priority 1: iconAsset from backend (fallback to emoji icon)
+  if (category.iconAsset?.url) {
+    return category.iconAsset.url;
+  }
+
+  // Priority 2: Icon field (usually emoji)
   if (category.icon) return category.icon;
-  // Return default icon based on category name
+
+  // Priority 3: Default icon based on category name
   const iconMap: Record<string, string> = {
     'Entertainment': '🎭',
     'Education': '📚',
@@ -72,9 +92,16 @@ const getCategoryIcon = (category: Category): string => {
 };
 
 const getCategoryCount = (category: Category): string => {
+  // Priority 1: Use provided count string
   if (category.count) return category.count;
-  if (category.eventCount !== undefined) return `${category.eventCount}+ activities`;
-  return `${Math.floor(Math.random() * 50) + 10}+ activities`;
+
+  // Priority 2: Use eventCount from backend
+  if (category.eventCount !== undefined && category.eventCount > 0) {
+    return `${category.eventCount}+ activities`;
+  }
+
+  // Priority 3: Stable fallback - no random numbers
+  return 'View activities';
 };
 
 const transformCategory = (category: Category): Category => {
@@ -95,10 +122,8 @@ const transformCategory = (category: Category): Category => {
 function CategoryCarousel({ categories = [] }: CategoryCarouselProps) {
   const navigate = useNavigate();
 
-  // Transform API categories and filter out categories with 0 events
-  const transformedApiCategories = categories
-    .map(transformCategory)
-    .filter(category => category.eventCount === undefined || category.eventCount > 0);
+  // Transform API categories - show all categories regardless of event count
+  const transformedApiCategories = categories.map(transformCategory);
   const displayCategories = transformedApiCategories.length > 0 ? transformedApiCategories : defaultCategories;
 
   // Debug logging in development
@@ -121,7 +146,10 @@ function CategoryCarousel({ categories = [] }: CategoryCarouselProps) {
   };
   
   return (
-    <div className="w-full px-6 py-16 bg-gradient-to-b" style={{ background: 'linear-gradient(to bottom, var(--secondary-color) 0%, rgba(255,255,255,0) 100%)' }}>
+    <div className="w-full px-6 py-16 bg-gradient-to-b" style={{
+      backgroundImage: 'url(/assets/images/categories-background.png), linear-gradient(to bottom, var(--secondary-color) 0%, rgba(255,255,255,0) 100%)',
+      backgroundSize: 'cover, 100% 100%'
+    }}>
       <div className="max-w-screen-xl mx-auto">
         <div className="flex flex-col md:flex-row justify-between items-start md:items-center mb-8">
           <div className="mb-4 md:mb-0">

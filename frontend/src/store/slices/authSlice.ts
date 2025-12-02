@@ -93,6 +93,7 @@ export const logoutUser = createAsyncThunk(
 
       // Clear persisted auth state from localStorage
       localStorage.removeItem('persist:auth');
+      localStorage.removeItem('gema_ever_authenticated');
 
       toast.success('Logged out successfully');
       return null;
@@ -102,7 +103,32 @@ export const logoutUser = createAsyncThunk(
 
       // Still clear persisted state even on error
       localStorage.removeItem('persist:auth');
+      localStorage.removeItem('gema_ever_authenticated');
 
+      return null;
+    }
+  }
+);
+
+// Silent logout for system-initiated auth clearing (no toast)
+export const clearAuthOnFailure = createAsyncThunk(
+  'auth/clearAuthOnFailure',
+  async (_, { rejectWithValue }) => {
+    try {
+      // Try to call logout API to clear server cookies
+      try {
+        await authAPI.logout();
+      } catch (error) {
+        console.log('[Auth] Silent logout - no valid session to clear');
+      }
+
+      // Clear persisted auth state
+      localStorage.removeItem('persist:auth');
+      // Keep gema_ever_authenticated flag for detection
+
+      return null;
+    } catch (error: any) {
+      localStorage.removeItem('persist:auth');
       return null;
     }
   }
@@ -456,6 +482,9 @@ const authSlice = createSlice({
         state.isEmailVerified = action.payload.user.isEmailVerified;
         state.lastLoginTime = new Date().toISOString();
         state.error = null;
+
+        // Mark that user has logged in at least once
+        localStorage.setItem('gema_ever_authenticated', 'true');
         // Note: Tokens are set in httpOnly cookies by the server
       })
       .addCase(loginUser.rejected, (state, action) => {
@@ -475,6 +504,9 @@ const authSlice = createSlice({
         state.isAuthenticated = true;
         state.isEmailVerified = action.payload.user.isEmailVerified;
         state.error = null;
+
+        // Mark that user has registered
+        localStorage.setItem('gema_ever_authenticated', 'true');
         // Note: Tokens are set in httpOnly cookies by the server
       })
       .addCase(registerUser.rejected, (state, action) => {
@@ -492,6 +524,17 @@ const authSlice = createSlice({
         state.isLoading = false;
         state.isInitialized = true; // Keep initialized - logout is intentional, no need to re-verify
         // Note: Cookies are cleared by the server logout endpoint
+      })
+
+      // Silent logout (no toast, for system-initiated clearing)
+      .addCase(clearAuthOnFailure.fulfilled, (state) => {
+        state.user = null;
+        state.isAuthenticated = false;
+        state.isEmailVerified = false;
+        state.lastLoginTime = null;
+        state.error = null;
+        state.isLoading = false;
+        state.isInitialized = true;
       })
 
       // Refresh Token
@@ -520,6 +563,9 @@ const authSlice = createSlice({
         state.isEmailVerified = action.payload.user.isEmailVerified;
         state.lastLoginTime = new Date().toISOString();
         state.error = null;
+
+        // Mark that user has logged in
+        localStorage.setItem('gema_ever_authenticated', 'true');
         // Note: Tokens are set in httpOnly cookies by the server
       })
       .addCase(loginWithGoogleThunk.rejected, (state, action) => {

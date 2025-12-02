@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { motion } from 'framer-motion';
 import api from '../../services/api';
+import { getAppName } from '../../utils/brandConfig';
 import { 
   FiUsers, 
   FiTrendingUp, 
@@ -169,7 +170,7 @@ const PartnerWithUsPage: React.FC = () => {
       id: 'vendor',
       title: 'Event Vendors',
       icon: FiCalendar,
-      description: 'Create, manage, and promote your kids\' events — Gema handles bookings and payments.',
+      description: `Create, manage, and promote your kids' events — ${getAppName()} handles bookings and payments.`,
       features: ['Vendor dashboard', 'Analytics & performance tracking', 'Featured placement options'],
       cta: 'Apply as Vendor',
       color: 'var(--primary-color)',
@@ -191,7 +192,7 @@ const PartnerWithUsPage: React.FC = () => {
       icon: FiUsers,
       description: 'Partner to organize workshops, competitions, and after-school programs.',
       features: ['Dedicated school portal', 'Event co-branding opportunities', 'On-site QR check-ins'],
-      cta: 'Partner with Gema',
+      cta: `Partner with ${getAppName()}`,
       color: 'var(--primary-color)',
       gradient: 'from-green-500 to-teal-500'
     },
@@ -199,7 +200,7 @@ const PartnerWithUsPage: React.FC = () => {
       id: 'affiliate',
       title: 'Affiliates & Bloggers',
       icon: FiTrendingUp,
-      description: 'Earn revenue by referring families to Gema events.',
+      description: `Earn revenue by referring families to ${getAppName()} events.`,
       features: ['Affiliate dashboard', 'Real-time analytics', 'Automated monthly payouts'],
       cta: 'Join Affiliate Program',
       color: 'var(--accent-color)',
@@ -264,7 +265,7 @@ const PartnerWithUsPage: React.FC = () => {
     {
       icon: FiZap,
       title: 'Start Earning',
-      description: 'Access your dashboard, track performance, and start growing with Gema!'
+      description: `Access your dashboard, track performance, and start growing with ${getAppName()}!`
     },
     {
       icon: FiHeart,
@@ -278,7 +279,7 @@ const PartnerWithUsPage: React.FC = () => {
       name: 'Sarah Johnson',
       role: 'Event Organizer',
       company: 'Tiny Explorers Academy',
-      content: 'Gema has helped us fill our weekend workshops consistently! The platform is user-friendly and the support team is amazing.',
+      content: `${getAppName()} has helped us fill our weekend workshops consistently! The platform is user-friendly and the support team is amazing.`,
       rating: 5
     },
     {
@@ -292,7 +293,7 @@ const PartnerWithUsPage: React.FC = () => {
       name: 'Emma Rodriguez',
       role: 'School Coordinator',
       company: 'Sunshine Elementary',
-      content: 'Partnering with Gema has expanded our reach to families we never would have connected with otherwise.',
+      content: `Partnering with ${getAppName()} has expanded our reach to families we never would have connected with otherwise.`,
       rating: 5
     }
   ];
@@ -335,7 +336,7 @@ const PartnerWithUsPage: React.FC = () => {
               transition={{ delay: 0.3 }}
               className="text-4xl md:text-6xl font-bold mb-6 bg-gradient-to-r from-blue-600 via-purple-600 to-pink-600 bg-clip-text text-transparent"
             >
-              Partner with Gema
+              Partner with {getAppName()}
             </motion.h1>
             
             <motion.p 
@@ -344,7 +345,7 @@ const PartnerWithUsPage: React.FC = () => {
               transition={{ delay: 0.4 }}
               className="text-xl md:text-2xl text-gray-600 mb-8 max-w-4xl mx-auto leading-relaxed"
             >
-              Whether you're an <span className="font-semibold" style={{ color: 'var(--primary-color)' }}>event organizer</span>, <span className="font-semibold" style={{ color: 'var(--accent-color)' }}>influencer</span>, <span className="font-semibold" style={{ color: 'var(--primary-color)' }}>school</span>, or <span className="font-semibold" style={{ color: 'var(--accent-color)' }}>affiliate</span>, Gema helps you connect with thousands of parents looking for meaningful activities for their children.
+              Whether you're an <span className="font-semibold" style={{ color: 'var(--primary-color)' }}>event organizer</span>, <span className="font-semibold" style={{ color: 'var(--accent-color)' }}>influencer</span>, <span className="font-semibold" style={{ color: 'var(--primary-color)' }}>school</span>, or <span className="font-semibold" style={{ color: 'var(--accent-color)' }}>affiliate</span>, {getAppName()} helps you connect with thousands of parents looking for meaningful activities for their children.
             </motion.p>
 
             <motion.div 
@@ -404,10 +405,10 @@ const PartnerWithUsPage: React.FC = () => {
           <div className="max-w-7xl mx-auto">
             <motion.div variants={itemVariants} className="text-center mb-16">
               <h2 className="text-3xl md:text-4xl font-bold mb-4" style={{ color: 'var(--primary-color)' }}>
-                Why Collaborate with Gema?
+                Why Collaborate with {getAppName()}?
               </h2>
               <p className="text-xl text-gray-600 max-w-3xl mx-auto">
-                Gema isn't just a platform — it's a growing ecosystem that connects families with verified, high-quality experiences.
+                {getAppName()} isn't just a platform — it's a growing ecosystem that connects families with verified, high-quality experiences.
               </p>
             </motion.div>
 
@@ -575,7 +576,7 @@ const PartnerWithUsPage: React.FC = () => {
                 Getting Started is Simple
               </h2>
               <p className="text-xl text-gray-600 max-w-3xl mx-auto">
-                Follow these easy steps to begin your partnership journey with Gema
+                Follow these easy steps to begin your partnership journey with {getAppName()}
               </p>
             </motion.div>
 
@@ -801,7 +802,7 @@ const PartnerWithUsPage: React.FC = () => {
                 What Our Partners Say
               </h2>
               <p className="text-xl text-gray-600 max-w-3xl mx-auto">
-                Real feedback from our successful partners who are growing with Gema
+                Real feedback from our successful partners who are growing with {getAppName()}
               </p>
             </motion.div>
 
@@ -899,7 +900,7 @@ const PartnerWithUsPage: React.FC = () => {
               >
                 <FiCheckCircle className="w-12 h-12 text-green-500 mx-auto mb-4" />
                 <h3 className="text-xl font-semibold text-green-800 mb-2">Application Submitted!</h3>
-                <p className="text-green-600">Thank you for your interest in partnering with Gema. We'll contact you within 24 hours.</p>
+                <p className="text-green-600">Thank you for your interest in partnering with {getAppName()}. We'll contact you within 24 hours.</p>
               </motion.div>
             )}
 
@@ -1035,7 +1036,7 @@ const PartnerWithUsPage: React.FC = () => {
                     onChange={handleChange}
                     required
                     rows={6}
-                    placeholder="Tell us about your organization and how you'd like to partner with Gema..."
+                    placeholder={`Tell us about your organization and how you'd like to partner with ${getAppName()}...`}
                     className={`w-full px-4 py-4 border-2 rounded-xl focus:outline-none focus:ring-4 transition-all duration-300 resize-none ${
                       formErrors.message 
                         ? 'border-red-300 focus:border-red-500 focus:ring-red-100' 
@@ -1144,7 +1145,7 @@ const PartnerWithUsPage: React.FC = () => {
               
               {/* Subtitle */}
               <p className="text-2xl text-gray-600 mb-12 max-w-4xl mx-auto leading-relaxed">
-                Join thousands of partners already growing with Gema and start building meaningful connections with families today.
+                Join thousands of partners already growing with {getAppName()} and start building meaningful connections with families today.
               </p>
               
               {/* CTA Buttons */}

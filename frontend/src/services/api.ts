@@ -1,6 +1,6 @@
 import axios, { AxiosInstance, AxiosRequestConfig, AxiosResponse } from 'axios';
 import { store } from '../store';
-import { logoutUser, refreshToken } from '../store/slices/authSlice';
+import { logoutUser, refreshToken, clearAuthOnFailure } from '../store/slices/authSlice';
 
 // API Configuration - using main backend server
 const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || import.meta.env.VITE_API_URL || 'https://gema-project.onrender.com/api';
@@ -93,7 +93,7 @@ api.interceptors.response.use(
         originalRequest.url?.includes('/auth/login') ||
         originalRequest.url?.includes('/auth/register') ||
         originalRequest.url?.includes('/auth/refresh-token') ||
-        originalRequest.url?.includes('/auth/current') // Skip for getCurrentUser to avoid "No refresh token" error after logout
+        originalRequest.url?.includes('/auth/me') // Skip for getCurrentUser to avoid "No refresh token" error after logout
       ) {
         return Promise.reject(error);
       }
@@ -109,10 +109,18 @@ api.interceptors.response.use(
         // Retry original request (new accessToken cookie is sent automatically)
         return api(originalRequest);
       } catch (refreshError) {
-        console.error('[API] Token refresh failed - Logging out user:', refreshError);
+        console.error('[API] Token refresh failed - Clearing auth state:', refreshError);
 
-        // Refresh failed, logout user
-        store.dispatch(logoutUser());
+        // Check if user was ever authenticated (persists across sessions)
+        const everAuthenticated = localStorage.getItem('gema_ever_authenticated') === 'true';
+
+        if (everAuthenticated) {
+          // User WAS logged in, session expired - show toast
+          store.dispatch(logoutUser());
+        } else {
+          // User never logged in (first-time visitor) - silent clear
+          store.dispatch(clearAuthOnFailure());
+        }
 
         // Define public routes that should NOT redirect to login
         const publicPaths = [

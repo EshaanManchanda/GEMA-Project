@@ -34,9 +34,36 @@ export const getCategories = async (
       return;
     }
 
+    // Cache miss - update event counts to ensure accuracy
+    // This adds ~1-2s latency once per hour, which is acceptable
+    await Category.updateEventCounts();
+
     if (tree === 'true') {
-      // Get categories as tree structure
-      const categoryTree = await Category.getCategoryTree();
+      // Get categories as tree structure with populated MediaAssets
+      const query: any = { isActive: true };
+      if (includeInactive === 'true') {
+        delete query.isActive;
+      }
+
+      const categories = await Category.find(query)
+        .sort({ sortOrder: 1, name: 1 })
+        .populate('iconAsset', 'url publicId altText')
+        .populate('featuredImageAsset', 'url publicId altText')
+        .lean();
+
+      // Build tree structure from populated categories
+      const buildTree = (parentId: any = null): any[] => {
+        return categories
+          .filter((cat: any) =>
+            parentId ? cat.parentId?.toString() === parentId.toString() : !cat.parentId
+          )
+          .map((cat: any) => ({
+            ...cat,
+            children: buildTree(cat._id),
+          }));
+      };
+
+      const categoryTree = buildTree();
 
       // Cache for 1 hour (3600 seconds) - categories rarely change
       await cacheService.set(cacheKey, categoryTree, { ttl: 3600 });
@@ -56,7 +83,9 @@ export const getCategories = async (
 
       const categories = await Category.find(query)
         .sort({ level: 1, sortOrder: 1, name: 1 })
-        .populate('parentId', 'name slug');
+        .populate('parentId', 'name slug')
+        .populate('iconAsset', 'url publicId altText')
+        .populate('featuredImageAsset', 'url publicId altText');
 
       // Cache for 1 hour
       await cacheService.set(cacheKey, categories, { ttl: 3600 });
@@ -91,11 +120,17 @@ export const getCategory = async (
 
     // Try to find by ID first (only if valid ObjectId), then by slug
     if (isValidObjectId) {
-      category = await Category.findById(id).populate('parentId', 'name slug');
+      category = await Category.findById(id)
+        .populate('parentId', 'name slug')
+        .populate('iconAsset')
+        .populate('featuredImageAsset');
     }
 
     if (!category) {
-      category = await Category.findOne({ slug: id }).populate('parentId', 'name slug');
+      category = await Category.findOne({ slug: id })
+        .populate('parentId', 'name slug')
+        .populate('iconAsset')
+        .populate('featuredImageAsset');
     }
 
     if (!category) {
@@ -139,20 +174,30 @@ export const createCategory = async (
 ): Promise<void> => {
   try {
     const categoryData = req.body;
-    
+
+    // Handle field aliases for backward compatibility
+    if (categoryData.order !== undefined && categoryData.sortOrder === undefined) {
+      categoryData.sortOrder = categoryData.order;
+      delete categoryData.order;
+    }
+    if (categoryData.seo !== undefined && categoryData.seoMeta === undefined) {
+      categoryData.seoMeta = categoryData.seo;
+      delete categoryData.seo;
+    }
+
     // Check if parent exists (if parentId provided)
     if (categoryData.parentId) {
       const parent = await Category.findById(categoryData.parentId);
       if (!parent) {
         return next(new AppError('Parent category not found', 404));
       }
-      
+
       // Check maximum depth
       if (parent.level >= 4) { // Max 5 levels (0-4)
         return next(new AppError('Maximum category depth exceeded', 400));
       }
     }
-    
+
     // Check if slug already exists
     if (categoryData.slug) {
       const existingCategory = await Category.findOne({ slug: categoryData.slug });
@@ -160,7 +205,7 @@ export const createCategory = async (
         return next(new AppError('Category slug already exists', 400));
       }
     }
-    
+
     const category = new Category(categoryData);
     await category.save();
 
@@ -168,6 +213,8 @@ export const createCategory = async (
     await cacheService.deletePattern('categories:*');
 
     await category.populate('parentId', 'name slug');
+    await category.populate('iconAsset');
+    await category.populate('featuredImageAsset');
 
     res.status(201).json({
       success: true,
@@ -193,32 +240,42 @@ export const updateCategory = async (
   try {
     const { id } = req.params;
     const updateData = req.body;
-    
+
+    // Handle field aliases for backward compatibility
+    if (updateData.order !== undefined && updateData.sortOrder === undefined) {
+      updateData.sortOrder = updateData.order;
+      delete updateData.order;
+    }
+    if (updateData.seo !== undefined && updateData.seoMeta === undefined) {
+      updateData.seoMeta = updateData.seo;
+      delete updateData.seo;
+    }
+
     const category = await Category.findById(id);
     if (!category) {
       return next(new AppError('Category not found', 404));
     }
-    
+
     // If changing parent, validate it
     if (updateData.parentId && updateData.parentId !== category.parentId?.toString()) {
       const parent = await Category.findById(updateData.parentId);
       if (!parent) {
         return next(new AppError('Parent category not found', 404));
       }
-      
+
       // Check if new parent would create circular reference
       const allChildren = await category.getAllChildren();
       const childIds = allChildren.map(c => c._id.toString());
       if (childIds.includes(updateData.parentId)) {
         return next(new AppError('Cannot set child category as parent (circular reference)', 400));
       }
-      
+
       // Check maximum depth
       if (parent.level >= 4) {
         return next(new AppError('Maximum category depth exceeded', 400));
       }
     }
-    
+
     // Check if slug is being changed and doesn't conflict
     if (updateData.slug && updateData.slug !== category.slug) {
       const existingCategory = await Category.findOne({ slug: updateData.slug });
@@ -226,7 +283,7 @@ export const updateCategory = async (
         return next(new AppError('Category slug already exists', 400));
       }
     }
-    
+
     Object.assign(category, updateData);
     await category.save();
 
@@ -234,6 +291,8 @@ export const updateCategory = async (
     await cacheService.deletePattern('categories:*');
 
     await category.populate('parentId', 'name slug');
+    await category.populate('iconAsset');
+    await category.populate('featuredImageAsset');
 
     res.status(200).json({
       success: true,
@@ -423,7 +482,9 @@ export const searchCategories = async (
     })
     .limit(parseInt(limit as string))
     .sort({ score: { $meta: 'textScore' } })
-    .populate('parentId', 'name slug');
+    .populate('parentId', 'name slug')
+    .populate('iconAsset')
+    .populate('featuredImageAsset');
     
     res.status(200).json({
       success: true,

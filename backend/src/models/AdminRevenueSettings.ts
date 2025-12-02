@@ -1,4 +1,5 @@
 import mongoose, { Document, Schema } from 'mongoose';
+import { getBrandConfig } from '../utils/brandConfig';
 
 export enum PayoutFrequency {
   DAILY = 'daily',
@@ -243,7 +244,7 @@ const AdminRevenueSettingsSchema = new Schema<IAdminRevenueSettings>(
       type: String,
       required: [true, 'Platform name is required'],
       trim: true,
-      default: 'Gema Platform'
+      default: () => `${getBrandConfig().appName} Platform`
     },
     isActive: {
       type: Boolean,

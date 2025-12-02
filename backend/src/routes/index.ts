@@ -38,6 +38,7 @@ import collectionRoutes from './collection.routes';
 import favoritesRoutes from './favorites.routes';
 import adminRevenueRoutes from './admin.revenue.routes';
 import adminStatsRoutes from './admin.stats.routes';
+import statsRoutes from './stats.routes';
 import seoRoutes from './seo.routes';
 import registrationRoutes from './registration.routes';
 import currencyRoutes from './currency.routes';
@@ -53,7 +54,7 @@ const router = Router();
 
 // Root route
 router.get('/', (req, res) => {
-  res.status(200).json({ message: 'Welcome to the Gema API!' });
+  res.status(200).json({ message: `Welcome to the ${process.env.APP_NAME || 'Kidrove'} API!` });
 });
 
 // Auth routes
@@ -168,6 +169,9 @@ router.use('/currency', currencyRoutes);
 
 // Admin Revenue Management routes
 router.use('/admin/revenue', adminRevenueRoutes);
+
+// Public Statistics routes
+router.use('/stats', statsRoutes);
 
 // Admin Statistics routes
 router.use('/admin', adminStatsRoutes);

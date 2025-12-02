@@ -30,6 +30,7 @@
     "migrate:event-images": "ts-node src/scripts/migrate-event-images.ts",
     "migrate:uuid": "ts-node src/scripts/migrate-add-uuid-to-media.ts",
     "migrate:cloudinary-urls": "ts-node src/scripts/migrate-cloudinary-urls-to-uuid.ts",
+    "migrate:brand": "ts-node src/scripts/migrateBrandConfig.ts",
     "script:cleanup-media": "ts-node src/scripts/cleanup-orphaned-media.ts"
   },
   "dependencies": {

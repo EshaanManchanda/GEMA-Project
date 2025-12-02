@@ -2,11 +2,12 @@ import i18n from 'i18next';
 import { initReactI18next } from 'react-i18next';
 import LanguageDetector from 'i18next-browser-languagedetector';
 import Backend from 'i18next-http-backend';
+import { getAppName, getAppNameAr } from '../utils/brandConfig';
 
 // English translations
 const enTranslations = {
   common: {
-    appName: 'Gema',
+    appName: getAppName(),
     loading: 'Loading...',
     error: 'An error occurred',
     retry: 'Retry',
@@ -100,7 +101,7 @@ const enTranslations = {
 // Arabic translations (simplified example)
 const arTranslations = {
   common: {
-    appName: 'جيما',
+    appName: getAppNameAr(),
     loading: 'جار التحميل...',
     error: 'حدث خطأ',
     retry: 'إعادة المحاولة',

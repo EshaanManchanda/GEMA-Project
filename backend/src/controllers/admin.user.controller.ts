@@ -260,24 +260,17 @@ export const createUser = async (req: Request, res: Response, next: NextFunction
     // Clean up phone field - convert empty string to undefined
     const cleanPhone = phone && phone.trim() !== '' ? phone.trim() : undefined;
 
-    // Generate password if not provided
-    let passwordHash = '';
-    if (password && password.trim() !== '') {
-      const salt = await bcrypt.genSalt(10);
-      passwordHash = await bcrypt.hash(password.trim(), salt);
-    } else {
-      // Generate a default password if none provided
-      const defaultPassword = 'TempPass123!';
-      const salt = await bcrypt.genSalt(10);
-      passwordHash = await bcrypt.hash(defaultPassword, salt);
-    }
+    // Set password or use default - will be hashed by pre-save hook
+    const plainPassword = password && password.trim() !== ''
+      ? password.trim()
+      : 'TempPass123!';
 
     // Prepare user data
     const userData: any = {
       firstName,
       lastName,
       email,
-      passwordHash,
+      passwordHash: plainPassword, // Plain password - will be hashed by pre-save hook
       phone: cleanPhone,
       role,
       status,

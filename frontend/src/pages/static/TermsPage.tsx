@@ -1,6 +1,7 @@
 import React from 'react';
 import { motion } from 'framer-motion';
 import SEO from '@/components/common/SEO';
+import { getAppNameFull, getContactEmail } from '../../utils/brandConfig';
 
 const TermsPage: React.FC = () => {
   // Animation variants
@@ -36,8 +37,8 @@ const TermsPage: React.FC = () => {
   return (
     <>
       <SEO
-        title="Terms & Conditions - Gema Events"
-        description="Read the terms and conditions for using Gema Events platform. Learn about our policies for booking kids activities, payments, cancellations, and user responsibilities."
+        title={`Terms & Conditions - ${getAppNameFull()}`}
+        description={`Read the terms and conditions for using ${getAppNameFull()} platform. Learn about our policies for booking kids activities, payments, cancellations, and user responsibilities.`}
         keywords={['terms and conditions', 'gema events terms', 'booking terms', 'user agreement', 'privacy policy']}
         breadcrumbs={breadcrumbs}
       />
@@ -58,7 +59,7 @@ const TermsPage: React.FC = () => {
         <motion.div variants={itemVariants} className="mb-10">
           <div className="bg-white rounded-lg shadow-md p-8">
             <p className="text-gray-600 mb-4">
-              Welcome to Gema Events. Please read these Terms of Service ("Terms", "Terms of Service") carefully before using our website and services operated by Gema Events.
+              Welcome to {getAppNameFull()}. Please read these Terms of Service ("Terms", "Terms of Service") carefully before using our website and services operated by {getAppNameFull()}.
             </p>
             <p className="text-gray-600">
               Your access to and use of the Service is conditioned on your acceptance of and compliance with these Terms. These Terms apply to all visitors, users, and others who access or use the Service. By accessing or using the Service you agree to be bound by these Terms. If you disagree with any part of the terms then you may not access the Service.
@@ -121,7 +122,7 @@ const TermsPage: React.FC = () => {
           <h2 className="text-2xl font-bold mb-4 text-gray-800">Event Bookings</h2>
           <div className="bg-white rounded-lg shadow-md p-8">
             <p className="text-gray-600 mb-4">
-              Gema Events provides a platform for users to discover and book events. When you book an event through our Service, you are entering into a contract with the event organizer, not with Gema Events. We act as an intermediary between you and the event organizer.
+              {getAppNameFull()} provides a platform for users to discover and book events. When you book an event through our Service, you are entering into a contract with the event organizer, not with {getAppNameFull()}. We act as an intermediary between you and the event organizer.
             </p>
             
             <h3 className="text-xl font-semibold mb-3 text-gray-800 mt-6">Booking Confirmation</h3>
@@ -149,10 +150,10 @@ const TermsPage: React.FC = () => {
           <h2 className="text-2xl font-bold mb-4 text-gray-800">Intellectual Property</h2>
           <div className="bg-white rounded-lg shadow-md p-8">
             <p className="text-gray-600 mb-4">
-              The Service and its original content (excluding content provided by users), features, and functionality are and will remain the exclusive property of Gema Events and its licensors. The Service is protected by copyright, trademark, and other laws of both the United States and foreign countries. Our trademarks and trade dress may not be used in connection with any product or service without the prior written consent of Gema Events.
+              The Service and its original content (excluding content provided by users), features, and functionality are and will remain the exclusive property of {getAppNameFull()} and its licensors. The Service is protected by copyright, trademark, and other laws of both the United States and foreign countries. Our trademarks and trade dress may not be used in connection with any product or service without the prior written consent of {getAppNameFull()}.
             </p>
             <p className="text-gray-600">
-              User-generated content that you post, upload, or otherwise make available through the Service may be used by Gema Events in connection with the Service and may be visible to other users. By posting content on the Service, you grant Gema Events a non-exclusive, transferable, sub-licensable, royalty-free, worldwide license to use, copy, modify, create derivative works based on, distribute, publicly display, publicly perform, and otherwise exploit in any manner such content in all formats and distribution channels now known or hereafter devised (including in connection with the Service and Gema Events's business and on third-party sites and services), without further notice to or consent from you, and without the requirement of payment to you or any other person or entity.
+              User-generated content that you post, upload, or otherwise make available through the Service may be used by {getAppNameFull()} in connection with the Service and may be visible to other users. By posting content on the Service, you grant {getAppNameFull()} a non-exclusive, transferable, sub-licensable, royalty-free, worldwide license to use, copy, modify, create derivative works based on, distribute, publicly display, publicly perform, and otherwise exploit in any manner such content in all formats and distribution channels now known or hereafter devised (including in connection with the Service and {getAppNameFull()}'s business and on third-party sites and services), without further notice to or consent from you, and without the requirement of payment to you or any other person or entity.
             </p>
           </div>
         </motion.div>
@@ -162,7 +163,7 @@ const TermsPage: React.FC = () => {
           <h2 className="text-2xl font-bold mb-4 text-gray-800">Limitation of Liability</h2>
           <div className="bg-white rounded-lg shadow-md p-8">
             <p className="text-gray-600 mb-4">
-              In no event shall Gema Events, nor its directors, employees, partners, agents, suppliers, or affiliates, be liable for any indirect, incidental, special, consequential or punitive damages, including without limitation, loss of profits, data, use, goodwill, or other intangible losses, resulting from (i) your access to or use of or inability to access or use the Service; (ii) any conduct or content of any third party on the Service; (iii) any content obtained from the Service; and (iv) unauthorized access, use or alteration of your transmissions or content, whether based on warranty, contract, tort (including negligence) or any other legal theory, whether or not we have been informed of the possibility of such damage, and even if a remedy set forth herein is found to have failed of its essential purpose.
+              In no event shall {getAppNameFull()}, nor its directors, employees, partners, agents, suppliers, or affiliates, be liable for any indirect, incidental, special, consequential or punitive damages, including without limitation, loss of profits, data, use, goodwill, or other intangible losses, resulting from (i) your access to or use of or inability to access or use the Service; (ii) any conduct or content of any third party on the Service; (iii) any content obtained from the Service; and (iv) unauthorized access, use or alteration of your transmissions or content, whether based on warranty, contract, tort (including negligence) or any other legal theory, whether or not we have been informed of the possibility of such damage, and even if a remedy set forth herein is found to have failed of its essential purpose.
             </p>
           </div>
         </motion.div>
@@ -175,7 +176,7 @@ const TermsPage: React.FC = () => {
               Your use of the Service is at your sole risk. The Service is provided on an "AS IS" and "AS AVAILABLE" basis. The Service is provided without warranties of any kind, whether express or implied, including, but not limited to, implied warranties of merchantability, fitness for a particular purpose, non-infringement or course of performance.
             </p>
             <p className="text-gray-600">
-              Gema Events, its subsidiaries, affiliates, and its licensors do not warrant that a) the Service will function uninterrupted, secure or available at any particular time or location; b) any errors or defects will be corrected; c) the Service is free of viruses or other harmful components; or d) the results of using the Service will meet your requirements.
+              {getAppNameFull()}, its subsidiaries, affiliates, and its licensors do not warrant that a) the Service will function uninterrupted, secure or available at any particular time or location; b) any errors or defects will be corrected; c) the Service is free of viruses or other harmful components; or d) the results of using the Service will meet your requirements.
             </p>
           </div>
         </motion.div>
@@ -214,10 +215,10 @@ const TermsPage: React.FC = () => {
               If you have any questions about these Terms, please contact us at:
             </p>
             <div className="text-gray-600">
-              <p>Gema Events</p>
+              <p>{getAppNameFull()}</p>
               <p>123 Event Street, Suite 200</p>
               <p>New York, NY 10001</p>
-              <p>Email: legal@gemaevents.com</p>
+              <p>Email: {getContactEmail()}</p>
               <p>Phone: +1 (555) 123-4567</p>
             </div>
           </div>

@@ -5,8 +5,8 @@ import { useCart } from '@/contexts/CartContext';
 import { RootState, AppDispatch } from '@/store';
 import { logoutUser } from '@/store/slices/authSlice';
 import {
-  fetchFeaturedCategories,
-  selectFeaturedCategories,
+  fetchRootCategories,
+  selectCategories,
   selectCategoriesLoading
 } from '@/store/slices/categoriesSlice';
 import { selectSocialSettings } from '@/store/slices/settingsSlice';
@@ -61,9 +61,12 @@ const Layout: React.FC<{ children?: React.ReactNode }> = ({ children }) => {
   
   const { cartCount } = useCart();
   const { isAuthenticated, user } = useSelector((state: RootState) => state.auth);
-  const featuredCategories = useSelector(selectFeaturedCategories);
+  const categories = useSelector(selectCategories);
   const categoriesLoading = useSelector(selectCategoriesLoading);
   const socialSettings = useSelector(selectSocialSettings);
+
+  // Filter active root categories for footer display
+  const footerCategories = categories.filter(c => c.isActive).slice(0, 8);
   // const unreadNotificationsCount = useSelector(selectUnreadCount); // Commented out - notification system disabled
 
   const dispatch = useDispatch<AppDispatch>();
@@ -73,10 +76,13 @@ const Layout: React.FC<{ children?: React.ReactNode }> = ({ children }) => {
   // Real-time data updates
   useRealTimeData({
     enableNotifications: false, // Disabled - notification system disabled
-    enableCategories: true,
     notificationInterval: 30000, // 30 seconds
-    categoryInterval: 300000, // 5 minutes
   });
+
+  // Fetch root categories on mount for footer
+  useEffect(() => {
+    dispatch(fetchRootCategories());
+  }, [dispatch]);
 
   useEffect(() => {
     const handleScroll = () => {
@@ -713,7 +719,7 @@ const Layout: React.FC<{ children?: React.ReactNode }> = ({ children }) => {
                     ))}
                   </div>
                 ) : (
-                  featuredCategories.slice(0, 4).map((category) => (
+                  footerCategories.slice(0, 4).map((category) => (
                     <li key={category._id}>
                       <Link
                         to={`/categories/${category.slug}`}
@@ -724,7 +730,7 @@ const Layout: React.FC<{ children?: React.ReactNode }> = ({ children }) => {
                     </li>
                   ))
                 )}
-                {featuredCategories.length === 0 && !categoriesLoading && (
+                {footerCategories.length === 0 && !categoriesLoading && (
                   <li className="text-gray-700 text-sm italic">No categories available</li>
                 )}
               </ul>

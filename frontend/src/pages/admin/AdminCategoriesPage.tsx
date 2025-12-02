@@ -1,6 +1,10 @@
 import React, { useState, useEffect } from 'react';
 import categoriesAPI, { Category } from '../../services/api/categoriesAPI';
+import { MediaAsset } from '../../store/slices/mediaSlice';
+import MediaPickerModal from '../../components/admin/media/MediaPickerModal';
+import SEOEditor from '../../components/seo/SEOEditor';
 import toast from 'react-hot-toast';
+import { config } from '../../config';
 
 const AdminCategoriesPage: React.FC = () => {
   const [categories, setCategories] = useState<Category[]>([]);
@@ -16,30 +20,32 @@ const AdminCategoriesPage: React.FC = () => {
   const [categoryToDelete, setCategoryToDelete] = useState<string | null>(null);
   const [isAddEditModalOpen, setIsAddEditModalOpen] = useState<boolean>(false);
   const [editingCategory, setEditingCategory] = useState<Category | null>(null);
+  const [isIconPickerOpen, setIsIconPickerOpen] = useState<boolean>(false);
+  const [selectedIconAsset, setSelectedIconAsset] = useState<MediaAsset | null>(null);
   const [formData, setFormData] = useState<{
     name: string;
     slug: string;
     description: string;
-    icon: string;
+    iconAsset: string;
     color: string;
     parentId: string;
     isActive: boolean;
     sortOrder: number;
-    seoTitle: string;
-    seoDescription: string;
-    seoKeywords: string;
   }>({
     name: '',
     slug: '',
     description: '',
-    icon: '',
+    iconAsset: '',
     color: '#4F46E5',
     parentId: '',
     isActive: true,
-    sortOrder: 0,
-    seoTitle: '',
-    seoDescription: '',
-    seoKeywords: ''
+    sortOrder: 0
+  });
+
+  const [seoData, setSeoData] = useState({
+    title: '',
+    description: '',
+    keywords: [] as string[]
   });
 
   useEffect(() => {
@@ -49,7 +55,11 @@ const AdminCategoriesPage: React.FC = () => {
   const fetchCategories = async () => {
     try {
       setIsLoading(true);
-      const response = await categoriesAPI.getAllCategories({ tree: false, includeInactive: true });
+      const response = await categoriesAPI.getAllCategories({
+        tree: false,
+        includeInactive: true,
+        populate: 'iconAsset featuredImageAsset parent'
+      });
       setCategories(response);
       setFilteredCategories(response);
     } catch (error: any) {
@@ -156,37 +166,52 @@ const AdminCategoriesPage: React.FC = () => {
 
   const handleAddCategory = () => {
     setEditingCategory(null);
+    setSelectedIconAsset(null);
     setFormData({
       name: '',
       slug: '',
       description: '',
-      icon: '',
+      iconAsset: '',
       color: '#4F46E5',
       parentId: '',
       isActive: true,
-      sortOrder: 0,
-      seoTitle: '',
-      seoDescription: '',
-      seoKeywords: ''
+      sortOrder: 0
+    });
+    setSeoData({
+      title: '',
+      description: '',
+      keywords: []
     });
     setIsAddEditModalOpen(true);
   };
 
   const handleEditCategory = (category: Category) => {
     setEditingCategory(category);
+
+    // Set icon asset if it's populated
+    if (category.iconAsset && typeof category.iconAsset === 'object') {
+      setSelectedIconAsset(category.iconAsset as MediaAsset);
+    } else {
+      setSelectedIconAsset(null);
+    }
+
     setFormData({
       name: category.name,
       slug: category.slug,
       description: category.description || '',
-      icon: category.icon || '',
+      iconAsset: typeof category.iconAsset === 'string' ? category.iconAsset : (category.iconAsset as MediaAsset)?._id || '',
       color: category.color || '#4F46E5',
       parentId: category.parentId?.toString() || '',
       isActive: category.isActive,
-      sortOrder: category.sortOrder,
-      seoTitle: category.seoMeta?.title || '',
-      seoDescription: category.seoMeta?.description || '',
-      seoKeywords: category.seoMeta?.keywords?.join(', ') || ''
+      sortOrder: category.sortOrder
     });
+
+    setSeoData({
+      title: category.seoMeta?.title || '',
+      description: category.seoMeta?.description || '',
+      keywords: category.seoMeta?.keywords || []
+    });
+
     setIsAddEditModalOpen(true);
   };
 
@@ -198,6 +223,10 @@ const AdminCategoriesPage: React.FC = () => {
     });
   };
 
+  const handleSeoDataChange = (newSeoData: any) => {
+    setSeoData(newSeoData);
+  };
+
   const handleFormSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
 
@@ -206,15 +235,15 @@ const AdminCategoriesPage: React.FC = () => {
         name: formData.name,
         slug: formData.slug,
         description: formData.description,
-        icon: formData.icon,
+        iconAsset: formData.iconAsset || undefined,
         color: formData.color,
         parentId: formData.parentId || undefined,
         isActive: formData.isActive,
         sortOrder: formData.sortOrder,
         seoMeta: {
-          title: formData.seoTitle,
-          description: formData.seoDescription,
-          keywords: formData.seoKeywords.split(',').map(k => k.trim()).filter(k => k)
+          title: seoData.title || undefined,
+          description: seoData.description || undefined,
+          keywords: seoData.keywords?.length > 0 ? seoData.keywords : undefined
         }
       };
 
@@ -235,6 +264,7 @@ const AdminCategoriesPage: React.FC = () => {
       }
 
       setIsAddEditModalOpen(false);
+      setSelectedIconAsset(null);
     } catch (error: any) {
       console.error('Error saving category:', error);
       toast.error(error?.message || 'Failed to save category');
@@ -442,18 +472,30 @@ const AdminCategoriesPage: React.FC = () => {
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap">
                       <div className="flex items-center">
-                        {category.icon && (
-                          <div className="flex-shrink-0 h-10 w-10 flex items-center justify-center text-2xl">
+                        {/* Icon Asset */}
+                        {category.iconAsset && typeof category.iconAsset === 'object' ? (
+                          <div className="flex-shrink-0 h-10 w-10 mr-3">
+                            <img
+                              src={(category.iconAsset as MediaAsset).url}
+                              alt={category.name}
+                              className="h-full w-full object-cover rounded"
+                            />
+                          </div>
+                        ) : category.icon ? (
+                          <div className="flex-shrink-0 h-10 w-10 flex items-center justify-center text-2xl mr-3">
                             {category.icon}
                           </div>
-                        )}
+                        ) : null}
+
+                        {/* Color Swatch */}
                         {category.color && (
                           <div
                             className="flex-shrink-0 h-10 w-10 rounded mr-3"
                             style={{ backgroundColor: category.color }}
                           ></div>
                         )}
-                        <div className="ml-4">
+
+                        <div>
                           <div className="text-sm font-medium text-gray-900">{category.name}</div>
                         </div>
                       </div>
@@ -618,16 +660,46 @@ const AdminCategoriesPage: React.FC = () => {
                       />
                     </div>
                     <div>
-                      <label htmlFor="icon" className="block text-sm font-medium text-gray-700 mb-1">Icon (Emoji or FontAwesome)</label>
-                      <input
-                        type="text"
-                        id="icon"
-                        name="icon"
-                        className="focus:ring-primary focus:border-primary block w-full sm:text-sm border-gray-300 rounded-md"
-                        value={formData.icon}
-                        onChange={handleFormChange}
-                        placeholder="🎵 or fa-music"
-                      />
+                      <label htmlFor="iconAsset" className="block text-sm font-medium text-gray-700 mb-1">Category Icon</label>
+                      {selectedIconAsset ? (
+                        <div className="flex items-center gap-3 p-3 border border-gray-300 rounded-md">
+                          <img
+                            src={selectedIconAsset.url}
+                            alt="Category icon"
+                            className="h-16 w-16 object-cover rounded"
+                          />
+                          <div className="flex-1">
+                            <p className="text-sm text-gray-700 font-medium">Icon selected</p>
+                          </div>
+                          <div className="flex gap-2">
+                            <button
+                              type="button"
+                              onClick={() => setIsIconPickerOpen(true)}
+                              className="px-3 py-1.5 text-sm bg-gray-100 text-gray-700 rounded hover:bg-gray-200"
+                            >
+                              Change
+                            </button>
+                            <button
+                              type="button"
+                              onClick={() => {
+                                setSelectedIconAsset(null);
+                                setFormData({ ...formData, iconAsset: '' });
+                              }}
+                              className="px-3 py-1.5 text-sm bg-red-100 text-red-700 rounded hover:bg-red-200"
+                            >
+                              Remove
+                            </button>
+                          </div>
+                        </div>
+                      ) : (
+                        <button
+                          type="button"
+                          onClick={() => setIsIconPickerOpen(true)}
+                          className="w-full px-4 py-2 border-2 border-dashed border-gray-300 rounded-md text-sm text-gray-600 hover:border-primary hover:text-primary focus:outline-none focus:ring-2 focus:ring-primary"
+                        >
+                          Select Icon Image
+                        </button>
+                      )}
                     </div>
                     <div>
                       <label htmlFor="color" className="block text-sm font-medium text-gray-700 mb-1">Color</label>
@@ -683,44 +755,21 @@ const AdminCategoriesPage: React.FC = () => {
 
                     {/* SEO Section */}
                     <div className="md:col-span-2 border-t pt-4 mt-4">
-                      <h4 className="text-md font-medium text-gray-900 mb-3">SEO Metadata</h4>
-                    </div>
-                    <div className="md:col-span-2">
-                      <label htmlFor="seoTitle" className="block text-sm font-medium text-gray-700 mb-1">SEO Title</label>
-                      <input
-                        type="text"
-                        id="seoTitle"
-                        name="seoTitle"
-                        maxLength={60}
-                        className="focus:ring-primary focus:border-primary block w-full sm:text-sm border-gray-300 rounded-md"
-                        value={formData.seoTitle}
-                        onChange={handleFormChange}
-                        placeholder="Max 60 characters"
-                      />
-                    </div>
-                    <div className="md:col-span-2">
-                      <label htmlFor="seoDescription" className="block text-sm font-medium text-gray-700 mb-1">SEO Description</label>
-                      <textarea
-                        id="seoDescription"
-                        name="seoDescription"
-                        rows={2}
-                        maxLength={160}
-                        className="focus:ring-primary focus:border-primary block w-full sm:text-sm border-gray-300 rounded-md"
-                        value={formData.seoDescription}
-                        onChange={handleFormChange}
-                        placeholder="Max 160 characters"
-                      />
-                    </div>
-                    <div className="md:col-span-2">
-                      <label htmlFor="seoKeywords" className="block text-sm font-medium text-gray-700 mb-1">SEO Keywords (comma separated)</label>
-                      <input
-                        type="text"
-                        id="seoKeywords"
-                        name="seoKeywords"
-                        className="focus:ring-primary focus:border-primary block w-full sm:text-sm border-gray-300 rounded-md"
-                        value={formData.seoKeywords}
-                        onChange={handleFormChange}
-                        placeholder="keyword1, keyword2, keyword3"
+                      <SEOEditor
+                        initialData={{
+                          title: seoData.title,
+                          description: seoData.description,
+                          keywords: seoData.keywords
+                        }}
+                        contentData={{
+                          title: formData.name || '',
+                          description: formData.description || '',
+                          type: 'category'
+                        }}
+                        onChange={handleSeoDataChange}
+                        baseUrl={config.appUrl}
+                        path={`/categories/${formData.slug || 'new-category'}`}
+                        disabled={false}
                       />
                     </div>
                   </div>
@@ -745,6 +794,23 @@ const AdminCategoriesPage: React.FC = () => {
           </div>
         </div>
       )}
+
+      {/* Media Picker Modal for Icon */}
+      <MediaPickerModal
+        isOpen={isIconPickerOpen}
+        onClose={() => setIsIconPickerOpen(false)}
+        onSelect={(assets) => {
+          if (assets.length > 0) {
+            setSelectedIconAsset(assets[0]);
+            setFormData({ ...formData, iconAsset: assets[0]._id });
+          }
+          setIsIconPickerOpen(false);
+        }}
+        category="misc"
+        folder="category-icons"
+        multiple={false}
+        title="Select Category Icon"
+      />
     </div>
   );
 };

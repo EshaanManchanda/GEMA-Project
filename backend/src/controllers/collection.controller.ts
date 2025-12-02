@@ -146,7 +146,9 @@ export const getCollectionById = async (req: Request, res: Response, next: NextF
           path: 'vendorId',
           select: 'firstName lastName businessName'
         }
-      });
+      })
+      .populate('iconAsset')
+      .populate('featuredImageAsset');
 
     if (!collection) {
       return next(new AppError('Collection not found', 404));
@@ -433,9 +435,15 @@ export const getAdminCollections = async (req: Request, res: Response, next: Nex
       Collection.find(filter)
         .populate({
           path: 'events',
-          select: 'title category images',
-          match: { isDeleted: false }
+          select: 'title category images type price currency vendorId isApproved',
+          match: { isDeleted: false },
+          populate: {
+            path: 'vendorId',
+            select: 'firstName lastName businessName'
+          }
         })
+        .populate('iconAsset')
+        .populate('featuredImageAsset')
         .sort(sort)
         .skip(skip)
         .limit(limitNum)
@@ -574,8 +582,8 @@ export const createCollectionWithFiles = async (req: AuthRequest, res: Response,
     const {
       title,
       description,
-      icon,
-      featuredImage,
+      iconAsset,
+      featuredImageAsset,
       count,
       category,
       events,
@@ -585,18 +593,22 @@ export const createCollectionWithFiles = async (req: AuthRequest, res: Response,
       seo
     } = req.body;
 
-    const files = req.files as { [fieldname: string]: Express.Multer.File[] };
-
-    // Handle icon file upload
-    let iconUrl = icon;
-    if (files && files.icon && files.icon[0]) {
-      iconUrl = getFileUrl(files.icon[0]);
+    // Verify icon MediaAsset exists
+    if (iconAsset) {
+      const MediaAsset = (await import('../models/MediaAsset')).default;
+      const asset = await MediaAsset.findById(iconAsset);
+      if (!asset) {
+        return next(new AppError('Icon asset not found', 404));
+      }
     }
 
-    // Handle featured image file upload
-    let featuredImageUrl = featuredImage;
-    if (files && files.featuredImage && files.featuredImage[0]) {
-      featuredImageUrl = getFileUrl(files.featuredImage[0]);
+    // Verify featured image MediaAsset exists
+    if (featuredImageAsset) {
+      const MediaAsset = (await import('../models/MediaAsset')).default;
+      const asset = await MediaAsset.findById(featuredImageAsset);
+      if (!asset) {
+        return next(new AppError('Featured image asset not found', 404));
+      }
     }
 
     // Verify events exist
@@ -618,8 +630,8 @@ export const createCollectionWithFiles = async (req: AuthRequest, res: Response,
     const collection = new Collection({
       title,
       description,
-      icon: iconUrl,
-      featuredImage: featuredImageUrl,
+      iconAsset,
+      featuredImageAsset,
       count,
       category,
       events: typeof events === 'string' ? JSON.parse(events) : (events || []),
@@ -660,8 +672,8 @@ export const updateCollectionWithFiles = async (req: AuthRequest, res: Response,
     const {
       title,
       description,
-      icon,
-      featuredImage,
+      iconAsset,
+      featuredImageAsset,
       count,
       category,
       events,
@@ -670,8 +682,6 @@ export const updateCollectionWithFiles = async (req: AuthRequest, res: Response,
       slug,
       seo
     } = req.body;
-
-    const files = req.files as { [fieldname: string]: Express.Multer.File[] };
 
     // Build update object
     const updateData: any = {};
@@ -684,18 +694,32 @@ export const updateCollectionWithFiles = async (req: AuthRequest, res: Response,
     if (sortOrder !== undefined) updateData.sortOrder = sortOrder;
     if (slug !== undefined) updateData.slug = slug;
 
-    // Handle icon
-    if (files && files.icon && files.icon[0]) {
-      updateData.icon = getFileUrl(files.icon[0]);
-    } else if (icon !== undefined) {
-      updateData.icon = icon;
+    // Handle iconAsset
+    if (iconAsset !== undefined) {
+      if (iconAsset) {
+        const MediaAsset = (await import('../models/MediaAsset')).default;
+        const asset = await MediaAsset.findById(iconAsset);
+        if (!asset) {
+          return next(new AppError('Icon asset not found', 404));
+        }
+        updateData.iconAsset = iconAsset;
+      } else {
+        updateData.iconAsset = null; // Allow clearing
+      }
     }
 
-    // Handle featured image
-    if (files && files.featuredImage && files.featuredImage[0]) {
-      updateData.featuredImage = getFileUrl(files.featuredImage[0]);
-    } else if (featuredImage !== undefined) {
-      updateData.featuredImage = featuredImage;
+    // Handle featuredImageAsset
+    if (featuredImageAsset !== undefined) {
+      if (featuredImageAsset) {
+        const MediaAsset = (await import('../models/MediaAsset')).default;
+        const asset = await MediaAsset.findById(featuredImageAsset);
+        if (!asset) {
+          return next(new AppError('Featured image asset not found', 404));
+        }
+        updateData.featuredImageAsset = featuredImageAsset;
+      } else {
+        updateData.featuredImageAsset = null;
+      }
     }
 
     // Handle SEO

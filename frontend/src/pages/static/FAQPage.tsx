@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { motion } from 'framer-motion';
 import { FiChevronDown, FiChevronUp, FiSearch } from 'react-icons/fi';
 import SEO from '@/components/common/SEO';
+import { getAppNameFull, getContactEmail } from '../../utils/brandConfig';
 
 const FAQPage: React.FC = () => {
   // Animation variants
@@ -43,23 +44,23 @@ const FAQPage: React.FC = () => {
       questions: [
         {
           id: 1,
-          question: 'What is Gema Events?',
-          answer: 'Gema Events is a comprehensive platform that connects event organizers with attendees. We provide a marketplace for discovering, booking, and managing various types of events, from concerts and workshops to conferences and private parties.'
+          question: 'What is ${getAppNameFull()}?',
+          answer: '${getAppNameFull()} is a comprehensive platform that connects event organizers with attendees. We provide a marketplace for discovering, booking, and managing various types of events, from concerts and workshops to conferences and private parties.'
         },
         {
           id: 2,
           question: 'How do I contact customer support?',
-          answer: 'You can reach our customer support team through multiple channels: email us at support@gemaevents.com, call us at +1 (555) 123-4567 during business hours (9 AM - 6 PM EST, Monday to Friday), or use the live chat feature on our website for immediate assistance.'
+          answer: 'You can reach our customer support team through multiple channels: email us at ${getContactEmail()}, call us at +1 (555) 123-4567 during business hours (9 AM - 6 PM EST, Monday to Friday), or use the live chat feature on our website for immediate assistance.'
         },
         {
           id: 3,
-          question: 'Is Gema Events available in my country?',
-          answer: 'Gema Events is currently available in the United States, Canada, United Kingdom, Australia, and select European countries. We are continuously expanding our services to new regions. Check our "Locations" page for the most up-to-date information on service availability.'
+          question: 'Is ${getAppNameFull()} available in my country?',
+          answer: '${getAppNameFull()} is currently available in the United States, Canada, United Kingdom, Australia, and select European countries. We are continuously expanding our services to new regions. Check our "Locations" page for the most up-to-date information on service availability.'
         },
         {
           id: 4,
           question: 'How do I report an issue with the platform?',
-          answer: 'To report any issues with our platform, please use the "Report an Issue" form in the Help Center section of your account, or email us directly at issues@gemaevents.com with details of the problem you\'re experiencing. Include screenshots if possible to help us resolve your issue more quickly.'
+          answer: 'To report any issues with our platform, please use the "Report an Issue" form in the Help Center section of your account, or email us directly at ${getContactEmail()} with details of the problem you\'re experiencing. Include screenshots if possible to help us resolve your issue more quickly.'
         }
       ]
     },
@@ -168,7 +169,7 @@ const FAQPage: React.FC = () => {
       questions: [
         {
           id: 21,
-          question: 'How do I become a vendor on Gema Events?',
+          question: 'How do I become a vendor on ${getAppNameFull()}?',
           answer: 'To become a vendor, create a regular account first, then click on "Become a Vendor" in your account settings. Complete the vendor application form with details about your business, upload required documents for verification, and select your vendor subscription plan. Our team will review your application within 2-3 business days.'
         },
         {
@@ -247,8 +248,8 @@ const FAQPage: React.FC = () => {
   return (
     <>
       <SEO
-        title="FAQ - Frequently Asked Questions | Gema Events"
-        description="Find answers to common questions about Gema Events, kids activities booking, payments, cancellations, and more. Get quick help and support for your queries."
+        title="FAQ - Frequently Asked Questions | ${getAppNameFull()}"
+        description="Find answers to common questions about ${getAppNameFull()}, kids activities booking, payments, cancellations, and more. Get quick help and support for your queries."
         keywords={['faq', 'frequently asked questions', 'gema events help', 'kids activities questions', 'booking help', 'support']}
         breadcrumbs={breadcrumbs}
         structuredData={faqStructuredData}
@@ -263,7 +264,7 @@ const FAQPage: React.FC = () => {
         {/* Header */}
         <motion.div variants={itemVariants} className="text-center mb-12">
           <h1 className="text-4xl md:text-5xl font-bold mb-4 text-gray-800">Frequently Asked Questions</h1>
-          <p className="text-gray-600 max-w-2xl mx-auto">Find answers to common questions about Gema Events. If you can't find what you're looking for, please contact our support team.</p>
+          <p className="text-gray-600 max-w-2xl mx-auto">Find answers to common questions about ${getAppNameFull()}. If you can't find what you're looking for, please contact our support team.</p>
         </motion.div>
 
         {/* Search Bar */}

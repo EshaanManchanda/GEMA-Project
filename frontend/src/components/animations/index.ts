@@ -1,19 +1,17 @@
 // Export all animation components
 export { default as LottieAnimation } from './LottieAnimation';
 
-// Framer Motion Animations
+// Framer Motion Animations (All)
 export {
   FadeIn,
   SlideIn,
   ScaleIn,
   StaggerContainer,
-  PageTransition
-} from './MotionAnimations';
-
-// React Spring Animations
-export {
+  PageTransition,
   HoverCard,
   AnimatedButton,
   ScrollReveal,
   NumberCounter
-} from './SpringAnimations';
+} from './MotionAnimations';
+
+// Note: React Spring components deprecated, no longer exported

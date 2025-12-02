@@ -1,52 +1,18 @@
 import { ApiService } from '../api';
 import { extractApiData, logApiResponse } from '../../utils/apiResponseHandler';
+import {
+  Category,
+  CreateCategoryData,
+  UpdateCategoryData,
+  GetCategoriesParams
+} from '../../types/category';
 
-// Category interfaces
-export interface Category {
-  _id: string;
-  name: string;
-  slug: string;
-  description?: string;
-  icon?: string;
-  color?: string;
-  parentId?: string;
-  level: number;
-  isActive: boolean;
-  sortOrder: number;
-  seoMeta: {
-    title?: string;
-    description?: string;
-    keywords?: string[];
-  };
-  featuredImage?: string;
-  children?: Category[];
-  eventCount?: number;
-  createdAt: string;
-  updatedAt: string;
-}
-
-export interface CreateCategoryData {
-  name: string;
-  slug?: string;
-  description?: string;
-  icon?: string;
-  color?: string;
-  parentId?: string;
-  sortOrder?: number;
-  isActive?: boolean;
-  seoMeta?: {
-    title?: string;
-    description?: string;
-    keywords?: string[];
-  };
-  featuredImage?: string;
-}
-
-export interface UpdateCategoryData extends Partial<CreateCategoryData> {}
+// Re-export types for backward compatibility
+export type { Category, CreateCategoryData, UpdateCategoryData };
 
 const categoriesAPI = {
   // Get all categories (tree structure or flat)
-  getAllCategories: async (params?: { tree?: boolean; includeInactive?: boolean }) => {
+  getAllCategories: async (params?: GetCategoriesParams): Promise<Category[]> => {
     try {
       const response = await ApiService.get('/categories', { params });
       logApiResponse('GET /categories', response);
@@ -58,7 +24,7 @@ const categoriesAPI = {
   },
 
   // Get single category by ID or slug
-  getCategoryById: async (id: string) => {
+  getCategoryById: async (id: string): Promise<Category> => {
     try {
       const response = await ApiService.get(`/categories/${id}`);
       logApiResponse(`GET /categories/${id}`, response);
@@ -70,7 +36,7 @@ const categoriesAPI = {
   },
 
   // Get root categories only
-  getRootCategories: async () => {
+  getRootCategories: async (): Promise<Category[]> => {
     try {
       const response = await ApiService.get('/categories/roots');
       logApiResponse('GET /categories/roots', response);
@@ -82,7 +48,7 @@ const categoriesAPI = {
   },
 
   // Get categories by parent ID
-  getCategoriesByParent: async (parentId: string | null) => {
+  getCategoriesByParent: async (parentId: string | null): Promise<Category[]> => {
     try {
       const response = await ApiService.get(`/categories/parent/${parentId || 'null'}`);
       logApiResponse(`GET /categories/parent/${parentId || 'null'}`, response);
@@ -94,7 +60,7 @@ const categoriesAPI = {
   },
 
   // Search categories
-  searchCategories: async (query: string, limit?: number) => {
+  searchCategories: async (query: string, limit?: number): Promise<Category[]> => {
     try {
       const response = await ApiService.get('/categories/search', {
         params: { q: query, limit }
@@ -108,7 +74,7 @@ const categoriesAPI = {
   },
 
   // Admin only: Create new category
-  createCategory: async (categoryData: CreateCategoryData) => {
+  createCategory: async (categoryData: CreateCategoryData): Promise<Category> => {
     try {
       const response = await ApiService.post('/categories', categoryData);
       logApiResponse('POST /categories', response);
@@ -120,7 +86,7 @@ const categoriesAPI = {
   },
 
   // Admin only: Update category
-  updateCategory: async (id: string, categoryData: UpdateCategoryData) => {
+  updateCategory: async (id: string, categoryData: UpdateCategoryData): Promise<Category> => {
     try {
       const response = await ApiService.put(`/categories/${id}`, categoryData);
       logApiResponse(`PUT /categories/${id}`, response);

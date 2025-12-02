@@ -12,8 +12,8 @@ export default defineConfig({
       registerType: 'autoUpdate',
       includeAssets: ['favicon.ico', 'apple-touch-icon.svg', 'robots.txt'],
       manifest: {
-        name: 'Gema - Event Management Platform',
-        short_name: 'Gema',
+        name: 'Kidrove - Event Management Platform',
+        short_name: 'Kidrove',
         description: 'Discover and book amazing events in your area',
         theme_color: '#3B82F6',
         background_color: '#ffffff',

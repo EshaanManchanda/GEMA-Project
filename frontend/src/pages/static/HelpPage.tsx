@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { motion } from 'framer-motion';
 import { FiSearch, FiChevronRight, FiPhone, FiMail, FiMessageSquare, FiHelpCircle } from 'react-icons/fi';
 import SEO from '@/components/common/SEO';
+import { getAppNameFull, getContactEmail } from '../../utils/brandConfig';
 
 const HelpPage: React.FC = () => {
   // Animation variants
@@ -140,8 +141,8 @@ const HelpPage: React.FC = () => {
   return (
     <>
       <SEO
-        title="Help & Support - Gema Events"
-        description="Get help and support for Gema Events. Find guides for booking kids activities, managing your account, payments, and get quick answers to common questions."
+        title={`Help & Support - ${getAppNameFull()}`}
+        description={`Get help and support for ${getAppNameFull()}. Find guides for booking kids activities, managing your account, payments, and get quick answers to common questions.`}
         keywords={['help', 'support', 'gema events help', 'customer service', 'booking help', 'user guide']}
         breadcrumbs={breadcrumbs}
       />
@@ -155,7 +156,7 @@ const HelpPage: React.FC = () => {
         {/* Header */}
         <motion.div variants={itemVariants} className="text-center mb-12">
           <h1 className="text-4xl md:text-5xl font-bold mb-4 text-gray-800">How Can We Help You?</h1>
-          <p className="text-gray-600 max-w-2xl mx-auto">Find answers to your questions and learn how to get the most out of Gema Events.</p>
+          <p className="text-gray-600 max-w-2xl mx-auto">Find answers to your questions and learn how to get the most out of {getAppNameFull()}.</p>
         </motion.div>
 
         {/* Search Bar */}
@@ -249,7 +250,7 @@ const HelpPage: React.FC = () => {
               </div>
               <h3 className="text-xl font-semibold mb-2 text-gray-800">Email Support</h3>
               <p className="text-gray-600 mb-4">Send us a detailed message</p>
-              <p className="text-blue-600 font-medium">support@gemaevents.com</p>
+              <p className="text-blue-600 font-medium">{getContactEmail()}</p>
               <p className="text-gray-500 text-sm mt-2">Response within 24 hours</p>
             </div>
             

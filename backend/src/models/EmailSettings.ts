@@ -1,4 +1,5 @@
 import mongoose, { Document, Schema, Model } from 'mongoose';
+import { getBrandConfig } from '../utils/brandConfig';
 
 export interface IEmailSettings extends Document {
   smtpHost: string;
@@ -31,7 +32,7 @@ const EmailSettingsSchema = new Schema<IEmailSettings>(
     },
     smtpUser: {
       type: String,
-      default: 'notifications@gemaevents.com'
+      default: () => getBrandConfig().contactEmail
     },
     smtpPassword: {
       type: String,
@@ -44,15 +45,15 @@ const EmailSettingsSchema = new Schema<IEmailSettings>(
     },
     senderName: {
       type: String,
-      default: 'Gema Events'
+      default: () => getBrandConfig().appNameFull
     },
     senderEmail: {
       type: String,
-      default: 'no-reply@gemaevents.com'
+      default: () => getBrandConfig().contactEmail
     },
     welcomeEmailTemplate: {
       type: String,
-      default: '<h1>Welcome to Gema Events!</h1><p>Thank you for joining our platform.</p>'
+      default: () => `<h1>Welcome to ${getBrandConfig().appNameFull}!</h1><p>Thank you for joining our platform.</p>`
     },
     bookingConfirmationTemplate: {
       type: String,

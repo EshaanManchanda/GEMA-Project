@@ -4,8 +4,11 @@ export interface ICategory extends Document {
   name: string;
   slug: string;
   description?: string;
-  icon?: string;
+  icon?: string; // Legacy field for backward compatibility
+  iconAsset?: mongoose.Types.ObjectId; // MediaAsset reference
   color?: string;
+  featuredImage?: string; // Legacy field for backward compatibility
+  featuredImageAsset?: mongoose.Types.ObjectId; // MediaAsset reference
   parentId?: mongoose.Types.ObjectId;
   level: number;
   isActive: boolean;
@@ -15,11 +18,15 @@ export interface ICategory extends Document {
     description?: string;
     keywords?: string[];
   };
-  featuredImage?: string;
   children?: ICategory[];
   eventCount?: number;
   createdAt: Date;
   updatedAt: Date;
+
+  // Virtual fields
+  order: number; // Alias for sortOrder
+  seo: any; // Alias for seoMeta
+  parent: any; // Populated parentId
 
   // Methods
   getFullPath(): string;
@@ -54,12 +61,11 @@ const categorySchema = new Schema<ICategory>(
     },
     icon: {
       type: String,
-      validate: {
-        validator: function(v: string) {
-          return !v || /^[a-zA-Z-]+$/.test(v); // FontAwesome icon names
-        },
-        message: 'Icon must be a valid FontAwesome icon name',
-      },
+      // Legacy field - no strict validation for backward compatibility (emojis, etc.)
+    },
+    iconAsset: {
+      type: Schema.Types.ObjectId,
+      ref: 'MediaAsset',
     },
     color: {
       type: String,
@@ -104,6 +110,11 @@ const categorySchema = new Schema<ICategory>(
     },
     featuredImage: {
       type: String,
+      // Legacy field - backward compatibility
+    },
+    featuredImageAsset: {
+      type: Schema.Types.ObjectId,
+      ref: 'MediaAsset',
     },
     eventCount: {
       type: Number,
@@ -114,10 +125,15 @@ const categorySchema = new Schema<ICategory>(
   {
     timestamps: true,
     toJSON: {
+      virtuals: true,
       transform: function (doc, ret: any) {
         delete ret.__v;
+        delete ret.id; // Remove duplicate id field from virtuals
         return ret;
       },
+    },
+    toObject: {
+      virtuals: true,
     },
   }
 );
@@ -158,6 +174,29 @@ categorySchema.pre('save', async function (next) {
 categorySchema.virtual('fullPath').get(function () {
   return this.getFullPath();
 });
+
+// Virtual field aliases for backward compatibility
+categorySchema.virtual('order')
+  .get(function () {
+    return this.sortOrder;
+  })
+  .set(function (value: number) {
+    this.sortOrder = value;
+  });
+
+categorySchema.virtual('seo')
+  .get(function () {
+    return this.seoMeta;
+  })
+  .set(function (value: any) {
+    this.seoMeta = value;
+  });
+
+categorySchema.virtual('parent')
+  .get(function () {
+    // This will be populated by the controller when needed
+    return this.populated('parentId') || this.parentId;
+  });
 
 // Method to get full category path
 categorySchema.methods.getFullPath = async function (): Promise<string> {

@@ -1,6 +1,7 @@
 import React from 'react';
 import { motion } from 'framer-motion';
 import SEO from '@/components/common/SEO';
+import { getAppNameFull, getContactEmail } from '../../utils/brandConfig';
 
 const PrivacyPage: React.FC = () => {
   // Animation variants
@@ -36,8 +37,8 @@ const PrivacyPage: React.FC = () => {
   return (
     <>
       <SEO
-        title="Privacy Policy - Gema Events"
-        description="Learn about Gema Events privacy policy and how we protect your personal information. Understand our data collection, usage, and security practices for kids activities platform."
+        title={`Privacy Policy - ${getAppNameFull()}`}
+        description={`Learn about ${getAppNameFull()} privacy policy and how we protect your personal information. Understand our data collection, usage, and security practices for kids activities platform.`}
         keywords={['privacy policy', 'data protection', 'gema events privacy', 'user privacy', 'data security']}
         breadcrumbs={breadcrumbs}
       />
@@ -58,7 +59,7 @@ const PrivacyPage: React.FC = () => {
         <motion.div variants={itemVariants} className="mb-10">
           <div className="bg-white rounded-lg shadow-md p-8">
             <p className="text-gray-600 mb-4">
-              At Gema Events, we take your privacy seriously. This Privacy Policy explains how we collect, use, disclose, and safeguard your information when you visit our website and use our services. Please read this privacy policy carefully. If you do not agree with the terms of this privacy policy, please do not access the site.
+              At {getAppNameFull()}, we take your privacy seriously. This Privacy Policy explains how we collect, use, disclose, and safeguard your information when you visit our website and use our services. Please read this privacy policy carefully. If you do not agree with the terms of this privacy policy, please do not access the site.
             </p>
             <p className="text-gray-600">
               We reserve the right to make changes to this Privacy Policy at any time and for any reason. We will alert you about any changes by updating the "Last Updated" date of this Privacy Policy. You are encouraged to periodically review this Privacy Policy to stay informed of updates. You will be deemed to have been made aware of, will be subject to, and will be deemed to have accepted the changes in any revised Privacy Policy by your continued use of the website after the date such revised Privacy Policy is posted.
@@ -212,10 +213,10 @@ const PrivacyPage: React.FC = () => {
               If you have questions or comments about this Privacy Policy, please contact us at:
             </p>
             <div className="text-gray-600">
-              <p>Gema Events</p>
+              <p>{getAppNameFull()}</p>
               <p>123 Event Street, Suite 200</p>
               <p>New York, NY 10001</p>
-              <p>Email: privacy@gemaevents.com</p>
+              <p>Email: {getContactEmail()}</p>
               <p>Phone: +1 (555) 123-4567</p>
             </div>
           </div>

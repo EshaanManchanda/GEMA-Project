@@ -2,9 +2,17 @@
   "permissions": {
     "allow": [
       "Bash(cat:*)",
-      "Bash(find:*)"
+      "Bash(find:*)",
+      "Bash(npm ls:*)",
+      "Bash(dir:*)",
+      "Bash(findstr:*)",
+      "Bash(test:*)"
     ],
     "deny": [],
     "ask": []
-  }
+  },
+  "enabledMcpjsonServers": [
+    "gema-mcp-server"
+  ],
+  "enableAllProjectMcpServers": true
 }

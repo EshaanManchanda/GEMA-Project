@@ -137,7 +137,11 @@ export default function ReviewCarouselSwiper() {
   const enableLoop = reviews.length >= 6;
   
   return (
-    <section className="w-full py-20 bg-gray-50">
+    <section className="w-full py-20" style={{
+      backgroundImage: 'url(/assets/images/review-background.png)',
+      backgroundSize: 'cover',
+      backgroundPosition: 'center'
+    }}>
       <div className="max-w-screen-xl mx-auto px-6">
         <div className="text-center mb-12">
           <div className="inline-block mb-4 px-4 py-2 rounded-full" style={{ backgroundColor: 'rgba(0, 142, 199, 0.1)' }}>

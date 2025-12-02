@@ -1,5 +1,6 @@
 import nodemailer from 'nodemailer';
 import { config } from '../config/index';
+import { getBrandConfig, getTeamSignature, getContactEmail } from '../utils/brandConfig';
 
 export interface EmailOptions {
   to: string | string[];
@@ -173,6 +174,13 @@ class EmailService {
   }
 
   /**
+   * Get brand configuration
+   */
+  private getBrand() {
+    return getBrandConfig();
+  }
+
+  /**
    * Send a generic email
    */
   async sendEmail(options: EmailOptions): Promise<void> {
@@ -198,13 +206,16 @@ class EmailService {
    * Send email verification OTP
    */
   async sendVerificationEmail(options: VerificationEmailOptions): Promise<void> {
+    const brand = this.getBrand();
+    console.log(brand);
+
     const html = `
       <!DOCTYPE html>
       <html>
       <head>
         <meta charset="utf-8">
         <meta name="viewport" content="width=device-width, initial-scale=1.0">
-        <title>Verify Your Email - Gema</title>
+        <title>Verify Your Email - ${brand.appName}</title>
         <style>
           body { font-family: Arial, sans-serif; line-height: 1.6; color: #333; }
           .container { max-width: 600px; margin: 0 auto; padding: 20px; }
@@ -218,11 +229,11 @@ class EmailService {
       <body>
         <div class="container">
           <div class="header">
-            <h1>Welcome to Gema!</h1>
+            <h1>Welcome to ${brand.appName}!</h1>
           </div>
           <div class="content">
             <h2>Hi ${options.firstName}!</h2>
-            <p>Thank you for registering with Gema, your premier event management platform.</p>
+            <p>Thank you for registering with ${brand.appNameFull}, your premier event management platform.</p>
             <p>To complete your registration and start discovering amazing events, please verify your email address using the OTP code below:</p>
             <div style="text-align: center;">
               <div class="otp-code">${options.otp}</div>
@@ -235,10 +246,10 @@ class EmailService {
                 <li>Enter this code exactly as shown above</li>
               </ul>
             </div>
-            <p>If you didn't create an account with Gema, please ignore this email.</p>
+            <p>If you didn't create an account with ${brand.appName}, please ignore this email.</p>
           </div>
           <div class="footer">
-            <p>Best regards,<br>The Gema Team</p>
+            <p>Best regards,<br>${getTeamSignature()}</p>
             <p><small>This is an automated email. Please do not reply to this message.</small></p>
           </div>
         </div>
@@ -248,22 +259,22 @@ class EmailService {
 
     const text = `
       Hi ${options.firstName}!
-      
-      Thank you for registering with Gema. To complete your registration, please verify your email address using the OTP code below:
-      
+
+      Thank you for registering with ${brand.appNameFull}. To complete your registration, please verify your email address using the OTP code below:
+
       OTP Code: ${options.otp}
-      
+
       This OTP will expire in 10 minutes. Do not share this code with anyone.
-      
-      If you didn't create an account with Gema, please ignore this email.
-      
+
+      If you didn't create an account with ${brand.appName}, please ignore this email.
+
       Best regards,
-      The Gema Team
+      ${getTeamSignature()}
     `;
 
     await this.sendEmail({
       to: options.to,
-      subject: 'Email Verification OTP - Gema',
+      subject: `Email Verification OTP - ${brand.appName}`,
       html,
       text,
     });
@@ -273,13 +284,15 @@ class EmailService {
    * Send password reset email with OTP
    */
   async sendPasswordResetEmail(options: PasswordResetEmailOptions): Promise<void> {
+    const brand = this.getBrand();
+
     const html = `
       <!DOCTYPE html>
       <html>
       <head>
         <meta charset="utf-8">
         <meta name="viewport" content="width=device-width, initial-scale=1.0">
-        <title>Reset Your Password - Gema</title>
+        <title>Reset Your Password - ${brand.appName}</title>
         <style>
           body { font-family: Arial, sans-serif; line-height: 1.6; color: #333; }
           .container { max-width: 600px; margin: 0 auto; padding: 20px; }
@@ -298,7 +311,7 @@ class EmailService {
           </div>
           <div class="content">
             <h2>Hi ${options.firstName}!</h2>
-            <p>We received a request to reset the password for your Gema account.</p>
+            <p>We received a request to reset the password for your ${brand.appName} account.</p>
             <p>If you made this request, use the following verification code to reset your password:</p>
             <div class="otp-box">
               <p style="margin: 0; color: #666; font-size: 14px;">Your verification code is:</p>
@@ -317,7 +330,7 @@ class EmailService {
             <p>If you continue to have problems or didn't request this reset, please contact our support team.</p>
           </div>
           <div class="footer">
-            <p>Best regards,<br>The Gema Team</p>
+            <p>Best regards,<br>${getTeamSignature()}</p>
             <p><small>This is an automated email. Please do not reply to this message.</small></p>
           </div>
         </div>
@@ -328,7 +341,7 @@ class EmailService {
     const text = `
       Hi ${options.firstName}!
 
-      We received a request to reset the password for your Gema account.
+      We received a request to reset the password for your ${brand.appName} account.
 
       If you made this request, use the following verification code to reset your password:
 
@@ -340,12 +353,12 @@ class EmailService {
       If you didn't request this password reset, please ignore this email.
 
       Best regards,
-      The Gema Team
+      ${getTeamSignature()}
     `;
 
     await this.sendEmail({
       to: options.to,
-      subject: 'Reset Your Password - Gema',
+      subject: `Reset Your Password - ${brand.appName}`,
       html,
       text,
     });
@@ -355,6 +368,7 @@ class EmailService {
    * Send order confirmation email
    */
   async sendOrderConfirmationEmail(options: OrderConfirmationEmailOptions): Promise<void> {
+    const brand = this.getBrand();
     const itemsHtml = options.items.map(item => `
       <tr>
         <td style="padding: 10px; border-bottom: 1px solid #eee;">${item.eventTitle}</td>
@@ -370,7 +384,7 @@ class EmailService {
       <head>
         <meta charset="utf-8">
         <meta name="viewport" content="width=device-width, initial-scale=1.0">
-        <title>Order Confirmation - Gema</title>
+        <title>Order Confirmation - ${brand.appName}</title>
         <style>
           body { font-family: Arial, sans-serif; line-height: 1.6; color: #333; }
           .container { max-width: 600px; margin: 0 auto; padding: 20px; }
@@ -426,7 +440,7 @@ class EmailService {
             <p>If you have any questions about your order, please don't hesitate to contact our support team.</p>
           </div>
           <div class="footer">
-            <p>Best regards,<br>The Gema Team</p>
+            <p>Best regards,<br>${getTeamSignature()}</p>
             <p><small>Order confirmation #${options.orderNumber}</small></p>
           </div>
         </div>
@@ -445,6 +459,7 @@ class EmailService {
    * Send tickets email
    */
   async sendTicketsEmail(options: TicketEmailOptions): Promise<void> {
+    const brand = this.getBrand();
     const ticketsHtml = options.tickets.map(ticket => `
       <div style="border: 2px solid #007bff; border-radius: 8px; padding: 20px; margin: 15px 0; background: white;">
         <h3 style="margin-top: 0; color: #007bff;">${ticket.eventTitle}</h3>
@@ -466,7 +481,7 @@ class EmailService {
       <head>
         <meta charset="utf-8">
         <meta name="viewport" content="width=device-width, initial-scale=1.0">
-        <title>Your Tickets - Gema</title>
+        <title>Your Tickets - ${brand.appName}</title>
         <style>
           body { font-family: Arial, sans-serif; line-height: 1.6; color: #333; }
           .container { max-width: 600px; margin: 0 auto; padding: 20px; }
@@ -501,7 +516,7 @@ class EmailService {
             <p>We hope you have an amazing time at your events! If you need any assistance, our support team is here to help.</p>
           </div>
           <div class="footer">
-            <p>Best regards,<br>The Gema Team</p>
+            <p>Best regards,<br>${getTeamSignature()}</p>
             <p><small>Keep this email safe - it contains your entry tickets!</small></p>
           </div>
         </div>
@@ -511,7 +526,7 @@ class EmailService {
 
     await this.sendEmail({
       to: options.to,
-      subject: 'Your Event Tickets - Gema',
+      subject: `Your Event Tickets - ${brand.appName}`,
       html,
     });
   }
@@ -520,6 +535,7 @@ class EmailService {
    * Send vendor booking notification email
    */
   async sendVendorBookingNotificationEmail(options: VendorBookingNotificationOptions): Promise<void> {
+    const brand = this.getBrand();
     // Format participant information
     const participantsHtml = options.participants.map((participant, index) => {
       // Build registration data section if available
@@ -594,7 +610,7 @@ class EmailService {
       <head>
         <meta charset="utf-8">
         <meta name="viewport" content="width=device-width, initial-scale=1.0">
-        <title>New Booking Received - Gema</title>
+        <title>New Booking Received - ${brand.appName}</title>
         <style>
           body { font-family: Arial, sans-serif; line-height: 1.6; color: #333; }
           .container { max-width: 700px; margin: 0 auto; padding: 20px; }
@@ -668,7 +684,7 @@ class EmailService {
             </div>
           </div>
           <div class="footer">
-            <p>Best regards,<br>The Gema Team</p>
+            <p>Best regards,<br>${getTeamSignature()}</p>
             <p><small>Booking notification #${options.orderNumber}</small></p>
           </div>
         </div>
@@ -687,12 +703,13 @@ class EmailService {
    * Send admin notification email
    */
   async sendAdminNotification(subject: string, message: string, data?: any): Promise<void> {
+    const brand = this.getBrand();
     const html = `
       <!DOCTYPE html>
       <html>
       <head>
         <meta charset="utf-8">
-        <title>Admin Notification - Gema</title>
+        <title>Admin Notification - ${brand.appName}</title>
         <style>
           body { font-family: Arial, sans-serif; line-height: 1.6; color: #333; }
           .container { max-width: 600px; margin: 0 auto; padding: 20px; }
@@ -737,6 +754,7 @@ class EmailService {
    * Send employee welcome email with login credentials
    */
   async sendEmployeeWelcomeEmail(options: EmployeeWelcomeEmailOptions): Promise<void> {
+    const brand = this.getBrand();
     const loginUrl = `${config.frontendUrl}/login`;
 
     const html = `
@@ -745,7 +763,7 @@ class EmailService {
       <head>
         <meta charset="utf-8">
         <meta name="viewport" content="width=device-width, initial-scale=1.0">
-        <title>Welcome to the Team - Gema</title>
+        <title>Welcome to the Team - {brand.appName}</title>
         <style>
           body { font-family: Arial, sans-serif; line-height: 1.6; color: #333; }
           .container { max-width: 600px; margin: 0 auto; padding: 20px; }
@@ -770,7 +788,7 @@ class EmailService {
           </div>
           <div class="content">
             <h2>Hi ${options.firstName} ${options.lastName}!</h2>
-            <p>Welcome to <strong>${options.vendorName}</strong>! Your employer has created an employee account for you on Gema.</p>
+            <p>Welcome to <strong>${options.vendorName}</strong>! Your employer has created an employee account for you on ${brand.appName}.</p>
 
             <p>You have been assigned the role of <strong>${options.role.charAt(0).toUpperCase() + options.role.slice(1)}</strong>.</p>
 
@@ -814,10 +832,10 @@ class EmailService {
               </ol>
             </div>
 
-            <p>If you have any questions or need assistance, please contact your supervisor or the Gema support team.</p>
+            <p>If you have any questions or need assistance, please contact your supervisor or the ${brand.appName} support team.</p>
           </div>
           <div class="footer">
-            <p>Best regards,<br><strong>The Gema Team</strong></p>
+            <p>Best regards,<br><strong>${getTeamSignature()}</strong></p>
             <p><small>This is an automated email. Please do not reply to this message.</small></p>
           </div>
         </div>
@@ -828,7 +846,7 @@ class EmailService {
     const text = `
       Welcome to the Team, ${options.firstName} ${options.lastName}!
 
-      Welcome to ${options.vendorName}! Your employer has created an employee account for you on Gema.
+      Welcome to ${options.vendorName}! Your employer has created an employee account for you on ${brand.appName}.
 
       Role: ${options.role.charAt(0).toUpperCase() + options.role.slice(1)}
 
@@ -854,12 +872,12 @@ class EmailService {
       If you have any questions, please contact your supervisor.
 
       Best regards,
-      The Gema Team
+      ${getTeamSignature()}
     `;
 
     await this.sendEmail({
       to: options.to,
-      subject: `Welcome to ${options.vendorName} - Your Gema Employee Account`,
+      subject: `Welcome to ${options.vendorName} - Your ${brand.appName} Employee Account`,
       html,
       text,
     });
@@ -869,7 +887,8 @@ class EmailService {
    * Send contact form notification to support team
    */
   async sendContactNotification(options: ContactNotificationOptions): Promise<void> {
-    const supportEmail = 'support@gemaevents.com';
+    const brand = this.getBrand();
+    const supportEmail = getContactEmail();
 
     const html = `
       <!DOCTYPE html>
@@ -877,7 +896,7 @@ class EmailService {
       <head>
         <meta charset="utf-8">
         <meta name="viewport" content="width=device-width, initial-scale=1.0">
-        <title>New Contact Form Submission - Gema</title>
+        <title>New Contact Form Submission - ${brand.appName}</title>
         <style>
           body { font-family: Arial, sans-serif; line-height: 1.6; color: #333; }
           .container { max-width: 600px; margin: 0 auto; padding: 20px; }
@@ -898,7 +917,7 @@ class EmailService {
             <h1>📧 New Contact Form Submission</h1>
           </div>
           <div class="content">
-            <p>A new contact form has been submitted on the Gema Events website.</p>
+            <p>A new contact form has been submitted on the ${brand.appNameFull} website.</p>
 
             <div class="info-box">
               <h3 style="margin-top: 0; color: #667eea;">Contact Information</h3>
@@ -930,7 +949,7 @@ class EmailService {
             </p>
           </div>
           <div class="footer">
-            <p>This is an automated notification from Gema Events Contact Form</p>
+            <p>This is an automated notification from ${brand.appNameFull} Contact Form</p>
             <p><small>Submitted on ${options.submittedAt.toLocaleDateString()}</small></p>
           </div>
         </div>
@@ -954,7 +973,7 @@ class EmailService {
 
       ACTION REQUIRED: Please respond to this inquiry within 24 hours.
 
-      This is an automated notification from Gema Events Contact Form.
+      This is an automated notification from ${brand.appNameFull} Contact Form.
     `;
 
     await this.sendEmail({
@@ -969,7 +988,8 @@ class EmailService {
    * Send partnership inquiry notification to support team
    */
   async sendPartnershipNotification(options: PartnershipNotificationOptions): Promise<void> {
-    const supportEmail = 'support@gemaevents.com';
+    const brand = this.getBrand();
+    const supportEmail = getContactEmail();
 
     const partnershipTypeLabels: Record<string, string> = {
       vendor: 'Vendor Partnership',
@@ -985,7 +1005,7 @@ class EmailService {
       <head>
         <meta charset="utf-8">
         <meta name="viewport" content="width=device-width, initial-scale=1.0">
-        <title>New Partnership Inquiry - Gema</title>
+        <title>New Partnership Inquiry - ${brand.appName}</title>
         <style>
           body { font-family: Arial, sans-serif; line-height: 1.6; color: #333; }
           .container { max-width: 600px; margin: 0 auto; padding: 20px; }
@@ -1007,7 +1027,7 @@ class EmailService {
             <h1>🤝 New Partnership Inquiry</h1>
           </div>
           <div class="content">
-            <p>A new partnership inquiry has been submitted on the Gema Events website.</p>
+            <p>A new partnership inquiry has been submitted on the ${brand.appNameFull} website.</p>
 
             <div style="margin: 20px 0;">
               <span class="badge">${partnershipTypeLabels[options.partnershipType] || options.partnershipType}</span>
@@ -1061,7 +1081,7 @@ class EmailService {
             </p>
           </div>
           <div class="footer">
-            <p>This is an automated notification from Gema Events Partnership Form</p>
+            <p>This is an automated notification from ${brand.appNameFull} Partnership Form</p>
             <p><small>Submitted on ${options.submittedAt.toLocaleDateString()}</small></p>
           </div>
         </div>
@@ -1089,7 +1109,7 @@ class EmailService {
 
       ACTION REQUIRED: Please review this partnership inquiry and respond within 48 hours.
 
-      This is an automated notification from Gema Events Partnership Form.
+      This is an automated notification from ${brand.appNameFull} Partnership Form.
     `;
 
     await this.sendEmail({
@@ -1104,6 +1124,7 @@ class EmailService {
    * Send partnership confirmation email to the applicant
    */
   async sendPartnershipConfirmation(options: PartnershipConfirmationOptions): Promise<void> {
+    const brand = this.getBrand();
     const partnershipTypeLabels: Record<string, string> = {
       vendor: 'Vendor Partnership',
       influencer: 'Influencer Partnership',
@@ -1118,7 +1139,7 @@ class EmailService {
       <head>
         <meta charset="utf-8">
         <meta name="viewport" content="width=device-width, initial-scale=1.0">
-        <title>Partnership Inquiry Received - Gema</title>
+        <title>Partnership Inquiry Received - ${brand.appName}</title>
         <style>
           body { font-family: Arial, sans-serif; line-height: 1.6; color: #333; }
           .container { max-width: 600px; margin: 0 auto; padding: 20px; }
@@ -1138,7 +1159,7 @@ class EmailService {
           <div class="content">
             <p>Dear ${options.name},</p>
 
-            <p>Thank you for your interest in partnering with Gema Events! We have successfully received your ${partnershipTypeLabels[options.partnershipType].toLowerCase()} inquiry.</p>
+            <p>Thank you for your interest in partnering with ${brand.appNameFull}! We have successfully received your ${partnershipTypeLabels[options.partnershipType].toLowerCase()} inquiry.</p>
 
             <div class="info-box">
               <h3 style="margin-top: 0; color: #28a745;">What Happens Next?</h3>
@@ -1155,13 +1176,13 @@ class EmailService {
               <strong>📧 Keep an eye on your inbox:</strong> Our team will reach out to you at <strong>${options.email}</strong>
             </p>
 
-            <p>In the meantime, feel free to explore more about Gema Events at <a href="https://gemaevents.com">gemaevents.com</a>.</p>
+            <p>In the meantime, feel free to explore more about ${brand.appNameFull}.</p>
 
             <p>Best regards,<br>
-            <strong>The Gema Events Partnership Team</strong></p>
+            <strong>The ${brand.appName} Partnership Team</strong></p>
           </div>
           <div class="footer">
-            <p>Gema Events - Creating Unforgettable Experiences</p>
+            <p>${brand.appNameFull} - Creating Unforgettable Experiences</p>
             <p><small>This is an automated confirmation email</small></p>
           </div>
         </div>
@@ -1174,7 +1195,7 @@ class EmailService {
 
       Dear ${options.name},
 
-      Thank you for your interest in partnering with Gema Events! We have successfully received your ${partnershipTypeLabels[options.partnershipType].toLowerCase()} inquiry.
+      Thank you for your interest in partnering with ${brand.appNameFull}! We have successfully received your ${partnershipTypeLabels[options.partnershipType].toLowerCase()} inquiry.
 
       WHAT HAPPENS NEXT?
 
@@ -1186,19 +1207,19 @@ class EmailService {
 
       Keep an eye on your inbox - our team will reach out to you at ${options.email}
 
-      In the meantime, feel free to explore more about Gema Events at https://gemaevents.com
+      In the meantime, feel free to explore more about ${brand.appNameFull}
 
       Best regards,
-      The Gema Events Partnership Team
+      The ${brand.appName} Partnership Team
 
       ---
-      Gema Events - Creating Unforgettable Experiences
+      ${brand.appNameFull} - Creating Unforgettable Experiences
       This is an automated confirmation email
     `;
 
     await this.sendEmail({
       to: options.email,
-      subject: 'Partnership Inquiry Received - Gema Events',
+      subject: `Partnership Inquiry Received - ${brand.appNameFull}`,
       html,
       text,
     });
@@ -1208,13 +1229,14 @@ class EmailService {
    * Send order cancellation confirmation email (customer-initiated)
    */
   async sendCancellationConfirmationEmail(options: CancellationConfirmationEmailOptions): Promise<void> {
+    const brand = this.getBrand();
     const html = `
       <!DOCTYPE html>
       <html>
       <head>
         <meta charset="utf-8">
         <meta name="viewport" content="width=device-width, initial-scale=1.0">
-        <title>Order Cancellation Confirmation - Gema</title>
+        <title>Order Cancellation Confirmation - ${brand.appName}</title>
         <style>
           body { font-family: Arial, sans-serif; line-height: 1.6; color: #333; }
           .container { max-width: 600px; margin: 0 auto; padding: 20px; }
@@ -1272,7 +1294,7 @@ class EmailService {
             <p>If you have any questions about your refund, please don't hesitate to contact our support team.</p>
           </div>
           <div class="footer">
-            <p>Best regards,<br>The Gema Team</p>
+            <p>Best regards,<br>${getTeamSignature()}</p>
             <p><small>Order cancellation #${options.orderNumber}</small></p>
           </div>
         </div>
@@ -1291,6 +1313,7 @@ class EmailService {
    * Send event cancellation notification email (vendor/admin cancelled event)
    */
   async sendEventCancellationEmail(options: EventCancellationEmailOptions): Promise<void> {
+    const brand = this.getBrand();
     const eventDateStr = options.eventDate ? new Date(options.eventDate).toLocaleDateString() : 'N/A';
 
     const html = `
@@ -1299,7 +1322,7 @@ class EmailService {
       <head>
         <meta charset="utf-8">
         <meta name="viewport" content="width=device-width, initial-scale=1.0">
-        <title>Event Cancellation Notice - Gema</title>
+        <title>Event Cancellation Notice - ${brand.appName}</title>
         <style>
           body { font-family: Arial, sans-serif; line-height: 1.6; color: #333; }
           .container { max-width: 600px; margin: 0 auto; padding: 20px; }
@@ -1365,7 +1388,7 @@ class EmailService {
             <p>We sincerely apologize for any inconvenience this may cause. If you have any questions, please contact our support team.</p>
           </div>
           <div class="footer">
-            <p>Best regards,<br>The Gema Team</p>
+            <p>Best regards,<br>${getTeamSignature()}</p>
             <p><small>Order #${options.orderNumber}</small></p>
           </div>
         </div>
@@ -1384,13 +1407,14 @@ class EmailService {
    * Send refund processed confirmation email
    */
   async sendRefundProcessedEmail(options: RefundProcessedEmailOptions): Promise<void> {
+    const brand = this.getBrand();
     const html = `
       <!DOCTYPE html>
       <html>
       <head>
         <meta charset="utf-8">
         <meta name="viewport" content="width=device-width, initial-scale=1.0">
-        <title>Refund Processed - Gema</title>
+        <title>Refund Processed - ${brand.appName}</title>
         <style>
           body { font-family: Arial, sans-serif; line-height: 1.6; color: #333; }
           .container { max-width: 600px; margin: 0 auto; padding: 20px; }
@@ -1423,7 +1447,7 @@ class EmailService {
             <p>Thank you for your patience. We hope to see you at future events!</p>
           </div>
           <div class="footer">
-            <p>Best regards,<br>The Gema Team</p>
+            <p>Best regards,<br>${getTeamSignature()}</p>
           </div>
         </div>
       </body>
@@ -1441,13 +1465,14 @@ class EmailService {
    * Send refund failed notification email
    */
   async sendRefundFailedEmail(options: RefundFailedEmailOptions): Promise<void> {
+    const brand = this.getBrand();
     const html = `
       <!DOCTYPE html>
       <html>
       <head>
         <meta charset="utf-8">
         <meta name="viewport" content="width=device-width, initial-scale=1.0">
-        <title>Refund Issue - Gema</title>
+        <title>Refund Issue - ${brand.appName}</title>
         <style>
           body { font-family: Arial, sans-serif; line-height: 1.6; color: #333; }
           .container { max-width: 600px; margin: 0 auto; padding: 20px; }
@@ -1476,7 +1501,7 @@ class EmailService {
             <p>We apologize for any inconvenience and appreciate your patience.</p>
           </div>
           <div class="footer">
-            <p>Best regards,<br>The Gema Team</p>
+            <p>Best regards,<br>${getTeamSignature()}</p>
             <p><small>Order #${options.orderNumber}</small></p>
           </div>
         </div>

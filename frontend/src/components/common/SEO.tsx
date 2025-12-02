@@ -1,5 +1,6 @@
 import React from 'react';
 import { Helmet } from 'react-helmet-async';
+import { getAppNameFull, getTeamName } from '../../utils/brandConfig';
 import { useLocation } from 'react-router-dom';
 import { config } from '../../config';
 
@@ -148,7 +149,7 @@ export const EventSEO: React.FC<{ event: any; breadcrumbs?: SEOProps['breadcrumb
     if (event.seoMeta?.title) {
       return event.seoMeta.title;
     }
-    return `${event.title} | Kids Events in ${event.location?.city || 'UAE'} | Gema Events`;
+    return `${event.title} | Kids Events in ${event.location?.city || 'UAE'} | ${getAppNameFull()}`;
   };
 
   const generateDescription = () => {
@@ -203,7 +204,7 @@ export const EventSEO: React.FC<{ event: any; breadcrumbs?: SEOProps['breadcrumb
       },
       organizer: {
         '@type': 'Organization',
-        name: 'Gema Events',
+        name: '${getAppNameFull()}',
         url: baseUrl
       },
       ...(event.images && event.images.length > 0 && { image: event.images }),
@@ -224,7 +225,7 @@ export const BlogSEO: React.FC<{ blog: any; breadcrumbs?: SEOProps['breadcrumbs'
   const baseUrl = import.meta.env.VITE_APP_URL || 'https://gema-events.com';
 
   const seoData: SEOProps = {
-    title: blog.seo?.metaTitle || `${blog.title} | Gema Events Blog`,
+    title: blog.seo?.metaTitle || `${blog.title} | ${getAppNameFull()} Blog`,
     description: blog.seo?.metaDescription || blog.excerpt,
     keywords: blog.seo?.metaKeywords || ['kids activities', 'events', 'UAE', 'parenting', ...blog.tags].filter(Boolean),
     canonicalUrl: blog.seo?.canonicalUrl || `${baseUrl}/blog/${blog.slug}`,
@@ -244,12 +245,12 @@ export const BlogSEO: React.FC<{ blog: any; breadcrumbs?: SEOProps['breadcrumbs'
       dateModified: blog.updatedAt,
       author: {
         '@type': 'Person',
-        name: blog.author?.name || 'Gema Events Team',
+        name: blog.author?.name || '${getAppNameFull()} Team',
         ...(blog.author?.avatar && { image: blog.author.avatar })
       },
       publisher: {
         '@type': 'Organization',
-        name: 'Gema Events',
+        name: '${getAppNameFull()}',
         logo: {
           '@type': 'ImageObject',
           url: `${baseUrl}/assets/images/logo.png`
@@ -272,7 +273,7 @@ export const CategorySEO: React.FC<{ category: any; breadcrumbs?: SEOProps['brea
   const baseUrl = import.meta.env.VITE_APP_URL || 'https://gema-events.com';
 
   const seoData: SEOProps = {
-    title: category.seoMeta?.title || `${category.name} Events for Kids | Gema Events`,
+    title: category.seoMeta?.title || `${category.name} Events for Kids | ${getAppNameFull()}`,
     description: category.seoMeta?.description || `Discover amazing ${category.name.toLowerCase()} activities and events for children in the UAE. Book now for unforgettable experiences.`,
     keywords: category.seoMeta?.keywords || ['kids activities', 'events', 'UAE', category.name.toLowerCase(), 'activities'],
     canonicalUrl: `${baseUrl}/categories/${category.slug || category._id}`,
@@ -286,7 +287,7 @@ export const VendorSEO: React.FC<{ vendor: any; breadcrumbs?: SEOProps['breadcru
   const baseUrl = import.meta.env.VITE_APP_URL || 'https://gema-events.com';
 
   const seoData: SEOProps = {
-    title: `${vendor.name} - Kids Events Vendor | Gema Events`,
+    title: `${vendor.name} - Kids Events Vendor | ${getAppNameFull()}`,
     description: vendor.description.length > 160
       ? `${vendor.description.substring(0, 157)}...`
       : vendor.description,
@@ -328,7 +329,7 @@ export const CollectionSEO: React.FC<{ collection: any; breadcrumbs?: SEOProps['
   const baseUrl = import.meta.env.VITE_APP_URL || 'https://gema-events.com';
 
   const seoData: SEOProps = {
-    title: collection.seo?.metaTitle || `${collection.title} - Kids Activities Collection | Gema Events`,
+    title: collection.seo?.metaTitle || `${collection.title} - Kids Activities Collection | ${getAppNameFull()}`,
     description: collection.seo?.metaDescription || collection.description,
     keywords: collection.seo?.metaKeywords || ['kids activities collection', collection.title, collection.category, 'UAE events'].filter(Boolean),
     canonicalUrl: collection.seo?.canonicalUrl || `${baseUrl}/collections/${collection.slug || collection._id}`,
@@ -345,7 +346,7 @@ export const CollectionSEO: React.FC<{ collection: any; breadcrumbs?: SEOProps['
       category: collection.category,
       provider: {
         '@type': 'Organization',
-        name: 'Gema Events',
+        name: '${getAppNameFull()}',
         url: baseUrl
       }
     }
@@ -376,7 +377,7 @@ export const HomeSEO: React.FC<{
   const organizationStructuredData = {
     '@context': 'https://schema.org',
     '@type': 'Organization',
-    name: 'Gema Events',
+    name: '${getAppNameFull()}',
     description: 'Discover and book amazing kids activities, events, and educational programs in the UAE',
     url: import.meta.env.VITE_APP_URL || 'https://gema-events.com',
     logo: `${import.meta.env.VITE_APP_URL || 'https://gema-events.com'}/assets/images/logo.png`,
@@ -393,7 +394,7 @@ export const HomeSEO: React.FC<{
   };
 
   const seoData: SEOProps = {
-    title: 'Gema Events - Discover Amazing Kids Activities & Events in UAE',
+    title: '${getAppNameFull()} - Discover Amazing Kids Activities & Events in UAE',
     description: 'Find and book the best kids activities, educational programs, and family events in the UAE. Safe, fun, and memorable experiences for children of all ages.',
     keywords: ['kids activities', 'events', 'UAE', 'Dubai', 'family fun', 'children', 'booking', 'education', 'entertainment'],
     structuredData: organizationStructuredData,
