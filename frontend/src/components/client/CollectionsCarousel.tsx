@@ -98,8 +98,9 @@ const CollectionsCarousel: React.FC = () => {
       const response = await collectionsAPI.getAllCollections({ limit: 20 });
       const fetchedCollections = response.collections || [];
 
-      if (import.meta.env.VITE_DEV && import.meta.env.VITE_DEBUG_API === 'true') {
+      if (import.meta.env.DEV || import.meta.env.VITE_DEBUG_API === 'true') {
         console.log('Collections fetched:', fetchedCollections.length);
+        console.log('Collections:', fetchedCollections);
       }
 
       setCollections(fetchedCollections);
@@ -243,7 +244,20 @@ const CollectionsCarousel: React.FC = () => {
                     // style={{ backgroundColor: 'var(--secondary-color, #6DB0E1)', opacity: 0.1 }}
                   >
                     <img
-                      src={item.icon}
+                      src={
+                        // Priority 1: New iconAsset (MediaAsset.url)
+                        item.iconAsset?.url ||
+                        // Priority 2: Legacy icon URL
+                        item.icon ||
+                        // Priority 3: Generate placeholder
+                        generatePlaceholder({
+                          width: 80,
+                          height: 80,
+                          text: item.title.slice(0, 2),
+                          backgroundColor: '#f0f0f0',
+                          textColor: '#666666'
+                        })
+                      }
                       alt={item.title}
                       className="h-full w-full object-contain"
                       loading="lazy"

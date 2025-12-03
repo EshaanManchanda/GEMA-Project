@@ -109,7 +109,6 @@ const CollectionDetailPage: React.FC = () => {
       setError(null);
 
       const response = await collectionsAPI.getCollectionById(id);
-      console.log('Collection response:', response);
       const collectionData = response.collection as CollectionWithEvents;
 
       if (import.meta.env.VITE_DEV && import.meta.env.VITE_DEBUG_API === 'true') {
@@ -265,10 +264,17 @@ const CollectionDetailPage: React.FC = () => {
             {/* Collection Icon */}
             <div className="flex-shrink-0">
               <div className="w-24 h-24 rounded-full p-4 flex items-center justify-center"
-                style={{ backgroundColor: 'var(--secondary-color, #6DB0E1)', opacity: 0.1 }}
+                // style={{ backgroundColor: 'var(--secondary-color, #6DB0E1)', opacity: 0.1 }}
               >
                 <img
-                  src={collection.icon}
+                  src={
+                    // Priority 1: New iconAsset (MediaAsset.url)
+                    collection.iconAsset?.url ||
+                    // Priority 2: Legacy icon URL
+                    collection.icon ||
+                    // Priority 3: Generate placeholder
+                    getPlaceholderUrl('categoryIcon', collection.title.slice(0, 2))
+                  }
                   alt={collection.title}
                   className="w-full h-full object-contain"
                   onError={(e) => {

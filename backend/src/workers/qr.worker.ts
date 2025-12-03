@@ -1,5 +1,5 @@
 import { Worker, Job } from 'bullmq';
-import { QUEUE_NAMES, bullMQConnection } from '../config/queue';
+import { QUEUE_NAMES, bullMQConnection, areQueuesEnabled } from '../config/queue';
 import logger from '../config/logger';
 import { generateQRCode, generateSecureQRData } from '../utils/qrcode';
 
@@ -13,8 +13,8 @@ export interface QRJobData {
   seatsAllocated?: number;
 }
 
-// QR Generation Worker
-const qrWorker = new Worker(
+// QR Generation Worker - only create if queues are enabled
+const qrWorker = areQueuesEnabled ? new Worker(
   QUEUE_NAMES.QR_GENERATION,
   async (job: Job<QRJobData>) => {
     const { data } = job;
@@ -61,32 +61,51 @@ const qrWorker = new Worker(
       duration: 1000, // per second
     },
   }
-);
+) : null;
 
-// Worker event handlers
-qrWorker.on('completed', (job: Job, result: any) => {
-  logger.info(`QR generation completed for job ${job.id}`, {
-    ticketNumber: result.ticketNumber,
-    duration: Date.now() - (job.processedOn || Date.now()),
+// Worker event handlers - only attach if worker was created
+if (qrWorker) {
+  qrWorker.on('completed', (job: Job, result: any) => {
+    logger.info(`QR generation completed for job ${job.id}`, {
+      ticketNumber: result.ticketNumber,
+      duration: Date.now() - (job.processedOn || Date.now()),
+    });
   });
-});
 
-qrWorker.on('failed', (job: Job | undefined, error: Error) => {
-  logger.error(`QR generation failed for job ${job?.id}:`, {
-    error: error.message,
-    data: job?.data,
+  qrWorker.on('failed', (job: Job | undefined, error: Error) => {
+    logger.error(`QR generation failed for job ${job?.id}:`, {
+      error: error.message,
+      data: job?.data,
+    });
   });
-});
 
-qrWorker.on('error', (error: Error) => {
-  logger.error('QR worker error:', error);
-});
+  qrWorker.on('error', (error: Error) => {
+    // Distinguish connection errors from job processing errors
+    const errorMessage = error.message || '';
+
+    if (errorMessage.includes('isn\'t writeable') ||
+        errorMessage.includes('enableOfflineQueue') ||
+        errorMessage.includes('Connection is closed') ||
+        errorMessage.includes('ECONNREFUSED')) {
+      logger.warn('QR worker: Redis connection issue detected, waiting for reconnection...', {
+        error: errorMessage
+      });
+      // Don't exit - let retry strategy handle reconnection
+    } else {
+      logger.error('QR worker error:', error);
+    }
+  });
+}
 
 // Graceful shutdown
 const gracefulShutdown = async () => {
-  logger.info('Shutting down QR worker...');
-  await qrWorker.close();
-  logger.info('QR worker shut down successfully');
+  if (qrWorker) {
+    logger.info('Shutting down QR worker...');
+    await qrWorker.close();
+    logger.info('QR worker shut down successfully');
+  } else {
+    logger.info('QR worker was not initialized (Redis disabled)');
+  }
 };
 
 process.on('SIGINT', gracefulShutdown);

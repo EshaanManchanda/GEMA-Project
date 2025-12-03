@@ -17,6 +17,18 @@ const router = Router();
  * PUBLIC ROUTES - No authentication required
  */
 
+// Helper function to generate SVG placeholder
+const generatePlaceholder = (text: string = 'Image', width: number = 400, height: number = 300): string => {
+  return `
+    <svg width="${width}" height="${height}" xmlns="http://www.w3.org/2000/svg">
+      <rect width="100%" height="100%" fill="#f0f0f0"/>
+      <text x="50%" y="50%" text-anchor="middle" dy="0.3em"
+            font-family="Arial, sans-serif" font-size="${Math.min(width, height) / 10}"
+            fill="#666666">${text}</text>
+    </svg>
+  `.trim();
+};
+
 // Serve files by UUID (public access)
 router.get('/file/:uuid', async (req: Request, res: Response, next: NextFunction) => {
   try {
@@ -26,12 +38,24 @@ router.get('/file/:uuid', async (req: Request, res: Response, next: NextFunction
     const asset = await MediaAsset.findOne({ uuid });
 
     if (!asset) {
-      return next(new AppError('File not found', 404));
+      // Return placeholder SVG instead of 404
+      const placeholder = generatePlaceholder('Not Found', 400, 300);
+      res.setHeader('Content-Type', 'image/svg+xml');
+      res.setHeader('Cache-Control', 'public, max-age=300'); // 5 min cache for placeholders
+      res.setHeader('Access-Control-Allow-Origin', '*');
+      res.setHeader('Cross-Origin-Resource-Policy', 'cross-origin');
+      return res.send(placeholder);
     }
 
     // Check if file is public
     if (!asset.isPublic) {
-      return next(new AppError('Access denied', 403));
+      // Return "Access Denied" placeholder instead of 403
+      const placeholder = generatePlaceholder('Access Denied', 400, 300);
+      res.setHeader('Content-Type', 'image/svg+xml');
+      res.setHeader('Cache-Control', 'public, max-age=300');
+      res.setHeader('Access-Control-Allow-Origin', '*');
+      res.setHeader('Cross-Origin-Resource-Policy', 'cross-origin');
+      return res.send(placeholder);
     }
 
     // For Cloudinary, redirect to reconstructed URL from publicId
@@ -57,7 +81,13 @@ router.get('/file/:uuid', async (req: Request, res: Response, next: NextFunction
       );
 
       if (!fs.existsSync(filePath)) {
-        return next(new AppError('File not found on disk', 404));
+        // Return placeholder if file missing on disk
+        const placeholder = generatePlaceholder('File Missing', 400, 300);
+        res.setHeader('Content-Type', 'image/svg+xml');
+        res.setHeader('Cache-Control', 'public, max-age=300');
+        res.setHeader('Access-Control-Allow-Origin', '*');
+        res.setHeader('Cross-Origin-Resource-Policy', 'cross-origin');
+        return res.send(placeholder);
       }
 
       // Set content type and CORS headers
@@ -69,7 +99,13 @@ router.get('/file/:uuid', async (req: Request, res: Response, next: NextFunction
       return res.sendFile(filePath);
     }
 
-    return next(new AppError('File source not available', 404));
+    // Return placeholder if no valid source
+    const placeholder = generatePlaceholder('Unavailable', 400, 300);
+    res.setHeader('Content-Type', 'image/svg+xml');
+    res.setHeader('Cache-Control', 'public, max-age=300');
+    res.setHeader('Access-Control-Allow-Origin', '*');
+    res.setHeader('Cross-Origin-Resource-Policy', 'cross-origin');
+    return res.send(placeholder);
   } catch (error) {
     next(error);
   }

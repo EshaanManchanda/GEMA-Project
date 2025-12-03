@@ -289,14 +289,20 @@ const CollectionForm: React.FC<CollectionFormProps> = ({
 
       console.log('Submitting collection with event IDs:', selectedEvents);
 
-      // Only send iconAsset if a new asset was selected
+      // Send iconAsset changes explicitly
       if (selectedIconAsset) {
         formData.iconAsset = selectedIconAsset._id;
+      } else if (collection && collection.iconAsset && !selectedIconAsset) {
+        // Explicitly clear icon if it existed before and user removed it
+        formData.iconAsset = null;
       }
 
-      // Only send featuredImageAsset if one was selected
+      // Send featuredImageAsset changes explicitly
       if (selectedFeaturedImageAsset) {
         formData.featuredImageAsset = selectedFeaturedImageAsset._id;
+      } else if (collection && collection.featuredImageAsset && !selectedFeaturedImageAsset) {
+        // Explicitly clear featured image if it existed before and user removed it
+        formData.featuredImageAsset = null;
       }
 
       await onSubmit(formData);

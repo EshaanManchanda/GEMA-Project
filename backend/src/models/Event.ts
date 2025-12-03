@@ -675,6 +675,46 @@ eventSchema.post('save', async function (doc) {
     console.error('Error invalidating event cache:', error);
     // Don't throw - cache invalidation failures shouldn't break saves
   }
+
+  // Trigger collection sync if relevant fields changed
+  try {
+    const fieldsAffectingCollections = [
+      'title', 'description', 'category', 'type', 'venueType', 'price',
+      'currency', 'images', 'imageAssets', 'location', 'dateSchedule',
+      'ageRange', 'isFeatured', 'viewsCount', 'averageRating',
+      'isApproved', 'isActive', 'isDeleted', 'status'
+    ];
+
+    const hasRelevantChanges = fieldsAffectingCollections.some(
+      field => doc.isModified(field)
+    );
+
+    if (!hasRelevantChanges) return;
+
+    const { collectionSyncQueue, areQueuesEnabled } = await import('../config/queue');
+
+    if (!areQueuesEnabled || !collectionSyncQueue) {
+      return; // Skip sync if queues disabled
+    }
+
+    const shouldRemove = !doc.isApproved || !doc.isActive || doc.isDeleted;
+
+    await collectionSyncQueue.add(
+      shouldRemove ? 'removeEvent' : 'syncEvent',
+      {
+        type: shouldRemove ? 'removeEvent' : 'syncEvent',
+        eventId: doc._id.toString()
+      },
+      {
+        jobId: `${shouldRemove ? 'remove' : 'sync'}-event-${doc._id}`,
+        removeOnComplete: true,
+        removeOnFail: false
+      }
+    );
+  } catch (error) {
+    console.error('Error queueing collection sync:', error);
+    // Don't throw - collection sync failures shouldn't break event saves
+  }
 });
 
 // Post-remove middleware to invalidate cache when event is deleted
@@ -715,6 +755,29 @@ eventSchema.post('findOneAndDelete', async function (doc) {
   } catch (error) {
     console.error('Error invalidating event cache after delete:', error);
   }
+
+  // Trigger collection sync to remove deleted event
+  try {
+    const { collectionSyncQueue, areQueuesEnabled } = await import('../config/queue');
+
+    if (!areQueuesEnabled || !collectionSyncQueue) {
+      return;
+    }
+
+    await collectionSyncQueue.add(
+      'removeEvent',
+      {
+        type: 'removeEvent',
+        eventId: doc._id.toString()
+      },
+      {
+        jobId: `remove-event-${doc._id}`,
+        removeOnComplete: true
+      }
+    );
+  } catch (error) {
+    console.error('Error queueing collection removal:', error);
+  }
 });
 
 // Post-updateMany middleware to invalidate cache for bulk updates
@@ -729,6 +792,29 @@ eventSchema.post('updateMany', async function () {
     await cacheService.deletePattern(listPattern);
   } catch (error) {
     console.error('Error invalidating cache after bulk update:', error);
+  }
+
+  // Trigger full collection reconciliation for bulk updates
+  try {
+    const { collectionSyncQueue, areQueuesEnabled } = await import('../config/queue');
+
+    if (!areQueuesEnabled || !collectionSyncQueue) {
+      return;
+    }
+
+    await collectionSyncQueue.add(
+      'reconcileAll',
+      {
+        type: 'reconcileAll'
+      },
+      {
+        jobId: 'reconcile-all-collections',
+        delay: 60000, // Wait 1 minute to batch multiple bulk updates
+        removeOnComplete: true
+      }
+    );
+  } catch (error) {
+    console.error('Error queueing reconciliation:', error);
   }
 });
 

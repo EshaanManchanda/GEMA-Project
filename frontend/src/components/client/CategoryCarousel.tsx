@@ -202,9 +202,9 @@ function CategoryCarousel({ categories = [] }: CategoryCarouselProps) {
                   <div className="p-6 flex flex-col items-center justify-center text-center h-full">
                     <div className="mb-4 p-3 rounded-full transition-all duration-300 group-hover:scale-110"
                       style={{ backgroundColor: 'var(--secondary-color)'}}>
-                      {cat.iconAsset?.url ? (
+                      {cat.icon? (
                         <img 
-                          src={cat.iconAsset?.url} 
+                          src={cat.icon} 
                           alt={cat.name} 
                           className="w-16 h-16 object-cover rounded-full" 
                           onError={(e) => {

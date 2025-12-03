@@ -27,15 +27,24 @@ const redisOptions: RedisOptions = {
   lazyConnect: false, // Connect eagerly on startup to fail fast
   maxLoadingRetryTime: 10000, // Max time to retry loading scripts
 
-  // Reconnection strategy with limits
+  // Reconnection strategy - never give up, use exponential backoff
   retryStrategy(times: number) {
-    if (times > 10) {
-      logger.error('Redis max reconnection attempts reached (10 attempts)');
-      return null; // Stop retrying after 10 attempts
+    const maxDelay = 30000; // 30 seconds max delay
+    const baseDelay = 1000; // Start at 1 second
+    const jitter = Math.random() * 500; // Add randomness to prevent thundering herd
+
+    // Exponential backoff: delay = baseDelay * 2^times, capped at maxDelay
+    const delay = Math.min(baseDelay * Math.pow(2, Math.min(times, 5)) + jitter, maxDelay);
+
+    if (times > 50) {
+      logger.error(`Redis cache: Still reconnecting after ${times} attempts. Check Redis server status.`);
+    } else if (times > 10) {
+      logger.warn(`Redis cache reconnecting... Attempt ${times}, delay: ${Math.round(delay)}ms`);
+    } else {
+      logger.info(`Redis cache reconnecting... Attempt ${times}, delay: ${Math.round(delay)}ms`);
     }
-    const delay = Math.min(times * 50, 2000);
-    logger.warn(`Redis reconnecting... Attempt ${times}, delay: ${delay}ms`);
-    return delay;
+
+    return delay; // Keep trying indefinitely
   },
 
   // Connection timeout

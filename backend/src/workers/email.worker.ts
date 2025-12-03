@@ -1,5 +1,5 @@
 import { Worker, Job, Queue } from 'bullmq';
-import { QUEUE_NAMES, bullMQConnection, emailQueue as configEmailQueue } from '../config/queue';
+import { QUEUE_NAMES, bullMQConnection, emailQueue as configEmailQueue, areQueuesEnabled } from '../config/queue';
 import logger from '../config/logger';
 import { emailService } from '../services/email.service';
 
@@ -22,8 +22,8 @@ export interface EmailJobData {
   templateData?: any;
 }
 
-// Email Worker
-const emailWorker = new Worker(
+// Email Worker - only create if queues are enabled
+const emailWorker = areQueuesEnabled ? new Worker(
   QUEUE_NAMES.EMAIL,
   async (job: Job<EmailJobData>) => {
     const { data } = job;
@@ -155,10 +155,11 @@ const emailWorker = new Worker(
       duration: 60000, // per minute
     },
   }
-);
+) : null;
 
-// Worker event handlers
-emailWorker.on('completed', (job: Job, result: any) => {
+// Worker event handlers - only attach if worker was created
+if (emailWorker) {
+  emailWorker.on('completed', (job: Job, result: any) => {
   logger.info(`Email sent for job ${job.id}`, {
     type: result.type,
     messageId: result.messageId,
@@ -175,14 +176,32 @@ emailWorker.on('failed', (job: Job | undefined, error: Error) => {
 });
 
 emailWorker.on('error', (error: Error) => {
-  logger.error('Email worker error:', error);
+  // Distinguish connection errors from job processing errors
+  const errorMessage = error.message || '';
+
+  if (errorMessage.includes('isn\'t writeable') ||
+      errorMessage.includes('enableOfflineQueue') ||
+      errorMessage.includes('Connection is closed') ||
+      errorMessage.includes('ECONNREFUSED')) {
+    logger.warn('Email worker: Redis connection issue detected, waiting for reconnection...', {
+      error: errorMessage
+    });
+    // Don't exit - let retry strategy handle reconnection
+  } else {
+    logger.error('Email worker error:', error);
+  }
 });
+}
 
 // Graceful shutdown
 const gracefulShutdown = async () => {
-  logger.info('Shutting down email worker...');
-  await emailWorker.close();
-  logger.info('Email worker shut down successfully');
+  if (emailWorker) {
+    logger.info('Shutting down email worker...');
+    await emailWorker.close();
+    logger.info('Email worker shut down successfully');
+  } else {
+    logger.info('Email worker was not initialized (Redis disabled)');
+  }
 };
 
 process.on('SIGINT', gracefulShutdown);

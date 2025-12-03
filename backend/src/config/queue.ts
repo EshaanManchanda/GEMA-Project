@@ -31,15 +31,24 @@ export const bullMQClient = areQueuesDisabled ? null : new Redis({
   lazyConnect: false,
   enableAutoPipelining: true, // Better performance with shared connection
 
-  // Reconnection strategy
+  // Reconnection strategy - never give up, use exponential backoff
   retryStrategy(times: number) {
-    if (times > 10) {
-      logger.error('BullMQ Redis: Max reconnection attempts reached (10)');
-      return null;
+    const maxDelay = 30000; // 30 seconds max delay
+    const baseDelay = 1000; // Start at 1 second
+    const jitter = Math.random() * 500; // Add randomness to prevent thundering herd
+
+    // Exponential backoff: delay = baseDelay * 2^times, capped at maxDelay
+    const delay = Math.min(baseDelay * Math.pow(2, Math.min(times, 5)) + jitter, maxDelay);
+
+    if (times > 50) {
+      logger.error(`BullMQ Redis: Still reconnecting after ${times} attempts. Check Redis server status.`);
+    } else if (times > 10) {
+      logger.warn(`BullMQ Redis reconnecting... Attempt ${times}, delay: ${Math.round(delay)}ms`);
+    } else {
+      logger.info(`BullMQ Redis reconnecting... Attempt ${times}, delay: ${Math.round(delay)}ms`);
     }
-    const delay = Math.min(times * 50, 2000);
-    logger.warn(`BullMQ Redis reconnecting... Attempt ${times}, delay: ${delay}ms`);
-    return delay;
+
+    return delay; // Keep trying indefinitely
   },
 
   // Connection timeout
@@ -68,6 +77,31 @@ if (bullMQClient) {
 
   bullMQClient.on('close', () => {
     logger.warn('BullMQ Redis: Connection closed');
+  });
+
+  bullMQClient.on('reconnecting', (time: number) => {
+    logger.info(`BullMQ Redis: Reconnecting in ${time}ms...`);
+  });
+
+  // Check Redis eviction policy (critical for BullMQ)
+  bullMQClient.on('ready', async () => {
+    try {
+      const result = await bullMQClient.config('GET', 'maxmemory-policy');
+      const policy = result[1]; // Result is ['maxmemory-policy', 'value']
+
+      if (policy !== 'noeviction') {
+        logger.error(
+          `CRITICAL: Redis eviction policy is "${policy}" but MUST be "noeviction" for BullMQ!\n` +
+          `This can cause job data corruption and worker failures.\n` +
+          `Fix: redis-cli CONFIG SET maxmemory-policy noeviction\n` +
+          `See backend/REDIS_CONFIG.md for detailed instructions.`
+        );
+      } else {
+        logger.info('Redis eviction policy check: OK (noeviction)');
+      }
+    } catch (error) {
+      logger.warn('Could not check Redis eviction policy:', error);
+    }
   });
 }
 
@@ -100,6 +134,7 @@ export const QUEUE_NAMES = {
   TICKET_GENERATION: 'ticket-generation',
   ANALYTICS: 'analytics',
   NOTIFICATIONS: 'notifications',
+  COLLECTION_SYNC: 'collection-sync',
 } as const;
 
 // QR Code Generation Queue
@@ -116,6 +151,9 @@ export const analyticsQueue = areQueuesDisabled ? null : new Queue(QUEUE_NAMES.A
 
 // Notifications Queue
 export const notificationsQueue = areQueuesDisabled ? null : new Queue(QUEUE_NAMES.NOTIFICATIONS, queueConfig);
+
+// Collection Sync Queue
+export const collectionSyncQueue = areQueuesDisabled ? null : new Queue(QUEUE_NAMES.COLLECTION_SYNC, queueConfig);
 
 // Queue Events DISABLED to reduce Redis connections (each QueueEvents = 1 connection)
 // Workers already handle logging, so these are redundant
@@ -139,6 +177,7 @@ const gracefulShutdown = async () => {
     ticketQueue?.close(),
     analyticsQueue?.close(),
     notificationsQueue?.close(),
+    collectionSyncQueue?.close(),
   ].filter(Boolean);
 
   await Promise.all(closePromises);
@@ -192,6 +231,8 @@ function getQueueByName(name: string): Queue | null {
       return analyticsQueue;
     case QUEUE_NAMES.NOTIFICATIONS:
       return notificationsQueue;
+    case QUEUE_NAMES.COLLECTION_SYNC:
+      return collectionSyncQueue;
     default:
       return null;
   }

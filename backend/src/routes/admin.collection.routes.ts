@@ -95,7 +95,10 @@ router.post(
       .withMessage('Description cannot exceed 500 characters'),
     body('iconAsset')
       .optional()
-      .isMongoId()
+      .custom((value) => {
+        if (value === null || value === '' || value === undefined) return true;
+        return /^[a-f\d]{24}$/i.test(value);
+      })
       .withMessage('Icon asset must be a valid MediaAsset ID'),
     body('featuredImageAsset')
       .optional()
@@ -160,7 +163,10 @@ router.put(
       .withMessage('Description cannot exceed 500 characters'),
     body('iconAsset')
       .optional()
-      .custom((value) => value === null || value === '' || /^[a-f\d]{24}$/i.test(value))
+      .custom((value) => {
+        if (value === null || value === '' || value === undefined) return true;
+        return /^[a-f\d]{24}$/i.test(value);
+      })
       .withMessage('Icon asset must be a valid MediaAsset ID or null'),
     body('featuredImageAsset')
       .optional()

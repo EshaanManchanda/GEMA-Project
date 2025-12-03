@@ -7,7 +7,44 @@ export interface ICollection extends Document {
   iconAsset?: mongoose.Types.ObjectId; // NEW: MediaAsset ref
   count: string; // Display text like "45+ activities"
   category?: string; // Optional category filter
-  events: mongoose.Types.ObjectId[]; // Associated event IDs
+  events: mongoose.Types.ObjectId[]; // OLD: Associated event IDs (keep for backward compat)
+  eventsData?: Array<{ // NEW: Embedded event documents
+    _id: mongoose.Types.ObjectId;
+    title: string;
+    description?: string;
+    category?: string;
+    type?: string;
+    venueType?: string;
+    price?: number;
+    currency?: string;
+    images?: string[];
+    imageAssets?: mongoose.Types.ObjectId[];
+    location?: {
+      city?: string;
+      address?: string;
+    };
+    dateSchedule?: Array<{
+      date?: Date;
+      startDate?: Date;
+      endDate?: Date;
+      startTime?: string;
+      endTime?: string;
+      availableSeats?: number;
+      price?: number;
+    }>;
+    ageRange?: [number, number];
+    isFeatured?: boolean;
+    viewsCount?: number;
+    averageRating?: number;
+    isApproved?: boolean;
+    isActive?: boolean;
+    isDeleted?: boolean;
+    status?: string;
+    vendorId?: mongoose.Types.ObjectId;
+    updatedAt?: Date;
+  }>;
+  dataVersion?: number; // For cache versioning
+  lastSyncedAt?: Date; // Track last successful sync
   isActive: boolean;
   sortOrder: number; // For ordering collections
   slug: string; // URL-friendly slug
@@ -62,8 +99,46 @@ const CollectionSchema: Schema<ICollection> = new Schema({
   },
   events: [{
     type: mongoose.Schema.Types.ObjectId,
-    ref: 'Event'
+    ref: 'Event',
+    required: false // Optional during migration
   }],
+  eventsData: [{
+    _id: { type: mongoose.Schema.Types.ObjectId, required: true },
+    title: { type: String, required: true },
+    description: String,
+    category: String,
+    type: String,
+    venueType: String,
+    price: Number,
+    currency: String,
+    images: [String],
+    imageAssets: [{ type: mongoose.Schema.Types.ObjectId, ref: 'MediaAsset' }],
+    location: {
+      city: String,
+      address: String
+    },
+    dateSchedule: [{
+      date: Date,
+      startDate: Date,
+      endDate: Date,
+      startTime: String,
+      endTime: String,
+      availableSeats: Number,
+      price: Number
+    }],
+    ageRange: [Number],
+    isFeatured: Boolean,
+    viewsCount: Number,
+    averageRating: Number,
+    isApproved: Boolean,
+    isActive: Boolean,
+    isDeleted: Boolean,
+    status: String,
+    vendorId: { type: mongoose.Schema.Types.ObjectId, ref: 'Vendor' },
+    updatedAt: Date
+  }],
+  dataVersion: { type: Number, default: 1 },
+  lastSyncedAt: Date,
   isActive: {
     type: Boolean,
     default: true
@@ -122,6 +197,8 @@ const CollectionSchema: Schema<ICollection> = new Schema({
 CollectionSchema.index({ slug: 1 }, { unique: true, sparse: true });
 CollectionSchema.index({ isActive: 1, sortOrder: 1 });
 CollectionSchema.index({ title: 'text', description: 'text' });
+CollectionSchema.index({ 'eventsData._id': 1 }); // For event removal lookup
+CollectionSchema.index({ lastSyncedAt: 1 }); // For cron job queries
 
 // Virtual for populated events count
 CollectionSchema.virtual('eventsCount', {
@@ -161,20 +238,32 @@ CollectionSchema.pre('save', async function(next) {
   }
 
   // Auto-populate icon URL from MediaAsset for backward compatibility
-  if (this.isModified('iconAsset') && this.iconAsset && !this.icon) {
-    const MediaAsset = mongoose.model('MediaAsset');
-    const asset = await MediaAsset.findById(this.iconAsset);
-    if (asset) {
-      this.icon = (asset as any).url;
+  if (this.isModified('iconAsset')) {
+    if (this.iconAsset) {
+      // iconAsset set - populate legacy icon field
+      const MediaAsset = mongoose.model('MediaAsset');
+      const asset = await MediaAsset.findById(this.iconAsset);
+      if (asset) {
+        this.icon = (asset as any).url;
+      }
+    } else {
+      // iconAsset cleared - clear legacy icon field too
+      this.icon = undefined;
     }
   }
 
   // Auto-populate featuredImage URL from MediaAsset for backward compatibility
-  if (this.isModified('featuredImageAsset') && this.featuredImageAsset && !this.featuredImage) {
-    const MediaAsset = mongoose.model('MediaAsset');
-    const asset = await MediaAsset.findById(this.featuredImageAsset);
-    if (asset) {
-      this.featuredImage = (asset as any).url;
+  if (this.isModified('featuredImageAsset')) {
+    if (this.featuredImageAsset) {
+      // featuredImageAsset set - populate legacy featuredImage field
+      const MediaAsset = mongoose.model('MediaAsset');
+      const asset = await MediaAsset.findById(this.featuredImageAsset);
+      if (asset) {
+        this.featuredImage = (asset as any).url;
+      }
+    } else {
+      // featuredImageAsset cleared - clear legacy featuredImage field too
+      this.featuredImage = undefined;
     }
   }
 

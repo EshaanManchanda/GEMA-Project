@@ -1,5 +1,6 @@
 import { Request, Response, NextFunction } from 'express';
 import { validationResult } from 'express-validator';
+import mongoose from 'mongoose';
 import Collection from '../models/Collection';
 import { Event } from '../models/index';
 import { AppError } from '../middleware/index';
@@ -52,6 +53,47 @@ export const getCollections = async (req: Request, res: Response, next: NextFunc
     // Use aggregation to filter collections with events and get count
     const pipeline = [
       { $match: filter },
+      // Populate iconAsset (MediaAsset)
+      {
+        $lookup: {
+          from: 'mediaassets',
+          localField: 'iconAsset',
+          foreignField: '_id',
+          as: 'iconAssetPopulated'
+        }
+      },
+      {
+        $addFields: {
+          iconAsset: { $arrayElemAt: ['$iconAssetPopulated', 0] }
+        }
+      },
+      // Populate featuredImageAsset (MediaAsset)
+      {
+        $lookup: {
+          from: 'mediaassets',
+          localField: 'featuredImageAsset',
+          foreignField: '_id',
+          as: 'featuredImageAssetPopulated'
+        }
+      },
+      {
+        $addFields: {
+          featuredImageAsset: { $arrayElemAt: ['$featuredImageAssetPopulated', 0] }
+        }
+      },
+      // Prefer eventsData (embedded), fallback to events (ObjectId refs)
+      {
+        $addFields: {
+          events: {
+            $cond: {
+              if: { $gt: [{ $size: { $ifNull: ['$eventsData', []] } }, 0] },
+              then: '$eventsData', // Use embedded data if available
+              else: '$events'      // Fallback to ObjectId refs
+            }
+          }
+        }
+      },
+      // If using ObjectId refs, populate them (backward compat)
       {
         $lookup: {
           from: 'events',
@@ -77,19 +119,31 @@ export const getCollections = async (req: Request, res: Response, next: NextFunc
           ]
         }
       },
-      {
-        $match: {
-          populatedEvents: { $ne: [], $exists: true }
-        }
-      },
+      // Use populated events only if events were ObjectIds
       {
         $addFields: {
-          events: '$populatedEvents'
+          events: {
+            $cond: {
+              if: { $eq: [{ $type: { $arrayElemAt: ['$events', 0] } }, 'objectId'] },
+              then: '$populatedEvents',
+              else: '$events'
+            }
+          }
         }
       },
+      // Filter collections with at least one event
+      {
+        $match: {
+          events: { $ne: [], $exists: true }
+        }
+      },
+      // Cleanup
       {
         $project: {
-          populatedEvents: 0
+          populatedEvents: 0,
+          iconAssetPopulated: 0,
+          featuredImageAssetPopulated: 0,
+          eventsData: 0 // Hide internal field from response
         }
       }
     ];
@@ -140,25 +194,50 @@ export const getCollectionById = async (req: Request, res: Response, next: NextF
     console.log(`Fetching collection with ID: ${id}`);
 
     const collection = await Collection.findOne({ _id: id, isActive: true })
-      .populate({
-        path: 'events',
-        match: { isDeleted: false, isApproved: true },
-        populate: [
-          {
-            path: 'vendorId',
-            select: 'firstName lastName businessName'
-          },
-          {
-            path: 'imageAssets',
-            select: 'url thumbnailUrl variations'
-          }
-        ]
-      })
       .populate('iconAsset')
-      .populate('featuredImageAsset');
+      .populate('featuredImageAsset')
+      .lean();
 
     if (!collection) {
       return next(new AppError('Collection not found', 404));
+    }
+
+    // Use eventsData if available (embedded), else populate events (backward compat)
+    if (collection.eventsData && collection.eventsData.length > 0) {
+      // Use embedded data, populate vendorId
+      const Vendor = mongoose.model('Vendor');
+      const vendors = await Vendor.find({
+        _id: { $in: collection.eventsData.map((e: any) => e.vendorId) }
+      }).select('firstName lastName businessName').lean();
+
+      const vendorMap = new Map(vendors.map((v: any) => [v._id.toString(), v]));
+
+      collection.events = collection.eventsData.map((event: any) => ({
+        ...event,
+        vendorId: vendorMap.get(event.vendorId.toString()) || event.vendorId
+      }));
+
+      delete collection.eventsData; // Remove internal field
+    } else {
+      // Fallback: populate ObjectId refs (backward compat)
+      const populated = await Collection.findById(id)
+        .populate({
+          path: 'events',
+          populate: [
+            {
+              path: 'vendorId',
+              select: 'firstName lastName businessName'
+            },
+            {
+              path: 'imageAssets',
+              select: 'url thumbnailUrl variations'
+            }
+          ]
+        });
+
+      if (populated) {
+        collection.events = populated.events;
+      }
     }
 
     // Transform events to include image URLs from imageAssets
@@ -276,6 +355,32 @@ export const updateCollection = async (req: AuthRequest, res: Response, next: Ne
 
     if (!collection) {
       return next(new AppError('Collection not found', 404));
+    }
+
+    // Trigger sync if events changed
+    if (events !== undefined && collection.events) {
+      try {
+        const { collectionSyncQueue, areQueuesEnabled } = await import('../config/queue');
+
+        if (areQueuesEnabled && collectionSyncQueue) {
+          await collectionSyncQueue.add(
+            'syncCollection',
+            {
+              type: 'syncCollection',
+              collectionId: collection._id.toString()
+            },
+            {
+              jobId: `sync-collection-${collection._id}`,
+              removeOnComplete: true
+            }
+          );
+
+          console.log(`Queued sync for collection ${collection._id} after update`);
+        }
+      } catch (error) {
+        console.error('Error queueing collection sync:', error);
+        // Don't fail the request if sync queueing fails
+      }
     }
 
     console.log(`Updated collection: ${collection.title}`);

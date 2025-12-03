@@ -1,16 +1,89 @@
-import qrWorker from './qr.worker';
-import emailWorker from './email.worker';
 import logger from '../config/logger';
+import { bullMQClient, areQueuesEnabled } from '../config/queue';
 
 /**
  * Worker Process Entry Point
  * This file starts all background workers
  */
 
+// Exit gracefully if queues are disabled (check BEFORE importing workers)
+if (!areQueuesEnabled) {
+  logger.warn('========================================');
+  logger.warn('Workers disabled - Redis/queues are not available');
+  logger.warn('Background jobs (email, QR generation) will not be processed');
+  logger.warn('Set DISABLE_REDIS=false and ensure Redis is running to enable workers');
+  logger.warn('========================================');
+  process.exit(0);
+}
+
+// Import workers only if queues are enabled (avoids Worker instantiation errors)
+import qrWorker from './qr.worker';
+import emailWorker from './email.worker';
+import collectionSyncWorker from './collection-sync.worker';
+
 logger.info('Starting background workers...');
 
-logger.info('QR Generation Worker: Started');
-logger.info('Email Worker: Started');
+if (qrWorker) {
+  logger.info('QR Generation Worker: Started');
+} else {
+  logger.warn('QR Generation Worker: Not initialized');
+}
+
+if (emailWorker) {
+  logger.info('Email Worker: Started');
+} else {
+  logger.warn('Email Worker: Not initialized');
+}
+
+if (collectionSyncWorker) {
+  logger.info('Collection Sync Worker: Started');
+} else {
+  logger.warn('Collection Sync Worker: Not initialized');
+}
+
+// Monitor BullMQ Redis connection health
+if (bullMQClient) {
+  let isConnected = false;
+  let reconnectCount = 0;
+
+  bullMQClient.on('connect', () => {
+    logger.info('Workers: BullMQ Redis connecting...');
+  });
+
+  bullMQClient.on('ready', () => {
+    if (!isConnected) {
+      logger.info('Workers: BullMQ Redis connected successfully');
+    } else {
+      logger.info(`Workers: BullMQ Redis reconnected after ${reconnectCount} attempts`);
+      reconnectCount = 0;
+    }
+    isConnected = true;
+  });
+
+  bullMQClient.on('error', (err) => {
+    logger.error('Workers: BullMQ Redis error:', {
+      message: err.message,
+      code: (err as any).code
+    });
+  });
+
+  bullMQClient.on('close', () => {
+    if (isConnected) {
+      logger.warn('Workers: BullMQ Redis connection closed, will attempt to reconnect...');
+      isConnected = false;
+    }
+  });
+
+  bullMQClient.on('reconnecting', () => {
+    reconnectCount++;
+    logger.info(`Workers: BullMQ Redis reconnecting (attempt ${reconnectCount})...`);
+  });
+
+  bullMQClient.on('end', () => {
+    logger.warn('Workers: BullMQ Redis connection ended');
+    isConnected = false;
+  });
+}
 
 // Handle uncaught errors
 process.on('uncaughtException', (error: Error) => {
@@ -27,9 +100,18 @@ process.on('unhandledRejection', (reason: any) => {
 const gracefulShutdown = async () => {
   logger.info('Gracefully shutting down workers...');
 
-  await Promise.all([qrWorker.close(), emailWorker.close()]);
+  const promises: Promise<void>[] = [];
+  if (qrWorker) promises.push(qrWorker.close());
+  if (emailWorker) promises.push(emailWorker.close());
+  if (collectionSyncWorker) promises.push(collectionSyncWorker.close());
 
-  logger.info('All workers shut down successfully');
+  if (promises.length > 0) {
+    await Promise.all(promises);
+    logger.info('All workers shut down successfully');
+  } else {
+    logger.info('No workers to shut down');
+  }
+
   process.exit(0);
 };
 

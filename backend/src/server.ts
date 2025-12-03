@@ -18,6 +18,7 @@ import { ensureDefaultCommissionConfig } from './scripts/seedCommissions';
 import { ensureAdminRevenueSettings } from './scripts/seedAdminSettings';
 import { ensureAffiliateVendor } from './scripts/seedAffiliateVendor';
 import { scheduleEventLifecycleJobs, stopEventLifecycleJobs } from './utils/eventLifecycle';
+import { startCollectionReconciliationCron } from './utils/cron';
 import { devLog } from './utils/devLogger';
 import { redisClient } from './config/redis';
 import { qrQueue, emailQueue, ticketQueue, analyticsQueue, notificationsQueue, bullMQClient } from './config/queue';
@@ -252,6 +253,7 @@ async function startServer() {
     logger.info('Initializing scheduled jobs...');
     scheduleTicketJobs();
     scheduleEventLifecycleJobs();
+    startCollectionReconciliationCron();
     logger.info('Scheduled jobs initialized successfully');
 
     // Step 5: Start performance monitoring

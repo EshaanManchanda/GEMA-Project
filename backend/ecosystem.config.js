@@ -50,13 +50,13 @@ module.exports = {
     max_restarts: 10, // Max consecutive restarts before stopping
     min_uptime: '10s', // Minimum uptime before restart is considered successful
 
-    // Memory Management (Critical for KVM1 4GB RAM)
-    max_memory_restart: '500M', // Restart if memory exceeds 500MB
+    // Memory Management (Adjust based on VPS RAM)
+    max_memory_restart: '800M', // Restart if memory exceeds 800MB
 
     // Logging Configuration
-    error_file: './logs/error.log',
-    out_file: './logs/output.log',
-    log_file: './logs/combined.log',
+    error_file: '/var/log/GEMA-Project/backend/api-error.log',
+    out_file: '/var/log/GEMA-Project/backend/api-output.log',
+    log_file: '/var/log/GEMA-Project/backend/api-combined.log',
     log_date_format: 'YYYY-MM-DD HH:mm:ss Z',
     merge_logs: true,
 
@@ -159,12 +159,12 @@ module.exports = {
     min_uptime: '10s',
 
     // Memory Management (Conservative for worker process)
-    max_memory_restart: '400M', // Worker gets 400MB (less than API server)
+    max_memory_restart: '600M', // Worker gets 600MB
 
     // Logging Configuration (separate logs for worker)
-    error_file: './logs/worker-error.log',
-    out_file: './logs/worker-output.log',
-    log_file: './logs/worker-combined.log',
+    error_file: '/var/log/GEMA-Project/backend/worker-error.log',
+    out_file: '/var/log/GEMA-Project/backend/worker-output.log',
+    log_file: '/var/log/GEMA-Project/backend/worker-combined.log',
     log_date_format: 'YYYY-MM-DD HH:mm:ss Z',
     merge_logs: true,
 

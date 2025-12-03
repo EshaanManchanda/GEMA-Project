@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { FaSearch, FaChevronLeft, FaChevronRight, FaStar, FaMapMarkerAlt, FaRedo, FaWifi, FaCalendar } from 'react-icons/fa';
-import { PageTransition, FadeIn, SlideIn, ScaleIn, StaggerContainer, NumberCounter, ScrollReveal, HoverCard, AnimatedButton } from '@/components/animations';
+import { PageTransition, FadeIn, SlideIn, ScaleIn, StaggerContainer, NumberCounter, ScrollReveal, AnimatedButton } from '@/components/animations';
 import { useDispatch, useSelector } from 'react-redux';
 import DOMPurify from 'isomorphic-dompurify';
 import { useKeenSlider } from 'keen-slider/react';
@@ -171,7 +171,6 @@ const AutoplayPlugin = (slider: any) => {
     nextTimeout();
   });
 
-  slider.on("dragStarted", clearNextTimeout);
   slider.on("animationEnded", nextTimeout);
   slider.on("updated", nextTimeout);
 };
@@ -334,6 +333,7 @@ const FeaturedEventsCarousel: React.FC<{ featuredEvents: FeaturedEvent[] }> = ({
   const [sliderRef, instanceRef] = useKeenSlider<HTMLDivElement>(
     {
       loop: true,
+      drag: false, // Disable drag feature
       slides: {
         perView: 1,
         spacing: 20,
@@ -378,9 +378,9 @@ const FeaturedEventsCarousel: React.FC<{ featuredEvents: FeaturedEvent[] }> = ({
       <div className="relative">
         <div ref={sliderRef} className="keen-slider min-h-[400px]">
           {featuredEvents && featuredEvents.length > 0 ? featuredEvents.map((event, index) => (
-            <HoverCard
+            <div
               key={index}
-              className="keen-slider__slide bg-white rounded-2xl shadow-lg hover:shadow-2xl overflow-hidden group border border-gray-100 hover:border-gray-200"
+              className="keen-slider__slide bg-white rounded-2xl shadow-lg hover:shadow-2xl overflow-hidden group border border-gray-100 hover:border-gray-200 transition-all duration-300"
             >
               <div className="relative overflow-hidden">
                 <LazyImage
@@ -451,7 +451,7 @@ const FeaturedEventsCarousel: React.FC<{ featuredEvents: FeaturedEvent[] }> = ({
                   </AnimatedButton>
                 </div>
               </div>
-            </HoverCard>
+            </div>
           )) : (
             <div className="keen-slider__slide flex items-center justify-center p-8">
               <div className="text-center py-16 px-6">
@@ -520,7 +520,7 @@ const StatsSection = ({ stats }: { stats: any }) => {
 
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-8">
           {/* Trusted Partners Card */}
-          <HoverCard className="bg-white rounded-2xl shadow-lg hover:shadow-2xl p-8 flex flex-col items-center text-center transition-all duration-500 border border-gray-100 hover:border-gray-200 transform hover:-translate-y-2">
+          <div className="bg-white rounded-2xl shadow-lg hover:shadow-2xl p-8 flex flex-col items-center text-center transition-all duration-300 border border-gray-100 hover:border-gray-200">
             <div className="mb-4" style={{ color: 'var(--accent-color)' }}>
               <div className="relative">
                 <FaStar size={36} />
@@ -534,10 +534,10 @@ const StatsSection = ({ stats }: { stats: any }) => {
               </span>
             </p>
             <p className="text-gray-700">partners since 2017</p>
-          </HoverCard>
+          </div>
 
           {/* Stats Cards */}
-          <HoverCard className="bg-white rounded-2xl shadow-lg hover:shadow-2xl p-8 flex flex-col items-center text-center transition-all duration-500 border border-gray-100 hover:border-gray-200 transform hover:-translate-y-2">
+          <div className="bg-white rounded-2xl shadow-lg hover:shadow-2xl p-8 flex flex-col items-center text-center transition-all duration-300 border border-gray-100 hover:border-gray-200">
             <div className="w-12 h-12 rounded-full mb-4 flex items-center justify-center" style={{ backgroundColor: 'rgba(0, 142, 199, 0.1)' }}>
               <span className="text-xl font-bold">🎯</span>
             </div>
@@ -545,9 +545,9 @@ const StatsSection = ({ stats }: { stats: any }) => {
               <NumberCounter to={stats?.totalEvents || 2500} suffix="+" />
             </p>
             <p className="text-gray-700">Experiences</p>
-          </HoverCard>
+          </div>
 
-          <HoverCard className="bg-white rounded-2xl shadow-lg hover:shadow-2xl p-8 flex flex-col items-center text-center transition-all duration-500 border border-gray-100 hover:border-gray-200 transform hover:-translate-y-2">
+          <div className="bg-white rounded-2xl shadow-lg hover:shadow-2xl p-8 flex flex-col items-center text-center transition-all duration-300 border border-gray-100 hover:border-gray-200">
             <div className="w-12 h-12 rounded-full mb-4 flex items-center justify-center" style={{ backgroundColor: 'rgba(0, 142, 199, 0.1)' }}>
               <span className="text-xl font-bold">🏢</span>
             </div>
@@ -555,9 +555,9 @@ const StatsSection = ({ stats }: { stats: any }) => {
               <NumberCounter to={stats?.totalVenues || 500} suffix="+" />
             </p>
             <p className="text-gray-700">Venue & Events</p>
-          </HoverCard>
+          </div>
 
-          <HoverCard className="bg-white rounded-2xl shadow-lg hover:shadow-2xl p-8 flex flex-col items-center text-center transition-all duration-500 border border-gray-100 hover:border-gray-200 transform hover:-translate-y-2">
+          <div className="bg-white rounded-2xl shadow-lg hover:shadow-2xl p-8 flex flex-col items-center text-center transition-all duration-300 border border-gray-100 hover:border-gray-200">
             <div className="w-12 h-12 rounded-full mb-4 flex items-center justify-center" style={{ backgroundColor: 'rgba(0, 142, 199, 0.1)' }}>
               <span className="text-xl font-bold">🎓</span>
             </div>
@@ -565,7 +565,7 @@ const StatsSection = ({ stats }: { stats: any }) => {
               <NumberCounter to={stats?.totalClasses || stats?.totalEvents || 1000} suffix="+" />
             </p>
             <p className="text-gray-700">Classes</p>
-          </HoverCard>
+          </div>
         </div>
       </div>
     </section>
@@ -604,11 +604,11 @@ const HomePage: React.FC = () => {
       const events = eventsData || [];
       // console.log('event data', eventsData);
       const featuredEventsRaw = featuredEventsData?.events || [];
-      console.log("featuredEventsData",featuredEventsData);
       const categories = Array.isArray(categoriesData) ? categoriesData : [];
-
+      
       // Debug logging (only in development)
       if (import.meta.env.VITE_DEV && import.meta.env.VITE_DEBUG_API === 'true') {
+        console.log("featuredEventsData",featuredEventsData);
         console.log('HomePage Debug - Processed Data:');
         console.log('events length:', events.length);
         console.log('featuredEvents length:', featuredEventsRaw.length);
@@ -616,24 +616,21 @@ const HomePage: React.FC = () => {
       }
       
       setEvents(Array.isArray(events) ? events : []);
+
+      // Filter only events with isFeatured: true
+      const filteredFeaturedEvents = featuredEventsRaw.length > 0
+        ? featuredEventsRaw.filter((event: any) => event.isFeatured === true)
+        : events.filter((event: any) => event.isFeatured === true);
+
       setFeaturedEvents(
-        featuredEventsRaw.length > 0 
-          ? featuredEventsRaw.slice(0, 6).map((event: any) => ({
-              ...event,
-              id: event._id, // Map _id to id for compatibility
-              buttonLabel: 'View Details',
-              image: event.images?.[0] || getPlaceholderUrl('eventCard', event.title),
-              date: event.dateSchedule?.[0]?.startDate || new Date().toISOString(),
-              location: event.location || { city: 'Dubai', address: '', coordinates: { lat: 0, lng: 0 } }
-            }))
-          : events.slice(0, 3).map((event: any) => ({
-              ...event,
-              id: event._id, // Map _id to id for compatibility
-              buttonLabel: 'View Details',
-              image: event.images?.[0] || getPlaceholderUrl('eventCard', event.title),
-              date: event.dateSchedule?.[0]?.startDate || new Date().toISOString(),
-              location: event.location || { city: 'Dubai', address: '', coordinates: { lat: 0, lng: 0 } }
-            }))
+        filteredFeaturedEvents.slice(0, 6).map((event: any) => ({
+          ...event,
+          id: event._id, // Map _id to id for compatibility
+          buttonLabel: 'View Details',
+          image: event.images?.[0] || getPlaceholderUrl('eventCard', event.title),
+          date: event.dateSchedule?.[0]?.startDate || new Date().toISOString(),
+          location: event.location || { city: 'Dubai', address: '', coordinates: { lat: 0, lng: 0 } }
+        }))
       );
       // Categories now come from /categories API with full object structure
       setCategories(Array.isArray(categories) ? categories : []);
@@ -668,7 +665,7 @@ const HomePage: React.FC = () => {
         dateSchedule: [{ _id: '1', startDate: event.date || new Date().toISOString(), endDate: event.date || new Date().toISOString(), availableSeats: 100, totalSeats: 100, soldSeats: 0, reservedSeats: 0 }],
         faqs: [],
         viewsCount: 0,
-        isFeatured: false,
+        isFeatured: true, // Mock events shown as featured
         isDeleted: false,
         createdAt: new Date().toISOString(),
         updatedAt: new Date().toISOString(),
