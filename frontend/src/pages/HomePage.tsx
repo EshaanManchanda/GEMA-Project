@@ -142,6 +142,40 @@ const LazyImage: React.FC<{
   );
 };
 
+// Autoplay plugin for Keen-Slider
+const AutoplayPlugin = (slider: any) => {
+  let timeout: NodeJS.Timeout;
+  let mouseOver = false;
+
+  function clearNextTimeout() {
+    clearTimeout(timeout);
+  }
+
+  function nextTimeout() {
+    clearTimeout(timeout);
+    if (mouseOver) return;
+    timeout = setTimeout(() => {
+      slider.next();
+    }, 5000);
+  }
+
+  slider.on("created", () => {
+    slider.container.addEventListener("mouseover", () => {
+      mouseOver = true;
+      clearNextTimeout();
+    });
+    slider.container.addEventListener("mouseout", () => {
+      mouseOver = false;
+      nextTimeout();
+    });
+    nextTimeout();
+  });
+
+  slider.on("dragStarted", clearNextTimeout);
+  slider.on("animationEnded", nextTimeout);
+  slider.on("updated", nextTimeout);
+};
+
 const Banner = ({ categories }: { categories: any[] }) => {
   const navigate = useNavigate();
   const [searchQuery, setSearchQuery] = useState('');
@@ -297,30 +331,30 @@ const FeaturedEventsCarousel: React.FC<{ featuredEvents: FeaturedEvent[] }> = ({
   const navigate = useNavigate();
   const [currentSlide, setCurrentSlide] = useState(0);
   const [loaded, setLoaded] = useState(false);
-  const [sliderRef, instanceRef] = useKeenSlider<HTMLDivElement>({
-    loop: true,
-    slides: {
-      perView: 1,
-      spacing: 20,
-    },
-    breakpoints: {
-      '(min-width: 768px)': {
-        slides: { perView: 2, spacing: 24 },
+  const [sliderRef, instanceRef] = useKeenSlider<HTMLDivElement>(
+    {
+      loop: true,
+      slides: {
+        perView: 1,
+        spacing: 20,
       },
-      '(min-width: 1024px)': {
-        slides: { perView: 3, spacing: 30 },
+      breakpoints: {
+        '(min-width: 640px)': {
+          slides: { perView: 2, spacing: 24 },
+        },
+        '(min-width: 1024px)': {
+          slides: { perView: 3, spacing: 30 },
+        },
+      },
+      slideChanged(slider) {
+        setCurrentSlide(slider.track.details.rel);
+      },
+      created() {
+        setLoaded(true);
       },
     },
-    defaultAnimation: {
-      duration: 0
-    },
-    slideChanged(slider) {
-      setCurrentSlide(slider.track.details.rel);
-    },
-    created() {
-      setLoaded(true);
-    },
-  });
+    [AutoplayPlugin]
+  );
 
   return (
     <div className="px-6 py-16 max-w-screen-xl mx-auto">

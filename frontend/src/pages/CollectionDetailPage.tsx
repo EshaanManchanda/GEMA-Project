@@ -3,6 +3,7 @@ import { useParams, useNavigate, Link } from 'react-router-dom';
 import { FaArrowLeft, FaChevronRight, FaMapMarkerAlt, FaCalendarAlt, FaUsers, FaRedo } from 'react-icons/fa';
 import collectionsAPI, { Collection } from '../services/api/collectionsAPI';
 import { getPlaceholderUrl } from '../utils/placeholderImage';
+import DOMPurify from 'isomorphic-dompurify';
 import { format } from 'date-fns';
 import { CollectionSEO } from '@/components/common/SEO';
 import { HoverCard, AnimatedButton } from '@/components/animations';
@@ -108,6 +109,7 @@ const CollectionDetailPage: React.FC = () => {
       setError(null);
 
       const response = await collectionsAPI.getCollectionById(id);
+      console.log('Collection response:', response);
       const collectionData = response.collection as CollectionWithEvents;
 
       if (import.meta.env.VITE_DEV && import.meta.env.VITE_DEBUG_API === 'true') {
@@ -342,11 +344,16 @@ const CollectionDetailPage: React.FC = () => {
                     {event.title}
                   </h3>
 
-                  {event.description && (
-                    <p className="text-gray-700 text-sm mb-4 line-clamp-2">
-                      {event.description}
-                    </p>
-                  )}
+                  {event.description && ( <div
+                  className="text-gray-700 text-sm mb-4 line-clamp-2"
+                  dangerouslySetInnerHTML={{
+                    __html: DOMPurify.sanitize(event.description, {
+                      ADD_ATTR: ['style', 'class'],
+                      ADD_TAGS: ['iframe'],
+                      ALLOWED_ATTR: ['style', 'class', 'href', 'src', 'alt', 'title', 'target', 'rel', 'width', 'height', 'id']
+                    })
+                  }}
+                />)}
 
                   <div className="flex flex-col gap-3 mb-4">
                     {event.price !== undefined && (

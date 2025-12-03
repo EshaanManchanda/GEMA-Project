@@ -102,18 +102,18 @@ const ContactPage: React.FC = () => {
   return (
     <>
       <SEO
-        title="Contact ${getAppNameFull()} - Get in Touch for Kids Activities & Events"
-        description="Contact ${getAppNameFull()} for questions about kids activities, event bookings, partnerships, or support. We're here to help create amazing experiences for your children in the UAE."
+        title={`Contact ${getAppNameFull()} - Get in Touch for Kids Activities & Events`}
+        description={`Contact ${getAppNameFull()} for questions about kids activities, event bookings, partnerships, or support. We're here to help create amazing experiences for your children in the UAE.`}
         keywords={['contact gema events', 'customer support', 'kids activities help', 'event booking assistance', 'UAE contact']}
         breadcrumbs={breadcrumbs}
         structuredData={{
           '@context': 'https://schema.org',
           '@type': 'ContactPage',
-          name: 'Contact ${getAppNameFull()}',
-          description: 'Get in touch with ${getAppNameFull()} for kids activities and event support',
+          name: `Contact ${getAppNameFull()}`,
+          description: `Get in touch with ${getAppNameFull()} for kids activities and event support`,
           mainEntity: {
             '@type': 'Organization',
-            name: '${getAppNameFull()}',
+            name: `${getAppNameFull()}`,
             contactPoint: {
               '@type': 'ContactPoint',
               contactType: 'customer service',

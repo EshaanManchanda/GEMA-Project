@@ -124,6 +124,7 @@ function CategoryCarousel({ categories = [] }: CategoryCarouselProps) {
 
   // Transform API categories - show all categories regardless of event count
   const transformedApiCategories = categories.map(transformCategory);
+  console.log('transformedApiCategories', transformedApiCategories);
   const displayCategories = transformedApiCategories.length > 0 ? transformedApiCategories : defaultCategories;
 
   // Debug logging in development
@@ -200,10 +201,10 @@ function CategoryCarousel({ categories = [] }: CategoryCarouselProps) {
                 >
                   <div className="p-6 flex flex-col items-center justify-center text-center h-full">
                     <div className="mb-4 p-3 rounded-full transition-all duration-300 group-hover:scale-110"
-                      style={{ backgroundColor: 'var(--secondary-color)', opacity: 0.1 }}>
-                      {cat.image ? (
+                      style={{ backgroundColor: 'var(--secondary-color)'}}>
+                      {cat.iconAsset?.url ? (
                         <img 
-                          src={cat.image} 
+                          src={cat.iconAsset?.url} 
                           alt={cat.name} 
                           className="w-16 h-16 object-cover rounded-full" 
                           onError={(e) => {

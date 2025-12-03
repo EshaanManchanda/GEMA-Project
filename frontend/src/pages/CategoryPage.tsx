@@ -178,6 +178,7 @@ const CategoryPage: React.FC = () => {
 
         // Extract data from API response
         const category = categoryData;
+        console.log('category', category);
         const events = eventsData || [];
 
         console.log(`[CategoryPage] Found category: "${category?.name}" (slug: "${category?.slug}")`);
@@ -261,19 +262,19 @@ const CategoryPage: React.FC = () => {
       )}
       
       {/* Category Header */}
-      <div className="relative h-64 rounded-lg overflow-hidden mb-8">
+      <div className="relative h-80 rounded-lg overflow-hidden mb-8" style={{ backgroundColor: category.color || '#3b82f6' }}>
         <img
-          src={category.featuredImage || category.image || getPlaceholderUrl('categoryIcon', category.name)}
+          src="/assets/images/category-page.png"
           alt={category.name}
           className="w-full h-full object-cover"
-          onError={(e) => {
-            e.currentTarget.src = getPlaceholderUrl('categoryIcon', category.name);
-          }}
         />
-        <div className="absolute inset-0 bg-black bg-opacity-50 flex items-center justify-center">
-          <div className="text-center text-white">
-            <div className="text-6xl mb-2">{category.icon || '📂'}</div>
-            <h1 className="text-4xl font-bold">{category.name}</h1>
+        <div className="absolute inset-0 flex items-center justify-center">
+          <div className="flex items-center gap-4 bg-white rounded-full px-8 py-4 shadow-lg">
+            <div className="w-16 h-16 rounded-full flex items-center justify-center text-4xl"
+              style={{ backgroundColor: category.color || '#3b82f6' }}>
+              {category.icon || '📂'}
+            </div>
+            <h1 className="text-3xl font-bold text-gray-900">{category.name}</h1>
           </div>
         </div>
       </div>

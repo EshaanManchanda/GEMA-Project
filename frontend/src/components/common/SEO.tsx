@@ -204,7 +204,7 @@ export const EventSEO: React.FC<{ event: any; breadcrumbs?: SEOProps['breadcrumb
       },
       organizer: {
         '@type': 'Organization',
-        name: '${getAppNameFull()}',
+        name: `${getAppNameFull()}`,
         url: baseUrl
       },
       ...(event.images && event.images.length > 0 && { image: event.images }),
@@ -245,12 +245,12 @@ export const BlogSEO: React.FC<{ blog: any; breadcrumbs?: SEOProps['breadcrumbs'
       dateModified: blog.updatedAt,
       author: {
         '@type': 'Person',
-        name: blog.author?.name || '${getAppNameFull()} Team',
+        name: blog.author?.name || `${getAppNameFull()} Team`,
         ...(blog.author?.avatar && { image: blog.author.avatar })
       },
       publisher: {
         '@type': 'Organization',
-        name: '${getAppNameFull()}',
+        name: `${getAppNameFull()}`,
         logo: {
           '@type': 'ImageObject',
           url: `${baseUrl}/assets/images/logo.png`
@@ -346,7 +346,7 @@ export const CollectionSEO: React.FC<{ collection: any; breadcrumbs?: SEOProps['
       category: collection.category,
       provider: {
         '@type': 'Organization',
-        name: '${getAppNameFull()}',
+        name: `${getAppNameFull()}`,
         url: baseUrl
       }
     }
@@ -377,7 +377,7 @@ export const HomeSEO: React.FC<{
   const organizationStructuredData = {
     '@context': 'https://schema.org',
     '@type': 'Organization',
-    name: '${getAppNameFull()}',
+    name: `${getAppNameFull()}`,
     description: 'Discover and book amazing kids activities, events, and educational programs in the UAE',
     url: import.meta.env.VITE_APP_URL || 'https://gema-events.com',
     logo: `${import.meta.env.VITE_APP_URL || 'https://gema-events.com'}/assets/images/logo.png`,
@@ -394,7 +394,7 @@ export const HomeSEO: React.FC<{
   };
 
   const seoData: SEOProps = {
-    title: '${getAppNameFull()} - Discover Amazing Kids Activities & Events in UAE',
+    title: `${getAppNameFull()} - Discover Amazing Kids Activities & Events in UAE`,
     description: 'Find and book the best kids activities, educational programs, and family events in the UAE. Safe, fun, and memorable experiences for children of all ages.',
     keywords: ['kids activities', 'events', 'UAE', 'Dubai', 'family fun', 'children', 'booking', 'education', 'entertainment'],
     structuredData: organizationStructuredData,

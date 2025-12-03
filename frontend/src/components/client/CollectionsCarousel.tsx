@@ -240,7 +240,7 @@ const CollectionsCarousel: React.FC = () => {
                 <div className="bg-white rounded-xl shadow-md overflow-hidden hover:shadow-xl transition-all duration-300 cursor-pointer group h-full p-6 flex flex-col items-center justify-center text-center">
                   <div
                     className="w-20 h-20 rounded-full p-4 mb-4 flex items-center justify-center transition-all duration-300 group-hover:scale-110"
-                    style={{ backgroundColor: 'var(--secondary-color, #6DB0E1)', opacity: 0.1 }}
+                    // style={{ backgroundColor: 'var(--secondary-color, #6DB0E1)', opacity: 0.1 }}
                   >
                     <img
                       src={item.icon}

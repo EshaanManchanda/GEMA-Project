@@ -5,6 +5,7 @@ import { Event } from '../models/index';
 import { AppError } from '../middleware/index';
 import { AuthRequest } from '../types/index';
 import { getFileUrl, getFileInfo } from '../middleware/upload';
+import { transformEventResponse } from '../utils/event.utils';
 
 // @desc    Get all collections
 // @route   GET /api/collections
@@ -142,16 +143,29 @@ export const getCollectionById = async (req: Request, res: Response, next: NextF
       .populate({
         path: 'events',
         match: { isDeleted: false, isApproved: true },
-        populate: {
-          path: 'vendorId',
-          select: 'firstName lastName businessName'
-        }
+        populate: [
+          {
+            path: 'vendorId',
+            select: 'firstName lastName businessName'
+          },
+          {
+            path: 'imageAssets',
+            select: 'url thumbnailUrl variations'
+          }
+        ]
       })
       .populate('iconAsset')
       .populate('featuredImageAsset');
 
     if (!collection) {
       return next(new AppError('Collection not found', 404));
+    }
+
+    // Transform events to include image URLs from imageAssets
+    if (collection?.events && Array.isArray(collection.events)) {
+      collection.events = collection.events.map(event =>
+        transformEventResponse(event)
+      );
     }
 
     console.log(`Found collection: ${collection.title} with ${collection.events.length} events`);
