@@ -10,6 +10,7 @@ import Layout from '@components/layout/Layout';
 import AdminLayout from '@components/layout/AdminLayout';
 import LoadingSpinner from '@components/common/LoadingSpinner';
 import ScrollToTop from '@components/common/ScrollToTop';
+import GlobalUploadProgress from '@components/common/GlobalUploadProgress';
 
 // Page Components (Lazy loaded for better performance)
 const HomePage = React.lazy(() => import(/* webpackChunkName: "home" */ './pages/HomePage'));
@@ -160,6 +161,7 @@ function AppContent() {
 
   return (
     <>
+      <GlobalUploadProgress />
       <ScrollToTop />
       <Toaster
         position="top-right"

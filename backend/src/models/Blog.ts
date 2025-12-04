@@ -109,9 +109,9 @@ const blogSchema = new Schema<IBlog>(
       type: [String],
       validate: {
         validator: function(v: string[]) {
-          return v.length <= 10;
+          return v.length <= 20;
         },
-        message: 'Cannot have more than 10 tags',
+        message: 'Cannot have more than 20 tags',
       },
     },
     status: {

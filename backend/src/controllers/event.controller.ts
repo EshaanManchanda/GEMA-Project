@@ -49,6 +49,7 @@ export const getEvents = async (req: Request, res: Response, next: NextFunction)
       ageMax,
       featured,
       search,
+      tags,
       sortBy = 'createdAt',
       sortOrder = 'desc',
     } = req.query;
@@ -72,6 +73,7 @@ export const getEvents = async (req: Request, res: Response, next: NextFunction)
       ageMax,
       featured,
       search,
+      tags,
       sortBy,
       sortOrder,
     })}`;
@@ -104,6 +106,12 @@ export const getEvents = async (req: Request, res: Response, next: NextFunction)
     if (city) additionalFilters['location.city'] = new RegExp(city as string, 'i');
     if (currency) additionalFilters.currency = currency;
     if (featured === 'true') additionalFilters.isFeatured = true;
+
+    // Tag filtering
+    if (tags) {
+      const tagArray = (tags as string).split(',').map(tag => tag.trim());
+      additionalFilters.tags = { $in: tagArray };
+    }
 
     // Build public event filter (includes expiration check)
     const filter = buildPublicEventFilter(additionalFilters);

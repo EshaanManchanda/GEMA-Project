@@ -222,11 +222,13 @@ export class UploadService {
     if (provider === 'cloudinary') {
       const result = await this.uploadToCloudinary(file.path, options);
       
-      // Clean up temp file
-      try {
-        fs.unlinkSync(file.path);
-      } catch (error) {
-        console.warn('Failed to clean up temp file:', file.path);
+      // Clean up temp file (skip Cloudinary URLs)
+      if (file.path && !file.path.startsWith('http://') && !file.path.startsWith('https://')) {
+        try {
+          fs.unlinkSync(file.path);
+        } catch (error) {
+          console.warn('Failed to clean up temp file:', file.path);
+        }
       }
       
       return result;

@@ -22,6 +22,7 @@ import { startCollectionReconciliationCron } from './utils/cron';
 import { devLog } from './utils/devLogger';
 import { redisClient } from './config/redis';
 import { qrQueue, emailQueue, ticketQueue, analyticsQueue, notificationsQueue, bullMQClient } from './config/queue';
+import { getTimeoutForFileSize } from './utils/uploadHelpers';
 
 devLog.log('Server starting...');
 
@@ -167,7 +168,24 @@ app.use(morgan(config.nodeEnv === 'development' ? 'dev' : 'combined'));
 app.use(performanceMonitor);
 
 // Timeout middleware (prevent indefinite hangs)
-app.use(timeoutMiddleware(45)); // 45s default for all routes
+// Apply upload-specific timeout for file upload routes
+app.use((req: Request, res: Response, next: NextFunction) => {
+  const isUploadRoute = req.path.startsWith('/api/uploads') || req.path.startsWith('/api/media');
+
+  if (isUploadRoute) {
+    // For upload routes, use tiered timeout based on content-length if available
+    const contentLength = parseInt(req.headers['content-length'] || '0', 10);
+    const uploadTimeout = contentLength > 0
+      ? getTimeoutForFileSize(contentLength) / 1000 // Convert ms to seconds
+      : 120; // Default 120s if size unknown
+
+    console.log(`[Upload Timeout] Route: ${req.path}, Size: ${contentLength} bytes, Timeout: ${uploadTimeout}s`);
+    return timeoutMiddleware(uploadTimeout)(req, res, next);
+  } else {
+    // Standard routes: 90s timeout (increased from 45s to allow most requests to complete)
+    return timeoutMiddleware(90)(req, res, next);
+  }
+});
 
 // API routes
 app.use('/api', routes);

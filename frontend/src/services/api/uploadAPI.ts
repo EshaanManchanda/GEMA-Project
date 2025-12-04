@@ -1,4 +1,9 @@
 import api from '../api';
+import { getTimeoutForFileSize } from '../../utils/uploadHelpers';
+
+export interface UploadProgressCallback {
+  (progress: number, loaded: number, total: number): void;
+}
 
 export interface UploadResponse {
   success: boolean;
@@ -86,17 +91,31 @@ export class UploadAPI {
   /**
    * Upload a single file
    */
-  static async uploadSingle(file: File, category?: string): Promise<UploadResponse> {
+  static async uploadSingle(
+    file: File,
+    category?: string,
+    onProgress?: UploadProgressCallback
+  ): Promise<UploadResponse> {
     const formData = new FormData();
     formData.append('file', file);
     if (category) {
       formData.append('category', category);
     }
 
+    // Calculate timeout based on file size
+    const timeout = getTimeoutForFileSize(file.size);
+
     const response = await api.post('/uploads/single', formData, {
       headers: {
         'Content-Type': 'multipart/form-data',
       },
+      timeout,
+      onUploadProgress: onProgress ? (progressEvent) => {
+        const percentCompleted = progressEvent.total
+          ? Math.round((progressEvent.loaded * 100) / progressEvent.total)
+          : 0;
+        onProgress(percentCompleted, progressEvent.loaded, progressEvent.total || 0);
+      } : undefined,
     });
 
     return response.data;
@@ -105,7 +124,11 @@ export class UploadAPI {
   /**
    * Upload multiple files
    */
-  static async uploadMultiple(files: File[], category?: string): Promise<BatchUploadResponse> {
+  static async uploadMultiple(
+    files: File[],
+    category?: string,
+    onProgress?: UploadProgressCallback
+  ): Promise<BatchUploadResponse> {
     const formData = new FormData();
     files.forEach(file => {
       formData.append('files', file);
@@ -114,10 +137,21 @@ export class UploadAPI {
       formData.append('category', category);
     }
 
+    // Calculate timeout based on total size
+    const totalSize = files.reduce((sum, file) => sum + file.size, 0);
+    const timeout = getTimeoutForFileSize(totalSize);
+
     const response = await api.post('/uploads/multiple', formData, {
       headers: {
         'Content-Type': 'multipart/form-data',
       },
+      timeout,
+      onUploadProgress: onProgress ? (progressEvent) => {
+        const percentCompleted = progressEvent.total
+          ? Math.round((progressEvent.loaded * 100) / progressEvent.total)
+          : 0;
+        onProgress(percentCompleted, progressEvent.loaded, progressEvent.total || 0);
+      } : undefined,
     });
 
     return response.data;
@@ -224,7 +258,11 @@ export class UploadAPI {
   /**
    * Batch upload files
    */
-  static async batchUpload(files: File[], category?: string): Promise<BatchUploadResponse> {
+  static async batchUpload(
+    files: File[],
+    category?: string,
+    onProgress?: UploadProgressCallback
+  ): Promise<BatchUploadResponse> {
     const formData = new FormData();
     files.forEach(file => {
       formData.append('files', file);
@@ -233,10 +271,21 @@ export class UploadAPI {
       formData.append('category', category);
     }
 
+    // Calculate timeout based on total size
+    const totalSize = files.reduce((sum, file) => sum + file.size, 0);
+    const timeout = getTimeoutForFileSize(totalSize);
+
     const response = await api.post('/uploads/batch', formData, {
       headers: {
         'Content-Type': 'multipart/form-data',
       },
+      timeout,
+      onUploadProgress: onProgress ? (progressEvent) => {
+        const percentCompleted = progressEvent.total
+          ? Math.round((progressEvent.loaded * 100) / progressEvent.total)
+          : 0;
+        onProgress(percentCompleted, progressEvent.loaded, progressEvent.total || 0);
+      } : undefined,
     });
 
     return response.data;

@@ -40,12 +40,19 @@ const getCategoryFromRequest = (req: Request): string => {
   return 'misc';
 };
 
-// Cloudinary storage configuration
+// Cloudinary storage configuration with dynamic timeout
 const cloudinaryStorage = new CloudinaryStorage({
   cloudinary: cloudinary,
   params: (req: Request, file) => {
     const category = getCategoryFromRequest(req);
     const isVideo = file.mimetype.startsWith('video/');
+
+    // Calculate timeout based on content-length header (file size)
+    const contentLength = parseInt(req.headers['content-length'] || '0', 10);
+    const timeoutMs = contentLength > 0
+      ? require('../utils/uploadHelpers').getTimeoutForFileSize(contentLength)
+      : 120000; // Default 120s if size unknown
+
     return {
       folder: `gema/${category}`,
       allowed_formats: category === 'blogContent'
@@ -53,7 +60,8 @@ const cloudinaryStorage = new CloudinaryStorage({
         : ['jpg', 'jpeg', 'png', 'gif', 'webp', 'pdf', 'doc', 'docx'],
       resource_type: isVideo ? 'video' : 'auto',
       transformation: isVideo ? [] : [{ quality: 'auto', fetch_format: 'auto' }],
-      public_id: `${category}-${Date.now()}-${Math.round(Math.random() * 1E9)}`
+      public_id: `${category}-${Date.now()}-${Math.round(Math.random() * 1E9)}`,
+      timeout: timeoutMs // Dynamic timeout based on file size
     };
   }
 });
@@ -96,7 +104,7 @@ const fileFilter = (req: Request, file: Express.Multer.File, cb: multer.FileFilt
   }
 };
 
-// Base multer configuration
+// Base multer configuration (general purpose)
 const upload = multer({
   storage,
   fileFilter,
@@ -106,10 +114,20 @@ const upload = multer({
   },
 });
 
+// Blog-specific multer configuration with image size limits
+const uploadBlog = multer({
+  storage,
+  fileFilter,
+  limits: {
+    fileSize: config.upload.maxImageSize, // 10MB for blog images (was incorrectly using maxVideoSize)
+    files: 1, // Single file for featured image
+  },
+});
+
 // Specific upload middlewares
 export const uploadSingle = (fieldName: string = 'file') => upload.single(fieldName);
 
-export const uploadMultiple = (fieldName: string = 'files', maxCount: number = 5) => 
+export const uploadMultiple = (fieldName: string = 'files', maxCount: number = 5) =>
   upload.array(fieldName, maxCount);
 
 export const uploadFields = (fields: { name: string; maxCount?: number }[]) => 
@@ -141,8 +159,8 @@ export const uploadQRCode = upload.single('qrCode');
 // Registration files upload middleware (supports multiple dynamic fields)
 export const uploadRegistrationFiles = upload.any();
 
-// Blog-specific upload middleware
-export const uploadBlogFeaturedImage = upload.single('featuredImage');
+// Blog-specific upload middleware with proper size limits
+export const uploadBlogFeaturedImage = uploadBlog.single('featuredImage');
 
 // Blog content media upload (images and videos within content)
 export const uploadBlogContentMedia = upload.single('media');

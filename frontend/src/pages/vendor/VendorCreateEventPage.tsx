@@ -21,7 +21,7 @@ interface EventFormData {
   latitude: string;
   longitude: string;
   currency: string;
-  tags: string;
+  tags: string[];
   capacity: string;
   featured: boolean;
   requirePhoneVerification: boolean;
@@ -71,7 +71,7 @@ const VendorCreateEventPage: React.FC = () => {
     latitude: '',
     longitude: '',
     currency: 'USD',
-    tags: '',
+    tags: [],
     capacity: '',
     featured: false,
     requirePhoneVerification: false,
@@ -162,6 +162,18 @@ const VendorCreateEventPage: React.FC = () => {
   const handleCheckboxChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const { name, checked } = e.target;
     setFormData(prev => ({ ...prev, [name]: checked }));
+  };
+
+  const handleTagsChange = (tags: string[]) => {
+    setFormData(prev => ({ ...prev, tags }));
+    // Clear errors if tags are added
+    if (tags.length > 0 && errors.tags) {
+      setErrors(prev => {
+        const newErrors = { ...prev };
+        delete newErrors.tags;
+        return newErrors;
+      });
+    }
   };
 
   const handleImagesChange = (images: File[], previewUrls: string[]) => {
@@ -349,7 +361,7 @@ const VendorCreateEventPage: React.FC = () => {
         currency: formData.currency,
         capacity: parseInt(formData.capacity),
         requirePhoneVerification: formData.requirePhoneVerification,
-        tags: formData.tags.split(',').map(tag => tag.trim()).filter(tag => tag.length > 0),
+        tags: formData.tags,
         dateSchedule: schedules.map(schedule => ({
           startDate: schedule.startDate,
           endDate: schedule.endDate,
@@ -545,6 +557,7 @@ const VendorCreateEventPage: React.FC = () => {
                     onCheckboxChange={handleCheckboxChange}
                     onImagesChange={handleImagesChange}
                     onRemoveImage={removeImage}
+                    onTagsChange={handleTagsChange}
                   />
                 )}
 

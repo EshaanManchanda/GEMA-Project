@@ -46,7 +46,7 @@ interface EventFormData {
   venueType: 'Indoor' | 'Outdoor' | 'Online' | 'Offline';
   ageRangeMin: string;
   ageRangeMax: string;
-  tags: string;
+  tags: string[];
   images: string[];  // MediaAsset IDs
   imagePreviewUrls: string[];
 
@@ -197,7 +197,7 @@ const AdminEditEventPage: React.FC = () => {
             venueType: eventData.venueType || 'Indoor',
             ageRangeMin: eventData.ageRange?.[0]?.toString() || '',
             ageRangeMax: eventData.ageRange?.[1]?.toString() || '',
-            tags: eventData.tags?.join(', ') || '',
+            tags: eventData.tags || [],
             images: eventData.imageAssets?.map((a: MediaAsset) => a._id) || [],
             imagePreviewUrls: eventData.imageAssets?.map((a: MediaAsset) => a.url) || eventData.images || [],
             isApproved: eventData.isApproved || false,
@@ -324,6 +324,14 @@ const AdminEditEventPage: React.FC = () => {
   const handleCheckboxChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const { name, checked } = e.target;
     setFormData(prev => ({ ...prev, [name]: checked }));
+  };
+
+  const handleTagsChange = (tags: string[]) => {
+    setFormData(prev => ({ ...prev, tags }));
+    // Clear errors if tags are added
+    if (tags.length > 0 && errors.tags) {
+      setErrors(prev => ({ ...prev, tags: undefined }));
+    }
   };
 
   const handleImagesChange = (assets: MediaAsset[]) => {
@@ -590,7 +598,7 @@ const AdminEditEventPage: React.FC = () => {
         vendorId: formData.vendorId,
         price: parseFloat(formData.basePrice),
         currency: formData.currency,
-        tags: formData.tags.split(',').map(tag => tag.trim()).filter(tag => tag.length > 0),
+        tags: formData.tags,
 
         // Admin-specific fields
         isApproved: formData.isApproved,
@@ -628,7 +636,7 @@ const AdminEditEventPage: React.FC = () => {
           description: formData.seoMeta.description || formData.description.substring(0, 160),
           keywords: formData.seoMeta.keywords.length > 0
             ? formData.seoMeta.keywords
-            : formData.tags.split(',').map(tag => tag.trim()).filter(tag => tag.length > 0)
+            : formData.tags
         },
 
         faqs: formData.faqs.map(faq => ({
@@ -814,6 +822,7 @@ const AdminEditEventPage: React.FC = () => {
                 onCheckboxChange={handleCheckboxChange}
                 onImagesChange={handleImagesChange}
                 onRemoveImage={removeImage}
+                onTagsChange={handleTagsChange}
                 showMediaPicker={showMediaPicker}
                 onOpenMediaPicker={() => setShowMediaPicker(true)}
                 onCloseMediaPicker={() => setShowMediaPicker(false)}

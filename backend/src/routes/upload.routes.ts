@@ -250,12 +250,20 @@ router.post('/document', authenticate, uploadDocument, handleUploadError, (req: 
 
 // Blog featured image upload
 router.post('/blog-featured-image', authenticate, uploadBlogFeaturedImage, handleUploadError, (req: AuthRequest, res: Response, next: NextFunction) => {
+  const uploadStartTime = Date.now();
+  const fileSize = req.file?.size || 0;
+
   try {
+    console.log(`[Upload Route] Blog featured image upload started - Size: ${fileSize} bytes`);
+
     if (!req.file) {
       return next(new AppError('No featured image uploaded', 400));
     }
 
     const fileInfo = getFileInfo(req.file);
+    const uploadDuration = Date.now() - uploadStartTime;
+
+    console.log(`[Upload Route] Blog featured image upload completed - Size: ${fileSize} bytes, Duration: ${uploadDuration}ms`);
 
     res.status(200).json({
       success: true,
@@ -263,6 +271,8 @@ router.post('/blog-featured-image', authenticate, uploadBlogFeaturedImage, handl
       data: fileInfo
     });
   } catch (error) {
+    const uploadDuration = Date.now() - uploadStartTime;
+    console.error(`[Upload Route] Blog featured image upload failed - Size: ${fileSize} bytes, Duration: ${uploadDuration}ms, Error:`, error);
     next(error);
   }
 });

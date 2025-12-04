@@ -4,6 +4,8 @@ import { Card, CardContent, CardHeader, CardTitle } from '../ui/Card';
 import Button from '../ui/Button';
 import Input from '../ui/Input';
 import SEOPreview from './SEOPreview';
+import BulkInputModal from '../common/BulkInputModal';
+import { parseBulkTags } from '../../utils/tagHelpers';
 import { usePermissions } from '../../hooks/usePermissions';
 import {
   validateSEO,
@@ -62,6 +64,7 @@ const SEOEditor: React.FC<SEOEditorProps> = ({
   });
 
   const [keywordInput, setKeywordInput] = useState('');
+  const [showBulkKeywordModal, setShowBulkKeywordModal] = useState(false);
   const [showPreview, setShowPreview] = useState(false);
   const [validation, setValidation] = useState<SEOValidationResult | null>(null);
   const [analysis, setAnalysis] = useState<SEOAnalysis | null>(null);
@@ -110,6 +113,25 @@ const SEOEditor: React.FC<SEOEditorProps> = ({
 
   const handleRemoveKeyword = (keyword: string) => {
     updateSeoData('keywords', seoData.keywords.filter(k => k !== keyword));
+  };
+
+  const handleBulkAddKeywords = (bulkInput: string) => {
+    const parsedKeywords = parseBulkTags(bulkInput, {
+      maxLength: 50,
+      maxCount: SEO_LIMITS.KEYWORDS.MAX - seoData.keywords.length,
+    });
+
+    // Filter out duplicates
+    const newKeywords = parsedKeywords.filter(
+      keyword => !seoData.keywords.includes(keyword)
+    );
+
+    if (newKeywords.length === 0) {
+      return;
+    }
+
+    updateSeoData('keywords', [...seoData.keywords, ...newKeywords]);
+    setShowBulkKeywordModal(false);
   };
 
   const handleAutoGenerate = () => {
@@ -352,6 +374,16 @@ const SEOEditor: React.FC<SEOEditorProps> = ({
                 >
                   Add
                 </Button>
+                <Button
+                  type="button"
+                  variant="outline"
+                  onClick={() => setShowBulkKeywordModal(true)}
+                  disabled={isActuallyDisabled || seoData.keywords.length >= SEO_LIMITS.KEYWORDS.MAX}
+                  size="sm"
+                  title={!canEditSEO.allowed ? canEditSEO.message : undefined}
+                >
+                  Bulk Add
+                </Button>
               </div>
             )}
           </div>
@@ -455,6 +487,18 @@ const SEOEditor: React.FC<SEOEditorProps> = ({
           </CardContent>
         </Card>
       )}
+
+      {/* Bulk Keyword Modal */}
+      <BulkInputModal
+        isOpen={showBulkKeywordModal}
+        onClose={() => setShowBulkKeywordModal(false)}
+        onSubmit={handleBulkAddKeywords}
+        title="Bulk Add Keywords"
+        placeholder="Enter keywords separated by commas or new lines&#10;e.g., seo, marketing, optimization&#10;digital marketing, analytics"
+        maxItems={SEO_LIMITS.KEYWORDS.MAX}
+        currentCount={seoData.keywords.length}
+        itemType="keywords"
+      />
     </div>
   );
 };

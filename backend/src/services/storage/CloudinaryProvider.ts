@@ -14,6 +14,9 @@ export class CloudinaryProvider implements IStorageProvider {
    * Upload a file to Cloudinary
    */
   async upload(file: Express.Multer.File, options: UploadOptions = {}): Promise<UploadResult> {
+    const uploadStartTime = Date.now();
+    const fileSize = file.size || file.buffer?.length || 0;
+
     try {
       const {
         category = 'documents',
@@ -22,6 +25,9 @@ export class CloudinaryProvider implements IStorageProvider {
         tags = [],
         resourceType = 'auto'
       } = options;
+
+      // Log upload start
+      console.log(`[Cloudinary Upload] Starting upload - File: ${file.originalname}, Size: ${fileSize} bytes, Category: ${category}`);
 
       // Get upload preset configuration
       const preset = uploadPresets[category as keyof typeof uploadPresets];
@@ -35,6 +41,11 @@ export class CloudinaryProvider implements IStorageProvider {
         unique_filename: true,
         overwrite: false
       };
+
+      // Add timeout based on file size
+      const timeoutMs = require('../../utils/uploadHelpers').getTimeoutForFileSize(fileSize);
+      uploadOptions.timeout = timeoutMs;
+      console.log(`[Cloudinary Upload] Timeout set to ${timeoutMs}ms for ${fileSize} bytes`);
 
       // Add transformations
       if (transformation) {
@@ -51,7 +62,7 @@ export class CloudinaryProvider implements IStorageProvider {
       // Upload to Cloudinary using file path or buffer
       let result: UploadApiResponse;
 
-      if (file.path) {
+      if (file.path && !file.path.startsWith('http://') && !file.path.startsWith('https://')) {
         // If multer saved to disk, upload from path
         result = await cloudinary.uploader.upload(file.path, uploadOptions);
 
@@ -80,6 +91,11 @@ export class CloudinaryProvider implements IStorageProvider {
         throw new Error('File must have either path or buffer');
       }
 
+      // Log successful upload
+      const uploadDuration = Date.now() - uploadStartTime;
+      const { formatBytes, formatDuration } = require('../../utils/uploadHelpers');
+      console.log(`[Cloudinary Upload] Success - File: ${file.originalname}, Size: ${formatBytes(fileSize)}, Duration: ${formatDuration(uploadDuration)}, URL: ${result.secure_url}`);
+
       return {
         success: true,
         url: result.secure_url,
@@ -91,7 +107,8 @@ export class CloudinaryProvider implements IStorageProvider {
       };
 
     } catch (error: any) {
-      console.error('Cloudinary upload error:', error);
+      const uploadDuration = Date.now() - uploadStartTime;
+      console.error(`[Cloudinary Upload] Failed - File: ${file.originalname}, Size: ${fileSize} bytes, Duration: ${uploadDuration}ms, Error:`, error.message);
       return {
         success: false,
         error: error.message || 'Failed to upload to Cloudinary'

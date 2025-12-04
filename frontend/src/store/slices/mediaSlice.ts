@@ -38,6 +38,20 @@ export interface MediaAsset {
   };
 }
 
+export interface UploadProgress {
+  id: string; // Unique ID for this upload
+  fileName: string;
+  fileSize: number;
+  progress: number; // 0-100
+  loaded: number; // Bytes uploaded
+  total: number; // Total bytes
+  speed: number; // Bytes per second
+  eta: number; // Estimated time remaining (ms)
+  startTime: number; // Upload start timestamp
+  status: 'pending' | 'uploading' | 'completed' | 'error';
+  error?: string;
+}
+
 interface MediaState {
   assets: MediaAsset[];
   selectedAssets: string[];
@@ -63,6 +77,7 @@ interface MediaState {
     byCategory: Record<string, { count: number; size: number }>;
     unused: number;
   } | null;
+  uploadProgress: Record<string, UploadProgress>; // Track multiple uploads by ID
 }
 
 const initialState: MediaState = {
@@ -79,7 +94,8 @@ const initialState: MediaState = {
   loading: false,
   uploading: false,
   error: null,
-  stats: null
+  stats: null,
+  uploadProgress: {}
 };
 
 // Async Thunks
@@ -244,6 +260,64 @@ const mediaSlice = createSlice({
     },
     clearError: (state) => {
       state.error = null;
+    },
+    // Upload progress tracking
+    initUpload: (state, action: PayloadAction<{ id: string; fileName: string; fileSize: number }>) => {
+      state.uploadProgress[action.payload.id] = {
+        id: action.payload.id,
+        fileName: action.payload.fileName,
+        fileSize: action.payload.fileSize,
+        progress: 0,
+        loaded: 0,
+        total: action.payload.fileSize,
+        speed: 0,
+        eta: 0,
+        startTime: Date.now(),
+        status: 'pending'
+      };
+    },
+    updateUploadProgress: (state, action: PayloadAction<{
+      id: string;
+      progress: number;
+      loaded: number;
+      total: number;
+    }>) => {
+      const upload = state.uploadProgress[action.payload.id];
+      if (upload) {
+        const now = Date.now();
+        const elapsed = now - upload.startTime;
+        const speed = elapsed > 0 ? (action.payload.loaded / elapsed) * 1000 : 0;
+        const remaining = action.payload.total - action.payload.loaded;
+        const eta = speed > 0 ? (remaining / speed) * 1000 : 0;
+
+        upload.progress = action.payload.progress;
+        upload.loaded = action.payload.loaded;
+        upload.total = action.payload.total;
+        upload.speed = speed;
+        upload.eta = eta;
+        upload.status = 'uploading';
+      }
+    },
+    completeUpload: (state, action: PayloadAction<string>) => {
+      const upload = state.uploadProgress[action.payload];
+      if (upload) {
+        upload.progress = 100;
+        upload.status = 'completed';
+        upload.eta = 0;
+      }
+    },
+    failUpload: (state, action: PayloadAction<{ id: string; error: string }>) => {
+      const upload = state.uploadProgress[action.payload.id];
+      if (upload) {
+        upload.status = 'error';
+        upload.error = action.payload.error;
+      }
+    },
+    removeUpload: (state, action: PayloadAction<string>) => {
+      delete state.uploadProgress[action.payload];
+    },
+    clearAllUploads: (state) => {
+      state.uploadProgress = {};
     }
   },
   extraReducers: (builder) => {
@@ -343,6 +417,12 @@ export const {
   toggleAssetSelection,
   selectAllAssets,
   clearSelection,
+  initUpload,
+  updateUploadProgress,
+  completeUpload,
+  failUpload,
+  removeUpload,
+  clearAllUploads,
   setCurrentAsset,
   clearError
 } = mediaSlice.actions;

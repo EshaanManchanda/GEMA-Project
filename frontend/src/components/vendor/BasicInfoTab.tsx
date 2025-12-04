@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import ImageUpload from '../common/ImageUpload';
 import TipTapEditor from '../common/TipTapEditor';
+import TagInput from '../common/TagInput';
 import DOMPurify from 'isomorphic-dompurify';
 
 interface Category {
@@ -17,7 +18,7 @@ interface BasicInfoTabProps {
     venueType: 'Indoor' | 'Outdoor' | 'Online' | 'Offline';
     ageRangeMin: string;
     ageRangeMax: string;
-    tags: string;
+    tags: string[];
     featured: boolean;
     images: File[];
     imagePreviewUrls: string[];
@@ -28,6 +29,7 @@ interface BasicInfoTabProps {
   onCheckboxChange: (e: React.ChangeEvent<HTMLInputElement>) => void;
   onImagesChange: (images: File[], previewUrls: string[]) => void;
   onRemoveImage: (index: number) => void;
+  onTagsChange: (tags: string[]) => void;
 }
 
 const BasicInfoTab: React.FC<BasicInfoTabProps> = ({
@@ -38,6 +40,7 @@ const BasicInfoTab: React.FC<BasicInfoTabProps> = ({
   onCheckboxChange,
   onImagesChange,
   onRemoveImage,
+  onTagsChange,
 }) => {
   const [descriptionTab, setDescriptionTab] = useState<'edit' | 'preview'>('edit');
 
@@ -240,19 +243,16 @@ const BasicInfoTab: React.FC<BasicInfoTabProps> = ({
 
       {/* Tags */}
       <div>
-        <label htmlFor="tags" className="block text-sm font-medium text-gray-700 mb-1">
-          Tags <span className="text-gray-500">(comma separated)</span>
-        </label>
-        <input
-          type="text"
-          id="tags"
-          name="tags"
-          value={formData.tags}
-          onChange={onInputChange}
-          className={`w-full px-3 py-2 border ${errors.tags ? 'border-red-500' : 'border-gray-300'} rounded-md shadow-sm focus:outline-none focus:ring-primary focus:border-primary`}
-          placeholder="e.g. kids, science, fun, educational"
+        <TagInput
+          tags={formData.tags}
+          onChange={onTagsChange}
+          maxTags={20}
+          allowBulkAdd={true}
+          placeholder="Add tag"
+          showCount={true}
+          label="Tags"
+          error={errors.tags}
         />
-        {errors.tags && <p className="mt-1 text-sm text-red-500">{errors.tags}</p>}
       </div>
 
       {/* Event Images */}

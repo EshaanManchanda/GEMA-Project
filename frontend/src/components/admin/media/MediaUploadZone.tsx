@@ -1,10 +1,11 @@
 import React, { useCallback, useState } from 'react';
-import { Upload, X, CheckCircle, AlertCircle } from 'lucide-react';
+import { Upload, X, CheckCircle, AlertCircle, Loader2 } from 'lucide-react';
 import { useDispatch } from 'react-redux';
 import { AppDispatch } from '../../../store';
-import { uploadMedia, uploadMultipleMedia } from '../../../store/slices/mediaSlice';
+import { uploadMedia, uploadMultipleMedia, initUpload, updateUploadProgress, completeUpload, failUpload } from '../../../store/slices/mediaSlice';
 import Button from '../../ui/Button';
 import toast from 'react-hot-toast';
+import { formatBytes, formatUploadSpeed, formatDuration } from '../../../utils/uploadHelpers';
 
 interface MediaUploadZoneProps {
   category: 'blog' | 'profile' | 'event' | 'document' | 'misc';
@@ -20,6 +21,9 @@ interface UploadFile {
   status: 'pending' | 'uploading' | 'success' | 'error';
   progress: number;
   error?: string;
+  speed?: number; // Bytes per second
+  eta?: number; // Estimated time remaining (ms)
+  loaded?: number; // Bytes uploaded
 }
 
 /**
@@ -153,16 +157,27 @@ const MediaUploadZone: React.FC<MediaUploadZoneProps> = ({
 
     try {
       if (files.length === 1) {
-        // Single upload
-        setFiles(files.map(f => ({ ...f, status: 'uploading' as const })));
+        // Single upload with progress tracking
+        const uploadFile = files[0];
+        setFiles([{ ...uploadFile, status: 'uploading' as const }]);
 
+        // Dispatch Redux init action
+        dispatch(initUpload({
+          id: uploadFile.id,
+          fileName: uploadFile.file.name,
+          fileSize: uploadFile.file.size
+        }));
+
+        // Use upload thunk with progress callback
         await dispatch(uploadMedia({
-          file: files[0].file,
+          file: uploadFile.file,
           category,
           folder
         })).unwrap();
 
-        setFiles([{ ...files[0], status: 'success', progress: 100 }]);
+        // Update Redux & local state
+        dispatch(completeUpload(uploadFile.id));
+        setFiles([{ ...uploadFile, status: 'success', progress: 100 }]);
         toast.success('File uploaded successfully!');
       } else {
         // Multiple upload with per-file tracking
@@ -327,12 +342,40 @@ const MediaUploadZone: React.FC<MediaUploadZoneProps> = ({
 
                 {/* File Info */}
                 <div className="flex-1 min-w-0">
-                  <p className="text-sm font-medium text-gray-900 truncate">
-                    {uploadFile.file.name}
-                  </p>
-                  <p className="text-xs text-gray-500">
-                    {formatSize(uploadFile.file.size)}
-                  </p>
+                  <div className="flex items-center justify-between">
+                    <p className="text-sm font-medium text-gray-900 truncate">
+                      {uploadFile.file.name}
+                    </p>
+                    {uploadFile.status === 'uploading' && (
+                      <span className="text-xs text-blue-600 font-medium ml-2">
+                        {uploadFile.progress}%
+                      </span>
+                    )}
+                  </div>
+                  <div className="flex items-center gap-2 text-xs text-gray-500">
+                    <span>{formatBytes(uploadFile.file.size)}</span>
+                    {uploadFile.status === 'uploading' && uploadFile.speed && (
+                      <>
+                        <span>•</span>
+                        <span>{formatUploadSpeed(uploadFile.speed)}</span>
+                        {uploadFile.eta && uploadFile.eta > 1000 && (
+                          <>
+                            <span>•</span>
+                            <span>{formatDuration(uploadFile.eta)} remaining</span>
+                          </>
+                        )}
+                      </>
+                    )}
+                  </div>
+                  {/* Progress Bar */}
+                  {uploadFile.status === 'uploading' && (
+                    <div className="w-full bg-gray-200 rounded-full h-1.5 mt-2">
+                      <div
+                        className="bg-blue-600 h-1.5 rounded-full transition-all duration-300"
+                        style={{ width: `${uploadFile.progress}%` }}
+                      />
+                    </div>
+                  )}
                   {uploadFile.status === 'error' && uploadFile.error && (
                     <p className="text-xs text-red-600 mt-1">{uploadFile.error}</p>
                   )}

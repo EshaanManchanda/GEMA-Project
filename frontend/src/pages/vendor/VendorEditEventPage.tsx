@@ -23,7 +23,7 @@ interface EventFormData {
   latitude: string;
   longitude: string;
   currency: string;
-  tags: string;
+  tags: string[];
   capacity: string;
   featured: boolean;
   requirePhoneVerification: boolean;
@@ -145,7 +145,7 @@ const VendorEditEventPage: React.FC = () => {
           latitude: eventData.location?.coordinates?.lat?.toString() || '',
           longitude: eventData.location?.coordinates?.lng?.toString() || '',
           currency: eventData.currency || 'USD',
-          tags: eventData.tags?.join(', ') || '',
+          tags: eventData.tags || [],
           capacity: eventData.capacity?.toString() || '',
           featured: eventData.isFeatured || false,
           requirePhoneVerification: eventData.requirePhoneVerification || false,
@@ -233,6 +233,18 @@ const VendorEditEventPage: React.FC = () => {
   const handleCheckboxChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const { name, checked } = e.target;
     setFormData(prev => ({ ...prev, [name]: checked }));
+  };
+
+  const handleTagsChange = (tags: string[]) => {
+    setFormData(prev => ({ ...prev, tags }));
+    // Clear errors if tags are added
+    if (tags.length > 0 && errors.tags) {
+      setErrors(prev => {
+        const newErrors = { ...prev };
+        delete newErrors.tags;
+        return newErrors;
+      });
+    }
   };
 
   const handleImagesChange = (images: File[], previewUrls: string[]) => {
@@ -411,7 +423,7 @@ const VendorEditEventPage: React.FC = () => {
         currency: formData.currency,
         capacity: parseInt(formData.capacity),
         requirePhoneVerification: formData.requirePhoneVerification,
-        tags: formData.tags.split(',').map(tag => tag.trim()).filter(tag => tag.length > 0),
+        tags: formData.tags,
         dateSchedule: schedules.map(schedule => ({
           ...(schedule._id && { _id: schedule._id }),
           startDate: schedule.startDate,
@@ -429,7 +441,7 @@ const VendorEditEventPage: React.FC = () => {
           description: formData.seoMeta.description || formData.description.substring(0, 160),
           keywords: formData.seoMeta.keywords.length > 0
             ? formData.seoMeta.keywords
-            : formData.tags.split(',').map(tag => tag.trim()).filter(tag => tag.length > 0)
+            : formData.tags
         }
       };
 
@@ -573,6 +585,7 @@ const VendorEditEventPage: React.FC = () => {
                     onCheckboxChange={handleCheckboxChange}
                     onImagesChange={handleImagesChange}
                     onRemoveImage={removeImage}
+                    onTagsChange={handleTagsChange}
                   />
                 )}
 

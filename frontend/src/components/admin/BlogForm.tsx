@@ -24,6 +24,7 @@ import Modal from '../ui/Modal';
 import MediaPickerModal from './media/MediaPickerModal';
 import TipTapEditor from '../common/TipTapEditor';
 import SEOEditor from '../seo/SEOEditor';
+import TagInput from '../common/TagInput';
 import { MediaAsset } from '../../store/slices/mediaSlice';
 import { config } from '../../config';
 
@@ -93,7 +94,6 @@ const BlogForm: React.FC<BlogFormProps> = ({
   categories,
   loading = false
 }) => {
-  const [newTag, setNewTag] = useState('');
   const [showMediaPicker, setShowMediaPicker] = useState(false);
   const [selectedFeaturedImageAsset, setSelectedFeaturedImageAsset] = useState<MediaAsset | null>(null);
   const [seoData, setSeoData] = useState({
@@ -286,18 +286,6 @@ const BlogForm: React.FC<BlogFormProps> = ({
       setSelectedFeaturedImageAsset(null);
     }
   }, [blog]);
-
-  const handleAddTag = () => {
-    if (newTag.trim() && !watchedTags.includes(newTag.trim())) {
-      setValue('tags', [...watchedTags, newTag.trim()]);
-      setNewTag('');
-    }
-  };
-
-  const handleRemoveTag = (index: number) => {
-    const updatedTags = watchedTags.filter((_, i) => i !== index);
-    setValue('tags', updatedTags);
-  };
 
   const handleClose = () => {
     console.log('Closing modal...');
@@ -822,45 +810,15 @@ const BlogForm: React.FC<BlogFormProps> = ({
                     Tags
                   </CardTitle>
                 </CardHeader>
-                <CardContent className="space-y-2.5">
-                  <div className="flex space-x-2">
-                    <input
-                      type="text"
-                      id="new-tag"
-                      name="newTag"
-                      value={newTag}
-                      onChange={(e) => setNewTag(e.target.value)}
-                      placeholder="Add tag"
-                      className="flex-1 px-3 py-1.5 text-sm border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-                      onKeyPress={(e) => e.key === 'Enter' && (e.preventDefault(), handleAddTag())}
-                    />
-                    <Button
-                      type="button"
-                      variant="secondary"
-                      size="sm"
-                      onClick={handleAddTag}
-                    >
-                      <Plus className="w-4 h-4" />
-                    </Button>
-                  </div>
-
-                  <div className="flex flex-wrap gap-1.5">
-                    {watchedTags.map((tag, index) => (
-                      <span
-                        key={index}
-                        className="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-blue-100 text-blue-800"
-                      >
-                        {tag}
-                        <button
-                          type="button"
-                          onClick={() => handleRemoveTag(index)}
-                          className="ml-1 text-blue-600 hover:text-blue-800"
-                        >
-                          <X className="w-3 h-3" />
-                        </button>
-                      </span>
-                    ))}
-                  </div>
+                <CardContent>
+                  <TagInput
+                    tags={watchedTags}
+                    onChange={(newTags) => setValue('tags', newTags)}
+                    maxTags={20}
+                    allowBulkAdd={true}
+                    placeholder="Add tag"
+                    showCount={true}
+                  />
                 </CardContent>
               </Card>
             </div>

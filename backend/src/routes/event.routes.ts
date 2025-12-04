@@ -14,6 +14,7 @@ import {
   toggleEventFeatured,
 } from '../controllers/event.controller';
 import { authenticate, authorize } from '../middleware/auth';
+import { validateEventSEO } from '../validators/event.validator';
 
 const router = Router();
 
@@ -158,6 +159,7 @@ router.post(
         }
         return true;
       }),
+    ...validateEventSEO,
   ],
   createEvent
 );
@@ -186,6 +188,7 @@ router.put(
       .isFloat({ min: 0 })
       .withMessage('Price must be a positive number'),
     // Add other validation rules as needed
+    ...validateEventSEO,
   ],
   updateEvent
 );

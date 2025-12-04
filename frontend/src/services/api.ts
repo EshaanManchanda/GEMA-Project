@@ -175,11 +175,18 @@ api.interceptors.response.use(
     // Handle proxy/connection errors differently from server errors
     if (error.code === 'ECONNREFUSED' || error.code === 'ERR_NETWORK' || error.code === 'ECONNABORTED') {
       const isTimeout = error.code === 'ECONNABORTED' || error.message?.includes('timeout');
+
+      // Distinguish between upload timeout and server startup
+      const isUploadRequest = originalRequest.headers?.['Content-Type']?.includes('multipart/form-data');
+      const timeoutValue = originalRequest.timeout || API_TIMEOUT;
+
       const errorMessage = isTimeout
-        ? 'Backend server is starting up (this may take 30-60 seconds on first request)'
+        ? isUploadRequest
+          ? `Upload timed out after ${timeoutValue / 1000}s - file may be too large or connection too slow`
+          : 'Backend server is starting up (this may take 30-60 seconds on first request)'
         : 'Backend server is not responding';
 
-      console.error(`[API] Connection ${isTimeout ? 'timeout' : 'refused'} - Backend may be waking up:`, error.message);
+      console.error(`[API] Connection ${isTimeout ? 'timeout' : 'refused'} - Backend may be waking up:`, error.message, `Timeout: ${timeoutValue}ms`);
 
       // Emit connection error event for UI feedback
       if (typeof window !== 'undefined') {
@@ -187,6 +194,8 @@ api.interceptors.response.use(
           detail: {
             message: errorMessage,
             isTimeout: isTimeout,
+            isUploadRequest: isUploadRequest,
+            timeout: timeoutValue,
             timestamp: Date.now(),
             url: originalRequest.url
           }
