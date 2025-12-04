@@ -7,6 +7,7 @@ export interface IBlog extends Document {
   slug: string;
   excerpt: string;
   content: string;
+  rawHtmlContent?: string;                   // RAW HTML mode - bypasses TipTap parsing for complex layouts
   featuredImage?: string;                    // OLD - deprecated, keep for backward compatibility
   featuredImageAsset?: mongoose.Types.ObjectId;   // NEW - shadow field for migration
   category: mongoose.Types.ObjectId;
@@ -60,6 +61,13 @@ const blogSchema = new Schema<IBlog>(
       type: String,
       required: [true, 'Blog content is required'],
       // trim removed - HTML content must be preserved
+    },
+    rawHtmlContent: {
+      type: String,
+      required: false,
+      default: null,
+      // RAW HTML mode for complex layouts with iframes, semantic tags, inline styles
+      // Bypasses TipTap parsing, rendered directly with DOMPurify sanitization only
     },
     featuredImage: {
       type: String,

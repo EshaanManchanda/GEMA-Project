@@ -195,13 +195,48 @@ const TipTapEditor: React.FC<TipTapEditorProps> = ({
   const handleInsertHtml = useCallback((html: string) => {
     if (!editor) return;
 
+    // Detect complex HTML features that TipTap can't parse
+    const hasIframes = /<iframe/i.test(html);
+    const hasSemanticTags = /<(main|aside|nav|article|section)/i.test(html);
+    const hasComplexStyles = /style="[^"]*(?:display:\s*(?:flex|grid)|position:\s*sticky)/i.test(html);
+
+    const isComplexHtml = hasIframes || hasSemanticTags || hasComplexStyles;
+
+    if (isComplexHtml) {
+      // Show confirmation dialog for Raw HTML mode
+      const useRaw = window.confirm(
+        'Complex HTML Detected!\n\n' +
+        'This HTML contains advanced features (iframes, layouts, semantic tags) that may not work correctly in the visual editor.\n\n' +
+        'Would you like to use RAW HTML MODE?\n\n' +
+        '✅ Preserves all styling and layout exactly\n' +
+        '❌ Disables toolbar editing for this content\n\n' +
+        'Click OK to use Raw HTML mode, or Cancel to try standard insertion (may lose features).'
+      );
+
+      if (useRaw) {
+        // Use special marker to signal Raw HTML mode to parent form
+        onChange(`__RAW_HTML__${html}`);
+        toast.success('Complex HTML will be preserved in Raw HTML mode', {
+          duration: 4000,
+          icon: '✅'
+        });
+        return;
+      }
+    }
+
+    // Normal TipTap insertion (will strip unsupported tags/attributes)
     try {
       editor.chain().focus().insertContent(html).run();
+      if (isComplexHtml) {
+        toast.warning('Some advanced features may have been removed', {
+          duration: 4000
+        });
+      }
     } catch (error) {
       console.error('Error inserting HTML:', error);
       toast.error('Failed to insert HTML content');
     }
-  }, [editor]);
+  }, [editor, onChange]);
 
   if (!editor) {
     return null;

@@ -1,367 +1,300 @@
- Hostinger VPS Deployment Plan for Gema Platform
 
- Overview
+● User approved Claude's plan
+  ⎿  Plan saved to: C:\Users\eshaa\.claude\plans\swift-mapping-truffle.md · /plan to edit
+     Plan: Enable Full HTML Support in TipTap Editor
 
- Deploy both frontend (React/Vite) and backend (Node.js/Express + BullMQ worker) to single Hostinger VPS with:
- - OS: Ubuntu 22.04 LTS
- - Web Server: Nginx (reverse proxy + static files + SSL)
- - Process Manager: PM2 (API server + worker process)
- - Databases: MongoDB Atlas + Redis Cloud (managed)
- - SSL: Let's Encrypt (free)
+     Context
 
- ---
- Phase 1: VPS Initial Setup
+     User wants the Code2 button (HTML insertion) to actually support the pottery workshop HTML documented in TIPTAP_USAGE_GUIDE.md.
 
- 1.1 Server Security Hardening
+     Current Status: ❌ POTTERY HTML WILL NOT WORK
 
- # Connect as root
- ssh root@your-hostinger-vps-ip
+     Critical Issues Found:
 
- # System updates
- apt update && apt upgrade -y
+     1. TipTap Schema Restrictions - Strips semantic tags (<main>, <aside>, <nav>)
+     2. No Iframe Support - Only YouTube iframes work, Instagram will be stripped
+     3. No Style Attribute Parsing - All inline styles removed (flexbox, grid, sticky positioning)
+     4. Strict Document Structure - Complex nested divs flattened/removed
+
+     Investigation Results
+
+     Files Analyzed:
+
+     1. E:\coding\gema\frontend\src\components\common\HtmlInsertModal.tsx (lines 16-31)
+       - Passes raw HTML without sanitization
+     2. E:\coding\gema\frontend\src\components\common\TipTapEditor.tsx
+       - Lines 68-116: Extension configuration (StarterKit only)
+       - Lines 195-204: handleInsertHtml uses editor.chain().focus().insertContent(html).run()
+       - Problem: TipTap schema strips unsupported tags/attributes
+     3. E:\coding\gema\frontend\src\pages\static\BlogDetailPage.tsx (lines 410-419)
+       - DOMPurify allows iframes and style attributes
+       - But: HTML must survive TipTap parsing first
 
- # Create app user
- adduser gemaapp
- usermod -aG sudo gemaapp
+     What Currently Works:
+
+     - Basic formatting (bold, italic, underline)
+     - Headings (H1, H2, H3)
+     - Lists, links, images
+     - YouTube embeds
+     - Blockquotes, code blocks
 
- # SSH key auth (copy from root to gemaapp)
- mkdir -p /home/gemaapp/.ssh
- cp ~/.ssh/authorized_keys /home/gemaapp/.ssh/
- chown -R gemaapp:gemaapp /home/gemaapp/.ssh
- chmod 700 /home/gemaapp/.ssh
- chmod 600 /home/gemaapp/.ssh/authorized_keys
+     What Doesn't Work (Pottery Workshop HTML):
 
- # Harden SSH (/etc/ssh/sshd_config)
- # Set: PermitRootLogin no, PasswordAuthentication no
- systemctl restart sshd
+     - ❌ Instagram iframes
+     - ❌ Semantic tags (<main>, <aside>, <nav>)
+     - ❌ Inline flexbox styles
+     - ❌ CSS Grid styles
+     - ❌ Sticky positioning
+     - ❌ Complex nested div structures
 
- # Firewall (UFW)
- ufw allow 22/tcp && ufw allow 80/tcp && ufw allow 443/tcp
- ufw enable
+     Solution Approaches
 
- # Brute force protection
- apt install fail2ban -y
+     Option 1: Add Custom TipTap Extensions (Complex)
 
- 1.2 Install Required Software
+     Pros: Maintains TipTap editor integration
+     Cons: Requires 4-5 custom extensions, complex schema definitions
 
- su - gemaapp
+     Required Extensions:
+     1. Generic Iframe extension (Instagram support)
+     2. Semantic tags extension (main, aside, nav, section, article)
+     3. Div container extension (nested divs with classes)
+     4. Style attribute extension (preserve inline styles)
 
- # Node.js 20.x
- curl -fsSL https://deb.nodesource.com/setup_20.x | sudo -E bash -
- sudo apt install -y nodejs build-essential
+     Files to modify:
+     - Create: frontend/src/components/common/tiptap-extensions/IframeExtension.ts
+     - Create: frontend/src/components/common/tiptap-extensions/SemanticTagsExtension.ts
+     - Create: frontend/src/components/common/tiptap-extensions/DivExtension.ts
+     - Create: frontend/src/components/common/tiptap-extensions/StyleAttributeExtension.ts
+     - Modify: frontend/src/components/common/TipTapEditor.tsx (add extensions to config)
 
- # PM2, Nginx, Git, Certbot
- sudo npm install -g pm2
- sudo apt install nginx git certbot python3-certbot-nginx -y
+     Complexity: HIGH (100-200 lines per extension)
 
- ---
- Phase 2: Backend Deployment
+     ---
+     Option 2: Raw HTML Mode (Recommended) ⭐
 
- 2.1 Directory Structure
+     Pros: Simple, preserves ALL HTML, no parsing issues
+     Cons: Bypasses TipTap for complex HTML (but still allows simple editing)
 
- sudo mkdir -p /var/www/gema /var/log/gema
- sudo chown -R gemaapp:gemaapp /var/www/gema /var/log/gema
+     Approach:
+     Store two versions of content:
+     1. Rich content - TipTap parsed (for toolbar editing)
+     2. Raw HTML content - Unmodified (for complex layouts)
+
+     When user inserts complex HTML via Code2 button:
+     - Detect if HTML contains unsupported features (iframes, semantic tags, complex styles)
+     - Store as raw HTML in separate field
+     - Display warning: "Complex HTML detected - will bypass editor parsing"
+     - Render raw HTML directly on blog page (DOMPurify only)
+
+     Files to modify:
+     1. Backend model (backend/src/models/blog.model.ts)
+       - Add field: rawHtmlContent?: string
+     2. Frontend TipTapEditor (frontend/src/components/common/TipTapEditor.tsx)
+       - Modify handleInsertHtml to detect complex HTML
+       - Show modal: "Use Raw HTML Mode?"
+     3. Blog display page (frontend/src/pages/static/BlogDetailPage.tsx)
+       - Check if rawHtmlContent exists, render that instead of content
+     4. HtmlInsertModal (frontend/src/components/common/HtmlInsertModal.tsx)
+       - Add detection logic for complex HTML
+       - Show info box: "Detected: iframes, semantic tags, inline styles - will use Raw HTML mode"
+
+     Complexity: LOW (50-80 lines total)
+
+     ---
+     Option 3: Hybrid Approach (Best of Both) 🏆
+
+     Pros: Simple editing with toolbar + complex HTML support
+     Cons: Slightly more complex state management
+
+     How it works:
+     1. User can edit with toolbar (TipTap) OR insert complex HTML (Code2 button)
+     2. When complex HTML inserted:
+       - Switch to "HTML Mode" - shows code editor
+       - Disable toolbar (show message: "HTML Mode - toolbar disabled")
+       - Store in rawHtmlContent field
+     3. User can click "Switch to Editor Mode" to convert back to TipTap
+       - Warning: "Complex HTML will be simplified"
+
+     Files to modify:
+     1. Backend model - Add contentMode: 'editor' | 'html' and rawHtmlContent
+     2. TipTapEditor - Add mode toggle, HTML textarea view
+     3. Blog form - Handle both modes
+     4. Blog display - Render based on mode
+
+     Complexity: MEDIUM (100-150 lines)
+
+     ---
+     Recommended Approach: Option 2 (Raw HTML Mode)
+
+     Why This is Best:
+
+     1. Preserves pottery HTML exactly - No parsing, no stripping
+     2. Simple to implement - Minimal code changes
+     3. No TipTap extension complexity - Avoids schema hell
+     4. Security maintained - DOMPurify still sanitizes on render
+     5. Backward compatible - Existing blogs unaffected
+
+     Implementation Plan
+
+     Step 1: Update Backend Model
+
+     File: backend/src/models/blog.model.ts
+
+     Add field after content:
+     rawHtmlContent: {
+       type: String,
+       default: null,
+       trim: true
+     }
 
- cd /var/www/gema
- git clone <your-repo-url> .
- cd backend
- npm install
- npm run build
+     Step 2: Detect Complex HTML
 
- 2.2 Environment Configuration
+     File: frontend/src/components/common/TipTapEditor.tsx
 
- Critical file: E:\coding\gema\backend\.env
+     Update handleInsertHtml (lines 195-204):
+     const handleInsertHtml = useCallback((html: string) => {
+       if (!editor) return;
 
- Required services setup BEFORE deployment:
- 1. MongoDB Atlas: Create cluster, whitelist IPs, get connection string
- 2. Redis Cloud: Create database, SET EVICTION POLICY TO noeviction (CRITICAL for BullMQ)
- 3. Firebase: Generate service account private key
- 4. Cloudinary: Get cloud name + API credentials
- 5. Stripe: Get live API keys
- 6. Email: Configure SMTP (Hostinger SMTP or Gmail App Password)
+       // Detect complex HTML features
+       const hasIframes = /<iframe/i.test(html);
+       const hasSemanticTags = /<(main|aside|nav|article|section)/i.test(html);
+       const hasComplexStyles = /style="[^"]*(?:display:\s*(?:flex|grid)|position:\s*sticky)/i.test(html);
 
- Key variables:
- - MONGODB_URI - Atlas connection string
- - REDIS_HOST, REDIS_PORT, REDIS_PASSWORD - Redis Cloud credentials
- - JWT_SECRET / JWT_REFRESH_SECRET - Generate 64-char random strings
- - FRONTEND_URL=https://yourdomain.com - For CORS
- - FIREBASE_PRIVATE_KEY - Escape newlines as \n
+       const isComplexHtml = hasIframes || hasSemanticTags || hasComplexStyles;
 
- 2.3 PM2 Configuration
+       if (isComplexHtml) {
+         // Show modal: "Complex HTML detected - use Raw HTML mode?"
+         const useRaw = window.confirm(
+           'This HTML contains advanced features (iframes, layouts, semantic tags) that may not work in the editor.\n\n' +
+           'Would you like to use Raw HTML mode? This will preserve all styling but disable toolbar editing for this content.'
+         );
 
- Update file: E:\coding\gema\backend\ecosystem.config.js
+         if (useRaw) {
+           // Emit event to parent to store in rawHtmlContent
+           onChange(`__RAW_HTML__${html}`); // Special marker
+           toast.success('Complex HTML will be preserved in Raw mode');
+           return;
+         }
+       }
 
- Change paths:
- - cwd: '/var/www/gema/backend'
- - Log paths: /var/log/gema/api-*.log, /var/log/gema/worker-*.log
- - Set instances: 1 for VPS (adjust if multi-core)
- - max_memory_restart: '800M' (adjust based on RAM)
+       // Normal TipTap insertion
+       try {
+         editor.chain().focus().insertContent(html).run();
+       } catch (error) {
+         console.error('Error inserting HTML:', error);
+         toast.error('Failed to insert HTML content');
+       }
+     }, [editor, onChange]);
 
- Start processes:
- cd /var/www/gema/backend
- pm2 start ecosystem.config.js --env production
- pm2 save
- pm2 startup systemd  # Run output command
- pm2 install pm2-logrotate
+     Step 3: Handle Raw HTML in Blog Form
+
+     File: frontend/src/pages/admin/BlogForm.tsx
 
- 2.4 Redis Cloud Configuration
+     In form submission handler, check for __RAW_HTML__ marker:
+     if (content.startsWith('__RAW_HTML__')) {
+       blogData.rawHtmlContent = content.replace('__RAW_HTML__', '');
+       blogData.content = '<p>This blog uses custom HTML layout.</p>'; // Placeholder
+     } else {
+       blogData.content = content;
+       blogData.rawHtmlContent = null;
+     }
 
- CRITICAL: Verify eviction policy:
- redis-cli -h <host> -p <port> -a <password> CONFIG GET maxmemory-policy
- # Must return: "noeviction"
+     Step 4: Update Blog Display
 
- If not set, configure in Redis Cloud dashboard:
- - Configuration → Advanced → Eviction Policy → noeviction
+     File: frontend/src/pages/static/BlogDetailPage.tsx
 
- See: E:\coding\gema\backend\REDIS_CONFIG.md
+     Modify render logic (around line 410):
+     <div
+       className="blog-content"
+       dangerouslySetInnerHTML={{
+         __html: DOMPurify.sanitize(
+           blog.rawHtmlContent || blog.content, // Use raw if available
+           {
+             ADD_ATTR: ['style', 'class'],
+             ADD_TAGS: ['iframe'],
+             ALLOWED_ATTR: ['style', 'class', 'href', 'src', 'alt', 'title',
+                            'target', 'rel', 'width', 'height', 'id', 'scrolling']
+           }
+         )
+       }}
+     />
 
- ---
- Phase 3: Frontend Deployment
+     Step 5: Update API/Controllers
 
- 3.1 Build Frontend
+     Files:
+     - backend/src/controllers/blog.controller.ts
+     - backend/src/validators/blog.validator.ts
 
- cd /var/www/gema/frontend
+     Add rawHtmlContent to allowed fields in validation and responses.
 
- # Update API URL in .env.production
- # VITE_API_URL=https://yourdomain.com/api
+     Step 6: Update Documentation
 
- npm install
- npm run build
+     File: TIPTAP_USAGE_GUIDE.md
 
- # Deploy to Nginx directory
- sudo mkdir -p /var/www/gema/frontend-dist
- sudo cp -r dist/* /var/www/gema/frontend-dist/
- sudo chown -R www-data:www-data /var/www/gema/frontend-dist
+     Add note in "Inserting Custom HTML" section:
+     **Note:** When inserting complex HTML (iframes, semantic tags, advanced layouts),
+     the system will automatically use "Raw HTML Mode" to preserve all features.
+     The toolbar will be disabled for this content, but your HTML will render exactly as designed.
 
- Key file: E:\coding\gema\frontend\vite.config.ts - Build config with chunk splitting
+     ---
+     Alternative: Quick Fix (No Backend Changes)
 
- ---
- Phase 4: Nginx Configuration
+     If you want to test immediately without backend changes:
 
- 4.1 Create Nginx Config
+     Use TipTap's setContent() Instead
 
- File: /etc/nginx/sites-available/gema
+     File: frontend/src/components/common/TipTapEditor.tsx
 
- Key features:
- - HTTP → HTTPS redirect
- - Backend proxy: /api/* → http://127.0.0.1:5000
- - Frontend: Static files from /var/www/gema/frontend-dist
- - Rate limiting: 100 req/min general, 10 req/min auth, 20 req/min analytics
- - Security headers (HSTS, X-Frame-Options, CSP, etc.)
- - Gzip compression
- - Asset caching (1 year for js/css, no cache for HTML/sw.js)
+     Change line 199 from:
+     editor.chain().focus().insertContent(html).run();
 
- # Enable site
- sudo ln -s /etc/nginx/sites-available/gema /etc/nginx/sites-enabled/
- sudo rm /etc/nginx/sites-enabled/default
+     To:
+     editor.commands.setContent(html, false); // false = don't parse, keep raw HTML
 
- # Test and restart
- sudo nginx -t
- sudo systemctl restart nginx
+     BUT: This is not fully supported and may cause issues. The schema will still reject unknown tags.
 
- 4.2 SSL/TLS Setup
+     ---
+     Files to Modify (Option 2 - Recommended)
 
- sudo systemctl stop nginx
- sudo certbot certonly --standalone -d yourdomain.com -d www.yourdomain.com
- sudo systemctl start nginx
+     1. Backend:
+       - backend/src/models/blog.model.ts - Add rawHtmlContent field
+       - backend/src/controllers/blog.controller.ts - Include field in responses
+       - backend/src/validators/blog.validator.ts - Allow field in validation
+     2. Frontend:
+       - frontend/src/components/common/TipTapEditor.tsx - Detect complex HTML, add confirmation
+       - frontend/src/pages/admin/BlogForm.tsx - Handle __RAW_HTML__ marker
+       - frontend/src/pages/static/BlogDetailPage.tsx - Render raw HTML when available
+       - TIPTAP_USAGE_GUIDE.md - Add Raw HTML mode documentation
 
- # Enable auto-renewal
- sudo systemctl enable certbot.timer
+     Estimated Changes
 
- ---
- Phase 5: Deployment Automation
+     - Backend: 3 files, ~20 lines
+     - Frontend: 3 files, ~50 lines
+     - Documentation: 1 file, ~15 lines
+     - Total: ~85 lines
 
- 5.1 Deployment Script
+     Testing Plan
 
- Create: /var/www/gema/deploy.sh
+     1. Insert simple HTML (headings, paragraphs) - should use normal TipTap mode
+     2. Insert pottery workshop HTML - should trigger Raw HTML mode confirmation
+     3. Confirm - content saved in rawHtmlContent field
+     4. View blog - pottery HTML renders perfectly with all styles, iframes, semantic tags
+     5. Edit blog - shows Raw HTML mode indicator
+     6. Switch back to editor mode (optional feature) - warning shown
 
- Features:
- - Pull latest code from git
- - Backend: Build + PM2 reload (zero-downtime)
- - Frontend: Build + copy to Nginx directory + clear cache
- - Usage: ./deploy.sh [backend|frontend|all]
+     Security Considerations
 
- chmod +x /var/www/gema/deploy.sh
+     - DOMPurify still sanitizes on render (removes scripts, dangerous attributes)
+     - No XSS risk - same security as current implementation
+     - Instagram iframes allowed (already in DOMPurify config)
+     - scrolling attribute added to ALLOWED_ATTR for iframe compatibility
 
- 5.2 Health Check Monitoring
+     Post-Implementation
 
- Create: /var/www/gema/healthcheck.sh
+     Update TIPTAP_USAGE_GUIDE.md to reflect:
+     - Complex HTML automatically detected
+     - Raw HTML mode preserves all features
+     - Simple editing still works with toolbar
+     - Pottery workshop HTML works 100%
 
- - Checks API health endpoint every 5 minutes
- - Auto-restarts if unhealthy
- - Add to crontab: */5 * * * * /var/www/gema/healthcheck.sh
-
- ---
- Phase 6: Monitoring & Maintenance
-
- 6.1 Process Monitoring
-
- pm2 status        # Process status
- pm2 logs          # View logs
- pm2 monit         # Real-time monitoring
-
- 6.2 System Monitoring
-
- sudo apt install htop -y
- htop              # System resources
- df -h             # Disk usage
- free -h           # Memory usage
-
- 6.3 Backup Strategy
-
- Create: /var/www/gema/backup.sh
-
- Daily backups (2 AM cron):
- - Environment variables
- - Uploads directory
- - PM2 process list
-
- MongoDB Atlas: Automatic continuous backups (enabled by default)
-
- ---
- Phase 7: Post-Deployment
-
- 7.1 Stripe Webhook Configuration
-
- 1. Stripe Dashboard → Webhooks → Add endpoint
- 2. URL: https://yourdomain.com/api/payments/webhook
- 3. Events: payment_intent.succeeded, payment_intent.payment_failed, payment_intent.canceled
- 4. Copy webhook secret → Update .env → Restart backend
-
- 7.2 Verification Checklist
-
- # API health
- curl https://yourdomain.com/api/health
-
- # Frontend loads
- curl -I https://yourdomain.com/
-
- # PM2 processes
- pm2 status  # Both gema-api and gema-worker online
-
- # Redis connection
- pm2 logs gema-api | grep "Redis: Connected"
-
- # MongoDB connection
- pm2 logs gema-api | grep "MongoDB connected"
-
- # Worker processing
- pm2 logs gema-worker | grep "Workers initialized"
-
- # SSL valid
- curl -I https://yourdomain.com | grep "HTTP/2 200"
-
- ---
- Critical Files to Modify
-
- 1. E:\coding\gema\backend\ecosystem.config.js
-   - Update cwd paths to /var/www/gema/backend
-   - Update log paths to /var/log/gema/
-   - Adjust instances and max_memory_restart
- 2. E:\coding\gema\backend\.env
-   - Production environment variables
-   - MongoDB Atlas URI
-   - Redis Cloud credentials (verify noeviction policy!)
-   - Firebase private key (escape newlines)
-   - Generate secure JWT secrets (64 chars)
-   - Set FRONTEND_URL=https://yourdomain.com
- 3. E:\coding\gema\frontend\.env.production
-   - Set VITE_API_URL=https://yourdomain.com/api
-   - Firebase config
-   - Stripe publishable key
-   - Cloudinary cloud name
- 4. /etc/nginx/sites-available/gema (new file)
-   - Complete Nginx configuration with SSL, proxy, rate limiting
-   - Replace yourdomain.com with actual domain
-
- ---
- Architecture Differences from Current Setup
-
- | Component          | Current (Render/Vercel) | New (Hostinger VPS)      |
- |--------------------|-------------------------|--------------------------|
- | Backend hosting    | Render.com              | VPS with PM2             |
- | Frontend hosting   | Vercel                  | VPS with Nginx           |
- | Process management | Render auto-restart     | PM2 cluster mode         |
- | SSL/TLS            | Automatic               | Let's Encrypt (certbot)  |
- | Deployment         | Git push auto-deploy    | Manual script or webhook |
- | Reverse proxy      | Render internal         | Nginx                    |
- | Static files       | Vercel CDN              | Nginx direct serve       |
-
- ---
- Troubleshooting Quick Reference
-
- Backend won't start:
- - Check logs: pm2 logs gema-api --err --lines 50
- - Verify MongoDB URI in .env
- - Check Redis connection (noeviction policy set?)
- - Ensure port 5000 not in use: sudo netstat -tulpn | grep 5000
-
- Worker not processing jobs:
- - Check logs: pm2 logs gema-worker --lines 100
- - Verify Redis eviction policy: Must be noeviction
- - Test Redis connection: redis-cli -h <host> -p <port> -a <pass> PING
-
- Nginx 502 Bad Gateway:
- - Backend running? pm2 status
- - Test backend directly: curl http://localhost:5000/api/health
- - Check Nginx logs: sudo tail -f /var/log/nginx/error.log
-
- Frontend not loading:
- - Files exist? ls /var/www/gema/frontend-dist/
- - Nginx logs: sudo tail -f /var/log/nginx/error.log
- - Browser console for CORS errors (check FRONTEND_URL in backend .env)
-
- CORS errors:
- - Verify FRONTEND_URL in backend .env
- - Restart backend: pm2 restart gema-api
- - Check headers: curl -I -H "Origin: https://yourdomain.com" https://yourdomain.com/api/health
-
- ---
- Estimated Timeline
-
- - VPS setup: 30-45 min
- - Backend deployment: 45-60 min
- - Frontend deployment: 20-30 min
- - Nginx + SSL: 30-45 min
- - Testing + verification: 30-45 min
- - Total: 2.5-4 hours (first time)
-
- Subsequent deployments: 5-10 min using automated script
-
- ---
- Security Checklist
-
- - Non-root user created
- - SSH key auth enabled, password auth disabled
- - UFW firewall configured
- - Fail2ban installed
- - Strong JWT secrets (64+ chars)
- - Redis password set, noeviction policy enabled
- - MongoDB Atlas IP whitelist configured
- - SSL/TLS with Let's Encrypt
- - Nginx security headers configured
- - Rate limiting enabled
- - .env files not committed to git
- - Automatic security updates enabled
-
- ---
- Next Steps After Deployment
-
- 1. Set up external monitoring (UptimeRbot, Pingdom)
- 2. Configure automated backups to external storage
- 3. Document all credentials in password manager
- 4. Test email sending functionality
- 5. Test payment flow with Stripe
- 6. Monitor logs for 24-48 hours
- 7. Load testing (optional)
- 8. Set up GitHub webhook for auto-deployment (optional)
-
- ---
- Key Success Factors:
-
- 1. ✅ Redis Cloud MUST have noeviction policy (BullMQ requirement)
- 2. ✅ Two separate PM2 processes (API + worker) must both run
- 3. ✅ Nginx must proxy /api/* to backend localhost:5000
- 4. ✅ CORS configured with correct FRONTEND_URL
- 5. ✅ All environment variables properly set before deployment
- 6. ✅ SSL certificates obtained before updating DNS
+● Perfect! The plan is approved. Let me implement the "Raw HTML Mode" solution to make your pottery workshop HTML work perfectly. I'll start with the backend model update:

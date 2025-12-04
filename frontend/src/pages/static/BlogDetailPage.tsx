@@ -410,11 +410,14 @@ const BlogDetailPage: React.FC = () => {
         <div
           className="blog-content"
           dangerouslySetInnerHTML={{
-            __html: DOMPurify.sanitize(blog.content, {
-              ADD_ATTR: ['style', 'class'],
-              ADD_TAGS: ['iframe'],
-              ALLOWED_ATTR: ['style', 'class', 'href', 'src', 'alt', 'title', 'target', 'rel', 'width', 'height', 'id']
-            })
+            __html: DOMPurify.sanitize(
+              blog.rawHtmlContent || blog.content, // Use raw HTML if available, otherwise use TipTap content
+              {
+                ADD_ATTR: ['style', 'class'],
+                ADD_TAGS: ['iframe'],
+                ALLOWED_ATTR: ['style', 'class', 'href', 'src', 'alt', 'title', 'target', 'rel', 'width', 'height', 'id', 'scrolling', 'frameborder', 'allowfullscreen']
+              }
+            )
           }}
         />
       </article>

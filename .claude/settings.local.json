@@ -8,7 +8,8 @@
       "Bash(findstr:*)",
       "Bash(test:*)",
       "Bash(npm test:*)",
-      "Bash(git log:*)"
+      "Bash(git log:*)",
+      "Bash(ls:*)"
     ],
     "deny": [],
     "ask": []

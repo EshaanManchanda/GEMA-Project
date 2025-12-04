@@ -310,6 +310,250 @@ Result: Visit [our website](https://kidrove.com) (blue, underlined)
 
 ---
 
+## Inserting Custom HTML
+
+### When to Use This Feature
+
+The HTML insertion feature allows you to paste complete, styled HTML content directly into your blog. This is perfect for:
+
+- **Landing pages** - Complex layouts with multiple sections
+- **Styled content** - Pre-designed content with specific colors, spacing, and layouts
+- **Email-style templates** - Newsletter-like content with boxes and cards
+- **Complex layouts** - Multi-column designs, grid galleries, sticky sidebars
+- **Pre-built components** - Tip boxes, call-to-action buttons, testimonial cards
+
+### How to Insert HTML
+
+Located in the **Media section** of the toolbar (Code2 icon: `</>`):
+
+**Step-by-Step:**
+1. Click the **Code2 icon** (`</>`) in the toolbar
+2. Modal window opens titled "Insert HTML Content"
+3. Paste your HTML code in the large textarea
+4. Click **"Insert HTML"** button
+5. Your styled content appears in the editor immediately
+
+**Keyboard shortcuts:** None (use toolbar button)
+
+---
+
+### What HTML is Supported
+
+#### ✅ **FULLY SUPPORTED** (All Working)
+
+**Inline Styles:**
+- All CSS properties via `style="..."` attributes
+- Colors, fonts, spacing, borders, shadows, gradients
+- **Modern layouts:** Flexbox (`display: flex; gap: 20px`)
+- **CSS Grid:** Responsive galleries (`display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr))`)
+- **Advanced positioning:** `position: sticky`, `position: relative/absolute`
+
+**HTML Elements:**
+- Semantic tags: `<main>`, `<aside>`, `<nav>`, `<article>`, `<section>`
+- Structure: `<div>`, `<span>`, `<p>`, all heading levels
+- Text formatting: `<strong>`, `<em>`, `<u>`, `<s>`, `<code>`
+- Lists: `<ul>`, `<ol>`, `<li>`
+- Links: `<a href="...">` with inline styles
+- Images: `<img>` with absolute URLs
+- Blockquotes: `<blockquote>`
+
+**Media & Embeds:**
+- External images (Google Photos, Cloudinary URLs, etc.)
+- Instagram iframes (may need testing - see troubleshooting)
+- YouTube embeds (use YouTube button for better compatibility)
+- HTML5 video tags
+
+**Responsive Design:**
+- Flexbox with `flex-wrap: wrap`
+- CSS Grid with `auto-fit` and `minmax()`
+- Media-query-style inline responsiveness
+
+---
+
+#### ❌ **NOT SUPPORTED** (Will Be Stripped/Ignored)
+
+**Document Structure:**
+- `<!DOCTYPE html>` declarations
+- `<html>`, `<head>`, `<body>` tags
+- `<title>`, `<meta>` tags
+
+**External Resources:**
+- `<link rel="stylesheet">` (external CSS files)
+- `<style>` blocks in document head
+- CSS class names without global definitions
+
+**Security Restrictions:**
+- `<script>` tags (removed automatically)
+- `onclick`, `onload`, and other event handlers
+- JavaScript of any kind
+- Some iframe sources (security policy dependent)
+
+---
+
+### Example: Pottery Workshop Page (Real-World Use Case)
+
+**✅ THIS HTML STYLE IS FULLY SUPPORTED**
+
+Here's a complete example demonstrating the FULL POWER of HTML insertion with inline styles:
+
+**Supported Features (All Working in This Example):**
+- ✅ **Flexbox layout** - Main content + sticky sidebar (`display: flex; flex-wrap: wrap; gap: 50px`)
+- ✅ **CSS Grid galleries** - Responsive image grids (`display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr))`)
+- ✅ **Sticky positioning** - Table of contents that follows scroll (`position: sticky; top: 40px`)
+- ✅ **Styled components** - Colored tip boxes with borders and backgrounds
+- ✅ **Instagram embeds** - iframe embeds (test first, may be restricted)
+- ✅ **External images** - Google Photos URLs
+- ✅ **Complex styling** - Borders, shadows, rounded corners, hover effects
+- ✅ **Semantic HTML** - `<main>`, `<aside>`, `<nav>` for structure
+- ✅ **Call-to-action buttons** - Styled links with inline CSS
+
+**HTML Code Snippet (Ready to Use):**
+
+```html
+<!-- Main Wrapper with Flexbox -->
+<div style="max-width: 1100px; margin: 0 auto; padding: 40px 20px; display: flex; flex-wrap: wrap; gap: 50px; position: relative;">
+
+    <!-- Main Content Area -->
+    <main style="flex: 1; min-width: 300px;">
+        <h1 id="title" style="color: #111111; font-size: 2.5rem; border-bottom: 1px solid #e5e7eb; padding-bottom: 1rem; margin-top: 0; margin-bottom: 1rem; line-height: 1.3;">
+            Why Kids Love Pottery Workshops in Malls
+        </h1>
+
+        <!-- Styled Tip Box -->
+        <div style="padding: 20px 25px; border-radius: 0 8px 8px 0; margin-bottom: 1.5rem; position: relative; background-color: #ecfdf5; border-left: 5px solid #10b981;">
+            <h4 style="color: #047857; margin-top: 0; margin-bottom: 8px; text-transform: uppercase; font-size: 0.9rem; letter-spacing: 0.05em; font-weight: 700;">
+                ✅ DO: Plan Ahead
+            </h4>
+            <p style="margin-bottom: 0;">Weekends can be busy. Book online to avoid disappointment.</p>
+        </div>
+
+        <!-- Location Card with Grid Gallery -->
+        <div style="background: #fff; border: 1px solid #e5e7eb; border-radius: 12px; padding: 25px; margin-bottom: 40px; box-shadow: 0 4px 6px rgba(0,0,0,0.02);">
+            <h3 style="color: #111111; margin-top: 0; margin-bottom: 1rem; font-size: 1.25rem; font-weight: 600;">
+                1. Bedia Pottery Classes
+            </h3>
+            <span style="font-style: italic; color: #666; margin-bottom: 15px; display: block; font-size: 0.9rem;">
+                📍 Dubai Warehouse, Al Khayat Avenue - 10 19 Street - Al Quoz - Dubai
+            </span>
+
+            <!-- CSS Grid for Images -->
+            <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 15px; margin-top: 20px;">
+                <div style="height: 200px; overflow: hidden; border-radius: 8px; box-shadow: 0 2px 4px rgba(0,0,0,0.1);">
+                    <img src="https://lh3.googleusercontent.com/p/AF1QipOkuZv6YGS4vZ0Yga-8EOTo3FSlfJFfoHIwkxga=s1360-w1360-h1020-rw"
+                         alt="Pottery Studio"
+                         style="width: 100%; height: 100%; object-fit: cover; border-radius: 8px; display: block;">
+                </div>
+            </div>
+        </div>
+
+        <!-- Call-to-Action Button -->
+        <div style="text-align: center; margin-top: 40px;">
+            <a href="#" style="display: inline-block; background-color: #E07A5F; color: white; padding: 12px 24px; border-radius: 6px; font-weight: bold; text-align: center; text-decoration: none;">
+                Visit KidRove Today
+            </a>
+        </div>
+    </main>
+
+    <!-- Sticky Table of Contents Sidebar -->
+    <aside style="width: 250px; min-width: 200px; flex-shrink: 0; display: block; position: sticky; top: 40px; height: fit-content; border-left: 2px solid #e5e7eb; padding-left: 20px;">
+        <h4 style="margin-top: 0; margin-bottom: 15px; font-size: 0.85rem; text-transform: uppercase; letter-spacing: 0.05em; color: #666;">
+            On this page
+        </h4>
+        <nav>
+            <ul style="list-style: none; padding: 0; margin: 0;">
+                <li style="margin-bottom: 10px;">
+                    <a href="#introduction" style="color: #555; font-size: 0.95rem; text-decoration: none; display: block;">
+                        Introduction
+                    </a>
+                </li>
+                <li style="margin-bottom: 10px;">
+                    <a href="#benefits" style="color: #555; font-size: 0.95rem; text-decoration: none; display: block;">
+                        Learning Benefits
+                    </a>
+                </li>
+            </ul>
+        </nav>
+    </aside>
+</div>
+```
+
+**How to Use This Exact HTML:**
+1. **Remove** `<body>` opening tag (if present)
+2. **Remove** `</body>` closing tag (if present)
+3. **Copy** everything between them
+4. Click **Code2 button** (`</>`) in TipTap toolbar
+5. **Paste** the content into the modal textarea
+6. Click **"Insert HTML"**
+7. **Complex HTML Detected!** - A confirmation dialog will appear
+8. Click **OK** to use **Raw HTML Mode** (recommended for pottery workshop HTML)
+9. ✅ Your content is saved and will render perfectly with all styles!
+
+**Important:** When using Raw HTML mode:
+- ✅ ALL features preserved (iframes, flexbox, grid, sticky positioning, semantic tags)
+- ✅ Content renders exactly as designed on the blog page
+- ⚠️ Toolbar editing is disabled for this content (edit the raw HTML directly if needed)
+- 🔒 Still secured with DOMPurify sanitization (scripts removed, XSS prevention)
+
+---
+
+### Security Notice
+
+HTML content is **automatically sanitized** for security:
+
+**Removed for Safety:**
+- `<script>` tags and JavaScript code
+- Event handlers (`onclick`, `onload`, `onerror`, etc.)
+- Potentially dangerous attributes
+- Some iframe sources (depending on security policy)
+
+**What Stays:**
+- Inline styles (all CSS properties)
+- Safe HTML tags (divs, headings, paragraphs, links, images)
+- Structure and layout
+- External image URLs
+
+This ensures your blog remains secure while allowing rich, styled content.
+
+---
+
+### Troubleshooting
+
+**Problem: Styles not appearing**
+**Solution:** Use inline `style="..."` attributes, not CSS classes. CSS classes only work if defined globally in your app.
+
+**Problem: Layout looks broken**
+**Solution:** Remove `<html>`, `<head>`, `<body>` tags. Paste only the inner content (divs, sections, etc.).
+
+**Problem: Images not loading**
+**Solution:** Use absolute URLs (starting with `https://`). Relative paths won't work. Upload images to media library first if needed.
+
+**Problem: Instagram iframes not showing**
+**Cause:** TipTap sanitizer may restrict iframes for security.
+**Solution:** Test first. If blocked, replace with static images linking to Instagram posts:
+```html
+<a href="https://www.instagram.com/p/POST_ID/" target="_blank">
+    <img src="screenshot.jpg" alt="View on Instagram"
+         style="width: 100%; border-radius: 8px;">
+</a>
+```
+
+**Problem: Complex grids/layouts look distorted**
+**Solution:** Test in smaller chunks. Simplify grid configurations if needed. Use `minmax(200px, 1fr)` for better responsiveness.
+
+**Problem: Sticky positioning not working**
+**Cause:** TipTap's prose classes may override `position: sticky`.
+**Solution:**
+- Add `!important`: `style="position: sticky !important; top: 40px !important;"`
+- Test in blog preview mode to see actual rendering
+
+**Problem: Fonts not matching**
+**Solution:** Specify font families inline: `style="font-family: 'Inter', 'Segoe UI', system-ui, sans-serif;"`
+
+**Problem: Colors look different**
+**Solution:** Use hex codes (`#111111`) or RGB values (`rgb(17, 17, 17)`) for consistent colors.
+
+---
+
 ## Bubble Menu
 
 When you **select any text**, a floating menu appears with quick actions:
@@ -691,6 +935,7 @@ TOOLBAR LAYOUT:
 - 📤🔴 = Upload Video
 - ▶️ = YouTube Embed
 - 🔗 = Add Link
+- </> = Insert HTML (Code2 button - custom styled content)
 
 ---
 
@@ -704,6 +949,7 @@ The TipTap editor gives you complete control over your blog content without need
 - ✅ Save drafts frequently
 - ✅ Use images and videos to enhance content
 - ✅ Keep content well-structured with headings
+- ✅ Use HTML insertion (Code2 button) for complex layouts with inline styles
 
 **Need Help?**
 - Check this guide

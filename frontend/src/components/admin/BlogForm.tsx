@@ -369,6 +369,17 @@ const BlogForm: React.FC<BlogFormProps> = ({
         cleanedData.featuredImageAsset = cleanedData.featuredImageAsset._id;
       }
 
+      // Handle Raw HTML mode - check for special marker
+      if (cleanedData.content && cleanedData.content.startsWith('__RAW_HTML__')) {
+        // Extract raw HTML and store separately
+        cleanedData.rawHtmlContent = cleanedData.content.replace('__RAW_HTML__', '');
+        cleanedData.content = '<p>This blog uses custom HTML layout. View the published page to see the content.</p>';
+        console.log('Raw HTML mode detected - content moved to rawHtmlContent field');
+      } else {
+        // Clear rawHtmlContent if not using raw mode
+        cleanedData.rawHtmlContent = null;
+      }
+
       // Calculate readTime if missing (defensive fallback)
       if (!cleanedData.readTime && cleanedData.content) {
         const wordCount = cleanedData.content
