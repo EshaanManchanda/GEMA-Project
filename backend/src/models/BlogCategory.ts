@@ -17,7 +17,7 @@ const blogCategorySchema = new Schema<IBlogCategory>(
       type: String,
       required: [true, 'Category name is required'],
       trim: true,
-      maxlength: [50, 'Category name cannot exceed 50 characters'],
+      maxlength: [100, 'Category name cannot exceed 100 characters'],
     },
     slug: {
       type: String,
@@ -27,13 +27,17 @@ const blogCategorySchema = new Schema<IBlogCategory>(
     description: {
       type: String,
       trim: true,
-      maxlength: [200, 'Description cannot exceed 200 characters'],
+      maxlength: [500, 'Description cannot exceed 500 characters'],
     },
     color: {
       type: String,
-      required: [true, 'Category color is required'],
-      match: [/^#[0-9A-F]{6}$/i, 'Color must be a valid hex color code'],
       default: '#3B82F6',
+      validate: {
+        validator: function(v: string) {
+          return !v || /^#([A-Fa-f0-9]{6}|[A-Fa-f0-9]{3})$/.test(v);
+        },
+        message: 'Color must be a valid hex color code (3 or 6 digits)'
+      }
     },
     isActive: {
       type: Boolean,
