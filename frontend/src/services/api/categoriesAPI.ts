@@ -79,8 +79,16 @@ const categoriesAPI = {
       const response = await ApiService.post('/categories', categoryData);
       logApiResponse('POST /categories', response);
       return extractApiData(response);
-    } catch (error) {
+    } catch (error: any) {
       logApiResponse('POST /categories', null, error);
+
+      // Preserve response data for validation errors (400, 422)
+      if (error.response?.status === 400 || error.response?.status === 422) {
+        // Re-throw with preserved response data
+        throw error;
+      }
+
+      // For other errors, throw as-is
       throw error;
     }
   },

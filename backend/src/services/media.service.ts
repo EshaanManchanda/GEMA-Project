@@ -66,7 +66,6 @@ export class MediaService {
     // 4. Override URL with UUID-based secure URL (for ALL providers)
     const secureUrl = `${config.upload.baseUrl}/api/media/file/${uuid}`;
     mediaAsset.url = secureUrl;
-    await mediaAsset.save();
 
     // 5. Generate variations for images (Cloudinary only)
     if (
@@ -77,9 +76,11 @@ export class MediaService {
       const cloudinaryProvider = this.storageProvider as any;
       if (cloudinaryProvider.getImageVariations) {
         mediaAsset.variations = cloudinaryProvider.getImageVariations(uploadResult.publicId);
-        await mediaAsset.save();
       }
     }
+
+    // Single save with all fields set
+    await mediaAsset.save();
 
     return mediaAsset;
   }

@@ -122,7 +122,7 @@ export const config: Config = {
   mongodbUri: process.env.MONGODB_URI || 'mongodb://localhost:27017/gema',
   mongodb: {
     connectTimeoutMS: parseInt(process.env.MONGODB_CONNECT_TIMEOUT_MS || '30000', 10),
-    socketTimeoutMS: parseInt(process.env.MONGODB_SOCKET_TIMEOUT_MS || '45000', 10),
+    socketTimeoutMS: parseInt(process.env.MONGODB_SOCKET_TIMEOUT_MS || '90000', 10), // Increased to 90s for category ops + cache invalidation under load
     serverSelectionTimeoutMS: parseInt(process.env.MONGODB_SERVER_SELECTION_TIMEOUT_MS || '30000', 10),
 
     /**

@@ -23,7 +23,11 @@ export function startCollectionReconciliationCron() {
         {
           jobId: `reconcile-all-${Date.now()}`,
           removeOnComplete: true,
-          attempts: 3
+          attempts: 2, // Reduced from 3 to 2 (reconciliation is idempotent)
+          backoff: {
+            type: 'exponential',
+            delay: 60000, // 1 minute initial delay
+          },
         }
       );
 

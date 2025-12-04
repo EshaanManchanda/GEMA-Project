@@ -69,6 +69,37 @@ const createCategoryValidation = [
     .optional()
     .isObject()
     .withMessage('SEO must be an object (alias for seoMeta)'),
+  // Nested seoMeta field validation
+  body('seoMeta.title')
+    .optional()
+    .trim()
+    .isLength({ max: 60 })
+    .withMessage('SEO title cannot exceed 60 characters'),
+  body('seoMeta.description')
+    .optional()
+    .trim()
+    .isLength({ max: 160 })
+    .withMessage('SEO description cannot exceed 160 characters'),
+  body('seoMeta.keywords')
+    .optional()
+    .isArray()
+    .withMessage('SEO keywords must be an array'),
+  body('seoMeta.keywords.*')
+    .optional()
+    .trim()
+    .isLength({ max: 50 })
+    .withMessage('Each SEO keyword cannot exceed 50 characters'),
+  // Also validate 'seo' alias (legacy support)
+  body('seo.title')
+    .optional()
+    .trim()
+    .isLength({ max: 60 })
+    .withMessage('SEO title cannot exceed 60 characters'),
+  body('seo.description')
+    .optional()
+    .trim()
+    .isLength({ max: 160 })
+    .withMessage('SEO description cannot exceed 160 characters'),
   body('isActive')
     .optional()
     .isBoolean()

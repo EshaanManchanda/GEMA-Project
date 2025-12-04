@@ -17,7 +17,8 @@ export const uploadPresets = {
       { quality: 'auto', fetch_format: 'auto' },
       { width: 1200, height: 800, crop: 'limit' }
     ],
-    allowed_formats: ['jpg', 'jpeg', 'png', 'webp']
+    allowed_formats: ['jpg', 'jpeg', 'png', 'webp'],
+    timeout: 60000 // 60s timeout for 10MB uploads
   },
   venues: {
     folder: 'gema/venues',
@@ -25,7 +26,8 @@ export const uploadPresets = {
       { quality: 'auto', fetch_format: 'auto' },
       { width: 1200, height: 800, crop: 'limit' }
     ],
-    allowed_formats: ['jpg', 'jpeg', 'png', 'webp']
+    allowed_formats: ['jpg', 'jpeg', 'png', 'webp'],
+    timeout: 60000 // 60s timeout for 10MB uploads
   },
   users: {
     folder: 'gema/users',
@@ -40,19 +42,21 @@ export const uploadPresets = {
     ],
     eager_async: true, // Process eager transformations asynchronously (faster upload)
     allowed_formats: ['jpg', 'jpeg', 'png', 'webp'],
-    timeout: 30000 // 30 second timeout for Cloudinary upload
+    timeout: 60000 // 60s timeout for 10MB uploads
   },
   tickets: {
     folder: 'gema/tickets',
     transformation: [
       { quality: 'auto', fetch_format: 'auto' }
     ],
-    allowed_formats: ['jpg', 'jpeg', 'png', 'webp', 'pdf']
+    allowed_formats: ['jpg', 'jpeg', 'png', 'webp', 'pdf'],
+    timeout: 60000 // 60s timeout for 10MB uploads
   },
   documents: {
     folder: 'gema/documents',
     resource_type: 'raw',
-    allowed_formats: ['pdf', 'doc', 'docx', 'txt']
+    allowed_formats: ['pdf', 'doc', 'docx', 'txt'],
+    timeout: 60000 // 60s timeout for 10MB uploads
   },
   registrations: {
     folder: 'gema/registrations',
@@ -60,7 +64,8 @@ export const uploadPresets = {
     transformation: [
       { quality: 'auto', fetch_format: 'auto' }
     ],
-    allowed_formats: ['jpg', 'jpeg', 'png', 'webp', 'pdf', 'zip', 'doc', 'docx']
+    allowed_formats: ['jpg', 'jpeg', 'png', 'webp', 'pdf', 'zip', 'doc', 'docx'],
+    timeout: 60000 // 60s timeout for 10MB uploads
   },
   blogs: {
     folder: 'gema/blogs',
@@ -68,7 +73,8 @@ export const uploadPresets = {
       { quality: 'auto', fetch_format: 'auto' },
       { width: 1920, height: 1080, crop: 'limit' }
     ],
-    allowed_formats: ['jpg', 'jpeg', 'png', 'webp', 'gif']
+    allowed_formats: ['jpg', 'jpeg', 'png', 'webp', 'gif'],
+    timeout: 60000 // 60s timeout for 10MB uploads
   },
   blogContent: {
     folder: 'gema/blogs/content',
@@ -76,7 +82,8 @@ export const uploadPresets = {
     transformation: [
       { quality: 'auto', fetch_format: 'auto' }
     ],
-    allowed_formats: ['jpg', 'jpeg', 'png', 'webp', 'gif', 'mp4', 'webm', 'mov']
+    allowed_formats: ['jpg', 'jpeg', 'png', 'webp', 'gif', 'mp4', 'webm', 'mov'],
+    timeout: 60000 // 60s timeout for 10MB uploads
   }
 };
 

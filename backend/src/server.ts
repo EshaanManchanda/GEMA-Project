@@ -8,7 +8,7 @@ import rateLimit from 'express-rate-limit';
 import mongoSanitize from 'express-mongo-sanitize';
 import hpp from 'hpp';
 import { config, connectDB, initializeFirebase, logger } from './config/index';
-import { errorHandler, notFound } from './middleware/index';
+import { errorHandler, notFound, timeoutMiddleware } from './middleware/index';
 import { performanceMonitor, startPerformanceMonitoring, logPerformanceSummary } from './middleware/performance';
 import routes from './routes/index';
 import healthRoutes from './routes/health.routes';
@@ -165,6 +165,9 @@ app.use(morgan(config.nodeEnv === 'development' ? 'dev' : 'combined'));
 
 // Performance monitoring middleware
 app.use(performanceMonitor);
+
+// Timeout middleware (prevent indefinite hangs)
+app.use(timeoutMiddleware(45)); // 45s default for all routes
 
 // API routes
 app.use('/api', routes);

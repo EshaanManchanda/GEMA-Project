@@ -165,6 +165,13 @@ api.interceptors.response.use(
       }
     }
     
+    // Validation errors (400, 422) - let component handle display
+    if (error.response?.status === 400 || error.response?.status === 422) {
+      // Don't show toast for validation errors - component will handle it
+      console.log('[API] Validation error - letting component handle display');
+      return Promise.reject(error);
+    }
+
     // Handle proxy/connection errors differently from server errors
     if (error.code === 'ECONNREFUSED' || error.code === 'ERR_NETWORK' || error.code === 'ECONNABORTED') {
       const isTimeout = error.code === 'ECONNABORTED' || error.message?.includes('timeout');

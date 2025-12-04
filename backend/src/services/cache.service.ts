@@ -150,13 +150,14 @@ export class CacheService {
           reject(error);
         });
 
-        // Add timeout to prevent hanging
+        // Add timeout to prevent hanging (reduced from 30s to 10s)
         setTimeout(() => {
           if (!streamClosed) {
             cleanup();
-            reject(new Error(`scanStream timeout for pattern ${pattern}`));
+            logger.warn(`Cache pattern delete timeout (10s): ${pattern}. Deleted ${keys.length} keys`);
+            resolve(keys.length); // Return partial count instead of rejecting
           }
-        }, 30000); // 30 second timeout
+        }, 10000); // 10 second timeout
       });
     } catch (error) {
       logger.error(`Cache delete pattern error for ${pattern}:`, error);

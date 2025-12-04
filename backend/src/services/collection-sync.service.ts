@@ -190,13 +190,24 @@ export class CollectionSyncService {
 
       logger.info(`Syncing all events for collection ${collectionId}`);
 
-      // Fetch all event data
+      // Fetch events in parallel with batching (max 10 concurrent)
+      const CONCURRENT_EVENTS = 10; // Increased for 50-200 events/collection
       const eventsData = [];
-      for (const eventId of collection.events) {
-        const eventData = await this.getEventDataForEmbed(eventId);
-        if (eventData && eventData.isApproved && eventData.isActive && !eventData.isDeleted) {
-          eventsData.push(eventData);
-        }
+
+      for (let i = 0; i < collection.events.length; i += CONCURRENT_EVENTS) {
+        const batch = collection.events.slice(i, i + CONCURRENT_EVENTS);
+
+        const batchResults = await Promise.all(
+          batch.map(eventId => this.getEventDataForEmbed(eventId))
+        );
+
+        // Filter approved/active events
+        const validEvents = batchResults.filter(
+          eventData => eventData && eventData.isApproved &&
+                       eventData.isActive && !eventData.isDeleted
+        );
+
+        eventsData.push(...validEvents);
       }
 
       // Update collection
@@ -226,22 +237,59 @@ export class CollectionSyncService {
     try {
       logger.info('Starting full collection reconciliation');
 
-      const collections = await Collection.find({ isActive: true });
+      // Check MongoDB connection health before starting
+      if (mongoose.connection.readyState !== 1) {
+        throw new Error(`MongoDB not connected (readyState: ${mongoose.connection.readyState})`);
+      }
+
+      // Verify connection responsiveness
+      await mongoose.connection.db.admin().ping();
+      logger.info('MongoDB connection health check passed');
+
+      // Use cursor with lean() for memory efficiency
+      const BATCH_SIZE = 5; // Optimized for 20-100 collections on Free tier (500 conn limit)
       let synced = 0;
       let failed = 0;
+      let totalProcessed = 0;
+      const startTime = Date.now();
 
-      for (const collection of collections) {
+      const cursor = Collection.find({ isActive: true })
+        .select('_id title events') // Only fetch fields needed for sync
+        .lean() // Plain JS objects, not Mongoose documents (faster, less memory)
+        .cursor({ batchSize: BATCH_SIZE });
+
+      logger.info(`Processing collections in batches of ${BATCH_SIZE}`);
+
+      for await (const collection of cursor) {
+        totalProcessed++;
         try {
+          logger.info(`[${totalProcessed}] Syncing: "${collection.title}" (${collection._id})`);
           await this.syncCollection(collection._id.toString());
           synced++;
+
+          // Log progress every 10 collections
+          if (totalProcessed % 10 === 0) {
+            logger.info(`Progress: ${totalProcessed} processed, ${synced} synced, ${failed} failed`);
+          }
         } catch (error) {
           logger.error(`Failed to reconcile collection ${collection._id}:`, error);
           failed++;
+          // Continue processing other collections even if one fails
         }
       }
 
-      logger.info(`Reconciliation complete: ${synced} synced, ${failed} failed`);
-      return { synced, failed, total: collections.length };
+      const duration = Date.now() - startTime;
+      const avgTimePerCollection = totalProcessed > 0 ? (duration / totalProcessed).toFixed(2) : 0;
+
+      logger.info(`Reconciliation complete: ${synced} synced, ${failed} failed, ${totalProcessed} total`);
+      logger.info(`Duration: ${(duration / 1000).toFixed(2)}s, Avg per collection: ${avgTimePerCollection}ms`);
+
+      // Warn if reconciliation is too slow
+      if (duration > 300000) { // 5 minutes
+        logger.warn(`Reconciliation took ${(duration / 60000).toFixed(2)} minutes - consider optimizing`);
+      }
+
+      return { synced, failed, total: totalProcessed, durationMs: duration };
 
     } catch (error) {
       logger.error('Error during reconciliation:', error);

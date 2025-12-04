@@ -135,7 +135,28 @@ const CategoryForm: React.FC<CategoryFormProps> = ({
       
     } catch (error: any) {
       console.error('Failed to save category:', error);
-      toast.error(error.response?.data?.message || `Failed to ${mode} category`);
+
+      // Extract error message from various formats
+      let errorMessage = `Failed to ${mode} category`;
+
+      if (error.response?.data) {
+        const data = error.response.data;
+
+        // Format 1: Validation errors array (Mongoose)
+        if (data.errors && Array.isArray(data.errors) && data.errors.length > 0) {
+          errorMessage = data.errors[0]; // Show first error
+        }
+        // Format 2: Single message field (express-validator)
+        else if (data.message && data.message !== 'Validation Error') {
+          errorMessage = data.message;
+        }
+        // Format 3: Error field (some controllers)
+        else if (data.error) {
+          errorMessage = data.error;
+        }
+      }
+
+      toast.error(errorMessage);
     } finally {
       setLoading(false);
     }

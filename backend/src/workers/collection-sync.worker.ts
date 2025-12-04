@@ -1,4 +1,5 @@
 import { Worker, Job } from 'bullmq';
+import mongoose from 'mongoose';
 import { QUEUE_NAMES, bullMQConnection, areQueuesEnabled } from '../config/queue';
 import logger from '../config/logger';
 import { collectionSyncService } from '../services/collection-sync.service';
@@ -41,6 +42,10 @@ const collectionSyncWorker = areQueuesEnabled ? new Worker(
           break;
 
         case 'reconcileAll':
+          // Pre-flight check
+          if (mongoose.connection.readyState !== 1) {
+            throw new Error('Cannot start reconciliation - MongoDB disconnected');
+          }
           result = await collectionSyncService.reconcileAll();
           break;
 

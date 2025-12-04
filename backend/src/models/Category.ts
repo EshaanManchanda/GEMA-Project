@@ -94,6 +94,12 @@ const categorySchema = new Schema<ICategory>(
       type: Number,
       default: 0,
     },
+    /**
+     * SEO metadata (validated in routes via express-validator)
+     * - title: max 60 characters
+     * - description: max 160 characters
+     * - keywords: array of strings (max 50 chars each)
+     */
     seoMeta: {
       title: {
         type: String,

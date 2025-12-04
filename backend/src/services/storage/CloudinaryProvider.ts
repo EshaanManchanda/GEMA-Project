@@ -55,12 +55,12 @@ export class CloudinaryProvider implements IStorageProvider {
         // If multer saved to disk, upload from path
         result = await cloudinary.uploader.upload(file.path, uploadOptions);
 
-        // Clean up temp file
-        try {
-          fs.unlinkSync(file.path);
-        } catch (error) {
-          console.warn('Failed to clean up temp file:', file.path);
-        }
+        // Clean up temp file asynchronously (non-blocking)
+        setImmediate(() => {
+          fs.promises.unlink(file.path).catch(err =>
+            console.warn('Failed to clean up temp file:', file.path)
+          );
+        });
       } else if (file.buffer) {
         // If multer used memory storage, upload from buffer
         result = await new Promise((resolve, reject) => {

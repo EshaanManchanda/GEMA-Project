@@ -3,6 +3,7 @@ import { authenticate, authorize } from '../middleware/auth';
 import { UserRole } from '../models/User';
 import * as mediaController from '../controllers/media.controller';
 import { uploadSingle, uploadMultiple } from '../middleware/upload';
+import { timeoutMiddleware } from '../middleware/timeout';
 import MediaAsset from '../models/MediaAsset';
 import { AppError } from '../middleware/error';
 import path from 'path';
@@ -125,16 +126,18 @@ router.use(authorize([UserRole.ADMIN]));
  * Upload Routes
  */
 
-// Upload single media file
+// Upload single media file (90s timeout for 10MB uploads)
 router.post(
   '/upload',
+  timeoutMiddleware(90),
   uploadSingle('file'),
   mediaController.uploadMedia
 );
 
-// Upload multiple media files
+// Upload multiple media files (120s timeout for multiple 10MB uploads)
 router.post(
   '/upload-multiple',
+  timeoutMiddleware(120),
   uploadMultiple('files', 10),
   mediaController.uploadMultipleMedia
 );

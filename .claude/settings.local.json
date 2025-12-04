@@ -6,13 +6,15 @@
       "Bash(npm ls:*)",
       "Bash(dir:*)",
       "Bash(findstr:*)",
-      "Bash(test:*)"
+      "Bash(test:*)",
+      "Bash(npm test:*)",
+      "Bash(git log:*)"
     ],
     "deny": [],
     "ask": []
   },
+  "enableAllProjectMcpServers": true,
   "enabledMcpjsonServers": [
     "gema-mcp-server"
-  ],
-  "enableAllProjectMcpServers": true
+  ]
 }
