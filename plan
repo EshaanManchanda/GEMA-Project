@@ -29,3 +29,87 @@ i like to make an auto script to publish and update changes according to github 
      · Do you need separate staging and production environments? → Staging + Production
      · What should run before deployment as safety checks? → Automated tests (Jest), TypeScript type checking, Linting (ESLint), Build verification
      · How should deployment notifications be handled? → GitHub only
+
+0|gema-bac | 2025-12-04 08:39:27 +00:00: IMPORTANT! Eviction policy is volatile-lru. It should be "noeviction"
+0|gema-bac | {"level":"error","message":"CRITICAL: Redis eviction policy is \"undefined\" but MUST be \"noeviction\" for BullMQ!\nThis can cause job data corruption and worker failures.\nFix: redis-cli CONFIG SET maxmemory-policy noeviction\nSee backend/REDIS_CONFIG.md for detailed instructions.","service":"gema-backend","timestamp":"2025-12-04 08:39:27"}
+0|gema-bac | {"level":"error","message":"CRITICAL: Redis eviction policy is \"undefined\" but MUST be \"noeviction\" for BullMQ!\nThis can cause job data corruption and worker failures.\nFix: redis-cli CONFIG SET maxmemory-policy noeviction\nSee backend/REDIS_CONFIG.md for detailed instructions.","service":"gema-backend","timestamp":"2025-12-04 08:39:31"}
+0|gema-bac | 2025-12-04 08:59:16 +00:00: Failed to clean up temp file: https://res.cloudinary.com/dmer8oqdq/image/upload/v1764838755/gema/misc/misc-1764838753832-18672699.jpg
+0|gema-bac | 2025-12-04 09:54:43 +00:00: IMPORTANT! Eviction policy is volatile-lru. It should be "noeviction"
+0|gema-bac | 2025-12-04 09:54:43 +00:00: IMPORTANT! Eviction policy is volatile-lru. It should be "noeviction"
+0|gema-bac | 2025-12-04 09:54:43 +00:00: IMPORTANT! Eviction policy is volatile-lru. It should be "noeviction"
+0|gema-bac | 2025-12-04 09:54:43 +00:00: IMPORTANT! Eviction policy is volatile-lru. It should be "noeviction"
+0|gema-bac | 2025-12-04 09:54:43 +00:00: IMPORTANT! Eviction policy is volatile-lru. It should be "noeviction"
+0|gema-bac | 2025-12-04 09:54:43 +00:00: IMPORTANT! Eviction policy is volatile-lru. It should be "noeviction"
+0|gema-bac | {"level":"error","message":"CRITICAL: Redis eviction policy is \"undefined\" but MUST be \"noeviction\" for BullMQ!\nThis can cause job data corruption and worker failures.\nFix: redis-cli CONFIG SET maxmemory-policy noeviction\nSee backend/REDIS_CONFIG.md for detailed instructions.","service":"gema-backend","timestamp":"2025-12-04 09:54:43"}
+0|gema-bac | {"level":"error","message":"CRITICAL: Redis eviction policy is \"undefined\" but MUST be \"noeviction\" for BullMQ!\nThis can cause job data corruption and worker failures.\nFix: redis-cli CONFIG SET maxmemory-policy noeviction\nSee backend/REDIS_CONFIG.md for detailed instructions.","service":"gema-backend","timestamp":"2025-12-04 09:54:44"}
+0|gema-bac | 2025-12-04 11:42:29 +00:00: IMPORTANT! Eviction policy is volatile-lru. It should be "noeviction"
+0|gema-bac | {"level":"error","message":"CRITICAL: Redis eviction policy is \"undefined\" but MUST be \"noeviction\" for BullMQ!\nThis can cause job data corruption and worker failures.\nFix: redis-cli CONFIG SET maxmemory-policy noeviction\nSee backend/REDIS_CONFIG.md for detailed instructions.","service":"gema-backend","timestamp":"2025-12-04 11:42:29"}
+0|gema-bac | 2025-12-04 11:42:29 +00:00: IMPORTANT! Eviction policy is volatile-lru. It should be "noeviction"
+0|gema-bac | 2025-12-04 11:42:29 +00:00: IMPORTANT! Eviction policy is volatile-lru. It should be "noeviction"
+0|gema-bac | 2025-12-04 11:42:29 +00:00: IMPORTANT! Eviction policy is volatile-lru. It should be "noeviction"
+0|gema-bac | 2025-12-04 11:42:29 +00:00: IMPORTANT! Eviction policy is volatile-lru. It should be "noeviction"
+0|gema-bac | 2025-12-04 11:42:29 +00:00: IMPORTANT! Eviction policy is volatile-lru. It should be "noeviction"
+0|gema-bac | {"level":"error","message":"CRITICAL: Redis eviction policy is \"undefined\" but MUST be \"noeviction\" for BullMQ!\nThis can cause job data corruption and worker failures.\nFix: redis-cli CONFIG SET maxmemory-policy noeviction\nSee backend/REDIS_CONFIG.md for detailed instructions.","service":"gema-backend","timestamp":"2025-12-04 11:42:31"}
+
+Yes, you have multiple critical issues happening at the same time.
+
+To answer your specific question: YES, you absolutely must change the setting in your Hostinger VPS. The logs are spamming "CRITICAL: Redis eviction policy is undefined". If you do not fix this, your background jobs (like sending emails or processing uploads) will randomly fail or corrupt data.
+
+However, the 500 Error you are seeing in your browser is likely caused by a different issue (the Cloudinary upload failure).
+
+Here is the breakdown of the three errors in your logs and how to fix them.
+
+1. 🚨 The Redis Fix (DO THIS FIRST)
+Your logs are screaming: IMPORTANT! Eviction policy is volatile-lru. It should be "noeviction".
+
+The Fix: Run these commands in your Hostinger VPS terminal to stop the errors immediately:
+
+Bash
+
+# 1. Fix the setting in memory immediately
+redis-cli CONFIG SET maxmemory-policy noeviction
+
+# 2. Open the config file to make it permanent
+sudo nano /etc/redis/redis.conf
+# (Search for 'maxmemory-policy' and change it to 'noeviction')
+
+# 3. Restart Redis
+sudo systemctl restart redis-server
+2. 🖼️ The 500 Error (File Upload Failed)
+The Error: Error: File must have either path or buffer. What it means: You tried to upload introduction.png. The request reached your backend, but when your code tried to send it to Cloudinary, the file object was "empty" (it didn't have a file path on the server or a memory buffer).
+
+Why this happens on VPS/Hostinger:
+
+Permission Issue: Multer (your file upload library) tries to save the image to a temporary folder (like /tmp/) before uploading to Cloudinary. If your VPS user doesn't have permission to write there, the path will be missing.
+
+Multer Config: Your Multer configuration might be missing the dest property.
+
+How to Debug:
+
+Check your routes/media.routes.js (or wherever Multer is set up). Ensure it saves to a valid temp folder:
+
+JavaScript
+
+const upload = multer({ dest: 'uploads/' }); // Make sure this folder exists!
+Create that folder if it's missing:
+
+Bash
+
+mkdir -p backend/uploads
+3. 💻 The Frontend Crash
+The Error: Uncaught ReferenceError: setNewTag is not defined at AdminBlogsPage. What it means: You have a typo in your React code.
+
+The Fix:
+
+Go to AdminBlogsPage.js.
+
+Look for setNewTag.
+
+You probably defined the state as const [tag, setTag] = useState(...) but tried to call setNewTag instead of setTag. matches the variable name exactly.
+
+Summary Checklist
+[ ] Run the Redis command (redis-cli ...) to stop the critical backend warnings.
+
+[ ] Fix the React Typo (setNewTag) and redeploy the frontend.
+
+[ ] Check the Uploads Folder: Ensure your backend has a place to store temporary files before sending them to Cloudinary.

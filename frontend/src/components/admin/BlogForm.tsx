@@ -297,7 +297,7 @@ const BlogForm: React.FC<BlogFormProps> = ({
       keywords: []
     });
     setPreviewMode(false);
-    setNewTag('');
+    // Tags managed by React Hook Form - no manual reset needed
 
     // Call parent onClose - the form reset will happen in useEffect when modal reopens
     onClose();

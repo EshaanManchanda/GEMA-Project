@@ -249,7 +249,24 @@ router.post('/document', authenticate, uploadDocument, handleUploadError, (req: 
 });
 
 // Blog featured image upload
-router.post('/blog-featured-image', authenticate, uploadBlogFeaturedImage, handleUploadError, (req: AuthRequest, res: Response, next: NextFunction) => {
+router.post('/blog-featured-image', authenticate, uploadBlogFeaturedImage, handleUploadError,
+  // Debug middleware - log file details after multer processing
+  (req: AuthRequest, res: Response, next: NextFunction) => {
+    console.log('[Upload Debug] File received from multer:', {
+      hasFile: !!req.file,
+      path: req.file?.path,
+      hasPath: !!req.file?.path,
+      buffer: req.file?.buffer ? 'Buffer present' : 'No buffer',
+      hasBuffer: !!req.file?.buffer,
+      size: req.file?.size,
+      mimetype: req.file?.mimetype,
+      originalname: req.file?.originalname,
+      fieldname: req.file?.fieldname,
+      encoding: req.file?.encoding
+    });
+    next();
+  },
+  (req: AuthRequest, res: Response, next: NextFunction) => {
   const uploadStartTime = Date.now();
   const fileSize = req.file?.size || 0;
 

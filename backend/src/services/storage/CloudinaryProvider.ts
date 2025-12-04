@@ -68,9 +68,21 @@ export class CloudinaryProvider implements IStorageProvider {
 
         // Clean up temp file asynchronously (non-blocking)
         setImmediate(() => {
-          fs.promises.unlink(file.path).catch(err =>
-            console.warn('Failed to clean up temp file:', file.path)
-          );
+          fs.promises.unlink(file.path).catch(err => {
+            console.error('Failed to clean up temp file:', file.path, 'Error:', err);
+            // Log file details if accessible
+            try {
+              const stats = fs.statSync(file.path);
+              console.error('File stats:', {
+                size: stats.size,
+                mode: stats.mode.toString(8),
+                uid: stats.uid,
+                gid: stats.gid
+              });
+            } catch (statErr) {
+              console.error('Cannot read file stats:', statErr);
+            }
+          });
         });
       } else if (file.buffer) {
         // If multer used memory storage, upload from buffer
@@ -88,6 +100,17 @@ export class CloudinaryProvider implements IStorageProvider {
           streamifier.createReadStream(file.buffer).pipe(uploadStream);
         });
       } else {
+        // Log diagnostic info before throwing error
+        console.error('[Cloudinary Upload] File has neither path nor buffer:', {
+          originalname: file.originalname,
+          mimetype: file.mimetype,
+          size: file.size,
+          hasPath: !!file.path,
+          pathValue: file.path,
+          hasBuffer: !!file.buffer,
+          fieldname: file.fieldname,
+          encoding: file.encoding
+        });
         throw new Error('File must have either path or buffer');
       }
 
