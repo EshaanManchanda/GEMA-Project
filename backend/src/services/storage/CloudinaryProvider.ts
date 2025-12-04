@@ -62,7 +62,22 @@ export class CloudinaryProvider implements IStorageProvider {
       // Upload to Cloudinary using file path or buffer
       let result: UploadApiResponse;
 
-      if (file.path && !file.path.startsWith('http://') && !file.path.startsWith('https://')) {
+      if (file.path && (file.path.startsWith('http://') || file.path.startsWith('https://'))) {
+        // File already uploaded by multer-storage-cloudinary
+        // Extract public_id from the URL to fetch metadata
+        console.log('[Cloudinary Provider] File already uploaded by multer-storage-cloudinary:', file.path);
+
+        // Return success with URL (multer-storage-cloudinary already did the upload)
+        return {
+          success: true,
+          url: file.path,
+          publicId: (file as any).filename || undefined, // multer-storage-cloudinary sets this
+          size: file.size,
+          width: undefined,
+          height: undefined,
+          localPath: undefined
+        };
+      } else if (file.path && !file.path.startsWith('http://') && !file.path.startsWith('https://')) {
         // If multer saved to disk, upload from path
         result = await cloudinary.uploader.upload(file.path, uploadOptions);
 

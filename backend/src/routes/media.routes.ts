@@ -131,6 +131,22 @@ router.post(
   '/upload',
   timeoutMiddleware(90),
   uploadSingle('file'),
+  // Debug middleware - log file details after multer processing
+  (req: Request, res: Response, next: NextFunction) => {
+    console.log('[Media Upload Debug] File received from multer:', {
+      hasFile: !!req.file,
+      path: req.file?.path,
+      hasPath: !!req.file?.path,
+      buffer: req.file?.buffer ? `Buffer(${req.file.buffer.length} bytes)` : 'No buffer',
+      hasBuffer: !!req.file?.buffer,
+      size: req.file?.size,
+      mimetype: req.file?.mimetype,
+      originalname: req.file?.originalname,
+      fieldname: req.file?.fieldname,
+      encoding: req.file?.encoding
+    });
+    next();
+  },
   mediaController.uploadMedia
 );
 
