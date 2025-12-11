@@ -133,3 +133,4 @@ export * from './slices/ticketsSlice';
 export * from './slices/blogSlice';
 export * from './slices/registrationsSlice';
 export * from './slices/settingsSlice';
+export * from './slices/mediaSlice';

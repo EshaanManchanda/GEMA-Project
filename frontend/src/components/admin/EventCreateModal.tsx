@@ -7,6 +7,8 @@ import MediaPickerModal from './media/MediaPickerModal';
 import { MediaAsset } from '../../store/slices/mediaSlice';
 import SEOEditor from '../seo/SEOEditor';
 import { config } from '../../config';
+import LoadingSpinner from '../common/LoadingSpinner';
+import ErrorBoundary from '../common/ErrorBoundary';
 
 interface Vendor {
   id: string;
@@ -32,6 +34,7 @@ const EventCreateModal: React.FC<EventCreateModalProps> = ({ isOpen, onClose, on
   const [vendors, setVendors] = useState<Vendor[]>([]);
   const [categories, setCategories] = useState<Category[]>([]);
   const [isLoading, setIsLoading] = useState(false);
+  const [dataLoading, setDataLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [activeTab, setActiveTab] = useState<'basic' | 'location' | 'schedule' | 'seo' | 'advanced'>('basic');
 
@@ -71,32 +74,50 @@ const EventCreateModal: React.FC<EventCreateModalProps> = ({ isOpen, onClose, on
 
   useEffect(() => {
     if (isOpen) {
-      fetchVendors();
-      fetchCategories();
+      console.log('[EventCreateModal] Mount', { isOpen });
+      const loadData = async () => {
+        try {
+          setDataLoading(true);
+          await Promise.all([fetchVendors(), fetchCategories()]);
+        } catch (err) {
+          console.error('[EventCreateModal] Failed to load modal data:', err);
+          setError('Failed to load form data. Please refresh and try again.');
+        } finally {
+          setDataLoading(false);
+        }
+      };
+      loadData();
     }
+    return () => console.log('[EventCreateModal] Unmount');
   }, [isOpen]);
 
   const fetchVendors = async () => {
     try {
+      console.log('[EventCreateModal] Fetching vendors...');
       const response = await adminAPI.getAllUsers({ role: 'vendor', status: 'active' });
       const vendorsList = response.data?.users || [];
+      console.log('[EventCreateModal] Vendors loaded:', vendorsList.length);
       setVendors(vendorsList.map((v: any) => ({
         id: v.id || v._id,
         fullName: `${v.firstName} ${v.lastName}`,
         email: v.email
       })));
     } catch (err: any) {
-      console.error('Error fetching vendors:', err);
+      console.error('[EventCreateModal] Error fetching vendors:', err);
+      throw err;
     }
   };
 
   const fetchCategories = async () => {
     try {
+      console.log('[EventCreateModal] Fetching categories...');
       const response = await categoriesAPI.getAllCategories({ tree: false, includeInactive: false });
       const categoriesList = response.data || [];
+      console.log('[EventCreateModal] Categories loaded:', categoriesList.length);
       setCategories(categoriesList);
     } catch (err: any) {
-      console.error('Error fetching categories:', err);
+      console.error('[EventCreateModal] Error fetching categories:', err);
+      throw err;
     }
   };
 
@@ -220,7 +241,24 @@ const EventCreateModal: React.FC<EventCreateModalProps> = ({ isOpen, onClose, on
     }
   };
 
+  // Log render state
+  console.log('[EventCreateModal] Render', {
+    isOpen,
+    vendorsCount: vendors.length,
+    categoriesCount: categories.length,
+    activeTab,
+    dataLoading
+  });
+
   if (!isOpen) return null;
+
+  if (dataLoading) {
+    return (
+      <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+        <LoadingSpinner />
+      </div>
+    );
+  }
 
   return (
     <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
@@ -302,14 +340,21 @@ const EventCreateModal: React.FC<EventCreateModalProps> = ({ isOpen, onClose, on
 
               <div>
                 <label htmlFor="event-description" className="block text-sm font-medium text-gray-700 mb-2">Description *</label>
-                <TipTapEditor
-                  content={description}
-                  onChange={setDescription}
-                  placeholder="Describe your event in detail... Use the toolbar to format text, add images from media library, embed videos, and create engaging content."
-                  editable={true}
-                  mediaCategory="event"
-                  mediaFolder="events"
-                />
+                <ErrorBoundary fallback={
+                  <div className="p-4 bg-red-50 border border-red-200 rounded-lg text-red-800">
+                    <p className="font-medium">Editor failed to load</p>
+                    <p className="text-sm mt-1">Please refresh the page and try again.</p>
+                  </div>
+                }>
+                  <TipTapEditor
+                    content={description}
+                    onChange={setDescription}
+                    placeholder="Describe your event in detail... Use the toolbar to format text, add images from media library, embed videos, and create engaging content."
+                    editable={true}
+                    mediaCategory="event"
+                    mediaFolder="events"
+                  />
+                </ErrorBoundary>
               </div>
 
               <div className="grid grid-cols-2 gap-4">
@@ -625,7 +670,7 @@ const EventCreateModal: React.FC<EventCreateModalProps> = ({ isOpen, onClose, on
                 contentData={{
                   title: title,
                   description: description,
-                  category: categories.find(c => c._id === category)?.name || category,
+                  category: categories.find(c => c.slug === category)?.name || category,
                   tags: tags.split(',').map(t => t.trim()).filter(Boolean),
                   type: 'event'
                 }}
