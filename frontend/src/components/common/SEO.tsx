@@ -46,7 +46,7 @@ const SEO: React.FC<SEOProps> = ({
     : 'Kidrove - Discover Amazing Kids Activities & Events in UAE';
   const defaultDescription = import.meta.env.VITE_SITE_DESCRIPTION || 'Find and book the best kids activities, educational programs, and family events in the UAE. Safe, fun, and memorable experiences for children of all ages.';
   const defaultKeywords = import.meta.env.VITE_SITE_KEYWORDS?.split(',') || ['kids activities', 'events', 'UAE', 'Dubai', 'family fun', 'children', 'booking'];
-  const defaultImage = `${baseUrl}/assets/images/og-default.jpg`;
+  const defaultImage = `${baseUrl}/assets/images/KidRove-Logo.jpg`;
 
   // Construct final values
   const finalTitle = title || defaultTitle;

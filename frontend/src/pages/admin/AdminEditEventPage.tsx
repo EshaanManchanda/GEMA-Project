@@ -115,7 +115,7 @@ const AdminEditEventPage: React.FC = () => {
     venueType: 'Indoor',
     ageRangeMin: '',
     ageRangeMax: '',
-    tags: '',
+    tags: [],
     images: [],
     imagePreviewUrls: [],
     isApproved: false,

@@ -37,7 +37,7 @@ export const useSEO = (seoData: SEOData = {}) => {
       description = import.meta.env.VITE_SITE_DESCRIPTION || 'Find and book the best kids activities, educational programs, and family events in the UAE. Safe, fun, and memorable experiences for children of all ages.',
       keywords = import.meta.env.VITE_SITE_KEYWORDS?.split(',') || ['kids activities', 'events', 'UAE', 'Dubai', 'family fun', 'children', 'booking'],
       canonicalUrl = `${baseUrl}${location.pathname}`,
-      ogImage = `${baseUrl}/assets/images/og-default.jpg`,
+      ogImage = `${baseUrl}/assets/images/KidRove-Logo.jpg`,
       ogType = 'website',
       twitterCard = 'summary_large_image',
       structuredData = null,
@@ -141,7 +141,7 @@ export const useSEO = (seoData: SEOData = {}) => {
       description: eventDescription,
       keywords: ['kids activities', 'events', 'UAE', event.location?.city, event.category, ...event.tags].filter(Boolean),
       canonicalUrl: `${baseUrl}/events/${event._id}`,
-      ogImage: event.images?.[0] || `${baseUrl}/assets/images/og-default.jpg`,
+      ogImage: event.images?.[0] || `${baseUrl}/assets/images/KidRove-Logo.jpg`,
       ogType: 'article',
       structuredData: {
         '@context': 'https://schema.org',
@@ -181,7 +181,7 @@ export const useSEO = (seoData: SEOData = {}) => {
       description: blog.seo?.metaDescription || blog.excerpt,
       keywords: blog.seo?.metaKeywords || ['kids activities', 'events', 'UAE', 'parenting', ...blog.tags].filter(Boolean),
       canonicalUrl: blog.seo?.canonicalUrl || `${baseUrl}/blog/${blog.slug}`,
-      ogImage: blog.featuredImage || `${baseUrl}/assets/images/og-default.jpg`,
+      ogImage: blog.featuredImage || `${baseUrl}/assets/images/KidRove-Logo.jpg`,
       ogType: 'article',
       structuredData: {
         '@context': 'https://schema.org',
