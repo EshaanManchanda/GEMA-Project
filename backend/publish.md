@@ -606,6 +606,7 @@ root@srv1143065:/var/www/GEMA-Project/backend# pm2 status
 
   # Check NGINX logs for errors
   sudo tail -30 /var/log/nginx/error.log
+  pm2 logs gema-backend --lines 50
 
   ---
   🌐 Browser Testing

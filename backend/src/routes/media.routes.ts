@@ -2,7 +2,7 @@ import { Router, Request, Response, NextFunction } from 'express';
 import { authenticate, authorize } from '../middleware/auth';
 import { UserRole } from '../models/User';
 import * as mediaController from '../controllers/media.controller';
-import { uploadSingle, uploadMultiple } from '../middleware/upload';
+import { uploadSingle, uploadMultiple, handleUploadError } from '../middleware/upload';
 import { timeoutMiddleware } from '../middleware/timeout';
 import MediaAsset from '../models/MediaAsset';
 import { AppError } from '../middleware/error';
@@ -131,6 +131,7 @@ router.post(
   '/upload',
   timeoutMiddleware(90),
   uploadSingle('file'),
+  handleUploadError,  // Handle multer validation errors
   // Debug middleware - log file details after multer processing
   (req: Request, res: Response, next: NextFunction) => {
     console.log('[Media Upload Debug] File received from multer:', {
@@ -155,6 +156,7 @@ router.post(
   '/upload-multiple',
   timeoutMiddleware(120),
   uploadMultiple('files', 10),
+  handleUploadError,  // Handle multer validation errors
   mediaController.uploadMultipleMedia
 );
 

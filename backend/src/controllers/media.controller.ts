@@ -59,7 +59,13 @@ export const uploadMedia = async (req: AuthRequest, res: Response, next: NextFun
       category: category || 'misc',
       folder: folder || category || 'misc',
       uploadedBy: req.user!._id.toString(),
-      tags: tags ? (typeof tags === 'string' ? JSON.parse(tags) : tags) : []
+      tags: tags ? (typeof tags === 'string' ? (() => {
+        try {
+          return JSON.parse(tags);
+        } catch {
+          return [];
+        }
+      })() : tags) : []
     });
 
     res.status(201).json({
@@ -100,7 +106,13 @@ export const uploadMultipleMedia = async (req: AuthRequest, res: Response, next:
           category: category || 'misc',
           folder: folder || category || 'misc',
           uploadedBy: req.user!._id.toString(),
-          tags: tags ? (typeof tags === 'string' ? JSON.parse(tags) : tags) : []
+          tags: tags ? (typeof tags === 'string' ? (() => {
+            try {
+              return JSON.parse(tags);
+            } catch {
+              return [];
+            }
+          })() : tags) : []
         });
 
         results.push({

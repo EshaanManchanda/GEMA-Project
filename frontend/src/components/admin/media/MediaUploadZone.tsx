@@ -62,7 +62,7 @@ const MediaUploadZone: React.FC<MediaUploadZoneProps> = ({
     }
 
     // Validate file types
-    const validTypes = ['image/jpeg', 'image/jpg', 'image/png', 'image/gif', 'image/webp', 'video/mp4', 'video/webm', 'application/pdf'];
+    const validTypes = ['image/jpeg', 'image/jpg', 'image/png', 'image/gif', 'image/webp', 'image/avif', 'video/mp4', 'video/webm', 'application/pdf'];
     const invalidFiles = fileArray.filter(file => !validTypes.includes(file.type));
 
     if (invalidFiles.length > 0) {

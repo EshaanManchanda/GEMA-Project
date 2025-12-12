@@ -17,7 +17,7 @@ export const uploadPresets = {
       { quality: 'auto', fetch_format: 'auto' },
       { width: 1200, height: 800, crop: 'limit' }
     ],
-    allowed_formats: ['jpg', 'jpeg', 'png', 'webp'],
+    allowed_formats: ['jpg', 'jpeg', 'png', 'webp', 'avif'],
     timeout: 60000 // 60s timeout for 10MB uploads
   },
   venues: {
@@ -26,7 +26,7 @@ export const uploadPresets = {
       { quality: 'auto', fetch_format: 'auto' },
       { width: 1200, height: 800, crop: 'limit' }
     ],
-    allowed_formats: ['jpg', 'jpeg', 'png', 'webp'],
+    allowed_formats: ['jpg', 'jpeg', 'png', 'webp', 'avif'],
     timeout: 60000 // 60s timeout for 10MB uploads
   },
   users: {
@@ -41,7 +41,7 @@ export const uploadPresets = {
       { width: 400, height: 400, crop: 'fill', gravity: 'face', quality: 'auto:good' } // Standard
     ],
     eager_async: true, // Process eager transformations asynchronously (faster upload)
-    allowed_formats: ['jpg', 'jpeg', 'png', 'webp'],
+    allowed_formats: ['jpg', 'jpeg', 'png', 'webp', 'avif'],
     timeout: 60000 // 60s timeout for 10MB uploads
   },
   tickets: {
@@ -49,7 +49,7 @@ export const uploadPresets = {
     transformation: [
       { quality: 'auto', fetch_format: 'auto' }
     ],
-    allowed_formats: ['jpg', 'jpeg', 'png', 'webp', 'pdf'],
+    allowed_formats: ['jpg', 'jpeg', 'png', 'webp', 'avif', 'pdf'],
     timeout: 60000 // 60s timeout for 10MB uploads
   },
   documents: {
@@ -73,7 +73,7 @@ export const uploadPresets = {
       { quality: 'auto', fetch_format: 'auto' },
       { width: 1920, height: 1080, crop: 'limit' }
     ],
-    allowed_formats: ['jpg', 'jpeg', 'png', 'webp', 'gif'],
+    allowed_formats: ['jpg', 'jpeg', 'png', 'webp', 'gif', 'avif'],
     timeout: 60000 // 60s timeout for 10MB uploads
   },
   blogContent: {
@@ -82,7 +82,7 @@ export const uploadPresets = {
     transformation: [
       { quality: 'auto', fetch_format: 'auto' }
     ],
-    allowed_formats: ['jpg', 'jpeg', 'png', 'webp', 'gif', 'mp4', 'webm', 'mov'],
+    allowed_formats: ['jpg', 'jpeg', 'png', 'webp', 'gif', 'avif', 'mp4', 'webm', 'mov'],
     timeout: 60000 // 60s timeout for 10MB uploads
   }
 };

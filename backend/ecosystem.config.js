@@ -51,7 +51,7 @@ module.exports = {
     min_uptime: '10s', // Minimum uptime before restart is considered successful
 
     // Memory Management (Adjust based on VPS RAM)
-    max_memory_restart: '800M', // Restart if memory exceeds 800MB
+    max_memory_restart: '1200M', // Restart if memory exceeds 1200MB (2.4x max file size for concurrent uploads)
 
     // Logging Configuration
     error_file: '/var/log/GEMA-Project/backend/api-error.log',

@@ -18,7 +18,7 @@ const ImageUpload: React.FC<ImageUploadProps> = ({
   currentImage,
   placeholder = "Upload an image",
   maxFileSize = 5,
-  acceptedFormats = ['image/jpeg', 'image/jpg', 'image/png', 'image/webp'],
+  acceptedFormats = ['image/jpeg', 'image/jpg', 'image/png', 'image/webp', 'image/avif'],
   category = 'misc'
 }) => {
   const [isUploading, setIsUploading] = useState(false);
@@ -165,7 +165,7 @@ const ImageUpload: React.FC<ImageUploadProps> = ({
                   Drag and drop or click to browse
                 </p>
                 <p className="text-xs text-gray-400 mt-1">
-                  Supports: JPG, PNG, WebP (max {maxFileSize}MB)
+                  Supports: JPG, PNG, WebP, AVIF (max {maxFileSize}MB)
                 </p>
               </div>
             </div>

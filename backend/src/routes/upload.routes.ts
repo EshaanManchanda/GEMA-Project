@@ -51,6 +51,7 @@ router.use('/files', (req: Request, res: Response, next: NextFunction) => {
     '.png': 'image/png',
     '.gif': 'image/gif',
     '.webp': 'image/webp',
+    '.avif': 'image/avif',
     '.pdf': 'application/pdf',
     '.doc': 'application/msword',
     '.docx': 'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
