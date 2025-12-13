@@ -142,9 +142,9 @@ const AdvancedTab: React.FC<AdvancedTabProps> = ({
 
         <SEOEditor
           initialData={{
-            title: formData.seoMeta.title,
-            description: formData.seoMeta.description,
-            keywords: formData.seoMeta.keywords
+            title: formData.seoMeta?.title ?? '',
+            description: formData.seoMeta?.description ?? '',
+            keywords: formData.seoMeta?.keywords ?? []
           }}
           contentData={{
             title: eventData?.title || '',
@@ -184,7 +184,7 @@ const AdvancedTab: React.FC<AdvancedTabProps> = ({
           </p>
         </div>
 
-        {formData.faqs.length === 0 ? (
+        {(formData.faqs || []).length === 0 ? (
           <div className="bg-gray-50 border-2 border-dashed border-gray-300 rounded-lg p-8 text-center">
             <HelpCircle className="w-12 h-12 text-gray-400 mx-auto mb-3" />
             <h4 className="text-sm font-medium text-gray-900 mb-1">No FAQs added yet</h4>
@@ -202,7 +202,7 @@ const AdvancedTab: React.FC<AdvancedTabProps> = ({
           </div>
         ) : (
           <div className="space-y-4">
-            {formData.faqs.map((faq, index) => (
+            {(formData.faqs || []).map((faq, index) => (
               <div
                 key={faq.id || faq._id || index}
                 className="bg-white border border-gray-200 rounded-lg p-4 shadow-sm"
