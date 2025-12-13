@@ -370,6 +370,12 @@ const AdminEditEventPage: React.FC = () => {
     setSchedules(prev => {
       const updated = [...prev];
       updated[index] = { ...updated[index], [field]: value };
+
+      // Clear availableSeats when unlimited is enabled
+      if (field === 'unlimitedSeats' && value === true) {
+        updated[index].availableSeats = '';
+      }
+
       return updated;
     });
 
@@ -377,6 +383,14 @@ const AdminEditEventPage: React.FC = () => {
     const errorKey = `schedule_${index}_${field}`;
     if (errors[errorKey]) {
       setErrors(prev => ({ ...prev, [errorKey]: undefined }));
+    }
+
+    // When unlimited is toggled, also clear availableSeats error
+    if (field === 'unlimitedSeats') {
+      const seatsErrorKey = `schedule_${index}_availableSeats`;
+      if (errors[seatsErrorKey]) {
+        setErrors(prev => ({ ...prev, [seatsErrorKey]: undefined }));
+      }
     }
   };
 
