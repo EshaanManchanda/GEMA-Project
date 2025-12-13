@@ -299,7 +299,7 @@ const FormBuilder: React.FC<FormBuilderProps> = ({ eventId, onSaveSuccess }) => 
 
               {/* Fields Editor */}
               <div className="lg:col-span-2 space-y-4">
-                {!formBuilder.config?.fields || formBuilder.config.fields.length === 0 ? (
+                {(formBuilder.config?.fields || []).length === 0 ? (
                   <Card>
                     <CardContent className="py-12 text-center">
                       <Plus className="w-16 h-16 text-gray-300 mx-auto mb-4" />
@@ -310,7 +310,7 @@ const FormBuilder: React.FC<FormBuilderProps> = ({ eventId, onSaveSuccess }) => 
                     </CardContent>
                   </Card>
                 ) : (
-                  formBuilder.config.fields.map((field, index) => (
+                  (formBuilder.config?.fields || []).map((field, index) => (
                     <FormBuilderFieldEditor
                       key={field.id}
                       field={field}
