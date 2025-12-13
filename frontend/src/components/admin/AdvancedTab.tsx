@@ -151,7 +151,7 @@ const AdvancedTab: React.FC<AdvancedTabProps> = ({
             description: eventData?.description || '',
             category: eventData?.category || '',
             location: formData.city,
-            tags: eventData?.tags ? eventData.tags.split(',').map(t => t.trim()).filter(t => t.length > 0) : [],
+            tags: Array.isArray(eventData?.tags) ? eventData.tags : [],
             type: 'event'
           }}
           onChange={onSeoChange}
