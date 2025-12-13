@@ -495,12 +495,21 @@ const AdminEditEventPage: React.FC = () => {
           }
         }
 
-        if (!schedule.unlimitedSeats && !schedule.availableSeats) {
-          newErrors[`schedule_${index}_availableSeats`] = 'Available seats is required';
+        if (!schedule.unlimitedSeats) {
+          if (!schedule.availableSeats) {
+            newErrors[`schedule_${index}_availableSeats`] = 'Available seats is required';
+          } else {
+            const seats = parseInt(schedule.availableSeats);
+            if (isNaN(seats) || seats < 1 || seats > 10000) {
+              newErrors[`schedule_${index}_availableSeats`] = 'Available seats must be between 1 and 10,000';
+            }
+          }
         }
 
         if (!schedule.price) {
           newErrors[`schedule_${index}_price`] = 'Price is required';
+        } else if (isNaN(parseFloat(schedule.price)) || parseFloat(schedule.price) < 0) {
+          newErrors[`schedule_${index}_price`] = 'Price must be a valid number';
         }
       });
     }
@@ -619,9 +628,11 @@ const AdminEditEventPage: React.FC = () => {
           endDate: schedule.endDate,
           startTime: schedule.startTime || '',
           endTime: schedule.endTime || '',
-          availableSeats: schedule.unlimitedSeats ? 999999 : parseInt(schedule.availableSeats),
+          availableSeats: schedule.unlimitedSeats
+            ? 999999
+            : parseInt(schedule.availableSeats) || 0,
           totalSeats: schedule.totalSeats ? parseInt(schedule.totalSeats) : undefined,
-          price: parseFloat(schedule.price),
+          price: parseFloat(schedule.price) || 0,
           unlimitedSeats: schedule.unlimitedSeats || false,
           isSpecialDate: schedule.isSpecialDate || false,
           specialDates: schedule.specialDates || [],
