@@ -6,13 +6,8 @@ import toast from 'react-hot-toast';
 import {
   Save,
   X,
-  Image as ImageIcon,
-  FileImage,
-  Calendar,
-  Tag,
   Search,
   Upload,
-  Eye,
   Trash2
 } from 'lucide-react';
 import Button from '../ui/Button';
@@ -294,7 +289,7 @@ const CollectionForm: React.FC<CollectionFormProps> = ({
         formData.iconAsset = selectedIconAsset._id;
       } else if (collection && collection.iconAsset && !selectedIconAsset) {
         // Explicitly clear icon if it existed before and user removed it
-        formData.iconAsset = null;
+        formData.iconAsset = undefined;
       }
 
       // Send featuredImageAsset changes explicitly
@@ -302,7 +297,7 @@ const CollectionForm: React.FC<CollectionFormProps> = ({
         formData.featuredImageAsset = selectedFeaturedImageAsset._id;
       } else if (collection && collection.featuredImageAsset && !selectedFeaturedImageAsset) {
         // Explicitly clear featured image if it existed before and user removed it
-        formData.featuredImageAsset = null;
+        formData.featuredImageAsset = undefined;
       }
 
       await onSubmit(formData);
@@ -314,7 +309,7 @@ const CollectionForm: React.FC<CollectionFormProps> = ({
   };
 
   return (
-    <Modal isOpen={isOpen} onClose={onClose} title={collection ? 'Edit Collection' : 'Create Collection'} size="large">
+    <Modal isOpen={isOpen} onClose={onClose} title={collection ? 'Edit Collection' : 'Create Collection'} size="lg">
       <form onSubmit={handleSubmit(handleFormSubmit)} className="space-y-6">
         {/* Tabs */}
         <div className="flex space-x-2 border-b">
@@ -700,7 +695,7 @@ const CollectionForm: React.FC<CollectionFormProps> = ({
                 title: watch('title') || '',
                 description: watch('description') || '',
                 category: watch('category') || '',
-                type: 'collection'
+                type: 'event' as 'event' | 'blog'
               }}
               onChange={handleSeoDataChange}
               baseUrl={config.appUrl}

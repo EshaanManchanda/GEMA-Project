@@ -154,7 +154,7 @@ export const getUserOrders = async (req: AuthRequest, res: Response, next: NextF
     // Execute query
     const [orders, total] = await Promise.all([
       Order.find(filter)
-        .populate('items.eventId', 'title category type images')
+        .populate('items.eventId', 'title category type images location venueType meetingLink')
         .sort(sort)
         .skip(skip)
         .limit(limitNum),
@@ -192,7 +192,7 @@ export const getOrder = async (req: AuthRequest, res: Response, next: NextFuncti
     const order = await Order.findOne({
       _id: id,
       userId,
-    }).populate('items.eventId', 'title category type images location vendorId');
+    }).populate('items.eventId', 'title category type images location vendorId venueType meetingLink');
 
     if (!order) {
       return next(new AppError('Order not found', 404));
@@ -328,6 +328,9 @@ export const processPayment = async (req: AuthRequest, res: Response, next: Next
       // Send order confirmation email
       const user = await User.findById(userId);
       if (user) {
+        // Populate order with event details for email
+        await order.populate('items.eventId', 'venueType meetingLink');
+
         await emailService.sendOrderConfirmationEmail({
           to: user.email,
           firstName: user.firstName,
@@ -339,6 +342,8 @@ export const processPayment = async (req: AuthRequest, res: Response, next: Next
             quantity: item.quantity,
             price: item.totalPrice,
             date: item.scheduleDate,
+            venueType: (item.eventId as any)?.venueType,
+            meetingLink: (item.eventId as any)?.meetingLink,
           })),
         });
 

@@ -24,6 +24,16 @@ export const VENUE_TYPES = ['Indoor', 'Outdoor', 'Online', 'Offline'];
 export const EVENT_STATUSES = ['draft', 'published', 'archived', 'pending', 'rejected'];
 export const CURRENCIES = ['AED', 'EGP', 'CAD', 'USD'];
 
+// ISO 3166-1 alpha-2 country codes (subset of major countries, can expand as needed)
+export const COUNTRY_CODES = [
+  'AE', 'AF', 'AL', 'DZ', 'AR', 'AM', 'AU', 'AT', 'AZ', 'BH', 'BD', 'BY', 'BE', 'BR', 'BG',
+  'CA', 'CL', 'CN', 'CO', 'HR', 'CY', 'CZ', 'DK', 'EG', 'EE', 'FI', 'FR', 'DE', 'GR', 'HK',
+  'HU', 'IS', 'IN', 'ID', 'IR', 'IQ', 'IE', 'IL', 'IT', 'JP', 'JO', 'KZ', 'KW', 'LV', 'LB',
+  'LY', 'LT', 'LU', 'MY', 'MT', 'MX', 'MA', 'NL', 'NZ', 'NO', 'OM', 'PK', 'PS', 'PE', 'PH',
+  'PL', 'PT', 'QA', 'RO', 'RU', 'SA', 'RS', 'SG', 'SK', 'SI', 'ZA', 'KR', 'ES', 'LK', 'SE',
+  'CH', 'SY', 'TW', 'TH', 'TN', 'TR', 'UA', 'GB', 'US', 'UY', 'VE', 'VN', 'YE'
+]; // 91 major countries - can add more as needed
+
 /**
  * Create event validation
  */
@@ -63,6 +73,15 @@ export const validateCreateEvent = [
     }),
 
   // Location validation
+  body('location.country')
+    .optional()
+    .trim()
+    .isLength({ min: 2, max: 2 })
+    .withMessage('Country must be a 2-letter ISO code')
+    .isIn(COUNTRY_CODES)
+    .withMessage('Invalid country code')
+    .toUpperCase(),
+
   body('location.city')
     .trim()
     .notEmpty()
@@ -72,30 +91,73 @@ export const validateCreateEvent = [
     .escape(),
 
   body('location.address')
+    .custom((value, { req }) => {
+      // Address is optional for Online events
+      if (req.body.venueType === 'Online') {
+        return true;
+      }
+      if (!value || value.trim().length < 5) {
+        throw new Error('Address is required for non-online events');
+      }
+      if (value.trim().length > 300) {
+        throw new Error('Address cannot exceed 300 characters');
+      }
+      return true;
+    })
     .trim()
-    .notEmpty()
-    .withMessage('Address is required')
-    .isLength({ min: 5, max: 300 })
-    .withMessage('Address must be between 5 and 300 characters')
     .escape(),
 
   body('location.coordinates.lat')
-    .notEmpty()
-    .withMessage('Latitude is required')
-    .isFloat({ min: -90, max: 90 })
-    .withMessage('Latitude must be between -90 and 90')
+    .custom((value, { req }) => {
+      // Coordinates are optional for Online events
+      if (req.body.venueType === 'Online') {
+        return true;
+      }
+      if (value === undefined || value === null || value === '') {
+        throw new Error('Latitude is required for non-online events');
+      }
+      const lat = parseFloat(value);
+      if (isNaN(lat) || lat < -90 || lat > 90) {
+        throw new Error('Latitude must be between -90 and 90');
+      }
+      return true;
+    })
     .toFloat(),
 
   body('location.coordinates.lng')
-    .notEmpty()
-    .withMessage('Longitude is required')
-    .isFloat({ min: -180, max: 180 })
-    .withMessage('Longitude must be between -180 and 180')
+    .custom((value, { req }) => {
+      // Coordinates are optional for Online events
+      if (req.body.venueType === 'Online') {
+        return true;
+      }
+      if (value === undefined || value === null || value === '') {
+        throw new Error('Longitude is required for non-online events');
+      }
+      const lng = parseFloat(value);
+      if (isNaN(lng) || lng < -180 || lng > 180) {
+        throw new Error('Longitude must be between -180 and 180');
+      }
+      return true;
+    })
     .toFloat(),
 
   // Price validation
   validateNumericRange('price', 0, undefined, true),
   validateEnum('currency', CURRENCIES, false),
+
+  // Meeting link validation (required for Online events)
+  body('meetingLink')
+    .if(body('venueType').equals('Online'))
+    .notEmpty()
+    .withMessage('Meeting link is required for online events')
+    .isURL({ protocols: ['http', 'https'], require_protocol: true })
+    .withMessage('Meeting link must be a valid URL'),
+
+  body('meetingLink')
+    .if(body('venueType').not().equals('Online'))
+    .optional()
+    .isURL({ protocols: ['http', 'https'], require_protocol: true })
+    .withMessage('Meeting link must be a valid URL'),
 
   // Date schedule validation
   body('dateSchedule')
@@ -146,6 +208,40 @@ export const validateCreateEvent = [
     .withMessage('Schedule price is required')
     .isFloat({ min: 0 })
     .withMessage('Schedule price cannot be negative')
+    .toFloat(),
+
+  // TimeSlots validation (for multiple sessions per date)
+  body('dateSchedule.*.timeSlots')
+    .optional()
+    .isArray()
+    .withMessage('Time slots must be an array'),
+
+  body('dateSchedule.*.timeSlots.*.date')
+    .optional()
+    .isISO8601()
+    .withMessage('Time slot date must be valid')
+    .toDate(),
+
+  body('dateSchedule.*.timeSlots.*.startTime')
+    .optional()
+    .matches(/^([01]\d|2[0-3]):([0-5]\d)$/)
+    .withMessage('Start time must be in HH:mm format'),
+
+  body('dateSchedule.*.timeSlots.*.endTime')
+    .optional()
+    .matches(/^([01]\d|2[0-3]):([0-5]\d)$/)
+    .withMessage('End time must be in HH:mm format'),
+
+  body('dateSchedule.*.timeSlots.*.availableSeats')
+    .optional()
+    .isInt({ min: 0, max: 10000 })
+    .withMessage('Time slot seats must be between 0 and 10,000')
+    .toInt(),
+
+  body('dateSchedule.*.timeSlots.*.price')
+    .optional()
+    .isFloat({ min: 0 })
+    .withMessage('Time slot price cannot be negative')
     .toFloat(),
 
   // Tags validation
@@ -222,6 +318,98 @@ export const validateUpdateEvent = [
     .optional()
     .isArray({ max: 10 })
     .withMessage('Cannot have more than 10 images'),
+
+  // Location validation (same as create)
+  body('location.country')
+    .optional()
+    .trim()
+    .isLength({ min: 2, max: 2 })
+    .withMessage('Country must be a 2-letter ISO code')
+    .isIn(COUNTRY_CODES)
+    .withMessage('Invalid country code')
+    .toUpperCase(),
+
+  body('location.address')
+    .optional()
+    .custom((value, { req }) => {
+      if (req.body.venueType === 'Online') return true;
+      if (!value || value.trim().length < 5) {
+        throw new Error('Address is required for non-online events');
+      }
+      return true;
+    })
+    .trim()
+    .escape(),
+
+  body('location.coordinates.lat')
+    .optional()
+    .custom((value, { req }) => {
+      if (req.body.venueType === 'Online') return true;
+      if (value !== undefined && value !== null) {
+        const lat = parseFloat(value);
+        if (isNaN(lat) || lat < -90 || lat > 90) {
+          throw new Error('Latitude must be between -90 and 90');
+        }
+      }
+      return true;
+    })
+    .toFloat(),
+
+  body('location.coordinates.lng')
+    .optional()
+    .custom((value, { req }) => {
+      if (req.body.venueType === 'Online') return true;
+      if (value !== undefined && value !== null) {
+        const lng = parseFloat(value);
+        if (isNaN(lng) || lng < -180 || lng > 180) {
+          throw new Error('Longitude must be between -180 and 180');
+        }
+      }
+      return true;
+    })
+    .toFloat(),
+
+  // Meeting link validation
+  body('meetingLink')
+    .if(body('venueType').equals('Online'))
+    .notEmpty()
+    .withMessage('Meeting link is required for online events')
+    .isURL({ protocols: ['http', 'https'], require_protocol: true })
+    .withMessage('Meeting link must be a valid URL'),
+
+  body('meetingLink')
+    .if(body('venueType').not().equals('Online'))
+    .optional()
+    .isURL({ protocols: ['http', 'https'], require_protocol: true })
+    .withMessage('Meeting link must be a valid URL'),
+
+  // TimeSlots validation
+  body('dateSchedule.*.timeSlots')
+    .optional()
+    .isArray(),
+
+  body('dateSchedule.*.timeSlots.*.date')
+    .optional()
+    .isISO8601()
+    .toDate(),
+
+  body('dateSchedule.*.timeSlots.*.startTime')
+    .optional()
+    .matches(/^([01]\d|2[0-3]):([0-5]\d)$/),
+
+  body('dateSchedule.*.timeSlots.*.endTime')
+    .optional()
+    .matches(/^([01]\d|2[0-3]):([0-5]\d)$/),
+
+  body('dateSchedule.*.timeSlots.*.availableSeats')
+    .optional()
+    .isInt({ min: 0, max: 10000 })
+    .toInt(),
+
+  body('dateSchedule.*.timeSlots.*.price')
+    .optional()
+    .isFloat({ min: 0 })
+    .toFloat(),
 ];
 
 /**

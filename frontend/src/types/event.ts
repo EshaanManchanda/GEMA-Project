@@ -1,3 +1,5 @@
+import type { RegistrationConfig } from './registration';
+
 export interface EventLocation {
   coordinates: {
     lat: number;
@@ -62,19 +64,6 @@ export interface RegistrationField {
   helpText?: string;
 }
 
-export interface RegistrationConfig {
-  enabled: boolean;
-  fields: RegistrationField[];
-  maxRegistrations?: number;
-  registrationDeadline?: Date;
-  requiresApproval: boolean;
-  emailNotifications: {
-    toVendor: boolean;
-    toParticipant: boolean;
-    customMessage?: string;
-  };
-}
-
 // Backend API Response Types
 export interface ApiResponse<T = any> {
   success: boolean;
@@ -117,6 +106,7 @@ export interface Event {
   category: string;
   type: 'Olympiad' | 'Championship' | 'Competition' | 'Event' | 'Course' | 'Venue';
   venueType: 'Indoor' | 'Outdoor' | 'Online' | 'Offline';
+  meetingLink?: string;
   ageRange: [number, number];
   location: EventLocation;
   seoMeta: EventSeoMeta;

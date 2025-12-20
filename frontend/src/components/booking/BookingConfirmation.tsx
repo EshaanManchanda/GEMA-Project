@@ -1,18 +1,19 @@
 import React, { useState } from 'react';
 import { useSelector } from 'react-redux';
 import { format } from 'date-fns';
-import { 
-  CheckCircle, 
-  Download, 
-  Mail, 
-  Smartphone, 
-  Calendar, 
-  MapPin, 
-  Users, 
+import {
+  CheckCircle,
+  Download,
+  Mail,
+  Smartphone,
+  Calendar,
+  MapPin,
+  Users,
   Share2,
   Clock,
   Star,
-  QrCode
+  QrCode,
+  Video
 } from 'lucide-react';
 import toast from 'react-hot-toast';
 
@@ -132,6 +133,19 @@ const BookingConfirmation: React.FC<BookingConfirmationProps> = ({
         >
           Download Tickets
         </Button>
+
+        {event.venueType === 'Online' && event.meetingLink && (
+          <a
+            href={event.meetingLink}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="inline-flex items-center justify-center px-4 py-3 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors font-medium"
+          >
+            <Video className="w-5 h-5 mr-2" />
+            Join Meeting
+          </a>
+        )}
+
         <Button
           variant="outline"
           onClick={() => setShowQRModal(true)}

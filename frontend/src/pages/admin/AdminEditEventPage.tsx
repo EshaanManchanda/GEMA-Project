@@ -11,6 +11,15 @@ import { ChevronLeft, ChevronRight } from 'lucide-react';
 import MediaPickerModal from '@/components/admin/media/MediaPickerModal';
 import { MediaAsset } from '@/store/slices/mediaSlice';
 
+interface TimeSlot {
+  id: string;
+  date: string;
+  startTime: string;
+  endTime: string;
+  availableSeats: string;
+  price: string;
+}
+
 interface Schedule {
   id: string;
   _id?: string;
@@ -28,6 +37,7 @@ interface Schedule {
   specialDates?: string[];
   priority?: number;
   isOverride?: boolean;
+  timeSlots?: TimeSlot[];
 }
 
 interface FAQ {
@@ -69,10 +79,12 @@ interface EventFormData {
   capacity: string;
 
   // Location (in Advanced tab)
+  country: string;
   city: string;
   address: string;
   latitude: string;
   longitude: string;
+  meetingLink: string;
 
   // SEO
   seoMeta: {
@@ -130,10 +142,12 @@ const AdminEditEventPage: React.FC = () => {
     basePrice: '',
     currency: 'AED',
     capacity: '',
+    country: '',
     city: '',
     address: '',
     latitude: '',
     longitude: '',
+    meetingLink: '',
     seoMeta: {
       title: '',
       description: '',
@@ -216,10 +230,12 @@ const AdminEditEventPage: React.FC = () => {
             capacity: eventData.dateSchedule?.[0]?.totalSeats?.toString()
               || eventData.dateSchedule?.[0]?.availableSeats?.toString()
               || '',
+            country: eventData.location?.country || '',
             city: eventData.location?.city || '',
             address: eventData.location?.address || '',
             latitude: eventData.location?.coordinates?.lat?.toString() || '',
             longitude: eventData.location?.coordinates?.lng?.toString() || '',
+            meetingLink: eventData.meetingLink || '',
             seoMeta: {
               title: eventData.seoMeta?.title || '',
               description: eventData.seoMeta?.description || '',
@@ -260,7 +276,15 @@ const AdminEditEventPage: React.FC = () => {
               new Date(d).toISOString().split('T')[0]
             ) || [],
             priority: schedule.priority || 0,
-            isOverride: schedule.isOverride || false
+            isOverride: schedule.isOverride || false,
+            timeSlots: (schedule.timeSlots || []).map((slot: any, slotIdx: number) => ({
+              id: slot._id || `slot-${index}-${slotIdx}`,
+              date: slot.date ? new Date(slot.date).toISOString().split('T')[0] : '',
+              startTime: slot.startTime || '',
+              endTime: slot.endTime || '',
+              availableSeats: slot.availableSeats?.toString() || '',
+              price: slot.price?.toString() || ''
+            }))
           }));
 
           setSchedules(transformedSchedules.length > 0 ? transformedSchedules : [{
@@ -331,6 +355,24 @@ const AdminEditEventPage: React.FC = () => {
     // Clear errors if tags are added
     if (tags.length > 0 && errors.tags) {
       setErrors(prev => ({ ...prev, tags: undefined }));
+    }
+  };
+
+  const handleCountryChange = (country: string) => {
+    setFormData(prev => ({
+      ...prev,
+      country,
+      city: ''  // Clear city when country changes to prevent invalid combinations
+    }));
+
+    // Clear country error
+    if (errors.country) {
+      setErrors(prev => ({ ...prev, country: undefined }));
+    }
+
+    // Clear city error
+    if (errors.city) {
+      setErrors(prev => ({ ...prev, city: undefined }));
     }
   };
 
@@ -484,6 +526,11 @@ const AdminEditEventPage: React.FC = () => {
           newErrors.ageRangeMax = 'Maximum age must be greater than minimum age';
         }
       }
+
+      // Meeting link validation for Online events
+      if (formData.venueType === 'Online' && !formData.meetingLink?.trim()) {
+        newErrors.meetingLink = 'Meeting link is required for online events';
+      }
     }
 
     // Schedule validation
@@ -531,7 +578,11 @@ const AdminEditEventPage: React.FC = () => {
     // Advanced tab validation
     if (activeTab === 'advanced') {
       if (!formData.city?.trim()) newErrors.city = 'City is required';
-      if (!formData.address?.trim()) newErrors.address = 'Address is required';
+
+      // Address is only required for non-Online events
+      if (formData.venueType !== 'Online' && !formData.address?.trim()) {
+        newErrors.address = 'Address is required for non-online events';
+      }
 
       // FAQ validation
       formData.faqs.forEach((faq, index) => {
@@ -611,13 +662,15 @@ const AdminEditEventPage: React.FC = () => {
         venueType: formData.venueType,
         ageRange: [parseInt(formData.ageRangeMin), parseInt(formData.ageRangeMax)],
         location: {
+          country: formData.country || undefined,
           city: formData.city,
-          address: formData.address,
-          coordinates: {
+          address: formData.venueType === 'Online' ? undefined : formData.address,
+          coordinates: formData.venueType === 'Online' ? undefined : {
             lat: parseFloat(formData.latitude) || 0,
             lng: parseFloat(formData.longitude) || 0
           }
         },
+        meetingLink: formData.venueType === 'Online' ? formData.meetingLink : undefined,
         vendorId: formData.vendorId,
         price: parseFloat(formData.basePrice),
         currency: formData.currency,
@@ -651,7 +704,14 @@ const AdminEditEventPage: React.FC = () => {
           isSpecialDate: schedule.isSpecialDate || false,
           specialDates: schedule.specialDates || [],
           priority: schedule.priority || 0,
-          isOverride: schedule.isOverride || false
+          isOverride: schedule.isOverride || false,
+          timeSlots: (schedule.timeSlots || []).map(slot => ({
+            date: new Date(slot.date),
+            startTime: slot.startTime,
+            endTime: slot.endTime,
+            availableSeats: parseInt(slot.availableSeats) || 0,
+            price: slot.price ? parseFloat(slot.price) : undefined
+          }))
         })),
 
         imageAssets: formData.images,  // Send MediaAsset IDs
@@ -882,6 +942,7 @@ const AdminEditEventPage: React.FC = () => {
 
             {activeTab === 'advanced' && (
               <AdvancedTab
+                venueType={formData.venueType}
                 formData={formData}
                 eventData={{
                   title: formData.title,
@@ -892,6 +953,7 @@ const AdminEditEventPage: React.FC = () => {
                 }}
                 errors={errors}
                 onInputChange={handleInputChange}
+                onCountryChange={handleCountryChange}
                 onFaqChange={handleFaqChange}
                 onAddFaq={handleAddFaq}
                 onRemoveFaq={handleRemoveFaq}

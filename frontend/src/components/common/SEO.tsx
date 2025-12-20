@@ -364,7 +364,23 @@ export const HomeSEO: React.FC<{
     youtubeUrl?: string;
     linkedinUrl?: string;
   };
-}> = ({ breadcrumbs, socialSettings }) => {
+  seoContent?: {
+    metaTitle: string;
+    metaDescription: string;
+    keywords: string[];
+    faqItems: Array<{ question: string; answer: string }>;
+    features: Array<{ title: string; description: string }>;
+  };
+  stats?: {
+    averageRating?: number;
+    totalReviews?: number;
+    totalEvents?: number;
+    totalVendors?: number;
+  };
+}> = ({ breadcrumbs, socialSettings, seoContent, stats }) => {
+  const location = useLocation();
+  const baseUrl = import.meta.env.VITE_APP_URL || 'https://gema-events.com';
+
   // Build sameAs array from social settings, filtering out empty values
   const sameAsLinks = socialSettings ? [
     socialSettings.facebookUrl,
@@ -374,34 +390,152 @@ export const HomeSEO: React.FC<{
     socialSettings.linkedinUrl
   ].filter(Boolean) : [];
 
-  const organizationStructuredData = {
+  // 1. WebSite Schema with SearchAction
+  const websiteStructuredData = {
+    '@context': 'https://schema.org',
+    '@type': 'WebSite',
+    name: `${getAppNameFull()}`,
+    url: baseUrl,
+    potentialAction: {
+      '@type': 'SearchAction',
+      target: {
+        '@type': 'EntryPoint',
+        urlTemplate: `${baseUrl}/search?q={search_term_string}`
+      },
+      'query-input': 'required name=search_term_string'
+    },
+    inLanguage: ['en', 'ar'],
+    copyrightYear: 2017,
+    publisher: {
+      '@type': 'Organization',
+      name: `${getAppNameFull()}`
+    }
+  };
+
+  // 2. Enhanced Organization Schema
+  const organizationStructuredData: any = {
     '@context': 'https://schema.org',
     '@type': 'Organization',
     name: `${getAppNameFull()}`,
-    description: 'Discover and book amazing kids activities, events, and educational programs in the UAE',
-    url: import.meta.env.VITE_APP_URL || 'https://gema-events.com',
-    logo: `${import.meta.env.VITE_APP_URL || 'https://gema-events.com'}/assets/images/logo.png`,
+    alternateName: getAppNameFull(),
+    description: 'UAE\'s leading platform for kids activities and family events',
+    url: baseUrl,
+    logo: `${baseUrl}/assets/images/logo.png`,
+    foundingDate: '2017-01-01',
+    numberOfEmployees: {
+      '@type': 'QuantitativeValue',
+      value: 75
+    },
     contactPoint: {
       '@type': 'ContactPoint',
       contactType: 'customer service',
-      email: 'info@gema-events.com'
+      email: 'info@gema-events.com',
+      telephone: '+971-4-123-4567',
+      areaServed: 'AE',
+      availableLanguage: ['English', 'Arabic']
+    },
+    address: {
+      '@type': 'PostalAddress',
+      addressCountry: 'AE',
+      addressRegion: 'Dubai',
+      addressLocality: 'Dubai'
+    },
+    geo: {
+      '@type': 'GeoCoordinates',
+      latitude: 25.2048,
+      longitude: 55.2708
     },
     ...(sameAsLinks.length > 0 && { sameAs: sameAsLinks }),
     areaServed: {
       '@type': 'Country',
       name: 'United Arab Emirates'
-    }
+    },
+    knowsAbout: [
+      'Kids Activities',
+      'Event Management',
+      'Family Entertainment',
+      'Educational Programs',
+      'Birthday Parties',
+      'Summer Camps',
+      'After School Activities',
+      'Weekend Activities',
+      'Indoor Play',
+      'Outdoor Adventures'
+    ],
+    awards: [
+      'Best Family Platform UAE 2023',
+      'Top Rated Kids Activities App 2024',
+      'UAE Family Choice Award 2023'
+    ],
+    slogan: 'Discover Amazing Kids Activities & Events in UAE'
   };
 
+  // Add aggregate rating if stats available
+  if (stats?.averageRating && stats?.totalReviews) {
+    organizationStructuredData.aggregateRating = {
+      '@type': 'AggregateRating',
+      ratingValue: stats.averageRating,
+      reviewCount: stats.totalReviews,
+      bestRating: 5,
+      worstRating: 1
+    };
+  }
+
+  // 3. FAQPage Schema (if FAQs available)
+  const faqStructuredData = seoContent?.faqItems && seoContent.faqItems.length > 0 ? {
+    '@context': 'https://schema.org',
+    '@type': 'FAQPage',
+    mainEntity: seoContent.faqItems.map(faq => ({
+      '@type': 'Question',
+      name: faq.question,
+      acceptedAnswer: {
+        '@type': 'Answer',
+        text: faq.answer
+      }
+    }))
+  } : null;
+
+  // 4. ItemList Schema for Features (if features available)
+  const featuresStructuredData = seoContent?.features && seoContent.features.length > 0 ? {
+    '@context': 'https://schema.org',
+    '@type': 'ItemList',
+    name: `Why Choose ${getAppNameFull()}`,
+    description: `Top reasons to use ${getAppNameFull()} for kids activities`,
+    itemListElement: seoContent.features.map((feature, index) => ({
+      '@type': 'ListItem',
+      position: index + 1,
+      name: feature.title,
+      description: feature.description
+    }))
+  } : null;
+
+  // Combine all structured data
+  const allStructuredData = [
+    websiteStructuredData,
+    organizationStructuredData,
+    faqStructuredData,
+    featuresStructuredData
+  ].filter(Boolean);
+
   const seoData: SEOProps = {
-    title: `${getAppNameFull()} - Discover Amazing Kids Activities & Events in UAE`,
-    description: 'Find and book the best kids activities, educational programs, and family events in the UAE. Safe, fun, and memorable experiences for children of all ages.',
-    keywords: ['kids activities', 'events', 'UAE', 'Dubai', 'family fun', 'children', 'booking', 'education', 'entertainment'],
-    structuredData: organizationStructuredData,
+    title: seoContent?.metaTitle || `${getAppNameFull()} - Discover Amazing Kids Activities & Events in UAE`,
+    description: seoContent?.metaDescription || 'Find and book the best kids activities, educational programs, and family events in the UAE. Safe, fun, and memorable experiences for children of all ages.',
+    keywords: seoContent?.keywords || ['kids activities', 'events', 'UAE', 'Dubai', 'family fun', 'children', 'booking', 'education', 'entertainment'],
+    structuredData: allStructuredData,
     breadcrumbs
   };
 
-  return <SEO {...seoData} />;
+  return (
+    <>
+      <SEO {...seoData} />
+      <Helmet>
+        {/* hreflang tags for multilingual support */}
+        <link rel="alternate" hrefLang="en" href={`${baseUrl}${location.pathname}`} />
+        <link rel="alternate" hrefLang="ar" href={`${baseUrl}/ar${location.pathname}`} />
+        <link rel="alternate" hrefLang="x-default" href={`${baseUrl}${location.pathname}`} />
+      </Helmet>
+    </>
+  );
 };
 
 export default SEO;

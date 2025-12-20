@@ -1,6 +1,8 @@
 import React from 'react';
 import { MapPin, Globe, HelpCircle, Plus, Trash2 } from 'lucide-react';
 import SEOEditor from '../seo/SEOEditor';
+import CountrySelect from '../forms/CountrySelect';
+import CityAutocomplete from '../forms/CityAutocomplete';
 
 interface FAQ {
   id?: string;
@@ -10,7 +12,9 @@ interface FAQ {
 }
 
 interface AdvancedTabProps {
+  venueType: string;  // To determine conditional fields
   formData: {
+    country: string;
     city: string;
     address: string;
     latitude: string;
@@ -31,6 +35,7 @@ interface AdvancedTabProps {
   };
   errors: Record<string, string>;
   onInputChange: (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => void;
+  onCountryChange: (country: string) => void;
   onFaqChange: (index: number, field: 'question' | 'answer', value: string) => void;
   onAddFaq: () => void;
   onRemoveFaq: (index: number) => void;
@@ -39,10 +44,12 @@ interface AdvancedTabProps {
 }
 
 const AdvancedTab: React.FC<AdvancedTabProps> = ({
+  venueType,
   formData,
   eventData,
   errors,
   onInputChange,
+  onCountryChange,
   onFaqChange,
   onAddFaq,
   onRemoveFaq,
@@ -60,71 +67,94 @@ const AdvancedTab: React.FC<AdvancedTabProps> = ({
         <div className="space-y-4">
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
             <div>
+              <label htmlFor="country" className="block text-sm font-medium text-gray-700 mb-1">
+                Country {venueType !== 'Online' && <span className="text-red-500">*</span>}
+              </label>
+              <CountrySelect
+                value={formData.country}
+                onChange={onCountryChange}
+                required={venueType !== 'Online'}
+                error={errors.country}
+              />
+            </div>
+
+            <div>
               <label htmlFor="city" className="block text-sm font-medium text-gray-700 mb-1">
                 City <span className="text-red-500">*</span>
               </label>
-              <input
-                type="text"
-                id="city"
-                name="city"
+              <CityAutocomplete
                 value={formData.city}
-                onChange={onInputChange}
-                className={`w-full px-3 py-2 border ${errors.city ? 'border-red-500' : 'border-gray-300'} rounded-md shadow-sm focus:outline-none focus:ring-primary focus:border-primary`}
-                placeholder="e.g. New York"
+                country={formData.country}
+                onChange={(city) => onInputChange({ target: { name: 'city', value: city } } as any)}
+                required={true}
+                error={errors.city}
               />
-              {errors.city && <p className="mt-1 text-sm text-red-500">{errors.city}</p>}
-            </div>
-
-            <div>
-              <label htmlFor="address" className="block text-sm font-medium text-gray-700 mb-1">
-                Address <span className="text-red-500">*</span>
-              </label>
-              <input
-                type="text"
-                id="address"
-                name="address"
-                value={formData.address}
-                onChange={onInputChange}
-                className={`w-full px-3 py-2 border ${errors.address ? 'border-red-500' : 'border-gray-300'} rounded-md shadow-sm focus:outline-none focus:ring-primary focus:border-primary`}
-                placeholder="Full address"
-              />
-              {errors.address && <p className="mt-1 text-sm text-red-500">{errors.address}</p>}
             </div>
           </div>
 
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
-            <div>
-              <label htmlFor="latitude" className="block text-sm font-medium text-gray-700 mb-1">
-                Latitude <span className="text-gray-500">(optional)</span>
-              </label>
-              <input
-                type="text"
-                id="latitude"
-                name="latitude"
-                value={formData.latitude}
-                onChange={onInputChange}
-                className={`w-full px-3 py-2 border ${errors.latitude ? 'border-red-500' : 'border-gray-300'} rounded-md shadow-sm focus:outline-none focus:ring-primary focus:border-primary`}
-                placeholder="e.g. 40.7128"
-              />
-              {errors.latitude && <p className="mt-1 text-sm text-red-500">{errors.latitude}</p>}
-            </div>
+          {/* Address and Coordinates - Only for non-Online events */}
+          {venueType !== 'Online' && (
+            <>
+              <div>
+                <label htmlFor="address" className="block text-sm font-medium text-gray-700 mb-1">
+                  Address <span className="text-red-500">*</span>
+                </label>
+                <input
+                  type="text"
+                  id="address"
+                  name="address"
+                  value={formData.address}
+                  onChange={onInputChange}
+                  className={`w-full px-3 py-2 border ${errors.address ? 'border-red-500' : 'border-gray-300'} rounded-md shadow-sm focus:outline-none focus:ring-primary focus:border-primary`}
+                  placeholder="Full address"
+                />
+                {errors.address && <p className="mt-1 text-sm text-red-500">{errors.address}</p>}
+              </div>
 
-            <div>
-              <label htmlFor="longitude" className="block text-sm font-medium text-gray-700 mb-1">
-                Longitude <span className="text-gray-500">(optional)</span>
-              </label>
-              <input
-                type="text"
-                id="longitude"
-                name="longitude"
-                value={formData.longitude}
-                onChange={onInputChange}
-                className={`w-full px-3 py-2 border ${errors.longitude ? 'border-red-500' : 'border-gray-300'} rounded-md shadow-sm focus:outline-none focus:ring-primary focus:border-primary`}
-                placeholder="e.g. -74.0060"
-              />
-              {errors.longitude && <p className="mt-1 text-sm text-red-500">{errors.longitude}</p>}
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
+                <div>
+                  <label htmlFor="latitude" className="block text-sm font-medium text-gray-700 mb-1">
+                    Latitude <span className="text-gray-500">(optional)</span>
+                  </label>
+                  <input
+                    type="text"
+                    id="latitude"
+                    name="latitude"
+                    value={formData.latitude}
+                    onChange={onInputChange}
+                    className={`w-full px-3 py-2 border ${errors.latitude ? 'border-red-500' : 'border-gray-300'} rounded-md shadow-sm focus:outline-none focus:ring-primary focus:border-primary`}
+                    placeholder="e.g. 40.7128"
+                  />
+                  {errors.latitude && <p className="mt-1 text-sm text-red-500">{errors.latitude}</p>}
+                </div>
+
+                <div>
+                  <label htmlFor="longitude" className="block text-sm font-medium text-gray-700 mb-1">
+                    Longitude <span className="text-gray-500">(optional)</span>
+                  </label>
+                  <input
+                    type="text"
+                    id="longitude"
+                    name="longitude"
+                    value={formData.longitude}
+                    onChange={onInputChange}
+                    className={`w-full px-3 py-2 border ${errors.longitude ? 'border-red-500' : 'border-gray-300'} rounded-md shadow-sm focus:outline-none focus:ring-primary focus:border-primary`}
+                    placeholder="e.g. -74.0060"
+                  />
+                  {errors.longitude && <p className="mt-1 text-sm text-red-500">{errors.longitude}</p>}
+                </div>
+              </div>
+            </>
+          )}
+
+          {/* Info note for Online events */}
+          {venueType === 'Online' && (
+            <div className="bg-blue-50 border border-blue-200 rounded-lg p-3">
+              <p className="text-sm text-blue-800">
+                <strong>Note:</strong> Physical location not required for online events. City and country help with event discoverability and filtering.
+              </p>
             </div>
-          </div>
+          )}
         </div>
       </div>
 

@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useMemo } from 'react';
+import React, { useState, useEffect, useMemo, lazy, Suspense } from 'react';
 import { useSelector, useDispatch } from 'react-redux';
 import { 
   FaChartBar,
@@ -16,25 +16,10 @@ import {
   FaBell
 } from 'react-icons/fa';
 import { format, startOfMonth, endOfMonth, subMonths, subDays } from 'date-fns';
-import { 
-  ComposedChart,
-  LineChart, 
-  Line, 
-  AreaChart, 
-  Area,
-  BarChart, 
-  Bar,
-  XAxis, 
-  YAxis, 
-  CartesianGrid, 
-  Tooltip, 
-  Legend, 
-  ResponsiveContainer,
-  PieChart,
-  Pie,
-  Cell,
-  ReferenceLine
-} from 'recharts';
+import ChartSkeleton from '../charts/ChartSkeleton';
+
+// Lazy load chart components to reduce initial bundle size (~250KB saved)
+const RevenueChart = lazy(() => import('../charts/RevenueChart'));
 import { RootState, AppDispatch } from '../../store';
 import { 
   fetchPaymentAnalytics,
@@ -401,80 +386,14 @@ const AdminAnalytics: React.FC<AdminAnalyticsProps> = ({
               ))}
             </div>
           </div>
-          
-          <ResponsiveContainer width="100%" height={400}>
-            <ComposedChart data={analyticsData}>
-              <CartesianGrid strokeDasharray="3 3" className="opacity-30" />
-              <XAxis 
-                dataKey="date" 
-                className="text-xs"
-                tick={{ fontSize: 12 }}
-              />
-              <YAxis 
-                yAxisId="left"
-                className="text-xs"
-                tick={{ fontSize: 12 }}
-              />
-              <YAxis 
-                yAxisId="right" 
-                orientation="right"
-                className="text-xs"
-                tick={{ fontSize: 12 }}
-              />
-              <Tooltip 
-                contentStyle={{ 
-                  backgroundColor: 'white', 
-                  border: '1px solid #e5e7eb',
-                  borderRadius: '8px'
-                }}
-              />
-              <Legend />
-              
-              {(activeMetric === 'all' || activeMetric === 'revenue') && (
-                <Bar 
-                  yAxisId="left"
-                  dataKey="revenue" 
-                  fill="#10B981"
-                  fillOpacity={0.8}
-                  name="Revenue ($)"
-                />
-              )}
-              
-              {(activeMetric === 'all' || activeMetric === 'bookings') && (
-                <Line 
-                  yAxisId="right"
-                  type="monotone" 
-                  dataKey="bookings" 
-                  stroke="#3B82F6" 
-                  strokeWidth={2}
-                  name="Bookings"
-                />
-              )}
-              
-              {(activeMetric === 'all' || activeMetric === 'users') && (
-                <Line 
-                  yAxisId="right"
-                  type="monotone" 
-                  dataKey="users" 
-                  stroke="#8B5CF6" 
-                  strokeWidth={2}
-                  name="New Users"
-                />
-              )}
-              
-              {(activeMetric === 'all' || activeMetric === 'commissions') && (
-                <Area 
-                  yAxisId="left"
-                  type="monotone" 
-                  dataKey="commissions" 
-                  stroke="#F59E0B" 
-                  fill="#F59E0B"
-                  fillOpacity={0.2}
-                  name="Commissions ($)"
-                />
-              )}
-            </ComposedChart>
-          </ResponsiveContainer>
+
+          <Suspense fallback={<ChartSkeleton height={400} />}>
+            <RevenueChart
+              data={analyticsData}
+              activeMetric={activeMetric}
+              height={400}
+            />
+          </Suspense>
         </div>
 
         {/* Revenue Breakdown */}

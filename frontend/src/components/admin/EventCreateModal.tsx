@@ -112,7 +112,7 @@ const EventCreateModal: React.FC<EventCreateModalProps> = ({ isOpen, onClose, on
     try {
       console.log('[EventCreateModal] Fetching categories...');
       const response = await categoriesAPI.getAllCategories({ tree: false, includeInactive: false });
-      const categoriesList = response.data || [];
+      const categoriesList = Array.isArray(response) ? response : [];
       console.log('[EventCreateModal] Categories loaded:', categoriesList.length);
       setCategories(categoriesList);
     } catch (err: any) {

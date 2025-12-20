@@ -18,7 +18,8 @@ import {
   XCircle,
   Package,
   QrCode,
-  Loader
+  Loader,
+  Video
 } from 'lucide-react';
 import toast from 'react-hot-toast';
 
@@ -66,6 +67,7 @@ interface BookingDetail {
       currency: string;
       category: string;
       venueType: string;
+      meetingLink?: string;
     };
     quantity: number;
     price: number;
@@ -391,9 +393,30 @@ const BookingDetailPage: React.FC = () => {
                             : 'Time TBD'
                           }
                         </div>
-                        <div className="flex items-center">
-                          <MapPin className="w-4 h-4 mr-2" />
-                          {event.location?.address || 'Address TBD'}, {event.location?.city || 'City TBD'}
+                        <div className="flex items-start">
+                          <MapPin className="w-4 h-4 mr-2 mt-0.5 flex-shrink-0" />
+                          <div>
+                            {event.venueType === 'Online' ? (
+                              <div>
+                                <p className="text-sm">Online Event</p>
+                                {event.meetingLink && (
+                                  <a
+                                    href={event.meetingLink}
+                                    target="_blank"
+                                    rel="noopener noreferrer"
+                                    className="mt-2 inline-flex items-center px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors text-sm font-medium"
+                                  >
+                                    <Video className="w-4 h-4 mr-2" />
+                                    Join Meeting
+                                  </a>
+                                )}
+                              </div>
+                            ) : (
+                              <p className="text-sm">
+                                {event.location?.address || 'Address TBD'}, {event.location?.city || 'City TBD'}
+                              </p>
+                            )}
+                          </div>
                         </div>
                       </div>
                     </div>

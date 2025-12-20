@@ -2,11 +2,81 @@ import React, { useState, useEffect, useCallback } from 'react';
 import { motion } from 'framer-motion';
 import { FaArrowLeft, FaSpinner, FaExclamationTriangle } from 'react-icons/fa';
 import { Link } from 'react-router-dom';
+import { useInView } from 'react-intersection-observer';
 import blogAPI from '../../services/api/blogAPI';
 import { Blog, BlogCategory, BlogsResponse, BlogCategoriesResponse } from '../../types/blog';
 import SEO from '../../components/common/SEO';
 import { getAppNameFull, getTeamName } from '../../utils/brandConfig';
 
+// Lazy loaded blog card with intersection observer
+interface BlogCardProps {
+  blog: Blog;
+  getCategoryName: (category: string | BlogCategory) => string;
+  formatDate: (date: string) => string;
+}
+
+const BlogCard: React.FC<BlogCardProps> = ({ blog, getCategoryName, formatDate }) => {
+  const { ref, inView } = useInView({
+    triggerOnce: true,
+    threshold: 0.1,
+    rootMargin: '50px'
+  });
+
+  return (
+    <div ref={ref} className="bg-white rounded-lg overflow-hidden shadow-md hover:shadow-lg transition-shadow duration-300">
+      <div className="h-48 overflow-hidden">
+        {inView ? (
+          <img
+            src={blog.featuredImage || '/assets/images/placeholder.jpg'}
+            alt={blog.title}
+            className="w-full h-full object-cover transition-transform duration-300 hover:scale-105"
+            loading="lazy"
+            onError={(e) => {
+              const target = e.target as HTMLImageElement;
+              target.src = '/assets/images/placeholder.jpg';
+            }}
+          />
+        ) : (
+          <div className="w-full h-full bg-gray-200 animate-pulse" />
+        )}
+      </div>
+      <div className="p-6">
+        <div className="flex justify-between items-center mb-2 text-sm text-gray-500">
+          <span>{getCategoryName(blog.category)}</span>
+          <span>{blog.readTime} min read</span>
+        </div>
+        <h3 className="text-xl font-semibold mb-2 hover:text-primary-600 transition-colors">
+          <Link to={`/blog/${blog.slug}`} style={{ color: 'var(--primary-color)' }}>
+            {blog.title}
+          </Link>
+        </h3>
+        <p className="text-gray-600 mb-4 line-clamp-3">{blog.excerpt}</p>
+        <div className="flex justify-between items-center">
+          <div className="flex items-center">
+            <div className="w-8 h-8 rounded-full bg-gray-300 mr-2 flex items-center justify-center">
+              {blog.author.avatar && inView ? (
+                <img
+                  src={blog.author.avatar}
+                  alt={blog.author.name}
+                  className="w-full h-full object-cover rounded-full"
+                  loading="lazy"
+                />
+              ) : (
+                <span className="text-sm font-semibold text-gray-600">
+                  {blog.author.name.charAt(0)}
+                </span>
+              )}
+            </div>
+            <span className="text-sm text-gray-600">{blog.author.name}</span>
+          </div>
+          <span className="text-sm text-gray-500">
+            {blog.publishedAt ? formatDate(blog.publishedAt) : formatDate(blog.createdAt)}
+          </span>
+        </div>
+      </div>
+    </div>
+  );
+};
 
 const BlogPage: React.FC = () => {
   const [blogs, setBlogs] = useState<Blog[]>([]);
@@ -276,53 +346,12 @@ const BlogPage: React.FC = () => {
       ) : (
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
           {blogs.map((blog) => (
-            <div key={blog._id} className="bg-white rounded-lg overflow-hidden shadow-md hover:shadow-lg transition-shadow duration-300">
-              <div className="h-48 overflow-hidden">
-                <img 
-                  src={blog.featuredImage || '/assets/images/placeholder.jpg'} 
-                  alt={blog.title} 
-                  className="w-full h-full object-cover transition-transform duration-300 hover:scale-105"
-                  loading="lazy"
-                  onError={(e) => {
-                    const target = e.target as HTMLImageElement;
-                    target.src = '/assets/images/placeholder.jpg';
-                  }}
-                />
-              </div>
-              <div className="p-6">
-                <div className="flex justify-between items-center mb-2 text-sm text-gray-500">
-                  <span>{getCategoryName(blog.category)}</span>
-                  <span>{blog.readTime} min read</span>
-                </div>
-                <h3 className="text-xl font-semibold mb-2 hover:text-primary-600 transition-colors">
-                  <Link to={`/blog/${blog.slug}`} style={{ color: 'var(--primary-color)' }}>
-                    {blog.title}
-                  </Link>
-                </h3>
-                <p className="text-gray-600 mb-4 line-clamp-3">{blog.excerpt}</p>
-                <div className="flex justify-between items-center">
-                  <div className="flex items-center">
-                    <div className="w-8 h-8 rounded-full bg-gray-300 mr-2 flex items-center justify-center">
-                      {blog.author.avatar ? (
-                        <img 
-                          src={blog.author.avatar} 
-                          alt={blog.author.name}
-                          className="w-full h-full object-cover rounded-full"
-                        />
-                      ) : (
-                        <span className="text-sm font-semibold text-gray-600">
-                          {blog.author.name.charAt(0)}
-                        </span>
-                      )}
-                    </div>
-                    <span className="text-sm text-gray-600">{blog.author.name}</span>
-                  </div>
-                  <span className="text-sm text-gray-500">
-                    {blog.publishedAt ? formatDate(blog.publishedAt) : formatDate(blog.createdAt)}
-                  </span>
-                </div>
-              </div>
-            </div>
+            <BlogCard
+              key={blog._id}
+              blog={blog}
+              getCategoryName={getCategoryName}
+              formatDate={formatDate}
+            />
           ))}
         </div>
       )}

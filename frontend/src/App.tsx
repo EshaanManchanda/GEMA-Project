@@ -11,6 +11,7 @@ import AdminLayout from '@components/layout/AdminLayout';
 import LoadingSpinner from '@components/common/LoadingSpinner';
 import ScrollToTop from '@components/common/ScrollToTop';
 import GlobalUploadProgress from '@components/common/GlobalUploadProgress';
+import { PageErrorBoundary } from '@components/common/ErrorBoundary';
 
 // Page Components (Lazy loaded for better performance)
 const HomePage = React.lazy(() => import(/* webpackChunkName: "home" */ './pages/HomePage'));
@@ -85,6 +86,10 @@ const AdminPayoutsPage = React.lazy(() => import(/* webpackChunkName: "admin" */
 const AdminCommissionsPage = React.lazy(() => import(/* webpackChunkName: "admin" */ './pages/admin/AdminCommissionsPage'));
 const AdminBlogsPage = React.lazy(() => import(/* webpackChunkName: "admin" */ './pages/admin/AdminBlogsPage'));
 const AdminBlogCategoriesPage = React.lazy(() => import(/* webpackChunkName: "admin" */ './pages/admin/AdminBlogCategoriesPage'));
+const AdminBannersPage = React.lazy(() => import(/* webpackChunkName: "admin" */ './pages/admin/AdminBannersPage'));
+const AdminAnnouncementsPage = React.lazy(() => import(/* webpackChunkName: "admin" */ './pages/admin/AdminAnnouncementsPage'));
+const AdminSEOPage = React.lazy(() => import(/* webpackChunkName: "admin" */ './pages/admin/AdminSEOPage'));
+const AdminPopupsPage = React.lazy(() => import(/* webpackChunkName: "admin" */ './pages/admin/AdminPopupsPage'));
 const AdminCouponsPage = React.lazy(() => import(/* webpackChunkName: "admin" */ './pages/admin/AdminCouponsPage'));
 const AdminAnalyticsPage = React.lazy(() => import(/* webpackChunkName: "admin" */ './pages/admin/AdminAnalyticsPage'));
 const AdminSettingsPage = React.lazy(() => import(/* webpackChunkName: "admin" */ './pages/admin/AdminSettingsPage'));
@@ -224,21 +229,27 @@ function AppContent() {
           <Route path="/" element={<Layout />}>
             {/* Home Page */}
             <Route index element={
-              <Suspense fallback={<LoadingSpinner />}>
-                <HomePage />
-              </Suspense>
+              <PageErrorBoundary>
+                <Suspense fallback={<LoadingSpinner />}>
+                  <HomePage />
+                </Suspense>
+              </PageErrorBoundary>
             } />
             
             {/* Event Discovery Routes */}
             <Route path="events" element={
-              <Suspense fallback={<LoadingSpinner />}>
-                <EventsPage />
-              </Suspense>
+              <PageErrorBoundary>
+                <Suspense fallback={<LoadingSpinner />}>
+                  <EventsPage />
+                </Suspense>
+              </PageErrorBoundary>
             } />
             <Route path="events/:id" element={
-              <Suspense fallback={<LoadingSpinner />}>
-                <EventDetailPage />
-              </Suspense>
+              <PageErrorBoundary>
+                <Suspense fallback={<LoadingSpinner />}>
+                  <EventDetailPage />
+                </Suspense>
+              </PageErrorBoundary>
             } />
             
             {/* Category Discovery Routes */}
@@ -279,9 +290,11 @@ function AppContent() {
             
             {/* Search Functionality */}
             <Route path="search" element={
-              <Suspense fallback={<LoadingSpinner />}>
-                <SearchPage />
-              </Suspense>
+              <PageErrorBoundary>
+                <Suspense fallback={<LoadingSpinner />}>
+                  <SearchPage />
+                </Suspense>
+              </PageErrorBoundary>
             } />
             
             {/* Static Information Pages */}
@@ -370,17 +383,21 @@ function AppContent() {
             } />
             <Route path="checkout" element={
               <ProtectedRoute>
-                <Suspense fallback={<LoadingSpinner />}>
-                  <CheckoutPage />
-                </Suspense>
+                <PageErrorBoundary>
+                  <Suspense fallback={<LoadingSpinner />}>
+                    <CheckoutPage />
+                  </Suspense>
+                </PageErrorBoundary>
               </ProtectedRoute>
             } />
-            
+
             {/* Payment Routes */}
             <Route path="payment/success" element={
-              <Suspense fallback={<LoadingSpinner />}>
-                <PaymentSuccessPage />
-              </Suspense>
+              <PageErrorBoundary>
+                <Suspense fallback={<LoadingSpinner />}>
+                  <PaymentSuccessPage />
+                </Suspense>
+              </PageErrorBoundary>
             } />
             <Route path="payment/cancel" element={
               <Suspense fallback={<LoadingSpinner />}>
@@ -391,9 +408,11 @@ function AppContent() {
             {/* Customer Dashboard Routes */}
             <Route path="dashboard" element={
               <ProtectedRoute>
-                <Suspense fallback={<LoadingSpinner />}>
-                  <DashboardPage />
-                </Suspense>
+                <PageErrorBoundary>
+                  <Suspense fallback={<LoadingSpinner />}>
+                    <DashboardPage />
+                  </Suspense>
+                </PageErrorBoundary>
               </ProtectedRoute>
             } />
             <Route path="profile" element={
@@ -502,9 +521,11 @@ function AppContent() {
             {/* Event Management */}
             <Route path="events" element={
               <VendorRoute>
-                <Suspense fallback={<LoadingSpinner />}>
-                  <VendorEventsPage />
-                </Suspense>
+                <PageErrorBoundary>
+                  <Suspense fallback={<LoadingSpinner />}>
+                    <VendorEventsPage />
+                  </Suspense>
+                </PageErrorBoundary>
               </VendorRoute>
             } />
             <Route path="events/create" element={
@@ -710,9 +731,11 @@ function AppContent() {
             {/* Event Management */}
             <Route path="events" element={
               <AdminRoute>
-                <Suspense fallback={<LoadingSpinner />}>
-                  <AdminEventsPage />
-                </Suspense>
+                <PageErrorBoundary>
+                  <Suspense fallback={<LoadingSpinner />}>
+                    <AdminEventsPage />
+                  </Suspense>
+                </PageErrorBoundary>
               </AdminRoute>
             } />
             <Route path="events/create" element={
@@ -815,6 +838,42 @@ function AppContent() {
               <AdminRoute>
                 <Suspense fallback={<LoadingSpinner />}>
                   <AdminBlogCategoriesPage />
+                </Suspense>
+              </AdminRoute>
+            } />
+
+            {/* Banner Management */}
+            <Route path="banners" element={
+              <AdminRoute>
+                <Suspense fallback={<LoadingSpinner />}>
+                  <AdminBannersPage />
+                </Suspense>
+              </AdminRoute>
+            } />
+
+            {/* Announcement Bar Management */}
+            <Route path="announcements" element={
+              <AdminRoute>
+                <Suspense fallback={<LoadingSpinner />}>
+                  <AdminAnnouncementsPage />
+                </Suspense>
+              </AdminRoute>
+            } />
+
+            {/* SEO Content Management */}
+            <Route path="seo" element={
+              <AdminRoute>
+                <Suspense fallback={<LoadingSpinner />}>
+                  <AdminSEOPage />
+                </Suspense>
+              </AdminRoute>
+            } />
+
+            {/* Popup Notifications Management */}
+            <Route path="popups" element={
+              <AdminRoute>
+                <Suspense fallback={<LoadingSpinner />}>
+                  <AdminPopupsPage />
                 </Suspense>
               </AdminRoute>
             } />

@@ -399,6 +399,161 @@ Crawl-delay: 1`;
     if (text.length <= maxLength) return text;
     return text.substring(0, maxLength - 3) + '...';
   }
+
+  /**
+   * Generate WebSite structured data with SearchAction
+   */
+  generateWebSiteStructuredData(): StructuredData {
+    return {
+      '@context': 'https://schema.org',
+      '@type': 'WebSite',
+      name: SEO_CONFIG.siteName,
+      url: this.baseUrl,
+      potentialAction: {
+        '@type': 'SearchAction',
+        target: {
+          '@type': 'EntryPoint',
+          urlTemplate: `${this.baseUrl}/search?q={search_term_string}`
+        },
+        'query-input': 'required name=search_term_string'
+      },
+      inLanguage: ['en', 'ar'],
+      copyrightYear: 2017,
+      publisher: {
+        '@type': 'Organization',
+        name: SEO_CONFIG.siteName
+      }
+    };
+  }
+
+  /**
+   * Generate enhanced Organization structured data with stats
+   */
+  generateEnhancedOrganizationStructuredData(stats?: {
+    averageRating?: number;
+    totalReviews?: number;
+    totalEvents?: number;
+    totalVendors?: number;
+  }): StructuredData {
+    const brand = getBrandConfig();
+    const baseData: StructuredData = {
+      '@context': 'https://schema.org',
+      '@type': 'Organization',
+      name: brand.appNameFull,
+      alternateName: SEO_CONFIG.siteName,
+      description: 'UAE\'s leading platform for kids activities and family events',
+      url: this.baseUrl,
+      logo: `${this.baseUrl}/assets/images/logo.png`,
+      foundingDate: '2017-01-01',
+      numberOfEmployees: {
+        '@type': 'QuantitativeValue',
+        value: 75
+      },
+      contactPoint: {
+        '@type': 'ContactPoint',
+        contactType: 'customer service',
+        email: brand.contactEmail,
+        telephone: '+971-4-123-4567',
+        areaServed: 'AE',
+        availableLanguage: ['English', 'Arabic']
+      },
+      address: {
+        '@type': 'PostalAddress',
+        addressCountry: 'AE',
+        addressRegion: 'Dubai',
+        addressLocality: 'Dubai'
+      },
+      geo: {
+        '@type': 'GeoCoordinates',
+        latitude: 25.2048,
+        longitude: 55.2708
+      },
+      sameAs: [
+        'https://www.facebook.com/kidrove',
+        'https://www.instagram.com/kidrove',
+        'https://www.twitter.com/kidrove',
+        'https://www.youtube.com/kidrove',
+        'https://www.linkedin.com/company/kidrove'
+      ],
+      areaServed: {
+        '@type': 'Country',
+        name: 'United Arab Emirates'
+      },
+      knowsAbout: [
+        'Kids Activities',
+        'Event Management',
+        'Family Entertainment',
+        'Educational Programs',
+        'Birthday Parties',
+        'Summer Camps',
+        'After School Activities',
+        'Weekend Activities',
+        'Indoor Play',
+        'Outdoor Adventures'
+      ],
+      awards: [
+        'Best Family Platform UAE 2023',
+        'Top Rated Kids Activities App 2024',
+        'UAE Family Choice Award 2023'
+      ],
+      slogan: 'Discover Amazing Kids Activities & Events in UAE'
+    };
+
+    // Add aggregate rating if stats are provided
+    if (stats?.averageRating && stats?.totalReviews) {
+      baseData.aggregateRating = {
+        '@type': 'AggregateRating',
+        ratingValue: stats.averageRating,
+        reviewCount: stats.totalReviews,
+        bestRating: 5,
+        worstRating: 1
+      };
+    }
+
+    return baseData;
+  }
+
+  /**
+   * Generate FAQPage structured data
+   */
+  generateHomepageFAQStructuredData(faqItems: Array<{
+    question: string;
+    answer: string;
+  }>): StructuredData {
+    return {
+      '@context': 'https://schema.org',
+      '@type': 'FAQPage',
+      mainEntity: faqItems.map(faq => ({
+        '@type': 'Question',
+        name: faq.question,
+        acceptedAnswer: {
+          '@type': 'Answer',
+          text: faq.answer
+        }
+      }))
+    };
+  }
+
+  /**
+   * Generate ItemList structured data for features
+   */
+  generateFeatureListStructuredData(features: Array<{
+    title: string;
+    description: string;
+  }>): StructuredData {
+    return {
+      '@context': 'https://schema.org',
+      '@type': 'ItemList',
+      name: 'Why Choose ' + SEO_CONFIG.siteName,
+      description: 'Top reasons to use ' + SEO_CONFIG.siteName + ' for kids activities',
+      itemListElement: features.map((feature, index) => ({
+        '@type': 'ListItem',
+        position: index + 1,
+        name: feature.title,
+        description: feature.description
+      }))
+    };
+  }
 }
 
 export const seoService = new SEOService();

@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import { useDispatch, useSelector } from 'react-redux';
-import { QrCode } from 'lucide-react';
+import { QrCode, Video } from 'lucide-react';
 import { AppDispatch, RootState } from '@/store';
 import { fetchBookings } from '@/store/slices/bookingsSlice';
 import QRCodeModal from '@/components/booking/QRCodeModal';
@@ -204,6 +204,19 @@ const BookingsPage: React.FC = () => {
                               >
                                 View Details
                               </Link>
+
+                              {booking.items?.[0]?.eventId?.venueType === 'Online' &&
+                               booking.items?.[0]?.eventId?.meetingLink && (
+                                <a
+                                  href={booking.items[0].eventId.meetingLink}
+                                  target="_blank"
+                                  rel="noopener noreferrer"
+                                  className="inline-flex items-center justify-center px-4 py-2 bg-green-600 text-white text-sm font-medium rounded-md hover:bg-green-700 transition-colors"
+                                >
+                                  <Video className="w-4 h-4 mr-2" />
+                                  Join Meeting
+                                </a>
+                              )}
 
                               {(booking.status === 'confirmed' || booking.status === 'completed') && (
                                 <button

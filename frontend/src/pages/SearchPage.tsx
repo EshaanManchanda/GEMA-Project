@@ -1,12 +1,12 @@
 import React, { useState, useEffect, useMemo, useCallback } from 'react';
-import { useSearchParams, Link, useNavigate } from 'react-router-dom';
+import { useSearchParams, useNavigate } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
-import { FaSearch, FaFilter, FaTimes, FaStar, FaMapMarkerAlt, FaCalendarAlt, FaClock, FaUsers, FaTag } from 'react-icons/fa';
-import { SearchEvent, SearchFilters, CategoryOption, FilterOptions } from '../types/search';
-import { ApiService } from '../services/api';
-import debounce from 'lodash/debounce'; // Import only debounce (not entire lodash library)
+import { FaSearch, FaFilter, FaTimes } from 'react-icons/fa';
+import { SearchEvent, SearchFilters, FilterOptions } from '../types/search';
+import { useEventsSearchQuery } from '@/hooks/queries/useEventsQuery';
 import SEO from '@/components/common/SEO';
-import DOMPurify from 'isomorphic-dompurify';
+import { logger } from '@/config/app';
+import EventCard from '@/components/client/EventCard';
 
 // FilterContent Component
 interface FilterContentProps {
@@ -317,12 +317,12 @@ const SearchPage: React.FC = () => {
   const [searchParams, setSearchParams] = useSearchParams();
   const navigate = useNavigate();
   const query = searchParams.get('q') || '';
-  const [events, setEvents] = useState<SearchEvent[]>([]);
-  const [loading, setLoading] = useState<boolean>(true);
-  const [error, setError] = useState<string | null>(null);
   const [searchInput, setSearchInput] = useState<string>(query);
   const [showFilters, setShowFilters] = useState<boolean>(false);
-  const [pagination, setPagination] = useState<any>(null);
+
+  // Debounced search query state (for TanStack Query)
+  const [debouncedQuery, setDebouncedQuery] = useState<string>(query);
+
   const [filterOptions, setFilterOptions] = useState<FilterOptions>({
     categories: [{ label: 'All Categories', value: '', count: 0 }],
     cities: [{ label: 'All Cities', value: '', count: 0 }],
@@ -332,7 +332,7 @@ const SearchPage: React.FC = () => {
     priceRange: { min: 0, max: 1000 },
     ageRange: { min: 0, max: 100 }
   });
-  
+
   // Initialize filters from URL params
   const [filters, setFilters] = useState<SearchFilters>(() => {
     return {
@@ -355,79 +355,52 @@ const SearchPage: React.FC = () => {
     };
   });
 
-  // Debounced search function
-  const debouncedFetchEvents = useCallback(
-    debounce(async (searchQuery: string, searchFilters: SearchFilters) => {
-      try {
-        setLoading(true);
-        setError(null);
-        
-        // Prepare API parameters
-        const params: any = {
-          limit: searchFilters.limit || 12,
-          page: searchFilters.page || 1,
-          sortBy: searchFilters.sortBy || 'createdAt',
-          sortOrder: searchFilters.sortOrder || 'desc'
-        };
+  // Debounced search query update (300ms delay)
+  useEffect(() => {
+    const handler = setTimeout(() => {
+      setDebouncedQuery(query);
+    }, 300);
 
-        // Add search query if provided
-        if (searchQuery.trim()) {
-          params.search = searchQuery.trim();
-        }
+    return () => clearTimeout(handler);
+  }, [query]);
 
-        // Add filters
-        if (searchFilters.category) params.category = searchFilters.category;
-        if (searchFilters.type) params.type = searchFilters.type;
-        if (searchFilters.venueType) params.venueType = searchFilters.venueType;
-        if (searchFilters.city) params.city = searchFilters.city;
-        if (searchFilters.minPrice !== undefined) params.minPrice = searchFilters.minPrice;
-        if (searchFilters.maxPrice !== undefined) params.maxPrice = searchFilters.maxPrice;
-        if (searchFilters.currency) params.currency = searchFilters.currency;
-        if (searchFilters.ageMin !== undefined) params.ageMin = searchFilters.ageMin;
-        if (searchFilters.ageMax !== undefined) params.ageMax = searchFilters.ageMax;
-        if (searchFilters.featured !== undefined) params.featured = searchFilters.featured.toString();
-        if (searchFilters.dateFrom) params.dateFrom = searchFilters.dateFrom;
-        if (searchFilters.dateTo) params.dateTo = searchFilters.dateTo;
-        
-        // Fetch events from API using ApiService directly
-        const response = await ApiService.get('/events', { params });
-        
-        // Handle API response structure
-        let eventsData = [];
-        let paginationData = null;
-        
-        if (response?.data?.data?.events) {
-          // Standard API response with nested data wrapper
-          eventsData = response.data.data.events;
-          paginationData = response.data.data.pagination;
-        } else if (response?.data?.events) {
-          // API response with direct data wrapper
-          eventsData = response.data.events;
-          paginationData = response.data.pagination;
-        } else if (Array.isArray(response?.data)) {
-          // Direct array response
-          eventsData = response.data;
-        } else {
-          console.warn('Unexpected API response structure:', response);
-          console.log('Full response:', JSON.stringify(response, null, 2));
-        }
-        
-        setEvents(eventsData);
-        setPagination(paginationData);
-        
-        // Update filter options based on current events
-        updateFilterOptions(eventsData);
-      } catch (err) {
-        console.error('Error fetching events:', err);
-        setError('Failed to load search results. Please try again.');
-        setEvents([]);
-        setPagination(null);
-      } finally {
-        setLoading(false);
-      }
-    }, 300),
-    []
+  // Prepare API parameters from filters
+  const searchParams_API = useMemo(() => {
+    const params: any = {
+      limit: filters.limit || 12,
+      page: filters.page || 1,
+      sortBy: filters.sortBy || 'createdAt',
+      sortOrder: filters.sortOrder || 'desc'
+    };
+
+    // Add filters
+    if (filters.category) params.category = filters.category;
+    if (filters.type) params.type = filters.type;
+    if (filters.venueType) params.venueType = filters.venueType;
+    if (filters.city) params.city = filters.city;
+    if (filters.minPrice !== undefined) params.minPrice = filters.minPrice;
+    if (filters.maxPrice !== undefined) params.maxPrice = filters.maxPrice;
+    if (filters.currency) params.currency = filters.currency;
+    if (filters.ageMin !== undefined) params.ageMin = filters.ageMin;
+    if (filters.ageMax !== undefined) params.ageMax = filters.ageMax;
+    if (filters.featured !== undefined) params.featured = filters.featured.toString();
+    if (filters.dateFrom) params.dateFrom = filters.dateFrom;
+    if (filters.dateTo) params.dateTo = filters.dateTo;
+
+    return params;
+  }, [filters]);
+
+  // TanStack Query replaces manual fetch + debounce logic
+  const { data: searchData, isLoading: loading, error: queryError } = useEventsSearchQuery(
+    debouncedQuery,
+    searchParams_API
   );
+
+  // Extract events and pagination from query response
+  logger.debug("search data:", searchData);
+  const events = searchData?.events || [];
+  const pagination = searchData?.pagination || null;
+  const error = queryError ? 'Failed to load search results. Please try again.' : null;
 
   // Function to update filter options based on current events
   const updateFilterOptions = useCallback((eventList: SearchEvent[]) => {
@@ -524,10 +497,12 @@ const SearchPage: React.FC = () => {
     });
   }, []);
 
-  // Effect to fetch events when query or filters change
+  // Update filter options when events change
   useEffect(() => {
-    debouncedFetchEvents(query, filters);
-  }, [query, filters, debouncedFetchEvents]);
+    if (events.length > 0) {
+      updateFilterOptions(events);
+    }
+  }, [events]);
 
   // Update URL params when filters change
   useEffect(() => {
@@ -796,139 +771,53 @@ const SearchPage: React.FC = () => {
           ) : (
             <>
               <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-2 xl:grid-cols-3 gap-6 mb-8">
-                {events.map((event) => {
-                  // Get the next available date from dateSchedule
-                  const nextDate = event.dateSchedule?.find(schedule => 
-                    new Date(schedule.startDate) >= new Date()
-                  ) || event.dateSchedule?.[0];
-                  
-                  return (
-                    <motion.div
-                      key={event._id}
-                      initial={{ opacity: 0, y: 20 }}
-                      animate={{ opacity: 1, y: 0 }}
-                      transition={{ duration: 0.3 }}
-                      whileHover={{ y: -5, transition: { duration: 0.2 } }}
-                      className="bg-white rounded-lg overflow-hidden shadow-sm hover:shadow-lg transition-all duration-300"
-                    >
-                      <Link to={`/events/${event._id}`} className="block h-full">
-                        <div className="relative h-48 overflow-hidden">
-                          <img 
-                            src={event.images?.[0] || '/api/placeholder/400/300'} 
-                            alt={event.title} 
-                            className="w-full h-full object-cover transition-transform duration-500 hover:scale-110"
-                            onError={(e) => {
-                              const target = e.target as HTMLImageElement;
-                              target.src = 'https://placehold.co/400x300?text=' + encodeURIComponent(event.title);
-                            }}
-                          />
-                          {event.isFeatured && (
-                            <div className="absolute top-0 left-0 bg-yellow-500 text-white px-3 py-1 m-2 rounded-full text-xs font-medium">
-                              Featured
-                            </div>
-                          )}
-                          <div className="absolute top-0 right-0 bg-primary text-white px-3 py-1 m-2 rounded-full text-sm font-medium">
-                            {event.price} {event.currency}
-                          </div>
-                          <div className="absolute bottom-0 left-0 bg-white px-3 py-1 m-2 rounded-full text-xs font-medium shadow-sm">
-                            {event.category}
-                          </div>
-                          <div className="absolute bottom-0 right-0 bg-black bg-opacity-70 text-white px-2 py-1 m-2 rounded text-xs">
-                            {event.type}
-                          </div>
-                        </div>
-                        <div className="p-4">
-                          <h3 className="font-bold text-lg mb-2 line-clamp-2 group-hover:text-primary transition-colors text-primary">
-                            {event.title}
-                          </h3>
-                          {/* <div
-                            className="text-gray-600 mb-3 text-sm line-clamp-2"
-                            dangerouslySetInnerHTML={{
-                              __html: DOMPurify.sanitize(event.description || '', {
-                                ADD_ATTR: ['style', 'class'],
-                                ADD_TAGS: ['iframe'],
-                                ALLOWED_ATTR: ['style', 'class', 'href', 'src', 'alt', 'title', 'target', 'rel', 'width', 'height', 'id', 'frameborder', 'allow', 'allowfullscreen']
-                              })
-                            }}
-                          /> */}
-                          
-                          {nextDate && (
-                            <div className="flex items-center text-gray-500 text-sm mb-2">
-                              <FaCalendarAlt className="w-4 h-4 mr-2 text-gray-400" />
-                              {new Date(nextDate.startDate).toLocaleDateString('en-US', { 
-                                weekday: 'short', 
-                                month: 'short', 
-                                day: 'numeric',
-                                year: 'numeric'
-                              })}
-                            </div>
-                          )}
-                          
-                          {nextDate && (
-                            <div className="flex items-center text-gray-500 text-sm mb-2">
-                              <FaClock className="w-4 h-4 mr-2 text-gray-400" />
-                              {new Date(nextDate.startDate).toLocaleTimeString('en-US', { 
-                                hour: '2-digit', 
-                                minute: '2-digit'
-                              })} - {new Date(nextDate.endDate).toLocaleTimeString('en-US', { 
-                                hour: '2-digit', 
-                                minute: '2-digit'
-                              })}
-                            </div>
-                          )}
-                          
-                          <div className="flex items-center text-gray-500 text-sm mb-2">
-                            <FaMapMarkerAlt className="w-4 h-4 mr-2 text-gray-400" />
-                            {event.location?.city}, {event.location?.address}
-                          </div>
-                          
-                          {event.ageRange && event.ageRange.length >= 2 && (
-                            <div className="flex items-center text-gray-500 text-sm mb-2">
-                              <FaUsers className="w-4 h-4 mr-2 text-gray-400" />
-                              Ages {event.ageRange[0]}-{event.ageRange[1]}
-                            </div>
-                          )}
-                          
-                          {nextDate && (
-                            <div className="flex items-center text-gray-500 text-sm mb-3">
-                              <FaUsers className="w-4 h-4 mr-2 text-gray-400" />
-                              {nextDate.availableSeats}/{nextDate.totalSeats} seats available
-                            </div>
-                          )}
-                          
-                          <div className="flex items-center justify-between">
-                            <div className="flex items-center">
-                              <span className="text-xs text-gray-500">
-                                by {event.vendorId?.firstName} {event.vendorId?.lastName}
-                              </span>
-                            </div>
-                            <div className="flex items-center">
-                              <span className="text-xs bg-gray-100 text-gray-600 px-2 py-1 rounded">
-                                {event.viewsCount || 0} views
-                              </span>
-                            </div>
-                          </div>
-                          
-                          {event.tags && event.tags.length > 0 && (
-                            <div className="mt-3 pt-3 border-t border-gray-100">
-                              <div className="flex items-center flex-wrap gap-1">
-                                <FaTag className="w-3 h-3 text-gray-400 mr-1" />
-                                {event.tags.slice(0, 3).map((tag, index) => (
-                                  <span key={index} className="text-xs bg-blue-100 text-blue-700 px-2 py-1 rounded">
-                                    {tag}
-                                  </span>
-                                ))}
-                                {event.tags.length > 3 && (
-                                  <span className="text-xs text-gray-500">+{event.tags.length - 3} more</span>
-                                )}
-                              </div>
-                            </div>
-                          )}
-                        </div>
-                      </Link>
-                    </motion.div>
-                  );
-                })}
+                {events.map((event: SearchEvent) => (
+                  <motion.div
+                    key={event._id}
+                    initial={{ opacity: 0, y: 20 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    transition={{ duration: 0.3 }}
+                  >
+                    <EventCard
+                      _id={event._id}
+                      id={event._id}
+                      title={event.title}
+                      description={event.description}
+                      images={event.images}
+                      image={event.images?.[0]}
+                      price={event.price}
+                      currency={event.currency}
+                      location={event.location}
+                      category={event.category}
+                      ageRange={event.ageRange}
+                      dateSchedule={event.dateSchedule}
+                      isFeatured={event.isFeatured}
+                      viewsCount={event.viewsCount}
+                      rating={event.rating}
+                      reviewsCount={event.reviewsCount}
+                      vendorId={event.vendorId}
+                      // variant="default"
+                      //variant="featured"
+                      // variant="compact"
+                      //variant="horizontal"
+                      // variant="vertical-tall"
+                      variant="overlay"
+                      // variant="minimal"
+                      //variant="magazine"
+                      // variant="list-item"
+                      showPrice={false}
+                      showLocation={false}
+                      showDate={false}
+                      showTime={false}
+                      showDescription={false}
+                      showStats={false}
+                      showCategory={false}
+                      showVendor={false}
+                      showAgeGroup={false}
+                      showFeaturedBadge={true}
+                    />
+                  </motion.div>
+                ))}
               </div>
               
               {/* Pagination */}

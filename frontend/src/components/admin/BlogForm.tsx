@@ -7,10 +7,7 @@ import DOMPurify from 'isomorphic-dompurify';
 import {
   Save,
   X,
-  Upload,
   Image,
-  Plus,
-  Trash2,
   Eye,
   Hash,
   Calendar,
@@ -156,7 +153,7 @@ const BlogForm: React.FC<BlogFormProps> = ({
     }
   });
 
-  const watchedTags = watch('tags') || [];
+  const watchedTags = (watch('tags') || []).filter((tag): tag is string => tag !== undefined);
   const watchedContent = watch('content');
   const watchedTitle = watch('title');
 
@@ -397,7 +394,7 @@ const BlogForm: React.FC<BlogFormProps> = ({
     }
   };
 
-  const handleSubmitClick = (e: React.MouseEvent) => {
+  const handleSubmitClick = () => {
     console.log('=== SUBMIT BUTTON CLICKED ===');
     console.log('Current errors:', errors);
     console.log('Form is submitting:', isSubmitting);
@@ -759,9 +756,11 @@ const BlogForm: React.FC<BlogFormProps> = ({
                               src={
                                 selectedFeaturedImageAsset
                                   ? selectedFeaturedImageAsset.url
-                                  : typeof field.value === 'object'
-                                  ? field.value.url
-                                  : field.value
+                                  : typeof field.value === 'object' && field.value !== null && 'url' in field.value
+                                  ? (field.value as {url: string}).url
+                                  : typeof field.value === 'string'
+                                  ? field.value
+                                  : ''
                               }
                               alt="Featured"
                               className="w-full h-48 object-cover rounded-lg"

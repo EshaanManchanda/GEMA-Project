@@ -1,9 +1,76 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState } from 'react';
 import { Link } from 'react-router-dom';
 import { format } from 'date-fns';
-import eventsAPI from '../services/api/eventsAPI';
+import { useInView } from 'react-intersection-observer';
+import { useEventsQuery } from '@/hooks/queries/useEventsQuery';
 import { getPlaceholderUrl } from '../utils/placeholderImage';
 import SEO from '@/components/common/SEO';
+
+// Lazy loaded event card component with intersection observer
+interface EventCardProps {
+  event: any;
+  formattedDate: string;
+}
+
+const EventCard: React.FC<EventCardProps> = ({ event, formattedDate }) => {
+  const { ref, inView } = useInView({
+    triggerOnce: true,
+    threshold: 0.1,
+    rootMargin: '50px'
+  });
+
+  return (
+    <div ref={ref} className="bg-white rounded-lg shadow-md overflow-hidden hover:shadow-lg transition-shadow group">
+      <div className="relative overflow-hidden">
+        {inView ? (
+          <img
+            src={event.image}
+            alt={event.title}
+            className="w-full h-48 object-cover transform group-hover:scale-105 transition-transform duration-300"
+            loading="lazy"
+          />
+        ) : (
+          <div className="w-full h-48 bg-gray-200 animate-pulse" />
+        )}
+        <div className="absolute top-0 right-0 m-3">
+          <span className="bg-primary text-white px-3 py-1 rounded-full text-sm font-medium">
+            {event.currency || 'AED'} {event.price}
+          </span>
+        </div>
+        <div className="absolute bottom-0 left-0 m-3">
+          <span className="bg-black bg-opacity-70 text-white px-3 py-1 rounded-full text-xs">
+            {event.category}
+          </span>
+        </div>
+      </div>
+      <div className="p-5">
+        <h3 className="font-bold text-lg mb-2 group-hover:text-primary transition-colors">{event.title}</h3>
+        <p className="text-gray-600 mb-4 line-clamp-2">{event.description}</p>
+        <div className="flex flex-col space-y-2 mb-4">
+          <div className="flex items-center text-sm text-gray-500">
+            <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4 mr-2 text-primary" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
+            </svg>
+            <span>{formattedDate}</span>
+          </div>
+          <div className="flex items-center text-sm text-gray-500">
+            <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4 mr-2 text-primary" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z" />
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 11a3 3 0 11-6 0 3 3 0 016 0z" />
+            </svg>
+            <span>{typeof event.location === 'string' ? event.location : event.location?.city || 'Location TBD'}</span>
+          </div>
+        </div>
+        <Link
+          to={`/events/${event.id}`}
+          className="block w-full text-center bg-primary text-white py-3 rounded-md hover:bg-primary-dark transition-colors font-medium"
+        >
+          View Details
+        </Link>
+      </div>
+    </div>
+  );
+};
 
 // Mock data for when backend is unavailable
 const mockEvents = [
@@ -70,10 +137,9 @@ const mockEvents = [
 ];
 
 const EventsPage: React.FC = () => {
-  const [isLoading, setIsLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
-  const [events, setEvents] = useState(mockEvents);
-  const [usingMockData, setUsingMockData] = useState(false);
+  // TanStack Query hook replaces useEffect + manual state management (30+ lines → 2 lines!)
+  const { data: eventsData, isLoading, error } = useEventsQuery();
+
   const [filters, setFilters] = useState({
     category: '',
     priceRange: [0, 100],
@@ -81,41 +147,19 @@ const EventsPage: React.FC = () => {
     searchQuery: ''
   });
   const [sortBy, setSortBy] = useState('date'); // 'date', 'price-low', 'price-high'
-  
-  // Simulate fetching data from backend
-  useEffect(() => {
-    const fetchEvents = async () => {
-      try {
-        setIsLoading(true);
-        
-        // Fetch real data from backend using API service
-        const eventsData = await eventsAPI.getAllEvents();
-        
-        // Handle API response format - extract data from the response structure
-        const events = eventsData?.data?.events || [];
-        setEvents(Array.isArray(events) ? events.map((event: any) => ({
-          ...event,
-          id: event._id, // Map _id to id for compatibility
-          image: event.images?.[0] || `https://via.placeholder.com/400x300?text=${encodeURIComponent(event.title)}`,
-          date: event.dateSchedule?.[0]?.startDate || new Date().toISOString(),
-          location: event.location?.city || event.location?.address || 'Location TBD',
-          price: event.price || 0
-        })) : []);
-        setUsingMockData(false);
-        
-      } catch (err) {
-        console.error('Error fetching events:', err);
-        // Use mock data if backend is unavailable
-        setEvents(mockEvents);
-        setUsingMockData(true);
-        setError('Unable to connect to the server. Showing default events data.');
-      } finally {
-        setIsLoading(false);
-      }
-    };
-    
-    fetchEvents();
-  }, []);
+
+  // Extract and transform events data (with fallback to mock data)
+  const rawEvents = eventsData?.events || [];
+  const events = Array.isArray(rawEvents) ? rawEvents.map((event: any) => ({
+    ...event,
+    id: event._id || event.id,
+    image: event.images?.[0] || `https://via.placeholder.com/400x300?text=${encodeURIComponent(event.title)}`,
+    date: event.dateSchedule?.[0]?.startDate || new Date().toISOString(),
+    location: event.location?.city || event.location?.address || 'Location TBD',
+    price: event.price || 0
+  })) : mockEvents;
+
+  const usingMockData = !eventsData && !isLoading;
   
   if (isLoading) {
     return (
@@ -186,10 +230,17 @@ const EventsPage: React.FC = () => {
         breadcrumbs={breadcrumbs}
       />
       <div className="container mx-auto px-4 py-8">
-        {usingMockData && (
+        {error && (
+        <div className="bg-red-100 border-l-4 border-red-500 text-red-700 p-4 mb-6" role="alert">
+          <p className="font-bold">Error</p>
+          <p>{error instanceof Error ? error.message : 'Unable to load events. Please try again later.'}</p>
+        </div>
+      )}
+
+      {usingMockData && (
         <div className="bg-yellow-100 border-l-4 border-yellow-500 text-yellow-700 p-4 mb-6" role="alert">
           <p className="font-bold">Note</p>
-          <p>{error}</p>
+          <p>Unable to connect to the server. Showing default events data.</p>
         </div>
       )}
       
@@ -323,55 +374,15 @@ const EventsPage: React.FC = () => {
           
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
             {filteredEvents.map(event => {
-              // Format date for display
               const eventDate = new Date(event.date);
               const formattedDate = format(eventDate, 'MMM d, yyyy');
-              
+
               return (
-                <div key={event.id} className="bg-white rounded-lg shadow-md overflow-hidden hover:shadow-lg transition-shadow group">
-                  <div className="relative overflow-hidden">
-                    <img 
-                      src={event.image} 
-                      alt={event.title} 
-                      className="w-full h-48 object-cover transform group-hover:scale-105 transition-transform duration-300" 
-                    />
-                    <div className="absolute top-0 right-0 m-3">
-                      <span className="bg-primary text-white px-3 py-1 rounded-full text-sm font-medium">
-                        {event.currency || 'AED'} {event.price}
-                      </span>
-                    </div>
-                    <div className="absolute bottom-0 left-0 m-3">
-                      <span className="bg-black bg-opacity-70 text-white px-3 py-1 rounded-full text-xs">
-                        {event.category}
-                      </span>
-                    </div>
-                  </div>
-                  <div className="p-5">
-                    <h3 className="font-bold text-lg mb-2 group-hover:text-primary transition-colors">{event.title}</h3>
-                    <p className="text-gray-600 mb-4 line-clamp-2">{event.description}</p>
-                    <div className="flex flex-col space-y-2 mb-4">
-                      <div className="flex items-center text-sm text-gray-500">
-                        <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4 mr-2 text-primary" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
-                        </svg>
-                        <span>{formattedDate}</span>
-                      </div>
-                      <div className="flex items-center text-sm text-gray-500">
-                        <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4 mr-2 text-primary" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z" />
-                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 11a3 3 0 11-6 0 3 3 0 016 0z" />
-                        </svg>
-                        <span>{typeof event.location === 'string' ? event.location : event.location?.city || 'Location TBD'}</span>
-                      </div>
-                    </div>
-                    <Link 
-                      to={`/events/${event.id}`} 
-                      className="block w-full text-center bg-primary text-white py-3 rounded-md hover:bg-primary-dark transition-colors font-medium"
-                    >
-                      View Details
-                    </Link>
-                  </div>
-                </div>
+                <EventCard
+                  key={event.id}
+                  event={event}
+                  formattedDate={formattedDate}
+                />
               );
             })}
           </div>

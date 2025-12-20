@@ -19,6 +19,8 @@ import { selectSocialSettings } from '@/store/slices/settingsSlice';
 import NewsletterSubscription from './NewsletterSubscription';
 import ConnectionStatus from './ConnectionStatus';
 import CurrencySelector from '@/components/common/CurrencySelector';
+import AnnouncementBar from '@/components/client/AnnouncementBar';
+import PopupManager from '@/components/client/PopupManager';
 import { useRealTimeData } from '@/hooks/useRealTimeData';
 import ErrorBoundary from '@/components/common/ErrorBoundary';
 import LoadingSpinner from '@/components/common/LoadingSpinner';
@@ -167,7 +169,9 @@ const Layout: React.FC<{ children?: React.ReactNode }> = ({ children }) => {
   return (
     <div className="min-h-screen flex flex-col bg-gray-50 overflow-x-hidden">
       <ConnectionStatus />
-      <header className="relative z-50">
+      <AnnouncementBar />
+      <PopupManager />
+      <header className="relative z-50" style={{ paddingTop: 'var(--announcement-height, 0px)' }}>
         {/* Top Bar */}
         <div
           className="w-full text-white"
@@ -233,9 +237,9 @@ const Layout: React.FC<{ children?: React.ReactNode }> = ({ children }) => {
         {/* Main Navigation Bar */}
         <div
           className={`w-full fixed left-0 z-50 transition-all duration-300 ${scrolled ? 'shadow-md' : ''}`}
-          style={{ 
+          style={{
             backgroundColor: scrolled ? 'var(--primary-color)' : 'white',
-            top: scrolled ? 0 : 'auto'
+            top: scrolled ? 0 : 'var(--announcement-height, 0)'
           }}
         >
           <div className="max-w-screen-xl mx-auto px-4 sm:px-6 lg:px-8 py-4 flex justify-between items-center">

@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import { motion } from 'framer-motion';
+import { useInView } from 'react-intersection-observer';
 import SEO from '@/components/common/SEO';
 
 interface Vendor {
@@ -15,6 +16,88 @@ interface Vendor {
   location: string;
   categories: string[];
 }
+
+// Lazy loaded vendor card with intersection observer
+interface VendorCardProps {
+  vendor: Vendor;
+}
+
+const VendorCard: React.FC<VendorCardProps> = ({ vendor }) => {
+  const { ref, inView } = useInView({
+    triggerOnce: true,
+    threshold: 0.1,
+    rootMargin: '50px'
+  });
+
+  return (
+    <motion.div
+      ref={ref}
+      key={vendor.id}
+      whileHover={{ y: -5 }}
+      className="bg-white rounded-lg overflow-hidden shadow-lg hover:shadow-xl transition-shadow duration-300"
+    >
+      <Link to={`/vendors/${vendor.id}`}>
+        <div className="relative h-48 overflow-hidden">
+          {inView ? (
+            <img
+              src={vendor.coverImage}
+              alt={`${vendor.name} cover`}
+              className="w-full h-full object-cover"
+              loading="lazy"
+            />
+          ) : (
+            <div className="w-full h-full bg-gray-200 animate-pulse" />
+          )}
+          <div className="absolute bottom-0 left-0 right-0 bg-gradient-to-t from-black/70 to-transparent p-4">
+            <div className="flex items-center">
+              {inView ? (
+                <img
+                  src={vendor.logo}
+                  alt={vendor.name}
+                  className="w-12 h-12 rounded-full border-2 border-white mr-3 object-cover"
+                  loading="lazy"
+                />
+              ) : (
+                <div className="w-12 h-12 rounded-full border-2 border-white mr-3 bg-gray-300 animate-pulse" />
+              )}
+              <h3 className="text-white font-bold text-lg truncate">{vendor.name}</h3>
+            </div>
+          </div>
+        </div>
+        <div className="p-4">
+          <div className="flex justify-between items-center mb-2">
+            <div className="flex items-center">
+              <span className="text-yellow-500">★</span>
+              <span className="ml-1 font-medium">{vendor.rating}</span>
+              <span className="ml-1 text-gray-500">({vendor.reviewCount} reviews)</span>
+            </div>
+            <span className="text-sm text-gray-500">{vendor.eventCount} events</span>
+          </div>
+          <p className="text-gray-600 mb-3 line-clamp-2">{vendor.description}</p>
+          <div className="flex items-center text-gray-500 text-sm">
+            <svg className="w-4 h-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z"></path>
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M15 11a3 3 0 11-6 0 3 3 0 016 0z"></path>
+            </svg>
+            {vendor.location}
+          </div>
+          <div className="mt-3 flex flex-wrap gap-2">
+            {vendor.categories.slice(0, 3).map((category, index) => (
+              <span key={index} className="px-2 py-1 bg-gray-100 text-gray-600 text-xs rounded-full">
+                {category}
+              </span>
+            ))}
+            {vendor.categories.length > 3 && (
+              <span className="px-2 py-1 bg-gray-100 text-gray-600 text-xs rounded-full">
+                +{vendor.categories.length - 3} more
+              </span>
+            )}
+          </div>
+        </div>
+      </Link>
+    </motion.div>
+  );
+};
 
 const VendorsPage: React.FC = () => {
   const [vendors, setVendors] = useState<Vendor[]>([]);
@@ -218,61 +301,7 @@ const VendorsPage: React.FC = () => {
       ) : (
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
           {filteredVendors.map((vendor) => (
-            <motion.div
-              key={vendor.id}
-              whileHover={{ y: -5 }}
-              className="bg-white rounded-lg overflow-hidden shadow-lg hover:shadow-xl transition-shadow duration-300"
-            >
-              <Link to={`/vendors/${vendor.id}`}>
-                <div className="relative h-48 overflow-hidden">
-                  <img 
-                    src={vendor.coverImage} 
-                    alt={`${vendor.name} cover`} 
-                    className="w-full h-full object-cover"
-                  />
-                  <div className="absolute bottom-0 left-0 right-0 bg-gradient-to-t from-black/70 to-transparent p-4">
-                    <div className="flex items-center">
-                      <img 
-                        src={vendor.logo} 
-                        alt={vendor.name} 
-                        className="w-12 h-12 rounded-full border-2 border-white mr-3 object-cover"
-                      />
-                      <h3 className="text-white font-bold text-lg truncate">{vendor.name}</h3>
-                    </div>
-                  </div>
-                </div>
-                <div className="p-4">
-                  <div className="flex justify-between items-center mb-2">
-                    <div className="flex items-center">
-                      <span className="text-yellow-500">★</span>
-                      <span className="ml-1 font-medium">{vendor.rating}</span>
-                      <span className="ml-1 text-gray-500">({vendor.reviewCount} reviews)</span>
-                    </div>
-                    <span className="text-sm text-gray-500">{vendor.eventCount} events</span>
-                  </div>
-                  <p className="text-gray-600 mb-3 line-clamp-2">{vendor.description}</p>
-                  <div className="flex items-center text-gray-500 text-sm">
-                    <svg className="w-4 h-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z"></path>
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M15 11a3 3 0 11-6 0 3 3 0 016 0z"></path>
-                    </svg>
-                    {vendor.location}
-                  </div>
-                  <div className="mt-3 flex flex-wrap gap-2">
-                    {vendor.categories.slice(0, 3).map((category, index) => (
-                      <span key={index} className="px-2 py-1 bg-gray-100 text-gray-600 text-xs rounded-full">
-                        {category}
-                      </span>
-                    ))}
-                    {vendor.categories.length > 3 && (
-                      <span className="px-2 py-1 bg-gray-100 text-gray-600 text-xs rounded-full">
-                        +{vendor.categories.length - 3} more
-                      </span>
-                    )}
-                  </div>
-                </div>
-              </Link>
-            </motion.div>
+            <VendorCard key={vendor.id} vendor={vendor} />
           ))}
         </div>
       )}

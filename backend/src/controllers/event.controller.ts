@@ -50,6 +50,8 @@ export const getEvents = async (req: Request, res: Response, next: NextFunction)
       featured,
       search,
       tags,
+      dateFrom,
+      dateTo,
       sortBy = 'createdAt',
       sortOrder = 'desc',
     } = req.query;
@@ -74,6 +76,8 @@ export const getEvents = async (req: Request, res: Response, next: NextFunction)
       featured,
       search,
       tags,
+      dateFrom,
+      dateTo,
       sortBy,
       sortOrder,
     })}`;
@@ -105,7 +109,9 @@ export const getEvents = async (req: Request, res: Response, next: NextFunction)
     if (venueType) additionalFilters.venueType = venueType;
     if (city) additionalFilters['location.city'] = new RegExp(city as string, 'i');
     if (currency) additionalFilters.currency = currency;
-    if (featured === 'true') additionalFilters.isFeatured = true;
+    if (featured !== undefined) {
+      additionalFilters.isFeatured = featured === 'true';
+    }
 
     // Tag filtering
     if (tags) {
@@ -125,14 +131,26 @@ export const getEvents = async (req: Request, res: Response, next: NextFunction)
 
     // Age range filtering
     if (ageMin || ageMax) {
-      filter.ageRange = {};
-      if (ageMin) filter.ageRange = { ...filter.ageRange, $elemMatch: { $gte: parseInt(ageMin as string) } };
-      if (ageMax) filter.ageRange = { ...filter.ageRange, $elemMatch: { $lte: parseInt(ageMax as string) } };
+      const ageConditions: any = {};
+      if (ageMin) ageConditions.$gte = parseInt(ageMin as string);
+      if (ageMax) ageConditions.$lte = parseInt(ageMax as string);
+      filter.ageRange = { $elemMatch: ageConditions };
     }
 
     // Text search
     if (search) {
       filter.$text = { $search: search as string };
+    }
+
+    // Date range filtering
+    if (dateFrom || dateTo) {
+      filter['dateSchedule.startDate'] = {};
+      if (dateFrom) {
+        filter['dateSchedule.startDate'].$gte = new Date(dateFrom as string);
+      }
+      if (dateTo) {
+        filter['dateSchedule.startDate'].$lte = new Date(dateTo as string);
+      }
     }
 
     // Build sort query
@@ -700,6 +718,74 @@ export const toggleEventFeatured = async (req: AuthRequest, res: Response, next:
       success: true,
       message: `Event ${event.isFeatured ? 'featured' : 'unfeatured'} successfully`,
       data: { event },
+    });
+  } catch (error) {
+    next(error);
+  }
+};
+
+// @desc    Get unique cities from events
+// @route   GET /api/events/cities
+// @access  Public
+export const getUniqueCities = async (req: Request, res: Response, next: NextFunction) => {
+  try {
+    const { country } = req.query;
+
+    let cities: string[] = [];
+
+    // If country is provided, check for static cities first
+    if (country && typeof country === 'string') {
+      const countryCode = country.toUpperCase();
+
+      // Import static cities utility
+      const { getStaticCities, hasStaticCities } = await import('../utils/cities');
+
+      // Use static cities if available (e.g., UAE)
+      if (hasStaticCities(countryCode)) {
+        const staticCities = getStaticCities(countryCode);
+
+        // Also get cities from events for this country
+        const filter: any = {
+          isApproved: true,
+          isActive: true,
+          isDeleted: false,
+          'location.country': countryCode,
+        };
+
+        const eventCities = await Event.distinct('location.city', filter);
+
+        // Merge static + event cities, remove duplicates
+        const mergedCities = [...new Set([...staticCities, ...eventCities])];
+        cities = mergedCities;
+      } else {
+        // No static cities, use event cities only
+        const filter: any = {
+          isApproved: true,
+          isActive: true,
+          isDeleted: false,
+          'location.country': countryCode,
+        };
+
+        cities = await Event.distinct('location.city', filter);
+      }
+    } else {
+      // No country filter, return all cities from events
+      const filter: any = {
+        isApproved: true,
+        isActive: true,
+        isDeleted: false,
+      };
+
+      cities = await Event.distinct('location.city', filter);
+    }
+
+    // Sort alphabetically
+    const sortedCities = cities.sort((a, b) => a.localeCompare(b));
+
+    res.status(200).json({
+      success: true,
+      data: sortedCities,
+      count: sortedCities.length,
     });
   } catch (error) {
     next(error);

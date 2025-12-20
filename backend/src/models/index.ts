@@ -43,6 +43,9 @@ export type { IBlogCategory } from './BlogCategory';
 export { default as MediaAsset } from './MediaAsset';
 export type { IMediaAsset } from './MediaAsset';
 
+export { default as Banner } from './Banner';
+export type { IBanner } from './Banner';
+
 // New Models
 export { default as Category } from './Category';
 export type { ICategory } from './Category';

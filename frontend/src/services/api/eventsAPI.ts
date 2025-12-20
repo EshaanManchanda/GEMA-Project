@@ -1,12 +1,12 @@
 import { ApiService } from '../api';
-import { extractEventData, extractEventsData, extractApiData, logApiResponse } from '../../utils/apiResponseHandler';
+import { extractEventData, extractEventsData, extractEventsWithPagination, extractApiData, logApiResponse } from '../../utils/apiResponseHandler';
 
 const eventsAPI = {
   getAllEvents: async (params?: any) => {
     try {
       const response = await ApiService.get('/events', { params });
       logApiResponse('GET /events', response);
-      return extractEventsData(response);
+      return extractEventsWithPagination(response);
     } catch (error) {
       logApiResponse('GET /events', null, error);
       throw error;
@@ -76,7 +76,7 @@ const eventsAPI = {
     try {
       const response = await ApiService.get('/events', { params: { search: searchQuery, ...params } });
       logApiResponse(`GET /events (search: ${searchQuery})`, response);
-      return extractEventsData(response);
+      return extractEventsWithPagination(response);
     } catch (error) {
       logApiResponse(`GET /events (search: ${searchQuery})`, null, error);
       throw error;

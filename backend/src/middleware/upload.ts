@@ -84,8 +84,8 @@ const localStorage = multer.diskStorage({
     const uniqueSuffix = Date.now() + '-' + Math.round(Math.random() * 1E9);
     const fileExtension = path.extname(file.originalname);
     const baseName = path.basename(file.originalname, fileExtension);
-    const sanitizedBaseName = baseName.replace(/[^a-zA-Z0-9]/g, '');
-    
+    const sanitizedBaseName = baseName.replace(/[^a-zA-Z0-9]/g, '').substring(0, 50);
+
     cb(null, `${sanitizedBaseName}-${uniqueSuffix}${fileExtension}`);
   }
 });

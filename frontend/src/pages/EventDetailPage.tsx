@@ -6,7 +6,7 @@ import { useAuthContext } from '@/contexts/AuthContext';
 import toast from 'react-hot-toast';
 import { format } from 'date-fns';
 import DOMPurify from 'isomorphic-dompurify';
-import eventsAPI from '../services/api/eventsAPI';
+import { useEventQuery } from '@/hooks/queries/useEventsQuery';
 import affiliateEventAPI from '../services/api/affiliateEventAPI';
 import { useErrorHandler } from '../utils/errorHandler';
 import { ComponentErrorBoundary } from '../components/common/ErrorBoundary';
@@ -122,15 +122,91 @@ const EventDetailPage: React.FC = () => {
   const navigate = useNavigate();
   const dispatch = useDispatch<AppDispatch>();
   const { user } = useAuthContext();
-  const [isLoading, setIsLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
-  const [event, setEvent] = useState<any>(null);
-  const [usingMockData, setUsingMockData] = useState(false);
   const [quantity, setQuantity] = useState(1);
   const [selectedDate, setSelectedDate] = useState<Date | null>(null);
   const [activeTab, setActiveTab] = useState('about'); // 'about', 'location', 'reviews', 'faqs'
   const [isClaimingEvent, setIsClaimingEvent] = useState(false);
   const { addItemToCart, isItemInCart } = useCart();
+
+  // TanStack Query replaces manual fetch + state management
+  const { data: eventData, isLoading, error: queryError } = useEventQuery(id!);
+
+  // Transform event data (replaces useEffect fetch logic)
+  const event = useMemo(() => {
+    if (!eventData || !eventData._id) {
+      // Fallback to mock data if no real data
+      const mockEvent = mockEvents.find(e => e.id === id);
+      return mockEvent || null;
+    }
+
+    // Helper to get start date from schedule
+    const getScheduleDate = (schedule: any) =>
+      schedule?.date || schedule?.startDate || new Date().toISOString();
+
+    // Helper to format time
+    const getScheduleTime = (schedule: any) => {
+      if (!schedule) return 'Time TBD';
+
+      if (schedule.startTime && schedule.endTime) {
+        const formatTime = (time: string) => {
+          const [hours, minutes] = time.split(':');
+          const hour = parseInt(hours);
+          const ampm = hour >= 12 ? 'PM' : 'AM';
+          const hour12 = hour % 12 || 12;
+          return `${hour12}:${minutes} ${ampm}`;
+        };
+        return `${formatTime(schedule.startTime)} - ${formatTime(schedule.endTime)}`;
+      }
+
+      return 'Time TBD';
+    };
+
+    const firstSchedule = eventData.dateSchedule?.[0];
+
+    const totalSeats = firstSchedule?.totalSeats ||
+      (firstSchedule ? (firstSchedule.availableSeats + (firstSchedule.reservedSeats || 0) + (firstSchedule.soldSeats || 0)) : 50);
+
+    return {
+      ...eventData,
+      id: eventData._id,
+      image: getEventImage(eventData.images, eventData.title, 800, 400),
+      date: getScheduleDate(firstSchedule),
+      time: getScheduleTime(firstSchedule),
+      location: eventData.location || { city: 'Location TBD', address: 'Address TBD', coordinates: {} },
+      ageRange: eventData.ageRange ? `${eventData.ageRange[0]}-${eventData.ageRange[1]} years` : 'All ages',
+      capacity: totalSeats,
+      availableSpots: firstSchedule?.availableSeats || totalSeats,
+      dateSchedule: (eventData.dateSchedule || []).map((schedule: any) => ({
+        ...schedule,
+        startDate: schedule.startDate || schedule.date,
+        endDate: schedule.endDate || schedule.date,
+        totalSeats: schedule.totalSeats || (schedule.availableSeats + (schedule.reservedSeats || 0) + (schedule.soldSeats || 0))
+      })),
+      organizer: {
+        id: eventData.vendorId?._id || eventData.vendorId,
+        name: eventData.vendorId?.firstName && eventData.vendorId?.lastName ?
+          `${eventData.vendorId.firstName} ${eventData.vendorId.lastName}` :
+          'Event Organizer',
+        logo: getVendorLogo(undefined, eventData.vendorId?.firstName && eventData.vendorId?.lastName ?
+          `${eventData.vendorId.firstName} ${eventData.vendorId.lastName}` :
+          'Event Organizer', 100),
+        rating: 4.8
+      },
+      features: [
+        'Professional supervision',
+        'All materials included',
+        'Age-appropriate activities',
+        'Safe environment'
+      ],
+      reviews: []
+    };
+  }, [eventData, id]);
+
+  const usingMockData = !eventData && !isLoading;
+  const error = queryError ? (queryError as any)?.response?.status === 404 ?
+    'Event not found. This event may have been removed or the URL is incorrect.' :
+    'Unable to load event details. Please check your internet connection and try again.' :
+    null;
 
   // Memoized schedule calculations - must be before any early returns
   const currentSchedule = useMemo(() => {
@@ -172,124 +248,6 @@ const EventDetailPage: React.FC = () => {
   const favorites = useSelector((state: RootState) => state.favorites.items);
   const isFavorite = favorites.some(fav => fav._id === event?._id);
 
-  // Simulate fetching data from backend
-  useEffect(() => {
-    const fetchEventDetails = async () => {
-      try {
-        setIsLoading(true);
-
-        // Attempt to fetch real data from backend using API service
-        const eventData = await eventsAPI.getEventById(id!);
-
-        // Log the response for debugging
-        console.log('Received event data:', eventData);
-
-        // Validate that we have event data
-        if (!eventData || !eventData._id) {
-          throw new Error('Invalid event data received from API');
-        }
-
-        // Transform the API data to match component expectations
-
-        // Helper to get start date from schedule (handles both date and startDate formats)
-        const getScheduleDate = (schedule: any) =>
-          schedule?.date || schedule?.startDate || new Date().toISOString();
-
-        // Helper to format time (handles startTime/endTime fields or falls back to date-based extraction)
-        const getScheduleTime = (schedule: any) => {
-          if (!schedule) return 'Time TBD';
-
-          // Use explicit time fields if available
-          if (schedule.startTime && schedule.endTime) {
-            const formatTime = (time: string) => {
-              const [hours, minutes] = time.split(':');
-              const hour = parseInt(hours);
-              const ampm = hour >= 12 ? 'PM' : 'AM';
-              const hour12 = hour % 12 || 12;
-              return `${hour12}:${minutes} ${ampm}`;
-            };
-            return `${formatTime(schedule.startTime)} - ${formatTime(schedule.endTime)}`;
-          }
-
-          // Fallback for legacy data without time fields
-          return 'Time TBD';
-        };
-
-        const firstSchedule = eventData.dateSchedule?.[0];
-
-        // Use totalSeats from API if available, otherwise calculate
-        const totalSeats = firstSchedule?.totalSeats ||
-          (firstSchedule ? (firstSchedule.availableSeats + (firstSchedule.reservedSeats || 0) + (firstSchedule.soldSeats || 0)) : 50);
-
-        const transformedEvent = {
-          ...eventData,
-          id: eventData._id,
-          image: getEventImage(eventData.images, eventData.title, 800, 400),
-          date: getScheduleDate(firstSchedule),
-          time: getScheduleTime(firstSchedule),
-          location: eventData.location || { city: 'Location TBD', address: 'Address TBD', coordinates: {} },
-          ageRange: eventData.ageRange ? `${eventData.ageRange[0]}-${eventData.ageRange[1]} years` : 'All ages',
-          capacity: totalSeats,
-          availableSpots: firstSchedule?.availableSeats || totalSeats,
-          dateSchedule: (eventData.dateSchedule || []).map((schedule: any) => ({
-            ...schedule,
-            // Preserve existing startDate/endDate, or use date field as fallback
-            startDate: schedule.startDate || schedule.date,
-            endDate: schedule.endDate || schedule.date,
-            // Use totalSeats from API if available, otherwise calculate
-            totalSeats: schedule.totalSeats || (schedule.availableSeats + (schedule.reservedSeats || 0) + (schedule.soldSeats || 0))
-          })),
-          organizer: {
-            id: eventData.vendorId?._id || eventData.vendorId,
-            name: eventData.vendorId?.firstName && eventData.vendorId?.lastName ?
-              `${eventData.vendorId.firstName} ${eventData.vendorId.lastName}` :
-              'Event Organizer',
-            logo: getVendorLogo(undefined, eventData.vendorId?.firstName && eventData.vendorId?.lastName ?
-              `${eventData.vendorId.firstName} ${eventData.vendorId.lastName}` :
-              'Event Organizer', 100),
-            rating: 4.8
-          },
-          features: [
-            'Professional supervision',
-            'All materials included',
-            'Age-appropriate activities',
-            'Safe environment'
-          ],
-          reviews: []
-        };
-
-        setEvent(transformedEvent);
-        setUsingMockData(false);
-
-      } catch (err) {
-        console.error('Error fetching event details:', err);
-
-        // Check if it's a 404 error (event not found)
-        if (err && typeof err === 'object' && 'response' in err) {
-          const axiosError = err as any;
-          if (axiosError.response?.status === 404) {
-            setError('Event not found. This event may have been removed or the URL is incorrect.');
-            return;
-          }
-        }
-
-        // For network or other errors, try mock data
-        const mockEvent = mockEvents.find(e => e.id === id);
-
-        if (mockEvent) {
-          setEvent(mockEvent);
-          setUsingMockData(true);
-          setError('Unable to connect to the server. Showing default event data.');
-        } else {
-          setError('Unable to load event details. Please check your internet connection and try again.');
-        }
-      } finally {
-        setIsLoading(false);
-      }
-    };
-
-    fetchEventDetails();
-  }, [id]);
 
   if (isLoading) {
     return (

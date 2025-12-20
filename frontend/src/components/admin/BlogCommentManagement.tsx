@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import Modal from '../../components/ui/Modal';
 import Button from '../../components/ui/Button';
-import { MessageSquare, CheckCircle, XCircle, Loader2 } from 'lucide-react';
+import { CheckCircle, Loader2 } from 'lucide-react';
 import toast from 'react-hot-toast';
 import blogAPI from '../../services/api/blogAPI';
 import { Card, CardContent } from '../ui/Card';

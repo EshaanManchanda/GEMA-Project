@@ -1,6 +1,15 @@
 import React from 'react';
 import { Plus, Trash2, Calendar, DollarSign, Users, Star, X } from 'lucide-react';
 
+interface TimeSlot {
+  id: string;
+  date: string;
+  startTime: string;
+  endTime: string;
+  availableSeats: string;
+  price: string;
+}
+
 interface Schedule {
   id: string;
   _id?: string; // MongoDB ID for existing schedules
@@ -16,6 +25,7 @@ interface Schedule {
   specialDates?: string[];
   priority?: number;
   isOverride?: boolean;
+  timeSlots?: TimeSlot[]; // Multiple time slots per date
 }
 
 interface SchedulePricingTabProps {
@@ -362,6 +372,124 @@ const SchedulePricingTab: React.FC<SchedulePricingTabProps> = ({
                         Override (takes priority over other schedules for same dates)
                       </label>
                     </div>
+                  </div>
+
+                  {/* Multi-Time Slots Section */}
+                  <div className="col-span-2 border-t pt-4 mt-2">
+                    <div className="flex items-center justify-between mb-2">
+                      <label className="text-sm font-medium text-gray-700">
+                        Time Slots (Multiple sessions per day)
+                      </label>
+                      <button
+                        type="button"
+                        onClick={() => {
+                          const newSlots = [...(schedule.timeSlots || []), {
+                            id: `slot-${Date.now()}`,
+                            date: schedule.startDate,
+                            startTime: '',
+                            endTime: '',
+                            availableSeats: '',
+                            price: schedule.price,
+                          }];
+                          onScheduleChange(index, 'timeSlots', newSlots);
+                        }}
+                        className="text-sm text-blue-600 hover:text-blue-700 focus:outline-none"
+                      >
+                        <Plus className="inline w-4 h-4 mr-1" /> Add Time Slot
+                      </button>
+                    </div>
+
+                    {(schedule.timeSlots || []).length > 0 ? (
+                      <div className="space-y-2 bg-gray-50 p-3 rounded-md">
+                        {schedule.timeSlots!.map((slot, slotIdx) => (
+                          <div key={slot.id} className="grid grid-cols-6 gap-2 items-end">
+                            <div>
+                              <label className="text-xs text-gray-600 block mb-1">Date</label>
+                              <input
+                                type="date"
+                                value={slot.date}
+                                onChange={(e) => {
+                                  const updated = [...schedule.timeSlots!];
+                                  updated[slotIdx].date = e.target.value;
+                                  onScheduleChange(index, 'timeSlots', updated);
+                                }}
+                                className="w-full text-sm px-2 py-1 border border-gray-300 rounded"
+                              />
+                            </div>
+                            <div>
+                              <label className="text-xs text-gray-600 block mb-1">Start</label>
+                              <input
+                                type="time"
+                                value={slot.startTime}
+                                onChange={(e) => {
+                                  const updated = [...schedule.timeSlots!];
+                                  updated[slotIdx].startTime = e.target.value;
+                                  onScheduleChange(index, 'timeSlots', updated);
+                                }}
+                                className="w-full text-sm px-2 py-1 border border-gray-300 rounded"
+                              />
+                            </div>
+                            <div>
+                              <label className="text-xs text-gray-600 block mb-1">End</label>
+                              <input
+                                type="time"
+                                value={slot.endTime}
+                                onChange={(e) => {
+                                  const updated = [...schedule.timeSlots!];
+                                  updated[slotIdx].endTime = e.target.value;
+                                  onScheduleChange(index, 'timeSlots', updated);
+                                }}
+                                className="w-full text-sm px-2 py-1 border border-gray-300 rounded"
+                              />
+                            </div>
+                            <div>
+                              <label className="text-xs text-gray-600 block mb-1">Seats</label>
+                              <input
+                                type="number"
+                                value={slot.availableSeats}
+                                onChange={(e) => {
+                                  const updated = [...schedule.timeSlots!];
+                                  updated[slotIdx].availableSeats = e.target.value;
+                                  onScheduleChange(index, 'timeSlots', updated);
+                                }}
+                                className="w-full text-sm px-2 py-1 border border-gray-300 rounded"
+                                min="0"
+                              />
+                            </div>
+                            <div>
+                              <label className="text-xs text-gray-600 block mb-1">Price</label>
+                              <input
+                                type="number"
+                                value={slot.price}
+                                onChange={(e) => {
+                                  const updated = [...schedule.timeSlots!];
+                                  updated[slotIdx].price = e.target.value;
+                                  onScheduleChange(index, 'timeSlots', updated);
+                                }}
+                                className="w-full text-sm px-2 py-1 border border-gray-300 rounded"
+                                min="0"
+                                step="0.01"
+                              />
+                            </div>
+                            <button
+                              type="button"
+                              onClick={() => {
+                                const updated = schedule.timeSlots!.filter((_, i) => i !== slotIdx);
+                                onScheduleChange(index, 'timeSlots', updated);
+                              }}
+                              className="text-red-600 hover:text-red-700 pb-1"
+                              title="Remove time slot"
+                            >
+                              <Trash2 className="w-4 h-4" />
+                            </button>
+                          </div>
+                        ))}
+                      </div>
+                    ) : (
+                      <p className="text-xs text-gray-500 italic bg-gray-50 p-3 rounded-md">
+                        No time slots added. Use this for events with multiple sessions on the same day.
+                      </p>
+                    )}
                   </div>
 
                   {/* Price */}

@@ -1,10 +1,13 @@
-import React, { useState, useEffect } from 'react';
-import vendorAPI from '../../services/api/vendorAPI';
+import React, { useState, useMemo, useRef } from 'react';
+import { useQueryClient } from '@tanstack/react-query';
+import { useVirtualizer } from '@tanstack/react-virtual';
 import VendorNavigation from '../../components/vendor/VendorNavigation';
 import BookingFilters from '../../components/vendor/BookingFilters';
 import VendorBookingEditModal from '../../components/vendor/VendorBookingEditModal';
 import ExportOptionsModal from '../../components/vendor/ExportOptionsModal';
 import VendorBookingImportModal from '../../components/vendor/VendorBookingImportModal';
+import { useVendorBookingsQuery } from '@/hooks/queries/useVendorQuery';
+import { vendorKeys } from '@/hooks/queries/queryKeys';
 
 interface Participant {
   name: string;
@@ -59,12 +62,8 @@ interface Booking {
 }
 
 const VendorBookingsPage: React.FC = () => {
-  const [bookings, setBookings] = useState<Booking[]>([]);
-  const [isLoading, setIsLoading] = useState<boolean>(true);
+  const queryClient = useQueryClient();
   const [expandedRows, setExpandedRows] = useState<Set<string>>(new Set());
-  const [events, setEvents] = useState<Array<{ _id: string; title: string }>>([]);
-  const [stats, setStats] = useState<any>(null);
-  const [pagination, setPagination] = useState<any>(null);
 
   // Modals
   const [showEditModal, setShowEditModal] = useState(false);
@@ -72,7 +71,7 @@ const VendorBookingsPage: React.FC = () => {
   const [showImportModal, setShowImportModal] = useState(false);
   const [selectedBooking, setSelectedBooking] = useState<Booking | null>(null);
 
-  // Filters
+  // Filters (kept as local state for UI control)
   const [filters, setFilters] = useState({
     search: '',
     status: 'all',
@@ -94,43 +93,45 @@ const VendorBookingsPage: React.FC = () => {
     direction: 'desc'
   });
 
-  useEffect(() => {
-    fetchBookings();
+  // Build query params for API
+  const queryParams = useMemo(() => {
+    const params: any = {
+      page: currentPage,
+      limit: pageSize,
+      sortBy: sortConfig.key,
+      sortOrder: sortConfig.direction,
+    };
+
+    // Add filters
+    if (filters.search) params.search = filters.search;
+    if (filters.status !== 'all') params.status = filters.status;
+    if (filters.paymentStatus !== 'all') params.paymentStatus = filters.paymentStatus;
+    if (filters.eventId !== 'all') params.eventId = filters.eventId;
+    if (filters.startDate) params.startDate = filters.startDate;
+    if (filters.endDate) params.endDate = filters.endDate;
+    if (filters.minAmount) params.minAmount = filters.minAmount;
+    if (filters.maxAmount) params.maxAmount = filters.maxAmount;
+
+    return params;
   }, [currentPage, pageSize, filters, sortConfig]);
 
-  const fetchBookings = async () => {
-    setIsLoading(true);
-    try {
-      // Build query parameters
-      const params: any = {
-        page: currentPage,
-        limit: pageSize,
-        sortBy: sortConfig.key,
-        sortOrder: sortConfig.direction,
-      };
+  // TanStack Query hook replaces manual fetch + state (50+ lines → 1 hook!)
+  const { data: response, isLoading } = useVendorBookingsQuery(queryParams);
 
-      // Add filters
-      if (filters.search) params.search = filters.search;
-      if (filters.status !== 'all') params.status = filters.status;
-      if (filters.paymentStatus !== 'all') params.paymentStatus = filters.paymentStatus;
-      if (filters.eventId !== 'all') params.eventId = filters.eventId;
-      if (filters.startDate) params.startDate = filters.startDate;
-      if (filters.endDate) params.endDate = filters.endDate;
-      if (filters.minAmount) params.minAmount = filters.minAmount;
-      if (filters.maxAmount) params.maxAmount = filters.maxAmount;
+  // Extract data with fallbacks
+  const bookings = response?.bookings || [];
+  const pagination = response?.pagination || null;
+  const stats = response?.stats || null;
+  const events = response?.events || [];
 
-      const response = await vendorAPI.getVendorBookings(params);
-
-      setBookings(response.bookings || []);
-      setPagination(response.pagination);
-      setStats(response.stats);
-      setEvents(response.events || []);
-    } catch (error) {
-      console.error('Error fetching bookings:', error);
-    } finally {
-      setIsLoading(false);
-    }
-  };
+  // Virtualization for large booking lists (100+ rows)
+  const parentRef = useRef<HTMLDivElement>(null);
+  const rowVirtualizer = useVirtualizer({
+    count: bookings.length,
+    getScrollElement: () => parentRef.current,
+    estimateSize: () => 90, // Row height in pixels (slightly taller for booking rows)
+    overscan: 5, // Render 5 extra rows above/below viewport
+  });
 
   const handleFilterChange = (newFilters: any) => {
     setFilters(newFilters);
@@ -176,12 +177,12 @@ const VendorBookingsPage: React.FC = () => {
   };
 
   const handleUpdateComplete = () => {
-    fetchBookings();
+    queryClient.invalidateQueries({ queryKey: vendorKeys.bookings.all() });
     setShowEditModal(false);
   };
 
   const handleImportComplete = () => {
-    fetchBookings();
+    queryClient.invalidateQueries({ queryKey: vendorKeys.bookings.all() });
     setShowImportModal(false);
   };
 
@@ -462,11 +463,15 @@ const VendorBookingsPage: React.FC = () => {
           onClearFilters={handleClearFilters}
         />
 
-        {/* Bookings Table */}
+        {/* Bookings Table with Virtualization */}
         <div className="bg-white shadow-md rounded-lg overflow-hidden">
-          <div className="overflow-x-auto">
+          <div
+            ref={parentRef}
+            className="overflow-auto"
+            style={{ maxHeight: '600px' }}
+          >
             <table className="min-w-full divide-y divide-gray-200">
-              <thead className="bg-gray-50">
+              <thead className="bg-gray-50 sticky top-0 z-10">
                 <tr>
                   <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                     <div className="flex items-center cursor-pointer" onClick={() => handleSort('orderNumber')}>
@@ -521,15 +526,32 @@ const VendorBookingsPage: React.FC = () => {
                   </th>
                 </tr>
               </thead>
-              <tbody className="bg-white divide-y divide-gray-200">
+              <tbody
+                className="bg-white"
+                style={{
+                  height: `${rowVirtualizer.getTotalSize()}px`,
+                  position: 'relative',
+                }}
+              >
                 {bookings.length > 0 ? (
-                  bookings.map((booking) => {
+                  rowVirtualizer.getVirtualItems().map((virtualRow) => {
+                    const booking = bookings[virtualRow.index];
                     const isExpanded = expandedRows.has(booking._id);
                     const hasParticipants = booking.items[0]?.participants && booking.items[0].participants.length > 0;
 
                     return (
                       <React.Fragment key={booking._id}>
-                        <tr className="hover:bg-gray-50">
+                        <tr
+                          className="hover:bg-gray-50 border-b border-gray-200"
+                          style={{
+                            position: 'absolute',
+                            top: 0,
+                            left: 0,
+                            width: '100%',
+                            transform: `translateY(${virtualRow.start}px)`,
+                            height: `${virtualRow.size}px`,
+                          }}
+                        >
                           <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">
                             <div className="flex items-center space-x-2">
                               {hasParticipants && (

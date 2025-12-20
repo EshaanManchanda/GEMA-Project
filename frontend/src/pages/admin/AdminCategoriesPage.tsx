@@ -22,11 +22,14 @@ const AdminCategoriesPage: React.FC = () => {
   const [editingCategory, setEditingCategory] = useState<Category | null>(null);
   const [isIconPickerOpen, setIsIconPickerOpen] = useState<boolean>(false);
   const [selectedIconAsset, setSelectedIconAsset] = useState<MediaAsset | null>(null);
+  const [isFeaturedImagePickerOpen, setIsFeaturedImagePickerOpen] = useState<boolean>(false);
+  const [selectedFeaturedImageAsset, setSelectedFeaturedImageAsset] = useState<MediaAsset | null>(null);
   const [formData, setFormData] = useState<{
     name: string;
     slug: string;
     description: string;
     iconAsset: string;
+    featuredImageAsset: string;
     color: string;
     parentId: string;
     isActive: boolean;
@@ -36,6 +39,7 @@ const AdminCategoriesPage: React.FC = () => {
     slug: '',
     description: '',
     iconAsset: '',
+    featuredImageAsset: '',
     color: '#4F46E5',
     parentId: '',
     isActive: true,
@@ -167,11 +171,13 @@ const AdminCategoriesPage: React.FC = () => {
   const handleAddCategory = () => {
     setEditingCategory(null);
     setSelectedIconAsset(null);
+    setSelectedFeaturedImageAsset(null);
     setFormData({
       name: '',
       slug: '',
       description: '',
       iconAsset: '',
+      featuredImageAsset: '',
       color: '#4F46E5',
       parentId: '',
       isActive: true,
@@ -195,11 +201,19 @@ const AdminCategoriesPage: React.FC = () => {
       setSelectedIconAsset(null);
     }
 
+    // Set featured image asset if it's populated
+    if (category.featuredImageAsset && typeof category.featuredImageAsset === 'object') {
+      setSelectedFeaturedImageAsset(category.featuredImageAsset as MediaAsset);
+    } else {
+      setSelectedFeaturedImageAsset(null);
+    }
+
     setFormData({
       name: category.name,
       slug: category.slug,
       description: category.description || '',
       iconAsset: typeof category.iconAsset === 'string' ? category.iconAsset : (category.iconAsset as MediaAsset)?._id || '',
+      featuredImageAsset: typeof category.featuredImageAsset === 'string' ? category.featuredImageAsset : (category.featuredImageAsset as MediaAsset)?._id || '',
       color: category.color || '#4F46E5',
       parentId: category.parentId?.toString() || '',
       isActive: category.isActive,
@@ -236,6 +250,7 @@ const AdminCategoriesPage: React.FC = () => {
         slug: formData.slug,
         description: formData.description,
         iconAsset: formData.iconAsset || undefined,
+        featuredImageAsset: formData.featuredImageAsset || undefined,
         color: formData.color,
         parentId: formData.parentId || undefined,
         isActive: formData.isActive,
@@ -265,6 +280,7 @@ const AdminCategoriesPage: React.FC = () => {
 
       setIsAddEditModalOpen(false);
       setSelectedIconAsset(null);
+      setSelectedFeaturedImageAsset(null);
     } catch (error: any) {
       console.error('Error saving category:', error);
       toast.error(error?.message || 'Failed to save category');
@@ -495,6 +511,17 @@ const AdminCategoriesPage: React.FC = () => {
                           ></div>
                         )}
 
+                        {/* Featured Image Asset */}
+                        {category.featuredImageAsset && typeof category.featuredImageAsset === 'object' && (
+                          <div className="flex-shrink-0 h-10 w-16 mr-3">
+                            <img
+                              src={(category.featuredImageAsset as MediaAsset).url}
+                              alt={`${category.name} featured`}
+                              className="h-full w-full object-cover rounded"
+                            />
+                          </div>
+                        )}
+
                         <div>
                           <div className="text-sm font-medium text-gray-900">{category.name}</div>
                         </div>
@@ -659,58 +686,99 @@ const AdminCategoriesPage: React.FC = () => {
                         onChange={handleFormChange}
                       />
                     </div>
-                    <div>
-                      <label htmlFor="iconAsset" className="block text-sm font-medium text-gray-700 mb-1">Category Icon</label>
-                      {selectedIconAsset ? (
-                        <div className="flex items-center gap-3 p-3 border border-gray-300 rounded-md">
-                          <img
-                            src={selectedIconAsset.url}
-                            alt="Category icon"
-                            className="h-16 w-16 object-cover rounded"
-                          />
-                          <div className="flex-1">
-                            <p className="text-sm text-gray-700 font-medium">Icon selected</p>
+                    <div className="md:col-span-2 grid grid-cols-1 md:grid-cols-3 gap-4">
+                      <div>
+                        <label htmlFor="iconAsset" className="block text-sm font-medium text-gray-700 mb-1">Category Icon</label>
+                        {selectedIconAsset ? (
+                          <div className="flex items-center gap-3 p-3 border border-gray-300 rounded-md">
+                            <img
+                              src={selectedIconAsset.url}
+                              alt="Category icon"
+                              className="h-16 w-16 object-cover rounded"
+                            />
+                            <div className="flex-1">
+                              <p className="text-sm text-gray-700 font-medium">Icon selected</p>
+                            </div>
+                            <div className="flex gap-2">
+                              <button
+                                type="button"
+                                onClick={() => setIsIconPickerOpen(true)}
+                                className="px-3 py-1.5 text-sm bg-gray-100 text-gray-700 rounded hover:bg-gray-200"
+                              >
+                                Change
+                              </button>
+                              <button
+                                type="button"
+                                onClick={() => {
+                                  setSelectedIconAsset(null);
+                                  setFormData({ ...formData, iconAsset: '' });
+                                }}
+                                className="px-3 py-1.5 text-sm bg-red-100 text-red-700 rounded hover:bg-red-200"
+                              >
+                                Remove
+                              </button>
+                            </div>
                           </div>
-                          <div className="flex gap-2">
-                            <button
-                              type="button"
-                              onClick={() => setIsIconPickerOpen(true)}
-                              className="px-3 py-1.5 text-sm bg-gray-100 text-gray-700 rounded hover:bg-gray-200"
-                            >
-                              Change
-                            </button>
-                            <button
-                              type="button"
-                              onClick={() => {
-                                setSelectedIconAsset(null);
-                                setFormData({ ...formData, iconAsset: '' });
-                              }}
-                              className="px-3 py-1.5 text-sm bg-red-100 text-red-700 rounded hover:bg-red-200"
-                            >
-                              Remove
-                            </button>
+                        ) : (
+                          <button
+                            type="button"
+                            onClick={() => setIsIconPickerOpen(true)}
+                            className="w-full px-4 py-2 border-2 border-dashed border-gray-300 rounded-md text-sm text-gray-600 hover:border-primary hover:text-primary focus:outline-none focus:ring-2 focus:ring-primary"
+                          >
+                            Select Icon Image
+                          </button>
+                        )}
+                      </div>
+                      <div>
+                        <label htmlFor="color" className="block text-sm font-medium text-gray-700 mb-1">Color</label>
+                        <input
+                          type="color"
+                          id="color"
+                          name="color"
+                          className="focus:ring-primary focus:border-primary block w-full h-10 sm:text-sm border-gray-300 rounded-md"
+                          value={formData.color}
+                          onChange={handleFormChange}
+                        />
+                      </div>
+                      <div>
+                        <label htmlFor="featuredImageAsset" className="block text-sm font-medium text-gray-700 mb-1">Featured Image</label>
+                        {selectedFeaturedImageAsset ? (
+                          <div className="flex flex-col gap-2 p-3 border border-gray-300 rounded-md">
+                            <img
+                              src={selectedFeaturedImageAsset.url}
+                              alt="Category featured"
+                              className="h-24 w-full object-cover rounded"
+                            />
+                            <div className="flex gap-2">
+                              <button
+                                type="button"
+                                onClick={() => setIsFeaturedImagePickerOpen(true)}
+                                className="flex-1 px-3 py-1.5 text-sm bg-gray-100 text-gray-700 rounded hover:bg-gray-200"
+                              >
+                                Change
+                              </button>
+                              <button
+                                type="button"
+                                onClick={() => {
+                                  setSelectedFeaturedImageAsset(null);
+                                  setFormData({ ...formData, featuredImageAsset: '' });
+                                }}
+                                className="flex-1 px-3 py-1.5 text-sm bg-red-100 text-red-700 rounded hover:bg-red-200"
+                              >
+                                Remove
+                              </button>
+                            </div>
                           </div>
-                        </div>
-                      ) : (
-                        <button
-                          type="button"
-                          onClick={() => setIsIconPickerOpen(true)}
-                          className="w-full px-4 py-2 border-2 border-dashed border-gray-300 rounded-md text-sm text-gray-600 hover:border-primary hover:text-primary focus:outline-none focus:ring-2 focus:ring-primary"
-                        >
-                          Select Icon Image
-                        </button>
-                      )}
-                    </div>
-                    <div>
-                      <label htmlFor="color" className="block text-sm font-medium text-gray-700 mb-1">Color</label>
-                      <input
-                        type="color"
-                        id="color"
-                        name="color"
-                        className="focus:ring-primary focus:border-primary block w-full h-10 sm:text-sm border-gray-300 rounded-md"
-                        value={formData.color}
-                        onChange={handleFormChange}
-                      />
+                        ) : (
+                          <button
+                            type="button"
+                            onClick={() => setIsFeaturedImagePickerOpen(true)}
+                            className="w-full px-4 py-2 border-2 border-dashed border-gray-300 rounded-md text-sm text-gray-600 hover:border-primary hover:text-primary focus:outline-none focus:ring-2 focus:ring-primary"
+                          >
+                            Select Featured Image
+                          </button>
+                        )}
+                      </div>
                     </div>
                     <div>
                       <label htmlFor="parentId" className="block text-sm font-medium text-gray-700 mb-1">Parent Category</label>
@@ -810,6 +878,23 @@ const AdminCategoriesPage: React.FC = () => {
         folder="category-icons"
         multiple={false}
         title="Select Category Icon"
+      />
+
+      {/* Media Picker Modal for Featured Image */}
+      <MediaPickerModal
+        isOpen={isFeaturedImagePickerOpen}
+        onClose={() => setIsFeaturedImagePickerOpen(false)}
+        onSelect={(assets) => {
+          if (assets.length > 0) {
+            setSelectedFeaturedImageAsset(assets[0]);
+            setFormData({ ...formData, featuredImageAsset: assets[0]._id });
+          }
+          setIsFeaturedImagePickerOpen(false);
+        }}
+        category="misc"
+        folder="category-featured"
+        multiple={false}
+        title="Select Category Featured Image"
       />
     </div>
   );

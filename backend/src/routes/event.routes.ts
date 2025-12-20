@@ -12,6 +12,7 @@ import {
   getAdminEvents,
   updateEventApproval,
   toggleEventFeatured,
+  getUniqueCities,
 } from '../controllers/event.controller';
 import { authenticate, authorize } from '../middleware/auth';
 import { validateEventSEO } from '../validators/event.validator';
@@ -21,6 +22,7 @@ const router = Router();
 // Public routes
 router.get('/', getEvents);
 router.get('/categories', getEventCategories);
+router.get('/cities', getUniqueCities); // Must be before /:id route
 router.get(
   '/:id',
   [

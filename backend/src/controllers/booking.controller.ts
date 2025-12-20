@@ -555,7 +555,9 @@ export const confirmBooking = async (req: Request, res: Response, next: NextFunc
             participants,
             customerName: `${customer.firstName} ${customer.lastName}`,
             customerEmail: customer.email,
-            customerPhone: customer.phone
+            customerPhone: customer.phone,
+            venueType: event.venueType,
+            meetingLink: event.meetingLink
           });
 
           // Log communication
@@ -620,7 +622,7 @@ export const getBookingById = async (req: Request, res: Response, next: NextFunc
     const order = await Order.findOne({
       $or: [{ _id: id }, { orderNumber: id }],
       userId,
-    }).populate('items.eventId', 'title images location dateSchedule');
+    }).populate('items.eventId', 'title images location dateSchedule venueType meetingLink');
 
     if (!order) {
       return next(new AppError('Booking not found', 404));
@@ -723,7 +725,7 @@ export const getUserBookings = async (req: Request, res: Response, next: NextFun
     sortOption[sortBy as string] = sortOrder === 'asc' ? 1 : -1;
 
     const bookings = await Order.find(filter)
-      .populate('items.eventId', 'title images location dateSchedule')
+      .populate('items.eventId', 'title images location dateSchedule venueType meetingLink')
       .sort(sortOption)
       .skip(skip)
       .limit(limitNum);

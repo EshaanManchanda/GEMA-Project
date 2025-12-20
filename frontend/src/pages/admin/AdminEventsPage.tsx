@@ -1,10 +1,22 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useMemo, useRef } from 'react';
 import { FaSearch, FaEdit, FaTrash, FaEye, FaCheck, FaTimes, FaStar, FaUndo, FaPlus, FaWpforms } from 'react-icons/fa';
 import { useNavigate } from 'react-router-dom';
 import DOMPurify from 'isomorphic-dompurify';
-import adminAPI from '../../services/api/adminAPI';
+import { useQueryClient } from '@tanstack/react-query';
+import { useVirtualizer } from '@tanstack/react-virtual';
 import EventEditModal from '../../components/admin/EventEditModal';
-import categoriesAPI, { Category } from '../../services/api/categoriesAPI';
+import { Category } from '../../services/api/categoriesAPI';
+import adminAPI from '../../services/api/adminAPI';
+import { useAdminEventsQuery } from '@/hooks/queries/useAdminQuery';
+import { useCategoriesQuery } from '@/hooks/queries/useCategoriesQuery';
+import {
+  useApproveEventMutation,
+  useRejectEventMutation,
+  useDeleteEventMutation,
+  useRestoreEventMutation,
+  useToggleFeaturedMutation,
+} from '@/hooks/mutations/useEventMutations';
+import { eventsKeys, adminKeys } from '@/hooks/queries/queryKeys';
 
 interface Event {
   id: string;
@@ -67,16 +79,50 @@ interface Event {
 
 const AdminEventsPage: React.FC = () => {
   const navigate = useNavigate();
-  const [events, setEvents] = useState<Event[]>([]);
-  const [filteredEvents, setFilteredEvents] = useState<Event[]>([]);
-  const [categories, setCategories] = useState<Category[]>([]);
-  const [isLoading, setIsLoading] = useState<boolean>(true);
-  const [error, setError] = useState<string | null>(null);
+  const queryClient = useQueryClient();
+
+  // Filter state (kept as local state for UI control)
   const [searchTerm, setSearchTerm] = useState<string>('');
   const [statusFilter, setStatusFilter] = useState<string>('all');
   const [categoryFilter, setCategoryFilter] = useState<string>('all');
   const [typeFilter, setTypeFilter] = useState<string>('all');
   const [featuredFilter, setFeaturedFilter] = useState<string>('all');
+
+  // Build filter params for API
+  const filterParams = useMemo(() => {
+    const params: any = {};
+    if (searchTerm) params.search = searchTerm;
+    if (statusFilter !== 'all') params.status = statusFilter;
+    if (categoryFilter !== 'all') params.category = categoryFilter;
+    if (typeFilter !== 'all') params.type = typeFilter;
+    if (featuredFilter !== 'all') params.isFeatured = featuredFilter === 'featured';
+    return params;
+  }, [searchTerm, statusFilter, categoryFilter, typeFilter, featuredFilter]);
+
+  // TanStack Query hooks replace manual fetch + state (50+ lines → 2 hooks!)
+  const { data: eventsResponse, isLoading, error } = useAdminEventsQuery(filterParams);
+  const { data: categoriesResponse } = useCategoriesQuery({ tree: false, includeInactive: false });
+
+  // Extract data with fallbacks
+  const events = eventsResponse?.data?.events || eventsResponse?.events || [];
+  const filteredEvents = events; // No client-side filtering needed - API handles it
+  const categories = categoriesResponse?.data || categoriesResponse || [];
+
+  // Mutation hooks with automatic cache invalidation
+  const approveEvent = useApproveEventMutation();
+  const rejectEvent = useRejectEventMutation();
+  const deleteEvent = useDeleteEventMutation();
+  const restoreEvent = useRestoreEventMutation();
+  const toggleFeatured = useToggleFeaturedMutation();
+
+  // Virtualization for large event lists (100+ rows)
+  const parentRef = useRef<HTMLDivElement>(null);
+  const rowVirtualizer = useVirtualizer({
+    count: filteredEvents.length,
+    getScrollElement: () => parentRef.current,
+    estimateSize: () => 80, // Row height in pixels
+    overscan: 5, // Render 5 extra rows above/below viewport
+  });
 
   // Bulk operations
   const [selectedEventIds, setSelectedEventIds] = useState<string[]>([]);
@@ -95,137 +141,48 @@ const AdminEventsPage: React.FC = () => {
   const [actionType, setActionType] = useState<'approve' | 'reject' | null>(null);
   const [rejectionReason, setRejectionReason] = useState<string>('');
 
-  useEffect(() => {
-    fetchEvents();
-    fetchCategories();
-  }, [searchTerm, statusFilter, categoryFilter, typeFilter, featuredFilter]);
-
-  const fetchEvents = async () => {
-    try {
-      setIsLoading(true);
-      setError(null);
-
-      // Build filter params for API
-      const params: any = {};
-
-      if (searchTerm) {
-        params.search = searchTerm;
+  const handleDeleteEvent = (eventId: string, permanent: boolean = false) => {
+    deleteEvent.mutate(
+      { eventId, permanent },
+      {
+        onSuccess: () => {
+          setEventToDelete(null);
+          setIsDeleteModalOpen(false);
+          setActionType(null);
+        },
       }
+    );
+  };
 
-      if (statusFilter !== 'all') {
-        params.status = statusFilter;
+  const handleRestoreEvent = (eventId: string) => {
+    restoreEvent.mutate(eventId);
+  };
+
+  const handleApproveEvent = (eventId: string) => {
+    approveEvent.mutate(eventId, {
+      onSuccess: () => {
+        setEventToApprove(null);
+        setIsApprovalModalOpen(false);
+        setActionType(null);
+      },
+    });
+  };
+
+  const handleRejectEvent = (eventId: string, reason: string) => {
+    rejectEvent.mutate(
+      { eventId, reason },
+      {
+        onSuccess: () => {
+          setIsApprovalModalOpen(false);
+          setActionType(null);
+          setRejectionReason('');
+        },
       }
-
-      if (categoryFilter !== 'all') {
-        params.category = categoryFilter;
-      }
-
-      if (typeFilter !== 'all') {
-        params.type = typeFilter;
-      }
-
-      if (featuredFilter !== 'all') {
-        params.isFeatured = featuredFilter === 'featured';
-      }
-
-      // Call the admin API
-      const response = await adminAPI.getAllEvents(params);
-
-      // Extract events from response
-      const eventsData = response.data?.events || response.events || [];
-
-      setEvents(eventsData);
-      setFilteredEvents(eventsData);
-    } catch (error: any) {
-      console.error('Error fetching events:', error);
-      setError(error.response?.data?.message || error.message || 'Failed to fetch events');
-      setEvents([]);
-      setFilteredEvents([]);
-    } finally {
-      setIsLoading(false);
-    }
+    );
   };
 
-  const fetchCategories = async () => {
-    try {
-      const response = await categoriesAPI.getAllCategories({ tree: false, includeInactive: false });
-      const categoriesList = response.data || [];
-      setCategories(categoriesList);
-    } catch (error: any) {
-      console.error('Error fetching categories:', error);
-    }
-  };
-
-  const handleDeleteEvent = async (eventId: string, permanent: boolean = false) => {
-    try {
-      await adminAPI.deleteEvent(eventId, permanent);
-
-      // Refresh events list
-      await fetchEvents();
-
-      setEventToDelete(null);
-      setIsDeleteModalOpen(false);
-      setActionType(null);
-    } catch (error: any) {
-      console.error('Error deleting event:', error);
-      setError(error.response?.data?.message || error.message || 'Failed to delete event');
-    }
-  };
-
-  const handleRestoreEvent = async (eventId: string) => {
-    try {
-      await adminAPI.restoreEvent(eventId);
-
-      // Refresh events list
-      await fetchEvents();
-    } catch (error: any) {
-      console.error('Error restoring event:', error);
-      setError(error.response?.data?.message || error.message || 'Failed to restore event');
-    }
-  };
-
-  const handleApproveEvent = async (eventId: string) => {
-    try {
-      await adminAPI.approveEvent(eventId);
-
-      // Refresh events list
-      await fetchEvents();
-
-      setEventToApprove(null);
-      setIsApprovalModalOpen(false);
-      setActionType(null);
-    } catch (error: any) {
-      console.error('Error approving event:', error);
-      setError(error.response?.data?.message || error.message || 'Failed to approve event');
-    }
-  };
-
-  const handleRejectEvent = async (eventId: string, reason: string) => {
-    try {
-      await adminAPI.rejectEvent(eventId, reason);
-
-      // Refresh events list
-      await fetchEvents();
-
-      setIsApprovalModalOpen(false);
-      setActionType(null);
-      setRejectionReason('');
-    } catch (error: any) {
-      console.error('Error rejecting event:', error);
-      setError(error.response?.data?.message || error.message || 'Failed to reject event');
-    }
-  };
-
-  const handleToggleFeatured = async (eventId: string) => {
-    try {
-      await adminAPI.toggleEventFeatured(eventId);
-
-      // Refresh events list
-      await fetchEvents();
-    } catch (error: any) {
-      console.error('Error toggling featured status:', error);
-      setError(error.response?.data?.message || error.message || 'Failed to toggle featured status');
-    }
+  const handleToggleFeatured = (eventId: string) => {
+    toggleFeatured.mutate(eventId);
   };
 
   // Bulk operations handlers
@@ -249,9 +206,6 @@ const AdminEventsPage: React.FC = () => {
     if (!bulkAction || selectedEventIds.length === 0) return;
 
     try {
-      setIsLoading(true);
-      setError(null);
-
       switch (bulkAction) {
         case 'approve':
           await adminAPI.bulkUpdateEvents(selectedEventIds, { isApproved: true });
@@ -274,16 +228,15 @@ const AdminEventsPage: React.FC = () => {
           break;
       }
 
-      // Refresh events list
-      await fetchEvents();
+      // Invalidate queries to trigger refetch
+      queryClient.invalidateQueries({ queryKey: eventsKeys.all });
+      queryClient.invalidateQueries({ queryKey: adminKeys.events.all() });
+
       setSelectedEventIds([]);
       setBulkAction('');
       setShowBulkConfirm(false);
     } catch (error: any) {
       console.error('Error performing bulk action:', error);
-      setError(error.response?.data?.message || error.message || 'Failed to perform bulk action');
-    } finally {
-      setIsLoading(false);
     }
   };
 
@@ -450,11 +403,15 @@ const AdminEventsPage: React.FC = () => {
             </div>
           )}
 
-          {/* Events Table */}
+          {/* Events Table with Virtualization */}
           <div className="bg-white rounded-lg shadow overflow-hidden">
-            <div className="overflow-x-auto">
+            <div
+              ref={parentRef}
+              className="overflow-auto"
+              style={{ maxHeight: '600px' }}
+            >
               <table className="min-w-full divide-y divide-gray-200">
-                <thead className="bg-gray-50">
+                <thead className="bg-gray-50 sticky top-0 z-10">
                   <tr>
                     <th className="px-4 py-3 text-left">
                       <input
@@ -484,7 +441,13 @@ const AdminEventsPage: React.FC = () => {
                     </th>
                   </tr>
                 </thead>
-                <tbody className="bg-white divide-y divide-gray-200">
+                <tbody
+                  className="bg-white"
+                  style={{
+                    height: `${rowVirtualizer.getTotalSize()}px`,
+                    position: 'relative',
+                  }}
+                >
                   {filteredEvents.length === 0 ? (
                     <tr>
                       <td colSpan={7} className="px-6 py-12 text-center text-gray-500">
@@ -492,8 +455,21 @@ const AdminEventsPage: React.FC = () => {
                       </td>
                     </tr>
                   ) : (
-                    filteredEvents.map((event) => (
-                    <tr key={event.id} className="hover:bg-gray-50">
+                    rowVirtualizer.getVirtualItems().map((virtualRow) => {
+                      const event = filteredEvents[virtualRow.index];
+                      return (
+                    <tr
+                      key={event.id}
+                      className="hover:bg-gray-50 border-b border-gray-200"
+                      style={{
+                        position: 'absolute',
+                        top: 0,
+                        left: 0,
+                        width: '100%',
+                        transform: `translateY(${virtualRow.start}px)`,
+                        height: `${virtualRow.size}px`,
+                      }}
+                    >
                       <td className="px-4 py-4">
                         <input
                           type="checkbox"
@@ -633,7 +609,9 @@ const AdminEventsPage: React.FC = () => {
                         </div>
                       </td>
                     </tr>
-                  )))}
+                      );
+                    })
+                  )}
                 </tbody>
               </table>
             </div>
@@ -974,7 +952,8 @@ const AdminEventsPage: React.FC = () => {
                 setEventToEdit(null);
               }}
               onSave={() => {
-                fetchEvents();
+                queryClient.invalidateQueries({ queryKey: eventsKeys.all });
+                queryClient.invalidateQueries({ queryKey: adminKeys.events.all() });
               }}
             />
           )}

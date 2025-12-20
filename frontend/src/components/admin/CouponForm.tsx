@@ -5,23 +5,18 @@ import * as yup from 'yup';
 import toast from 'react-hot-toast';
 import {
   Save,
-  X,
   Percent,
   DollarSign,
   Truck,
   Calendar,
   Users,
-  Tag,
-  Settings,
-  Plus,
-  Trash2
+  Tag
 } from 'lucide-react';
 import Button from '../ui/Button';
 import { Card, CardContent, CardHeader, CardTitle } from '../ui/Card';
 import Input from '../ui/Input';
 import Modal from '../ui/Modal';
 import Badge from '../ui/Badge';
-import couponAPI from '../../services/api/couponAPI';
 import categoriesAPI from '../../services/api/categoriesAPI';
 import adminAPI from '../../services/api/adminAPI';
 
@@ -230,7 +225,7 @@ const CouponForm: React.FC<CouponFormProps> = ({
       try {
         setCategoriesLoading(true);
         const categoriesResponse = await categoriesAPI.getAllCategories();
-        setCategories(categoriesResponse.categories || categoriesResponse || []);
+        setCategories(categoriesResponse || []);
       } catch (error) {
         console.error('Error fetching categories:', error);
         toast.error('Failed to load categories');

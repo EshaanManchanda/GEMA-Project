@@ -37,6 +37,8 @@ export interface OrderConfirmationEmailOptions {
     quantity: number;
     price: number;
     date: Date;
+    venueType?: string;
+    meetingLink?: string;
   }>;
 }
 
@@ -76,6 +78,8 @@ export interface VendorBookingNotificationOptions {
   customerName: string;
   customerEmail: string;
   customerPhone?: string;
+  venueType?: string;
+  meetingLink?: string;
 }
 
 export interface EmployeeWelcomeEmailOptions {
@@ -428,7 +432,32 @@ class EmailService {
                 Total: ${options.currency} ${options.orderTotal.toFixed(2)}
               </div>
             </div>
-            
+
+            ${options.items.some(item => item.venueType === 'Online') ? `
+              <div style="margin: 20px 0; padding: 20px; background-color: #e8f5e9; border-radius: 8px; border-left: 4px solid #4caf50;">
+                <h3 style="margin: 0 0 15px 0; color: #2e7d32; font-size: 18px;">
+                  🎥 Online Event - Join Meeting
+                </h3>
+                ${options.items.filter(item => item.venueType === 'Online' && item.meetingLink).map(item => `
+                  <div style="margin-bottom: 15px; padding: 12px; background-color: white; border-radius: 6px;">
+                    <strong style="color: #333;">${item.eventTitle}</strong>
+                    <div style="margin-top: 10px;">
+                      <a href="${item.meetingLink}"
+                         style="display: inline-block; padding: 12px 24px; background-color: #4caf50; color: white; text-decoration: none; border-radius: 6px; font-weight: bold;">
+                        Join Meeting
+                      </a>
+                    </div>
+                    <p style="margin: 10px 0 0 0; font-size: 12px; color: #666;">
+                      Meeting Link: <a href="${item.meetingLink}" style="color: #4caf50;">${item.meetingLink}</a>
+                    </p>
+                  </div>
+                `).join('')}
+                <p style="margin: 15px 0 0 0; font-size: 14px; color: #555;">
+                  💡 <strong>Tip:</strong> Join 5-10 minutes early to test your audio and video.
+                </p>
+              </div>
+            ` : ''}
+
             <p><strong>What's Next?</strong></p>
             <ul>
               <li>Your tickets will be sent to you in a separate email shortly</li>
@@ -656,6 +685,21 @@ class EmailService {
                 </tr>
               </table>
             </div>
+
+            ${options.venueType === 'Online' && options.meetingLink ? `
+              <div style="margin: 20px 0; padding: 15px; background-color: #e3f2fd; border-radius: 8px; border-left: 4px solid #2196f3;">
+                <h4 style="margin: 0 0 10px 0; color: #1976d2;">Online Event Meeting Link</h4>
+                <p style="margin: 0; font-size: 14px;">
+                  <strong>Meeting Link:</strong>
+                  <a href="${options.meetingLink}" style="color: #2196f3; word-break: break-all;">
+                    ${options.meetingLink}
+                  </a>
+                </p>
+                <p style="margin: 10px 0 0 0; font-size: 12px; color: #555;">
+                  This link has been sent to all participants in their booking confirmation emails.
+                </p>
+              </div>
+            ` : ''}
 
             <div class="customer-info">
               <h3 style="margin-top: 0; color: #4338ca; font-size: 16px;">Customer Information</h3>

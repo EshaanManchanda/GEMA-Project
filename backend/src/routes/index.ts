@@ -48,7 +48,11 @@ import cancellationRoutes from './event.cancellation.routes';
 import eventAffiliateRoutes from './event.affiliate.routes';
 import publicSettingsRoutes from './public.settings.routes';
 import mediaRoutes from './media.routes';
-import { Router } from 'express';
+import bannerRoutes from './banner.routes';
+import seoContentRoutes from './seoContent.routes';
+import announcementBarRoutes from './announcementBar.routes';
+import popupRoutes from './popup.routes';
+import { Router} from 'express';
 
 const router = Router();
 
@@ -89,6 +93,18 @@ router.use('/uploads', uploadRoutes);
 
 // Media Management routes (Admin-only)
 router.use('/media', mediaRoutes);
+
+// Banner Management routes (Public + Admin)
+router.use('/banners', bannerRoutes);
+
+// SEO Content Management routes (Public + Admin)
+router.use('/seo-content', seoContentRoutes);
+
+// Announcement Bar Management routes (Public + Admin)
+router.use('/announcements', announcementBarRoutes);
+
+// Popup Notification Management routes (Public + Admin)
+router.use('/popups', popupRoutes);
 
 // Analytics routes
 router.use('/analytics', analyticsRoutes);

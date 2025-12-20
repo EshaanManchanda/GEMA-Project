@@ -6,8 +6,10 @@ export interface IEvent extends Document {
   category: string;
   type: 'Olympiad' | 'Championship' | 'Competition' | 'Event' | 'Course' | 'Venue' | 'Workshop';
   venueType: 'Indoor' | 'Outdoor' | 'Online' | 'Offline';
+  meetingLink?: string; // Required when venueType='Online'
   ageRange: [number, number];
   location: {
+    country?: string;    // ISO 3166-1 alpha-2 code (e.g., 'AE', 'US')
     city: string;
     address: string;
     coordinates: {
@@ -40,6 +42,14 @@ export interface IEvent extends Document {
     specialDates?: Date[]; // Array of specific dates for special pricing
     priority?: number; // Higher priority overrides base schedules
     isOverride?: boolean; // When true, this schedule takes precedence over overlapping schedules
+    timeSlots?: Array<{
+      date: Date;           // Specific date for this slot
+      startTime: string;    // HH:mm format
+      endTime: string;      // HH:mm format
+      availableSeats: number;
+      soldSeats?: number;
+      price?: number;       // Optional override price per slot
+    }>;
     _id?: mongoose.Types.ObjectId;
   }>;
   seoMeta: {
@@ -166,6 +176,19 @@ const eventSchema = new Schema<IEvent>(
       enum: ['Indoor', 'Outdoor', 'Online', 'Offline'],
       required: [true, 'Venue type is required'],
     },
+    meetingLink: {
+      type: String,
+      trim: true,
+      validate: {
+        validator: function(this: any, v: string) {
+          // If venueType is Online, meetingLink should be a valid URL
+          // Validation will be enforced in validator layer
+          if (!v) return true; // Optional field in schema
+          return /^https?:\/\/.+/.test(v);
+        },
+        message: 'Meeting link must be a valid URL'
+      }
+    },
     ageRange: {
       type: [Number],
       validate: {
@@ -177,6 +200,13 @@ const eventSchema = new Schema<IEvent>(
       required: [true, 'Age range is required'],
     },
     location: {
+      country: {
+        type: String,
+        trim: true,
+        uppercase: true,
+        minlength: [2, 'Country code must be 2 characters'],
+        maxlength: [2, 'Country code must be 2 characters'],
+      },
       city: {
         type: String,
         required: [true, 'City is required'],
@@ -184,19 +214,19 @@ const eventSchema = new Schema<IEvent>(
       },
       address: {
         type: String,
-        required: [true, 'Address is required'],
+        // Optional - conditional validation in validators (required for non-Online events)
         trim: true,
       },
       coordinates: {
         lat: {
           type: Number,
-          required: [true, 'Latitude is required'],
+          // Optional - conditional validation in validators (required for non-Online events)
           min: [-90, 'Latitude must be between -90 and 90'],
           max: [90, 'Latitude must be between -90 and 90'],
         },
         lng: {
           type: Number,
-          required: [true, 'Longitude is required'],
+          // Optional - conditional validation in validators (required for non-Online events)
           min: [-180, 'Longitude must be between -180 and 180'],
           max: [180, 'Longitude must be between -180 and 180'],
         },
@@ -323,6 +353,36 @@ const eventSchema = new Schema<IEvent>(
           type: Boolean,
           default: false,
         },
+        // Multiple time slots per date
+        timeSlots: [
+          {
+            date: {
+              type: Date,
+              required: false,
+            },
+            startTime: {
+              type: String,
+              required: false,
+            },
+            endTime: {
+              type: String,
+              required: false,
+            },
+            availableSeats: {
+              type: Number,
+              min: [0, 'Available seats cannot be negative'],
+            },
+            soldSeats: {
+              type: Number,
+              default: 0,
+              min: [0, 'Sold seats cannot be negative'],
+            },
+            price: {
+              type: Number,
+              min: [0, 'Price cannot be negative'],
+            },
+          },
+        ],
       },
     ],
     seoMeta: {
@@ -604,6 +664,7 @@ eventSchema.index({ status: 1 });
 eventSchema.index({ category: 1 });
 eventSchema.index({ type: 1 });
 eventSchema.index({ 'location.city': 1 });
+eventSchema.index({ 'location.country': 1 }); // For filtering by country
 eventSchema.index({ price: 1 });
 eventSchema.index({ currency: 1 });
 eventSchema.index({ createdAt: -1 });
@@ -863,8 +924,25 @@ eventSchema.methods.hasAvailableSeats = function (date: Date, quantity: number =
 
   const schedule = findBestScheduleForDate(this.dateSchedule, targetDate);
 
+  if (!schedule) return false;
+
+  // Check timeSlots first (priority over base schedule)
+  if (schedule.timeSlots && schedule.timeSlots.length > 0) {
+    const matchingSlot = schedule.timeSlots.find((slot: any) => {
+      const slotDate = new Date(slot.date);
+      slotDate.setHours(0, 0, 0, 0);
+      return slotDate.getTime() === targetDate.getTime();
+    });
+
+    if (matchingSlot) {
+      return matchingSlot.availableSeats >= quantity;
+    }
+    return false; // Has slots but none match
+  }
+
+  // Fallback to base schedule logic
   // Unlimited seats always have availability
-  if (schedule && schedule.unlimitedSeats) {
+  if (schedule.unlimitedSeats) {
     console.log('✓ Unlimited seats - no capacity check needed', {
       eventId: this._id,
       eventTitle: this.title,
@@ -873,7 +951,7 @@ eventSchema.methods.hasAvailableSeats = function (date: Date, quantity: number =
     return true;
   }
 
-  return schedule ? schedule.availableSeats >= quantity : false;
+  return schedule.availableSeats >= quantity;
 };
 
 // Method to reduce available seats
@@ -907,8 +985,54 @@ eventSchema.methods.reduceSeats = function (date: Date, quantity: number): boole
   // Use helper to find best schedule (prefers override schedules)
   const schedule = findBestScheduleForDate(this.dateSchedule, targetDate);
 
+  if (!schedule) {
+    console.error('No schedule found for date:', {
+      eventId: this._id,
+      eventTitle: this.title,
+      targetDate: targetDate.toISOString()
+    });
+    return false;
+  }
+
+  // Check timeSlots first (priority over base schedule)
+  if (schedule.timeSlots && schedule.timeSlots.length > 0) {
+    const matchingSlot = schedule.timeSlots.find((slot: any) => {
+      const slotDate = new Date(slot.date);
+      slotDate.setHours(0, 0, 0, 0);
+      return slotDate.getTime() === targetDate.getTime();
+    });
+
+    if (matchingSlot) {
+      if (matchingSlot.availableSeats >= quantity) {
+        matchingSlot.availableSeats -= quantity;
+        // Track sold seats if field exists
+        if (typeof matchingSlot.soldSeats === 'number') {
+          matchingSlot.soldSeats += quantity;
+        }
+        return true;
+      } else {
+        console.error('Insufficient seats in time slot:', {
+          eventId: this._id,
+          targetDate: targetDate.toISOString(),
+          requested: quantity,
+          available: matchingSlot.availableSeats
+        });
+        return false;
+      }
+    }
+
+    // Has slots but none match
+    console.error('No matching time slot found:', {
+      eventId: this._id,
+      targetDate: targetDate.toISOString(),
+      slotsCount: schedule.timeSlots.length
+    });
+    return false;
+  }
+
+  // Fallback to base schedule logic
   // Unlimited seats - no need to reduce availability, just track sold count
-  if (schedule && schedule.unlimitedSeats) {
+  if (schedule.unlimitedSeats) {
     // Still track soldSeats for analytics
     if (typeof schedule.soldSeats === 'number') {
       schedule.soldSeats += quantity;
@@ -923,7 +1047,7 @@ eventSchema.methods.reduceSeats = function (date: Date, quantity: number): boole
     return true;
   }
 
-  if (schedule && schedule.availableSeats >= quantity) {
+  if (schedule.availableSeats >= quantity) {
     schedule.availableSeats -= quantity;
     // Also update soldSeats if it exists
     if (typeof schedule.soldSeats === 'number') {

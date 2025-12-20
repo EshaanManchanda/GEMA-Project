@@ -1,5 +1,4 @@
 import React, { useState } from 'react';
-import ImageUpload from '../common/ImageUpload';
 import TipTapEditor from '../common/TipTapEditor';
 import TagInput from '../common/TagInput';
 import DOMPurify from 'isomorphic-dompurify';
@@ -24,6 +23,7 @@ interface BasicInfoTabProps {
     category: string;
     type: 'Olympiad' | 'Championship' | 'Competition' | 'Event' | 'Course' | 'Venue';
     venueType: 'Indoor' | 'Outdoor' | 'Online' | 'Offline';
+    meetingLink?: string;  // For online events
     ageRangeMin: string;
     ageRangeMax: string;
     tags: string[];
@@ -52,7 +52,6 @@ interface BasicInfoTabProps {
   showMediaPicker: boolean;
   onOpenMediaPicker: () => void;
   onCloseMediaPicker: () => void;
-  selectedImageAssets: MediaAsset[];
 }
 
 const BasicInfoTab: React.FC<BasicInfoTabProps> = ({
@@ -68,7 +67,6 @@ const BasicInfoTab: React.FC<BasicInfoTabProps> = ({
   showMediaPicker,
   onOpenMediaPicker,
   onCloseMediaPicker,
-  selectedImageAssets,
 }) => {
   const [descriptionTab, setDescriptionTab] = useState<'edit' | 'preview'>('edit');
 
@@ -426,6 +424,28 @@ const BasicInfoTab: React.FC<BasicInfoTabProps> = ({
         </select>
         {errors.venueType && <p className="mt-1 text-sm text-red-500">{errors.venueType}</p>}
       </div>
+
+      {/* Meeting Link - Only for Online Events */}
+      {formData.venueType === 'Online' && (
+        <div className="col-span-2 bg-blue-50 border border-blue-200 rounded-lg p-4">
+          <label htmlFor="meetingLink" className="block text-sm font-medium text-gray-700 mb-1">
+            Meeting Link <span className="text-red-500">*</span>
+          </label>
+          <input
+            type="url"
+            id="meetingLink"
+            name="meetingLink"
+            value={formData.meetingLink || ''}
+            onChange={onInputChange}
+            className={`w-full px-3 py-2 border ${errors.meetingLink ? 'border-red-500' : 'border-gray-300'} rounded-md shadow-sm focus:outline-none focus:ring-primary focus:border-primary bg-white`}
+            placeholder="https://zoom.us/j/123456789 or https://meet.google.com/abc-defg-hij"
+          />
+          {errors.meetingLink && <p className="mt-1 text-sm text-red-500">{errors.meetingLink}</p>}
+          <p className="mt-1 text-xs text-gray-600">
+            Provide the online meeting link for participants (Zoom, Google Meet, Teams, etc.)
+          </p>
+        </div>
+      )}
 
       {/* Age Range */}
       <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">

@@ -377,7 +377,7 @@ export const generateAutoSEO = (content: {
     location || 'UAE',
     category,
     ...tags.slice(0, 3)
-  ].filter(Boolean);
+  ].filter((k): k is string => Boolean(k));
 
   const keywords = [...baseKeywords, ...contextKeywords].slice(0, SEO_LIMITS.KEYWORDS.MAX);
 

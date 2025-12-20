@@ -8,12 +8,9 @@ import {
   Edit,
   Trash2,
   Save,
-  X,
   Tag,
-  Palette,
   FileText,
-  Search,
-  Filter
+  Search
 } from 'lucide-react';
 import Button from '../ui/Button';
 import { Card, CardContent, CardHeader, CardTitle } from '../ui/Card';

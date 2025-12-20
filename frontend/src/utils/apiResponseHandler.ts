@@ -49,24 +49,50 @@ export const extractEventData = (response: any): any => {
  */
 export const extractEventsData = (response: any): any[] => {
   const data = extractApiData(response);
-  
+
   // If data has an 'events' property, return that
   if (data && Array.isArray(data.events)) {
     return data.events;
   }
-  
+
   // If data itself is an array, return it
   if (Array.isArray(data)) {
     return data;
   }
-  
+
   // Handle pagination wrapper { events: [], pagination: {} }
   if (data && data.events && Array.isArray(data.events)) {
     return data.events;
   }
-  
+
   // Fallback to empty array
   return [];
+};
+
+/**
+ * Extracts events with pagination data for list/search endpoints
+ * Returns full data object { events: [], pagination: {} }
+ */
+export const extractEventsWithPagination = (response: any): any => {
+  const data = extractApiData(response);
+
+  // If data has both events and pagination, return full data object
+  if (data && data.events && data.pagination) {
+    return data;
+  }
+
+  // If only events exist, return in expected format
+  if (data && Array.isArray(data.events)) {
+    return { events: data.events, pagination: null };
+  }
+
+  // If data is an array, wrap it
+  if (Array.isArray(data)) {
+    return { events: data, pagination: null };
+  }
+
+  // Fallback
+  return { events: [], pagination: null };
 };
 
 /**

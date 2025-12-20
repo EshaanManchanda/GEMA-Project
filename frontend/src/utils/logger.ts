@@ -10,27 +10,76 @@ interface LogEntry {
 }
 
 class Logger {
-  private isDevelopment = import.meta.env.VITE_MODE === 'development';
+  private isDebug: boolean;
   private logs: LogEntry[] = [];
   private maxLogs = 100;
 
+  constructor() {
+    // Check VITE_DEBUG_MODE env var or DEV mode
+    this.isDebug = import.meta.env.VITE_DEBUG_MODE === 'true' || import.meta.env.DEV;
+  }
+
+  /**
+   * General purpose log (alias for debug)
+   */
+  log(...args: any[]): void {
+    if (this.isDebug) {
+      console.log('[DEBUG]', ...args);
+    }
+    this.addToStore('debug', args[0], args.slice(1));
+  }
+
   debug(message: string, data?: any, context?: string): void {
-    this.log('debug', message, data, context);
+    this.logInternal('debug', message, data, context);
   }
 
   info(message: string, data?: any, context?: string): void {
-    this.log('info', message, data, context);
+    this.logInternal('info', message, data, context);
   }
 
   warn(message: string, data?: any, context?: string): void {
-    this.log('warn', message, data, context);
+    this.logInternal('warn', message, data, context);
   }
 
   error(message: string, data?: any, context?: string): void {
-    this.log('error', message, data, context);
+    this.logInternal('error', message, data, context);
   }
 
-  private log(level: LogLevel, message: string, data?: any, context?: string): void {
+  /**
+   * Log data in table format
+   */
+  table(data: any): void {
+    if (this.isDebug) {
+      console.table(data);
+    }
+  }
+
+  /**
+   * Start a console group
+   */
+  group(label: string): void {
+    if (this.isDebug) {
+      console.group(label);
+    }
+  }
+
+  /**
+   * End console group
+   */
+  groupEnd(): void {
+    if (this.isDebug) {
+      console.groupEnd();
+    }
+  }
+
+  /**
+   * Check if debug mode is enabled
+   */
+  isDebugEnabled(): boolean {
+    return this.isDebug;
+  }
+
+  private logInternal(level: LogLevel, message: string, data?: any, context?: string): void {
     const entry: LogEntry = {
       level,
       message,
@@ -39,16 +88,10 @@ class Logger {
       context
     };
 
-    // Add to internal log store
-    this.logs.push(entry);
-    
-    // Keep only recent logs
-    if (this.logs.length > this.maxLogs) {
-      this.logs.shift();
-    }
+    this.addToStore(level, message, data, context);
 
-    // Console output in development
-    if (this.isDevelopment) {
+    // Console output when debug mode enabled
+    if (this.isDebug) {
       const prefix = context ? `[${context}] ` : '';
       const logMessage = `${prefix}${message}`;
 
@@ -66,6 +109,24 @@ class Logger {
           console.error(logMessage, data);
           break;
       }
+    }
+  }
+
+  private addToStore(level: LogLevel, message: string, data?: any, context?: string): void {
+    const entry: LogEntry = {
+      level,
+      message,
+      timestamp: new Date().toISOString(),
+      data,
+      context
+    };
+
+    // Add to internal log store
+    this.logs.push(entry);
+
+    // Keep only recent logs
+    if (this.logs.length > this.maxLogs) {
+      this.logs.shift();
     }
   }
 
