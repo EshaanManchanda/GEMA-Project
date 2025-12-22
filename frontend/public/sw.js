@@ -1,9 +1,9 @@
 // Service Worker for Gema Event Management Platform
 // Provides offline functionality, caching, and background sync
 
-const CACHE_NAME = 'gema-v1.0.0';
-const API_CACHE_NAME = 'gema-api-v1.0.0';
-const IMAGE_CACHE_NAME = 'gema-images-v1.0.0';
+const CACHE_NAME = 'gema-v1.0.2';
+const API_CACHE_NAME = 'gema-api-v1.0.2';
+const IMAGE_CACHE_NAME = 'gema-images-v1.0.2';
 
 // Check if we're in development mode
 const isDevelopment = location.hostname === 'localhost' || location.hostname === '127.0.0.1';

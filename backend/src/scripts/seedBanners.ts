@@ -2,6 +2,7 @@ import mongoose from 'mongoose';
 import { Banner, User, MediaAsset } from '../models/index';
 import { config } from '../config/index';
 import { v4 as uuidv4 } from 'uuid';
+import cloudinary from '../config/cloudinary';
 
 const MONGODB_URI = config.mongodbUri;
 
@@ -56,33 +57,66 @@ async function seedBanners() {
     console.log('✅ Existing banners cleared');
 
     // Create MediaAsset entries for banner images
-    console.log(`📷 Creating ${bannerImages.length} media assets...`);
-    const mediaAssets = await MediaAsset.insertMany(
-      bannerImages.map((img, index) => ({
-        uuid: uuidv4(),
-        filename: `${img.title}.jpg`,
-        originalName: `${img.title}.jpg`,
-        mimeType: 'image/jpeg',
-        fileExtension: 'jpg',
-        provider: 'cloudinary',
-        url: img.url,
-        publicId: `banners/${img.title}`,
-        cloudinaryFolder: 'banners',
-        size: 500000, // 500KB estimate
-        width: 1920,
-        height: 600,
-        category: 'misc',
-        folder: 'banners.upload',
-        tags: ['banner', 'hero', 'promotional'],
-        usedBy: [],
-        usageCount: 0,
-        uploadedBy: adminUser._id,
-        isPublic: true,
-        createdAt: new Date(),
-        updatedAt: new Date()
-      }))
-    );
-    console.log(`✅ Created ${mediaAssets.length} media assets`);
+    // Upload each image to Cloudinary and create MediaAsset documents
+    console.log(`📷 Uploading ${bannerImages.length} images to Cloudinary...`);
+    const mediaAssets: any[] = [];
+
+    for (const img of bannerImages) {
+      try {
+        console.log(`  ⬆️  Uploading: ${img.title} from ${img.url.substring(0, 50)}...`);
+
+        // Upload image URL directly to Cloudinary
+        const uploadResult = await cloudinary.uploader.upload(img.url, {
+          folder: 'gema/banners',
+          resource_type: 'image',
+          use_filename: false,
+          unique_filename: true,
+          overwrite: false,
+          public_id: `banner-${img.title}`,
+          tags: ['banner', 'hero', 'promotional', 'seeded']
+        });
+
+        console.log(`  ✅ Uploaded to Cloudinary: ${uploadResult.public_id}`);
+
+        // Generate UUID for secure access
+        const uuid = uuidv4();
+        const baseUrl = config.upload.baseUrl || process.env.BASE_URL || 'http://localhost:5001';
+
+        // Create MediaAsset document with real Cloudinary data
+        const asset = await MediaAsset.create({
+          uuid,
+          filename: `${img.title}.jpg`,
+          originalName: `${img.title}.jpg`,
+          mimeType: uploadResult.format === 'jpg' ? 'image/jpeg' : `image/${uploadResult.format}`,
+          fileExtension: `.${uploadResult.format}`,
+          provider: 'cloudinary',
+          url: `${baseUrl}/api/media/file/${uuid}`, // UUID proxy URL
+          publicId: uploadResult.public_id, // Real Cloudinary publicId
+          cloudinaryFolder: 'gema/banners',
+          size: uploadResult.bytes,
+          width: uploadResult.width,
+          height: uploadResult.height,
+          category: 'misc',
+          folder: 'banners.upload',
+          tags: ['banner', 'hero', 'promotional'],
+          usedBy: [],
+          usageCount: 0,
+          uploadedBy: adminUser._id,
+          isPublic: true,
+          createdAt: new Date(),
+          updatedAt: new Date()
+        });
+
+        mediaAssets.push(asset);
+        console.log(`  ✅ Created MediaAsset: ${asset.filename} (UUID: ${uuid})`);
+
+      } catch (error: any) {
+        console.error(`  ❌ Failed to upload ${img.title}:`, error.message);
+        // Continue with next image even if one fails
+      }
+    }
+
+    console.log(`✅ Successfully uploaded and created ${mediaAssets.length}/${bannerImages.length} media assets`);
 
     // Create banners
     const banners = [

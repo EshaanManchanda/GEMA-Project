@@ -61,16 +61,35 @@ router.get('/file/:uuid', async (req: Request, res: Response, next: NextFunction
 
     // For Cloudinary, redirect to reconstructed URL from publicId
     if (asset.provider === 'cloudinary' && asset.publicId) {
-      // Instantiate Cloudinary provider directly for this asset
-      // (not using StorageFactory which uses env config)
-      const cloudinaryProvider = new CloudinaryProvider();
-      const cloudinaryUrl = cloudinaryProvider.getUrl(asset.publicId);
+      try {
+        // Instantiate Cloudinary provider directly for this asset
+        // (not using StorageFactory which uses env config)
+        const cloudinaryProvider = new CloudinaryProvider();
+        const cloudinaryUrl = cloudinaryProvider.getUrl(asset.publicId);
 
-      // Add CORS headers to redirect response
-      res.setHeader('Access-Control-Allow-Origin', '*');
-      res.setHeader('Cross-Origin-Resource-Policy', 'cross-origin');
+        // Validate URL was generated successfully
+        if (!cloudinaryUrl || cloudinaryUrl.trim() === '') {
+          console.warn(`[Media Route] Failed to generate Cloudinary URL for publicId: ${asset.publicId}`);
+          throw new Error('Invalid Cloudinary URL');
+        }
 
-      return res.redirect(cloudinaryUrl);
+        // Add CORS headers to redirect response
+        res.setHeader('Access-Control-Allow-Origin', '*');
+        res.setHeader('Cross-Origin-Resource-Policy', 'cross-origin');
+        res.setHeader('Cache-Control', 'public, max-age=31536000'); // 1 year cache
+
+        return res.redirect(cloudinaryUrl);
+      } catch (error: any) {
+        // Log error and fall through to placeholder
+        console.error(`[Media Route] Cloudinary redirect error for ${asset.uuid}:`, error.message);
+        // Return placeholder SVG if Cloudinary redirect fails
+        const placeholder = generatePlaceholder('Media Error', asset.width || 400, asset.height || 300);
+        res.setHeader('Content-Type', 'image/svg+xml');
+        res.setHeader('Cache-Control', 'public, max-age=300'); // 5 min cache for errors
+        res.setHeader('Access-Control-Allow-Origin', '*');
+        res.setHeader('Cross-Origin-Resource-Policy', 'cross-origin');
+        return res.send(placeholder);
+      }
     }
 
     // For local storage, serve file
