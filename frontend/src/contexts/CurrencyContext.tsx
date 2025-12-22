@@ -1,6 +1,5 @@
 import React, { createContext, useContext, useState, useEffect } from 'react';
-
-const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:5001';
+import { API_BASE_URL } from '../config/api';
 
 type Currency = 'AED' | 'INR' | 'USD' | 'EUR' | 'GBP';
 

@@ -124,13 +124,22 @@ function CategoryCarousel({ categories = [] }: CategoryCarouselProps) {
 
   // Transform API categories - show all categories regardless of event count
   const transformedApiCategories = categories.map(transformCategory);
-  console.log('transformedApiCategories', transformedApiCategories);
   const displayCategories = transformedApiCategories.length > 0 ? transformedApiCategories : defaultCategories;
 
-  // Debug logging in development
-  if (import.meta.env.VITE_DEV && import.meta.env.VITE_DEBUG_API === 'true') {
-    console.log('CategoryCarousel - Original categories:', categories);
-    console.log('CategoryCarousel - Transformed categories:', transformedApiCategories);
+  // Debug logging (gated)
+  if (import.meta.env.VITE_DEBUG === 'true') {
+    console.log('🏷️ [CATEGORY CAROUSEL] Rendering:');
+    console.log('   - Categories received:', categories.length);
+    console.log('   - Using:', transformedApiCategories.length > 0 ? 'API data' : 'Default fallback');
+    console.log('   - Total to display:', displayCategories.length);
+    if (displayCategories.length > 0) {
+      console.log('   - First category:', {
+        name: displayCategories[0].name,
+        icon: displayCategories[0].icon,
+        hasIconAsset: !!(displayCategories[0] as any).iconAsset,
+        eventCount: displayCategories[0].eventCount
+      });
+    }
   }
 
   const handleCategoryClick = (category: Category) => {
@@ -202,26 +211,15 @@ function CategoryCarousel({ categories = [] }: CategoryCarouselProps) {
                   <div className="p-6 flex flex-col items-center justify-center text-center h-full">
                     <div className="mb-4 p-3 rounded-full transition-all duration-300 group-hover:scale-110"
                       style={{ backgroundColor: 'var(--secondary-color)'}}>
-                      {cat.icon? (
-                        <img 
-                          src={cat.icon} 
-                          alt={cat.name} 
-                          className="w-16 h-16 object-cover rounded-full" 
-                          onError={(e) => {
-                            // Fallback to icon if image fails to load
-                            e.currentTarget.style.display = 'none';
-                            if (e.currentTarget.nextElementSibling) {
-                              (e.currentTarget.nextElementSibling as HTMLElement).style.display = 'block';
-                            }
-                          }}
+                      {cat.iconAsset?.url ? (
+                        <img
+                          src={cat.iconAsset.url}
+                          alt={cat.name}
+                          className="w-16 h-16 object-cover"
                         />
-                      ) : null}
-                      <span 
-                        className="text-3xl"
-                        style={{ display: cat.image ? 'none' : 'block' }}
-                      >
-                        {cat.icon}
-                      </span>
+                      ) : (
+                        <span className="text-3xl">{cat.icon}</span>
+                      )}
                     </div>
                     <p className="text-base font-semibold mb-1" style={{ color: 'var(--primary-color)' }}>{cat.name}</p>
                     <p className="text-xs text-gray-700">{cat.count}</p>

@@ -1,17 +1,16 @@
 import axios, { AxiosInstance, AxiosRequestConfig, AxiosResponse } from 'axios';
 import { store } from '../store';
 import { logoutUser, refreshToken, clearAuthOnFailure } from '../store/slices/authSlice';
+import { API_BASE_URL } from '../config/api';
 
-// API Configuration - using main backend server
-const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || import.meta.env.VITE_API_URL || 'https://gema-project.onrender.com/api';
+// API Configuration - using runtime-detected multi-region API endpoint
 const API_TIMEOUT = Number(import.meta.env.VITE_API_TIMEOUT) || 60000; // 60 seconds - increased to handle Render.com cold starts
 
 // Debug logging (development only)
 if (import.meta.env.VITE_MODE === 'development' && typeof window !== 'undefined') {
   console.log('🔧 API Configuration Debug:');
-  console.log('- VITE_API_BASE_URL:', import.meta.env.VITE_API_BASE_URL);
-  console.log('- VITE_API_URL:', import.meta.env.VITE_API_URL);
-  console.log('- Final API_BASE_URL:', API_BASE_URL);
+  console.log('- Runtime API_BASE_URL:', API_BASE_URL);
+  console.log('- Current Domain:', window.location.hostname);
   console.log('- Environment Mode:', import.meta.env.VITE_MODE);
   console.log('- Is Dev:', import.meta.env.VITE_DEV);
   console.log('- Build Time:', __BUILD_TIME__);

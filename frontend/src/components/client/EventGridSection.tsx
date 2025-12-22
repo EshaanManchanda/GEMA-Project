@@ -60,14 +60,21 @@ const EventGridSection: React.FC<EventGridSectionProps> = ({ events = [] }) => {
     return (b.viewsCount || 0) - (a.viewsCount || 0);
   });
 
-  // Debug logging (only in development with debug flag)
-  if (import.meta.env.VITE_DEV && import.meta.env.VITE_DEBUG_COMPONENTS === 'true') {
-    console.log('EventGridSection:', {
-      receivedEvents: events?.length || 0,
-      safeEvents: safeEvents.length,
-      transformedEvents: transformedEvents.length,
-      sortedEvents: sortedEvents.length
-    });
+  // Debug logging (gated)
+  if (import.meta.env.VITE_DEBUG === 'true') {
+    console.log('📅 [EVENT GRID SECTION] Rendering:');
+    console.log('   - Events received:', events?.length || 0);
+    console.log('   - Safe events:', safeEvents.length);
+    console.log('   - Transformed events:', transformedEvents.length);
+    console.log('   - Sorted events:', sortedEvents.length);
+    if (sortedEvents.length > 0) {
+      console.log('   - First event:', {
+        title: sortedEvents[0].title,
+        viewsCount: sortedEvents[0].viewsCount,
+        rating: sortedEvents[0].rating,
+        hasImage: !!sortedEvents[0].image
+      });
+    }
   }
 
   // Apply display limit

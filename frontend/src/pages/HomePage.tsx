@@ -16,8 +16,7 @@ import BannerCarousel from '@/components/client/BannerCarousel';
 import NewsletterSubscribe from '@/components/client/NewsletterSubscribe';
 import bannerAPI from '@/services/api/bannerAPI';
 import { useQuery } from '@tanstack/react-query';
-import { useEventsQuery, useFeaturedEventsQuery } from '@/hooks/queries/useEventsQuery';
-import { useCategoriesQuery, usePublicStatsQuery } from '@/hooks/queries/useCategoriesQuery';
+import { useHomepageQuery } from '@/hooks/queries/useHomepageQuery';
 import { usePublicSEOContentQuery } from '@/hooks/queries/useSEOContentQuery';
 import ReviewCarouselSwiper from '@/components/client/ReviewCarouselKeen';
 import FeaturedBlogsSection from '@/components/sections/FeaturedBlogsSection';
@@ -505,31 +504,45 @@ const HomePage: React.FC = () => {
     });
   }, []);
 
-  // TanStack Query hooks replace Promise.all fetch + manual state (100+ lines → 4 hooks!)
-  const { data: eventsData, isLoading: eventsLoading, error: eventsError, refetch: refetchEvents } = useEventsQuery({ limit: 12 });
-  const { data: featuredEventsData, isLoading: featuredLoading, refetch: refetchFeatured } = useFeaturedEventsQuery();
-  const { data: categoriesData, isLoading: categoriesLoading, error: categoriesError, refetch: refetchCategories } = useCategoriesQuery({ tree: false });
-  const { data: statsData, isLoading: statsLoading, refetch: refetchStats } = usePublicStatsQuery();
-  const { data: bannersData, isLoading: bannersLoading } = useQuery({
-    queryKey: ['activeBanners'],
-    queryFn: () => bannerAPI.getActiveBanners(),
-    staleTime: 5 * 60 * 1000 // 5 minutes
-  });
+  // Single homepage query replaces 6 separate queries (400-600ms savings!)
+  const { data: homepageData, isLoading: homepageLoading, error: homepageError, refetch: refetchHomepage } = useHomepageQuery();
   const { data: seoContentData } = usePublicSEOContentQuery('homepage');
 
-  // Combined loading state
-  const isLoading = eventsLoading || featuredLoading || categoriesLoading || statsLoading || bannersLoading;
+  // Only block on homepage query (critical data)
+  const isLoading = homepageLoading;
 
-  // Transform query data with mock fallback
-  const rawEvents = eventsData?.events || (eventsError ? mockEvents : []);
-  const events = Array.isArray(rawEvents) ? rawEvents : mockEvents;
+  // Extract data from combined response with fallbacks
+  const events = homepageData?.events || (homepageError ? mockEvents : []);
+  const featuredEventsRaw = homepageData?.featuredEvents || [];
+  const categories = homepageData?.categories || (homepageError ? mockCategories : []);
+  const featuredBlogs = homepageData?.featuredBlogs || [];
+  const bannersData = { banners: homepageData?.banners || [] };
+  const statsData = homepageData?.stats;
 
-  const featuredEventsRaw = featuredEventsData?.events || [];
-  const filteredFeaturedEvents = featuredEventsRaw.length > 0
-    ? featuredEventsRaw.filter((event: any) => event.isFeatured === true)
-    : events.filter((event: any) => event.isFeatured === true);
+  // TEMPORARY DEBUG - Unconditional (remove after fixing)
+  console.log('🎨 [HOMEPAGE DEBUG] Raw homepageData:', homepageData);
+  console.log('🎨 [HOMEPAGE DEBUG] isLoading:', isLoading);
+  console.log('🎨 [HOMEPAGE DEBUG] error:', homepageError);
+  console.log('🎨 [HOMEPAGE DEBUG] Extracted events:', events, 'length:', events.length);
+  console.log('🎨 [HOMEPAGE DEBUG] Extracted featuredEvents:', featuredEventsRaw, 'length:', featuredEventsRaw.length);
+  console.log('🎨 [HOMEPAGE DEBUG] Extracted categories:', categories, 'length:', categories.length);
+  console.log('🎨 [HOMEPAGE DEBUG] Extracted banners:', bannersData.banners, 'length:', bannersData.banners.length);
+  console.log('🎨 [HOMEPAGE DEBUG] Extracted blogs:', featuredBlogs, 'length:', featuredBlogs.length);
 
-  const featuredEvents: FeaturedEvent[] = filteredFeaturedEvents.slice(0, 6).map((event: any) => ({
+  // Debug logs for HomePage component (gated)
+  if (import.meta.env.VITE_DEBUG === 'true') {
+    console.log('🎨 [HOMEPAGE COMPONENT] Rendering with data:');
+    console.log('   - Loading:', isLoading);
+    console.log('   - Error:', homepageError ? homepageError.message : 'none');
+    console.log('   - Events:', events.length, events.length === mockEvents.length ? '(MOCK DATA)' : '(API DATA)');
+    console.log('   - Featured Events:', featuredEventsRaw.length);
+    console.log('   - Categories:', categories.length, categories.length === mockCategories.length ? '(MOCK DATA)' : '(API DATA)');
+    console.log('   - Featured Blogs:', featuredBlogs.length);
+    console.log('   - Banners:', bannersData.banners.length);
+    console.log('   - Stats:', statsData ? 'available' : 'using fallback');
+  }
+
+  const featuredEvents: FeaturedEvent[] = featuredEventsRaw.slice(0, 6).map((event: any) => ({
     ...event,
     id: event._id,
     buttonLabel: 'View Details',
@@ -539,8 +552,19 @@ const HomePage: React.FC = () => {
     reviewsCount: event.reviewCount || 0
   }));
 
-  const categories = Array.isArray(categoriesData) ? categoriesData : (categoriesError ? mockCategories : []);
-  const stats = {
+  // Debug featured events transformation (gated)
+  if (import.meta.env.VITE_DEBUG === 'true' && featuredEvents.length > 0) {
+    console.log('🎯 [FEATURED EVENTS] Transformed data:');
+    console.log('   - First event:', {
+      title: featuredEvents[0].title,
+      hasImage: !!featuredEvents[0].image,
+      rating: featuredEvents[0].rating,
+      reviewsCount: featuredEvents[0].reviewsCount,
+      location: featuredEvents[0].location
+    });
+  }
+
+  const stats = statsData || {
     totalEvents: Number(import.meta.env.VITE_STATS_TOTAL_EVENTS) || 2500,
     totalVendors: Number(import.meta.env.VITE_STATS_TOTAL_VENDORS) || 750,
     totalVenues: Number(import.meta.env.VITE_STATS_TOTAL_VENUES) || 500,
@@ -560,20 +584,25 @@ const HomePage: React.FC = () => {
   }).slice(0, 8);
   const quickPicksEvents = events.slice(0, 5);
 
-  const usingMockData = !!eventsError || !!categoriesError;
-  const error = eventsError
+  // Debug event collections (gated)
+  if (import.meta.env.VITE_DEBUG === 'true') {
+    console.log('📊 [EVENT COLLECTIONS] Prepared data:');
+    console.log('   - Handpicked:', handpickedEvents.length);
+    console.log('   - Best Price:', bestPriceEvents.length);
+    console.log('   - Trending:', trendingEvents.length);
+    console.log('   - New Events:', newEvents.length);
+    console.log('   - Quick Picks:', quickPicksEvents.length);
+  }
+
+  const usingMockData = !!homepageError;
+  const error = homepageError
     ? 'Unable to connect to the server. Showing default data.'
-    : categoriesError
-    ? 'Some data unavailable. Using defaults.'
     : null;
 
   // Retry handler using TanStack Query refetch
   const handleRetry = useCallback(() => {
-    refetchEvents();
-    refetchFeatured();
-    refetchCategories();
-    refetchStats();
-  }, [refetchEvents, refetchFeatured, refetchCategories, refetchStats]);
+    refetchHomepage();
+  }, [refetchHomepage]);
   
   // Enhanced skeleton loader component
   const SkeletonLoader = () => (
@@ -702,6 +731,11 @@ const HomePage: React.FC = () => {
           />
         </ScrollReveal>
 
+        {/* Featured Blogs Section - Moved above fold for better visibility */}
+        <ScrollReveal>
+          <FeaturedBlogsSection blogs={featuredBlogs} loading={isLoading} />
+        </ScrollReveal>
+
         {/* Grid Layout - Handpicked Experiences */}
         <ScrollReveal>
           <CollectionSection
@@ -724,57 +758,47 @@ const HomePage: React.FC = () => {
         </ScrollReveal>
 
         {/* Carousel Layout - Best Price Tickets */}
-        <ScrollReveal>
-          <CollectionSection
-            badge="Best Price"
-            badgeColor="rgba(255, 107, 0, 0.1)"
-            title="☀️ Best-Price Tickets to Make the Most of the Sunshine!"
-            subtitle="Sunshine's out, fun's in! Grab best-price e-tickets now and make the most of this glorious weather."
-            events={bestPriceEvents}
-            layout="carousel"
-            eventCardVariant="overlay"
-            autoplay={true}
-            autoplayInterval={5000}
-            showNavigation={true}
-            showDots={true}
-            viewAllLink="/search?sort=price"
-            showPrice={true}
-            showLocation={true}
-            showWishlist={false}
-            showAgeGroup={true}
-          />
-        </ScrollReveal>
+        <CollectionSection
+          badge="Best Price"
+          badgeColor="rgba(255, 107, 0, 0.1)"
+          title="☀️ Best-Price Tickets to Make the Most of the Sunshine!"
+          subtitle="Sunshine's out, fun's in! Grab best-price e-tickets now and make the most of this glorious weather."
+          events={bestPriceEvents}
+          layout="carousel"
+          eventCardVariant="overlay"
+          autoplay={true}
+          autoplayInterval={5000}
+          showNavigation={true}
+          showDots={true}
+          viewAllLink="/search?sort=price"
+          showPrice={true}
+          showLocation={true}
+          showWishlist={false}
+          showAgeGroup={true}
+        />
 
         {/* Horizontal Scroll Layout - Trending Now */}
-        <ScrollReveal>
-          <CollectionSection
-            badge="Trending"
-            title="🔥 Trending Now"
-            subtitle="What's popular right now in Dubai and UAE"
-            events={trendingEvents}
-            layout="horizontal-scroll"
-            eventCardVariant="compact"
-            maxItems={12}
-            viewAllLink="/search?sort=trending"
-            showPrice={true}
-            showLocation={true}
-            showStats={true}
-            showWishlist={false}
-            showAgeGroup={true}
-          />
-        </ScrollReveal>
+        <CollectionSection
+          badge="Trending"
+          title="🔥 Trending Now"
+          subtitle="What's popular right now in Dubai and UAE"
+          events={trendingEvents}
+          layout="horizontal-scroll"
+          eventCardVariant="compact"
+          maxItems={12}
+          viewAllLink="/search?sort=trending"
+          showPrice={true}
+          showLocation={true}
+          showStats={true}
+          showWishlist={false}
+          showAgeGroup={true}
+        />
 
-        <ScrollReveal>
-          <EventGridSection events={events}/>
-        </ScrollReveal>
-        <ScrollReveal>
-          <CategoryCarousel categories={categories}/>
-        </ScrollReveal>
+        <EventGridSection events={events}/>
+        <CategoryCarousel categories={categories}/>
 
         {/* UAE Cities Section */}
-        <ScrollReveal>
-          <CitiesSection />
-        </ScrollReveal>
+        <CitiesSection />
 
         {/* Trust Signals Section */}
         {/* <TrustSignals
@@ -789,64 +813,49 @@ const HomePage: React.FC = () => {
         {/* <HowItWorks /> */}
 
         {/* Masonry Layout - New This Week */}
-        <ScrollReveal>
-          <CollectionSection
-            badge="New"
-            title="✨ New This Week"
-            subtitle="Fresh activities just added to our platform"
-            events={newEvents}
-            layout="masonry"
-            eventCardVariant="vertical-tall"
-            showDescription={true}
-            viewAllLink="/search?sort=newest"
-            showPrice={true}
-            showLocation={true}
-            showWishlist={true}
-            wishlistIds={wishlistIds}
-            onWishlistToggle={handleWishlistToggle}
-            showAgeGroup={true}
-          />
-        </ScrollReveal>
+        <CollectionSection
+          badge="New"
+          title="✨ New This Week"
+          subtitle="Fresh activities just added to our platform"
+          events={newEvents}
+          layout="masonry"
+          eventCardVariant="vertical-tall"
+          showDescription={true}
+          viewAllLink="/search?sort=newest"
+          showPrice={true}
+          showLocation={true}
+          showWishlist={true}
+          wishlistIds={wishlistIds}
+          onWishlistToggle={handleWishlistToggle}
+          showAgeGroup={true}
+        />
 
         {/* Why Choose Us Section */}
         <WhyChooseUs features={seoContentData?.seoContent?.features} />
 
         {/* Gift Card Promo Section */}
-        <ScrollReveal>
-          <GiftCardPromo activityCount={stats?.totalEvents || 100} />
-        </ScrollReveal>
+        <GiftCardPromo activityCount={stats?.totalEvents || 100} />
 
         {/* Homepage FAQs Section */}
         <HomepageFAQs faqItems={seoContentData?.seoContent?.faqItems} />
 
-        <ScrollReveal>
-          <NewsletterSubscribe/>
-        </ScrollReveal>
+        <NewsletterSubscribe/>
 
         {/* Stacked Layout - Quick Picks */}
-        <ScrollReveal>
-          <CollectionSection
-            title="Quick Picks for You"
-            subtitle="Fast access to today's top activities"
-            events={quickPicksEvents}
-            layout="stacked"
-            eventCardVariant="list-item"
-            maxItems={5}
-            showPrice={true}
-            showDate={true}
-            viewAllLink="/search"
-            showWishlist={false}
-          />
-        </ScrollReveal>
-        <ScrollReveal>
-          <ReviewCarouselSwiper/>
-        </ScrollReveal>
-        <ScrollReveal>
-          <FeaturedBlogsSection/>
-        </ScrollReveal>
-        <ScrollReveal>
-          <StatsSection stats={stats}/>
-        </ScrollReveal>
+        <CollectionSection
+          title="Quick Picks for You"
+          subtitle="Fast access to today's top activities"
+          events={quickPicksEvents}
+          layout="stacked"
+          eventCardVariant="list-item"
+          maxItems={5}
+          showPrice={true}
+          showDate={true}
+          viewAllLink="/search"
+          showWishlist={false}
+        />
+        <ReviewCarouselSwiper/>
+        <StatsSection stats={stats}/>
       </div>
     </PageTransition>
   );

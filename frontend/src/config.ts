@@ -5,6 +5,8 @@
  * All environment variables should be defined here.
  */
 
+import { API_BASE_URL } from './config/api';
+
 export const config = {
   /**
    * Application base URL
@@ -13,11 +15,11 @@ export const config = {
   appUrl: import.meta.env.VITE_APP_URL || '',
 
   /**
-   * API base URL
-   * Used for making API requests to the backend
-   * Supports both VITE_API_URL and VITE_API_BASE_URL for backwards compatibility
+   * API base URL - Runtime-detected for multi-region support
+   * Automatically uses api subdomain matching current domain
+   * (api.kidrove.com, api.kidrove.in, api.kidrove.ae)
    */
-  apiUrl: import.meta.env.VITE_API_URL || import.meta.env.VITE_API_BASE_URL || '',
+  apiUrl: API_BASE_URL,
 
   /**
    * Default author information (for blogs, etc.)

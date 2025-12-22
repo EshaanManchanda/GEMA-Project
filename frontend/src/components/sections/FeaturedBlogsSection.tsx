@@ -1,13 +1,17 @@
-import React, { useState, useEffect } from 'react';
+import React from 'react';
 import { Link } from 'react-router-dom';
 import { FaClock, FaUser, FaArrowRight } from 'react-icons/fa';
-import blogAPI from '../../services/api/blogAPI';
 import { Blog } from '../../types/blog';
 
-const FeaturedBlogsSection: React.FC = () => {
-  const [blogs, setBlogs] = useState<Blog[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
+interface FeaturedBlogsSectionProps {
+  blogs?: Blog[];
+  loading?: boolean;
+}
+
+const FeaturedBlogsSection: React.FC<FeaturedBlogsSectionProps> = ({
+  blogs: propBlogs,
+  loading = false
+}) => {
 
   const getFallbackBlogs = (): Blog[] => [
     {
@@ -222,43 +226,23 @@ const FeaturedBlogsSection: React.FC = () => {
     }
   ];
 
-  useEffect(() => {
-    const fetchFeaturedBlogs = async () => {
-      try {
-        setLoading(true);
-        setError(null);
+  // Use provided blogs or fallback data
+  const blogs = propBlogs && propBlogs.length > 0 ? propBlogs : getFallbackBlogs();
 
-        const response = await blogAPI.getFeaturedBlogs();
-
-        if (response.success && response.data.blogs && response.data.blogs.length > 0) {
-          setBlogs(response.data.blogs);
-        } else {
-          // Fallback to recent blogs if no featured blogs
-          const recentResponse = await blogAPI.getRecentBlogs(10);
-          if (recentResponse.success && recentResponse.data.blogs && recentResponse.data.blogs.length > 0) {
-            setBlogs(recentResponse.data.blogs);
-          } else {
-            // Use fallback data if both API calls fail or return empty
-            setBlogs(getFallbackBlogs());
-          }
-        }
-      } catch (err: any) {
-        console.error('Error fetching featured blogs:', err);
-
-        // Use fallback data for better user experience
-        setBlogs(getFallbackBlogs());
-
-        // Clear error since we have fallback data
-        setError(null);
-      } finally {
-        setLoading(false);
-      }
-    };
-
-    // Add delay to reduce API call frequency
-    const timeoutId = setTimeout(fetchFeaturedBlogs, 500);
-    return () => clearTimeout(timeoutId);
-  }, []);
+  // Debug logs (gated)
+  if (import.meta.env.VITE_DEBUG === 'true') {
+    console.log('📝 [FEATURED BLOGS SECTION] Rendering:');
+    console.log('   - Prop blogs received:', propBlogs?.length || 0);
+    console.log('   - Using:', propBlogs && propBlogs.length > 0 ? 'API data' : 'Fallback data');
+    console.log('   - Total blogs to display:', blogs.length);
+    if (blogs.length > 0) {
+      console.log('   - First blog:', {
+        title: blogs[0].title,
+        hasFeaturedImage: !!blogs[0].featuredImage,
+        hasFeaturedImageAsset: !!(blogs[0] as any).featuredImageAsset
+      });
+    }
+  }
 
   const formatDate = (dateString: string): string => {
     const date = new Date(dateString);
@@ -356,7 +340,7 @@ const FeaturedBlogsSection: React.FC = () => {
               >
                 {/* Background Image */}
                 <img
-                  src={blog.featuredImage || '/assets/images/placeholder.jpg'}
+                  src={blog.featuredImageAsset?.url || blog.featuredImage || '/assets/images/placeholder.jpg'}
                   alt={blog.title}
                   className="absolute inset-0 w-full h-full object-cover"
                   loading={index === 0 ? 'eager' : 'lazy'}

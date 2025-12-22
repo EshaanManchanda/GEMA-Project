@@ -5,6 +5,7 @@ import { loginWithGoogle } from '@/services/firebaseAuth';
 import { redirectToRoleDashboard, type UserRole } from '@/utils/roleRedirect';
 import { loginUser, loginWithGoogleThunk } from '@/store/slices/authSlice';
 import { AppDispatch } from '@/store';
+import { API_BASE_URL } from '@/config/api';
 
 interface LoginFormData {
   email: string;
@@ -48,9 +49,9 @@ const LoginPage: React.FC = () => {
   // Check backend connection on mount (development only)
   useEffect(() => {
     if (import.meta.env.VITE_NODE_ENV === 'development') {
-      const apiBaseUrl = import.meta.env.VITE_API_BASE_URL || 'http://localhost:5001/api';
       console.log('🔗 Login Page Loaded');
-      console.log('📡 API Base URL:', apiBaseUrl);
+      console.log('📡 API Base URL (runtime-detected):', API_BASE_URL);
+      console.log('🌐 Current Domain:', window.location.hostname);
       console.log('🌐 Environment:', import.meta.env.VITE_NODE_ENV);
       setBackendStatus('connected');
     }

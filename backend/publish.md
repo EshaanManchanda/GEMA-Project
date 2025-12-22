@@ -1,1082 +1,1579 @@
-Perfect! You're making great progress. Now let's move to the server deployment phase.
+# Gema/Kidrove Deployment Guide - Multi-Region
 
-  🚀 Phase 3: Server Deployment
+Complete production deployment guide for the Gema Event Management Platform with multi-region support across kidrove.com, kidrove.in, and kidrove.ae.
 
-  Step 1: SSH to Your Server
+**Previous deployment guide backed up to**: `publish.md.old`
 
-  Open a terminal (PowerShell, Git Bash, or CMD) and connect to your server:
+---
 
-  ssh root@93.127.185.245
+## Overview
 
-  Enter your password when prompted.
+### Architecture
+- **3 Regional Domains**: kidrove.com (UAE), kidrove.in (India), kidrove.ae (UAE)
+- **9 Total Domains**: 3 main domains + 3 www subdomains + 3 API subdomains
+- **Single Backend**: One Node.js API server serving all regions on port 5000
+- **Runtime API Detection**: Frontend automatically routes to correct API subdomain based on current domain
+- **Server**: Hostinger KVM1 VPS (1 vCPU, 4GB RAM, 50GB NVMe) at 93.127.185.245
 
-  ---
-  Step 2: Initial Server Setup
+### Technology Stack
+- **Backend**: Node.js 20.x + Express.js + TypeScript + PM2
+- **Frontend**: React 18 + TypeScript + Vite
+- **Database**: MongoDB Atlas (cloud) + Redis (local caching)
+- **Web Server**: NGINX with HTTP/2 and SSL/TLS 1.3
+- **SSL**: Let's Encrypt via Certbot (6 certificates, auto-renewal)
+- **Payments**: Stripe with Connect
+- **Storage**: Cloudinary
 
-  Once connected, let's start with the automated setup. Run these commands one by one:
+---
 
-  # Update system packages
-  sudo apt update && sudo apt upgrade -y
+## Prerequisites
 
-  # Install essential tools
-  sudo apt install -y curl wget git build-essential
+Before beginning deployment:
 
-  # Install Node.js 20.x
-  curl -fsSL https://deb.nodesource.com/setup_20.x | sudo -E bash -
-  sudo apt install -y nodejs
+- [ ] **VPS Server**: Hostinger KVM1 or equivalent (Ubuntu 22.04, 4GB RAM minimum)
+- [ ] **Domain Names**: kidrove.com, kidrove.in, kidrove.ae registered and accessible
+- [ ] **GitHub Access**: Repository access to GEMA-Project
+- [ ] **MongoDB Atlas Account**: Free tier M0 or paid tier
+- [ ] **Stripe Account**: Test mode (switch to live later)
+- [ ] **Cloudinary Account**: For media storage
+- [ ] **Email Service**: Hostinger email or Gmail with app password
+- [ ] **SSH Client**: PowerShell/Git Bash/PuTTY for Windows
 
-  # Verify installation
-  node -v  # Should show v20.x.x
-  npm -v   # Should show 10.x.x
+---
 
-  Step 3: Install PM2, NGINX, and Redis
+## Phase 1: Server Initial Setup
 
-  # Install PM2 globally
-  sudo npm install -g pm2
+### Step 1.1: SSH to Your Server
 
-  # Configure PM2 startup
-  pm2 startup systemd
-  # Copy and run the command it outputs
+From your local machine (Windows PowerShell, Git Bash, or CMD):
 
-  # Install NGINX
-  sudo apt install -y nginx
+```bash
+ssh root@93.127.185.245
+```
 
-  # Install Redis
-  sudo apt install -y redis-server
+Enter your server password when prompted.
 
-  # Install Certbot for SSL
-  sudo apt install -y certbot python3-certbot-nginx
+### Step 1.2: Update System Packages
 
-  # Configure firewall
-  sudo ufw allow 22/tcp   # SSH
-  sudo ufw allow 80/tcp   # HTTP
-  sudo ufw allow 443/tcp  # HTTPS
-  sudo ufw --force enable
+```bash
+# Update package lists and upgrade existing packages
+sudo apt update && sudo apt upgrade -y
 
-  # Check firewall status
-  sudo ufw status verbose
+# Install essential build tools
+sudo apt install -y curl wget git build-essential
+```
 
-  Step 4: Clone Repository
+### Step 1.3: Install Node.js 20.x
 
-  # Create project directory
-  sudo mkdir -p /var/www/GEMA-Project
-  cd /var/www/GEMA-Project
+```bash
+# Download and run NodeSource setup script
+curl -fsSL https://deb.nodesource.com/setup_20.x | sudo -E bash -
 
-  # Clone repository
-  sudo git clone -b backend_auth https://github.com/EshaanManchanda/GEMA-Project.git .
+# Install Node.js (includes npm)
+sudo apt install -y nodejs
 
-  # Set proper permissions
-  sudo chown -R $USER:$USER /var/www/GEMA-Project
+# Verify installation
+node -v  # Should show v20.x.x
+npm -v   # Should show 10.x.x or higher
+```
 
-  ---
-  📝 Let me know when you complete these steps!
+### Step 1.4: Install PM2 Process Manager
 
-  Type:
-  - "done" when all commands are executed successfully
-  - "error: [description]" if you encounter any issues
-  - "help" if you need clarification on any step
+```bash
+# Install PM2 globally
+sudo npm install -g pm2
 
-  I'll then guide you through the next phase: configuring environment variables and NGINX!
+# Configure PM2 to start on system boot
+pm2 startup systemd
 
-> continue 
+# Copy and run the command it outputs (it will be specific to your system)
+# Example: sudo env PATH=$PATH:/usr/bin /usr/lib/node_modules/pm2/bin/pm2 startup systemd -u root --hp /root
 
-● Perfect! Let's continue with configuring the backend environment on the server.
+# After running that command, save PM2 configuration
+pm2 save
+```
 
-  📝 Phase 4: Configure Backend Environment Variables
+### Step 1.5: Install NGINX Web Server
 
-  Step 1: Create Backend .env File on Server
+```bash
+# Install NGINX
+sudo apt install -y nginx
 
-  You should still be connected via SSH to your server. Now run:
+# Start and enable NGINX
+sudo systemctl start nginx
+sudo systemctl enable nginx
 
-  cd /var/www/GEMA-Project/backend
-  nano .env
+# Verify NGINX is running
+sudo systemctl status nginx
+```
 
-  This will open a text editor. Now copy your entire backend .env file from your local machine (E:\coding\gema\backend\.env) and paste it into the      
-  terminal.
+### Step 1.6: Install Redis Server
 
-  To paste in the terminal:
-  - PowerShell/CMD: Right-click to paste
-  - Git Bash: Shift+Insert
-  - PuTTY: Right-click to paste
+```bash
+# Install Redis
+sudo apt install -y redis-server
 
-  After pasting, save and exit:
-  - Press Ctrl + X
-  - Press Y to confirm
-  - Press Enter to save
+# Start and enable Redis
+sudo systemctl start redis-server
+sudo systemctl enable redis-server
 
-  Step 2: Verify Backend Configuration
+# Test Redis connection
+redis-cli ping  # Should return "PONG"
+```
 
-  # Check that the file was created
-  ls -la .env
+### Step 1.7: Install Certbot for SSL
 
-  # Verify critical variables (without showing values)
-  grep -q "MONGODB_URI" .env && echo "✓ MongoDB configured" || echo "✗ Missing MongoDB"
-  grep -q "JWT_SECRET" .env && echo "✓ JWT configured" || echo "✗ Missing JWT"
-  grep -q "STRIPE_SECRET_KEY" .env && echo "✓ Stripe configured" || echo "✗ Missing Stripe"
+```bash
+# Install Certbot and NGINX plugin
+sudo apt install -y certbot python3-certbot-nginx
+```
 
-  You should see three checkmarks (✓).
+### Step 1.8: Configure Firewall
 
-  Step 3: Install Backend Dependencies and Build
+```bash
+# Allow SSH (port 22)
+sudo ufw allow 22/tcp
 
-  # Install dependencies (this may take 2-3 minutes)
-  npm install
+# Allow HTTP (port 80)
+sudo ufw allow 80/tcp
 
-  # Build TypeScript to JavaScript
-  npm run build
+# Allow HTTPS (port 443)
+sudo ufw allow 443/tcp
 
-  # Verify build succeeded
-  ls -la dist/
-  # You should see server.js and other compiled files
+# Enable firewall
+sudo ufw --force enable
 
-  Step 4: Configure Frontend Environment
+# Check firewall status
+sudo ufw status verbose
+```
 
-  cd /var/www/GEMA-Project/frontend
-  nano .env.production
+**Expected output**: Ports 22, 80, and 443 should show as ALLOW.
 
-  Paste this content:
+---
 
-  VITE_API_BASE_URL=https://api.kidrove.com/api
-  VITE_API_TIMEOUT=30000
-  VITE_BUILD_TARGET=production
-  NODE_ENV=production
+## Phase 2: DNS Configuration
 
-  VITE_APP_NAME=Kidrove
-  VITE_APP_VERSION=1.0.0
-  VITE_APP_URL=https://kidrove.com
+### Step 2.1: Configure DNS Records
 
-  VITE_STRIPE_PUBLISHABLE_KEY=pk_test_51SFDBBEjNnub9nIFgIUoM6poZ368cniMRRJNuDXiDGpK2LpfdmBAG5pqOl0rherpyVqKLSx0ul5EhD8Hw4BwtMb7001oWDTdDw
+In your domain registrar's DNS management panel, create these A records:
 
-  VITE_CLOUDINARY_CLOUD_NAME=dmer8oqdq
-  VITE_CLOUDINARY_UPLOAD_PRESET=ml_default
-  VITE_CLOUDINARY_API_KEY=986847489829259
+**For kidrove.com:**
+```
+Type: A     Name: @      Value: 93.127.185.245
+Type: A     Name: www    Value: 93.127.185.245
+Type: A     Name: api    Value: 93.127.185.245
+```
 
-  VITE_FIREBASE_API_KEY=AIzaSyC7IOvHwD9ivSLOED1AVEnZgGSvGmA2z8c
-  VITE_FIREBASE_AUTH_DOMAIN=kidrove-e9978.firebaseapp.com
-  VITE_FIREBASE_PROJECT_ID=kidrove-e9978
-  VITE_FIREBASE_STORAGE_BUCKET=kidrove-e9978.firebasestorage.app
-  VITE_FIREBASE_MESSAGING_SENDER_ID=462028426732
-  VITE_FIREBASE_APP_ID=1:462028426732:web:921a18599a8ab8595e84c9
+**For kidrove.in:**
+```
+Type: A     Name: @      Value: 93.127.185.245
+Type: A     Name: www    Value: 93.127.185.245
+Type: A     Name: api    Value: 93.127.185.245
+```
 
-  VITE_ENABLE_DEVTOOLS=false
-  VITE_LOG_LEVEL=error
-  VITE_PAYMENT_ENVIRONMENT=production
+**For kidrove.ae:**
+```
+Type: A     Name: @      Value: 93.127.185.245
+Type: A     Name: www    Value: 93.127.185.245
+Type: A     Name: api    Value: 93.127.185.245
+```
 
-  Save and exit: Ctrl+X, Y, Enter
+**Total**: 9 A records
 
-  Step 5: Install Frontend Dependencies and Build
+### Step 2.2: Verify DNS Propagation
 
-  # Install dependencies (this may take 3-5 minutes)
-  npm install
+Wait 1-24 hours for DNS propagation, then verify:
 
-  # Build for production
-  npm run build
+```bash
+# Check each domain
+nslookup kidrove.com
+nslookup www.kidrove.com
+nslookup api.kidrove.com
+nslookup kidrove.in
+nslookup www.kidrove.in
+nslookup api.kidrove.in
+nslookup kidrove.ae
+nslookup www.kidrove.ae
+nslookup api.kidrove.ae
+```
 
-  # Verify build
-  ls -la dist/
-  # Should show: index.html, assets/, etc.
+Each should return: `Address: 93.127.185.245`
 
-  # Check build size
-  du -sh dist/
+**Important**: Do not proceed until DNS propagation is complete.
 
-  ---
-  🔧 Phase 5: Configure NGINX with API Subdomain
+---
 
-  Step 1: Create NGINX Configuration
+## Phase 3: Repository Setup
 
-  sudo nano /etc/nginx/sites-available/kidrove
+### Step 3.1: Create Project Directory
 
-  Paste this complete NGINX configuration:
+```bash
+# Create directory
+sudo mkdir -p /var/www/GEMA-Project
 
-  # Frontend - kidrove.com
-  server {
-      listen 80;
-      listen [::]:80;
-      server_name kidrove.com www.kidrove.com;
+# Navigate to directory
+cd /var/www/GEMA-Project
+```
 
-      location /.well-known/acme-challenge/ {
-          root /var/www/html;
-      }
+### Step 3.2: Clone Repository
 
-      location / {
-          return 301 https://$server_name$request_uri;
-      }
-  }
+```bash
+# Clone from GitHub (using backend_auth branch)
+sudo git clone -b backend_auth https://github.com/EshaanManchanda/GEMA-Project.git .
+
+# Set proper permissions
+sudo chown -R $USER:$USER /var/www/GEMA-Project
+
+# Verify files
+ls -la
+# Should show: backend/, frontend/, ecosystem.config.js, etc.
+```
+
+---
+
+## Phase 4: Backend Configuration
+
+### Step 4.1: Navigate to Backend Directory
+
+```bash
+cd /var/www/GEMA-Project/backend
+```
+
+### Step 4.2: Create .env File
+
+```bash
+nano .env
+```
+
+**Paste this configuration** (update the placeholder values with your actual credentials):
+
+```bash
+###############################################################################
+# GEMA Backend - Production Environment Configuration
+###############################################################################
+
+# ===========================================================================
+# SERVER CONFIGURATION
+# ===========================================================================
+PORT=5000
+NODE_ENV=production
+
+# ===========================================================================
+# DATABASE CONFIGURATION
+# ===========================================================================
+# MongoDB Atlas Connection String
+MONGODB_URI=mongodb+srv://your_username:your_password@cluster0.xxxxx.mongodb.net/kidrove
+
+# Connection Pool Settings (Optimized for KVM1)
+MONGODB_MAX_POOL_SIZE=50
+MONGODB_MIN_POOL_SIZE=5
+MONGODB_MAX_IDLE_TIME_MS=60000
+MONGODB_CONNECT_TIMEOUT_MS=30000
+MONGODB_SOCKET_TIMEOUT_MS=45000
+MONGODB_SERVER_SELECTION_TIMEOUT_MS=30000
+
+# ===========================================================================
+# JWT CONFIGURATION
+# ===========================================================================
+# Generate secure secrets: openssl rand -base64 64
+JWT_SECRET=your_jwt_secret_here
+JWT_EXPIRES_IN=7d
+JWT_REFRESH_SECRET=your_refresh_secret_here
+JWT_REFRESH_EXPIRES_IN=30d
+
+# Admin Registration Secret
+ADMIN_SECRET_KEY=your_admin_secret_here
+
+# ===========================================================================
+# FIREBASE ADMIN SDK
+# ===========================================================================
+FIREBASE_PROJECT_ID=your-firebase-project-id
+FIREBASE_PRIVATE_KEY="-----BEGIN PRIVATE KEY-----\\nYOUR_KEY_HERE\\n-----END PRIVATE KEY-----\\n"
+FIREBASE_CLIENT_EMAIL=firebase-adminsdk-xxxxx@your-project.iam.gserviceaccount.com
 
-  server {
-      listen 443 ssl http2;
-      listen [::]:443 ssl http2;
-      server_name kidrove.com www.kidrove.com;
+# ===========================================================================
+# CORS CONFIGURATION - MULTI-REGION
+# ===========================================================================
+FRONTEND_URL=https://kidrove.com
+ADDITIONAL_ALLOWED_ORIGINS=https://www.kidrove.com,https://kidrove.in,https://www.kidrove.in,https://kidrove.ae,https://www.kidrove.ae
 
-      ssl_certificate /etc/letsencrypt/live/kidrove.com/fullchain.pem;
-      ssl_certificate_key /etc/letsencrypt/live/kidrove.com/privkey.pem;
-      ssl_protocols TLSv1.2 TLSv1.3;
+# ===========================================================================
+# RATE LIMITING
+# ===========================================================================
+RATE_LIMIT_WINDOW_MS=15
+RATE_LIMIT_MAX=100
 
-      root /var/www/GEMA-Project/frontend/dist;
-      index index.html;
+# ===========================================================================
+# PAYMENT CONFIGURATION
+# ===========================================================================
+# Stripe API Keys (use test keys initially)
+STRIPE_SECRET_KEY=sk_test_your_stripe_secret_key
+STRIPE_PUBLISHABLE_KEY=pk_test_your_stripe_publishable_key
+STRIPE_WEBHOOK_SECRET=whsec_your_webhook_secret
 
-      gzip on;
-      gzip_types text/plain text/css application/json application/javascript text/xml application/xml;
-
-      location / {
-          try_files $uri $uri/ /index.html;
-      }
-
-      location ~* \.(js|css|png|jpg|jpeg|gif|ico|svg|woff|woff2)$ {
-          expires 1y;
-          add_header Cache-Control "public, immutable";
-      }
-  }
-
-  # API - api.kidrove.com
-  server {
-      listen 80;
-      listen [::]:80;
-      server_name api.kidrove.com;
-
-      location /.well-known/acme-challenge/ {
-          root /var/www/html;
-      }
-
-      location / {
-          return 301 https://$server_name$request_uri;
-      }
-  }
-
-  server {
-      listen 443 ssl http2;
-      listen [::]:443 ssl http2;
-      server_name api.kidrove.com;
-
-      ssl_certificate /etc/letsencrypt/live/api.kidrove.com/fullchain.pem;
-      ssl_certificate_key /etc/letsencrypt/live/api.kidrove.com/privkey.pem;
-      ssl_protocols TLSv1.2 TLSv1.3;
-
-      location / {
-          proxy_pass http://localhost:5000;
-          proxy_http_version 1.1;
-          proxy_set_header Upgrade $http_upgrade;
-          proxy_set_header Connection 'upgrade';
-          proxy_set_header Host $host;
-          proxy_set_header X-Real-IP $remote_addr;
-          proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
-          proxy_set_header X-Forwarded-Proto $scheme;
-          proxy_cache_bypass $http_upgrade;
-      }
-  }
-
-  Save and exit: Ctrl+X, Y, Enter
-
-  Step 2: Enable Site and Test Configuration
-
-  # Enable the site
-  sudo ln -s /etc/nginx/sites-available/kidrove /etc/nginx/sites-enabled/
-
-  # Remove default site
-  sudo rm -f /etc/nginx/sites-enabled/default
-
-  # Test NGINX configuration
-  sudo nginx -t
-
-
-   🔧 Quick Fix for Your Current Error
-
-  On your server, run these commands:
-
-  # Step 1: Edit NGINX config
-  sudo nano /etc/nginx/sites-available/kidrove
-
-  Delete everything and paste this HTTP-only config:
-
-  # Frontend - kidrove.com (HTTP only - SSL added by Certbot)
-  server {
-      listen 80;
-      listen [::]:80;
-      server_name kidrove.com www.kidrove.com;
-
-      root /var/www/GEMA-Project/frontend/dist;
-      index index.html;
-
-      gzip on;
-      gzip_types text/plain text/css application/json application/javascript text/xml application/xml;
-
-      location / {
-          try_files $uri $uri/ /index.html;
-      }
-
-      location ~* \.(js|css|png|jpg|jpeg|gif|ico|svg|woff|woff2)$ {
-          expires 1y;
-          add_header Cache-Control "public, immutable";
-      }
-  }
-
-  # API - api.kidrove.com (HTTP only - SSL added by Certbot)
-  server {
-      listen 80;
-      listen [::]:80;
-      server_name api.kidrove.com;
-
-      location / {
-          proxy_pass http://localhost:5000;
-          proxy_http_version 1.1;
-          proxy_set_header Upgrade $http_upgrade;
-          proxy_set_header Connection 'upgrade';
-          proxy_set_header Host $host;
-          proxy_set_header X-Real-IP $remote_addr;
-          proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
-          proxy_set_header X-Forwarded-Proto $scheme;
-          proxy_cache_bypass $http_upgrade;
-      }
-  }
-
-  Save: Ctrl+X, Y, Enter
-
-  Expected output: nginx: configuration file /etc/nginx/nginx.conf test is successful
-
-  ---
-  🔒 Phase 6: Setup SSL Certificates
-
-  Step 1: Obtain SSL for Frontend (kidrove.com)
-
-  sudo certbot --nginx -d kidrove.com -d www.kidrove.com
-
-  Follow the prompts:
-  1. Email address: Enter your email for renewal notifications
-  2. Terms of Service: Type Y and press Enter
-  3. Share email with EFF: Type Y or N (your choice)
-
-  ```Saving debug log to /var/log/letsencrypt/letsencrypt.log
-Enter email address (used for urgent renewal and security notices)
- (Enter 'c' to cancel):
-Invalid email address: .
-
-
-If you really want to skip this, you can run the client with
---register-unsafely-without-email but you will then be unable to receive notice
-about impending expiration or revocation of your certificates or problems with
-your Certbot installation that will lead to failure to renew.
-
-Enter email address (used for urgent renewal and security notices)
- (Enter 'c' to cancel): contact@kidrove.com
-
-- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
-Please read the Terms of Service at
-https://letsencrypt.org/documents/LE-SA-v1.6-August-18-2025.pdf. You must agree
-in order to register with the ACME server. Do you agree?
-- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
-(Y)es/(N)o: Y
-
-- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
-Would you be willing, once your first certificate is successfully issued, to
-share your email address with the Electronic Frontier Foundation, a founding
-partner of the Let's Encrypt project and the non-profit organization that
-develops Certbot? We'd like to send you email about our work encrypting the web,
-EFF news, campaigns, and ways to support digital freedom.
-- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
-(Y)es/(N)o: N
-Account registered.
-Requesting a certificate for kidrove.com and www.kidrove.com
-
+# ===========================================================================
+# EMAIL CONFIGURATION
+# ===========================================================================
+EMAIL_SERVICE=hostinger
+EMAIL_HOST=smtp.hostinger.com
+EMAIL_PORT=587
+EMAIL_USERNAME=contact@kidrove.com
+EMAIL_PASSWORD=your_email_password
+EMAIL_FROM=contact@kidrove.com
+EMAIL_FROM_NAME=Kidrove
+
+# ===========================================================================
+# REDIS CONFIGURATION
+# ===========================================================================
+REDIS_HOST=localhost
+REDIS_PORT=6379
+REDIS_PASSWORD=
+REDIS_DB=0
+REDIS_QUEUE_DB=0
+REDIS_TLS=false
+DISABLE_REDIS=false
+
+# ===========================================================================
+# JOB PROCESSING
+# ===========================================================================
+ENABLE_JOBS=true
+
+# ===========================================================================
+# CLOUDINARY CONFIGURATION
+# ===========================================================================
+CLOUDINARY_CLOUD_NAME=your_cloud_name
+CLOUDINARY_API_KEY=your_api_key
+CLOUDINARY_API_SECRET=your_api_secret
+CLOUDINARY_URL=cloudinary://your_api_key:your_api_secret@your_cloud_name
+
+UPLOAD_PROVIDER=cloudinary
+CLOUDINARY_UPLOAD_PRESET=ml_default
+CLOUDINARY_SECURE=true
+```
+
+**Save and exit**: `Ctrl+X`, then `Y`, then `Enter`
+
+**Critical**: Update all placeholder values with your actual credentials!
+
+### Step 4.3: Verify Configuration
+
+```bash
+# Check .env file exists
+ls -la .env
+
+# Verify critical variables (without showing values)
+grep -q "MONGODB_URI" .env && echo "✓ MongoDB configured" || echo "✗ Missing MongoDB"
+grep -q "JWT_SECRET" .env && echo "✓ JWT configured" || echo "✗ Missing JWT"
+grep -q "STRIPE_SECRET_KEY" .env && echo "✓ Stripe configured" || echo "✗ Missing Stripe"
+grep -q "FRONTEND_URL" .env && echo "✓ CORS configured" || echo "✗ Missing CORS"
+```
+
+You should see four checkmarks (✓).
+
+### Step 4.4: Install Dependencies and Build
+
+```bash
+# Install dependencies (takes 2-3 minutes)
+npm install
+
+# Build TypeScript to JavaScript
+npm run build
+
+# Verify build succeeded
+ls -la dist/
+# Should show: server.js and other compiled files
+```
+
+---
+
+## Phase 5: Frontend Configuration
+
+### Step 5.1: Navigate to Frontend Directory
+
+```bash
+cd /var/www/GEMA-Project/frontend
+```
+
+### Step 5.2: Create .env.production File
+
+```bash
+nano .env.production
+```
+
+**Paste this configuration**:
+
+```bash
+# =============================================================================
+# GEMA Frontend - Production Environment
+# =============================================================================
+
+# API Configuration
+# Note: Runtime API detection is used in production (frontend/src/config/api.ts)
+# The frontend automatically detects the domain and uses the corresponding API:
+# - kidrove.com → api.kidrove.com
+# - kidrove.in → api.kidrove.in
+# - kidrove.ae → api.kidrove.ae
+# This VITE_API_BASE_URL is used as fallback for localhost development only
+VITE_API_BASE_URL=https://api.kidrove.com/api
+VITE_API_TIMEOUT=30000
+VITE_BUILD_TARGET=production
+NODE_ENV=production
+
+# App Configuration
+VITE_APP_NAME=Kidrove
+VITE_APP_VERSION=1.0.0
+VITE_APP_DESCRIPTION=Event Management and Booking Platform
+VITE_APP_URL=https://kidrove.com
+
+# Payment Configuration (use test keys initially)
+VITE_STRIPE_PUBLISHABLE_KEY=pk_test_your_stripe_publishable_key
+
+# Test Mode Configuration
+VITE_ENABLE_TEST_PAYMENTS=false
+VITE_PREFERRED_PAYMENT_METHOD=stripe
+VITE_PAYMENT_REGION=AE
+VITE_PAYMENT_ENVIRONMENT=production
+
+# File Upload Configuration
+VITE_MAX_FILE_SIZE=10485760
+VITE_ALLOWED_FILE_TYPES=image/jpeg,image/png,image/webp,image/gif
+VITE_CLOUDINARY_CLOUD_NAME=your_cloud_name
+VITE_CLOUDINARY_UPLOAD_PRESET=ml_default
+VITE_CLOUDINARY_API_KEY=your_api_key
+
+# Firebase Configuration
+VITE_FIREBASE_API_KEY=your_firebase_api_key
+VITE_FIREBASE_AUTH_DOMAIN=your-project.firebaseapp.com
+VITE_FIREBASE_PROJECT_ID=your-project-id
+VITE_FIREBASE_STORAGE_BUCKET=your-project.firebasestorage.app
+VITE_FIREBASE_MESSAGING_SENDER_ID=your_sender_id
+VITE_FIREBASE_APP_ID=your_app_id
+VITE_FIREBASE_MEASUREMENT_ID=your_measurement_id
+
+# Production Settings
+VITE_ENABLE_DEVTOOLS=false
+VITE_LOG_LEVEL=error
+VITE_ENABLE_MOCK_API=false
+
+# Feature Flags
+VITE_ENABLE_CHAT=true
+VITE_ENABLE_NOTIFICATIONS=true
+VITE_ENABLE_REVIEWS=true
+VITE_ENABLE_FAVORITES=true
+VITE_ENABLE_DARK_MODE=true
+
+# Localization
+VITE_DEFAULT_LANGUAGE=en
+VITE_DEFAULT_CURRENCY=AED
+VITE_DEFAULT_TIMEZONE=Asia/Dubai
+
+# Security
+VITE_ENABLE_CSP=true
+VITE_ENABLE_HTTPS_REDIRECT=true
+VITE_SECURE_COOKIES=true
+```
+
+**Save and exit**: `Ctrl+X`, then `Y`, then `Enter`
+
+**Important**: Update placeholder values with your actual credentials.
+
+### Step 5.3: Install Dependencies and Build
+
+```bash
+# Install dependencies (takes 3-5 minutes)
+npm install
+
+# Build for production
+npm run build
+
+# Verify build succeeded
+ls -la dist/
+# Should show: index.html, assets/, etc.
+
+# Check build size
+du -sh dist/
+```
+
+---
+
+## Phase 6: NGINX Configuration
+
+### Step 6.1: Create NGINX Snippet Files
+
+These reusable configuration snippets will be included in the main config:
+
+**Create SSL parameters snippet:**
+
+```bash
+sudo nano /etc/nginx/snippets/ssl-params.conf
+```
+
+Paste:
+```nginx
+# SSL/TLS Configuration Parameters
+ssl_protocols TLSv1.2 TLSv1.3;
+ssl_ciphers HIGH:!aNULL:!MD5;
+ssl_prefer_server_ciphers on;
+ssl_session_cache shared:SSL:10m;
+ssl_session_timeout 10m;
+ssl_stapling on;
+ssl_stapling_verify on;
+resolver 8.8.8.8 8.8.4.4 valid=300s;
+resolver_timeout 5s;
+```
+
+Save and exit.
+
+**Create security headers snippet:**
+
+```bash
+sudo nano /etc/nginx/snippets/security-headers.conf
+```
+
+Paste:
+```nginx
+# Security Headers Configuration
+add_header X-Frame-Options "SAMEORIGIN" always;
+add_header X-Content-Type-Options "nosniff" always;
+add_header X-XSS-Protection "1; mode=block" always;
+add_header Referrer-Policy "strict-origin-when-cross-origin" always;
+add_header Strict-Transport-Security "max-age=31536000; includeSubDomains" always;
+```
+
+Save and exit.
+
+**Create API proxy snippet:**
+
+```bash
+sudo nano /etc/nginx/snippets/api-proxy.conf
+```
+
+Paste:
+```nginx
+# API Proxy Configuration
+proxy_pass http://backend_api;
+proxy_http_version 1.1;
+proxy_set_header Upgrade $http_upgrade;
+proxy_set_header Connection 'upgrade';
+proxy_set_header Host $host;
+proxy_set_header X-Real-IP $remote_addr;
+proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+proxy_set_header X-Forwarded-Proto $scheme;
+proxy_set_header X-Forwarded-Host $host;
+proxy_connect_timeout 60s;
+proxy_send_timeout 60s;
+proxy_read_timeout 60s;
+proxy_cache_bypass $http_upgrade;
+proxy_buffering off;
+proxy_request_buffering off;
+```
+
+Save and exit.
+
+### Step 6.2: Upload nginx-multi-region.conf
+
+From your local machine, upload the nginx configuration:
+
+```bash
+scp E:\coding\gema\nginx-multi-region.conf root@93.127.185.245:/etc/nginx/sites-available/
+```
+
+**Alternative** (if using Git on server):
+```bash
+cd /var/www/GEMA-Project
+git pull
+sudo cp nginx-multi-region.conf /etc/nginx/sites-available/
+```
+
+### Step 6.3: Enable NGINX Configuration
+
+```bash
+# Remove default site
+sudo rm -f /etc/nginx/sites-enabled/default
+
+# Enable new multi-region config
+sudo ln -s /etc/nginx/sites-available/nginx-multi-region.conf /etc/nginx/sites-enabled/
+
+# Test NGINX configuration
+sudo nginx -t
+```
+
+**Expected output**:
+```
+nginx: the configuration file /etc/nginx/nginx.conf syntax is ok
+nginx: configuration file /etc/nginx/nginx.conf test is successful
+```
+
+**If test fails**: Check error message for syntax errors or missing SSL certificate paths (we'll add certificates in next phase).
+
+---
+
+## Phase 7: SSL Certificates
+
+### Step 7.1: Request SSL Certificates
+
+Run these commands **in sequence** (one at a time):
+
+```bash
+# 1. kidrove.com + www.kidrove.com (SAN certificate)
+sudo certbot certonly --nginx -d kidrove.com -d www.kidrove.com
+
+# 2. api.kidrove.com
+sudo certbot certonly --nginx -d api.kidrove.com
+
+# 3. kidrove.in + www.kidrove.in (SAN certificate)
+sudo certbot certonly --nginx -d kidrove.in -d www.kidrove.in
+
+# 4. api.kidrove.in
+sudo certbot certonly --nginx -d api.kidrove.in
+
+# 5. kidrove.ae + www.kidrove.ae (SAN certificate)
+sudo certbot certonly --nginx -d kidrove.ae -d www.kidrove.ae
+
+# 6. api.kidrove.ae
+sudo certbot certonly --nginx -d api.kidrove.ae
+```
+
+**For each certificate**, Certbot will ask:
+1. **Email address**: Enter your email for renewal notifications
+2. **Terms of Service**: Type `Y` and press Enter
+3. **Share email with EFF**: Type `Y` or `N` (your choice)
+
+**Expected output** for each:
+```
 Successfully received certificate.
-Certificate is saved at: /etc/letsencrypt/live/kidrove.com/fullchain.pem
-Key is saved at:         /etc/letsencrypt/live/kidrove.com/privkey.pem
-This certificate expires on 2026-02-23.
-These files will be updated when the certificate renews.
-Certbot has set up a scheduled task to automatically renew this certificate in the background.
-
-Deploying certificate
-Successfully deployed certificate for kidrove.com to /etc/nginx/sites-enabled/kidrove
-Successfully deployed certificate for www.kidrove.com to /etc/nginx/sites-enabled/kidrove
-Congratulations! You have successfully enabled HTTPS on https://kidrove.com and https://www.kidrove.com
+Certificate is saved at: /etc/letsencrypt/live/[domain]/fullchain.pem
+Key is saved at: /etc/letsencrypt/live/[domain]/privkey.pem
+This certificate expires on [date 90 days from now].
+```
 
-- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
-If you like Certbot, please consider supporting our work by:
- * Donating to ISRG / Let's Encrypt:   https://letsencrypt.org/donate
- * Donating to EFF:                    https://eff.org/donate-le
-- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -```
-
-  Step 2: Obtain SSL for API (api.kidrove.com)
-
-  sudo certbot --nginx -d api.kidrove.com
-
-  ```Saving debug log to /var/log/letsencrypt/letsencrypt.log
-Requesting a certificate for api.kidrove.com
-
-Successfully received certificate.
-Certificate is saved at: /etc/letsencrypt/live/api.kidrove.com/fullchain.pem
-Key is saved at:         /etc/letsencrypt/live/api.kidrove.com/privkey.pem
-This certificate expires on 2026-02-23.
-These files will be updated when the certificate renews.
-Certbot has set up a scheduled task to automatically renew this certificate in the background.
-
-Deploying certificate
-Successfully deployed certificate for api.kidrove.com to /etc/nginx/sites-enabled/kidrove
-Congratulations! You have successfully enabled HTTPS on https://api.kidrove.com
-
-- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
-If you like Certbot, please consider supporting our work by:
- * Donating to ISRG / Let's Encrypt:   https://letsencrypt.org/donate
- * Donating to EFF:                    https://eff.org/donate-le
-- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -```
-
-  Follow the same prompts.
-
-  Step 3: Verify SSL Auto-Renewal
-
-  sudo certbot renew --dry-run
-
-  ```Saving debug log to /var/log/letsencrypt/letsencrypt.log
-
-- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
-Processing /etc/letsencrypt/renewal/api.kidrove.com.conf
-- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
-Account registered.
-Simulating renewal of an existing certificate for api.kidrove.com
-
-- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
-Processing /etc/letsencrypt/renewal/kidrove.com.conf
-- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
-Simulating renewal of an existing certificate for kidrove.com and www.kidrove.com
+### Step 7.2: Verify All Certificates
 
-- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
-Congratulations, all simulated renewals succeeded:
-  /etc/letsencrypt/live/api.kidrove.com/fullchain.pem (success)
-  /etc/letsencrypt/live/kidrove.com/fullchain.pem (success)
-- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -```
+```bash
+sudo certbot certificates
+```
 
-  Expected: "Congratulations, all renewals succeeded."
+**Expected output**: 6 certificates listed, all valid for 90 days.
 
-  Step 4: Reload NGINX
+### Step 7.3: Test Auto-Renewal
 
-  sudo systemctl reload nginx
-  sudo systemctl status nginx
-  ```● nginx.service - A high performance web server and a reverse proxy server
-     Loaded: loaded (/lib/systemd/system/nginx.service; enabled; vendor preset: enabled)
-     Active: active (running) since Tue 2025-11-25 06:13:44 UTC; 33min ago
-       Docs: man:nginx(8)
-    Process: 11133 ExecReload=/usr/sbin/nginx -g daemon on; master_process on; -s reload (code=exited, status=0/SUCCESS)
-   Main PID: 9606 (nginx)
-      Tasks: 2 (limit: 4645)
-     Memory: 6.9M
-        CPU: 1.082s
-     CGroup: /system.slice/nginx.service
-             ├─ 9606 "nginx: master process /usr/sbin/nginx -g daemon on; master_process on;"
-             └─11134 "nginx: worker process" "" "" "" "" "" "" "" "" "" "" "" "" "" "" "" "" "" "" "" "" "" "" "" "" "" "" ""
+```bash
+sudo certbot renew --dry-run
+```
 
-Nov 25 06:13:44 srv1143065 systemd[1]: Starting A high performance web server and a reverse proxy server...
-Nov 25 06:13:44 srv1143065 systemd[1]: Started A high performance web server and a reverse proxy server.
-Nov 25 06:47:07 srv1143065 systemd[1]: Reloading A high performance web server and a reverse proxy server...
-Nov 25 06:47:07 srv1143065 systemd[1]: Reloaded A high performance web server and a reverse proxy server.```
+**Expected output**:
+```
+Congratulations, all simulated renewals succeeded
+```
 
-  ---
-  🚀 Phase 7: Start Backend with PM2
+**Auto-renewal**: Certbot creates a systemd timer that runs twice daily to renew certificates.
 
-  Step 1: Create Logs Directory
+### Step 7.4: Reload NGINX with SSL
 
-  mkdir -p /var/www/GEMA-Project/backend/logs
+```bash
+# Test configuration again (now with SSL certificates)
+sudo nginx -t
 
-  Step 2: Start Backend with PM2
+# Reload NGINX
+sudo systemctl reload nginx
 
-  cd /var/www/GEMA-Project/backend
+# Check NGINX status
+sudo systemctl status nginx
+```
 
-  # Start using ecosystem config
-  pm2 start ecosystem.config.js --env production
+---
 
-  # Save PM2 configuration
-  pm2 save
+## Phase 8: PM2 Process Management
 
-  # Check status
-  pm2 status
+### Step 8.1: Create Log Directories
 
-  [PM2][WARN] Applications gema-backend, gema-worker not running, starting...
-[PM2] App [gema-backend] launched (1 instances)
-[PM2] App [gema-worker] launched (1 instances)
-┌────┬─────────────────┬─────────────┬─────────┬─────────┬──────────┬────────┬──────┬───────────┬──────────┬──────────┬──────────┬──────────┐
-│ id │ name            │ namespace   │ version │ mode    │ pid      │ uptime │ ↺    │ status    │ cpu      │ mem      │ user     │ watching │
-├────┼─────────────────┼─────────────┼─────────┼─────────┼──────────┼────────┼──────┼───────────┼──────────┼──────────┼──────────┼──────────┤
-│ 0  │ gema-backend    │ default     │ 1.0.0   │ fork    │ 11147    │ 0s     │ 0    │ online    │ 0%       │ 29.7mb   │ root     │ disabled │
-│ 1  │ gema-worker     │ default     │ 1.0.0   │ fork    │ 11148    │ 0s     │ 0    │ online    │ 0%       │ 27.9mb   │ root     │ disabled │
-└────┴─────────────────┴─────────────┴─────────┴─────────┴──────────┴────────┴──────┴───────────┴──────────┴──────────┴──────────┴──────────┘
-root@srv1143065:/var/www/GEMA-Project/backend# pm2 save
-[PM2] Saving current process list...
-[PM2] Successfully saved in /root/.pm2/dump.pm2
-root@srv1143065:/var/www/GEMA-Project/backend# pm2 status
-┌────┬─────────────────┬─────────────┬─────────┬─────────┬──────────┬────────┬──────┬───────────┬──────────┬──────────┬──────────┬──────────┐
-│ id │ name            │ namespace   │ version │ mode    │ pid      │ uptime │ ↺    │ status    │ cpu      │ mem      │ user     │ watching │
-├────┼─────────────────┼─────────────┼─────────┼─────────┼──────────┼────────┼──────┼───────────┼──────────┼──────────┼──────────┼──────────┤
-│ 0  │ gema-backend    │ default     │ 1.0.0   │ fork    │ 11147    │ 18s    │ 0    │ online    │ 0%       │ 184.6mb  │ root     │ disabled │
-│ 1  │ gema-worker     │ default     │ 1.0.0   │ fork    │ 11148    │ 18s    │ 0    │ online    │ 0%       │ 100.2mb  │ root     │ disabled 
+```bash
+sudo mkdir -p /var/log/GEMA-Project/backend
+sudo chown -R $USER:$USER /var/log/GEMA-Project
+```
 
-  Expected output: gema-backend and gema-worker should show status "online"
+### Step 8.2: Start Backend with PM2
 
-  Step 3: View Logs
+```bash
+cd /var/www/GEMA-Project/backend
 
-  
-  cd /var/www/GEMA-Project/backend
-  nano .env
+# Start using ecosystem config (starts both backend and worker)
+pm2 start ecosystem.config.js --env production
 
-  Find the CORS section and update it to:
+# Save PM2 configuration
+pm2 save
 
-  # CORS - Allow all your domains
-  FRONTEND_URL=https://kidrove.com
-  ADDITIONAL_ALLOWED_ORIGINS=https://www.kidrove.com,https://api.kidrove.com
+# Check status
+pm2 status
+```
 
-  Key change: Add ,https://api.kidrove.com to ADDITIONAL_ALLOWED_ORIGINS
+**Expected output**:
+```
+┌────┬─────────────────┬─────────┬─────────┬──────────┬────────┬──────┬───────────┐
+│ id │ name            │ mode    │ pid     │ uptime   │ ↺      │ status│ cpu      │
+├────┼─────────────────┼─────────┼─────────┼──────────┼────────┼──────┼──────────┤
+│ 0  │ gema-backend    │ fork    │ 12345   │ 5s       │ 0      │ online│ 0%       │
+│ 1  │ gema-worker     │ fork    │ 12346   │ 5s       │ 0      │ online│ 0%       │
+└────┴─────────────────┴─────────┴─────────┴──────────┴────────┴──────┴──────────┘
+```
 
-  Save: Ctrl+X, Y, Enter
+Both processes should show **status: online**.
 
-  Restart Backend
+### Step 8.3: View Logs
 
-  pm2 restart gema-backend
+```bash
+# View combined logs
+pm2 logs
 
-  # Wait 3 seconds, then check logs
-  sleep 3
-  pm2 logs gema-backend --lines 10
+# View backend logs only
+pm2 logs gema-backend
 
-  pm2 logs gema-backend --lines 50
+# View last 50 lines
+pm2 logs gema-backend --lines 50
 
-  Also, let's test with an explicit Origin header:
+# View errors only
+pm2 logs gema-backend --err
+```
 
-  # Test with Origin header from frontend domain
-  curl -H "Origin: https://kidrove.com" https://api.kidrove.com/api/health
+Look for: "MongoDB connected successfully" and no errors.
 
-  # Test with Origin header from api domain itself
-  curl -H "Origin: https://api.kidrove.com" https://api.kidrove.com/api/health
+### Step 8.4: Configure PM2 Auto-Start
 
-  Look for: "MongoDB connected successfully" and no errors
+PM2 startup was already configured in Phase 1, but verify:
 
-  ---
-  ✅ Phase 8: Verify Deployment
+```bash
+# Check PM2 startup
+pm2 startup
+
+# If needed, copy and run the command it outputs
 
-  Run these commands on the server:
+# Save current processes to restore on reboot
+pm2 save
+```
 
-  # Test backend locally
-  curl http://localhost:5000/health
+### Step 8.5: Setup PM2 Log Rotation
+
+```bash
+# Install PM2 log rotation module
+pm2 install pm2-logrotate
+
+# Configure rotation settings
+pm2 set pm2-logrotate:max_size 10M
+pm2 set pm2-logrotate:retain 10
+pm2 set pm2-logrotate:compress true
+pm2 set pm2-logrotate:dateFormat YYYY-MM-DD_HH-mm-ss
+```
+
+---
+
+## Phase 9: Testing & Verification
+
+### Step 9.1: Test Backend Locally
+
+```bash
+# Test health endpoint locally
+curl http://localhost:5000/health
 
-  # Test through HTTPS (frontend domain)
-  curl https://kidrove.com
+# Expected: {"status":"ok",...}
+```
 
-  # Test through HTTPS (API domain)
-  curl https://api.kidrove.com/api/health
+### Step 9.2: Test All 9 Domains
 
-  ---
-  Let me know when you complete these steps and I'll help verify everything is working correctly!
+Run these tests from your local machine or server:
 
-  Type "done" when finished, or "error: [description]" if you encounter any issues.
+**Frontend domains** (should return HTML):
+```bash
+curl -I https://kidrove.com
+curl -I https://www.kidrove.com
+curl -I https://kidrove.in
+curl -I https://www.kidrove.in
+curl -I https://kidrove.ae
+curl -I https://www.kidrove.ae
+```
 
-> continue 
+**API domains** (should return JSON):
+```bash
+curl https://api.kidrove.com/api/health
+curl https://api.kidrove.in/api/health
+curl https://api.kidrove.ae/api/health
+```
 
-● Perfect! Let's verify the deployment and complete the remaining tasks.
+**Expected Results**:
 
-  ✅ Phase 9: Comprehensive Verification
+| Domain | Expected Response |
+|--------|-------------------|
+| https://kidrove.com | HTTP 200, HTML content |
+| https://www.kidrove.com | HTTP 200, HTML content |
+| https://kidrove.in | HTTP 200, HTML content |
+| https://www.kidrove.in | HTTP 200, HTML content |
+| https://kidrove.ae | HTTP 200, HTML content |
+| https://www.kidrove.ae | HTTP 200, HTML content |
+| https://api.kidrove.com/api/health | `{"status":"ok"}` |
+| https://api.kidrove.in/api/health | `{"status":"ok"}` |
+| https://api.kidrove.ae/api/health | `{"status":"ok"}` |
 
-  Run these commands on your server to verify everything is working:
+### Step 9.3: Browser Testing
 
-  Step 1: Check All Services
+Open your browser and test:
 
-  # Check PM2 processes
-  pm2 status
+1. **Frontend**: Navigate to https://kidrove.com
+   - Should load without SSL warnings
+   - Open Developer Tools (F12) → Console tab
+   - Should see no CORS errors
+   - Check Network tab for API calls
 
-  # Check NGINX
-  sudo systemctl status nginx
+2. **Try other domains**: https://kidrove.in and https://kidrove.ae
+   - Both should load identically to .com
+
+3. **API Health**: Navigate to https://api.kidrove.com/api/health
+   - Should display JSON: `{"status":"ok",...}`
+
+### Step 9.4: CORS Testing
 
-  # Check Redis
-  sudo systemctl status redis-server
+From browser console on each domain, test cross-origin requests:
+
+```javascript
+// Test from kidrove.in
+fetch('https://api.kidrove.in/api/health')
+  .then(r => r.json())
+  .then(console.log);
+// Should NOT show CORS errors
 
-  # View backend logs
-  pm2 logs gema-backend --lines 30
+// Test from kidrove.ae
+fetch('https://api.kidrove.ae/api/health')
+  .then(r => r.json())
+  .then(console.log);
+// Should NOT show CORS errors
+```
 
-  Step 2: Test API Endpoints
+### Step 9.5: SSL Verification
 
-  # Test health endpoint (local)
-  curl http://localhost:5000/health
+```bash
+# Check SSL certificate details for each domain
+echo | openssl s_client -connect kidrove.in:443 -servername kidrove.in 2>/dev/null | openssl x509 -noout -dates
+echo | openssl s_client -connect api.kidrove.in:443 -servername api.kidrove.in 2>/dev/null | openssl x509 -noout -dates
+echo | openssl s_client -connect kidrove.ae:443 -servername kidrove.ae 2>/dev/null | openssl x509 -noout -dates
+echo | openssl s_client -connect api.kidrove.ae:443 -servername api.kidrove.ae 2>/dev/null | openssl x509 -noout -dates
+```
 
-  # Test through API subdomain
-  curl https://api.kidrove.com/api/health
+### Step 9.6: Functional Testing Checklist
 
-  # Test a full API endpoint
-  curl https://api.kidrove.com/api/events
+Test these features on each domain:
 
-  Step 3: Test Frontend
+- [ ] User registration works
+- [ ] User login works
+- [ ] Events list displays
+- [ ] Event details page loads
+- [ ] Images load properly (Cloudinary)
+- [ ] No console errors in browser
+- [ ] API calls succeed (check Network tab)
 
-  # Test frontend loading
-  curl -I https://kidrove.com
+---
 
-  # Check if static files exist
-  ls -la /var/www/GEMA-Project/frontend/dist/
+## Phase 10: Security Hardening
 
-  # Check NGINX logs for errors
-  sudo tail -30 /var/log/nginx/error.log
-  pm2 logs gema-backend --lines 50
+### Step 10.1: Setup Fail2Ban
 
-  ---
-  🌐 Browser Testing
+```bash
+# Install Fail2Ban
+sudo apt install -y fail2ban
 
-  Now open your browser and test:
+# Create local configuration
+sudo cp /etc/fail2ban/jail.conf /etc/fail2ban/jail.local
 
-  1. Frontend: https://kidrove.com
-    - Should load without SSL warnings
-    - No console errors (F12 → Console)
-    - Check Network tab for API calls
-  2. API Health: https://api.kidrove.com/api/health
-    - Should return JSON: {"status":"ok",...}
-  3. Test Features:
-    - Browse events
-    - User registration/login
-    - Check if images load
+# Edit configuration
+sudo nano /etc/fail2ban/jail.local
+```
 
-  ---
-  💳 Phase 10: Configure Stripe Webhooks
+Find the `[sshd]` section and update:
 
-    Step 1: Login to Stripe Dashboard
+```ini
+[sshd]
+enabled = true
+port = 22
+maxretry = 3
+bantime = 3600
+findtime = 600
+```
 
-  1. Go to: https://dashboard.stripe.com/webhooks
-  2. Click "Add endpoint"
+Save and exit.
 
-  Step 2: Add Webhook
+```bash
+# Start and enable Fail2Ban
+sudo systemctl start fail2ban
+sudo systemctl enable fail2ban
 
-  1. Endpoint URL: https://api.kidrove.com/api/webhooks/stripe
-  2. Description: Kidrove Production Webhook
-  3. Events to send: Select these events:
-    - payment_intent.succeeded
-    - payment_intent.payment_failed
-    - checkout.session.completed
-    - checkout.session.expired
-    - customer.subscription.created
-    - customer.subscription.updated
-    - customer.subscription.deleted
-  4. Click "Add endpoint"
+# Check status
+sudo fail2ban-client status sshd
+```
 
-  Step 3: Copy Webhook Secret
+### Step 10.2: Configure Automated Backups
 
-  1. After creating, click on the webhook
-  2. Click "Reveal" next to Signing secret
-  3. Copy the secret (starts with whsec_...)
+```bash
+# Create backup script
+sudo nano /root/backup-gema.sh
+```
 
-  Step 4: Update Backend Configuration
+Paste:
+```bash
+#!/bin/bash
+BACKUP_DIR="/root/backups"
+DATE=$(date +%Y%m%d-%H%M%S)
+mkdir -p $BACKUP_DIR
 
-  On your server, run:
+# Backup environment files
+tar -czf $BACKUP_DIR/gema-env-$DATE.tar.gz \
+  /var/www/GEMA-Project/backend/.env \
+  /var/www/GEMA-Project/frontend/.env.production
 
-  cd /var/www/GEMA-Project/backend
-  nano .env
+# Backup PM2 ecosystem
+cp /var/www/GEMA-Project/backend/ecosystem.config.js $BACKUP_DIR/ecosystem-$DATE.js
 
-  Find the line STRIPE_WEBHOOK_SECRET= and add your webhook secret:
+# Backup nginx config
+cp /etc/nginx/sites-available/nginx-multi-region.conf $BACKUP_DIR/nginx-$DATE.conf
 
-  STRIPE_WEBHOOK_SECRET=whsec_your_actual_webhook_secret_here
+# Keep only last 7 backups
+cd $BACKUP_DIR && ls -t gema-env-*.tar.gz | tail -n +8 | xargs -r rm
 
-  Save and exit: Ctrl+X, Y, Enter
+echo "Backup completed: $DATE"
+```
 
-  Step 5: Restart Backend
+Save and exit.
 
-  pm2 restart gema-backend
-  pm2 logs gema-backend --lines 20
+```bash
+# Make executable
+chmod +x /root/backup-gema.sh
 
-  ---
-  🔧 Phase 11: Setup PM2 Auto-Start and Monitoring
+# Test the backup
+/root/backup-gema.sh
 
-  Step 1: Configure PM2 Startup
+# List backups
+ls -lh /root/backups/
 
-  # Generate startup script
-  pm2 startup systemd
+# Add to cron (daily at 2 AM)
+crontab -e
+```
 
-  # This will output a command like:
-  # sudo env PATH=$PATH:/usr/bin /usr/lib/node_modules/pm2/bin/pm2 startup systemd -u root --hp /root
+Add this line:
+```
+0 2 * * * /root/backup-gema.sh >> /var/log/gema-backup.log 2>&1
+```
 
-  # Copy and run that command
-  # Then save current PM2 processes
-  pm2 save
+Save and exit.
 
-  Step 2: Test PM2 Auto-Start
+### Step 10.3: Secure MongoDB Atlas
 
-  # Test by rebooting (optional)
-  sudo reboot
+1. Go to MongoDB Atlas dashboard
+2. Navigate to **Network Access**
+3. Remove `0.0.0.0/0` entry (if you added it for testing)
+4. Keep only your server IP: `93.127.185.245/32`
 
-  # Wait 2 minutes, then SSH back in
-  ssh root@93.127.185.245
+### Step 10.4: Setup Auto-Updates
 
-  # Check if PM2 processes are running
-  pm2 status
+```bash
+# Update all packages
+sudo apt update && sudo apt upgrade -y
 
-  Step 3: Setup PM2 Log Rotation
+# Install unattended upgrades
+sudo apt install -y unattended-upgrades
 
-  # Install PM2 log rotation module
-  pm2 install pm2-logrotate
+# Configure automatic security updates
+sudo dpkg-reconfigure -plow unattended-upgrades
+# Select "Yes" when prompted
+```
 
-  # Configure log rotation
-  pm2 set pm2-logrotate:max_size 10M
-  pm2 set pm2-logrotate:retain 10
-  pm2 set pm2-logrotate:compress true
-  pm2 set pm2-logrotate:dateFormat YYYY-MM-DD_HH-mm-ss
+---
 
-  Step 4: Setup Monitoring (Optional but Recommended)
+## Phase 11: Production Configuration
 
-  Option A: UptimeRobot (Free)
+### Step 11.1: Configure Stripe Webhooks
 
-  1. Visit https://uptimerobot.com and sign up
-  2. Click "Add New Monitor"
-  3. Monitor Type: HTTPS
-  4. Friendly Name: Kidrove API
-  5. URL: https://api.kidrove.com/api/health
-  6. Monitoring Interval: 5 minutes
-  7. Click "Create Monitor"
-  8. Repeat for frontend: https://kidrove.com
+1. Login to Stripe Dashboard: https://dashboard.stripe.com/webhooks
+2. Click "Add endpoint"
+3. **Endpoint URL**: `https://api.kidrove.com/api/webhooks/stripe`
+4. **Description**: Kidrove Production Webhook
+5. **Events to send**: Select:
+   - `payment_intent.succeeded`
+   - `payment_intent.payment_failed`
+   - `checkout.session.completed`
+   - `checkout.session.expired`
+   - `customer.subscription.created`
+   - `customer.subscription.updated`
+   - `customer.subscription.deleted`
+6. Click "Add endpoint"
+7. Click on the webhook and reveal the **Signing secret** (starts with `whsec_`)
+8. Copy the signing secret
 
-  Option B: PM2 Plus (Free Tier)
+**Update backend .env:**
 
-  # Sign up at https://app.pm2.io
-  # Get your keys and run:
-  pm2 link <secret_key> <public_key>
+```bash
+cd /var/www/GEMA-Project/backend
+nano .env
+```
 
-  # Monitor at: https://app.pm2.io
+Find `STRIPE_WEBHOOK_SECRET=` and add your secret:
+```bash
+STRIPE_WEBHOOK_SECRET=whsec_your_actual_secret_here
+```
 
-  ---
-  🔒 Phase 12: Security Hardening
+Save and exit.
 
-  Step 1: Setup Fail2Ban (Brute Force Protection)
+```bash
+# Restart backend
+pm2 restart gema-backend
 
-  # Install Fail2Ban
-  sudo apt install -y fail2ban
+# Check logs
+pm2 logs gema-backend --lines 20
+```
 
-  # Create local configuration
-  sudo cp /etc/fail2ban/jail.conf /etc/fail2ban/jail.local
+### Step 11.2: Verify Environment Variables
 
-  # Edit configuration
-  sudo nano /etc/fail2ban/jail.local
+```bash
+cd /var/www/GEMA-Project/backend
 
-  Find the [sshd] section and update:
+# Check all critical variables are set
+grep MONGODB_URI .env
+grep JWT_SECRET .env
+grep STRIPE_WEBHOOK_SECRET .env
+grep FRONTEND_URL .env
+grep ADDITIONAL_ALLOWED_ORIGINS .env
+```
 
-  [sshd]
-  enabled = true
-  port = 22
-  maxretry = 3
-  bantime = 3600
-  findtime = 600
+Ensure all show values (not empty).
 
-  Save and exit: Ctrl+X, Y, Enter
+### Step 11.3: Optional - Setup PM2 Plus Monitoring
 
-  # Start and enable Fail2Ban
-  sudo systemctl start fail2ban
-  sudo systemctl enable fail2ban
+```bash
+# Sign up at https://app.pm2.io
+# Get your keys and run:
+pm2 link <secret_key> <public_key>
 
-  # Check status
-  sudo fail2ban-client status sshd
+# Monitor at: https://app.pm2.io
+```
 
-  Step 2: Configure Automated Backups
+---
 
-  # Create backup script
-  sudo nano /root/backup-gema.sh
+## Phase 12: Maintenance & Updates
 
-  Paste this:
+### Deployment Update Workflow
 
-  #!/bin/bash
-  BACKUP_DIR="/root/backups"
-  DATE=$(date +%Y%m%d-%H%M%S)
-  mkdir -p $BACKUP_DIR
+When you push new code to GitHub:
 
-  # Backup environment files
-  tar -czf $BACKUP_DIR/gema-env-$DATE.tar.gz \
-    /var/www/GEMA-Project/backend/.env \
-    /var/www/GEMA-Project/frontend/.env.production
+```bash
+# SSH to server
+ssh root@93.127.185.245
 
-  # Backup PM2 ecosystem
-  cp /var/www/GEMA-Project/backend/ecosystem.config.js $BACKUP_DIR/ecosystem-$DATE.js
+# Navigate to project
+cd /var/www/GEMA-Project
 
-  # Keep only last 7 backups
-  cd $BACKUP_DIR && ls -t gema-env-*.tar.gz | tail -n +8 | xargs -r rm
+# Pull latest code
+git pull origin backend_auth
 
-  echo "Backup completed: $DATE"
+# Update backend
+cd backend
+npm install
+npm run build
+pm2 reload gema-backend
 
-  Save and exit: Ctrl+X, Y, Enter
+# Update frontend
+cd ../frontend
+npm install
+npm run build
+sudo systemctl reload nginx
 
-  # Make executable
-  chmod +x /root/backup-gema.sh
+# Verify
+pm2 status
+pm2 logs gema-backend --lines 20
+```
 
-  # Test the backup
-  /root/backup-gema.sh
+### PM2 Commands Reference
 
-  # Add to cron (daily at 2 AM)
-  crontab -e
+```bash
+# View status
+pm2 status
 
-  Add this line:
+# View logs
+pm2 logs                          # All processes
+pm2 logs gema-backend            # Backend only
+pm2 logs gema-backend --lines 100  # Last 100 lines
+pm2 logs gema-backend --err       # Errors only
 
-  0 2 * * * /root/backup-gema.sh >> /var/log/gema-backup.log 2>&1
+# Restart services
+pm2 restart gema-backend         # With downtime
+pm2 restart gema-worker
+pm2 restart all
 
-  Save and exit: Ctrl+X, Y, Enter
+# Reload (zero-downtime)
+pm2 reload gema-backend          # Recommended for updates
+pm2 reload all
 
-  Step 3: Secure MongoDB Atlas (Final)
+# Stop services
+pm2 stop gema-backend
+pm2 stop all
 
-  Go back to MongoDB Atlas dashboard:
+# Monitor resources
+pm2 monit
 
-  1. Network Access → Remove 0.0.0.0/0 entry (if you added it for testing)
-  2. Keep only 93.127.185.245/32 (your server IP)
+# Clear logs
+pm2 flush
 
-  Step 4: Update Server and Setup Auto-Updates
+# View detailed info
+pm2 info gema-backend
+```
 
-  # Update all packages
-  sudo apt update && sudo apt upgrade -y
+### NGINX Commands Reference
 
-  # Install unattended upgrades
-  sudo apt install -y unattended-upgrades
+```bash
+# Test configuration
+sudo nginx -t
 
-  # Configure automatic security updates
-  sudo dpkg-reconfigure -plow unattended-upgrades
-  # Select "Yes"
+# Reload configuration (zero-downtime)
+sudo systemctl reload nginx
 
-  ---
-  🎉 Deployment Complete!
+# Restart NGINX
+sudo systemctl restart nginx
 
-● 🎊 Congratulations! Your GEMA Project is Now Live!
+# Check status
+sudo systemctl status nginx
 
-  📊 Deployment Summary
+# View logs
+sudo tail -f /var/log/nginx/error.log
+sudo tail -f /var/log/nginx/access.log
+sudo tail -f /var/log/nginx/kidrove-com-access.log
+sudo tail -f /var/log/nginx/api-kidrove-com-error.log
+```
 
-  ✅ All tasks completed successfully!
+### SSL Certificate Management
 
-  Your Live URLs:
-  - 🌐 Frontend: https://kidrove.com
-  - 🔌 API: https://api.kidrove.com/api
-  - ❤️ Health Check: https://api.kidrove.com/api/health
+```bash
+# Check certificates
+sudo certbot certificates
 
-  Infrastructure:
-  - ✅ Node.js 20.x + PM2 process management
-  - ✅ NGINX with HTTP/2 and SSL/TLS 1.3
-  - ✅ MongoDB Atlas cloud database
-  - ✅ Redis caching
-  - ✅ SSL certificates (auto-renewal enabled)
-  - ✅ Fail2Ban security
-  - ✅ Automated backups (daily at 2 AM)
-  - ✅ Stripe webhooks configured
-  - ✅ PM2 auto-start on reboot
+# Renew certificates manually
+sudo certbot renew
 
-  ---
-  📚 Useful Commands Reference
+# Force renewal (if needed)
+sudo certbot renew --force-renewal
 
-  PM2 Management
+# Test auto-renewal (dry-run)
+sudo certbot renew --dry-run
 
-  # View process status
-  pm2 status
+# Check renewal timer status
+sudo systemctl status certbot.timer
+```
 
-  # View logs
-  pm2 logs gema-backend
-  pm2 logs gema-backend --lines 100
-  pm2 logs gema-backend --err    # Errors only
+### Monitoring Commands
 
-  # Restart services
-  pm2 restart gema-backend
-  pm2 restart gema-worker
-  pm2 restart all
+```bash
+# Check disk space
+df -h
 
-  # Reload (zero-downtime)
-  pm2 reload gema-backend
+# Check memory usage
+free -h
 
-  # Stop services
-  pm2 stop gema-backend
-  pm2 stop all
+# Check system resources
+htop  # Install with: sudo apt install htop
 
-  # Monitor resources
-  pm2 monit
+# Check running processes
+ps aux | grep node
+ps aux | grep nginx
 
-  # Clear logs
-  pm2 flush
+# Check ports
+sudo netstat -tuln | grep -E ':(80|443|5000|6379)'
+# or
+sudo ss -tuln | grep -E ':(80|443|5000|6379)'
 
-  NGINX Management
+# Check firewall
+sudo ufw status verbose
 
-  # Test configuration
-  sudo nginx -t
+# View system logs
+sudo journalctl -u nginx -n 50
+sudo journalctl -u pm2-root -n 50
+sudo journalctl -xe
+```
 
-  # Reload configuration
-  sudo systemctl reload nginx
+### Database Management
 
-  # Restart NGINX
-  sudo systemctl restart nginx
+```bash
+# Check Redis
+redis-cli ping  # Should return "PONG"
+redis-cli info  # Detailed Redis info
 
-  # Check status
-  sudo systemctl status nginx
+# Connect to MongoDB Atlas
+# Use MongoDB Compass with your connection string
+# Or mongosh (if installed):
+mongosh "mongodb+srv://your-connection-string"
+```
 
-  # View logs
-  sudo tail -f /var/log/nginx/error.log
-  sudo tail -f /var/log/nginx/access.log
-  sudo tail -f /var/log/nginx/api_error.log
+### Backup & Restore
 
-  SSL Certificate Management
+```bash
+# Manual backup
+/root/backup-gema.sh
 
-  # Check certificates
-  sudo certbot certificates
+# List backups
+ls -lh /root/backups/
 
-  # Renew certificates (manual)
-  sudo certbot renew
+# Restore backup
+cd /root/backups
+tar -xzf gema-env-YYYYMMDD-HHMMSS.tar.gz -C /
+pm2 restart all
+```
 
-  # Force renewal
-  sudo certbot renew --force-renewal
+---
 
-  # Test auto-renewal
-  sudo certbot renew --dry-run
+## Troubleshooting Guide
 
-  Deployment Updates
+### Backend Not Starting
 
-  When you push new code:
+**Symptoms**: PM2 shows process as errored or constantly restarting
 
-  # SSH to server
-  ssh root@93.127.185.245
+**Solutions**:
 
-  # Navigate to project
-  cd /var/www/GEMA-Project
+```bash
+# Check logs
+pm2 logs gema-backend --lines 100
 
-  # Pull latest code
-  git pull origin backend_auth
+# Common issues:
 
-  # Update backend
-  cd backend
-  npm install
-  npm run build
-  pm2 reload gema-backend
+# 1. MongoDB connection error
+# Check .env MONGODB_URI is correct
+grep MONGODB_URI /var/www/GEMA-Project/backend/.env
 
-  # Update frontend
-  cd ../frontend
-  npm install
-  npm run build
-  sudo systemctl reload nginx
+# 2. Port already in use
+sudo lsof -i :5000
+# If something is using port 5000, stop it
 
-  # Verify
-  pm2 status
-  pm2 logs gema-backend --lines 20
+# 3. Missing dependencies
+cd /var/www/GEMA-Project/backend
+npm install
 
-  Monitoring & Troubleshooting
+# 4. Build errors
+npm run build
+# Check output for TypeScript errors
 
-  # Check disk space
-  df -h
+# 5. Redis connection error
+redis-cli ping
+# If fails, restart Redis:
+sudo systemctl restart redis-server
+```
 
-  # Check memory usage
-  free -h
+### Frontend Not Loading
 
-  # Check system resources
-  htop  # (install with: sudo apt install htop)
+**Symptoms**: Browser shows 502 Bad Gateway or blank page
 
-  # Check running processes
-  ps aux | grep node
+**Solutions**:
 
-  # Check ports
-  sudo netstat -tuln | grep -E ':(80|443|5000|6379)'
+```bash
+# Check NGINX logs
+sudo tail -50 /var/log/nginx/error.log
+sudo tail -50 /var/log/nginx/kidrove-com-error.log
 
-  # Check firewall
-  sudo ufw status verbose
+# Verify dist folder exists
+ls -la /var/www/GEMA-Project/frontend/dist/
+# Should contain: index.html, assets/, etc.
 
-  # View system logs
-  sudo journalctl -u nginx -n 50
-  sudo journalctl -xe
+# Rebuild if needed
+cd /var/www/GEMA-Project/frontend
+npm run build
+sudo systemctl reload nginx
 
-  Database Management
+# Check NGINX syntax
+sudo nginx -t
+```
 
-  # Check Redis
-  redis-cli ping  # Should return "PONG"
+### CORS Errors
 
-  # Connect to MongoDB Atlas
-  # Use MongoDB Compass with your connection string
-  # Or use mongo shell (if installed)
+**Symptoms**: Browser console shows "CORS policy blocked"
 
-  Backup & Restore
+**Solutions**:
 
-  # Manual backup
-  /root/backup-gema.sh
+```bash
+# Check backend CORS settings
+cd /var/www/GEMA-Project/backend
+grep FRONTEND_URL .env
+grep ADDITIONAL_ALLOWED_ORIGINS .env
 
-  # List backups
-  ls -lh /root/backups/
+# Should show:
+# FRONTEND_URL=https://kidrove.com
+# ADDITIONAL_ALLOWED_ORIGINS=https://www.kidrove.com,https://kidrove.in,https://www.kidrove.in,https://kidrove.ae,https://www.kidrove.ae
 
-  # Restore backup
-  cd /root/backups
-  tar -xzf gema-env-YYYYMMDD-HHMMSS.tar.gz -C /
-  pm2 restart all
+# Update if needed and restart
+pm2 restart gema-backend
 
-  ---
-  🚨 Troubleshooting Guide
+# Check backend logs for CORS debug messages
+pm2 logs gema-backend | grep -i cors
+```
 
-  Backend Not Starting
+### SSL Issues
 
-  # Check logs
-  pm2 logs gema-backend --lines 100
+**Symptoms**: "Your connection is not private" warning in browser
 
-  # Common issues:
-  # 1. MongoDB connection - Check .env MONGODB_URI
-  # 2. Port in use - sudo lsof -i :5000
-  # 3. Missing dependencies - npm install
-  # 4. Build errors - npm run build
+**Solutions**:
 
-  Frontend Not Loading
+```bash
+# Check certificate status
+sudo certbot certificates
 
-  # Check NGINX logs
-  sudo tail -50 /var/log/nginx/error.log
+# All 6 certificates should be valid
 
-  # Verify files exist
-  ls -la /var/www/GEMA-Project/frontend/dist/
+# If expired, renew
+sudo certbot renew
 
-  # Rebuild if needed
-  cd /var/www/GEMA-Project/frontend
-  npm run build
-  sudo systemctl reload nginx
+# If renewal fails, check DNS is correct
+nslookup kidrove.in
+nslookup api.kidrove.in
+nslookup kidrove.ae
+nslookup api.kidrove.ae
 
-  API CORS Errors
+# Test nginx config
+sudo nginx -t
 
-  # Check backend CORS settings
-  cd /var/www/GEMA-Project/backend
-  grep FRONTEND_URL .env
+# Reload nginx
+sudo systemctl reload nginx
+```
 
-  # Should be: FRONTEND_URL=https://kidrove.com
-  # Update if needed and restart
-  pm2 restart gema-backend
+### High Memory Usage
 
-  SSL Issues
+**Symptoms**: PM2 shows high memory usage, server becomes slow
 
-  # Check certificate status
-  sudo certbot certificates
+**Solutions**:
 
-  # Renew if needed
-  sudo certbot renew
-  sudo systemctl reload nginx
+```bash
+# Check PM2 memory
+pm2 status
 
-  ---
-  📈 Next Steps & Recommendations
+# Restart processes to free memory
+pm2 restart all
 
-  Immediate Tasks
+# Check system memory
+free -h
 
-  1. Test all features thoroughly:
-    - User registration/login
-    - Event creation and booking
-    - Payment processing
-    - File uploads
-    - Email notifications
-  2. Update Stripe to Live Mode (when ready):
-    - Switch to live keys in backend .env
-    - Update frontend publishable key
-    - Configure webhooks with live endpoint
-  3. Setup Google Analytics (optional):
-    - Add tracking ID to frontend .env.production
+# If consistently high, consider:
+# 1. Adjusting max_memory_restart in ecosystem.config.js
+# 2. Upgrading server RAM
+# 3. Optimizing database queries
+```
 
-  Performance Optimization
+### Database Connection Errors
 
-  1. Setup CDN (Cloudflare):
-    - Free tier provides DDoS protection
-    - Global caching
-    - Additional SSL features
-  2. Monitor Performance:
-    - Use PM2 Plus for detailed metrics
-    - Set up alerts for downtime/errors
-    - Monitor MongoDB Atlas metrics
-  3. Database Indexing:
-    - Review slow queries in MongoDB Atlas
-    - Add indexes as needed
+**Symptoms**: Backend logs show MongoDB connection errors
 
-  Scaling Considerations
+**Solutions**:
 
-  When traffic grows:
+```bash
+# Check MongoDB Atlas:
+# 1. Cluster is running (not paused)
+# 2. IP whitelist includes server IP: 93.127.185.245
+# 3. Connection string is correct
 
-  1. Upgrade MongoDB: M0 (free) → M10 ($0.08/hr)
-  2. Upgrade Server: Consider 2vCPU, 8GB RAM
-  3. Enable PM2 Cluster Mode: Multiple Node.js instances
-  4. Add Load Balancer: Distribute traffic across servers
+# Test connection from server
+cd /var/www/GEMA-Project/backend
+node -e "const mongoose = require('mongoose'); require('dotenv').config(); mongoose.connect(process.env.MONGODB_URI).then(() => console.log('Connected')).catch(err => console.error(err));"
+```
 
-  ---
-  📞 Support & Resources
+---
 
-  - MongoDB Atlas: https://cloud.mongodb.com
-  - Stripe Dashboard: https://dashboard.stripe.com
-  - PM2 Docs: https://pm2.keymetrics.io/docs
-  - Let's Encrypt: https://letsencrypt.org
-  - NGINX Docs: https://nginx.org/en/docs
+## Performance Optimization Tips
+
+### 1. Enable Cloudflare CDN (Free)
+
+1. Sign up at https://cloudflare.com
+2. Add your domains (kidrove.com, kidrove.in, kidrove.ae)
+3. Update nameservers at domain registrar
+4. Benefits:
+   - Global CDN caching
+   - DDoS protection
+   - Additional SSL features
+   - Free tier sufficient for most needs
+
+### 2. Monitor Performance
+
+```bash
+# Install monitoring tools
+sudo apt install -y sysstat
+
+# CPU usage
+mpstat 1 5
+
+# Disk I/O
+iostat 1 5
+
+# Memory usage
+vmstat 1 5
+```
+
+### 3. Database Indexing
+
+1. Review MongoDB Atlas Performance Advisor
+2. Add indexes for frequently queried fields
+3. Monitor slow queries
+
+### 4. Redis Caching
+
+Ensure Redis is properly utilized:
+
+```bash
+# Check Redis memory usage
+redis-cli info memory
+
+# Check cache hit rate
+redis-cli info stats | grep keyspace
+```
+
+---
+
+## Scaling Considerations
+
+### When Traffic Grows
+
+**Current Setup**: 1 vCPU, 4GB RAM, handles ~100-500 concurrent users
+
+**Scaling Options**:
+
+1. **Vertical Scaling** (Upgrade server):
+   - 2 vCPU, 8GB RAM → 500-2000 users
+   - 4 vCPU, 16GB RAM → 2000-5000 users
+
+2. **MongoDB Upgrade**:
+   - M0 (free) → M10 (paid, $0.08/hr)
+   - Better performance, automated backups
+
+3. **PM2 Cluster Mode** (when upgrading CPU):
+   ```bash
+   # Edit ecosystem.config.js
+   instances: 'max'  # Uses all CPU cores
+   exec_mode: 'cluster'
+   ```
+
+4. **Load Balancer** (multiple servers):
+   - Use NGINX as load balancer
+   - Or cloud load balancer (AWS ALB, etc.)
+
+5. **Separate Worker Server**:
+   - Move gema-worker to dedicated server
+   - Reduces load on main API server
+
+---
+
+## Appendix
+
+### Full Environment Variable Reference
+
+See `backend/.env.production` for complete list of environment variables.
+
+**Critical variables**:
+- `MONGODB_URI`: MongoDB connection string
+- `JWT_SECRET`: JWT signing secret
+- `FRONTEND_URL`: Primary frontend domain
+- `ADDITIONAL_ALLOWED_ORIGINS`: Additional CORS domains
+- `STRIPE_SECRET_KEY`: Stripe API key
+- `STRIPE_WEBHOOK_SECRET`: Stripe webhook secret
+- `CLOUDINARY_*`: Cloudinary credentials
+
+### Port Reference
+
+- **80**: HTTP (redirects to HTTPS)
+- **443**: HTTPS (NGINX)
+- **5000**: Backend API (internal, proxied by NGINX)
+- **6379**: Redis (internal, localhost only)
+
+### DNS Records Summary
+
+**Required A Records** (9 total):
+
+For kidrove.com:
+- @ → 93.127.185.245
+- www → 93.127.185.245
+- api → 93.127.185.245
+
+For kidrove.in:
+- @ → 93.127.185.245
+- www → 93.127.185.245
+- api → 93.127.185.245
+
+For kidrove.ae:
+- @ → 93.127.185.245
+- www → 93.127.185.245
+- api → 93.127.185.245
+
+### SSL Certificates Summary
+
+**Required Certificates** (6 total):
+1. kidrove.com (+ www.kidrove.com as SAN)
+2. api.kidrove.com
+3. kidrove.in (+ www.kidrove.in as SAN)
+4. api.kidrove.in
+5. kidrove.ae (+ www.kidrove.ae as SAN)
+6. api.kidrove.ae
+
+**Renewal**: Automatic via systemd timer (twice daily check, renews 30 days before expiry)
+
+### Live URLs
+
+**Production URLs** (all should work identically):
+
+**Frontend**:
+- https://kidrove.com
+- https://www.kidrove.com
+- https://kidrove.in
+- https://www.kidrove.in
+- https://kidrove.ae
+- https://www.kidrove.ae
+
+**API**:
+- https://api.kidrove.com/api
+- https://api.kidrove.in/api
+- https://api.kidrove.ae/api
+
+**Health Checks**:
+- https://api.kidrove.com/api/health
+- https://api.kidrove.in/api/health
+- https://api.kidrove.ae/api/health
+
+### Support Resources
+
+- **MongoDB Atlas**: https://cloud.mongodb.com
+- **Stripe Dashboard**: https://dashboard.stripe.com
+- **PM2 Documentation**: https://pm2.keymetrics.io/docs
+- **Let's Encrypt**: https://letsencrypt.org
+- **NGINX Documentation**: https://nginx.org/en/docs
+- **Cloudinary**: https://cloudinary.com/console
+
+---
+
+## Conclusion
+
+You have successfully deployed the Gema/Kidrove platform with multi-region support!
+
+**Deployment Summary**:
+- ✅ 3 regional domains (kidrove.com, kidrove.in, kidrove.ae)
+- ✅ 9 total domains configured (3 main + 3 www + 3 API)
+- ✅ 6 SSL certificates (auto-renewal enabled)
+- ✅ Single backend serving all regions
+- ✅ Runtime API detection in frontend
+- ✅ PM2 process management with auto-start
+- ✅ NGINX reverse proxy with HTTP/2
+- ✅ MongoDB Atlas + Redis caching
+- ✅ Automated backups (daily at 2 AM)
+- ✅ Security hardening (Fail2Ban, SSL, firewall)
+- ✅ Stripe webhooks configured
+
+**Next Steps**:
+1. Test all features thoroughly on all 3 domains
+2. Switch Stripe from test mode to live mode (when ready)
+3. Setup monitoring (PM2 Plus or UptimeRobot)
+4. Configure Google Analytics (optional)
+5. Setup CDN (Cloudflare recommended)
+6. Monitor performance and scale as needed
+
+**Regular Maintenance**:
+- Check PM2 logs daily: `pm2 logs gema-backend`
+- Monitor SSL expiry: `sudo certbot certificates`
+- Review backups weekly: `ls -lh /root/backups/`
+- Update dependencies monthly: `npm update`
+- Apply security updates: Automatic via unattended-upgrades
+
+For issues or questions, refer to the **Troubleshooting Guide** section above.
+
+Happy deploying! 🚀

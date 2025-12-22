@@ -52,6 +52,7 @@ import bannerRoutes from './banner.routes';
 import seoContentRoutes from './seoContent.routes';
 import announcementBarRoutes from './announcementBar.routes';
 import popupRoutes from './popup.routes';
+import homepageRoutes from './homepage.routes';
 import { Router} from 'express';
 
 const router = Router();
@@ -60,6 +61,9 @@ const router = Router();
 router.get('/', (req, res) => {
   res.status(200).json({ message: `Welcome to the ${process.env.APP_NAME || 'Kidrove'} API!` });
 });
+
+// Homepage aggregated data (Public)
+router.use('/homepage', homepageRoutes);
 
 // Auth routes
 router.use('/auth', authRoutes);

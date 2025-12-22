@@ -84,7 +84,7 @@ const BannerCarousel: React.FC<BannerCarouselProps> = ({ banners }) => {
       }
     }
   };
-
+  console.log("banners:", banners);
   if (!banners || banners.length === 0) {
     return null; // Don't show carousel if no banners
   }

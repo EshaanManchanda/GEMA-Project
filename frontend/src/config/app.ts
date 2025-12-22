@@ -3,9 +3,11 @@
  * Centralizes environment variables and app settings
  */
 
+import { API_BASE_URL } from './api';
+
 export const config = {
-  // API Configuration
-  apiBaseUrl: import.meta.env.VITE_API_BASE_URL || 'http://localhost:5000/api',
+  // API Configuration - uses runtime-detected multi-region endpoint
+  apiBaseUrl: API_BASE_URL,
   apiTimeout: Number(import.meta.env.VITE_API_TIMEOUT) || 30000,
 
   // App Configuration
