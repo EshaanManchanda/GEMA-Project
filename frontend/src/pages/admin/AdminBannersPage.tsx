@@ -1,13 +1,15 @@
-import React, { useState, useEffect } from 'react';
-import { Plus, Search } from 'lucide-react';
+import React, { useState, useEffect, useCallback } from 'react';
+import { Plus, Search, RefreshCw } from 'lucide-react';
 import toast from 'react-hot-toast';
 import bannerAPI, { Banner } from '../../services/api/bannerAPI';
+import homepageAPI from '../../services/api/homepageAPI';
 import BannerList from '../../components/admin/BannerList';
 import BannerForm from '../../components/admin/BannerForm';
 
 const AdminBannersPage: React.FC = () => {
   const [banners, setBanners] = useState<Banner[]>([]);
   const [isLoading, setIsLoading] = useState(true);
+  const [isCacheInvalidating, setIsCacheInvalidating] = useState(false);
   const [search, setSearch] = useState('');
   const [statusFilter, setStatusFilter] = useState<string>('');
   const [showBannerForm, setShowBannerForm] = useState(false);
@@ -15,7 +17,7 @@ const AdminBannersPage: React.FC = () => {
   const [page, setPage] = useState(1);
   const [pagination, setPagination] = useState<any>(null);
 
-  const fetchBanners = async () => {
+  const fetchBanners = useCallback(async () => {
     try {
       setIsLoading(true);
       const response = await bannerAPI.admin.getAllBanners({
@@ -32,11 +34,11 @@ const AdminBannersPage: React.FC = () => {
     } finally {
       setIsLoading(false);
     }
-  };
+  }, [search, statusFilter, page]);
 
   useEffect(() => {
     fetchBanners();
-  }, [search, statusFilter, page]);
+  }, [fetchBanners]);
 
   const handleCreateBanner = () => {
     setSelectedBanner(null);
@@ -59,9 +61,25 @@ const AdminBannersPage: React.FC = () => {
     try {
       await bannerAPI.admin.deleteBanner(bannerId);
       toast.success('Banner deleted successfully');
-      fetchBanners();
+      await fetchBanners();
+
+      // Auto-invalidate homepage cache after deletion
+      await homepageAPI.invalidateCache();
+      toast.success('Homepage cache cleared');
     } catch (error: any) {
-      toast.error('Failed to delete banner');
+      toast.error('Failed to delete banner: ' + (error.message || 'Unknown error'));
+    }
+  };
+
+  const handleInvalidateCache = async () => {
+    try {
+      setIsCacheInvalidating(true);
+      await homepageAPI.invalidateCache();
+      toast.success('Homepage cache cleared - changes will appear immediately');
+    } catch (error: any) {
+      toast.error('Failed to clear cache: ' + (error.message || 'Unknown error'));
+    } finally {
+      setIsCacheInvalidating(false);
     }
   };
 
@@ -76,7 +94,12 @@ const AdminBannersPage: React.FC = () => {
       }
 
       setShowBannerForm(false);
-      fetchBanners();
+      await fetchBanners();
+
+      // Auto-invalidate homepage cache after banner changes
+      toast.loading('Clearing homepage cache...', { id: 'cache-invalidate' });
+      await homepageAPI.invalidateCache();
+      toast.success('Homepage cache cleared', { id: 'cache-invalidate' });
     } catch (error: any) {
       toast.error(error.message || 'Failed to save banner');
       throw error;
@@ -90,13 +113,24 @@ const AdminBannersPage: React.FC = () => {
           <h1 className="text-3xl font-bold text-gray-900">Homepage Banners</h1>
           <p className="text-gray-600 mt-1">Manage promotional banners for the homepage carousel</p>
         </div>
-        <button
-          onClick={handleCreateBanner}
-          className="flex items-center px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
-        >
-          <Plus className="w-5 h-5 mr-2" />
-          Add Banner
-        </button>
+        <div className="flex gap-3">
+          <button
+            onClick={handleInvalidateCache}
+            disabled={isCacheInvalidating}
+            className="flex items-center px-4 py-2 bg-gray-600 text-white rounded-lg hover:bg-gray-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+            title="Clear homepage cache to show latest banner changes immediately"
+          >
+            <RefreshCw className={`w-5 h-5 mr-2 ${isCacheInvalidating ? 'animate-spin' : ''}`} />
+            Clear Cache
+          </button>
+          <button
+            onClick={handleCreateBanner}
+            className="flex items-center px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
+          >
+            <Plus className="w-5 h-5 mr-2" />
+            Add Banner
+          </button>
+        </div>
       </div>
 
       {/* Filters */}

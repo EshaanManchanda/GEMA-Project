@@ -75,10 +75,22 @@ class HomepageService {
       // Active banners
       Banner.find({
         isActive: true,
-        startDate: { $lte: new Date() },
-        $or: [
-          { endDate: { $gte: new Date() } },
-          { endDate: null }
+        status: { $in: ['active', 'scheduled'] },
+        $and: [
+          {
+            $or: [
+              { startDate: { $exists: false } },
+              { startDate: null },
+              { startDate: { $lte: new Date() } }
+            ]
+          },
+          {
+            $or: [
+              { endDate: { $exists: false } },
+              { endDate: null },
+              { endDate: { $gte: new Date() } }
+            ]
+          }
         ]
       })
         .select('title description imageAsset link ctaText ctaLink displayOrder titleVisible')
