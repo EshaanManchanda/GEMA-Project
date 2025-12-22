@@ -10,7 +10,7 @@ class BannerService {
   async getActiveBanners(): Promise<IBanner[]> {
     const now = new Date();
 
-    return await Banner.find({
+    const banners = await Banner.find({
       isActive: true,
       status: { $in: ['active', 'scheduled'] },
       $and: [
@@ -33,6 +33,9 @@ class BannerService {
     .populate('imageAsset', 'url filename width height')
     .sort({ displayOrder: 1 })
     .lean();
+
+    // Filter out banners with null/undefined imageAsset
+    return banners.filter(b => b.imageAsset != null);
   }
 
   /**
@@ -58,7 +61,7 @@ class BannerService {
 
     const skip = (page - 1) * limit;
 
-    const [banners, total] = await Promise.all([
+    const [allBanners, total] = await Promise.all([
       Banner.find(query)
         .populate('imageAsset', 'url filename width height')
         .populate('createdBy', 'firstName lastName email')
@@ -68,6 +71,9 @@ class BannerService {
         .lean(),
       Banner.countDocuments(query)
     ]);
+
+    // Filter out banners with null/undefined imageAsset
+    const banners = allBanners.filter(b => b.imageAsset != null);
 
     return {
       banners,

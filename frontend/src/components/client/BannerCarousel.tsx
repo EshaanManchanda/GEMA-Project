@@ -47,9 +47,12 @@ const BannerCarousel: React.FC<BannerCarouselProps> = ({ banners }) => {
   const [currentSlide, setCurrentSlide] = useState(0);
   const [loaded, setLoaded] = useState(false);
 
+  // Filter out banners with missing imageAsset early for slider config
+  const validBanners = banners.filter(b => b.imageAsset?.url);
+
   const [sliderRef, instanceRef] = useKeenSlider<HTMLDivElement>(
     {
-      loop: banners.length > 1,
+      loop: validBanners.length > 1,
       slides: {
         perView: 1,
         spacing: 0,
@@ -61,7 +64,7 @@ const BannerCarousel: React.FC<BannerCarouselProps> = ({ banners }) => {
         setLoaded(true);
       },
     },
-    banners.length > 1 ? [AutoplayPlugin] : []
+    validBanners.length > 1 ? [AutoplayPlugin] : []
   );
 
   const handleBannerClick = (banner: Banner) => {
@@ -85,14 +88,15 @@ const BannerCarousel: React.FC<BannerCarouselProps> = ({ banners }) => {
     }
   };
   console.log("banners:", banners);
-  if (!banners || banners.length === 0) {
-    return null; // Don't show carousel if no banners
+
+  if (!validBanners || validBanners.length === 0) {
+    return null; // Don't show carousel if no valid banners
   }
 
   return (
     <div className="relative w-full bg-gray-50">
       <div ref={sliderRef} className="keen-slider">
-        {banners.map((banner, index) => (
+        {validBanners.map((banner, index) => (
           <div
             key={banner._id}
             className="keen-slider__slide relative w-full h-auto md:aspect-[16/7] md:min-h-[650px] md:max-h-[100vh]"
@@ -150,7 +154,7 @@ const BannerCarousel: React.FC<BannerCarouselProps> = ({ banners }) => {
       </div>
 
       {/* Navigation Arrows */}
-      {loaded && instanceRef.current && banners.length > 1 && (
+      {loaded && instanceRef.current && validBanners.length > 1 && (
         <>
           <button
             onClick={() => instanceRef.current?.prev()}
@@ -170,9 +174,9 @@ const BannerCarousel: React.FC<BannerCarouselProps> = ({ banners }) => {
       )}
 
       {/* Dot Indicators */}
-      {loaded && banners.length > 1 && (
+      {loaded && validBanners.length > 1 && (
         <div className="absolute bottom-6 left-1/2 -translate-x-1/2 flex gap-2 z-10">
-          {banners.map((_, idx) => (
+          {validBanners.map((_, idx) => (
             <button
               key={idx}
               onClick={() => instanceRef.current?.moveToIdx(idx)}

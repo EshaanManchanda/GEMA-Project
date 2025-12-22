@@ -106,6 +106,39 @@ sudo systemctl enable nginx
 # Verify NGINX is running
 sudo systemctl status nginx
 ```
+output 
+```[PM2] Saving current process list...
+[PM2] Successfully saved in /root/.pm2/dump.pm2
+root@srv1143065:~# sudo apt install -y nginx
+Reading package lists... Done
+Building dependency tree... Done
+Reading state information... Done
+nginx is already the newest version (1.18.0-6ubuntu14.7).
+0 upgraded, 0 newly installed, 0 to remove and 0 not upgraded.
+root@srv1143065:~# sudo systemctl start nginx
+root@srv1143065:~# sudo systemctl enable nginx
+Synchronizing state of nginx.service with SysV service script with /lib/systemd/systemd-sysv-install.
+Executing: /lib/systemd/systemd-sysv-install enable nginx
+root@srv1143065:~# sudo systemctl status nginx
+● nginx.service - A high performance web server and a reverse proxy server
+     Loaded: loaded (/lib/systemd/system/nginx.service; enabled; vendor preset: enabled)
+     Active: active (running) since Sun 2025-12-21 13:16:18 UTC; 17h ago
+       Docs: man:nginx(8)
+   Main PID: 140711 (nginx)
+      Tasks: 2 (limit: 4645)
+     Memory: 5.9M
+        CPU: 1.289s
+     CGroup: /system.slice/nginx.service
+             ├─140711 "nginx: master process /usr/sbin/nginx -g daemon on; master_process on;"
+             └─140722 "nginx: worker process" "" "" "" "" "" "" "" "" "" "" "" "" "" "" "" "" "" "" "" "" "" "" "" "" "" "" ""
+
+Dec 21 13:16:18 srv1143065 systemd[1]: nginx.service: Consumed 29.677s CPU time.
+Dec 21 13:16:18 srv1143065 systemd[1]: Starting A high performance web server and a reverse proxy server...
+Dec 21 13:16:18 srv1143065 systemd[1]: Started A high performance web server and a reverse proxy server.
+Dec 21 13:59:55 srv1143065 systemd[1]: Reloading A high performance web server and a reverse proxy server...
+Dec 21 13:59:55 srv1143065 nginx[141381]: nginx: [emerg] unknown directive " " in /etc/nginx/sites-enabled/kidrove:2
+Dec 21 13:59:55 srv1143065 systemd[1]: nginx.service: Control process exited, code=exited, status=1/FAILURE
+Dec 21 13:59:55 srv1143065 systemd[1]: Reload failed for A high performance web server and a reverse proxy server.```
 
 ### Step 1.6: Install Redis Server
 
@@ -145,6 +178,26 @@ sudo ufw --force enable
 
 # Check firewall status
 sudo ufw status verbose
+```
+
+Output
+```
+root@srv1143065:~# sudo ufw status verbose
+Status: active
+Logging: on (low)
+Default: deny (incoming), allow (outgoing), disabled (routed)
+New profiles: skip
+
+To                         Action      From
+--                         ------      ----
+22/tcp                     ALLOW IN    Anywhere
+80/tcp                     ALLOW IN    Anywhere
+443/tcp                    ALLOW IN    Anywhere
+22/tcp (OpenSSH)           ALLOW IN    Anywhere
+22/tcp (v6)                ALLOW IN    Anywhere (v6)
+80/tcp (v6)                ALLOW IN    Anywhere (v6)
+443/tcp (v6)               ALLOW IN    Anywhere (v6)
+22/tcp (OpenSSH (v6))      ALLOW IN    Anywhere (v6)
 ```
 
 **Expected output**: Ports 22, 80, and 443 should show as ALLOW.

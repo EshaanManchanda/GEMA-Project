@@ -1,6 +1,7 @@
 import { Event, Banner, Category, Blog, IEvent, IBanner, ICategory, IBlog } from '../models/index';
 import cacheService from './cache.service';
 import statsService, { PublicStats } from './stats.service';
+import { transformEventsResponse } from '../utils/event.utils';
 
 export interface HomepageData {
   events: IEvent[];
@@ -51,6 +52,7 @@ class HomepageService {
         .select('title slug description images imageAssets price location dateSchedule category rating reviewCount viewsCount isFeatured vendorId ageGroup')
         .populate('category', 'name slug')
         .populate('vendorId', 'businessName')
+        .populate('imageAssets', 'url filename width height thumbnailUrl variations')
         .sort({ createdAt: -1 })
         .limit(12)
         .lean(),
@@ -65,6 +67,7 @@ class HomepageService {
         .select('title slug description images imageAssets price location dateSchedule category rating reviewCount viewsCount isFeatured vendorId ageGroup')
         .populate('category', 'name slug')
         .populate('vendorId', 'businessName')
+        .populate('imageAssets', 'url filename width height thumbnailUrl variations')
         .sort({ featuredOrder: 1, createdAt: -1 })
         .limit(6)
         .lean(),
@@ -106,9 +109,13 @@ class HomepageService {
       statsService.getPublicStats()
     ]);
 
+    // Transform events to extract image URLs from populated imageAssets
+    const transformedEvents = transformEventsResponse(events);
+    const transformedFeaturedEvents = transformEventsResponse(featuredEvents);
+
     const data: HomepageData = {
-      events,
-      featuredEvents,
+      events: transformedEvents,
+      featuredEvents: transformedFeaturedEvents,
       banners,
       categories,
       featuredBlogs,

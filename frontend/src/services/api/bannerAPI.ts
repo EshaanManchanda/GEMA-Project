@@ -4,7 +4,7 @@ export interface Banner {
   _id: string;
   title: string;
   description?: string;
-  imageAsset: {
+  imageAsset?: {
     _id: string;
     url: string;
     filename: string;
