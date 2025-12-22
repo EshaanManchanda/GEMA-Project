@@ -2,6 +2,7 @@ import React from 'react';
 import { Link } from 'react-router-dom';
 import { FaClock, FaUser, FaArrowRight } from 'react-icons/fa';
 import { Blog } from '../../types/blog';
+import { getPlaceholderUrl, handleImageError } from '../../utils/placeholderImage';
 
 interface FeaturedBlogsSectionProps {
   blogs?: Blog[];
@@ -340,14 +341,11 @@ const FeaturedBlogsSection: React.FC<FeaturedBlogsSectionProps> = ({
               >
                 {/* Background Image */}
                 <img
-                  src={blog.featuredImageAsset?.url || blog.featuredImage || '/assets/images/placeholder.jpg'}
+                  src={blog.featuredImageAsset?.url || blog.featuredImage || getPlaceholderUrl('blogThumbnail')}
                   alt={blog.title}
                   className="absolute inset-0 w-full h-full object-cover"
                   loading={index === 0 ? 'eager' : 'lazy'}
-                  onError={(e) => {
-                    const target = e.target as HTMLImageElement;
-                    target.src = '/assets/images/placeholder.jpg';
-                  }}
+                  onError={(e) => handleImageError(e, 'blogThumbnail', blog.title)}
                 />
 
                 {/* Dark Gradient Overlay */}

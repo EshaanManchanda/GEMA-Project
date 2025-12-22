@@ -1,17 +1,7 @@
 import { ApiService } from '../api';
 import { Event } from '@/types/event';
 import { Blog } from '@/types/blog';
-
-export interface Banner {
-  _id: string;
-  title: string;
-  description?: string;
-  imageUrl: string;
-  link?: string;
-  buttonText?: string;
-  position: string;
-  sortOrder: number;
-}
+import { Banner } from './bannerAPI';
 
 export interface Category {
   _id: string;
