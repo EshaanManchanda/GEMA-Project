@@ -81,8 +81,9 @@ class HomepageService {
           { endDate: null }
         ]
       })
-        .select('title description imageUrl link buttonText position sortOrder')
-        .sort({ sortOrder: 1, createdAt: -1 })
+        .select('title description imageAsset link ctaText ctaLink displayOrder titleVisible')
+        .populate('imageAsset', 'url filename width height')
+        .sort({ displayOrder: 1, createdAt: -1 })
         .lean(),
 
       // Active categories (top-level only)
@@ -113,10 +114,13 @@ class HomepageService {
     const transformedEvents = transformEventsResponse(events);
     const transformedFeaturedEvents = transformEventsResponse(featuredEvents);
 
+    // Filter out banners with null/undefined imageAsset
+    const validBanners = banners.filter(b => b.imageAsset != null);
+
     const data: HomepageData = {
       events: transformedEvents,
       featuredEvents: transformedFeaturedEvents,
-      banners,
+      banners: validBanners,
       categories,
       featuredBlogs,
       stats
