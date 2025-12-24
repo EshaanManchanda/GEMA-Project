@@ -25,6 +25,8 @@ export const getCategories = async (
     // Try to get cached data first
     const cached = await cacheService.get(cacheKey);
     if (cached) {
+      // Set HTTP cache headers for browser/CDN caching
+      res.setHeader('Cache-Control', 'public, max-age=300, stale-while-revalidate=600');
       res.status(200).json({
         success: true,
         cached: true,
@@ -68,6 +70,8 @@ export const getCategories = async (
       // Cache for 1 hour (3600 seconds) - categories rarely change
       await cacheService.set(cacheKey, categoryTree, { ttl: 3600 });
 
+      // Set HTTP cache headers for browser/CDN caching
+      res.setHeader('Cache-Control', 'public, max-age=300, stale-while-revalidate=600');
       res.status(200).json({
         success: true,
         cached: false,

@@ -3,28 +3,67 @@ import { FaPaperPlane, FaCheckCircle } from 'react-icons/fa';
 import { motion } from 'framer-motion';
 import { LottieAnimation } from '../animations';
 import { useInView } from 'react-intersection-observer';
+import newsletterAPI from '../../services/api/newsletterAPI';
+import toast from 'react-hot-toast';
 
 export default function NewsletterSubscribe() {
   const [email, setEmail] = useState('');
+  const [name, setName] = useState('');
+  const [city, setCity] = useState('');
+  const [ageOfChildren, setAgeOfChildren] = useState('');
   const [isSubmitted, setIsSubmitted] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
+  const [error, setError] = useState('');
   const [ref, inView] = useInView({
     triggerOnce: true,
     threshold: 0.1,
   });
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!email) return;
-    
+    setError('');
+
+    if (!email.trim()) {
+      setError('Please enter your email address');
+      return;
+    }
+
+    if (!name.trim()) {
+      setError('Please enter your name');
+      return;
+    }
+
     setIsLoading(true);
-    
-    // Simulate API call
-    setTimeout(() => {
+
+    try {
+      const data = await newsletterAPI.subscribe({
+        email: email.trim().toLowerCase(),
+        name: name.trim(),
+        city: city.trim() || undefined,
+        ageOfChildren: ageOfChildren.trim() || undefined,
+        source: 'footer',
+        tags: ['homepage_subscriber']
+      });
+
+      if (data.success) {
+        setIsSubmitted(true);
+        setEmail('');
+        setName('');
+        setCity('');
+        setAgeOfChildren('');
+        toast.success('Successfully subscribed to our newsletter!');
+      } else {
+        setError(data.message || 'Failed to subscribe. Please try again.');
+        toast.error(data.message || 'Failed to subscribe');
+      }
+    } catch (error: any) {
+      console.error('Newsletter subscription error:', error);
+      const errorMessage = error.response?.data?.message || 'Something went wrong. Please try again later.';
+      setError(errorMessage);
+      toast.error(errorMessage);
+    } finally {
       setIsLoading(false);
-      setIsSubmitted(true);
-      setEmail('');
-    }, 1500);
+    }
   };
 
   // Animation variants
@@ -92,26 +131,57 @@ export default function NewsletterSubscribe() {
             Join our family and get the latest updates and exclusive deals sent to your inbox!
           </motion.p>
           
-          <motion.form 
+          <motion.form
             variants={itemVariants}
             onSubmit={handleSubmit}
-            className="flex flex-col sm:flex-row gap-4 relative"
+            className="flex flex-col gap-4 relative"
           >
-            <input
-              type="email"
-              id="homepage-newsletter-email"
-              name="homepage-newsletter-email"
-              value={email}
-              onChange={(e) => setEmail(e.target.value)}
-              placeholder="Enter your email..."
-              className="px-4 py-4 rounded-lg border border-gray-300 w-full sm:w-auto sm:flex-1 focus:border-blue-400 focus:ring-2 focus:ring-blue-200 transition-all"
-              disabled={isSubmitted || isLoading}
-            />
-            <motion.button 
+            <div className="flex flex-col sm:flex-row gap-4">
+              <input
+                type="email"
+                id="homepage-newsletter-email"
+                name="homepage-newsletter-email"
+                value={email}
+                onChange={(e) => setEmail(e.target.value)}
+                placeholder="Enter your email..."
+                className="px-4 py-4 rounded-lg border border-gray-300 w-full sm:flex-1 focus:border-blue-400 focus:ring-2 focus:ring-blue-200 transition-all"
+                disabled={isSubmitted || isLoading}
+              />
+              <input
+                type="text"
+                value={name}
+                onChange={(e) => setName(e.target.value)}
+                placeholder="Your name"
+                className="px-4 py-4 rounded-lg border border-gray-300 w-full sm:flex-1 focus:border-blue-400 focus:ring-2 focus:ring-blue-200 transition-all"
+                disabled={isSubmitted || isLoading}
+              />
+            </div>
+            <div className="flex flex-col sm:flex-row gap-4">
+              <input
+                type="text"
+                value={city}
+                onChange={(e) => setCity(e.target.value)}
+                placeholder="City (optional)"
+                className="px-4 py-4 rounded-lg border border-gray-300 w-full sm:flex-1 focus:border-blue-400 focus:ring-2 focus:ring-blue-200 transition-all"
+                disabled={isSubmitted || isLoading}
+              />
+              <input
+                type="text"
+                value={ageOfChildren}
+                onChange={(e) => setAgeOfChildren(e.target.value)}
+                placeholder="Age of children (optional, e.g., '3-5')"
+                className="px-4 py-4 rounded-lg border border-gray-300 w-full sm:flex-1 focus:border-blue-400 focus:ring-2 focus:ring-blue-200 transition-all"
+                disabled={isSubmitted || isLoading}
+              />
+            </div>
+            {error && (
+              <p className="text-red-600 text-sm">{error}</p>
+            )}
+            <motion.button
               type="submit"
               className="text-white font-semibold px-8 py-4 rounded-lg shadow-lg transition-all flex items-center justify-center gap-2 hover:shadow-xl disabled:opacity-70"
               style={{ backgroundColor: 'var(--accent-color)' }}
-              disabled={isSubmitted || isLoading || !email}
+              disabled={isSubmitted || isLoading || !email.trim() || !name.trim()}
               whileHover={{ scale: 1.03 }}
               whileTap={{ scale: 0.97 }}
             >

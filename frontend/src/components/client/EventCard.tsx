@@ -3,6 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import { useInView } from 'react-intersection-observer';
 import { FaMapMarkerAlt, FaChild, FaCalendar, FaClock, FaEye, FaStar, FaHeart, FaRegHeart } from 'react-icons/fa';
 import { getPlaceholderUrl } from '../../utils/placeholderImage';
+import DOMPurify from 'isomorphic-dompurify';
 
 
 // Render prop function types

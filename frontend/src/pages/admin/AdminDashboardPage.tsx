@@ -371,7 +371,7 @@ const AdminDashboardPage: React.FC = () => {
           <div className="w-1 h-8 bg-gradient-to-b from-blue-500 to-indigo-600 rounded-full mr-3"></div>
           Quick Actions
         </h2>
-        <div className="grid grid-cols-2 md:grid-cols-7 gap-4">
+        <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-4">
           <Link to="/admin/users" className="group flex flex-col items-center p-6 bg-gradient-to-br from-blue-50 to-indigo-50 rounded-xl hover:shadow-lg hover:shadow-blue-500/20 transition-all duration-300 transform hover:scale-105 border border-blue-100">
             <div className="p-3 bg-gradient-to-r from-blue-500 to-indigo-600 rounded-xl text-white mb-3 group-hover:scale-110 transition-transform duration-300">
               <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
@@ -427,6 +427,30 @@ const AdminDashboardPage: React.FC = () => {
               </svg>
             </div>
             <span className="text-sm font-semibold text-gray-700 group-hover:text-amber-700 transition-colors duration-300 text-center">Manage Commissions</span>
+          </Link>
+          <Link to="/admin/reels" className="group flex flex-col items-center p-6 bg-gradient-to-br from-pink-50 to-rose-50 rounded-xl hover:shadow-lg hover:shadow-pink-500/20 transition-all duration-300 transform hover:scale-105 border border-pink-100">
+            <div className="p-3 bg-gradient-to-r from-pink-500 to-rose-600 rounded-xl text-white mb-3 group-hover:scale-110 transition-transform duration-300">
+              <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 10l4.553-2.276A1 1 0 0121 8.618v6.764a1 1 0 01-1.447.894L15 14M5 18h8a2 2 0 002-2V8a2 2 0 00-2-2H5a2 2 0 00-2 2v8a2 2 0 002 2z" />
+              </svg>
+            </div>
+            <span className="text-sm font-semibold text-gray-700 group-hover:text-pink-700 transition-colors duration-300 text-center">Manage Reels</span>
+          </Link>
+          <Link to="/admin/blogs" className="group flex flex-col items-center p-6 bg-gradient-to-br from-cyan-50 to-blue-50 rounded-xl hover:shadow-lg hover:shadow-cyan-500/20 transition-all duration-300 transform hover:scale-105 border border-cyan-100">
+            <div className="p-3 bg-gradient-to-r from-cyan-500 to-blue-600 rounded-xl text-white mb-3 group-hover:scale-110 transition-transform duration-300">
+              <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 20H5a2 2 0 01-2-2V6a2 2 0 012-2h10a2 2 0 012 2v1m2 13a2 2 0 01-2-2V7m2 13a2 2 0 002-2V9a2 2 0 00-2-2h-2m-4-3H9M7 16h6M7 8h6v4H7V8z" />
+              </svg>
+            </div>
+            <span className="text-sm font-semibold text-gray-700 group-hover:text-cyan-700 transition-colors duration-300 text-center">Manage Blogs</span>
+          </Link>
+          <Link to="/admin/bulk-import" className="group flex flex-col items-center p-6 bg-gradient-to-br from-teal-50 to-emerald-50 rounded-xl hover:shadow-lg hover:shadow-teal-500/20 transition-all duration-300 transform hover:scale-105 border border-teal-100">
+            <div className="p-3 bg-gradient-to-r from-teal-500 to-emerald-600 rounded-xl text-white mb-3 group-hover:scale-110 transition-transform duration-300">
+              <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12" />
+              </svg>
+            </div>
+            <span className="text-sm font-semibold text-gray-700 group-hover:text-teal-700 transition-colors duration-300 text-center">Bulk Import</span>
           </Link>
         </div>
       </div>

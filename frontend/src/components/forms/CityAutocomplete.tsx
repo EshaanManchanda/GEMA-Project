@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useMemo } from 'react';
 import axios from 'axios';
+import { API_BASE_URL } from '../../config/api';
 
 interface CityAutocompleteProps {
   value: string;
@@ -36,7 +37,7 @@ const CityAutocomplete: React.FC<CityAutocompleteProps> = ({
       setIsLoading(true);
       try {
         const params = country ? { country } : {};
-        const response = await axios.get(`${import.meta.env.VITE_API_URL}/events/cities`, { params });
+        const response = await axios.get(`${API_BASE_URL}/events/cities`, { params });
 
         if (response.data.success) {
           setCities(response.data.data || []);

@@ -2,6 +2,8 @@ import React, { useState, useEffect } from 'react';
 import { FaTimes, FaPlus, FaTrash, FaSave } from 'react-icons/fa';
 import vendorAPI from '../../services/api/vendorAPI';
 import categoriesAPI, { Category } from '../../services/api/categoriesAPI';
+import MediaPickerModal from '../admin/media/MediaPickerModal';
+import { MediaAsset } from '../../store/slices/mediaSlice';
 
 interface DateSchedule {
   startDate: string;
@@ -42,6 +44,10 @@ const VendorEventCreateModal: React.FC<VendorEventCreateModalProps> = ({ isOpen,
     { startDate: '', endDate: '', availableSeats: 0, totalSeats: 0, price: 0 }
   ]);
 
+  // Media picker state
+  const [selectedImageAssets, setSelectedImageAssets] = useState<MediaAsset[]>([]);
+  const [showMediaPicker, setShowMediaPicker] = useState(false);
+
   useEffect(() => {
     if (isOpen) {
       fetchCategories();
@@ -76,6 +82,8 @@ const VendorEventCreateModal: React.FC<VendorEventCreateModalProps> = ({ isOpen,
     setTags('');
     setImages('');
     setDateSchedule([{ startDate: '', endDate: '', availableSeats: 0, totalSeats: 0, price: 0 }]);
+    setSelectedImageAssets([]);
+    setShowMediaPicker(false);
     setError(null);
   };
 
@@ -145,7 +153,7 @@ const VendorEventCreateModal: React.FC<VendorEventCreateModalProps> = ({ isOpen,
         price,
         currency,
         tags: tags.split(',').map(t => t.trim()).filter(t => t),
-        images: images.split(',').map(img => img.trim()).filter(img => img),
+        imageAssets: selectedImageAssets.map(asset => asset._id),
         dateSchedule,
       };
 
@@ -335,14 +343,47 @@ const VendorEventCreateModal: React.FC<VendorEventCreateModalProps> = ({ isOpen,
               </div>
 
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">Images (comma-separated URLs)</label>
-                <textarea
-                  value={images}
-                  onChange={(e) => setImages(e.target.value)}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500"
-                  rows={2}
-                  placeholder="https://example.com/image1.jpg, https://example.com/image2.jpg"
-                />
+                <label className="block text-sm font-medium text-gray-700 mb-2">
+                  Event Images
+                </label>
+
+                {/* Selected Images Preview Grid */}
+                {selectedImageAssets.length > 0 && (
+                  <div className="mb-3 grid grid-cols-4 gap-2">
+                    {selectedImageAssets.map((asset) => (
+                      <div key={asset._id} className="relative group">
+                        <img
+                          src={asset.variations?.thumbnail || asset.url}
+                          alt={asset.originalName}
+                          className="w-full aspect-square object-cover rounded-lg border border-gray-300"
+                        />
+                        <button
+                          type="button"
+                          onClick={() => {
+                            setSelectedImageAssets(prev =>
+                              prev.filter(a => a._id !== asset._id)
+                            );
+                          }}
+                          className="absolute top-1 right-1 p-1 bg-red-500 text-white rounded-full opacity-0 group-hover:opacity-100 transition-opacity"
+                        >
+                          <FaTimes className="w-3 h-3" />
+                        </button>
+                      </div>
+                    ))}
+                  </div>
+                )}
+
+                {/* Select Images Button */}
+                <button
+                  type="button"
+                  onClick={() => setShowMediaPicker(true)}
+                  className="w-full px-4 py-3 border-2 border-dashed border-gray-300 rounded-lg text-gray-600 hover:border-emerald-500 hover:text-emerald-600 transition-colors flex items-center justify-center gap-2"
+                >
+                  <FaPlus />
+                  {selectedImageAssets.length > 0
+                    ? `Change Images (${selectedImageAssets.length} selected)`
+                    : 'Select Images from Library'}
+                </button>
               </div>
             </div>
           )}
@@ -549,6 +590,18 @@ const VendorEventCreateModal: React.FC<VendorEventCreateModalProps> = ({ isOpen,
             {isLoading ? 'Creating...' : 'Create Event'}
           </button>
         </div>
+
+        {/* Media Picker Modal */}
+        <MediaPickerModal
+          isOpen={showMediaPicker}
+          onClose={() => setShowMediaPicker(false)}
+          onSelect={(assets) => {
+            setSelectedImageAssets(assets);
+            setShowMediaPicker(false);
+          }}
+          multiple={true}
+          title="Select Event Images"
+        />
       </div>
     </div>
   );

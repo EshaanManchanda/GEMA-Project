@@ -74,8 +74,7 @@ const AdminDashboardPage = React.lazy(() => import(/* webpackChunkName: "admin" 
 const AdminUsersPage = React.lazy(() => import(/* webpackChunkName: "admin" */ './pages/admin/AdminUsersPage'));
 const AdminVendorsPage = React.lazy(() => import(/* webpackChunkName: "admin" */ './pages/admin/AdminVendorsPage'));
 const AdminEventsPage = React.lazy(() => import(/* webpackChunkName: "admin" */ './pages/admin/AdminEventsPage'));
-// Temporarily using eager loading to debug import issue
-import AdminEditEventPage from './pages/admin/AdminEditEventPage';
+const AdminEditEventPage = React.lazy(() => import(/* webpackChunkName: "admin" */ './pages/admin/AdminEditEventPage'));
 const AdminVenuesPage = React.lazy(() => import(/* webpackChunkName: "admin" */ './pages/admin/AdminVenuesPage'));
 const CreateVenuePage = React.lazy(() => import(/* webpackChunkName: "admin" */ './pages/admin/CreateVenuePage'));
 const EditVenuePage = React.lazy(() => import(/* webpackChunkName: "admin" */ './pages/admin/EditVenuePage'));
@@ -91,6 +90,8 @@ const AdminAnnouncementsPage = React.lazy(() => import(/* webpackChunkName: "adm
 const AdminSEOPage = React.lazy(() => import(/* webpackChunkName: "admin" */ './pages/admin/AdminSEOPage'));
 const AdminPopupsPage = React.lazy(() => import(/* webpackChunkName: "admin" */ './pages/admin/AdminPopupsPage'));
 const AdminCouponsPage = React.lazy(() => import(/* webpackChunkName: "admin" */ './pages/admin/AdminCouponsPage'));
+const ReelsManagementPage = React.lazy(() => import(/* webpackChunkName: "admin" */ './pages/admin/ReelsManagementPage'));
+const BulkImportPage = React.lazy(() => import(/* webpackChunkName: "admin" */ './pages/admin/BulkImportPage'));
 const AdminAnalyticsPage = React.lazy(() => import(/* webpackChunkName: "admin" */ './pages/admin/AdminAnalyticsPage'));
 const AdminSettingsPage = React.lazy(() => import(/* webpackChunkName: "admin" */ './pages/admin/AdminSettingsPage'));
 const EmployeeManagement = React.lazy(() => import(/* webpackChunkName: "admin" */ './pages/admin/EmployeeManagement'));
@@ -892,6 +893,24 @@ function AppContent() {
               <AdminRoute>
                 <Suspense fallback={<LoadingSpinner />}>
                   <AdminCouponsPage />
+                </Suspense>
+              </AdminRoute>
+            } />
+
+            {/* Reels Management */}
+            <Route path="reels" element={
+              <AdminRoute>
+                <Suspense fallback={<LoadingSpinner />}>
+                  <ReelsManagementPage />
+                </Suspense>
+              </AdminRoute>
+            } />
+
+            {/* Bulk Import/Export */}
+            <Route path="bulk-import" element={
+              <AdminRoute>
+                <Suspense fallback={<LoadingSpinner />}>
+                  <BulkImportPage />
                 </Suspense>
               </AdminRoute>
             } />

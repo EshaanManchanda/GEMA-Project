@@ -113,6 +113,10 @@ interface Config {
     siteDescription: string;
     contactEmail: string;
   };
+  google: {
+    placesApiKey: string;
+    mapsApiKey: string;
+  };
 }
 
 // Define and export the configuration object
@@ -187,10 +191,10 @@ export const config: Config = {
   upload: {
     path: process.env.UPLOAD_PATH || 'uploads/',
     maxFileSize: parseInt(process.env.MAX_FILE_SIZE || '10485760', 10), // 10MB default
-    maxImageSize: parseInt(process.env.MAX_IMAGE_SIZE || '10485760', 10), // 10MB
+    maxImageSize: parseInt(process.env.MAX_IMAGE_SIZE || '20971520', 10), // 20MB
     maxVideoSize: parseInt(process.env.MAX_VIDEO_SIZE || '524288000', 10), // 500MB
     maxDocumentSize: parseInt(process.env.MAX_DOCUMENT_SIZE || '20971520', 10), // 20MB
-    allowedFileTypes: process.env.ALLOWED_FILE_TYPES?.split(',') || ['image/jpeg', 'image/png', 'image/gif', 'image/webp', 'image/avif', 'application/pdf', 'video/mp4', 'video/webm'],
+    allowedFileTypes: process.env.ALLOWED_FILE_TYPES?.split(',') || ['image/jpeg', 'image/png', 'image/gif', 'image/webp', 'image/avif', 'image/bmp', 'image/tiff', 'image/svg+xml', 'image/heic', 'image/heif', 'application/pdf', 'video/mp4', 'video/webm'],
     provider: (process.env.UPLOAD_PROVIDER as 'local' | 'cloudinary') || 'local',
     baseUrl: process.env.BASE_URL || `http://localhost:${process.env.PORT || '5001'}`
   },
@@ -250,6 +254,10 @@ export const config: Config = {
     siteName: process.env.SITE_NAME || 'Kidrove',
     siteDescription: process.env.SITE_DESCRIPTION || 'Discover and book amazing family events and kids activities across the UAE',
     contactEmail: process.env.CONTACT_EMAIL || process.env.EMAIL_FROM || 'contact@kidrove.com'
+  },
+  google: {
+    placesApiKey: process.env.GOOGLE_PLACES_API_KEY || '',
+    mapsApiKey: process.env.GOOGLE_MAPS_API_KEY || ''
   }
 };
 

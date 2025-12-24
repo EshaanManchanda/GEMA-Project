@@ -134,6 +134,13 @@ export interface IEvent extends Document {
   claimedBy?: mongoose.Types.ObjectId;
   claimedAt?: Date;
   originalAffiliateVendorId?: mongoose.Types.ObjectId;
+  googlePlaceId?: string;
+
+  // Combined ratings (platform + Google)
+  combinedRating: number;
+  combinedReviewCount: number;
+  googleRating: number;
+  googleReviewCount: number;
 
   createdAt: Date;
   updatedAt: Date;
@@ -643,6 +650,43 @@ const eventSchema = new Schema<IEvent>(
       type: Schema.Types.ObjectId,
       ref: 'Vendor'
     },
+    googlePlaceId: {
+      type: String,
+      trim: true,
+      sparse: true,
+      validate: {
+        validator: function(v: string) {
+          if (!v) return true;
+          // Google Place IDs are alphanumeric with hyphens/underscores, min 10 chars
+          return /^[A-Za-z0-9_-]{10,}$/.test(v);
+        },
+        message: 'Invalid Google Place ID format'
+      }
+    },
+
+    // Combined ratings (platform + Google)
+    combinedRating: {
+      type: Number,
+      default: 0,
+      min: [0, 'Rating cannot be negative'],
+      max: [5, 'Rating cannot exceed 5'],
+    },
+    combinedReviewCount: {
+      type: Number,
+      default: 0,
+      min: [0, 'Review count cannot be negative'],
+    },
+    googleRating: {
+      type: Number,
+      default: 0,
+      min: [0, 'Rating cannot be negative'],
+      max: [5, 'Rating cannot exceed 5'],
+    },
+    googleReviewCount: {
+      type: Number,
+      default: 0,
+      min: [0, 'Review count cannot be negative'],
+    },
   },
   {
     timestamps: true,
@@ -673,6 +717,10 @@ eventSchema.index({ tags: 1 });
 eventSchema.index({ averageRating: -1 });
 eventSchema.index({ reviewCount: -1 });
 eventSchema.index({ averageRating: -1, reviewCount: -1 });
+eventSchema.index({ combinedRating: -1 });
+eventSchema.index({ combinedReviewCount: -1 });
+eventSchema.index({ combinedRating: -1, combinedReviewCount: -1 });
+eventSchema.index({ googlePlaceId: 1 });
 
 // Additional compound indexes for KVM1 optimization - faster admin dashboard queries
 eventSchema.index({ isApproved: 1, status: 1, createdAt: -1 }); // Dashboard event stats by approval and status
@@ -682,6 +730,9 @@ eventSchema.index({ vendorId: 1, isApproved: 1, createdAt: -1 }); // Vendor-spec
 eventSchema.index({ isAffiliateEvent: 1, claimStatus: 1 }); // For filtering affiliate events by claim status
 eventSchema.index({ claimedBy: 1 }); // For vendor's claimed events
 eventSchema.index({ 'affiliateClickTracking.totalClicks': -1 }); // For analytics and sorting by popularity
+
+// Google Maps integration index
+eventSchema.index({ googlePlaceId: 1 }); // For fetching events by Google Place ID
 
 // Text search index
 eventSchema.index({
@@ -743,6 +794,7 @@ eventSchema.post('save', async function (doc) {
       'title', 'description', 'category', 'type', 'venueType', 'price',
       'currency', 'images', 'imageAssets', 'location', 'dateSchedule',
       'ageRange', 'isFeatured', 'viewsCount', 'averageRating',
+      'combinedRating', 'combinedReviewCount', 'googleRating', 'googleReviewCount',
       'isApproved', 'isActive', 'isDeleted', 'status'
     ];
 

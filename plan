@@ -1,115 +1,521 @@
-i like to make an auto script to publish and update changes according to github pull repuest , there is the some files @deploy.sh , @setup-frontend.sh @setup-server.sh @backend\Dockerfile , 
-@backend\ecosystem.config.js , @backend\jest.config.js  , @nginx.conf , @nginx-subdomain.conf , @backend\publish.md , @backend\setup.bat @frontend\jest.config.js 
-  ⎿  Read deploy.sh (388 lines)
-  ⎿  Read setup-frontend.sh (99 lines)
-  ⎿  Read setup-server.sh (470 lines)
-  ⎿  Read backend\Dockerfile (59 lines)
-  ⎿  Read backend\ecosystem.config.js (285 lines)
-  ⎿  Read backend\jest.config.js (45 lines)
-  ⎿  Read nginx.conf (58 lines)
-  ⎿  Read nginx-subdomain.conf (152 lines)
-  ⎿  Read backend\publish.md (1082 lines)
-  ⎿  Read backend\setup.bat (21 lines)
-  ⎿  Read frontend\jest.config.js (39 lines)
+ User approved Claude's plan
+  ⎿  Plan saved to: C:\Users\eshaa\.claude\plans\humble-snuggling-teapot.md · /plan to edit
+     Google Maps Reviews Integration - Implementation Plan
 
-● I'll help you create an automated deployment script based on GitHub pull requests. Let me explore your codebase to understand the current setup and design the automation.
+     Overview
 
-● 3 Explore agents finished (ctrl+o to expand)
-   ├─ Explore GitHub CI/CD setup · 51 tool uses · 64.5k tokens
-   │  ⎿ Done
-   ├─ Analyze deployment scripts structure · 21 tool uses · 40.4k tokens
-   │  ⎿ Done
-   └─ Check backend API deployment endpoints · 30 tool uses · 52.3k tokens
-      ⎿ Done
+     Add Reviews tab to admin event editor + enhance EventDetailPage with Google Maps reviews, location embed, and review submission.
 
-● Now I understand your current deployment setup. Let me ask a few clarifying questions to design the best automated deployment solution for you:
+     User Requirements
 
-● User answered Claude's questions:
-  ⎿  · Which deployment trigger do you want for the automation? → PR merge to main/backend_auth
-     · Do you need separate staging and production environments? → Staging + Production
-     · What should run before deployment as safety checks? → Automated tests (Jest), TypeScript type checking, Linting (ESLint), Build verification
-     · How should deployment notifications be handled? → GitHub only
+     - Admin Reviews Tab: 4th position (after Advanced, before Registration), optional like FAQ
+     - Features: View/moderate platform reviews, configure Google Place ID, respond to reviews
+     - EventDetailPage: Combined platform + Google reviews, separate sub-tabs, map with directions, review form
+     - Rating: Combined average (platform + Google weighted)
+     - Responses: Admin only (from admin panel)
+     - Map Loading: Click to load (performance)
 
-0|gema-bac | 2025-12-04 08:39:27 +00:00: IMPORTANT! Eviction policy is volatile-lru. It should be "noeviction"
-0|gema-bac | {"level":"error","message":"CRITICAL: Redis eviction policy is \"undefined\" but MUST be \"noeviction\" for BullMQ!\nThis can cause job data corruption and worker failures.\nFix: redis-cli CONFIG SET maxmemory-policy noeviction\nSee backend/REDIS_CONFIG.md for detailed instructions.","service":"gema-backend","timestamp":"2025-12-04 08:39:27"}
-0|gema-bac | {"level":"error","message":"CRITICAL: Redis eviction policy is \"undefined\" but MUST be \"noeviction\" for BullMQ!\nThis can cause job data corruption and worker failures.\nFix: redis-cli CONFIG SET maxmemory-policy noeviction\nSee backend/REDIS_CONFIG.md for detailed instructions.","service":"gema-backend","timestamp":"2025-12-04 08:39:31"}
-0|gema-bac | 2025-12-04 08:59:16 +00:00: Failed to clean up temp file: https://res.cloudinary.com/dmer8oqdq/image/upload/v1764838755/gema/misc/misc-1764838753832-18672699.jpg
-0|gema-bac | 2025-12-04 09:54:43 +00:00: IMPORTANT! Eviction policy is volatile-lru. It should be "noeviction"
-0|gema-bac | 2025-12-04 09:54:43 +00:00: IMPORTANT! Eviction policy is volatile-lru. It should be "noeviction"
-0|gema-bac | 2025-12-04 09:54:43 +00:00: IMPORTANT! Eviction policy is volatile-lru. It should be "noeviction"
-0|gema-bac | 2025-12-04 09:54:43 +00:00: IMPORTANT! Eviction policy is volatile-lru. It should be "noeviction"
-0|gema-bac | 2025-12-04 09:54:43 +00:00: IMPORTANT! Eviction policy is volatile-lru. It should be "noeviction"
-0|gema-bac | 2025-12-04 09:54:43 +00:00: IMPORTANT! Eviction policy is volatile-lru. It should be "noeviction"
-0|gema-bac | {"level":"error","message":"CRITICAL: Redis eviction policy is \"undefined\" but MUST be \"noeviction\" for BullMQ!\nThis can cause job data corruption and worker failures.\nFix: redis-cli CONFIG SET maxmemory-policy noeviction\nSee backend/REDIS_CONFIG.md for detailed instructions.","service":"gema-backend","timestamp":"2025-12-04 09:54:43"}
-0|gema-bac | {"level":"error","message":"CRITICAL: Redis eviction policy is \"undefined\" but MUST be \"noeviction\" for BullMQ!\nThis can cause job data corruption and worker failures.\nFix: redis-cli CONFIG SET maxmemory-policy noeviction\nSee backend/REDIS_CONFIG.md for detailed instructions.","service":"gema-backend","timestamp":"2025-12-04 09:54:44"}
-0|gema-bac | 2025-12-04 11:42:29 +00:00: IMPORTANT! Eviction policy is volatile-lru. It should be "noeviction"
-0|gema-bac | {"level":"error","message":"CRITICAL: Redis eviction policy is \"undefined\" but MUST be \"noeviction\" for BullMQ!\nThis can cause job data corruption and worker failures.\nFix: redis-cli CONFIG SET maxmemory-policy noeviction\nSee backend/REDIS_CONFIG.md for detailed instructions.","service":"gema-backend","timestamp":"2025-12-04 11:42:29"}
-0|gema-bac | 2025-12-04 11:42:29 +00:00: IMPORTANT! Eviction policy is volatile-lru. It should be "noeviction"
-0|gema-bac | 2025-12-04 11:42:29 +00:00: IMPORTANT! Eviction policy is volatile-lru. It should be "noeviction"
-0|gema-bac | 2025-12-04 11:42:29 +00:00: IMPORTANT! Eviction policy is volatile-lru. It should be "noeviction"
-0|gema-bac | 2025-12-04 11:42:29 +00:00: IMPORTANT! Eviction policy is volatile-lru. It should be "noeviction"
-0|gema-bac | 2025-12-04 11:42:29 +00:00: IMPORTANT! Eviction policy is volatile-lru. It should be "noeviction"
-0|gema-bac | {"level":"error","message":"CRITICAL: Redis eviction policy is \"undefined\" but MUST be \"noeviction\" for BullMQ!\nThis can cause job data corruption and worker failures.\nFix: redis-cli CONFIG SET maxmemory-policy noeviction\nSee backend/REDIS_CONFIG.md for detailed instructions.","service":"gema-backend","timestamp":"2025-12-04 11:42:31"}
+     ---
+     Phase 1: Backend - Database & Services
 
-Yes, you have multiple critical issues happening at the same time.
+     1.1 Event Model Update
 
-To answer your specific question: YES, you absolutely must change the setting in your Hostinger VPS. The logs are spamming "CRITICAL: Redis eviction policy is undefined". If you do not fix this, your background jobs (like sending emails or processing uploads) will randomly fail or corrupt data.
+     File: backend/src/models/Event.ts
 
-However, the 500 Error you are seeing in your browser is likely caused by a different issue (the Cloudinary upload failure).
+     Add googlePlaceId field after line 137:
+     googlePlaceId?: string;
 
-Here is the breakdown of the three errors in your logs and how to fix them.
+     Add schema definition after line 645:
+     googlePlaceId: {
+       type: String,
+       trim: true,
+       sparse: true,
+       validate: {
+         validator: (v: string) => !v || /^[A-Za-z0-9_-]{10,}$/.test(v),
+         message: 'Invalid Google Place ID format'
+       }
+     },
 
-1. 🚨 The Redis Fix (DO THIS FIRST)
-Your logs are screaming: IMPORTANT! Eviction policy is volatile-lru. It should be "noeviction".
+     Add index after line 684:
+     eventSchema.index({ googlePlaceId: 1 });
 
-The Fix: Run these commands in your Hostinger VPS terminal to stop the errors immediately:
+     1.2 Environment Config
 
-Bash
+     File: backend/.env
 
-# 1. Fix the setting in memory immediately
-redis-cli CONFIG SET maxmemory-policy noeviction
+     Add:
+     GOOGLE_PLACES_API_KEY=your_backend_places_api_key
+     GOOGLE_MAPS_API_KEY=your_maps_javascript_api_key
 
-# 2. Open the config file to make it permanent
-sudo nano /etc/redis/redis.conf
-# (Search for 'maxmemory-policy' and change it to 'noeviction')
+     File: backend/src/config/env.ts
 
-# 3. Restart Redis
-sudo systemctl restart redis-server
-2. 🖼️ The 500 Error (File Upload Failed)
-The Error: Error: File must have either path or buffer. What it means: You tried to upload introduction.png. The request reached your backend, but when your code tried to send it to Cloudinary, the file object was "empty" (it didn't have a file path on the server or a memory buffer).
+     Add to Config interface (line 115):
+     google: {
+       placesApiKey: string;
+       mapsApiKey: string;
+     };
 
-Why this happens on VPS/Hostinger:
+     Add to config object (line 253):
+     google: {
+       placesApiKey: process.env.GOOGLE_PLACES_API_KEY || '',
+       mapsApiKey: process.env.GOOGLE_MAPS_API_KEY || ''
+     },
 
-Permission Issue: Multer (your file upload library) tries to save the image to a temporary folder (like /tmp/) before uploading to Cloudinary. If your VPS user doesn't have permission to write there, the path will be missing.
+     1.3 Google Places Service (NEW)
 
-Multer Config: Your Multer configuration might be missing the dest property.
+     File: backend/src/services/googlePlaces.service.ts
 
-How to Debug:
+     Create service with:
+     - getPlaceReviews(placeId) - Fetch from Google Places API
+     - 30-day cache (Google TOS requirement)
+     - Error handling (rate limits, invalid keys)
+     - Returns: { reviews[], rating, totalRatings }
+     - Max 5 reviews per Google API limit
 
-Check your routes/media.routes.js (or wherever Multer is set up). Ensure it saves to a valid temp folder:
+     Key implementation:
+     export class GooglePlacesService {
+       private cacheTTL = 30 * 24 * 60 * 60; // 30 days
 
-JavaScript
+       async getPlaceReviews(placeId: string) {
+         const cacheKey = `google:place:${placeId}`;
+         const cached = await cacheService.get(cacheKey);
+         if (cached) return cached;
 
-const upload = multer({ dest: 'uploads/' }); // Make sure this folder exists!
-Create that folder if it's missing:
+         const response = await axios.get(
+           'https://maps.googleapis.com/maps/api/place/details/json',
+           { params: { place_id: placeId, fields: 'reviews,rating,user_ratings_total', key: apiKey } }
+         );
 
-Bash
+         const data = { reviews: result.reviews || [], rating: result.rating || 0, totalRatings: result.user_ratings_total || 0 };
+         await cacheService.set(cacheKey, data, { ttl: cacheTTL });
+         return data;
+       }
+     }
 
-mkdir -p backend/uploads
-3. 💻 The Frontend Crash
-The Error: Uncaught ReferenceError: setNewTag is not defined at AdminBlogsPage. What it means: You have a typo in your React code.
+     1.4 Review Controller Enhancement
 
-The Fix:
+     File: backend/src/controllers/review.controller.ts
 
-Go to AdminBlogsPage.js.
+     Add endpoint at end of file (after line 597):
+     export const getGoogleReviews = async (req, res, next) => {
+       const { eventId } = req.params;
+       const event = await Event.findById(eventId).select('googlePlaceId');
 
-Look for setNewTag.
+       if (!event || !event.googlePlaceId) {
+         return res.json({ success: true, data: { reviews: [], rating: 0, totalRatings: 0, hasGooglePlaceId: false } });
+       }
 
-You probably defined the state as const [tag, setTag] = useState(...) but tried to call setNewTag instead of setTag. matches the variable name exactly.
+       const googleData = await googlePlacesService.getPlaceReviews(event.googlePlaceId);
+       res.json({ success: true, data: { ...googleData, hasGooglePlaceId: true, attribution: 'Powered by Google' } });
+     };
 
-Summary Checklist
-[ ] Run the Redis command (redis-cli ...) to stop the critical backend warnings.
+     1.5 Routes Update
 
-[ ] Fix the React Typo (setNewTag) and redeploy the frontend.
+     File: backend/src/routes/review.routes.ts
 
-[ ] Check the Uploads Folder: Ensure your backend has a place to store temporary files before sending them to Cloudinary.
+     Add route before admin routes (line 90):
+     router.get('/google/:eventId', param('eventId').isMongoId(), getGoogleReviews);
+
+     ---
+     Phase 2: Frontend - API & Config
+
+     2.1 API Service Enhancement
+
+     File: frontend/src/services/api/reviewsAPI.ts
+
+     Add methods:
+     getGoogleReviews: async (eventId: string) => {
+       const response = await ApiService.get(`/reviews/google/${eventId}`);
+       return response.data;
+     },
+
+     updateEventGooglePlaceId: async (eventId: string, googlePlaceId: string) => {
+       const response = await ApiService.patch(`/admin/events/${eventId}`, { googlePlaceId });
+       return response.data;
+     },
+
+     2.2 Environment Config
+
+     File: frontend/.env
+
+     Add:
+     VITE_GOOGLE_MAPS_KEY=your_maps_javascript_api_key
+
+     File: frontend/src/config/api.ts
+
+     Export:
+     export const GOOGLE_MAPS_KEY = import.meta.env.VITE_GOOGLE_MAPS_KEY || '';
+
+     ---
+     Phase 3: Admin UI - Reviews Tab
+
+     3.1 Create ReviewsTab Component (NEW)
+
+     File: frontend/src/components/admin/ReviewsTab.tsx
+
+     Structure:
+     1. Statistics Cards: Average rating, total reviews, pending count, Google count
+     2. Google Place ID Config: Input field with Edit/Save buttons, validation, refresh button
+     3. Platform Reviews List: Review cards with approve/reject/hide actions, response button
+     4. Google Reviews Preview: Read-only display with "Powered by Google" attribution
+
+     Key features:
+     - Fetch platform reviews on mount
+     - Fetch Google reviews when Place ID exists
+     - Moderate reviews (approve/reject/hide)
+     - Admin response to platform reviews
+     - Real-time stats update
+
+     Props:
+     interface ReviewsTabProps {
+       eventId: string;
+       googlePlaceId: string;
+       onGooglePlaceIdChange: (placeId: string) => void;
+     }
+
+     3.2 AdminEditEventPage Integration
+
+     File: frontend/src/pages/admin/AdminEditEventPage.tsx
+
+     Changes:
+     1. Update TabType (line 111): Add 'reviews'
+     2. Add to formData (line 85): googlePlaceId: string
+     3. Add tab button (line 350):
+     <button onClick={() => setActiveTab('reviews')} className={...}>Reviews</button>
+     4. Add tab content (line 500):
+     {activeTab === 'reviews' && (
+       <ReviewsTab eventId={id!} googlePlaceId={formData.googlePlaceId} onGooglePlaceIdChange={(placeId) => setFormData({...formData, googlePlaceId: placeId})} />
+     )}
+     5. Import: import ReviewsTab from '../../components/admin/ReviewsTab';
+
+     ---
+     Phase 4: Client UI - EventDetailPage Enhancement
+
+     4.1 Create GoogleReviews Component (NEW)
+
+     File: frontend/src/components/client/GoogleReviews.tsx
+
+     Features:
+     - Overall rating display (average + total count)
+     - Review list with author photo, name, rating stars, date, text
+     - "Powered by Google" attribution (required)
+     - Empty state for no reviews
+
+     4.2 Create GoogleMapEmbed Component (NEW)
+
+     File: frontend/src/components/client/GoogleMapEmbed.tsx
+
+     Features:
+     - Click to load: Show placeholder with "Load Map" button (saves API quota)
+     - Google Maps iframe embed using Embed API
+     - "Get Directions" button (opens Google Maps in new tab)
+     - Address display
+     - Fallback if no API key configured
+
+     Implementation:
+     const [mapLoaded, setMapLoaded] = useState(false);
+     const embedUrl = `https://www.google.com/maps/embed/v1/place?key=${GOOGLE_MAPS_KEY}&q=${lat},${lng}`;
+     const directionsUrl = `https://www.google.com/maps/dir/?api=1&destination=${lat},${lng}`;
+
+     return mapLoaded ? (
+       <iframe src={embedUrl} ... />
+     ) : (
+       <button onClick={() => setMapLoaded(true)}>Load Map</button>
+     );
+
+     4.3 Create ReviewSubmissionForm Component (NEW)
+
+     File: frontend/src/components/client/ReviewSubmissionForm.tsx
+
+     Features:
+     - Star rating input (1-5, hover effect)
+     - Title input (max 100 chars)
+     - Comment textarea (max 2000 chars, required)
+     - Character counter
+     - Submit button (disabled if rating=0 or no comment)
+     - Success toast + form reset
+     - Login check (redirect if not authenticated)
+
+     4.4 EventDetailPage Reviews Tab Update
+
+     File: frontend/src/pages/EventDetailPage.tsx
+
+     Changes:
+
+     Add state (line 30):
+     const [reviewSubTab, setReviewSubTab] = useState<'platform' | 'google' | 'map'>('platform');
+     const [platformReviews, setPlatformReviews] = useState([]);
+     const [googleReviews, setGoogleReviews] = useState([]);
+     const [googleRating, setGoogleRating] = useState(0);
+     const [googleTotalRatings, setGoogleTotalRatings] = useState(0);
+
+     Add fetch functions:
+     const fetchPlatformReviews = async () => {
+       const response = await reviewsAPI.getEventReviews(eventId, { page: 1, limit: 50 });
+       setPlatformReviews(response.data.reviews);
+     };
+
+     const fetchGoogleReviews = async () => {
+       if (!event?.googlePlaceId) return;
+       const response = await reviewsAPI.getGoogleReviews(eventId);
+       setGoogleReviews(response.data.reviews);
+       setGoogleRating(response.data.rating);
+       setGoogleTotalRatings(response.data.totalRatings);
+     };
+
+     useEffect(() => {
+       if (event?._id) {
+         fetchPlatformReviews();
+         fetchGoogleReviews();
+       }
+     }, [event?._id]);
+
+     Replace Reviews tab content (lines 907-975):
+     {activeTab === 'reviews' && (
+       <div className="space-y-6">
+         {/* Sub-tabs */}
+         <div className="flex gap-4 border-b">
+           <button onClick={() => setReviewSubTab('platform')} className={...}>
+             Platform Reviews ({platformReviews.length})
+           </button>
+           {event.googlePlaceId && (
+             <button onClick={() => setReviewSubTab('google')} className={...}>
+               Google Reviews ({googleReviews.length})
+             </button>
+           )}
+           <button onClick={() => setReviewSubTab('map')} className={...}>
+             Location & Directions
+           </button>
+         </div>
+
+         {/* Platform Reviews */}
+         {reviewSubTab === 'platform' && (
+           <>
+             <ReviewSubmissionForm eventId={event._id} onSubmitSuccess={fetchPlatformReviews} />
+             {/* Platform reviews list */}
+           </>
+         )}
+
+         {/* Google Reviews */}
+         {reviewSubTab === 'google' && event.googlePlaceId && (
+           <GoogleReviews reviews={googleReviews} averageRating={googleRating} totalRatings={googleTotalRatings} />
+         )}
+
+         {/* Map & Directions */}
+         {reviewSubTab === 'map' && (
+           <GoogleMapEmbed latitude={event.location.coordinates.lat} longitude={event.location.coordinates.lng} address={event.location.address} eventTitle={event.title} />
+         )}
+       </div>
+     )}
+
+     Add imports:
+     import GoogleReviews from '../components/client/GoogleReviews';
+     import GoogleMapEmbed from '../components/client/GoogleMapEmbed';
+     import ReviewSubmissionForm from '../components/client/ReviewSubmissionForm';
+
+     ---
+     Phase 5: Combined Rating Calculation
+
+     5.1 Backend - Calculate Combined Rating
+
+     File: backend/src/services/event.service.ts
+
+     Add method to calculate combined rating:
+     async updateCombinedRating(eventId: string) {
+       const event = await Event.findById(eventId);
+       if (!event) return;
+
+       let platformRating = event.averageRating || 0;
+       let platformCount = event.reviewCount || 0;
+       let googleRating = 0;
+       let googleCount = 0;
+
+       if (event.googlePlaceId) {
+         const googleData = await googlePlacesService.getPlaceReviews(event.googlePlaceId);
+         googleRating = googleData.rating;
+         googleCount = googleData.totalRatings;
+       }
+
+       // Weighted average
+       const totalCount = platformCount + googleCount;
+       const combinedRating = totalCount > 0
+         ? ((platformRating * platformCount) + (googleRating * googleCount)) / totalCount
+         : 0;
+
+       await Event.findByIdAndUpdate(eventId, {
+         'stats.combinedRating': combinedRating,
+         'stats.combinedReviewCount': totalCount,
+         'stats.googleRating': googleRating,
+         'stats.googleReviewCount': googleCount,
+       });
+     }
+
+     5.2 Event Model - Add Stats Fields
+
+     File: backend/src/models/Event.ts
+
+     Add stats object (after line 490):
+     stats: {
+       combinedRating: { type: Number, default: 0 },
+       combinedReviewCount: { type: Number, default: 0 },
+       googleRating: { type: Number, default: 0 },
+       googleReviewCount: { type: Number, default: 0 },
+     },
+
+     5.3 Trigger Calculation
+
+     Update on:
+     1. Platform review status change (approved/rejected)
+     2. Google Place ID saved/updated
+     3. Manual refresh in admin panel
+
+     ---
+     Phase 6: Documentation
+
+     6.1 Setup Guide (NEW)
+
+     File: docs/GOOGLE_MAPS_SETUP.md
+
+     Content:
+     1. Google Cloud Console setup
+     2. API key creation (separate backend/frontend)
+     3. API restrictions configuration
+     4. Billing setup and budget alerts
+     5. Finding Google Place IDs
+     6. Cost breakdown ($200/month free tier covers ~28k map loads)
+     7. Troubleshooting common issues
+
+     6.2 Admin Guide (NEW)
+
+     File: docs/ADMIN_REVIEWS_GUIDE.md
+
+     Content:
+     1. Accessing Reviews tab
+     2. Moderating platform reviews
+     3. Configuring Google Place ID
+     4. Viewing Google reviews preview
+     5. Responding to reviews
+     6. Best practices
+     7. Statistics interpretation
+
+     ---
+     Implementation Order
+
+     Week 1: Backend Foundation
+
+     1. ✅ Add googlePlaceId to Event model + migration
+     2. ✅ Create GooglePlacesService with caching
+     3. ✅ Add getGoogleReviews controller endpoint
+     4. ✅ Update review routes
+     5. ✅ Add environment config
+     6. ✅ Test API with Postman
+
+     Week 2: Admin UI
+
+     1. ✅ Create ReviewsTab component
+     2. ✅ Integrate into AdminEditEventPage
+     3. ✅ Test review moderation
+     4. ✅ Test Google Place ID configuration
+     5. ✅ Test admin response functionality
+
+     Week 3: Client UI
+
+     1. ✅ Create GoogleReviews component
+     2. ✅ Create GoogleMapEmbed component (click-to-load)
+     3. ✅ Create ReviewSubmissionForm component
+     4. ✅ Update EventDetailPage reviews tab
+     5. ✅ Test end-to-end flow
+
+     Week 4: Polish & Deploy
+
+     1. ✅ Implement combined rating calculation
+     2. ✅ Write documentation (setup + admin guides)
+     3. ✅ Test Google TOS compliance (attribution, caching)
+     4. ✅ Security review (API key protection)
+     5. ✅ Deploy to staging
+     6. ✅ Production deployment
+
+     ---
+     Critical Files Summary
+
+     | File                                                    | Purpose                       | Priority        |
+     |---------------------------------------------------------|-------------------------------|-----------------|
+     | backend/src/services/googlePlaces.service.ts            | Google Places API integration | 🔴 Critical     |
+     | backend/src/models/Event.ts                             | Add googlePlaceId field       | 🔴 Critical     |
+     | frontend/src/components/admin/ReviewsTab.tsx            | Admin review management       | 🔴 Critical     |
+     | frontend/src/pages/EventDetailPage.tsx                  | Client reviews display        | 🔴 Critical     |
+     | backend/src/controllers/review.controller.ts            | Google reviews endpoint       | 🟡 Important    |
+     | frontend/src/components/client/GoogleReviews.tsx        | Google reviews UI             | 🟡 Important    |
+     | frontend/src/components/client/GoogleMapEmbed.tsx       | Map with directions           | 🟡 Important    |
+     | frontend/src/components/client/ReviewSubmissionForm.tsx | Review submission             | 🟡 Important    |
+     | docs/GOOGLE_MAPS_SETUP.md                               | Setup documentation           | 🟢 Nice-to-have |
+
+     ---
+     Cost Estimates (1000 events, 50k views/month)
+
+     Google Places API:
+     - Place Details: $17/1k requests
+     - With 30-day cache: ~$25/month
+
+     Maps JavaScript API:
+     - Map Loads: $7/1k loads
+     - Click-to-load optimization: ~5k loads/month = $35/month
+
+     Total: ~$60/month (covered by $200 free tier)
+
+     ---
+     Security Checklist
+
+     - Backend API key restricted to Places API only
+     - Frontend API key restricted by domain
+     - API keys in .env (gitignored)
+     - 30-day cache max (Google TOS)
+     - "Powered by Google" attribution on all Google content
+     - Rate limiting on review endpoints
+     - Input validation on googlePlaceId field
+     - HTTPS only for API calls
+     - No Google review modification/scraping
+
+     ---
+     Testing Checklist
+
+     Backend:
+     - Google Places API returns reviews
+     - Cache works (30-day TTL)
+     - Invalid Place ID handled gracefully
+     - API key errors return friendly message
+     - Combined rating calculation correct
+
+     Admin Panel:
+     - Reviews tab loads without errors
+     - Can save Google Place ID
+     - Can moderate platform reviews
+     - Can respond to reviews
+     - Statistics display correctly
+     - Google reviews preview shows
+
+     EventDetailPage:
+     - Platform reviews display
+     - Google reviews display (if Place ID configured)
+     - Map loads on click (not automatically)
+     - Review submission works
+     - Sub-tabs switch correctly
+     - "Powered by Google" attribution visible
+
+     ---
+     Known Limitations
+
+     1. Google API Limit: Max 5 reviews per request (Google restriction)
+     2. Cache Duration: 30 days max (Google TOS requirement)
+     3. Review Selection: Cannot control which 5 reviews Google returns
+     4. Google Response: Cannot respond to Google reviews via API (use Google My Business)
+     5. Place ID Changes: Rare but possible (admin can update)
+
+     ---
+     Future Enhancements (Optional)
+
+     1. Review Analytics: Sentiment analysis, trend charts
+     2. Google My Business API: Respond to Google reviews directly
+     3. Multi-platform: Facebook, TripAdvisor integration
+     4. Incentives: Discount codes for leaving reviews
+     5. Email Notifications: Notify vendors of new reviews

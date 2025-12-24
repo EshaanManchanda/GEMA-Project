@@ -1,4 +1,7 @@
 import { Event, Banner, Category, Blog, IEvent, IBanner, ICategory, IBlog } from '../models/index';
+import Reel, { IReel } from '../models/Reel';
+import SEOContent, { ISEOContent } from '../models/SEOContent';
+import Collection, { ICollection } from '../models/Collection';
 import cacheService from './cache.service';
 import statsService, { PublicStats } from './stats.service';
 import { transformEventsResponse } from '../utils/event.utils';
@@ -9,7 +12,10 @@ export interface HomepageData {
   banners: IBanner[];
   categories: ICategory[];
   featuredBlogs: IBlog[];
+  reels: IReel[];
   stats: PublicStats;
+  seoContent: ISEOContent | null;
+  collections: ICollection[];
 }
 
 class HomepageService {
@@ -41,7 +47,10 @@ class HomepageService {
       banners,
       categories,
       featuredBlogs,
-      stats
+      reels,
+      stats,
+      seoContent,
+      collections
     ] = await Promise.all([
       // Regular events (limit 12, published only)
       Event.find({
@@ -118,8 +127,161 @@ class HomepageService {
         .limit(6)
         .lean(),
 
+      // Public reels (limit 10, visibility='public')
+      Reel.find({
+        visibility: 'public'
+      })
+        .select('title description videoSourceType externalVideoUrl videoAsset thumbnailAsset likes viewsCount shareCount displayOrder tags duration showLikeButton showShareButton showTitle linkedEvent')
+        .populate('videoAsset', 'url thumbnailUrl duration mimeType')
+        .populate('thumbnailAsset', 'url thumbnailUrl')
+        .populate('linkedEvent', 'title slug pricing location dateSchedule')
+        .sort({ displayOrder: 1, createdAt: -1 })
+        .limit(10)
+        .lean(),
+
       // Public stats
-      statsService.getPublicStats()
+      statsService.getPublicStats(),
+
+      // SEO content for homepage
+      SEOContent.findOne({ page: 'homepage', isActive: true })
+        .select('metaTitle metaDescription keywords faqItems features trustSignals')
+        .lean(),
+
+      // Active collections (limit 8) with events
+      Collection.aggregate([
+        {
+          $match: {
+            isActive: true,
+            $or: [
+              { events: { $ne: [], $exists: true } },
+              { eventsData: { $ne: [], $exists: true } }
+            ]
+          }
+        },
+        // Populate iconAsset
+        {
+          $lookup: {
+            from: 'mediaassets',
+            localField: 'iconAsset',
+            foreignField: '_id',
+            as: 'iconAssetData'
+          }
+        },
+        {
+          $addFields: {
+            iconAsset: { $arrayElemAt: ['$iconAssetData', 0] }
+          }
+        },
+        // Populate featuredImageAsset
+        {
+          $lookup: {
+            from: 'mediaassets',
+            localField: 'featuredImageAsset',
+            foreignField: '_id',
+            as: 'featuredImageAssetData'
+          }
+        },
+        {
+          $addFields: {
+            featuredImageAsset: { $arrayElemAt: ['$featuredImageAssetData', 0] }
+          }
+        },
+        // Check if collection has embedded eventsData
+        {
+          $addFields: {
+            hasEventsData: {
+              $gt: [{ $size: { $ifNull: ['$eventsData', []] } }, 0]
+            }
+          }
+        },
+        // Populate events from Event collection (fallback for old ObjectId pattern)
+        {
+          $lookup: {
+            from: 'events',
+            let: { eventIds: { $ifNull: ['$events', []] }, hasEmbedded: '$hasEventsData' },
+            pipeline: [
+              {
+                $match: {
+                  $expr: {
+                    $and: [
+                      { $in: ['$_id', '$$eventIds'] },
+                      { $eq: ['$$hasEmbedded', false] },
+                      { $eq: ['$isDeleted', false] },
+                      { $eq: ['$isApproved', true] },
+                      { $eq: ['$status', 'published'] }
+                    ]
+                  }
+                }
+              },
+              {
+                $lookup: {
+                  from: 'mediaassets',
+                  localField: 'imageAssets',
+                  foreignField: '_id',
+                  as: 'imageAssetDocs'
+                }
+              },
+              {
+                $lookup: {
+                  from: 'vendors',
+                  localField: 'vendorId',
+                  foreignField: '_id',
+                  as: 'vendorDoc'
+                }
+              },
+              {
+                $project: {
+                  _id: 1,
+                  title: 1,
+                  slug: 1,
+                  description: 1,
+                  price: 1,
+                  images: 1,
+                  imageAssets: '$imageAssetDocs',
+                  category: 1,
+                  location: { city: 1 },
+                  dateSchedule: { $slice: ['$dateSchedule', 5] },
+                  vendorId: { $arrayElemAt: ['$vendorDoc', 0] },
+                  rating: 1,
+                  reviewCount: 1,
+                  viewsCount: 1,
+                  isFeatured: 1
+                }
+              },
+              { $limit: 6 }
+            ],
+            as: 'populatedEvents'
+          }
+        },
+        // Combine eventsData (preferred) or populatedEvents (fallback)
+        {
+          $addFields: {
+            events: {
+              $cond: {
+                if: '$hasEventsData',
+                then: { $slice: ['$eventsData', 6] },
+                else: '$populatedEvents'
+              }
+            }
+          }
+        },
+        {
+          $project: {
+            title: 1,
+            description: 1,
+            slug: 1,
+            iconAsset: 1,
+            featuredImageAsset: 1,
+            count: 1,
+            category: 1,
+            sortOrder: 1,
+            seo: 1,
+            events: 1
+          }
+        },
+        { $sort: { sortOrder: 1 } },
+        { $limit: 20 }
+      ])
     ]);
 
     // Transform events to extract image URLs from populated imageAssets
@@ -135,7 +297,10 @@ class HomepageService {
       banners: validBanners,
       categories,
       featuredBlogs,
-      stats
+      reels,
+      stats,
+      seoContent: seoContent || null,
+      collections: collections || []
     };
 
     // Debug logs (gated behind DEBUG_LOGS env var)
@@ -146,7 +311,10 @@ class HomepageService {
       console.log('   - Banners:', banners.length, 'items');
       console.log('   - Categories:', categories.length, 'items');
       console.log('   - Featured Blogs:', featuredBlogs.length, 'items');
+      console.log('   - Reels:', reels.length, 'items');
       console.log('   - Stats:', stats ? 'loaded' : 'missing');
+      console.log('   - SEO Content:', seoContent ? 'loaded' : 'missing');
+      console.log('   - Collections:', collections.length, 'items');
 
       if (events.length > 0) {
         const event = events[0] as any;
@@ -187,7 +355,7 @@ class HomepageService {
 
   /**
    * Invalidate homepage cache
-   * Call this when events, banners, categories, or blogs are updated
+   * Call this when events, banners, categories, blogs, collections, or SEO content are updated
    */
   async invalidateCache(): Promise<void> {
     await cacheService.delete('public:homepage');

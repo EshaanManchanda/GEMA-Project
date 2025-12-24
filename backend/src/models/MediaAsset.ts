@@ -26,13 +26,13 @@ export interface IMediaAsset extends Document {
   duration?: number;
 
   // Categorization (LOGICAL FOLDERS)
-  category: 'blog' | 'profile' | 'event' | 'document' | 'misc';
+  category: 'blog' | 'profile' | 'event' | 'document' | 'reel' | 'misc';
   folder: string; // Virtual: "blogs.upload", "profile.upload", "event.uploads"
   tags: string[];
 
   // Usage tracking
   usedBy: Array<{
-    model: 'Blog' | 'Event' | 'User';
+    model: 'Blog' | 'Event' | 'User' | 'Reel';
     field: string;
     documentId: mongoose.Types.ObjectId;
   }>;
@@ -126,8 +126,8 @@ const mediaAssetSchema = new Schema<IMediaAsset>(
     category: {
       type: String,
       enum: {
-        values: ['blog', 'profile', 'event', 'document', 'misc'],
-        message: 'Category must be one of: blog, profile, event, document, misc'
+        values: ['blog', 'profile', 'event', 'document', 'reel', 'misc'],
+        message: 'Category must be one of: blog, profile, event, document, reel, misc'
       },
       required: [true, 'Category is required'],
       index: true
@@ -146,8 +146,8 @@ const mediaAssetSchema = new Schema<IMediaAsset>(
       model: {
         type: String,
         enum: {
-          values: ['Blog', 'Event', 'User'],
-          message: 'Model must be one of: Blog, Event, User'
+          values: ['Blog', 'Event', 'User', 'Reel'],
+          message: 'Model must be one of: Blog, Event, User, Reel'
         }
       },
       field: {

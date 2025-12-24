@@ -65,6 +65,7 @@ interface UpdateEventRequest {
     answer: string;
   }>;
   vendorId?: string;
+  googlePlaceId?: string;
 }
 
 interface CreateEventRequest {
@@ -484,12 +485,30 @@ export const updateEvent = async (req: Request, res: Response, next: NextFunctio
       return next(new AppError('Event not found', 404));
     }
 
+    // Check if googlePlaceId is being updated
+    const googlePlaceIdChanged = updateData.googlePlaceId !== undefined &&
+      updateData.googlePlaceId !== event.googlePlaceId;
+
     // Update event
     const updatedEvent = await Event.findByIdAndUpdate(
       id,
       updateData,
       { new: true, runValidators: true }
     ).populate('vendorId', 'businessName email phone');
+
+    // Trigger combined rating calculation if googlePlaceId changed
+    if (googlePlaceIdChanged) {
+      try {
+        const { eventService } = await import('../services/event.service');
+        // Run in background - don't wait for completion
+        eventService.updateCombinedRating(id).catch(err => {
+          console.error(`Background combined rating update failed for event ${id}:`, err);
+        });
+      } catch (error) {
+        console.error(`Error triggering combined rating update for event ${id}:`, error);
+        // Don't fail the update if rating calculation fails
+      }
+    }
 
     const response: ApiResponse = {
       success: true,

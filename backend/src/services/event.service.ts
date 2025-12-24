@@ -189,6 +189,76 @@ export class EventService {
       session.endSession();
     }
   }
+
+  /**
+   * Update combined rating (platform + Google reviews)
+   * Calculates weighted average and updates Event model
+   */
+  async updateCombinedRating(eventId: string | mongoose.Types.ObjectId): Promise<void> {
+    try {
+      const Review = (await import('../models/Review')).default;
+      const { googlePlacesService } = await import('./googlePlaces.service');
+
+      // Get event to check if it has googlePlaceId
+      const event = await Event.findById(eventId);
+      if (!event) {
+        console.error(`Event ${eventId} not found for combined rating update`);
+        return;
+      }
+
+      // Get platform review stats (only approved reviews)
+      const platformStats = await Review.getAverageRating(
+        event._id as mongoose.Types.ObjectId,
+        (await import('../models/Review')).ReviewType.EVENT
+      );
+
+      let googleRating = 0;
+      let googleReviewCount = 0;
+
+      // Get Google review stats if googlePlaceId is configured
+      if (event.googlePlaceId) {
+        try {
+          const googleData = await googlePlacesService.getPlaceReviews(event.googlePlaceId);
+          googleRating = googleData.rating || 0;
+          googleReviewCount = googleData.totalRatings || 0;
+        } catch (error) {
+          console.error(`Failed to fetch Google reviews for event ${eventId}:`, error);
+          // Continue with 0 values if Google API fails
+        }
+      }
+
+      // Calculate combined rating (weighted average)
+      const totalReviews = platformStats.totalReviews + googleReviewCount;
+      let combinedRating = 0;
+
+      if (totalReviews > 0) {
+        const platformWeight = platformStats.totalReviews / totalReviews;
+        const googleWeight = googleReviewCount / totalReviews;
+        combinedRating = (platformStats.averageRating * platformWeight) + (googleRating * googleWeight);
+        // Round to 1 decimal place
+        combinedRating = Math.round(combinedRating * 10) / 10;
+      }
+
+      // Update event with combined stats
+      await Event.findByIdAndUpdate(
+        eventId,
+        {
+          $set: {
+            combinedRating,
+            combinedReviewCount: totalReviews,
+            googleRating,
+            googleReviewCount
+          }
+        },
+        { new: true }
+      );
+
+      console.log(`Updated combined rating for event ${eventId}: ${combinedRating} (${platformStats.totalReviews} platform + ${googleReviewCount} Google)`);
+    } catch (error) {
+      console.error(`Error updating combined rating for event ${eventId}:`, error);
+      // Don't throw - rating calculation failures shouldn't break other operations
+    }
+  }
 }
 
 // Export singleton instance

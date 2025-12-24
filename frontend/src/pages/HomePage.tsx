@@ -17,9 +17,9 @@ import NewsletterSubscribe from '@/components/client/NewsletterSubscribe';
 import bannerAPI from '@/services/api/bannerAPI';
 import { useQuery } from '@tanstack/react-query';
 import { useHomepageQuery } from '@/hooks/queries/useHomepageQuery';
-import { usePublicSEOContentQuery } from '@/hooks/queries/useSEOContentQuery';
 import ReviewCarouselSwiper from '@/components/client/ReviewCarouselKeen';
 import FeaturedBlogsSection from '@/components/sections/FeaturedBlogsSection';
+import ReelsFeed from '@/components/client/ReelsFeed';
 // import TrustSignals from '@/components/sections/TrustSignals';
 // import HowItWorks from '@/components/sections/HowItWorks';
 import WhyChooseUs from '@/components/sections/WhyChooseUs';
@@ -342,8 +342,7 @@ const FeaturedEventsCarousel: React.FC<{
           View All Events <FaChevronRight size={14} aria-hidden="true" />
         </AnimatedButton>
       </div>
-      <CollectionPills/>
-      
+
       <div className="relative py-4">
         <div ref={sliderRef} className="keen-slider min-h-[400px] !overflow-visible">
           {featuredEvents && featuredEvents.length > 0 ? featuredEvents.map((event, index) => (
@@ -506,7 +505,7 @@ const HomePage: React.FC = () => {
 
   // Single homepage query replaces 6 separate queries (400-600ms savings!)
   const { data: homepageData, isLoading: homepageLoading, error: homepageError, refetch: refetchHomepage } = useHomepageQuery();
-  const { data: seoContentData } = usePublicSEOContentQuery('homepage');
+  console.log("homepagedata:",homepageData);
 
   // Only block on homepage query (critical data)
   const isLoading = homepageLoading;
@@ -516,18 +515,12 @@ const HomePage: React.FC = () => {
   const featuredEventsRaw = homepageData?.featuredEvents || [];
   const categories = homepageData?.categories || (homepageError ? mockCategories : []);
   const featuredBlogs = homepageData?.featuredBlogs || [];
+  const reels = homepageData?.reels || [];
   const bannersData = { banners: homepageData?.banners || [] };
   const statsData = homepageData?.stats;
+  const seoContentData = { seoContent: homepageData?.seoContent || null };
+  const collectionsData = homepageData?.collections || [];
 
-  // TEMPORARY DEBUG - Unconditional (remove after fixing)
-  console.log('🎨 [HOMEPAGE DEBUG] Raw homepageData:', homepageData);
-  console.log('🎨 [HOMEPAGE DEBUG] isLoading:', isLoading);
-  console.log('🎨 [HOMEPAGE DEBUG] error:', homepageError);
-  console.log('🎨 [HOMEPAGE DEBUG] Extracted events:', events, 'length:', events.length);
-  console.log('🎨 [HOMEPAGE DEBUG] Extracted featuredEvents:', featuredEventsRaw, 'length:', featuredEventsRaw.length);
-  console.log('🎨 [HOMEPAGE DEBUG] Extracted categories:', categories, 'length:', categories.length);
-  console.log('🎨 [HOMEPAGE DEBUG] Extracted banners:', bannersData.banners, 'length:', bannersData.banners.length);
-  console.log('🎨 [HOMEPAGE DEBUG] Extracted blogs:', featuredBlogs, 'length:', featuredBlogs.length);
 
   // Debug logs for HomePage component (gated)
   if (import.meta.env.VITE_DEBUG === 'true') {
@@ -731,10 +724,52 @@ const HomePage: React.FC = () => {
           />
         </ScrollReveal>
 
+        {/* Collections Pills */}
+        <ScrollReveal>
+          <CollectionPills collections={collectionsData} />
+        </ScrollReveal>
+
         {/* Featured Blogs Section - Moved above fold for better visibility */}
         <ScrollReveal>
           <FeaturedBlogsSection blogs={featuredBlogs} loading={isLoading} />
         </ScrollReveal>
+
+        {/* Reels Section - Instagram-style vertical videos */}
+        {reels && reels.length > 0 && (
+          <ScrollReveal>
+            <div className="px-6 py-16 max-w-screen-xl mx-auto">
+              <div className="text-center mb-8">
+                <div className="inline-block mb-4 px-4 py-2 rounded-full" style={{ backgroundColor: 'rgba(0, 142, 199, 0.1)' }}>
+                  <span className="font-semibold text-gray-900">Trending</span>
+                </div>
+                <h2 className="text-3xl font-bold mb-2">Discover Fun Moments</h2>
+                <p className="text-gray-700">Quick videos of amazing activities happening now</p>
+              </div>
+
+              {/* Reels carousel - mobile-optimized container */}
+              <div className="rounded-2xl overflow-hidden shadow-2xl mx-auto max-w-md" style={{ height: '80vh' }}>
+                <ReelsFeed
+                  reels={reels}
+                  onLike={async (reelId) => {
+                    console.log('Liked reel:', reelId);
+                  }}
+                  onShare={(reelId) => {
+                    console.log('Shared reel:', reelId);
+                  }}
+                />
+              </div>
+
+              <div className="text-center mt-6">
+                <AnimatedButton
+                  onClick={() => navigate('/reels')}
+                  className="px-6 py-3 bg-gray-100 hover:bg-gray-200 rounded-lg font-medium transition-colors"
+                >
+                  View All Reels
+                </AnimatedButton>
+              </div>
+            </div>
+          </ScrollReveal>
+        )}
 
         {/* Grid Layout - Handpicked Experiences */}
         <ScrollReveal>

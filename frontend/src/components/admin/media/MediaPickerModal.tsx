@@ -46,18 +46,25 @@ const MediaPickerModal: React.FC<MediaPickerModalProps> = ({
   const [showUpload, setShowUpload] = useState(false);
   const [currentPage, setCurrentPage] = useState(1);
 
+  // User-selected filters (not props-based)
+  const [filterCategory, setFilterCategory] = useState<string>('');
+  const [filterMimeType, setFilterMimeType] = useState<string>('');
+
   // Fetch media when modal opens or filters change
   useEffect(() => {
     if (isOpen) {
       dispatch(fetchMedia({
-        category,
-        folder,
+        // Only include filters if they have values (no default filtering)
+        ...(filterCategory && { category: filterCategory }),
+        ...(category && !filterCategory && { category }), // Fallback to prop if provided
+        ...(folder && { folder }),
+        ...(filterMimeType && { mimeType: filterMimeType }),
         search: searchQuery,
         page: currentPage,
         limit: 24
       }));
     }
-  }, [dispatch, isOpen, category, folder, searchQuery, currentPage]);
+  }, [dispatch, isOpen, category, folder, filterCategory, filterMimeType, searchQuery, currentPage]);
 
   // Reset state when modal closes
   useEffect(() => {
@@ -66,6 +73,8 @@ const MediaPickerModal: React.FC<MediaPickerModalProps> = ({
       setSearchQuery('');
       setShowUpload(false);
       setCurrentPage(1);
+      setFilterCategory('');
+      setFilterMimeType('');
       dispatch(clearFilters());
     }
   }, [isOpen, dispatch]);
@@ -109,7 +118,13 @@ const MediaPickerModal: React.FC<MediaPickerModalProps> = ({
   // Handle upload complete
   const handleUploadComplete = () => {
     setShowUpload(false);
-    dispatch(fetchMedia({ category, folder, page: currentPage }));
+    dispatch(fetchMedia({
+      ...(filterCategory && { category: filterCategory }),
+      ...(category && !filterCategory && { category }),
+      ...(folder && { folder }),
+      ...(filterMimeType && { mimeType: filterMimeType }),
+      page: currentPage
+    }));
   };
 
   // Handle search
@@ -117,8 +132,10 @@ const MediaPickerModal: React.FC<MediaPickerModalProps> = ({
     e.preventDefault();
     setCurrentPage(1);
     dispatch(fetchMedia({
-      category,
-      folder,
+      ...(filterCategory && { category: filterCategory }),
+      ...(category && !filterCategory && { category }),
+      ...(folder && { folder }),
+      ...(filterMimeType && { mimeType: filterMimeType }),
       search: searchQuery,
       page: 1,
       limit: 24
@@ -190,6 +207,83 @@ const MediaPickerModal: React.FC<MediaPickerModalProps> = ({
                 Upload New
               </Button>
             </div>
+
+            {/* Filter Controls */}
+            <div className="mb-4 flex flex-wrap items-center gap-3 p-3 bg-gray-50 border border-gray-200 rounded-lg">
+              {/* Category Filter */}
+              <div className="flex items-center gap-2">
+                <label className="text-sm font-medium text-gray-700">Category:</label>
+                <select
+                  value={filterCategory}
+                  onChange={(e) => {
+                    setFilterCategory(e.target.value);
+                    setCurrentPage(1);
+                  }}
+                  className="px-3 py-1.5 text-sm border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500"
+                >
+                  <option value="">All Categories</option>
+                  <option value="event">Events</option>
+                  <option value="blog">Blogs</option>
+                  <option value="profile">Profiles</option>
+                  <option value="reel">Reels</option>
+                  <option value="document">Documents</option>
+                  <option value="misc">Miscellaneous</option>
+                </select>
+              </div>
+
+              {/* MIME Type Filter */}
+              <div className="flex items-center gap-2">
+                <label className="text-sm font-medium text-gray-700">Type:</label>
+                <select
+                  value={filterMimeType}
+                  onChange={(e) => {
+                    setFilterMimeType(e.target.value);
+                    setCurrentPage(1);
+                  }}
+                  className="px-3 py-1.5 text-sm border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500"
+                >
+                  <option value="">All Files</option>
+                  <option value="image/">Images Only</option>
+                  <option value="video/">Videos Only</option>
+                </select>
+              </div>
+
+              {/* Clear Filters Button */}
+              {(filterCategory || filterMimeType) && (
+                <button
+                  onClick={() => {
+                    setFilterCategory('');
+                    setFilterMimeType('');
+                    setCurrentPage(1);
+                  }}
+                  className="px-3 py-1.5 text-sm text-blue-600 hover:text-blue-800 font-medium"
+                >
+                  Clear Filters
+                </button>
+              )}
+            </div>
+
+            {/* Bulk Selection Controls */}
+            {multiple && assets.length > 0 && (
+              <div className="mb-3 flex items-center gap-3">
+                <button
+                  onClick={() => {
+                    setSelectedAssets(assets);
+                  }}
+                  className="px-3 py-1.5 text-sm text-blue-600 hover:text-blue-800 font-medium border border-blue-300 rounded-md hover:bg-blue-50"
+                >
+                  Select All on Page
+                </button>
+                {selectedAssets.length > 0 && (
+                  <button
+                    onClick={() => setSelectedAssets([])}
+                    className="px-3 py-1.5 text-sm text-gray-600 hover:text-gray-800 font-medium border border-gray-300 rounded-md hover:bg-gray-50"
+                  >
+                    Clear Selection
+                  </button>
+                )}
+              </div>
+            )}
 
             {/* Selected Count */}
             {selectedAssets.length > 0 && (
@@ -291,7 +385,7 @@ const MediaPickerModal: React.FC<MediaPickerModalProps> = ({
                   </Button>
                 </div>
               ) : (
-                <div className="grid grid-cols-4 sm:grid-cols-6 md:grid-cols-8 gap-3">
+                <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-4">
                   {assets.map((asset) => {
                     const isSelected = isAssetSelected(asset);
                     const isImage = asset.mimeType.startsWith('image/');
@@ -301,7 +395,7 @@ const MediaPickerModal: React.FC<MediaPickerModalProps> = ({
                         key={asset._id}
                         onClick={() => handleAssetClick(asset)}
                         className={`
-                          relative aspect-square bg-white rounded-lg overflow-hidden cursor-pointer
+                          group relative aspect-square bg-white rounded-lg overflow-hidden cursor-pointer
                           border-2 transition-all hover:shadow-md
                           ${isSelected
                             ? 'border-blue-500 ring-2 ring-blue-200'
@@ -330,14 +424,23 @@ const MediaPickerModal: React.FC<MediaPickerModalProps> = ({
 
                         {/* Selection Indicator */}
                         {isSelected && (
-                          <div className="absolute top-2 right-2 bg-blue-500 rounded-full p-1">
+                          <div className="absolute top-2 left-2 bg-blue-500 rounded-full p-1 z-10">
                             <Check className="h-3 w-3 text-white" />
                           </div>
                         )}
 
-                        {/* Filename Tooltip on Hover */}
-                        <div className="absolute inset-x-0 bottom-0 bg-black bg-opacity-75 text-white text-xs p-1 truncate opacity-0 hover:opacity-100 transition-opacity">
-                          {asset.originalName}
+                        {/* Metadata Overlay on Hover */}
+                        <div className="absolute inset-0 bg-black bg-opacity-75 text-white text-xs p-2 opacity-0 group-hover:opacity-100 transition-opacity flex flex-col justify-end pointer-events-none">
+                          <p className="font-medium truncate">{asset.originalName}</p>
+                          {asset.width && asset.height && (
+                            <p className="text-gray-300">{asset.width} × {asset.height}</p>
+                          )}
+                          <p className="text-gray-300">
+                            {(asset.size / 1024).toFixed(1)} KB
+                          </p>
+                          <p className="text-gray-400 text-[10px] capitalize">
+                            {asset.category || 'misc'}
+                          </p>
                         </div>
                       </div>
                     );

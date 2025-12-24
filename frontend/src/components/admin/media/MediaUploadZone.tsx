@@ -62,7 +62,7 @@ const MediaUploadZone: React.FC<MediaUploadZoneProps> = ({
     }
 
     // Validate file types
-    const validTypes = ['image/jpeg', 'image/jpg', 'image/png', 'image/gif', 'image/webp', 'image/avif', 'video/mp4', 'video/webm', 'application/pdf'];
+    const validTypes = ['image/jpeg', 'image/jpg', 'image/png', 'image/gif', 'image/webp', 'image/avif', 'image/bmp', 'image/tiff', 'image/svg+xml', 'image/heic', 'image/heif', 'video/mp4', 'video/webm', 'application/pdf'];
     const invalidFiles = fileArray.filter(file => !validTypes.includes(file.type));
 
     if (invalidFiles.length > 0) {
@@ -72,10 +72,10 @@ const MediaUploadZone: React.FC<MediaUploadZoneProps> = ({
 
     // Validate file sizes (per-type limits)
     const getMaxSizeForFile = (file: File): number => {
-      if (file.type.startsWith('image/')) return 10 * 1024 * 1024; // 10MB
+      if (file.type.startsWith('image/')) return 20 * 1024 * 1024; // 20MB
       if (file.type.startsWith('video/')) return 500 * 1024 * 1024; // 500MB
       if (file.type.includes('pdf') || file.type.includes('document')) return 20 * 1024 * 1024; // 20MB
-      return 10 * 1024 * 1024; // Default 10MB
+      return 20 * 1024 * 1024; // Default 20MB
     };
 
     const oversizedFiles = fileArray.filter(file => {
@@ -85,7 +85,7 @@ const MediaUploadZone: React.FC<MediaUploadZoneProps> = ({
 
     if (oversizedFiles.length > 0) {
       const fileTypes = oversizedFiles.map(f => {
-        if (f.type.startsWith('image/')) return 'Images: 10MB max';
+        if (f.type.startsWith('image/')) return 'Images: 20MB max';
         if (f.type.startsWith('video/')) return 'Videos: 500MB max';
         return 'Documents: 20MB max';
       });
@@ -136,7 +136,7 @@ const MediaUploadZone: React.FC<MediaUploadZoneProps> = ({
     const input = document.createElement('input');
     input.type = 'file';
     input.multiple = multiple;
-    input.accept = 'image/*,video/*,application/pdf';
+    input.accept = 'image/*,video/*,application/pdf,.bmp,.tiff,.tif,.svg,.heic,.heif';
     input.onchange = (e) => {
       const target = e.target as HTMLInputElement;
       handleFiles(target.files);
@@ -290,7 +290,7 @@ const MediaUploadZone: React.FC<MediaUploadZoneProps> = ({
           or click to browse
         </p>
         <p className="text-xs text-gray-400 mt-2">
-          Images: 10MB | Videos: 500MB | Documents: 20MB
+          Images: 20MB | Videos: 500MB | Documents: 20MB
         </p>
       </div>
 

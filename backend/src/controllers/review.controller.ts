@@ -4,6 +4,7 @@ import mongoose from 'mongoose';
 import { Review, Order, Event, User, ReviewType, ReviewStatus, FlagReason } from '../models/index';
 import { AppError } from '../middleware/index';
 import { AuthRequest } from '../types/index';
+import logger from '../config/logger';
 
 // @desc    Create new review
 // @route   POST /api/reviews
@@ -593,5 +594,63 @@ export const moderateReview = async (req: AuthRequest, res: Response, next: Next
     });
   } catch (error) {
     next(error);
+  }
+};
+
+// @desc    Get Google Maps reviews for event
+// @route   GET /api/reviews/google/:eventId
+// @access  Public
+export const getGoogleReviews = async (req: Request, res: Response, next: NextFunction) => {
+  try {
+    const { eventId } = req.params;
+
+    // Fetch event to get Google Place ID
+    const event = await Event.findById(eventId).select('googlePlaceId title');
+
+    if (!event) {
+      return next(new AppError('Event not found', 404));
+    }
+
+    if (!event.googlePlaceId) {
+      return res.status(200).json({
+        success: true,
+        message: 'No Google Place ID configured for this event',
+        data: {
+          reviews: [],
+          rating: 0,
+          totalRatings: 0,
+          hasGooglePlaceId: false,
+        },
+      });
+    }
+
+    const { googlePlacesService } = await import('../services/googlePlaces.service');
+    const googleData = await googlePlacesService.getPlaceReviews(event.googlePlaceId);
+
+    res.status(200).json({
+      success: true,
+      message: 'Google reviews retrieved successfully',
+      data: {
+        ...googleData,
+        hasGooglePlaceId: true,
+        attribution: 'Powered by Google',
+      },
+    });
+  } catch (error: any) {
+    logger.error('Error fetching Google reviews:', error);
+
+    // Return empty reviews on error instead of failing the request
+    // This ensures the app doesn't break if Google API is down
+    res.status(200).json({
+      success: true,
+      message: error.message || 'Failed to fetch Google reviews',
+      data: {
+        reviews: [],
+        rating: 0,
+        totalRatings: 0,
+        hasGooglePlaceId: true,
+        error: error.message,
+      },
+    });
   }
 };

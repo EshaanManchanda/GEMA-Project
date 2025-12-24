@@ -2,9 +2,13 @@ import React, { useState } from 'react';
 import { FaEnvelope, FaCheckCircle } from 'react-icons/fa';
 import { toast } from 'react-hot-toast';
 import LoadingSpinner from '@/components/common/LoadingSpinner';
+import newsletterAPI from '../../services/api/newsletterAPI';
 
 const NewsletterSubscription: React.FC = () => {
   const [email, setEmail] = useState('');
+  const [name, setName] = useState('');
+  const [city, setCity] = useState('');
+  const [ageOfChildren, setAgeOfChildren] = useState('');
   const [isSubscribing, setIsSubscribing] = useState(false);
   const [isSubscribed, setIsSubscribed] = useState(false);
 
@@ -15,7 +19,7 @@ const NewsletterSubscription: React.FC = () => {
 
   const handleSubscribe = async (e: React.FormEvent) => {
     e.preventDefault();
-    
+
     if (!email.trim()) {
       toast.error('Please enter your email address');
       return;
@@ -26,29 +30,40 @@ const NewsletterSubscription: React.FC = () => {
       return;
     }
 
+    if (!name.trim()) {
+      toast.error('Please enter your name');
+      return;
+    }
+
     setIsSubscribing(true);
 
     try {
-      // Simulate API call - replace with actual newsletter API
-      await new Promise(resolve => setTimeout(resolve, 2000));
-      
-      // TODO: Replace with actual API call
-      // const response = await fetch('/api/newsletter/subscribe', {
-      //   method: 'POST',
-      //   headers: { 'Content-Type': 'application/json' },
-      //   body: JSON.stringify({ email })
-      // });
+      const data = await newsletterAPI.subscribe({
+        email: email.trim().toLowerCase(),
+        name: name.trim(),
+        city: city.trim() || undefined,
+        ageOfChildren: ageOfChildren.trim() || undefined,
+        source: 'footer',
+        tags: ['footer_subscriber']
+      });
 
-      setIsSubscribed(true);
-      toast.success('Successfully subscribed to our newsletter!');
-      setEmail('');
-      
-      // Reset success state after 3 seconds
-      setTimeout(() => setIsSubscribed(false), 3000);
-      
-    } catch (error) {
+      if (data.success) {
+        setIsSubscribed(true);
+        toast.success('Successfully subscribed to our newsletter!');
+        setEmail('');
+        setName('');
+        setCity('');
+        setAgeOfChildren('');
+
+        // Reset success state after 3 seconds
+        setTimeout(() => setIsSubscribed(false), 3000);
+      } else {
+        toast.error(data.message || 'Failed to subscribe. Please try again.');
+      }
+    } catch (error: any) {
       console.error('Newsletter subscription error:', error);
-      toast.error('Failed to subscribe. Please try again later.');
+      const errorMessage = error.response?.data?.message || 'Failed to subscribe. Please try again later.';
+      toast.error(errorMessage);
     } finally {
       setIsSubscribing(false);
     }
@@ -64,7 +79,7 @@ const NewsletterSubscription: React.FC = () => {
       </p>
 
       <form onSubmit={handleSubscribe} className="space-y-3">
-        <div className="flex flex-col sm:flex-row gap-2">
+        <div className="flex flex-col gap-2">
           <div className="flex-grow relative">
             <input
               type="email"
@@ -79,10 +94,43 @@ const NewsletterSubscription: React.FC = () => {
             <FaEnvelope className="absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-4 h-4" />
           </div>
 
+          <div className="flex-grow">
+            <input
+              type="text"
+              value={name}
+              onChange={(e) => setName(e.target.value)}
+              placeholder="Your name"
+              disabled={isSubscribing}
+              className="w-full px-4 py-2 text-sm rounded-lg border border-gray-300 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 disabled:opacity-50 disabled:cursor-not-allowed transition-colors duration-200"
+            />
+          </div>
+
+          <div className="flex-grow">
+            <input
+              type="text"
+              value={city}
+              onChange={(e) => setCity(e.target.value)}
+              placeholder="City (optional)"
+              disabled={isSubscribing}
+              className="w-full px-4 py-2 text-sm rounded-lg border border-gray-300 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 disabled:opacity-50 disabled:cursor-not-allowed transition-colors duration-200"
+            />
+          </div>
+
+          <div className="flex-grow">
+            <input
+              type="text"
+              value={ageOfChildren}
+              onChange={(e) => setAgeOfChildren(e.target.value)}
+              placeholder="Age of children (optional)"
+              disabled={isSubscribing}
+              className="w-full px-4 py-2 text-sm rounded-lg border border-gray-300 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 disabled:opacity-50 disabled:cursor-not-allowed transition-colors duration-200"
+            />
+          </div>
+
           <button
             type="submit"
-            disabled={isSubscribing || isSubscribed}
-            className="px-6 py-2 rounded-lg text-white text-sm font-medium transition-all duration-200 flex items-center justify-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed min-w-[120px]"
+            disabled={isSubscribing || isSubscribed || !email.trim() || !name.trim()}
+            className="w-full px-6 py-2 rounded-lg text-white text-sm font-medium transition-all duration-200 flex items-center justify-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed"
             style={{
               backgroundColor: isSubscribed ? '#10B981' : 'var(--accent-color)',
               ':hover': { backgroundColor: isSubscribed ? '#059669' : undefined }

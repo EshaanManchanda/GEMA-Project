@@ -26,6 +26,11 @@ import Avatar from '../components/ui/Avatar';
 import StatCard from '../components/ui/StatCard';
 import { getEventImage, getVendorLogo, createImageErrorHandler } from '../utils/imageFallbacks';
 import ImageCarousel from '../components/common/ImageCarousel';
+import { API_BASE_URL } from '../config/api';
+import GoogleReviews from '../components/client/GoogleReviews';
+import GoogleMapEmbed from '../components/client/GoogleMapEmbed';
+import ReviewSubmissionForm from '../components/client/ReviewSubmissionForm';
+import reviewsAPI from '../services/api/reviewsAPI';
 
 // Mock data for when backend is unavailable
 const mockEvents = [
@@ -125,6 +130,12 @@ const EventDetailPage: React.FC = () => {
   const [quantity, setQuantity] = useState(1);
   const [selectedDate, setSelectedDate] = useState<Date | null>(null);
   const [activeTab, setActiveTab] = useState('about'); // 'about', 'location', 'reviews', 'faqs'
+  const [reviewSubTab, setReviewSubTab] = useState<'platform' | 'google' | 'map'>('platform');
+  const [platformReviews, setPlatformReviews] = useState<any[]>([]);
+  const [googleReviews, setGoogleReviews] = useState<any[]>([]);
+  const [googleRating, setGoogleRating] = useState(0);
+  const [googleTotalRatings, setGoogleTotalRatings] = useState(0);
+  const [loadingReviews, setLoadingReviews] = useState(false);
   const [isClaimingEvent, setIsClaimingEvent] = useState(false);
   const { addItemToCart, isItemInCart } = useCart();
 
@@ -248,6 +259,64 @@ const EventDetailPage: React.FC = () => {
   const favorites = useSelector((state: RootState) => state.favorites.items);
   const isFavorite = favorites.some(fav => fav._id === event?._id);
 
+  // Fetch platform reviews
+  useEffect(() => {
+    const fetchPlatformReviews = async () => {
+      if (!id) return;
+      try {
+        setLoadingReviews(true);
+        const response = await reviewsAPI.getEventReviews(id);
+        setPlatformReviews(response.data.reviews || []);
+      } catch (error) {
+        console.error('Failed to fetch platform reviews:', error);
+        setPlatformReviews([]);
+      } finally {
+        setLoadingReviews(false);
+      }
+    };
+
+    if (activeTab === 'reviews') {
+      fetchPlatformReviews();
+    }
+  }, [id, activeTab]);
+
+  // Fetch Google reviews
+  useEffect(() => {
+    const fetchGoogleReviews = async () => {
+      if (!id) return;
+      try {
+        const response = await reviewsAPI.getGoogleReviews(id);
+        if (response.data.hasGooglePlaceId) {
+          setGoogleReviews(response.data.reviews || []);
+          setGoogleRating(response.data.rating || 0);
+          setGoogleTotalRatings(response.data.totalRatings || 0);
+        } else {
+          setGoogleReviews([]);
+          setGoogleRating(0);
+          setGoogleTotalRatings(0);
+        }
+      } catch (error) {
+        console.error('Failed to fetch Google reviews:', error);
+        setGoogleReviews([]);
+        setGoogleRating(0);
+        setGoogleTotalRatings(0);
+      }
+    };
+
+    if (activeTab === 'reviews') {
+      fetchGoogleReviews();
+    }
+  }, [id, activeTab]);
+
+  // Handle review submission success
+  const handleReviewSubmitSuccess = () => {
+    // Refetch platform reviews
+    if (id) {
+      reviewsAPI.getEventReviews(id)
+        .then(response => setPlatformReviews(response.data.reviews || []))
+        .catch(error => console.error('Failed to refresh reviews:', error));
+    }
+  };
 
   if (isLoading) {
     return (
@@ -321,7 +390,7 @@ const EventDetailPage: React.FC = () => {
         const sessionId = `${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
 
         // Track the click
-        await fetch(`${import.meta.env.VITE_API_URL}/events/${id}/track-click`, {
+        await fetch(`${API_BASE_URL}/events/${id}/track-click`, {
           method: 'POST',
           headers: {
             'Content-Type': 'application/json',
@@ -906,69 +975,178 @@ const EventDetailPage: React.FC = () => {
                   {/* Reviews Tab */}
                   {activeTab === 'reviews' && (
                     <div>
-                      <div className="flex justify-between items-center mb-6">
-                        <h2 className="text-2xl font-bold text-blue-600">Customer Reviews</h2>
-                        <button className="bg-primary text-white px-4 py-2 rounded-md hover:bg-primary-dark transition-colors">
-                          Write a Review
+                      <h2 className="text-2xl font-bold text-blue-600 mb-6">Reviews & Location</h2>
+
+                      {/* Sub-tab Navigation */}
+                      <div className="flex gap-2 mb-6 border-b border-gray-200">
+                        <button
+                          onClick={() => setReviewSubTab('platform')}
+                          className={`px-6 py-3 font-medium transition-all border-b-2 ${
+                            reviewSubTab === 'platform'
+                              ? 'border-blue-600 text-blue-600'
+                              : 'border-transparent text-gray-600 hover:text-blue-600'
+                          }`}
+                        >
+                          Platform Reviews ({platformReviews.length})
+                        </button>
+                        <button
+                          onClick={() => setReviewSubTab('google')}
+                          className={`px-6 py-3 font-medium transition-all border-b-2 ${
+                            reviewSubTab === 'google'
+                              ? 'border-blue-600 text-blue-600'
+                              : 'border-transparent text-gray-600 hover:text-blue-600'
+                          }`}
+                        >
+                          Google Reviews ({googleReviews.length})
+                        </button>
+                        <button
+                          onClick={() => setReviewSubTab('map')}
+                          className={`px-6 py-3 font-medium transition-all border-b-2 ${
+                            reviewSubTab === 'map'
+                              ? 'border-blue-600 text-blue-600'
+                              : 'border-transparent text-gray-600 hover:text-blue-600'
+                          }`}
+                        >
+                          Location & Directions
                         </button>
                       </div>
 
-                      {event.reviews && event.reviews.length > 0 ? (
+                      {/* Platform Reviews Sub-tab */}
+                      {reviewSubTab === 'platform' && (
                         <div className="space-y-6">
-                          {event.reviews.map((review: any) => (
-                            <div key={review.id} className="border-b border-gray-200 pb-6 last:border-0">
-                              <div className="flex justify-between items-start mb-3">
-                                <div className="flex items-center">
-                                  <div className="w-12 h-12 rounded-full bg-gray-300 mr-4 flex items-center justify-center text-gray-600 font-bold text-lg">
-                                    {review.user.charAt(0)}
+                          {/* Review Submission Form */}
+                          <ReviewSubmissionForm
+                            eventId={id!}
+                            onSubmitSuccess={handleReviewSubmitSuccess}
+                          />
+
+                          {/* Platform Reviews List */}
+                          {loadingReviews ? (
+                            <div className="text-center py-8">
+                              <div className="animate-spin rounded-full h-8 w-8 border-t-2 border-b-2 border-blue-600 mx-auto"></div>
+                            </div>
+                          ) : platformReviews.length > 0 ? (
+                            <div>
+                              <h3 className="text-xl font-semibold text-gray-900 mb-4">
+                                User Reviews ({platformReviews.length})
+                              </h3>
+                              <div className="space-y-4">
+                                {platformReviews.map((review: any) => (
+                                  <div
+                                    key={review._id}
+                                    className="bg-white border border-gray-200 rounded-lg p-6 hover:border-blue-200 hover:shadow-md transition-all duration-200"
+                                  >
+                                    <div className="flex items-start gap-4">
+                                      {/* User Avatar */}
+                                      <div className="w-12 h-12 rounded-full bg-gradient-to-br from-blue-400 to-indigo-500 flex items-center justify-center text-white font-bold text-lg flex-shrink-0">
+                                        {review.userId?.firstName?.charAt(0)?.toUpperCase() || 'U'}
+                                      </div>
+
+                                      <div className="flex-1 min-w-0">
+                                        {/* User Name & Rating */}
+                                        <div className="flex items-start justify-between gap-4 mb-2">
+                                          <div className="flex-1 min-w-0">
+                                            <div className="font-semibold text-gray-900">
+                                              {review.userId?.firstName} {review.userId?.lastName}
+                                            </div>
+                                            {review.title && (
+                                              <div className="font-medium text-gray-800 mt-1">
+                                                {review.title}
+                                              </div>
+                                            )}
+                                            <div className="flex items-center gap-2 mt-1">
+                                              <div className="flex items-center gap-1">
+                                                {[...Array(5)].map((_, i) => (
+                                                  <svg
+                                                    key={i}
+                                                    xmlns="http://www.w3.org/2000/svg"
+                                                    className={`h-4 w-4 ${
+                                                      i < review.rating
+                                                        ? 'text-yellow-400 fill-yellow-400'
+                                                        : 'text-gray-300'
+                                                    }`}
+                                                    viewBox="0 0 20 20"
+                                                  >
+                                                    <path d="M9.049 2.927c.3-.921 1.603-.921 1.902 0l1.07 3.292a1 1 0 00.95.69h3.462c.969 0 1.371 1.24.588 1.81l-2.8 2.034a1 1 0 00-.364 1.118l1.07 3.292c.3.921-.755 1.688-1.54 1.118l-2.8-2.034a1 1 0 00-1.175 0l-2.8 2.034c-.784.57-1.838-.197-1.539-1.118l1.07-3.292a1 1 0 00-.364-1.118L2.98 8.72c-.783-.57-.38-1.81.588-1.81h3.461a1 1 0 00.951-.69l1.07-3.292z" />
+                                                  </svg>
+                                                ))}
+                                              </div>
+                                              <span className="text-sm text-gray-500">
+                                                {new Date(review.createdAt).toLocaleDateString()}
+                                              </span>
+                                            </div>
+                                          </div>
+                                        </div>
+
+                                        {/* Review Comment */}
+                                        <p className="text-gray-700 leading-relaxed whitespace-pre-line">
+                                          {review.comment}
+                                        </p>
+
+                                        {/* Admin Response */}
+                                        {review.adminResponse && (
+                                          <div className="mt-4 pl-4 border-l-4 border-blue-200 bg-blue-50 p-4 rounded-r-lg">
+                                            <div className="flex items-center gap-2 mb-2">
+                                              <span className="text-xs font-semibold text-blue-800 bg-blue-200 px-2 py-1 rounded">
+                                                Admin Response
+                                              </span>
+                                              <span className="text-xs text-gray-500">
+                                                {new Date(review.adminResponse.createdAt).toLocaleDateString()}
+                                              </span>
+                                            </div>
+                                            <p className="text-sm text-gray-700">
+                                              {review.adminResponse.message}
+                                            </p>
+                                          </div>
+                                        )}
+                                      </div>
+                                    </div>
                                   </div>
-                                  <div>
-                                    <div className="font-medium text-lg">{review.user}</div>
-                                    <div className="text-sm text-gray-500">{review.date}</div>
-                                  </div>
-                                </div>
-                                <div className="flex items-center">
-                                  {[...Array(5)].map((_, i) => (
-                                    <svg
-                                      key={i}
-                                      xmlns="http://www.w3.org/2000/svg"
-                                      className={`h-5 w-5 ${i < review.rating ? 'text-yellow-400' : 'text-gray-300'}`}
-                                      viewBox="0 0 20 20"
-                                      fill="currentColor"
-                                    >
-                                      <path d="M9.049 2.927c.3-.921 1.603-.921 1.902 0l1.07 3.292a1 1 0 00.95.69h3.462c.969 0 1.371 1.24.588 1.81l-2.8 2.034a1 1 0 00-.364 1.118l1.07 3.292c.3.921-.755 1.688-1.54 1.118l-2.8-2.034a1 1 0 00-1.175 0l-2.8 2.034c-.784.57-1.838-.197-1.539-1.118l1.07-3.292a1 1 0 00-.364-1.118L2.98 8.72c-.783-.57-.38-1.81.588-1.81h3.461a1 1 0 00.951-.69l1.07-3.292z" />
-                                    </svg>
-                                  ))}
-                                </div>
-                              </div>
-                              <p className="text-gray-700 leading-relaxed mb-3">{review.comment}</p>
-                              <div className="flex space-x-4">
-                                <button className="text-gray-500 hover:text-primary text-sm flex items-center">
-                                  <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4 mr-1" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M14 10h4.764a2 2 0 011.789 2.894l-3.5 7A2 2 0 0115.263 21h-4.017c-.163 0-.326-.02-.485-.06L7 20m7-10V5a2 2 0 00-2-2h-.095c-.5 0-.905.405-.905.905 0 .714-.211 1.412-.608 2.006L7 11v9m7-10h-2M7 20H5a2 2 0 01-2-2v-6a2 2 0 012-2h2.5" />
-                                  </svg>
-                                  Helpful (12)
-                                </button>
-                                <button className="text-gray-500 hover:text-primary text-sm flex items-center">
-                                  <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4 mr-1" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 8h2a2 2 0 012 2v6a2 2 0 01-2 2h-2v4l-4-4H9a1.994 1.994 0 01-1.414-.586m0 0L11 14h4a2 2 0 002-2V6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2v4l.586-.586z" />
-                                  </svg>
-                                  Reply
-                                </button>
+                                ))}
                               </div>
                             </div>
-                          ))}
+                          ) : (
+                            <div className="text-center py-12 bg-gray-50 rounded-lg">
+                              <svg
+                                xmlns="http://www.w3.org/2000/svg"
+                                className="h-16 w-16 mx-auto text-gray-400 mb-4"
+                                fill="none"
+                                viewBox="0 0 24 24"
+                                stroke="currentColor"
+                              >
+                                <path
+                                  strokeLinecap="round"
+                                  strokeLinejoin="round"
+                                  strokeWidth={2}
+                                  d="M8 10h.01M12 10h.01M16 10h.01M9 16H5a2 2 0 01-2-2V6a2 2 0 012-2h14a2 2 0 012 2v8a2 2 0 01-2 2h-5l-5 5v-5z"
+                                />
+                              </svg>
+                              <p className="text-gray-600 text-lg">No reviews yet</p>
+                              <p className="text-gray-500 text-sm mt-2">
+                                Be the first to share your experience!
+                              </p>
+                            </div>
+                          )}
                         </div>
-                      ) : (
-                        <div className="text-center py-8 bg-gray-50 rounded-lg">
-                          <svg xmlns="http://www.w3.org/2000/svg" className="h-12 w-12 mx-auto text-gray-400 mb-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 10h.01M12 10h.01M16 10h.01M9 16H5a2 2 0 01-2-2V6a2 2 0 012-2h14a2 2 0 012 2v8a2 2 0 01-2 2h-5l-5 5v-5z" />
-                          </svg>
-                          <p className="text-gray-600 mb-4">No reviews yet. Be the first to share your experience!</p>
-                          <button className="bg-primary text-white px-4 py-2 rounded-md hover:bg-primary-dark transition-colors">
-                            Write a Review
-                          </button>
-                        </div>
+                      )}
+
+                      {/* Google Reviews Sub-tab */}
+                      {reviewSubTab === 'google' && (
+                        <GoogleReviews
+                          reviews={googleReviews}
+                          averageRating={googleRating}
+                          totalRatings={googleTotalRatings}
+                        />
+                      )}
+
+                      {/* Location & Directions Sub-tab */}
+                      {reviewSubTab === 'map' && event.location && (
+                        <GoogleMapEmbed
+                          latitude={event.location.coordinates?.lat || 0}
+                          longitude={event.location.coordinates?.lng || 0}
+                          address={event.location.address || ''}
+                          eventTitle={event.title || ''}
+                        />
                       )}
                     </div>
                   )}

@@ -4,6 +4,7 @@ import toast from 'react-hot-toast';
 import Button from '../ui/Button';
 import { Card, CardContent } from '../ui/Card';
 import Input from '../ui/Input';
+import newsletterAPI from '../../services/api/newsletterAPI';
 
 interface NewsletterSubscriptionProps {
   variant?: 'card' | 'inline' | 'modal';
@@ -21,6 +22,9 @@ const NewsletterSubscription: React.FC<NewsletterSubscriptionProps> = ({
   className = ''
 }) => {
   const [email, setEmail] = useState('');
+  const [name, setName] = useState('');
+  const [city, setCity] = useState('');
+  const [ageOfChildren, setAgeOfChildren] = useState('');
   const [isSubscribing, setIsSubscribing] = useState(false);
   const [isSubscribed, setIsSubscribed] = useState(false);
   const [error, setError] = useState('');
@@ -43,33 +47,37 @@ const NewsletterSubscription: React.FC<NewsletterSubscriptionProps> = ({
       return;
     }
 
+    if (!name.trim()) {
+      setError('Please enter your name');
+      return;
+    }
+
     setIsSubscribing(true);
 
     try {
-      const response = await fetch('/api/newsletter/subscribe', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          email: email.trim().toLowerCase(),
-          source: 'blog',
-          tags: ['blog_subscriber']
-        }),
+      const data = await newsletterAPI.subscribe({
+        email: email.trim().toLowerCase(),
+        name: name.trim(),
+        city: city.trim() || undefined,
+        ageOfChildren: ageOfChildren.trim() || undefined,
+        source: 'blog',
+        tags: ['blog_subscriber']
       });
-
-      const data = await response.json();
 
       if (data.success) {
         setIsSubscribed(true);
         setEmail('');
+        setName('');
+        setCity('');
+        setAgeOfChildren('');
         toast.success('Successfully subscribed to our newsletter!');
       } else {
         setError(data.message || 'Failed to subscribe. Please try again.');
       }
-    } catch (error) {
+    } catch (error: any) {
       console.error('Newsletter subscription error:', error);
-      setError('Something went wrong. Please try again later.');
+      const errorMessage = error.response?.data?.message || 'Something went wrong. Please try again later.';
+      setError(errorMessage);
     } finally {
       setIsSubscribing(false);
     }
@@ -121,6 +129,42 @@ const NewsletterSubscription: React.FC<NewsletterSubscriptionProps> = ({
               className="w-full"
               disabled={isSubscribing}
             />
+          </div>
+
+          <div>
+            <Input
+              type="text"
+              value={name}
+              onChange={(e) => setName(e.target.value)}
+              onKeyPress={handleKeyPress}
+              placeholder="Your name"
+              className="w-full"
+              disabled={isSubscribing}
+            />
+          </div>
+
+          <div>
+            <Input
+              type="text"
+              value={city}
+              onChange={(e) => setCity(e.target.value)}
+              onKeyPress={handleKeyPress}
+              placeholder="City (optional)"
+              className="w-full"
+              disabled={isSubscribing}
+            />
+          </div>
+
+          <div>
+            <Input
+              type="text"
+              value={ageOfChildren}
+              onChange={(e) => setAgeOfChildren(e.target.value)}
+              onKeyPress={handleKeyPress}
+              placeholder="Age of children (optional, e.g., '3-5, 8-10')"
+              className="w-full"
+              disabled={isSubscribing}
+            />
             {error && (
               <div className="flex items-center space-x-2 mt-2 text-red-600 text-sm">
                 <AlertCircle className="w-4 h-4" />
@@ -132,7 +176,7 @@ const NewsletterSubscription: React.FC<NewsletterSubscriptionProps> = ({
           <Button
             onClick={handleSubscribe}
             loading={isSubscribing}
-            disabled={!email.trim() || isSubscribing}
+            disabled={!email.trim() || !name.trim() || isSubscribing}
             className="w-full"
             variant="primary"
           >

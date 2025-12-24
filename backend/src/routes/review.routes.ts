@@ -11,6 +11,7 @@ import {
   respondToReview,
   getPendingReviews,
   moderateReview,
+  getGoogleReviews,
 } from '../controllers/review.controller';
 import { authenticate, authorize } from '../middleware/auth';
 import { ReviewType, FlagReason, ReviewStatus } from '../models/index';
@@ -86,6 +87,17 @@ router.get(
       .withMessage('Verified must be a boolean'),
   ],
   getReviews
+);
+
+// Google Maps reviews endpoint (public)
+router.get(
+  '/google/:eventId',
+  [
+    param('eventId')
+      .isMongoId()
+      .withMessage('Invalid event ID'),
+  ],
+  getGoogleReviews
 );
 
 // Protected routes

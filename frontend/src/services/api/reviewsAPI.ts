@@ -121,6 +121,36 @@ const reviewsAPI = {
       throw error;
     }
   },
+
+  // Google Maps Integration
+  getGoogleReviews: async (eventId: string) => {
+    try {
+      const response = await ApiService.get(`/reviews/google/${eventId}`);
+      return response.data;
+    } catch (error) {
+      throw error;
+    }
+  },
+
+  // Admin: Moderate reviews (approve/reject/hide)
+  moderateReview: async (reviewId: string, status: 'approved' | 'rejected' | 'hidden', notes?: string) => {
+    try {
+      const response = await ApiService.patch(`/reviews/${reviewId}/moderate`, { status, notes });
+      return response.data;
+    } catch (error) {
+      throw error;
+    }
+  },
+
+  // Admin: Respond to review
+  respondToReview: async (reviewId: string, message: string) => {
+    try {
+      const response = await ApiService.post(`/reviews/${reviewId}/respond`, { message });
+      return response.data;
+    } catch (error) {
+      throw error;
+    }
+  },
 };
 
 export default reviewsAPI;

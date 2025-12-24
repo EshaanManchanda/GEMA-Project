@@ -2,6 +2,8 @@ import { ApiService } from '../api';
 import { Event } from '@/types/event';
 import { Blog } from '@/types/blog';
 import { Banner } from './bannerAPI';
+import { Reel } from './reelsAPI';
+import { SEOContent } from './seoContentAPI';
 
 export interface Category {
   _id: string;
@@ -10,6 +12,29 @@ export interface Category {
   icon?: string;
   eventCount: number;
   sortOrder: number;
+}
+
+export interface Collection {
+  _id: string;
+  title: string;
+  description: string;
+  slug: string;
+  iconAsset?: {
+    url: string;
+    thumbnailUrl?: string;
+  };
+  featuredImageAsset?: {
+    url: string;
+    thumbnailUrl?: string;
+  };
+  count: string;
+  category?: string;
+  sortOrder: number;
+  seo?: {
+    metaTitle?: string;
+    metaDescription?: string;
+  };
+  events: Event[];
 }
 
 export interface PublicStats {
@@ -31,7 +56,10 @@ export interface HomepageData {
   banners: Banner[];
   categories: Category[];
   featuredBlogs: Blog[];
+  reels: Reel[];
   stats: PublicStats;
+  seoContent: SEOContent | null;
+  collections: Collection[];
 }
 
 const homepageAPI = {

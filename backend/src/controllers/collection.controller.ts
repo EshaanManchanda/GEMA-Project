@@ -165,6 +165,8 @@ export const getCollections = async (req: Request, res: Response, next: NextFunc
 
     console.log(`Found ${collections.length} collections out of ${total} total`);
 
+    // Set HTTP cache headers for browser/CDN caching (5 min max-age, 10 min stale-while-revalidate)
+    res.setHeader('Cache-Control', 'public, max-age=300, stale-while-revalidate=600');
     res.status(200).json({
       success: true,
       message: 'Collections retrieved successfully',
@@ -249,6 +251,8 @@ export const getCollectionById = async (req: Request, res: Response, next: NextF
 
     console.log(`Found collection: ${collection.title} with ${collection.events.length} events`);
 
+    // Set HTTP cache headers for browser/CDN caching
+    res.setHeader('Cache-Control', 'public, max-age=300, stale-while-revalidate=600');
     res.status(200).json({
       success: true,
       message: 'Collection retrieved successfully',

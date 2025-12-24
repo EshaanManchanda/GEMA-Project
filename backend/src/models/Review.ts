@@ -753,6 +753,15 @@ reviewSchema.statics.updateEventStats = async function(this: IReviewModel, event
     );
 
     console.log(`Updated review stats for event ${eventId}: ${stats.totalReviews} reviews, ${stats.averageRating} avg rating`);
+
+    // Update combined rating (platform + Google)
+    try {
+      const { eventService } = await import('../services/event.service');
+      await eventService.updateCombinedRating(eventId);
+    } catch (error) {
+      console.error(`Error updating combined rating for event ${eventId}:`, error);
+      // Don't throw - combined rating calculation failures shouldn't break review stats update
+    }
   } catch (error) {
     console.error(`Error updating event stats for ${eventId}:`, error);
     throw error;

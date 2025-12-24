@@ -46,6 +46,9 @@ export type { IMediaAsset } from './MediaAsset';
 export { default as Banner } from './Banner';
 export type { IBanner } from './Banner';
 
+export { default as SEOContent } from './SEOContent';
+export type { ISEOContent } from './SEOContent';
+
 // New Models
 export { default as Category } from './Category';
 export type { ICategory } from './Category';
@@ -96,3 +99,6 @@ export type { ICancellationLog } from './CancellationLog';
 
 export { default as AffiliateEventClick } from './AffiliateEventClick';
 export type { IAffiliateEventClick } from './AffiliateEventClick';
+
+export { default as NewsletterSubscriber } from './NewsletterSubscriber';
+export type { INewsletterSubscriber, INewsletterSubscriberModel } from './NewsletterSubscriber';

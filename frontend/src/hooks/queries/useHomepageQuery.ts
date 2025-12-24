@@ -20,7 +20,7 @@ export function useHomepageQuery(options?: Omit<UseQueryOptions<HomepageData>, '
       console.log('🌐 [FRONTEND] Fetching homepage data from API...');
 
       const data = await homepageAPI.getHomepageData();
-
+      
     
 
       if (import.meta.env.VITE_DEBUG === 'true') {
@@ -41,6 +41,7 @@ export function useHomepageQuery(options?: Omit<UseQueryOptions<HomepageData>, '
         banners: [],
         categories: [],
         featuredBlogs: [],
+        reels: [],
         stats: null
       };
     },

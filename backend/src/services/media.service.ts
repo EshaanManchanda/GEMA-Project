@@ -151,7 +151,7 @@ export class MediaService {
    */
   async trackUsage(
     mediaId: string,
-    model: 'Blog' | 'Event' | 'User',
+    model: 'Blog' | 'Event' | 'User' | 'Reel',
     field: string,
     documentId: mongoose.Types.ObjectId,
     session?: mongoose.ClientSession

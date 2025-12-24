@@ -7,6 +7,7 @@ import FormBuilder from '@/components/registration/FormBuilder';
 import BasicInfoTab from '../../components/admin/BasicInfoTab';
 import SchedulePricingTab from '../../components/admin/SchedulePricingTab';
 import AdvancedTab from '../../components/admin/AdvancedTab';
+import ReviewsTab from '../../components/admin/ReviewsTab';
 import { ChevronLeft, ChevronRight } from 'lucide-react';
 import MediaPickerModal from '@/components/admin/media/MediaPickerModal';
 import { MediaAsset } from '@/store/slices/mediaSlice';
@@ -95,6 +96,9 @@ interface EventFormData {
 
   // FAQs
   faqs: FAQ[];
+
+  // Google Maps Integration
+  googlePlaceId: string;
 }
 
 interface Category {
@@ -108,7 +112,7 @@ interface Vendor {
   email: string;
 }
 
-type TabType = 'basic' | 'schedule' | 'advanced' | 'registration';
+type TabType = 'basic' | 'schedule' | 'advanced' | 'reviews' | 'registration';
 
 const AdminEditEventPage: React.FC = () => {
   const { id } = useParams<{ id: string }>();
@@ -153,7 +157,8 @@ const AdminEditEventPage: React.FC = () => {
       description: '',
       keywords: []
     },
-    faqs: []
+    faqs: [],
+    googlePlaceId: ''
   });
 
   const [categories, setCategories] = useState<Category[]>([]);
@@ -241,7 +246,8 @@ const AdminEditEventPage: React.FC = () => {
               description: eventData.seoMeta?.description || '',
               keywords: eventData.seoMeta?.keywords || []
             },
-            faqs: eventData.faqs || []
+            faqs: eventData.faqs || [],
+            googlePlaceId: eventData.googlePlaceId || ''
           });
 
           // Set selected image assets for MediaPickerModal
@@ -865,6 +871,18 @@ const AdminEditEventPage: React.FC = () => {
                 Advanced
               </button>
               <button
+                onClick={() => setActiveTab('reviews')}
+                className={`
+                  px-4 py-2 rounded-t-lg font-medium text-sm transition-colors whitespace-nowrap
+                  ${activeTab === 'reviews'
+                    ? 'bg-white text-blue-700 border-b-2 border-blue-700'
+                    : 'text-gray-600 hover:text-gray-900 hover:bg-gray-100'
+                  }
+                `}
+              >
+                Reviews
+              </button>
+              <button
                 onClick={() => setActiveTab('registration')}
                 className={`
                   px-4 py-2 rounded-t-lg font-medium text-sm transition-colors whitespace-nowrap
@@ -960,6 +978,44 @@ const AdminEditEventPage: React.FC = () => {
                 onSeoChange={handleSeoChange}
                 imagePreviewUrl={formData.imagePreviewUrls[0]}
               />
+            )}
+
+            {activeTab === 'reviews' && id && (
+              <ReviewsTab
+                eventId={id}
+                googlePlaceId={formData.googlePlaceId}
+                onGooglePlaceIdChange={(placeId) =>
+                  setFormData({ ...formData, googlePlaceId: placeId })
+                }
+              />
+            )}
+
+            {activeTab === 'reviews' && !id && (
+              <div className="p-6">
+                <div className="max-w-2xl mx-auto">
+                  <div className="bg-blue-50 border border-blue-200 rounded-lg p-8 text-center">
+                    <div className="mx-auto flex items-center justify-center h-12 w-12 rounded-full bg-blue-100 mb-4">
+                      <svg className="h-6 w-6 text-blue-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11.049 2.927c.3-.921 1.603-.921 1.902 0l1.07 3.292a1 1 0 00.95.69h3.462c.969 0 1.371 1.24.588 1.81l-2.8 2.034a1 1 0 00-.364 1.118l1.07 3.292c.3.921-.755 1.688-1.54 1.118l-2.8-2.034a1 1 0 00-1.175 0l-2.8 2.034c-.784.57-1.838-.197-1.539-1.118l1.07-3.292a1 1 0 00-.364-1.118L2.98 8.72c-.783-.57-.38-1.81.588-1.81h3.461a1 1 0 00.951-.69l1.07-3.292z" />
+                      </svg>
+                    </div>
+                    <h3 className="text-lg font-medium text-gray-900 mb-2">
+                      Reviews Not Available Yet
+                    </h3>
+                    <p className="text-gray-600 mb-6">
+                      Reviews can only be managed after the event has been created and saved.
+                      Please complete the basic event information and save it first.
+                    </p>
+                    <button
+                      type="button"
+                      onClick={() => setActiveTab('basic')}
+                      className="inline-flex items-center px-6 py-3 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-blue-600 hover:bg-blue-700"
+                    >
+                      Go to Basic Info
+                    </button>
+                  </div>
+                </div>
+              </div>
             )}
 
             {activeTab === 'registration' && (

@@ -59,7 +59,11 @@ const mockCollections: MockCollection[] = [
   },
 ];
 
-const CollectionsCarousel: React.FC = () => {
+interface CollectionsCarouselProps {
+  collections?: Collection[];  // Optional: if provided, use instead of fetching
+}
+
+const CollectionsCarousel: React.FC<CollectionsCarouselProps> = ({ collections: propCollections }) => {
   const navigate = useNavigate();
   const [collections, setCollections] = useState<Collection[]>([]);
   const [isLoading, setIsLoading] = useState(true);
@@ -133,8 +137,17 @@ const CollectionsCarousel: React.FC = () => {
   };
 
   useEffect(() => {
+    // If collections provided via props, use them
+    if (propCollections && propCollections.length > 0) {
+      setCollections(propCollections);
+      setIsLoading(false);
+      setUsingMockData(false);
+      return;
+    }
+
+    // Otherwise fetch (for when used outside HomePage)
     fetchCollections();
-  }, []);
+  }, [propCollections]);
 
   const handleCollectionClick = (collection: Collection) => {
     // Navigate to individual collection detail page

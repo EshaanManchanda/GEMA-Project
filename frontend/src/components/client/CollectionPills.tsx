@@ -16,9 +16,10 @@ const mockCollections = [
 
 interface CollectionPillsProps {
   maxDisplay?: number;
+  collections?: Collection[];  // Optional: if provided, use instead of fetching
 }
 
-const CollectionPills: React.FC<CollectionPillsProps> = ({ maxDisplay = 12 }) => {
+const CollectionPills: React.FC<CollectionPillsProps> = ({ maxDisplay = 12, collections: propCollections }) => {
   const navigate = useNavigate();
   const scrollContainerRef = useRef<HTMLDivElement>(null);
   const [collections, setCollections] = useState<Collection[]>([]);
@@ -111,8 +112,20 @@ const CollectionPills: React.FC<CollectionPillsProps> = ({ maxDisplay = 12 }) =>
   };
 
   useEffect(() => {
+    // If collections provided via props, use them
+    if (propCollections && propCollections.length > 0) {
+      setCollections(propCollections);
+      setIsLoading(false);
+      setUsingMockData(false);
+      if (propCollections.length > 0) {
+        setActiveCollectionId(propCollections[0]._id || propCollections[0].id);
+      }
+      return;
+    }
+
+    // Otherwise fetch (for when used outside HomePage)
     fetchCollections();
-  }, []);
+  }, [propCollections]);
 
   useEffect(() => {
     checkScrollPosition();

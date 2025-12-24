@@ -2,6 +2,9 @@ import mongoose, { Schema, Document, Model } from 'mongoose';
 
 export interface INewsletterSubscriber extends Document {
   email: string;
+  name: string;
+  ageOfChildren?: string;
+  city?: string;
   isActive: boolean;
   source: string;
   tags: string[];
@@ -43,6 +46,23 @@ const newsletterSubscriberSchema: Schema = new Schema(
         },
         message: 'Please provide a valid email address'
       }
+    },
+    name: {
+      type: String,
+      trim: true,
+      minlength: [2, 'Name must be at least 2 characters'],
+      maxlength: [100, 'Name cannot exceed 100 characters']
+      // Note: NOT required in schema for backward compatibility
+    },
+    ageOfChildren: {
+      type: String,
+      trim: true,
+      maxlength: [50, 'Age of children cannot exceed 50 characters']
+    },
+    city: {
+      type: String,
+      trim: true,
+      maxlength: [100, 'City cannot exceed 100 characters']
     },
     isActive: {
       type: Boolean,
@@ -106,6 +126,7 @@ newsletterSubscriberSchema.index({ isActive: 1 });
 newsletterSubscriberSchema.index({ source: 1 });
 newsletterSubscriberSchema.index({ subscriptionDate: -1 });
 newsletterSubscriberSchema.index({ 'preferences.frequency': 1 });
+newsletterSubscriberSchema.index({ city: 1 });
 
 // Pre-save middleware to generate unsubscribe token
 newsletterSubscriberSchema.pre('save', function(next) {

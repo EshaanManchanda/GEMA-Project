@@ -79,3 +79,9 @@ export const getRegionalConfig = () => {
   const region = getCurrentRegion();
   return REGIONAL_CONFIG[region];
 };
+
+/**
+ * Google Maps API Key
+ * Used for Google Maps embeds and Places API on frontend
+ */
+export const GOOGLE_MAPS_KEY = import.meta.env.VITE_GOOGLE_MAPS_KEY || '';

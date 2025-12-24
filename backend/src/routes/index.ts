@@ -38,6 +38,7 @@ import collectionRoutes from './collection.routes';
 import favoritesRoutes from './favorites.routes';
 import adminRevenueRoutes from './admin.revenue.routes';
 import adminStatsRoutes from './admin.stats.routes';
+import adminBulkImportRoutes from './admin.bulk-import.routes';
 import statsRoutes from './stats.routes';
 import seoRoutes from './seo.routes';
 import registrationRoutes from './registration.routes';
@@ -53,6 +54,8 @@ import seoContentRoutes from './seoContent.routes';
 import announcementBarRoutes from './announcementBar.routes';
 import popupRoutes from './popup.routes';
 import homepageRoutes from './homepage.routes';
+import reelRoutes from './reel.routes';
+import adminReelRoutes from './admin.reel.routes';
 import { Router} from 'express';
 
 const router = Router();
@@ -91,6 +94,9 @@ router.use('/payments', paymentRoutes);
 
 // Review routes
 router.use('/reviews', reviewRoutes);
+
+// Reel routes (public)
+router.use('/reels', reelRoutes);
 
 // Upload routes
 router.use('/uploads', uploadRoutes);
@@ -146,6 +152,9 @@ router.use('/admin', adminSettingsRoutes);
 // Admin Collection Management routes
 router.use('/admin/collections', adminCollectionRoutes);
 
+// Admin Reel Management routes
+router.use('/admin/reels', adminReelRoutes);
+
 // Vendor routes
 router.use('/vendors', vendorRoutes);
 
@@ -195,6 +204,9 @@ router.use('/stats', statsRoutes);
 
 // Admin Statistics routes
 router.use('/admin', adminStatsRoutes);
+
+// Admin Bulk Import/Export routes
+router.use('/admin/bulk-import', adminBulkImportRoutes);
 
 // Registration routes (event registration system)
 router.use('/registrations', registrationRoutes);
