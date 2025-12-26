@@ -60,14 +60,14 @@ const reviewsAPI = {
 
   createReview: async (reviewData: {
     type: 'event' | 'vendor' | 'venue';
-    eventId?: string;
-    vendorId?: string;
-    venueId?: string;
+    targetId: string;
     rating: number;
-    title: string;
-    comment: string;
+    title?: string;
+    comment?: string;
+    orderId?: string;
     pros?: string[];
     cons?: string[];
+    media?: string[];
   }) => {
     try {
       const response = await ApiService.post('/reviews', reviewData);

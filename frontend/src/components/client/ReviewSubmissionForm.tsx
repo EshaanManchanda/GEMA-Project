@@ -50,7 +50,7 @@ const ReviewSubmissionForm: React.FC<ReviewSubmissionFormProps> = ({
 
       await reviewsAPI.createReview({
         type: 'event',
-        eventId,
+        targetId: eventId,
         rating,
         title: title.trim(),
         comment: comment.trim(),
