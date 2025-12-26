@@ -63,7 +63,7 @@ const getCategoryImage = (category: Category): string => {
   // Priority 4: Generate placeholder from category initials
   const initials = category.name.slice(0, 2).toUpperCase();
   const svg = `<svg width="80" height="80" xmlns="http://www.w3.org/2000/svg"><rect width="100%" height="100%" fill="#3b82f6"/><text x="50%" y="50%" font-family="Arial, sans-serif" font-size="14" font-weight="500" text-anchor="middle" dominant-baseline="middle" fill="#ffffff">${initials}</text></svg>`;
-  return `data:image/svg+xml;base64,${btoa(svg)}`;
+  return `data:image/svg+xml;charset=UTF-8,${encodeURIComponent(svg)}`;
 };
 
 const getCategoryIcon = (category: Category): string => {

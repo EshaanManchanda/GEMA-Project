@@ -26,8 +26,8 @@ export const generateFallbackImage = (
     </svg>
   `;
 
-  // Convert to data URI
-  return `data:image/svg+xml;base64,${btoa(svg)}`;
+  // Convert to data URI with UTF-8 encoding support
+  return `data:image/svg+xml;charset=UTF-8,${encodeURIComponent(svg)}`;
 };
 
 /**
