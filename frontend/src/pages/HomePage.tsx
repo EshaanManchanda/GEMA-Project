@@ -344,7 +344,7 @@ const FeaturedEventsCarousel: React.FC<{
       </div>
 
       <div className="relative py-4">
-        <div ref={sliderRef} className="keen-slider min-h-[400px] !overflow-visible">
+        <div ref={sliderRef} className="keen-slider min-h-[400px] overflow-hidden">
           {featuredEvents && featuredEvents.length > 0 ? featuredEvents.map((event, index) => (
             <div key={index} className="keen-slider__slide px-2 py-2">
               <EventCard

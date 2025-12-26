@@ -262,6 +262,17 @@ const FeaturedBlogsSection: React.FC<FeaturedBlogsSectionProps> = ({
     return typeof category === 'object' ? category.color : '#3B82F6';
   };
 
+  const getImageUrl = (blog: Blog): string => {
+    // Priority: populated asset > legacy string > placeholder
+    if (blog.featuredImageAsset?.url) {
+      return blog.featuredImageAsset.url;
+    }
+    if (blog.featuredImage && blog.featuredImage.trim()) {
+      return blog.featuredImage;
+    }
+    return getPlaceholderUrl('blogThumbnail', blog.title);
+  };
+
   if (loading) {
     return (
       <section className="w-full py-16 bg-white">
@@ -341,7 +352,7 @@ const FeaturedBlogsSection: React.FC<FeaturedBlogsSectionProps> = ({
               >
                 {/* Background Image */}
                 <img
-                  src={blog.featuredImageAsset?.url || blog.featuredImage || getPlaceholderUrl('blogThumbnail')}
+                  src={getImageUrl(blog)}
                   alt={blog.title}
                   className="absolute inset-0 w-full h-full object-cover"
                   loading={index === 0 ? 'eager' : 'lazy'}

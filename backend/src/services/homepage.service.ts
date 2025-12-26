@@ -5,6 +5,7 @@ import Collection, { ICollection } from '../models/Collection';
 import cacheService from './cache.service';
 import statsService, { PublicStats } from './stats.service';
 import { transformEventsResponse } from '../utils/event.utils';
+import { transformBlogResponse } from '../utils/blog.utils';
 
 export interface HomepageData {
   events: IEvent[];
@@ -46,7 +47,7 @@ class HomepageService {
       featuredEvents,
       banners,
       categories,
-      featuredBlogs,
+      rawFeaturedBlogs,
       reels,
       stats,
       seoContent,
@@ -123,6 +124,7 @@ class HomepageService {
       })
         .select('title slug excerpt featuredImage featuredImageAsset author category readTime publishedAt')
         .populate('category', 'name slug color')
+        .populate('featuredImageAsset', 'url thumbnailUrl variations')
         .sort({ publishedAt: -1 })
         .limit(6)
         .lean(),
@@ -288,6 +290,9 @@ class HomepageService {
     const transformedEvents = transformEventsResponse(events);
     const transformedFeaturedEvents = transformEventsResponse(featuredEvents);
 
+    // Transform blogs to ensure consistent data structure
+    const featuredBlogs = rawFeaturedBlogs.map(transformBlogResponse);
+
     // Filter out banners with null/undefined imageAsset
     const validBanners = banners.filter(b => b.imageAsset != null);
 
@@ -310,7 +315,7 @@ class HomepageService {
       console.log('   - Featured Events:', featuredEvents.length, 'items');
       console.log('   - Banners:', banners.length, 'items');
       console.log('   - Categories:', categories.length, 'items');
-      console.log('   - Featured Blogs:', featuredBlogs.length, 'items');
+      console.log('   - Featured Blogs:', rawFeaturedBlogs.length, 'items');
       console.log('   - Reels:', reels.length, 'items');
       console.log('   - Stats:', stats ? 'loaded' : 'missing');
       console.log('   - SEO Content:', seoContent ? 'loaded' : 'missing');
@@ -328,8 +333,8 @@ class HomepageService {
         });
       }
 
-      if (featuredBlogs.length > 0) {
-        const blog = featuredBlogs[0] as any;
+      if (rawFeaturedBlogs.length > 0) {
+        const blog = rawFeaturedBlogs[0] as any;
         console.log('   - Sample Blog:', {
           title: blog.title,
           hasFeaturedImage: !!blog.featuredImage,

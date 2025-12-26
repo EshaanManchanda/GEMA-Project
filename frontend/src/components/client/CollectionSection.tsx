@@ -407,7 +407,7 @@ const CollectionSection: React.FC<CollectionSectionProps> = ({
   // Carousel layout
   const renderCarouselLayout = () => (
     <div className="relative py-4">
-      <div ref={sliderRef} className="keen-slider min-h-[400px] !overflow-visible">
+      <div ref={sliderRef} className="keen-slider min-h-[400px] overflow-hidden">
         {displayedEvents.map((event, index) => (
           <div key={event.id || event._id || index} className="keen-slider__slide px-2 py-2">
             <EventCard

@@ -36,6 +36,17 @@ export interface Blog {
   content: string;
   featuredImage: string;
   featuredImageThumbnail?: string;  // For performance/preview
+  featuredImageAsset?: {  // NEW - matches backend MediaAsset
+    _id: string;
+    url: string;
+    thumbnailUrl?: string;
+    variations?: {
+      thumbnail?: string;
+      small?: string;
+      medium?: string;
+      large?: string;
+    };
+  };
   featuredImageVariations?: {  // For responsive images
     thumbnail?: string;
     small?: string;

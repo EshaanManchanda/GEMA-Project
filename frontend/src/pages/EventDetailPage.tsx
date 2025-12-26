@@ -209,6 +209,7 @@ const EventDetailPage: React.FC = () => {
         'Age-appropriate activities',
         'Safe environment'
       ],
+      faqs: eventData.faqs || [],
       reviews: []
     };
   }, [eventData, id]);
