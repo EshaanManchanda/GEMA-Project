@@ -1,4 +1,4 @@
-import React, { useState, useMemo, useRef } from 'react';
+import React, { useState, useMemo, useRef, useEffect } from 'react';
 import { FaSearch, FaEdit, FaTrash, FaEye, FaCheck, FaTimes, FaStar, FaUndo, FaPlus, FaWpforms } from 'react-icons/fa';
 import { useNavigate } from 'react-router-dom';
 import DOMPurify from 'isomorphic-dompurify';
@@ -88,16 +88,31 @@ const AdminEventsPage: React.FC = () => {
   const [typeFilter, setTypeFilter] = useState<string>('all');
   const [featuredFilter, setFeaturedFilter] = useState<string>('all');
 
+  // Pagination state
+  const [currentPage, setCurrentPage] = useState<number>(1);
+  const [itemsPerPage] = useState<number>(20);
+  const [pagination, setPagination] = useState({
+    currentPage: 1,
+    totalPages: 1,
+    totalEvents: 0,
+    hasNextPage: false,
+    hasPrevPage: false,
+    limit: 20,
+  });
+
   // Build filter params for API
   const filterParams = useMemo(() => {
-    const params: any = {};
+    const params: any = {
+      page: currentPage,
+      limit: itemsPerPage,
+    };
     if (searchTerm) params.search = searchTerm;
     if (statusFilter !== 'all') params.status = statusFilter;
     if (categoryFilter !== 'all') params.category = categoryFilter;
     if (typeFilter !== 'all') params.type = typeFilter;
     if (featuredFilter !== 'all') params.isFeatured = featuredFilter === 'featured';
     return params;
-  }, [searchTerm, statusFilter, categoryFilter, typeFilter, featuredFilter]);
+  }, [currentPage, itemsPerPage, searchTerm, statusFilter, categoryFilter, typeFilter, featuredFilter]);
 
   // TanStack Query hooks replace manual fetch + state (50+ lines → 2 hooks!)
   const { data: eventsResponse, isLoading, error } = useAdminEventsQuery(filterParams);
@@ -107,6 +122,26 @@ const AdminEventsPage: React.FC = () => {
   const events = eventsResponse?.data?.events || eventsResponse?.events || [];
   const filteredEvents = events; // No client-side filtering needed - API handles it
   const categories = categoriesResponse?.data || categoriesResponse || [];
+  const paginationData = eventsResponse?.data?.pagination;
+
+  // Update pagination state when data changes
+  useEffect(() => {
+    if (paginationData) {
+      setPagination({
+        currentPage: paginationData.currentPage || 1,
+        totalPages: paginationData.totalPages || 1,
+        totalEvents: paginationData.totalEvents || 0,
+        hasNextPage: paginationData.hasNextPage || false,
+        hasPrevPage: paginationData.hasPrevPage || false,
+        limit: paginationData.limit || 20,
+      });
+    }
+  }, [paginationData]);
+
+  // Reset to page 1 when filters change
+  useEffect(() => {
+    setCurrentPage(1);
+  }, [searchTerm, statusFilter, categoryFilter, typeFilter, featuredFilter]);
 
   // Mutation hooks with automatic cache invalidation
   const approveEvent = useApproveEventMutation();
@@ -115,12 +150,12 @@ const AdminEventsPage: React.FC = () => {
   const restoreEvent = useRestoreEventMutation();
   const toggleFeatured = useToggleFeaturedMutation();
 
-  // Virtualization for large event lists (100+ rows)
+  // Virtualization for paginated event lists
   const parentRef = useRef<HTMLDivElement>(null);
   const rowVirtualizer = useVirtualizer({
     count: filteredEvents.length,
     getScrollElement: () => parentRef.current,
-    estimateSize: () => 80, // Row height in pixels
+    estimateSize: () => 70, // Row height in pixels
     overscan: 5, // Render 5 extra rows above/below viewport
   });
 
@@ -240,6 +275,14 @@ const AdminEventsPage: React.FC = () => {
     }
   };
 
+  const handlePageChange = (newPage: number) => {
+    if (newPage >= 1 && newPage <= pagination.totalPages) {
+      setCurrentPage(newPage);
+      // Scroll to top of table
+      parentRef.current?.scrollTo({ top: 0, behavior: 'smooth' });
+    }
+  };
+
   if (isLoading) {
     return (
       <div className="min-h-screen bg-gray-50">
@@ -270,17 +313,11 @@ const AdminEventsPage: React.FC = () => {
           {/* Error Banner */}
           {error && (
             <div className="mb-6 bg-red-50 border border-red-200 rounded-lg p-4">
-              <div className="flex items-center justify-between">
-                <div className="flex items-center">
-                  <FaTimes className="text-red-600 mr-2" />
-                  <p className="text-red-800">{error}</p>
-                </div>
-                <button
-                  onClick={() => setError(null)}
-                  className="text-red-600 hover:text-red-800"
-                >
-                  <FaTimes className="w-5 h-5" />
-                </button>
+              <div className="flex items-center">
+                <FaTimes className="text-red-600 mr-2" />
+                <p className="text-red-800">
+                  {error instanceof Error ? error.message : 'An error occurred while loading events'}
+                </p>
               </div>
             </div>
           )}
@@ -408,7 +445,7 @@ const AdminEventsPage: React.FC = () => {
             <div
               ref={parentRef}
               className="overflow-auto"
-              style={{ maxHeight: '600px' }}
+              style={{ maxHeight: '1400px' }}
             >
               <table className="min-w-full divide-y divide-gray-200">
                 <thead className="bg-gray-50 sticky top-0 z-10">
@@ -615,6 +652,65 @@ const AdminEventsPage: React.FC = () => {
                 </tbody>
               </table>
             </div>
+
+            {/* Pagination Controls */}
+            {pagination.totalPages > 1 && (
+              <div className="px-6 py-4 border-t border-gray-200 bg-white">
+                <div className="flex items-center justify-between">
+                  {/* Item count */}
+                  <div className="text-sm text-gray-600">
+                    Showing {((pagination.currentPage - 1) * pagination.limit) + 1} to{' '}
+                    {Math.min(pagination.currentPage * pagination.limit, pagination.totalEvents)} of{' '}
+                    {pagination.totalEvents} events
+                  </div>
+
+                  {/* Page buttons */}
+                  <div className="flex items-center gap-2">
+                    <button
+                      onClick={() => handlePageChange(currentPage - 1)}
+                      disabled={currentPage === 1}
+                      className="px-3 py-1 border border-gray-300 rounded-lg disabled:opacity-50 disabled:cursor-not-allowed hover:bg-gray-50"
+                    >
+                      Previous
+                    </button>
+
+                    {/* Page numbers */}
+                    {Array.from({ length: pagination.totalPages }, (_, i) => i + 1)
+                      .filter(page => {
+                        // Show: first, last, current, and 2 pages around current
+                        return page === 1 ||
+                               page === pagination.totalPages ||
+                               Math.abs(page - currentPage) <= 2;
+                      })
+                      .map((page, idx, arr) => (
+                        <React.Fragment key={page}>
+                          {idx > 0 && arr[idx - 1] !== page - 1 && (
+                            <span className="px-2 text-gray-400">...</span>
+                          )}
+                          <button
+                            onClick={() => handlePageChange(page)}
+                            className={`px-3 py-1 rounded-lg ${
+                              page === currentPage
+                                ? 'bg-blue-600 text-white'
+                                : 'border border-gray-300 hover:bg-gray-50'
+                            }`}
+                          >
+                            {page}
+                          </button>
+                        </React.Fragment>
+                      ))}
+
+                    <button
+                      onClick={() => handlePageChange(currentPage + 1)}
+                      disabled={currentPage === pagination.totalPages}
+                      className="px-3 py-1 border border-gray-300 rounded-lg disabled:opacity-50 disabled:cursor-not-allowed hover:bg-gray-50"
+                    >
+                      Next
+                    </button>
+                  </div>
+                </div>
+              </div>
+            )}
           </div>
 
           {/* Delete Confirmation Modal */}
