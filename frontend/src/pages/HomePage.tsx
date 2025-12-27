@@ -717,6 +717,8 @@ const HomePage: React.FC = () => {
           </ScrollReveal>
         )}
         <ScrollReveal>
+        {/* Collections Pills */}
+          <CollectionPills collections={collectionsData} />
           <FeaturedEventsCarousel
             featuredEvents={featuredEvents}
             // wishlistIds={wishlistIds}
@@ -724,15 +726,94 @@ const HomePage: React.FC = () => {
           />
         </ScrollReveal>
 
-        {/* Collections Pills */}
+          {/* Carousel Layout - Best Price Tickets */}
+          <CollectionSection
+            badge="Best Price"
+            badgeColor="rgba(255, 107, 0, 0.1)"
+            title="☀️ Best-Price Tickets to Make the Most of the Sunshine!"
+            subtitle="Sunshine's out, fun's in! Grab best-price e-tickets now and make the most of this glorious weather."
+            events={bestPriceEvents}
+            layout="carousel"
+            eventCardVariant="overlay"
+            autoplay={true}
+            autoplayInterval={5000}
+            showNavigation={true}
+            showDots={true}
+            viewAllLink="/search?sort=price"
+            showPrice={true}
+            showLocation={true}
+            showWishlist={false}
+            showAgeGroup={true}
+          />
+  
+          {/* Horizontal Scroll Layout - Trending Now */}
+          <CollectionSection
+            badge="Trending"
+            title="🔥 Trending Now"
+            subtitle="What's popular right now in Dubai and UAE"
+            events={trendingEvents}
+            layout="horizontal-scroll"
+            eventCardVariant="compact"
+            maxItems={12}
+            viewAllLink="/search?sort=trending"
+            showPrice={true}
+            showLocation={true}
+            showStats={true}
+            showWishlist={false}
+            showAgeGroup={true}
+          />
+
+          {/* Grid Layout - Handpicked Experiences */}
         <ScrollReveal>
-          <CollectionPills collections={collectionsData} />
+          <CollectionSection
+            badge="Handpicked"
+            title="Handpicked Experiences"
+            subtitle="Curated by our team of experts - only the best activities for your family"
+            events={handpickedEvents}
+            layout="grid"
+            eventCardVariant="default"
+            maxItems={8}
+            enablePagination={true}
+            viewAllLink="/search?collection=handpicked"
+            showPrice={true}
+            showLocation={true}
+            showAgeGroup={true}
+            showWishlist={true}
+            wishlistIds={wishlistIds}
+            onWishlistToggle={handleWishlistToggle}
+          />
         </ScrollReveal>
 
+        {/* Masonry Layout - New This Week */}
+        <CollectionSection
+          badge="New"
+          title="✨ New This Week"
+          subtitle="Fresh activities just added to our platform"
+          events={newEvents}
+          layout="masonry"
+          eventCardVariant="vertical-tall"
+          showDescription={true}
+          viewAllLink="/search?sort=newest"
+          showPrice={true}
+          showLocation={true}
+          showWishlist={true}
+          wishlistIds={wishlistIds}
+          onWishlistToggle={handleWishlistToggle}
+          showAgeGroup={true}
+        />
+
+        <EventGridSection events={events}/>
+        <CitiesSection />
+        <NewsletterSubscribe/>
+        <CategoryCarousel categories={categories}/>
+        <ReviewCarouselSwiper/>
+        {/* Gift Card Promo Section */}
+        <GiftCardPromo activityCount={stats?.totalEvents || 100} />
         {/* Featured Blogs Section - Moved above fold for better visibility */}
         <ScrollReveal>
           <FeaturedBlogsSection blogs={featuredBlogs} loading={isLoading} />
         </ScrollReveal>
+        
 
         {/* Reels Section - Instagram-style vertical videos */}
         {reels && reels.length > 0 && (
@@ -771,69 +852,14 @@ const HomePage: React.FC = () => {
           </ScrollReveal>
         )}
 
-        {/* Grid Layout - Handpicked Experiences */}
-        <ScrollReveal>
-          <CollectionSection
-            badge="Handpicked"
-            title="Handpicked Experiences"
-            subtitle="Curated by our team of experts - only the best activities for your family"
-            events={handpickedEvents}
-            layout="grid"
-            eventCardVariant="default"
-            maxItems={8}
-            enablePagination={true}
-            viewAllLink="/search?collection=handpicked"
-            showPrice={true}
-            showLocation={true}
-            showAgeGroup={true}
-            showWishlist={true}
-            wishlistIds={wishlistIds}
-            onWishlistToggle={handleWishlistToggle}
-          />
-        </ScrollReveal>
+        
 
-        {/* Carousel Layout - Best Price Tickets */}
-        <CollectionSection
-          badge="Best Price"
-          badgeColor="rgba(255, 107, 0, 0.1)"
-          title="☀️ Best-Price Tickets to Make the Most of the Sunshine!"
-          subtitle="Sunshine's out, fun's in! Grab best-price e-tickets now and make the most of this glorious weather."
-          events={bestPriceEvents}
-          layout="carousel"
-          eventCardVariant="overlay"
-          autoplay={true}
-          autoplayInterval={5000}
-          showNavigation={true}
-          showDots={true}
-          viewAllLink="/search?sort=price"
-          showPrice={true}
-          showLocation={true}
-          showWishlist={false}
-          showAgeGroup={true}
-        />
 
-        {/* Horizontal Scroll Layout - Trending Now */}
-        <CollectionSection
-          badge="Trending"
-          title="🔥 Trending Now"
-          subtitle="What's popular right now in Dubai and UAE"
-          events={trendingEvents}
-          layout="horizontal-scroll"
-          eventCardVariant="compact"
-          maxItems={12}
-          viewAllLink="/search?sort=trending"
-          showPrice={true}
-          showLocation={true}
-          showStats={true}
-          showWishlist={false}
-          showAgeGroup={true}
-        />
-
-        <EventGridSection events={events}/>
-        <CategoryCarousel categories={categories}/>
+        
+        
 
         {/* UAE Cities Section */}
-        <CitiesSection />
+       
 
         {/* Trust Signals Section */}
         {/* <TrustSignals
@@ -847,34 +873,19 @@ const HomePage: React.FC = () => {
         {/* How It Works Section */}
         {/* <HowItWorks /> */}
 
-        {/* Masonry Layout - New This Week */}
-        <CollectionSection
-          badge="New"
-          title="✨ New This Week"
-          subtitle="Fresh activities just added to our platform"
-          events={newEvents}
-          layout="masonry"
-          eventCardVariant="vertical-tall"
-          showDescription={true}
-          viewAllLink="/search?sort=newest"
-          showPrice={true}
-          showLocation={true}
-          showWishlist={true}
-          wishlistIds={wishlistIds}
-          onWishlistToggle={handleWishlistToggle}
-          showAgeGroup={true}
-        />
+        
 
         {/* Why Choose Us Section */}
         <WhyChooseUs features={seoContentData?.seoContent?.features} />
 
-        {/* Gift Card Promo Section */}
-        <GiftCardPromo activityCount={stats?.totalEvents || 100} />
+        
 
+        
+        
         {/* Homepage FAQs Section */}
         <HomepageFAQs faqItems={seoContentData?.seoContent?.faqItems} />
 
-        <NewsletterSubscribe/>
+        
 
         {/* Stacked Layout - Quick Picks */}
         <CollectionSection
@@ -889,7 +900,7 @@ const HomePage: React.FC = () => {
           viewAllLink="/search"
           showWishlist={false}
         />
-        <ReviewCarouselSwiper/>
+        
         <StatsSection stats={stats}/>
       </div>
     </PageTransition>

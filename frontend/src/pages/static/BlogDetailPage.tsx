@@ -232,20 +232,33 @@ const BlogDetailPage: React.FC = () => {
         <meta name="description" content={blog.seo?.metaDescription || blog.excerpt} />
         <meta name="keywords" content={blog.seo?.metaKeywords?.join(', ') || blog.tags.join(', ')} />
         {blog.seo?.canonicalUrl && <link rel="canonical" href={blog.seo.canonicalUrl} />}
-        
+
         {/* Open Graph tags */}
         <meta property="og:title" content={blog.title} />
         <meta property="og:description" content={blog.excerpt} />
         <meta property="og:image" content={blog.featuredImage} />
         <meta property="og:url" content={getCurrentPageUrl()} />
         <meta property="og:type" content="article" />
-        
+
         {/* Twitter Card tags */}
         <meta name="twitter:card" content="summary_large_image" />
         <meta name="twitter:title" content={blog.title} />
         <meta name="twitter:description" content={blog.excerpt} />
         <meta name="twitter:image" content={blog.featuredImage} />
       </Helmet>
+
+      {/* Inject custom CSS if available */}
+      {blog.customCSS && (
+        <style
+          dangerouslySetInnerHTML={{
+            __html: DOMPurify.sanitize(blog.customCSS, {
+              ALLOWED_TAGS: [],
+              ALLOWED_ATTR: [],
+              KEEP_CONTENT: true,
+            })
+          }}
+        />
+      )}
 
       {/* Back navigation */}
       <div className="mb-8">
@@ -406,16 +419,21 @@ const BlogDetailPage: React.FC = () => {
       </div>
 
       {/* Blog content */}
-      <article className="prose prose-lg max-w-none mb-12">
+      <article className="mb-12">
         <div
           className="blog-content"
           dangerouslySetInnerHTML={{
             __html: DOMPurify.sanitize(
               blog.rawHtmlContent || blog.content, // Use raw HTML if available, otherwise use TipTap content
               {
-                ADD_ATTR: ['style', 'class'],
-                ADD_TAGS: ['iframe'],
-                ALLOWED_ATTR: ['style', 'class', 'href', 'src', 'alt', 'title', 'target', 'rel', 'width', 'height', 'id', 'scrolling', 'frameborder', 'allowfullscreen']
+                ADD_ATTR: ['style', 'class', 'id', 'data-*', 'width', 'height', 'colspan', 'rowspan', 'align', 'valign'],
+                ADD_TAGS: ['iframe', 'svg', 'path', 'circle', 'rect', 'g', 'defs', 'clipPath', 'polygon', 'polyline', 'line', 'ellipse'],
+                ALLOWED_ATTR: ['style', 'class', 'href', 'src', 'alt', 'title', 'target', 'rel', 'width', 'height', 'id', 'scrolling', 'frameborder', 'allowfullscreen', 'data-*', 'colspan', 'rowspan', 'align', 'valign', 'viewBox', 'fill', 'stroke', 'stroke-width', 'd', 'cx', 'cy', 'r', 'x', 'y', 'x1', 'y1', 'x2', 'y2', 'points'],
+                ALLOWED_URI_REGEXP: /^(?:(?:https?|mailto|tel):|[^a-z]|[a-z+.-]+(?:[^a-z+.\-:]|$))/i,
+                ALLOW_DATA_ATTR: true,
+                ALLOW_UNKNOWN_PROTOCOLS: false,
+                FORCE_BODY: false,
+                WHOLE_DOCUMENT: false
               }
             )
           }}

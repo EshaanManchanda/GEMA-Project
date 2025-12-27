@@ -591,6 +591,12 @@ const EventDetailPage: React.FC = () => {
   return (
     <>
       {event && <EventSEO event={event} breadcrumbs={breadcrumbs} />}
+
+      {/* Inject Custom CSS (sanitized by backend) */}
+      {event?.customCSS && (
+        <style dangerouslySetInnerHTML={{ __html: event.customCSS }} />
+      )}
+
       <div className="container mx-auto px-4 py-8">
         {/* Back button */}
         <button
@@ -710,12 +716,12 @@ const EventDetailPage: React.FC = () => {
 
 
             <div
-              className="text-lg text-gray-600 mb-6 leading-relaxed prose max-w-none"
+              className="event-content"
               dangerouslySetInnerHTML={{
                 __html: DOMPurify.sanitize(event.description || '', {
-                  ADD_ATTR: ['style', 'class'],
-                  ADD_TAGS: ['iframe'],
-                  ALLOWED_ATTR: ['style', 'class', 'href', 'src', 'alt', 'title', 'target', 'rel', 'width', 'height', 'id', 'frameborder', 'allow', 'allowfullscreen']
+                  ADD_ATTR: ['style', 'class', 'id', 'data-*', 'width', 'height', 'colspan', 'rowspan', 'align', 'valign'],
+                  ADD_TAGS: ['iframe', 'svg', 'path', 'circle', 'rect', 'g', 'defs', 'clipPath', 'polygon', 'polyline', 'line', 'ellipse'],
+                  ALLOWED_ATTR: ['style', 'class', 'href', 'src', 'alt', 'title', 'target', 'rel', 'width', 'height', 'id', 'frameborder', 'allow', 'allowfullscreen', 'data-*', 'colspan', 'rowspan', 'align', 'valign', 'viewBox', 'fill', 'stroke', 'stroke-width', 'd', 'cx', 'cy', 'r', 'x', 'y', 'x1', 'y1', 'x2', 'y2', 'points']
                 })
               }}
             />
@@ -864,12 +870,12 @@ const EventDetailPage: React.FC = () => {
                     <div>
                       <h2 className="text-2xl font-bold mb-4 text-blue-600">About This Event</h2>
                       <div
-                        className="text-gray-700 mb-6 leading-relaxed prose max-w-none"
+                        className="event-content"
                         dangerouslySetInnerHTML={{
                           __html: DOMPurify.sanitize(event.description || '', {
-                            ADD_ATTR: ['style', 'class'],
-                            ADD_TAGS: ['iframe'],
-                            ALLOWED_ATTR: ['style', 'class', 'href', 'src', 'alt', 'title', 'target', 'rel', 'width', 'height', 'id', 'frameborder', 'allow', 'allowfullscreen']
+                            ADD_ATTR: ['style', 'class', 'id', 'data-*', 'width', 'height', 'colspan', 'rowspan', 'align', 'valign'],
+                            ADD_TAGS: ['iframe', 'svg', 'path', 'circle', 'rect', 'g', 'defs', 'clipPath', 'polygon', 'polyline', 'line', 'ellipse'],
+                            ALLOWED_ATTR: ['style', 'class', 'href', 'src', 'alt', 'title', 'target', 'rel', 'width', 'height', 'id', 'frameborder', 'allow', 'allowfullscreen', 'data-*', 'colspan', 'rowspan', 'align', 'valign', 'viewBox', 'fill', 'stroke', 'stroke-width', 'd', 'cx', 'cy', 'r', 'x', 'y', 'x1', 'y1', 'x2', 'y2', 'points']
                           })
                         }}
                       />

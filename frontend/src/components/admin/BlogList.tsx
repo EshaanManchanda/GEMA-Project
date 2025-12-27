@@ -20,8 +20,8 @@ import Button from '../ui/Button';
 import { Card, CardContent } from '../ui/Card';
 import Badge from '../ui/Badge';
 import DataTable from '../ui/DataTable';
-import BlogForm from './BlogForm';
 import BlogCommentManagement from './BlogCommentManagement';
+import BlogForm from './BlogForm';
 import blogAPI from '../../services/api/blogAPI';
 
 interface Blog {
@@ -86,12 +86,12 @@ const BlogList: React.FC = () => {
   const [blogs, setBlogs] = useState<Blog[]>([]);
   const [categories, setCategories] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
-  const [selectedBlog, setSelectedBlog] = useState<Blog | null>(null);
   const [showBlogForm, setShowBlogForm] = useState(false);
+  const [selectedBlog, setSelectedBlog] = useState<Blog | null>(null);
   const [showCommentManagement, setShowCommentManagement] = useState(false);
   const [selectedBlogs, setSelectedBlogs] = useState<string[]>([]);
   const [bulkLoading, setBulkLoading] = useState(false);
-  const [blogFormLoading, setBlogFormLoading] = useState(false);
+  const [selectedBlogForComments, setSelectedBlogForComments] = useState<Blog | null>(null);
   const [pagination, setPagination] = useState({
     currentPage: 1,
     totalPages: 1,
@@ -173,39 +173,35 @@ const BlogList: React.FC = () => {
 
   const handleEditBlog = async (blog: Blog) => {
     try {
-      setBlogFormLoading(true);
-      console.log('Fetching full blog details for editing:', blog._id);
-
-      // Fetch the complete blog with content field
+      setLoading(true);
+      // Fetch full blog including content
       const response = await blogAPI.admin.getBlogById(blog._id);
-
-      console.log('API response received:', response);
-
-      // Handle multiple response formats:
-      // { data: { blog: {...} } } or { blog: {...} } or { data: {...} } or {...}
-      const fullBlog = response.data?.blog || response.blog || response.data || response;
-
-      if (!fullBlog || !fullBlog._id) {
-        console.error('Invalid blog data received:', response);
-        console.error('Extracted fullBlog:', fullBlog);
-        throw new Error('Blog data not found in response');
-      }
-
-      console.log('Full blog data fetched:', {
-        id: fullBlog._id,
-        title: fullBlog.title,
-        hasContent: !!fullBlog.content,
-        contentLength: fullBlog.content?.length || 0
-      });
-
+      const fullBlog = response?.data?.blog || response?.blog;
       setSelectedBlog(fullBlog);
       setShowBlogForm(true);
-    } catch (error: any) {
-      console.error('Error fetching blog details:', error);
-      console.error('Error details:', error.response?.data || error.message);
-      toast.error(error.response?.data?.message || 'Failed to load blog details');
+    } catch (error) {
+      toast.error('Failed to load blog data');
+      console.error('Error fetching blog:', error);
     } finally {
-      setBlogFormLoading(false);
+      setLoading(false);
+    }
+  };
+
+  const handleSubmitBlog = async (data: any) => {
+    try {
+      if (selectedBlog) {
+        await blogAPI.admin.updateBlog(selectedBlog._id, data);
+        toast.success('Blog updated successfully');
+      } else {
+        await blogAPI.admin.createBlog(data);
+        toast.success('Blog created successfully');
+      }
+      setShowBlogForm(false);
+      setSelectedBlog(null);
+      fetchBlogs();
+    } catch (error: any) {
+      toast.error(error?.response?.data?.message || 'Failed to save blog');
+      throw error;
     }
   };
 
@@ -224,42 +220,8 @@ const BlogList: React.FC = () => {
   };
 
   const handleViewComments = (blogId: string) => {
-    setSelectedBlog(blogs.find(blog => blog._id === blogId) || null);
+    setSelectedBlogForComments(blogs.find(blog => blog._id === blogId) || null);
     setShowCommentManagement(true);
-  };
-
-  const handleSubmitBlog = async (data: any) => {
-    try {
-      if (selectedBlog) {
-        console.log('Updating blog:', selectedBlog._id, 'with data:', data);
-        await blogAPI.admin.updateBlog(selectedBlog._id, data);
-        console.log('Blog updated successfully');
-      } else {
-        console.log('Creating blog with data:', data);
-        await blogAPI.admin.createBlog(data);
-        console.log('Blog created successfully');
-      }
-      fetchBlogs();
-    } catch (error: any) {
-      console.error('Error submitting blog:', error);
-      console.error('Error response:', error.response?.data);
-      console.error('Error status:', error.response?.status);
-
-      // Extract specific validation errors
-      if (error.response?.data?.errors) {
-        const validationErrors = error.response.data.errors;
-        const errorMessages = Object.entries(validationErrors)
-          .map(([field, message]) => `${field}: ${message}`)
-          .join('\n');
-
-        toast.error(`Validation failed:\n${errorMessages}`, { duration: 5000 });
-        throw new Error(error.response?.data?.message || 'Validation failed');
-      } else {
-        const errorMessage = error.response?.data?.message || error.message || 'Failed to save blog';
-        toast.error(errorMessage);
-        throw new Error(errorMessage);
-      }
-    }
   };
 
   const handleFilterChange = (key: keyof BlogFilters, value: any) => {
@@ -732,28 +694,27 @@ const BlogList: React.FC = () => {
         </CardContent>
       </Card>
 
+      {/* Blog Comment Management Modal */}
+      {selectedBlogForComments && (
+        <BlogCommentManagement
+          blogId={selectedBlogForComments._id}
+          isOpen={showCommentManagement}
+          onClose={() => setShowCommentManagement(false)}
+        />
+      )}
+
       {/* Blog Form Modal */}
       <BlogForm
         blog={selectedBlog}
         isOpen={showBlogForm}
         onClose={() => {
           setShowBlogForm(false);
-          setSelectedBlog(null); // Clear selected blog when closing
+          setSelectedBlog(null);
         }}
         onSubmit={handleSubmitBlog}
         categories={categories}
-        loading={blogFormLoading}
+        loading={loading}
       />
-
-      {/* Blog Comment Management Modal */}
-      {selectedBlog && (
-        <BlogCommentManagement
-          blogId={selectedBlog._id}
-          isOpen={showCommentManagement}
-          onClose={() => setShowCommentManagement(false)}
-        />
-      )}
-
     </div>
   );
 };

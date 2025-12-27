@@ -40,9 +40,20 @@ export const COUNTRY_CODES = [
 export const validateCreateEvent = [
   validateStringLength('title', 1, 200, true),
 
-  validateHtmlLength('description', 20, 2000, true),
+  validateHtmlLength('description', 20, 10000, true),
 
   sanitizeHtml('description'),
+
+  body('customCSS')
+    .optional()
+    .isString()
+    .isLength({ max: 50000 })
+    .withMessage('Custom CSS cannot exceed 50,000 characters')
+    .customSanitizer(async (value) => {
+      if (!value) return value;
+      const { sanitizeCustomCSS } = await import('../utils/css.utils');
+      return sanitizeCustomCSS(value);
+    }),
 
   body('category')
     .trim()
@@ -282,9 +293,20 @@ export const validateCreateEvent = [
 export const validateUpdateEvent = [
   validateStringLength('title', 1, 200, false),
 
-  validateHtmlLength('description', 20, 2000, false),
+  validateHtmlLength('description', 20, 10000, false),
 
   sanitizeHtml('description'),
+
+  body('customCSS')
+    .optional()
+    .isString()
+    .isLength({ max: 50000 })
+    .withMessage('Custom CSS cannot exceed 50,000 characters')
+    .customSanitizer(async (value) => {
+      if (!value) return value;
+      const { sanitizeCustomCSS } = await import('../utils/css.utils');
+      return sanitizeCustomCSS(value);
+    }),
 
   body('category')
     .optional()

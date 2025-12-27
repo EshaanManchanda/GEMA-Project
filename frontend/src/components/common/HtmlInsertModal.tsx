@@ -43,25 +43,49 @@ const HtmlInsertModal: React.FC<HtmlInsertModalProps> = ({ isOpen, onClose, onIn
             HTML Content
           </label>
           <p className="text-xs text-gray-500 mb-2">
-            Paste your HTML code below. The editor will parse and render it as formatted content.
+            Insert custom HTML with your own classes or use built-in utility classes like <code className="bg-gray-100 px-1 rounded">.blog-grid-2</code>, <code className="bg-gray-100 px-1 rounded">.blog-callout-info</code>, etc.
           </p>
           <textarea
             value={htmlContent}
             onChange={(e) => setHtmlContent(e.target.value)}
             className="w-full min-h-[400px] p-4 font-mono text-sm border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 resize-y text-gray-900"
-            placeholder="<h1>Your heading here</h1>
-<p>Your paragraph with <strong>bold text</strong>.</p>
-<ul>
-  <li>List item 1</li>
-  <li>List item 2</li>
-</ul>"
+            placeholder='<!-- Example with custom class -->
+<div class="my-custom-box">
+  <h2>Your Heading</h2>
+  <p>Your paragraph with <strong>bold text</strong>.</p>
+</div>
+
+<!-- Example with built-in utility class -->
+<div class="blog-callout-info">
+  <p>This is an info callout box</p>
+</div>
+
+<!-- Example grid layout -->
+<div class="blog-grid-2">
+  <div class="blog-card">
+    <h3>Card 1</h3>
+    <ul>
+      <li>Item 1</li>
+      <li>Item 2</li>
+    </ul>
+  </div>
+  <div class="blog-card">
+    <h3>Card 2</h3>
+    <p>Content here</p>
+  </div>
+</div>'
           />
         </div>
 
-        <div className="bg-blue-50 border border-blue-200 rounded-lg p-3">
+        <div className="bg-blue-50 border border-blue-200 rounded-lg p-3 space-y-2">
           <p className="text-xs text-blue-800">
-            <strong>Tip:</strong> You can paste complete HTML snippets including headings, paragraphs, lists, bold text, links, and more.
-            Dangerous content like scripts will be automatically removed for security.
+            <strong>💡 Custom Classes:</strong> Define styles in the "Custom CSS" field, then reference them here with <code className="bg-blue-100 px-1 rounded">class="your-class"</code>.
+          </p>
+          <p className="text-xs text-blue-800">
+            <strong>🎨 Built-in Classes:</strong> <code className="bg-blue-100 px-1 rounded">.blog-grid-2</code>, <code className="bg-blue-100 px-1 rounded">.blog-grid-3</code>, <code className="bg-blue-100 px-1 rounded">.blog-callout-info</code>, <code className="bg-blue-100 px-1 rounded">.blog-card</code>, and 40+ more utility classes available.
+          </p>
+          <p className="text-xs text-blue-700">
+            <strong>🔒 Security:</strong> Scripts and dangerous content automatically removed.
           </p>
         </div>
 

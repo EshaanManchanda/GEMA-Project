@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useCallback, useMemo } from 'react';
 import { motion } from 'framer-motion';
 import { FaArrowLeft, FaSpinner, FaExclamationTriangle } from 'react-icons/fa';
 import { Link } from 'react-router-dom';
@@ -23,7 +23,7 @@ const BlogCard: React.FC<BlogCardProps> = ({ blog, getCategoryName, formatDate }
   });
 
   return (
-    <div ref={ref} className="bg-white rounded-lg overflow-hidden shadow-md hover:shadow-lg transition-shadow duration-300">
+    <Link to={`/blog/${blog.slug}`} ref={ref} className="bg-white rounded-lg overflow-hidden shadow-md hover:shadow-lg transition-shadow duration-300 block">
       <div className="h-48 overflow-hidden">
         {inView ? (
           <img
@@ -45,10 +45,8 @@ const BlogCard: React.FC<BlogCardProps> = ({ blog, getCategoryName, formatDate }
           <span>{getCategoryName(blog.category)}</span>
           <span>{blog.readTime} min read</span>
         </div>
-        <h3 className="text-xl font-semibold mb-2 hover:text-primary-600 transition-colors">
-          <Link to={`/blog/${blog.slug}`} style={{ color: 'var(--primary-color)' }}>
-            {blog.title}
-          </Link>
+        <h3 className="text-xl font-semibold mb-2 hover:text-primary-600 transition-colors" style={{ color: 'var(--primary-color)' }}>
+          {blog.title}
         </h3>
         <p className="text-gray-600 mb-4 line-clamp-3">{blog.excerpt}</p>
         <div className="flex justify-between items-center">
@@ -74,21 +72,19 @@ const BlogCard: React.FC<BlogCardProps> = ({ blog, getCategoryName, formatDate }
           </span>
         </div>
       </div>
-    </div>
+    </Link>
   );
 };
 
 const BlogPage: React.FC = () => {
-  const [blogs, setBlogs] = useState<Blog[]>([]);
+  const [allBlogs, setAllBlogs] = useState<Blog[]>([]);
   const [categories, setCategories] = useState<BlogCategory[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const [selectedCategory, setSelectedCategory] = useState<string>('All');
+  const [selectedCategory, setSelectedCategory] = useState<string | BlogCategory>('All');
   const [currentPage, setCurrentPage] = useState(1);
-  const [totalPages, setTotalPages] = useState(1);
-  const [hasMore, setHasMore] = useState(false);
 
-  const fetchData = useCallback(async (page: number = 1, category?: string, isRetry = false) => {
+  const fetchData = useCallback(async (isRetry = false) => {
     try {
       if (!isRetry) {
         setLoading(true);
@@ -97,46 +93,66 @@ const BlogPage: React.FC = () => {
 
       const [blogsResponse, categoriesResponse] = await Promise.all([
         blogAPI.getAllBlogs({
-          page,
-          limit: 12,
-          category: category && category !== 'All' ? category : undefined,
+          page: 1,
+          limit: 1000,
           sortBy: 'publishedAt',
           sortOrder: 'desc'
         }),
-        page === 1 ? blogAPI.getBlogCategories() : Promise.resolve({ data: { categories } })
+        blogAPI.getBlogCategories()
       ]);
-      console.log('blogsResponse', blogsResponse);
-      console.log('categoriesResponse', categoriesResponse);
+
       if (blogsResponse.blogs) {
-        setBlogs(blogsResponse.blogs || []);
-        if (blogsResponse.pagination) {
-          setCurrentPage(blogsResponse.pagination.currentPage);
-          setTotalPages(blogsResponse.pagination.totalPages);
-          setHasMore(blogsResponse.pagination.hasNextPage);
-        }
+        setAllBlogs(blogsResponse.blogs || []);
       }
 
-      if (page === 1 && categoriesResponse.categories) {
+      if (categoriesResponse.categories) {
         setCategories(categoriesResponse.categories || []);
       }
     } catch (err: any) {
       console.error('Error fetching blog data:', err);
       setError(err?.response?.data?.message || 'Failed to load blog posts');
-      if (blogs.length === 0) {
-        // Fallback to empty state if no data loaded
-        setBlogs([]);
-      }
+      setAllBlogs([]);
     } finally {
       setLoading(false);
     }
-  }, [blogs.length, categories]);
+  }, []);
+
+  // Client-side filtering
+  const filteredBlogs = useMemo(() => {
+    if (selectedCategory === 'All') {
+      return allBlogs;
+    }
+
+    const categoryId = typeof selectedCategory === 'string'
+      ? selectedCategory
+      : selectedCategory._id;
+
+    return allBlogs.filter(blog => {
+      const blogCategoryId = typeof blog.category === 'string'
+        ? blog.category
+        : blog.category._id;
+      return blogCategoryId === categoryId;
+    });
+  }, [allBlogs, selectedCategory]);
+
+  // Client-side pagination
+  const BLOGS_PER_PAGE = 12;
+  const totalPages = Math.ceil(filteredBlogs.length / BLOGS_PER_PAGE);
+  const paginatedBlogs = useMemo(() => {
+    const startIndex = (currentPage - 1) * BLOGS_PER_PAGE;
+    const endIndex = startIndex + BLOGS_PER_PAGE;
+    return filteredBlogs.slice(startIndex, endIndex);
+  }, [filteredBlogs, currentPage]);
 
   useEffect(() => {
-    fetchData(1, selectedCategory);
-  }, [selectedCategory]);
+    fetchData();
+  }, []);
 
-  const handleCategoryChange = (category: string) => {
-    if (category !== selectedCategory) {
+  const handleCategoryChange = (category: string | BlogCategory) => {
+    const currentId = typeof selectedCategory === 'string' ? selectedCategory : selectedCategory._id;
+    const newId = typeof category === 'string' ? category : category._id;
+
+    if (currentId !== newId) {
       setSelectedCategory(category);
       setCurrentPage(1);
     }
@@ -145,7 +161,6 @@ const BlogPage: React.FC = () => {
   const handlePageChange = (page: number) => {
     if (page !== currentPage && page > 0 && page <= totalPages) {
       setCurrentPage(page);
-      fetchData(page, selectedCategory);
     }
   };
 
@@ -166,13 +181,13 @@ const BlogPage: React.FC = () => {
     return category?.name || 'Uncategorized';
   };
 
-  const allCategories = ['All', ...categories.map(cat => cat.name)];
+  const allCategories: (string | BlogCategory)[] = ['All', ...categories];
 
   // Generate SEO data based on current state
   const generateSEOData = () => {
     const baseUrl = import.meta.env.VITE_APP_URL || 'https://gema-events.com';
     const isFiltered = selectedCategory !== 'All';
-    const categoryName = isFiltered ? selectedCategory : '';
+    const categoryName = isFiltered && typeof selectedCategory !== 'string' ? selectedCategory.name : '';
 
     const title = isFiltered
       ? `${categoryName} Articles | Kids Activities Blog | ${getAppNameFull()}`
@@ -215,8 +230,8 @@ const BlogPage: React.FC = () => {
           url: `${baseUrl}/assets/images/logo.png`
         }
       },
-      ...(blogs.length > 0 && {
-        blogPost: blogs.slice(0, 5).map(blog => ({
+      ...(allBlogs.length > 0 && {
+        blogPost: allBlogs.slice(0, 5).map(blog => ({
           '@type': 'BlogPosting',
           headline: blog.title,
           description: blog.excerpt,
@@ -281,20 +296,29 @@ const BlogPage: React.FC = () => {
 
       {/* Categories Filter */}
       <div className="flex flex-wrap justify-center gap-4 mb-12">
-        {allCategories.map((category) => (
-          <button
-            key={category}
-            onClick={() => handleCategoryChange(category)}
-            className={`px-4 py-2 rounded-full text-sm font-medium transition-colors ${
-              category === selectedCategory 
-                ? 'bg-primary-600 text-white' 
-                : 'bg-gray-100 text-gray-800 hover:bg-gray-200'
-            }`}
-            style={category === selectedCategory ? { backgroundColor: 'var(--primary-color)' } : {}}
-          >
-            {category}
-          </button>
-        ))}
+        {allCategories.map((category) => {
+          const isAll = category === 'All';
+          const categoryObj = isAll ? null : category as BlogCategory;
+          const isSelected = isAll
+            ? selectedCategory === 'All'
+            : selectedCategory !== 'All' && (selectedCategory as BlogCategory)._id === categoryObj!._id;
+          const displayName = isAll ? 'All' : categoryObj!.name;
+
+          return (
+            <button
+              key={isAll ? 'All' : categoryObj!._id}
+              onClick={() => handleCategoryChange(category)}
+              className={`px-4 py-2 rounded-full text-sm font-medium transition-colors ${
+                isSelected
+                  ? 'bg-primary-600 text-white'
+                  : 'bg-gray-100 text-gray-800 hover:bg-gray-200'
+              }`}
+              style={isSelected ? { backgroundColor: 'var(--primary-color)' } : {}}
+            >
+              {displayName}
+            </button>
+          );
+        })}
       </div>
 
       {/* Loading State */}
@@ -329,23 +353,25 @@ const BlogPage: React.FC = () => {
           <h3 className="text-xl font-semibold mb-2 text-gray-900">Unable to load blog posts</h3>
           <p className="text-gray-600 mb-4">{error}</p>
           <button
-            onClick={() => fetchData(currentPage, selectedCategory, true)}
+            onClick={() => fetchData(true)}
             className="px-6 py-2 bg-primary-600 text-white rounded-md hover:bg-primary-700 transition-colors"
             style={{ backgroundColor: 'var(--primary-color)' }}
           >
             Try Again
           </button>
         </div>
-      ) : blogs.length === 0 ? (
+      ) : paginatedBlogs.length === 0 ? (
         <div className="text-center py-12">
           <h3 className="text-xl font-semibold mb-2 text-gray-900">
-            {selectedCategory === 'All' ? 'No blog posts available' : `No posts found in ${selectedCategory}`}
+            {selectedCategory === 'All'
+              ? 'No blog posts available'
+              : `No posts found in ${typeof selectedCategory === 'string' ? selectedCategory : selectedCategory.name}`}
           </h3>
           <p className="text-gray-600">Check back later for new content!</p>
         </div>
       ) : (
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
-          {blogs.map((blog) => (
+          {paginatedBlogs.map((blog) => (
             <BlogCard
               key={blog._id}
               blog={blog}
@@ -423,7 +449,7 @@ const BlogPage: React.FC = () => {
       )}
 
       {/* Newsletter Signup */}
-      {!loading && blogs.length > 0 && (
+      {!loading && allBlogs.length > 0 && (
         <div className="mt-16 bg-gray-50 rounded-lg p-8 text-center">
           <h2 className="text-2xl font-bold mb-4" style={{ color: 'var(--primary-color)' }}>
             Subscribe to Our Newsletter

@@ -66,6 +66,9 @@ interface UpdateEventRequest {
   }>;
   vendorId?: string;
   googlePlaceId?: string;
+  customCSS?: string;
+  meetingLink?: string;
+  registrationConfig?: any;
 }
 
 interface CreateEventRequest {
@@ -107,6 +110,10 @@ interface CreateEventRequest {
     answer: string;
   }>;
   images?: string[];
+  customCSS?: string;
+  meetingLink?: string;
+  googlePlaceId?: string;
+  registrationConfig?: any;
 }
 
 /**
@@ -153,7 +160,25 @@ const formatAdminEventResponse = (event: any) => {
     status: transformedEvent.status || 'pending',
     isAffiliateEvent: transformedEvent.isAffiliateEvent || false,
     externalBookingLink: transformedEvent.externalBookingLink || '',
-    claimStatus: transformedEvent.claimStatus || 'not_claimable'
+    claimStatus: transformedEvent.claimStatus || 'not_claimable',
+
+    // Additional fields
+    customCSS: transformedEvent.customCSS || null,
+    meetingLink: transformedEvent.meetingLink || null,
+    reviewCount: transformedEvent.reviewCount || 0,
+    averageRating: transformedEvent.averageRating || 0,
+    ratingDistribution: transformedEvent.ratingDistribution || {
+      1: 0,
+      2: 0,
+      3: 0,
+      4: 0,
+      5: 0
+    },
+    registrationConfig: transformedEvent.registrationConfig || null,
+    combinedRating: transformedEvent.combinedRating || 0,
+    combinedReviewCount: transformedEvent.combinedReviewCount || 0,
+    googleRating: transformedEvent.googleRating || 0,
+    googleReviewCount: transformedEvent.googleReviewCount || 0
   };
 };
 

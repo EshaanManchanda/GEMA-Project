@@ -9,6 +9,11 @@ import Underline from '@tiptap/extension-underline';
 import TextAlign from '@tiptap/extension-text-align';
 import TextStyle from '@tiptap/extension-text-style';
 import Color from '@tiptap/extension-color';
+import Highlight from '@tiptap/extension-highlight';
+import Table from '@tiptap/extension-table';
+import TableRow from '@tiptap/extension-table-row';
+import TableHeader from '@tiptap/extension-table-header';
+import TableCell from '@tiptap/extension-table-cell';
 import CharacterCount from '@tiptap/extension-character-count';
 import HtmlInsertModal from './HtmlInsertModal';
 import MediaPickerModal from '../admin/media/MediaPickerModal';
@@ -35,10 +40,12 @@ import {
   ImageIcon,
   Link as LinkIcon,
   Youtube as YoutubeIcon,
-  Upload
+  Upload,
+  Table as TableIcon,
+  Palette,
+  Highlighter
 } from 'lucide-react';
 import toast from 'react-hot-toast';
-import api from '../../services/api';
 
 interface TipTapEditorProps {
   content: string;
@@ -75,6 +82,9 @@ const TipTapEditor: React.FC<TipTapEditorProps> = ({
       Underline,
       TextStyle,
       Color,
+      Highlight.configure({
+        multicolor: true
+      }),
       TextAlign.configure({
         types: ['heading', 'paragraph']
       }),
@@ -94,6 +104,23 @@ const TipTapEditor: React.FC<TipTapEditorProps> = ({
         height: 480,
         HTMLAttributes: {
           class: 'w-full aspect-video my-4'
+        }
+      }),
+      Table.configure({
+        resizable: true,
+        HTMLAttributes: {
+          class: 'border-collapse table-auto w-full my-4'
+        }
+      }),
+      TableRow,
+      TableHeader.configure({
+        HTMLAttributes: {
+          class: 'border border-gray-300 px-3 py-2 bg-gray-100 font-semibold'
+        }
+      }),
+      TableCell.configure({
+        HTMLAttributes: {
+          class: 'border border-gray-300 px-3 py-2'
         }
       }),
       Placeholder.configure({
@@ -228,8 +255,9 @@ const TipTapEditor: React.FC<TipTapEditorProps> = ({
     try {
       editor.chain().focus().insertContent(html).run();
       if (isComplexHtml) {
-        toast.warning('Some advanced features may have been removed', {
-          duration: 4000
+        toast('Some advanced features may have been removed', {
+          duration: 4000,
+          icon: '⚠️'
         });
       }
     } catch (error) {
@@ -466,6 +494,124 @@ const TipTapEditor: React.FC<TipTapEditorProps> = ({
               >
                 <Code2 size={18} />
               </button>
+            </div>
+
+            {/* Table Operations */}
+            <div className="flex gap-0.5 border-r border-gray-300 pr-2">
+              <button
+                onClick={() => editor.chain().focus().insertTable({ rows: 3, cols: 3, withHeaderRow: true }).run()}
+                className="p-2 rounded hover:bg-gray-200"
+                title="Insert Table (3x3)"
+                type="button"
+              >
+                <TableIcon size={18} />
+              </button>
+              {editor.isActive('table') && (
+                <>
+                  <button
+                    onClick={() => editor.chain().focus().addColumnBefore().run()}
+                    className="p-2 rounded hover:bg-gray-200 text-xs"
+                    title="Add Column Before"
+                    type="button"
+                  >
+                    C+
+                  </button>
+                  <button
+                    onClick={() => editor.chain().focus().addRowBefore().run()}
+                    className="p-2 rounded hover:bg-gray-200 text-xs"
+                    title="Add Row Before"
+                    type="button"
+                  >
+                    R+
+                  </button>
+                  <button
+                    onClick={() => editor.chain().focus().deleteColumn().run()}
+                    className="p-2 rounded hover:bg-gray-200 text-red-600 text-xs"
+                    title="Delete Column"
+                    type="button"
+                  >
+                    C-
+                  </button>
+                  <button
+                    onClick={() => editor.chain().focus().deleteRow().run()}
+                    className="p-2 rounded hover:bg-gray-200 text-red-600 text-xs"
+                    title="Delete Row"
+                    type="button"
+                  >
+                    R-
+                  </button>
+                  <button
+                    onClick={() => editor.chain().focus().deleteTable().run()}
+                    className="p-2 rounded hover:bg-gray-200 text-red-600"
+                    title="Delete Table"
+                    type="button"
+                  >
+                    <TableIcon size={18} className="opacity-50" />
+                  </button>
+                </>
+              )}
+            </div>
+
+            {/* Color Picker */}
+            <div className="flex gap-0.5 border-r border-gray-300 pr-2">
+              <div className="relative group">
+                <button
+                  className="p-2 rounded hover:bg-gray-200"
+                  title="Text Color"
+                  type="button"
+                >
+                  <Palette size={18} />
+                </button>
+                <div className="hidden group-hover:flex absolute top-full left-0 mt-1 bg-white border border-gray-300 rounded shadow-lg p-2 gap-1 flex-wrap w-48 z-10">
+                  {['#000000', '#374151', '#6B7280', '#EF4444', '#F59E0B', '#10B981', '#3B82F6', '#8B5CF6', '#EC4899'].map(color => (
+                    <button
+                      key={color}
+                      onClick={() => editor.chain().focus().setColor(color).run()}
+                      className="w-6 h-6 rounded border border-gray-300 hover:scale-110 transition-transform"
+                      style={{ backgroundColor: color }}
+                      title={`Text Color: ${color}`}
+                      type="button"
+                    />
+                  ))}
+                  <button
+                    onClick={() => editor.chain().focus().unsetColor().run()}
+                    className="w-6 h-6 rounded border border-gray-300 hover:bg-gray-100 flex items-center justify-center text-xs"
+                    title="Reset Color"
+                    type="button"
+                  >
+                    ✕
+                  </button>
+                </div>
+              </div>
+              <div className="relative group">
+                <button
+                  className="p-2 rounded hover:bg-gray-200"
+                  title="Highlight Color"
+                  type="button"
+                >
+                  <Highlighter size={18} />
+                </button>
+                <div className="hidden group-hover:flex absolute top-full left-0 mt-1 bg-white border border-gray-300 rounded shadow-lg p-2 gap-1 flex-wrap w-48 z-10">
+                  {['#FEF3C7', '#FED7AA', '#FECACA', '#DDD6FE', '#BFDBFE', '#BBF7D0', '#FED7E2'].map(color => (
+                    <button
+                      key={color}
+                      onClick={() => editor.chain().focus().toggleHighlight({ color }).run()}
+                      className="w-6 h-6 rounded border border-gray-300 hover:scale-110 transition-transform"
+                      style={{ backgroundColor: color }}
+                      title={`Highlight: ${color}`}
+                      type="button"
+                    />
+                  ))}
+                  <button
+                    onClick={() => editor.chain().focus().unsetHighlight().run()}
+                    className="w-6 h-6 rounded border border-gray-300 hover:bg-gray-100 flex items-center justify-center text-xs"
+                    title="Remove Highlight"
+                    type="button"
+                  >
+                    ✕
+                  </button>
+                </div>
+              </div>
             </div>
 
             {/* Undo/Redo */}

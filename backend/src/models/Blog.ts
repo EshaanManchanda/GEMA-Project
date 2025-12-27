@@ -8,6 +8,7 @@ export interface IBlog extends Document {
   excerpt: string;
   content: string;
   rawHtmlContent?: string;                   // RAW HTML mode - bypasses TipTap parsing for complex layouts
+  customCSS?: string;                        // Custom CSS per post - WordPress-like styling control
   featuredImage?: string;                    // OLD - deprecated, keep for backward compatibility
   featuredImageAsset?: mongoose.Types.ObjectId;   // NEW - shadow field for migration
   category: mongoose.Types.ObjectId;
@@ -68,6 +69,14 @@ const blogSchema = new Schema<IBlog>(
       default: null,
       // RAW HTML mode for complex layouts with iframes, semantic tags, inline styles
       // Bypasses TipTap parsing, rendered directly with DOMPurify sanitization only
+    },
+    customCSS: {
+      type: String,
+      required: false,
+      default: null,
+      // Custom CSS per post for WordPress-like styling control
+      // Sanitized server-side to remove dangerous properties (@import, external url(), javascript:)
+      maxlength: [50000, 'Custom CSS cannot exceed 50,000 characters'],
     },
     featuredImage: {
       type: String,

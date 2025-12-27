@@ -3,6 +3,7 @@ import mongoose, { Document, Schema } from 'mongoose';
 export interface IEvent extends Document {
   title: string;
   description: string;
+  customCSS?: string;
   category: string;
   type: 'Olympiad' | 'Championship' | 'Competition' | 'Event' | 'Course' | 'Venue' | 'Workshop';
   venueType: 'Indoor' | 'Outdoor' | 'Online' | 'Offline';
@@ -167,6 +168,14 @@ const eventSchema = new Schema<IEvent>(
       required: [true, 'Event description is required'],
       // maxlength removed to support rich HTML content with images, videos, and formatting
       // trim removed - HTML content must be preserved
+    },
+    customCSS: {
+      type: String,
+      required: false,
+      default: null,
+      // Custom CSS per event for WordPress-like styling control
+      // Sanitized server-side to remove dangerous properties (@import, external url(), javascript:)
+      maxlength: [50000, 'Custom CSS cannot exceed 50,000 characters'],
     },
     category: {
       type: String,

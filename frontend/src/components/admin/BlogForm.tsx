@@ -12,7 +12,8 @@ import {
   Hash,
   Calendar,
   User,
-  FileText
+  FileText,
+  ExternalLink
 } from 'lucide-react';
 import Button from '../ui/Button';
 import { Card, CardContent, CardHeader, CardTitle } from '../ui/Card';
@@ -31,6 +32,7 @@ const blogSchema = yup.object().shape({
   slug: yup.string().optional(),
   excerpt: yup.string().required('Excerpt is required').max(500, 'Excerpt cannot exceed 500 characters'),
   content: yup.string().required('Content is required'),
+  customCSS: yup.string().max(50000, 'Custom CSS cannot exceed 50,000 characters').optional(),
   featuredImage: yup.string().optional(),            // Old field, optional
   featuredImageAsset: yup.string().optional(),       // New field, optional
   category: yup.string().required('Category is required'),
@@ -199,7 +201,9 @@ const BlogForm: React.FC<BlogFormProps> = ({
         slug: blog.slug || '',
         excerpt: blog.excerpt || '',
         content: blog.content || '',
+        customCSS: blog.customCSS || '',
         featuredImage: blog.featuredImage || '',
+        featuredImageAsset: blog.featuredImageAsset?._id || blog.featuredImageAsset || '',
         category: blog.category?._id || '',
         readTime: blog.readTime || 1,
         author: {
@@ -307,6 +311,8 @@ const BlogForm: React.FC<BlogFormProps> = ({
     // Convert empty strings to undefined for optional fields
     if (cleaned.slug === '') cleaned.slug = undefined;
     if (cleaned.featuredImage === '') cleaned.featuredImage = undefined;
+    if (cleaned.featuredImageAsset === '') cleaned.featuredImageAsset = undefined;
+    if (cleaned.customCSS === '') cleaned.customCSS = undefined;
     if (cleaned.author) {
       if (cleaned.author.avatar === '') cleaned.author.avatar = undefined;
       if (cleaned.author.bio === '') cleaned.author.bio = undefined;
@@ -539,7 +545,14 @@ const BlogForm: React.FC<BlogFormProps> = ({
                         <label className="block text-sm font-medium text-gray-700 mb-2">
                           Content *
                         </label>
+                        <div className="mb-2 p-3 bg-blue-50 border border-blue-200 rounded-lg text-xs text-blue-800">
+                          <strong>💡 New Features:</strong> Table button • Color & Highlight pickers (hover icons) • 40+ layout classes (Insert HTML) •
+                          <a href="/admin/blog-style-guide" target="_blank" rel="noopener noreferrer" className="underline hover:text-blue-900 ml-1">
+                            View Style Guide →
+                          </a>
+                        </div>
                         <TipTapEditor
+                          key={blog?._id || 'new'}
                           content={field.value || ''}
                           onChange={field.onChange}
                           placeholder="Start writing your blog content... Use the toolbar to format text, add images, videos, and links."
@@ -547,9 +560,66 @@ const BlogForm: React.FC<BlogFormProps> = ({
                           mediaFolder="blogs"
                           characterLimit={10000}
                         />
+                        <div className="mt-3 flex items-center justify-between text-sm border-t border-gray-200 pt-3">
+                          <p className="text-gray-600">
+                            Need help using the editor?
+                          </p>
+                          <a
+                            href="/admin/blog-style-guide"
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="text-primary-600 hover:text-primary-700 font-medium flex items-center gap-1"
+                          >
+                            📚 View Editor Tutorial & Style Guide
+                            <ExternalLink className="w-4 h-4" />
+                          </a>
+                        </div>
                         {errors.content && (
                           <p className="mt-1 text-sm text-red-600">{errors.content.message}</p>
                         )}
+                      </div>
+                    )}
+                  />
+
+                  <Controller
+                    name="customCSS"
+                    control={control}
+                    render={({ field }) => (
+                      <div>
+                        <label className="block text-sm font-medium text-gray-700 mb-2">
+                          Custom CSS (Optional)
+                          <span className="text-xs text-gray-500 ml-2">- WordPress-like styling control</span>
+                        </label>
+                        <textarea
+                          {...field}
+                          rows={8}
+                          className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent font-mono text-sm"
+                          placeholder="/* Add custom CSS for this post only */
+.my-custom-class {
+  color: #ff6b00;
+  font-size: 1.2rem;
+}
+
+/* Available utility classes: blog-grid-2, blog-callout, blog-card, etc. */
+/* See Style Guide for all available classes */"
+                          spellCheck={false}
+                        />
+                        {errors.customCSS && (
+                          <p className="mt-1 text-sm text-red-600">{errors.customCSS.message}</p>
+                        )}
+                        <div className="mt-2 flex items-center gap-2">
+                          <p className="text-xs text-gray-500">
+                            Add custom styles for advanced layouts. Dangerous properties (@import, external URLs) will be sanitized.
+                          </p>
+                          <a
+                            href="/admin/blog-style-guide"
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="text-xs text-primary-600 hover:text-primary-700 underline whitespace-nowrap"
+                          >
+                            📖 View Style Guide
+                          </a>
+                        </div>
                       </div>
                     )}
                   />

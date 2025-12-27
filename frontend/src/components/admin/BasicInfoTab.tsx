@@ -4,6 +4,8 @@ import TagInput from '../common/TagInput';
 import DOMPurify from 'isomorphic-dompurify';
 import MediaPickerModal from '@/components/admin/media/MediaPickerModal';
 import { MediaAsset } from '@/store/slices/mediaSlice';
+import { Card, CardHeader, CardTitle, CardContent } from '../ui/Card';
+import { Shield, FileText, Hash, Image as ImageIcon, X, ExternalLink } from 'lucide-react';
 
 interface Category {
   id: string;
@@ -20,6 +22,7 @@ interface BasicInfoTabProps {
   formData: {
     title: string;
     description: string;
+    customCSS: string;
     category: string;
     type: 'Olympiad' | 'Championship' | 'Competition' | 'Event' | 'Course' | 'Venue';
     venueType: 'Indoor' | 'Outdoor' | 'Online' | 'Offline';
@@ -49,6 +52,7 @@ interface BasicInfoTabProps {
   onImagesChange: (assets: MediaAsset[]) => void;
   onRemoveImage: (index: number) => void;
   onTagsChange: (tags: string[]) => void;
+  onCustomCSSChange: (css: string) => void;
   showMediaPicker: boolean;
   onOpenMediaPicker: () => void;
   onCloseMediaPicker: () => void;
@@ -64,6 +68,7 @@ const BasicInfoTab: React.FC<BasicInfoTabProps> = ({
   onImagesChange,
   onRemoveImage,
   onTagsChange,
+  onCustomCSSChange,
   showMediaPicker,
   onOpenMediaPicker,
   onCloseMediaPicker,
@@ -101,11 +106,20 @@ const BasicInfoTab: React.FC<BasicInfoTabProps> = ({
   };
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-8">
       {/* Admin Controls Section */}
-      <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
-        <h3 className="text-lg font-semibold text-blue-900 mb-3">Admin Controls</h3>
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+      <Card className="bg-gradient-to-br from-blue-50 to-indigo-50 border-2 border-blue-200 shadow-lg">
+        <CardHeader>
+          <CardTitle className="text-xl text-blue-900 flex items-center">
+            <Shield className="w-6 h-6 mr-3 text-blue-600" />
+            Admin Controls
+            <span className="ml-auto text-xs bg-blue-100 px-3 py-1 rounded-full">
+              Admin Only
+            </span>
+          </CardTitle>
+        </CardHeader>
+        <CardContent>
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
           {/* Vendor Assignment */}
           <div className="md:col-span-2">
             <label htmlFor="vendorId" className="block text-sm font-medium text-gray-700 mb-1">
@@ -276,8 +290,18 @@ const BasicInfoTab: React.FC<BasicInfoTabProps> = ({
             </label>
           </div>
         </div>
-      </div>
+        </CardContent>
+      </Card>
 
+      {/* Basic Event Information */}
+      <Card variant="elevated" className="shadow-xl">
+        <CardHeader>
+          <CardTitle className="text-2xl flex items-center text-gray-900">
+            <FileText className="w-6 h-6 mr-3 text-primary-600" />
+            Event Information
+          </CardTitle>
+        </CardHeader>
+        <CardContent className="space-y-6">
       {/* Event Title */}
       <div>
         <label htmlFor="title" className="block text-sm font-medium text-gray-700 mb-1">
@@ -329,13 +353,22 @@ const BasicInfoTab: React.FC<BasicInfoTabProps> = ({
 
         {/* Editor or Preview */}
         {descriptionTab === 'edit' ? (
-          <TipTapEditor
-            content={formData.description || ''}
-            onChange={handleDescriptionChange}
-            placeholder="Describe your event in detail... Use the toolbar to format text, add images, videos, and links. You can also insert custom HTML for Google Drive embeds."
-            mediaCategory="event"
-            mediaFolder="events"
-          />
+          <>
+            <div className="mb-2 p-3 bg-blue-50 border border-blue-200 rounded-lg text-xs text-blue-800">
+              <strong>💡 Editor Features:</strong> Tables • Colors • Highlights • 40+ layout classes •
+              <a href="/admin/blog-style-guide" target="_blank" rel="noopener noreferrer" className="underline hover:text-blue-900 ml-1">
+                View Style Guide →
+              </a>
+            </div>
+            <TipTapEditor
+              content={formData.description || ''}
+              onChange={handleDescriptionChange}
+              placeholder="Describe your event in detail... Use the toolbar to format text, add images, videos, and links. You can also insert custom HTML for Google Drive embeds."
+              mediaCategory="event"
+              mediaFolder="events"
+              characterLimit={10000}
+            />
+          </>
         ) : (
           <div
             className="min-h-[300px] p-4 border border-gray-300 rounded-md bg-gray-50 prose max-w-none"
@@ -349,6 +382,14 @@ const BasicInfoTab: React.FC<BasicInfoTabProps> = ({
           />
         )}
 
+        <div className="mt-3 flex items-center justify-between text-sm border-t border-gray-200 pt-3">
+          <p className="text-gray-600">Need help using the editor?</p>
+          <a href="/admin/blog-style-guide" target="_blank" rel="noopener noreferrer" className="text-primary-600 hover:text-primary-700 font-medium flex items-center gap-1">
+            📚 View Editor Tutorial & Style Guide
+            <ExternalLink className="w-4 h-4" />
+          </a>
+        </div>
+
         {errors.description && <p className="mt-2 text-sm text-red-500">{errors.description}</p>}
 
         {/* Helper text for Google Drive embeds */}
@@ -356,6 +397,62 @@ const BasicInfoTab: React.FC<BasicInfoTabProps> = ({
           💡 <strong>Tip:</strong> To embed Google Drive files, use the "Insert Custom HTML" button (📄 icon) in the toolbar.
           Get the embed code from Google Drive by clicking Share → Get embed code.
         </p>
+      </div>
+
+      {/* Custom CSS Section */}
+      <div className="mt-6">
+        <Card variant="elevated" className="shadow-sm border-2 border-gray-200">
+          <CardHeader className="pb-3">
+            <div className="flex items-center gap-2">
+              <FileText className="w-5 h-5 text-primary-600" />
+              <CardTitle className="text-lg text-gray-900">
+                Custom Styling (Optional)
+              </CardTitle>
+            </div>
+            <p className="text-xs text-gray-600 mt-2">
+              Add custom CSS for advanced event page layouts. Works with HTML inserted via editor above.
+            </p>
+          </CardHeader>
+          <CardContent>
+            <label className="block text-sm font-medium text-gray-700 mb-2">
+              Custom CSS
+              <span className="text-xs text-gray-500 ml-2">- WordPress-like styling control</span>
+            </label>
+
+            <textarea
+              value={formData.customCSS}
+              onChange={(e) => onCustomCSSChange(e.target.value)}
+              rows={8}
+              className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent font-mono text-sm bg-gray-50"
+              placeholder="/* Add custom CSS for this event page only */
+.my-custom-class {
+  color: #ff6b00;
+  font-size: 1.2rem;
+}
+
+/* Works with utility classes from Style Guide */
+/* See: /admin/blog-style-guide */"
+              spellCheck={false}
+            />
+
+            {errors.customCSS && <p className="mt-1 text-sm text-red-500">{errors.customCSS}</p>}
+
+            <div className="mt-3 flex items-center justify-between border-t border-gray-200 pt-3">
+              <p className="text-xs text-gray-500">
+                Dangerous properties (@import, external URLs) will be sanitized. Max 50,000 characters.
+              </p>
+              <a
+                href="/admin/blog-style-guide"
+                target="_blank"
+                rel="noopener noreferrer"
+                className="text-xs text-primary-600 hover:text-primary-700 font-medium inline-flex items-center gap-1"
+              >
+                📖 View Style Guide
+                <ExternalLink className="w-3 h-3" />
+              </a>
+            </div>
+          </CardContent>
+        </Card>
       </div>
 
       <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
@@ -485,46 +582,69 @@ const BasicInfoTab: React.FC<BasicInfoTabProps> = ({
           {errors.ageRangeMax && <p className="mt-1 text-sm text-red-500">{errors.ageRangeMax}</p>}
         </div>
       </div>
+      </CardContent>
+      </Card>
 
-      {/* Tags */}
-      <div>
-        <TagInput
-          tags={formData.tags}
-          onChange={onTagsChange}
-          maxTags={20}
-          allowBulkAdd={true}
-          placeholder="Add tag"
-          showCount={true}
-          label="Tags"
-          error={errors.tags}
-        />
-      </div>
+      {/* Tags Section */}
+      <Card variant="elevated" className="shadow-xl">
+        <CardHeader>
+          <CardTitle className="text-2xl flex items-center text-gray-900">
+            <Hash className="w-6 h-6 mr-3 text-primary-600" />
+            Tags & Keywords
+          </CardTitle>
+        </CardHeader>
+        <CardContent>
+          <TagInput
+            tags={formData.tags}
+            onChange={onTagsChange}
+            maxTags={20}
+            allowBulkAdd={true}
+            placeholder="Add tag"
+            showCount={true}
+            label=""
+            error={errors.tags}
+          />
+          <p className="mt-2 text-xs text-gray-500">
+            Add relevant tags to help users find your event. Maximum 20 tags.
+          </p>
+        </CardContent>
+      </Card>
 
-      {/* Event Images */}
-      <div className="mb-6">
+      {/* Event Images Section */}
+      <Card variant="elevated" className="shadow-xl">
+        <CardHeader>
+          <CardTitle className="text-2xl flex items-center text-gray-900">
+            <ImageIcon className="w-6 h-6 mr-3 text-primary-600" />
+            Event Images
+          </CardTitle>
+        </CardHeader>
+        <CardContent>
+        <div>
         <label className="block text-sm font-medium text-gray-700 mb-2">
           Event Images <span className="text-red-500">*</span>
         </label>
 
         {/* Image Preview Grid */}
         {formData.imagePreviewUrls.length > 0 && (
-          <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-4 mb-4">
+          <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-6 mb-6">
             {formData.imagePreviewUrls.map((url, index) => (
               <div key={index} className="relative group">
-                <img
-                  src={url}
-                  alt={`Event ${index + 1}`}
-                  className="h-32 w-full object-cover rounded-lg border-2 border-gray-200"
-                />
-                <button
-                  type="button"
-                  onClick={() => onRemoveImage(index)}
-                  className="absolute top-2 right-2 bg-red-500 text-white rounded-full w-6 h-6 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity"
-                >
-                  ×
-                </button>
-                <div className="absolute bottom-0 left-0 right-0 bg-black bg-opacity-50 text-white text-xs p-1 text-center">
-                  Image {index + 1}
+                <div className="relative rounded-xl overflow-hidden shadow-lg hover:shadow-2xl transform hover:scale-105 transition-all duration-200">
+                  <img
+                    src={url}
+                    alt={`Event ${index + 1}`}
+                    className="h-40 w-full object-cover"
+                  />
+                  <button
+                    type="button"
+                    onClick={() => onRemoveImage(index)}
+                    className="absolute top-2 right-2 bg-red-500 text-white rounded-full p-1 w-8 h-8 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-all hover:bg-red-600 hover:scale-110"
+                  >
+                    <X className="w-5 h-5" />
+                  </button>
+                  <div className="absolute bottom-0 left-0 right-0 bg-gradient-to-t from-black/70 to-transparent text-white text-xs p-2 font-medium">
+                    Image {index + 1}
+                  </div>
                 </div>
               </div>
             ))}
@@ -534,15 +654,21 @@ const BasicInfoTab: React.FC<BasicInfoTabProps> = ({
         <button
           type="button"
           onClick={onOpenMediaPicker}
-          className="px-4 py-2 bg-blue-500 text-white rounded-lg hover:bg-blue-600 transition-colors"
+          className="inline-flex items-center px-6 py-3 bg-gradient-to-r from-primary-500 to-primary-700 text-white font-semibold rounded-xl hover:from-primary-600 hover:to-primary-800 hover:shadow-xl transition-all duration-200"
         >
+          <ImageIcon className="w-5 h-5 mr-2" />
           {formData.images.length > 0 ? 'Add More Images' : 'Select Images from Library'}
         </button>
 
         {errors.images && (
-          <p className="mt-1 text-sm text-red-500">{errors.images}</p>
+          <p className="mt-2 text-sm text-red-500">{errors.images}</p>
         )}
+        <p className="mt-3 text-xs text-gray-500">
+          Upload high-quality images to showcase your event. First image will be the featured image.
+        </p>
       </div>
+      </CardContent>
+      </Card>
 
       {/* Media Picker Modal */}
       <MediaPickerModal

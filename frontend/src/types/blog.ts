@@ -34,6 +34,8 @@ export interface Blog {
   slug: string;
   excerpt: string;
   content: string;
+  rawHtmlContent?: string;  // RAW HTML mode for complex layouts
+  customCSS?: string;  // Custom CSS per post for WordPress-like styling
   featuredImage: string;
   featuredImageThumbnail?: string;  // For performance/preview
   featuredImageAsset?: {  // NEW - matches backend MediaAsset
@@ -134,6 +136,8 @@ export interface CreateBlogData {
   title: string;
   excerpt: string;
   content: string;
+  rawHtmlContent?: string;
+  customCSS?: string;
   featuredImage: string;
   category: string;
   author: BlogAuthor;
@@ -148,6 +152,8 @@ export interface UpdateBlogData {
   title?: string;
   excerpt?: string;
   content?: string;
+  rawHtmlContent?: string;
+  customCSS?: string;
   featuredImage?: string;
   category?: string;
   author?: BlogAuthor;

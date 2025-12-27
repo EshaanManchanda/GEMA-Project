@@ -8,7 +8,8 @@ import BasicInfoTab from '../../components/admin/BasicInfoTab';
 import SchedulePricingTab from '../../components/admin/SchedulePricingTab';
 import AdvancedTab from '../../components/admin/AdvancedTab';
 import ReviewsTab from '../../components/admin/ReviewsTab';
-import { ChevronLeft, ChevronRight } from 'lucide-react';
+import { ChevronLeft, ChevronRight, Calendar, DollarSign, MapPin, Globe, Star, FileText, ArrowLeft, Save, CheckCircle2, Shield } from 'lucide-react';
+import Badge from '../../components/ui/Badge';
 import MediaPickerModal from '@/components/admin/media/MediaPickerModal';
 import { MediaAsset } from '@/store/slices/mediaSlice';
 
@@ -52,6 +53,7 @@ interface EventFormData {
   // Basic Info
   title: string;
   description: string;
+  customCSS: string;
   category: string;
   type: 'Olympiad' | 'Championship' | 'Competition' | 'Event' | 'Course' | 'Venue' | 'Workshop';
   venueType: 'Indoor' | 'Outdoor' | 'Online' | 'Offline';
@@ -126,6 +128,7 @@ const AdminEditEventPage: React.FC = () => {
   const [formData, setFormData] = useState<EventFormData>({
     title: '',
     description: '',
+    customCSS: '',
     category: '',
     type: 'Event',
     venueType: 'Indoor',
@@ -211,6 +214,7 @@ const AdminEditEventPage: React.FC = () => {
           setFormData({
             title: eventData.title || '',
             description: eventData.description || '',
+            customCSS: eventData.customCSS || '',
             category: eventData.category || '',
             type: eventData.type || 'Event',
             venueType: eventData.venueType || 'Indoor',
@@ -507,6 +511,11 @@ const AdminEditEventPage: React.FC = () => {
     }));
   }, []);
 
+  // Custom CSS change handler
+  const handleCustomCSSChange = (css: string) => {
+    setFormData(prev => ({ ...prev, customCSS: css }));
+  };
+
   // Validation
   const validateForm = (): { isValid: boolean; errors: Record<string, string> } => {
     const newErrors: Record<string, string> = {};
@@ -663,6 +672,7 @@ const AdminEditEventPage: React.FC = () => {
       const eventData = {
         title: formData.title,
         description: formData.description,
+        customCSS: formData.customCSS,
         category: formData.category,
         type: formData.type,
         venueType: formData.venueType,
@@ -822,99 +832,110 @@ const AdminEditEventPage: React.FC = () => {
     );
   }
 
+  const getStatusVariant = (status: string) => {
+    switch (status) {
+      case 'published': return 'success';
+      case 'draft': return 'warning';
+      case 'archived': return 'secondary';
+      case 'pending': return 'warning';
+      case 'rejected': return 'error';
+      default: return 'secondary';
+    }
+  };
+
+  const tabs = [
+    { id: 'basic' as TabType, label: 'Basic Info', icon: FileText },
+    { id: 'schedule' as TabType, label: 'Schedule & Pricing', icon: Calendar },
+    { id: 'advanced' as TabType, label: 'Advanced', icon: MapPin },
+    { id: 'reviews' as TabType, label: 'Reviews', icon: Star },
+    { id: 'registration' as TabType, label: 'Registration Form', icon: CheckCircle2 }
+  ];
+
   return (
     <div className="min-h-screen bg-gray-50">
-      <div className="container mx-auto px-4 py-8">
-        <div className="max-w-6xl mx-auto bg-white rounded-lg shadow-md overflow-hidden">
-          {/* Header */}
-          <div className="px-6 py-4 bg-gray-50 border-b border-gray-200">
-            <h1 className="text-2xl font-bold text-gray-900 mb-4">
-              {isCreateMode ? 'Create New Event (Admin)' : 'Edit Event (Admin)'}
-            </h1>
-
-            {/* Tabs */}
-            <div className="flex space-x-1 overflow-x-auto">
+      {/* Sticky Header */}
+      <div className="sticky top-0 z-40 bg-white border-b border-gray-200 shadow-md">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6">
+          <div className="flex items-center justify-between">
+            <div className="flex items-center space-x-4">
               <button
-                onClick={() => setActiveTab('basic')}
-                className={`
-                  px-4 py-2 rounded-t-lg font-medium text-sm transition-colors whitespace-nowrap
-                  ${activeTab === 'basic'
-                    ? 'bg-white text-blue-700 border-b-2 border-blue-700'
-                    : 'text-gray-600 hover:text-gray-900 hover:bg-gray-100'
-                  }
-                `}
+                onClick={() => navigate('/admin/events')}
+                className="text-gray-600 hover:text-gray-900 transition-colors"
               >
-                Basic Info
+                <ArrowLeft className="w-5 h-5" />
               </button>
+              <div>
+                <h1 className="text-3xl md:text-4xl lg:text-5xl font-bold bg-gradient-to-r from-gray-900 to-gray-700 bg-clip-text text-transparent">
+                  {isCreateMode ? 'Create New Event' : 'Edit Event'}
+                </h1>
+                <div className="flex items-center gap-2 mt-2">
+                  <Badge variant={getStatusVariant(formData.status)}>{formData.status}</Badge>
+                  {formData.isFeatured && <Badge variant="featured">✨ Featured</Badge>}
+                  {formData.isApproved && <Badge variant="success">✓ Approved</Badge>}
+                  <span className="text-xs bg-blue-100 text-blue-600 px-2 py-1 rounded-full">Admin</span>
+                </div>
+              </div>
+            </div>
+            <div className="flex items-center space-x-3">
               <button
-                onClick={() => setActiveTab('schedule')}
-                className={`
-                  px-4 py-2 rounded-t-lg font-medium text-sm transition-colors whitespace-nowrap
-                  ${activeTab === 'schedule'
-                    ? 'bg-white text-blue-700 border-b-2 border-blue-700'
-                    : 'text-gray-600 hover:text-gray-900 hover:bg-gray-100'
-                  }
-                `}
+                onClick={handleSubmit}
+                disabled={isSaving}
+                className="px-6 py-3 bg-gradient-to-r from-primary-500 to-primary-700 text-white font-bold rounded-xl hover:from-primary-600 hover:to-primary-800 hover:shadow-xl transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed flex items-center"
               >
-                Schedule & Pricing
-              </button>
-              <button
-                onClick={() => setActiveTab('advanced')}
-                className={`
-                  px-4 py-2 rounded-t-lg font-medium text-sm transition-colors whitespace-nowrap
-                  ${activeTab === 'advanced'
-                    ? 'bg-white text-blue-700 border-b-2 border-blue-700'
-                    : 'text-gray-600 hover:text-gray-900 hover:bg-gray-100'
-                  }
-                `}
-              >
-                Advanced
-              </button>
-              <button
-                onClick={() => setActiveTab('reviews')}
-                className={`
-                  px-4 py-2 rounded-t-lg font-medium text-sm transition-colors whitespace-nowrap
-                  ${activeTab === 'reviews'
-                    ? 'bg-white text-blue-700 border-b-2 border-blue-700'
-                    : 'text-gray-600 hover:text-gray-900 hover:bg-gray-100'
-                  }
-                `}
-              >
-                Reviews
-              </button>
-              <button
-                onClick={() => setActiveTab('registration')}
-                className={`
-                  px-4 py-2 rounded-t-lg font-medium text-sm transition-colors whitespace-nowrap
-                  ${activeTab === 'registration'
-                    ? 'bg-white text-blue-700 border-b-2 border-blue-700'
-                    : 'text-gray-600 hover:text-gray-900 hover:bg-gray-100'
-                  }
-                `}
-              >
-                Registration Form
+                <Save className="w-4 h-4 mr-2" />
+                {isSaving ? 'Saving...' : (isCreateMode ? 'Create Event' : 'Save Changes')}
               </button>
             </div>
           </div>
+        </div>
+      </div>
 
-          {/* Status Messages */}
-          {saveStatus && (
-            <div className={`p-4 ${saveStatus.type === 'success' ? 'bg-green-100 text-green-700' : 'bg-red-100 text-red-700'}`}>
-              <p className="font-medium">{saveStatus.message}</p>
-              {saveStatus.validationErrors && Object.keys(saveStatus.validationErrors).length > 0 && (
-                <ul className="mt-2 ml-4 list-disc space-y-1">
-                  {Object.entries(saveStatus.validationErrors).map(([field, error]) => (
-                    <li key={field} className="text-sm">
-                      <span className="font-semibold">{field}:</span> {error}
-                    </li>
-                  ))}
-                </ul>
-              )}
-            </div>
-          )}
+      {/* Status Messages */}
+      {saveStatus && (
+        <div className={`max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 mt-4`}>
+          <div className={`p-4 rounded-xl ${saveStatus.type === 'success' ? 'bg-green-100 text-green-700' : 'bg-red-100 text-red-700'}`}>
+            <p className="font-medium">{saveStatus.message}</p>
+            {saveStatus.validationErrors && Object.keys(saveStatus.validationErrors).length > 0 && (
+              <ul className="mt-2 ml-4 list-disc space-y-1">
+                {Object.entries(saveStatus.validationErrors).map(([field, error]) => (
+                  <li key={field} className="text-sm">
+                    <span className="font-semibold">{field}:</span> {error}
+                  </li>
+                ))}
+              </ul>
+            )}
+          </div>
+        </div>
+      )}
 
-          {/* Tab Content */}
-          <div className="p-6 text-gray-900">
+      {/* Tab Navigation */}
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 mt-8">
+        <div className="bg-white rounded-xl shadow-lg mb-8 overflow-hidden">
+          <div className="flex border-b border-gray-200 overflow-x-auto">
+            {tabs.map(tab => {
+              const Icon = tab.icon;
+              return (
+                <button
+                  key={tab.id}
+                  onClick={() => setActiveTab(tab.id)}
+                  className={`
+                    flex-1 py-4 px-6 text-center font-medium transition-all duration-200 whitespace-nowrap
+                    ${activeTab === tab.id
+                      ? 'text-blue-600 border-b-2 border-blue-600 bg-blue-50'
+                      : 'text-gray-600 hover:text-blue-600 hover:bg-gray-50'
+                    }
+                  `}
+                >
+                  <Icon className="w-5 h-5 mx-auto mb-1" />
+                  <span className="text-sm">{tab.label}</span>
+                </button>
+              );
+            })}
+          </div>
+        </div>
+
+        {/* Tab Content */}
+        <div className="space-y-8 pb-12">
             {activeTab === 'basic' && (
               <BasicInfoTab
                 formData={formData}
@@ -926,6 +947,7 @@ const AdminEditEventPage: React.FC = () => {
                 onImagesChange={handleImagesChange}
                 onRemoveImage={removeImage}
                 onTagsChange={handleTagsChange}
+                onCustomCSSChange={handleCustomCSSChange}
                 showMediaPicker={showMediaPicker}
                 onOpenMediaPicker={() => setShowMediaPicker(true)}
                 onCloseMediaPicker={() => setShowMediaPicker(false)}
@@ -1088,67 +1110,6 @@ const AdminEditEventPage: React.FC = () => {
                 )}
               </div>
             )}
-          </div>
-
-          {/* Footer Navigation */}
-          <div className="px-6 py-4 bg-gray-50 border-t border-gray-200">
-            <div className="flex justify-between items-center">
-              <button
-                type="button"
-                onClick={handlePreviousTab}
-                disabled={activeTab === 'basic'}
-                className={`inline-flex items-center px-4 py-2 border border-gray-300 rounded-md shadow-sm text-sm font-medium ${
-                  activeTab === 'basic'
-                    ? 'text-gray-400 bg-gray-100 cursor-not-allowed'
-                    : 'text-gray-700 bg-white hover:bg-gray-50'
-                } focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-primary`}
-              >
-                <ChevronLeft className="w-4 h-4 mr-1" />
-                Previous
-              </button>
-
-              <div className="flex space-x-3">
-                <button
-                  type="button"
-                  onClick={handleCancel}
-                  className="px-4 py-2 border border-gray-300 rounded-md shadow-sm text-sm font-medium text-gray-700 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-primary"
-                  disabled={isSaving}
-                >
-                  Cancel
-                </button>
-
-                {activeTab === 'registration' ? (
-                  <button
-                    type="button"
-                    onClick={handleSubmit}
-                    className="px-6 py-2 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-primary hover:bg-primary-dark focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-primary"
-                    disabled={isSaving}
-                  >
-                    {isSaving ? (
-                      <>
-                        <svg className="animate-spin -ml-1 mr-2 h-4 w-4 text-white inline-block" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
-                          <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
-                          <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
-                        </svg>
-                        Saving...
-                      </>
-                    ) : (
-                      isCreateMode ? 'Create Event' : 'Save Event'
-                    )}
-                  </button>
-                ) : (
-                  <button
-                    type="button"
-                    onClick={handleNextTab}
-                    className="inline-flex items-center px-4 py-2 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-green-600 hover:bg-green-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-green-500"
-                  >
-                    Next
-                    <ChevronRight className="w-4 h-4 ml-1" />
-                  </button>
-                )}
-              </div>
-            </div>
-          </div>
         </div>
       </div>
     </div>

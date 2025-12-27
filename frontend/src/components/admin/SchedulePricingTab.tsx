@@ -1,5 +1,6 @@
 import React from 'react';
-import { Plus, Trash2, Calendar, DollarSign, Users, Star, X } from 'lucide-react';
+import { Plus, Trash2, Calendar, DollarSign, Users, Star, X, Clock } from 'lucide-react';
+import { Card, CardHeader, CardTitle, CardContent } from '../ui/Card';
 
 interface TimeSlot {
   id: string;
@@ -56,98 +57,114 @@ const SchedulePricingTab: React.FC<SchedulePricingTabProps> = ({
   onBasePriceChange,
 }) => {
   return (
-    <div className="space-y-6">
-      {/* Basic Pricing Info */}
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-        <div>
-          <label htmlFor="basePrice" className="block text-sm font-medium text-gray-700 mb-1">
-            <DollarSign className="inline w-4 h-4 mr-1" />
-            Base Price <span className="text-red-500">*</span>
-          </label>
-          <input
-            type="number"
-            id="basePrice"
-            name="basePrice"
-            value={basePrice}
-            onChange={onBasePriceChange}
-            min="0"
-            step="0.01"
-            className={`w-full px-3 py-2 border ${errors.basePrice ? 'border-red-500' : 'border-gray-300'} rounded-md shadow-sm focus:outline-none focus:ring-primary focus:border-primary`}
-            placeholder="e.g. 25.00"
-          />
-          {errors.basePrice && <p className="mt-1 text-sm text-red-500">{errors.basePrice}</p>}
-          <p className="mt-1 text-xs text-gray-500">Default price for event tickets</p>
-        </div>
+    <div className="space-y-8">
+      {/* Pricing Overview Card */}
+      <Card variant="elevated" className="shadow-xl">
+        <CardHeader>
+          <CardTitle className="text-2xl flex items-center text-gray-900">
+            <DollarSign className="w-6 h-6 mr-3 text-primary-600" />
+            Pricing Overview
+          </CardTitle>
+        </CardHeader>
+        <CardContent>
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+            <div>
+              <label htmlFor="basePrice" className="block text-sm font-medium text-gray-700 mb-2">
+                Base Price <span className="text-red-500">*</span>
+              </label>
+              <div className="relative">
+                <DollarSign className="absolute left-3 top-1/2 transform -translate-y-1/2 w-5 h-5 text-gray-400" />
+                <input
+                  type="number"
+                  id="basePrice"
+                  name="basePrice"
+                  value={basePrice}
+                  onChange={onBasePriceChange}
+                  min="0"
+                  step="0.01"
+                  className={`w-full pl-10 pr-3 py-2 border ${errors.basePrice ? 'border-red-500' : 'border-gray-300'} rounded-lg shadow-sm focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-primary-500 text-lg font-semibold`}
+                  placeholder="25.00"
+                />
+              </div>
+              {errors.basePrice && <p className="mt-1 text-sm text-red-500">{errors.basePrice}</p>}
+              <p className="mt-2 text-xs text-gray-500">Default ticket price</p>
+            </div>
 
-        <div>
-          <label htmlFor="currency" className="block text-sm font-medium text-gray-700 mb-1">
-            <DollarSign className="inline w-4 h-4 mr-1" />
-            Currency
-          </label>
-          <select
-            id="currency"
-            name="currency"
-            value={currency}
-            onChange={onCurrencyChange}
-            className="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-primary focus:border-primary"
-          >
-            <option value="USD">USD ($)</option>
-            <option value="AED">AED (د.إ)</option>
-            <option value="EGP">EGP (£)</option>
-            <option value="CAD">CAD ($)</option>
-          </select>
-        </div>
+            <div>
+              <label htmlFor="currency" className="block text-sm font-medium text-gray-700 mb-2">
+                Currency
+              </label>
+              <select
+                id="currency"
+                name="currency"
+                value={currency}
+                onChange={onCurrencyChange}
+                className="w-full px-3 py-2 border border-gray-300 rounded-lg shadow-sm focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-primary-500"
+              >
+                <option value="USD">USD ($)</option>
+                <option value="AED">AED (د.إ)</option>
+                <option value="EGP">EGP (£)</option>
+                <option value="CAD">CAD ($)</option>
+              </select>
+            </div>
 
-        <div>
-          <label htmlFor="capacity" className="block text-sm font-medium text-gray-700 mb-1">
-            <Users className="inline w-4 h-4 mr-1" />
-            Event Capacity <span className="text-red-500">*</span>
-          </label>
-          <input
-            type="number"
-            id="capacity"
-            name="capacity"
-            value={capacity}
-            onChange={onCapacityChange}
-            min="1"
-            className={`w-full px-3 py-2 border ${errors.capacity ? 'border-red-500' : 'border-gray-300'} rounded-md shadow-sm focus:outline-none focus:ring-primary focus:border-primary`}
-            placeholder="e.g. 50"
-          />
-          {errors.capacity && <p className="mt-1 text-sm text-red-500">{errors.capacity}</p>}
-          <p className="mt-1 text-xs text-gray-500">Total event capacity</p>
-        </div>
-      </div>
+            <div>
+              <label htmlFor="capacity" className="block text-sm font-medium text-gray-700 mb-2">
+                Event Capacity <span className="text-red-500">*</span>
+              </label>
+              <div className="relative">
+                <Users className="absolute left-3 top-1/2 transform -translate-y-1/2 w-5 h-5 text-gray-400" />
+                <input
+                  type="number"
+                  id="capacity"
+                  name="capacity"
+                  value={capacity}
+                  onChange={onCapacityChange}
+                  min="1"
+                  className={`w-full pl-10 pr-3 py-2 border ${errors.capacity ? 'border-red-500' : 'border-gray-300'} rounded-lg shadow-sm focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-primary-500 text-lg font-semibold`}
+                  placeholder="50"
+                />
+              </div>
+              {errors.capacity && <p className="mt-1 text-sm text-red-500">{errors.capacity}</p>}
+              <p className="mt-2 text-xs text-gray-500">Total seats available</p>
+            </div>
+          </div>
+        </CardContent>
+      </Card>
 
       {/* Schedule & Pricing Section */}
-      <div className="border-t pt-6">
-        <div className="flex items-center justify-between mb-4">
-          <div>
-            <h3 className="text-lg font-semibold text-gray-900">
-              <Calendar className="inline w-5 h-5 mr-2" />
-              Event Schedules & Pricing
-            </h3>
-            <p className="text-sm text-gray-600 mt-1">
-              Add multiple date ranges with individual pricing for each schedule
-            </p>
+      <Card variant="elevated" className="shadow-xl">
+        <CardHeader>
+          <div className="flex items-center justify-between">
+            <CardTitle className="text-2xl flex items-center text-gray-900">
+              <Calendar className="w-6 h-6 mr-3 text-primary-600" />
+              Event Schedules
+            </CardTitle>
+            <div className="flex space-x-2">
+              <button
+                type="button"
+                onClick={() => onAddSchedule(false)}
+                className="inline-flex items-center px-4 py-2 bg-gradient-to-r from-primary-500 to-primary-700 text-white font-semibold rounded-xl hover:from-primary-600 hover:to-primary-800 hover:shadow-lg transition-all duration-200"
+              >
+                <Plus className="w-4 h-4 mr-2" />
+                Add Schedule
+              </button>
+              <button
+                type="button"
+                onClick={() => onAddSchedule(true)}
+                className="inline-flex items-center px-4 py-2 bg-gradient-to-r from-amber-500 to-amber-600 text-white font-semibold rounded-xl hover:from-amber-600 hover:to-amber-700 hover:shadow-lg transition-all duration-200"
+              >
+                <Star className="w-4 h-4 mr-2" />
+                Special Dates
+              </button>
+            </div>
           </div>
-          <div className="flex space-x-2">
-            <button
-              type="button"
-              onClick={() => onAddSchedule(false)}
-              className="inline-flex items-center px-4 py-2 border border-transparent shadow-sm text-sm font-medium rounded-md text-white bg-primary hover:bg-primary-dark focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-primary"
-            >
-              <Plus className="w-4 h-4 mr-2" />
-              Add Schedule
-            </button>
-            <button
-              type="button"
-              onClick={() => onAddSchedule(true)}
-              className="inline-flex items-center px-4 py-2 border border-transparent shadow-sm text-sm font-medium rounded-md text-white bg-amber-500 hover:bg-amber-600 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-amber-500"
-            >
-              <Star className="w-4 h-4 mr-2" />
-              Add Special Dates
-            </button>
-          </div>
+          <p className="text-sm text-gray-600 mt-3">
+            Add multiple date ranges with individual pricing for each schedule
+          </p>
+        </CardHeader>
+        <CardContent>
+          <div className="space-y-6">
         </div>
 
         {schedules.length === 0 ? (
@@ -169,47 +186,53 @@ const SchedulePricingTab: React.FC<SchedulePricingTabProps> = ({
             </div>
           </div>
         ) : (
-          <div className="space-y-4">
+          <div className="space-y-6">
             {schedules.map((schedule, index) => (
               <div
                 key={schedule.id}
-                className={`rounded-lg p-4 shadow-sm ${
+                className={`rounded-xl p-6 shadow-lg hover:shadow-2xl transition-all duration-200 ${
                   schedule.isSpecialDate
-                    ? 'bg-amber-50 border-2 border-amber-300'
-                    : 'bg-white border border-gray-200'
+                    ? 'bg-gradient-to-br from-amber-50 to-orange-50 border-2 border-amber-300'
+                    : 'bg-white border-2 border-gray-200'
                 }`}
               >
-                <div className="flex items-center justify-between mb-4">
-                  <div className="flex items-center space-x-2">
-                    <h4 className="text-sm font-medium text-gray-900">
+                <div className="flex items-center justify-between mb-6">
+                  <div className="flex items-center space-x-3">
+                    <div className={`w-10 h-10 rounded-full flex items-center justify-center ${
+                      schedule.isSpecialDate ? 'bg-amber-500' : 'bg-primary-500'
+                    }`}>
                       {schedule.isSpecialDate ? (
-                        <>
-                          <Star className="inline w-4 h-4 mr-1 text-amber-500" />
-                          Special Date Schedule #{index + 1}
-                        </>
+                        <Star className="w-5 h-5 text-white" />
                       ) : (
-                        <>Schedule #{index + 1}</>
+                        <Calendar className="w-5 h-5 text-white" />
                       )}
-                    </h4>
-                    {schedule.isSpecialDate && (
-                      <span className="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-amber-100 text-amber-800">
-                        Special Date
-                      </span>
-                    )}
-                    {schedule.isOverride && (
-                      <span className="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-purple-100 text-purple-800">
-                        Override
-                      </span>
-                    )}
+                    </div>
+                    <div>
+                      <h4 className="text-lg font-semibold text-gray-900">
+                        {schedule.isSpecialDate ? 'Special Date Schedule' : 'Schedule'} #{index + 1}
+                      </h4>
+                      <div className="flex items-center gap-2 mt-1">
+                        {schedule.isSpecialDate && (
+                          <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-amber-100 text-amber-800 border border-amber-200">
+                            Special Date
+                          </span>
+                        )}
+                        {schedule.isOverride && (
+                          <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-purple-100 text-purple-800 border border-purple-200">
+                            Override
+                          </span>
+                        )}
+                      </div>
+                    </div>
                   </div>
                   {schedules.length > 1 && (
                     <button
                       type="button"
                       onClick={() => onRemoveSchedule(index)}
-                      className="text-red-600 hover:text-red-700 focus:outline-none"
+                      className="p-2 text-red-600 hover:text-white hover:bg-red-600 rounded-lg transition-all duration-200"
                       title="Remove schedule"
                     >
-                      <Trash2 className="w-4 h-4" />
+                      <Trash2 className="w-5 h-5" />
                     </button>
                   )}
                 </div>
@@ -553,7 +576,8 @@ const SchedulePricingTab: React.FC<SchedulePricingTabProps> = ({
             ))}
           </div>
         )}
-      </div>
+        </CardContent>
+      </Card>
     </div>
   );
 };

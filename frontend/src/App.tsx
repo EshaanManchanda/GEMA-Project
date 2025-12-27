@@ -85,6 +85,7 @@ const AdminPayoutsPage = React.lazy(() => import(/* webpackChunkName: "admin" */
 const AdminCommissionsPage = React.lazy(() => import(/* webpackChunkName: "admin" */ './pages/admin/AdminCommissionsPage'));
 const AdminBlogsPage = React.lazy(() => import(/* webpackChunkName: "admin" */ './pages/admin/AdminBlogsPage'));
 const AdminBlogCategoriesPage = React.lazy(() => import(/* webpackChunkName: "admin" */ './pages/admin/AdminBlogCategoriesPage'));
+const BlogStyleGuidePage = React.lazy(() => import(/* webpackChunkName: "admin" */ './pages/admin/BlogStyleGuidePage'));
 const AdminBannersPage = React.lazy(() => import(/* webpackChunkName: "admin" */ './pages/admin/AdminBannersPage'));
 const AdminAnnouncementsPage = React.lazy(() => import(/* webpackChunkName: "admin" */ './pages/admin/AdminAnnouncementsPage'));
 const AdminSEOPage = React.lazy(() => import(/* webpackChunkName: "admin" */ './pages/admin/AdminSEOPage'));
@@ -741,12 +742,20 @@ function AppContent() {
             } />
             <Route path="events/create" element={
               <AdminRoute>
-                <AdminEditEventPage />
+                <PageErrorBoundary>
+                  <Suspense fallback={<LoadingSpinner />}>
+                    <AdminEditEventPage />
+                  </Suspense>
+                </PageErrorBoundary>
               </AdminRoute>
             } />
             <Route path="events/:id/edit" element={
               <AdminRoute>
-                <AdminEditEventPage />
+                <PageErrorBoundary>
+                  <Suspense fallback={<LoadingSpinner />}>
+                    <AdminEditEventPage />
+                  </Suspense>
+                </PageErrorBoundary>
               </AdminRoute>
             } />
             <Route path="events/:eventId/registration/builder" element={
@@ -839,6 +848,15 @@ function AppContent() {
               <AdminRoute>
                 <Suspense fallback={<LoadingSpinner />}>
                   <AdminBlogCategoriesPage />
+                </Suspense>
+              </AdminRoute>
+            } />
+
+            {/* Blog Style Guide */}
+            <Route path="blog-style-guide" element={
+              <AdminRoute>
+                <Suspense fallback={<LoadingSpinner />}>
+                  <BlogStyleGuidePage />
                 </Suspense>
               </AdminRoute>
             } />

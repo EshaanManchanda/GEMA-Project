@@ -3,6 +3,7 @@ import { MapPin, Globe, HelpCircle, Plus, Trash2 } from 'lucide-react';
 import SEOEditor from '../seo/SEOEditor';
 import CountrySelect from '../forms/CountrySelect';
 import CityAutocomplete from '../forms/CityAutocomplete';
+import { Card, CardHeader, CardTitle, CardContent } from '../ui/Card';
 
 interface FAQ {
   id?: string;
@@ -59,12 +60,14 @@ const AdvancedTab: React.FC<AdvancedTabProps> = ({
   return (
     <div className="space-y-8">
       {/* Location Section */}
-      <div>
-        <h3 className="text-lg font-semibold text-gray-900 mb-4">
-          <MapPin className="inline w-5 h-5 mr-2" />
-          Location Details
-        </h3>
-        <div className="space-y-4">
+      <Card variant="elevated" className="shadow-xl">
+        <CardHeader>
+          <CardTitle className="text-2xl flex items-center text-gray-900">
+            <MapPin className="w-6 h-6 mr-3 text-primary-600" />
+            Location Details
+          </CardTitle>
+        </CardHeader>
+        <CardContent className="space-y-6">
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
             <div>
               <label htmlFor="country" className="block text-sm font-medium text-gray-700 mb-1">
@@ -149,28 +152,34 @@ const AdvancedTab: React.FC<AdvancedTabProps> = ({
 
           {/* Info note for Online events */}
           {venueType === 'Online' && (
-            <div className="bg-blue-50 border border-blue-200 rounded-lg p-3">
-              <p className="text-sm text-blue-800">
-                <strong>Note:</strong> Physical location not required for online events. City and country help with event discoverability and filtering.
-              </p>
+            <div className="bg-gradient-to-r from-blue-50 to-indigo-50 border border-blue-200 rounded-lg p-4">
+              <div className="flex items-start">
+                <Globe className="w-5 h-5 text-blue-600 mt-0.5 mr-2 flex-shrink-0" />
+                <p className="text-sm text-blue-800">
+                  <strong>Note:</strong> Physical location not required for online events. City and country help with event discoverability and filtering.
+                </p>
+              </div>
             </div>
           )}
-        </div>
-      </div>
+        </CardContent>
+      </Card>
 
       {/* SEO Section */}
-      <div className="border-t pt-8">
-        <h3 className="text-lg font-semibold text-gray-900 mb-4">
-          <Globe className="inline w-5 h-5 mr-2" />
-          SEO & Meta Information
-        </h3>
-        <div className="bg-blue-50 border border-blue-200 rounded-lg p-4 mb-4">
-          <p className="text-sm text-blue-800">
-            <strong>Admin Note:</strong> SEO fields help the event rank better in search engines. These can be auto-generated from event details if left empty.
-          </p>
-        </div>
+      <Card variant="elevated" className="shadow-xl">
+        <CardHeader>
+          <CardTitle className="text-2xl flex items-center text-gray-900">
+            <Globe className="w-6 h-6 mr-3 text-primary-600" />
+            SEO & Meta Information
+          </CardTitle>
+        </CardHeader>
+        <CardContent>
+          <div className="bg-gradient-to-r from-blue-50 to-indigo-50 border border-blue-200 rounded-lg p-4 mb-6">
+            <p className="text-sm text-blue-800">
+              <strong>Admin Note:</strong> SEO fields help the event rank better in search engines. These can be auto-generated from event details if left empty.
+            </p>
+          </div>
 
-        <SEOEditor
+          <SEOEditor
           initialData={{
             title: formData.seoMeta?.title ?? '',
             description: formData.seoMeta?.description ?? '',
@@ -189,30 +198,31 @@ const AdvancedTab: React.FC<AdvancedTabProps> = ({
           path={`/events/${eventData?._id || 'new-event'}`}
           ogImage={imagePreviewUrl}
         />
-      </div>
+        </CardContent>
+      </Card>
 
       {/* FAQs Section */}
-      <div className="border-t pt-8">
-        <div className="flex items-center justify-between mb-4">
-          <h3 className="text-lg font-semibold text-gray-900">
-            <HelpCircle className="inline w-5 h-5 mr-2" />
-            Frequently Asked Questions (FAQs)
-          </h3>
-          <button
-            type="button"
-            onClick={onAddFaq}
-            className="inline-flex items-center px-4 py-2 border border-transparent shadow-sm text-sm font-medium rounded-md text-white bg-primary hover:bg-primary-dark focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-primary"
-          >
-            <Plus className="w-4 h-4 mr-2" />
-            Add FAQ
-          </button>
-        </div>
-
-        <div className="bg-gray-50 border border-gray-200 rounded-lg p-4 mb-4">
-          <p className="text-sm text-gray-700">
+      <Card variant="elevated" className="shadow-xl">
+        <CardHeader>
+          <div className="flex items-center justify-between">
+            <CardTitle className="text-2xl flex items-center text-gray-900">
+              <HelpCircle className="w-6 h-6 mr-3 text-primary-600" />
+              Frequently Asked Questions
+            </CardTitle>
+            <button
+              type="button"
+              onClick={onAddFaq}
+              className="inline-flex items-center px-4 py-2 bg-gradient-to-r from-primary-500 to-primary-700 text-white font-semibold rounded-xl hover:from-primary-600 hover:to-primary-800 hover:shadow-lg transition-all duration-200"
+            >
+              <Plus className="w-4 h-4 mr-2" />
+              Add FAQ
+            </button>
+          </div>
+          <p className="text-sm text-gray-600 mt-3">
             Add common questions and answers about your event to help potential attendees make informed decisions.
           </p>
-        </div>
+        </CardHeader>
+        <CardContent>
 
         {(formData.faqs || []).length === 0 ? (
           <div className="bg-gray-50 border-2 border-dashed border-gray-300 rounded-lg p-8 text-center">
@@ -231,21 +241,26 @@ const AdvancedTab: React.FC<AdvancedTabProps> = ({
             </button>
           </div>
         ) : (
-          <div className="space-y-4">
+          <div className="space-y-6">
             {(formData.faqs || []).map((faq, index) => (
               <div
                 key={faq.id || faq._id || index}
-                className="bg-white border border-gray-200 rounded-lg p-4 shadow-sm"
+                className="bg-gradient-to-br from-gray-50 to-white border-2 border-gray-200 rounded-xl p-6 shadow-lg hover:shadow-2xl transition-all duration-200"
               >
-                <div className="flex items-center justify-between mb-3">
-                  <h4 className="text-sm font-medium text-gray-900">FAQ #{index + 1}</h4>
+                <div className="flex items-center justify-between mb-4">
+                  <div className="flex items-center space-x-3">
+                    <div className="w-8 h-8 bg-primary-500 rounded-full flex items-center justify-center text-white font-bold text-sm">
+                      {index + 1}
+                    </div>
+                    <h4 className="text-lg font-semibold text-gray-900">FAQ #{index + 1}</h4>
+                  </div>
                   <button
                     type="button"
                     onClick={() => onRemoveFaq(index)}
-                    className="text-red-600 hover:text-red-700 focus:outline-none"
+                    className="p-2 text-red-600 hover:text-white hover:bg-red-600 rounded-lg transition-all duration-200"
                     title="Remove FAQ"
                   >
-                    <Trash2 className="w-4 h-4" />
+                    <Trash2 className="w-5 h-5" />
                   </button>
                 </div>
 
@@ -290,7 +305,9 @@ const AdvancedTab: React.FC<AdvancedTabProps> = ({
             ))}
           </div>
         )}
-      </div>
+        </CardContent>
+      </Card>
+
     </div>
   );
 };

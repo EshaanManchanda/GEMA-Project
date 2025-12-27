@@ -210,7 +210,7 @@ const Layout: React.FC<{ children?: React.ReactNode }> = ({ children }) => {
             {/* Mobile: Logo */}
             <div className="md:hidden">
               <a href="/">
-                <img src={kidroveLogo} alt="Kidzapp Logo" className="h-8 w-auto" />
+                <img src={kidroveLogo} alt="kidrove Logo" className="h-8 w-auto" />
               </a>
             </div>
 
@@ -246,7 +246,7 @@ const Layout: React.FC<{ children?: React.ReactNode }> = ({ children }) => {
             {/* Logo */}
             <div className="flex items-center" style={{ width: '10%', height: 'auto',}}>
               <Link to="/" style={{ width: '100%',}}>
-                <img src={scrolled ? kidroveLogoWhite : kidroveLogo} alt="Kidzapp Logo" className="h-auto w-10" style={{ width: '100%',}} />
+                <img src={scrolled ? kidroveLogoWhite : kidroveLogo} alt="kidrove Logo" className="h-auto w-10" style={{ width: '100%',}} />
               </Link>
             </div>
 
@@ -268,7 +268,7 @@ const Layout: React.FC<{ children?: React.ReactNode }> = ({ children }) => {
                 to="/about"
                 className={`text-sm font-medium hover:opacity-80 transition-opacity duration-300 ${scrolled ? 'text-white' : 'text-gray-900'}`}
               >
-                Kidzapp Go
+                Kidrove Go
               </Link>
               <Link
                 to="/faq"
@@ -563,7 +563,7 @@ const Layout: React.FC<{ children?: React.ReactNode }> = ({ children }) => {
               <div className="px-4 py-6 space-y-4">
                 <Link to="/search" className="block py-2 text-base font-medium text-gray-900">Find Activities</Link>
                 <Link to="/blog" className="block py-2 text-base font-medium text-gray-900">Blog</Link>
-                <Link to="/about" className="block py-2 text-base font-medium text-gray-900">Kidzapp Go</Link>
+                <Link to="/about" className="block py-2 text-base font-medium text-gray-900">Kidrove Go</Link>
                 <Link to="/contact" className="block py-2 text-base font-medium text-gray-900">Get In Touch</Link>
                 {/* <Link to="/cart" className="flex items-center py-2 text-base font-medium text-gray-900">
                   <FaShoppingCart className="mr-2" size={14} />
@@ -665,7 +665,7 @@ const Layout: React.FC<{ children?: React.ReactNode }> = ({ children }) => {
           <div className="grid grid-cols-1 md:grid-cols-4 gap-8">
             {/* Logo and About */}
             <div className="col-span-1">
-              <img src={kidroveLogo} alt="Kidzapp Logo" className="h-8 w-auto mb-4" />
+              <img src={kidroveLogo} alt="Kidrove Logo" className="h-8 w-auto mb-4" />
               <p className="text-gray-700 text-sm mb-4">
                 Discover and book the best activities for your kids in the UAE.
               </p>
@@ -746,7 +746,7 @@ const Layout: React.FC<{ children?: React.ReactNode }> = ({ children }) => {
 
           <div className="border-t border-gray-200 mt-8 pt-8 flex flex-col md:flex-row justify-between items-center">
             <p className="text-gray-700 text-sm">
-              &copy; {new Date().getFullYear()} Kidzapp. All rights reserved.
+              &copy; {new Date().getFullYear()} Kidrove. All rights reserved.
             </p>
             <div className="mt-4 md:mt-0 flex space-x-6">
               <Link to="/privacy" className="text-gray-700 hover:text-gray-900 text-sm">Privacy Policy</Link>
