@@ -2,6 +2,7 @@ import { body, query, param } from 'express-validator';
 import {
   validateMongoId,
   validatePagination,
+  validateAdminPagination,
   validateSort,
   validateSearch,
   validateEnum,
@@ -509,7 +510,7 @@ export const validateBulkUpdateUsers = [
 
 // Get all events (admin)
 export const validateGetAllEvents = [
-  ...validatePagination,
+  ...validateAdminPagination,
   ...validateSort(['title', 'price', 'createdAt', 'averageRating', 'status', 'isApproved']),
   ...validateSearch,
 

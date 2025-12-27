@@ -88,60 +88,74 @@ const AdminEventsPage: React.FC = () => {
   const [typeFilter, setTypeFilter] = useState<string>('all');
   const [featuredFilter, setFeaturedFilter] = useState<string>('all');
 
-  // Pagination state
+  // Client-side pagination state
   const [currentPage, setCurrentPage] = useState<number>(1);
   const [itemsPerPage] = useState<number>(20);
-  const [pagination, setPagination] = useState({
-    currentPage: 1,
-    totalPages: 1,
-    totalEvents: 0,
-    hasNextPage: false,
-    hasPrevPage: false,
-    limit: 20,
-  });
 
-  // Build filter params for API
-  const filterParams = useMemo(() => {
-    const params: any = {
-      page: currentPage,
-      limit: itemsPerPage,
-    };
-    if (searchTerm) params.search = searchTerm;
-    if (statusFilter !== 'all') params.status = statusFilter;
-    if (categoryFilter !== 'all') params.category = categoryFilter;
-    if (typeFilter !== 'all') params.type = typeFilter;
-    if (featuredFilter !== 'all') params.isFeatured = featuredFilter === 'featured';
-    return params;
-  }, [currentPage, itemsPerPage, searchTerm, statusFilter, categoryFilter, typeFilter, featuredFilter]);
-
-  // TanStack Query hooks replace manual fetch + state (50+ lines → 2 hooks!)
-  const { data: eventsResponse, isLoading, error } = useAdminEventsQuery(filterParams);
+  // Fetch ALL events (client-side filtering)
+  const { data: eventsResponse, isLoading, error } = useAdminEventsQuery({ limit: 1000 });
   const { data: categoriesResponse } = useCategoriesQuery({ tree: false, includeInactive: false });
 
   // Extract data with fallbacks
   const events = eventsResponse?.data?.events || eventsResponse?.events || [];
-  const filteredEvents = events; // No client-side filtering needed - API handles it
   const categories = categoriesResponse?.data || categoriesResponse || [];
-  const paginationData = eventsResponse?.data?.pagination;
 
-  // Update pagination state when data changes
-  useEffect(() => {
-    if (paginationData) {
-      setPagination({
-        currentPage: paginationData.currentPage || 1,
-        totalPages: paginationData.totalPages || 1,
-        totalEvents: paginationData.totalEvents || 0,
-        hasNextPage: paginationData.hasNextPage || false,
-        hasPrevPage: paginationData.hasPrevPage || false,
-        limit: paginationData.limit || 20,
-      });
+  // Client-side filtering
+  const filteredEvents = useMemo(() => {
+    let filtered = [...events];
+
+    // Search filter (title, description, location, vendor)
+    if (searchTerm) {
+      const search = searchTerm.toLowerCase();
+      filtered = filtered.filter(event =>
+        event.title.toLowerCase().includes(search) ||
+        event.description.toLowerCase().includes(search) ||
+        event.location.city.toLowerCase().includes(search) ||
+        event.vendor?.fullName?.toLowerCase().includes(search) ||
+        event.vendor?.email?.toLowerCase().includes(search)
+      );
     }
-  }, [paginationData]);
 
-  // Reset to page 1 when filters change
-  useEffect(() => {
-    setCurrentPage(1);
-  }, [searchTerm, statusFilter, categoryFilter, typeFilter, featuredFilter]);
+    // Status filter (approval + deletion status)
+    if (statusFilter !== 'all') {
+      switch (statusFilter) {
+        case 'approved':
+          filtered = filtered.filter(e => e.isApproved && !e.isDeleted);
+          break;
+        case 'pending':
+          filtered = filtered.filter(e => !e.isApproved && !e.isDeleted);
+          break;
+        case 'deleted':
+          filtered = filtered.filter(e => e.isDeleted);
+          break;
+      }
+    }
+
+    // Category filter
+    if (categoryFilter !== 'all') {
+      filtered = filtered.filter(e => e.category === categoryFilter);
+    }
+
+    // Type filter
+    if (typeFilter !== 'all') {
+      filtered = filtered.filter(e => e.type === typeFilter);
+    }
+
+    // Featured filter
+    if (featuredFilter === 'featured') {
+      filtered = filtered.filter(e => e.isFeatured);
+    } else if (featuredFilter === 'not-featured') {
+      filtered = filtered.filter(e => !e.isFeatured);
+    }
+
+    return filtered;
+  }, [events, searchTerm, statusFilter, categoryFilter, typeFilter, featuredFilter]);
+
+  // Client-side pagination calculations
+  const totalPages = Math.ceil(filteredEvents.length / itemsPerPage);
+  const startIndex = (currentPage - 1) * itemsPerPage;
+  const endIndex = startIndex + itemsPerPage;
+  const paginatedEvents = filteredEvents.slice(startIndex, endIndex);
 
   // Mutation hooks with automatic cache invalidation
   const approveEvent = useApproveEventMutation();
@@ -153,9 +167,9 @@ const AdminEventsPage: React.FC = () => {
   // Virtualization for paginated event lists
   const parentRef = useRef<HTMLDivElement>(null);
   const rowVirtualizer = useVirtualizer({
-    count: filteredEvents.length,
+    count: paginatedEvents.length,
     getScrollElement: () => parentRef.current,
-    estimateSize: () => 70, // Row height in pixels
+    estimateSize: () => 80, // Row height in pixels
     overscan: 5, // Render 5 extra rows above/below viewport
   });
 
@@ -222,10 +236,15 @@ const AdminEventsPage: React.FC = () => {
 
   // Bulk operations handlers
   const toggleSelectAll = () => {
-    if (selectedEventIds.length === filteredEvents.length) {
-      setSelectedEventIds([]);
+    const currentPageIds = paginatedEvents.map(e => e.id);
+    const allCurrentPageSelected = currentPageIds.every(id => selectedEventIds.includes(id));
+
+    if (allCurrentPageSelected) {
+      // Deselect all on current page
+      setSelectedEventIds(prev => prev.filter(id => !currentPageIds.includes(id)));
     } else {
-      setSelectedEventIds(filteredEvents.map(e => e.id));
+      // Select all on current page
+      setSelectedEventIds(prev => [...new Set([...prev, ...currentPageIds])]);
     }
   };
 
@@ -276,12 +295,17 @@ const AdminEventsPage: React.FC = () => {
   };
 
   const handlePageChange = (newPage: number) => {
-    if (newPage >= 1 && newPage <= pagination.totalPages) {
+    if (newPage >= 1 && newPage <= totalPages) {
       setCurrentPage(newPage);
       // Scroll to top of table
       parentRef.current?.scrollTo({ top: 0, behavior: 'smooth' });
     }
   };
+
+  // Reset to page 1 when filters change
+  useEffect(() => {
+    setCurrentPage(1);
+  }, [searchTerm, statusFilter, categoryFilter, typeFilter, featuredFilter]);
 
   if (isLoading) {
     return (
@@ -440,12 +464,28 @@ const AdminEventsPage: React.FC = () => {
             </div>
           )}
 
+          {/* Results Count */}
+          <div className="mb-4 flex items-center justify-between">
+            <div className="text-sm text-gray-600">
+              {filteredEvents.length === events.length ? (
+                <>
+                  Total: <span className="font-semibold text-gray-900">{events.length}</span> events
+                </>
+              ) : (
+                <>
+                  Filtered: <span className="font-semibold text-gray-900">{filteredEvents.length}</span> of{' '}
+                  <span className="font-semibold text-gray-900">{events.length}</span> events
+                </>
+              )}
+            </div>
+          </div>
+
           {/* Events Table with Virtualization */}
           <div className="bg-white rounded-lg shadow overflow-hidden">
             <div
               ref={parentRef}
               className="overflow-auto"
-              style={{ maxHeight: '1400px' }}
+              style={{ maxHeight: '800px' }}
             >
               <table className="min-w-full divide-y divide-gray-200">
                 <thead className="bg-gray-50 sticky top-0 z-10">
@@ -453,7 +493,10 @@ const AdminEventsPage: React.FC = () => {
                     <th className="px-4 py-3 text-left">
                       <input
                         type="checkbox"
-                        checked={selectedEventIds.length === filteredEvents.length && filteredEvents.length > 0}
+                        checked={
+                          paginatedEvents.length > 0 &&
+                          paginatedEvents.every(e => selectedEventIds.includes(e.id))
+                        }
                         onChange={toggleSelectAll}
                         className="h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300 rounded"
                       />
@@ -485,7 +528,7 @@ const AdminEventsPage: React.FC = () => {
                     position: 'relative',
                   }}
                 >
-                  {filteredEvents.length === 0 ? (
+                  {paginatedEvents.length === 0 ? (
                     <tr>
                       <td colSpan={7} className="px-6 py-12 text-center text-gray-500">
                         No events found. Try adjusting your filters.
@@ -493,7 +536,7 @@ const AdminEventsPage: React.FC = () => {
                     </tr>
                   ) : (
                     rowVirtualizer.getVirtualItems().map((virtualRow) => {
-                      const event = filteredEvents[virtualRow.index];
+                      const event = paginatedEvents[virtualRow.index];
                       return (
                     <tr
                       key={event.id}
@@ -654,14 +697,13 @@ const AdminEventsPage: React.FC = () => {
             </div>
 
             {/* Pagination Controls */}
-            {pagination.totalPages > 1 && (
+            {totalPages > 1 && (
               <div className="px-6 py-4 border-t border-gray-200 bg-white">
                 <div className="flex items-center justify-between">
                   {/* Item count */}
                   <div className="text-sm text-gray-600">
-                    Showing {((pagination.currentPage - 1) * pagination.limit) + 1} to{' '}
-                    {Math.min(pagination.currentPage * pagination.limit, pagination.totalEvents)} of{' '}
-                    {pagination.totalEvents} events
+                    Showing {startIndex + 1} to {Math.min(endIndex, filteredEvents.length)} of{' '}
+                    {filteredEvents.length} events
                   </div>
 
                   {/* Page buttons */}
@@ -675,11 +717,11 @@ const AdminEventsPage: React.FC = () => {
                     </button>
 
                     {/* Page numbers */}
-                    {Array.from({ length: pagination.totalPages }, (_, i) => i + 1)
+                    {Array.from({ length: totalPages }, (_, i) => i + 1)
                       .filter(page => {
                         // Show: first, last, current, and 2 pages around current
                         return page === 1 ||
-                               page === pagination.totalPages ||
+                               page === totalPages ||
                                Math.abs(page - currentPage) <= 2;
                       })
                       .map((page, idx, arr) => (
@@ -702,7 +744,7 @@ const AdminEventsPage: React.FC = () => {
 
                     <button
                       onClick={() => handlePageChange(currentPage + 1)}
-                      disabled={currentPage === pagination.totalPages}
+                      disabled={currentPage === totalPages}
                       className="px-3 py-1 border border-gray-300 rounded-lg disabled:opacity-50 disabled:cursor-not-allowed hover:bg-gray-50"
                     >
                       Next
