@@ -9,11 +9,80 @@ const router = Router();
 
 /**
  * GET /sitemap.xml
- * Generate and serve dynamic XML sitemap
+ * Generate and serve sitemap index for multi-region setup
  */
 router.get('/sitemap.xml', async (req: Request, res: Response) => {
   try {
-    const sitemap = await seoService.generateSitemap();
+    const sitemapIndex = await seoService.generateSitemapIndex();
+
+    res.set({
+      'Content-Type': 'application/xml; charset=utf-8',
+      'Cache-Control': 'public, max-age=3600' // Cache for 1 hour
+    });
+
+    res.status(200).send(sitemapIndex);
+  } catch (error) {
+    console.error('Sitemap index generation error:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Failed to generate sitemap index'
+    });
+  }
+});
+
+/**
+ * GET /sitemap-com.xml
+ * Generate and serve domain-specific sitemap for kidrove.com
+ */
+router.get('/sitemap-com.xml', async (req: Request, res: Response) => {
+  try {
+    const sitemap = await seoService.generateSitemap('kidrove.com');
+
+    res.set({
+      'Content-Type': 'application/xml; charset=utf-8',
+      'Cache-Control': 'public, max-age=3600' // Cache for 1 hour
+    });
+
+    res.status(200).send(sitemap);
+  } catch (error) {
+    console.error('Sitemap generation error:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Failed to generate sitemap'
+    });
+  }
+});
+
+/**
+ * GET /sitemap-in.xml
+ * Generate and serve domain-specific sitemap for kidrove.in
+ */
+router.get('/sitemap-in.xml', async (req: Request, res: Response) => {
+  try {
+    const sitemap = await seoService.generateSitemap('kidrove.in');
+
+    res.set({
+      'Content-Type': 'application/xml; charset=utf-8',
+      'Cache-Control': 'public, max-age=3600' // Cache for 1 hour
+    });
+
+    res.status(200).send(sitemap);
+  } catch (error) {
+    console.error('Sitemap generation error:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Failed to generate sitemap'
+    });
+  }
+});
+
+/**
+ * GET /sitemap-ae.xml
+ * Generate and serve domain-specific sitemap for kidrove.ae
+ */
+router.get('/sitemap-ae.xml', async (req: Request, res: Response) => {
+  try {
+    const sitemap = await seoService.generateSitemap('kidrove.ae');
 
     res.set({
       'Content-Type': 'application/xml; charset=utf-8',
@@ -32,11 +101,13 @@ router.get('/sitemap.xml', async (req: Request, res: Response) => {
 
 /**
  * GET /robots.txt
- * Generate and serve robots.txt
+ * Generate and serve domain-aware robots.txt
  */
 router.get('/robots.txt', (req: Request, res: Response) => {
   try {
-    const robotsTxt = seoService.generateRobotsTxt();
+    // Extract domain from hostname
+    const hostname = req.hostname || 'kidrove.com';
+    const robotsTxt = seoService.generateRobotsTxt(hostname);
 
     res.set({
       'Content-Type': 'text/plain; charset=utf-8',

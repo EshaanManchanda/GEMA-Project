@@ -37,13 +37,24 @@ export default defineConfig({
         ]
       },
       workbox: {
-        globPatterns: ['**/*.{js,css,html,ico,png,svg,woff,woff2}'],
+        // SEO Optimization: Exclude HTML from precaching - always fetch fresh
+        globPatterns: ['**/*.{js,css,ico,png,svg,woff,woff2}'],
+        globIgnores: ['**/*.html', '**/index.html', '**/offline.html'],
         runtimeCaching: [
           {
-            urlPattern: /^https:\/\/gema-project\.onrender\.com\/api\/.*/,
+            // API responses - Network First (exclude HTML)
+            urlPattern: ({ request, url }) => {
+              // Never cache HTML responses from API
+              const accept = request.headers.get('accept') || '';
+              if (accept.includes('text/html')) {
+                return false;
+              }
+              return url.hostname === 'gema-project.onrender.com' &&
+                     url.pathname.startsWith('/api');
+            },
             handler: 'NetworkFirst',
             options: {
-              cacheName: 'api-cache',
+              cacheName: 'gema-api-cache',
               expiration: {
                 maxEntries: 100,
                 maxAgeSeconds: 60 * 5 // 5 minutes
@@ -52,10 +63,11 @@ export default defineConfig({
             }
           },
           {
+            // Images only - Cache First strategy
             urlPattern: /\.(?:png|jpg|jpeg|svg|gif|webp)$/,
             handler: 'CacheFirst',
             options: {
-              cacheName: 'image-cache',
+              cacheName: 'gema-image-cache',
               expiration: {
                 maxEntries: 100,
                 maxAgeSeconds: 60 * 60 * 24 * 30 // 30 days

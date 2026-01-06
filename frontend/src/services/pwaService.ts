@@ -311,6 +311,57 @@ class PWAService {
     }
   }
 
+  /**
+   * Clear HTML cache to ensure fresh content for SEO
+   * This method removes any cached HTML responses from all cache stores
+   * Critical for ensuring search engines and users always get fresh HTML
+   */
+  async clearHTMLCache(): Promise<void> {
+    if (!('caches' in window)) {
+      return;
+    }
+
+    try {
+      const cacheNames = await caches.keys();
+      let clearedCount = 0;
+
+      await Promise.all(
+        cacheNames.map(async (cacheName) => {
+          const cache = await caches.open(cacheName);
+          const keys = await cache.keys();
+
+          // Delete any cached HTML responses
+          await Promise.all(
+            keys
+              .filter(req => {
+                try {
+                  const url = new URL(req.url);
+                  // Match HTML files by extension, path, or content type
+                  return url.pathname.endsWith('.html') ||
+                         url.pathname === '/' ||
+                         (!url.pathname.includes('.') && !url.pathname.startsWith('/api/'));
+                } catch {
+                  return false;
+                }
+              })
+              .map(req => {
+                clearedCount++;
+                return cache.delete(req);
+              })
+          );
+        })
+      );
+
+      if (clearedCount > 0) {
+        console.log(`[PWA] Cleared ${clearedCount} HTML cache entries for SEO`);
+      } else {
+        console.log('[PWA] No HTML cache entries found (good for SEO)');
+      }
+    } catch (error) {
+      console.error('[PWA] Failed to clear HTML cache:', error);
+    }
+  }
+
   // Private methods
   private handleOnline(): void {
     this.isOnline = true;

@@ -39,7 +39,7 @@ import '@/styles/index.css';
 import '@/i18n/config';
 
 // Initialize PWA
-import { initializePWA } from './services/pwaService';
+import { initializePWA, pwaService } from './services/pwaService';
 
 // Development-only auth debugging
 if (import.meta.env.VITE_NODE_ENV === 'development') {
@@ -66,8 +66,14 @@ const queryClient = new QueryClient({
   },
 });
 
-// Initialize PWA
-initializePWA().catch(console.error);
+// Initialize PWA and clear HTML cache for SEO
+initializePWA()
+  .then(() => {
+    // Critical for SEO: Clear any cached HTML on startup
+    // This ensures fresh content delivery to search engines
+    pwaService.clearHTMLCache();
+  })
+  .catch(console.error);
 
 ReactDOM.createRoot(document.getElementById('root')!).render(
   <React.StrictMode>

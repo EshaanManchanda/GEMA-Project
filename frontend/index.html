@@ -27,7 +27,13 @@
     <meta name="twitter:title" content="Kidrove - Kids Activities Platform" />
     <meta name="twitter:description" content="Discover and book amazing kids activities, events, and educational programs in the UAE." />
     <meta name="twitter:image" content="/assets/images/KidRove-Logo.jpg" />
-    
+
+    <!-- Multi-Region Hreflang Tags for SEO -->
+    <link rel="alternate" hreflang="en" href="https://kidrove.com/" />
+    <link rel="alternate" hreflang="en-IN" href="https://kidrove.in/" />
+    <link rel="alternate" hreflang="en-AE" href="https://kidrove.ae/" />
+    <link rel="alternate" hreflang="x-default" href="https://kidrove.com/" />
+
     <!-- Prevent layout shifts by setting image dimensions -->
     <style>
       img, picture, video, canvas, svg {
@@ -74,8 +80,8 @@
     <!-- Preload critical assets -->
     <link rel="preload" fetchpriority="high" as="image" href="/assets/images/KidRove-Logo.jpg" type="image/jpeg" />
     
-    <!-- Leaflet CSS for maps - deferred loading -->
-    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" integrity="sha256-p4NxAoJBhIIN+hmNHrzRCf9tD/miZyoHS5obTRR9BMY=" crossorigin="" media="print" onload="this.media='all'" />
+    <!-- Leaflet CSS for maps - minified for better SEO -->
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.min.css" crossorigin="" media="print" onload="this.media='all'" />
     
     <!-- Add native lazy loading and fetchpriority attributes -->
     <script>
@@ -96,7 +102,7 @@
     
     <title>Kidrove - Discover Amazing Kids Activities & Events in UAE</title>
 
-    <!-- Organization Structured Data -->
+    <!-- Organization Structured Data - Valid Schema.org -->
     <script type="application/ld+json">
     {
       "@context": "https://schema.org",
@@ -119,11 +125,31 @@
         "@type": "Country",
         "name": "United Arab Emirates"
       },
-      "serviceType": [
-        "Event Management",
-        "Kids Activities",
-        "Educational Programs",
-        "Family Entertainment"
+      "makesOffer": [
+        {
+          "@type": "Offer",
+          "itemOffered": {
+            "@type": "Service",
+            "name": "Event Management",
+            "serviceType": "Event Planning"
+          }
+        },
+        {
+          "@type": "Offer",
+          "itemOffered": {
+            "@type": "Service",
+            "name": "Kids Activities",
+            "serviceType": "Children's Entertainment"
+          }
+        },
+        {
+          "@type": "Offer",
+          "itemOffered": {
+            "@type": "Service",
+            "name": "Educational Programs",
+            "serviceType": "Education"
+          }
+        }
       ]
     }
     </script>
@@ -276,6 +302,9 @@
         console.log('[React Guard] 🛡️ Guard initialized - waiting for React...');
       })();
     </script>
+
+    <!-- SEO: Dynamic Meta Tag Updater for fresh content delivery -->
+    <script src="/update-meta.js"></script>
   </head>
   <body>
     <div id="root"></div>

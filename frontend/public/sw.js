@@ -1,12 +1,19 @@
 // Service Worker for Gema Event Management Platform
 // Provides offline functionality, caching, and background sync
+// SEO-optimized: Never caches HTML to ensure fresh content for search bots
 
-const CACHE_NAME = 'gema-v1.0.2';
-const API_CACHE_NAME = 'gema-api-v1.0.2';
-const IMAGE_CACHE_NAME = 'gema-images-v1.0.2';
+const CACHE_NAME = 'gema-v1.0.3';
+const API_CACHE_NAME = 'gema-api-v1.0.3';
+const IMAGE_CACHE_NAME = 'gema-images-v1.0.3';
 
 // Check if we're in development mode
 const isDevelopment = location.hostname === 'localhost' || location.hostname === '127.0.0.1';
+
+// Bot detection helper - search engine crawlers should get fresh content
+function isBot(userAgent) {
+    const botPattern = /googlebot|bingbot|slurp|duckduckbot|baiduspider|yandexbot|facebookexternalbot|linkedinbot|twitterbot|crawler|spider|bot/i;
+    return botPattern.test(userAgent);
+}
 
 // Assets to cache on install - different for dev vs prod
 const STATIC_ASSETS = isDevelopment ? [
@@ -147,9 +154,16 @@ self.addEventListener('activate', (event) => {
 // Fetch event - implement caching strategies
 self.addEventListener('fetch', (event) => {
   const { request } = event;
-  
+
   try {
     const url = new URL(request.url);
+    const userAgent = request.headers.get('user-agent') || '';
+
+    // CRITICAL FOR SEO: Skip service worker entirely for search engine bots
+    // Let them get fresh HTML directly from the server
+    if (isBot(userAgent)) {
+      return; // Don't intercept, let request go directly to network
+    }
 
     // Skip non-GET requests and chrome-extension requests
     if (request.method !== 'GET' || url.protocol === 'chrome-extension:') {
@@ -190,8 +204,14 @@ async function handleApiRequest(request) {
   try {
     // Try network first
     const networkResponse = await fetch(request.clone());
-    
+
     if (networkResponse.ok) {
+      // Never cache HTML responses from API (even if served by API)
+      const contentType = networkResponse.headers.get('content-type') || '';
+      if (contentType.includes('text/html')) {
+        return networkResponse; // Return without caching
+      }
+
       // Cache successful API responses for specific endpoints
       if (CACHEABLE_APIS.some(api => url.pathname.startsWith(api))) {
         const cache = await caches.open(API_CACHE_NAME);
@@ -284,40 +304,78 @@ async function handleStaticRequest(request) {
   }
 }
 
-// Handle navigation requests with network-first and offline fallback
+// Handle navigation requests - NEVER cache HTML for SEO
 async function handleNavigationRequest(request) {
   try {
-    // Try network first
+    // Always try network first for navigation
     const networkResponse = await fetch(request);
-    
+
     if (networkResponse.ok) {
-      // Cache successful navigation responses
+      // CRITICAL FOR SEO: Never cache HTML documents
+      const contentType = networkResponse.headers.get('content-type') || '';
+      if (contentType.includes('text/html')) {
+        console.log('[SW] Serving fresh HTML from network (not caching for SEO)');
+        return networkResponse; // Return without caching
+      }
+
+      // Cache non-HTML navigation responses (rare case)
       const cache = await caches.open(CACHE_NAME);
       cache.put(request, networkResponse.clone());
       return networkResponse;
     }
-    
+
     throw new Error('Network response not ok');
   } catch (error) {
-    console.log('[SW] Network failed for navigation, trying cache');
-    
-    // Try cache fallback
+    console.log('[SW] Network failed for navigation - showing offline page');
+
+    // ONLY return offline.html fallback when network fails
+    // Do NOT return cached HTML - fresh content is critical for SEO
     const cache = await caches.open(CACHE_NAME);
-    const cachedResponse = await cache.match(request);
-    
-    if (cachedResponse) {
-      return cachedResponse;
-    }
-    
-    // Return offline page for navigation requests
     const offlineResponse = await cache.match('/offline.html');
     if (offlineResponse) {
       return offlineResponse;
     }
-    
+
     // Last resort: basic offline response
-    return new Response('Offline', { status: 200, statusText: 'Offline' });
+    return generateOfflinePage();
   }
+}
+
+// Generate a basic offline page if offline.html is not cached
+function generateOfflinePage() {
+  const html = `
+    <!DOCTYPE html>
+    <html>
+    <head>
+      <title>Offline - Kidrove</title>
+      <meta charset="utf-8">
+      <meta name="viewport" content="width=device-width, initial-scale=1">
+      <style>
+        body { font-family: Arial, sans-serif; text-align: center; padding: 50px; background: #f5f5f5; }
+        .container { max-width: 400px; margin: 0 auto; background: white; padding: 40px; border-radius: 8px; box-shadow: 0 2px 10px rgba(0,0,0,0.1); }
+        .icon { font-size: 64px; margin-bottom: 20px; }
+        h1 { color: #333; margin-bottom: 10px; }
+        p { color: #666; margin-bottom: 30px; }
+        button { background: #3b82f6; color: white; border: none; padding: 12px 24px; border-radius: 6px; cursor: pointer; font-size: 16px; }
+        button:hover { background: #2563eb; }
+      </style>
+    </head>
+    <body>
+      <div class="container">
+        <div class="icon">📱</div>
+        <h1>You're Offline</h1>
+        <p>Please check your internet connection and try again.</p>
+        <button onclick="location.reload()">Try Again</button>
+      </div>
+    </body>
+    </html>
+  `;
+
+  return new Response(html, {
+    status: 200,
+    statusText: 'OK',
+    headers: { 'Content-Type': 'text/html' }
+  });
 }
 
 // Store failed requests for background sync

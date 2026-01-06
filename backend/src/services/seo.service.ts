@@ -28,9 +28,36 @@ export class SEOService {
   }
 
   /**
-   * Generate XML sitemap for all public content
+   * Generate sitemap index for multi-region setup
    */
-  async generateSitemap(): Promise<string> {
+  async generateSitemapIndex(): Promise<string> {
+    const domains = [
+      { domain: 'kidrove.com', region: 'global' },
+      { domain: 'kidrove.in', region: 'in' },
+      { domain: 'kidrove.ae', region: 'ae' }
+    ];
+
+    let sitemap = '<?xml version="1.0" encoding="UTF-8"?>\n';
+    sitemap += '<sitemapindex xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">\n';
+
+    for (const { domain } of domains) {
+      const tld = domain.split('.')[1];
+      sitemap += `  <sitemap>\n`;
+      sitemap += `    <loc>https://${domain}/sitemap-${tld}.xml</loc>\n`;
+      sitemap += `    <lastmod>${new Date().toISOString()}</lastmod>\n`;
+      sitemap += `  </sitemap>\n`;
+    }
+
+    sitemap += '</sitemapindex>';
+    return sitemap;
+  }
+
+  /**
+   * Generate XML sitemap for all public content
+   * @param domain - The domain to generate sitemap for (e.g., 'kidrove.com', 'kidrove.in', 'kidrove.ae')
+   */
+  async generateSitemap(domain?: string): Promise<string> {
+    const baseUrl = domain ? `https://${domain}` : this.baseUrl;
     try {
       const [events, blogs, categories, collections] = await Promise.all([
         Event.find({
@@ -70,40 +97,41 @@ export class SEOService {
       ];
 
       staticPages.forEach(page => {
-        urls.push(this.generateSitemapUrl(`${this.baseUrl}${page.url}`, new Date(), page.changefreq, page.priority));
+        urls.push(this.generateSitemapUrl(`${baseUrl}${page.url}`, new Date(), page.changefreq, page.priority));
       });
 
       // Events
       events.forEach(event => {
-        const url = `${this.baseUrl}/events/${event._id}`;
+        const url = `${baseUrl}/events/${event._id}`;
         const lastmod = event.updatedAt || new Date();
         urls.push(this.generateSitemapUrl(url, lastmod, 'weekly', 0.8));
       });
 
       // Blogs
       blogs.forEach(blog => {
-        const url = `${this.baseUrl}/blog/${blog.slug}`;
+        const url = `${baseUrl}/blog/${blog.slug}`;
         const lastmod = blog.updatedAt || new Date();
         urls.push(this.generateSitemapUrl(url, lastmod, 'monthly', 0.7));
       });
 
       // Categories
       categories.forEach(category => {
-        const url = `${this.baseUrl}/categories/${category.slug || category._id}`;
+        const url = `${baseUrl}/categories/${category.slug || category._id}`;
         const lastmod = category.updatedAt || new Date();
         urls.push(this.generateSitemapUrl(url, lastmod, 'weekly', 0.6));
       });
 
       // Collections
       collections.forEach(collection => {
-        const url = `${this.baseUrl}/collections/${collection.slug || collection._id}`;
+        const url = `${baseUrl}/collections/${collection.slug || collection._id}`;
         const lastmod = collection.updatedAt || new Date();
         urls.push(this.generateSitemapUrl(url, lastmod, 'weekly', 0.6));
       });
 
       const sitemap = `<?xml version="1.0" encoding="UTF-8"?>
 <urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9"
-        xmlns:image="http://www.google.com/schemas/sitemap-image/1.1">
+        xmlns:image="http://www.google.com/schemas/sitemap-image/1.1"
+        xmlns:xhtml="http://www.w3.org/1999/xhtml">
 ${urls.join('\n')}
 </urlset>`;
 
@@ -116,8 +144,10 @@ ${urls.join('\n')}
 
   /**
    * Generate robots.txt content
+   * @param domain - The domain to generate robots.txt for (e.g., 'kidrove.com', 'kidrove.in', 'kidrove.ae')
    */
-  generateRobotsTxt(): string {
+  generateRobotsTxt(domain?: string): string {
+    const baseUrl = domain ? `https://${domain}` : this.baseUrl;
     const isProduction = process.env.NODE_ENV === 'production';
 
     if (!isProduction) {
@@ -156,7 +186,7 @@ Allow: /*.svg
 Allow: /*.ico
 
 # Sitemap location
-Sitemap: ${this.baseUrl}/sitemap.xml
+Sitemap: ${baseUrl}/sitemap.xml
 
 # Crawl-delay for being respectful to servers
 Crawl-delay: 1`;
@@ -260,6 +290,7 @@ Crawl-delay: 1`;
       '@context': 'https://schema.org',
       '@type': 'Organization',
       name: brand.appNameFull,
+      alternateName: ['Kidrove UAE', 'Kidrove India'],
       description: 'Discover and book amazing kids activities, events, and educational programs in the UAE',
       url: this.baseUrl,
       logo: `${this.baseUrl}/assets/images/logo.png`,
@@ -269,19 +300,48 @@ Crawl-delay: 1`;
         email: brand.contactEmail
       },
       sameAs: [
+        'https://kidrove.com',
+        'https://kidrove.in',
+        'https://kidrove.ae',
         'https://www.facebook.com/kidrove',
         'https://www.instagram.com/kidrove',
         'https://www.twitter.com/kidrove'
       ],
-      areaServed: {
-        '@type': 'Country',
-        name: 'United Arab Emirates'
-      },
-      serviceType: [
-        'Event Management',
-        'Kids Activities',
-        'Educational Programs',
-        'Family Entertainment'
+      areaServed: [
+        {
+          '@type': 'Country',
+          name: 'United Arab Emirates'
+        },
+        {
+          '@type': 'Country',
+          name: 'India'
+        }
+      ],
+      makesOffer: [
+        {
+          '@type': 'Offer',
+          itemOffered: {
+            '@type': 'Service',
+            name: 'Event Management',
+            serviceType: 'Event Planning'
+          }
+        },
+        {
+          '@type': 'Offer',
+          itemOffered: {
+            '@type': 'Service',
+            name: 'Kids Activities',
+            serviceType: 'Children\'s Entertainment'
+          }
+        },
+        {
+          '@type': 'Offer',
+          itemOffered: {
+            '@type': 'Service',
+            name: 'Educational Programs',
+            serviceType: 'Education'
+          }
+        }
       ]
     };
   }
@@ -345,7 +405,7 @@ Crawl-delay: 1`;
   }
 
   /**
-   * Helper method to generate individual sitemap URL entry
+   * Helper method to generate individual sitemap URL entry with hreflang alternates
    */
   private generateSitemapUrl(
     url: string,
@@ -354,11 +414,25 @@ Crawl-delay: 1`;
     priority: number = 0.5
   ): string {
     const formattedDate = lastmod.toISOString().split('T')[0];
+
+    // Extract path from URL
+    const urlObj = new URL(url);
+    const path = urlObj.pathname;
+
+    // Generate hreflang alternates for multi-region
+    const hreflangLinks = [
+      `    <xhtml:link rel="alternate" hreflang="en" href="https://kidrove.com${path}" />`,
+      `    <xhtml:link rel="alternate" hreflang="en-IN" href="https://kidrove.in${path}" />`,
+      `    <xhtml:link rel="alternate" hreflang="en-AE" href="https://kidrove.ae${path}" />`,
+      `    <xhtml:link rel="alternate" hreflang="x-default" href="https://kidrove.com${path}" />`
+    ].join('\n');
+
     return `  <url>
     <loc>${url}</loc>
     <lastmod>${formattedDate}</lastmod>
     <changefreq>${changefreq}</changefreq>
     <priority>${priority}</priority>
+${hreflangLinks}
   </url>`;
   }
 
