@@ -63,7 +63,7 @@ app.use(cors({
         'http://localhost:3000',
         'http://localhost:3001',
         'http://localhost:5173' // Vite default port 
-        );
+      );
     }
 
     // Allow requests with no origin (direct browser navigation, favicon, health checks)
@@ -199,6 +199,11 @@ app.use('/api/currency', currencyRoutes);
 
 // Enhanced health check routes (also mounted under /api for API consistency)
 app.use('/api/health', healthRoutes);
+
+import seoRoutes from './routes/seo.routes';
+
+// SEO Routes (sitemap.xml, robots.txt) - Mount at root
+app.use('/', seoRoutes);
 
 // Also keep standalone health routes for direct access
 app.use('/health', healthRoutes);
