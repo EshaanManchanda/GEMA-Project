@@ -121,6 +121,8 @@ const CartPage: React.FC = () => {
                           src={item.event.images?.[0] || '/assets/images/placeholder.jpg'}
                           alt={item.event.title}
                           className="w-full h-full object-cover"
+                          width="128"
+                          height="128"
                         />
                       </div>
 
@@ -165,6 +167,7 @@ const CartPage: React.FC = () => {
                             <button
                               onClick={() => handleQuantityChange(item.id, item.quantity - 1)}
                               className="w-8 h-8 rounded-full border border-gray-300 flex items-center justify-center hover:bg-gray-100 transition-colors"
+                              aria-label="Decrease quantity"
                             >
                               <FiMinus className="text-gray-600 text-xs" />
                             </button>
@@ -172,6 +175,7 @@ const CartPage: React.FC = () => {
                             <button
                               onClick={() => handleQuantityChange(item.id, item.quantity + 1)}
                               className="w-8 h-8 rounded-full border border-gray-300 flex items-center justify-center hover:bg-gray-100 transition-colors"
+                              aria-label="Increase quantity"
                             >
                               <FiPlus className="text-gray-600 text-xs" />
                             </button>

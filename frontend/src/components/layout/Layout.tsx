@@ -181,27 +181,27 @@ const Layout: React.FC<{ children?: React.ReactNode }> = ({ children }) => {
             {/* Left: Social Icons */}
             <div className="hidden md:flex space-x-4">
               {socialSettings.facebookUrl && (
-                <a href={socialSettings.facebookUrl} target="_blank" rel="noopener noreferrer" className="hover:opacity-80 transition-opacity duration-300 flex items-center justify-center w-7 h-7 rounded-full bg-white/10">
+                <a href={socialSettings.facebookUrl} target="_blank" rel="noopener noreferrer" aria-label="Visit our Facebook page" className="hover:opacity-80 transition-opacity duration-300 flex items-center justify-center w-7 h-7 rounded-full bg-white/10">
                   <FaFacebookF size={14} />
                 </a>
               )}
               {socialSettings.twitterUrl && (
-                <a href={socialSettings.twitterUrl} target="_blank" rel="noopener noreferrer" className="hover:opacity-80 transition-opacity duration-300 flex items-center justify-center w-7 h-7 rounded-full bg-white/10">
+                <a href={socialSettings.twitterUrl} target="_blank" rel="noopener noreferrer" aria-label="Visit our Twitter page" className="hover:opacity-80 transition-opacity duration-300 flex items-center justify-center w-7 h-7 rounded-full bg-white/10">
                   <FaTwitter size={14} />
                 </a>
               )}
               {socialSettings.instagramUrl && (
-                <a href={socialSettings.instagramUrl} target="_blank" rel="noopener noreferrer" className="hover:opacity-80 transition-opacity duration-300 flex items-center justify-center w-7 h-7 rounded-full bg-white/10">
+                <a href={socialSettings.instagramUrl} target="_blank" rel="noopener noreferrer" aria-label="Visit our Instagram page" className="hover:opacity-80 transition-opacity duration-300 flex items-center justify-center w-7 h-7 rounded-full bg-white/10">
                   <FaInstagram size={14} />
                 </a>
               )}
               {socialSettings.youtubeUrl && (
-                <a href={socialSettings.youtubeUrl} target="_blank" rel="noopener noreferrer" className="hover:opacity-80 transition-opacity duration-300 flex items-center justify-center w-7 h-7 rounded-full bg-white/10">
+                <a href={socialSettings.youtubeUrl} target="_blank" rel="noopener noreferrer" aria-label="Visit our YouTube channel" className="hover:opacity-80 transition-opacity duration-300 flex items-center justify-center w-7 h-7 rounded-full bg-white/10">
                   <FaYoutube size={14} />
                 </a>
               )}
               {socialSettings.linkedinUrl && (
-                <a href={socialSettings.linkedinUrl} target="_blank" rel="noopener noreferrer" className="hover:opacity-80 transition-opacity duration-300 flex items-center justify-center w-7 h-7 rounded-full bg-white/10">
+                <a href={socialSettings.linkedinUrl} target="_blank" rel="noopener noreferrer" aria-label="Visit our LinkedIn page" className="hover:opacity-80 transition-opacity duration-300 flex items-center justify-center w-7 h-7 rounded-full bg-white/10">
                   <FaLinkedinIn size={14} />
                 </a>
               )}
@@ -210,7 +210,7 @@ const Layout: React.FC<{ children?: React.ReactNode }> = ({ children }) => {
             {/* Mobile: Logo */}
             <div className="md:hidden">
               <Link to="/">
-                <img src={kidroveLogo} alt="kidrove Logo" className="h-8 w-auto" />
+                <img src={kidroveLogo} alt="kidrove Logo" className="h-8 w-auto" width="150" height="32" />
               </Link>
             </div>
 
@@ -246,7 +246,7 @@ const Layout: React.FC<{ children?: React.ReactNode }> = ({ children }) => {
             {/* Logo */}
             <div className="flex items-center" style={{ width: '10%', height: 'auto', }}>
               <Link to="/" style={{ width: '100%', }}>
-                <img src={scrolled ? kidroveLogoWhite : kidroveLogo} alt="kidrove Logo" className="h-auto w-10" style={{ width: '100%', }} />
+                <img src={scrolled ? kidroveLogoWhite : kidroveLogo} alt="kidrove Logo" className="h-auto w-10" style={{ width: '100%', }} width="40" height="40" />
               </Link>
             </div>
 
@@ -290,6 +290,7 @@ const Layout: React.FC<{ children?: React.ReactNode }> = ({ children }) => {
                 to="/search"
                 className="p-2 rounded-full text-white hover:shadow-md transition-all duration-300"
                 style={{ backgroundColor: 'var(--accent-color)' }}
+                aria-label="Search activities"
               >
                 <FaSearch size={14} />
               </Link>
@@ -297,6 +298,7 @@ const Layout: React.FC<{ children?: React.ReactNode }> = ({ children }) => {
                 to="/favorites"
                 className="p-2 rounded-full hover:bg-gray-100 transition-all duration-300"
                 style={{ color: scrolled ? 'white' : 'var(--primary-color)' }}
+                aria-label="View favorites"
               >
                 <FaHeart size={14} />
               </Link>
@@ -334,6 +336,8 @@ const Layout: React.FC<{ children?: React.ReactNode }> = ({ children }) => {
                         src={getUserAvatar()}
                         alt="Profile"
                         className="w-6 h-6 rounded-full object-cover"
+                        width="24"
+                        height="24"
                       />
                     ) : (
                       <FaUserCircle size={16} />
@@ -530,6 +534,7 @@ const Layout: React.FC<{ children?: React.ReactNode }> = ({ children }) => {
                 to="/search"
                 className="p-2 rounded-full text-white hover:shadow-md transition-all duration-300"
                 style={{ backgroundColor: 'var(--accent-color)' }}
+                aria-label="Search activities"
               >
                 <FaSearch size={14} />
               </Link>
@@ -551,6 +556,7 @@ const Layout: React.FC<{ children?: React.ReactNode }> = ({ children }) => {
                 onClick={toggleMobileMenu}
                 className="p-2 rounded-full transition-all duration-300"
                 style={{ color: scrolled ? 'white' : 'var(--primary-color)' }}
+                aria-label={mobileMenuOpen ? "Close menu" : "Open menu"}
               >
                 {mobileMenuOpen ? <FaTimes size={18} /> : <FaBars size={18} />}
               </button>
@@ -665,33 +671,33 @@ const Layout: React.FC<{ children?: React.ReactNode }> = ({ children }) => {
           <div className="grid grid-cols-1 md:grid-cols-4 gap-8">
             {/* Logo and About */}
             <div className="col-span-1">
-              <img src={kidroveLogo} alt="Kidrove Logo" className="h-8 w-auto mb-4" />
+              <img src={kidroveLogo} alt="Kidrove Logo" className="h-8 w-auto mb-4" width="150" height="32" />
               <p className="text-gray-700 text-sm mb-4">
                 Discover and book the best activities for your kids in the UAE.
               </p>
               <div className="flex space-x-3">
                 {socialSettings.facebookUrl && (
-                  <a href={socialSettings.facebookUrl} target="_blank" rel="noopener noreferrer" className="hover:opacity-80 transition-opacity duration-300 flex items-center justify-center w-8 h-8 rounded-full" style={{ backgroundColor: 'var(--primary-color)', color: 'white' }}>
+                  <a href={socialSettings.facebookUrl} target="_blank" rel="noopener noreferrer" aria-label="Visit our Facebook page" className="hover:opacity-80 transition-opacity duration-300 flex items-center justify-center w-8 h-8 rounded-full" style={{ backgroundColor: 'var(--primary-color)', color: 'white' }}>
                     <FaFacebookF size={14} />
                   </a>
                 )}
                 {socialSettings.twitterUrl && (
-                  <a href={socialSettings.twitterUrl} target="_blank" rel="noopener noreferrer" className="hover:opacity-80 transition-opacity duration-300 flex items-center justify-center w-8 h-8 rounded-full" style={{ backgroundColor: 'var(--primary-color)', color: 'white' }}>
+                  <a href={socialSettings.twitterUrl} target="_blank" rel="noopener noreferrer" aria-label="Visit our Twitter page" className="hover:opacity-80 transition-opacity duration-300 flex items-center justify-center w-8 h-8 rounded-full" style={{ backgroundColor: 'var(--primary-color)', color: 'white' }}>
                     <FaTwitter size={14} />
                   </a>
                 )}
                 {socialSettings.instagramUrl && (
-                  <a href={socialSettings.instagramUrl} target="_blank" rel="noopener noreferrer" className="hover:opacity-80 transition-opacity duration-300 flex items-center justify-center w-8 h-8 rounded-full" style={{ backgroundColor: 'var(--primary-color)', color: 'white' }}>
+                  <a href={socialSettings.instagramUrl} target="_blank" rel="noopener noreferrer" aria-label="Visit our Instagram page" className="hover:opacity-80 transition-opacity duration-300 flex items-center justify-center w-8 h-8 rounded-full" style={{ backgroundColor: 'var(--primary-color)', color: 'white' }}>
                     <FaInstagram size={14} />
                   </a>
                 )}
                 {socialSettings.youtubeUrl && (
-                  <a href={socialSettings.youtubeUrl} target="_blank" rel="noopener noreferrer" className="hover:opacity-80 transition-opacity duration-300 flex items-center justify-center w-8 h-8 rounded-full" style={{ backgroundColor: 'var(--primary-color)', color: 'white' }}>
+                  <a href={socialSettings.youtubeUrl} target="_blank" rel="noopener noreferrer" aria-label="Visit our YouTube channel" className="hover:opacity-80 transition-opacity duration-300 flex items-center justify-center w-8 h-8 rounded-full" style={{ backgroundColor: 'var(--primary-color)', color: 'white' }}>
                     <FaYoutube size={14} />
                   </a>
                 )}
                 {socialSettings.linkedinUrl && (
-                  <a href={socialSettings.linkedinUrl} target="_blank" rel="noopener noreferrer" className="hover:opacity-80 transition-opacity duration-300 flex items-center justify-center w-8 h-8 rounded-full" style={{ backgroundColor: 'var(--primary-color)', color: 'white' }}>
+                  <a href={socialSettings.linkedinUrl} target="_blank" rel="noopener noreferrer" aria-label="Visit our LinkedIn page" className="hover:opacity-80 transition-opacity duration-300 flex items-center justify-center w-8 h-8 rounded-full" style={{ backgroundColor: 'var(--primary-color)', color: 'white' }}>
                     <FaLinkedinIn size={14} />
                   </a>
                 )}

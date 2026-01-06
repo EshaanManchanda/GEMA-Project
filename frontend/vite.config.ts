@@ -50,7 +50,7 @@ export default defineConfig({
                 return false;
               }
               return url.hostname === 'gema-project.onrender.com' &&
-                     url.pathname.startsWith('/api');
+                url.pathname.startsWith('/api');
             },
             handler: 'NetworkFirst',
             options: {
@@ -107,6 +107,21 @@ export default defineConfig({
     port: 3000,
     host: true,
     proxy: {
+      '/sitemap.xml': {
+        target: 'https://gema-project.onrender.com',
+        changeOrigin: true,
+        secure: true
+      },
+      '/sitemap-*.xml': {
+        target: 'https://gema-project.onrender.com',
+        changeOrigin: true,
+        secure: true
+      },
+      '/robots.txt': {
+        target: 'https://gema-project.onrender.com',
+        changeOrigin: true,
+        secure: true
+      },
       '/api': {
         target: 'https://gema-project.onrender.com',
         changeOrigin: true,
@@ -140,13 +155,13 @@ export default defineConfig({
       external: (id) => {
         // Exclude Node.js built-ins from browser bundle
         if (id.startsWith('node:') ||
-            id.includes('perf_hooks') ||
-            id.startsWith('fs') ||
-            id.startsWith('path') ||
-            id.startsWith('http') ||
-            id.startsWith('https') ||
-            id.startsWith('url') ||
-            (id.startsWith('crypto') && !id.includes('crypto-js'))) {
+          id.includes('perf_hooks') ||
+          id.startsWith('fs') ||
+          id.startsWith('path') ||
+          id.startsWith('http') ||
+          id.startsWith('https') ||
+          id.startsWith('url') ||
+          (id.startsWith('crypto') && !id.includes('crypto-js'))) {
           console.warn(`[Vite] Excluding Node.js built-in from bundle: ${id}`);
           return true;
         }
@@ -164,11 +179,11 @@ export default defineConfig({
           // This prevents race conditions where other chunks load before React is available
           if (id.includes('node_modules/react') || id.includes('node_modules/react-dom')) {
             if (!id.includes('react-router') && !id.includes('react-redux') &&
-                !id.includes('react-hook-form') && !id.includes('react-query') &&
-                !id.includes('react-icons') && !id.includes('react-chartjs') &&
-                !id.includes('react-leaflet') && !id.includes('react-i18next') &&
-                !id.includes('react-helmet') && !id.includes('react-hot-toast') &&
-                !id.includes('react-stripe')) {
+              !id.includes('react-hook-form') && !id.includes('react-query') &&
+              !id.includes('react-icons') && !id.includes('react-chartjs') &&
+              !id.includes('react-leaflet') && !id.includes('react-i18next') &&
+              !id.includes('react-helmet') && !id.includes('react-hot-toast') &&
+              !id.includes('react-stripe')) {
               return undefined; // Main entry chunk - always loads first
             }
           }
@@ -178,60 +193,60 @@ export default defineConfig({
 
           // State Management
           if (id.includes('node_modules/@reduxjs/toolkit') ||
-              id.includes('node_modules/react-redux') ||
-              id.includes('node_modules/redux-persist')) {
+            id.includes('node_modules/react-redux') ||
+            id.includes('node_modules/redux-persist')) {
             return 'state';
           }
 
           // UI & Animations
           if (id.includes('node_modules/framer-motion') ||
-              id.includes('node_modules/lucide-react') ||
-              id.includes('node_modules/react-icons')) {
+            id.includes('node_modules/lucide-react') ||
+            id.includes('node_modules/react-icons')) {
             return 'ui';
           }
 
           // Forms & Validation
           if (id.includes('node_modules/react-hook-form') ||
-              id.includes('node_modules/@hookform/resolvers') ||
-              id.includes('node_modules/yup')) {
+            id.includes('node_modules/@hookform/resolvers') ||
+            id.includes('node_modules/yup')) {
             return 'forms';
           }
 
           // Data Fetching - AFTER polyfills are guaranteed to be in main chunk
           if (id.includes('node_modules/@tanstack/react-query') ||
-              id.includes('node_modules/axios')) {
+            id.includes('node_modules/axios')) {
             return 'query';
           }
 
           // Charts & Visualization
           if (id.includes('node_modules/chart.js') ||
-              id.includes('node_modules/react-chartjs-2')) {
+            id.includes('node_modules/react-chartjs-2')) {
             return 'charts';
           }
 
           // Carousels & Sliders
           if (id.includes('node_modules/keen-slider') ||
-              id.includes('node_modules/swiper')) {
+            id.includes('node_modules/swiper')) {
             return 'sliders';
           }
 
           // Maps
           if (id.includes('node_modules/react-leaflet') ||
-              id.includes('node_modules/leaflet')) {
+            id.includes('node_modules/leaflet')) {
             return 'maps';
           }
 
           // Payments
           if (id.includes('node_modules/@stripe/stripe-js') ||
-              id.includes('node_modules/@stripe/react-stripe-js')) {
+            id.includes('node_modules/@stripe/react-stripe-js')) {
             return 'payments';
           }
 
           // Utilities
           if (id.includes('node_modules/lodash') ||
-              id.includes('node_modules/date-fns') ||
-              id.includes('node_modules/clsx') ||
-              id.includes('node_modules/tailwind-merge')) {
+            id.includes('node_modules/date-fns') ||
+            id.includes('node_modules/clsx') ||
+            id.includes('node_modules/tailwind-merge')) {
             return 'utils';
           }
 
@@ -239,9 +254,9 @@ export default defineConfig({
           // Returning undefined allows Vite to bundle these with their importer (App.tsx dynamic import)
           // This ensures i18n only loads when useEffect runs, after React is initialized
           if (id.includes('node_modules/i18next') ||
-              id.includes('node_modules/react-i18next') ||
-              id.includes('node_modules/i18next-browser-languagedetector') ||
-              id.includes('node_modules/i18next-http-backend')) {
+            id.includes('node_modules/react-i18next') ||
+            id.includes('node_modules/i18next-browser-languagedetector') ||
+            id.includes('node_modules/i18next-http-backend')) {
             return undefined; // Bundle with dynamic import chunk, not misc
           }
 
@@ -249,20 +264,20 @@ export default defineConfig({
           // react-router-dom calls createContext at module parse time (not runtime)
           // These libraries MUST have React available before they load
           if (id.includes('node_modules/react-router-dom') ||
-              id.includes('node_modules/react-router')) {
+            id.includes('node_modules/react-router')) {
             return undefined; // Bundle with main entry chunk to guarantee React is available
           }
 
           // Other React-dependent libraries that use Context APIs
           if (id.includes('node_modules/react-helmet-async') ||
-              id.includes('node_modules/react-hot-toast')) {
+            id.includes('node_modules/react-hot-toast')) {
             return undefined; // Bundle with main entry chunk
           }
 
           // QR & Camera
           if (id.includes('node_modules/@zxing/library') ||
-              id.includes('node_modules/qr-scanner') ||
-              id.includes('node_modules/qrcode.react')) {
+            id.includes('node_modules/qr-scanner') ||
+            id.includes('node_modules/qrcode.react')) {
             return 'qr';
           }
 
@@ -273,7 +288,7 @@ export default defineConfig({
 
           // Other misc libraries
           if (id.includes('node_modules/js-cookie') ||
-              id.includes('node_modules/uuid')) {
+            id.includes('node_modules/uuid')) {
             return 'misc';
           }
 
@@ -319,7 +334,7 @@ export default defineConfig({
       resolveDependencies: (filename, deps, { hostId, hostType }) => {
         // Ensure main chunk (with React and Router) loads before any app chunks
         if (filename.includes('App') || filename.includes('VendorRoute') ||
-            filename.includes('AdminRoute') || filename.includes('EmployeeRoute')) {
+          filename.includes('AdminRoute') || filename.includes('EmployeeRoute')) {
           return deps.filter(dep => dep.includes('index-'));
         }
         // Ensure main chunk (with React) loads before misc/router chunks

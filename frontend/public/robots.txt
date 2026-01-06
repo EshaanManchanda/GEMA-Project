@@ -29,7 +29,7 @@ Allow: /*.svg
 Allow: /*.ico
 
 # Sitemap location
-Sitemap: https://gema-events.com/sitemap.xml
+Sitemap: https://kidrove.com/sitemap.xml
 
 # Crawl-delay for being respectful to servers
 Crawl-delay: 1

@@ -20,7 +20,7 @@ interface NotificationDropdownProps {
 const NotificationDropdown: React.FC<NotificationDropdownProps> = ({ className = '' }) => {
   const [isOpen, setIsOpen] = useState(false);
   const dropdownRef = useRef<HTMLDivElement>(null);
-  
+
   const dispatch = useDispatch<AppDispatch>();
   const notifications = useSelector(selectNotifications);
   const unreadCount = useSelector(selectUnreadCount);
@@ -114,6 +114,7 @@ const NotificationDropdown: React.FC<NotificationDropdownProps> = ({ className =
             <button
               onClick={() => setIsOpen(false)}
               className="p-1 hover:bg-gray-100 rounded-full transition-colors duration-200"
+              aria-label="Close notifications"
             >
               <FaTimes className="w-3 h-3 text-gray-400" />
             </button>
@@ -138,9 +139,8 @@ const NotificationDropdown: React.FC<NotificationDropdownProps> = ({ className =
                 {notifications.slice(0, 8).map((notification) => (
                   <div
                     key={notification._id}
-                    className={`p-4 hover:bg-gray-50 cursor-pointer transition-colors duration-200 ${
-                      !notification.isRead ? 'bg-blue-50 border-l-4 border-l-blue-500' : ''
-                    }`}
+                    className={`p-4 hover:bg-gray-50 cursor-pointer transition-colors duration-200 ${!notification.isRead ? 'bg-blue-50 border-l-4 border-l-blue-500' : ''
+                      }`}
                     onClick={() => {
                       if (!notification.isRead) {
                         handleMarkAsRead(notification._id);

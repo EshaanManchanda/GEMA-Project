@@ -326,6 +326,8 @@ const EventCardImage: React.FC<EventCardImageProps> = ({
       className={imageClasses}
       loading={priority ? 'eager' : 'lazy'}
       onError={onError}
+      width="400"
+      height="300"
     />
   );
 };
@@ -622,7 +624,7 @@ const EventCard: React.FC<EventCardProps> = (props) => {
           imageFit={imageFit}
           imageHeight={imageHeight}
           priority={priority}
-          onError={() => {}}
+          onError={() => { }}
         />
         {showWishlist && <WishlistButton eventId={eventId} isInWishlist={props.isInWishlist} onToggle={props.onWishlistToggle} />}
         {renderOverlay ? renderOverlay(renderProps) : null}
@@ -702,7 +704,7 @@ const EventCard: React.FC<EventCardProps> = (props) => {
           imageFit={imageFit}
           imageHeight={imageHeight}
           priority={priority}
-          onError={() => {}}
+          onError={() => { }}
         />
         {showWishlist && <WishlistButton eventId={eventId} isInWishlist={props.isInWishlist} onToggle={props.onWishlistToggle} />}
         {renderOverlay ? renderOverlay(renderProps) : null}
@@ -779,7 +781,7 @@ const EventCard: React.FC<EventCardProps> = (props) => {
           imageFit={imageFit}
           imageHeight={imageHeight}
           priority={priority}
-          onError={() => {}}
+          onError={() => { }}
         />
         {showWishlist && <WishlistButton eventId={eventId} isInWishlist={props.isInWishlist} onToggle={props.onWishlistToggle} />}
         <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/40 to-transparent" />
@@ -840,7 +842,7 @@ const EventCard: React.FC<EventCardProps> = (props) => {
           imageFit={imageFit}
           imageHeight={imageHeight}
           priority={priority}
-          onError={() => {}}
+          onError={() => { }}
         />
         {showWishlist && <WishlistButton eventId={eventId} isInWishlist={props.isInWishlist} onToggle={props.onWishlistToggle} />}
         {renderBadges && renderBadges(renderProps)}
@@ -873,7 +875,7 @@ const EventCard: React.FC<EventCardProps> = (props) => {
           imageFit={imageFit}
           imageHeight={imageHeight}
           priority={priority}
-          onError={() => {}}
+          onError={() => { }}
         />
         {showWishlist && <WishlistButton eventId={eventId} isInWishlist={props.isInWishlist} onToggle={props.onWishlistToggle} />}
         {renderOverlay ? renderOverlay(renderProps) : null}
@@ -966,7 +968,7 @@ const EventCard: React.FC<EventCardProps> = (props) => {
           imageFit={imageFit}
           imageHeight={imageHeight}
           priority={priority}
-          onError={() => {}}
+          onError={() => { }}
         />
         {showWishlist && <WishlistButton eventId={eventId} isInWishlist={props.isInWishlist} onToggle={props.onWishlistToggle} />}
       </div>
