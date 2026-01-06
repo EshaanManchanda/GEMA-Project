@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { FaPaperPlane, FaCheckCircle } from 'react-icons/fa';
 import { motion } from 'framer-motion';
+import { Link } from 'react-router-dom';
 import { LottieAnimation } from '../animations';
 import { useInView } from 'react-intersection-observer';
 import newsletterAPI from '../../services/api/newsletterAPI';
@@ -88,19 +89,19 @@ export default function NewsletterSubscribe() {
 
   const circleVariants = {
     hidden: { scale: 0, opacity: 0 },
-    visible: { 
-      scale: 1, 
+    visible: {
+      scale: 1,
       opacity: 1,
-      transition: { 
+      transition: {
         duration: 0.8,
         ease: "easeOut"
-      } 
+      }
     },
   };
 
   return (
     <section className="w-full bg-gray-50 py-20 px-6 md:px-20 overflow-hidden">
-      <motion.div 
+      <motion.div
         ref={ref}
         variants={containerVariants}
         initial="hidden"
@@ -116,21 +117,21 @@ export default function NewsletterSubscribe() {
           >
             <span className="font-semibold text-gray-900">Stay Updated</span>
           </motion.div>
-          
-          <motion.h2 
+
+          <motion.h2
             variants={itemVariants}
             className="text-4xl font-bold text-black mb-4"
           >
             The Kidzapp Feed
           </motion.h2>
-          
-          <motion.p 
+
+          <motion.p
             variants={itemVariants}
             className="text-lg text-gray-700 mb-8"
           >
             Join our family and get the latest updates and exclusive deals sent to your inbox!
           </motion.p>
-          
+
           <motion.form
             variants={itemVariants}
             onSubmit={handleSubmit}
@@ -200,37 +201,37 @@ export default function NewsletterSubscribe() {
               )}
             </motion.button>
           </motion.form>
-          
+
           <motion.p
             variants={itemVariants}
             className="text-sm text-gray-700 mt-4"
           >
-            By subscribing, you agree to our <a href="#" className="underline hover:text-blue-600">Privacy Policy</a> and consent to receive updates from Kidzapp.
+            By subscribing, you agree to our <Link to="/privacy" className="underline hover:text-blue-600">Privacy Policy</Link> and consent to receive updates from Kidzapp.
           </motion.p>
         </div>
 
         {/* Right Image */}
-        <motion.div 
+        <motion.div
           variants={itemVariants}
           className="w-full max-w-md relative"
         >
-          <motion.div 
+          <motion.div
             variants={circleVariants}
-            className="absolute -top-10 -left-10 w-20 h-20 rounded-full" 
+            className="absolute -top-10 -left-10 w-20 h-20 rounded-full"
             style={{ backgroundColor: 'var(--secondary-color)', opacity: '0.2' }}
           ></motion.div>
-          
-          <motion.div 
+
+          <motion.div
             variants={circleVariants}
-            className="absolute -bottom-5 -right-5 w-16 h-16 rounded-full" 
+            className="absolute -bottom-5 -right-5 w-16 h-16 rounded-full"
             style={{ backgroundColor: 'var(--accent-color)', opacity: '0.15' }}
           ></motion.div>
-          
+
           <motion.img
             initial={{ opacity: 0, x: 50 }}
             animate={inView ? { opacity: 1, x: 0 } : { opacity: 0, x: 50 }}
             transition={{ duration: 0.8, delay: 0.3 }}
-            src="https://images.unsplash.com/photo-1522543558187-768b6df7c25c?w=400&h=400&fit=crop&crop=center" 
+            src="https://images.unsplash.com/photo-1522543558187-768b6df7c25c?w=400&h=400&fit=crop&crop=center"
             alt="Newsletter"
             className="w-full h-auto relative z-10"
           />

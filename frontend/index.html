@@ -1,313 +1,112 @@
 <!doctype html>
 <html lang="en">
-  <head>
-    <meta charset="UTF-8" />
-    <link rel="icon" type="image/jpeg" href="/assets/images/KidRove-Logo.jpg" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    
-    <!-- SEO Meta Tags -->
-    <meta name="description" content="Discover and book amazing kids activities, events, and educational programs in the UAE. Find the perfect activities for your children with Kidrove." />
-    <meta name="keywords" content="kids activities, children events, educational programs, family fun, kids entertainment, booking platform, UAE, Dubai" />
-    <meta name="author" content="Kidrove Team" />
-    <meta name="robots" content="index, follow" />
-    <meta name="language" content="en-US" />
-    <meta name="revisit-after" content="7 days" />
-    
-    <!-- Open Graph Meta Tags -->
-    <meta property="og:title" content="Kidrove - Kids Activities Platform" />
-    <meta property="og:description" content="Discover and book amazing kids activities, events, and educational programs in the UAE." />
-    <meta property="og:type" content="website" />
-    <meta property="og:url" content="https://kidrove.com" />
-    <meta property="og:image" content="/assets/images/KidRove-Logo.jpg" />
-    <meta property="og:site_name" content="Kidrove" />
-    <meta property="og:locale" content="en_US" />
 
-    <!-- Twitter Card Meta Tags -->
-    <meta name="twitter:card" content="summary_large_image" />
-    <meta name="twitter:title" content="Kidrove - Kids Activities Platform" />
-    <meta name="twitter:description" content="Discover and book amazing kids activities, events, and educational programs in the UAE." />
-    <meta name="twitter:image" content="/assets/images/KidRove-Logo.jpg" />
+<head>
+  <meta charset="UTF-8" />
+  <link rel="icon" type="image/jpeg" href="/assets/images/KidRove-Logo.jpg" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
 
-    <!-- Multi-Region Hreflang Tags for SEO -->
-    <link rel="alternate" hreflang="en" href="https://kidrove.com/" />
-    <link rel="alternate" hreflang="en-IN" href="https://kidrove.in/" />
-    <link rel="alternate" hreflang="en-AE" href="https://kidrove.ae/" />
-    <link rel="alternate" hreflang="x-default" href="https://kidrove.com/" />
+  <!-- SEO Meta Tags -->
+  <meta name="description"
+    content="Discover and book amazing kids activities, events, and educational programs in the UAE. Find the perfect activities for your children with Kidrove." />
+  <meta name="keywords"
+    content="kids activities, children events, educational programs, family fun, kids entertainment, booking platform, UAE, Dubai" />
+  <meta name="author" content="Kidrove Team" />
+  <meta name="robots" content="index, follow" />
+  <meta name="language" content="en-US" />
+  <meta name="revisit-after" content="7 days" />
 
-    <!-- Prevent layout shifts by setting image dimensions -->
-    <style>
-      img, picture, video, canvas, svg {
-        display: block;
-        max-width: 100%;
-        height: auto;
-      }
-      /* Reserve space for images that are likely to cause layout shifts */
-      .hero-image-container {
-        aspect-ratio: 16/9;
-        width: 100%;
-      }
-      .card-image {
-        aspect-ratio: 4/3;
-        width: 100%;
-      }
-    </style>
-    <meta name="twitter:site" content="@kidrove" />
-    
-    <!-- PWA Meta Tags -->
-    <meta name="theme-color" content="#3B82F6" />
-    <meta name="mobile-web-app-capable" content="yes" />
-    <meta name="apple-mobile-web-app-capable" content="yes" />
-    <meta name="apple-mobile-web-app-status-bar-style" content="default" />
-    <meta name="apple-mobile-web-app-title" content="Kidrove" />
-    <meta name="application-name" content="Kidrove" />
-    <meta name="msapplication-TileColor" content="#3B82F6" />
-    <meta name="msapplication-config" content="/browserconfig.xml" />
-    
-    <!-- PWA Manifest -->
-    <link rel="manifest" href="/manifest.json" />
-    
-    <!-- Apple Touch Icons -->
-    <link rel="apple-touch-icon" href="/apple-touch-icon.svg" />
-    <link rel="mask-icon" href="/icon-192x192.svg" color="#3B82F6" />
-    
-    <!-- Preconnect to external domains -->
-    <link rel="preconnect" href="https://fonts.googleapis.com" />
-    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
-    
-    <!-- Google Fonts - with display=swap for better performance -->
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&family=Cairo:wght@300;400;500;600;700;800&family=Poppins:wght@300;400;500;600;700;800&display=swap" rel="stylesheet" media="print" onload="this.media='all'" />
-    
-    <!-- Preload critical assets -->
-    <link rel="preload" fetchpriority="high" as="image" href="/assets/images/KidRove-Logo.jpg" type="image/jpeg" />
-    
-    <!-- Leaflet CSS for maps - minified for better SEO -->
-    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.min.css" crossorigin="" media="print" onload="this.media='all'" />
-    
-    <!-- Add native lazy loading and fetchpriority attributes -->
-    <script>
-      // Add lazy loading to images that are below the fold
-      document.addEventListener('DOMContentLoaded', () => {
-        const images = document.querySelectorAll('img:not([loading])');
-        images.forEach(img => {
-          // Don't lazy load images that might be in the viewport initially
-          const rect = img.getBoundingClientRect();
-          if (rect.top > window.innerHeight) {
-            img.setAttribute('loading', 'lazy');
-          } else {
-            img.setAttribute('fetchpriority', 'high');
-          }
-        });
-      });
-    </script>
-    
-    <title>Kidrove - Discover Amazing Kids Activities & Events in UAE</title>
+  <!-- Open Graph Meta Tags -->
+  <meta property="og:title" content="Kidrove - Kids Activities Platform" />
+  <meta property="og:description"
+    content="Discover and book amazing kids activities, events, and educational programs in the UAE." />
+  <meta property="og:type" content="website" />
+  <meta property="og:url" content="https://kidrove.com" />
+  <meta property="og:image" content="/assets/images/KidRove-Logo.jpg" />
+  <meta property="og:site_name" content="Kidrove" />
+  <meta property="og:locale" content="en_US" />
 
-    <!-- Organization Structured Data - Valid Schema.org -->
-    <script type="application/ld+json">
-    {
-      "@context": "https://schema.org",
-      "@type": "Organization",
-      "name": "Kidrove",
-      "description": "Discover and book amazing family events and kids activities across the UAE",
-      "url": "https://kidrove.com",
-      "logo": "https://res.cloudinary.com/dmer8oqdq/image/upload/v1763970345/KidRove-Logo_taua9n.png",
-      "contactPoint": {
-        "@type": "ContactPoint",
-        "contactType": "customer service",
-        "email": "contact@kidrove.com"
-      },
-      "sameAs": [
-        "https://www.facebook.com/kidrove",
-        "https://www.instagram.com/kidrove",
-        "https://www.twitter.com/kidrove"
-      ],
-      "areaServed": {
-        "@type": "Country",
-        "name": "United Arab Emirates"
-      },
-      "makesOffer": [
-        {
-          "@type": "Offer",
-          "itemOffered": {
-            "@type": "Service",
-            "name": "Event Management",
-            "serviceType": "Event Planning"
-          }
-        },
-        {
-          "@type": "Offer",
-          "itemOffered": {
-            "@type": "Service",
-            "name": "Kids Activities",
-            "serviceType": "Children's Entertainment"
-          }
-        },
-        {
-          "@type": "Offer",
-          "itemOffered": {
-            "@type": "Service",
-            "name": "Educational Programs",
-            "serviceType": "Education"
-          }
-        }
-      ]
+  <!-- Twitter Card Meta Tags -->
+  <meta name="twitter:card" content="summary_large_image" />
+  <meta name="twitter:title" content="Kidrove - Kids Activities Platform" />
+  <meta name="twitter:description"
+    content="Discover and book amazing kids activities, events, and educational programs in the UAE." />
+  <meta name="twitter:image" content="/assets/images/KidRove-Logo.jpg" />
+
+  <!-- Multi-Region Hreflang Tags are now handled dynamically by SEO.tsx -->
+
+  <!-- Prevent layout shifts by setting image dimensions -->
+  <style>
+    img,
+    picture,
+    video,
+    canvas,
+    svg {
+      display: block;
+      max-width: 100%;
+      height: auto;
     }
-    </script>
 
-    <!-- CRITICAL: Synchronous polyfill - Runs BEFORE any module scripts load -->
-    <script>
-      (function() {
-        'use strict';
+    /* Reserve space for images that are likely to cause layout shifts */
+    .hero-image-container {
+      aspect-ratio: 16/9;
+      width: 100%;
+    }
 
-        console.log('[Inline Polyfill] 🚀 Starting synchronous global patching...');
+    .card-image {
+      aspect-ratio: 4/3;
+      width: 100%;
+    }
+  </style>
+  <meta name="twitter:site" content="@kidrove" />
 
-        // Ensure window.global exists and points to window
-        if (typeof window !== 'undefined' && !window.global) {
-          window.global = window;
-          console.log('[Inline Polyfill] ✅ window.global = window');
-        }
+  <!-- PWA Meta Tags -->
+  <meta name="theme-color" content="#3B82F6" />
+  <meta name="mobile-web-app-capable" content="yes" />
+  <meta name="apple-mobile-web-app-capable" content="yes" />
+  <meta name="apple-mobile-web-app-status-bar-style" content="default" />
+  <meta name="apple-mobile-web-app-title" content="Kidrove" />
+  <meta name="application-name" content="Kidrove" />
+  <meta name="msapplication-TileColor" content="#3B82F6" />
+  <meta name="msapplication-config" content="/browserconfig.xml" />
 
-        // Get all global object references
-        var allGlobals = [];
-        if (typeof globalThis !== 'undefined') allGlobals.push(globalThis);
-        if (typeof window !== 'undefined') {
-          allGlobals.push(window);
-          if (window.global && window.global !== window) allGlobals.push(window.global);
-        }
-        if (typeof self !== 'undefined') allGlobals.push(self);
-        if (typeof global !== 'undefined') allGlobals.push(global);
+  <!-- PWA Manifest -->
+  <link rel="manifest" href="/manifest.json" />
 
-        // Remove duplicates
-        allGlobals = allGlobals.filter(function(g, i, arr) {
-          return arr.indexOf(g) === i;
-        });
+  <!-- Apple Touch Icons -->
+  <link rel="apple-touch-icon" href="/apple-touch-icon.svg" />
+  <link rel="mask-icon" href="/icon-192x192.svg" color="#3B82F6" />
 
-        // Get fetch API references
-        var fetchAPIs = {};
-        try {
-          if (typeof fetch !== 'undefined') fetchAPIs.fetch = fetch;
-          if (typeof Request !== 'undefined') fetchAPIs.Request = Request;
-          if (typeof Response !== 'undefined') fetchAPIs.Response = Response;
-          if (typeof Headers !== 'undefined') fetchAPIs.Headers = Headers;
-        } catch (e) {
-          console.warn('[Inline Polyfill] ⚠️ Error getting fetch APIs:', e);
-        }
+  <!-- Preconnect to external domains -->
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
 
-        // Patch all global objects
-        var patchCount = 0;
-        allGlobals.forEach(function(globalObj) {
-          if (!globalObj || typeof globalObj !== 'object') return;
+  <!-- Google Fonts - with display=swap for better performance -->
+  <link
+    href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&family=Cairo:wght@300;400;500;600;700;800&family=Poppins:wght@300;400;500;600;700;800&display=swap"
+    rel="stylesheet" media="print" onload="this.media='all'" />
 
-          Object.keys(fetchAPIs).forEach(function(apiName) {
-            var apiValue = fetchAPIs[apiName];
-            if (!apiValue) return;
+  <!-- Preload critical assets -->
+  <link rel="preload" fetchpriority="high" as="image" href="/assets/images/KidRove-Logo.jpg" type="image/jpeg" />
 
-            try {
-              // Check if already enumerable
-              var desc = Object.getOwnPropertyDescriptor(globalObj, apiName);
-              if (desc && desc.enumerable && desc.value === apiValue) {
-                return; // Already patched correctly
-              }
+  <!-- Leaflet CSS for maps - minified for better SEO -->
+  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" media="print"
+    onload="this.media='all'" />
 
-              // Delete and redefine as enumerable
-              if (desc) delete globalObj[apiName];
+  <!-- Add native lazy loading and fetchpriority attributes -->
 
-              Object.defineProperty(globalObj, apiName, {
-                value: apiValue,
-                writable: true,
-                enumerable: true,  // CRITICAL: Must be enumerable for destructuring
-                configurable: true
-              });
 
-              patchCount++;
-            } catch (e) {
-              // Fallback: direct assignment
-              try {
-                globalObj[apiName] = apiValue;
-                patchCount++;
-              } catch (e2) {
-                console.warn('[Inline Polyfill] Failed to patch ' + apiName + ':', e2);
-              }
-            }
-          });
-        });
+  <title>Kidrove - Discover Amazing Kids Activities & Events in UAE</title>
 
-        // Verification test
-        var primaryGlobal = window.global || window;
-        var testPassed = false;
-        try {
-          var test = (function(g) {
-            var r = g.Request, res = g.Response, h = g.Headers, f = g.fetch;
-            return !!(r && res && h && f);
-          })(primaryGlobal);
-          testPassed = test;
-        } catch (e) {
-          console.error('[Inline Polyfill] ❌ Destructuring test failed:', e);
-        }
+  <!-- Organization Structured Data is handled dynamically by SEO.tsx -->
 
-        // Log results
-        console.log('[Inline Polyfill] ✅ Patched ' + patchCount + ' properties across ' + allGlobals.length + ' global objects');
-        console.log('[Inline Polyfill] ' + (testPassed ? '✅' : '❌') + ' Destructuring test: ' + (testPassed ? 'PASSED' : 'FAILED'));
+  <!-- SEO: Dynamic Meta Tag Updater for fresh content delivery -->
+  <script src="/update-meta.js"></script>
+</head>
 
-        // Store status
-        window.__INLINE_POLYFILL_STATUS__ = {
-          timestamp: Date.now(),
-          patchCount: patchCount,
-          testPassed: testPassed,
-          apis: {
-            fetch: !!fetchAPIs.fetch,
-            Request: !!fetchAPIs.Request,
-            Response: !!fetchAPIs.Response,
-            Headers: !!fetchAPIs.Headers
-          }
-        };
+<body>
+  <div id="root"></div>
+  <script type="module" src="/src/main.tsx"></script>
+</body>
 
-        console.log('[Inline Polyfill] 🎉 Complete - Module scripts can now load safely');
-      })();
-    </script>
-
-    <!-- CRITICAL: React Availability Guard -->
-    <!-- Ensures React is loaded before other chunks that depend on it -->
-    <script>
-      (function() {
-        'use strict';
-
-        // Flag to track React loading status
-        window.__REACT_LOADED__ = false;
-
-        // Promise-based wait function for chunks that need React
-        window.__waitForReact__ = function() {
-          return new Promise(function(resolve) {
-            var checkInterval = 10; // Check every 10ms
-            var maxWait = 5000; // Timeout after 5 seconds
-            var elapsed = 0;
-
-            var check = function() {
-              if (window.__REACT_LOADED__) {
-                console.log('[React Guard] ✅ React confirmed loaded');
-                resolve();
-              } else if (elapsed >= maxWait) {
-                console.error('[React Guard] ❌ Timeout waiting for React');
-                resolve(); // Resolve anyway to prevent hanging
-              } else {
-                elapsed += checkInterval;
-                setTimeout(check, checkInterval);
-              }
-            };
-
-            check();
-          });
-        };
-
-        console.log('[React Guard] 🛡️ Guard initialized - waiting for React...');
-      })();
-    </script>
-
-    <!-- SEO: Dynamic Meta Tag Updater for fresh content delivery -->
-    <script src="/update-meta.js"></script>
-  </head>
-  <body>
-    <div id="root"></div>
-    <script type="module" src="/src/main.tsx"></script>
-  </body>
 </html>

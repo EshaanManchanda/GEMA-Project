@@ -5,7 +5,9 @@
   "outputDirectory": "dist",
   "installCommand": "npm install --include=dev",
   "framework": "vite",
-  "regions": ["iad1"],
+  "regions": [
+    "iad1"
+  ],
   "build": {
     "env": {
       "NODE_ENV": "development",
@@ -119,11 +121,15 @@
     },
     {
       "source": "/sitemap.xml",
-      "destination": "/sitemap.xml"
+      "destination": "https://gema-project.onrender.com/sitemap.xml"
+    },
+    {
+      "source": "/sitemap-(.*).xml",
+      "destination": "https://gema-project.onrender.com/sitemap-$1.xml"
     },
     {
       "source": "/robots.txt",
-      "destination": "/robots.txt"
+      "destination": "https://gema-project.onrender.com/robots.txt"
     },
     {
       "source": "/(.*)",

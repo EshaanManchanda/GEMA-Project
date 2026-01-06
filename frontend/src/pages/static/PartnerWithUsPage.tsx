@@ -1,12 +1,13 @@
-import React, { useState } from 'react';
+import React, { useState, ChangeEvent, FormEvent } from 'react';
+import { Link } from 'react-router-dom';
 import { motion } from 'framer-motion';
 import api from '../../services/api';
 import { getAppName } from '../../utils/brandConfig';
-import { 
-  FiUsers, 
-  FiTrendingUp, 
-  FiShield, 
-  FiGlobe, 
+import {
+  FiUsers,
+  FiTrendingUp,
+  FiShield,
+  FiGlobe,
   FiCheckCircle,
   FiMail,
   FiPhone,
@@ -44,25 +45,25 @@ const PartnerWithUsPage: React.FC = () => {
 
   const validateForm = () => {
     const errors: Record<string, string> = {};
-    
+
     if (!formData.name.trim()) {
       errors.name = 'Name is required';
     }
-    
+
     if (!formData.email.trim()) {
       errors.email = 'Email is required';
     } else if (!/\S+@\S+\.\S+/.test(formData.email)) {
       errors.email = 'Please enter a valid email address';
     }
-    
+
     if (!formData.message.trim()) {
       errors.message = 'Message is required';
     }
-    
+
     if (!formData.agreeToTerms) {
       errors.agreeToTerms = 'You must agree to the terms and conditions';
     }
-    
+
     setFormErrors(errors);
     return Object.keys(errors).length === 0;
   };
@@ -73,7 +74,7 @@ const PartnerWithUsPage: React.FC = () => {
       ...prev,
       [name]: type === 'checkbox' ? (e.target as HTMLInputElement).checked : value
     }));
-    
+
     // Clear error when user starts typing
     if (formErrors[name]) {
       setFormErrors(prev => ({
@@ -302,7 +303,7 @@ const PartnerWithUsPage: React.FC = () => {
     <>
       <div className="min-h-screen bg-gradient-to-br from-blue-50 via-white to-purple-50">
         {/* Hero Section */}
-        <motion.div 
+        <motion.div
           initial={{ opacity: 0 }}
           animate={{ opacity: 1 }}
           transition={{ duration: 0.8 }}
@@ -313,14 +314,14 @@ const PartnerWithUsPage: React.FC = () => {
             <div className="absolute top-20 left-10 w-72 h-72 rounded-full bg-gradient-to-r from-blue-400 to-purple-400 blur-3xl"></div>
             <div className="absolute bottom-20 right-10 w-96 h-96 rounded-full bg-gradient-to-r from-purple-400 to-pink-400 blur-3xl"></div>
           </div>
-          
+
           <div className="max-w-7xl mx-auto text-center relative z-10">
             <motion.div
               initial={{ opacity: 0, y: 30 }}
               animate={{ opacity: 1, y: 0 }}
               transition={{ delay: 0.2 }}
               className="inline-flex items-center px-4 py-2 rounded-full text-sm font-medium mb-8"
-              style={{ 
+              style={{
                 backgroundColor: 'rgba(0, 142, 199, 0.1)',
                 color: 'var(--primary-color)',
                 border: '1px solid rgba(0, 142, 199, 0.2)'
@@ -329,8 +330,8 @@ const PartnerWithUsPage: React.FC = () => {
               <FiGift className="mr-2" />
               Join Our Growing Community
             </motion.div>
-            
-            <motion.h1 
+
+            <motion.h1
               initial={{ opacity: 0, y: 30 }}
               animate={{ opacity: 1, y: 0 }}
               transition={{ delay: 0.3 }}
@@ -338,8 +339,8 @@ const PartnerWithUsPage: React.FC = () => {
             >
               Partner with {getAppName()}
             </motion.h1>
-            
-            <motion.p 
+
+            <motion.p
               initial={{ opacity: 0, y: 30 }}
               animate={{ opacity: 1, y: 0 }}
               transition={{ delay: 0.4 }}
@@ -348,16 +349,16 @@ const PartnerWithUsPage: React.FC = () => {
               Whether you're an <span className="font-semibold" style={{ color: 'var(--primary-color)' }}>event organizer</span>, <span className="font-semibold" style={{ color: 'var(--accent-color)' }}>influencer</span>, <span className="font-semibold" style={{ color: 'var(--primary-color)' }}>school</span>, or <span className="font-semibold" style={{ color: 'var(--accent-color)' }}>affiliate</span>, {getAppName()} helps you connect with thousands of parents looking for meaningful activities for their children.
             </motion.p>
 
-            <motion.div 
+            <motion.div
               initial={{ opacity: 0, y: 30 }}
               animate={{ opacity: 1, y: 0 }}
               transition={{ delay: 0.5 }}
               className="flex flex-col sm:flex-row gap-4 justify-center"
             >
-              <button 
+              <button
                 onClick={() => document.getElementById('partnership-form')?.scrollIntoView({ behavior: 'smooth' })}
                 className="group px-8 py-4 font-semibold rounded-xl transition-all duration-300 transform hover:scale-105 shadow-lg hover:shadow-xl"
-                style={{ 
+                style={{
                   background: 'linear-gradient(135deg, var(--primary-color) 0%, #0070a3 100%)',
                   color: 'white'
                 }}
@@ -367,11 +368,11 @@ const PartnerWithUsPage: React.FC = () => {
                   <FiArrowRight className="ml-2 group-hover:translate-x-1 transition-transform" />
                 </span>
               </button>
-              
-              <button 
+
+              <button
                 onClick={() => window.location.href = '/contact'}
                 className="group px-8 py-4 font-semibold rounded-xl border-2 transition-all duration-300 transform hover:scale-105 shadow-lg hover:shadow-xl"
-                style={{ 
+                style={{
                   borderColor: 'var(--accent-color)',
                   color: 'var(--accent-color)',
                   backgroundColor: 'transparent'
@@ -395,7 +396,7 @@ const PartnerWithUsPage: React.FC = () => {
         </motion.div>
 
         {/* Why Partner Section */}
-        <motion.div 
+        <motion.div
           variants={containerVariants}
           initial="hidden"
           whileInView="visible"
@@ -419,7 +420,7 @@ const PartnerWithUsPage: React.FC = () => {
                   variants={itemVariants}
                   className={`${benefit.bgColor} rounded-2xl shadow-lg p-8 text-center hover:shadow-xl transition-all duration-300 transform hover:-translate-y-2 border border-white/50`}
                 >
-                  <div 
+                  <div
                     className={`w-20 h-20 mx-auto mb-6 rounded-2xl ${benefit.iconBg} flex items-center justify-center shadow-lg`}
                   >
                     <benefit.icon className="w-10 h-10" style={{ color: benefit.color }} />
@@ -435,7 +436,7 @@ const PartnerWithUsPage: React.FC = () => {
         </motion.div>
 
         {/* Partnership Opportunities */}
-        <motion.div 
+        <motion.div
           variants={containerVariants}
           initial="hidden"
           whileInView="visible"
@@ -445,7 +446,7 @@ const PartnerWithUsPage: React.FC = () => {
           <div className="max-w-7xl mx-auto">
             <motion.div variants={itemVariants} className="text-center mb-20">
               <div className="inline-flex items-center px-4 py-2 rounded-full text-sm font-medium mb-6"
-                style={{ 
+                style={{
                   backgroundColor: 'rgba(0, 142, 199, 0.1)',
                   color: 'var(--primary-color)',
                   border: '1px solid rgba(0, 142, 199, 0.2)'
@@ -468,16 +469,15 @@ const PartnerWithUsPage: React.FC = () => {
                 <button
                   key={type.id}
                   onClick={() => setActiveTab(type.id)}
-                  className={`px-8 py-4 rounded-2xl font-bold transition-all duration-300 transform hover:scale-105 shadow-lg text-lg ${
-                    activeTab === type.id
-                      ? 'text-white shadow-2xl scale-105'
-                      : 'text-gray-600 hover:text-gray-800 bg-white hover:bg-gray-50'
-                  }`}
+                  className={`px-8 py-4 rounded-2xl font-bold transition-all duration-300 transform hover:scale-105 shadow-lg text-lg ${activeTab === type.id
+                    ? 'text-white shadow-2xl scale-105'
+                    : 'text-gray-600 hover:text-gray-800 bg-white hover:bg-gray-50'
+                    }`}
                   style={{
-                    background: activeTab === type.id 
-                      ? (type.id === 'vendor' || type.id === 'school' 
-                          ? 'linear-gradient(135deg, #008EC7 0%, #0070a3 100%)'
-                          : 'linear-gradient(135deg, #8B4513 0%, #A0522D 100%)')
+                    background: activeTab === type.id
+                      ? (type.id === 'vendor' || type.id === 'school'
+                        ? 'linear-gradient(135deg, #008EC7 0%, #0070a3 100%)'
+                        : 'linear-gradient(135deg, #8B4513 0%, #A0522D 100%)')
                       : 'white',
                     border: activeTab === type.id ? 'none' : '2px solid #e5e7eb',
                     color: activeTab === type.id ? 'white' : (type.id === 'vendor' || type.id === 'school' ? '#008EC7' : '#8B4513')
@@ -502,17 +502,17 @@ const PartnerWithUsPage: React.FC = () => {
               {partnershipTypes.map((type) => (
                 activeTab === type.id && (
                   <div key={type.id} className="text-center">
-                    <div 
+                    <div
                       className="w-28 h-28 mx-auto mb-8 rounded-3xl flex items-center justify-center shadow-2xl"
-                      style={{ 
-                        background: type.id === 'vendor' || type.id === 'school' 
+                      style={{
+                        background: type.id === 'vendor' || type.id === 'school'
                           ? 'linear-gradient(135deg, #008EC7 0%, #0070a3 100%)'
                           : 'linear-gradient(135deg, #8B4513 0%, #A0522D 100%)'
                       }}
                     >
                       <type.icon className="w-14 h-14 text-white" />
                     </div>
-                    <h3 className="text-4xl font-bold mb-6" style={{ 
+                    <h3 className="text-4xl font-bold mb-6" style={{
                       color: type.id === 'vendor' || type.id === 'school' ? '#008EC7' : '#8B4513'
                     }}>
                       {type.title}
@@ -523,7 +523,7 @@ const PartnerWithUsPage: React.FC = () => {
                     <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-12">
                       {type.features.map((feature, index) => (
                         <div key={index} className="flex items-center justify-center bg-white rounded-2xl p-6 shadow-lg border border-gray-100">
-                          <FiCheckCircle className="w-7 h-7 mr-4" style={{ 
+                          <FiCheckCircle className="w-7 h-7 mr-4" style={{
                             color: type.id === 'vendor' || type.id === 'school' ? '#008EC7' : '#8B4513'
                           }} />
                           <span className="text-gray-700 font-semibold text-lg">{feature}</span>
@@ -533,8 +533,8 @@ const PartnerWithUsPage: React.FC = () => {
                     <button
                       onClick={() => document.getElementById('partnership-form')?.scrollIntoView({ behavior: 'smooth' })}
                       className="group px-12 py-5 font-bold rounded-2xl transition-all duration-300 transform hover:scale-105 shadow-xl hover:shadow-2xl text-xl"
-                      style={{ 
-                        background: type.id === 'vendor' || type.id === 'school' 
+                      style={{
+                        background: type.id === 'vendor' || type.id === 'school'
                           ? 'linear-gradient(135deg, #008EC7 0%, #0070a3 100%)'
                           : 'linear-gradient(135deg, #8B4513 0%, #A0522D 100%)',
                         color: 'white'
@@ -553,7 +553,7 @@ const PartnerWithUsPage: React.FC = () => {
         </motion.div>
 
         {/* How It Works */}
-        <motion.div 
+        <motion.div
           variants={containerVariants}
           initial="hidden"
           whileInView="visible"
@@ -563,7 +563,7 @@ const PartnerWithUsPage: React.FC = () => {
           <div className="max-w-7xl mx-auto">
             <motion.div variants={itemVariants} className="text-center mb-20">
               <div className="inline-flex items-center px-4 py-2 rounded-full text-sm font-medium mb-6"
-                style={{ 
+                style={{
                   backgroundColor: 'rgba(0, 142, 199, 0.1)',
                   color: 'var(--primary-color)',
                   border: '1px solid rgba(0, 142, 199, 0.2)'
@@ -583,7 +583,7 @@ const PartnerWithUsPage: React.FC = () => {
             <div className="relative">
               {/* Connection Line */}
               <div className="hidden lg:block absolute top-24 left-0 right-0 h-0.5 bg-gradient-to-r from-blue-200 via-purple-200 to-pink-200"></div>
-              
+
               <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-8 lg:gap-4">
                 {steps.map((step, index) => (
                   <motion.div
@@ -593,19 +593,19 @@ const PartnerWithUsPage: React.FC = () => {
                   >
                     {/* Step Number Badge */}
                     <div className="absolute -top-4 left-1/2 transform -translate-x-1/2 z-10">
-                      <div 
+                      <div
                         className="w-8 h-8 rounded-full flex items-center justify-center text-white font-bold text-sm shadow-lg"
                         style={{ backgroundColor: 'var(--primary-color)' }}
                       >
                         {index + 1}
                       </div>
                     </div>
-                    
+
                     {/* Main Card */}
                     <div className="bg-white rounded-3xl p-8 shadow-lg hover:shadow-2xl transition-all duration-300 transform group-hover:-translate-y-2 border border-gray-100 mt-4">
-                      <div 
+                      <div
                         className="w-20 h-20 mx-auto mb-6 rounded-3xl flex items-center justify-center shadow-lg group-hover:scale-110 transition-transform duration-300"
-                        style={{ 
+                        style={{
                           background: `linear-gradient(135deg, var(--primary-color) 0%, var(--accent-color) 100%)`
                         }}
                       >
@@ -624,7 +624,7 @@ const PartnerWithUsPage: React.FC = () => {
         </motion.div>
 
         {/* Revenue Opportunities */}
-        <motion.div 
+        <motion.div
           variants={containerVariants}
           initial="hidden"
           whileInView="visible"
@@ -634,7 +634,7 @@ const PartnerWithUsPage: React.FC = () => {
           <div className="max-w-7xl mx-auto">
             <motion.div variants={itemVariants} className="text-center mb-20">
               <div className="inline-flex items-center px-4 py-2 rounded-full text-sm font-medium mb-6"
-                style={{ 
+                style={{
                   backgroundColor: 'rgba(0, 142, 199, 0.1)',
                   color: 'var(--primary-color)',
                   border: '1px solid rgba(0, 142, 199, 0.2)'
@@ -655,7 +655,7 @@ const PartnerWithUsPage: React.FC = () => {
             <div className="hidden lg:block overflow-hidden rounded-3xl shadow-2xl border border-gray-100">
               <table className="w-full bg-white">
                 <thead>
-                  <tr 
+                  <tr
                     className="bg-gradient-to-r from-blue-600 via-purple-600 to-pink-600"
                   >
                     <th className="px-8 py-6 text-left text-white font-bold text-lg">Partnership Type</th>
@@ -779,7 +779,7 @@ const PartnerWithUsPage: React.FC = () => {
         </motion.div>
 
         {/* Testimonials */}
-        <motion.div 
+        <motion.div
           variants={containerVariants}
           initial="hidden"
           whileInView="visible"
@@ -789,7 +789,7 @@ const PartnerWithUsPage: React.FC = () => {
           <div className="max-w-7xl mx-auto">
             <motion.div variants={itemVariants} className="text-center mb-20">
               <div className="inline-flex items-center px-4 py-2 rounded-full text-sm font-medium mb-6"
-                style={{ 
+                style={{
                   backgroundColor: 'rgba(0, 142, 199, 0.1)',
                   color: 'var(--primary-color)',
                   border: '1px solid rgba(0, 142, 199, 0.2)'
@@ -818,20 +818,20 @@ const PartnerWithUsPage: React.FC = () => {
                     style={{ backgroundColor: 'var(--primary-color)' }}
                   >
                     <svg className="w-8 h-8 text-white" fill="currentColor" viewBox="0 0 24 24">
-                      <path d="M14.017 21v-7.391c0-5.704 3.731-9.57 8.983-10.609l.995 2.151c-2.432.917-3.995 3.638-3.995 5.849h4v10h-9.983zm-14.017 0v-7.391c0-5.704 3.748-9.57 9-10.609l.996 2.151c-2.433.917-3.996 3.638-3.996 5.849h4v10h-10z"/>
+                      <path d="M14.017 21v-7.391c0-5.704 3.731-9.57 8.983-10.609l.995 2.151c-2.432.917-3.995 3.638-3.995 5.849h4v10h-9.983zm-14.017 0v-7.391c0-5.704 3.748-9.57 9-10.609l.996 2.151c-2.433.917-3.996 3.638-3.996 5.849h4v10h-10z" />
                     </svg>
                   </div>
-                  
+
                   {/* Rating */}
                   <div className="flex mb-6">
                     {[...Array(testimonial.rating)].map((_, i) => (
                       <FiStar key={i} className="w-6 h-6 mr-1" style={{ color: 'var(--primary-color)' }} />
                     ))}
                   </div>
-                  
+
                   {/* Content */}
                   <p className="text-gray-600 mb-8 italic text-lg leading-relaxed">"{testimonial.content}"</p>
-                  
+
                   {/* Author */}
                   <div className="flex items-center">
                     <div className="w-12 h-12 rounded-full bg-gradient-to-r from-blue-400 to-purple-400 flex items-center justify-center text-white font-bold text-lg mr-4">
@@ -874,7 +874,7 @@ const PartnerWithUsPage: React.FC = () => {
         </motion.div>
 
         {/* Partnership Form */}
-        <motion.div 
+        <motion.div
           variants={containerVariants}
           initial="hidden"
           whileInView="visible"
@@ -918,11 +918,10 @@ const PartnerWithUsPage: React.FC = () => {
                       value={formData.name}
                       onChange={handleChange}
                       required
-                      className={`w-full px-4 py-4 border-2 rounded-xl focus:outline-none focus:ring-4 transition-all duration-300 ${
-                        formErrors.name 
-                          ? 'border-red-300 focus:border-red-500 focus:ring-red-100' 
-                          : 'border-gray-200 focus:border-blue-500 focus:ring-blue-100'
-                      }`}
+                      className={`w-full px-4 py-4 border-2 rounded-xl focus:outline-none focus:ring-4 transition-all duration-300 ${formErrors.name
+                        ? 'border-red-300 focus:border-red-500 focus:ring-red-100'
+                        : 'border-gray-200 focus:border-blue-500 focus:ring-blue-100'
+                        }`}
                       placeholder="Enter your full name"
                     />
                     {formErrors.name && (
@@ -944,11 +943,10 @@ const PartnerWithUsPage: React.FC = () => {
                       value={formData.email}
                       onChange={handleChange}
                       required
-                      className={`w-full px-4 py-4 border-2 rounded-xl focus:outline-none focus:ring-4 transition-all duration-300 ${
-                        formErrors.email 
-                          ? 'border-red-300 focus:border-red-500 focus:ring-red-100' 
-                          : 'border-gray-200 focus:border-blue-500 focus:ring-blue-100'
-                      }`}
+                      className={`w-full px-4 py-4 border-2 rounded-xl focus:outline-none focus:ring-4 transition-all duration-300 ${formErrors.email
+                        ? 'border-red-300 focus:border-red-500 focus:ring-red-100'
+                        : 'border-gray-200 focus:border-blue-500 focus:ring-blue-100'
+                        }`}
                       placeholder="Enter your email address"
                     />
                     {formErrors.email && (
@@ -1037,11 +1035,10 @@ const PartnerWithUsPage: React.FC = () => {
                     required
                     rows={6}
                     placeholder={`Tell us about your organization and how you'd like to partner with ${getAppName()}...`}
-                    className={`w-full px-4 py-4 border-2 rounded-xl focus:outline-none focus:ring-4 transition-all duration-300 resize-none ${
-                      formErrors.message 
-                        ? 'border-red-300 focus:border-red-500 focus:ring-red-100' 
-                        : 'border-gray-200 focus:border-blue-500 focus:ring-blue-100'
-                    }`}
+                    className={`w-full px-4 py-4 border-2 rounded-xl focus:outline-none focus:ring-4 transition-all duration-300 resize-none ${formErrors.message
+                      ? 'border-red-300 focus:border-red-500 focus:ring-red-100'
+                      : 'border-gray-200 focus:border-blue-500 focus:ring-blue-100'
+                      }`}
                   />
                   {formErrors.message && (
                     <p className="mt-2 text-sm text-red-600 flex items-center">
@@ -1063,7 +1060,7 @@ const PartnerWithUsPage: React.FC = () => {
                     style={{ accentColor: 'var(--primary-color)' }}
                   />
                   <label htmlFor="agreeToTerms" className="text-sm text-gray-600 leading-relaxed">
-                    I agree to the <a href="/terms" className="underline font-semibold" style={{ color: 'var(--primary-color)' }}>Terms & Conditions</a> and <a href="/privacy" className="underline font-semibold" style={{ color: 'var(--accent-color)' }}>Privacy Policy</a>
+                    I agree to the <Link to="/terms" className="underline font-semibold" style={{ color: 'var(--primary-color)' }}>Terms & Conditions</Link> and <Link to="/privacy" className="underline font-semibold" style={{ color: 'var(--accent-color)' }}>Privacy Policy</Link>
                   </label>
                 </div>
                 {formErrors.agreeToTerms && (
@@ -1084,7 +1081,7 @@ const PartnerWithUsPage: React.FC = () => {
                     type="submit"
                     disabled={isSubmitting}
                     className="group px-12 py-5 font-bold rounded-xl transition-all duration-300 transform hover:scale-105 disabled:opacity-60 disabled:cursor-not-allowed disabled:transform-none shadow-lg hover:shadow-xl text-lg"
-                    style={{ 
+                    style={{
                       background: 'linear-gradient(135deg, var(--primary-color) 0%, var(--accent-color) 100%)',
                       color: 'white'
                     }}
@@ -1111,7 +1108,7 @@ const PartnerWithUsPage: React.FC = () => {
         </motion.div>
 
         {/* Footer CTA */}
-        <motion.div 
+        <motion.div
           variants={containerVariants}
           initial="hidden"
           whileInView="visible"
@@ -1123,12 +1120,12 @@ const PartnerWithUsPage: React.FC = () => {
             <div className="absolute top-10 left-10 w-96 h-96 rounded-full bg-gradient-to-r from-blue-400 to-purple-400 blur-3xl"></div>
             <div className="absolute bottom-10 right-10 w-80 h-80 rounded-full bg-gradient-to-r from-purple-400 to-pink-400 blur-3xl"></div>
           </div>
-          
+
           <div className="max-w-6xl mx-auto text-center relative z-10">
             <motion.div variants={itemVariants}>
               {/* Badge */}
               <div className="inline-flex items-center px-6 py-3 rounded-full text-sm font-medium mb-8"
-                style={{ 
+                style={{
                   backgroundColor: 'rgba(0, 142, 199, 0.1)',
                   color: 'var(--primary-color)',
                   border: '1px solid rgba(0, 142, 199, 0.2)'
@@ -1137,23 +1134,23 @@ const PartnerWithUsPage: React.FC = () => {
                 <FiHeart className="mr-2" />
                 Ready to Start Your Journey?
               </div>
-              
+
               {/* Main Heading */}
               <h2 className="text-5xl md:text-6xl font-bold mb-8 bg-gradient-to-r from-blue-600 via-purple-600 to-pink-600 bg-clip-text text-transparent">
                 Ready to Partner?
               </h2>
-              
+
               {/* Subtitle */}
               <p className="text-2xl text-gray-600 mb-12 max-w-4xl mx-auto leading-relaxed">
                 Join thousands of partners already growing with {getAppName()} and start building meaningful connections with families today.
               </p>
-              
+
               {/* CTA Buttons */}
               <div className="flex flex-col sm:flex-row gap-6 justify-center mb-16">
-                <button 
+                <button
                   onClick={() => document.getElementById('partnership-form')?.scrollIntoView({ behavior: 'smooth' })}
                   className="group px-12 py-6 font-bold rounded-2xl transition-all duration-300 transform hover:scale-105 shadow-xl hover:shadow-2xl text-xl"
-                  style={{ 
+                  style={{
                     background: 'linear-gradient(135deg, var(--primary-color) 0%, #0070a3 100%)',
                     color: 'white'
                   }}
@@ -1164,11 +1161,11 @@ const PartnerWithUsPage: React.FC = () => {
                     <FiArrowRight className="ml-3 group-hover:translate-x-1 transition-transform" />
                   </span>
                 </button>
-                
-                <button 
+
+                <button
                   onClick={() => window.location.href = '/contact'}
                   className="group px-12 py-6 font-bold rounded-2xl border-2 transition-all duration-300 transform hover:scale-105 shadow-xl hover:shadow-2xl text-xl"
-                  style={{ 
+                  style={{
                     borderColor: 'var(--accent-color)',
                     color: 'var(--accent-color)',
                     backgroundColor: 'transparent'
@@ -1188,7 +1185,7 @@ const PartnerWithUsPage: React.FC = () => {
                   </span>
                 </button>
               </div>
-              
+
               {/* Additional Info */}
               <div className="grid grid-cols-1 md:grid-cols-3 gap-8 max-w-4xl mx-auto">
                 <div className="text-center">
@@ -1204,7 +1201,7 @@ const PartnerWithUsPage: React.FC = () => {
                     Get approved within 24 hours
                   </p>
                 </div>
-                
+
                 <div className="text-center">
                   <div className="w-16 h-16 rounded-2xl flex items-center justify-center mx-auto mb-4"
                     style={{ backgroundColor: 'var(--accent-color)' }}
@@ -1218,7 +1215,7 @@ const PartnerWithUsPage: React.FC = () => {
                     Protected payments & data
                   </p>
                 </div>
-                
+
                 <div className="text-center">
                   <div className="w-16 h-16 rounded-2xl flex items-center justify-center mx-auto mb-4"
                     style={{ backgroundColor: 'var(--primary-color)' }}
@@ -1233,7 +1230,7 @@ const PartnerWithUsPage: React.FC = () => {
                   </p>
                 </div>
               </div>
-              
+
               {/* Social Proof */}
               <div className="mt-16 pt-8 border-t border-gray-200">
                 <p className="text-gray-500 text-sm mb-4">Trusted by partners worldwide</p>

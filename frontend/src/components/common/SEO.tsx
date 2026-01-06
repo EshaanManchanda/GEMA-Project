@@ -1,6 +1,6 @@
 import React from 'react';
 import { Helmet } from 'react-helmet-async';
-import { getAppNameFull, getTeamName } from '../../utils/brandConfig';
+import { getAppNameFull } from '../../utils/brandConfig';
 import { useLocation } from 'react-router-dom';
 import { config } from '../../config';
 
@@ -136,6 +136,12 @@ const SEO: React.FC<SEOProps> = ({
       <link rel="preconnect" href="https://fonts.googleapis.com" />
       <link rel="preconnect" href="https://fonts.gstatic.com" crossOrigin="anonymous" />
       <link rel="preconnect" href="https://res.cloudinary.com" />
+
+      {/* Dynamic Multi-Region Hreflang Tags */}
+      <link rel="alternate" hrefLang="en" href={`https://kidrove.com${location.pathname}${location.search}`} />
+      <link rel="alternate" hrefLang="en-IN" href={`https://kidrove.in${location.pathname}${location.search}`} />
+      <link rel="alternate" hrefLang="en-AE" href={`https://kidrove.ae${location.pathname}${location.search}`} />
+      <link rel="alternate" hrefLang="x-default" href={`https://kidrove.com${location.pathname}${location.search}`} />
     </Helmet>
   );
 };

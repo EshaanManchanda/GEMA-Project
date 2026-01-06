@@ -158,6 +158,55 @@ export const authenticate = async (req: Request, res: Response, next: NextFuncti
 };
 
 /**
+ * Middleware to optionally authenticate users (doesn't throw 401)
+ * Used for endpoints that can handle both guest and authenticated users
+ */
+export const authenticateOptional = async (req: Request, res: Response, next: NextFunction) => {
+  let token;
+
+  // Try to get token from httpOnly cookie first
+  if (req.cookies && req.cookies.accessToken) {
+    token = req.cookies.accessToken;
+  }
+  // Fall back to Authorization header
+  else if (req.headers.authorization && req.headers.authorization.startsWith('Bearer')) {
+    token = req.headers.authorization.split(' ')[1];
+  }
+
+  if (!token) {
+    // No token? No problem. Just proceed without user.
+    return next();
+  }
+
+  try {
+    const decoded = jwt.verify(token, config.jwtSecret, {
+      clockTolerance: 60
+    }) as JwtPayload;
+
+    // Try to get user from cache first
+    const cacheKey = `user:${decoded.id}`;
+    let user = await cacheService.get<IUser>(cacheKey);
+
+    if (!user) {
+      const userDoc = await User.findById(decoded.id);
+      if (userDoc) {
+        user = userDoc.toObject() as IUser;
+        await cacheService.set(cacheKey, user, { ttl: 600 });
+      }
+    }
+
+    if (user) {
+      req.user = user as IUser;
+    }
+    next();
+  } catch (error) {
+    // If token is invalid/expired, just ignore it and proceed as guest
+    // This prevents 401 errors for optional auth routes
+    next();
+  }
+};
+
+/**
  * Middleware to authenticate users via Firebase
  */
 export const authenticateFirebase = async (req: Request, res: Response, next: NextFunction) => {

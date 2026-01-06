@@ -66,13 +66,14 @@ const CityAutocomplete: React.FC<CityAutocompleteProps> = ({
     return (
       <div className={`relative ${className}`}>
         <input
+          id="city-manual-entry"
+          name="city"
           type="text"
           value={value}
           onChange={(e) => onChange(e.target.value)}
           placeholder={required ? "Enter city *" : "Enter city"}
-          className={`w-full px-3 py-2 border ${
-            error ? 'border-red-500' : 'border-gray-300'
-          } rounded-md shadow-sm focus:outline-none focus:ring-primary focus:border-primary bg-white text-gray-900`}
+          className={`w-full px-3 py-2 border ${error ? 'border-red-500' : 'border-gray-300'
+            } rounded-md shadow-sm focus:outline-none focus:ring-primary focus:border-primary bg-white text-gray-900`}
         />
         <p className="mt-1 text-xs text-gray-500">No cities available for this country. Enter city name manually.</p>
         {error && <p className="mt-1 text-sm text-red-500">{error}</p>}
@@ -85,6 +86,8 @@ const CityAutocomplete: React.FC<CityAutocompleteProps> = ({
       {/* Dropdown field (shows selected value or search) */}
       <div className="relative">
         <input
+          id="city-search"
+          name="city"
           type="text"
           value={isOpen ? search : value}
           onChange={(e) => {
@@ -93,9 +96,8 @@ const CityAutocomplete: React.FC<CityAutocompleteProps> = ({
           }}
           onFocus={() => setIsOpen(true)}
           placeholder={required ? "Select city *" : "Select city"}
-          className={`w-full px-3 py-2 border ${
-            error ? 'border-red-500' : 'border-gray-300'
-          } rounded-md shadow-sm focus:outline-none focus:ring-primary focus:border-primary bg-white text-gray-900`}
+          className={`w-full px-3 py-2 border ${error ? 'border-red-500' : 'border-gray-300'
+            } rounded-md shadow-sm focus:outline-none focus:ring-primary focus:border-primary bg-white text-gray-900`}
           disabled={isLoading}
         />
 
@@ -144,9 +146,8 @@ const CityAutocomplete: React.FC<CityAutocompleteProps> = ({
                     setIsOpen(false);
                     setSearch('');
                   }}
-                  className={`w-full text-left px-3 py-2 hover:bg-blue-50 focus:bg-blue-50 focus:outline-none text-sm text-gray-900 ${
-                    value === city ? 'bg-blue-100' : ''
-                  }`}
+                  className={`w-full text-left px-3 py-2 hover:bg-blue-50 focus:bg-blue-50 focus:outline-none text-sm text-gray-900 ${value === city ? 'bg-blue-100' : ''
+                    }`}
                 >
                   {city}
                 </button>

@@ -196,7 +196,7 @@ const eventSchema = new Schema<IEvent>(
       type: String,
       trim: true,
       validate: {
-        validator: function(this: any, v: string) {
+        validator: function (this: any, v: string) {
           // If venueType is Online, meetingLink should be a valid URL
           // Validation will be enforced in validator layer
           if (!v) return true; // Optional field in schema
@@ -539,8 +539,8 @@ const eventSchema = new Schema<IEvent>(
             },
             type: {
               type: String,
-              enum: ['text', 'email', 'number', 'tel', 'textarea', 'dropdown', 'checkbox', 'radio', 'file', 'date', 
-                    'address', 'website', 'datetime', 'time', 'country', 'city', 'html', 'pagebreak'],
+              enum: ['text', 'email', 'number', 'tel', 'textarea', 'dropdown', 'checkbox', 'radio', 'file', 'date',
+                'address', 'website', 'datetime', 'time', 'country', 'city', 'html', 'pagebreak'],
               required: true,
             },
             placeholder: {
@@ -622,7 +622,7 @@ const eventSchema = new Schema<IEvent>(
       type: String,
       trim: true,
       validate: {
-        validator: function(this: IEvent, v: string) {
+        validator: function (this: IEvent, v: string) {
           if (!this.isAffiliateEvent) return true;
           return v && /^https?:\/\/.+/.test(v);
         },
@@ -664,7 +664,7 @@ const eventSchema = new Schema<IEvent>(
       trim: true,
       sparse: true,
       validate: {
-        validator: function(v: string) {
+        validator: function (v: string) {
           if (!v) return true;
           // Google Place IDs are alphanumeric with hyphens/underscores, min 10 chars
           return /^[A-Za-z0-9_-]{10,}$/.test(v);
@@ -730,6 +730,9 @@ eventSchema.index({ combinedRating: -1 });
 eventSchema.index({ combinedReviewCount: -1 });
 eventSchema.index({ combinedRating: -1, combinedReviewCount: -1 });
 eventSchema.index({ googlePlaceId: 1 });
+eventSchema.index({ isApproved: 1, isActive: 1, status: 1, isDeleted: 1, createdAt: -1 }); // Optimized for default homepage query
+eventSchema.index({ isApproved: 1, isActive: 1, status: 1, isDeleted: 1, 'dateSchedule.startDate': 1 }); // Optimized for date sorting
+eventSchema.index({ isApproved: 1, isActive: 1, status: 1, isDeleted: 1, category: 1 }); // Optimized for category filtering
 
 // Additional compound indexes for KVM1 optimization - faster admin dashboard queries
 eventSchema.index({ isApproved: 1, status: 1, createdAt: -1 }); // Dashboard event stats by approval and status

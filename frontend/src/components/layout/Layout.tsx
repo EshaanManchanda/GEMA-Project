@@ -60,7 +60,7 @@ const Layout: React.FC<{ children?: React.ReactNode }> = ({ children }) => {
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [profileDropdownOpen, setProfileDropdownOpen] = useState(false);
   const [currentLanguage, setCurrentLanguage] = useState({ code: 'en', name: 'English' });
-  
+
   const { cartCount } = useCart();
   const { isAuthenticated, user } = useSelector((state: RootState) => state.auth);
   const categories = useSelector(selectCategories);
@@ -132,7 +132,7 @@ const Layout: React.FC<{ children?: React.ReactNode }> = ({ children }) => {
 
   const getDashboardPath = () => {
     if (!user?.role) return '/dashboard';
-    
+
     switch (user.role) {
       case 'admin':
         return '/admin';
@@ -154,8 +154,8 @@ const Layout: React.FC<{ children?: React.ReactNode }> = ({ children }) => {
   const getUserAvatar = () => {
     if (user?.avatar) return user.avatar;
     // Generate a default avatar based on user initials
-    const initials = user?.firstName ? 
-      `${user.firstName.charAt(0)}${user.lastName?.charAt(0) || ''}` : 
+    const initials = user?.firstName ?
+      `${user.firstName.charAt(0)}${user.lastName?.charAt(0) || ''}` :
       user?.email?.charAt(0).toUpperCase() || 'U';
     return `https://ui-avatars.com/api/?name=${encodeURIComponent(initials)}&background=1a73e8&color=fff&size=32&rounded=true`;
   };
@@ -209,9 +209,9 @@ const Layout: React.FC<{ children?: React.ReactNode }> = ({ children }) => {
 
             {/* Mobile: Logo */}
             <div className="md:hidden">
-              <a href="/">
+              <Link to="/">
                 <img src={kidroveLogo} alt="kidrove Logo" className="h-8 w-auto" />
-              </a>
+              </Link>
             </div>
 
             {/* Right: Download App, Currency, Language */}
@@ -221,11 +221,11 @@ const Layout: React.FC<{ children?: React.ReactNode }> = ({ children }) => {
                 <span>Download App</span>
               </div> */}
 
-              {/* Currency Selector */}
-              {/* <CurrencySelector compact={true} className="text-white" /> */}
+            {/* Currency Selector */}
+            {/* <CurrencySelector compact={true} className="text-white" /> */}
 
-              {/* Language Selector */}
-              {/* <div className="flex items-center space-x-1 cursor-pointer hover:opacity-80 transition-opacity duration-300"
+            {/* Language Selector */}
+            {/* <div className="flex items-center space-x-1 cursor-pointer hover:opacity-80 transition-opacity duration-300"
                    onClick={() => handleLanguageChange({ code: 'en', name: 'English' })}>
                 <MdLanguage size={16} />
                 <span>{currentLanguage.name}</span>
@@ -244,9 +244,9 @@ const Layout: React.FC<{ children?: React.ReactNode }> = ({ children }) => {
         >
           <div className="max-w-screen-xl mx-auto px-4 sm:px-6 lg:px-8 py-4 flex justify-between items-center">
             {/* Logo */}
-            <div className="flex items-center" style={{ width: '10%', height: 'auto',}}>
-              <Link to="/" style={{ width: '100%',}}>
-                <img src={scrolled ? kidroveLogoWhite : kidroveLogo} alt="kidrove Logo" className="h-auto w-10" style={{ width: '100%',}} />
+            <div className="flex items-center" style={{ width: '10%', height: 'auto', }}>
+              <Link to="/" style={{ width: '100%', }}>
+                <img src={scrolled ? kidroveLogoWhite : kidroveLogo} alt="kidrove Logo" className="h-auto w-10" style={{ width: '100%', }} />
               </Link>
             </div>
 
@@ -286,14 +286,14 @@ const Layout: React.FC<{ children?: React.ReactNode }> = ({ children }) => {
 
             {/* Desktop: User Actions */}
             <div className="hidden md:flex items-center space-x-4">
-              <Link 
+              <Link
                 to="/search"
-                className="p-2 rounded-full text-white hover:shadow-md transition-all duration-300" 
+                className="p-2 rounded-full text-white hover:shadow-md transition-all duration-300"
                 style={{ backgroundColor: 'var(--accent-color)' }}
               >
                 <FaSearch size={14} />
               </Link>
-              <Link 
+              <Link
                 to="/favorites"
                 className="p-2 rounded-full hover:bg-gray-100 transition-all duration-300"
                 style={{ color: scrolled ? 'white' : 'var(--primary-color)' }}
@@ -321,7 +321,7 @@ const Layout: React.FC<{ children?: React.ReactNode }> = ({ children }) => {
               )} */}
               {isAuthenticated && user ? (
                 <div className="relative" ref={dropdownRef}>
-                  <button 
+                  <button
                     onClick={toggleProfileDropdown}
                     className="px-5 py-2 rounded-full font-medium transition-all duration-300 flex items-center gap-2"
                     style={{
@@ -330,9 +330,9 @@ const Layout: React.FC<{ children?: React.ReactNode }> = ({ children }) => {
                     }}
                   >
                     {user?.avatar ? (
-                      <img 
-                        src={getUserAvatar()} 
-                        alt="Profile" 
+                      <img
+                        src={getUserAvatar()}
+                        alt="Profile"
                         className="w-6 h-6 rounded-full object-cover"
                       />
                     ) : (
@@ -354,12 +354,12 @@ const Layout: React.FC<{ children?: React.ReactNode }> = ({ children }) => {
                         <p className="text-sm font-medium text-gray-900">{getUserDisplayName()}</p>
                         <p className="text-sm text-gray-700">{user.email}</p>
                         <span className="inline-block px-2 py-1 text-xs rounded-full mt-1"
-                              style={{ backgroundColor: 'var(--primary-color)', color: 'white' }}>
+                          style={{ backgroundColor: 'var(--primary-color)', color: 'white' }}>
                           {user.role}
                         </span>
                       </div>
-                      
-                      <Link 
+
+                      <Link
                         to={getDashboardPath()}
                         className="flex items-center px-4 py-2 text-sm text-gray-700 hover:bg-gray-100"
                         onClick={() => setProfileDropdownOpen(false)}
@@ -367,8 +367,8 @@ const Layout: React.FC<{ children?: React.ReactNode }> = ({ children }) => {
                         <FaTachometerAlt className="mr-3" />
                         Dashboard
                       </Link>
-                      
-                      <Link 
+
+                      <Link
                         to="/profile"
                         className="flex items-center px-4 py-2 text-sm text-gray-700 hover:bg-gray-100"
                         onClick={() => setProfileDropdownOpen(false)}
@@ -376,10 +376,10 @@ const Layout: React.FC<{ children?: React.ReactNode }> = ({ children }) => {
                         <FaUser className="mr-3" />
                         View Profile
                       </Link>
-                      
+
                       {(user.role === 'customer') && (
                         <>
-                          <Link 
+                          <Link
                             to="/bookings"
                             className="flex items-center px-4 py-2 text-sm text-gray-700 hover:bg-gray-100"
                             onClick={() => setProfileDropdownOpen(false)}
@@ -387,8 +387,8 @@ const Layout: React.FC<{ children?: React.ReactNode }> = ({ children }) => {
                             <FaTicketAlt className="mr-3" />
                             My Bookings
                           </Link>
-                          
-                          <Link 
+
+                          <Link
                             to="/favorites"
                             className="flex items-center px-4 py-2 text-sm text-gray-700 hover:bg-gray-100"
                             onClick={() => setProfileDropdownOpen(false)}
@@ -398,10 +398,10 @@ const Layout: React.FC<{ children?: React.ReactNode }> = ({ children }) => {
                           </Link>
                         </>
                       )}
-                      
+
                       {user.role === 'vendor' && (
                         <>
-                          <Link 
+                          <Link
                             to="/vendor/events"
                             className="flex items-center px-4 py-2 text-sm text-gray-700 hover:bg-gray-100"
                             onClick={() => setProfileDropdownOpen(false)}
@@ -409,8 +409,8 @@ const Layout: React.FC<{ children?: React.ReactNode }> = ({ children }) => {
                             <FaTicketAlt className="mr-3" />
                             My Events
                           </Link>
-                          
-                          <Link 
+
+                          <Link
                             to="/vendor/events/create"
                             className="flex items-center px-4 py-2 text-sm text-gray-700 hover:bg-gray-100"
                             onClick={() => setProfileDropdownOpen(false)}
@@ -418,8 +418,8 @@ const Layout: React.FC<{ children?: React.ReactNode }> = ({ children }) => {
                             <FaCalendarPlus className="mr-3" />
                             Create Event
                           </Link>
-                          
-                          <Link 
+
+                          <Link
                             to="/vendor/bookings"
                             className="flex items-center px-4 py-2 text-sm text-gray-700 hover:bg-gray-100"
                             onClick={() => setProfileDropdownOpen(false)}
@@ -427,8 +427,8 @@ const Layout: React.FC<{ children?: React.ReactNode }> = ({ children }) => {
                             <FaFileAlt className="mr-3" />
                             Bookings
                           </Link>
-                          
-                          <Link 
+
+                          <Link
                             to="/vendor/analytics"
                             className="flex items-center px-4 py-2 text-sm text-gray-700 hover:bg-gray-100"
                             onClick={() => setProfileDropdownOpen(false)}
@@ -436,8 +436,8 @@ const Layout: React.FC<{ children?: React.ReactNode }> = ({ children }) => {
                             <FaChartBar className="mr-3" />
                             Analytics
                           </Link>
-                          
-                          <Link 
+
+                          <Link
                             to="/vendor/profile"
                             className="flex items-center px-4 py-2 text-sm text-gray-700 hover:bg-gray-100"
                             onClick={() => setProfileDropdownOpen(false)}
@@ -447,10 +447,10 @@ const Layout: React.FC<{ children?: React.ReactNode }> = ({ children }) => {
                           </Link>
                         </>
                       )}
-                      
+
                       {user.role === 'admin' && (
                         <>
-                          <Link 
+                          <Link
                             to="/admin/users"
                             className="flex items-center px-4 py-2 text-sm text-gray-700 hover:bg-gray-100"
                             onClick={() => setProfileDropdownOpen(false)}
@@ -458,8 +458,8 @@ const Layout: React.FC<{ children?: React.ReactNode }> = ({ children }) => {
                             <FaUser className="mr-3" />
                             Manage Users
                           </Link>
-                          
-                          <Link 
+
+                          <Link
                             to="/admin/events"
                             className="flex items-center px-4 py-2 text-sm text-gray-700 hover:bg-gray-100"
                             onClick={() => setProfileDropdownOpen(false)}
@@ -467,8 +467,8 @@ const Layout: React.FC<{ children?: React.ReactNode }> = ({ children }) => {
                             <FaTicketAlt className="mr-3" />
                             Manage Events
                           </Link>
-                          
-                          <Link 
+
+                          <Link
                             to="/admin/venues"
                             className="flex items-center px-4 py-2 text-sm text-gray-700 hover:bg-gray-100"
                             onClick={() => setProfileDropdownOpen(false)}
@@ -476,8 +476,8 @@ const Layout: React.FC<{ children?: React.ReactNode }> = ({ children }) => {
                             <FaCog className="mr-3" />
                             Manage Venues
                           </Link>
-                          
-                          <Link 
+
+                          <Link
                             to="/admin/categories"
                             className="flex items-center px-4 py-2 text-sm text-gray-700 hover:bg-gray-100"
                             onClick={() => setProfileDropdownOpen(false)}
@@ -485,8 +485,8 @@ const Layout: React.FC<{ children?: React.ReactNode }> = ({ children }) => {
                             <FaCog className="mr-3" />
                             Manage Categories
                           </Link>
-                          
-                          <Link 
+
+                          <Link
                             to="/admin/orders"
                             className="flex items-center px-4 py-2 text-sm text-gray-700 hover:bg-gray-100"
                             onClick={() => setProfileDropdownOpen(false)}
@@ -496,9 +496,9 @@ const Layout: React.FC<{ children?: React.ReactNode }> = ({ children }) => {
                           </Link>
                         </>
                       )}
-                      
+
                       <div className="border-t border-gray-200 mt-2 pt-2">
-                        <button 
+                        <button
                           onClick={handleLogout}
                           className="flex items-center w-full px-4 py-2 text-sm text-gray-700 hover:bg-gray-100"
                         >
@@ -510,7 +510,7 @@ const Layout: React.FC<{ children?: React.ReactNode }> = ({ children }) => {
                   )}
                 </div>
               ) : (
-                <Link 
+                <Link
                   to="/login"
                   className="px-5 py-2 rounded-full font-medium transition-all duration-300 flex items-center gap-2"
                   style={{
@@ -526,9 +526,9 @@ const Layout: React.FC<{ children?: React.ReactNode }> = ({ children }) => {
 
             {/* Mobile: Menu Toggle */}
             <div className="md:hidden flex items-center space-x-3">
-              <Link 
+              <Link
                 to="/search"
-                className="p-2 rounded-full text-white hover:shadow-md transition-all duration-300" 
+                className="p-2 rounded-full text-white hover:shadow-md transition-all duration-300"
                 style={{ backgroundColor: 'var(--accent-color)' }}
               >
                 <FaSearch size={14} />
@@ -547,7 +547,7 @@ const Layout: React.FC<{ children?: React.ReactNode }> = ({ children }) => {
                   </span>
                 )}
               </Link> */}
-              <button 
+              <button
                 onClick={toggleMobileMenu}
                 className="p-2 rounded-full transition-all duration-300"
                 style={{ color: scrolled ? 'white' : 'var(--primary-color)' }}
@@ -583,11 +583,11 @@ const Layout: React.FC<{ children?: React.ReactNode }> = ({ children }) => {
                         <p className="text-sm font-medium text-gray-900">{getUserDisplayName()}</p>
                         <p className="text-sm text-gray-700">{user.email}</p>
                         <span className="inline-block px-2 py-1 text-xs rounded-full mt-1"
-                              style={{ backgroundColor: 'var(--primary-color)', color: 'white' }}>
+                          style={{ backgroundColor: 'var(--primary-color)', color: 'white' }}>
                           {user.role}
                         </span>
                       </div>
-                      
+
                       <Link
                         to={getDashboardPath()}
                         className="block py-2 text-base font-medium text-gray-900"
@@ -595,7 +595,7 @@ const Layout: React.FC<{ children?: React.ReactNode }> = ({ children }) => {
                       >
                         Dashboard
                       </Link>
-                      
+
                       <Link
                         to="/profile"
                         className="block py-2 text-base font-medium text-gray-900"
@@ -623,8 +623,8 @@ const Layout: React.FC<{ children?: React.ReactNode }> = ({ children }) => {
                           </Link>
                         </>
                       )}
-                      
-                      <button 
+
+                      <button
                         onClick={handleLogout}
                         className="w-full px-5 py-3 rounded-lg font-medium transition-all duration-300 flex items-center justify-center gap-2 text-white mt-4"
                         style={{ backgroundColor: 'var(--accent-color)' }}
@@ -634,7 +634,7 @@ const Layout: React.FC<{ children?: React.ReactNode }> = ({ children }) => {
                       </button>
                     </div>
                   ) : (
-                    <Link 
+                    <Link
                       to="/login"
                       className="w-full px-5 py-3 rounded-lg font-medium transition-all duration-300 flex items-center justify-center gap-2 text-white"
                       style={{ backgroundColor: 'var(--primary-color)' }}
@@ -697,7 +697,7 @@ const Layout: React.FC<{ children?: React.ReactNode }> = ({ children }) => {
                 )}
               </div>
             </div>
-            
+
             {/* Quick Links */}
             <div className="col-span-1">
               <h3 className="font-semibold mb-4 text-gray-900">Quick Links</h3>

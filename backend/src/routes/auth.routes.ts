@@ -2,6 +2,7 @@ import { Router } from 'express';
 import * as authController from '../controllers/auth.controller';
 import {
   authenticate,
+  authenticateOptional,
   validate,
   authLimiter,
   passwordResetLimiter,
@@ -93,7 +94,7 @@ router.post(
  * @desc    Get current user
  * @access  Private
  */
-router.get('/me', authenticate, authController.getCurrentUser);
+router.get('/me', authenticateOptional, authController.getCurrentUser);
 
 /**
  * @route   GET /api/auth/profile

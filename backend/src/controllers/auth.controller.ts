@@ -164,10 +164,10 @@ const formatUserResponse = (user: IUser): UserResponse => {
 const generateAuthTokens = async (userId: string, req: Request): Promise<{ accessToken: string, refreshToken: string }> => {
   // Generate access token
   const accessToken = generateToken({ id: userId });
-  
+
   // Generate refresh token
   const refreshToken = generateRefreshToken({ id: userId });
-  
+
   // Calculate expiry date (from JWT config)
   const expiresAt = new Date();
   expiresAt.setDate(expiresAt.getDate() + 30); // 30 days from now
@@ -467,12 +467,12 @@ export const login = async (req: Request, res: Response, next: NextFunction): Pr
       console.log('[LOGIN] Password mismatch for user:', email);
       throw new AppError('Invalid credentials', 401);
     }
-    
+
     // Check if user is active
     if (user.status === UserStatus.SUSPENDED) {
       throw new AppError('Your account has been suspended. Please contact support.', 403);
     }
-    
+
     // Record successful login
     user.loginAttempts = user.loginAttempts || [];
     user.loginAttempts.push({
@@ -605,9 +605,15 @@ export const getCurrentUser = async (req: Request, res: Response, next: NextFunc
   try {
     const user = req.user;
     if (!user) {
-      throw new AppError('User not authenticated', 401);
+      // Return null user instead of throwing 401 to prevent console errors
+      res.status(200).json({
+        success: true,
+        message: 'Use is not authenticated',
+        data: { user: null }
+      });
+      return;
     }
-    
+
     res.status(200).json({
       success: true,
       message: 'User retrieved successfully',
@@ -816,7 +822,7 @@ export const changePassword = async (req: Request, res: Response, next: NextFunc
   try {
     const { currentPassword, newPassword }: ChangePasswordRequest = req.body;
     // const user = req.user;
-     // Get user ID from cached user object
+    // Get user ID from cached user object
     const userId = req.user?._id || req.user?.id;
     if (!userId) {
       throw new AppError('User not authenticated', 401);
@@ -826,18 +832,18 @@ export const changePassword = async (req: Request, res: Response, next: NextFunc
     if (!user) {
       throw new AppError('User not found', 404);
     }
-     
-    
+
+
     // Verify current password
     const isMatch = await user.comparePassword(currentPassword);
     if (!isMatch) {
       throw new AppError('Current password is incorrect', 400);
     }
-    
+
     // Update password
     user.passwordHash = newPassword; // Will be hashed by pre-save hook
     await user.save();
-    
+
     res.status(200).json({
       success: true,
       message: 'Password changed successfully'
@@ -941,28 +947,28 @@ export const resetPassword = async (req: Request, res: Response, next: NextFunct
 export const verifyEmail = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
   try {
     const { otp }: VerifyEmailRequest = req.body;
-    
+
     // Find user by verification OTP
     const user = await User.findOne({
       'emailVerification.otp': otp,
       'emailVerification.expiresAt': { $gt: new Date() }
     });
-    
+
     if (!user) {
       throw new AppError('Invalid or expired verification OTP', 400);
     }
-    
+
     // Mark email as verified
     user.isEmailVerified = true;
     user.emailVerification = undefined; // Clear verification OTP
-    
+
     // Update status if pending
     if (user.status === UserStatus.PENDING) {
       user.status = UserStatus.ACTIVE;
     }
-    
+
     await user.save();
-    
+
     res.status(200).json({
       success: true,
       message: 'Email verified successfully'
@@ -980,41 +986,41 @@ export const verifyEmail = async (req: Request, res: Response, next: NextFunctio
 export const firebaseAuth = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
   try {
     const { idToken }: FirebaseAuthRequest = req.body;
-    
+
     // Verify Firebase ID token
     const decodedToken = await getAuth().verifyIdToken(idToken);
     if (!decodedToken) {
       throw new AppError('Invalid Firebase token', 401);
     }
-    
+
     // Get Firebase user
     const firebaseUser = await getAuth().getUser(decodedToken.uid);
-    
+
     // Check if user exists in our database
     let user = await User.findOne({ firebaseUid: firebaseUser.uid });
-    
+
     // If user doesn't exist, check by email
     if (!user && firebaseUser.email) {
       user = await User.findOne({ email: firebaseUser.email });
-      
+
       // If user exists by email, link Firebase UID
       if (user) {
         user.firebaseUid = firebaseUser.uid;
         await user.save();
       }
     }
-    
+
     // If user still doesn't exist, create a new one
     if (!user) {
       // Extract name from Firebase user
-      const firstName = firebaseUser.displayName ? 
-        firebaseUser.displayName.split(' ')[0] : 
+      const firstName = firebaseUser.displayName ?
+        firebaseUser.displayName.split(' ')[0] :
         'User';
-      
-      const lastName = firebaseUser.displayName ? 
-        firebaseUser.displayName.split(' ').slice(1).join(' ') : 
+
+      const lastName = firebaseUser.displayName ?
+        firebaseUser.displayName.split(' ').slice(1).join(' ') :
         String(Date.now());
-      
+
       user = await User.create({
         firstName,
         lastName,

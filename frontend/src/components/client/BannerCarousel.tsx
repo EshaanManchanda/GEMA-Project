@@ -98,11 +98,11 @@ const BannerCarousel: React.FC<BannerCarouselProps> = ({ banners }) => {
         {validBanners.map((banner, index) => (
           <div
             key={banner._id}
-            className="keen-slider__slide relative w-full h-auto md:aspect-[16/7] md:min-h-[650px] md:max-h-[100vh]"
+            className="keen-slider__slide relative w-full aspect-[3/4] sm:aspect-video md:aspect-[16/7] min-h-[500px] md:min-h-[650px] md:max-h-[100vh]"
           >
             {/* Banner Image */}
             <img
-              src={banner.imageAsset.url}
+              src={banner.imageAsset?.url}
               alt={banner.title}
               className="w-full h-full object-cover"
               loading={index === 0 ? 'eager' : 'lazy'}
@@ -179,11 +179,10 @@ const BannerCarousel: React.FC<BannerCarouselProps> = ({ banners }) => {
             <button
               key={idx}
               onClick={() => instanceRef.current?.moveToIdx(idx)}
-              className={`w-3 h-3 rounded-full transition-all duration-300 ${
-                idx === currentSlide
-                  ? 'bg-white w-8'
-                  : 'bg-white/50 hover:bg-white/75'
-              }`}
+              className={`w-3 h-3 rounded-full transition-all duration-300 ${idx === currentSlide
+                ? 'bg-white w-8'
+                : 'bg-white/50 hover:bg-white/75'
+                }`}
               aria-label={`Go to slide ${idx + 1}`}
             />
           ))}
