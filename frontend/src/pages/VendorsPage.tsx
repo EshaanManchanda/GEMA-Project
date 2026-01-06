@@ -3,9 +3,11 @@ import { Link } from 'react-router-dom';
 import { motion } from 'framer-motion';
 import { useInView } from 'react-intersection-observer';
 import SEO from '@/components/common/SEO';
+import { useVendorsQuery } from '@/hooks/queries/useVendorQuery';
+import { useDebounce } from '@/hooks/useDebounce';
 
 interface Vendor {
-  id: number;
+  id: string;
   name: string;
   logo: string;
   coverImage: string;
@@ -100,135 +102,51 @@ const VendorCard: React.FC<VendorCardProps> = ({ vendor }) => {
 };
 
 const VendorsPage: React.FC = () => {
-  const [vendors, setVendors] = useState<Vendor[]>([]);
-  const [loading, setLoading] = useState<boolean>(true);
-  const [error, setError] = useState<string | null>(null);
   const [searchTerm, setSearchTerm] = useState<string>('');
   const [selectedCategory, setSelectedCategory] = useState<string>('all');
-  const [usingMockData, setUsingMockData] = useState<boolean>(false);
+  const [page, setPage] = useState<number>(1);
 
-  // Mock data for vendors
-  const mockVendors: Vendor[] = [
-    {
-      id: 1,
-      name: 'EventMaster Pro',
-      logo: 'https://via.placeholder.com/150',
-      coverImage: 'https://via.placeholder.com/800x300',
-      description: 'Premier event planning and management services for corporate events and conferences.',
-      rating: 4.8,
-      reviewCount: 124,
-      eventCount: 45,
-      location: 'New York, NY',
-      categories: ['Corporate', 'Conference', 'Seminar']
-    },
-    {
-      id: 2,
-      name: 'Celebration Experts',
-      logo: 'https://via.placeholder.com/150',
-      coverImage: 'https://via.placeholder.com/800x300',
-      description: 'Specializing in weddings, anniversaries, and milestone celebrations with a personal touch.',
-      rating: 4.9,
-      reviewCount: 215,
-      eventCount: 78,
-      location: 'Los Angeles, CA',
-      categories: ['Wedding', 'Party', 'Celebration']
-    },
-    {
-      id: 3,
-      name: 'Festival Organizers',
-      logo: 'https://via.placeholder.com/150',
-      coverImage: 'https://via.placeholder.com/800x300',
-      description: 'Creating memorable music festivals, cultural events, and outdoor experiences.',
-      rating: 4.6,
-      reviewCount: 89,
-      eventCount: 32,
-      location: 'Austin, TX',
-      categories: ['Festival', 'Music', 'Cultural']
-    },
-    {
-      id: 4,
-      name: 'Tech Conference Pros',
-      logo: 'https://via.placeholder.com/150',
-      coverImage: 'https://via.placeholder.com/800x300',
-      description: 'Specialized in organizing technology conferences, hackathons, and developer meetups.',
-      rating: 4.7,
-      reviewCount: 156,
-      eventCount: 62,
-      location: 'San Francisco, CA',
-      categories: ['Technology', 'Conference', 'Hackathon']
-    },
-    {
-      id: 5,
-      name: 'Sports Event Management',
-      logo: 'https://via.placeholder.com/150',
-      coverImage: 'https://via.placeholder.com/800x300',
-      description: 'Expert planning and execution of sporting events, tournaments, and athletic competitions.',
-      rating: 4.5,
-      reviewCount: 78,
-      eventCount: 41,
-      location: 'Chicago, IL',
-      categories: ['Sports', 'Tournament', 'Competition']
-    },
-    {
-      id: 6,
-      name: 'Educational Workshop Organizers',
-      logo: 'https://via.placeholder.com/150',
-      coverImage: 'https://via.placeholder.com/800x300',
-      description: 'Creating engaging educational workshops, seminars, and training sessions for all ages.',
-      rating: 4.4,
-      reviewCount: 67,
-      eventCount: 38,
-      location: 'Boston, MA',
-      categories: ['Education', 'Workshop', 'Training']
-    }
-  ];
+  // Debounce search to prevent excessive API calls
+  const debouncedSearch = useDebounce(searchTerm, 500);
 
-  // Categories derived from mock data
-  const categories = ['all', ...Array.from(new Set(mockVendors.flatMap(vendor => vendor.categories)))];
+  // Build API query parameters
+  const queryParams = {
+    page,
+    limit: 12,
+    search: debouncedSearch || undefined,
+    sortBy: 'createdAt',
+    sortOrder: 'desc' as 'desc' | 'asc'
+  };
 
+  // Fetch vendors using TanStack Query
+  const { data, isLoading, isError, error } = useVendorsQuery(queryParams);
+
+  // Extract data from response
+  const vendors = data?.data?.vendors || [];
+  const pagination = data?.data?.pagination || {
+    currentPage: 1,
+    totalPages: 1,
+    total: 0,
+    hasNextPage: false,
+    hasPrevPage: false
+  };
+
+  // Static categories (backend doesn't support filtering yet)
+  const categories = ['all', 'Corporate', 'Wedding', 'Festival', 'Technology', 'Sports', 'Education'];
+
+  // Reset to page 1 when search changes
   useEffect(() => {
-    const fetchVendors = async () => {
-      try {
-        // Simulate API call
-        setLoading(true);
-        
-        // In a real app, you would fetch from an API
-        // const response = await fetch('/api/vendors');
-        // if (!response.ok) throw new Error('Failed to fetch vendors');
-        // const data = await response.json();
-        
-        // Simulate network delay
-        await new Promise(resolve => setTimeout(resolve, 1000));
-        
-        // Use mock data instead
-        setVendors(mockVendors);
-        setUsingMockData(true);
-        setError(null);
-      } catch (err) {
-        console.error('Error fetching vendors:', err);
-        setError('Failed to load vendors. Using mock data instead.');
-        setVendors(mockVendors);
-        setUsingMockData(true);
-      } finally {
-        setLoading(false);
-      }
-    };
+    setPage(1);
+  }, [debouncedSearch, selectedCategory]);
 
-    fetchVendors();
-  }, []);
+  // Client-side category filter (backend limitation)
+  const filteredVendors = selectedCategory === 'all'
+    ? vendors
+    : vendors.filter((vendor: Vendor) =>
+        vendor.categories.includes(selectedCategory)
+      );
 
-  // Filter vendors based on search term and selected category
-  const filteredVendors = vendors.filter(vendor => {
-    const matchesSearch = vendor.name.toLowerCase().includes(searchTerm.toLowerCase()) || 
-                         vendor.description.toLowerCase().includes(searchTerm.toLowerCase());
-    
-    const matchesCategory = selectedCategory === 'all' || 
-                           vendor.categories.includes(selectedCategory);
-    
-    return matchesSearch && matchesCategory;
-  });
-
-  if (loading) {
+  if (isLoading) {
     return (
       <div className="flex justify-center items-center min-h-screen">
         <div className="animate-spin rounded-full h-16 w-16 border-t-2 border-b-2 border-primary"></div>
@@ -250,19 +168,12 @@ const VendorsPage: React.FC = () => {
         breadcrumbs={breadcrumbs}
       />
       <div className="container mx-auto px-4 py-8">
-        {usingMockData && (
-        <div className="bg-yellow-100 border-l-4 border-yellow-500 text-yellow-700 p-4 mb-6" role="alert">
-          <p className="font-bold">Note</p>
-          <p>Using mock data. In a production environment, this would be fetched from a backend API.</p>
-        </div>
-      )}
-
-      {error && (
-        <div className="bg-red-100 border-l-4 border-red-500 text-red-700 p-4 mb-6" role="alert">
-          <p className="font-bold">Error</p>
-          <p>{error}</p>
-        </div>
-      )}
+        {isError && (
+          <div className="bg-red-100 border-l-4 border-red-500 text-red-700 p-4 mb-6" role="alert">
+            <p className="font-bold">Error</p>
+            <p>Failed to load vendors. {(error as any)?.message || 'Please try again later.'}</p>
+          </div>
+        )}
 
       <h1 className="text-3xl font-bold mb-8 text-center">Event Organizers & Vendors</h1>
       
@@ -293,16 +204,47 @@ const VendorsPage: React.FC = () => {
         </div>
       </div>
 
-      {filteredVendors.length === 0 ? (
+      {!isLoading && filteredVendors.length === 0 ? (
         <div className="text-center py-12">
-          <h3 className="text-xl font-medium text-gray-500">No vendors found matching your criteria</h3>
-          <p className="mt-2 text-gray-400">Try adjusting your search or filter options</p>
+          <h3 className="text-xl font-medium text-gray-500">
+            {debouncedSearch || selectedCategory !== 'all'
+              ? 'No vendors found matching your criteria'
+              : 'No vendors available at the moment'}
+          </h3>
+          <p className="mt-2 text-gray-400">
+            {debouncedSearch || selectedCategory !== 'all'
+              ? 'Try adjusting your search or filter options'
+              : 'Please check back later'}
+          </p>
         </div>
       ) : (
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
           {filteredVendors.map((vendor) => (
             <VendorCard key={vendor.id} vendor={vendor} />
           ))}
+        </div>
+      )}
+
+      {/* Pagination Controls */}
+      {pagination.totalPages > 1 && (
+        <div className="mt-8 flex justify-center items-center gap-4">
+          <button
+            onClick={() => setPage(p => Math.max(1, p - 1))}
+            disabled={!pagination.hasPrevPage}
+            className="px-4 py-2 border border-gray-300 rounded-lg hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+          >
+            Previous
+          </button>
+          <span className="text-gray-700">
+            Page {pagination.currentPage} of {pagination.totalPages}
+          </span>
+          <button
+            onClick={() => setPage(p => p + 1)}
+            disabled={!pagination.hasNextPage}
+            className="px-4 py-2 border border-gray-300 rounded-lg hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+          >
+            Next
+          </button>
         </div>
       )}
     </div>

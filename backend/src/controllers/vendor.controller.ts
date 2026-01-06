@@ -804,6 +804,79 @@ export const updateVendorSocialMedia = catchAsync(async (req: AuthRequest, res: 
   });
 });
 
+// @desc    Get all public vendors (active, verified, non-suspended)
+// @route   GET /api/vendors
+// @access  Public
+export const getAllPublicVendors = catchAsync(async (req: AuthRequest, res: Response, next: NextFunction) => {
+  const {
+    page = '1',
+    limit = '12',
+    search,
+    sortBy = 'createdAt',
+    sortOrder = 'desc'
+  } = req.query;
+
+  // Only show active, verified, non-suspended vendors
+  const query: any = {
+    isActive: true,
+    isSuspended: false,
+    verificationStatus: VerificationStatus.VERIFIED
+  };
+
+  // Search by business name
+  if (search) {
+    query.businessName = { $regex: search, $options: 'i' };
+  }
+
+  const pageNum = parseInt(page as string);
+  const limitNum = parseInt(limit as string);
+  const skip = (pageNum - 1) * limitNum;
+
+  const sortObj: any = {};
+  sortObj[sortBy as string] = sortOrder === 'asc' ? 1 : -1;
+
+  const [vendors, total] = await Promise.all([
+    Vendor.find(query)
+      .populate('userId', 'firstName lastName avatar')
+      .select('businessName email phone location socialMedia stats createdAt')
+      .sort(sortObj)
+      .skip(skip)
+      .limit(limitNum)
+      .lean(),
+    Vendor.countDocuments(query)
+  ]);
+
+  // Transform to match frontend interface
+  const transformedVendors = vendors.map(vendor => ({
+    id: vendor._id.toString(),
+    name: vendor.businessName,
+    description: `Professional event organizer - ${vendor.businessName}`,
+    location: vendor.location?.city || 'Location TBD',
+    rating: 4.5,
+    reviewCount: vendor.stats?.totalBookings || 0,
+    eventCount: vendor.stats?.totalEvents || 0,
+    logo: (vendor.userId as any)?.avatar || '',
+    coverImage: '',
+    categories: []
+  }));
+
+  res.status(200).json({
+    success: true,
+    message: 'Public vendors retrieved successfully',
+    data: {
+      vendors: transformedVendors,
+      pagination: {
+        currentPage: pageNum,
+        totalPages: Math.ceil(total / limitNum),
+        total,
+        hasNextPage: pageNum < Math.ceil(total / limitNum),
+        hasPrevPage: pageNum > 1,
+        limit: limitNum
+      }
+    }
+  });
+});
+
 // @desc    Get public vendor profile by ID
 // @route   GET /api/vendors/public/:id
 // @access  Public

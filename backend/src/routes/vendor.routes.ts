@@ -3,6 +3,7 @@ import { authenticate, authorize } from '../middleware/auth';
 import { validate } from '../middleware/validation';
 import { UserRole } from '../models/index';
 import {
+  getAllPublicVendors,
   getVendorDashboardStats,
   getVendorEvents,
   getVendorBookings,
@@ -55,6 +56,14 @@ import {
 } from '../validators/employee.validator';
 
 const router = Router();
+
+/**
+ * @route   GET /api/vendors
+ * @desc    Get all public vendors (active & verified)
+ * @access  Public
+ * @query   page, limit, search, sortBy, sortOrder
+ */
+router.get('/', getAllPublicVendors);
 
 /**
  * @route   GET /api/vendors/public/:id

@@ -60,7 +60,7 @@ const FeaturedInstructors: React.FC = () => {
                     ))}
                 </div>
 
-                <div className="mt-12 text-center">
+                {/* <div className="mt-12 text-center">
                     <SlideIn direction="up" delay={0.6}>
                         <button
                             onClick={() => navigate('/vendors')}
@@ -69,7 +69,7 @@ const FeaturedInstructors: React.FC = () => {
                             View All Workshops
                         </button>
                     </SlideIn>
-                </div>
+                </div> */}
             </div>
         </section>
     );
