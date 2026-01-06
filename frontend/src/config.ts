@@ -12,7 +12,7 @@ export const config = {
    * Application base URL
    * Used for generating absolute URLs, SEO, and social sharing
    */
-  appUrl: import.meta.env.VITE_APP_URL || '',
+  appUrl: (typeof window !== 'undefined' ? window.location.origin : (import.meta.env.VITE_APP_URL || '')),
 
   /**
    * API base URL - Runtime-detected for multi-region support

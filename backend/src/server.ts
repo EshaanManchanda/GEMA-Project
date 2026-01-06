@@ -43,6 +43,12 @@ app.use(cors({
     // Build allowed origins from environment variables
     const allowedOrigins = [
       config.frontendUrl,
+      'https://kidrove.com',
+      'https://kidrove.in',
+      'https://kidrove.ae',
+      'https://www.kidrove.com',
+      'https://www.kidrove.in',
+      'https://www.kidrove.ae',
       ...(process.env.ADDITIONAL_ALLOWED_ORIGINS?.split(',').map(url => url.trim()) || [])
     ].filter(Boolean);
 

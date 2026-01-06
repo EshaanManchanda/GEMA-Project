@@ -71,6 +71,12 @@ export const securityHeaders = helmet({
 const buildAllowedOrigins = () => {
   const origins = [
     process.env.FRONTEND_URL,
+    'https://kidrove.com',
+    'https://kidrove.in',
+    'https://kidrove.ae',
+    'https://www.kidrove.com',
+    'https://www.kidrove.in',
+    'https://www.kidrove.ae',
     ...(process.env.ADDITIONAL_ALLOWED_ORIGINS?.split(',').map(url => url.trim()) || [])
   ].filter(Boolean);
 
