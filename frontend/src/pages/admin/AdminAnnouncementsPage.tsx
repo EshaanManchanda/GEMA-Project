@@ -5,6 +5,7 @@ import announcementBarAPI from '@/services/api/announcementBarAPI';
 import { AnnouncementBar, CreateAnnouncementBarData } from '@/types/announcementBar';
 import AnnouncementBarList from '@/components/admin/AnnouncementBarList';
 import AnnouncementBarForm from '@/components/admin/AnnouncementBarForm';
+import PrivatePageSEO from '@/components/common/PrivatePageSEO';
 
 const AdminAnnouncementsPage: React.FC = () => {
   const [announcements, setAnnouncements] = useState<AnnouncementBar[]>([]);
@@ -110,6 +111,8 @@ const AdminAnnouncementsPage: React.FC = () => {
   };
 
   return (
+    <>
+      <PrivatePageSEO title="Admin - Announcements | Kidrove" description="Manage announcement bars" />
     <div className="p-6">
       <div className="flex justify-between items-center mb-6">
         <div>
@@ -214,6 +217,7 @@ const AdminAnnouncementsPage: React.FC = () => {
         />
       )}
     </div>
+    </>
   );
 };
 

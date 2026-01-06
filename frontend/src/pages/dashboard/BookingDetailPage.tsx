@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { useParams, useNavigate, Link } from 'react-router-dom';
 import { useDispatch, useSelector } from 'react-redux';
 import { format } from 'date-fns';
+import PrivatePageSEO from '@/components/common/PrivatePageSEO';
 import {
   Calendar,
   Clock,
@@ -342,7 +343,9 @@ const BookingDetailPage: React.FC = () => {
   const event = firstItem?.eventId;
 
   return (
-    <div className="container mx-auto px-4 py-8">
+    <>
+      <PrivatePageSEO title="Booking Details | Kidrove" description="View your booking information" />
+      <div className="container mx-auto px-4 py-8">
       <div className="max-w-4xl mx-auto">
         {/* Header */}
         <div className="flex items-center justify-between mb-6">
@@ -720,6 +723,7 @@ const BookingDetailPage: React.FC = () => {
         )}
       </div>
     </div>
+    </>
   );
 };
 

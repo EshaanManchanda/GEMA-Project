@@ -4,6 +4,7 @@ import { format } from 'date-fns';
 import toast from 'react-hot-toast';
 import adminAPI from '@services/api/adminAPI';
 import LoadingSpinner from '@/components/common/LoadingSpinner';
+import PrivatePageSEO from '@/components/common/PrivatePageSEO';
 
 // Employee interface matching backend response
 interface Employee {
@@ -600,6 +601,8 @@ const EmployeeManagement: React.FC = () => {
   }
 
   return (
+    <>
+      <PrivatePageSEO title="Admin - Employee Management | Kidrove" description="Manage employee accounts" />
     <div className="p-6 space-y-6">
       {/* Header */}
       <div className="flex justify-between items-center">
@@ -1101,6 +1104,7 @@ const EmployeeManagement: React.FC = () => {
         </div>
       )}
     </div>
+    </>
   );
 };
 

@@ -5,6 +5,7 @@ import popupAPI from '@/services/api/popupAPI';
 import { PopupNotification, CreatePopupData } from '@/types/popup';
 import PopupList from '@/components/admin/PopupList';
 import PopupForm from '@/components/admin/PopupForm';
+import PrivatePageSEO from '@/components/common/PrivatePageSEO';
 
 const AdminPopupsPage: React.FC = () => {
   const [popups, setPopups] = useState<PopupNotification[]>([]);
@@ -97,6 +98,8 @@ const AdminPopupsPage: React.FC = () => {
   };
 
   return (
+    <>
+      <PrivatePageSEO title="Admin - Popups | Kidrove" description="Manage popup notifications" />
     <div className="p-6">
       <div className="flex justify-between items-center mb-6">
         <div>
@@ -201,6 +204,7 @@ const AdminPopupsPage: React.FC = () => {
         />
       )}
     </div>
+    </>
   );
 };
 

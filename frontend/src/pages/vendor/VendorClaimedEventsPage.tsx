@@ -5,6 +5,7 @@ import affiliateEventAPI from '../../services/api/affiliateEventAPI';
 import { Card, CardHeader, CardTitle, CardContent } from '../../components/ui/Card';
 import Badge from '../../components/ui/Badge';
 import toast from 'react-hot-toast';
+import PrivatePageSEO from '@/components/common/PrivatePageSEO';
 
 interface ClaimedEvent {
   _id: string;
@@ -68,6 +69,8 @@ const VendorClaimedEventsPage: React.FC = () => {
   }
 
   return (
+    <>
+      <PrivatePageSEO title="Vendor - Claimed Events | Kidrove" description="Manage claimed affiliate events" />
     <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
       {/* Header */}
       <div className="mb-8">
@@ -329,6 +332,7 @@ const VendorClaimedEventsPage: React.FC = () => {
         </div>
       )}
     </div>
+    </>
   );
 };
 

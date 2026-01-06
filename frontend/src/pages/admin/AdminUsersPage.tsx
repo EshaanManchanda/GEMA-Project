@@ -4,6 +4,7 @@ import { format } from 'date-fns';
 import toast from 'react-hot-toast';
 import adminAPI from '@services/api/adminAPI';
 import { AdminUser } from '@/types/auth';
+import PrivatePageSEO from '@/components/common/PrivatePageSEO';
 
 interface PaginationInfo {
   currentPage: number;
@@ -281,7 +282,9 @@ const AdminUsersPage: React.FC = () => {
   }
 
   return (
-    <div className="p-6 space-y-8">
+    <>
+      <PrivatePageSEO title="Admin - Users | Kidrove" description="Manage user accounts" />
+      <div className="p-6 space-y-8">
       {/* Header */}
       <div className="flex flex-col md:flex-row justify-between items-start md:items-center mb-8">
         <div>
@@ -1865,6 +1868,7 @@ const AdminUsersPage: React.FC = () => {
         </div>
       )}
     </div>
+    </>
   );
 };
 

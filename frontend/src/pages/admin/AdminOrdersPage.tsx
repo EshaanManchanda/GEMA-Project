@@ -4,6 +4,7 @@ import adminAPI from '../../services/api/adminAPI';
 import { IOrder, GetOrdersParams } from '../../types/order';
 import { Search, Filter, ChevronDown, ChevronUp, Check, X, RefreshCw, Trash2, DollarSign, Eye } from 'lucide-react';
 import { toast } from 'react-hot-toast';
+import PrivatePageSEO from '@/components/common/PrivatePageSEO';
 
 const AdminOrdersPage: React.FC = () => {
   const [orders, setOrders] = useState<IOrder[]>([]);
@@ -257,7 +258,9 @@ const AdminOrdersPage: React.FC = () => {
   }
 
   return (
-    <div className="max-w-7xl mx-auto">
+    <>
+      <PrivatePageSEO title="Admin - Orders | Kidrove" description="Manage orders and bookings" />
+      <div className="max-w-7xl mx-auto">
         {/* Header */}
         <div className="mb-8">
           <h1 className="text-3xl font-bold text-gray-900">Order Management</h1>
@@ -389,28 +392,28 @@ const AdminOrdersPage: React.FC = () => {
                     Event(s)
                   </th>
                   <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider cursor-pointer"
-                      onClick={() => handleSort('total')}>
+                    onClick={() => handleSort('total')}>
                     <div className="flex items-center gap-1">
                       Total
                       {sortBy === 'total' && (sortOrder === 'asc' ? <ChevronUp className="w-4 h-4" /> : <ChevronDown className="w-4 h-4" />)}
                     </div>
                   </th>
                   <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider cursor-pointer"
-                      onClick={() => handleSort('status')}>
+                    onClick={() => handleSort('status')}>
                     <div className="flex items-center gap-1">
                       Status
                       {sortBy === 'status' && (sortOrder === 'asc' ? <ChevronUp className="w-4 h-4" /> : <ChevronDown className="w-4 h-4" />)}
                     </div>
                   </th>
                   <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider cursor-pointer"
-                      onClick={() => handleSort('paymentStatus')}>
+                    onClick={() => handleSort('paymentStatus')}>
                     <div className="flex items-center gap-1">
                       Payment
                       {sortBy === 'paymentStatus' && (sortOrder === 'asc' ? <ChevronUp className="w-4 h-4" /> : <ChevronDown className="w-4 h-4" />)}
                     </div>
                   </th>
                   <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider cursor-pointer"
-                      onClick={() => handleSort('createdAt')}>
+                    onClick={() => handleSort('createdAt')}>
                     <div className="flex items-center gap-1">
                       Created
                       {sortBy === 'createdAt' && (sortOrder === 'asc' ? <ChevronUp className="w-4 h-4" /> : <ChevronDown className="w-4 h-4" />)}
@@ -572,11 +575,10 @@ const AdminOrdersPage: React.FC = () => {
                             )}
                             <button
                               onClick={() => setCurrentPage(page)}
-                              className={`relative inline-flex items-center px-4 py-2 border text-sm font-medium ${
-                                page === currentPage
+                              className={`relative inline-flex items-center px-4 py-2 border text-sm font-medium ${page === currentPage
                                   ? 'z-10 bg-primary border-primary text-white'
                                   : 'bg-white border-gray-300 text-gray-500 hover:bg-gray-50'
-                              }`}
+                                }`}
                             >
                               {page}
                             </button>
@@ -597,72 +599,72 @@ const AdminOrdersPage: React.FC = () => {
           )}
         </div>
 
-      {/* Action Modal */}
-      {isActionModalOpen && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-          <div className="bg-white rounded-lg p-6 max-w-md w-full mx-4">
-            <h3 className="text-lg font-semibold text-gray-900 mb-4">{getActionModalTitle()}</h3>
-            <p className="text-gray-600 mb-6">{getActionModalMessage()}</p>
+        {/* Action Modal */}
+        {isActionModalOpen && (
+          <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+            <div className="bg-white rounded-lg p-6 max-w-md w-full mx-4">
+              <h3 className="text-lg font-semibold text-gray-900 mb-4">{getActionModalTitle()}</h3>
+              <p className="text-gray-600 mb-6">{getActionModalMessage()}</p>
 
-            {actionType === 'refund' && (
-              <div className="space-y-4 mb-6">
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">
-                    Refund Amount (optional)
-                  </label>
-                  <input
-                    type="number"
-                    step="0.01"
-                    value={refundAmount}
-                    onChange={(e) => setRefundAmount(e.target.value)}
-                    placeholder="Leave empty for full refund"
-                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary focus:border-transparent bg-white text-gray-900"
-                  />
+              {actionType === 'refund' && (
+                <div className="space-y-4 mb-6">
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">
+                      Refund Amount (optional)
+                    </label>
+                    <input
+                      type="number"
+                      step="0.01"
+                      value={refundAmount}
+                      onChange={(e) => setRefundAmount(e.target.value)}
+                      placeholder="Leave empty for full refund"
+                      className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary focus:border-transparent bg-white text-gray-900"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">
+                      Refund Reason (optional)
+                    </label>
+                    <textarea
+                      value={refundReason}
+                      onChange={(e) => setRefundReason(e.target.value)}
+                      placeholder="Enter reason for refund..."
+                      rows={3}
+                      className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary focus:border-transparent bg-white text-gray-900"
+                    />
+                  </div>
                 </div>
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">
-                    Refund Reason (optional)
-                  </label>
-                  <textarea
-                    value={refundReason}
-                    onChange={(e) => setRefundReason(e.target.value)}
-                    placeholder="Enter reason for refund..."
-                    rows={3}
-                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary focus:border-transparent bg-white text-gray-900"
-                  />
-                </div>
+              )}
+
+              <div className="flex justify-end gap-3">
+                <button
+                  onClick={() => {
+                    setIsActionModalOpen(false);
+                    setOrderToAction(null);
+                    setActionType(null);
+                    setRefundAmount('');
+                    setRefundReason('');
+                  }}
+                  className="px-4 py-2 border border-gray-300 rounded-lg text-gray-700 hover:bg-gray-50 transition-colors"
+                >
+                  Cancel
+                </button>
+                <button
+                  onClick={handleActionConfirm}
+                  className={`px-4 py-2 rounded-lg text-white transition-colors ${actionType === 'confirm' ? 'bg-green-600 hover:bg-green-700' :
+                      actionType === 'cancel' ? 'bg-red-600 hover:bg-red-700' :
+                        actionType === 'refund' ? 'bg-orange-600 hover:bg-orange-700' :
+                          'bg-red-600 hover:bg-red-700'
+                    }`}
+                >
+                  Confirm
+                </button>
               </div>
-            )}
-
-            <div className="flex justify-end gap-3">
-              <button
-                onClick={() => {
-                  setIsActionModalOpen(false);
-                  setOrderToAction(null);
-                  setActionType(null);
-                  setRefundAmount('');
-                  setRefundReason('');
-                }}
-                className="px-4 py-2 border border-gray-300 rounded-lg text-gray-700 hover:bg-gray-50 transition-colors"
-              >
-                Cancel
-              </button>
-              <button
-                onClick={handleActionConfirm}
-                className={`px-4 py-2 rounded-lg text-white transition-colors ${
-                  actionType === 'confirm' ? 'bg-green-600 hover:bg-green-700' :
-                  actionType === 'cancel' ? 'bg-red-600 hover:bg-red-700' :
-                  actionType === 'refund' ? 'bg-orange-600 hover:bg-orange-700' :
-                  'bg-red-600 hover:bg-red-700'
-                }`}
-              >
-                Confirm
-              </button>
             </div>
           </div>
-        </div>
-      )}
-    </div>
+        )}
+      </div>
+    </>
   );
 };
 

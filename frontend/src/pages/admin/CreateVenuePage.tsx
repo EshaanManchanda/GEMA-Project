@@ -4,6 +4,7 @@ import toast from 'react-hot-toast';
 import { ArrowLeft } from 'lucide-react';
 import VenueForm from '../../components/admin/VenueForm';
 import adminAPI from '../../services/api/adminAPI';
+import PrivatePageSEO from '@/components/common/PrivatePageSEO';
 
 const CreateVenuePage: React.FC = () => {
   const navigate = useNavigate();
@@ -30,6 +31,8 @@ const CreateVenuePage: React.FC = () => {
   };
 
   return (
+    <>
+      <PrivatePageSEO title="Admin - Create Venue | Kidrove" description="Add a new venue to the platform" />
     <div className="container mx-auto px-4 py-8">
       {/* Header */}
       <div className="mb-6">
@@ -54,6 +57,7 @@ const CreateVenuePage: React.FC = () => {
         />
       </div>
     </div>
+    </>
   );
 };
 

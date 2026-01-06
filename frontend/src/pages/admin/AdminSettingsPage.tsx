@@ -4,6 +4,7 @@ import { FiSave, FiRefreshCw, FiAlertTriangle, FiCheckCircle } from 'react-icons
 import adminAPI from '../../services/api/adminAPI';
 import { fetchSocialSettings } from '../../store/slices/settingsSlice';
 import { AppDispatch } from '../../store';
+import PrivatePageSEO from '@/components/common/PrivatePageSEO';
 
 interface SystemSettings {
   siteName: string;
@@ -288,6 +289,8 @@ const AdminSettingsPage: React.FC = () => {
   };
 
   return (
+    <>
+      <PrivatePageSEO title="Admin - Settings | Kidrove" description="Manage system settings" />
     <div className="container mx-auto px-4 py-8">
       <div className="flex justify-between items-center mb-6">
         <h1 className="text-2xl font-bold">Admin Settings</h1>
@@ -977,6 +980,7 @@ const AdminSettingsPage: React.FC = () => {
         </div>
       </div>
     </div>
+    </>
   );
 };
 

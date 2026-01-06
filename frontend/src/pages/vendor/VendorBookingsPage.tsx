@@ -8,6 +8,7 @@ import ExportOptionsModal from '../../components/vendor/ExportOptionsModal';
 import VendorBookingImportModal from '../../components/vendor/VendorBookingImportModal';
 import { useVendorBookingsQuery } from '@/hooks/queries/useVendorQuery';
 import { vendorKeys } from '@/hooks/queries/queryKeys';
+import PrivatePageSEO from '@/components/common/PrivatePageSEO';
 
 interface Participant {
   name: string;
@@ -356,16 +357,20 @@ const VendorBookingsPage: React.FC = () => {
 
   if (isLoading && bookings.length === 0) {
     return (
+      <>
+        <PrivatePageSEO title="Vendor - Bookings | Kidrove" description="Manage bookings" />
       <div className="container mx-auto px-4 py-8">
         <div className="flex justify-center items-center h-64">
           <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-primary"></div>
         </div>
       </div>
+      </>
     );
   }
 
   return (
     <>
+      <PrivatePageSEO title="Vendor - Bookings | Kidrove" description="Manage bookings" />
       <VendorNavigation />
       <div className="container mx-auto px-4 py-8">
         <div className="flex flex-col md:flex-row justify-between items-start md:items-center mb-6">

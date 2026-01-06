@@ -3,6 +3,7 @@ import { useParams, useNavigate, useLocation } from 'react-router-dom';
 import { v4 as uuidv4 } from 'uuid';
 import vendorAPI from '../../services/api/vendorAPI';
 import categoriesAPI from '../../services/api/categoriesAPI';
+import PrivatePageSEO from '@/components/common/PrivatePageSEO';
 import VendorNavigation from '../../components/vendor/VendorNavigation';
 import BasicInfoTab from '../../components/vendor/BasicInfoTab';
 import SchedulePricingTab from '../../components/vendor/SchedulePricingTab';
@@ -483,6 +484,7 @@ const VendorEditEventPage: React.FC = () => {
 
   return (
     <>
+      <PrivatePageSEO title="Vendor - Edit Event | Kidrove" description="Edit event details" />
       <VendorNavigation />
       <div className="container mx-auto px-4 py-8">
         <div className="max-w-4xl mx-auto">

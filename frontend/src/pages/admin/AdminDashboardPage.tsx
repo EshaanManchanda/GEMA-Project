@@ -3,6 +3,7 @@ import { Link } from 'react-router-dom';
 import adminAPI from '../../services/api/adminAPI';
 import PayoutSummaryCard from '../../components/admin/PayoutSummaryCard';
 import CommissionOverview from '../../components/admin/CommissionOverview';
+import PrivatePageSEO from '@/components/common/PrivatePageSEO';
 
 interface DashboardStat {
   title: string;
@@ -268,7 +269,9 @@ const AdminDashboardPage: React.FC = () => {
   }
 
   return (
-    <div className="container mx-auto px-4 py-8">
+    <>
+      <PrivatePageSEO title="Admin Dashboard | Kidrove" description="Admin control panel" />
+      <div className="container mx-auto px-4 py-8">
       <div className="flex flex-col md:flex-row justify-between items-start md:items-center mb-8">
         <h1 className="text-3xl font-bold text-gray-900 mb-4 md:mb-0">Admin Dashboard</h1>
         <div className="flex space-x-4">
@@ -494,6 +497,7 @@ const AdminDashboardPage: React.FC = () => {
         </div>
       </div>
     </div>
+    </>
   );
 };
 

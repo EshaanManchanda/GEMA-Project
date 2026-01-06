@@ -3,6 +3,7 @@ import { Link } from 'react-router-dom';
 import vendorAPI from '../../services/api/vendorAPI';
 import VendorNavigation from '../../components/vendor/VendorNavigation';
 import { Event } from '../../types/event';
+import PrivatePageSEO from '@/components/common/PrivatePageSEO';
 
 interface Booking {
   id: string;
@@ -201,6 +202,7 @@ const VendorDashboardPage: React.FC = () => {
   if (isLoading) {
     return (
       <>
+        <PrivatePageSEO title="Vendor - Dashboard | Kidrove" description="Vendor dashboard" />
         <VendorNavigation />
         <div className="container mx-auto px-4 py-8">
           <div className="flex justify-center items-center h-[50vh]">
@@ -224,6 +226,7 @@ const VendorDashboardPage: React.FC = () => {
 
   return (
     <>
+      <PrivatePageSEO title="Vendor - Dashboard | Kidrove" description="Vendor dashboard" />
       <VendorNavigation />
       <div className="container mx-auto px-4 py-8">
       <div className="flex flex-col md:flex-row justify-between items-start md:items-center mb-8">

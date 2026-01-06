@@ -3,6 +3,7 @@ import { FaFileImport, FaFileExport, FaDownload, FaUpload } from 'react-icons/fa
 import BulkImportModal from '../../components/admin/bulk/BulkImportModal';
 import bulkDataAPI, { ModelInfo } from '../../services/api/bulkDataAPI';
 import toast from 'react-hot-toast';
+import PrivatePageSEO from '@/components/common/PrivatePageSEO';
 
 const BulkImportPage: React.FC = () => {
   const [isImportModalOpen, setIsImportModalOpen] = useState(false);
@@ -60,6 +61,8 @@ const BulkImportPage: React.FC = () => {
   };
 
   return (
+    <>
+      <PrivatePageSEO title="Admin - Bulk Import | Kidrove" description="Import and export data" />
     <div className="container mx-auto px-4 py-8">
       {/* Header */}
       <div className="mb-8">
@@ -176,6 +179,7 @@ const BulkImportPage: React.FC = () => {
         defaultModel={selectedModel}
       />
     </div>
+    </>
   );
 };
 

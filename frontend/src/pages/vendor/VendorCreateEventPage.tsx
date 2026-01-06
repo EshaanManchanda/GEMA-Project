@@ -7,6 +7,7 @@ import VendorNavigation from '../../components/vendor/VendorNavigation';
 import BasicInfoTab from '../../components/vendor/BasicInfoTab';
 import SchedulePricingTab from '../../components/vendor/SchedulePricingTab';
 import AdvancedTab from '../../components/vendor/AdvancedTab';
+import PrivatePageSEO from '@/components/common/PrivatePageSEO';
 
 interface EventFormData {
   title: string;
@@ -412,6 +413,7 @@ const VendorCreateEventPage: React.FC = () => {
 
   return (
     <>
+      <PrivatePageSEO title="Vendor - Create Event | Kidrove" description="Create a new event" />
       <VendorNavigation />
       <div className="container mx-auto px-4 py-8">
         <div className="max-w-4xl mx-auto">

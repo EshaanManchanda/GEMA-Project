@@ -7,6 +7,7 @@ import { SEOContent } from '@/services/api/seoContentAPI';
 import Button from '@/components/ui/Button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/Card';
 import Input from '@/components/ui/Input';
+import PrivatePageSEO from '@/components/common/PrivatePageSEO';
 
 type PageType = 'homepage' | 'about' | 'contact';
 
@@ -125,13 +126,18 @@ const AdminSEOPage: React.FC = () => {
 
   if (isLoading) {
     return (
+      <>
+        <PrivatePageSEO title="Admin - SEO Management | Kidrove" description="Manage SEO content" />
       <div className="flex items-center justify-center h-96">
         <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600"></div>
       </div>
+      </>
     );
   }
 
   return (
+    <>
+      <PrivatePageSEO title="Admin - SEO Management | Kidrove" description="Manage SEO content" />
     <div className="p-6">
       <div className="mb-6">
         <h1 className="text-3xl font-bold text-gray-900">SEO Content Management</h1>
@@ -418,6 +424,7 @@ const AdminSEOPage: React.FC = () => {
         </div>
       </form>
     </div>
+    </>
   );
 };
 

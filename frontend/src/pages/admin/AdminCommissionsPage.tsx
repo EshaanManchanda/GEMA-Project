@@ -20,6 +20,7 @@ import {
 } from '../../store/slices/adminSlice';
 import type { AppDispatch } from '../../store';
 import type { CommissionConfig, CommissionTransaction, CommissionRule } from '../../store/slices/adminSlice';
+import PrivatePageSEO from '@/components/common/PrivatePageSEO';
 
 interface CommissionFilters {
   status: string;
@@ -267,16 +268,21 @@ const AdminCommissionsPage: React.FC = () => {
 
   if (isLoading && commissionConfigs.length === 0) {
     return (
+      <>
+        <PrivatePageSEO title="Admin - Commissions | Kidrove" description="Manage vendor commissions" />
       <div className="flex justify-center items-center h-screen">
         <div className="text-center">
           <div className="animate-spin rounded-full h-16 w-16 border-4 border-blue-200 border-t-blue-600 mx-auto"></div>
           <p className="mt-4 text-xl font-semibold text-gray-700">Loading commissions...</p>
         </div>
       </div>
+      </>
     );
   }
 
   return (
+    <>
+      <PrivatePageSEO title="Admin - Commissions | Kidrove" description="Manage vendor commissions" />
     <div className="container mx-auto px-4 py-8">
         <div className="flex flex-col md:flex-row justify-between items-start md:items-center mb-8">
           <h1 className="text-3xl font-bold text-gray-900 mb-4 md:mb-0">Commission Management</h1>
@@ -1034,6 +1040,7 @@ const AdminCommissionsPage: React.FC = () => {
           </div>
         )}
       </div>
+    </>
   );
 };
 

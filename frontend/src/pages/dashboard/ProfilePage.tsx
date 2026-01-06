@@ -3,6 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import { useDispatch, useSelector } from 'react-redux';
 import { motion, AnimatePresence } from 'framer-motion';
 import { toast } from 'react-hot-toast';
+import PrivatePageSEO from '@/components/common/PrivatePageSEO';
 import {
   FaUser,
   FaCamera,
@@ -99,7 +100,9 @@ const ProfileHeader: React.FC<{
   const displayAvatar = previewUrl || userProfile?.avatar;
 
   return (
-    <div className="relative bg-gradient-to-br from-blue-600 via-blue-700 to-indigo-800 rounded-3xl p-8 text-white overflow-hidden">
+    <>
+      <PrivatePageSEO title="My Profile | Kidrove" description="Manage your account settings and preferences" />
+      <div className="relative bg-gradient-to-br from-blue-600 via-blue-700 to-indigo-800 rounded-3xl p-8 text-white overflow-hidden">
       {/* Background decoration */}
       <div className="absolute inset-0 opacity-10">
         <div className="absolute top-0 right-0 w-96 h-96 rounded-full bg-white transform translate-x-32 -translate-y-32"></div>
@@ -226,6 +229,7 @@ const ProfileHeader: React.FC<{
         </div>
       </div>
     </div>
+    </>
   );
 };
 

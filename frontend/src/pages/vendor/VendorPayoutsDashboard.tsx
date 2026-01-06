@@ -17,11 +17,12 @@ import {
   selectIsDashboardLoading,
   selectIsHistoryLoading,
   selectIsCommissionLoading,
-  selectDashboardError
+  selectDashboardError,
 } from '../../store/slices/vendorPayoutSlice';
 import type { AppDispatch } from '../../store';
 import VendorNavigation from '../../components/vendor/VendorNavigation';
 import vendorPayoutAPI, { SubscriptionStatusData, CommissionHistoryData } from '../../services/api/vendorPayoutAPI';
+import PrivatePageSEO from '@/components/common/PrivatePageSEO';
 
 const VendorPayoutsDashboard: React.FC = () => {
   const dispatch = useDispatch<AppDispatch>();
@@ -337,6 +338,8 @@ const VendorPayoutsDashboard: React.FC = () => {
   };
 
   return (
+    <>
+      <PrivatePageSEO title="Vendor - Payouts | Kidrove" description="Manage earnings and payouts" />
     <div className="min-h-screen bg-gray-50">
       <VendorNavigation />
 
@@ -619,6 +622,7 @@ const VendorPayoutsDashboard: React.FC = () => {
         </div>
       )}
     </div>
+    </>
   );
 };
 

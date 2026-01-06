@@ -33,28 +33,28 @@ export const generatePlaceholder = ({
     `;
     return `data:image/svg+xml;charset=UTF-8,${encodeURIComponent(svg)}`;
   }
-  
+
   // Canvas fallback (though we'll primarily use SVG)
   const canvas = document.createElement('canvas');
   canvas.width = width;
   canvas.height = height;
   const ctx = canvas.getContext('2d');
-  
+
   if (!ctx) {
     return generatePlaceholder({ width, height, text, backgroundColor, textColor, format: 'svg' });
   }
-  
+
   // Fill background
   ctx.fillStyle = backgroundColor;
   ctx.fillRect(0, 0, width, height);
-  
+
   // Add text
   ctx.fillStyle = textColor;
   ctx.font = `${Math.min(width, height) / 10}px Arial, sans-serif`;
   ctx.textAlign = 'center';
   ctx.textBaseline = 'middle';
   ctx.fillText(text, width / 2, height / 2);
-  
+
   return canvas.toDataURL('image/png');
 };
 
@@ -67,7 +67,8 @@ export const placeholderConfigs = {
   blogThumbnail: { width: 300, height: 200, text: 'Blog Image' },
   categoryIcon: { width: 100, height: 100, text: 'Category' },
   venuePhoto: { width: 500, height: 300, text: 'Venue' },
-  galleryItem: { width: 300, height: 200, text: 'Gallery' }
+  galleryItem: { width: 300, height: 200, text: 'Gallery' },
+  instructor: { width: 300, height: 400, text: 'Instructor' }
 };
 
 /**

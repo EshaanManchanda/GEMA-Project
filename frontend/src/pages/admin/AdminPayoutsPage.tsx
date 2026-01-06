@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { useDispatch, useSelector } from 'react-redux';
 import { Link } from 'react-router-dom';
 import { toast } from 'react-hot-toast';
+import PrivatePageSEO from '@/components/common/PrivatePageSEO';
 import {
   fetchVendorEarnings,
   fetchPayoutRequests,
@@ -240,7 +241,9 @@ const AdminPayoutsPage: React.FC = () => {
   }
 
   return (
-    <div className="container mx-auto px-4 py-8">
+    <>
+      <PrivatePageSEO title="Admin - Payouts | Kidrove" description="Manage vendor payouts" />
+      <div className="container mx-auto px-4 py-8">
         <div className="flex flex-col md:flex-row justify-between items-start md:items-center mb-8">
           <h1 className="text-3xl font-bold text-gray-900 mb-4 md:mb-0">Payout Management</h1>
           <div className="flex space-x-3">
@@ -855,6 +858,7 @@ const AdminPayoutsPage: React.FC = () => {
           </div>
         )}
       </div>
+      </>
   );
 };
 

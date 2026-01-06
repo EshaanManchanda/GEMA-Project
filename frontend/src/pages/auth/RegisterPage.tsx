@@ -4,6 +4,7 @@ import { useAppDispatch, useAppSelector } from '@/store/hooks';
 import { registerUser, verifyEmailWithOTP, resendVerificationEmail, loginWithGoogleThunk, clearError } from '@/store/slices/authSlice';
 import { loginWithGoogle } from '@/services/firebaseAuth';
 import PhoneInput from '@/components/forms/PhoneInput';
+import PrivatePageSEO from '@/components/common/PrivatePageSEO';
 
 interface RegisterFormData {
   firstName: string;
@@ -252,7 +253,9 @@ const RegisterPage: React.FC = () => {
 
   if (currentStep === 2) {
     return (
-      <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-primary-50 to-white py-12 px-4 sm:px-6 lg:px-8">
+      <>
+        <PrivatePageSEO title="Verify Email | Kidrove" description="Verify your email address" />
+        <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-primary-50 to-white py-12 px-4 sm:px-6 lg:px-8">
         <div className="max-w-md w-full space-y-6 animate-fade-in-up">
           <div className="bg-white p-8 rounded-xl shadow-medium border border-neutral-200">
             <div className="text-center">
@@ -340,10 +343,13 @@ const RegisterPage: React.FC = () => {
           </div>
         </div>
       </div>
+      </>
     );
   }
 
   return (
+    <>
+      <PrivatePageSEO title="Register | Kidrove" description="Create your Kidrove account" />
     <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-primary-50 to-white py-12 px-4 sm:px-6 lg:px-8">
       <div className="max-w-md w-full space-y-6 animate-fade-in-up">
         <div className="bg-white p-8 rounded-xl shadow-medium border border-neutral-200">
@@ -622,6 +628,7 @@ const RegisterPage: React.FC = () => {
         </div>
       </div>
     </div>
+    </>
   );
 };
 

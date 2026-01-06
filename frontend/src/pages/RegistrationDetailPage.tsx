@@ -21,6 +21,7 @@ import {
   Trash2,
 } from 'lucide-react';
 import toast from 'react-hot-toast';
+import PrivatePageSEO from '@/components/common/PrivatePageSEO';
 
 import { AppDispatch } from '@/store';
 import {
@@ -194,6 +195,8 @@ const RegistrationDetailPage: React.FC = () => {
   }, {} as Record<string, typeof registration.registrationData>);
 
   return (
+    <>
+      <PrivatePageSEO title="Registration Details | Kidrove" description="View registration details" />
     <div className="min-h-screen bg-gray-50 py-8">
       <div className="max-w-5xl mx-auto px-4 sm:px-6 lg:px-8">
         {/* Header */}
@@ -558,6 +561,7 @@ const RegistrationDetailPage: React.FC = () => {
         )}
       </div>
     </div>
+    </>
   );
 };
 

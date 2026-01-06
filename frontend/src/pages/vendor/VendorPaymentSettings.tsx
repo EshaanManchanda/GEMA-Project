@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useDispatch, useSelector } from 'react-redux';
 import { toast } from 'react-hot-toast';
+import PrivatePageSEO from '@/components/common/PrivatePageSEO';
 import {
   fetchPaymentSettings,
   updatePaymentSettings,
@@ -124,6 +125,8 @@ const VendorPaymentSettings: React.FC = () => {
   }
 
   return (
+    <>
+      <PrivatePageSEO title="Vendor - Payment Settings | Kidrove" description="Configure payment settings" />
     <div className="min-h-screen bg-gray-50">
       <VendorNavigation />
 
@@ -437,6 +440,7 @@ const VendorPaymentSettings: React.FC = () => {
         </form>
       </div>
     </div>
+    </>
   );
 };
 

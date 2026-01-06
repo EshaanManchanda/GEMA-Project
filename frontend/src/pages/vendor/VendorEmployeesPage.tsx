@@ -6,6 +6,7 @@ import EmployeeFilters from '../../components/vendor/EmployeeFilters';
 import EmployeeTable from '../../components/vendor/EmployeeTable';
 import EmployeeExportModal from '../../components/vendor/EmployeeExportModal';
 import AssignEventModal from '../../components/vendor/AssignEventModal';
+import PrivatePageSEO from '@/components/common/PrivatePageSEO';
 
 export interface Employee {
   _id: string;
@@ -162,6 +163,8 @@ const VendorEmployeesPage: React.FC = () => {
   };
 
   return (
+    <>
+      <PrivatePageSEO title="Vendor - Employees | Kidrove" description="Manage employees" />
     <div className="min-h-screen bg-gray-50">
       <VendorNavigation />
 
@@ -306,6 +309,7 @@ const VendorEmployeesPage: React.FC = () => {
         />
       )}
     </div>
+    </>
   );
 };
 

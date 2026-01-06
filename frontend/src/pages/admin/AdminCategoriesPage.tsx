@@ -5,6 +5,7 @@ import MediaPickerModal from '../../components/admin/media/MediaPickerModal';
 import SEOEditor from '../../components/seo/SEOEditor';
 import toast from 'react-hot-toast';
 import { config } from '../../config';
+import PrivatePageSEO from '@/components/common/PrivatePageSEO';
 
 const AdminCategoriesPage: React.FC = () => {
   const [categories, setCategories] = useState<Category[]>([]);
@@ -311,7 +312,9 @@ const AdminCategoriesPage: React.FC = () => {
   }
 
   return (
-    <div className="container mx-auto px-4 py-8">
+    <>
+      <PrivatePageSEO title="Admin - Categories | Kidrove" description="Manage event categories" />
+      <div className="container mx-auto px-4 py-8">
       <div className="flex flex-col md:flex-row justify-between items-start md:items-center mb-6">
         <h1 className="text-3xl font-bold text-gray-900 mb-4 md:mb-0">Categories Management</h1>
         <button
@@ -897,6 +900,7 @@ const AdminCategoriesPage: React.FC = () => {
         title="Select Category Featured Image"
       />
     </div>
+    </>
   );
 };
 

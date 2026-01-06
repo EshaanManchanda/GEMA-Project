@@ -6,6 +6,7 @@ import vendorAPI from '../../services/api/vendorAPI';
 import categoriesAPI, { Category } from '../../services/api/categoriesAPI';
 import VendorEventCreateModal from '../../components/vendor/VendorEventCreateModal';
 import VendorEventViewModal from '../../components/vendor/VendorEventViewModal';
+import PrivatePageSEO from '@/components/common/PrivatePageSEO';
 
 interface Event {
   _id: string;
@@ -190,6 +191,7 @@ const VendorEventsPage: React.FC = () => {
 
   return (
     <>
+      <PrivatePageSEO title="Vendor - Events | Kidrove" description="Manage your events" />
       <VendorNavigation />
       <div className="min-h-screen bg-gradient-to-br from-emerald-50 via-green-50 to-teal-50">
         <div className="container mx-auto px-4 py-8">

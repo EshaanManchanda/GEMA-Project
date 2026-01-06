@@ -6,6 +6,7 @@ import Button from '../../components/ui/Button';
 import { Card, CardContent, CardHeader, CardTitle } from '../../components/ui/Card';
 import ReelForm from '../../components/admin/ReelForm';
 import reelsAPI, { Reel } from '../../services/api/reelsAPI';
+import PrivatePageSEO from '@/components/common/PrivatePageSEO';
 
 const ReelsManagementPage: React.FC = () => {
   const [showForm, setShowForm] = useState(false);
@@ -146,6 +147,8 @@ const ReelsManagementPage: React.FC = () => {
   }, []);
 
   return (
+    <>
+      <PrivatePageSEO title="Admin - Reels | Kidrove" description="Manage video reels" />
     <div className="p-6">
       <Card>
         <CardHeader>
@@ -338,6 +341,7 @@ const ReelsManagementPage: React.FC = () => {
         />
       )}
     </div>
+    </>
   );
 };
 

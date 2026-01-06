@@ -3,6 +3,7 @@ import { Download, Calendar, MapPin, Clock, User, Ticket, QrCode, Share } from '
 import { motion } from 'framer-motion';
 import { ApiService } from '../../services/api';
 import QRCode from 'qrcode.react';
+import PrivatePageSEO from '@/components/common/PrivatePageSEO';
 
 interface TicketData {
   id: string;
@@ -186,7 +187,9 @@ const MyTicketsPage: React.FC = () => {
   }
 
   return (
-    <div className="container mx-auto px-4 py-8">
+    <>
+      <PrivatePageSEO title="My Tickets | Kidrove" description="View and download your event tickets" />
+      <div className="container mx-auto px-4 py-8">
       {/* Header */}
       <div className="flex flex-col md:flex-row justify-between items-start md:items-center mb-8">
         <div>
@@ -394,6 +397,7 @@ const MyTicketsPage: React.FC = () => {
         </div>
       )}
     </div>
+    </>
   );
 };
 

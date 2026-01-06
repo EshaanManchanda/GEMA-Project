@@ -1,6 +1,7 @@
 import React from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import FormBuilder from '@/components/registration/FormBuilder';
+import PrivatePageSEO from '@/components/common/PrivatePageSEO';
 
 const FormBuilderPage: React.FC = () => {
   const { eventId } = useParams<{ eventId: string }>();
@@ -19,6 +20,8 @@ const FormBuilderPage: React.FC = () => {
   }
 
   return (
+    <>
+      <PrivatePageSEO title="Vendor - Form Builder | Kidrove" description="Build registration form" />
     <div className="min-h-screen bg-gray-50 py-8">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         <FormBuilder
@@ -29,6 +32,7 @@ const FormBuilderPage: React.FC = () => {
         />
       </div>
     </div>
+    </>
   );
 };
 

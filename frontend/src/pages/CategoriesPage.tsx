@@ -2,75 +2,76 @@ import React, { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import categoriesAPI from '../services/api/categoriesAPI';
 import { getPlaceholderUrl } from '../utils/placeholderImage';
+import SEO from '@/components/common/SEO';
 
 // Mock data for when backend is unavailable
 const mockCategories = [
-  { 
-    id: '1', 
-    name: 'Entertainment', 
+  {
+    id: '1',
+    name: 'Entertainment',
     slug: 'entertainment',
     icon: '🎭',
     description: 'Fun activities and entertainment for kids of all ages.',
     eventCount: 12,
     image: 'https://via.placeholder.com/400x300?text=Entertainment'
   },
-  { 
-    id: '2', 
-    name: 'Education', 
+  {
+    id: '2',
+    name: 'Education',
     slug: 'education',
     icon: '📚',
     description: 'Learning experiences and educational activities for children.',
     eventCount: 15,
     image: 'https://via.placeholder.com/400x300?text=Education'
   },
-  { 
-    id: '3', 
-    name: 'Arts', 
+  {
+    id: '3',
+    name: 'Arts',
     slug: 'arts',
     icon: '🎨',
     description: 'Creative arts and crafts activities to inspire young artists.',
     eventCount: 8,
     image: 'https://via.placeholder.com/400x300?text=Arts'
   },
-  { 
-    id: '4', 
-    name: 'Sports', 
+  {
+    id: '4',
+    name: 'Sports',
     slug: 'sports',
     icon: '⚽',
     description: 'Sports and physical activities for active kids.',
     eventCount: 10,
     image: 'https://via.placeholder.com/400x300?text=Sports'
   },
-  { 
-    id: '5', 
-    name: 'Adventure', 
+  {
+    id: '5',
+    name: 'Adventure',
     slug: 'adventure',
     icon: '🏕️',
     description: 'Exciting outdoor adventures and exploration activities.',
     eventCount: 6,
     image: 'https://via.placeholder.com/400x300?text=Adventure'
   },
-  { 
-    id: '6', 
-    name: 'Science', 
+  {
+    id: '6',
+    name: 'Science',
     slug: 'science',
     icon: '🔬',
     description: 'Scientific experiments and discovery for curious minds.',
     eventCount: 9,
     image: 'https://via.placeholder.com/400x300?text=Science'
   },
-  { 
-    id: '7', 
-    name: 'Music', 
+  {
+    id: '7',
+    name: 'Music',
     slug: 'music',
     icon: '🎵',
     description: 'Musical activities and performances for young musicians.',
     eventCount: 7,
     image: 'https://via.placeholder.com/400x300?text=Music'
   },
-  { 
-    id: '8', 
-    name: 'Cooking', 
+  {
+    id: '8',
+    name: 'Cooking',
     slug: 'cooking',
     icon: '🍳',
     description: 'Culinary experiences and cooking classes for kids.',
@@ -79,27 +80,43 @@ const mockCategories = [
   }
 ];
 
+// Define Category interface to handle both mock and API data structures
+interface Category {
+  id: string;
+  _id?: string;
+  name: string;
+  slug: string;
+  icon?: string;
+  description?: string;
+  eventCount?: number;
+  image?: string;
+  featuredImage?: string;
+}
+
 const CategoriesPage: React.FC = () => {
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const [categories, setCategories] = useState(mockCategories);
+  const [categories, setCategories] = useState<Category[]>(mockCategories);
   const [usingMockData, setUsingMockData] = useState(false);
   const [searchTerm, setSearchTerm] = useState('');
-  
+
   // Simulate fetching data from backend
   useEffect(() => {
     const fetchCategories = async () => {
       try {
         setIsLoading(true);
-        
+
+        // Fetch real data from backend using API service
         // Fetch real data from backend using API service
         const categoriesData = await categoriesAPI.getAllCategories();
-        
+
         // Handle API response format - extract data if it's wrapped in response object
-        const categories = categoriesData?.data || categoriesData || [];
-        setCategories(Array.isArray(categories) ? categories : []);
+        const responseData = (categoriesData as any)?.data || categoriesData;
+        const categoriesList = Array.isArray(responseData) ? responseData as Category[] : [];
+
+        setCategories(categoriesList);
         setUsingMockData(false);
-        
+
       } catch (err) {
         console.error('Error fetching categories:', err);
         // Use mock data if backend is unavailable
@@ -110,15 +127,15 @@ const CategoriesPage: React.FC = () => {
         setIsLoading(false);
       }
     };
-    
+
     fetchCategories();
   }, []);
-  
+
   // Filter categories based on search term
   const filteredCategories = categories.filter(category =>
     category.name.toLowerCase().includes(searchTerm.toLowerCase())
   );
-  
+
   if (isLoading) {
     return (
       <div className="min-h-screen flex items-center justify-center">
@@ -126,18 +143,27 @@ const CategoriesPage: React.FC = () => {
       </div>
     );
   }
-  
+
   return (
     <div className="container mx-auto px-4 py-8">
+      <SEO
+        title="Kids Activity Categories in UAE | Kidrove"
+        description="Browse all kids activity categories in Dubai, Abu Dhabi and UAE. From entertainment to education, find the perfect events for your children."
+        keywords={['kids activities', 'categories', 'UAE', 'entertainment', 'education', 'sports', 'arts']}
+        breadcrumbs={[
+          { name: 'Home', url: '/' },
+          { name: 'Categories', url: '/categories' }
+        ]}
+      />
       {usingMockData && (
         <div className="bg-yellow-100 border-l-4 border-yellow-500 text-yellow-700 p-4 mb-6" role="alert">
           <p className="font-bold">Note</p>
           <p>{error}</p>
         </div>
       )}
-      
+
       <h1 className="text-3xl font-bold mb-8 text-center">Categories</h1>
-      
+
       <div className="max-w-md mx-auto mb-8">
         <div className="relative flex items-center w-full h-12 rounded-lg focus-within:shadow-lg bg-white overflow-hidden border border-gray-300">
           <div className="grid place-items-center h-full w-12 text-gray-300">
@@ -154,7 +180,7 @@ const CategoriesPage: React.FC = () => {
           />
         </div>
       </div>
-      
+
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
         {filteredCategories.map(category => (
           <Link
@@ -183,7 +209,7 @@ const CategoriesPage: React.FC = () => {
           </Link>
         ))}
       </div>
-      
+
       {filteredCategories.length === 0 && (
         <div className="text-center py-12">
           <h3 className="text-xl font-medium mb-2">No categories found</h3>

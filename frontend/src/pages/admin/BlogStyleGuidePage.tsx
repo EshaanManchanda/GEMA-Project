@@ -1,6 +1,7 @@
 import React, { useState, useMemo } from 'react';
 import { Copy, Check, Bold, Italic, Underline, Strikethrough, Code, Heading1, Heading2, Heading3, List, ListOrdered, Quote, AlignLeft, AlignCenter, AlignRight, AlignJustify, Link2, Image as ImageIcon, Video, Table2, Palette, Highlighter, Type, Undo, Redo } from 'lucide-react';
 import toast from 'react-hot-toast';
+import PrivatePageSEO from '@/components/common/PrivatePageSEO';
 
 const BlogStyleGuidePage: React.FC = () => {
   const [copiedCode, setCopiedCode] = useState<string | null>(null);
@@ -362,6 +363,8 @@ const BlogStyleGuidePage: React.FC = () => {
   }, [searchTerm, activeTab, filteredExamples, editorSections]);
 
   return (
+    <>
+      <PrivatePageSEO title="Admin - Blog Style Guide | Kidrove" description="Blog editor style guide" />
     <div className="p-6 max-w-7xl mx-auto">
       {/* Header */}
       <div className="mb-6">
@@ -1018,6 +1021,7 @@ const BlogStyleGuidePage: React.FC = () => {
         </div>
       )}
     </div>
+    </>
   );
 };
 

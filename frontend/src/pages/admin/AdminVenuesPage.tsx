@@ -4,6 +4,7 @@ import toast from 'react-hot-toast';
 import adminAPI from '../../services/api/adminAPI';
 import VenueDetailsModal from '../../components/admin/VenueDetailsModal';
 import ConfirmDialog from '../../components/common/ConfirmDialog';
+import PrivatePageSEO from '@/components/common/PrivatePageSEO';
 
 interface Venue {
   id: string;
@@ -476,13 +477,18 @@ const AdminVenuesPage: React.FC = () => {
 
   if (isLoading) {
     return (
+      <>
+        <PrivatePageSEO title="Admin - Venues | Kidrove" description="Manage event venues" />
       <div className="flex justify-center items-center h-screen">
         <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-primary"></div>
       </div>
+      </>
     );
   }
 
   return (
+    <>
+      <PrivatePageSEO title="Admin - Venues | Kidrove" description="Manage event venues" />
     <div className="container mx-auto px-4 py-8">
       <div className="flex flex-col md:flex-row justify-between items-start md:items-center mb-6">
         <h1 className="text-3xl font-bold text-gray-900 mb-4 md:mb-0">Venues Management</h1>
@@ -979,6 +985,7 @@ const AdminVenuesPage: React.FC = () => {
         </div>
       )}
     </div>
+    </>
   );
 };
 

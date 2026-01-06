@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
+import PrivatePageSEO from '@/components/common/PrivatePageSEO';
 
 interface Review {
   id: string;
@@ -143,7 +144,9 @@ const ReviewsPage: React.FC = () => {
   }
 
   return (
-    <div className="container mx-auto px-4 py-8">
+    <>
+      <PrivatePageSEO title="My Reviews | Kidrove" description="View and manage your event reviews" />
+      <div className="container mx-auto px-4 py-8">
       <div className="max-w-4xl mx-auto">
         <h1 className="text-3xl font-bold text-gray-900 mb-6">My Reviews</h1>
         
@@ -266,6 +269,7 @@ const ReviewsPage: React.FC = () => {
         </div>
       </div>
     </div>
+    </>
   );
 };
 

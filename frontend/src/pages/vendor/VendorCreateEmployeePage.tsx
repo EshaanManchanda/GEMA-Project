@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import vendorAPI from '../../services/api/vendorAPI';
 import VendorNavigation from '../../components/vendor/VendorNavigation';
+import PrivatePageSEO from '@/components/common/PrivatePageSEO';
 
 const VendorCreateEmployeePage: React.FC = () => {
   const navigate = useNavigate();
@@ -88,6 +89,8 @@ const VendorCreateEmployeePage: React.FC = () => {
   };
 
   return (
+    <>
+      <PrivatePageSEO title="Vendor - Create Employee | Kidrove" description="Add new employee" />
     <div className="min-h-screen bg-gray-50">
       <VendorNavigation />
 
@@ -318,6 +321,7 @@ const VendorCreateEmployeePage: React.FC = () => {
         </form>
       </div>
     </div>
+    </>
   );
 };
 

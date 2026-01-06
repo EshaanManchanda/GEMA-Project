@@ -20,6 +20,7 @@ import {
   Settings,
 } from 'lucide-react';
 import toast from 'react-hot-toast';
+import PrivatePageSEO from '@/components/common/PrivatePageSEO';
 
 import { AppDispatch } from '@/store';
 import {
@@ -159,6 +160,8 @@ const VendorRegistrationsDashboard: React.FC = () => {
   };
 
   return (
+    <>
+      <PrivatePageSEO title="Vendor - Registrations | Kidrove" description="Manage event registrations" />
     <div className="min-h-screen bg-gray-50 py-8">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         {/* Header */}
@@ -540,6 +543,7 @@ const VendorRegistrationsDashboard: React.FC = () => {
         )}
       </div>
     </div>
+    </>
   );
 };
 

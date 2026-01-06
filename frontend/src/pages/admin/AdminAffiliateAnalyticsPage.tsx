@@ -16,6 +16,7 @@ import affiliateEventAPI, { AffiliateAnalytics } from '../../services/api/affili
 import { Card, CardHeader, CardTitle, CardContent } from '../../components/ui/Card';
 import Badge from '../../components/ui/Badge';
 import { format, subDays } from 'date-fns';
+import PrivatePageSEO from '@/components/common/PrivatePageSEO';
 
 // Register ChartJS components
 ChartJS.register(
@@ -209,6 +210,8 @@ const AdminAffiliateAnalyticsPage: React.FC = () => {
   }
 
   return (
+    <>
+      <PrivatePageSEO title="Admin - Affiliate Analytics | Kidrove" description="Track affiliate event performance" />
     <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
       {/* Header */}
       <div className="mb-8">
@@ -452,6 +455,7 @@ const AdminAffiliateAnalyticsPage: React.FC = () => {
         </CardContent>
       </Card>
     </div>
+    </>
   );
 };
 

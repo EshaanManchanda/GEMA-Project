@@ -9,6 +9,7 @@ import favoritesAPI from '../../services/api/favoritesAPI';
 import { SkeletonDashboardTab, SkeletonGrid, SkeletonEventCard } from '../../components/common/SkeletonLoader';
 import useApiRetry from '../../hooks/useApiRetry';
 import CancelOrderModal from '../../components/order/CancelOrderModal';
+import PrivatePageSEO from '@/components/common/PrivatePageSEO';
 
 interface Event {
   _id: string;
@@ -272,7 +273,9 @@ const DashboardPage: React.FC = () => {
   }
 
   return (
-    <div className="container mx-auto px-4 py-8">
+    <>
+      <PrivatePageSEO title="My Dashboard | Kidrove" description="Manage your bookings and favorites" />
+      <div className="container mx-auto px-4 py-8">
       <div className="flex flex-col md:flex-row justify-between items-start md:items-center mb-8">
         <div>
           <h1 className="text-3xl font-bold text-gray-900">Welcome back, {user?.firstName}!</h1>
@@ -592,6 +595,7 @@ const DashboardPage: React.FC = () => {
         />
       )}
     </div>
+    </>
   );
 };
 

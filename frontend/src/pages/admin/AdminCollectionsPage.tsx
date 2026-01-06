@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { Link } from 'react-router-dom';
 import toast from 'react-hot-toast';
+import PrivatePageSEO from '@/components/common/PrivatePageSEO';
 import {
   Plus,
   Search,
@@ -239,7 +240,9 @@ const AdminCollectionsPage: React.FC = () => {
   const uniqueCategories = [...new Set(collections.map(c => c.category).filter(Boolean))];
 
   return (
-    <div className="min-h-screen bg-gray-50 p-6">
+    <>
+      <PrivatePageSEO title="Admin - Collections | Kidrove" description="Manage event collections" />
+      <div className="min-h-screen bg-gray-50 p-6">
       <div className="max-w-7xl mx-auto">
         {/* Header */}
         <div className="flex items-center justify-between mb-6">
@@ -656,6 +659,7 @@ const AdminCollectionsPage: React.FC = () => {
         type={bulkAction === 'delete' ? 'danger' : 'warning'}
       />
     </div>
+    </>
   );
 };
 

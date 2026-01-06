@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import PrivatePageSEO from '@/components/common/PrivatePageSEO';
 import {
   Chart as ChartJS,
   CategoryScale,
@@ -476,7 +477,9 @@ const AdminAnalyticsPage: React.FC = () => {
   };
 
   return (
-    <div className="container mx-auto px-4 py-8">
+    <>
+      <PrivatePageSEO title="Admin - Analytics | Kidrove" description="View analytics and insights" />
+      <div className="container mx-auto px-4 py-8">
       <div className="flex flex-col md:flex-row justify-between items-start md:items-center mb-6">
         <h1 className="text-3xl font-bold text-gray-900 mb-4 md:mb-0">Analytics Dashboard</h1>
         <div className="flex space-x-2">
@@ -755,6 +758,7 @@ const AdminAnalyticsPage: React.FC = () => {
         </div>
       </div>
     </div>
+    </>
   );
 };
 

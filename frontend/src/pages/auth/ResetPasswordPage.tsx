@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { authAPI } from '../../services/api/authAPI';
+import PrivatePageSEO from '@/components/common/PrivatePageSEO';
 
 interface ResetPasswordFormData {
   email: string;
@@ -110,7 +111,9 @@ const ResetPasswordPage: React.FC = () => {
   };
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-primary-50 to-white py-12 px-4 sm:px-6 lg:px-8">
+    <>
+      <PrivatePageSEO title="Reset Password | Kidrove" description="Create a new password for your account" />
+      <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-primary-50 to-white py-12 px-4 sm:px-6 lg:px-8">
       <div className="max-w-md w-full space-y-6 animate-fade-in-up">
         <div className="bg-white p-8 rounded-xl shadow-medium border border-neutral-200">
           <div className="text-center">
@@ -298,6 +301,7 @@ const ResetPasswordPage: React.FC = () => {
       </div>
     </div>
     </div>
+    </>
   );
 };
 

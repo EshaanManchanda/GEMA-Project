@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import authAPI from '@/services/api/authAPI';
+import PrivatePageSEO from '@/components/common/PrivatePageSEO';
 
 interface PasswordStrength {
   score: number;
@@ -163,7 +164,9 @@ const ChangePasswordPage: React.FC = () => {
   };
 
   return (
-    <div className="container mx-auto px-4 py-8 max-w-md">
+    <>
+      <PrivatePageSEO title="Change Password | Kidrove" description="Update your account password" />
+      <div className="container mx-auto px-4 py-8 max-w-md">
       <div className="bg-white shadow-lg rounded-lg overflow-hidden">
         <div className="px-6 py-4 border-b border-gray-200">
           <div className="flex items-center justify-between">
@@ -386,6 +389,7 @@ const ChangePasswordPage: React.FC = () => {
         </div>
       </div>
     </div>
+    </>
   );
 };
 

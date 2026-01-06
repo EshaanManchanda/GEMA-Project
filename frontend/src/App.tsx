@@ -17,6 +17,7 @@ import { PageErrorBoundary } from '@components/common/ErrorBoundary';
 const HomePage = React.lazy(() => import(/* webpackChunkName: "home" */ './pages/HomePage'));
 const EventsPage = React.lazy(() => import(/* webpackChunkName: "events" */ './pages/EventsPage'));
 const EventDetailPage = React.lazy(() => import(/* webpackChunkName: "events" */ './pages/EventDetailPage'));
+const InstructorDetailPage = React.lazy(() => import(/* webpackChunkName: "instructors" */ './pages/InstructorDetailPage'));
 const CategoriesPage = React.lazy(() => import(/* webpackChunkName: "categories" */ './pages/CategoriesPage'));
 const CategoryPage = React.lazy(() => import(/* webpackChunkName: "categories" */ './pages/CategoryPage'));
 const CollectionsPage = React.lazy(() => import(/* webpackChunkName: "collections" */ './pages/CollectionsPage'));
@@ -237,7 +238,7 @@ function AppContent() {
                 </Suspense>
               </PageErrorBoundary>
             } />
-            
+
             {/* Event Discovery Routes */}
             <Route path="events" element={
               <PageErrorBoundary>
@@ -253,7 +254,17 @@ function AppContent() {
                 </Suspense>
               </PageErrorBoundary>
             } />
-            
+
+
+            {/* Instructor Profile Routes */}
+            <Route path="instructors/:id" element={
+              <PageErrorBoundary>
+                <Suspense fallback={<LoadingSpinner />}>
+                  <InstructorDetailPage />
+                </Suspense>
+              </PageErrorBoundary>
+            } />
+
             {/* Category Discovery Routes */}
             <Route path="categories" element={
               <Suspense fallback={<LoadingSpinner />}>
@@ -277,7 +288,7 @@ function AppContent() {
                 <CollectionDetailPage />
               </Suspense>
             } />
-            
+
             {/* Vendor Discovery Routes */}
             <Route path="vendors" element={
               <Suspense fallback={<LoadingSpinner />}>
@@ -289,7 +300,7 @@ function AppContent() {
                 <VendorPage />
               </Suspense>
             } />
-            
+
             {/* Search Functionality */}
             <Route path="search" element={
               <PageErrorBoundary>
@@ -298,7 +309,7 @@ function AppContent() {
                 </Suspense>
               </PageErrorBoundary>
             } />
-            
+
             {/* Static Information Pages */}
             <Route path="about" element={
               <Suspense fallback={<LoadingSpinner />}>
@@ -345,10 +356,10 @@ function AppContent() {
                 <PartnerWithUsPage />
               </Suspense>
             } />
-            
+
             {/* ============ CUSTOMER ROUTES (/) ============ */}
             {/* Routes accessible to authenticated customers */}
-            
+
             {/* Shopping & Booking Routes */}
             <Route path="book/:eventId" element={
               <ProtectedRoute>
@@ -406,7 +417,7 @@ function AppContent() {
                 <PaymentCancelPage />
               </Suspense>
             } />
-            
+
             {/* Customer Dashboard Routes */}
             <Route path="dashboard" element={
               <ProtectedRoute>
@@ -507,7 +518,7 @@ function AppContent() {
               </Suspense>
             } />
           </Route>
-          
+
           {/* ============ VENDOR ROUTES (/vendor) ============ */}
           {/* Routes accessible only to vendors */}
           <Route path="/vendor" element={<Layout />}>
@@ -519,7 +530,7 @@ function AppContent() {
                 </Suspense>
               </VendorRoute>
             } />
-            
+
             {/* Event Management */}
             <Route path="events" element={
               <VendorRoute>
@@ -601,7 +612,7 @@ function AppContent() {
                 </Suspense>
               </VendorRoute>
             } />
-            
+
             {/* File Management */}
             <Route path="files" element={
               <VendorRoute>
@@ -610,7 +621,7 @@ function AppContent() {
                 </Suspense>
               </VendorRoute>
             } />
-            
+
             {/* Vendor Profile */}
             <Route path="profile" element={
               <VendorRoute>
@@ -659,7 +670,7 @@ function AppContent() {
               </VendorRoute>
             } />
           </Route>
-          
+
           {/* ============ EMPLOYEE ROUTES (/employee) ============ */}
           {/* Routes accessible only to employees */}
           <Route path="/employee" element={<Layout />}>
@@ -671,7 +682,7 @@ function AppContent() {
                 </Suspense>
               </EmployeeRoute>
             } />
-            
+
             {/* Task Management */}
             <Route path="tasks" element={
               <EmployeeRoute>
@@ -680,7 +691,7 @@ function AppContent() {
                 </Suspense>
               </EmployeeRoute>
             } />
-            
+
             {/* Ticket Scanning */}
             <Route path="scanner" element={
               <EmployeeRoute>
@@ -689,7 +700,7 @@ function AppContent() {
                 </Suspense>
               </EmployeeRoute>
             } />
-            
+
             {/* Reports */}
             <Route path="reports" element={
               <EmployeeRoute>
@@ -699,7 +710,7 @@ function AppContent() {
               </EmployeeRoute>
             } />
           </Route>
-          
+
           {/* ============ ADMIN ROUTES (/admin) ============ */}
           {/* Routes accessible only to administrators */}
           <Route path="/admin" element={<AdminLayout />}>
@@ -711,7 +722,7 @@ function AppContent() {
                 </Suspense>
               </AdminRoute>
             } />
-            
+
             {/* User Management */}
             <Route path="users" element={
               <AdminRoute>
@@ -765,7 +776,7 @@ function AppContent() {
                 </Suspense>
               </AdminRoute>
             } />
-            
+
             {/* Venue Management */}
             <Route path="venues" element={
               <AdminRoute>
@@ -788,7 +799,7 @@ function AppContent() {
                 </Suspense>
               </AdminRoute>
             } />
-            
+
             {/* Category Management */}
             <Route path="categories" element={
               <AdminRoute>
@@ -815,7 +826,7 @@ function AppContent() {
                 </Suspense>
               </AdminRoute>
             } />
-            
+
             {/* Payout Management */}
             <Route path="payouts" element={
               <AdminRoute>
@@ -824,7 +835,7 @@ function AppContent() {
                 </Suspense>
               </AdminRoute>
             } />
-            
+
             {/* Commission Management */}
             <Route path="commissions" element={
               <AdminRoute>
@@ -964,7 +975,7 @@ function AppContent() {
                 </Suspense>
               </AdminRoute>
             } />
-            
+
             {/* Employee Management */}
             <Route path="employees" element={
               <AdminRoute>
@@ -973,7 +984,7 @@ function AppContent() {
                 </Suspense>
               </AdminRoute>
             } />
-            
+
             {/* File Management */}
             <Route path="files" element={
               <AdminRoute>
@@ -982,7 +993,7 @@ function AppContent() {
                 </Suspense>
               </AdminRoute>
             } />
-            
+
             {/* System Settings */}
             <Route path="settings" element={
               <AdminRoute>

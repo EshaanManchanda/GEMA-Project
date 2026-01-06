@@ -5,6 +5,7 @@ import bannerAPI, { Banner } from '../../services/api/bannerAPI';
 import homepageAPI from '../../services/api/homepageAPI';
 import BannerList from '../../components/admin/BannerList';
 import BannerForm from '../../components/admin/BannerForm';
+import PrivatePageSEO from '@/components/common/PrivatePageSEO';
 
 const AdminBannersPage: React.FC = () => {
   const [banners, setBanners] = useState<Banner[]>([]);
@@ -107,6 +108,8 @@ const AdminBannersPage: React.FC = () => {
   };
 
   return (
+    <>
+      <PrivatePageSEO title="Admin - Banners | Kidrove" description="Manage homepage banners" />
     <div className="p-6">
       <div className="flex justify-between items-center mb-6">
         <div>
@@ -207,6 +210,7 @@ const AdminBannersPage: React.FC = () => {
         />
       )}
     </div>
+    </>
   );
 };
 

@@ -5,6 +5,7 @@ import { AppDispatch, RootState } from '@/store';
 import { fetchFavorites, removeFromFavorites } from '@/store/slices/favoritesSlice';
 import { Event } from '@/types/event';
 import DOMPurify from 'isomorphic-dompurify';
+import PrivatePageSEO from '@/components/common/PrivatePageSEO';
 
 const FavoritesPage: React.FC = () => {
   const dispatch = useDispatch<AppDispatch>();
@@ -68,7 +69,9 @@ const FavoritesPage: React.FC = () => {
   }
 
   return (
-    <div className="container mx-auto px-4 py-8">
+    <>
+      <PrivatePageSEO title="My Favorites | Kidrove" description="Your saved favorite events" />
+      <div className="container mx-auto px-4 py-8">
       <div className="max-w-6xl mx-auto">
         <div className="flex justify-between items-center mb-6">
           <h1 className="text-3xl font-bold text-gray-900">My Favorite Events</h1>
@@ -276,6 +279,7 @@ const FavoritesPage: React.FC = () => {
         )}
       </div>
     </div>
+    </>
   );
 };
 

@@ -6,6 +6,7 @@ import { redirectToRoleDashboard, type UserRole } from '@/utils/roleRedirect';
 import { loginUser, loginWithGoogleThunk } from '@/store/slices/authSlice';
 import { AppDispatch } from '@/store';
 import { API_BASE_URL } from '@/config/api';
+import PrivatePageSEO from '@/components/common/PrivatePageSEO';
 
 interface LoginFormData {
   email: string;
@@ -224,7 +225,9 @@ const LoginPage: React.FC = () => {
   };
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-primary-50 to-white py-12 px-4 sm:px-6 lg:px-8">
+    <>
+      <PrivatePageSEO title="Login | Kidrove" description="Sign in to your Kidrove account" />
+      <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-primary-50 to-white py-12 px-4 sm:px-6 lg:px-8">
       <div className="max-w-md w-full space-y-8 bg-white p-8 rounded-xl shadow-medium border border-neutral-200 animate-fade-in-up">
         <div className="text-center">
           <div className="flex justify-center mb-4">
@@ -505,6 +508,7 @@ const LoginPage: React.FC = () => {
         </div> */}
       </div>
     </div>
+    </>
   );
 };
 

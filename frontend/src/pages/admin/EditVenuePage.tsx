@@ -4,6 +4,7 @@ import toast from 'react-hot-toast';
 import { ArrowLeft } from 'lucide-react';
 import VenueForm from '../../components/admin/VenueForm';
 import adminAPI from '../../services/api/adminAPI';
+import PrivatePageSEO from '@/components/common/PrivatePageSEO';
 
 const EditVenuePage: React.FC = () => {
   const { id } = useParams<{ id: string }>();
@@ -62,16 +63,21 @@ const EditVenuePage: React.FC = () => {
 
   if (isLoading) {
     return (
+      <>
+        <PrivatePageSEO title="Admin - Edit Venue | Kidrove" description="Edit venue details" />
       <div className="container mx-auto px-4 py-8">
         <div className="flex justify-center items-center h-64">
           <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-blue-600"></div>
         </div>
       </div>
+      </>
     );
   }
 
   if (error || !venue) {
     return (
+      <>
+        <PrivatePageSEO title="Admin - Edit Venue | Kidrove" description="Edit venue details" />
       <div className="container mx-auto px-4 py-8">
         <div className="bg-red-50 border border-red-200 rounded-lg p-6 text-center">
           <p className="text-red-800 mb-4">{error || 'Venue not found'}</p>
@@ -84,10 +90,13 @@ const EditVenuePage: React.FC = () => {
           </button>
         </div>
       </div>
+      </>
     );
   }
 
   return (
+    <>
+      <PrivatePageSEO title="Admin - Edit Venue | Kidrove" description="Edit venue details" />
     <div className="container mx-auto px-4 py-8">
       {/* Header */}
       <div className="mb-6">
@@ -113,6 +122,7 @@ const EditVenuePage: React.FC = () => {
         />
       </div>
     </div>
+    </>
   );
 };
 

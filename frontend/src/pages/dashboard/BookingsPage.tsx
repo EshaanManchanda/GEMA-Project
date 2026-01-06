@@ -7,6 +7,7 @@ import { fetchBookings } from '@/store/slices/bookingsSlice';
 import QRCodeModal from '@/components/booking/QRCodeModal';
 import CancelOrderModal from '@/components/order/CancelOrderModal';
 import RefundStatusTracker from '@/components/order/RefundStatusTracker';
+import PrivatePageSEO from '@/components/common/PrivatePageSEO';
 
 interface Booking {
   id: string;
@@ -86,7 +87,9 @@ const BookingsPage: React.FC = () => {
   }
 
   return (
-    <div className="container mx-auto px-4 py-8">
+    <>
+      <PrivatePageSEO title="My Bookings | Kidrove" description="View and manage your event bookings" />
+      <div className="container mx-auto px-4 py-8">
       <div className="max-w-4xl mx-auto">
         <h1 className="text-3xl font-bold text-gray-900 mb-6">My Bookings</h1>
         
@@ -312,6 +315,7 @@ const BookingsPage: React.FC = () => {
         )}
       </div>
     </div>
+    </>
   );
 };
 

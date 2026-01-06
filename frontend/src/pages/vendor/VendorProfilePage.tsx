@@ -18,6 +18,7 @@ import {
   FaBuilding,
   FaClock,
 } from 'react-icons/fa';
+import PrivatePageSEO from '@/components/common/PrivatePageSEO';
 import vendorAPI from '../../services/api/vendorAPI';
 import VendorNavigation from '../../components/vendor/VendorNavigation';
 import StripeConnectSetup from '../../components/vendor/StripeConnectSetup';
@@ -238,6 +239,7 @@ const VendorProfilePage: React.FC = () => {
 
   return (
     <>
+      <PrivatePageSEO title="Vendor - Profile | Kidrove" description="Manage your profile" />
       <VendorNavigation />
       <div className="min-h-screen bg-gray-50 py-8">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">

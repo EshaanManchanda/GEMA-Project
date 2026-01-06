@@ -26,6 +26,7 @@ import WhyChooseUs from '@/components/sections/WhyChooseUs';
 import HomepageFAQs from '@/components/sections/HomepageFAQs';
 import GiftCardPromo from '@/components/sections/GiftCardPromo';
 import CitiesSection from '@/components/sections/CitiesSection';
+import FeaturedInstructors from '@/components/sections/FeaturedInstructors';
 import { HomeSEO } from '@/components/common/SEO';
 import { selectSocialSettings } from '@/store/slices/settingsSlice';
 import { Event } from '../types/event';
@@ -214,7 +215,7 @@ const Banner = ({ categories }: { categories: any[] }) => {
           50% { opacity: 0.2; transform: translate(-50%, -50%) scale(1.1); }
         }
       `}</style>
-      
+
       <StaggerContainer staggerDelay={0.1} className="max-w-6xl mx-auto px-4 sm:px-6 py-16 sm:py-24 text-center relative z-10">
         {/* Badge */}
         <SlideIn direction="down" delay={0.1}>
@@ -222,7 +223,7 @@ const Banner = ({ categories }: { categories: any[] }) => {
             <span className="font-semibold text-white text-sm sm:text-base">Discover Fun Activities</span>
           </div>
         </SlideIn>
-        
+
         {/* Heading */}
         <FadeIn delay={0.2}>
           <h1 className="text-3xl sm:text-4xl md:text-5xl lg:text-6xl font-bold leading-tight mb-4 sm:mb-6 px-2">
@@ -252,9 +253,9 @@ const Banner = ({ categories }: { categories: any[] }) => {
                 onChange={(e) => setSearchQuery(e.target.value)}
                 aria-label="Search for kids activities"
               />
-              <button 
+              <button
                 type="submit"
-                style={{ backgroundColor: 'var(--accent-color)' }} 
+                style={{ backgroundColor: 'var(--accent-color)' }}
                 className="px-8 py-5 text-white flex items-center justify-center hover:opacity-90 transition-all duration-300 hover:shadow-lg transform hover:scale-105"
                 aria-label="Search button"
               >
@@ -264,7 +265,7 @@ const Banner = ({ categories }: { categories: any[] }) => {
             </div>
           </form>
         </SlideIn>
-        
+
         {/* Popular searches */}
         <FadeIn delay={0.5}>
           <div className="mt-4 flex flex-wrap justify-center gap-2 text-sm">
@@ -332,7 +333,7 @@ const FeaturedEventsCarousel: React.FC<{
           </div> */}
           <h2 className="text-3xl font-bold mb-2 text-gray-900">Our Top Recommendations</h2>
           <p className="text-gray-700">Only the highest-rated activities in Dubai, Abu Dhabi, and the UAE make our list</p>
-          
+
         </div>
         <AnimatedButton
           className="mt-4 md:mt-0 flex items-center gap-2 font-medium text-gray-900 hover:underline focus:outline-none focus:ring-2 focus:ring-blue-500 rounded px-2 py-1"
@@ -385,7 +386,7 @@ const FeaturedEventsCarousel: React.FC<{
             </div>
           )}
         </div>
-        
+
         {loaded && instanceRef.current && (
           <div className="flex justify-center gap-3 mt-6">
             <button
@@ -505,7 +506,7 @@ const HomePage: React.FC = () => {
 
   // Single homepage query replaces 6 separate queries (400-600ms savings!)
   const { data: homepageData, isLoading: homepageLoading, error: homepageError, refetch: refetchHomepage } = useHomepageQuery();
-  console.log("homepagedata:",homepageData);
+  console.log("homepagedata:", homepageData);
 
   // Only block on homepage query (critical data)
   const isLoading = homepageLoading;
@@ -596,7 +597,7 @@ const HomePage: React.FC = () => {
   const handleRetry = useCallback(() => {
     refetchHomepage();
   }, [refetchHomepage]);
-  
+
   // Enhanced skeleton loader component
   const SkeletonLoader = () => (
     <div className="w-full bg-gray-50 animate-pulse">
@@ -609,7 +610,7 @@ const HomePage: React.FC = () => {
           <div className="w-96 h-12 bg-gray-300 rounded-lg"></div>
         </div>
       </div>
-      
+
       {/* Featured Events Skeleton */}
       <div className="max-w-screen-xl mx-auto px-6 py-16">
         <div className="flex justify-between items-center mb-8">
@@ -637,7 +638,7 @@ const HomePage: React.FC = () => {
           ))}
         </div>
       </div>
-      
+
       {/* Stats Skeleton */}
       <div className="w-full py-16 bg-gray-100">
         <div className="max-w-6xl mx-auto px-6">
@@ -669,7 +670,7 @@ const HomePage: React.FC = () => {
       </PageTransition>
     );
   }
-  
+
   return (
     <PageTransition>
       <HomeSEO
@@ -717,53 +718,53 @@ const HomePage: React.FC = () => {
           </ScrollReveal>
         )}
         <ScrollReveal>
-        {/* Collections Pills */}
+          {/* Collections Pills */}
           <CollectionPills collections={collectionsData} />
           <FeaturedEventsCarousel
             featuredEvents={featuredEvents}
-            // wishlistIds={wishlistIds}
-            // onWishlistToggle={handleWishlistToggle}
+          // wishlistIds={wishlistIds}
+          // onWishlistToggle={handleWishlistToggle}
           />
         </ScrollReveal>
 
-          {/* Carousel Layout - Best Price Tickets */}
-          <CollectionSection
-            badge="Best Price"
-            badgeColor="rgba(255, 107, 0, 0.1)"
-            title="☀️ Best-Price Tickets to Make the Most of the Sunshine!"
-            subtitle="Sunshine's out, fun's in! Grab best-price e-tickets now and make the most of this glorious weather."
-            events={bestPriceEvents}
-            layout="carousel"
-            eventCardVariant="overlay"
-            autoplay={true}
-            autoplayInterval={5000}
-            showNavigation={true}
-            showDots={true}
-            viewAllLink="/search?sort=price"
-            showPrice={true}
-            showLocation={true}
-            showWishlist={false}
-            showAgeGroup={true}
-          />
-  
-          {/* Horizontal Scroll Layout - Trending Now */}
-          <CollectionSection
-            badge="Trending"
-            title="🔥 Trending Now"
-            subtitle="What's popular right now in Dubai and UAE"
-            events={trendingEvents}
-            layout="horizontal-scroll"
-            eventCardVariant="compact"
-            maxItems={12}
-            viewAllLink="/search?sort=trending"
-            showPrice={true}
-            showLocation={true}
-            showStats={true}
-            showWishlist={false}
-            showAgeGroup={true}
-          />
+        {/* Carousel Layout - Best Price Tickets */}
+        <CollectionSection
+          badge="Best Price"
+          badgeColor="rgba(255, 107, 0, 0.1)"
+          title="☀️ Best-Price Tickets to Make the Most of the Sunshine!"
+          subtitle="Sunshine's out, fun's in! Grab best-price e-tickets now and make the most of this glorious weather."
+          events={bestPriceEvents}
+          layout="carousel"
+          eventCardVariant="overlay"
+          autoplay={true}
+          autoplayInterval={5000}
+          showNavigation={true}
+          showDots={true}
+          viewAllLink="/search?sort=price"
+          showPrice={true}
+          showLocation={true}
+          showWishlist={false}
+          showAgeGroup={true}
+        />
 
-          {/* Grid Layout - Handpicked Experiences */}
+        {/* Horizontal Scroll Layout - Trending Now */}
+        <CollectionSection
+          badge="Trending"
+          title="🔥 Trending Now"
+          subtitle="What's popular right now in Dubai and UAE"
+          events={trendingEvents}
+          layout="horizontal-scroll"
+          eventCardVariant="compact"
+          maxItems={12}
+          viewAllLink="/search?sort=trending"
+          showPrice={true}
+          showLocation={true}
+          showStats={true}
+          showWishlist={false}
+          showAgeGroup={true}
+        />
+
+        {/* Grid Layout - Handpicked Experiences */}
         <ScrollReveal>
           <CollectionSection
             badge="Handpicked"
@@ -784,6 +785,10 @@ const HomePage: React.FC = () => {
           />
         </ScrollReveal>
 
+
+        {/* Featured Instructors Section */}
+        <FeaturedInstructors />
+
         {/* Masonry Layout - New This Week */}
         <CollectionSection
           badge="New"
@@ -802,18 +807,18 @@ const HomePage: React.FC = () => {
           showAgeGroup={true}
         />
 
-        <EventGridSection events={events}/>
+        <EventGridSection events={events} />
         <CitiesSection />
-        <NewsletterSubscribe/>
-        <CategoryCarousel categories={categories}/>
-        <ReviewCarouselSwiper/>
+        <NewsletterSubscribe />
+        <CategoryCarousel categories={categories} />
+        <ReviewCarouselSwiper />
         {/* Gift Card Promo Section */}
         <GiftCardPromo activityCount={stats?.totalEvents || 100} />
         {/* Featured Blogs Section - Moved above fold for better visibility */}
         <ScrollReveal>
           <FeaturedBlogsSection blogs={featuredBlogs} loading={isLoading} />
         </ScrollReveal>
-        
+
 
         {/* Reels Section - Instagram-style vertical videos */}
         {reels && reels.length > 0 && (
@@ -852,14 +857,14 @@ const HomePage: React.FC = () => {
           </ScrollReveal>
         )}
 
-        
 
 
-        
-        
+
+
+
 
         {/* UAE Cities Section */}
-       
+
 
         {/* Trust Signals Section */}
         {/* <TrustSignals
@@ -873,19 +878,19 @@ const HomePage: React.FC = () => {
         {/* How It Works Section */}
         {/* <HowItWorks /> */}
 
-        
+
 
         {/* Why Choose Us Section */}
         <WhyChooseUs features={seoContentData?.seoContent?.features} />
 
-        
 
-        
-        
+
+
+
         {/* Homepage FAQs Section */}
         <HomepageFAQs faqItems={seoContentData?.seoContent?.faqItems} />
 
-        
+
 
         {/* Stacked Layout - Quick Picks */}
         <CollectionSection
@@ -900,8 +905,8 @@ const HomePage: React.FC = () => {
           viewAllLink="/search"
           showWishlist={false}
         />
-        
-        <StatsSection stats={stats}/>
+
+        <StatsSection stats={stats} />
       </div>
     </PageTransition>
   );

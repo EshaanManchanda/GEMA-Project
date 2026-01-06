@@ -8,6 +8,7 @@ import EventEditModal from '../../components/admin/EventEditModal';
 import { Category } from '../../services/api/categoriesAPI';
 import adminAPI from '../../services/api/adminAPI';
 import { useAdminEventsQuery } from '@/hooks/queries/useAdminQuery';
+import PrivatePageSEO from '@/components/common/PrivatePageSEO';
 import { useCategoriesQuery } from '@/hooks/queries/useCategoriesQuery';
 import {
   useApproveEventMutation,
@@ -318,7 +319,9 @@ const AdminEventsPage: React.FC = () => {
   }
 
   return (
-    <div className="min-h-screen bg-gray-50">
+    <>
+      <PrivatePageSEO title="Admin - Events | Kidrove" description="Manage and moderate events" />
+      <div className="min-h-screen bg-gray-50">
         <div className="container mx-auto px-4 py-8">
           <div className="mb-8 flex items-center justify-between">
             <div>
@@ -1097,6 +1100,7 @@ const AdminEventsPage: React.FC = () => {
           )}
         </div>
       </div>
+      </>
   );
 };
 

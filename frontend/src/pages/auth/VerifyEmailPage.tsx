@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { Link, useNavigate, useLocation } from 'react-router-dom';
+import PrivatePageSEO from '@/components/common/PrivatePageSEO';
 
 const VerifyEmailPage: React.FC = () => {
   const navigate = useNavigate();
@@ -98,7 +99,9 @@ const VerifyEmailPage: React.FC = () => {
   };
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-primary-50 to-white py-12 px-4 sm:px-6 lg:px-8">
+    <>
+      <PrivatePageSEO title="Verify Email | Kidrove" description="Verify your email address" />
+      <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-primary-50 to-white py-12 px-4 sm:px-6 lg:px-8">
       <div className="max-w-md w-full space-y-6 animate-fade-in-up">
         <div className="bg-white p-8 rounded-xl shadow-medium border border-neutral-200">
           <div className="text-center">
@@ -249,6 +252,7 @@ const VerifyEmailPage: React.FC = () => {
         </div>
       </div>
     </div>
+    </>
   );
 };
 

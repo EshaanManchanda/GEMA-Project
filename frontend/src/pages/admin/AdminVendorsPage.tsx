@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { toast } from 'react-hot-toast';
 import api from '../../services/api';
+import PrivatePageSEO from '@/components/common/PrivatePageSEO';
 
 interface Vendor {
   id: string;
@@ -158,7 +159,9 @@ const AdminVendorsPage: React.FC = () => {
   };
 
   return (
-    <div className="min-h-screen bg-gray-50 p-6">
+    <>
+      <PrivatePageSEO title="Admin - Vendors | Kidrove" description="Manage vendors and payment models" />
+      <div className="min-h-screen bg-gray-50 p-6">
       <div className="max-w-7xl mx-auto">
         {/* Header */}
         <div className="mb-8">
@@ -529,6 +532,7 @@ const AdminVendorsPage: React.FC = () => {
         </div>
       )}
     </div>
+    </>
   );
 };
 

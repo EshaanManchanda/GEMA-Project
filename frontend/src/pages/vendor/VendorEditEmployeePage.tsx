@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import vendorAPI from '../../services/api/vendorAPI';
 import VendorNavigation from '../../components/vendor/VendorNavigation';
+import PrivatePageSEO from '@/components/common/PrivatePageSEO';
 
 interface Employee {
   _id: string;
@@ -182,6 +183,8 @@ const VendorEditEmployeePage: React.FC = () => {
   }
 
   return (
+    <>
+      <PrivatePageSEO title="Vendor - Edit Employee | Kidrove" description="Edit employee details" />
     <div className="min-h-screen bg-gray-50">
       <VendorNavigation />
 
@@ -445,6 +448,7 @@ const VendorEditEmployeePage: React.FC = () => {
         </form>
       </div>
     </div>
+    </>
   );
 };
 
