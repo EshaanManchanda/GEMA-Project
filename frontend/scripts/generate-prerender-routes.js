@@ -29,8 +29,8 @@ async function generateRoutes() {
 
     // Fetch dynamic event routes
     try {
-        console.log('Fetching events...');
-        const eventsResponse = await fetchWithTimeout('https://gema-project.onrender.com/api/events?limit=100&status=published', { timeout: 10000 });
+        console.log('Fetching events from production API...');
+        const eventsResponse = await fetchWithTimeout('https://api.kidrove.com/api/events?limit=100&status=published', { timeout: 30000 });
         if (!eventsResponse.ok) {
             throw new Error(`Events API responded with ${eventsResponse.status}`);
         }
@@ -38,16 +38,17 @@ async function generateRoutes() {
         if (eventsData?.data?.events) {
             const eventRoutes = eventsData.data.events.map(e => `/events/${e._id}`);
             routes.push(...eventRoutes);
-            console.log(`Added ${eventRoutes.length} event routes`);
+            console.log(`✅ Added ${eventRoutes.length} event routes`);
         }
     } catch (err) {
         console.error('❌ Error fetching events:', err.message);
+        console.error('   This is non-critical - static routes will still be generated');
     }
 
     // Fetch dynamic blog routes
     try {
-        console.log('Fetching blogs...');
-        const blogsResponse = await fetchWithTimeout('https://gema-project.onrender.com/api/blogs?limit=100&status=published', { timeout: 10000 });
+        console.log('Fetching blogs from production API...');
+        const blogsResponse = await fetchWithTimeout('https://api.kidrove.com/api/blogs?limit=100&status=published', { timeout: 30000 });
         if (!blogsResponse.ok) {
             throw new Error(`Blogs API responded with ${blogsResponse.status}`);
         }
@@ -55,10 +56,11 @@ async function generateRoutes() {
         if (blogsData?.data?.blogs) {
             const blogRoutes = blogsData.data.blogs.map(b => `/blog/${b.slug}`);
             routes.push(...blogRoutes);
-            console.log(`Added ${blogRoutes.length} blog routes`);
+            console.log(`✅ Added ${blogRoutes.length} blog routes`);
         }
     } catch (err) {
         console.error('❌ Error fetching blogs:', err.message);
+        console.error('   This is non-critical - static routes will still be generated');
     }
 
     // Write routes to JSON
