@@ -16,7 +16,7 @@ async function generateRoutes() {
     console.log('Fetching dynamic routes...');
 
     const fetchWithTimeout = async (url, options = {}) => {
-        const { timeout = 8000 } = options;
+        const { timeout = 30000 } = options;
         const controller = new AbortController();
         const id = setTimeout(() => controller.abort(), timeout);
         const response = await fetch(url, {
@@ -30,7 +30,7 @@ async function generateRoutes() {
     // Fetch dynamic event routes
     try {
         console.log('Fetching events...');
-        const eventsResponse = await fetchWithTimeout('https://gema-project.onrender.com/api/events?limit=100&status=published', { timeout: 10000 });
+        const eventsResponse = await fetchWithTimeout('https://gema-project.onrender.com/api/events?limit=100&status=published', { timeout: 30000 });
         if (!eventsResponse.ok) {
             throw new Error(`Events API responded with ${eventsResponse.status}`);
         }
@@ -47,7 +47,7 @@ async function generateRoutes() {
     // Fetch dynamic blog routes
     try {
         console.log('Fetching blogs...');
-        const blogsResponse = await fetchWithTimeout('https://gema-project.onrender.com/api/blogs?limit=100&status=published', { timeout: 10000 });
+        const blogsResponse = await fetchWithTimeout('https://gema-project.onrender.com/api/blogs?limit=100&status=published', { timeout: 30000 });
         if (!blogsResponse.ok) {
             throw new Error(`Blogs API responded with ${blogsResponse.status}`);
         }

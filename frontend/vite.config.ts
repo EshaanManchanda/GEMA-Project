@@ -45,6 +45,8 @@ export default defineConfig({
         renderAfterDocumentEvent: 'render-event',
         maxConcurrentRoutes: 1,
         renderAfterTime: 5000,
+        // Vital for running on Linux as root (e.g. Vercel/VPS)
+        args: ['--no-sandbox', '--disable-setuid-sandbox'],
       }),
       postProcess(renderedRoute) {
         // Optional: Remove scripts that shouldn't run on pre-rendered pages?
