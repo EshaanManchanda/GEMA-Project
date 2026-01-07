@@ -9,10 +9,15 @@ const IMAGE_CACHE_NAME = 'gema-images-v1.0.3';
 // Check if we're in development mode
 const isDevelopment = location.hostname === 'localhost' || location.hostname === '127.0.0.1';
 
+// Production console helpers (silent in production)
+const log = isDevelopment ? log.bind(console) : () => { };
+const warn = isDevelopment ? warn.bind(console) : () => { };
+const error = isDevelopment ? error.bind(console) : () => { };
+
 // Bot detection helper - search engine crawlers should get fresh content
 function isBot(userAgent) {
-    const botPattern = /googlebot|bingbot|slurp|duckduckbot|baiduspider|yandexbot|facebookexternalbot|linkedinbot|twitterbot|crawler|spider|bot/i;
-    return botPattern.test(userAgent);
+  const botPattern = /googlebot|bingbot|slurp|duckduckbot|baiduspider|yandexbot|facebookexternalbot|linkedinbot|twitterbot|crawler|spider|bot/i;
+  return botPattern.test(userAgent);
 }
 
 // Assets to cache on install - different for dev vs prod
@@ -51,22 +56,22 @@ const SYNC_TAGS = {
 
 // Install event - cache static assets
 self.addEventListener('install', (event) => {
-  console.log('[SW] Installing service worker...');
-  
+  log('[SW] Installing service worker...');
+
   event.waitUntil(
     Promise.all([
       // Cache static assets with error handling
       caches.open(CACHE_NAME).then(async (cache) => {
-        console.log('[SW] Caching static assets');
+        log('[SW] Caching static assets');
         try {
           // In development, cache assets one by one to handle failures gracefully
           if (isDevelopment) {
             for (const url of STATIC_ASSETS) {
               try {
                 await cache.add(new Request(url, { mode: 'no-cors' }));
-                console.log(`[SW] Cached: ${url}`);
+                log(`[SW] Cached: ${url}`);
               } catch (error) {
-                console.warn(`[SW] Failed to cache ${url}:`, error.message);
+                warn(`[SW] Failed to cache ${url}:`, error.message);
               }
             }
           } else {
@@ -74,7 +79,7 @@ self.addEventListener('install', (event) => {
             await cache.addAll(STATIC_ASSETS.map(url => new Request(url, { mode: 'cors' })));
           }
         } catch (error) {
-          console.error('[SW] Error caching static assets:', error);
+          error('[SW] Error caching static assets:', error);
         }
       }),
       // Cache offline page
@@ -126,7 +131,7 @@ self.addEventListener('install', (event) => {
 
 // Activate event - clean up old caches
 self.addEventListener('activate', (event) => {
-  console.log('[SW] Activating service worker...');
+  log('[SW] Activating service worker...');
 
   event.waitUntil(
     Promise.all([
@@ -135,12 +140,12 @@ self.addEventListener('activate', (event) => {
         return Promise.all(
           cacheNames
             .filter((cacheName) => {
-              return cacheName !== CACHE_NAME && 
-                     cacheName !== API_CACHE_NAME && 
-                     cacheName !== IMAGE_CACHE_NAME;
+              return cacheName !== CACHE_NAME &&
+                cacheName !== API_CACHE_NAME &&
+                cacheName !== IMAGE_CACHE_NAME;
             })
             .map((cacheName) => {
-              console.log('[SW] Deleting old cache:', cacheName);
+              log('[SW] Deleting old cache:', cacheName);
               return caches.delete(cacheName);
             })
         );
@@ -190,7 +195,7 @@ self.addEventListener('fetch', (event) => {
       event.respondWith(handleNavigationRequest(request));
     }
   } catch (error) {
-    console.error('[SW] Error in fetch event:', error);
+    error('[SW] Error in fetch event:', error);
     // Let the request fall through to the network
     return;
   }
@@ -222,30 +227,30 @@ async function handleApiRequest(request) {
       }
       return networkResponse;
     }
-    
+
     throw new Error('Network response not ok');
   } catch (error) {
-    console.log('[SW] Network failed for API request, trying cache:', url.pathname);
-    
+    log('[SW] Network failed for API request, trying cache:', url.pathname);
+
     // Try cache fallback
     const cache = await caches.open(API_CACHE_NAME);
     const cachedResponse = await cache.match(cacheKey);
-    
+
     if (cachedResponse) {
       const cacheTimestamp = cachedResponse.headers.get('sw-cache-timestamp');
       const cacheAge = Date.now() - parseInt(cacheTimestamp || '0');
-      
+
       // Use cached response if less than 5 minutes old
       if (cacheAge < 5 * 60 * 1000) {
         return cachedResponse;
       }
     }
-    
+
     // Store failed request for background sync
     if (url.pathname.includes('/bookings') || url.pathname.includes('/orders')) {
       await storeFailedRequest(request);
     }
-    
+
     // Return error response
     return new Response(JSON.stringify({
       error: 'Network unavailable',
@@ -261,11 +266,11 @@ async function handleApiRequest(request) {
 async function handleImageRequest(request) {
   const cache = await caches.open(IMAGE_CACHE_NAME);
   const cachedResponse = await cache.match(request);
-  
+
   if (cachedResponse) {
     return cachedResponse;
   }
-  
+
   try {
     const networkResponse = await fetch(request);
     if (networkResponse.ok) {
@@ -273,9 +278,9 @@ async function handleImageRequest(request) {
       return networkResponse;
     }
   } catch (error) {
-    console.log('[SW] Failed to fetch image:', request.url);
+    log('[SW] Failed to fetch image:', request.url);
   }
-  
+
   // Return placeholder image
   return new Response('', {
     status: 200,
@@ -287,11 +292,11 @@ async function handleImageRequest(request) {
 async function handleStaticRequest(request) {
   const cache = await caches.open(CACHE_NAME);
   const cachedResponse = await cache.match(request);
-  
+
   if (cachedResponse) {
     return cachedResponse;
   }
-  
+
   try {
     const networkResponse = await fetch(request);
     if (networkResponse.ok) {
@@ -299,7 +304,7 @@ async function handleStaticRequest(request) {
     }
     return networkResponse;
   } catch (error) {
-    console.log('[SW] Failed to fetch static asset:', request.url);
+    log('[SW] Failed to fetch static asset:', request.url);
     throw error;
   }
 }
@@ -314,7 +319,7 @@ async function handleNavigationRequest(request) {
       // CRITICAL FOR SEO: Never cache HTML documents
       const contentType = networkResponse.headers.get('content-type') || '';
       if (contentType.includes('text/html')) {
-        console.log('[SW] Serving fresh HTML from network (not caching for SEO)');
+        log('[SW] Serving fresh HTML from network (not caching for SEO)');
         return networkResponse; // Return without caching
       }
 
@@ -326,7 +331,7 @@ async function handleNavigationRequest(request) {
 
     throw new Error('Network response not ok');
   } catch (error) {
-    console.log('[SW] Network failed for navigation - showing offline page');
+    log('[SW] Network failed for navigation - showing offline page');
 
     // ONLY return offline.html fallback when network fails
     // Do NOT return cached HTML - fresh content is critical for SEO
@@ -383,7 +388,7 @@ async function storeFailedRequest(request) {
   const db = await openDB();
   const tx = db.transaction(['failed_requests'], 'readwrite');
   const store = tx.objectStore('failed_requests');
-  
+
   const requestData = {
     url: request.url,
     method: request.method,
@@ -391,22 +396,22 @@ async function storeFailedRequest(request) {
     body: request.method !== 'GET' ? await request.clone().text() : null,
     timestamp: Date.now()
   };
-  
+
   await store.add(requestData);
-  
+
   // Register background sync
   if (self.registration && self.registration.sync) {
     try {
       await self.registration.sync.register(SYNC_TAGS.OFFLINE_ACTIONS);
     } catch (error) {
-      console.log('[SW] Background sync registration failed:', error);
+      log('[SW] Background sync registration failed:', error);
     }
   }
 }
 
 // Background sync event
 self.addEventListener('sync', (event) => {
-  console.log('[SW] Background sync triggered:', event.tag);
+  log('[SW] Background sync triggered:', event.tag);
 
   if (event.tag === SYNC_TAGS.OFFLINE_ACTIONS) {
     event.waitUntil(processFailedRequests());
@@ -422,7 +427,7 @@ async function processFailedRequests() {
     const tx = db.transaction(['failed_requests'], 'readwrite');
     const store = tx.objectStore('failed_requests');
     const requests = await store.getAll();
-    
+
     for (const requestData of requests) {
       try {
         const response = await fetch(requestData.url, {
@@ -430,18 +435,18 @@ async function processFailedRequests() {
           headers: requestData.headers,
           body: requestData.body
         });
-        
+
         if (response.ok) {
           // Successfully retried, remove from store
           await store.delete(requestData.id);
-          console.log('[SW] Successfully retried request:', requestData.url);
+          log('[SW] Successfully retried request:', requestData.url);
         }
       } catch (error) {
-        console.log('[SW] Failed to retry request:', requestData.url, error);
+        log('[SW] Failed to retry request:', requestData.url, error);
       }
     }
   } catch (error) {
-    console.log('[SW] Error processing failed requests:', error);
+    log('[SW] Error processing failed requests:', error);
   }
 }
 
@@ -466,7 +471,7 @@ self.addEventListener('push', (event) => {
       self.registration.showNotification(data.title || 'Gema Events', options)
     );
   } catch (error) {
-    console.log('[SW] Error handling push notification:', error);
+    log('[SW] Error handling push notification:', error);
   }
 });
 
@@ -499,7 +504,7 @@ self.addEventListener('notificationclick', (event) => {
           return client.focus();
         }
       }
-      
+
       // Open new tab if no existing tab found
       if (clients.openWindow) {
         return clients.openWindow(url);
@@ -512,13 +517,13 @@ self.addEventListener('notificationclick', (event) => {
 function openDB() {
   return new Promise((resolve, reject) => {
     const request = indexedDB.open('GemaOfflineDB', 1);
-    
+
     request.onerror = () => reject(request.error);
     request.onsuccess = () => resolve(request.result);
-    
+
     request.onupgradeneeded = (event) => {
       const db = event.target.result;
-      
+
       if (!db.objectStoreNames.contains('failed_requests')) {
         const store = db.createObjectStore('failed_requests', { keyPath: 'id', autoIncrement: true });
         store.createIndex('timestamp', 'timestamp', { unique: false });
@@ -527,4 +532,4 @@ function openDB() {
   });
 }
 
-console.log('[SW] Service worker loaded successfully');
+log('[SW] Service worker loaded successfully');

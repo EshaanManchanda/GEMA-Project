@@ -2,10 +2,16 @@
 // Updates meta tags on cached pages to ensure fresh content for search engines
 // This script runs early in page load to check if content was served from cache
 
-(function() {
+(function () {
     'use strict';
 
-    console.log('[Meta Updater] Initializing...');
+    // Disable console logs in production
+    const isDev = window.location.hostname === 'localhost' || window.location.hostname.includes('127.0.0.1');
+    const log = isDev ? console.log.bind(console) : () => { };
+    const warn = isDev ? console.warn.bind(console) : () => { };
+    const error = isDev ? console.error.bind(console) : () => { };
+
+    log('[Meta Updater] Initializing...');
 
     // Check if page was served from service worker cache
     function wasServedFromCache() {
@@ -13,12 +19,12 @@
             const navEntry = performance.getEntriesByType('navigation')[0];
             if (navEntry && navEntry.transferSize === 0) {
                 // transferSize of 0 often indicates cached content
-                console.log('[Meta Updater] Page may have been served from cache');
+                log('[Meta Updater] Page may have been served from cache');
                 return true;
             }
             return false;
         } catch (error) {
-            console.warn('[Meta Updater] Could not determine cache status:', error);
+            warn('[Meta Updater] Could not determine cache status:', error);
             return false;
         }
     }
@@ -26,7 +32,7 @@
     // Fetch fresh meta tags from the server
     async function fetchFreshMetaTags() {
         try {
-            console.log('[Meta Updater] Fetching fresh meta tags...');
+            log('[Meta Updater] Fetching fresh meta tags...');
 
             const response = await fetch(window.location.href, {
                 method: 'GET',
@@ -39,7 +45,7 @@
             });
 
             if (!response.ok) {
-                console.warn('[Meta Updater] Failed to fetch fresh content:', response.status);
+                warn('[Meta Updater] Failed to fetch fresh content:', response.status);
                 return;
             }
 
@@ -81,7 +87,7 @@
                     if (freshContent && freshContent !== currentContent) {
                         currentMeta.setAttribute('content', freshContent);
                         updatedCount++;
-                        console.log(`[Meta Updater] Updated ${name}: ${currentContent} → ${freshContent}`);
+                        log(`[Meta Updater] Updated ${name}: ${currentContent} → ${freshContent}`);
                     }
                 }
             });
@@ -92,7 +98,7 @@
             if (freshTitle && currentTitle && freshTitle.textContent !== currentTitle.textContent) {
                 currentTitle.textContent = freshTitle.textContent;
                 updatedCount++;
-                console.log(`[Meta Updater] Updated title: ${currentTitle.textContent} → ${freshTitle.textContent}`);
+                log(`[Meta Updater] Updated title: ${currentTitle.textContent} → ${freshTitle.textContent}`);
             }
 
             // Update canonical link if present
@@ -104,7 +110,7 @@
                 if (freshHref && freshHref !== currentHref) {
                     currentCanonical.setAttribute('href', freshHref);
                     updatedCount++;
-                    console.log(`[Meta Updater] Updated canonical: ${currentHref} → ${freshHref}`);
+                    log(`[Meta Updater] Updated canonical: ${currentHref} → ${freshHref}`);
                 }
             }
 
@@ -118,19 +124,19 @@
                     if (freshScript && currentScript && freshScript.textContent !== currentScript.textContent) {
                         currentScript.textContent = freshScript.textContent;
                         updatedCount++;
-                        console.log(`[Meta Updater] Updated JSON-LD schema #${index + 1}`);
+                        log(`[Meta Updater] Updated JSON-LD schema #${index + 1}`);
                     }
                 });
             }
 
             if (updatedCount > 0) {
-                console.log(`[Meta Updater] ✅ Updated ${updatedCount} meta tags/elements`);
+                log(`[Meta Updater] ✅ Updated ${updatedCount} meta tags/elements`);
             } else {
-                console.log('[Meta Updater] ✅ All meta tags are up to date');
+                log('[Meta Updater] ✅ All meta tags are up to date');
             }
 
         } catch (error) {
-            console.error('[Meta Updater] Failed to update meta tags:', error);
+            error('[Meta Updater] Failed to update meta tags:', error);
         }
     }
 
@@ -139,7 +145,7 @@
         // Note: With aggressive HTML caching disabled, this should rarely trigger
         // But it provides a safety net for users with old cached pages
         if (wasServedFromCache()) {
-            console.log('[Meta Updater] Cached content detected - updating meta tags');
+            log('[Meta Updater] Cached content detected - updating meta tags');
             // Use requestIdleCallback if available for better performance
             if ('requestIdleCallback' in window) {
                 requestIdleCallback(() => fetchFreshMetaTags(), { timeout: 2000 });
@@ -148,7 +154,7 @@
                 setTimeout(fetchFreshMetaTags, 100);
             }
         } else {
-            console.log('[Meta Updater] Fresh content served - no meta update needed');
+            log('[Meta Updater] Fresh content served - no meta update needed');
         }
     }
 
@@ -159,5 +165,5 @@
         init();
     }
 
-    console.log('[Meta Updater] Ready');
+    log('[Meta Updater] Ready');
 })();
