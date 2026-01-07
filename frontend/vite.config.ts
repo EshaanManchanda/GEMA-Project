@@ -46,7 +46,13 @@ export default defineConfig({
         maxConcurrentRoutes: 1,
         renderAfterTime: 5000,
         // Vital for running on Linux as root (e.g. Vercel/VPS)
-        args: ['--no-sandbox', '--disable-setuid-sandbox'],
+        args: [
+          '--no-sandbox',
+          '--disable-setuid-sandbox',
+          '--disable-dev-shm-usage',
+          '--disable-accelerated-2d-canvas',
+          '--disable-gpu'
+        ],
       }),
       postProcess(renderedRoute) {
         // Optional: Remove scripts that shouldn't run on pre-rendered pages?
