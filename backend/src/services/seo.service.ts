@@ -186,10 +186,7 @@ Allow: /*.svg
 Allow: /*.ico
 
 # Sitemap location
-Sitemap: ${baseUrl}/sitemap.xml
-
-# Crawl-delay for being respectful to servers
-Crawl-delay: 1`;
+Sitemap: ${baseUrl}/sitemap.xml`;
   }
 
   /**
