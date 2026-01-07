@@ -3,11 +3,60 @@ import react from '@vitejs/plugin-react';
 import { VitePWA } from 'vite-plugin-pwa';
 import path from 'path';
 import { visualizer } from 'rollup-plugin-visualizer';
+import fs from 'fs';
 
 // https://vitejs.dev/config/
+import { createRequire } from 'module';
+const require = createRequire(import.meta.url);
+const prerender = require('vite-plugin-prerender');
+const PuppeteerRenderer = require('@prerenderer/renderer-puppeteer');
+
+// ... existing imports ...
+
+const prerenderRoutesPath = path.resolve(__dirname, 'prerender-routes.json');
+let prerenderRoutes = [
+  '/',
+  '/events',
+  '/blog',
+  '/vendors',
+  '/about',
+  '/contact',
+  '/privacy',
+  '/terms'
+];
+
+try {
+  if (fs.existsSync(prerenderRoutesPath)) {
+    prerenderRoutes = JSON.parse(fs.readFileSync(prerenderRoutesPath, 'utf-8'));
+    console.log(`[Vite] Loaded ${prerenderRoutes.length} routes for pre-rendering`);
+  }
+} catch (error) {
+  console.warn('[Vite] Failed to load prerender-routes.json, using defaults');
+}
+
 export default defineConfig({
   plugins: [
     react(),
+    // Pre-render public pages for SEO
+    prerender({
+      staticDir: path.join(__dirname, 'dist'),
+      routes: prerenderRoutes,
+      renderer: new PuppeteerRenderer({
+        renderAfterDocumentEvent: 'render-event',
+        maxConcurrentRoutes: 1,
+        renderAfterTime: 5000,
+      }),
+      postProcess(renderedRoute) {
+        // Optional: Remove scripts that shouldn't run on pre-rendered pages?
+        // For now, keep as is.
+        renderedRoute.html = renderedRoute.html
+          .replace(/<script type="module" crossorigin src="\/assets\/index-.*.js"><\/script>/g, '');
+        // Actually, we WANT hydration to happen, so removing scripts is dangerous for a React App that needs to hydrate.
+        // The recommended approach for "Hydration" is to keep scripts.
+        // The goal is just to serve HTML content.
+        return renderedRoute;
+      }
+    }),
     VitePWA({
       registerType: 'autoUpdate',
       includeAssets: ['favicon.ico', 'apple-touch-icon.svg', 'robots.txt'],

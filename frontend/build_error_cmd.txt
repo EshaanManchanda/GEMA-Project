@@ -1,0 +1,11 @@
+[31mfailed to load config from E:\coding\gema\frontend\vite.config.ts[39m
+[31merror during build:
+Error [ERR_MODULE_NOT_FOUND]: Cannot find package 'vite-plugin-prerender' imported from E:\coding\gema\frontend\node_modules\.vite-temp\vite.config.ts.timestamp-1767777420293-1b36a71033812.mjs
+    at packageResolve (node:internal/modules/esm/resolve:854:9)
+    at moduleResolve (node:internal/modules/esm/resolve:927:18)
+    at defaultResolve (node:internal/modules/esm/resolve:1169:11)
+    at ModuleLoader.defaultResolve (node:internal/modules/esm/loader:542:12)
+    at ModuleLoader.resolve (node:internal/modules/esm/loader:510:25)
+    at ModuleLoader.getModuleJob (node:internal/modules/esm/loader:239:38)
+    at ModuleWrap.<anonymous> (node:internal/modules/esm/module_job:96:40)
+    at link (node:internal/modules/esm/module_job:95:36)[39m

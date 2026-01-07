@@ -130,6 +130,14 @@
       "destination": "https://gema-project.onrender.com/robots.txt"
     },
     {
+      "source": "/events/:id",
+      "destination": "/events/:id/index.html"
+    },
+    {
+      "source": "/blog/:slug",
+      "destination": "/blog/:slug/index.html"
+    },
+    {
       "source": "/(.*)",
       "destination": "/index.html"
     }

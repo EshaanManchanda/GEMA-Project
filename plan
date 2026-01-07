@@ -1,324 +1,650 @@
-Blog Content Styling Improvement Plan
+ User approved Claude's plan
+  ⎿  Plan saved to: C:\Users\eshaa\.claude\plans\immutable-swinging-pine.md · /plan to edit
+     Complete SEO Fix & Optimization - Phase-by-Phase Implementation
 
- Problem Analysis
+     Status: Fix Deployed ✅
 
- Root Cause:
- - BlogDetailPage.tsx:409 applies BOTH prose prose-lg (Tailwind Typography) AND .blog-content (custom CSS)
- - CSS conflicts: prose styles override .blog-content styles
- - Limited styling freedom: DOMPurify sanitization may strip custom styles
- - No per-post custom CSS support
- - Fixed brand colors/fonts with no author override
+     - Commit: 2fac9a0 - "fix: Enable Google indexing"
+     - Changes: vercel.json, robots.txt, _headers
+     - Deployed to: backend_auth branch → Vercel auto-deploy
 
- User Requirements:
- - WordPress-level control (advanced layouts + full HTML/CSS freedom)
- - Fix all CSS issues: custom styles, fonts, layout, colors not working
- - Default to brand colors/fonts, allow per-post author customization
+     ---
+     Phase 1: Verify Critical Fix (IMMEDIATE - Next 10 minutes)
 
- ---
- Recommended Solution: Multi-Tier Styling System
+     Goal
 
- 1. Remove CSS Conflicts ⚡ Priority
+     Confirm robots.txt is now serving correctly and Google can crawl the site.
 
- File: frontend/src/pages/static/BlogDetailPage.tsx:409
+     Implementation Steps
 
- Change:
- // BEFORE (conflicting):
- <article className="prose prose-lg max-w-none mb-12">
-   <div className="blog-content" dangerouslySetInnerHTML={...} />
- </article>
+     Step 1.1: Wait for Vercel Deployment (2-5 minutes)
 
- // AFTER (conflict-free):
- <article className="mb-12">
-   <div className="blog-content" dangerouslySetInnerHTML={...} />
- </article>
+     Action:
+     1. Go to https://vercel.com/dashboard
+     2. Find "gema-frontend" project
+     3. Check "Deployments" tab
+     4. Wait for build with commit message "fix: Enable Google indexing" to show "Ready"
+     5. Note: Build ID and deployment URL
 
- Why: Removes Tailwind Typography interference, lets .blog-content control all styling.
+     Success Criteria:
+     - Deployment status = "Ready" (green checkmark)
+     - Build completed without errors
 
- ---
- 2. Enhanced Base Styles
+     ---
+     Step 1.2: Test robots.txt Response
 
- File: frontend/src/styles/index.css:729-811
+     Action - Test Production URL:
+     curl -L https://kidrove.com/robots.txt
 
- Add comprehensive styling:
+     Expected Output (SUCCESS):
+     User-agent: *
+     Allow: /
+     Disallow: /admin
+     Disallow: /vendor
+     Disallow: /employee
+     ...
+     Sitemap: https://kidrove.com/sitemap.xml
 
- Typography Enhancement
+     Action - Test Backend Directly:
+     curl https://gema-project.onrender.com/robots.txt
 
- - Add custom font stacks (system fonts + Google Fonts integration)
- - Better font sizes (responsive with clamp())
- - Improved line heights and letter spacing
- - Drop caps, pull quotes, callouts
+     Should return same production robots.txt
 
- Layout Utilities
+     If Still Shows "Disallow: /" → TROUBLESHOOT:
+     1. Check Render.com backend environment
+     2. Verify NODE_ENV=production on Render.com
+     3. Restart backend service if needed
 
- - Column layouts (2-col, 3-col, sidebar)
- - Grid systems (auto-grid, masonry)
- - Card/box components
- - Flex containers (row, col, space-between)
+     ---
+     Step 1.3: Test Sitemap Availability
 
- Advanced Components
-
- - Custom containers (.blog-container, .blog-section)
- - Spacing utilities (.blog-space-sm, .blog-space-lg)
- - Alignment classes (.blog-center, .blog-full-width)
- - Image variations (.blog-img-full, .blog-img-float-left/right)
-
- Color System
-
- - CSS variables for brand colors (override per post)
- - Semantic color tokens (primary, accent, muted)
- - Dark mode support
-
- ---
- 3. Per-Post Custom CSS 🎨 WordPress Feature
-
- File: backend/src/models/Blog.ts
-
- Add field:
- customCSS?: string;  // Author's custom styles for this post
-
- File: frontend/src/components/admin/BlogForm.tsx
-
- Add textarea field:
- <Controller
-   name="customCSS"
-   render={({ field }) => (
-     <textarea
-       placeholder="/* Custom CSS for this post only */
-       .my-class { color: red; }"
-       className="font-mono"
-     />
-   )}
- />
-
- File: frontend/src/pages/static/BlogDetailPage.tsx
-
- Inject custom CSS:
- {blog.customCSS && (
-   <style dangerouslySetInnerHTML={{__html: blog.customCSS}} />
- )}
-
- Security: Sanitize CSS server-side (remove @import, url() with external domains)
-
- ---
- 4. DOMPurify Configuration 🔒
-
- File: frontend/src/pages/static/BlogDetailPage.tsx:413-419
-
- Enhanced whitelist:
- DOMPurify.sanitize(content, {
-   ADD_ATTR: [
-     'style', 'class', 'id', 'data-*',
-     'width', 'height', 'colspan', 'rowspan',  // Tables
-     'align', 'valign'  // Legacy support
-   ],
-   ADD_TAGS: ['iframe', 'svg', 'path', 'circle'],  // Media + icons
-   ALLOWED_URI_REGEXP: /^(?:(?:https?|mailto|tel):|[^a-z]|[a-z+.-]+(?:[^a-z+.\-:]|$))/i,
-   ALLOW_DATA_ATTR: true,
-   ALLOW_UNKNOWN_PROTOCOLS: false,
-   FORCE_BODY: false,  // Allow full HTML structures
-   WHOLE_DOCUMENT: false,
-   RETURN_DOM: false,
-   RETURN_DOM_FRAGMENT: false
- })
-
- Note: Allows inline styles, classes, data attributes, SVGs, tables
-
- ---
- 5. Better Editor Options (Optional Upgrade)
-
- Selected: Enhanced TipTap ✅
- - Add table extension (@tiptap/extension-table, @tiptap/extension-table-row, @tiptap/extension-table-header, @tiptap/extension-table-cell)
- - Add text color extension (@tiptap/extension-text-style, @tiptap/extension-color)
- - Add highlight (background color) extension (@tiptap/extension-highlight)
- - Add font family extension (@tiptap/extension-font-family)
- - Add custom class selector (dropdown for predefined classes like .blog-grid-2, .blog-callout)
- - Add raw HTML block inserter (modal for pasting custom HTML)
- - Add column layout buttons (2-col, 3-col, sidebar)
-
- ---
- 6. Font System Implementation
-
- File: frontend/src/styles/index.css
-
- Google Fonts Import (add at top):
- @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=Playfair+Display:wght@400;500;600;700;800&display=swap');
-
- Add custom properties:
- :root {
-   /* Typography Scale - Using Inter (body) + Playfair Display (headings) */
-   --blog-font-body: 'Inter', system-ui, -apple-system, sans-serif;
-   --blog-font-heading: 'Playfair Display', Georgia, 'Times New Roman', serif;
-   --blog-font-mono: 'JetBrains Mono', 'Fira Code', 'Courier New', monospace;
-
-   /* Font Sizes (responsive with clamp) */
-   --blog-text-xs: clamp(0.75rem, 0.7rem + 0.25vw, 0.875rem);
-   --blog-text-sm: clamp(0.875rem, 0.8rem + 0.375vw, 1rem);
-   --blog-text-base: clamp(1rem, 0.9rem + 0.5vw, 1.125rem);
-   --blog-text-lg: clamp(1.125rem, 1rem + 0.625vw, 1.25rem);
-   --blog-text-xl: clamp(1.25rem, 1.1rem + 0.75vw, 1.5rem);
-   --blog-text-2xl: clamp(1.5rem, 1.3rem + 1vw, 2rem);
-   --blog-text-3xl: clamp(2rem, 1.7rem + 1.5vw, 3rem);
-
-   /* Line Heights */
-   --blog-leading-tight: 1.25;
-   --blog-leading-normal: 1.6;
-   --blog-leading-relaxed: 1.75;
-
-   /* Colors (overridable per post) */
-   --blog-color-text: #1f2937;
-   --blog-color-heading: #111827;
-   --blog-color-link: #2563eb;
-   --blog-color-accent: var(--primary-500, #8b5cf6);
- }
-
- /* Per-post override via inline style on .blog-content */
- .blog-content[data-theme="custom"] {
-   /* Override with custom properties set via style attribute */
- }
-
- Usage in BlogDetailPage:
- <div
-   className="blog-content"
-   data-theme={blog.customTheme ? 'custom' : 'default'}
-   style={blog.customTheme ? {
-     '--blog-color-text': blog.customTheme.textColor,
-     '--blog-color-heading': blog.customTheme.headingColor,
-     '--blog-color-link': blog.customTheme.linkColor,
-     '--blog-font-body': blog.customTheme.fontBody,
-     '--blog-font-heading': blog.customTheme.fontHeading
-   } : undefined}
- >
-
- ---
- 7. Layout Component Library
-
- File: frontend/src/styles/index.css (add after line 811)
-
- Advanced layout classes:
- /* Container Variations */
- .blog-container-narrow { max-width: 65ch; margin: 0 auto; }
- .blog-container-wide { max-width: 90rem; margin: 0 auto; }
- .blog-container-full { width: 100%; }
-
- /* Grid Layouts */
- .blog-grid-2 { display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 2rem; }
- .blog-grid-3 { display: grid; grid-template-columns: repeat(auto-fit, minmax(250px, 1fr)); gap: 1.5rem; }
- .blog-grid-sidebar { display: grid; grid-template-columns: 1fr 300px; gap: 3rem; }
-
- /* Flex Layouts */
- .blog-flex-row { display: flex; gap: 1.5rem; flex-wrap: wrap; }
- .blog-flex-col { display: flex; flex-direction: column; gap: 1rem; }
- .blog-flex-center { display: flex; justify-content: center; align-items: center; }
- .blog-flex-between { display: flex; justify-content: space-between; align-items: center; }
-
- /* Image Variations */
- .blog-img-full { width: 100vw; margin-left: calc(50% - 50vw); }
- .blog-img-float-left { float: left; margin: 0 1.5rem 1rem 0; max-width: 50%; }
- .blog-img-float-right { float: right; margin: 0 0 1rem 1.5rem; max-width: 50%; }
- .blog-img-caption { text-align: center; font-size: 0.875rem; color: #6b7280; margin-top: 0.5rem; }
-
- /* Cards & Boxes */
- .blog-card { border: 1px solid #e5e7eb; border-radius: 0.5rem; padding: 1.5rem; }
- .blog-card-highlight { background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white; padding: 2rem; }
- .blog-callout { border-left: 4px solid var(--blog-color-accent); background: #f9fafb; padding: 1rem 1.5rem; }
- .blog-callout-warning { border-color: #f59e0b; background: #fffbeb; }
- .blog-callout-success { border-color: #10b981; background: #ecfdf5; }
-
- /* Typography Enhancements */
- .blog-drop-cap::first-letter { float: left; font-size: 4em; line-height: 0.85; margin: 0.1em 0.1em 0 0; }
- .blog-text-highlight { background: linear-gradient(180deg, transparent 60%, #fef3c7 60%); }
- .blog-text-large { font-size: var(--blog-text-lg); }
-
- /* Spacing Utilities */
- .blog-space-sm { margin: 1rem 0; }
- .blog-space-md { margin: 2rem 0; }
- .blog-space-lg { margin: 4rem 0; }
- .blog-space-xl { margin: 6rem 0; }
-
- /* Responsive Tables */
- .blog-table-wrapper { overflow-x: auto; margin: 2rem 0; }
- .blog-content table { width: 100%; border-collapse: collapse; }
- .blog-content th { background: #f3f4f6; padding: 0.75rem; text-align: left; font-weight: 600; }
- .blog-content td { padding: 0.75rem; border-bottom: 1px solid #e5e7eb; }
- .blog-content tr:hover { background: #f9fafb; }
-
- Style Guide Page: ✅ Create in admin panel
- - New page: frontend/src/pages/admin/BlogStyleGuidePage.tsx
- - Live preview of all utility classes
- - Copy-to-clipboard buttons for class names
- - Search/filter functionality
- - Example HTML snippets
- - Font preview with Inter + Playfair Display
- - Color palette showcase
- - Layout examples (grids, columns, cards)
-
- ---
- Implementation Order
-
- 1. Fix conflicts (BlogDetailPage.tsx) - Remove prose classes
- 2. Enhance DOMPurify (BlogDetailPage.tsx) - Allow more attributes
- 3. Add Google Fonts (index.css) - Import Inter + Playfair Display
- 4. Add layout utilities (index.css) - Grids, columns, cards, callouts
- 5. Add font system (index.css) - CSS variables with custom fonts
- 6. Enhance TipTap (TipTapEditor.tsx) - Install extensions, add toolbar buttons
- 7. Add custom CSS field (Blog model, BlogForm, BlogDetailPage) - Per-post CSS
- 8. Create style guide page (new file) - Admin panel with live examples
- 9. Add route (App.tsx or admin routes) - Link to style guide
-
- Total: ~4-5 hours implementation
-
- ---
- Files to Modify
-
- Critical Files
-
- 1. frontend/src/pages/static/BlogDetailPage.tsx:409 - Remove prose classes
- 2. frontend/src/pages/static/BlogDetailPage.tsx:413-419 - Enhanced DOMPurify
- 3. frontend/src/styles/index.css:729-811 - Enhanced .blog-content styles
- 4. frontend/src/styles/index.css (append) - Add layout utilities, font system
-
- Optional Enhancements
-
- 5. backend/src/models/Blog.ts - Add customCSS and customTheme fields
- 6. frontend/src/components/admin/BlogForm.tsx - Add custom CSS editor
- 7. frontend/src/components/common/TipTapEditor.tsx - Add more toolbar options
-
- ---
- Alternative Approaches
-
- Approach A: Keep Tailwind Typography (Not Recommended)
-
- - Customize prose in tailwind.config.js
- - Use prose-none to reset, then re-apply with .blog-content
- - Con: Less flexibility, harder to override per post
-
- Approach B: CSS-in-JS (Styled Components)
-
- - Replace CSS classes with styled components
- - Per-component scoping
- - Con: Larger bundle, runtime overhead, harder for authors to customize
-
- Approach C: Shadow DOM
-
- - Isolate blog content in Shadow DOM
- - Complete style isolation
- - Con: Complex, SEO issues, no style inheritance
-
- ---
- User Preferences (Confirmed) ✅
-
- 1. Google Fonts: Inter (body) + Playfair Display (headings)
- 2. Editor: Enhance TipTap with more tools (best method for this site)
- 3. Style Guide: Yes - Create admin panel page with live examples
- 4. Custom CSS: Allow most CSS, restrict dangerous properties (@import, external url(), javascript:)
-
- ---
- Expected Results
-
- ✅ No more CSS conflicts - Custom styles will apply correctly
- ✅ WordPress-level control - Authors can create complex layouts
- ✅ Per-post customization - Colors, fonts, CSS per blog
- ✅ Better fonts - Custom font system with responsive sizing
- ✅ Advanced layouts - Grids, columns, cards, callouts, floating images
- ✅ Brand consistency - Defaults to brand colors/fonts, customizable when needed
- ✅ Better security - Enhanced but safe DOMPurify config
+     curl -L https://kidrove.com/sitemap.xml
+
+     Expected: Valid XML sitemap with all public pages
+
+     ---
+     Step 1.4: Verify Cache Headers
+
+     curl -I https://kidrove.com/robots.txt
+
+     Expected Headers:
+     Content-Type: text/plain
+     Cache-Control: public, max-age=3600, must-revalidate
+
+     ---
+     Deliverable: Verification Report
+
+     Document test results:
+     - Vercel deployment succeeded
+     - robots.txt returns Allow: /
+     - Backend robots.txt correct
+     - Sitemap loads successfully
+     - Cache headers set correctly
+
+     ---
+     Phase 2: Google Search Console Setup (IMMEDIATE - 15 minutes)
+
+     Goal
+
+     Request Google to re-crawl the site and submit sitemap.
+
+     Implementation Steps
+
+     Step 2.1: URL Inspection for robots.txt
+
+     1. Go to https://search.google.com/search-console
+     2. Select property: kidrove.com
+     3. Top search bar → Enter: https://kidrove.com/robots.txt
+     4. Click "Test live URL"
+     5. Wait for results (30-60 seconds)
+     6. Click "Request Indexing"
+
+     Expected:
+     - "URL is on Google" or "URL can be indexed"
+     - No "Blocked by robots.txt" error
+
+     ---
+     Step 2.2: Submit Sitemap
+
+     1. Left sidebar → "Sitemaps"
+     2. Enter: sitemap.xml (or full URL: https://kidrove.com/sitemap.xml)
+     3. Click "Submit"
+     4. Check status after 1 hour
+
+     Expected:
+     - Status: "Success" (green checkmark)
+     - Shows number of discovered URLs
+
+     ---
+     Step 2.3: Request Re-crawl of Blocked Pages
+
+     1. Left sidebar → "Coverage"
+     2. Click "Excluded" tab
+     3. Find row: "Blocked by robots.txt"
+     4. Click on it to see affected URLs
+     5. Select affected pages
+     6. Click "Validate Fix"
+
+     Note: Google will re-crawl within 3-7 days
+
+     ---
+     Step 2.4: Inspect Homepage
+
+     1. URL Inspection → Enter: https://kidrove.com/
+     2. Test live URL
+     3. Click "Request Indexing"
+
+     ---
+     Deliverable: Search Console Tasks Completed
+
+     - robots.txt inspected and indexed
+     - Sitemap submitted successfully
+     - Blocked pages validation requested
+     - Homepage indexing requested
+
+     ---
+     Phase 3: SEO Audit & Monitoring (Day 1-7)
+
+     Goal
+
+     Run comprehensive SEO audits and monitor Google's re-crawling progress.
+
+     Implementation Steps
+
+     Step 3.1: Run Screaming Frog Audit (30 minutes)
+
+     Tool: https://www.screamingfrogseoscraper.com/ (Free up to 500 URLs)
+
+     Setup:
+     1. Download and install
+     2. Configuration → Spider → Rendering: "JavaScript"
+     3. Configuration → Spider → Crawl: "Crawl All Subdomains" OFF
+     4. Enter URL: https://kidrove.com
+     5. Click "Start"
+
+     Analysis Checklist:
+     - Response Codes: Check for 404s, 500s
+     - Page Titles: All unique, 50-60 chars
+     - Meta Descriptions: All unique, 150-160 chars
+     - H1 Tags: Present on all pages
+     - Canonical URLs: Set correctly
+     - Robots.txt: Not blocking important pages
+     - Sitemap: All URLs valid
+
+     Export Report:
+     - Export → Export All → CSV
+     - Save for comparison after fixes
+
+     ---
+     Step 3.2: Run Google Lighthouse (5 minutes)
+
+     1. Open Chrome
+     2. Navigate to: https://kidrove.com
+     3. Press F12 → "Lighthouse" tab
+     4. Select: Performance, SEO, Best Practices
+     5. Click "Analyze page load"
+
+     Review Scores:
+     - Performance: Target 90+
+     - SEO: Target 90+
+     - Best Practices: Target 90+
+
+     Document Issues:
+     - Note any "red" or "orange" warnings
+     - Prioritize SEO-related issues
+
+     ---
+     Step 3.3: Test Rich Results (5 minutes)
+
+     Tool: https://search.google.com/test/rich-results
+
+     Test URLs:
+     1. Homepage: https://kidrove.com/
+     2. Event page: https://kidrove.com/events/[event-id]
+     3. Blog post: https://kidrove.com/blog/[slug]
+     4. Vendor page: https://kidrove.com/vendors/[vendor-id]
+
+     Check For:
+     - Event schema detected
+     - BlogPosting schema detected
+     - LocalBusiness schema detected
+     - No errors or warnings
+
+     ---
+     Step 3.4: Monitor Search Console (Daily for 7 days)
+
+     Track These Metrics:
+     1. Coverage Report:
+       - Valid pages count (should increase)
+       - Excluded pages with "Blocked by robots.txt" (should decrease to 0)
+     2. Crawl Stats:
+       - Crawl requests per day (should increase)
+       - Average response time
+     3. Index Coverage:
+       - "Valid" status pages increasing
+       - "Error" and "Excluded" decreasing
+
+     Create Spreadsheet:
+     | Date  | Valid Pages | Blocked Pages | Crawl Requests/Day |
+     |-------|-------------|---------------|--------------------|
+     | Day 0 | X           | Y             | Z                  |
+     | Day 1 |             |               |                    |
+     | ...   |             |               |                    |
+
+     ---
+     Deliverable: Audit Report
+
+     - Screaming Frog CSV export
+     - Lighthouse scores documented
+     - Rich Results test results
+     - 7-day monitoring data
+
+     ---
+     Phase 4: Long-Term SEO Optimization (Week 2+)
+
+     Goal
+
+     Implement pre-rendering to improve search engine indexing reliability.
+
+     Problem Statement
+
+     Current Issue: React SPA with Client-Side Rendering (CSR)
+     - Search engines receive empty HTML: <div id="root"></div>
+     - Meta tags added by react-helmet-async AFTER page load
+     - Content not available until JavaScript executes
+     - Googlebot has limited JS rendering budget
+     - Bing, DuckDuckGo have poor JS rendering support
+
+     Evidence:
+     - View source on /events/:id shows generic meta tags
+     - Structured data not in initial HTML
+     - Content requires JavaScript to render
+
+     ---
+     Solution Options Analysis
+
+     Option 1: Vite Pre-rendering Plugin (RECOMMENDED - Quick)
+
+     Pros:
+     - Fastest implementation (2-4 hours)
+     - Keeps current architecture
+     - Works with existing Vite build
+     - No breaking changes
+     - Pre-renders at build time
+
+     Cons:
+     - Static generation only (not true SSR)
+     - Need to rebuild for content updates
+     - Limited to known routes
+
+     Estimated Effort: 2-4 hours
+     Cost: Free
+
+     ---
+     Option 2: Next.js Migration (Best Long-term)
+
+     Pros:
+     - Full SSR + SSG support
+     - Dynamic rendering for fresh content
+     - Built-in SEO optimization
+     - App Router with streaming
+     - Image optimization built-in
+
+     Cons:
+     - Major refactor required (1-2 weeks)
+     - Route structure changes
+     - Component migration needed
+     - Team learning curve
+
+     Estimated Effort: 1-2 weeks
+     Cost: Developer time
+
+     ---
+     Option 3: Prerender.io Service (Medium Effort)
+
+     Pros:
+     - No code changes to React app
+     - Middleware detects bots
+     - Serves pre-rendered HTML to crawlers
+     - Fast implementation (1-2 days)
+
+     Cons:
+     - Monthly cost ($20-200/mo depending on traffic)
+     - External dependency
+     - Adds latency for first crawler visit
+     - Cache invalidation complexity
+
+     Estimated Effort: 1-2 days
+     Cost: $20-200/month
+
+     ---
+     Recommended Implementation: Vite Pre-rendering
+
+     Step 4.1: Install Prerender Plugin
+
+     File: frontend/package.json
+
+     cd frontend
+     npm install --save-dev vite-plugin-prerender
+
+     ---
+     Step 4.2: Configure Vite Plugin
+
+     File: frontend/vite.config.ts
+
+     Add imports:
+     import prerender from 'vite-plugin-prerender';
+     import path from 'path';
+
+     Add to plugins array:
+     plugins: [
+       react(),
+       // ... other plugins ...
+
+       // Pre-render public pages
+       prerender({
+         // Required - path to built index.html
+         staticDir: path.join(__dirname, 'dist'),
+
+         // Routes to pre-render
+         routes: [
+           '/',
+           '/events',
+           '/blog',
+           '/vendors',
+           '/about',
+           '/contact',
+           '/terms',
+           '/privacy',
+           // Add more static routes as needed
+         ],
+
+         // Renderer options
+         renderer: '@prerenderer/renderer-puppeteer',
+         rendererOptions: {
+           // Wait for content to load
+           renderAfterDocumentEvent: 'render-event',
+           // Or wait for specific time
+           renderAfterTime: 5000,
+           // Viewport
+           viewport: {
+             width: 1280,
+             height: 800
+           }
+         },
+
+         // Post-processing
+         postProcess(renderedRoute) {
+           // Clean up scripts/styles if needed
+           return renderedRoute;
+         }
+       })
+     ]
+
+     ---
+     Step 4.3: Trigger Render Event in React
+
+     File: frontend/src/main.tsx
+
+     Add after ReactDOM.render:
+     ReactDOM.createRoot(document.getElementById('root')!).render(
+       <React.StrictMode>
+         <App />
+       </React.StrictMode>,
+     );
+
+     // Signal to prerenderer that React has mounted
+     if (typeof window !== 'undefined') {
+       window.dispatchEvent(new Event('render-event'));
+     }
+
+     ---
+     Step 4.4: Add Dynamic Route Pre-rendering Script
+
+     File: frontend/scripts/generate-prerender-routes.js (NEW)
+
+     // Fetch dynamic routes from API and generate route list
+     const fs = require('fs');
+     const path = require('path');
+
+     async function generateRoutes() {
+       const routes = [
+         '/',
+         '/events',
+         '/blog',
+         '/vendors',
+         '/about',
+         '/contact',
+       ];
+
+       // Fetch dynamic event routes
+       try {
+         const eventsResponse = await fetch('https://gema-project.onrender.com/api/events?limit=100&status=published');
+         const eventsData = await eventsResponse.json();
+         const eventRoutes = eventsData.data.events.map(e => `/events/${e._id}`);
+         routes.push(...eventRoutes);
+       } catch (err) {
+         console.warn('Could not fetch events for pre-rendering');
+       }
+
+       // Fetch dynamic blog routes
+       try {
+         const blogsResponse = await fetch('https://gema-project.onrender.com/api/blogs?limit=100&status=published');
+         const blogsData = await blogsResponse.json();
+         const blogRoutes = blogsData.data.blogs.map(b => `/blog/${b.slug}`);
+         routes.push(...blogRoutes);
+       } catch (err) {
+         console.warn('Could not fetch blogs for pre-rendering');
+       }
+
+       // Write routes to JSON
+       fs.writeFileSync(
+         path.join(__dirname, '../prerender-routes.json'),
+         JSON.stringify(routes, null, 2)
+       );
+
+       console.log(`Generated ${routes.length} routes for pre-rendering`);
+     }
+
+     generateRoutes();
+
+     ---
+     Step 4.5: Update Build Script
+
+     File: frontend/package.json
+
+     {
+       "scripts": {
+         "prebuild": "node scripts/generate-prerender-routes.js",
+         "build": "vite build",
+         "postbuild": "echo 'Pre-rendered pages generated in dist/'"
+       }
+     }
+
+     ---
+     Step 4.6: Update vercel.json for Pre-rendered Routes
+
+     File: frontend/vercel.json
+
+     Add to rewrites (BEFORE catch-all):
+     {
+       "rewrites": [
+         {
+           "source": "/api/(.*)",
+           "destination": "https://gema-project.onrender.com/api/$1"
+         },
+         // ... other rewrites ...
+
+         // Serve pre-rendered HTML for known routes
+         {
+           "source": "/events/:id",
+           "destination": "/events/:id/index.html"
+         },
+         {
+           "source": "/blog/:slug",
+           "destination": "/blog/:slug/index.html"
+         },
+
+         // SPA fallback (keep at end)
+         {
+           "source": "/(.*)",
+           "destination": "/index.html"
+         }
+       ]
+     }
+
+     ---
+     Step 4.7: Test Pre-rendering Locally
+
+     cd frontend
+     npm run build
+     npx serve dist
+
+     # Test in browser - view source should show full HTML
+     # Test specific routes:
+     curl http://localhost:3000/
+     curl http://localhost:3000/events/[event-id]
+
+     Verify in View Source:
+     - Full HTML content present (not empty div)
+     - Meta tags with actual content
+     - Structured data in
+     - No "Loading..." or skeleton screens
+
+     ---
+     Deliverable: Pre-rendered Site
+
+     - Vite plugin configured
+     - Routes pre-rendered at build time
+     - Meta tags in initial HTML
+     - Structured data in initial HTML
+     - Content visible without JavaScript
+     - Deployed to Vercel
+     - Verified in view-source
+
+     ---
+     Phase 5: Ongoing Monitoring & Optimization (Continuous)
+
+     Weekly Tasks (Weeks 1-4)
+
+     Google Search Console:
+     - Check index coverage growth
+     - Monitor "Blocked by robots.txt" (should be 0)
+     - Review crawl stats
+     - Check for new errors
+
+     Performance:
+     - Run Lighthouse audit weekly
+     - Monitor Core Web Vitals
+     - Check page load times
+
+     ---
+     Monthly Tasks
+
+     SEO Health Check:
+     - Run full Screaming Frog crawl
+     - Update sitemap if new pages added
+     - Review search query performance
+     - Analyze competitor rankings
+     - Check backlink profile (Ahrefs/Semrush)
+
+     Content Optimization:
+     - Review pages with low click-through rate
+     - Update meta descriptions for better CTR
+     - Add internal links to new content
+     - Update old content with fresh information
+
+     ---
+     Success Metrics & KPIs
+
+     Immediate (Week 1)
+
+     - robots.txt returns Allow: /
+     - 0 pages "Blocked by robots.txt" in Search Console
+     - Sitemap submitted and processed
+     - Googlebot crawl requests increase by 50%
+
+     Short-term (Week 2-4)
+
+     - Index coverage increases by 80%+
+     - All public pages indexed
+     - Rich results appear in search
+     - Homepage appears in search results
+
+     Long-term (Month 2-3)
+
+     - Organic traffic increases by 100%+
+     - Average position < 20 for target keywords
+     - Click-through rate > 2%
+     - Core Web Vitals all green
+
+     ---
+     Risk Assessment
+
+     Phase 1-3 Risks
+
+     Risk: None - Configuration fixes and monitoring
+     Reversibility: Can revert commit if issues
+     Downtime: Zero
+
+     Phase 4 Risks (Pre-rendering)
+
+     Risk: Medium - Build process changes
+     Impact: Could break production build if misconfigured
+     Mitigation:
+     - Test locally before deploying
+     - Deploy to preview environment first
+     - Keep pre-rendering optional (feature flag)
+     Reversibility: Can disable plugin in vite.config.ts
+
+     ---
+     Estimated Timeline
+
+     | Phase                     | Duration   | Start     | Completion |
+     |---------------------------|------------|-----------|------------|
+     | Phase 1: Verify Fix       | 10 min     | Now       | Immediate  |
+     | Phase 2: Search Console   | 15 min     | Immediate | Immediate  |
+     | Phase 3: Audits & Monitor | 7 days     | Day 1     | Day 7      |
+     | Phase 4: Pre-rendering    | 2-4 hours  | Week 2    | Week 2     |
+     | Phase 5: Ongoing          | Continuous | Week 2+   | Ongoing    |
+
+     Total Active Implementation Time: ~3-5 hours
+     Total Monitoring Period: 1-3 months for full results
+
+     ---
+     Files to Modify (Phase 4)
+
+     New Files:
+
+     1. frontend/scripts/generate-prerender-routes.js (NEW)
+     2. frontend/prerender-routes.json (AUTO-GENERATED)
+
+     Modified Files:
+
+     1. frontend/package.json (add dependency + scripts)
+     2. frontend/vite.config.ts (add plugin configuration)
+     3. frontend/src/main.tsx (add render event trigger)
+     4. frontend/vercel.json (add pre-rendered route rewrites)
+
+     Read-only Reference:
+
+     - frontend/src/components/common/SEO.tsx (already implements meta tags)
+     - backend/src/services/seo.service.ts (sitemap generation)
+
+     ---
+     Next Immediate Actions
+
+     1. Now: Exit plan mode and verify Phase 1 (robots.txt test)
+     2. After verification: Complete Phase 2 (Search Console setup)
+     3. After Search Console: Run Phase 3 audits
+     4. Week 2: Decide on Phase 4 implementation timing
+
+     ---
+     Questions Before Implementation
+
+     For Phase 1-3: Ready to proceed immediately
+     For Phase 4:
+     - Do you want to implement pre-rendering now or wait until Phase 3 monitoring is complete?
+     - What's your priority: faster implementation vs better long-term solution?
+
+     Ready to exit plan mode and begin Phase 1 verification.

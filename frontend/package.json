@@ -9,8 +9,9 @@
   },
   "scripts": {
     "dev": "vite",
-    "prebuild": "node -e \"console.log('Node:', process.version); console.log('Vite available:', require('fs').existsSync('./node_modules/.bin/vite') ? 'Yes' : 'No')\"",
+    "prebuild": "node scripts/generate-prerender-routes.js",
     "build": "vite build",
+    "postbuild": "node scripts/post-build.cjs && echo 'Pre-rendered pages generated in dist/'",
     "build:analyze": "ANALYZE=true vite build",
     "preview": "vite preview",
     "lint": "eslint . --ext js,jsx,ts,tsx --report-unused-disable-directives --max-warnings 0",
@@ -26,8 +27,7 @@
     "vercel:preview": "vercel",
     "clean": "rimraf dist",
     "clean:all": "rimraf dist node_modules && npm install",
-    "health-check": "node -e \"console.log('Health check passed'); process.exit(0)\"",
-    "postbuild": "node scripts/post-build.cjs"
+    "health-check": "node -e \"console.log('Health check passed'); process.exit(0)\""
   },
   "dependencies": {
     "@cloudinary/react": "^1.14.3",
@@ -106,6 +106,7 @@
     "zod": "^4.0.17"
   },
   "devDependencies": {
+    "@prerenderer/renderer-puppeteer": "^1.2.4",
     "@tailwindcss/aspect-ratio": "^0.4.2",
     "@tailwindcss/forms": "^0.5.10",
     "@tailwindcss/typography": "^0.5.16",
@@ -139,6 +140,7 @@
     "ts-jest": "^29.4.1",
     "typescript": "^5.2.2",
     "vite": "^6.4.1",
+    "vite-plugin-prerender": "^1.0.8",
     "vite-plugin-pwa": "^1.2.0",
     "vite-pwa": "^1.0.2",
     "workbox-window": "^7.0.0"

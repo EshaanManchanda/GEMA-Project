@@ -15,7 +15,7 @@ if (typeof window !== 'undefined') {
 import { BrowserRouter } from 'react-router-dom';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 // Lazy load dev tools to reduce initial bundle size
-const ReactQueryDevtools = lazy(() => 
+const ReactQueryDevtools = lazy(() =>
   import('@tanstack/react-query-devtools').then(module => ({
     default: module.ReactQueryDevtools
   }))
@@ -112,3 +112,11 @@ ReactDOM.createRoot(document.getElementById('root')!).render(
     </ErrorBoundary>
   </React.StrictMode>
 );
+
+// Signal to prerenderer that the app is rendered
+if (typeof window !== 'undefined') {
+  // Small delay to ensure heavy components (maps, charts) have likely mounted
+  setTimeout(() => {
+    window.dispatchEvent(new Event('render-event'));
+  }, 1000);
+}
