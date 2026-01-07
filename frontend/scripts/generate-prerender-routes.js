@@ -41,7 +41,7 @@ async function generateRoutes() {
             console.log(`Added ${eventRoutes.length} event routes`);
         }
     } catch (err) {
-        console.warn('Could not fetch events for pre-rendering (skipping):', err.message);
+        console.error('❌ Error fetching events:', err.message);
     }
 
     // Fetch dynamic blog routes
@@ -58,7 +58,7 @@ async function generateRoutes() {
             console.log(`Added ${blogRoutes.length} blog routes`);
         }
     } catch (err) {
-        console.warn('Could not fetch blogs for pre-rendering (skipping):', err.message);
+        console.error('❌ Error fetching blogs:', err.message);
     }
 
     // Write routes to JSON

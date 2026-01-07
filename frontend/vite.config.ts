@@ -51,9 +51,15 @@ export default defineConfig({
           '--disable-setuid-sandbox',
           '--disable-dev-shm-usage',
           '--disable-accelerated-2d-canvas',
-          '--disable-gpu'
+          '--disable-gpu',
+          '--window-size=1920,1080',
         ],
+        headless: true, // Legacy mode for better compatibility
       }),
+      server: {
+        host: '127.0.0.1',
+        port: 5000,
+      },
       postProcess(renderedRoute) {
         // Optional: Remove scripts that shouldn't run on pre-rendered pages?
         // For now, keep as is.
