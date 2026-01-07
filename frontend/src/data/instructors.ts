@@ -575,7 +575,34 @@ export const instructors: Instructor[] = [
                 focus: "Practical playing, Chords, Rhythm",
                 price_estimate: "1200 AED for 12 weeks"
             }
-        ]
+        ],
+        studio_facilities: {
+            type: "Home Music Studio",
+            amenities: [
+                "Sound-treated practice room",
+                "Spare guitars for trial",
+                "Recording equipment",
+                "Comfortable waiting area"
+            ]
+        },
+        testimonials: [
+            {
+                student_name: "Rahul M.",
+                age: 10,
+                quote: "I learned 'Seven Nation Army' in my first week! Shailesh sir makes it easy."
+            },
+            {
+                student_name: "Sarah L.",
+                quote: "As an adult beginner, I was nervous. But this is the most relaxing hour of my week.",
+                parent_quote: "Highly recommended for busy professionals."
+            }
+        ],
+        faq: {
+            "q1": "Do I need to bring my own guitar?",
+            "a1": "Yes, having your own instrument to practice on at home is essential. I can advise on what to buy.",
+            "q2": "How much should I practice?",
+            "a2": "20 minutes a day is better than 2 hours once a week. Consistency is key!"
+        }
     },
     {
         id: 'j-galindo',
@@ -678,7 +705,33 @@ export const instructors: Instructor[] = [
                 target_age: "10-14 years",
                 price_estimate: "2200 AED for 10 weeks"
             }
-        ]
+        ],
+        studio_facilities: {
+            type: "Robotics & Innovation Lab",
+            amenities: [
+                "Individual coding workstations",
+                "LEGO SPIKE & EV3 Kits",
+                "Robot testing arenas",
+                "3D Printing Station"
+            ]
+        },
+        testimonials: [
+            {
+                student_name: "Omar K.",
+                age: 12,
+                quote: "Building the sumo bot was the best. We had to code it to stay in the ring!"
+            },
+            {
+                student_name: "Fatima A.",
+                parent_quote: "My son used to give up easily. Now he says 'I need to debug this' instead of 'I quit'."
+            }
+        ],
+        faq: {
+            "q1": "Do students get to keep the robots?",
+            "a1": "No, we use sophisticated educational kits that remain in the studio. Students keep their code and 3D prints (if applicable).",
+            "q2": "Is prior coding experience needed?",
+            "a2": "Not at all. We start with visual block coding and advance to text-based coding as they grow."
+        }
     },
     {
         id: 'mariyam-fatima',
@@ -789,7 +842,33 @@ export const instructors: Instructor[] = [
                 duration: "90 Minute Workshop",
                 price_estimate: "180 AED per child"
             }
-        ]
+        ],
+        studio_facilities: {
+            type: "Artisan Craft Studio",
+            amenities: [
+                "Soap curing racks",
+                "Essential oil library",
+                "Botanical garden access",
+                "Packaging station"
+            ]
+        },
+        testimonials: [
+            {
+                student_name: "Aisha R.",
+                age: 8,
+                quote: "It smells so good in here! I made a lemon soap for my mom."
+            },
+            {
+                student_name: "John D.",
+                parent_quote: "A wonderful, screen-free activity. Mariyam is so patient with the little ones."
+            }
+        ],
+        faq: {
+            "q1": "Is the soap safe for sensitive skin?",
+            "a1": "Yes, we use gentle, natural bases. However, please inform us of any nut allergies as we use shea butter.",
+            "q2": "How long does the class take?",
+            "a2": "90 minutes. The soap hardens during the class so you can take it home immediately."
+        }
     }
 ];
 
