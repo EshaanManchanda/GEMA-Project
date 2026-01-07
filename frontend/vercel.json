@@ -10,9 +10,7 @@
   ],
   "build": {
     "env": {
-      "NODE_ENV": "development",
-      "NODE_OPTIONS": "--max-old-space-size=4096",
-      "VITE_BUILD_TARGET": "development"
+      "NODE_OPTIONS": "--max-old-space-size=4096"
     }
   },
   "headers": [
