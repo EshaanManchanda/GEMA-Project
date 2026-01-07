@@ -44,7 +44,14 @@ export const securityHeaders = helmet({
       fontSrc: ["'self'", 'https://fonts.gstatic.com'],
       imgSrc: ["'self'", 'data:', 'https:', 'blob:'],
       scriptSrc: ["'self'"],
-      connectSrc: ["'self'", 'https://api.stripe.com'],
+      connectSrc: [
+        "'self'",
+        'https://api.stripe.com',
+        'https://api.kidrove.com',
+        'https://api.kidrove.in',
+        'https://api.kidrove.ae',
+        'https://gema-project.onrender.com'
+      ],
       frameSrc: ["'self'", 'https://js.stripe.com'],
     },
   },
@@ -72,11 +79,14 @@ const buildAllowedOrigins = () => {
   const origins = [
     process.env.FRONTEND_URL,
     'https://kidrove.com',
-    'https://kidrove.in',
-    'https://kidrove.ae',
     'https://www.kidrove.com',
+    'https://kidrove.in',
     'https://www.kidrove.in',
+    'https://kidrove.ae',
     'https://www.kidrove.ae',
+    'https://api.kidrove.com',
+    'https://api.kidrove.in',
+    'https://api.kidrove.ae',
     ...(process.env.ADDITIONAL_ALLOWED_ORIGINS?.split(',').map(url => url.trim()) || [])
   ].filter(Boolean);
 
