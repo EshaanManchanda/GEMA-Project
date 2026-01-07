@@ -58,7 +58,7 @@ export default defineConfig({
       }),
       server: {
         host: '127.0.0.1',
-        port: 5000,
+        port: 4173,
       },
       postProcess(renderedRoute) {
         // Optional: Remove scripts that shouldn't run on pre-rendered pages?
