@@ -1,4 +1,5 @@
 import React, { useCallback, useState } from 'react';
+import { Node, Mark, mergeAttributes } from '@tiptap/core';
 import { useEditor, EditorContent, BubbleMenu } from '@tiptap/react';
 import StarterKit from '@tiptap/starter-kit';
 import Image from '@tiptap/extension-image';
@@ -15,6 +16,12 @@ import TableRow from '@tiptap/extension-table-row';
 import TableHeader from '@tiptap/extension-table-header';
 import TableCell from '@tiptap/extension-table-cell';
 import CharacterCount from '@tiptap/extension-character-count';
+import Paragraph from '@tiptap/extension-paragraph';
+import Heading from '@tiptap/extension-heading';
+import ListItem from '@tiptap/extension-list-item';
+import BulletList from '@tiptap/extension-bullet-list';
+import OrderedList from '@tiptap/extension-ordered-list';
+import Blockquote from '@tiptap/extension-blockquote';
 import HtmlInsertModal from './HtmlInsertModal';
 import MediaPickerModal from '../admin/media/MediaPickerModal';
 import { MediaAsset } from '../../store/slices/mediaSlice';
@@ -58,6 +65,137 @@ interface TipTapEditorProps {
   showCharacterCount?: boolean;
 }
 
+// Custom Div extension to support layout classes
+const Div = Node.create({
+  name: 'div',
+  group: 'block',
+  content: 'block+',
+  draggable: true,
+
+  addAttributes() {
+    return {
+      class: {
+        default: null,
+        parseHTML: (element) => element.getAttribute('class'),
+        renderHTML: (attributes) => {
+          if (!attributes.class) {
+            return {};
+          }
+          return { class: attributes.class };
+        },
+      },
+      style: {
+        default: null,
+        parseHTML: (element) => element.getAttribute('style'),
+        renderHTML: (attributes) => {
+          if (!attributes.style) {
+            return {};
+          }
+          return { style: attributes.style };
+        },
+      },
+    };
+  },
+
+  parseHTML() {
+    return [
+      { tag: 'div' },
+    ];
+  },
+
+  renderHTML({ HTMLAttributes }) {
+    return ['div', mergeAttributes(HTMLAttributes), 0];
+  },
+});
+
+// Custom Span extension to support inline classes
+const Span = Mark.create({
+  name: 'span',
+  addAttributes() {
+    return {
+      class: {
+        default: null,
+        parseHTML: (element) => element.getAttribute('class'),
+        renderHTML: (attributes) => {
+          if (!attributes.class) {
+            return {};
+          }
+          return { class: attributes.class };
+        },
+      },
+      style: {
+        default: null,
+        parseHTML: (element) => element.getAttribute('style'),
+        renderHTML: (attributes) => {
+          if (!attributes.style) {
+            return {};
+          }
+          return { style: attributes.style };
+        },
+      },
+    };
+  },
+  parseHTML() {
+    return [
+      {
+        tag: 'span',
+        getAttrs: (element) => (element.hasAttribute('class') || element.hasAttribute('style')) ? {} : false,
+      },
+    ];
+  },
+  renderHTML({ HTMLAttributes }) {
+    return ['span', mergeAttributes(HTMLAttributes), 0];
+  },
+});
+
+// Custom Link extension to support classes
+const CustomLink = Link.extend({
+  addAttributes() {
+    return {
+      ...this.parent?.(),
+      class: {
+        default: null,
+        parseHTML: (element) => element.getAttribute('class'),
+      }
+    };
+  }
+});
+
+// Helper to add class/style attributes to any node
+const addClassAndStyle = (node: any) => {
+  return node.extend({
+    addAttributes() {
+      return {
+        ...this.parent?.(),
+        class: {
+          default: null,
+          parseHTML: (element: HTMLElement) => element.getAttribute('class'),
+          renderHTML: (attributes: any) => {
+            if (!attributes.class) return {};
+            return { class: attributes.class };
+          },
+        },
+        style: {
+          default: null,
+          parseHTML: (element: HTMLElement) => element.getAttribute('style'),
+          renderHTML: (attributes: any) => {
+            if (!attributes.style) return {};
+            return { style: attributes.style };
+          },
+        },
+      };
+    },
+  });
+};
+
+// Extended Nodes
+const CustomParagraph = addClassAndStyle(Paragraph);
+const CustomHeading = addClassAndStyle(Heading).configure({ levels: [1, 2, 3] });
+const CustomListItem = addClassAndStyle(ListItem);
+const CustomBulletList = addClassAndStyle(BulletList);
+const CustomOrderedList = addClassAndStyle(OrderedList);
+const CustomBlockquote = addClassAndStyle(Blockquote);
+
 const TipTapEditor: React.FC<TipTapEditorProps> = ({
   content,
   onChange,
@@ -75,10 +213,22 @@ const TipTapEditor: React.FC<TipTapEditorProps> = ({
   const editor = useEditor({
     extensions: [
       StarterKit.configure({
-        heading: {
-          levels: [1, 2, 3]
-        }
+        // Disable nodes we are replacing with extended versions
+        paragraph: false,
+        heading: false,
+        listItem: false,
+        bulletList: false,
+        orderedList: false,
+        blockquote: false,
       }),
+      CustomParagraph,
+      CustomHeading,
+      CustomListItem,
+      CustomBulletList,
+      CustomOrderedList,
+      CustomBlockquote,
+      Div,
+      Span,
       Underline,
       TextStyle,
       Color,
@@ -88,11 +238,8 @@ const TipTapEditor: React.FC<TipTapEditorProps> = ({
       TextAlign.configure({
         types: ['heading', 'paragraph']
       }),
-      Link.configure({
+      CustomLink.configure({
         openOnClick: false,
-        HTMLAttributes: {
-          class: 'text-blue-600 hover:text-blue-800 underline'
-        }
       }),
       Image.configure({
         HTMLAttributes: {
@@ -137,7 +284,7 @@ const TipTapEditor: React.FC<TipTapEditorProps> = ({
     },
     editorProps: {
       attributes: {
-        class: 'prose prose-sm sm:prose lg:prose-lg xl:prose-xl max-w-none focus:outline-none min-h-[300px] p-4'
+        class: 'blog-content max-w-none focus:outline-none min-h-[300px] p-4'
       }
     }
   });
@@ -280,9 +427,8 @@ const TipTapEditor: React.FC<TipTapEditorProps> = ({
             <div className="flex gap-0.5 border-r border-gray-300 pr-2">
               <button
                 onClick={() => editor.chain().focus().toggleBold().run()}
-                className={`p-2 rounded hover:bg-gray-200 ${
-                  editor.isActive('bold') ? 'bg-gray-300' : ''
-                }`}
+                className={`p-2 rounded hover:bg-gray-200 ${editor.isActive('bold') ? 'bg-gray-300' : ''
+                  }`}
                 title="Bold"
                 type="button"
               >
@@ -290,9 +436,8 @@ const TipTapEditor: React.FC<TipTapEditorProps> = ({
               </button>
               <button
                 onClick={() => editor.chain().focus().toggleItalic().run()}
-                className={`p-2 rounded hover:bg-gray-200 ${
-                  editor.isActive('italic') ? 'bg-gray-300' : ''
-                }`}
+                className={`p-2 rounded hover:bg-gray-200 ${editor.isActive('italic') ? 'bg-gray-300' : ''
+                  }`}
                 title="Italic"
                 type="button"
               >
@@ -300,9 +445,8 @@ const TipTapEditor: React.FC<TipTapEditorProps> = ({
               </button>
               <button
                 onClick={() => editor.chain().focus().toggleUnderline().run()}
-                className={`p-2 rounded hover:bg-gray-200 ${
-                  editor.isActive('underline') ? 'bg-gray-300' : ''
-                }`}
+                className={`p-2 rounded hover:bg-gray-200 ${editor.isActive('underline') ? 'bg-gray-300' : ''
+                  }`}
                 title="Underline"
                 type="button"
               >
@@ -310,9 +454,8 @@ const TipTapEditor: React.FC<TipTapEditorProps> = ({
               </button>
               <button
                 onClick={() => editor.chain().focus().toggleStrike().run()}
-                className={`p-2 rounded hover:bg-gray-200 ${
-                  editor.isActive('strike') ? 'bg-gray-300' : ''
-                }`}
+                className={`p-2 rounded hover:bg-gray-200 ${editor.isActive('strike') ? 'bg-gray-300' : ''
+                  }`}
                 title="Strikethrough"
                 type="button"
               >
@@ -320,9 +463,8 @@ const TipTapEditor: React.FC<TipTapEditorProps> = ({
               </button>
               <button
                 onClick={() => editor.chain().focus().toggleCode().run()}
-                className={`p-2 rounded hover:bg-gray-200 ${
-                  editor.isActive('code') ? 'bg-gray-300' : ''
-                }`}
+                className={`p-2 rounded hover:bg-gray-200 ${editor.isActive('code') ? 'bg-gray-300' : ''
+                  }`}
                 title="Code"
                 type="button"
               >
@@ -334,9 +476,8 @@ const TipTapEditor: React.FC<TipTapEditorProps> = ({
             <div className="flex gap-0.5 border-r border-gray-300 pr-2">
               <button
                 onClick={() => editor.chain().focus().toggleHeading({ level: 1 }).run()}
-                className={`p-2 rounded hover:bg-gray-200 ${
-                  editor.isActive('heading', { level: 1 }) ? 'bg-gray-300' : ''
-                }`}
+                className={`p-2 rounded hover:bg-gray-200 ${editor.isActive('heading', { level: 1 }) ? 'bg-gray-300' : ''
+                  }`}
                 title="Heading 1"
                 type="button"
               >
@@ -344,9 +485,8 @@ const TipTapEditor: React.FC<TipTapEditorProps> = ({
               </button>
               <button
                 onClick={() => editor.chain().focus().toggleHeading({ level: 2 }).run()}
-                className={`p-2 rounded hover:bg-gray-200 ${
-                  editor.isActive('heading', { level: 2 }) ? 'bg-gray-300' : ''
-                }`}
+                className={`p-2 rounded hover:bg-gray-200 ${editor.isActive('heading', { level: 2 }) ? 'bg-gray-300' : ''
+                  }`}
                 title="Heading 2"
                 type="button"
               >
@@ -354,9 +494,8 @@ const TipTapEditor: React.FC<TipTapEditorProps> = ({
               </button>
               <button
                 onClick={() => editor.chain().focus().toggleHeading({ level: 3 }).run()}
-                className={`p-2 rounded hover:bg-gray-200 ${
-                  editor.isActive('heading', { level: 3 }) ? 'bg-gray-300' : ''
-                }`}
+                className={`p-2 rounded hover:bg-gray-200 ${editor.isActive('heading', { level: 3 }) ? 'bg-gray-300' : ''
+                  }`}
                 title="Heading 3"
                 type="button"
               >
@@ -368,9 +507,8 @@ const TipTapEditor: React.FC<TipTapEditorProps> = ({
             <div className="flex gap-0.5 border-r border-gray-300 pr-2">
               <button
                 onClick={() => editor.chain().focus().toggleBulletList().run()}
-                className={`p-2 rounded hover:bg-gray-200 ${
-                  editor.isActive('bulletList') ? 'bg-gray-300' : ''
-                }`}
+                className={`p-2 rounded hover:bg-gray-200 ${editor.isActive('bulletList') ? 'bg-gray-300' : ''
+                  }`}
                 title="Bullet List"
                 type="button"
               >
@@ -378,9 +516,8 @@ const TipTapEditor: React.FC<TipTapEditorProps> = ({
               </button>
               <button
                 onClick={() => editor.chain().focus().toggleOrderedList().run()}
-                className={`p-2 rounded hover:bg-gray-200 ${
-                  editor.isActive('orderedList') ? 'bg-gray-300' : ''
-                }`}
+                className={`p-2 rounded hover:bg-gray-200 ${editor.isActive('orderedList') ? 'bg-gray-300' : ''
+                  }`}
                 title="Numbered List"
                 type="button"
               >
@@ -388,9 +525,8 @@ const TipTapEditor: React.FC<TipTapEditorProps> = ({
               </button>
               <button
                 onClick={() => editor.chain().focus().toggleBlockquote().run()}
-                className={`p-2 rounded hover:bg-gray-200 ${
-                  editor.isActive('blockquote') ? 'bg-gray-300' : ''
-                }`}
+                className={`p-2 rounded hover:bg-gray-200 ${editor.isActive('blockquote') ? 'bg-gray-300' : ''
+                  }`}
                 title="Quote"
                 type="button"
               >
@@ -402,9 +538,8 @@ const TipTapEditor: React.FC<TipTapEditorProps> = ({
             <div className="flex gap-0.5 border-r border-gray-300 pr-2">
               <button
                 onClick={() => editor.chain().focus().setTextAlign('left').run()}
-                className={`p-2 rounded hover:bg-gray-200 ${
-                  editor.isActive({ textAlign: 'left' }) ? 'bg-gray-300' : ''
-                }`}
+                className={`p-2 rounded hover:bg-gray-200 ${editor.isActive({ textAlign: 'left' }) ? 'bg-gray-300' : ''
+                  }`}
                 title="Align Left"
                 type="button"
               >
@@ -412,9 +547,8 @@ const TipTapEditor: React.FC<TipTapEditorProps> = ({
               </button>
               <button
                 onClick={() => editor.chain().focus().setTextAlign('center').run()}
-                className={`p-2 rounded hover:bg-gray-200 ${
-                  editor.isActive({ textAlign: 'center' }) ? 'bg-gray-300' : ''
-                }`}
+                className={`p-2 rounded hover:bg-gray-200 ${editor.isActive({ textAlign: 'center' }) ? 'bg-gray-300' : ''
+                  }`}
                 title="Align Center"
                 type="button"
               >
@@ -422,9 +556,8 @@ const TipTapEditor: React.FC<TipTapEditorProps> = ({
               </button>
               <button
                 onClick={() => editor.chain().focus().setTextAlign('right').run()}
-                className={`p-2 rounded hover:bg-gray-200 ${
-                  editor.isActive({ textAlign: 'right' }) ? 'bg-gray-300' : ''
-                }`}
+                className={`p-2 rounded hover:bg-gray-200 ${editor.isActive({ textAlign: 'right' }) ? 'bg-gray-300' : ''
+                  }`}
                 title="Align Right"
                 type="button"
               >
@@ -432,9 +565,8 @@ const TipTapEditor: React.FC<TipTapEditorProps> = ({
               </button>
               <button
                 onClick={() => editor.chain().focus().setTextAlign('justify').run()}
-                className={`p-2 rounded hover:bg-gray-200 ${
-                  editor.isActive({ textAlign: 'justify' }) ? 'bg-gray-300' : ''
-                }`}
+                className={`p-2 rounded hover:bg-gray-200 ${editor.isActive({ textAlign: 'justify' }) ? 'bg-gray-300' : ''
+                  }`}
                 title="Justify"
                 type="button"
               >
@@ -478,9 +610,8 @@ const TipTapEditor: React.FC<TipTapEditorProps> = ({
               </button>
               <button
                 onClick={handleSetLink}
-                className={`p-2 rounded hover:bg-gray-200 ${
-                  editor.isActive('link') ? 'bg-gray-300' : ''
-                }`}
+                className={`p-2 rounded hover:bg-gray-200 ${editor.isActive('link') ? 'bg-gray-300' : ''
+                  }`}
                 title="Add Link"
                 type="button"
               >
@@ -642,25 +773,22 @@ const TipTapEditor: React.FC<TipTapEditorProps> = ({
             <div className="flex gap-1 bg-gray-800 text-white p-1 rounded shadow-lg">
               <button
                 onClick={() => editor.chain().focus().toggleBold().run()}
-                className={`px-2 py-1 rounded text-sm ${
-                  editor.isActive('bold') ? 'bg-gray-600' : ''
-                }`}
+                className={`px-2 py-1 rounded text-sm ${editor.isActive('bold') ? 'bg-gray-600' : ''
+                  }`}
               >
                 Bold
               </button>
               <button
                 onClick={() => editor.chain().focus().toggleItalic().run()}
-                className={`px-2 py-1 rounded text-sm ${
-                  editor.isActive('italic') ? 'bg-gray-600' : ''
-                }`}
+                className={`px-2 py-1 rounded text-sm ${editor.isActive('italic') ? 'bg-gray-600' : ''
+                  }`}
               >
                 Italic
               </button>
               <button
                 onClick={handleSetLink}
-                className={`px-2 py-1 rounded text-sm ${
-                  editor.isActive('link') ? 'bg-gray-600' : ''
-                }`}
+                className={`px-2 py-1 rounded text-sm ${editor.isActive('link') ? 'bg-gray-600' : ''
+                  }`}
               >
                 Link
               </button>
@@ -676,21 +804,19 @@ const TipTapEditor: React.FC<TipTapEditorProps> = ({
 
       {/* Character and Word Count Display */}
       {editor && showCharacterCount && (
-        <div className={`border-t px-4 py-2 flex items-center justify-between text-xs transition-colors ${
-          characterLimit && editor.storage.characterCount.characters() > characterLimit
-            ? 'bg-red-50 border-red-200'
-            : characterLimit && editor.storage.characterCount.characters() > characterLimit * 0.9
+        <div className={`border-t px-4 py-2 flex items-center justify-between text-xs transition-colors ${characterLimit && editor.storage.characterCount.characters() > characterLimit
+          ? 'bg-red-50 border-red-200'
+          : characterLimit && editor.storage.characterCount.characters() > characterLimit * 0.9
             ? 'bg-yellow-50 border-yellow-200'
             : 'bg-gray-50 border-gray-200'
-        }`}>
+          }`}>
           <div className="flex items-center gap-4">
-            <span className={`font-medium ${
-              characterLimit && editor.storage.characterCount.characters() > characterLimit
-                ? 'text-red-700'
-                : characterLimit && editor.storage.characterCount.characters() > characterLimit * 0.9
+            <span className={`font-medium ${characterLimit && editor.storage.characterCount.characters() > characterLimit
+              ? 'text-red-700'
+              : characterLimit && editor.storage.characterCount.characters() > characterLimit * 0.9
                 ? 'text-yellow-700'
                 : 'text-gray-700'
-            }`}>
+              }`}>
               {editor.storage.characterCount.characters().toLocaleString()}
               {characterLimit && ` / ${characterLimit.toLocaleString()}`} characters
             </span>
@@ -698,11 +824,10 @@ const TipTapEditor: React.FC<TipTapEditorProps> = ({
               {editor.storage.characterCount.words().toLocaleString()} words
             </span>
             {characterLimit && editor.storage.characterCount.characters() > characterLimit * 0.9 && (
-              <span className={`text-xs font-medium px-2 py-0.5 rounded ${
-                editor.storage.characterCount.characters() > characterLimit
-                  ? 'bg-red-100 text-red-700'
-                  : 'bg-yellow-100 text-yellow-700'
-              }`}>
+              <span className={`text-xs font-medium px-2 py-0.5 rounded ${editor.storage.characterCount.characters() > characterLimit
+                ? 'bg-red-100 text-red-700'
+                : 'bg-yellow-100 text-yellow-700'
+                }`}>
                 {editor.storage.characterCount.characters() > characterLimit
                   ? `${(editor.storage.characterCount.characters() - characterLimit).toLocaleString()} over limit`
                   : `${(characterLimit - editor.storage.characterCount.characters()).toLocaleString()} remaining`

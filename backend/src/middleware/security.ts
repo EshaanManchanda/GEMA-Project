@@ -170,8 +170,8 @@ function sanitizeObject(obj: any): any {
     const sanitized: any = {};
     for (const key in obj) {
       if (obj.hasOwnProperty(key)) {
-        // Skip sanitization for specific fields that may contain HTML
-        const skipSanitization = ['description', 'content', 'bio', 'answer'];
+        // Skip sanitization for specific fields that may contain HTML or CSS
+        const skipSanitization = ['description', 'content', 'bio', 'answer', 'customCSS', 'rawHtmlContent', 'html'];
 
         if (skipSanitization.includes(key)) {
           // Basic sanitization only - remove script tags but preserve HTML

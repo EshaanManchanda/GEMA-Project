@@ -973,7 +973,7 @@ async function clearData() {
  */
 async function seedUsers() {
   const users = [];
-  
+
   for (const userData of sampleUsers) {
     const user = new User({
       ...userData,
@@ -982,7 +982,7 @@ async function seedUsers() {
     delete (user as any).password;
     users.push(await user.save());
   }
-  
+
   logger.info(`${users.length} users created`);
   return users;
 }
@@ -993,18 +993,18 @@ async function seedUsers() {
 async function seedVenues(users: any[]) {
   const vendors = users.filter(user => user.role === UserRole.VENDOR);
   const venues = [];
-  
+
   for (let i = 0; i < sampleVenues.length; i++) {
     const venueData = sampleVenues[i];
     const vendor = vendors[i % vendors.length];
-    
+
     const venue = new Venue({
       ...venueData,
       vendorId: vendor._id
     });
     venues.push(await venue.save());
   }
-  
+
   logger.info(`${venues.length} venues created`);
   return venues;
 }
@@ -1015,18 +1015,18 @@ async function seedVenues(users: any[]) {
 async function seedEvents(users: any[], venues: any[]) {
   const vendors = users.filter(user => user.role === UserRole.VENDOR);
   const events = [];
-  
+
   for (let i = 0; i < sampleEvents.length; i++) {
     const eventData = sampleEvents[i];
     const vendor = vendors[i % vendors.length];
-    
+
     const event = new Event({
       ...eventData,
       vendorId: vendor._id
     });
     events.push(await event.save());
   }
-  
+
   logger.info(`${events.length} events created`);
   return events;
 }
@@ -1038,26 +1038,26 @@ async function seedOrdersAndTickets(users: any[], events: any[]) {
   const customers = users.filter(user => user.role === UserRole.CUSTOMER);
   const orders = [];
   const tickets = [];
-  
+
   const orderStatuses = ['confirmed', 'pending', 'cancelled', 'refunded'];
   const paymentStatuses = ['paid', 'pending', 'failed', 'refunded'];
   const paymentMethods = ['stripe', 'paypal', 'razorpay'];
   const ticketTypes = ['general', 'vip', 'early_bird', 'group'];
-  
+
   // Create multiple orders per customer and event combination
   for (let i = 0; i < customers.length; i++) {
     const customer = customers[i];
     const eventsToBook = events.slice(0, Math.min(events.length, Math.floor(Math.random() * 4) + 1)); // 1-4 events per customer
-    
+
     for (let j = 0; j < eventsToBook.length; j++) {
       const event = eventsToBook[j];
       const quantity = Math.floor(Math.random() * 4) + 1; // 1-4 tickets
       const orderStatus = orderStatuses[Math.floor(Math.random() * orderStatuses.length)];
       const paymentStatus = orderStatus === 'confirmed' ? 'paid' : paymentStatuses[Math.floor(Math.random() * paymentStatuses.length)];
-      
+
       // Create order
       const orderNumber = `ORD-${Date.now()}-${Math.random().toString(36).substr(2, 4).toUpperCase()}`;
-      
+
       const participants = [];
       for (let p = 0; p < quantity; p++) {
         const participantNames = [
@@ -1065,7 +1065,7 @@ async function seedOrdersAndTickets(users: any[], events: any[]) {
           'Alex Johnson', 'Sarah Williams', 'Mike Brown', 'Emma Davis',
           'Ahmed Al-Rashid', 'Fatima Hassan', 'Omar Abdullah', 'Layla Mohamed'
         ];
-        
+
         participants.push({
           name: p === 0 ? `${customer.firstName} ${customer.lastName}` : participantNames[Math.floor(Math.random() * participantNames.length)],
           age: Math.floor(Math.random() * 40) + 20, // Age between 20-60
@@ -1075,7 +1075,7 @@ async function seedOrdersAndTickets(users: any[], events: any[]) {
             phone: `+971${Math.floor(Math.random() * 900000000) + 100000000}`
           }
         });
-      }     
+      }
       const totalPrice = event.price * quantity;
       const order = new Order({
         orderNumber,
@@ -1109,17 +1109,17 @@ async function seedOrdersAndTickets(users: any[], events: any[]) {
         },
         source: ['web', 'mobile', 'admin'][Math.floor(Math.random() * 3)]
       });
-      
+
       const savedOrder = await order.save();
       orders.push(savedOrder);
-      
+
       // Create tickets for the order (only if order is confirmed)
       if (orderStatus === 'confirmed') {
         for (let k = 0; k < quantity; k++) {
           const ticketNumber = `GM-${Date.now()}-${Math.random().toString(36).substr(2, 4).toUpperCase()}`;
           const qrCodeData = `${event._id}-${savedOrder._id}-${ticketNumber}`;
           const isCheckedIn = Math.random() > 0.6; // 40% chance of being checked in
-          
+
           const ticket = new Ticket({
             ticketNumber,
             orderId: savedOrder._id,
@@ -1143,13 +1143,13 @@ async function seedOrdersAndTickets(users: any[], events: any[]) {
             validFrom: new Date(),
             validUntil: new Date(event.dateSchedule[0].date.getTime() + 24 * 60 * 60 * 1000) // 24 hours after event
           });
-          
+
           tickets.push(await ticket.save());
         }
       }
     }
   }
-  
+
   // Create some additional random orders to simulate more activity
   for (let i = 0; i < 20; i++) {
     const randomCustomer = customers[Math.floor(Math.random() * customers.length)];
@@ -1157,10 +1157,10 @@ async function seedOrdersAndTickets(users: any[], events: any[]) {
     const quantity = Math.floor(Math.random() * 3) + 1;
     const orderStatus = orderStatuses[Math.floor(Math.random() * orderStatuses.length)];
     const paymentStatus = orderStatus === 'confirmed' ? 'paid' : paymentStatuses[Math.floor(Math.random() * paymentStatuses.length)];
-    
+
     const orderNumber = `ORD-${Date.now()}-${Math.random().toString(36).substr(2, 4).toUpperCase()}`;
     const totalPrice = randomEvent.price * quantity;
-    
+
     const order = new Order({
       orderNumber,
       userId: randomCustomer._id,
@@ -1201,17 +1201,17 @@ async function seedOrdersAndTickets(users: any[], events: any[]) {
       },
       source: ['web', 'mobile', 'admin'][Math.floor(Math.random() * 3)]
     });
-    
+
     const savedOrder = await order.save();
     orders.push(savedOrder);
-    
+
     // Create tickets for confirmed orders
     if (orderStatus === 'confirmed') {
       for (let k = 0; k < quantity; k++) {
         const ticketNumber = `GM-${Date.now()}-${Math.random().toString(36).substr(2, 4).toUpperCase()}`;
         const qrCodeData = `${randomEvent._id}-${savedOrder._id}-${ticketNumber}`;
         const isCheckedIn = Math.random() > 0.7;
-        
+
         const ticket = new Ticket({
           ticketNumber,
           orderId: savedOrder._id,
@@ -1235,12 +1235,12 @@ async function seedOrdersAndTickets(users: any[], events: any[]) {
           validFrom: new Date(),
           validUntil: new Date(randomEvent.dateSchedule[0].date.getTime() + 24 * 60 * 60 * 1000)
         });
-        
+
         tickets.push(await ticket.save());
       }
     }
   }
-  
+
   logger.info(`${orders.length} orders and ${tickets.length} tickets created`);
   return { orders, tickets };
 }
@@ -1251,7 +1251,7 @@ async function seedOrdersAndTickets(users: any[], events: any[]) {
 async function seedReviews(users: any[], events: any[], orders: any[]) {
   const customers = users.filter(user => user.role === UserRole.CUSTOMER);
   const reviews = [];
-  
+
   const reviewTexts = [
     {
       title: 'Amazing experience!',
@@ -1326,20 +1326,20 @@ async function seedReviews(users: any[], events: any[], orders: any[]) {
       cons: ['Expensive drinks', 'Limited parking']
     }
   ];
-  
+
   // Create reviews for orders with confirmed status
   const confirmedOrders = orders.filter(order => order.status === 'confirmed');
-  
+
   for (let i = 0; i < Math.min(confirmedOrders.length * 0.7); i++) { // 70% of confirmed orders get reviews
     const order = confirmedOrders[i];
     const customer = users.find(user => user._id.toString() === order.userId.toString());
     const event = events.find(event => event._id.toString() === order.items[0].eventId.toString());
-    
+
     if (!customer || !event) continue;
-    
+
     const reviewData = reviewTexts[Math.floor(Math.random() * reviewTexts.length)];
     const rating = Math.floor(Math.random() * 5) + 1; // Rating between 1-5
-    
+
     // Adjust review content based on rating
     let adjustedReviewData = { ...reviewData };
     if (rating <= 2) {
@@ -1347,7 +1347,7 @@ async function seedReviews(users: any[], events: any[], orders: any[]) {
     } else if (rating >= 4) {
       adjustedReviewData = reviewTexts.find(r => r.title.includes('Amazing') || r.title.includes('Outstanding') || r.title.includes('Excellent')) || reviewTexts[0];
     }
-    
+
     const review = new Review({
       type: ReviewType.EVENT,
       event: event._id,
@@ -1365,17 +1365,17 @@ async function seedReviews(users: any[], events: any[], orders: any[]) {
       notHelpful: Math.floor(Math.random() * 8),
       source: ['web', 'mobile', 'admin'][Math.floor(Math.random() * 3)]
     });
-    
+
     reviews.push(await review.save());
   }
-  
+
   // Create some additional random reviews (unverified purchases)
   for (let i = 0; i < 15; i++) {
     const randomCustomer = customers[Math.floor(Math.random() * customers.length)];
     const randomEvent = events[Math.floor(Math.random() * events.length)];
     const reviewData = reviewTexts[Math.floor(Math.random() * reviewTexts.length)];
     const rating = Math.floor(Math.random() * 5) + 1;
-    
+
     const review = new Review({
       type: ReviewType.EVENT,
       event: randomEvent._id,
@@ -1392,19 +1392,19 @@ async function seedReviews(users: any[], events: any[], orders: any[]) {
       notHelpful: Math.floor(Math.random() * 5),
       source: ['web', 'mobile'][Math.floor(Math.random() * 2)]
     });
-    
+
     reviews.push(await review.save());
   }
-  
+
   // Create some venue reviews
   for (let i = 0; i < 10; i++) {
     const randomCustomer = customers[Math.floor(Math.random() * customers.length)];
     const randomOrder = confirmedOrders[Math.floor(Math.random() * confirmedOrders.length)];
     const reviewData = reviewTexts[Math.floor(Math.random() * reviewTexts.length)];
     const rating = Math.floor(Math.random() * 5) + 1;
-    
+
     if (!randomOrder) continue;
-    
+
     const review = new Review({
       type: ReviewType.VENUE,
       user: randomCustomer._id,
@@ -1421,10 +1421,10 @@ async function seedReviews(users: any[], events: any[], orders: any[]) {
       notHelpful: Math.floor(Math.random() * 6),
       source: 'web'
     });
-    
+
     reviews.push(await review.save());
   }
-  
+
   logger.info(`${reviews.length} reviews created`);
   return reviews;
 }
@@ -1435,7 +1435,7 @@ async function seedReviews(users: any[], events: any[], orders: any[]) {
 async function seedEmployees(users: any[], venues: any[]) {
   const vendors = users.filter(user => user.role === UserRole.VENDOR);
   const employees: mongoose.Document[] = [];
-  
+
   const employeeData = [
     { firstName: 'Ahmed', lastName: 'Hassan', position: 'Event Manager', department: 'Operations' },
     { firstName: 'Fatima', lastName: 'Al-Zahra', position: 'Check-in Supervisor', department: 'Guest Services' },
@@ -1458,7 +1458,7 @@ async function seedEmployees(users: any[], venues: any[]) {
     { firstName: 'Abdullah', lastName: 'Al-Suwaidi', position: 'Maintenance Supervisor', department: 'Maintenance' },
     { firstName: 'Noura', lastName: 'Al-Falasi', position: 'Training Coordinator', department: 'Human Resources' }
   ];
-  
+
   const departments = ['Operations', 'Guest Services', 'Security', 'Marketing', 'Technical', 'Finance', 'Sales', 'Human Resources', 'Maintenance'];
   const permissions = [
     ['checkin', 'view_reports'],
@@ -1471,17 +1471,17 @@ async function seedEmployees(users: any[], venues: any[]) {
     ['hr_access', 'employee_management', 'training'],
     ['maintenance_access', 'facility_management', 'equipment']
   ];
-  
+
   // Create employees for each vendor
   vendors.forEach((vendor, vendorIndex) => {
     const numEmployees = Math.floor(Math.random() * 8) + 5; // 5-12 employees per vendor
-    
+
     for (let i = 0; i < numEmployees; i++) {
       const employeeIndex = (vendorIndex * numEmployees + i) % employeeData.length;
       const data = employeeData[employeeIndex];
       const department = departments[Math.floor(Math.random() * departments.length)];
       const employeePermissions = permissions[departments.indexOf(department)] || ['basic_access'];
-      
+
       const employee = new Employee({
         employeeId: `EMP${String(employees.length + 1).padStart(3, '0')}`,
         firstName: data.firstName,
@@ -1515,17 +1515,17 @@ async function seedEmployees(users: any[], venues: any[]) {
           'Specialized in event setup and coordination'
         ][Math.floor(Math.random() * 5)] : undefined
       });
-      
+
       employees.push(employee);
     }
   });
-  
+
   // Save all employees
   const savedEmployees = [];
   for (const employee of employees) {
     savedEmployees.push(await employee.save());
   }
-  
+
   logger.info(`${savedEmployees.length} employees created across ${vendors.length} vendors`);
   return savedEmployees;
 }
@@ -1536,15 +1536,15 @@ async function seedEmployees(users: any[], venues: any[]) {
 async function updateEventStats(events: any[], orders: any[], reviews: any[]) {
   for (const event of events) {
     // Calculate total revenue and tickets sold
-    const eventOrders = orders.filter(order => 
+    const eventOrders = orders.filter(order =>
       order.items.some((item: any) => item.eventId.toString() === event._id.toString())
     );
-    
+
     let totalRevenue = 0;
     let ticketsSold = 0;
-    
+
     eventOrders.forEach(order => {
-      const eventItems = order.items.filter((item: any) => 
+      const eventItems = order.items.filter((item: any) =>
         item.eventId.toString() === event._id.toString()
       );
       eventItems.forEach((item: any) => {
@@ -1552,28 +1552,28 @@ async function updateEventStats(events: any[], orders: any[], reviews: any[]) {
         ticketsSold += item.quantity;
       });
     });
-    
+
     // Calculate average rating
-    const eventReviews = reviews.filter(review => 
+    const eventReviews = reviews.filter(review =>
       review.event && review.event.toString() === event._id.toString()
     );
-    
+
     const averageRating = eventReviews.length > 0
       ? eventReviews.reduce((sum, review) => sum + review.rating, 0) / eventReviews.length
       : 0;
-    
+
     // Update available seats based on tickets sold
     event.dateSchedule.forEach((schedule: any) => {
       schedule.availableSeats = Math.max(0, schedule.availableSeats - ticketsSold);
     });
-    
+
     // Add analytics data (would be calculated by analytics service)
     event.viewsCount = Math.floor(Math.random() * 2000) + 500;
     event.averageRating = Math.round(averageRating * 10) / 10;
-    
+
     await event.save();
   }
-  
+
   logger.info('Event statistics updated');
 }
 
@@ -1582,29 +1582,29 @@ async function updateEventStats(events: any[], orders: any[], reviews: any[]) {
  */
 async function seedCheckinLogs(users: any[], events: any[], tickets: any[], employees: any[]) {
   const checkinLogs = [];
-  
+
   // Get tickets that are checked in
   const checkedInTickets = tickets.filter(ticket => ticket.checkInDetails?.isCheckedIn);
-  
+
   for (const ticket of checkedInTickets) {
     const event = events.find(e => e._id.toString() === ticket.eventId.toString());
     const customer = users.find(u => u._id.toString() === ticket.userId.toString());
-    
+
     if (!event || !customer) continue;
-    
+
     // Find employees who could have processed the check-in
     const eventVendors = users.filter(u => u.role === UserRole.VENDOR);
-    const eventEmployees = employees.filter(emp => 
+    const eventEmployees = employees.filter(emp =>
       eventVendors.some(vendor => vendor._id.toString() === emp.vendorId.toString()) &&
       emp.permissions.includes('checkin') &&
       emp.status === 'active'
     );
-    
+
     if (eventEmployees.length === 0) continue;
-    
+
     const scanEmployee = eventEmployees[Math.floor(Math.random() * eventEmployees.length)];
     const checkInTime = ticket.checkInDetails.checkInTime || new Date(event.dateSchedule[0].date.getTime() - Math.random() * 2 * 60 * 60 * 1000);
-    
+
     const checkinLog = new CheckinLog({
       ticketId: ticket._id,
       eventId: event._id,
@@ -1640,13 +1640,13 @@ async function seedCheckinLogs(users: any[], events: any[], tickets: any[], empl
         additionalVerification: Math.random() > 0.8 // 20% had additional verification
       }
     });
-    
+
     checkinLogs.push(await checkinLog.save());
-    
+
     // Create additional scan attempts for some tickets (duplicate scans, failed attempts)
     if (Math.random() > 0.7) { // 30% chance of additional scans
       const additionalScans = Math.floor(Math.random() * 2) + 1;
-      
+
       for (let i = 0; i < additionalScans; i++) {
         const additionalLog = new CheckinLog({
           ticketId: ticket._id,
@@ -1671,34 +1671,34 @@ async function seedCheckinLogs(users: any[], events: any[], tickets: any[], empl
             accuracy: Math.floor(Math.random() * 10) + 5
           }
         });
-        
+
         checkinLogs.push(await additionalLog.save());
       }
     }
   }
-  
+
   // Create some failed check-in attempts for non-checked-in tickets
   const nonCheckedInTickets = tickets.filter(ticket => !ticket.checkInDetails?.isCheckedIn);
   const failedAttempts = Math.min(20, Math.floor(nonCheckedInTickets.length * 0.1)); // 10% failed attempts
-  
+
   for (let i = 0; i < failedAttempts; i++) {
     const ticket = nonCheckedInTickets[Math.floor(Math.random() * nonCheckedInTickets.length)];
     const event = events.find(e => e._id.toString() === ticket.eventId.toString());
     const customer = users.find(u => u._id.toString() === ticket.userId.toString());
-    
+
     if (!event || !customer) continue;
-    
+
     const eventVendors = users.filter(u => u.role === UserRole.VENDOR);
-    const eventEmployees = employees.filter(emp => 
+    const eventEmployees = employees.filter(emp =>
       eventVendors.some(vendor => vendor._id.toString() === emp.vendorId.toString()) &&
       emp.permissions.includes('checkin') &&
       emp.status === 'active'
     );
-    
+
     if (eventEmployees.length === 0) continue;
-    
+
     const scanEmployee = eventEmployees[Math.floor(Math.random() * eventEmployees.length)];
-    
+
     const failureReasons = [
       'Invalid QR code format',
       'Ticket already used',
@@ -1707,7 +1707,7 @@ async function seedCheckinLogs(users: any[], events: any[], tickets: any[], empl
       'Ticket expired',
       'Cancelled ticket'
     ];
-    
+
     const failedLog = new CheckinLog({
       ticketId: ticket._id,
       eventId: event._id,
@@ -1731,10 +1731,10 @@ async function seedCheckinLogs(users: any[], events: any[], tickets: any[], empl
         accuracy: Math.floor(Math.random() * 15) + 5
       }
     });
-    
+
     checkinLogs.push(await failedLog.save());
   }
-  
+
   logger.info(`${checkinLogs.length} check-in logs created`);
   return checkinLogs;
 }
@@ -1746,12 +1746,12 @@ async function seed() {
   try {
     // Connect to MongoDB
     await connectDB();
-    
+
     logger.info('Starting database seeding...');
-    
+
     // Clear existing data
     await clearData();
-    
+
     // Seed data in order (respecting dependencies)
     const users = await seedUsers();
     const venues = await seedVenues(users);
@@ -1760,10 +1760,10 @@ async function seed() {
     const reviews = await seedReviews(users, events, orders);
     const employees = await seedEmployees(users, venues);
     const checkinLogs = await seedCheckinLogs(users, events, tickets, employees);
-    
+
     // Update statistics
     await updateEventStats(events, orders, reviews);
-    
+
     logger.info('Database seeding completed successfully');
     logger.info(`Summary:
       - Users: ${users.length}
@@ -1775,16 +1775,16 @@ async function seed() {
       - Employees: ${employees.length}
       - Check-in Logs: ${checkinLogs.length}
     `);
-    
+
     // Display login credentials
     logger.info('\n🔐 Login Credentials:');
     logger.info('Admin: admin@gema.com / admin123');
     logger.info('Vendor: vendor@gema.com / vendor123');
     logger.info('Customer: customer@gema.com / customer123');
-    
+
     process.exit(0);
   } catch (error) {
-    logger.error('Database seeding failed:', error);
+    console.error('Database seeding failed:', JSON.stringify(error, Object.getOwnPropertyNames(error), 2));
     process.exit(1);
   }
 }
