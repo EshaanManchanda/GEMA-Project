@@ -50,30 +50,48 @@ const HtmlInsertModal: React.FC<HtmlInsertModalProps> = ({ isOpen, onClose, onIn
             onChange={(e) => setHtmlContent(e.target.value)}
             className="w-full min-h-[400px] p-4 font-mono text-sm border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 resize-y text-gray-900"
             placeholder='<!-- Example with custom class -->
-<div class="my-custom-box">
-  <h2>Your Heading</h2>
-  <p>Your paragraph with <strong>bold text</strong>.</p>
-</div>
+              <div class="my-custom-box">
+                <h2>Your Heading</h2>
+                <p>Your paragraph with <strong>bold text</strong>.</p>
+              </div>
 
-<!-- Example with built-in utility class -->
-<div class="blog-callout-info">
-  <p>This is an info callout box</p>
-</div>
+              <!-- Example with built-in utility class -->
+              <div class="blog-callout-info">
+                <p>This is an info callout box</p>
+              </div>
 
-<!-- Example grid layout -->
-<div class="blog-grid-2">
-  <div class="blog-card">
-    <h3>Card 1</h3>
-    <ul>
-      <li>Item 1</li>
-      <li>Item 2</li>
-    </ul>
-  </div>
-  <div class="blog-card">
-    <h3>Card 2</h3>
-    <p>Content here</p>
-  </div>
-</div>'
+              <!-- 3-Column Grid with Cards -->
+              <div class="blog-grid-3">
+                <div class="blog-card">
+                  <h3>1] The Dubai Mall - KidZania</h3>
+                  <p><strong>Address:</strong> The Dubai Mall, Downtown Dubai</p>
+                  <p><strong>Ages:</strong> 2-16</p>
+                  <p><strong>Cost:</strong> AED 95 – 130 (School group rates)</p>
+                  <hr>
+                  <p><strong>Events:</strong> 40+ real-world role-play activities (Firefighter, Pilot, Doctor, Chef).</p>
+                  <a href="#" class="blog-button-outline">View Details</a>
+                </div>
+
+                <div class="blog-card">
+                  <h3>2] Dubai Aquarium & Underwater Zoo</h3>
+                  <p><strong>Address:</strong> The Dubai Mall, Downtown Dubai</p>
+                  <p><strong>Ages:</strong> 3-18</p>
+                  <p><strong>Cost:</strong> AED 60 – 100 (Education rates)</p>
+                  <hr>
+                  <p><strong>Events:</strong> Ocean School Program, 48m shark tunnel walk, Glass Bottom Boat tours, and Penguin Cove.</p>
+                  <a href="#" class="blog-button-outline">View Details</a>
+                </div>
+
+                <div class="blog-card">
+                  <h3>3] Leo&Loona - Dubai Festival City</h3>
+                  <p><strong>Address:</strong> Dubai Festival City Mall, 2nd Floor</p>
+                  <p><strong>Ages:</strong> 2-12</p>
+                  <p><strong>Cost:</strong> AED 80 – 150 per child</p>
+                  <hr>
+                  <p><strong>Events:</strong> Large indoor soft play area, trampolines, slides, and creative masterclasses (slime making, cooking).</p>
+                  <a href="#" class="blog-button-outline">View Details</a>
+                </div>
+              </div>'
           />
         </div>
 

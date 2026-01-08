@@ -195,6 +195,12 @@ const CustomListItem = addClassAndStyle(ListItem);
 const CustomBulletList = addClassAndStyle(BulletList);
 const CustomOrderedList = addClassAndStyle(OrderedList);
 const CustomBlockquote = addClassAndStyle(Blockquote);
+const CustomImage = addClassAndStyle(Image).configure({
+  HTMLAttributes: {
+    class: 'max-w-full h-auto rounded-lg my-4',
+  },
+});
+
 
 const TipTapEditor: React.FC<TipTapEditorProps> = ({
   content,
@@ -241,11 +247,7 @@ const TipTapEditor: React.FC<TipTapEditorProps> = ({
       CustomLink.configure({
         openOnClick: false,
       }),
-      Image.configure({
-        HTMLAttributes: {
-          class: 'max-w-full h-auto rounded-lg my-4'
-        }
-      }),
+      CustomImage,
       Youtube.configure({
         width: 640,
         height: 480,
@@ -284,7 +286,7 @@ const TipTapEditor: React.FC<TipTapEditorProps> = ({
     },
     editorProps: {
       attributes: {
-        class: 'blog-content max-w-none focus:outline-none min-h-[300px] p-4'
+        class: 'blog-content w-full max-w-none focus:outline-none min-h-[300px] p-4'
       }
     }
   });
