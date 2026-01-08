@@ -25,10 +25,10 @@ function patchGlobalEnvironment() {
 
   // Primary global object (what axios will use)
   const primaryGlobal = (typeof globalThis !== 'undefined' && globalThis) ||
-                        (typeof window !== 'undefined' && window) ||
-                        (typeof self !== 'undefined' && self) ||
-                        (typeof global !== 'undefined' && global) ||
-                        {};
+    (typeof window !== 'undefined' && window) ||
+    (typeof self !== 'undefined' && self) ||
+    (typeof global !== 'undefined' && global) ||
+    {};
 
   // Ensure window.global points to window (critical for axios)
   if (typeof window !== 'undefined') {
@@ -103,8 +103,8 @@ function patchGlobalEnvironment() {
     timestamp: new Date().toISOString(),
     patchedProperties: patchedCount,
     primaryGlobal: primaryGlobal === globalThis ? 'globalThis' :
-                   primaryGlobal === window ? 'window' :
-                   primaryGlobal === self ? 'self' : 'global',
+      primaryGlobal === window ? 'window' :
+        primaryGlobal === self ? 'self' : 'global',
     destructureWorks,
     apis: {
       fetch: !!fetchAPIs.fetch,
@@ -180,8 +180,8 @@ if (typeof window !== 'undefined') {
     version: '3.0-axios-specific',
     axiosPatchCount,
     axiosGlobalType: axiosGlobal === globalThis ? 'globalThis' :
-                     axiosGlobal === window ? 'window' :
-                     axiosGlobal === self ? 'self' : 'unknown'
+      axiosGlobal === window ? 'window' :
+        axiosGlobal === self ? 'self' : 'unknown'
   };
 
   // Final verification test using axios's pattern
@@ -199,4 +199,22 @@ if (typeof window !== 'undefined') {
 }
 
 // Export empty object to make this a module
-export {};
+// CRITICAL: Global error handler for dynamic import failures (Version Mismatch)
+// This handles the "Failed to fetch dynamically imported module" error by reloading
+// the page to get the latest index.html and chunks.
+window.addEventListener('vite:preloadError', (event) => {
+  console.error('[Vite] Detected dynamic import error, reloading...', event);
+
+  // Prevent infinite reload loops (limit to 1 reload per 10 seconds)
+  const lastReload = parseInt(sessionStorage.getItem('__vite_reload_timestamp') || '0', 10);
+  const now = Date.now();
+
+  if (now - lastReload > 10000) {
+    sessionStorage.setItem('__vite_reload_timestamp', now.toString());
+    window.location.reload();
+  } else {
+    console.error('[Vite] Reload loop detected, not reloading.');
+  }
+});
+
+export { };
