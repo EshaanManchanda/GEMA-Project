@@ -360,23 +360,26 @@ export default defineConfig({
             return 'misc';
           }
         },
-        chunkFileNames: (chunkInfo) => {
-          const facadeModuleId = chunkInfo.facadeModuleId ? chunkInfo.facadeModuleId.split('/').pop() : 'chunk';
-          const buildId = Date.now().toString(36);
-          return `js/[name]-[hash]-${buildId}.js`;
-        },
-        entryFileNames: `js/[name]-[hash]-${Date.now().toString(36)}.js`,
-        assetFileNames: (assetInfo) => {
-          const info = assetInfo.name.split('.');
-          const ext = info[info.length - 1];
-          if (/png|jpe?g|svg|gif|tiff|bmp|ico/i.test(ext)) {
-            return `images/[name]-[hash][extname]`;
-          }
-          if (/css/i.test(ext)) {
-            return `css/[name]-[hash][extname]`;
-          }
-          return `assets/[name]-[hash][extname]`;
-        }
+        chunkFileNames: 'js/[name]-[hash].js',
+        entryFileNames: 'js/[name]-[hash].js',
+        assetFileNames: 'assets/[name]-[hash][extname]'
+        // chunkFileNames: (chunkInfo) => {
+        //   const facadeModuleId = chunkInfo.facadeModuleId ? chunkInfo.facadeModuleId.split('/').pop() : 'chunk';
+        //   const buildId = Date.now().toString(36);
+        //   return `js/[name]-[hash]-${buildId}.js`;
+        // },
+        // entryFileNames: `js/[name]-[hash]-${Date.now().toString(36)}.js`,
+        // assetFileNames: (assetInfo) => {
+        //   const info = assetInfo.name.split('.');
+        //   const ext = info[info.length - 1];
+        //   if (/png|jpe?g|svg|gif|tiff|bmp|ico/i.test(ext)) {
+        //     return `images/[name]-[hash][extname]`;
+        //   }
+        //   if (/css/i.test(ext)) {
+        //     return `css/[name]-[hash][extname]`;
+        //   }
+        //   return `assets/[name]-[hash][extname]`;
+        // }
       }
     },
     chunkSizeWarningLimit: 1000,
