@@ -1070,7 +1070,7 @@
   border-bottom: none;
 }
 
-/* Blog Layout Utilities - WordPress-like flexibility */
+/* Blog Layout Utilities - Premium WordPress-like Styling */
 
 /* Container Variations */
 .blog-container-narrow {
@@ -1087,11 +1087,12 @@
   width: 100%;
 }
 
-/* Grid Layouts */
+/* Grid Layouts - Responsive & Robust */
 .blog-grid-2 {
   display: grid;
   grid-template-columns: 1fr;
   gap: 2rem;
+  align-items: start;
 }
 
 @media (min-width: 640px) {
@@ -1104,23 +1105,41 @@
   display: grid;
   grid-template-columns: 1fr;
   gap: 1.5rem;
+  align-items: start;
 }
 
-@media (min-width: 768px) {
+/* Smooth responsiveness: 1 -> 2 -> 3 columns */
+@media (min-width: 640px) {
+  .blog-grid-3 {
+    grid-template-columns: repeat(2, 1fr);
+  }
+}
+
+@media (min-width: 1024px) {
   .blog-grid-3 {
     grid-template-columns: repeat(3, 1fr);
   }
 }
 
+/* Fix for TipTap/Editor ghost items (empty paragraphs/breaks) disrupting the grid */
+.blog-grid-2>p:empty,
+.blog-grid-2>br,
+.blog-grid-3>p:empty,
+.blog-grid-3>br,
+.blog-grid-sidebar>p:empty,
+.blog-grid-sidebar>br {
+  display: none !important;
+}
+
 .blog-grid-sidebar {
   display: grid;
-  grid-template-columns: 1fr 300px;
+  grid-template-columns: 1fr;
   gap: 3rem;
 }
 
-@media (max-width: 768px) {
+@media (min-width: 1024px) {
   .blog-grid-sidebar {
-    grid-template-columns: 1fr;
+    grid-template-columns: 1fr 300px;
   }
 }
 
@@ -1149,23 +1168,26 @@
   align-items: center;
 }
 
-/* Image Variations */
+/* Image Variations with improved captions */
 .blog-img-full {
   width: 100vw;
   margin-left: calc(50% - 50vw);
   border-radius: 0;
+  box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1);
 }
 
 .blog-img-float-left {
   float: left;
   margin: 0 1.5rem 1rem 0;
   max-width: 50%;
+  border-radius: 0.5rem;
 }
 
 .blog-img-float-right {
   float: right;
   margin: 0 0 1rem 1.5rem;
   max-width: 50%;
+  border-radius: 0.5rem;
 }
 
 @media (max-width: 640px) {
@@ -1174,7 +1196,7 @@
   .blog-img-float-right {
     float: none;
     max-width: 100%;
-    margin: 1rem 0;
+    margin: 1.5rem 0;
   }
 }
 
@@ -1182,33 +1204,84 @@
   text-align: center;
   font-size: 0.875rem;
   color: #6b7280;
-  margin-top: 0.5rem;
+  margin-top: 0.75rem;
   font-style: italic;
+  font-family: var(--blog-font-heading);
 }
 
-/* Cards & Boxes */
+/* Premium Cards */
 .blog-card {
   border: 1px solid #e5e7eb;
-  border-radius: 0.5rem;
+  border-radius: 0.75rem;
   padding: 1.5rem;
   background: #ffffff;
-  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.05);
+  transition: all 0.3s ease;
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+}
+
+.blog-card:hover {
+  transform: translateY(-5px);
+  box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.1), 0 8px 10px -6px rgba(0, 0, 0, 0.1);
+  border-color: #d1d5db;
+}
+
+.blog-card h3 {
+  margin-top: 0;
+  margin-bottom: 0.75rem;
+  color: #111827;
 }
 
 .blog-card-highlight {
   background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
   color: white;
   padding: 2rem;
-  border-radius: 0.5rem;
-  box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+  border-radius: 1rem;
+  box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1);
 }
 
+.blog-card-highlight h3,
+.blog-card-highlight p,
+.blog-card-highlight li {
+  color: white;
+}
+
+/* Enhanced Callouts with Icons */
+/* Enhanced Callouts with Icons */
 .blog-callout {
+  position: relative;
   border-left: 4px solid var(--blog-color-accent);
   background: #f9fafb;
-  padding: 1rem 1.5rem;
-  margin: 1.5rem 0;
-  border-radius: 0.25rem;
+  padding: 1.5rem 1.5rem 1.5rem 3.5rem;
+  /* Increased vertical padding */
+  margin: 2rem 0;
+  border-radius: 0.5rem;
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.05);
+}
+
+/* Fix spacing for headers inside callouts */
+.blog-callout h2,
+.blog-callout h3,
+.blog-callout h4 {
+  margin-top: 0;
+}
+
+/* Ensure consistent spacing for lists inside callouts */
+.blog-callout ul,
+.blog-callout ol {
+  margin-bottom: 0;
+}
+
+.blog-callout::before {
+  content: "💡";
+  position: absolute;
+  left: 1rem;
+  top: 1.5rem;
+  /* Aligned with new padding */
+  font-size: 1.25rem;
+  line-height: 1;
 }
 
 .blog-callout-info {
@@ -1216,9 +1289,17 @@
   background: #eff6ff;
 }
 
+.blog-callout-info::before {
+  content: "ℹ️";
+}
+
 .blog-callout-warning {
   border-color: #f59e0b;
   background: #fffbeb;
+}
+
+.blog-callout-warning::before {
+  content: "⚠️";
 }
 
 .blog-callout-success {
@@ -1226,44 +1307,60 @@
   background: #ecfdf5;
 }
 
+.blog-callout-success::before {
+  content: "✅";
+}
+
 .blog-callout-danger {
   border-color: #ef4444;
   background: #fef2f2;
 }
 
+.blog-callout-danger::before {
+  content: "🚨";
+}
+
 /* Typography Enhancements */
+.blog-drop-cap {
+  font-size: 1.1em;
+}
+
 .blog-drop-cap::first-letter {
   float: left;
-  font-size: 4em;
-  line-height: 0.85;
-  margin: 0.1em 0.1em 0 0;
+  font-size: 3.5em;
+  line-height: 0.8;
+  padding-top: 0.1em;
+  padding-right: 0.1em;
+  margin-bottom: -0.1em;
   font-family: var(--blog-font-heading);
-  font-weight: 700;
+  font-weight: 800;
   color: var(--blog-color-accent);
+  text-transform: uppercase;
 }
 
+/* Updated Highlight Style: Full background for better visibility */
 .blog-text-highlight {
-  background: linear-gradient(180deg, transparent 60%, #fef3c7 60%);
-  padding: 0 0.2em;
-}
-
-.blog-text-large {
-  font-size: var(--blog-text-lg);
-  line-height: var(--blog-leading-relaxed);
-}
-
-.blog-text-small {
-  font-size: var(--blog-text-sm);
+  background-color: #fef08a;
+  /* yellow-200 */
+  padding: 0.125rem 0.25rem;
+  font-weight: 500;
+  color: #1f2937;
+  border-radius: 0.25rem;
+  box-decoration-break: clone;
+  -webkit-box-decoration-break: clone;
 }
 
 .blog-pull-quote {
-  font-size: var(--blog-text-xl);
+  font-size: 1.5rem;
+  line-height: 1.4;
   font-style: italic;
   font-family: var(--blog-font-heading);
   border-left: 4px solid var(--blog-color-accent);
-  padding-left: 1.5rem;
-  margin: 2rem 0;
-  color: var(--blog-color-heading);
+  padding: 1rem 0 1rem 2rem;
+  margin: 2.5rem 0;
+  color: #374151;
+  background: linear-gradient(to right, #f9fafb, transparent);
+  border-radius: 0 0.5rem 0.5rem 0;
 }
 
 /* Spacing Utilities */
@@ -1296,12 +1393,17 @@
   text-align: right;
 }
 
+.blog-text-justify {
+  text-align: justify;
+}
+
 /* Responsive Tables */
 .blog-table-wrapper {
   overflow-x: auto;
   margin: 2rem 0;
   border-radius: 0.5rem;
   border: 1px solid #e5e7eb;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.05);
 }
 
 .blog-content table {
@@ -1315,7 +1417,7 @@
 
 .blog-content th {
   background: #f3f4f6;
-  padding: 0.75rem 1rem;
+  padding: 1rem;
   text-align: left;
   font-weight: 600;
   font-size: 0.875rem;
@@ -1326,7 +1428,7 @@
 }
 
 .blog-content td {
-  padding: 0.75rem 1rem;
+  padding: 1rem;
   border-bottom: 1px solid #e5e7eb;
 }
 
@@ -1341,13 +1443,13 @@
 /* Column Layouts */
 .blog-columns-2 {
   column-count: 2;
-  column-gap: 2rem;
+  column-gap: 3rem;
   column-rule: 1px solid #e5e7eb;
 }
 
 .blog-columns-3 {
   column-count: 3;
-  column-gap: 1.5rem;
+  column-gap: 2rem;
   column-rule: 1px solid #e5e7eb;
 }
 
@@ -1356,67 +1458,93 @@
   .blog-columns-2,
   .blog-columns-3 {
     column-count: 1;
+    column-rule: none;
   }
 }
 
-/* Button Styles for Blog Content */
+/* Button Styles */
 .blog-button {
-  display: inline-block;
-  padding: 0.75rem 1.5rem;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0.75rem 1.75rem;
   background: var(--blog-color-accent);
-  color: white;
-  text-decoration: none;
-  border-radius: 0.375rem;
-  font-weight: 500;
-  transition: all 0.2s;
-  text-align: center;
+  color: white !important;
+  /* Force override for links */
+  text-decoration: none !important;
+  border-radius: 9999px;
+  /* Pill shape */
+  font-weight: 600;
+  transition: all 0.2s ease-in-out;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
 }
 
 .blog-button:hover {
-  opacity: 0.9;
+  opacity: 0.95;
   transform: translateY(-2px);
-  box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+  box-shadow: 0 4px 6px rgba(0, 0, 0, 0.15);
 }
 
 .blog-button-outline {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0.75rem 1.75rem;
   background: transparent;
-  color: var(--blog-color-accent);
+  color: var(--blog-color-accent) !important;
+  text-decoration: none !important;
   border: 2px solid var(--blog-color-accent);
+  border-radius: 9999px;
+  font-weight: 600;
+  transition: all 0.2s ease-in-out;
 }
 
 .blog-button-outline:hover {
   background: var(--blog-color-accent);
-  color: white;
+  color: white !important;
+  transform: translateY(-2px);
+  box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
 }
 
 /* Dividers */
+/* Dividers */
 .blog-divider {
-  margin: 3rem 0;
+  margin: 0.5rem auto;
   border: 0;
   height: 1px;
-  background: linear-gradient(to right, transparent, #e5e7eb, transparent);
+  background: linear-gradient(to right, transparent, #d1d5db, transparent);
+  width: 80%;
+  overflow: hidden;
+  /* Hide any accidental children like empty p tags */
+}
+
+/* Ensure empty paragraphs inside dividers (editor artifacts) don't add height */
+.blog-divider>* {
+  display: none !important;
 }
 
 .blog-divider-thick {
-  height: 3px;
+  margin: 4rem auto;
+  border: 0;
+  height: 4px;
   background: linear-gradient(to right, transparent, var(--blog-color-accent), transparent);
+  width: 50%;
+  border-radius: 2px;
 }
 
 /* Box/Panel Variants */
-.blog-box {
-  padding: 1.5rem;
-  border-radius: 0.5rem;
-  margin: 1.5rem 0;
-}
 
 .blog-box-light {
   background: #f9fafb;
   border: 1px solid #e5e7eb;
+  padding: 2rem;
+  border-radius: 1rem;
 }
 
 .blog-box-primary {
   background: #eff6ff;
-  border: 1px solid #93c5fd;
+  border: 1px solid #bfdbfe;
+  color: #1e3a8a;
 }
 
 .blog-box-accent {
@@ -1424,7 +1552,48 @@
   border: 1px solid rgba(139, 92, 246, 0.2);
 }
 
-/* Custom Theme Override (per-post customization) */
+/* Premium Gradient Box (as requested) */
+.blog-box-gradient {
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  color: white;
+  padding: 2.5rem;
+  border-radius: 1rem;
+  box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1);
+  margin: 2rem 0;
+}
+
+.blog-box-gradient h2,
+.blog-box-gradient h3,
+.blog-box-gradient h4,
+.blog-box-gradient p,
+.blog-box-gradient li,
+.blog-box-gradient strong {
+  color: white;
+}
+
+.blog-box-gradient ul {
+  list-style-type: disc;
+  padding-left: 1.5rem;
+  margin: 1.5rem 0;
+}
+
+.blog-box-gradient li {
+  margin-bottom: 0.75rem;
+  line-height: 1.6;
+}
+
+.blog-box-gradient li::marker {
+  color: rgba(255, 255, 255, 0.8);
+}
+
+/* Ensure highlights inside gradient box are readable */
+.blog-box-gradient .blog-text-highlight {
+  color: #1f2937;
+  /* Dark text for contrast on yellow background */
+  font-weight: 600;
+}
+
+/* Custom Theme Override */
 .blog-content[data-theme="custom"] {
-  /* CSS variables can be overridden via inline styles on this element */
+  /* Override variables */
 }

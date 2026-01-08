@@ -42,7 +42,7 @@ const blogSchema = yup.object().shape({
     email: yup.string().email('Must be a valid email').required('Author email is required'),
     avatar: yup.string()
       .transform((value) => value === '' ? undefined : value)
-      .test('is-url', 'Must be a valid URL', function(value) {
+      .test('is-url', 'Must be a valid URL', function (value) {
         if (!value) return true; // Optional field
         try {
           new URL(value);
@@ -63,7 +63,7 @@ const blogSchema = yup.object().shape({
     metaKeywords: yup.array().of(yup.string()).optional(),
     canonicalUrl: yup.string()
       .transform((value) => value === '' ? undefined : value)
-      .test('is-url', 'Must be a valid URL', function(value) {
+      .test('is-url', 'Must be a valid URL', function (value) {
         if (!value) return true; // Optional field
         try {
           new URL(value);
@@ -329,9 +329,9 @@ const BlogForm: React.FC<BlogFormProps> = ({
 
       // Check if all SEO fields are undefined
       const hasAnySeoData = cleaned.seo.metaTitle ||
-                            cleaned.seo.metaDescription ||
-                            cleaned.seo.canonicalUrl ||
-                            (cleaned.seo.metaKeywords && cleaned.seo.metaKeywords.length > 0);
+        cleaned.seo.metaDescription ||
+        cleaned.seo.canonicalUrl ||
+        (cleaned.seo.metaKeywords && cleaned.seo.metaKeywords.length > 0);
 
       // Remove entire seo object if all fields are undefined
       if (!hasAnySeoData) {
@@ -414,8 +414,8 @@ const BlogForm: React.FC<BlogFormProps> = ({
         className="blog-content text-gray-900"
         dangerouslySetInnerHTML={{
           __html: DOMPurify.sanitize(watchedContent || 'Blog content will appear here...', {
-            ADD_ATTR: ['style', 'class'],
-            ADD_TAGS: ['iframe'],
+            ADD_ATTR: ['style', 'class', 'id', 'data-*', 'width', 'height', 'colspan', 'rowspan', 'align', 'valign'],
+            ADD_TAGS: ['div', 'span', 'section', 'article', 'main', 'aside', 'header', 'footer', 'blockquote', 'iframe', 'svg', 'path', 'circle', 'rect', 'g', 'defs', 'clipPath', 'polygon', 'polyline', 'line', 'ellipse'],
             ALLOWED_ATTR: ['style', 'class', 'href', 'src', 'alt', 'title', 'target', 'rel', 'width', 'height', 'id']
           })
         }}
@@ -450,151 +450,151 @@ const BlogForm: React.FC<BlogFormProps> = ({
         </div>
       ) : (
         <form onSubmit={onFormSubmit} className="space-y-6 max-h-[calc(100vh-200px)] overflow-y-auto p-2">
-        {/* Header with preview toggle */}
-        <div className="flex justify-between items-center">
-          <div className="flex space-x-2">
-            <Button
-              type="button"
-              variant={!previewMode ? 'primary' : 'secondary'}
-              size="sm"
-              onClick={() => setPreviewMode(false)}
-            >
-              <FileText className="w-4 h-4 mr-2" />
-              Edit
-            </Button>
-            <Button
-              type="button"
-              variant={previewMode ? 'primary' : 'secondary'}
-              size="sm"
-              onClick={() => setPreviewMode(true)}
-            >
-              <Eye className="w-4 h-4 mr-2" />
-              Preview
-            </Button>
+          {/* Header with preview toggle */}
+          <div className="flex justify-between items-center">
+            <div className="flex space-x-2">
+              <Button
+                type="button"
+                variant={!previewMode ? 'primary' : 'secondary'}
+                size="sm"
+                onClick={() => setPreviewMode(false)}
+              >
+                <FileText className="w-4 h-4 mr-2" />
+                Edit
+              </Button>
+              <Button
+                type="button"
+                variant={previewMode ? 'primary' : 'secondary'}
+                size="sm"
+                onClick={() => setPreviewMode(true)}
+              >
+                <Eye className="w-4 h-4 mr-2" />
+                Preview
+              </Button>
+            </div>
           </div>
-        </div>
 
-        {previewMode ? (
-          renderPreview()
-        ) : (
-          <div className="grid grid-cols-1 lg:grid-cols-[2fr,1fr] gap-6 text-gray-900">
-            {/* Main Content */}
-            <div className="space-y-4">
-              {/* Basic Information */}
-              <Card>
-                <CardHeader>
-                  <CardTitle className="text-base">Basic Information</CardTitle>
-                </CardHeader>
-                <CardContent className="space-y-3">
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+          {previewMode ? (
+            renderPreview()
+          ) : (
+            <div className="grid grid-cols-1 lg:grid-cols-[2fr,1fr] gap-6 text-gray-900">
+              {/* Main Content */}
+              <div className="space-y-4">
+                {/* Basic Information */}
+                <Card>
+                  <CardHeader>
+                    <CardTitle className="text-base">Basic Information</CardTitle>
+                  </CardHeader>
+                  <CardContent className="space-y-3">
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                      <Controller
+                        name="title"
+                        control={control}
+                        render={({ field }) => (
+                          <Input
+                            {...field}
+                            label="Title"
+                            placeholder="Enter blog title"
+                            error={errors.title?.message}
+                            required
+                          />
+                        )}
+                      />
+
+                      <Controller
+                        name="slug"
+                        control={control}
+                        render={({ field }) => (
+                          <Input
+                            {...field}
+                            label="Slug (URL)"
+                            placeholder="auto-generated-from-title"
+                            error={errors.slug?.message}
+                            helperText="Leave empty to auto-generate from title"
+                          />
+                        )}
+                      />
+                    </div>
+
                     <Controller
-                      name="title"
+                      name="excerpt"
                       control={control}
                       render={({ field }) => (
-                        <Input
-                          {...field}
-                          label="Title"
-                          placeholder="Enter blog title"
-                          error={errors.title?.message}
-                          required
-                        />
+                        <div>
+                          <label className="block text-sm font-medium text-gray-700 mb-2">
+                            Excerpt *
+                          </label>
+                          <textarea
+                            {...field}
+                            className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                            rows={3}
+                            placeholder="Brief description of the blog post"
+                          />
+                          {errors.excerpt && (
+                            <p className="mt-1 text-sm text-red-600">{errors.excerpt.message}</p>
+                          )}
+                        </div>
                       )}
                     />
 
                     <Controller
-                      name="slug"
+                      name="content"
                       control={control}
                       render={({ field }) => (
-                        <Input
-                          {...field}
-                          label="Slug (URL)"
-                          placeholder="auto-generated-from-title"
-                          error={errors.slug?.message}
-                          helperText="Leave empty to auto-generate from title"
-                        />
+                        <div>
+                          <label className="block text-sm font-medium text-gray-700 mb-2">
+                            Content *
+                          </label>
+                          <div className="mb-2 p-3 bg-blue-50 border border-blue-200 rounded-lg text-xs text-blue-800">
+                            <strong>💡 New Features:</strong> Table button • Color & Highlight pickers (hover icons) • 40+ layout classes (Insert HTML) •
+                            <a href="/admin/blog-style-guide" target="_blank" rel="noopener noreferrer" className="underline hover:text-blue-900 ml-1">
+                              View Style Guide →
+                            </a>
+                          </div>
+                          <TipTapEditor
+                            key={blog?._id || 'new'}
+                            content={field.value || ''}
+                            onChange={field.onChange}
+                            placeholder="Start writing your blog content... Use the toolbar to format text, add images, videos, and links."
+                            mediaCategory="blog"
+                            mediaFolder="blogs"
+                            characterLimit={10000}
+                          />
+                          <div className="mt-3 flex items-center justify-between text-sm border-t border-gray-200 pt-3">
+                            <p className="text-gray-600">
+                              Need help using the editor?
+                            </p>
+                            <a
+                              href="/admin/blog-style-guide"
+                              target="_blank"
+                              rel="noopener noreferrer"
+                              className="text-primary-600 hover:text-primary-700 font-medium flex items-center gap-1"
+                            >
+                              📚 View Editor Tutorial & Style Guide
+                              <ExternalLink className="w-4 h-4" />
+                            </a>
+                          </div>
+                          {errors.content && (
+                            <p className="mt-1 text-sm text-red-600">{errors.content.message}</p>
+                          )}
+                        </div>
                       )}
                     />
-                  </div>
 
-                  <Controller
-                    name="excerpt"
-                    control={control}
-                    render={({ field }) => (
-                      <div>
-                        <label className="block text-sm font-medium text-gray-700 mb-2">
-                          Excerpt *
-                        </label>
-                        <textarea
-                          {...field}
-                          className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-                          rows={3}
-                          placeholder="Brief description of the blog post"
-                        />
-                        {errors.excerpt && (
-                          <p className="mt-1 text-sm text-red-600">{errors.excerpt.message}</p>
-                        )}
-                      </div>
-                    )}
-                  />
-
-                  <Controller
-                    name="content"
-                    control={control}
-                    render={({ field }) => (
-                      <div>
-                        <label className="block text-sm font-medium text-gray-700 mb-2">
-                          Content *
-                        </label>
-                        <div className="mb-2 p-3 bg-blue-50 border border-blue-200 rounded-lg text-xs text-blue-800">
-                          <strong>💡 New Features:</strong> Table button • Color & Highlight pickers (hover icons) • 40+ layout classes (Insert HTML) •
-                          <a href="/admin/blog-style-guide" target="_blank" rel="noopener noreferrer" className="underline hover:text-blue-900 ml-1">
-                            View Style Guide →
-                          </a>
-                        </div>
-                        <TipTapEditor
-                          key={blog?._id || 'new'}
-                          content={field.value || ''}
-                          onChange={field.onChange}
-                          placeholder="Start writing your blog content... Use the toolbar to format text, add images, videos, and links."
-                          mediaCategory="blog"
-                          mediaFolder="blogs"
-                          characterLimit={10000}
-                        />
-                        <div className="mt-3 flex items-center justify-between text-sm border-t border-gray-200 pt-3">
-                          <p className="text-gray-600">
-                            Need help using the editor?
-                          </p>
-                          <a
-                            href="/admin/blog-style-guide"
-                            target="_blank"
-                            rel="noopener noreferrer"
-                            className="text-primary-600 hover:text-primary-700 font-medium flex items-center gap-1"
-                          >
-                            📚 View Editor Tutorial & Style Guide
-                            <ExternalLink className="w-4 h-4" />
-                          </a>
-                        </div>
-                        {errors.content && (
-                          <p className="mt-1 text-sm text-red-600">{errors.content.message}</p>
-                        )}
-                      </div>
-                    )}
-                  />
-
-                  <Controller
-                    name="customCSS"
-                    control={control}
-                    render={({ field }) => (
-                      <div>
-                        <label className="block text-sm font-medium text-gray-700 mb-2">
-                          Custom CSS (Optional)
-                          <span className="text-xs text-gray-500 ml-2">- WordPress-like styling control</span>
-                        </label>
-                        <textarea
-                          {...field}
-                          rows={8}
-                          className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent font-mono text-sm"
-                          placeholder="/* Add custom CSS for this post only */
+                    <Controller
+                      name="customCSS"
+                      control={control}
+                      render={({ field }) => (
+                        <div>
+                          <label className="block text-sm font-medium text-gray-700 mb-2">
+                            Custom CSS (Optional)
+                            <span className="text-xs text-gray-500 ml-2">- WordPress-like styling control</span>
+                          </label>
+                          <textarea
+                            {...field}
+                            rows={8}
+                            className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent font-mono text-sm"
+                            placeholder="/* Add custom CSS for this post only */
 .my-custom-class {
   color: #ff6b00;
   font-size: 1.2rem;
@@ -602,337 +602,337 @@ const BlogForm: React.FC<BlogFormProps> = ({
 
 /* Available utility classes: blog-grid-2, blog-callout, blog-card, etc. */
 /* See Style Guide for all available classes */"
-                          spellCheck={false}
-                        />
-                        {errors.customCSS && (
-                          <p className="mt-1 text-sm text-red-600">{errors.customCSS.message}</p>
-                        )}
-                        <div className="mt-2 flex items-center gap-2">
-                          <p className="text-xs text-gray-500">
-                            Add custom styles for advanced layouts. Dangerous properties (@import, external URLs) will be sanitized.
-                          </p>
-                          <a
-                            href="/admin/blog-style-guide"
-                            target="_blank"
-                            rel="noopener noreferrer"
-                            className="text-xs text-primary-600 hover:text-primary-700 underline whitespace-nowrap"
-                          >
-                            📖 View Style Guide
-                          </a>
-                        </div>
-                      </div>
-                    )}
-                  />
-                </CardContent>
-              </Card>
-
-              {/* Author Information */}
-              <Card>
-                <CardHeader>
-                  <CardTitle className="flex items-center text-base">
-                    <User className="w-5 h-5 mr-2" />
-                    Author Information
-                  </CardTitle>
-                </CardHeader>
-                <CardContent className="space-y-3">
-                  <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
-                    <Controller
-                      name="author.name"
-                      control={control}
-                      render={({ field }) => (
-                        <Input
-                          {...field}
-                          label="Name"
-                          placeholder="Author name"
-                          error={errors.author?.name?.message}
-                          required
-                        />
-                      )}
-                    />
-
-                    <Controller
-                      name="author.email"
-                      control={control}
-                      render={({ field }) => (
-                        <Input
-                          {...field}
-                          type="email"
-                          label="Email"
-                          placeholder="Author email"
-                          error={errors.author?.email?.message}
-                          required
-                        />
-                      )}
-                    />
-
-                    <Controller
-                      name="author.avatar"
-                      control={control}
-                      render={({ field }) => (
-                        <Input
-                          {...field}
-                          type="url"
-                          label="Avatar URL"
-                          placeholder="https://example.com/avatar.jpg"
-                          error={errors.author?.avatar?.message}
-                        />
-                      )}
-                    />
-                  </div>
-
-                  <Controller
-                    name="author.bio"
-                    control={control}
-                    render={({ field }) => (
-                      <div>
-                        <label className="block text-sm font-medium text-gray-700 mb-2">
-                          Bio
-                        </label>
-                        <textarea
-                          {...field}
-                          className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 text-sm"
-                          rows={2}
-                          placeholder="Brief author biography"
-                        />
-                        {errors.author?.bio && (
-                          <p className="mt-1 text-sm text-red-600">{errors.author.bio.message}</p>
-                        )}
-                      </div>
-                    )}
-                  />
-                </CardContent>
-              </Card>
-
-              {/* SEO Settings */}
-              <div className="space-y-6">
-                <SEOEditor
-                  initialData={{
-                    title: seoData.title,
-                    description: seoData.description,
-                    keywords: seoData.keywords,
-                    canonicalUrl: watch('seo.canonicalUrl') || ''
-                  }}
-                  contentData={{
-                    title: watch('title') || '',
-                    description: watch('excerpt') || '',
-                    category: categories.find(cat => cat._id === watch('category'))?.name || '',
-                    tags: (watch('tags') || []).filter((tag): tag is string => typeof tag === 'string'),
-                    type: 'blog'
-                  }}
-                  onChange={handleSeoDataChange}
-                  baseUrl={config.appUrl}
-                  path={`/blog/${watch('slug') || 'new-post'}`}
-                  ogImage={watch('featuredImage')}
-                  disabled={loading}
-                />
-              </div>
-            </div>
-
-            {/* Sidebar */}
-            <div className="space-y-4">
-              {/* Publishing Options & Category */}
-              <Card>
-                <CardHeader>
-                  <CardTitle className="flex items-center text-base">
-                    <Calendar className="w-5 h-5 mr-2" />
-                    Publishing & Category
-                  </CardTitle>
-                </CardHeader>
-                <CardContent className="space-y-3">
-                  <Controller
-                    name="status"
-                    control={control}
-                    render={({ field }) => (
-                      <div>
-                        <label className="block text-sm font-medium text-gray-700 mb-1.5">
-                          Status
-                        </label>
-                        <select
-                          {...field}
-                          className="w-full px-3 py-2 text-sm border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-                        >
-                          <option value="draft">Draft</option>
-                          <option value="published">Published</option>
-                          <option value="archived">Archived</option>
-                        </select>
-                      </div>
-                    )}
-                  />
-
-                  <Controller
-                    name="category"
-                    control={control}
-                    render={({ field }) => (
-                      <div>
-                        <label className="block text-sm font-medium text-gray-700 mb-1.5">
-                          Category
-                        </label>
-                        <select
-                          {...field}
-                          className="w-full px-3 py-2 text-sm border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-                        >
-                          <option value="">Select Category</option>
-                          {categories.map((cat) => (
-                            <option key={cat._id} value={cat._id}>
-                              {cat.name}
-                            </option>
-                          ))}
-                        </select>
-                        {errors.category && (
-                          <p className="mt-1 text-sm text-red-600">{errors.category.message}</p>
-                        )}
-                      </div>
-                    )}
-                  />
-
-                  <Controller
-                    name="featured"
-                    control={control}
-                    render={({ field: { value, ...field } }) => (
-                      <div className="flex items-center pt-1">
-                        <input
-                          {...field}
-                          type="checkbox"
-                          checked={value}
-                          className="w-4 h-4 text-blue-600 border-gray-300 rounded focus:ring-blue-500"
-                        />
-                        <label className="ml-2 text-sm font-medium text-gray-700">
-                          Featured Post
-                        </label>
-                      </div>
-                    )}
-                  />
-                </CardContent>
-              </Card>
-
-              {/* Featured Image */}
-              <Card>
-                <CardHeader>
-                  <CardTitle className="flex items-center text-base">
-                    <Image className="w-5 h-5 mr-2" />
-                    Featured Image
-                  </CardTitle>
-                </CardHeader>
-                <CardContent className="space-y-3">
-                  <Controller
-                    name="featuredImageAsset"
-                    control={control}
-                    render={({ field }) => (
-                      <div>
-                        {/* Preview */}
-                        {(selectedFeaturedImageAsset || field.value) && (
-                          <div className="relative mb-3">
-                            <img
-                              src={
-                                selectedFeaturedImageAsset
-                                  ? selectedFeaturedImageAsset.url
-                                  : typeof field.value === 'object' && field.value !== null && 'url' in field.value
-                                  ? (field.value as {url: string}).url
-                                  : typeof field.value === 'string'
-                                  ? field.value
-                                  : ''
-                              }
-                              alt="Featured"
-                              className="w-full h-48 object-cover rounded-lg"
-                            />
-                            <button
-                              type="button"
-                              onClick={() => {
-                                setValue('featuredImageAsset', '');
-                                setValue('featuredImage', '');
-                                setSelectedFeaturedImageAsset(null);
-                              }}
-                              className="absolute top-2 right-2 p-2 bg-red-500 text-white rounded-full hover:bg-red-600"
+                            spellCheck={false}
+                          />
+                          {errors.customCSS && (
+                            <p className="mt-1 text-sm text-red-600">{errors.customCSS.message}</p>
+                          )}
+                          <div className="mt-2 flex items-center gap-2">
+                            <p className="text-xs text-gray-500">
+                              Add custom styles for advanced layouts. Dangerous properties (@import, external URLs) will be sanitized.
+                            </p>
+                            <a
+                              href="/admin/blog-style-guide"
+                              target="_blank"
+                              rel="noopener noreferrer"
+                              className="text-xs text-primary-600 hover:text-primary-700 underline whitespace-nowrap"
                             >
-                              <X className="w-4 h-4" />
-                            </button>
+                              📖 View Style Guide
+                            </a>
                           </div>
+                        </div>
+                      )}
+                    />
+                  </CardContent>
+                </Card>
+
+                {/* Author Information */}
+                <Card>
+                  <CardHeader>
+                    <CardTitle className="flex items-center text-base">
+                      <User className="w-5 h-5 mr-2" />
+                      Author Information
+                    </CardTitle>
+                  </CardHeader>
+                  <CardContent className="space-y-3">
+                    <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
+                      <Controller
+                        name="author.name"
+                        control={control}
+                        render={({ field }) => (
+                          <Input
+                            {...field}
+                            label="Name"
+                            placeholder="Author name"
+                            error={errors.author?.name?.message}
+                            required
+                          />
                         )}
+                      />
 
-                        {/* Media Picker Button */}
-                        <Button
-                          type="button"
-                          variant="outline"
-                          onClick={() => setShowMediaPicker(true)}
-                          className="w-full"
-                        >
-                          <Image className="w-4 h-4 mr-2" />
-                          {field.value ? 'Change Image' : 'Select from Library'}
-                        </Button>
-
-                        {errors.featuredImageAsset && (
-                          <p className="mt-2 text-sm text-red-600">
-                            {errors.featuredImageAsset.message}
-                          </p>
+                      <Controller
+                        name="author.email"
+                        control={control}
+                        render={({ field }) => (
+                          <Input
+                            {...field}
+                            type="email"
+                            label="Email"
+                            placeholder="Author email"
+                            error={errors.author?.email?.message}
+                            required
+                          />
                         )}
-                      </div>
-                    )}
-                  />
-                </CardContent>
-              </Card>
+                      />
 
-              {/* Tags */}
-              <Card>
-                <CardHeader>
-                  <CardTitle className="flex items-center text-base">
-                    <Hash className="w-5 h-5 mr-2" />
-                    Tags
-                  </CardTitle>
-                </CardHeader>
-                <CardContent>
-                  <TagInput
-                    tags={watchedTags}
-                    onChange={(newTags) => setValue('tags', newTags)}
-                    maxTags={20}
-                    allowBulkAdd={true}
-                    placeholder="Add tag"
-                    showCount={true}
-                  />
-                </CardContent>
-              </Card>
-            </div>
-          </div>
-        )}
+                      <Controller
+                        name="author.avatar"
+                        control={control}
+                        render={({ field }) => (
+                          <Input
+                            {...field}
+                            type="url"
+                            label="Avatar URL"
+                            placeholder="https://example.com/avatar.jpg"
+                            error={errors.author?.avatar?.message}
+                          />
+                        )}
+                      />
+                    </div>
 
-        {/* Form Actions */}
-        <div className="sticky bottom-0 bg-white border-t border-gray-200 pt-4 pb-2 -mx-2 px-2 mt-6">
-          {/* Validation Error Summary */}
-          {Object.keys(errors).length > 0 && (
-            <div className="mb-4 p-3 bg-red-50 border border-red-200 rounded-lg">
-              <p className="text-sm font-medium text-red-800 mb-2">
-                Please fix the following errors before submitting:
-              </p>
-              <ul className="list-disc list-inside text-sm text-red-700 space-y-1">
-                {Object.entries(errors).map(([key, error]: [string, any]) => (
-                  <li key={key}>
-                    {key}: {error?.message || 'Invalid value'}
-                  </li>
-                ))}
-              </ul>
+                    <Controller
+                      name="author.bio"
+                      control={control}
+                      render={({ field }) => (
+                        <div>
+                          <label className="block text-sm font-medium text-gray-700 mb-2">
+                            Bio
+                          </label>
+                          <textarea
+                            {...field}
+                            className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 text-sm"
+                            rows={2}
+                            placeholder="Brief author biography"
+                          />
+                          {errors.author?.bio && (
+                            <p className="mt-1 text-sm text-red-600">{errors.author.bio.message}</p>
+                          )}
+                        </div>
+                      )}
+                    />
+                  </CardContent>
+                </Card>
+
+                {/* SEO Settings */}
+                <div className="space-y-6">
+                  <SEOEditor
+                    initialData={{
+                      title: seoData.title,
+                      description: seoData.description,
+                      keywords: seoData.keywords,
+                      canonicalUrl: watch('seo.canonicalUrl') || ''
+                    }}
+                    contentData={{
+                      title: watch('title') || '',
+                      description: watch('excerpt') || '',
+                      category: categories.find(cat => cat._id === watch('category'))?.name || '',
+                      tags: (watch('tags') || []).filter((tag): tag is string => typeof tag === 'string'),
+                      type: 'blog'
+                    }}
+                    onChange={handleSeoDataChange}
+                    baseUrl={config.appUrl}
+                    path={`/blog/${watch('slug') || 'new-post'}`}
+                    ogImage={watch('featuredImage')}
+                    disabled={loading}
+                  />
+                </div>
+              </div>
+
+              {/* Sidebar */}
+              <div className="space-y-4">
+                {/* Publishing Options & Category */}
+                <Card>
+                  <CardHeader>
+                    <CardTitle className="flex items-center text-base">
+                      <Calendar className="w-5 h-5 mr-2" />
+                      Publishing & Category
+                    </CardTitle>
+                  </CardHeader>
+                  <CardContent className="space-y-3">
+                    <Controller
+                      name="status"
+                      control={control}
+                      render={({ field }) => (
+                        <div>
+                          <label className="block text-sm font-medium text-gray-700 mb-1.5">
+                            Status
+                          </label>
+                          <select
+                            {...field}
+                            className="w-full px-3 py-2 text-sm border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                          >
+                            <option value="draft">Draft</option>
+                            <option value="published">Published</option>
+                            <option value="archived">Archived</option>
+                          </select>
+                        </div>
+                      )}
+                    />
+
+                    <Controller
+                      name="category"
+                      control={control}
+                      render={({ field }) => (
+                        <div>
+                          <label className="block text-sm font-medium text-gray-700 mb-1.5">
+                            Category
+                          </label>
+                          <select
+                            {...field}
+                            className="w-full px-3 py-2 text-sm border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                          >
+                            <option value="">Select Category</option>
+                            {categories.map((cat) => (
+                              <option key={cat._id} value={cat._id}>
+                                {cat.name}
+                              </option>
+                            ))}
+                          </select>
+                          {errors.category && (
+                            <p className="mt-1 text-sm text-red-600">{errors.category.message}</p>
+                          )}
+                        </div>
+                      )}
+                    />
+
+                    <Controller
+                      name="featured"
+                      control={control}
+                      render={({ field: { value, ...field } }) => (
+                        <div className="flex items-center pt-1">
+                          <input
+                            {...field}
+                            type="checkbox"
+                            checked={value}
+                            className="w-4 h-4 text-blue-600 border-gray-300 rounded focus:ring-blue-500"
+                          />
+                          <label className="ml-2 text-sm font-medium text-gray-700">
+                            Featured Post
+                          </label>
+                        </div>
+                      )}
+                    />
+                  </CardContent>
+                </Card>
+
+                {/* Featured Image */}
+                <Card>
+                  <CardHeader>
+                    <CardTitle className="flex items-center text-base">
+                      <Image className="w-5 h-5 mr-2" />
+                      Featured Image
+                    </CardTitle>
+                  </CardHeader>
+                  <CardContent className="space-y-3">
+                    <Controller
+                      name="featuredImageAsset"
+                      control={control}
+                      render={({ field }) => (
+                        <div>
+                          {/* Preview */}
+                          {(selectedFeaturedImageAsset || field.value) && (
+                            <div className="relative mb-3">
+                              <img
+                                src={
+                                  selectedFeaturedImageAsset
+                                    ? selectedFeaturedImageAsset.url
+                                    : typeof field.value === 'object' && field.value !== null && 'url' in field.value
+                                      ? (field.value as { url: string }).url
+                                      : typeof field.value === 'string'
+                                        ? field.value
+                                        : ''
+                                }
+                                alt="Featured"
+                                className="w-full h-48 object-cover rounded-lg"
+                              />
+                              <button
+                                type="button"
+                                onClick={() => {
+                                  setValue('featuredImageAsset', '');
+                                  setValue('featuredImage', '');
+                                  setSelectedFeaturedImageAsset(null);
+                                }}
+                                className="absolute top-2 right-2 p-2 bg-red-500 text-white rounded-full hover:bg-red-600"
+                              >
+                                <X className="w-4 h-4" />
+                              </button>
+                            </div>
+                          )}
+
+                          {/* Media Picker Button */}
+                          <Button
+                            type="button"
+                            variant="outline"
+                            onClick={() => setShowMediaPicker(true)}
+                            className="w-full"
+                          >
+                            <Image className="w-4 h-4 mr-2" />
+                            {field.value ? 'Change Image' : 'Select from Library'}
+                          </Button>
+
+                          {errors.featuredImageAsset && (
+                            <p className="mt-2 text-sm text-red-600">
+                              {errors.featuredImageAsset.message}
+                            </p>
+                          )}
+                        </div>
+                      )}
+                    />
+                  </CardContent>
+                </Card>
+
+                {/* Tags */}
+                <Card>
+                  <CardHeader>
+                    <CardTitle className="flex items-center text-base">
+                      <Hash className="w-5 h-5 mr-2" />
+                      Tags
+                    </CardTitle>
+                  </CardHeader>
+                  <CardContent>
+                    <TagInput
+                      tags={watchedTags}
+                      onChange={(newTags) => setValue('tags', newTags)}
+                      maxTags={20}
+                      allowBulkAdd={true}
+                      placeholder="Add tag"
+                      showCount={true}
+                    />
+                  </CardContent>
+                </Card>
+              </div>
             </div>
           )}
 
-          <div className="flex justify-end space-x-3">
-            <Button
-              type="button"
-              variant="secondary"
-              onClick={handleClose}
-              disabled={isSubmitting}
-            >
-              Cancel
-            </Button>
-            <Button
-              type="submit"
-              variant="primary"
-              loading={isSubmitting || loading}
-              onClick={handleSubmitClick}
-              animated={false}
-            >
-              <Save className="w-4 h-4 mr-2" />
-              {blog ? 'Update Blog' : 'Create Blog'}
-            </Button>
+          {/* Form Actions */}
+          <div className="sticky bottom-0 bg-white border-t border-gray-200 pt-4 pb-2 -mx-2 px-2 mt-6">
+            {/* Validation Error Summary */}
+            {Object.keys(errors).length > 0 && (
+              <div className="mb-4 p-3 bg-red-50 border border-red-200 rounded-lg">
+                <p className="text-sm font-medium text-red-800 mb-2">
+                  Please fix the following errors before submitting:
+                </p>
+                <ul className="list-disc list-inside text-sm text-red-700 space-y-1">
+                  {Object.entries(errors).map(([key, error]: [string, any]) => (
+                    <li key={key}>
+                      {key}: {error?.message || 'Invalid value'}
+                    </li>
+                  ))}
+                </ul>
+              </div>
+            )}
+
+            <div className="flex justify-end space-x-3">
+              <Button
+                type="button"
+                variant="secondary"
+                onClick={handleClose}
+                disabled={isSubmitting}
+              >
+                Cancel
+              </Button>
+              <Button
+                type="submit"
+                variant="primary"
+                loading={isSubmitting || loading}
+                onClick={handleSubmitClick}
+                animated={false}
+              >
+                <Save className="w-4 h-4 mr-2" />
+                {blog ? 'Update Blog' : 'Create Blog'}
+              </Button>
+            </div>
           </div>
-        </div>
         </form>
       )}
 

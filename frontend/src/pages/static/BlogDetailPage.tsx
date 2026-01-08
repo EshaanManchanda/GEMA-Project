@@ -175,7 +175,7 @@ const BlogDetailPage: React.FC = () => {
           </div>
           <div className="w-full h-64 bg-gray-200 rounded mb-8"></div>
           <div className="space-y-4">
-            {[1,2,3,4,5].map(i => (
+            {[1, 2, 3, 4, 5].map(i => (
               <div key={i} className="w-full h-4 bg-gray-200 rounded"></div>
             ))}
           </div>
@@ -262,8 +262,8 @@ const BlogDetailPage: React.FC = () => {
 
       {/* Back navigation */}
       <div className="mb-8">
-        <Link 
-          to="/blog" 
+        <Link
+          to="/blog"
           className="inline-flex items-center text-gray-600 hover:text-primary-600 transition-colors"
         >
           <FaArrowLeft className="mr-2" />
@@ -274,7 +274,7 @@ const BlogDetailPage: React.FC = () => {
       {/* Blog header */}
       <header className="mb-8">
         <div className="flex items-center gap-2 mb-4">
-          <span 
+          <span
             className="px-3 py-1 text-sm font-medium text-white rounded-full"
             style={{ backgroundColor: getCategoryColor(blog.category) }}
           >
@@ -295,8 +295,8 @@ const BlogDetailPage: React.FC = () => {
           <div className="flex items-center gap-4">
             <div className="flex items-center gap-3">
               {blog.author.avatar ? (
-                <img 
-                  src={blog.author.avatar} 
+                <img
+                  src={blog.author.avatar}
                   alt={blog.author.name}
                   className="w-12 h-12 rounded-full object-cover"
                 />
@@ -327,17 +327,16 @@ const BlogDetailPage: React.FC = () => {
             <button
               onClick={handleLike}
               disabled={liked}
-              className={`flex items-center gap-2 px-4 py-2 rounded-lg transition-colors ${
-                liked
+              className={`flex items-center gap-2 px-4 py-2 rounded-lg transition-colors ${liked
                   ? 'bg-red-50 text-red-600 cursor-not-allowed'
                   : 'bg-gray-100 text-gray-600 hover:bg-gray-200 cursor-pointer'
-              }`}
+                }`}
               title={liked ? 'You have already liked this post' : 'Like this post'}
             >
               <FaHeart className={liked ? 'text-red-500' : ''} />
               <span>{likeCount}</span>
             </button>
-            
+
             <div className="flex items-center gap-2">
               <button
                 onClick={() => handleShare()}
@@ -346,7 +345,7 @@ const BlogDetailPage: React.FC = () => {
                 <FaShare />
                 <span>Share</span>
               </button>
-              
+
               {/* Social sharing buttons */}
               <div className="flex items-center gap-1 ml-2">
                 <button
@@ -387,7 +386,7 @@ const BlogDetailPage: React.FC = () => {
           <div className="flex items-center gap-2 flex-wrap mb-6">
             <FaTag className="text-gray-400 text-sm" />
             {blog.tags.map((tag, index) => (
-              <span 
+              <span
                 key={index}
                 className="px-3 py-1 text-sm bg-gray-100 text-gray-700 rounded-full hover:bg-gray-200 transition-colors"
               >
@@ -400,8 +399,8 @@ const BlogDetailPage: React.FC = () => {
 
       {/* Featured image */}
       <div className="mb-8">
-        <img 
-          src={blog.featuredImage} 
+        <img
+          src={blog.featuredImage}
           alt={blog.title}
           className="w-full h-64 md:h-96 object-cover rounded-lg shadow-lg"
           onError={(e) => {
@@ -427,7 +426,7 @@ const BlogDetailPage: React.FC = () => {
               blog.rawHtmlContent || blog.content, // Use raw HTML if available, otherwise use TipTap content
               {
                 ADD_ATTR: ['style', 'class', 'id', 'data-*', 'width', 'height', 'colspan', 'rowspan', 'align', 'valign'],
-                ADD_TAGS: ['iframe', 'svg', 'path', 'circle', 'rect', 'g', 'defs', 'clipPath', 'polygon', 'polyline', 'line', 'ellipse'],
+                ADD_TAGS: ['div', 'span', 'section', 'article', 'main', 'aside', 'header', 'footer', 'blockquote', 'iframe', 'svg', 'path', 'circle', 'rect', 'g', 'defs', 'clipPath', 'polygon', 'polyline', 'line', 'ellipse'],
                 ALLOWED_ATTR: ['style', 'class', 'href', 'src', 'alt', 'title', 'target', 'rel', 'width', 'height', 'id', 'scrolling', 'frameborder', 'allowfullscreen', 'data-*', 'colspan', 'rowspan', 'align', 'valign', 'viewBox', 'fill', 'stroke', 'stroke-width', 'd', 'cx', 'cy', 'r', 'x', 'y', 'x1', 'y1', 'x2', 'y2', 'points'],
                 ALLOWED_URI_REGEXP: /^(?:(?:https?|mailto|tel):|[^a-z]|[a-z+.-]+(?:[^a-z+.\-:]|$))/i,
                 ALLOW_DATA_ATTR: true,
@@ -445,8 +444,8 @@ const BlogDetailPage: React.FC = () => {
         <div className="mb-12 p-6 bg-gray-50 rounded-lg">
           <div className="flex items-start gap-4">
             {blog.author.avatar ? (
-              <img 
-                src={blog.author.avatar} 
+              <img
+                src={blog.author.avatar}
                 alt={blog.author.name}
                 className="w-16 h-16 rounded-full object-cover"
               />

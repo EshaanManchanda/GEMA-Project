@@ -673,8 +673,8 @@ const EventDetailPage: React.FC = () => {
                   <button
                     onClick={handleToggleFavorite}
                     className={`w-12 h-12 backdrop-blur-md rounded-full flex items-center justify-center transition-all duration-300 hover:scale-110 ${isFavorite
-                        ? 'bg-red-500/80 text-white hover:bg-red-600/80'
-                        : 'bg-gray-900/60 text-white hover:bg-gray-900/70'
+                      ? 'bg-red-500/80 text-white hover:bg-red-600/80'
+                      : 'bg-gray-900/60 text-white hover:bg-gray-900/70'
                       }`}
                     title={isFavorite ? 'Remove from favorites' : 'Add to favorites'}
                   >
@@ -720,7 +720,7 @@ const EventDetailPage: React.FC = () => {
               dangerouslySetInnerHTML={{
                 __html: DOMPurify.sanitize(event.description || '', {
                   ADD_ATTR: ['style', 'class', 'id', 'data-*', 'width', 'height', 'colspan', 'rowspan', 'align', 'valign'],
-                  ADD_TAGS: ['iframe', 'svg', 'path', 'circle', 'rect', 'g', 'defs', 'clipPath', 'polygon', 'polyline', 'line', 'ellipse'],
+                  ADD_TAGS: ['div', 'span', 'section', 'article', 'main', 'aside', 'header', 'footer', 'blockquote', 'iframe', 'svg', 'path', 'circle', 'rect', 'g', 'defs', 'clipPath', 'polygon', 'polyline', 'line', 'ellipse'],
                   ALLOWED_ATTR: ['style', 'class', 'href', 'src', 'alt', 'title', 'target', 'rel', 'width', 'height', 'id', 'frameborder', 'allow', 'allowfullscreen', 'data-*', 'colspan', 'rowspan', 'align', 'valign', 'viewBox', 'fill', 'stroke', 'stroke-width', 'd', 'cx', 'cy', 'r', 'x', 'y', 'x1', 'y1', 'x2', 'y2', 'points']
                 })
               }}
@@ -988,31 +988,28 @@ const EventDetailPage: React.FC = () => {
                       <div className="flex gap-2 mb-6 border-b border-gray-200">
                         <button
                           onClick={() => setReviewSubTab('platform')}
-                          className={`px-6 py-3 font-medium transition-all border-b-2 ${
-                            reviewSubTab === 'platform'
+                          className={`px-6 py-3 font-medium transition-all border-b-2 ${reviewSubTab === 'platform'
                               ? 'border-blue-600 text-blue-600'
                               : 'border-transparent text-gray-600 hover:text-blue-600'
-                          }`}
+                            }`}
                         >
                           Platform Reviews ({platformReviews.length})
                         </button>
                         <button
                           onClick={() => setReviewSubTab('google')}
-                          className={`px-6 py-3 font-medium transition-all border-b-2 ${
-                            reviewSubTab === 'google'
+                          className={`px-6 py-3 font-medium transition-all border-b-2 ${reviewSubTab === 'google'
                               ? 'border-blue-600 text-blue-600'
                               : 'border-transparent text-gray-600 hover:text-blue-600'
-                          }`}
+                            }`}
                         >
                           Google Reviews ({googleReviews.length})
                         </button>
                         <button
                           onClick={() => setReviewSubTab('map')}
-                          className={`px-6 py-3 font-medium transition-all border-b-2 ${
-                            reviewSubTab === 'map'
+                          className={`px-6 py-3 font-medium transition-all border-b-2 ${reviewSubTab === 'map'
                               ? 'border-blue-600 text-blue-600'
                               : 'border-transparent text-gray-600 hover:text-blue-600'
-                          }`}
+                            }`}
                         >
                           Location & Directions
                         </button>
@@ -1067,11 +1064,10 @@ const EventDetailPage: React.FC = () => {
                                                   <svg
                                                     key={i}
                                                     xmlns="http://www.w3.org/2000/svg"
-                                                    className={`h-4 w-4 ${
-                                                      i < review.rating
+                                                    className={`h-4 w-4 ${i < review.rating
                                                         ? 'text-yellow-400 fill-yellow-400'
                                                         : 'text-gray-300'
-                                                    }`}
+                                                      }`}
                                                     viewBox="0 0 20 20"
                                                   >
                                                     <path d="M9.049 2.927c.3-.921 1.603-.921 1.902 0l1.07 3.292a1 1 0 00.95.69h3.462c.969 0 1.371 1.24.588 1.81l-2.8 2.034a1 1 0 00-.364 1.118l1.07 3.292c.3.921-.755 1.688-1.54 1.118l-2.8-2.034a1 1 0 00-1.175 0l-2.8 2.034c-.784.57-1.838-.197-1.539-1.118l1.07-3.292a1 1 0 00-.364-1.118L2.98 8.72c-.783-.57-.38-1.81.588-1.81h3.461a1 1 0 00.951-.69l1.07-3.292z" />
@@ -1204,8 +1200,8 @@ const EventDetailPage: React.FC = () => {
                       <button
                         onClick={handleToggleFavorite}
                         className={`flex-1 flex items-center justify-center py-3 px-4 text-white rounded-lg transition-all transform hover:-translate-y-0.5 shadow-lg ${isFavorite
-                            ? 'bg-gradient-to-r from-red-500 to-red-600 hover:from-red-600 hover:to-red-700'
-                            : 'bg-gradient-to-r from-pink-500 to-red-500 hover:from-pink-600 hover:to-red-600'
+                          ? 'bg-gradient-to-r from-red-500 to-red-600 hover:from-red-600 hover:to-red-700'
+                          : 'bg-gradient-to-r from-pink-500 to-red-500 hover:from-pink-600 hover:to-red-600'
                           }`}
                       >
                         <svg className="w-5 h-5 mr-2" fill={isFavorite ? 'currentColor' : 'none'} stroke="currentColor" viewBox="0 0 24 24">
@@ -1333,8 +1329,8 @@ const EventDetailPage: React.FC = () => {
                     onClick={handleBookNow}
                     disabled={!selectedDate || getCurrentAvailableSeats() === 0}
                     className={`w-full py-4 rounded-xl font-bold text-lg transition-all duration-300 ${!selectedDate || getCurrentAvailableSeats() === 0
-                        ? 'bg-gray-200 text-gray-400 cursor-not-allowed'
-                        : 'bg-gradient-to-r from-primary-500 to-primary-700 hover:from-primary-600 hover:to-primary-800 text-white shadow-lg hover:shadow-xl transform hover:-translate-y-1 hover:scale-105'
+                      ? 'bg-gray-200 text-gray-400 cursor-not-allowed'
+                      : 'bg-gradient-to-r from-primary-500 to-primary-700 hover:from-primary-600 hover:to-primary-800 text-white shadow-lg hover:shadow-xl transform hover:-translate-y-1 hover:scale-105'
                       }`}
                   >
                     {!selectedDate ? '📅 Select Date to Book' : getCurrentAvailableSeats() === 0 ? '❌ Sold Out' : '🎫 Book Now'}
@@ -1344,8 +1340,8 @@ const EventDetailPage: React.FC = () => {
                     onClick={handleAddToCart}
                     disabled={eventInCart || !selectedDate || getCurrentAvailableSeats() === 0}
                     className={`w-full py-3 rounded-xl font-semibold transition-all duration-300 border-2 ${eventInCart || !selectedDate || getCurrentAvailableSeats() === 0
-                        ? 'bg-gray-100 text-gray-400 border-gray-200 cursor-not-allowed'
-                        : 'bg-white text-primary-600 border-primary-200 hover:bg-primary-50 hover:border-primary-300 transform hover:-translate-y-0.5'
+                      ? 'bg-gray-100 text-gray-400 border-gray-200 cursor-not-allowed'
+                      : 'bg-white text-primary-600 border-primary-200 hover:bg-primary-50 hover:border-primary-300 transform hover:-translate-y-0.5'
                       }`}
                   >
                     {eventInCart ? '✅ Already in Cart' : !selectedDate ? '🛒 Select Date' : getCurrentAvailableSeats() === 0 ? '❌ Sold Out' : '🛒 Add to Cart'}
