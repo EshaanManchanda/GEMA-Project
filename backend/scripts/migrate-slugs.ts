@@ -4,10 +4,14 @@ import path from 'path';
 import { Event } from '../src/models';
 
 // Load environment variables
-const envPath = path.resolve(__dirname, '../../.env');
+// Try to load from CWD first (standard behavior)
+dotenv.config();
+// Also try explicitly from backend root if running from elsewhere or if CWD is different
+const envPath = path.resolve(__dirname, '../.env');
 dotenv.config({ path: envPath });
 
 const MONGODB_URI = process.env.MONGODB_URI || 'mongodb://localhost:27017/kidrove';
+console.log('Target Database:', MONGODB_URI.replace(/:\/\/[^@]+@/, '://***:***@')); // Log masked URI for verification
 
 // Helper function to generate slug (copied from Event model for standalone script)
 const generateSlug = (title: string): string => {
