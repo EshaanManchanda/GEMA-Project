@@ -2,6 +2,7 @@ import { ApiService } from '../api';
 import { extractApiData, extractBookingData, logApiResponse } from '../../utils/apiResponseHandler';
 
 export interface InitiateBookingData {
+  /** The MongoDB ObjectId of the event (not the slug) */
   eventId: string;
   dateScheduleId: string;
   seats: number;

@@ -39,18 +39,23 @@ export const buildPublicEventFilter = (additionalFilters: any = {}) => {
     isDeleted: false,
   };
 
-  // Add expiration filter - event must have at least one future date (with 24h buffer)
-  // Event is visible if: endDate >= (now - 24 hours)
-  // This means events remain visible until 24 hours after their actual end date
-  baseFilter.$or = [
-    // New format: check endDate with buffer
-    { 'dateSchedule.endDate': { $gte: bufferTime } },
-    // Legacy format: check date field with buffer
-    { 'dateSchedule.date': { $gte: bufferTime } },
-  ];
+  // Add expiration filter unless explicitly requested to include past events
+  if (!additionalFilters.includePast) {
+    // Event is visible if: endDate >= (now - 24 hours)
+    // This means events remain visible until 24 hours after their actual end date
+    baseFilter.$or = [
+      // New format: check endDate with buffer
+      { 'dateSchedule.endDate': { $gte: bufferTime } },
+      // Legacy format: check date field with buffer
+      { 'dateSchedule.date': { $gte: bufferTime } },
+    ];
+  }
+
+  // Remove includePast from additionalFilters before merging
+  const { includePast, ...filters } = additionalFilters;
 
   // Merge with any additional filters provided
-  return { ...baseFilter, ...additionalFilters };
+  return { ...baseFilter, ...filters };
 };
 
 /**

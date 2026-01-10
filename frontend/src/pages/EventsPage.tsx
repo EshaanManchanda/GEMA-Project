@@ -62,7 +62,7 @@ const EventCard: React.FC<EventCardProps> = ({ event, formattedDate }) => {
           </div>
         </div>
         <Link
-          to={`/events/${event.id}`}
+          to={`/events/${event.slug || event.id}`}
           className="block w-full text-center bg-primary text-white py-3 rounded-md hover:bg-primary-dark transition-colors font-medium"
         >
           View Details
@@ -160,7 +160,7 @@ const EventsPage: React.FC = () => {
   })) : mockEvents;
 
   const usingMockData = !eventsData && !isLoading;
-  
+
   if (isLoading) {
     return (
       <div className="min-h-screen flex items-center justify-center">
@@ -168,10 +168,10 @@ const EventsPage: React.FC = () => {
       </div>
     );
   }
-  
+
   // Sort events based on selected criteria
   const sortEvents = (eventsToSort: any[]) => {
-    switch(sortBy) {
+    switch (sortBy) {
       case 'price-low':
         return [...eventsToSort].sort((a, b) => a.price - b.price);
       case 'price-high':
@@ -187,17 +187,17 @@ const EventsPage: React.FC = () => {
     return events.filter(event => {
       // Apply category filter
       if (filters.category && event.category !== filters.category) return false;
-      
+
       // Apply price filter
       if (event.price > filters.priceRange[1]) return false;
-      
+
       // Apply date filter (simplified for demo)
       if (filters.date) {
         const filterDate = new Date(filters.date).toISOString().split('T')[0];
         const eventDate = new Date(event.date).toISOString().split('T')[0];
         if (eventDate !== filterDate) return false;
       }
-      
+
       // Apply search query filter
       if (filters.searchQuery) {
         const query = filters.searchQuery.toLowerCase();
@@ -209,7 +209,7 @@ const EventsPage: React.FC = () => {
           event.category?.toLowerCase().includes(query)
         );
       }
-      
+
       return true;
     });
   };
@@ -231,183 +231,183 @@ const EventsPage: React.FC = () => {
       />
       <div className="container mx-auto px-4 py-8">
         {error && (
-        <div className="bg-red-100 border-l-4 border-red-500 text-red-700 p-4 mb-6" role="alert">
-          <p className="font-bold">Error</p>
-          <p>{error instanceof Error ? error.message : 'Unable to load events. Please try again later.'}</p>
-        </div>
-      )}
+          <div className="bg-red-100 border-l-4 border-red-500 text-red-700 p-4 mb-6" role="alert">
+            <p className="font-bold">Error</p>
+            <p>{error instanceof Error ? error.message : 'Unable to load events. Please try again later.'}</p>
+          </div>
+        )}
 
-      {usingMockData && (
-        <div className="bg-yellow-100 border-l-4 border-yellow-500 text-yellow-700 p-4 mb-6" role="alert">
-          <p className="font-bold">Note</p>
-          <p>Unable to connect to the server. Showing default events data.</p>
-        </div>
-      )}
-      
-      <h1 className="text-3xl font-bold mb-4">Upcoming Events</h1>
-      
-      {/* Search bar */}
-      <div className="mb-8">
-        <div className="relative">
-          <input
-            type="text"
-            placeholder="Search events by name, description, location..."
-            className="w-full p-4 pl-12 pr-4 rounded-lg border border-gray-300 focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent"
-            value={filters.searchQuery}
-            onChange={(e) => setFilters({...filters, searchQuery: e.target.value})}
-          />
-          <div className="absolute left-4 top-1/2 transform -translate-y-1/2">
-            <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
-            </svg>
+        {usingMockData && (
+          <div className="bg-yellow-100 border-l-4 border-yellow-500 text-yellow-700 p-4 mb-6" role="alert">
+            <p className="font-bold">Note</p>
+            <p>Unable to connect to the server. Showing default events data.</p>
+          </div>
+        )}
+
+        <h1 className="text-3xl font-bold mb-4">Upcoming Events</h1>
+
+        {/* Search bar */}
+        <div className="mb-8">
+          <div className="relative">
+            <input
+              type="text"
+              placeholder="Search events by name, description, location..."
+              className="w-full p-4 pl-12 pr-4 rounded-lg border border-gray-300 focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent"
+              value={filters.searchQuery}
+              onChange={(e) => setFilters({ ...filters, searchQuery: e.target.value })}
+            />
+            <div className="absolute left-4 top-1/2 transform -translate-y-1/2">
+              <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
+              </svg>
+            </div>
           </div>
         </div>
-      </div>
-      
-      <div className="flex flex-col md:flex-row gap-6 mb-8">
-        {/* Filters sidebar */}
-        <div className="w-full md:w-1/4 bg-white p-6 rounded-lg shadow-md">
-          <h2 className="text-xl font-semibold mb-4">Filters</h2>
-          
-          <div className="mb-6">
-            <label className="block text-sm font-medium mb-2">Category</label>
-            <select 
-              className="w-full p-3 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-primary"
-              value={filters.category}
-              onChange={(e) => setFilters({...filters, category: e.target.value})}
-            >
-              <option value="">All Categories</option>
-              <option value="Entertainment">Entertainment</option>
-              <option value="Education">Education</option>
-              <option value="Arts">Arts</option>
-              <option value="Sports">Sports</option>
-              <option value="Adventure">Adventure</option>
-            </select>
-          </div>
-          
-          <div className="mb-6">
-            <label className="block text-sm font-medium mb-2">Price Range</label>
-            <div className="flex flex-col">
-              <div className="flex justify-between mb-2">
-                <span className="text-sm text-gray-500">$0</span>
-                <span className="text-sm font-medium">${filters.priceRange[1]}</span>
-                <span className="text-sm text-gray-500">$100</span>
+
+        <div className="flex flex-col md:flex-row gap-6 mb-8">
+          {/* Filters sidebar */}
+          <div className="w-full md:w-1/4 bg-white p-6 rounded-lg shadow-md">
+            <h2 className="text-xl font-semibold mb-4">Filters</h2>
+
+            <div className="mb-6">
+              <label className="block text-sm font-medium mb-2">Category</label>
+              <select
+                className="w-full p-3 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-primary"
+                value={filters.category}
+                onChange={(e) => setFilters({ ...filters, category: e.target.value })}
+              >
+                <option value="">All Categories</option>
+                <option value="Entertainment">Entertainment</option>
+                <option value="Education">Education</option>
+                <option value="Arts">Arts</option>
+                <option value="Sports">Sports</option>
+                <option value="Adventure">Adventure</option>
+              </select>
+            </div>
+
+            <div className="mb-6">
+              <label className="block text-sm font-medium mb-2">Price Range</label>
+              <div className="flex flex-col">
+                <div className="flex justify-between mb-2">
+                  <span className="text-sm text-gray-500">$0</span>
+                  <span className="text-sm font-medium">${filters.priceRange[1]}</span>
+                  <span className="text-sm text-gray-500">$100</span>
+                </div>
+                <input
+                  type="range"
+                  min="0"
+                  max="100"
+                  value={filters.priceRange[1]}
+                  onChange={(e) => setFilters({ ...filters, priceRange: [0, parseInt(e.target.value)] })}
+                  className="w-full accent-primary"
+                />
               </div>
-              <input 
-                type="range" 
-                min="0" 
-                max="100" 
-                value={filters.priceRange[1]} 
-                onChange={(e) => setFilters({...filters, priceRange: [0, parseInt(e.target.value)]})} 
-                className="w-full accent-primary"
+            </div>
+
+            <div className="mb-6">
+              <label className="block text-sm font-medium mb-2">Date</label>
+              <input
+                type="date"
+                className="w-full p-3 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-primary"
+                value={filters.date}
+                onChange={(e) => setFilters({ ...filters, date: e.target.value })}
               />
             </div>
-          </div>
-          
-          <div className="mb-6">
-            <label className="block text-sm font-medium mb-2">Date</label>
-            <input 
-              type="date" 
-              className="w-full p-3 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-primary"
-              value={filters.date}
-              onChange={(e) => setFilters({...filters, date: e.target.value})}
-            />
-          </div>
-          
-          <div className="mb-6">
-            <label className="block text-sm font-medium mb-2">Sort By</label>
-            <div className="grid grid-cols-3 gap-2">
-              <button 
-                className={`p-2 text-sm border rounded-md transition-colors ${sortBy === 'date' ? 'bg-primary text-white border-primary' : 'border-gray-300 hover:bg-gray-50'}`}
-                onClick={() => setSortBy('date')}
-              >
-                Date
-              </button>
-              <button 
-                className={`p-2 text-sm border rounded-md transition-colors ${sortBy === 'price-low' ? 'bg-primary text-white border-primary' : 'border-gray-300 hover:bg-gray-50'}`}
-                onClick={() => setSortBy('price-low')}
-              >
-                Price: Low
-              </button>
-              <button 
-                className={`p-2 text-sm border rounded-md transition-colors ${sortBy === 'price-high' ? 'bg-primary text-white border-primary' : 'border-gray-300 hover:bg-gray-50'}`}
-                onClick={() => setSortBy('price-high')}
-              >
-                Price: High
-              </button>
-            </div>
-          </div>
-          
-          <button 
-            className="w-full bg-primary text-white py-3 rounded-md hover:bg-primary-dark transition-colors font-medium"
-            onClick={() => {
-              setFilters({category: '', priceRange: [0, 100], date: '', searchQuery: ''});
-              setSortBy('date');
-            }}
-          >
-            Reset All Filters
-          </button>
-        </div>
-        
-        {/* Events grid */}
-        <div className="w-full md:w-3/4">
-          <div className="flex justify-between items-center mb-6">
-            <div className="text-gray-600">
-              <span className="font-medium">{filteredEvents.length}</span> events found
-            </div>
-            <div className="hidden md:block">
-              <div className="flex items-center space-x-2">
-                <span className="text-sm text-gray-600">View:</span>
-                <button className="p-2 bg-primary text-white rounded-md">
-                  <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 6h16M4 12h16M4 18h16" />
-                  </svg>
+
+            <div className="mb-6">
+              <label className="block text-sm font-medium mb-2">Sort By</label>
+              <div className="grid grid-cols-3 gap-2">
+                <button
+                  className={`p-2 text-sm border rounded-md transition-colors ${sortBy === 'date' ? 'bg-primary text-white border-primary' : 'border-gray-300 hover:bg-gray-50'}`}
+                  onClick={() => setSortBy('date')}
+                >
+                  Date
                 </button>
-                <button className="p-2 bg-gray-200 text-gray-600 rounded-md">
-                  <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 6h16M4 10h16M4 14h16M4 18h16" />
-                  </svg>
+                <button
+                  className={`p-2 text-sm border rounded-md transition-colors ${sortBy === 'price-low' ? 'bg-primary text-white border-primary' : 'border-gray-300 hover:bg-gray-50'}`}
+                  onClick={() => setSortBy('price-low')}
+                >
+                  Price: Low
+                </button>
+                <button
+                  className={`p-2 text-sm border rounded-md transition-colors ${sortBy === 'price-high' ? 'bg-primary text-white border-primary' : 'border-gray-300 hover:bg-gray-50'}`}
+                  onClick={() => setSortBy('price-high')}
+                >
+                  Price: High
                 </button>
               </div>
             </div>
-          </div>
-          
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-            {filteredEvents.map(event => {
-              const eventDate = new Date(event.date);
-              const formattedDate = format(eventDate, 'MMM d, yyyy');
 
-              return (
-                <EventCard
-                  key={event.id}
-                  event={event}
-                  formattedDate={formattedDate}
-                />
-              );
-            })}
+            <button
+              className="w-full bg-primary text-white py-3 rounded-md hover:bg-primary-dark transition-colors font-medium"
+              onClick={() => {
+                setFilters({ category: '', priceRange: [0, 100], date: '', searchQuery: '' });
+                setSortBy('date');
+              }}
+            >
+              Reset All Filters
+            </button>
           </div>
-          
-          {filteredEvents.length === 0 && (
-            <div className="text-center py-12 bg-white rounded-lg shadow-md">
-              <svg xmlns="http://www.w3.org/2000/svg" className="h-16 w-16 mx-auto text-gray-400 mb-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9.172 16.172a4 4 0 015.656 0M9 10h.01M15 10h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
-              </svg>
-              <h3 className="text-xl font-medium mb-2">No events found</h3>
-              <p className="text-gray-600 mb-4">Try adjusting your filters or search query</p>
-              <button 
-                onClick={() => {
-                  setFilters({category: '', priceRange: [0, 100], date: '', searchQuery: ''});
-                  setSortBy('date');
-                }}
-                className="px-4 py-2 bg-primary text-white rounded-md hover:bg-primary-dark transition-colors"
-              >
-                Reset All Filters
-              </button>
+
+          {/* Events grid */}
+          <div className="w-full md:w-3/4">
+            <div className="flex justify-between items-center mb-6">
+              <div className="text-gray-600">
+                <span className="font-medium">{filteredEvents.length}</span> events found
+              </div>
+              <div className="hidden md:block">
+                <div className="flex items-center space-x-2">
+                  <span className="text-sm text-gray-600">View:</span>
+                  <button className="p-2 bg-primary text-white rounded-md">
+                    <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 6h16M4 12h16M4 18h16" />
+                    </svg>
+                  </button>
+                  <button className="p-2 bg-gray-200 text-gray-600 rounded-md">
+                    <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 6h16M4 10h16M4 14h16M4 18h16" />
+                    </svg>
+                  </button>
+                </div>
+              </div>
             </div>
-          )}
+
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+              {filteredEvents.map(event => {
+                const eventDate = new Date(event.date);
+                const formattedDate = format(eventDate, 'MMM d, yyyy');
+
+                return (
+                  <EventCard
+                    key={event.id}
+                    event={event}
+                    formattedDate={formattedDate}
+                  />
+                );
+              })}
+            </div>
+
+            {filteredEvents.length === 0 && (
+              <div className="text-center py-12 bg-white rounded-lg shadow-md">
+                <svg xmlns="http://www.w3.org/2000/svg" className="h-16 w-16 mx-auto text-gray-400 mb-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9.172 16.172a4 4 0 015.656 0M9 10h.01M15 10h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                </svg>
+                <h3 className="text-xl font-medium mb-2">No events found</h3>
+                <p className="text-gray-600 mb-4">Try adjusting your filters or search query</p>
+                <button
+                  onClick={() => {
+                    setFilters({ category: '', priceRange: [0, 100], date: '', searchQuery: '' });
+                    setSortBy('date');
+                  }}
+                  className="px-4 py-2 bg-primary text-white rounded-md hover:bg-primary-dark transition-colors"
+                >
+                  Reset All Filters
+                </button>
+              </div>
+            )}
+          </div>
         </div>
       </div>
-    </div>
     </>
   );
 };

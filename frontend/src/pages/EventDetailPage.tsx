@@ -8,8 +8,6 @@ import { format } from 'date-fns';
 import DOMPurify from 'isomorphic-dompurify';
 import { useEventQuery } from '@/hooks/queries/useEventsQuery';
 import affiliateEventAPI from '../services/api/affiliateEventAPI';
-import { useErrorHandler } from '../utils/errorHandler';
-import { ComponentErrorBoundary } from '../components/common/ErrorBoundary';
 import { EventSEO } from '@/components/common/SEO';
 import { AppDispatch } from '../store';
 import {
@@ -139,6 +137,7 @@ const EventDetailPage: React.FC = () => {
   const [isClaimingEvent, setIsClaimingEvent] = useState(false);
   const { addItemToCart, isItemInCart } = useCart();
 
+
   // TanStack Query replaces manual fetch + state management
   const { data: eventData, isLoading, error: queryError } = useEventQuery(slug!);
 
@@ -212,7 +211,22 @@ const EventDetailPage: React.FC = () => {
       faqs: eventData.faqs || [],
       reviews: []
     };
-  }, [eventData, id]);
+  }, [eventData, slug]);
+
+  // Handle URL canonicalization (ID -> Slug)
+  useEffect(() => {
+    if (event?.slug && event.slug !== slug) {
+      navigate(`/events/${event.slug}`, { replace: true });
+    }
+  }, [event?.slug, slug, navigate]);
+
+  // Handle URL canonicalization (ID -> Slug)
+  useEffect(() => {
+    if (event?.slug && event.slug !== slug) {
+      navigate(`/events/${event.slug}`, { replace: true });
+    }
+  }, [event?.slug, slug, navigate]);
+
 
   const usingMockData = !eventData && !isLoading;
   const error = queryError ? (queryError as any)?.response?.status === 404 ?
@@ -261,12 +275,15 @@ const EventDetailPage: React.FC = () => {
   const isFavorite = favorites.some(fav => fav._id === event?._id);
 
   // Fetch platform reviews
+  // Fetch platform reviews
   useEffect(() => {
     const fetchPlatformReviews = async () => {
-      if (!id) return;
+      // Must use actual ObjectId for reviews, not slug
+      if (!event?._id) return;
+
       try {
         setLoadingReviews(true);
-        const response = await reviewsAPI.getEventReviews(id);
+        const response = await reviewsAPI.getEventReviews(event._id);
         setPlatformReviews(response.data.reviews || []);
       } catch (error) {
         console.error('Failed to fetch platform reviews:', error);
@@ -279,14 +296,17 @@ const EventDetailPage: React.FC = () => {
     if (activeTab === 'reviews') {
       fetchPlatformReviews();
     }
-  }, [id, activeTab]);
+  }, [event?._id, activeTab]);
 
+
+  // Fetch Google reviews
   // Fetch Google reviews
   useEffect(() => {
     const fetchGoogleReviews = async () => {
-      if (!id) return;
+      if (!event?._id) return;
+
       try {
-        const response = await reviewsAPI.getGoogleReviews(id);
+        const response = await reviewsAPI.getGoogleReviews(event._id);
         if (response.data.hasGooglePlaceId) {
           setGoogleReviews(response.data.reviews || []);
           setGoogleRating(response.data.rating || 0);
@@ -307,13 +327,14 @@ const EventDetailPage: React.FC = () => {
     if (activeTab === 'reviews') {
       fetchGoogleReviews();
     }
-  }, [id, activeTab]);
+  }, [event?._id, activeTab]);
+
 
   // Handle review submission success
   const handleReviewSubmitSuccess = () => {
     // Refetch platform reviews
-    if (id) {
-      reviewsAPI.getEventReviews(id)
+    if (event?._id) {
+      reviewsAPI.getEventReviews(event._id)
         .then(response => setPlatformReviews(response.data.reviews || []))
         .catch(error => console.error('Failed to refresh reviews:', error));
     }
@@ -379,7 +400,7 @@ const EventDetailPage: React.FC = () => {
 
   // Handle booking
   const handleBookNow = async () => {
-    if (!event || !id) {
+    if (!event || !event._id) {
       toast.error('Event information is not available');
       return;
     }
@@ -391,7 +412,7 @@ const EventDetailPage: React.FC = () => {
         const sessionId = `${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
 
         // Track the click
-        await fetch(`${API_BASE_URL}/events/${id}/track-click`, {
+        await fetch(`${API_BASE_URL}/events/${event._id}/track-click`, {
           method: 'POST',
           headers: {
             'Content-Type': 'application/json',
@@ -435,7 +456,7 @@ const EventDetailPage: React.FC = () => {
 
     // Reset booking flow and initialize with current event
     dispatch(resetBookingFlow());
-    dispatch(setBookingEvent(id));
+    dispatch(setBookingEvent(event._id)); // Must be ObjectId
 
     // Create initial participants based on quantity with validation
     if (quantity < 1 || quantity > currentAvailableSeats) {
@@ -458,7 +479,7 @@ const EventDetailPage: React.FC = () => {
     dispatch(setBookingParticipants(initialParticipants));
 
     // Navigate to booking page with event data including schedule ID
-    navigate(`/booking/${id}`, {
+    navigate(`/booking/${event.slug || event.id || event._id}`, {
       state: {
         event,
         quantity,
@@ -475,7 +496,7 @@ const EventDetailPage: React.FC = () => {
 
   // Handle claiming affiliate event
   const handleClaimEvent = async () => {
-    if (!id) {
+    if (!event?._id) {
       toast.error('Event information is not available');
       return;
     }
@@ -486,7 +507,7 @@ const EventDetailPage: React.FC = () => {
 
     setIsClaimingEvent(true);
     try {
-      await affiliateEventAPI.claimEvent(id);
+      await affiliateEventAPI.claimEvent(event._id);
       toast.success('Event claimed successfully! Redirecting to your dashboard...');
       setTimeout(() => {
         navigate('/vendor/dashboard');
@@ -568,7 +589,7 @@ const EventDetailPage: React.FC = () => {
   const handleContactVendor = () => {
     if (!event?.vendorId) return;
 
-    const { email, phone, firstName, lastName } = event.vendorId;
+    const { email, firstName, lastName } = event.vendorId;
     const subject = encodeURIComponent(`Inquiry about ${event.title}`);
     const body = encodeURIComponent(`Hello ${firstName} ${lastName},\n\nI'm interested in your event "${event.title}".\n\n`);
 
@@ -989,8 +1010,8 @@ const EventDetailPage: React.FC = () => {
                         <button
                           onClick={() => setReviewSubTab('platform')}
                           className={`px-6 py-3 font-medium transition-all border-b-2 ${reviewSubTab === 'platform'
-                              ? 'border-blue-600 text-blue-600'
-                              : 'border-transparent text-gray-600 hover:text-blue-600'
+                            ? 'border-blue-600 text-blue-600'
+                            : 'border-transparent text-gray-600 hover:text-blue-600'
                             }`}
                         >
                           Platform Reviews ({platformReviews.length})
@@ -998,8 +1019,8 @@ const EventDetailPage: React.FC = () => {
                         <button
                           onClick={() => setReviewSubTab('google')}
                           className={`px-6 py-3 font-medium transition-all border-b-2 ${reviewSubTab === 'google'
-                              ? 'border-blue-600 text-blue-600'
-                              : 'border-transparent text-gray-600 hover:text-blue-600'
+                            ? 'border-blue-600 text-blue-600'
+                            : 'border-transparent text-gray-600 hover:text-blue-600'
                             }`}
                         >
                           Google Reviews ({googleReviews.length})
@@ -1007,8 +1028,8 @@ const EventDetailPage: React.FC = () => {
                         <button
                           onClick={() => setReviewSubTab('map')}
                           className={`px-6 py-3 font-medium transition-all border-b-2 ${reviewSubTab === 'map'
-                              ? 'border-blue-600 text-blue-600'
-                              : 'border-transparent text-gray-600 hover:text-blue-600'
+                            ? 'border-blue-600 text-blue-600'
+                            : 'border-transparent text-gray-600 hover:text-blue-600'
                             }`}
                         >
                           Location & Directions
@@ -1020,9 +1041,10 @@ const EventDetailPage: React.FC = () => {
                         <div className="space-y-6">
                           {/* Review Submission Form */}
                           <ReviewSubmissionForm
-                            eventId={id!}
+                            eventId={event?._id}
                             onSubmitSuccess={handleReviewSubmitSuccess}
                           />
+
 
                           {/* Platform Reviews List */}
                           {loadingReviews ? (
@@ -1065,8 +1087,8 @@ const EventDetailPage: React.FC = () => {
                                                     key={i}
                                                     xmlns="http://www.w3.org/2000/svg"
                                                     className={`h-4 w-4 ${i < review.rating
-                                                        ? 'text-yellow-400 fill-yellow-400'
-                                                        : 'text-gray-300'
+                                                      ? 'text-yellow-400 fill-yellow-400'
+                                                      : 'text-gray-300'
                                                       }`}
                                                     viewBox="0 0 20 20"
                                                   >

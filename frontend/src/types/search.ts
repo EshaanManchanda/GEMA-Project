@@ -23,6 +23,7 @@ export interface EventVendor {
   _id: string;
   firstName: string;
   lastName: string;
+  businessName: string;
   email: string;
 }
 
@@ -32,6 +33,7 @@ export interface SeoMeta {
 
 export interface SearchEvent {
   _id: string;
+  slug?: string;
   title: string;
   description: string;
   category: string;
@@ -50,6 +52,8 @@ export interface SearchEvent {
   isFeatured: boolean;
   status: string;
   viewsCount: number;
+  rating?: number;
+  reviewsCount?: number;
   createdAt: string;
   updatedAt: string;
   faqs: any[];

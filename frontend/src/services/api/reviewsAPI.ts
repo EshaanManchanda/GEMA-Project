@@ -12,7 +12,7 @@ const reviewsAPI = {
 
   getFeaturedReviews: async (limit: number = 10) => {
     try {
-      const response = await ApiService.get('/reviews', { 
+      const response = await ApiService.get('/reviews', {
         params: {
           rating: 5, // Only 5-star reviews
           verified: true, // Only verified reviews
@@ -28,9 +28,13 @@ const reviewsAPI = {
     }
   },
 
+  /**
+   * Get reviews for an event
+   * @param eventId - The MongoDB ObjectId of the event (not the slug)
+   */
   getEventReviews: async (eventId: string, params?: { rating?: number; verified?: boolean; page?: number; limit?: number }) => {
     try {
-      const response = await ApiService.get('/reviews', { 
+      const response = await ApiService.get('/reviews', {
         params: {
           type: 'event',
           targetId: eventId,
@@ -45,7 +49,7 @@ const reviewsAPI = {
 
   getVendorReviews: async (vendorId: string, params?: { rating?: number; verified?: boolean; page?: number; limit?: number }) => {
     try {
-      const response = await ApiService.get('/reviews', { 
+      const response = await ApiService.get('/reviews', {
         params: {
           type: 'vendor',
           targetId: vendorId,

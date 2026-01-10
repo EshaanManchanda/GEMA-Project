@@ -101,6 +101,7 @@ export interface AffiliateClickTracking {
 
 export interface Event {
   _id: string;
+  slug?: string;
   title: string;
   description: string;
   category: string;

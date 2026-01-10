@@ -1,7 +1,14 @@
 import fs from 'fs';
 import path from 'path';
+import dotenv from 'dotenv';
+
+// Configure dotenv to read from .env file
+dotenv.config();
+
+const API_BASE_URL = process.env.VITE_API_URL || 'https://api.kidrove.com/api';
 
 async function generateRoutes() {
+    console.log(`Using API Base URL: ${API_BASE_URL}`);
     const routes = [
         '/',
         '/events',
@@ -19,49 +26,69 @@ async function generateRoutes() {
         const { timeout = 30000 } = options;
         const controller = new AbortController();
         const id = setTimeout(() => controller.abort(), timeout);
-        const response = await fetch(url, {
-            ...options,
-            signal: controller.signal
-        });
-        clearTimeout(id);
-        return response;
+        try {
+            const response = await fetch(url, {
+                ...options,
+                signal: controller.signal
+            });
+            return response;
+        } finally {
+            clearTimeout(id);
+        }
     };
 
-    // Fetch dynamic event routes
-    try {
-        console.log('Fetching events from production API...');
-        const eventsResponse = await fetchWithTimeout('https://api.kidrove.com/api/events?limit=100&status=published', { timeout: 30000 });
-        if (!eventsResponse.ok) {
-            throw new Error(`Events API responded with ${eventsResponse.status}`);
+    // Helper to fetch and extract routes
+    const fetchRoutes = async (type, url, transformFn) => {
+        console.log(`Fetching ${type} from ${url}...`);
+        try {
+            const response = await fetchWithTimeout(url);
+            if (!response.ok) {
+                throw new Error(`${type} API responded with ${response.status}`);
+            }
+            const data = await response.json();
+            const newRoutes = transformFn(data);
+            if (newRoutes && newRoutes.length > 0) {
+                console.log(`✅ Added ${newRoutes.length} ${type} routes`);
+                return newRoutes;
+            }
+            return [];
+        } catch (err) {
+            console.error(`❌ Error fetching ${type}:`, err.message);
+            console.error('   This is non-critical - static routes will still be generated');
+            return [];
         }
-        const eventsData = await eventsResponse.json();
-        if (eventsData?.data?.events) {
-            const eventRoutes = eventsData.data.events.map(e => `/events/${e.slug || e._id}`);
-            routes.push(...eventRoutes);
-            console.log(`✅ Added ${eventRoutes.length} event routes`);
-        }
-    } catch (err) {
-        console.error('❌ Error fetching events:', err.message);
-        console.error('   This is non-critical - static routes will still be generated');
-    }
+    };
 
-    // Fetch dynamic blog routes
-    try {
-        console.log('Fetching blogs from production API...');
-        const blogsResponse = await fetchWithTimeout('https://api.kidrove.com/api/blogs?limit=100&status=published', { timeout: 30000 });
-        if (!blogsResponse.ok) {
-            throw new Error(`Blogs API responded with ${blogsResponse.status}`);
+    // Execute fetches in parallel
+    const results = await Promise.allSettled([
+        fetchRoutes(
+            'events',
+            `${API_BASE_URL}/events?limit=1000&status=published`,
+            (data) => {
+                if (!data?.data?.events) return [];
+                return data.data.events.map(e => {
+                    // Prioritize slug, fallback to _id
+                    if (!e.slug) {
+                        console.warn(`⚠️  Event missing slug: ${e.title} (${e._id}) - falling back to ID`);
+                    }
+                    const identifier = e.slug || e._id;
+                    return `/events/${identifier}`;
+                });
+            }
+        ),
+        fetchRoutes(
+            'blogs',
+            `${API_BASE_URL}/blogs?limit=100&status=published`,
+            (data) => data?.data?.blogs?.map(b => `/blog/${b.slug}`) || []
+        )
+    ]);
+
+    // Process results
+    results.forEach(result => {
+        if (result.status === 'fulfilled') {
+            routes.push(...result.value);
         }
-        const blogsData = await blogsResponse.json();
-        if (blogsData?.data?.blogs) {
-            const blogRoutes = blogsData.data.blogs.map(b => `/blog/${b.slug}`);
-            routes.push(...blogRoutes);
-            console.log(`✅ Added ${blogRoutes.length} blog routes`);
-        }
-    } catch (err) {
-        console.error('❌ Error fetching blogs:', err.message);
-        console.error('   This is non-critical - static routes will still be generated');
-    }
+    });
 
     // Write routes to JSON
     const outputPath = path.resolve(process.cwd(), 'prerender-routes.json');

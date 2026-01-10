@@ -261,7 +261,8 @@ export const getEvent = async (req: Request, res: Response, next: NextFunction) 
     }
 
     // Build public filter with expiration check
-    const filterQuery = isMongoId ? { _id: lookupValue } : { slug: lookupValue };
+    // Allow past events for direct lookup (so we don't return 404 for valid but expired events)
+    const filterQuery = isMongoId ? { _id: lookupValue, includePast: true } : { slug: lookupValue, includePast: true };
     const filter = buildPublicEventFilter(filterQuery);
 
     // Add timeout to the main query - only show active, published, non-expired events
@@ -274,7 +275,36 @@ export const getEvent = async (req: Request, res: Response, next: NextFunction) 
     );
 
     if (!event) {
-      return next(new AppError('Event not found or expired', 404));
+      // Diagnostic check: check if event exists but was filtered out (e.g. not published, expired)
+      // This helps debug issues where valid events are returned as 404
+      const filterQuery = isMongoId ? { _id: lookupValue } : { slug: lookupValue };
+      const rawEvent = await Event.findOne(filterQuery);
+
+      if (rawEvent) {
+        const reasons: string[] = [];
+        if (!rawEvent.isApproved) reasons.push('not approved');
+        if (!rawEvent.isActive) reasons.push('not active');
+        if (rawEvent.status !== 'published') reasons.push(`status is ${rawEvent.status}`);
+        if (rawEvent.isDeleted) reasons.push('deleted');
+
+        // Check dates
+        const now = new Date();
+        const bufferTime = new Date(now.getTime() - 24 * 60 * 60 * 1000);
+        const hasValidDate = rawEvent.dateSchedule && rawEvent.dateSchedule.some((schedule: any) => {
+          const dateToCheck = schedule.endDate || schedule.date;
+          return dateToCheck && new Date(dateToCheck) >= bufferTime;
+        });
+
+        if (!hasValidDate) reasons.push('expired (no future dates)');
+
+        // Log the finding for backend visibility
+        console.warn(`Event ${lookupValue} found but filtered out. Reasons: ${reasons.join(', ')}`);
+
+        // Return a more descriptive error for debugging (you might want to revert this for production security)
+        return next(new AppError(`Event found but not visible: ${reasons.join(', ')}`, 404));
+      }
+
+      return next(new AppError('Event not found', 404));
     }
 
     // Increment view count with timeout (non-blocking, fire and forget)

@@ -72,6 +72,10 @@ const affiliateEventAPI = {
   },
 
   // Vendor: Claim affiliate event
+  /**
+   * Claim an affiliate event
+   * @param eventId - The MongoDB ObjectId of the event
+   */
   claimEvent: async (eventId: string) => {
     try {
       const response = await ApiService.post(`/vendor/events/${eventId}/claim`);

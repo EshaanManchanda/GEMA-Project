@@ -1,5 +1,5 @@
 import React from 'react';
-import { Monitor, Smartphone, Twitter, Facebook } from 'lucide-react';
+import { Monitor, Twitter, Facebook } from 'lucide-react';
 
 interface SEOPreviewProps {
   title: string;
@@ -29,18 +29,26 @@ const SEOPreview: React.FC<SEOPreviewProps> = ({
     return text.substring(0, maxLength - 3) + '...';
   };
 
-  const formatUrl = (url: string) => {
+  const formatUrl = (urlString: string) => {
     try {
-      const urlObj = new URL(url);
+      // Handle relative URLs (assume kidrove.com for preview)
+      const urlToParse = urlString.startsWith('http')
+        ? urlString
+        : `https://kidrove.com${urlString.startsWith('/') ? '' : '/'}${urlString}`;
+
+      const urlObj = new URL(urlToParse);
       return `${urlObj.hostname}${urlObj.pathname}`;
     } catch {
-      return url;
+      return urlString;
     }
   };
 
   const GooglePreview = () => (
     <div className="border border-gray-200 rounded-lg p-4 bg-white">
-      <div className="text-xs text-gray-600 mb-1">{formatUrl(url)}</div>
+      <div className="text-xs text-gray-600 mb-1">
+        <span className="font-medium mr-1">{siteName}</span>
+        {formatUrl(url)}
+      </div>
       <div className="text-blue-600 text-lg font-medium hover:underline cursor-pointer mb-1">
         {truncateTitle(title, 60)}
       </div>
@@ -113,33 +121,30 @@ const SEOPreview: React.FC<SEOPreviewProps> = ({
       <div className="flex space-x-1 bg-gray-100 rounded-lg p-1">
         <button
           onClick={() => setActivePreview('google')}
-          className={`flex items-center space-x-2 px-3 py-2 rounded-md text-sm font-medium transition-colors ${
-            activePreview === 'google'
-              ? 'bg-white text-gray-900 shadow-sm'
-              : 'text-gray-600 hover:text-gray-900'
-          }`}
+          className={`flex items-center space-x-2 px-3 py-2 rounded-md text-sm font-medium transition-colors ${activePreview === 'google'
+            ? 'bg-white text-gray-900 shadow-sm'
+            : 'text-gray-600 hover:text-gray-900'
+            }`}
         >
           <Monitor className="w-4 h-4" />
           <span>Google</span>
         </button>
         <button
           onClick={() => setActivePreview('facebook')}
-          className={`flex items-center space-x-2 px-3 py-2 rounded-md text-sm font-medium transition-colors ${
-            activePreview === 'facebook'
-              ? 'bg-white text-gray-900 shadow-sm'
-              : 'text-gray-600 hover:text-gray-900'
-          }`}
+          className={`flex items-center space-x-2 px-3 py-2 rounded-md text-sm font-medium transition-colors ${activePreview === 'facebook'
+            ? 'bg-white text-gray-900 shadow-sm'
+            : 'text-gray-600 hover:text-gray-900'
+            }`}
         >
           <Facebook className="w-4 h-4" />
           <span>Facebook</span>
         </button>
         <button
           onClick={() => setActivePreview('twitter')}
-          className={`flex items-center space-x-2 px-3 py-2 rounded-md text-sm font-medium transition-colors ${
-            activePreview === 'twitter'
-              ? 'bg-white text-gray-900 shadow-sm'
-              : 'text-gray-600 hover:text-gray-900'
-          }`}
+          className={`flex items-center space-x-2 px-3 py-2 rounded-md text-sm font-medium transition-colors ${activePreview === 'twitter'
+            ? 'bg-white text-gray-900 shadow-sm'
+            : 'text-gray-600 hover:text-gray-900'
+            }`}
         >
           <Twitter className="w-4 h-4" />
           <span>Twitter</span>

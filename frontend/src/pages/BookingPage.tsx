@@ -90,13 +90,13 @@ const BookingConfirmationFallback = ({ onComplete }: any) => (
 const BookingPage: React.FC = () => {
   const renderCount = useRef(0);
   renderCount.current++;
-  
+
   const { eventId } = useParams<{ eventId?: string }>();
   const { id: legacyId } = useParams<{ id?: string }>();
-  
+
   // Handle both new and legacy route params with validation
   const actualEventId = eventId || legacyId;
-  
+
   logger.debug('BookingPage render cycle', {
     renderCount: renderCount.current,
     eventId,
@@ -104,9 +104,9 @@ const BookingPage: React.FC = () => {
     actualEventId,
     pathname: window.location.pathname
   });
-  
-  // Validate event ID format (should be a valid MongoDB ObjectId)
-  const isValidEventId = actualEventId && /^[0-9a-fA-F]{24}$/.test(actualEventId);
+
+  // Validate event ID format (allow both MongoDB ObjectId and slugs)
+  const isValidEventId = actualEventId && actualEventId.length > 2;
 
   const location = useLocation();
   const navigate = useNavigate();
@@ -180,7 +180,7 @@ const BookingPage: React.FC = () => {
 
     return () => clearTimeout(loadingTimeout);
   }, [loading, actualEventId, event, error]);
-  
+
   // Initialization guard to prevent duplicate API calls in StrictMode
   const initializationRef = useRef<{ [key: string]: boolean }>({});
   const isInitialized = useRef(false);
@@ -212,7 +212,7 @@ const BookingPage: React.FC = () => {
       const sessionId = `booking-${Date.now()}`;
       initializationRef.current[initKey] = true;
       isInitialized.current = true;
-      
+
       logger.info('Initializing booking page', {
         sessionId,
         actualEventId,
@@ -238,7 +238,7 @@ const BookingPage: React.FC = () => {
           format: 'Expected 24-character hexadecimal MongoDB ObjectId'
         });
         navigate('/events');
-        toast.error('Invalid event ID format. Please select a valid event.');
+        toast.error('Invalid event identifier. Please select a valid event.');
         return;
       }
 
@@ -255,7 +255,7 @@ const BookingPage: React.FC = () => {
       try {
         setLoading(true);
         logger.info('Starting event data loading', { sessionId, actualEventId });
-        
+
         // Initialize booking flow first
         dispatch(resetBookingFlow());
         dispatch(setBookingEvent(actualEventId));
@@ -300,10 +300,10 @@ const BookingPage: React.FC = () => {
           error: err,
           stack: err instanceof Error ? err.stack : undefined
         });
-        const apiError = handleError(err, { 
-          component: 'BookingPage', 
+        const apiError = handleError(err, {
+          component: 'BookingPage',
           action: 'initializeBooking',
-          eventId: actualEventId 
+          eventId: actualEventId
         });
         setError(apiError.message);
         toast.error('Failed to load event details');
@@ -376,7 +376,7 @@ const BookingPage: React.FC = () => {
     // Ensure booking flow is properly initialized
     if (!bookingFlow.eventId) {
       logger.warn('Booking flow eventId is null, setting it now', { actualEventId });
-      dispatch(setBookingEvent(actualEventId));
+      dispatch(setBookingEvent(event._id));
     }
 
     // Get schedule information from bookingFlow or route state
@@ -477,7 +477,7 @@ const BookingPage: React.FC = () => {
 
       // Initiate booking with test payment
       const initiateResponse = await bookingAPI.initiateBooking({
-        eventId: actualEventId,
+        eventId: event._id,
         dateScheduleId: scheduleId,
         seats: bookingFlow.participants.length || 1,
         paymentMethod: 'test' // Backend will handle test payment
@@ -536,11 +536,11 @@ const BookingPage: React.FC = () => {
       toast.error(errorMessage);
     }
   };
-    
+
   // Helper function to handle booking confirmation after successful payment
   const handleBookingConfirmation = async (initiateResponse: any) => {
     toast.loading('Finalizing your booking...');
-    
+
     try {
       const confirmResponse = await bookingAPI.confirmBooking({
         paymentIntentId: initiateResponse.paymentIntentId,
@@ -571,7 +571,7 @@ const BookingPage: React.FC = () => {
         });
         navigate('/bookings');
       }, 2000);
-      
+
       return confirmResponse;
     } catch (error: any) {
       logger.error('Error confirming booking after successful payment', error);
@@ -586,8 +586,8 @@ const BookingPage: React.FC = () => {
       case 'details':
         return !!bookingFlow.eventId;
       case 'participants':
-        return bookingFlow.participants.length > 0 && 
-               bookingFlow.participants.every(p => p.name && p.email);
+        return bookingFlow.participants.length > 0 &&
+          bookingFlow.participants.every(p => p.name && p.email);
       case 'payment':
         return !!bookingFlow.paymentMethod && bookingFlow.agreedToTerms;
       case 'confirmation':
@@ -635,8 +635,8 @@ const BookingPage: React.FC = () => {
   // Render step content with error boundaries and fallbacks
   const renderStepContent = () => {
     if (!event) {
-      logger.warn('Cannot render step content - no event data', { 
-        currentStep, 
+      logger.warn('Cannot render step content - no event data', {
+        currentStep,
         actualEventId,
         loading,
         error,
@@ -659,7 +659,7 @@ const BookingPage: React.FC = () => {
           return (
             <ComponentErrorBoundary componentName="BookingDetails">
               {BookingDetails ? (
-                <BookingDetails 
+                <BookingDetails
                   event={event}
                   initialData={routeState}
                   onNext={handleNextStep}
@@ -673,13 +673,13 @@ const BookingPage: React.FC = () => {
           return (
             <ComponentErrorBoundary componentName="ParticipantForm">
               {ParticipantForm ? (
-                <ParticipantForm 
+                <ParticipantForm
                   event={event}
                   onNext={handleNextStep}
                   onPrev={handlePrevStep}
                 />
               ) : (
-                <ParticipantFormFallback 
+                <ParticipantFormFallback
                   onNext={handleNextStep}
                   onPrev={handlePrevStep}
                 />
@@ -697,7 +697,7 @@ const BookingPage: React.FC = () => {
                   schedulePrice={calculatePricing().pricePerTicket}
                 />
               ) : (
-                <PaymentFormFallback 
+                <PaymentFormFallback
                   onNext={handleCompleteBooking}
                   onPrev={handlePrevStep}
                 />
@@ -708,12 +708,12 @@ const BookingPage: React.FC = () => {
           return (
             <ComponentErrorBoundary componentName="BookingConfirmation">
               {BookingConfirmation ? (
-                <BookingConfirmation 
+                <BookingConfirmation
                   event={event}
                   onComplete={() => navigate('/bookings')}
                 />
               ) : (
-                <BookingConfirmationFallback 
+                <BookingConfirmationFallback
                   onComplete={() => navigate('/bookings')}
                 />
               )}
@@ -914,7 +914,7 @@ const BookingPage: React.FC = () => {
     participantCount: bookingFlow?.participants?.length || 0,
     isInitialized: isInitialized.current
   });
-  
+
   // At this point we should have event data and no loading state
   if (!event) {
     logger.error('Critical: Reached main render without event data', {
@@ -936,143 +936,143 @@ const BookingPage: React.FC = () => {
       />
       <ComponentErrorBoundary componentName="BookingPage">
         <div className="min-h-screen bg-gray-50">
-        {/* Header */}
-        <div className="bg-white border-b border-gray-200">
-          <div className="max-w-4xl mx-auto px-4 py-6">
-            <div className="flex items-center justify-between">
-              <div>
-                <button
-                  onClick={() => navigate(-1)}
-                  className="inline-flex items-center text-gray-600 hover:text-gray-900 mb-2"
-                >
-                  <ChevronLeft className="w-4 h-4 mr-1" />
-                  Back to Event
-                </button>
-                <h1 className="text-2xl font-bold text-gray-900">Complete Your Booking</h1>
-                <p className="text-gray-600">{event.title}</p>
-                <p className="text-xs text-gray-400">Render #{renderCount.current} | Step: {currentStep}</p>
-              </div>
-              <div className="hidden sm:block">
-                <div className="flex items-center text-sm text-gray-500">
-                  <Clock className="w-4 h-4 mr-1" />
-                  Session expires in 15 minutes
+          {/* Header */}
+          <div className="bg-white border-b border-gray-200">
+            <div className="max-w-4xl mx-auto px-4 py-6">
+              <div className="flex items-center justify-between">
+                <div>
+                  <button
+                    onClick={() => navigate(-1)}
+                    className="inline-flex items-center text-gray-600 hover:text-gray-900 mb-2"
+                  >
+                    <ChevronLeft className="w-4 h-4 mr-1" />
+                    Back to Event
+                  </button>
+                  <h1 className="text-2xl font-bold text-gray-900">Complete Your Booking</h1>
+                  <p className="text-gray-600">{event.title}</p>
+                  <p className="text-xs text-gray-400">Render #{renderCount.current} | Step: {currentStep}</p>
+                </div>
+                <div className="hidden sm:block">
+                  <div className="flex items-center text-sm text-gray-500">
+                    <Clock className="w-4 h-4 mr-1" />
+                    Session expires in 15 minutes
+                  </div>
                 </div>
               </div>
             </div>
           </div>
-        </div>
 
-        {/* Progress Steps */}
-        <div className="bg-white border-b border-gray-100">
-          <div className="max-w-4xl mx-auto px-4 py-4">
-            <ComponentErrorBoundary componentName="BookingSteps">
-              {BookingSteps ? (
-                <BookingSteps 
-                  currentStep={currentStep}
-                  onStepClick={handleStepClick}
-                  isStepComplete={isStepComplete}
-                />
-              ) : (
-                <BookingStepsFallback />
-              )}
-            </ComponentErrorBoundary>
-          </div>
-        </div>
-
-        {/* Main Content */}
-        <div className="max-w-4xl mx-auto px-4 py-8">
-          <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
-            {/* Booking Form */}
-            <div className="lg:col-span-2">
-              {renderStepContent()}
+          {/* Progress Steps */}
+          <div className="bg-white border-b border-gray-100">
+            <div className="max-w-4xl mx-auto px-4 py-4">
+              <ComponentErrorBoundary componentName="BookingSteps">
+                {BookingSteps ? (
+                  <BookingSteps
+                    currentStep={currentStep}
+                    onStepClick={handleStepClick}
+                    isStepComplete={isStepComplete}
+                  />
+                ) : (
+                  <BookingStepsFallback />
+                )}
+              </ComponentErrorBoundary>
             </div>
+          </div>
 
-            {/* Order Summary Sidebar */}
-            <div className="lg:col-span-1">
-              <Card className="sticky top-8">
-                <CardHeader>
-                  <CardTitle className="flex items-center">
-                    <Users className="w-5 h-5 mr-2" />
-                    Order Summary
-                  </CardTitle>
-                </CardHeader>
-                <CardContent className="space-y-4">
-                  {/* Event Info */}
-                  <div className="flex items-start space-x-3">
-                    <img 
-                      src={event.images?.[0] || '/placeholder-event.jpg'} 
-                      alt={event.title}
-                      className="w-16 h-16 object-cover rounded-lg"
-                    />
-                    <div className="flex-1">
-                      <h3 className="font-semibold text-gray-900">{event.title}</h3>
-                      <p className="text-sm text-gray-600">{event.category}</p>
+          {/* Main Content */}
+          <div className="max-w-4xl mx-auto px-4 py-8">
+            <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
+              {/* Booking Form */}
+              <div className="lg:col-span-2">
+                {renderStepContent()}
+              </div>
+
+              {/* Order Summary Sidebar */}
+              <div className="lg:col-span-1">
+                <Card className="sticky top-8">
+                  <CardHeader>
+                    <CardTitle className="flex items-center">
+                      <Users className="w-5 h-5 mr-2" />
+                      Order Summary
+                    </CardTitle>
+                  </CardHeader>
+                  <CardContent className="space-y-4">
+                    {/* Event Info */}
+                    <div className="flex items-start space-x-3">
+                      <img
+                        src={event.images?.[0] || '/placeholder-event.jpg'}
+                        alt={event.title}
+                        className="w-16 h-16 object-cover rounded-lg"
+                      />
+                      <div className="flex-1">
+                        <h3 className="font-semibold text-gray-900">{event.title}</h3>
+                        <p className="text-sm text-gray-600">{event.category}</p>
+                      </div>
                     </div>
-                  </div>
 
-                  <div className="border-t pt-4 space-y-2">
-                    {(() => {
-                      const pricing = calculatePricing();
-                      return (
-                        <>
-                          <div className="flex justify-between text-sm">
-                            <span>Participants:</span>
-                            <span>{pricing.participantCount}</span>
-                          </div>
-                          <div className="flex justify-between text-sm">
-                            <span>Price per ticket:</span>
-                            <span>{event.currency} {pricing.pricePerTicket}</span>
-                          </div>
-                          <div className="flex justify-between text-sm">
-                            <span>Subtotal:</span>
-                            <span>{event.currency} {pricing.subtotal.toFixed(2)}</span>
-                          </div>
-                          {bookingFlow.couponCode && pricing.discount > 0 && (
-                            <div className="flex justify-between text-sm text-green-600">
-                              <span>Discount ({bookingFlow.couponCode} - {pricing.discountPercentage}%):</span>
-                              <span>-{event.currency} {pricing.discount.toFixed(2)}</span>
-                            </div>
-                          )}
-                          {pricing.hasServiceFee && pricing.serviceFee > 0 && (
+                    <div className="border-t pt-4 space-y-2">
+                      {(() => {
+                        const pricing = calculatePricing();
+                        return (
+                          <>
                             <div className="flex justify-between text-sm">
-                              <span>Service Fee (5%):</span>
-                              <span>{event.currency} {pricing.serviceFee.toFixed(2)}</span>
+                              <span>Participants:</span>
+                              <span>{pricing.participantCount}</span>
                             </div>
-                          )}
-                          <div className="flex justify-between text-sm">
-                            <span>Tax (5%):</span>
-                            <span>{event.currency} {pricing.tax.toFixed(2)}</span>
-                          </div>
-                          <div className="border-t pt-2 flex justify-between font-semibold">
-                            <span>Total:</span>
-                            <span>{event.currency} {pricing.total.toFixed(2)}</span>
-                          </div>
-                        </>
-                      );
-                    })()}
-                  </div>
-
-                  {/* Security Badge */}
-                  <div className="bg-green-50 border border-green-200 rounded-lg p-3">
-                    <div className="flex items-center text-green-800">
-                      <CheckCircle className="w-4 h-4 mr-2" />
-                      <span className="text-sm font-medium">Secure Payment</span>
+                            <div className="flex justify-between text-sm">
+                              <span>Price per ticket:</span>
+                              <span>{event.currency} {pricing.pricePerTicket}</span>
+                            </div>
+                            <div className="flex justify-between text-sm">
+                              <span>Subtotal:</span>
+                              <span>{event.currency} {pricing.subtotal.toFixed(2)}</span>
+                            </div>
+                            {bookingFlow.couponCode && pricing.discount > 0 && (
+                              <div className="flex justify-between text-sm text-green-600">
+                                <span>Discount ({bookingFlow.couponCode} - {pricing.discountPercentage}%):</span>
+                                <span>-{event.currency} {pricing.discount.toFixed(2)}</span>
+                              </div>
+                            )}
+                            {pricing.hasServiceFee && pricing.serviceFee > 0 && (
+                              <div className="flex justify-between text-sm">
+                                <span>Service Fee (5%):</span>
+                                <span>{event.currency} {pricing.serviceFee.toFixed(2)}</span>
+                              </div>
+                            )}
+                            <div className="flex justify-between text-sm">
+                              <span>Tax (5%):</span>
+                              <span>{event.currency} {pricing.tax.toFixed(2)}</span>
+                            </div>
+                            <div className="border-t pt-2 flex justify-between font-semibold">
+                              <span>Total:</span>
+                              <span>{event.currency} {pricing.total.toFixed(2)}</span>
+                            </div>
+                          </>
+                        );
+                      })()}
                     </div>
-                    <p className="text-xs text-green-600 mt-1">
-                      Your payment information is protected by 256-bit SSL encryption
-                    </p>
-                  </div>
 
-                  {/* Payment Methods */}
-                  <div className="flex items-center justify-center space-x-2 pt-2">
-                    <CreditCard className="w-5 h-5 text-gray-400" />
-                    <span className="text-xs text-gray-500">Visa, Mastercard, PayPal accepted</span>
-                  </div>
-                </CardContent>
-              </Card>
+                    {/* Security Badge */}
+                    <div className="bg-green-50 border border-green-200 rounded-lg p-3">
+                      <div className="flex items-center text-green-800">
+                        <CheckCircle className="w-4 h-4 mr-2" />
+                        <span className="text-sm font-medium">Secure Payment</span>
+                      </div>
+                      <p className="text-xs text-green-600 mt-1">
+                        Your payment information is protected by 256-bit SSL encryption
+                      </p>
+                    </div>
+
+                    {/* Payment Methods */}
+                    <div className="flex items-center justify-center space-x-2 pt-2">
+                      <CreditCard className="w-5 h-5 text-gray-400" />
+                      <span className="text-xs text-gray-500">Visa, Mastercard, PayPal accepted</span>
+                    </div>
+                  </CardContent>
+                </Card>
+              </div>
             </div>
           </div>
-        </div>
         </div>
       </ComponentErrorBoundary>
     </>
