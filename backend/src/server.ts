@@ -7,9 +7,10 @@ import cookieParser from 'cookie-parser';
 import rateLimit from 'express-rate-limit';
 import mongoSanitize from 'express-mongo-sanitize';
 import hpp from 'hpp';
-import { config, connectDB, initializeFirebase, logger } from './config/index';
+import { config, connectDB, initializeFirebase, logger, closeDBConnection } from './config/index';
 import { errorHandler, notFound, timeoutMiddleware } from './middleware/index';
 import { performanceMonitor, startPerformanceMonitoring, logPerformanceSummary } from './middleware/performance';
+import { setQueryTimeout } from './middleware/query-timeout';
 import routes from './routes/index';
 import healthRoutes from './routes/health.routes';
 import currencyRoutes from './routes/currency.routes';
@@ -20,9 +21,10 @@ import { ensureAffiliateVendor } from './scripts/seedAffiliateVendor';
 import { scheduleEventLifecycleJobs, stopEventLifecycleJobs } from './utils/eventLifecycle';
 import { startCollectionReconciliationCron } from './utils/cron';
 import { devLog } from './utils/devLogger';
-import { redisClient } from './config/redis';
+import { redisClient, redisPool } from './config/redis';
 import { qrQueue, emailQueue, ticketQueue, analyticsQueue, notificationsQueue, bullMQClient } from './config/queue';
 import { getTimeoutForFileSize } from './utils/uploadHelpers';
+import { terminateWorkerPool } from './utils/json-worker.util';
 
 devLog.log('Server starting...');
 
@@ -52,9 +54,9 @@ app.use(cors({
       ...(process.env.ADDITIONAL_ALLOWED_ORIGINS?.split(',').map(url => url.trim()) || [])
     ].filter(Boolean);
 
-    // Debug logging for CORS issues
-    if (process.env.NODE_ENV === 'production') {
-      console.log('🔍 CORS Check - Origin:', origin, '| Allowed:', allowedOrigins);
+    // Debug logging for CORS issues (only if DEBUG_CORS is enabled)
+    if (process.env.DEBUG_CORS === 'true') {
+      logger.debug('CORS Check - Origin:', origin, '| Allowed:', allowedOrigins);
     }
 
     // In development, allow localhost origins
@@ -88,7 +90,7 @@ app.use(cors({
       devLog.tagged('CORS', 'Origin allowed:', origin);
       callback(null, true);
     } else {
-      console.log('[CORS] Origin rejected:', origin);
+      logger.warn('[CORS] Origin rejected:', origin);
       callback(new Error('Not allowed by CORS'));
     }
   },
@@ -173,6 +175,9 @@ app.use(morgan(config.nodeEnv === 'development' ? 'dev' : 'combined'));
 // Performance monitoring middleware
 app.use(performanceMonitor);
 
+// Query timeout middleware (set maxTimeMS for MongoDB queries)
+app.use(setQueryTimeout);
+
 // Timeout middleware (prevent indefinite hangs)
 // Apply upload-specific timeout for file upload routes
 app.use((req: Request, res: Response, next: NextFunction) => {
@@ -185,7 +190,9 @@ app.use((req: Request, res: Response, next: NextFunction) => {
       ? getTimeoutForFileSize(contentLength) / 1000 // Convert ms to seconds
       : 120; // Default 120s if size unknown
 
-    console.log(`[Upload Timeout] Route: ${req.path}, Size: ${contentLength} bytes, Timeout: ${uploadTimeout}s`);
+    if (process.env.DEBUG_UPLOAD === 'true') {
+      logger.debug(`[Upload Timeout] Route: ${req.path}, Size: ${contentLength} bytes, Timeout: ${uploadTimeout}s`);
+    }
     return timeoutMiddleware(uploadTimeout)(req, res, next);
   } else {
     // Standard routes: 90s timeout (increased from 45s to allow most requests to complete)
@@ -372,11 +379,31 @@ const gracefulShutdown = async (signal: string) => {
       logger.info('BullMQ Redis connection closed');
     }
 
-    // 6. Close main Redis connection (last step!)
+    // 6. Close Redis connections
+    // Close pool first if enabled
+    if (redisPool) {
+      logger.info('Closing Redis connection pool...');
+      await redisPool.close();
+      logger.info('Redis connection pool closed');
+    }
+
+    // Close main client
     if (redisClient) {
       logger.info('Closing main Redis connection...');
       await redisClient.quit();
       logger.info('Main Redis connection closed');
+    }
+
+    // 6.5. Terminate JSON worker pool
+    logger.info('Terminating JSON worker pool...');
+    await terminateWorkerPool();
+    logger.info('JSON worker pool terminated');
+
+    // 7. Close MongoDB connection (last step!)
+    try {
+      await closeDBConnection();
+    } catch (error) {
+      logger.error('Error closing MongoDB:', error);
     }
 
     logger.info('Graceful shutdown complete');

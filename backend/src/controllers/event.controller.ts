@@ -56,9 +56,24 @@ export const getEvents = async (req: Request, res: Response, next: NextFunction)
       sortOrder = 'desc',
     } = req.query;
 
-    const pageNum = parseInt(page as string);
-    const limitNum = parseInt(limit as string);
+    // Pagination validation constants
+    const MAX_LIMIT = 100;
+    const DEFAULT_LIMIT = 12;
+    const MAX_PAGE = 1000;
+    const MAX_SKIP = 10000; // Prevent deep pagination abuse
+
+    // Validate and sanitize pagination parameters
+    const pageNum = Math.max(1, Math.min(parseInt(page as string) || 1, MAX_PAGE));
+    const limitNum = Math.max(1, Math.min(parseInt(limit as string) || DEFAULT_LIMIT, MAX_LIMIT));
     const skip = (pageNum - 1) * limitNum;
+
+    // Protection against deep pagination (MongoDB performance degrades)
+    if (skip > MAX_SKIP) {
+      return next(new AppError(
+        'Page number too high. Please use more specific filters or contact support for data export options.',
+        400
+      ));
+    }
 
     // Generate cache key based on query parameters
     const cacheKey = `events:list:${JSON.stringify({

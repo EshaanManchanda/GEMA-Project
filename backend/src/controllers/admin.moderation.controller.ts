@@ -156,9 +156,9 @@ export const getFlaggedContent = async (req: Request, res: Response, next: NextF
       default:
         // Get all flagged content
         const [flaggedReviews, flaggedEvents, flaggedUsers] = await Promise.all([
-          Review.find({ /* isFlagged: true */ }).limit(5).populate('userId eventId'),
-          Event.find({ status: 'rejected', isDeleted: false }).limit(5).populate('vendorId'),
-          User.find({ status: 'suspended' }).limit(5).select('-passwordHash'),
+          Review.find({ /* isFlagged: true */ }).limit(5).populate('userId eventId').lean(),
+          Event.find({ status: 'rejected', isDeleted: false }).limit(5).populate('vendorId').lean(),
+          User.find({ status: 'suspended' }).limit(5).select('-passwordHash').lean(),
         ]);
 
         res.status(200).json({

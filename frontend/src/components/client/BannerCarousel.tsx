@@ -106,6 +106,7 @@ const BannerCarousel: React.FC<BannerCarouselProps> = ({ banners }) => {
               alt={banner.title}
               className="w-full h-full object-cover"
               loading={index === 0 ? 'eager' : 'lazy'}
+              fetchPriority={index === 0 ? 'high' : 'auto'}
             />
 
             {/* Overlay with gradient for text readability */}

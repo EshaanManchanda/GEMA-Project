@@ -109,7 +109,8 @@ const mediaAssetSchema = new Schema<IMediaAsset>(
     size: {
       type: Number,
       required: [true, 'File size is required'],
-      min: [0, 'File size cannot be negative']
+      min: [0, 'File size cannot be negative'],
+      max: [52428800, 'File size cannot exceed 50MB'] // 50MB in bytes
     },
     width: {
       type: Number,
@@ -211,7 +212,7 @@ mediaAssetSchema.index({
 
 // Virtual field for direct access URL (optimized for Cloudinary)
 // Returns Cloudinary CDN URL directly for Cloudinary assets, bypassing backend proxy
-mediaAssetSchema.virtual('directUrl').get(function(this: IMediaAsset) {
+mediaAssetSchema.virtual('directUrl').get(function (this: IMediaAsset) {
   // For Cloudinary assets, return direct CDN URL for better performance
   if (this.provider === 'cloudinary' && this.publicId) {
     const cloudName = process.env.CLOUDINARY_CLOUD_NAME;
@@ -227,22 +228,22 @@ mediaAssetSchema.virtual('directUrl').get(function(this: IMediaAsset) {
 });
 
 // Static method to find unused media
-mediaAssetSchema.statics.findUnused = function() {
+mediaAssetSchema.statics.findUnused = function () {
   return this.find({ usageCount: 0 }).sort({ createdAt: -1 });
 };
 
 // Static method to find by category
-mediaAssetSchema.statics.findByCategory = function(category: string) {
+mediaAssetSchema.statics.findByCategory = function (category: string) {
   return this.find({ category }).sort({ createdAt: -1 });
 };
 
 // Static method to find by folder
-mediaAssetSchema.statics.findByFolder = function(folder: string) {
+mediaAssetSchema.statics.findByFolder = function (folder: string) {
   return this.find({ folder }).sort({ createdAt: -1 });
 };
 
 // Instance method to increment usage
-mediaAssetSchema.methods.incrementUsage = async function(
+mediaAssetSchema.methods.incrementUsage = async function (
   model: 'Blog' | 'Event' | 'User',
   field: string,
   documentId: mongoose.Types.ObjectId
@@ -253,7 +254,7 @@ mediaAssetSchema.methods.incrementUsage = async function(
 };
 
 // Instance method to decrement usage
-mediaAssetSchema.methods.decrementUsage = async function(documentId: mongoose.Types.ObjectId) {
+mediaAssetSchema.methods.decrementUsage = async function (documentId: mongoose.Types.ObjectId) {
   this.usedBy = this.usedBy.filter(
     (usage: any) => usage.documentId.toString() !== documentId.toString()
   );

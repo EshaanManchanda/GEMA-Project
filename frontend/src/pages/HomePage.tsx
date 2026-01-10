@@ -29,9 +29,37 @@ import CitiesSection from '@/components/sections/CitiesSection';
 import FeaturedInstructors from '@/components/sections/FeaturedInstructors';
 import { HomeSEO } from '@/components/common/SEO';
 import { selectSocialSettings } from '@/store/slices/settingsSlice';
-import { Event } from '../types/event';
-import { Review } from '../types/review';
+import type { Event as UIEvent } from '@/components/client/CollectionSection.types';
+import type { Event as ApiEvent } from '../types/event';
 import { getPlaceholderUrl, handleImageError } from '../utils/placeholderImage';
+
+// Helper to map API Event to UI Event
+const mapToUIEvent = (event: ApiEvent): UIEvent => ({
+  id: event._id,
+  title: event.title,
+  description: event.description,
+  image: event.images?.[0], // Map first image
+  images: event.images,
+  price: event.price,
+  currency: event.currency,
+  category: event.category,
+  categories: event.tags, // approximate mapping
+  isFeatured: event.isFeatured,
+  viewsCount: event.viewsCount,
+  // dateSchedule mapping: UI expects startDate/endDate, API has startDateTime/endDateTime
+  dateSchedule: event.dateSchedule?.map(ds => ({
+    startDate: ds.startDateTime,
+    endDate: ds.endDateTime
+  })),
+  date: event.dateSchedule?.[0]?.startDateTime, // fallback date
+  location: event.location,
+  vendorId: event.vendorId ? { businessName: `${event.vendorId.firstName} ${event.vendorId.lastName}` } : undefined,
+  // Add missing fields or defaults
+  ageGroup: event.ageRange ? `${event.ageRange[0]}-${event.ageRange[1]}` : undefined,
+  // These fields might be missing in API type but useful if they exist at runtime or need defaults
+  rating: 0, // Default if missing
+  reviewsCount: 0, // Default if missing
+});
 
 // Mock data for when backend is unavailable
 const mockEvents = [
@@ -96,9 +124,9 @@ const getCategoryIcon = (categoryName: string): string => {
   return iconMap[categoryName] || '📅';
 };
 
-interface FeaturedEvent extends Event {
+interface FeaturedEvent extends UIEvent {
   buttonLabel: string;
-  image: string; // For backward compatibility with existing image display logic
+  image: string; // Ensure at least string is returned
 }
 
 // Autoplay plugin for Keen-Slider
@@ -170,7 +198,6 @@ const Banner = ({ categories }: { categories: any[] }) => {
           50% { background-position: 100% 50%; }
         }
       `}</style>
-      {/* Enhanced decorative elements */}
       <div className="absolute inset-0 overflow-hidden pointer-events-none">
         <ScaleIn delay={0.3}>
           <div className="absolute top-0 right-0 w-64 h-64 rounded-full opacity-10"
@@ -217,14 +244,12 @@ const Banner = ({ categories }: { categories: any[] }) => {
       `}</style>
 
       <StaggerContainer staggerDelay={0.1} className="max-w-6xl mx-auto px-4 sm:px-6 py-16 sm:py-24 text-center relative z-10">
-        {/* Badge */}
         <SlideIn direction="down" delay={0.1}>
           <div className="inline-block mb-4 sm:mb-6 px-3 sm:px-4 py-2 rounded-full bg-white/20 backdrop-blur-sm">
             <span className="font-semibold text-white text-sm sm:text-base">Discover Fun Activities</span>
           </div>
         </SlideIn>
 
-        {/* Heading */}
         <FadeIn delay={0.2}>
           <h1 className="text-3xl sm:text-4xl md:text-5xl lg:text-6xl font-bold leading-tight mb-4 sm:mb-6 px-2">
             Find the best places to <br className="hidden sm:block" />
@@ -232,14 +257,12 @@ const Banner = ({ categories }: { categories: any[] }) => {
           </h1>
         </FadeIn>
 
-        {/* Subheading */}
         <FadeIn delay={0.3}>
           <p className="mt-4 text-white font-medium text-lg sm:text-xl max-w-2xl mx-auto">
             Our pick of the best kids activities in Dubai, Abu Dhabi and the rest of the UAE
           </p>
         </FadeIn>
 
-        {/* Search Box */}
         <SlideIn direction="up" delay={0.4}>
           <form onSubmit={handleSearch} className="mt-10 flex justify-center">
             <div className="flex w-full max-w-2xl rounded-2xl overflow-hidden bg-white/95 backdrop-blur-sm shadow-2xl transition-all duration-500 hover:shadow-3xl hover:bg-white group">
@@ -266,7 +289,6 @@ const Banner = ({ categories }: { categories: any[] }) => {
           </form>
         </SlideIn>
 
-        {/* Popular searches */}
         <FadeIn delay={0.5}>
           <div className="mt-4 flex flex-wrap justify-center gap-2 text-sm">
             <span key="popular-label" className="text-white/70">Popular:</span>
@@ -286,6 +308,7 @@ const Banner = ({ categories }: { categories: any[] }) => {
     </section>
   );
 };
+
 const FeaturedEventsCarousel: React.FC<{
   featuredEvents: FeaturedEvent[];
 }> = ({ featuredEvents }) => {
@@ -328,12 +351,8 @@ const FeaturedEventsCarousel: React.FC<{
     <div className="px-6 py-16 max-w-screen-xl mx-auto">
       <div className="flex flex-col md:flex-row justify-between items-start md:items-center">
         <div>
-          {/* <div className="inline-block mb-4 px-4 py-2 rounded-full" style={{ backgroundColor: 'rgba(0, 142, 199, 0.1)' }}>
-            <span className="font-semibold text-gray-900">Featured</span>
-          </div> */}
           <h2 className="text-3xl font-bold mb-2 text-gray-900">Our Top Recommendations</h2>
           <p className="text-gray-700">Only the highest-rated activities in Dubai, Abu Dhabi, and the UAE make our list</p>
-
         </div>
         <AnimatedButton
           className="mt-4 md:mt-0 flex items-center gap-2 font-medium text-gray-900 hover:underline focus:outline-none focus:ring-2 focus:ring-blue-500 rounded px-2 py-1"
@@ -486,7 +505,6 @@ const StatsSection = ({ stats }: { stats: any }) => {
   );
 };
 
-
 const HomePage: React.FC = () => {
   const navigate = useNavigate();
   const socialSettings = useSelector(selectSocialSettings);
@@ -506,13 +524,17 @@ const HomePage: React.FC = () => {
 
   // Single homepage query replaces 6 separate queries (400-600ms savings!)
   const { data: homepageData, isLoading: homepageLoading, error: homepageError, refetch: refetchHomepage } = useHomepageQuery();
-  console.log("homepagedata:", homepageData);
 
   // Only block on homepage query (critical data)
   const isLoading = homepageLoading;
 
   // Extract data from combined response with fallbacks
-  const events = homepageData?.events || (homepageError ? mockEvents : []);
+  // Cast to ApiEvent[] because useHomepageQuery returns API shape
+  const apiEvents = (homepageData?.events || (homepageError ? mockEvents : [])) as unknown as ApiEvent[];
+
+  // Transform API events to UI events
+  const events: UIEvent[] = apiEvents.map(mapToUIEvent);
+
   const featuredEventsRaw = homepageData?.featuredEvents || [];
   const categories = homepageData?.categories || (homepageError ? mockCategories : []);
   const featuredBlogs = homepageData?.featuredBlogs || [];
@@ -522,41 +544,12 @@ const HomePage: React.FC = () => {
   const seoContentData = { seoContent: homepageData?.seoContent || null };
   const collectionsData = homepageData?.collections || [];
 
-
-  // Debug logs for HomePage component (gated)
-  if (import.meta.env.VITE_DEBUG === 'true') {
-    console.log('🎨 [HOMEPAGE COMPONENT] Rendering with data:');
-    console.log('   - Loading:', isLoading);
-    console.log('   - Error:', homepageError ? homepageError.message : 'none');
-    console.log('   - Events:', events.length, events.length === mockEvents.length ? '(MOCK DATA)' : '(API DATA)');
-    console.log('   - Featured Events:', featuredEventsRaw.length);
-    console.log('   - Categories:', categories.length, categories.length === mockCategories.length ? '(MOCK DATA)' : '(API DATA)');
-    console.log('   - Featured Blogs:', featuredBlogs.length);
-    console.log('   - Banners:', bannersData.banners.length);
-    console.log('   - Stats:', statsData ? 'available' : 'using fallback');
-  }
-
+  // Transform featured events using the same mapper for consistency, but cast to FeaturedEvent
   const featuredEvents: FeaturedEvent[] = featuredEventsRaw.slice(0, 6).map((event: any) => ({
-    ...event,
-    id: event._id,
+    ...mapToUIEvent(event), // Use helper first to get standard UI fields properly mapped
     buttonLabel: 'View Details',
-    image: event.images?.[0] || getPlaceholderUrl('eventCard', event.title),
-    date: event.dateSchedule?.[0]?.startDate || new Date().toISOString(),
-    location: event.location || { city: 'Dubai', address: '', coordinates: { lat: 0, lng: 0 } },
-    reviewsCount: event.reviewCount || 0
+    image: event.images?.[0] || getPlaceholderUrl('eventCard', event.title || ''),
   }));
-
-  // Debug featured events transformation (gated)
-  if (import.meta.env.VITE_DEBUG === 'true' && featuredEvents.length > 0) {
-    console.log('🎯 [FEATURED EVENTS] Transformed data:');
-    console.log('   - First event:', {
-      title: featuredEvents[0].title,
-      hasImage: !!featuredEvents[0].image,
-      rating: featuredEvents[0].rating,
-      reviewsCount: featuredEvents[0].reviewsCount,
-      location: featuredEvents[0].location
-    });
-  }
 
   const stats = statsData || {
     totalEvents: Number(import.meta.env.VITE_STATS_TOTAL_EVENTS) || 2500,
@@ -572,21 +565,12 @@ const HomePage: React.FC = () => {
   const bestPriceEvents = [...events].sort((a, b) => (a.price || 0) - (b.price || 0)).slice(0, 12);
   const trendingEvents = [...events].sort((a, b) => (b.viewsCount || 0) - (a.viewsCount || 0)).slice(0, 12);
   const newEvents = [...events].sort((a, b) => {
+    // events already have mapped 'date' (startDate) or 'dateSchedule' with 'startDate'
     const dateA = new Date(a.dateSchedule?.[0]?.startDate || a.date || 0);
     const dateB = new Date(b.dateSchedule?.[0]?.startDate || b.date || 0);
     return dateB.getTime() - dateA.getTime();
   }).slice(0, 8);
   const quickPicksEvents = events.slice(0, 5);
-
-  // Debug event collections (gated)
-  if (import.meta.env.VITE_DEBUG === 'true') {
-    console.log('📊 [EVENT COLLECTIONS] Prepared data:');
-    console.log('   - Handpicked:', handpickedEvents.length);
-    console.log('   - Best Price:', bestPriceEvents.length);
-    console.log('   - Trending:', trendingEvents.length);
-    console.log('   - New Events:', newEvents.length);
-    console.log('   - Quick Picks:', quickPicksEvents.length);
-  }
 
   const usingMockData = !!homepageError;
   const error = homepageError
@@ -624,7 +608,7 @@ const HomePage: React.FC = () => {
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
           {[1, 2, 3].map(i => (
             <div key={i} className="bg-white rounded-xl shadow-md overflow-hidden">
-              <div className="w-full h-64 bg-gray-200"></div>
+              <div className="w-full h-80 bg-gray-200"></div>
               <div className="p-6 space-y-3">
                 <div className="w-3/4 h-6 bg-gray-200 rounded"></div>
                 <div className="w-full h-4 bg-gray-200 rounded"></div>
@@ -679,53 +663,16 @@ const HomePage: React.FC = () => {
         stats={statsData}
       />
       <div className="w-full bg-gray-50">
-        {/* {usingMockData && (
-          <SlideIn direction="right">
-            <div className="max-w-screen-xl mx-auto px-6 py-3 bg-white/90 backdrop-blur-sm border-l-4 rounded-r-lg shadow-lg mt-2" 
-              style={{ borderColor: 'var(--accent-color)' }} 
-              role="alert"
-            >
-              <div className="flex items-center justify-between">
-                <div className="flex items-center space-x-3">
-                  <div className="w-10 h-10 rounded-full flex items-center justify-center" style={{ backgroundColor: 'rgba(255, 165, 0, 0.1)' }}>
-                    <FaWifi className="text-orange-500" size={16} />
-                  </div>
-                  <div className="py-1">
-                    <p className="font-semibold text-orange-600">
-                      {error?.includes('waking up') || error?.includes('starting up') ? 'Backend Starting' : 'Connection Issue'}
-                    </p>
-                    <p className="text-sm text-gray-700">{error}</p>
-                  </div>
-                </div>
-                <AnimatedButton
-                  onClick={handleRetry}
-                  className="flex items-center space-x-2 px-4 py-2 bg-orange-100 hover:bg-orange-200 text-orange-700 rounded-lg transition-all duration-300 font-medium focus:outline-none focus:ring-2 focus:ring-orange-500"
-                  aria-label="Retry connection to fetch latest data"
-                >
-                  <FaRedo size={14} aria-hidden="true" />
-                  <span>Retry</span>
-                </AnimatedButton>
-              </div>
-            </div>
-          </SlideIn>
-        )} */}
-        {/* <Banner categories={categories}/> */}
-
-        {/* Homepage Banner Carousel */}
+        {/* Homepage Banner Carousel - No ScrollReveal for LCP */}
         {bannersData?.banners && bannersData.banners.length > 0 && (
-          <ScrollReveal>
-            <BannerCarousel banners={bannersData.banners} />
-          </ScrollReveal>
+          <BannerCarousel banners={bannersData.banners} />
         )}
-        <ScrollReveal>
-          {/* Collections Pills */}
-          <CollectionPills collections={collectionsData} />
-          <FeaturedEventsCarousel
-            featuredEvents={featuredEvents}
-          // wishlistIds={wishlistIds}
-          // onWishlistToggle={handleWishlistToggle}
-          />
-        </ScrollReveal>
+
+        {/* Collections Pills */}
+        <CollectionPills collections={collectionsData} />
+        <FeaturedEventsCarousel
+          featuredEvents={featuredEvents}
+        />
 
         {/* Carousel Layout - Best Price Tickets */}
         <CollectionSection
@@ -765,25 +712,23 @@ const HomePage: React.FC = () => {
         />
 
         {/* Grid Layout - Handpicked Experiences */}
-        <ScrollReveal>
-          <CollectionSection
-            badge="Handpicked"
-            title="Handpicked Experiences"
-            subtitle="Curated by our team of experts - only the best activities for your family"
-            events={handpickedEvents}
-            layout="grid"
-            eventCardVariant="default"
-            maxItems={8}
-            enablePagination={true}
-            viewAllLink="/search?collection=handpicked"
-            showPrice={true}
-            showLocation={true}
-            showAgeGroup={true}
-            showWishlist={true}
-            wishlistIds={wishlistIds}
-            onWishlistToggle={handleWishlistToggle}
-          />
-        </ScrollReveal>
+        <CollectionSection
+          badge="Handpicked"
+          title="Handpicked Experiences"
+          subtitle="Curated by our team of experts - only the best activities for your family"
+          events={handpickedEvents}
+          layout="grid"
+          eventCardVariant="default"
+          maxItems={8}
+          enablePagination={true}
+          viewAllLink="/search?collection=handpicked"
+          showPrice={true}
+          showLocation={true}
+          showAgeGroup={true}
+          showWishlist={true}
+          wishlistIds={wishlistIds}
+          onWishlistToggle={handleWishlistToggle}
+        />
 
 
         {/* Featured Instructors Section */}
@@ -815,82 +760,49 @@ const HomePage: React.FC = () => {
         {/* Gift Card Promo Section */}
         <GiftCardPromo activityCount={stats?.totalEvents || 100} />
         {/* Featured Blogs Section - Moved above fold for better visibility */}
-        <ScrollReveal>
-          <FeaturedBlogsSection blogs={featuredBlogs} loading={isLoading} />
-        </ScrollReveal>
+        <FeaturedBlogsSection blogs={featuredBlogs} loading={isLoading} />
 
 
         {/* Reels Section - Instagram-style vertical videos */}
         {reels && reels.length > 0 && (
-          <ScrollReveal>
-            <div className="px-6 py-16 max-w-screen-xl mx-auto">
-              <div className="text-center mb-8">
-                <div className="inline-block mb-4 px-4 py-2 rounded-full" style={{ backgroundColor: 'rgba(0, 142, 199, 0.1)' }}>
-                  <span className="font-semibold text-gray-900">Trending</span>
-                </div>
-                <h2 className="text-3xl font-bold mb-2">Discover Fun Moments</h2>
-                <p className="text-gray-700">Quick videos of amazing activities happening now</p>
+          <div className="px-6 py-16 max-w-screen-xl mx-auto">
+            <div className="text-center mb-8">
+              <div className="inline-block mb-4 px-4 py-2 rounded-full" style={{ backgroundColor: 'rgba(0, 142, 199, 0.1)' }}>
+                <span className="font-semibold text-gray-900">Trending</span>
               </div>
-
-              {/* Reels carousel - mobile-optimized container */}
-              <div className="rounded-2xl overflow-hidden shadow-2xl mx-auto max-w-md" style={{ height: '80vh' }}>
-                <ReelsFeed
-                  reels={reels}
-                  onLike={async (reelId) => {
-                    console.log('Liked reel:', reelId);
-                  }}
-                  onShare={(reelId) => {
-                    console.log('Shared reel:', reelId);
-                  }}
-                />
-              </div>
-
-              <div className="text-center mt-6">
-                <AnimatedButton
-                  onClick={() => navigate('/reels')}
-                  className="px-6 py-3 bg-gray-100 hover:bg-gray-200 rounded-lg font-medium transition-colors"
-                >
-                  View All Reels
-                </AnimatedButton>
-              </div>
+              <h2 className="text-3xl font-bold mb-2">Discover Fun Moments</h2>
+              <p className="text-gray-700">Quick videos of amazing activities happening now</p>
             </div>
-          </ScrollReveal>
+
+            {/* Reels carousel - mobile-optimized container */}
+            <div className="rounded-2xl overflow-hidden shadow-2xl mx-auto max-w-md" style={{ height: '80vh' }}>
+              <ReelsFeed
+                reels={reels}
+                onLike={async (reelId) => {
+                  console.log('Liked reel:', reelId);
+                }}
+                onShare={(reelId) => {
+                  console.log('Shared reel:', reelId);
+                }}
+              />
+            </div>
+
+            <div className="text-center mt-6">
+              <AnimatedButton
+                onClick={() => navigate('/reels')}
+                className="px-6 py-3 bg-gray-100 hover:bg-gray-200 rounded-lg font-medium transition-colors"
+              >
+                View All Reels
+              </AnimatedButton>
+            </div>
+          </div>
         )}
-
-
-
-
-
-
-
-        {/* UAE Cities Section */}
-
-
-        {/* Trust Signals Section */}
-        {/* <TrustSignals
-          stats={stats}
-          trustSignals={{
-            yearsInBusiness: Number(import.meta.env.VITE_STATS_YEARS_IN_BUSINESS) || 7,
-            ...(seoContentData?.seoContent?.trustSignals || {})
-          }}
-        /> */}
-
-        {/* How It Works Section */}
-        {/* <HowItWorks /> */}
-
-
 
         {/* Why Choose Us Section */}
         <WhyChooseUs features={seoContentData?.seoContent?.features} />
 
-
-
-
-
         {/* Homepage FAQs Section */}
         <HomepageFAQs faqItems={seoContentData?.seoContent?.faqItems} />
-
-
 
         {/* Stacked Layout - Quick Picks */}
         <CollectionSection
@@ -908,7 +820,7 @@ const HomePage: React.FC = () => {
 
         <StatsSection stats={stats} />
       </div>
-    </PageTransition>
+    </PageTransition >
   );
 };
 

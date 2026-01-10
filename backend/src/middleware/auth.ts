@@ -1,6 +1,6 @@
 import { Request, Response, NextFunction } from 'express';
 import jwt from 'jsonwebtoken';
-import { config } from '../config/index';
+import { config, logger } from '../config/index';
 import { AppError } from './error';
 import { User, IUser } from '../models/index'; // Removed Role import
 import { getAuth } from 'firebase-admin/auth';
@@ -26,66 +26,56 @@ declare global {
 export const authenticate = async (req: Request, res: Response, next: NextFunction) => {
   let token;
 
-  // Log all cookies received (for debugging)
-  console.log('[AUTH] Cookies received:', {
-    cookieHeader: req.headers.cookie ? req.headers.cookie.substring(0, 100) + '...' : 'none',
-    parsedCookies: req.cookies ? Object.keys(req.cookies) : [],
-    hasAccessToken: !!req.cookies?.accessToken,
-    hasRefreshToken: !!req.cookies?.refreshToken
-  });
-
   // Try to get token from httpOnly cookie first (more secure)
   if (req.cookies && req.cookies.accessToken) {
     token = req.cookies.accessToken;
-    console.log('[AUTH] Token found in cookie');
   }
   // Fall back to Authorization header for API clients
   else if (req.headers.authorization && req.headers.authorization.startsWith('Bearer')) {
     token = req.headers.authorization.split(' ')[1];
-    console.log('[AUTH] Token found in Authorization header');
   }
 
-  // Log for debugging
-  console.log(`[AUTH] Auth attempt on ${req.method} ${req.path}:`, {
-    hasAuthHeader: !!req.headers.authorization,
-    hasCookie: !!req.cookies?.accessToken,
-    tokenSource: req.cookies?.accessToken ? 'cookie' : (req.headers.authorization ? 'header' : 'none'),
-    tokenLength: token ? token.length : 0,
-    origin: req.headers.origin,
-    userAgent: req.headers['user-agent']?.substring(0, 50)
-  });
+  // Development-only logging with conditional execution
+  if (process.env.NODE_ENV === 'development' && process.env.DEBUG_AUTH === 'true') {
+    logger.debug('[AUTH] Auth attempt:', {
+      method: req.method,
+      path: req.path,
+      hasAuthHeader: !!req.headers.authorization,
+      hasCookie: !!req.cookies?.accessToken,
+      tokenSource: req.cookies?.accessToken ? 'cookie' : (req.headers.authorization ? 'header' : 'none'),
+      origin: req.headers.origin
+    });
+  }
 
   if (!token) {
-    console.log('No token provided (checked both cookie and header)');
     return next(new AppError('Not authorized to access this route', 401));
   }
 
-  // Decode token payload without verification (for debugging)
-  try {
-    const decodedPayload = jwt.decode(token) as any;
-    if (decodedPayload && decodedPayload.exp && decodedPayload.iat) {
-      const now = Math.floor(Date.now() / 1000);
-      const issuedDate = new Date(decodedPayload.iat * 1000).toISOString();
-      const expiryDate = new Date(decodedPayload.exp * 1000).toISOString();
-      const ageInSeconds = now - decodedPayload.iat;
-      const ageInDays = Math.floor(ageInSeconds / 86400);
+  // Decode token payload for debugging (dev only)
+  if (process.env.NODE_ENV === 'development' && process.env.DEBUG_AUTH === 'true') {
+    try {
+      const decodedPayload = jwt.decode(token) as any;
+      if (decodedPayload && decodedPayload.exp && decodedPayload.iat) {
+        const now = Math.floor(Date.now() / 1000);
+        const ageInSeconds = now - decodedPayload.iat;
+        const ageInDays = Math.floor(ageInSeconds / 86400);
 
-      console.log('Token payload:', {
-        userId: decodedPayload.id,
-        issuedAt: issuedDate,
-        expiresAt: expiryDate,
-        tokenAge: `${ageInDays} days, ${Math.floor((ageInSeconds % 86400) / 3600)} hours`,
-        isExpired: now > decodedPayload.exp
-      });
+        logger.debug('Token payload:', {
+          userId: decodedPayload.id,
+          tokenAge: `${ageInDays} days, ${Math.floor((ageInSeconds % 86400) / 3600)} hours`,
+          isExpired: now > decodedPayload.exp
+        });
+      }
+    } catch (decodeError) {
+      logger.debug('Failed to decode token payload:', decodeError);
     }
-  } catch (decodeError) {
-    console.log('Failed to decode token payload:', decodeError);
   }
 
   try {
     // Add clock tolerance to handle time synchronization issues
+    // Reduced from 60s to 10s for better security (still handles NTP drift)
     const decoded = jwt.verify(token, config.jwtSecret, {
-      clockTolerance: 60 // Allow 60 seconds clock skew
+      clockTolerance: 10 // Allow 10 seconds clock skew
     }) as JwtPayload;
 
     // Try to get user from cache first (huge performance boost!)
@@ -94,11 +84,9 @@ export const authenticate = async (req: Request, res: Response, next: NextFuncti
 
     if (!user) {
       // Cache miss - fetch from database
-      console.log(`Cache miss for user ${decoded.id}, fetching from DB...`);
       const userDoc = await User.findById(decoded.id);
 
       if (!userDoc) {
-        console.log(`User not found for ID: ${decoded.id}`);
         return next(new AppError('User not found', 404));
       }
 
@@ -106,16 +94,15 @@ export const authenticate = async (req: Request, res: Response, next: NextFuncti
 
       // Cache user data for 10 minutes (600 seconds)
       await cacheService.set(cacheKey, user, { ttl: 600 });
-      console.log(`User ${decoded.id} cached for 10 minutes`);
-    } else {
-      console.log(`Cache hit for user ${decoded.id}`);
+
+      if (process.env.NODE_ENV === 'development' && process.env.DEBUG_AUTH === 'true') {
+        logger.debug(`User ${decoded.id} cached for 10 minutes`);
+      }
     }
 
-    console.log(`Authentication successful for user: ${user.email}`);
     req.user = user as IUser; // Cast to IUser
     next();
   } catch (error) {
-    console.log('Token verification failed:', error instanceof Error ? error.message : 'Unknown error');
 
     // Enhanced debugging for token expiration issues
     if (error instanceof jwt.TokenExpiredError) {
@@ -124,12 +111,14 @@ export const authenticate = async (req: Request, res: Response, next: NextFuncti
       const timeDifference = currentTime - expiredAtTimestamp;
       const daysExpired = Math.floor(timeDifference / 86400);
 
-      console.log('Token expiration debug:', {
-        currentServerTime: currentTime,
-        tokenExpiredAt: error.expiredAt,
-        timeDifference: timeDifference,
-        daysExpired: daysExpired
-      });
+      if (process.env.NODE_ENV === 'development' && process.env.DEBUG_AUTH === 'true') {
+        logger.debug('Token expiration debug:', {
+          currentServerTime: currentTime,
+          tokenExpiredAt: error.expiredAt,
+          timeDifference: timeDifference,
+          daysExpired: daysExpired
+        });
+      }
 
       // Provide different error messages based on how old the token is
       if (daysExpired > 1) {
@@ -180,7 +169,7 @@ export const authenticateOptional = async (req: Request, res: Response, next: Ne
 
   try {
     const decoded = jwt.verify(token, config.jwtSecret, {
-      clockTolerance: 60
+      clockTolerance: 10 // Consistent with authenticate middleware
     }) as JwtPayload;
 
     // Try to get user from cache first
@@ -234,37 +223,34 @@ export const authenticateFirebase = async (req: Request, res: Response, next: Ne
  */
 export const authorize = (roles: string[]) => {
   return (req: Request, res: Response, next: NextFunction) => {
-    console.log('🔐 Authorization check:', {
-      endpoint: `${req.method} ${req.path}`,
-      userEmail: req.user?.email,
-      userRole: req.user?.role,
-      userRoleType: typeof req.user?.role,
-      requiredRoles: roles,
-      requiredRolesTypes: roles.map(r => typeof r),
-      hasUser: !!req.user,
-      hasRole: !!req.user?.role
-    });
+    if (process.env.NODE_ENV === 'development' && process.env.DEBUG_AUTH === 'true') {
+      logger.debug('Authorization check:', {
+        endpoint: `${req.method} ${req.path}`,
+        userRole: req.user?.role,
+        requiredRoles: roles,
+        hasUser: !!req.user,
+        hasRole: !!req.user?.role
+      });
+    }
 
     if (!req.user || !req.user.role) {
-      console.log('❌ Authorization failed: User or role not found');
       return next(new AppError('User role not found', 403));
     }
 
     // Check if the user's role is included in the allowed roles
     const isAuthorized = roles.includes(req.user.role);
 
-    console.log('🔍 Role check result:', {
-      isAuthorized,
-      exactMatch: roles.find(r => r === req.user.role),
-      caseInsensitiveMatch: roles.find(r => r.toLowerCase() === req.user.role.toLowerCase())
-    });
-
     if (!isAuthorized) {
-      console.log('❌ Authorization failed: Role not in allowed list');
+      // Log unauthorized access attempts in production for security monitoring
+      logger.warn('Authorization failed', {
+        endpoint: `${req.method} ${req.path}`,
+        userRole: req.user.role,
+        requiredRoles: roles,
+        userId: req.user._id || req.user.id
+      });
       return next(new AppError('Not authorized to perform this action', 403));
     }
 
-    console.log('✅ Authorization successful');
     next();
   };
 };

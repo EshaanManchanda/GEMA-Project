@@ -4,6 +4,41 @@ import * as dotenv from 'dotenv';
 // Load environment variables from .env file
 dotenv.config({ path: path.resolve(process.cwd(), '.env') });
 
+/**
+ * Calculate optimal MongoDB pool size based on cluster mode
+ * Prevents connection pool exhaustion when running multiple PM2 instances
+ */
+function calculateOptimalPoolSize(): number {
+  const defaultPoolSize = 20;
+  const envPoolSize = process.env.MONGODB_MAX_POOL_SIZE;
+
+  // If explicitly set, use that value
+  if (envPoolSize) {
+    return parseInt(envPoolSize, 10);
+  }
+
+  // Auto-detect PM2 cluster mode
+  const isClusterMode = process.env.NODE_APP_INSTANCE !== undefined ||
+                        process.env.PM2_INSTANCE_ID !== undefined ||
+                        process.env.PM2_INSTANCES !== undefined;
+
+  if (isClusterMode) {
+    // Get number of instances (default to 4 if not specified)
+    const instances = parseInt(process.env.PM2_INSTANCES || '4', 10);
+    const targetTotal = 40; // Total connections across all instances
+
+    // Calculate per-instance pool size
+    const perInstanceSize = Math.max(Math.floor(targetTotal / instances), 5);
+
+    console.log(`[MongoDB] Cluster mode detected: ${instances} instances, ${perInstanceSize} connections per instance (${perInstanceSize * instances} total)`);
+    return perInstanceSize;
+  }
+
+  // Single instance mode - use default
+  console.log(`[MongoDB] Single instance mode: ${defaultPoolSize} connections`);
+  return defaultPoolSize;
+}
+
 interface Config {
   port: number;
   nodeEnv: string;
@@ -153,9 +188,11 @@ export const config: Config = {
      *
      * Setting too high = wasted memory per instance
      * Setting too low = connection queuing under load
+     *
+     * AUTO-DETECTION: Pool size is automatically adjusted based on PM2 cluster mode
      */
-    maxPoolSize: parseInt(process.env.MONGODB_MAX_POOL_SIZE || '20', 10), // Optimized for 2-4 instances
-    minPoolSize: parseInt(process.env.MONGODB_MIN_POOL_SIZE || '5', 10),
+    maxPoolSize: calculateOptimalPoolSize(),
+    minPoolSize: Math.max(Math.floor(calculateOptimalPoolSize() / 4), 2),
     maxIdleTimeMS: parseInt(process.env.MONGODB_MAX_IDLE_TIME_MS || '60000', 10),
     retryWrites: process.env.MONGODB_RETRY_WRITES !== 'false',
     retryReads: process.env.MONGODB_RETRY_READS !== 'false',

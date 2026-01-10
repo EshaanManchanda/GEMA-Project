@@ -27,12 +27,12 @@ export const getVendorDashboardStats = catchAsync(async (req: AuthRequest, res: 
   const totalEvents = await Event.countDocuments({ vendorId });
 
   // Get total bookings for vendor's events
-  const vendorEvents = await Event.find({ vendorId }).select('_id');
+  const vendorEvents = await Event.find({ vendorId }).select('_id').lean();
   const eventIds = vendorEvents.map(event => event._id);
   const totalBookings = await Booking.countDocuments({ eventId: { $in: eventIds } });
 
   // Get total revenue (sum of prices from bookings for vendor's events)
-  const bookings = await Booking.find({ eventId: { $in: eventIds } }).populate('eventId', 'price');
+  const bookings = await Booking.find({ eventId: { $in: eventIds } }).populate('eventId', 'price').lean();
   const totalRevenue = bookings.reduce((acc: number, booking: IBooking) => acc + (booking.eventId as any)?.price || 0, 0);
 
   res.status(200).json({

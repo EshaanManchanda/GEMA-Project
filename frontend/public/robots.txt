@@ -1,11 +1,10 @@
 # ======================================================================
-# DEVELOPMENT ONLY - DO NOT USE IN PRODUCTION
+# ROBOTS.TXT CONFIGURATION
 # ======================================================================
-# This static robots.txt is ONLY for local development.
-# Production robots.txt is served dynamically from backend at /robots.txt
-# via Vercel rewrite rules (see vercel.json line 131-133).
+# This file handles crawling permissions.
+# In production, this file is served unless overridden by backend/Nginx rules.
 #
-# If you see this file in production, there is a configuration error!
+# If you are seeing crawl errors, check the Allow/Disallow rules below.
 # ======================================================================
 
 User-agent: *

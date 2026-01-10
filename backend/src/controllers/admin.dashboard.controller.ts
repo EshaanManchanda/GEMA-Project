@@ -7,6 +7,8 @@ import {
 } from '../models/index';
 import { AppError } from '../middleware/index';
 import { cacheService } from '../services/cache.service';
+import { dashboardOptimizedService } from '../services/dashboard-optimized.service';
+import { CacheGroups } from '../utils/cache-groups.utils';
 
 /**
  * Get comprehensive dashboard statistics
@@ -32,36 +34,50 @@ export const getDashboardStats = async (req: Request, res: Response, next: NextF
       return;
     }
 
-    // Calculate date range
+    // Calculate date range using optimized date arithmetic
+    const now = Date.now();
+    const DAY_MS = 24 * 60 * 60 * 1000;
+
     let dateFilter: any = {};
     let previousPeriodFilter: any = {};
-    
+
     if (startDate || endDate) {
       dateFilter.createdAt = {};
       if (startDate) dateFilter.createdAt.$gte = new Date(startDate as string);
       if (endDate) dateFilter.createdAt.$lte = new Date(endDate as string);
     } else {
-      // Default to last 30 days
-      const thirtyDaysAgo = new Date();
-      thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
-      const sixtyDaysAgo = new Date();
-      sixtyDaysAgo.setDate(sixtyDaysAgo.getDate() - 60);
-      
+      // Default to last 30 days (optimized date calculation)
+      const thirtyDaysAgo = new Date(now - 30 * DAY_MS);
+      const sixtyDaysAgo = new Date(now - 60 * DAY_MS);
+
       dateFilter.createdAt = { $gte: thirtyDaysAgo };
       previousPeriodFilter.createdAt = { $gte: sixtyDaysAgo, $lt: thirtyDaysAgo };
     }
 
-    // Parallel data fetching for better performance
-    const [
-      // Basic counts
+    // OPTIMIZED: Use aggregation pipelines (40+ queries → 5 aggregations)
+    const stats = await dashboardOptimizedService.getAllStats({
+      dateFilter,
+      previousPeriodFilter
+    });
+
+    // Extract stats for backward compatibility with existing response structure
+    const {
       totalUsers,
       newUsers,
       previousPeriodUsers,
       activeUsers,
+      usersByRole,
+      usersByStatus,
+      userGrowthTrend,
       totalEvents,
       approvedEvents,
       pendingEvents,
       rejectedEvents,
+      eventsByType,
+      eventsByStatus,
+      eventsByCategory,
+      totalEventViews,
+      eventApprovalRateData,
       totalOrders,
       newOrders,
       previousPeriodOrders,
@@ -70,215 +86,37 @@ export const getDashboardStats = async (req: Request, res: Response, next: NextF
       cancelledOrders,
       totalRevenue,
       previousPeriodRevenue,
-      totalReviews,
-      avgRating,
-      
-      // Detailed breakdowns
-      usersByRole,
-      usersByStatus,
-      eventsByType,
-      eventsByStatus,
-      eventsByCategory,
       ordersByStatus,
       ordersByPaymentStatus,
       revenueByMonth,
-      
-      // Additional metrics
+      recentOrders,
+      topEventsByRevenue,
+      averageOrderValue,
+      platformCommission,
+      vendorPayouts,
+      refundAmount,
+      netRevenue,
+      totalReviews,
+      avgRating,
       totalBookings,
       totalTickets,
       totalPayments,
       totalCategories,
       totalVenues,
       totalBlogs,
-      totalNotifications,
       totalAffiliates,
       activeCoupons,
-      totalRevenueTransactions,
-      totalEventViews,
-      recentOrders,
-      topEventsByRevenue,
-      
-      // Performance metrics
-      conversionRateData,
-      averageOrderValueData,
-      customerRetentionRateData,
+      totalRevenueTransactions
+    } = stats;
+
+    // Lightweight supplementary queries (only what's not in optimized service)
+    const [
       topPerformingCategories,
       topPerformingVenues,
       revenueByEventType,
-      userGrowthTrend,
-      eventApprovalRateData,
-      
-      // Financial metrics
-      platformCommission,
-      vendorPayouts,
-      refundAmount,
-      netRevenue,
-      
-      // Engagement metrics
-      averageSessionDuration,
-      bounceRate,
       repeatCustomerRate,
-      socialMediaEngagement,
-      
-      // System metrics
-      systemUptime,
-      errorRate,
-      responseTime,
-      databasePerformance,
+      totalNotifications,
     ] = await Promise.all([
-      // Basic counts
-      User.countDocuments(),
-      User.countDocuments(dateFilter),
-      User.countDocuments(previousPeriodFilter),
-      User.countDocuments({ status: 'active' }),
-      Event.countDocuments({ isDeleted: false }),
-      Event.countDocuments({ isApproved: true, isDeleted: false }),
-      Event.countDocuments({ status: 'pending', isDeleted: false }),
-      Event.countDocuments({ status: 'rejected', isDeleted: false }),
-      Order.countDocuments(),
-      Order.countDocuments(dateFilter),
-      Order.countDocuments(previousPeriodFilter),
-      Order.countDocuments({ paymentStatus: 'paid' }),
-      Order.countDocuments({ paymentStatus: 'pending' }),
-      Order.countDocuments({ status: 'cancelled' }),
-      
-      // Revenue calculations
-      Order.aggregate([
-        { $match: { paymentStatus: 'paid' } },
-        { $group: { _id: null, total: { $sum: '$total' } } },
-      ]),
-      Order.aggregate([
-        { $match: { paymentStatus: 'paid', ...previousPeriodFilter } },
-        { $group: { _id: null, total: { $sum: '$total' } } },
-      ]),
-      
-      // Review statistics
-      Review.countDocuments(),
-      Review.aggregate([
-        { $group: { _id: null, avgRating: { $avg: '$rating' } } },
-      ]),
-
-      // Detailed breakdowns
-      User.aggregate([
-        { $group: { _id: '$role', count: { $sum: 1 } } },
-      ]),
-      User.aggregate([
-        { $group: { _id: '$status', count: { $sum: 1 } } },
-      ]),
-      Event.aggregate([
-        { $match: { isDeleted: false } },
-        { $group: { _id: '$type', count: { $sum: 1 } } },
-      ]),
-      Event.aggregate([
-        { $match: { isDeleted: false } },
-        { $group: { _id: '$status', count: { $sum: 1 } } },
-      ]),
-      Event.aggregate([
-        { $match: { isDeleted: false } },
-        { $group: { _id: '$category', count: { $sum: 1 } } },
-      ]),
-      Order.aggregate([
-        { $group: { _id: '$status', count: { $sum: 1 } } },
-      ]),
-      Order.aggregate([
-        { $group: { _id: '$paymentStatus', count: { $sum: 1 } } },
-      ]),
-
-      // Revenue by month (last 12 months)
-      Order.aggregate([
-        {
-          $match: {
-            paymentStatus: 'paid',
-            createdAt: {
-              $gte: new Date(new Date().setMonth(new Date().getMonth() - 12)),
-            },
-          },
-        },
-        {
-          $group: {
-            _id: {
-              year: { $year: '$createdAt' },
-              month: { $month: '$createdAt' },
-            },
-            revenue: { $sum: '$total' },
-            orders: { $sum: 1 },
-          },
-        },
-        { $sort: { '_id.year': 1, '_id.month': 1 } },
-      ]),
-
-      // Additional metrics
-      Booking.countDocuments(),
-      Ticket.countDocuments(),
-      Payment.countDocuments(),
-      Category.countDocuments(),
-      Venue.countDocuments(),
-      Blog.countDocuments(),
-      Promise.resolve(0), // Notification.countDocuments(), // Commented out - notification system disabled
-      Affiliate.countDocuments(),
-      Coupon.countDocuments({ isActive: true }),
-      RevenueTransaction.countDocuments(),
-
-      // Event views aggregation
-      Event.aggregate([
-        { $match: { isDeleted: false } },
-        { $group: { _id: null, totalViews: { $sum: '$viewsCount' } } },
-      ]),
-
-      // Recent orders with user details
-      Order.find()
-        .sort({ createdAt: -1 })
-        .limit(10)
-        .populate('userId', 'firstName lastName email')
-        .select('orderNumber total paymentStatus status createdAt userId')
-        .lean(),
-
-      // Top events by revenue
-      Order.aggregate([
-        { $match: { paymentStatus: 'paid' } },
-        { $unwind: '$items' },
-        {
-          $group: {
-            _id: '$items.eventId',
-            totalRevenue: { $sum: { $multiply: ['$items.price', '$items.quantity'] } },
-            totalBookings: { $sum: '$items.quantity' },
-          },
-        },
-        {
-          $lookup: {
-            from: 'events',
-            localField: '_id',
-            foreignField: '_id',
-            as: 'event',
-          },
-        },
-        { $unwind: '$event' },
-        {
-          $project: {
-            eventId: '$_id',
-            eventTitle: '$event.title',
-            eventType: '$event.type',
-            totalRevenue: 1,
-            totalBookings: 1,
-          },
-        },
-        { $sort: { totalRevenue: -1 } },
-        { $limit: 10 },
-      ]),
-      
-      // Performance metrics
-      Order.aggregate([
-        { $match: { paymentStatus: 'paid' } },
-        { $group: { _id: null, avgValue: { $avg: '$total' } } },
-      ]),
-      Order.aggregate([
-        { $match: { paymentStatus: 'paid' } },
-        { $group: { _id: null, avgValue: { $avg: '$total' } } },
-      ]),
-      User.aggregate([
-        { $match: { createdAt: { $gte: new Date(Date.now() - 90 * 24 * 60 * 60 * 1000) } } },
-        { $group: { _id: null, count: { $sum: 1 } } },
-      ]),
       Event.aggregate([
         { $match: { isDeleted: false } },
         { $group: { _id: '$category', revenue: { $sum: '$price' }, count: { $sum: 1 } } },
@@ -298,64 +136,30 @@ export const getDashboardStats = async (req: Request, res: Response, next: NextF
         { $sort: { revenue: -1 } },
       ]),
       User.aggregate([
-        {
-          $group: {
-            _id: {
-              year: { $year: '$createdAt' },
-              month: { $month: '$createdAt' },
-            },
-            count: { $sum: 1 },
-          },
-        },
-        { $sort: { '_id.year': 1, '_id.month': 1 } },
-        { $limit: 12 },
-      ]),
-      Event.aggregate([
-        { $match: { isDeleted: false } },
-        { $group: { _id: '$isApproved', count: { $sum: 1 } } },
-      ]),
-      
-      // Financial metrics
-      RevenueTransaction.aggregate([
-        { $match: { type: 'commission' } },
-        { $group: { _id: null, total: { $sum: '$amount' } } },
-      ]),
-      RevenueTransaction.aggregate([
-        { $match: { type: 'payout' } },
-        { $group: { _id: null, total: { $sum: '$amount' } } },
-      ]),
-      Order.aggregate([
-        { $match: { status: 'refunded' } },
-        { $group: { _id: null, total: { $sum: '$total' } } },
-      ]),
-      RevenueTransaction.aggregate([
-        { $group: { _id: null, netRevenue: { $sum: '$amount' } } },
-      ]),
-      
-      // Engagement metrics (simplified calculations)
-      Promise.resolve(0), // averageSessionDuration
-      Promise.resolve(0), // bounceRate
-      User.aggregate([
         { $lookup: { from: 'orders', localField: '_id', foreignField: 'userId', as: 'orders' } },
         { $match: { 'orders.1': { $exists: true } } },
         { $count: 'repeatCustomers' },
       ]),
-      Promise.resolve(0), // socialMediaEngagement
-      
-      // System metrics
-      Promise.resolve({ uptime: process.uptime(), status: 'healthy' }),
-      Promise.resolve(0), // errorRate
-      Promise.resolve(0), // responseTime
-      Promise.resolve({ status: 'connected', latency: 0 }),
+      // Notification system disabled, return 0
+      Promise.resolve(0),
     ]);
+
+    // System health metrics (lightweight)
+    const systemUptime = {
+      uptime: Math.floor(process.uptime()),
+      status: 'healthy'
+    };
+    const errorRate = 0; // Placeholder - implement with APM tool
+    const responseTime = 0; // Placeholder - implement with APM tool
+    const databasePerformance = 'good'; // Placeholder - implement with MongoDB Atlas metrics
 
     // Calculate growth percentages
     const userGrowthRate = previousPeriodUsers > 0
       ? ((newUsers - previousPeriodUsers) / previousPeriodUsers) * 100
       : 0;
 
-    const revenueGrowthRate = previousPeriodRevenue[0]?.total > 0
-      ? ((totalRevenue[0]?.total - previousPeriodRevenue[0]?.total) / previousPeriodRevenue[0]?.total) * 100
+    const revenueGrowthRate = previousPeriodRevenue > 0
+      ? ((totalRevenue - previousPeriodRevenue) / previousPeriodRevenue) * 100
       : 0;
 
     const ordersGrowthRate = previousPeriodOrders > 0
@@ -364,7 +168,6 @@ export const getDashboardStats = async (req: Request, res: Response, next: NextF
 
     // Calculate additional metrics
     const conversionRate = totalUsers > 0 ? (paidOrders / totalUsers) * 100 : 0;
-    const averageOrderValue = paidOrders > 0 ? totalRevenue[0]?.total / paidOrders : 0;
     const customerRetentionRate = totalUsers > 0 ? (repeatCustomerRate[0]?.repeatCustomers / totalUsers) * 100 : 0;
     const eventApprovalRate = totalEvents > 0 ? (approvedEvents / totalEvents) * 100 : 0;
 
@@ -387,59 +190,59 @@ export const getDashboardStats = async (req: Request, res: Response, next: NextF
         paidOrders,
         pendingOrders,
         cancelledOrders,
-        totalRevenue: totalRevenue[0]?.total || 0,
-        previousPeriodRevenue: previousPeriodRevenue[0]?.total || 0,
+        totalRevenue,
+        previousPeriodRevenue,
         revenueGrowthRate: Math.round(revenueGrowthRate * 100) / 100,
         totalReviews,
-        averageRating: Math.round((avgRating[0]?.avgRating || 0) * 100) / 100,
-        totalEventViews: totalEventViews[0]?.totalViews || 0,
+        averageRating: Math.round(avgRating * 100) / 100,
+        totalEventViews,
         conversionRate: Math.round(conversionRate * 100) / 100,
         averageOrderValue: Math.round(averageOrderValue * 100) / 100,
         customerRetentionRate: Math.round(customerRetentionRate * 100) / 100,
       },
-      
+
       userBreakdown: {
         byRole: usersByRole.reduce((acc: any, item: any) => {
-          acc[item._id] = item.count;
+          acc[item.role] = item.count;
           return acc;
         }, {}),
         byStatus: usersByStatus.reduce((acc: any, item: any) => {
-          acc[item._id] = item.count;
+          acc[item.status] = item.count;
           return acc;
         }, {}),
       },
-      
+
       eventBreakdown: {
         byType: eventsByType.reduce((acc: any, item: any) => {
-          acc[item._id] = item.count;
+          acc[item.type] = item.count;
           return acc;
         }, {}),
         byStatus: eventsByStatus.reduce((acc: any, item: any) => {
-          acc[item._id] = item.count;
+          acc[item.status] = item.count;
           return acc;
         }, {}),
         byCategory: eventsByCategory.reduce((acc: any, item: any) => {
-          acc[item._id] = item.count;
+          acc[item.category] = item.count;
           return acc;
         }, {}),
       },
-      
+
       orderBreakdown: {
         byStatus: ordersByStatus.reduce((acc: any, item: any) => {
-          acc[item._id] = item.count;
+          acc[item.status] = item.count;
           return acc;
         }, {}),
         byPaymentStatus: ordersByPaymentStatus.reduce((acc: any, item: any) => {
-          acc[item._id] = item.count;
+          acc[item.paymentStatus] = item.count;
           return acc;
         }, {}),
       },
-      
+
       financialMetrics: {
-        platformCommission: platformCommission[0]?.total || 0,
-        vendorPayouts: vendorPayouts[0]?.total || 0,
-        refundAmount: refundAmount[0]?.total || 0,
-        netRevenue: netRevenue[0]?.netRevenue || 0,
+        platformCommission,
+        vendorPayouts,
+        refundAmount,
+        netRevenue,
         revenueByEventType: revenueByEventType.reduce((acc: any, item: any) => {
           acc[item._id] = item.revenue;
           return acc;

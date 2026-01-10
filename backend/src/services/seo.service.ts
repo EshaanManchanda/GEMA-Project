@@ -64,7 +64,7 @@ export class SEOService {
           status: 'published',
           isActive: true,
           isApproved: true
-        }).select('_id title updatedAt location.city').lean(),
+        }).select('_id title slug updatedAt location.city').lean(),
 
         Blog.find({
           status: 'published'
@@ -102,7 +102,7 @@ export class SEOService {
 
       // Events
       events.forEach(event => {
-        const url = `${baseUrl}/events/${event._id}`;
+        const url = `${baseUrl}/events/${event.slug || event._id}`;
         const lastmod = event.updatedAt || new Date();
         urls.push(this.generateSitemapUrl(url, lastmod, 'weekly', 0.8));
       });

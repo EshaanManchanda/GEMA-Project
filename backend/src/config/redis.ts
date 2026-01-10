@@ -1,6 +1,7 @@
 import Redis, { RedisOptions } from 'ioredis';
 import { config } from './env';
 import logger from './logger';
+import { createRedisPool, RedisPool } from './redis-pool';
 
 // Check if Redis is disabled
 const isRedisDisabled = process.env.DISABLE_REDIS === 'true';
@@ -67,8 +68,29 @@ const redisOptions: RedisOptions = {
 // Create Redis client or null if disabled
 export const redisClient = isRedisDisabled ? null : new Redis(redisOptions);
 
+// Check if connection pooling should be enabled
+const useRedisPool = process.env.REDIS_USE_POOL === 'true';
+const redisPoolSize = parseInt(process.env.REDIS_POOL_SIZE || '4', 10);
+
+// Create Redis connection pool for high-throughput cache operations
+export const redisPool: RedisPool | null = (isRedisDisabled || !useRedisPool)
+  ? null
+  : createRedisPool({
+      ...redisOptions,
+      poolSize: redisPoolSize,
+      poolName: 'cache-pool'
+    });
+
 if (isRedisDisabled) {
   logger.warn('Redis is disabled via DISABLE_REDIS environment variable');
+} else if (useRedisPool && redisPool) {
+  logger.info(`Redis connection pool enabled with ${redisPoolSize} connections`);
+  // Initialize pool asynchronously
+  redisPool.initialize().catch(err => {
+    logger.error('Failed to initialize Redis pool:', err);
+  });
+} else {
+  logger.info('Redis using single connection (pool disabled)');
 }
 
 // Redis event handlers (only if Redis is enabled)
@@ -100,6 +122,12 @@ if (redisClient) {
 
 // Graceful shutdown
 const gracefulShutdown = async () => {
+  // Close pool first (if enabled)
+  if (redisPool) {
+    await redisPool.close();
+  }
+
+  // Close main client
   if (redisClient) {
     logger.info('Closing Redis connection...');
     await redisClient.quit();
@@ -112,6 +140,12 @@ process.on('SIGTERM', gracefulShutdown);
 
 // Health check function
 export const checkRedisHealth = async (): Promise<boolean> => {
+  // Check pool health if pooling is enabled
+  if (redisPool) {
+    return redisPool.isHealthy();
+  }
+
+  // Check single client health
   if (!redisClient) {
     return false; // Redis is disabled
   }

@@ -234,6 +234,9 @@ export default function NewsletterSubscribe() {
             src="https://images.unsplash.com/photo-1522543558187-768b6df7c25c?w=400&h=400&fit=crop&crop=center"
             alt="Newsletter"
             className="w-full h-auto relative z-10"
+            loading="lazy"
+            width="400"
+            height="400"
           />
         </motion.div>
       </motion.div>

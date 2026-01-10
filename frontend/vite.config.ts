@@ -60,7 +60,7 @@ export default defineConfig({
         host: '127.0.0.1',
         port: 4173,
       },
-      postProcess(renderedRoute) {
+      postProcess(renderedRoute: any) {
         // Optional: Remove scripts that shouldn't run on pre-rendered pages?
         // For now, keep as is.
         renderedRoute.html = renderedRoute.html
@@ -344,20 +344,44 @@ export default defineConfig({
             return 'qr';
           }
 
-          // Firebase
-          if (id.includes('node_modules/firebase')) {
+          // Core React (cache forever)
+          if (id.includes('node_modules/react') || id.includes('node_modules/react-dom') || id.includes('node_modules/scheduler')) {
+            return 'react-core';
+          }
+
+          // Animations (Framer Motion & Lottie)
+          if (id.includes('framer-motion') || id.includes('lottie') || id.includes('react-spring') || id.includes('keen-slider')) {
+            return 'animations';
+          }
+
+          // Firebase (ensure it's isolated)
+          if (id.includes('firebase')) {
             return 'firebase';
           }
 
-          // Other misc libraries
-          if (id.includes('node_modules/js-cookie') ||
-            id.includes('node_modules/uuid')) {
-            return 'misc';
+          // Editors
+          if (id.includes('@tiptap') || id.includes('prosemirror')) {
+            return 'editors';
           }
 
-          // Everything else from node_modules goes to misc
+          // Charts
+          if (id.includes('recharts') || id.includes('chart.js') || id.includes('react-chartjs-2')) {
+            return 'charts';
+          }
+
+          // UI Components
+          if (id.includes('@headlessui') || id.includes('react-select') || id.includes('react-datepicker') || id.includes('leaflet')) {
+            return 'ui-libs';
+          }
+
+          // Utils
+          if (id.includes('date-fns') || id.includes('lodash') || id.includes('axios')) {
+            return 'utils';
+          }
+
+          // Everything else from node_modules goes to vendor-libs
           if (id.includes('node_modules')) {
-            return 'misc';
+            return 'vendor-libs';
           }
         },
         chunkFileNames: 'js/[name]-[hash].js',

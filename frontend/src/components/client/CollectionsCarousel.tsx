@@ -15,44 +15,44 @@ type MockCollection = {
 };
 
 const mockCollections: MockCollection[] = [
-  { 
-    title: 'Summer Camps', 
+  {
+    title: 'Summer Camps',
     icon: 'https://images.unsplash.com/photo-1571019613454-1cb2f99b2d8b?w=80&h=80&fit=crop&crop=center',
     count: '45+ activities',
     description: 'Keep your kids active and engaged during summer break'
   },
-  { 
-    title: 'Top Daycation Spots', 
+  {
+    title: 'Top Daycation Spots',
     icon: 'https://images.unsplash.com/photo-1506905925346-21bda4d32df4?w=80&h=80&fit=crop&crop=center',
     count: '32+ locations',
     description: 'Perfect day trips for the whole family'
   },
-  { 
-    title: 'Pool, Brunch & more', 
+  {
+    title: 'Pool, Brunch & more',
     icon: 'https://images.unsplash.com/photo-1555939594-58d7cb561ad1?w=80&h=80&fit=crop&crop=center',
     count: '28+ venues',
     description: 'Relaxing experiences for parents and kids'
   },
-  { 
-    title: 'Top Kids Play Areas', 
+  {
+    title: 'Top Kids Play Areas',
     icon: 'https://images.unsplash.com/photo-1581833971358-2c8b550f87b3?w=80&h=80&fit=crop&crop=center',
     count: '50+ play zones',
     description: 'Safe and fun indoor play experiences'
   },
-  { 
-    title: 'Waterparks & Splash Fun', 
+  {
+    title: 'Waterparks & Splash Fun',
     icon: 'https://images.unsplash.com/photo-1544551763-46a013bb70d5?w=80&h=80&fit=crop&crop=center',
     count: '15+ parks',
     description: 'Cool off with exciting water activities'
   },
-  { 
-    title: 'Have A Pool Day', 
+  {
+    title: 'Have A Pool Day',
     icon: 'https://images.unsplash.com/photo-1530549387789-4c1017266635?w=80&h=80&fit=crop&crop=center',
     count: '25+ pools',
     description: 'Swimming fun for all ages and abilities'
   },
-  { 
-    title: 'Plan a Birthday', 
+  {
+    title: 'Plan a Birthday',
     icon: 'https://images.unsplash.com/photo-1464349095431-e9a21285b5f3?w=80&h=80&fit=crop&crop=center',
     count: '40+ venues',
     description: 'Unforgettable birthday celebrations'
@@ -186,9 +186,9 @@ const CollectionsCarousel: React.FC<CollectionsCarouselProps> = ({ collections: 
 
   return (
     <section className="max-w-screen-xl mx-auto px-6 my-20">
-      <div className="rounded-2xl p-8 md:p-10 shadow-lg" 
-        style={{ 
-          background: `linear-gradient(135deg, var(--primary-color) 0%, var(--primary-color) 70%, var(--secondary-color) 140%)` 
+      <div className="rounded-2xl p-8 md:p-10 shadow-lg"
+        style={{
+          background: `linear-gradient(135deg, var(--primary-color) 0%, var(--primary-color) 70%, var(--secondary-color) 140%)`
         }}
       >
         {/* Error banner */}
@@ -233,7 +233,7 @@ const CollectionsCarousel: React.FC<CollectionsCarouselProps> = ({ collections: 
             View All Collections <FaArrowRight size={14} />
           </button>
         </div>
-        
+
         <div className="relative">
           <div ref={sliderRef} className="keen-slider">
             {collections.length > 0 ? collections.map((item, index) => (
@@ -254,7 +254,7 @@ const CollectionsCarousel: React.FC<CollectionsCarouselProps> = ({ collections: 
                 <div className="bg-white rounded-xl shadow-md overflow-hidden hover:shadow-xl transition-all duration-300 cursor-pointer group h-full p-6 flex flex-col items-center justify-center text-center">
                   <div
                     className="w-20 h-20 rounded-full p-4 mb-4 flex items-center justify-center transition-all duration-300 group-hover:scale-110"
-                    // style={{ backgroundColor: 'var(--secondary-color, #6DB0E1)', opacity: 0.1 }}
+                  // style={{ backgroundColor: 'var(--secondary-color, #6DB0E1)', opacity: 0.1 }}
                   >
                     <img
                       src={
@@ -274,6 +274,8 @@ const CollectionsCarousel: React.FC<CollectionsCarouselProps> = ({ collections: 
                       alt={item.title}
                       className="h-full w-full object-contain"
                       loading="lazy"
+                      width="80"
+                      height="80"
                       onError={(e) => {
                         // Fallback to a local placeholder if image fails to load
                         const target = e.target as HTMLImageElement;
@@ -318,7 +320,7 @@ const CollectionsCarousel: React.FC<CollectionsCarouselProps> = ({ collections: 
               </div>
             )}
           </div>
-          
+
           <button
             onClick={() => instanceRef.current?.prev()}
             className="absolute left-0 top-1/2 -translate-y-1/2 -translate-x-4 w-10 h-10 rounded-full bg-white shadow-md flex items-center justify-center z-10 hover:shadow-lg"
@@ -335,7 +337,7 @@ const CollectionsCarousel: React.FC<CollectionsCarouselProps> = ({ collections: 
             <FaChevronRight size={16} />
           </button>
         </div>
-        
+
         {collections.length > 4 && (
           <div className="flex justify-center mt-8">
             <div className="flex space-x-2">

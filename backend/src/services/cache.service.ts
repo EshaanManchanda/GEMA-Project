@@ -1,5 +1,7 @@
-import { redisClient } from '../config/redis';
+import { redisClient, redisPool } from '../config/redis';
 import logger from '../config/logger';
+import { parseJSONAsync } from '../utils/json-worker.util';
+import type Redis from 'ioredis';
 
 export interface CacheOptions {
   ttl?: number; // Time to live in seconds
@@ -11,10 +13,26 @@ export class CacheService {
   private keyPrefix: string = 'gema:';
 
   /**
-   * Check if Redis is available
+   * Check if Redis is available (pool or single client)
    */
   private isRedisAvailable(): boolean {
+    if (redisPool) {
+      return redisPool.isHealthy();
+    }
     return redisClient !== null && redisClient.status === 'ready';
+  }
+
+  /**
+   * Get Redis client (from pool or single client)
+   */
+  private getClient(): Redis {
+    if (redisPool) {
+      return redisPool.getConnection();
+    }
+    if (!redisClient) {
+      throw new Error('Redis client not available');
+    }
+    return redisClient;
   }
 
   /**
@@ -35,13 +53,14 @@ export class CacheService {
 
     try {
       const fullKey = this.getKey(key, options?.prefix);
-      const value = await redisClient!.get(fullKey);
+      const value = await this.getClient().get(fullKey);
 
       if (!value) {
         return null;
       }
 
-      return JSON.parse(value) as T;
+      // Use async parsing to avoid blocking event loop on large payloads
+      return await parseJSONAsync<T>(value);
     } catch (error) {
       logger.error(`Cache get error for key ${key}:`, error);
       return null;
@@ -61,7 +80,7 @@ export class CacheService {
       const ttl = options?.ttl || this.defaultTTL;
       const stringValue = JSON.stringify(value);
 
-      await redisClient!.setex(fullKey, ttl, stringValue);
+      await this.getClient().setex(fullKey, ttl, stringValue);
       return true;
     } catch (error) {
       logger.error(`Cache set error for key ${key}:`, error);
@@ -79,7 +98,7 @@ export class CacheService {
 
     try {
       const fullKey = this.getKey(key, options?.prefix);
-      await redisClient!.del(fullKey);
+      await this.getClient().del(fullKey);
       return true;
     } catch (error) {
       logger.error(`Cache delete error for key ${key}:`, error);
@@ -101,7 +120,7 @@ export class CacheService {
       const keys: string[] = [];
 
       // Use SCAN instead of KEYS for production safety
-      const stream = redisClient!.scanStream({
+      const stream = this.getClient().scanStream({
         match: fullPattern,
         count: 100
       });
@@ -134,7 +153,7 @@ export class CacheService {
 
             for (let i = 0; i < keys.length; i += batchSize) {
               const batch = keys.slice(i, i + batchSize);
-              await redisClient!.del(...batch);
+              await this.getClient().del(...batch);
               deletedCount += batch.length;
             }
 
@@ -175,7 +194,7 @@ export class CacheService {
 
     try {
       const fullKey = this.getKey(key, options?.prefix);
-      const result = await redisClient!.exists(fullKey);
+      const result = await this.getClient().exists(fullKey);
       return result === 1;
     } catch (error) {
       logger.error(`Cache exists error for key ${key}:`, error);
@@ -193,7 +212,7 @@ export class CacheService {
 
     try {
       const fullKey = this.getKey(key, options?.prefix);
-      return await redisClient!.ttl(fullKey);
+      return await this.getClient().ttl(fullKey);
     } catch (error) {
       logger.error(`Cache TTL error for key ${key}:`, error);
       return -2; // Key doesn't exist
@@ -210,7 +229,7 @@ export class CacheService {
 
     try {
       const fullKey = this.getKey(key, options?.prefix);
-      return await redisClient!.incrby(fullKey, by);
+      return await this.getClient().incrby(fullKey, by);
     } catch (error) {
       logger.error(`Cache increment error for key ${key}:`, error);
       return 0;
@@ -227,7 +246,7 @@ export class CacheService {
 
     try {
       const fullKey = this.getKey(key, options?.prefix);
-      return await redisClient!.decrby(fullKey, by);
+      return await this.getClient().decrby(fullKey, by);
     } catch (error) {
       logger.error(`Cache decrement error for key ${key}:`, error);
       return 0;
@@ -277,7 +296,7 @@ export class CacheService {
     }
 
     try {
-      await redisClient!.flushdb();
+      await this.getClient().flushdb();
       logger.warn('Cache: All keys flushed');
       return true;
     } catch (error) {
@@ -303,9 +322,9 @@ export class CacheService {
     }
 
     try {
-      const dbSize = await redisClient!.dbsize();
-      const memoryInfo = await redisClient!.info('memory');
-      const connected = redisClient!.status === 'ready';
+      const dbSize = await this.getClient().dbsize();
+      const memoryInfo = await this.getClient().info('memory');
+      const connected = this.getClient().status === 'ready';
 
       return {
         dbSize,

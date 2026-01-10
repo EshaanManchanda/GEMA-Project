@@ -747,6 +747,46 @@ eventSchema.index({ isApproved: 1, isActive: 1, status: 1, isDeleted: 1, categor
 
 // Additional compound indexes for KVM1 optimization - faster admin dashboard queries
 eventSchema.index({ isApproved: 1, status: 1, createdAt: -1 }); // Dashboard event stats by approval and status
+
+// Compound indexes for filtered event listings (Phase 2 optimization)
+eventSchema.index({
+  isApproved: 1,
+  isActive: 1,
+  isDeleted: 1,
+  category: 1,
+  'location.city': 1
+}); // For filtered listings with category + city
+
+eventSchema.index({
+  vendorId: 1,
+  isDeleted: 1,
+  status: 1,
+  createdAt: -1
+}); // For vendor dashboard with status filtering
+
+eventSchema.index({
+  isFeatured: 1,
+  isApproved: 1,
+  isActive: 1,
+  isDeleted: 1,
+  createdAt: -1
+}); // For featured event queries with time-based sorting
+
+eventSchema.index({
+  isApproved: 1,
+  isActive: 1,
+  isDeleted: 1,
+  'location.country': 1,
+  'location.city': 1,
+  category: 1
+}); // For geographic + category filtering
+
+eventSchema.index({
+  isApproved: 1,
+  isDeleted: 1,
+  price: 1,
+  currency: 1
+}); // For price range filtering
 eventSchema.index({ vendorId: 1, isApproved: 1, createdAt: -1 }); // Vendor-specific event queries
 
 // Affiliate event indexes

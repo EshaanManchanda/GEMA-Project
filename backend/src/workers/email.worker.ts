@@ -2,6 +2,7 @@ import { Worker, Job, Queue } from 'bullmq';
 import { QUEUE_NAMES, bullMQConnection, emailQueue as configEmailQueue, areQueuesEnabled } from '../config/queue';
 import logger from '../config/logger';
 import { emailService } from '../services/email.service';
+import { emailRateLimiter } from '../utils/email-rate-limiter';
 
 // Re-export the email queue for use by other modules
 export const emailQueue = configEmailQueue;
@@ -34,6 +35,19 @@ const emailWorker = areQueuesEnabled ? new Worker(
     });
 
     try {
+      // Check rate limit before sending
+      const rateLimitCheck = await emailRateLimiter.checkLimit();
+
+      if (!rateLimitCheck.allowed) {
+        logger.warn(`Email rate limit exceeded for job ${job.id}`, {
+          remaining: rateLimitCheck.remaining,
+          retryAfter: rateLimitCheck.retryAfter
+        });
+
+        // Delay job and retry (BullMQ will automatically retry)
+        throw new Error(`Rate limit exceeded. Retry after ${rateLimitCheck.retryAfter}ms`);
+      }
+
       let result;
 
       switch (data.type) {
@@ -136,6 +150,18 @@ const emailWorker = areQueuesEnabled ? new Worker(
       }
 
       logger.info(`Email sent successfully for job ${job.id}`);
+
+      // Consume rate limit token after successful send
+      await emailRateLimiter.consume();
+
+      // Log current rate limit status periodically (every 10th email)
+      if (job.id && parseInt(job.id) % 10 === 0) {
+        const status = await emailRateLimiter.getStatus();
+        logger.debug('Email rate limit status', {
+          current: status.current,
+          remaining: status.remaining
+        });
+      }
 
       return {
         success: true,

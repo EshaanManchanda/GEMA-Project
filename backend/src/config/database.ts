@@ -1,6 +1,7 @@
 import mongoose from 'mongoose';
 import { config } from './env';
 import logger from './logger';
+import { enableSlowQueryLogging } from '../middleware/mongoose-slow-query';
 
 /**
  * Connect to MongoDB database with enhanced error handling and retries
@@ -37,6 +38,12 @@ export const connectDB = async (retryCount = 0, maxRetries = 5): Promise<void> =
     logger.info(`MongoDB Connected Successfully: ${conn.connection.host}`, {
       readyState: conn.connection.readyState,
       database: conn.connection.name
+    });
+
+    // Enable slow query logging (100ms threshold)
+    enableSlowQueryLogging({
+      threshold: 100, // Log queries > 100ms
+      logStackTrace: process.env.NODE_ENV === 'development' // Stack traces in dev only
     });
 
     // Set up connection event handlers
@@ -144,51 +151,26 @@ const setupConnectionHandlers = (): void => {
 
 /**
  * Set up process termination handlers
+ * NOTE: Commented out - shutdown handlers are centralized in server.ts to prevent duplicate calls
  */
 const setupProcessHandlers = (): void => {
-  // Handle graceful shutdown on SIGINT
-  process.on('SIGINT', async () => {
-    logger.info('Received SIGINT, closing MongoDB connection...');
-    await gracefulShutdown('SIGINT');
-  });
-
-  // Handle graceful shutdown on SIGTERM
-  process.on('SIGTERM', async () => {
-    logger.info('Received SIGTERM, closing MongoDB connection...');
-    await gracefulShutdown('SIGTERM');
-  });
-
-  // Handle uncaught exceptions
-  process.on('uncaughtException', async (error) => {
-    logger.error('Uncaught exception, closing MongoDB connection...', {
-      error: error.message,
-      stack: error.stack
-    });
-    await gracefulShutdown('uncaughtException');
-  });
-
-  // Handle unhandled promise rejections
-  process.on('unhandledRejection', async (reason) => {
-    logger.error('Unhandled promise rejection, closing MongoDB connection...', {
-      reason: reason
-    });
-    await gracefulShutdown('unhandledRejection');
-  });
+  // Process handlers now centralized in server.ts for proper shutdown sequencing
+  logger.debug('Process handlers managed by server.ts - skipping database-specific handlers');
 };
 
 /**
- * Gracefully shutdown MongoDB connection
+ * Gracefully close MongoDB connection
+ * Called by server.ts during graceful shutdown sequence
  */
-const gracefulShutdown = async (signal: string): Promise<void> => {
+export const closeDBConnection = async (): Promise<void> => {
   try {
     if (mongoose.connection.readyState !== 0) {
       await mongoose.connection.close();
-      logger.info(`MongoDB connection closed gracefully due to ${signal}`);
+      logger.info('MongoDB connection closed gracefully');
     }
   } catch (error) {
     logger.error(`Error closing MongoDB connection: ${error instanceof Error ? error.message : 'Unknown error'}`);
-  } finally {
-    process.exit(0);
+    throw error; // Propagate error to caller
   }
 };
 

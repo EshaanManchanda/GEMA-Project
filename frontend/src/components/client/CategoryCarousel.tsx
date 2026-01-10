@@ -9,7 +9,7 @@ import { Scrollbar, Navigation, Pagination, Autoplay } from 'swiper/modules';
 import { FaArrowRight, FaChevronLeft, FaChevronRight } from 'react-icons/fa';
 
 // Default fallback categories with placeholder images
-const defaultCategories = [
+const defaultCategories: Category[] = [
   { id: '1', name: 'Entertainment', icon: '🎭', image: 'https://images.unsplash.com/photo-1466781783364-36c955e42a7f?w=80&h=80&fit=crop&crop=center', count: '45+ activities' },
   { id: '2', name: 'Education', icon: '📚', image: 'https://images.unsplash.com/photo-1490750967868-88aa4486c946?w=80&h=80&fit=crop&crop=center', count: '32+ activities' },
   { id: '3', name: 'Arts', icon: '🎨', image: 'https://images.unsplash.com/photo-1607462109225-6b64ae2dd3cb?w=80&h=80&fit=crop&crop=center', count: '20+ activities' },
@@ -150,11 +150,11 @@ function CategoryCarousel({ categories = [] }: CategoryCarouselProps) {
     }
     navigate(`/categories/${slug}`);
   };
-  
+
   const handleViewAllCategories = () => {
     navigate('/categories');
   };
-  
+
   return (
     <div className="w-full px-6 py-16 bg-gradient-to-b" style={{
       backgroundImage: 'url(/assets/images/categories-background.png), linear-gradient(to bottom, var(--secondary-color) 0%, rgba(255,255,255,0) 100%)',
@@ -182,7 +182,7 @@ function CategoryCarousel({ categories = [] }: CategoryCarouselProps) {
           <Swiper
             slidesPerView={1.5}
             spaceBetween={20}
-            pagination={{ 
+            pagination={{
               clickable: true,
               dynamicBullets: true
             }}
@@ -204,18 +204,21 @@ function CategoryCarousel({ categories = [] }: CategoryCarouselProps) {
           >
             {displayCategories.map((cat, index) => (
               <SwiperSlide key={cat.id || index}>
-                <div 
+                <div
                   onClick={() => handleCategoryClick(cat)}
                   className="bg-white rounded-xl shadow-md overflow-hidden hover:shadow-xl transition-all duration-300 cursor-pointer group h-full"
                 >
                   <div className="p-6 flex flex-col items-center justify-center text-center h-full">
                     <div className="mb-4 p-3 rounded-full transition-all duration-300 group-hover:scale-110"
-                      style={{ backgroundColor: 'var(--secondary-color)'}}>
+                      style={{ backgroundColor: 'var(--secondary-color)' }}>
                       {cat.iconAsset?.url ? (
                         <img
                           src={cat.iconAsset.url}
                           alt={cat.name}
                           className="w-16 h-16 object-cover"
+                          loading="lazy"
+                          width="64"
+                          height="64"
                         />
                       ) : (
                         <span className="text-3xl">{cat.icon}</span>
@@ -226,7 +229,7 @@ function CategoryCarousel({ categories = [] }: CategoryCarouselProps) {
                     {cat.description && (
                       <p className="text-xs text-gray-700 mt-1 line-clamp-2">{cat.description}</p>
                     )}
-                    <div 
+                    <div
                       className="mt-4 w-8 h-8 rounded-full flex items-center justify-center opacity-0 group-hover:opacity-100 transition-all duration-300"
                       style={{ backgroundColor: 'var(--accent-color)', color: 'white' }}
                     >
@@ -237,11 +240,11 @@ function CategoryCarousel({ categories = [] }: CategoryCarouselProps) {
               </SwiperSlide>
             ))}
           </Swiper>
-          
+
           <button className="swiper-button-prev absolute left-0 top-1/2 -translate-y-1/2 -translate-x-4 w-10 h-10 rounded-full bg-white shadow-md flex items-center justify-center z-10 hover:shadow-lg">
             <FaChevronLeft size={16} style={{ color: 'var(--primary-color)' }} />
           </button>
-          
+
           <button className="swiper-button-next absolute right-0 top-1/2 -translate-y-1/2 translate-x-4 w-10 h-10 rounded-full bg-white shadow-md flex items-center justify-center z-10 hover:shadow-lg">
             <FaChevronRight size={16} style={{ color: 'var(--primary-color)' }} />
           </button>

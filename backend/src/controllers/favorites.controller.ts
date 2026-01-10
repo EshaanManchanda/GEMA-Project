@@ -18,7 +18,7 @@ export const getFavoriteEvents = async (req: Request, res: Response, next: NextF
       path: 'favoriteEvents',
       match: { isDeleted: false, isApproved: true },
       select: 'title description images location price currency dateSchedule createdAt'
-    });
+    }).lean();
 
     if (!user) {
       return next(new AppError('User not found', 404));
