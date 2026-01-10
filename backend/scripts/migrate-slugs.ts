@@ -45,17 +45,40 @@ const migrateSlugs = async () => {
 
         for (const event of events) {
             try {
-                // Option 1: Trigger save to use pre-save hook (safest)
-                // This will run the logic in Event model which handles uniqueness
-
-                // If we want to be explicit or if pre-save hook fails for some reason:
-                if (!event.slug) {
-                    // Logic is already in pre-save hook of Event model
-                    // Just saving should trigger it
-                    await event.save();
-                    console.log(`✅ Updated slug for: "${event.title}" -> "${event.slug}"`);
-                    updatedCount++;
+                if (!event.title) {
+                    console.warn(`Skipping event ${event._id} (no title)`);
+                    continue;
                 }
+
+                // Generate base slug
+                let baseSlug = generateSlug(event.title);
+                if (!baseSlug) baseSlug = 'event'; // Fallback
+
+                let slug = baseSlug;
+                let counter = 1;
+
+                // Check uniqueness loop
+                while (true) {
+                    const existing = await mongoose.model('Event').findOne({
+                        slug: slug,
+                        _id: { $ne: event._id }
+                    });
+                    if (!existing) break;
+                    slug = `${baseSlug}-${counter}`;
+                    counter++;
+                }
+
+                // Explicitly set the slug to bypass "Path slug is required" validation error
+                event.slug = slug;
+
+                // Also ensure affiliate code is set if missing
+                if (!event.affiliateCode) {
+                    event.affiliateCode = `EVT-${(event._id as any).toString().slice(-8).toUpperCase()}`;
+                }
+
+                await event.save();
+                console.log(`✅ Updated slug for: "${event.title}" -> "${event.slug}"`);
+                updatedCount++;
             } catch (err: any) {
                 console.error(`❌ Failed to update event: "${event.title}" (${event._id}) - ${err.message}`);
                 errorCount++;
