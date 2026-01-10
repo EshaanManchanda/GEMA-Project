@@ -107,17 +107,41 @@ router.get('/robots.txt', (req: Request, res: Response) => {
   try {
     // Extract domain from hostname
     const hostname = req.hostname || 'kidrove.com';
-    const robotsTxt = seoService.generateRobotsTxt(hostname);
+
+    // Support force production mode via query param (for testing)
+    const forceProduction = req.query.force === 'true';
+    const robotsTxt = seoService.generateRobotsTxt(hostname, forceProduction);
 
     res.set({
       'Content-Type': 'text/plain; charset=utf-8',
-      'Cache-Control': 'public, max-age=86400' // Cache for 24 hours
+      'Cache-Control': 'public, max-age=60' // Cache for 1 minute (temporary for debugging)
     });
 
     res.status(200).send(robotsTxt);
   } catch (error) {
     console.error('Robots.txt generation error:', error);
     res.status(500).send('User-agent: *\nDisallow: /');
+  }
+});
+
+/**
+ * GET /api/seo/debug-env
+ * Debug endpoint to check environment configuration
+ * TEMPORARY: Remove after robots.txt issue is resolved
+ */
+router.get('/api/seo/debug-env', (req: Request, res: Response) => {
+  try {
+    res.status(200).json({
+      nodeEnv: process.env.NODE_ENV,
+      isProduction: process.env.NODE_ENV === 'production',
+      hostname: req.hostname,
+      timestamp: new Date().toISOString()
+    });
+  } catch (error) {
+    console.error('Debug endpoint error:', error);
+    res.status(500).json({
+      error: 'Failed to retrieve environment info'
+    });
   }
 });
 

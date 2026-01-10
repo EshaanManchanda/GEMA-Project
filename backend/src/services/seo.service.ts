@@ -146,17 +146,31 @@ ${urls.join('\n')}
    * Generate robots.txt content
    * @param domain - The domain to generate robots.txt for (e.g., 'kidrove.com', 'kidrove.in', 'kidrove.ae')
    */
-  generateRobotsTxt(domain?: string): string {
+  generateRobotsTxt(domain?: string, forceProduction = false): string {
     const baseUrl = domain ? `https://${domain}` : this.baseUrl;
-    const isProduction = process.env.NODE_ENV === 'production';
+    const isProduction = forceProduction || process.env.NODE_ENV === 'production';
 
-    if (!isProduction) {
+    // Debug logging (TEMPORARY: Remove after issue is resolved)
+    console.log('[robots.txt] NODE_ENV:', process.env.NODE_ENV, 'isProduction:', isProduction, 'domain:', domain, 'forceProduction:', forceProduction);
+
+    // Check if domain is a production domain
+    const isProductionDomain = domain && (
+      domain.includes('kidrove.com') ||
+      domain.includes('kidrove.in') ||
+      domain.includes('kidrove.ae') ||
+      domain.includes('gema-project.onrender.com')
+    );
+
+    if (!isProduction && !isProductionDomain) {
       // Block all crawlers in non-production environments
+      console.log('[robots.txt] Blocking all crawlers - non-production environment');
       return `User-agent: *
 Disallow: /
 
 # Development/Staging Environment - No Indexing Allowed`;
     }
+
+    console.log('[robots.txt] Allowing crawlers - production environment or production domain');
 
     return `User-agent: *
 Allow: /
