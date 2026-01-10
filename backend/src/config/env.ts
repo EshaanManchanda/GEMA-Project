@@ -191,7 +191,7 @@ export const config: Config = {
   upload: {
     path: process.env.UPLOAD_PATH || 'uploads/',
     maxFileSize: parseInt(process.env.MAX_FILE_SIZE || '10485760', 10), // 10MB default
-    maxImageSize: parseInt(process.env.MAX_IMAGE_SIZE || '20971520', 10), // 20MB
+    maxImageSize: parseInt(process.env.MAX_IMAGE_SIZE || '52428800', 10), // 50MB
     maxVideoSize: parseInt(process.env.MAX_VIDEO_SIZE || '524288000', 10), // 500MB
     maxDocumentSize: parseInt(process.env.MAX_DOCUMENT_SIZE || '20971520', 10), // 20MB
     allowedFileTypes: process.env.ALLOWED_FILE_TYPES?.split(',') || ['image/jpeg', 'image/png', 'image/gif', 'image/webp', 'image/avif', 'image/bmp', 'image/tiff', 'image/svg+xml', 'image/heic', 'image/heif', 'application/pdf', 'video/mp4', 'video/webm'],

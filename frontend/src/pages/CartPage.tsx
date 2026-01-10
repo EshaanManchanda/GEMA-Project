@@ -130,7 +130,7 @@ const CartPage: React.FC = () => {
                         <div className="flex justify-between">
                           <div>
                             <h3 className="text-lg font-medium text-gray-900">
-                              <Link to={`/ events / ${item.event._id} `} className="hover:text-primary transition-colors">
+                              <Link to={`/events/${item.event.slug || item.event._id}`} className="hover:text-primary transition-colors">
                                 {item.event.title}
                               </Link>
                             </h3>

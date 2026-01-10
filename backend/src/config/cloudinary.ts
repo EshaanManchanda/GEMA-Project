@@ -18,7 +18,7 @@ export const uploadPresets = {
       { width: 1200, height: 800, crop: 'limit' }
     ],
     allowed_formats: ['jpg', 'jpeg', 'png', 'webp', 'avif', 'bmp', 'tiff', 'svg', 'heic', 'heif'],
-    timeout: 60000 // 60s timeout for 20MB uploads
+    timeout: 120000 // 2min timeout for 50MB uploads
   },
   venues: {
     folder: 'gema/venues',
@@ -27,7 +27,7 @@ export const uploadPresets = {
       { width: 1200, height: 800, crop: 'limit' }
     ],
     allowed_formats: ['jpg', 'jpeg', 'png', 'webp', 'avif', 'bmp', 'tiff', 'svg', 'heic', 'heif'],
-    timeout: 60000 // 60s timeout for 20MB uploads
+    timeout: 120000 // 2min timeout for 50MB uploads
   },
   users: {
     folder: 'gema/users',
@@ -42,7 +42,7 @@ export const uploadPresets = {
     ],
     eager_async: true, // Process eager transformations asynchronously (faster upload)
     allowed_formats: ['jpg', 'jpeg', 'png', 'webp', 'avif', 'bmp', 'tiff', 'heic', 'heif'], // SVG excluded for security
-    timeout: 60000 // 60s timeout for 20MB uploads
+    timeout: 120000 // 2min timeout for 50MB uploads
   },
   tickets: {
     folder: 'gema/tickets',
@@ -50,7 +50,7 @@ export const uploadPresets = {
       { quality: 'auto', fetch_format: 'auto' }
     ],
     allowed_formats: ['jpg', 'jpeg', 'png', 'webp', 'avif', 'bmp', 'tiff', 'heic', 'heif', 'pdf'],
-    timeout: 60000 // 60s timeout for 20MB uploads
+    timeout: 120000 // 2min timeout for 50MB uploads
   },
   documents: {
     folder: 'gema/documents',
@@ -65,7 +65,7 @@ export const uploadPresets = {
       { quality: 'auto', fetch_format: 'auto' }
     ],
     allowed_formats: ['jpg', 'jpeg', 'png', 'webp', 'bmp', 'tiff', 'heic', 'heif', 'pdf', 'zip', 'doc', 'docx'],
-    timeout: 60000 // 60s timeout for 20MB uploads
+    timeout: 120000 // 2min timeout for 50MB uploads
   },
   blogs: {
     folder: 'gema/blogs',
@@ -74,7 +74,7 @@ export const uploadPresets = {
       { width: 1920, height: 1080, crop: 'limit' }
     ],
     allowed_formats: ['jpg', 'jpeg', 'png', 'webp', 'gif', 'avif', 'bmp', 'tiff', 'svg', 'heic', 'heif'],
-    timeout: 60000 // 60s timeout for 20MB uploads
+    timeout: 120000 // 2min timeout for 50MB uploads
   },
   blogContent: {
     folder: 'gema/blogs/content',
@@ -83,7 +83,7 @@ export const uploadPresets = {
       { quality: 'auto', fetch_format: 'auto' }
     ],
     allowed_formats: ['jpg', 'jpeg', 'png', 'webp', 'gif', 'avif', 'bmp', 'tiff', 'svg', 'heic', 'heif', 'mp4', 'webm', 'mov'],
-    timeout: 60000 // 60s timeout for 20MB uploads
+    timeout: 120000 // 2min timeout for 50MB uploads
   },
   reels: {
     folder: 'gema/reels',
@@ -101,7 +101,7 @@ export const uploadPresets = {
       { width: 1080, height: 1920, crop: 'fill' } // 9:16 aspect ratio for vertical videos
     ],
     allowed_formats: ['jpg', 'jpeg', 'png', 'webp', 'bmp', 'tiff', 'heic', 'heif'],
-    timeout: 60000 // 60s timeout for 20MB uploads
+    timeout: 120000 // 2min timeout for 50MB uploads
   }
 };
 

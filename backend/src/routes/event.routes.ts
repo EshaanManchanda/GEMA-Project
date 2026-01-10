@@ -22,11 +22,11 @@ const router = Router();
 // Public routes
 router.get('/', getEvents);
 router.get('/categories', getEventCategories);
-router.get('/cities', getUniqueCities); // Must be before /:id route
+router.get('/cities', getUniqueCities); // Must be before /:slug route
 router.get(
-  '/:id',
+  '/:slug',
   [
-    param('id').isMongoId().withMessage('Invalid event ID'),
+    param('slug').notEmpty().withMessage('Event slug is required'),
   ],
   getEvent
 );

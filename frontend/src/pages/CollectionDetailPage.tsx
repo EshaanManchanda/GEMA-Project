@@ -10,6 +10,7 @@ import { HoverCard, AnimatedButton } from '@/components/animations';
 
 interface Event {
   _id: string;
+  slug?: string;
   title: string;
   description?: string;
   images?: string[];
@@ -134,7 +135,7 @@ const CollectionDetailPage: React.FC = () => {
   }, [id]);
 
   const handleEventClick = (event: Event) => {
-    navigate(`/events/${event._id}`);
+    navigate(`/events/${event.slug || event._id}`);
   };
 
   const handleBackToCollections = () => {

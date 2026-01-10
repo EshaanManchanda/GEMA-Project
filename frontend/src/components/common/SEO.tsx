@@ -178,7 +178,7 @@ export const EventSEO: React.FC<{ event: any; breadcrumbs?: SEOProps['breadcrumb
     title: generateTitle(),
     description: generateDescription(),
     keywords: generateKeywords(),
-    canonicalUrl: `${baseUrl}/events/${event._id}`,
+    canonicalUrl: `${baseUrl}/events/${event.slug || event._id}`,
     ogImage: event.images?.[0],
     ogType: 'article',
     breadcrumbs,
@@ -206,7 +206,7 @@ export const EventSEO: React.FC<{ event: any; breadcrumbs?: SEOProps['breadcrumb
         price: event.price || event.dateSchedule?.[0]?.price || 0,
         priceCurrency: event.currency || 'AED',
         availability: 'https://schema.org/InStock',
-        url: `${baseUrl}/events/${event._id}`
+        url: `${baseUrl}/events/${event.slug || event._id}`
       },
       organizer: {
         '@type': 'Organization',

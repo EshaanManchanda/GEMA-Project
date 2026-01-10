@@ -140,7 +140,7 @@ export const useSEO = (seoData: SEOData = {}) => {
       title: eventTitle,
       description: eventDescription,
       keywords: ['kids activities', 'events', 'UAE', event.location?.city, event.category, ...event.tags].filter(Boolean),
-      canonicalUrl: `${baseUrl}/events/${event._id}`,
+      canonicalUrl: `${baseUrl}/events/${event.slug || event._id}`,
       ogImage: event.images?.[0] || `${baseUrl}/assets/images/KidRove-Logo.jpg`,
       ogType: 'article',
       structuredData: {

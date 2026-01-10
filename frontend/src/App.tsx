@@ -247,7 +247,7 @@ function AppContent() {
                 </Suspense>
               </PageErrorBoundary>
             } />
-            <Route path="events/:id" element={
+            <Route path="events/:slug" element={
               <PageErrorBoundary>
                 <Suspense fallback={<LoadingSpinner />}>
                   <EventDetailPage />

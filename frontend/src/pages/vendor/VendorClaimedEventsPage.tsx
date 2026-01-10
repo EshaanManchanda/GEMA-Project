@@ -312,7 +312,7 @@ const VendorClaimedEventsPage: React.FC = () => {
                 {/* Actions */}
                 <div className="flex gap-2">
                   <Link
-                    to={`/events/${event._id}`}
+                    to={`/events/${event.slug || event._id}`}
                     className="flex-1 px-4 py-2 bg-orange-600 text-white text-center rounded-md hover:bg-orange-700 transition text-sm font-medium"
                   >
                     View Event

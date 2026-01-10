@@ -217,21 +217,27 @@ export const getEvents = async (req: Request, res: Response, next: NextFunction)
 };
 
 // @desc    Get single event
-// @route   GET /api/events/:id
+// @route   GET /api/events/:slug (supports both slug and legacy ID for backward compatibility)
 // @access  Public
 export const getEvent = async (req: Request, res: Response, next: NextFunction) => {
   try {
-    const { id } = req.params;
+    const { slug } = req.params;
+
+    // Check if parameter is a MongoDB ObjectId (24 hex characters) for backward compatibility
+    const isMongoId = /^[0-9a-fA-F]{24}$/.test(slug);
+    const lookupField = isMongoId ? '_id' : 'slug';
+    const lookupValue = isMongoId ? slug : slug;
 
     // Try to get from cache first
-    const cacheKey = `event:${id}`;
+    const cacheKey = `event:${lookupField}:${lookupValue}`;
     const cached = await cacheService.get<any>(cacheKey);
 
     if (cached) {
-      console.log(`✅ Cache HIT for event ${id}`);
+      console.log(`✅ Cache HIT for event ${lookupValue} (${lookupField})`);
       // Still increment view count (async, non-blocking)
+      const updateQuery = isMongoId ? { _id: lookupValue } : { slug: lookupValue };
       withTimeout(
-        Event.findByIdAndUpdate(id, { $inc: { viewsCount: 1 } }),
+        Event.findOneAndUpdate(updateQuery, { $inc: { viewsCount: 1 } }),
         15000,
         'View count update'
       ).catch(error => {
@@ -246,7 +252,7 @@ export const getEvent = async (req: Request, res: Response, next: NextFunction) 
       });
     }
 
-    console.log(`❌ Cache MISS for event ${id}`);
+    console.log(`❌ Cache MISS for event ${lookupValue} (${lookupField})`);
 
     // Check database health before proceeding
     const isDBHealthy = await checkDBHealth();
@@ -255,7 +261,8 @@ export const getEvent = async (req: Request, res: Response, next: NextFunction) 
     }
 
     // Build public filter with expiration check
-    const filter = buildPublicEventFilter({ _id: id });
+    const filterQuery = isMongoId ? { _id: lookupValue } : { slug: lookupValue };
+    const filter = buildPublicEventFilter(filterQuery);
 
     // Add timeout to the main query - only show active, published, non-expired events
     const event = await withTimeout(
@@ -271,8 +278,9 @@ export const getEvent = async (req: Request, res: Response, next: NextFunction) 
     }
 
     // Increment view count with timeout (non-blocking, fire and forget)
+    const updateQuery = isMongoId ? { _id: lookupValue } : { slug: lookupValue };
     withTimeout(
-      Event.findByIdAndUpdate(id, { $inc: { viewsCount: 1 } }),
+      Event.findOneAndUpdate(updateQuery, { $inc: { viewsCount: 1 } }),
       15000,
       'View count update'
     ).catch(error => {

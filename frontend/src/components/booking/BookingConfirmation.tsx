@@ -79,7 +79,7 @@ const BookingConfirmation: React.FC<BookingConfirmationProps> = ({
         await navigator.share({
           title: `I'm attending ${event.title}!`,
           text: `Join me at ${event.title} - an amazing ${event.category.toLowerCase()} event.`,
-          url: window.location.origin + `/events/${event._id}`,
+          url: window.location.origin + `/events/${event.slug || event._id}`,
         });
         toast.success('Event shared successfully!');
       } catch (err) {
@@ -87,7 +87,7 @@ const BookingConfirmation: React.FC<BookingConfirmationProps> = ({
       }
     } else {
       // Fallback to clipboard
-      const shareText = `I'm attending ${event.title}! Check it out: ${window.location.origin}/events/${event._id}`;
+      const shareText = `I'm attending ${event.title}! Check it out: ${window.location.origin}/events/${event.slug || event._id}`;
       navigator.clipboard.writeText(shareText);
       toast.success('Event link copied to clipboard!');
     }

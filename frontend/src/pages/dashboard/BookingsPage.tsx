@@ -181,7 +181,7 @@ const BookingsPage: React.FC = () => {
                             <div>
                               <div className="flex items-center mb-2">
                                 <h3 className="text-lg font-semibold text-gray-900 mr-2">
-                                  <Link to={`/events/${event._id || event.id}`} className="hover:text-primary">
+                                  <Link to={`/events/${event.slug || event._id || event.id}`} className="hover:text-primary">
                                     {eventTitle}
                                   </Link>
                                 </h3>

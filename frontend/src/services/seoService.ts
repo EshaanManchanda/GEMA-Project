@@ -165,7 +165,7 @@ Allow: /
       if (!response.events) return [];
 
       return response.events.map(event => ({
-        loc: `${this.baseUrl}/events/${event._id}`,
+        loc: `${this.baseUrl}/events/${event.slug || event._id}`,
         lastmod: event.updatedAt?.split('T')[0] || new Date().toISOString().split('T')[0],
         changefreq: 'weekly' as const,
         priority: 0.8,
@@ -255,7 +255,7 @@ Allow: /
       return response.events
         .filter(event => event.images && event.images.length > 0)
         .map(event => ({
-          loc: `${this.baseUrl}/events/${event._id}`,
+          loc: `${this.baseUrl}/events/${event.slug || event._id}`,
           images: event.images!.map(image => ({
             loc: this.normalizeImageUrl(image),
             caption: `${event.title} - Kids Activity in ${event.location?.city || 'UAE'}`,

@@ -143,6 +143,9 @@ export interface IEvent extends Document {
   googleRating: number;
   googleReviewCount: number;
 
+  // SEO-friendly URL slug
+  slug: string;
+
   createdAt: Date;
   updatedAt: Date;
 
@@ -696,6 +699,15 @@ const eventSchema = new Schema<IEvent>(
       default: 0,
       min: [0, 'Review count cannot be negative'],
     },
+    slug: {
+      type: String,
+      required: true,
+      unique: true,
+      lowercase: true,
+      trim: true,
+      index: true,
+      maxlength: [250, 'Slug cannot exceed 250 characters'],
+    },
   },
   {
     timestamps: true,
@@ -729,7 +741,6 @@ eventSchema.index({ averageRating: -1, reviewCount: -1 });
 eventSchema.index({ combinedRating: -1 });
 eventSchema.index({ combinedReviewCount: -1 });
 eventSchema.index({ combinedRating: -1, combinedReviewCount: -1 });
-eventSchema.index({ googlePlaceId: 1 });
 eventSchema.index({ isApproved: 1, isActive: 1, status: 1, isDeleted: 1, createdAt: -1 }); // Optimized for default homepage query
 eventSchema.index({ isApproved: 1, isActive: 1, status: 1, isDeleted: 1, 'dateSchedule.startDate': 1 }); // Optimized for date sorting
 eventSchema.index({ isApproved: 1, isActive: 1, status: 1, isDeleted: 1, category: 1 }); // Optimized for category filtering
@@ -755,15 +766,45 @@ eventSchema.index({
   tags: 'text',
 });
 
-// Virtual for event URL slug
-eventSchema.virtual('slug').get(function () {
-  return this.title.toLowerCase().replace(/[^a-z0-9]/g, '-').replace(/-+/g, '-');
-});
+// Helper function to generate slug from title
+const generateSlug = (title: string): string => {
+  return title
+    .toLowerCase()
+    .trim()
+    .replace(/[^\w\s-]/g, '') // Remove special characters
+    .replace(/\s+/g, '-')      // Replace spaces with hyphens
+    .replace(/-+/g, '-')        // Replace multiple hyphens with single hyphen
+    .substring(0, 200);         // Limit length
+};
 
-// Pre-save middleware to generate affiliate code and set status
-eventSchema.pre('save', function (next) {
+// Pre-save middleware to generate slug, affiliate code and set status
+eventSchema.pre('save', async function (next) {
+  // Generate affiliate code if missing
   if (!this.affiliateCode) {
     this.affiliateCode = `EVT-${(this._id as any).toString().slice(-8).toUpperCase()}`;
+  }
+
+  // Generate slug if new or title changed
+  if (this.isNew || this.isModified('title')) {
+    const baseSlug = generateSlug(this.title);
+    let slug = baseSlug;
+    let counter = 1;
+
+    // Check for slug uniqueness, append counter if needed
+    while (true) {
+      const existing = await mongoose.model('Event').findOne({
+        slug,
+        _id: { $ne: this._id }
+      });
+
+      if (!existing) {
+        this.slug = slug;
+        break;
+      }
+
+      slug = `${baseSlug}-${counter}`;
+      counter++;
+    }
   }
 
   // Auto-set status based on approval state

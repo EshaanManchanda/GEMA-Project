@@ -13,13 +13,13 @@ const eventsAPI = {
     }
   },
 
-  getEventById: async (id: string) => {
+  getEventById: async (slug: string) => {
     try {
-      const response = await ApiService.get(`/events/${id}`);
-      logApiResponse(`GET /events/${id}`, response);
+      const response = await ApiService.get(`/events/${slug}`);
+      logApiResponse(`GET /events/${slug}`, response);
       return extractEventData(response);
     } catch (error) {
-      logApiResponse(`GET /events/${id}`, null, error);
+      logApiResponse(`GET /events/${slug}`, null, error);
       throw error;
     }
   },

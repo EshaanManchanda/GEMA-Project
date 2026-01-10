@@ -20,6 +20,7 @@ export interface EventCardRenderProps {
 export interface EventCardProps {
   _id?: string;
   id?: string;
+  slug?: string;
   title: string;
   description?: string;
   images?: string[];
@@ -583,6 +584,7 @@ const EventCard: React.FC<EventCardProps> = (props) => {
   });
 
   const eventId = event.id || event._id || '';
+  const eventSlug = event.slug || event.id || event._id || '';
   const eventImage = getEventImage(event);
   const ageGroup = getAgeGroup(event);
 
@@ -593,8 +595,8 @@ const EventCard: React.FC<EventCardProps> = (props) => {
   const handleClick = () => {
     if (onClick) {
       onClick(event as EventCardProps);
-    } else if (!disableNavigation && eventId) {
-      navigate(`/events/${eventId}`);
+    } else if (!disableNavigation && eventSlug) {
+      navigate(`/events/${eventSlug}`);
     }
   };
 

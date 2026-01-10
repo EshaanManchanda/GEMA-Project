@@ -628,7 +628,7 @@ const BookingDetailPage: React.FC = () => {
                   )}
 
                   <Link
-                    to={`/events/${event?._id}`}
+                    to={`/events/${event?.slug || event?._id}`}
                     className="w-full inline-flex items-center justify-center px-4 py-2 border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50 transition-colors"
                   >
                     View Event

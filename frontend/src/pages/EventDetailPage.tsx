@@ -123,7 +123,7 @@ const mockEvents = [
 ];
 
 const EventDetailPage: React.FC = () => {
-  const { id } = useParams<{ id: string }>();
+  const { slug } = useParams<{ slug: string }>();
   const navigate = useNavigate();
   const dispatch = useDispatch<AppDispatch>();
   const { user } = useAuthContext();
@@ -140,13 +140,13 @@ const EventDetailPage: React.FC = () => {
   const { addItemToCart, isItemInCart } = useCart();
 
   // TanStack Query replaces manual fetch + state management
-  const { data: eventData, isLoading, error: queryError } = useEventQuery(id!);
+  const { data: eventData, isLoading, error: queryError } = useEventQuery(slug!);
 
   // Transform event data (replaces useEffect fetch logic)
   const event = useMemo(() => {
     if (!eventData || !eventData._id) {
       // Fallback to mock data if no real data
-      const mockEvent = mockEvents.find(e => e.id === id);
+      const mockEvent = mockEvents.find(e => e.id === slug);
       return mockEvent || null;
     }
 

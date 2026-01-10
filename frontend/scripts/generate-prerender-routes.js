@@ -36,7 +36,7 @@ async function generateRoutes() {
         }
         const eventsData = await eventsResponse.json();
         if (eventsData?.data?.events) {
-            const eventRoutes = eventsData.data.events.map(e => `/events/${e._id}`);
+            const eventRoutes = eventsData.data.events.map(e => `/events/${e.slug || e._id}`);
             routes.push(...eventRoutes);
             console.log(`✅ Added ${eventRoutes.length} event routes`);
         }

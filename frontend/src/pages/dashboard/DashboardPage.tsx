@@ -524,7 +524,7 @@ const DashboardPage: React.FC = () => {
                           </div>
                           <div className="p-4">
                             <h3 className="text-lg font-semibold text-gray-900 mb-2">
-                              <Link to={`/events/${event._id}`} className="hover:text-primary">
+                              <Link to={`/events/${event.slug || event._id}`} className="hover:text-primary">
                                 {event.title}
                               </Link>
                             </h3>
@@ -545,7 +545,7 @@ const DashboardPage: React.FC = () => {
                             </div>
                             <div className="flex justify-between items-center">
                               <Link
-                                to={`/events/${event._id}`}
+                                to={`/events/${event.slug || event._id}`}
                                 className="inline-flex items-center px-3 py-1.5 border border-gray-300 text-xs font-medium rounded text-gray-700 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-primary"
                               >
                                 View Event
