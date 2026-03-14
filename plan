@@ -1,0 +1,1814 @@
+ User approved Claude's plan
+  ⎿  Plan saved to: C:\Users\eshaa\.claude\plans\immutable-swinging-pine.md · /plan to edit
+     Complete SEO Fix & Optimization - Phase-by-Phase Implementation
+
+     Status: Fix Deployed ✅
+
+     - Commit: 2fac9a0 - "fix: Enable Google indexing"
+     - Changes: vercel.json, robots.txt, _headers
+     - Deployed to: backend_auth branch → Vercel auto-deploy
+
+     ---
+     Phase 1: Verify Critical Fix (IMMEDIATE - Next 10 minutes)
+
+     Goal
+
+     Confirm robots.txt is now serving correctly and Google can crawl the site.
+
+     Implementation Steps
+
+     Step 1.1: Wait for Vercel Deployment (2-5 minutes)
+
+     Action:
+     1. Go to https://vercel.com/dashboard
+     2. Find "gema-frontend" project
+     3. Check "Deployments" tab
+     4. Wait for build with commit message "fix: Enable Google indexing" to show "Ready"
+     5. Note: Build ID and deployment URL
+
+     Success Criteria:
+     - Deployment status = "Ready" (green checkmark)
+     - Build completed without errors
+
+     ---
+     Step 1.2: Test robots.txt Response
+
+     Action - Test Production URL:
+     curl -L https://kidrove.com/robots.txt
+
+     Expected Output (SUCCESS):
+     User-agent: *
+     Allow: /
+     Disallow: /admin
+     Disallow: /vendor
+     Disallow: /employee
+     ...
+     Sitemap: https://kidrove.com/sitemap.xml
+
+     Action - Test Backend Directly:
+     curl https://gema-project.onrender.com/robots.txt
+
+     Should return same production robots.txt
+
+     If Still Shows "Disallow: /" → TROUBLESHOOT:
+     1. Check Render.com backend environment
+     2. Verify NODE_ENV=production on Render.com
+     3. Restart backend service if needed
+
+     ---
+     Step 1.3: Test Sitemap Availability
+
+     curl -L https://kidrove.com/sitemap.xml
+
+     Expected: Valid XML sitemap with all public pages
+
+     ---
+     Step 1.4: Verify Cache Headers
+
+     curl -I https://kidrove.com/robots.txt
+
+     Expected Headers:
+     Content-Type: text/plain
+     Cache-Control: public, max-age=3600, must-revalidate
+
+     ---
+     Deliverable: Verification Report
+
+     Document test results:
+     - Vercel deployment succeeded
+     - robots.txt returns Allow: /
+     - Backend robots.txt correct
+     - Sitemap loads successfully
+     - Cache headers set correctly
+
+     ---
+     Phase 2: Google Search Console Setup (IMMEDIATE - 15 minutes)
+
+     Goal
+
+     Request Google to re-crawl the site and submit sitemap.
+
+     Implementation Steps
+
+     Step 2.1: URL Inspection for robots.txt
+
+     1. Go to https://search.google.com/search-console
+     2. Select property: kidrove.com
+     3. Top search bar → Enter: https://kidrove.com/robots.txt
+     4. Click "Test live URL"
+     5. Wait for results (30-60 seconds)
+     6. Click "Request Indexing"
+
+     Expected:
+     - "URL is on Google" or "URL can be indexed"
+     - No "Blocked by robots.txt" error
+
+     ---
+     Step 2.2: Submit Sitemap
+
+     1. Left sidebar → "Sitemaps"
+     2. Enter: sitemap.xml (or full URL: https://kidrove.com/sitemap.xml)
+     3. Click "Submit"
+     4. Check status after 1 hour
+
+     Expected:
+     - Status: "Success" (green checkmark)
+     - Shows number of discovered URLs
+
+     ---
+     Step 2.3: Request Re-crawl of Blocked Pages
+
+     1. Left sidebar → "Coverage"
+     2. Click "Excluded" tab
+     3. Find row: "Blocked by robots.txt"
+     4. Click on it to see affected URLs
+     5. Select affected pages
+     6. Click "Validate Fix"
+
+     Note: Google will re-crawl within 3-7 days
+
+     ---
+     Step 2.4: Inspect Homepage
+
+     1. URL Inspection → Enter: https://kidrove.com/
+     2. Test live URL
+     3. Click "Request Indexing"
+
+     ---
+     Deliverable: Search Console Tasks Completed
+
+     - robots.txt inspected and indexed
+     - Sitemap submitted successfully
+     - Blocked pages validation requested
+     - Homepage indexing requested
+
+     ---
+     Phase 3: SEO Audit & Monitoring (Day 1-7)
+
+     Goal
+
+     Run comprehensive SEO audits and monitor Google's re-crawling progress.
+
+     Implementation Steps
+
+     Step 3.1: Run Screaming Frog Audit (30 minutes)
+
+     Tool: https://www.screamingfrogseoscraper.com/ (Free up to 500 URLs)
+
+     Setup:
+     1. Download and install
+     2. Configuration → Spider → Rendering: "JavaScript"
+     3. Configuration → Spider → Crawl: "Crawl All Subdomains" OFF
+     4. Enter URL: https://kidrove.com
+     5. Click "Start"
+
+     Analysis Checklist:
+     - Response Codes: Check for 404s, 500s
+     - Page Titles: All unique, 50-60 chars
+     - Meta Descriptions: All unique, 150-160 chars
+     - H1 Tags: Present on all pages
+     - Canonical URLs: Set correctly
+     - Robots.txt: Not blocking important pages
+     - Sitemap: All URLs valid
+
+     Export Report:
+     - Export → Export All → CSV
+     - Save for comparison after fixes
+
+     ---
+     Step 3.2: Run Google Lighthouse (5 minutes)
+
+     1. Open Chrome
+     2. Navigate to: https://kidrove.com
+     3. Press F12 → "Lighthouse" tab
+     4. Select: Performance, SEO, Best Practices
+     5. Click "Analyze page load"
+
+     Review Scores:
+     - Performance: Target 90+
+     - SEO: Target 90+
+     - Best Practices: Target 90+
+
+     Document Issues:
+     - Note any "red" or "orange" warnings
+     - Prioritize SEO-related issues
+
+     ---
+     Step 3.3: Test Rich Results (5 minutes)
+
+     Tool: https://search.google.com/test/rich-results
+
+     Test URLs:
+     1. Homepage: https://kidrove.com/
+     2. Event page: https://kidrove.com/events/[event-id]
+     3. Blog post: https://kidrove.com/blog/[slug]
+     4. Vendor page: https://kidrove.com/vendors/[vendor-id]
+
+     Check For:
+     - Event schema detected
+     - BlogPosting schema detected
+     - LocalBusiness schema detected
+     - No errors or warnings
+
+     ---
+     Step 3.4: Monitor Search Console (Daily for 7 days)
+
+     Track These Metrics:
+     1. Coverage Report:
+       - Valid pages count (should increase)
+       - Excluded pages with "Blocked by robots.txt" (should decrease to 0)
+     2. Crawl Stats:
+       - Crawl requests per day (should increase)
+       - Average response time
+     3. Index Coverage:
+       - "Valid" status pages increasing
+       - "Error" and "Excluded" decreasing
+
+     Create Spreadsheet:
+     | Date  | Valid Pages | Blocked Pages | Crawl Requests/Day |
+     |-------|-------------|---------------|--------------------|
+     | Day 0 | X           | Y             | Z                  |
+     | Day 1 |             |               |                    |
+     | ...   |             |               |                    |
+
+     ---
+     Deliverable: Audit Report
+
+     - Screaming Frog CSV export
+     - Lighthouse scores documented
+     - Rich Results test results
+     - 7-day monitoring data
+
+     ---
+     Phase 4: Long-Term SEO Optimization (Week 2+)
+
+     Goal
+
+     Implement pre-rendering to improve search engine indexing reliability.
+
+     Problem Statement
+
+     Current Issue: React SPA with Client-Side Rendering (CSR)
+     - Search engines receive empty HTML: <div id="root"></div>
+     - Meta tags added by react-helmet-async AFTER page load
+     - Content not available until JavaScript executes
+     - Googlebot has limited JS rendering budget
+     - Bing, DuckDuckGo have poor JS rendering support
+
+     Evidence:
+     - View source on /events/:id shows generic meta tags
+     - Structured data not in initial HTML
+     - Content requires JavaScript to render
+
+     ---
+     Solution Options Analysis
+
+     Option 1: Vite Pre-rendering Plugin (RECOMMENDED - Quick)
+
+     Pros:
+     - Fastest implementation (2-4 hours)
+     - Keeps current architecture
+     - Works with existing Vite build
+     - No breaking changes
+     - Pre-renders at build time
+
+     Cons:
+     - Static generation only (not true SSR)
+     - Need to rebuild for content updates
+     - Limited to known routes
+
+     Estimated Effort: 2-4 hours
+     Cost: Free
+
+     ---
+     Option 2: Next.js Migration (Best Long-term)
+
+     Pros:
+     - Full SSR + SSG support
+     - Dynamic rendering for fresh content
+     - Built-in SEO optimization
+     - App Router with streaming
+     - Image optimization built-in
+
+     Cons:
+     - Major refactor required (1-2 weeks)
+     - Route structure changes
+     - Component migration needed
+     - Team learning curve
+
+     Estimated Effort: 1-2 weeks
+     Cost: Developer time
+
+     ---
+     Option 3: Prerender.io Service (Medium Effort)
+
+     Pros:
+     - No code changes to React app
+     - Middleware detects bots
+     - Serves pre-rendered HTML to crawlers
+     - Fast implementation (1-2 days)
+
+     Cons:
+     - Monthly cost ($20-200/mo depending on traffic)
+     - External dependency
+     - Adds latency for first crawler visit
+     - Cache invalidation complexity
+
+     Estimated Effort: 1-2 days
+     Cost: $20-200/month
+
+     ---
+     Recommended Implementation: Vite Pre-rendering
+
+     Step 4.1: Install Prerender Plugin
+
+     File: frontend/package.json
+
+     cd frontend
+     npm install --save-dev vite-plugin-prerender
+
+     ---
+     Step 4.2: Configure Vite Plugin
+
+     File: frontend/vite.config.ts
+
+     Add imports:
+     import prerender from 'vite-plugin-prerender';
+     import path from 'path';
+
+     Add to plugins array:
+     plugins: [
+       react(),
+       // ... other plugins ...
+
+       // Pre-render public pages
+       prerender({
+         // Required - path to built index.html
+         staticDir: path.join(__dirname, 'dist'),
+
+         // Routes to pre-render
+         routes: [
+           '/',
+           '/events',
+           '/blog',
+           '/vendors',
+           '/about',
+           '/contact',
+           '/terms',
+           '/privacy',
+           // Add more static routes as needed
+         ],
+
+         // Renderer options
+         renderer: '@prerenderer/renderer-puppeteer',
+         rendererOptions: {
+           // Wait for content to load
+           renderAfterDocumentEvent: 'render-event',
+           // Or wait for specific time
+           renderAfterTime: 5000,
+           // Viewport
+           viewport: {
+             width: 1280,
+             height: 800
+           }
+         },
+
+         // Post-processing
+         postProcess(renderedRoute) {
+           // Clean up scripts/styles if needed
+           return renderedRoute;
+         }
+       })
+     ]
+
+     ---
+     Step 4.3: Trigger Render Event in React
+
+     File: frontend/src/main.tsx
+
+     Add after ReactDOM.render:
+     ReactDOM.createRoot(document.getElementById('root')!).render(
+       <React.StrictMode>
+         <App />
+       </React.StrictMode>,
+     );
+
+     // Signal to prerenderer that React has mounted
+     if (typeof window !== 'undefined') {
+       window.dispatchEvent(new Event('render-event'));
+     }
+
+     ---
+     Step 4.4: Add Dynamic Route Pre-rendering Script
+
+     File: frontend/scripts/generate-prerender-routes.js (NEW)
+
+     // Fetch dynamic routes from API and generate route list
+     const fs = require('fs');
+     const path = require('path');
+
+     async function generateRoutes() {
+       const routes = [
+         '/',
+         '/events',
+         '/blog',
+         '/vendors',
+         '/about',
+         '/contact',
+       ];
+
+       // Fetch dynamic event routes
+       try {
+         const eventsResponse = await fetch('https://gema-project.onrender.com/api/events?limit=100&status=published');
+         const eventsData = await eventsResponse.json();
+         const eventRoutes = eventsData.data.events.map(e => `/events/${e._id}`);
+         routes.push(...eventRoutes);
+       } catch (err) {
+         console.warn('Could not fetch events for pre-rendering');
+       }
+
+       // Fetch dynamic blog routes
+       try {
+         const blogsResponse = await fetch('https://gema-project.onrender.com/api/blogs?limit=100&status=published');
+         const blogsData = await blogsResponse.json();
+         const blogRoutes = blogsData.data.blogs.map(b => `/blog/${b.slug}`);
+         routes.push(...blogRoutes);
+       } catch (err) {
+         console.warn('Could not fetch blogs for pre-rendering');
+       }
+
+       // Write routes to JSON
+       fs.writeFileSync(
+         path.join(__dirname, '../prerender-routes.json'),
+         JSON.stringify(routes, null, 2)
+       );
+
+       console.log(`Generated ${routes.length} routes for pre-rendering`);
+     }
+
+     generateRoutes();
+
+     ---
+     Step 4.5: Update Build Script
+
+     File: frontend/package.json
+
+     {
+       "scripts": {
+         "prebuild": "node scripts/generate-prerender-routes.js",
+         "build": "vite build",
+         "postbuild": "echo 'Pre-rendered pages generated in dist/'"
+       }
+     }
+
+     ---
+     Step 4.6: Update vercel.json for Pre-rendered Routes
+
+     File: frontend/vercel.json
+
+     Add to rewrites (BEFORE catch-all):
+     {
+       "rewrites": [
+         {
+           "source": "/api/(.*)",
+           "destination": "https://gema-project.onrender.com/api/$1"
+         },
+         // ... other rewrites ...
+
+         // Serve pre-rendered HTML for known routes
+         {
+           "source": "/events/:id",
+           "destination": "/events/:id/index.html"
+         },
+         {
+           "source": "/blog/:slug",
+           "destination": "/blog/:slug/index.html"
+         },
+
+         // SPA fallback (keep at end)
+         {
+           "source": "/(.*)",
+           "destination": "/index.html"
+         }
+       ]
+     }
+
+     ---
+     Step 4.7: Test Pre-rendering Locally
+
+     cd frontend
+     npm run build
+     npx serve dist
+
+     # Test in browser - view source should show full HTML
+     # Test specific routes:
+     curl http://localhost:3000/
+     curl http://localhost:3000/events/[event-id]
+
+     Verify in View Source:
+     - Full HTML content present (not empty div)
+     - Meta tags with actual content
+     - Structured data in
+     - No "Loading..." or skeleton screens
+
+     ---
+     Deliverable: Pre-rendered Site
+
+     - Vite plugin configured
+     - Routes pre-rendered at build time
+     - Meta tags in initial HTML
+     - Structured data in initial HTML
+     - Content visible without JavaScript
+     - Deployed to Vercel
+     - Verified in view-source
+
+     ---
+     Phase 5: Ongoing Monitoring & Optimization (Continuous)
+
+     Weekly Tasks (Weeks 1-4)
+
+     Google Search Console:
+     - Check index coverage growth
+     - Monitor "Blocked by robots.txt" (should be 0)
+     - Review crawl stats
+     - Check for new errors
+
+     Performance:
+     - Run Lighthouse audit weekly
+     - Monitor Core Web Vitals
+     - Check page load times
+
+     ---
+     Monthly Tasks
+
+     SEO Health Check:
+     - Run full Screaming Frog crawl
+     - Update sitemap if new pages added
+     - Review search query performance
+     - Analyze competitor rankings
+     - Check backlink profile (Ahrefs/Semrush)
+
+     Content Optimization:
+     - Review pages with low click-through rate
+     - Update meta descriptions for better CTR
+     - Add internal links to new content
+     - Update old content with fresh information
+
+     ---
+     Success Metrics & KPIs
+
+     Immediate (Week 1)
+
+     - robots.txt returns Allow: /
+     - 0 pages "Blocked by robots.txt" in Search Console
+     - Sitemap submitted and processed
+     - Googlebot crawl requests increase by 50%
+
+     Short-term (Week 2-4)
+
+     - Index coverage increases by 80%+
+     - All public pages indexed
+     - Rich results appear in search
+     - Homepage appears in search results
+
+     Long-term (Month 2-3)
+
+     - Organic traffic increases by 100%+
+     - Average position < 20 for target keywords
+     - Click-through rate > 2%
+     - Core Web Vitals all green
+
+     ---
+     Risk Assessment
+
+     Phase 1-3 Risks
+
+     Risk: None - Configuration fixes and monitoring
+     Reversibility: Can revert commit if issues
+     Downtime: Zero
+
+     Phase 4 Risks (Pre-rendering)
+
+     Risk: Medium - Build process changes
+     Impact: Could break production build if misconfigured
+     Mitigation:
+     - Test locally before deploying
+     - Deploy to preview environment first
+     - Keep pre-rendering optional (feature flag)
+     Reversibility: Can disable plugin in vite.config.ts
+
+     ---
+     Estimated Timeline
+
+     | Phase                     | Duration   | Start     | Completion |
+     |---------------------------|------------|-----------|------------|
+     | Phase 1: Verify Fix       | 10 min     | Now       | Immediate  |
+     | Phase 2: Search Console   | 15 min     | Immediate | Immediate  |
+     | Phase 3: Audits & Monitor | 7 days     | Day 1     | Day 7      |
+     | Phase 4: Pre-rendering    | 2-4 hours  | Week 2    | Week 2     |
+     | Phase 5: Ongoing          | Continuous | Week 2+   | Ongoing    |
+
+     Total Active Implementation Time: ~3-5 hours
+     Total Monitoring Period: 1-3 months for full results
+
+     ---
+     Files to Modify (Phase 4)
+
+     New Files:
+
+     1. frontend/scripts/generate-prerender-routes.js (NEW)
+     2. frontend/prerender-routes.json (AUTO-GENERATED)
+
+     Modified Files:
+
+     1. frontend/package.json (add dependency + scripts)
+     2. frontend/vite.config.ts (add plugin configuration)
+     3. frontend/src/main.tsx (add render event trigger)
+     4. frontend/vercel.json (add pre-rendered route rewrites)
+
+     Read-only Reference:
+
+     - frontend/src/components/common/SEO.tsx (already implements meta tags)
+     - backend/src/services/seo.service.ts (sitemap generation)
+
+     ---
+     Next Immediate Actions
+
+     1. Now: Exit plan mode and verify Phase 1 (robots.txt test)
+     2. After verification: Complete Phase 2 (Search Console setup)
+     3. After Search Console: Run Phase 3 audits
+     4. Week 2: Decide on Phase 4 implementation timing
+
+     ---
+     Questions Before Implementation
+
+     For Phase 1-3: Ready to proceed immediately
+     For Phase 4:
+     - Do you want to implement pre-rendering now or wait until Phase 3 monitoring is complete?
+     - What's your priority: faster implementation vs better long-term solution?
+
+     Ready to exit plan mode and begin Phase 1 verification.
+
+      Plan: Add Font Size System to TipTap Editor
+
+ Summary
+
+ Add font size controls to TipTapEditor component used across blog descriptions, event descriptions, and teaching event content.
+
+ Affected Files
+
+ - frontend/src/components/common/TipTapEditor.tsx - Main editor component
+
+ Current State
+
+ - TipTap editor already has TextStyle extension (required for font size)
+ - No font size extension configured
+ - Toolbar has color picker pattern we can follow for dropdown UI
+ - Used in 7 components (BlogForm, EventModals, BasicInfoTab variants)
+
+ Implementation
+
+ Step 1: Install TipTap Font Size Extension
+
+ cd frontend && npm install @tiptap/extension-font-size
+
+ Note: TipTap doesn't have official font-size extension. We'll use the TextStyle extension (already installed) and create a custom FontSize
+ extension or use inline styles via the existing TextStyle.
+
+ Step 2: Add FontSize Extension to TipTapEditor.tsx
+
+ Create custom FontSize extension using TipTap's extension API:
+
+ import { Extension } from '@tiptap/core';
+
+ // Custom FontSize extension
+ const FontSize = Extension.create({
+   name: 'fontSize',
+   addOptions() {
+     return {
+       types: ['textStyle'],
+     };
+   },
+   addGlobalAttributes() {
+     return [
+       {
+         types: this.options.types,
+         attributes: {
+           fontSize: {
+             default: null,
+             parseHTML: element => element.style.fontSize?.replace(/['"]+/g, ''),
+             renderHTML: attributes => {
+               if (!attributes.fontSize) return {};
+               return { style: `font-size: ${attributes.fontSize}` };
+             },
+           },
+         },
+       },
+     ];
+   },
+   addCommands() {
+     return {
+       setFontSize: (fontSize: string) => ({ chain }) => {
+         return chain().setMark('textStyle', { fontSize }).run();
+       },
+       unsetFontSize: () => ({ chain }) => {
+         return chain().setMark('textStyle', { fontSize: null }).removeEmptyTextStyle().run();
+       },
+     };
+   },
+ });
+
+ Step 3: Add to Editor Extensions Array
+
+ Add FontSize to the useEditor extensions (after TextStyle):
+
+ const editor = useEditor({
+   extensions: [
+     // ... existing extensions
+     TextStyle,
+     FontSize,  // Add after TextStyle
+     // ... rest
+   ],
+   // ...
+ });
+
+ Step 4: Add Font Size Toolbar Dropdown
+
+ Add new toolbar section after Color Picker group (around line 689):
+
+ {/* Font Size Dropdown */}
+ <div className="flex gap-0.5 border-r border-gray-300 pr-2">
+   <div className="relative group">
+     <button
+       className="p-2 rounded hover:bg-gray-200 flex items-center gap-1"
+       title="Font Size"
+       type="button"
+     >
+       <Type size={18} />
+       <ChevronDown size={12} />
+     </button>
+     <div className="hidden group-hover:flex absolute top-full left-0 mt-1 bg-white border border-gray-300 rounded shadow-lg py-1 flex-col w-24      
+ z-10">
+       {[
+         { label: 'Small', value: '12px' },
+         { label: 'Normal', value: '16px' },
+         { label: 'Medium', value: '18px' },
+         { label: 'Large', value: '20px' },
+         { label: 'XL', value: '24px' },
+         { label: 'XXL', value: '32px' },
+       ].map(size => (
+         <button
+           key={size.value}
+           onClick={() => editor.chain().focus().setFontSize(size.value).run()}
+           className="px-3 py-1.5 text-left hover:bg-gray-100 text-sm"
+           style={{ fontSize: size.value }}
+           type="button"
+         >
+           {size.label}
+         </button>
+       ))}
+       <button
+         onClick={() => editor.chain().focus().unsetFontSize().run()}
+         className="px-3 py-1.5 text-left hover:bg-gray-100 text-sm border-t border-gray-200"
+         type="button"
+       >
+         Reset
+       </button>
+     </div>
+   </div>
+ </div>
+
+ Step 5: Add Required Imports
+
+ Add to lucide-react imports:
+ import { Type, ChevronDown } from 'lucide-react';
+
+ Step 6: TypeScript Declarations
+
+ Add type declarations for custom commands:
+
+ declare module '@tiptap/core' {
+   interface Commands<ReturnType> {
+     fontSize: {
+       setFontSize: (fontSize: string) => ReturnType;
+       unsetFontSize: () => ReturnType;
+     };
+   }
+ }
+
+ UI Design
+
+ - Dropdown button with "Aa" icon and chevron
+ - Hover to show size options
+ - Each option shows preview at that font size
+ - "Reset" option to clear font size
+ - Matches existing color picker pattern
+
+ Font Size Options
+ ┌────────┬───────┐
+ │ Label  │ Value │
+ ├────────┼───────┤
+ │ Small  │ 12px  │
+ ├────────┼───────┤
+ │ Normal │ 16px  │
+ ├────────┼───────┤
+ │ Medium │ 18px  │
+ ├────────┼───────┤
+ │ Large  │ 20px  │
+ ├────────┼───────┤
+ │ XL     │ 24px  │
+ ├────────┼───────┤
+ │ XXL    │ 32px  │
+ └────────┴───────┘
+ Verification
+
+ 1. Run npm run dev in frontend
+ 2. Navigate to Admin > Blog > Create/Edit blog post
+ 3. Test font size dropdown appears in toolbar
+ 4. Select text, apply different font sizes
+ 5. Verify sizes persist after save/reload
+ 6. Test in Event edit page
+ 7. Verify HTML output includes inline font-size styles
+
+ Notes
+
+ - No new npm packages needed (uses existing TextStyle extension)
+ - Changes auto-propagate to all 7 components using TipTapEditor
+ - Font sizes stored as inline styles in HTML output
+
+  Plan: Add Teacher Registration Option
+
+ Summary
+
+ Add "Teacher" as a third role option on /register page. Redirect teachers to /teacher dashboard after registration.
+
+ ---
+ Files to Modify
+
+ Backend (2 files)
+
+ 1. backend/src/validators/auth.validator.ts (line 44-47)
+ - Add 'teacher' to allowed roles array
+
+ body('role')
+   .optional()
+   .isIn(['customer', 'vendor', 'employee', 'teacher'])
+   .withMessage('Role must be customer, vendor, employee, or teacher'),
+
+ 2. backend/src/controllers/auth.controller.ts (after line 266)
+ - Import getOrCreateTeacherProfile from ../utils/teacherHelpers
+ - Add Teacher profile auto-creation (same pattern as Vendor):
+
+ // Auto-create Teacher profile if user is registering as teacher
+ if (userRole === 'teacher') {
+   try {
+     await getOrCreateTeacherProfile(user._id);
+     console.log('[REGISTER] Teacher profile auto-created for user:', user._id);
+   } catch (teacherError) {
+     console.error('[REGISTER] Failed to create teacher profile:', teacherError);
+   }
+ }
+
+ ---
+ Frontend (1 file)
+
+ 3. frontend/src/pages/auth/RegisterPage.tsx
+
+ a) Line 17 - Update interface:
+ role: 'customer' | 'vendor' | 'teacher';
+
+ b) Lines 418-457 - Change grid to 3 columns, add Teacher button:
+ - Change grid-cols-2 to grid-cols-3
+ - Add Teacher button with graduation cap icon
+ - Update description text for teacher role
+
+ c) Lines 221-227 & 234-241 - Update redirect logic:
+ // Determine redirect path based on role
+ const redirectPath = formData.role === 'teacher'
+   ? '/teacher'
+   : formData.role === 'vendor'
+   ? '/vendor'
+   : '/';
+
+ navigate(redirectPath, {
+   state: { message: '...', type: 'success' }
+ });
+
+ ---
+ Implementation Order
+
+ 1. Backend validator (allow 'teacher')
+ 2. Backend controller (auto-create Teacher profile)
+ 3. Frontend RegisterPage (add button + redirect)
+
+ ---
+ Verification
+
+ 1. Register as teacher at /register
+ 2. Complete OTP or skip verification
+ 3. Should redirect to /teacher dashboard
+ 4. Check MongoDB: Teacher document created with userId reference
+ 5. Verify existing customer/vendor registration still works
+
+ Implement the following plan:                                                                                                                      
+                                                                                                                                                     
+  # Plan: Fix Teacher Login Redirect                                                                                                                 
+                                                                                                                                                     
+  ## Summary                                                                                                                                         
+  Teacher dashboard already exists. The issue is that `roleRedirect.ts` is missing the 'teacher' case, causing teachers to redirect to `/`           
+  instead of `/teacher` after login.                                                                                                                 
+                                                                                                                                                     
+  ---                                                                                                                                                
+                                                                                                                                                     
+  ## Current State                                                                                                                                   
+                                                                                                                                                     
+  **Teacher Dashboard (EXISTS):**                                                                                                                    
+  - `frontend/src/pages/teacher/TeacherDashboardPage.tsx` - Main dashboard                                                                           
+  - `frontend/src/pages/teacher/TeacherEventsPage.tsx` - Events management                                                                           
+  - `frontend/src/pages/teacher/TeacherBookingsPage.tsx` - Bookings                                                                                  
+  - `frontend/src/pages/teacher/TeacherProfilePage.tsx` - Profile                                                                                    
+  - `frontend/src/components/auth/TeacherRoute.tsx` - Route protection                                                                               
+  - Routes configured in `App.tsx` under `/teacher`                                                                                                  
+                                                                                                                                                     
+  **Problem:** Login redirect utility missing 'teacher' role.                                                                                        
+                                                                                                                                                     
+  ---                                                                                                                                                
+                                                                                                                                                     
+  ## Files to Modify                                                                                                                                 
+                                                                                                                                                     
+  ### 1. `frontend/src/utils/roleRedirect.ts`                                                                                                        
+                                                                                                                                                     
+  **a) `getRoleBasedRedirectPath()` - Add teacher case:**                                                                                            
+  ```typescript                                                                                                                                      
+  export const getRoleBasedRedirectPath = (role: UserRole): string => {                                                                              
+  switch (role) {                                                                                                                                    
+  case 'customer':                                                                                                                                   
+  return '/dashboard';                                                                                                                               
+  case 'vendor':                                                                                                                                     
+  return '/vendor';                                                                                                                                  
+  case 'teacher':        // ADD THIS                                                                                                                 
+  return '/teacher';   // ADD THIS                                                                                                                   
+  case 'employee':                                                                                                                                   
+  return '/employee';                                                                                                                                
+  case 'admin':                                                                                                                                      
+  return '/admin';                                                                                                                                   
+  default:                                                                                                                                           
+  return '/';                                                                                                                                        
+  }                                                                                                                                                  
+  };                                                                                                                                                 
+  ```                                                                                                                                                
+                                                                                                                                                     
+  **b) `hasRouteAccess()` - Add teacher case (if missing):**                                                                                         
+  ```typescript                                                                                                                                      
+  case 'teacher':                                                                                                                                    
+  // Teachers can access public routes and teacher routes                                                                                            
+  return !path.startsWith('/vendor') &&                                                                                                              
+  !path.startsWith('/employee') &&                                                                                                                   
+  !path.startsWith('/admin');                                                                                                                        
+  ```                                                                                                                                                
+                                                                                                                                                     
+  ---                                                                                                                                                
+                                                                                                                                                     
+  ## Implementation Order                                                                                                                            
+  1. Add 'teacher' case to `getRoleBasedRedirectPath()`                                                                                              
+  2. Add 'teacher' case to `hasRouteAccess()` (if missing)                                                                                           
+                                                                                                                                                     
+  ---                                                                                                                                                
+                                                                                                                                                     
+  ## Verification                                                                                                                                    
+  1. Login as teacher at `/login`                                                                                                                    
+  2. Should redirect to `/teacher` dashboard                                                                                                         
+  3. Verify teacher can access `/teacher/*` routes                                                                                                   
+  4. Verify teacher cannot access `/admin`, `/vendor`, `/employee` routes                                                                            
+                                                                                                                                                     
+                                                                                                                                                     
+  If you need specific details from before exiting plan mode (like exact code snippets, error messages, or content you generated), read the full     
+  transcript at: C:\Users\eshaa\.claude\projects\E--coding-gema\86be47c0-d5a9-4153-ba56-511f5475a941.jsonl  
+
+  Plan: Fix & Complete Teacher Dashboard Pages                                                                                                                    
+ Summary                                                                                                                                                      
+  
+ Complete the teacher dashboard by creating missing pages and fixing bugs. The backend APIs and hooks already exist - this is frontend-only work.
+
+ ---
+ Current Issues
+ ┌──────────────────────────┬──────────┬───────────────────────────────────────────────┐
+ │           Page           │  Status  │                     Issue                     │
+ ├──────────────────────────┼──────────┼───────────────────────────────────────────────┤
+ │ /teacher                 │ Works    │ Missing link to create event in quick actions │
+ ├──────────────────────────┼──────────┼───────────────────────────────────────────────┤
+ │ /teacher/events          │ Works    │ Create/Edit pages don't exist                 │
+ ├──────────────────────────┼──────────┼───────────────────────────────────────────────┤
+ │ /teacher/events/create   │ Missing  │ Page doesn't exist                            │
+ ├──────────────────────────┼──────────┼───────────────────────────────────────────────┤
+ │ /teacher/events/:id/edit │ Missing  │ Page doesn't exist                            │
+ ├──────────────────────────┼──────────┼───────────────────────────────────────────────┤
+ │ /teacher/bookings        │ Works    │ Good                                          │
+ ├──────────────────────────┼──────────┼───────────────────────────────────────────────┤
+ │ /teacher/profile         │ Buggy    │ Array fields (subjects, languages) don't save │
+ ├──────────────────────────┼──────────┼───────────────────────────────────────────────┤
+ │ /teacher/analytics       │ Missing  │ Redirects to dashboard                        │
+ ├──────────────────────────┼──────────┼───────────────────────────────────────────────┤
+ │ /teacher/payouts         │ Missing  │ Redirects to profile                          │
+ ├──────────────────────────┼──────────┼───────────────────────────────────────────────┤
+ │ /teacher/students        │ Redirect │ Goes to bookings (OK)                         │
+ ├──────────────────────────┼──────────┼───────────────────────────────────────────────┤
+ │ /teacher/settings        │ Redirect │ Goes to profile (OK)                          │
+ └──────────────────────────┴──────────┴───────────────────────────────────────────────┘
+ ---
+ Implementation Tasks
+
+ 1. Create TeacherEventFormPage.tsx (Create/Edit Events)
+
+ File: frontend/src/pages/teacher/TeacherEventFormPage.tsx
+
+ Structure (3 tabs):
+ - Basic Info: Title, Description (TipTap), Category, Type, EventType, Age Range, Tags, Images
+ - Schedule & Pricing: Price, Currency, Date schedules (start/end, seats, per-session price)
+ - Location & SEO: City, Address (for offline), SEO meta, FAQs
+
+ Hooks to use:
+ // Create mode
+ const createMutation = useCreateTeachingEvent();
+
+ // Edit mode (when id param exists)
+ const { data } = useTeacherTeachingEvent(id);
+ const updateMutation = useUpdateTeachingEvent();
+
+ Reference: Copy pattern from AdminTeachingEditEventPage.tsx but simpler (no admin fields)
+
+ ---
+ 2. Create TeacherAnalyticsPage.tsx
+
+ File: frontend/src/pages/teacher/TeacherAnalyticsPage.tsx
+
+ Sections:
+ - Stats Cards: Total Revenue, Total Bookings, Average Rating, Total Views
+ - Date Range Filter: 7d, 30d, 90d, 1y
+ - Revenue Table: Per-event breakdown (Event, Bookings, Revenue, Commission, Net)
+
+ Hooks to use:
+ const { data: stats } = useTeacherDashboardStats();
+ const { data: earnings } = useTeacherEarnings({ startDate, endDate });
+
+ ---
+ 3. Create TeacherPayoutsPage.tsx
+
+ File: frontend/src/pages/teacher/TeacherPayoutsPage.tsx
+
+ Sections:
+ - Earnings Cards: Total Earned, Pending Balance, Paid Out, Processing
+ - Stripe Connect: Setup button or connection status
+ - Request Payout: Modal with amount input
+ - Payout History: Table with status, date, amount, method
+
+ Hooks to use:
+ const { data: dashboard } = useTeacherPayoutDashboard();
+ const { data: history } = useTeacherPayoutHistory({ page, limit });
+ const requestMutation = useRequestPayout();
+ const stripeMutation = useInitiateStripeConnect();
+
+ Reference: Copy pattern from VendorPayoutsDashboard.tsx
+
+ ---
+ 4. Fix TeacherProfilePage.tsx Array Fields
+
+ File: frontend/src/pages/teacher/TeacherProfilePage.tsx
+
+ Current bugs:
+ - subjects field uses manual onChange but never calls setValue
+ - languagesSpoken uses native multi-select, doesn't sync with form
+ - Availability hours not connected to form
+
+ Fix approach:
+ - Add local state for array fields: const [subjects, setSubjects] = useState<string[]>([])
+ - Sync state to form on submit: setValue('subjects', subjects) before submitting
+ - Or use useFieldArray from react-hook-form for proper array handling
+
+ ---
+ 5. Update App.tsx Routes
+
+ File: frontend/src/App.tsx
+
+ Add lazy imports:
+ const TeacherEventFormPage = React.lazy(() => import('./pages/teacher/TeacherEventFormPage'));
+ const TeacherAnalyticsPage = React.lazy(() => import('./pages/teacher/TeacherAnalyticsPage'));
+ const TeacherPayoutsPage = React.lazy(() => import('./pages/teacher/TeacherPayoutsPage'));
+
+ Replace redirect routes with actual pages:
+ // Under /teacher routes, add:
+ <Route path="events/create" element={<TeacherEventFormPage />} />
+ <Route path="events/:id/edit" element={<TeacherEventFormPage />} />
+ <Route path="analytics" element={<TeacherAnalyticsPage />} />
+ <Route path="payouts" element={<TeacherPayoutsPage />} />
+
+ ---
+ 6. Clean Up TeacherNavigation.tsx
+
+ File: frontend/src/components/teacher/TeacherNavigation.tsx
+
+ Remove redundant items:
+ - Remove /teacher/students (same as bookings)
+ - Remove /teacher/settings (same as profile)
+
+ Final nav (7 items):
+ 1. Dashboard → /teacher
+ 2. My Classes → /teacher/events
+ 3. Create Class → /teacher/events/create
+ 4. Bookings → /teacher/bookings
+ 5. Payouts → /teacher/payouts
+ 6. Analytics → /teacher/analytics
+ 7. Profile → /teacher/profile
+
+ ---
+ Files Summary
+
+ New Files (3)
+ ┌─────────────────────────────────────────────────────┬─────────┐
+ │                        File                         │ ~Lines  │
+ ├─────────────────────────────────────────────────────┼─────────┤
+ │ frontend/src/pages/teacher/TeacherEventFormPage.tsx │ 500-600 │
+ ├─────────────────────────────────────────────────────┼─────────┤
+ │ frontend/src/pages/teacher/TeacherAnalyticsPage.tsx │ 250-300 │
+ ├─────────────────────────────────────────────────────┼─────────┤
+ │ frontend/src/pages/teacher/TeacherPayoutsPage.tsx   │ 350-400 │
+ └─────────────────────────────────────────────────────┴─────────┘
+ Modified Files (3)
+ ┌───────────────────────────────────────────────────────┬──────────────────────────┐
+ │                         File                          │         Changes          │
+ ├───────────────────────────────────────────────────────┼──────────────────────────┤
+ │ frontend/src/pages/teacher/TeacherProfilePage.tsx     │ Fix array field handling │
+ ├───────────────────────────────────────────────────────┼──────────────────────────┤
+ │ frontend/src/App.tsx                                  │ Add 4 routes + 3 imports │
+ ├───────────────────────────────────────────────────────┼──────────────────────────┤
+ │ frontend/src/components/teacher/TeacherNavigation.tsx │ Remove 2 nav items       │
+ └───────────────────────────────────────────────────────┴──────────────────────────┘
+ ---
+ Implementation Order
+
+ 1. TeacherEventFormPage - Core CRUD, enables create/edit flow
+ 2. App.tsx routes - Enable navigation to new pages
+ 3. TeacherPayoutsPage - Financial features
+ 4. TeacherAnalyticsPage - Reporting features
+ 5. TeacherProfilePage fixes - Form bug fixes
+ 6. TeacherNavigation cleanup - Remove redirects
+
+ ---
+ Existing Resources (No Changes Needed)
+
+ - frontend/src/services/api/teacherAPI.ts - All API methods exist
+ - frontend/src/hooks/queries/useTeacherQuery.ts - All query hooks exist
+ - frontend/src/hooks/mutations/useTeacherMutations.ts - All mutation hooks exist
+ - frontend/src/types/teacher.ts - All types defined
+
+ ---
+ Verification Status
+ 
+ - [x] **Teacher Login Redirect**: `roleRedirect.ts` updated.
+ - [x] **New Page: Event Form**: `frontend/src/pages/teacher/TeacherEventFormPage.tsx` created.
+ - [x] **New Page: Analytics**: `frontend/src/pages/teacher/TeacherAnalyticsPage.tsx` created.
+ - [x] **New Page: Payouts**: `frontend/src/pages/teacher/TeacherPayoutsPage.tsx` created.
+ - [x] **Profile Page Fixes**: `frontend/src/pages/teacher/TeacherProfilePage.tsx` array fields fixed.
+ - [ ] **App Routes**:
+    - [ ] `events/create` route added.
+    - [ ] `events/:id/edit` route added.
+    - [ ] `analytics` route updated (currently redirects).
+    - [ ] `payouts` route updated (currently redirects).
+ - [ ] **Navigation Cleanup**:
+    - [ ] Remove `Students` link in `TeacherNavigation.tsx`.
+    - [ ] Remove `Settings` link in `TeacherNavigation.tsx`.
+
+
+ TipTap Editor Enhancement: WordPress-Style Features
+
+ Current State Summary
+
+ Your TipTap editor already has solid features:
+ - Rich text formatting (bold, italic, underline, strikethrough, code)
+ - Headings (H1-H3), lists, blockquotes, alignment
+ - Tables with add/delete row/col
+ - Media insertion (images, videos, YouTube)
+ - Color picker, highlight, font size/weight/family
+ - HTML insertion modal with built-in CSS classes
+ - Character/word count
+
+ ---
+ Missing Features (WordPress Comparison)
+
+ 1. Visual/Code Mode Toggle ⭐ HIGH PRIORITY
+
+ WordPress has a prominent "Visual" / "Text" tab toggle at the top.
+
+ What's Missing:
+ - No way to see/edit raw HTML while staying in editor
+ - Current HTML insert is one-way (insert only, can't view existing)
+ - No syntax highlighting for HTML code view
+
+ Implementation:
+ - Add tab bar: [Visual] [HTML] above toolbar
+ - HTML mode: CodeMirror/Monaco editor with syntax highlighting
+ - Sync content between modes on tab switch
+ - Show line numbers in code mode
+
+ ---
+ 2. Keyboard Shortcuts Display ⭐ MEDIUM
+
+ WordPress shows shortcuts in tooltips and has a help modal.
+
+ What's Missing:
+ - No keyboard shortcut hints in tooltips
+ - No shortcuts help modal/panel
+ - Users don't know Ctrl+B, Ctrl+I, etc. work
+
+ Implementation:
+ - Add shortcut hints to button titles: "Bold (Ctrl+B)"
+ - Add ? button that opens shortcuts reference modal
+
+ ---
+ 3. Distraction-Free / Fullscreen Mode ⭐ MEDIUM
+
+ WordPress has a fullscreen writing mode.
+
+ What's Missing:
+ - No fullscreen/focus mode
+ - No way to hide surrounding UI while writing
+
+ Implementation:
+ - Add fullscreen toggle button (expand icon)
+ - Use portal to render editor fullscreen with just toolbar + content
+ - ESC key to exit
+
+ ---
+ 4. Find & Replace ⭐ MEDIUM
+
+ WordPress Classic Editor has find/replace.
+
+ What's Missing:
+ - No text search within editor
+ - No replace functionality
+
+ Implementation:
+ - Add search icon button
+ - Popover with: Find input, Replace input, Replace/Replace All buttons
+ - Highlight matches in editor
+
+ ---
+ 5. Special Characters Insert ⭐ LOW
+
+ WordPress has special character picker (©, ™, €, arrows, etc.)
+
+ What's Missing:
+ - No way to insert symbols/emojis
+ - Users must copy-paste from external sources
+
+ Implementation:
+ - Add Ω button opening character picker modal
+ - Categories: Symbols, Arrows, Currency, Math, Emojis
+
+ ---
+ 6. Horizontal Rule / Divider ⭐ LOW
+
+ WordPress has "Insert Horizontal Line" button.
+
+ What's Missing:
+ - No <hr> insertion button (must use HTML mode)
+
+ Implementation:
+ - Add horizontal rule button
+ - TipTap has HorizontalRule extension (just needs enabling)
+
+ ---
+ 7. Anchor Links / ID Attributes ⭐ LOW
+
+ WordPress allows setting anchor IDs for internal linking.
+
+ What's Missing:
+ - No way to set id attributes on headings/blocks
+ - Can't create jump-to-section links
+
+ Implementation:
+ - Add anchor button when heading selected
+ - Prompt for anchor ID
+ - Show anchor icon indicator on elements with IDs
+
+ ---
+ 8. Media Caption Support ⭐ MEDIUM
+
+ WordPress has native image captions.
+
+ What's Missing:
+ - Images insert without caption field
+ - Must use HTML for <figure> + <figcaption>
+
+ Implementation:
+ - Wrap images in <figure> by default
+ - Add editable <figcaption> below image
+ - Use TipTap's Figure extension or custom node
+
+ ---
+ 9. Code Block with Language Selection ⭐ MEDIUM
+
+ WordPress Gutenberg has code blocks with syntax highlighting.
+
+ What's Missing:
+ - Current code is inline only (no block)
+ - No syntax highlighting
+ - No language selection
+
+ Implementation:
+ - Add CodeBlockLowlight extension
+ - Language dropdown (JS, Python, CSS, HTML, etc.)
+ - Syntax highlighting in editor and output
+
+ ---
+ 10. Paste as Plain Text Toggle ⭐ LOW
+
+ WordPress has "Paste as text" mode.
+
+ What's Missing:
+ - Pasting from Word/web keeps (sometimes unwanted) formatting
+ - No way to paste plain text only
+
+ Implementation:
+ - Add toggle button for "Paste as plain text"
+ - When enabled, strip all HTML on paste
+
+ ---
+ 11. Block/Element Inspector ⭐ LOW
+
+ WordPress Gutenberg shows block settings in sidebar.
+
+ What's Missing:
+ - No way to see/edit current element's classes
+ - No CSS class picker for selected block
+
+ Implementation:
+ - Sidebar panel showing current block type
+ - Class input field
+ - Quick-add buttons for common blog classes
+
+ ---
+ 12. Draft/Preview Split ⭐ LOW
+
+ WordPress has preview button.
+
+ What's Missing:
+ - No preview mode showing final rendered output
+ - Editor styles may differ from frontend
+
+ Implementation:
+ - Add "Preview" button
+ - Opens modal/panel with frontend-styled preview
+ - Or side-by-side split view option
+
+ ---
+ 13. Auto-Save Indicator ⭐ LOW
+
+ WordPress shows "Draft saved" status.
+
+ What's Missing:
+ - No visual indicator of save status
+ - No auto-save functionality in editor itself
+
+ Implementation:
+ - Add status text: "Saved" / "Unsaved changes"
+ - Optional: Auto-save to localStorage as backup
+
+ ---
+ 14. Undo/Redo History Dropdown ⭐ LOW
+
+ Some editors show history list.
+
+ What's Missing:
+ - Can only undo/redo one step at a time
+ - No history visualization
+
+ Implementation:
+ - Dropdown showing recent actions
+ - Click to jump to specific history state
+
+ ---
+ Recommended Priority Order
+
+ Phase 1: Core WordPress Parity
+
+ 1. Visual/Code Mode Toggle - Most requested, matches WP exactly
+ 2. Keyboard Shortcuts - Low effort, high value
+ 3. Horizontal Rule - 5 min fix, just enable extension
+
+ Phase 2: Enhanced Editing
+
+ 4. Find & Replace - Common need for long posts
+ 5. Image Captions - Professional blog standard
+ 6. Code Blocks - Developer blog necessity
+
+ Phase 3: Power Features
+
+ 7. Fullscreen Mode - Writer-focused improvement
+ 8. Special Characters - Nice-to-have
+ 9. Anchor Links - SEO/navigation benefit
+
+ Phase 4: Polish
+
+ 10. Paste as Plain Text
+ 11. Block Inspector
+ 12. Preview Mode
+ 13. Auto-Save Indicator
+
+ ---
+ Files to Modify
+ ┌────────────────────┬───────────────────────────────────────────┐
+ │      Feature       │                   Files                   │
+ ├────────────────────┼───────────────────────────────────────────┤
+ │ Visual/Code Toggle │ TipTapEditor.tsx (add tabs, CodeMirror)   │
+ ├────────────────────┼───────────────────────────────────────────┤
+ │ Keyboard Shortcuts │ TipTapEditor.tsx (button titles + modal)  │
+ ├────────────────────┼───────────────────────────────────────────┤
+ │ Horizontal Rule    │ TipTapEditor.tsx (add extension + button) │
+ ├────────────────────┼───────────────────────────────────────────┤
+ │ Find & Replace     │ TipTapEditor.tsx (new component/popover)  │
+ ├────────────────────┼───────────────────────────────────────────┤
+ │ Image Captions     │ TipTapEditor.tsx (Figure extension)       │
+ ├────────────────────┼───────────────────────────────────────────┤
+ │ Code Blocks        │ TipTapEditor.tsx (CodeBlockLowlight)      │
+ ├────────────────────┼───────────────────────────────────────────┤
+ │ Fullscreen         │ TipTapEditor.tsx (portal + state)         │
+ ├────────────────────┼───────────────────────────────────────────┤
+ │ Special Characters │ New CharacterPickerModal.tsx              │
+ ├────────────────────┼───────────────────────────────────────────┤
+ │ Anchor Links       │ TipTapEditor.tsx (ID attribute support)   │
+ └────────────────────┴───────────────────────────────────────────┘
+ ---
+ Quick Wins (< 30 min each)
+
+ 1. Horizontal Rule - Just add HorizontalRule extension + button
+ 2. Keyboard Shortcut Hints - Update button title attributes
+ 3. Paste Plain Text - Add transformPastedText editor option
+
+ ---
+ Dependencies Needed
+ ┌──────────────┬───────────────────────────────────────────────────────────┐
+ │   Feature    │                          Package                          │
+ ├──────────────┼───────────────────────────────────────────────────────────┤
+ │ Code Mode    │ @codemirror/lang-html or monaco-editor                    │
+ ├──────────────┼───────────────────────────────────────────────────────────┤
+ │ Code Blocks  │ @tiptap/extension-code-block-lowlight + lowlight          │
+ ├──────────────┼───────────────────────────────────────────────────────────┤
+ │ Find/Replace │ @tiptap-pro/extension-search-and-replace (paid) OR custom │
+ └──────────────┴───────────────────────────────────────────────────────────┘
+ ---
+ Implementation Plan
+
+ Selected Features (User Confirmed)
+
+ 1. Visual/Code Mode Toggle ⭐
+ 2. Keyboard Shortcuts
+ 3. Horizontal Rule
+ 4. Find & Replace
+ 5. Image Captions (Phase 2)
+ 6. Code Blocks with Syntax Highlighting (Phase 2)
+
+ ---
+ Detailed Implementation
+
+ 1. Visual/Code Mode Toggle
+
+ File: TipTapEditor.tsx
+
+ Changes:
+ A) Add state for mode
+    - const [editorMode, setEditorMode] = useState<'visual' | 'html'>('visual');
+
+ B) Add tab bar above toolbar
+    - Two buttons: "Visual" | "HTML"
+    - Active state styling
+
+ C) Conditional rendering
+    - Visual mode: Show existing TipTap editor
+    - HTML mode: Show textarea with monospace font + line numbers
+
+ D) Sync on mode switch
+    - Visual → HTML: editor.getHTML()
+    - HTML → Visual: editor.commands.setContent(html)
+
+ No new dependencies - use simple textarea for HTML mode (CodeMirror optional enhancement later)
+
+ ---
+ 2. Keyboard Shortcuts
+
+ File: TipTapEditor.tsx
+
+ Changes:
+ A) Update all button titles with shortcuts:
+    - "Bold (Ctrl+B)"
+    - "Italic (Ctrl+I)"
+    - "Underline (Ctrl+U)"
+    - "Strikethrough (Ctrl+Shift+S)"
+    - "Code (Ctrl+E)"
+    - "Link (Ctrl+K)"
+    - "Undo (Ctrl+Z)"
+    - "Redo (Ctrl+Y)"
+
+ B) Add help button (?) at end of toolbar
+    - Opens modal with shortcuts table
+
+ New file: KeyboardShortcutsModal.tsx (~50 lines)
+
+ ---
+ 3. Horizontal Rule
+
+ File: TipTapEditor.tsx
+
+ Changes:
+ A) Import HorizontalRule from StarterKit (already included)
+    - StarterKit includes it by default
+
+ B) Add button in toolbar (after Lists section)
+    - Icon: Minus or SeparatorHorizontal from lucide
+    - onClick: editor.chain().focus().setHorizontalRule().run()
+
+ Effort: ~10 lines of code
+
+ ---
+ 4. Find & Replace
+
+ File: TipTapEditor.tsx
+
+ Changes:
+ A) Add state:
+    - showFindReplace: boolean
+    - findText: string
+    - replaceText: string
+    - matchCount: number
+    - currentMatch: number
+
+ B) Add Search button in toolbar
+    - Icon: Search from lucide
+    - Opens inline popover below toolbar
+
+ C) Find/Replace popover:
+    - Find input + prev/next buttons
+    - Replace input + Replace/Replace All buttons
+    - Match counter "2 of 5"
+    - Close button
+
+ D) Implementation using TipTap's built-in search:
+    - Use editor.commands.find()
+    - Highlight matches with decoration
+
+ Note: TipTap Pro has SearchAndReplace extension ($), but we can implement basic version with decorations
+
+ ---
+ 5. Image Captions (Figure + Figcaption)
+
+ File: TipTapEditor.tsx
+
+ Changes:
+ A) Create custom Figure node extension
+    - Wraps image + figcaption
+    - Figcaption is editable
+
+ B) Modify image insertion:
+    - Wrap in <figure> by default
+    - Add placeholder figcaption "Add caption..."
+
+ C) CSS for figure styling:
+    - Centered, max-width
+    - Figcaption: italic, smaller text
+
+ Effort: ~80 lines (custom extension)
+
+ ---
+ 6. Code Blocks with Syntax Highlighting
+
+ Dependencies to install:
+ npm install @tiptap/extension-code-block-lowlight lowlight
+
+ File: TipTapEditor.tsx
+
+ Changes:
+ A) Import and configure CodeBlockLowlight
+    - Register common languages (js, ts, css, html, python, json)
+
+ B) Add "Code Block" button in toolbar
+    - Icon: FileCode or Terminal
+    - Dropdown for language selection
+
+ C) Style code blocks:
+    - Dark background
+    - Proper padding
+    - Language label in corner
+
+ ---
+ File Changes Summary
+ ┌────────────────────────────┬───────────────────────────────────────────────────────────────────┐
+ │            File            │                              Action                               │
+ ├────────────────────────────┼───────────────────────────────────────────────────────────────────┤
+ │ TipTapEditor.tsx           │ Major edits (mode toggle, shortcuts, hr, find, figure, codeblock) │
+ ├────────────────────────────┼───────────────────────────────────────────────────────────────────┤
+ │ KeyboardShortcutsModal.tsx │ New file (~50 lines)                                              │
+ ├────────────────────────────┼───────────────────────────────────────────────────────────────────┤
+ │ FindReplacePopover.tsx     │ New file (~100 lines)                                             │
+ ├────────────────────────────┼───────────────────────────────────────────────────────────────────┤
+ │ index.css                  │ Add code block + figure styles                                    │
+ └────────────────────────────┴───────────────────────────────────────────────────────────────────┘
+ ---
+ Dependencies to Install
+
+ cd frontend
+ npm install @tiptap/extension-code-block-lowlight lowlight
+
+ ---
+ Verification Plan
+
+ 1. Visual/Code Toggle:
+   - Switch to HTML mode, verify content displays as HTML
+   - Edit HTML, switch back, verify changes render
+   - Test with complex HTML (tables, images)
+ 2. Keyboard Shortcuts:
+   - Hover buttons, verify shortcut in tooltip
+   - Press Ctrl+B, verify bold toggles
+   - Open help modal, verify all shortcuts listed
+ 3. Horizontal Rule:
+   - Click button, verify <hr> inserted
+   - Check rendered output has divider line
+ 4. Find & Replace:
+   - Type search term, verify highlights
+   - Click next/prev, verify navigation
+   - Replace single + replace all
+ 5. Image Captions:
+   - Insert image, verify figure wrapper
+   - Click caption area, verify editable
+   - Check saved HTML has figcaption
+ 6. Code Blocks:
+   - Insert code block, select language
+   - Verify syntax highlighting
+   - Check output renders with highlighting
+
+    Blog Edit: Modal to Page-Based Navigation
+
+ Summary
+
+ Convert blog editing from popup modal to dedicated page with proper URL routing.
+
+ ---
+ Current State
+
+ Modal-based (current):
+ - BlogList.tsx opens BlogForm.tsx as modal overlay
+ - URL stays at /admin/blogs during edit
+ - No deep-linking support
+ - Edit state lost on page refresh
+
+ Routes that exist:
+ - /admin/blogs → AdminBlogsPage (renders BlogList with modal)
+
+ Routes to add:
+ - /admin/blogs/create → New blog creation page
+ - /admin/blogs/:id/edit → Edit existing blog page
+
+ ---
+ Files to Modify
+ ┌───────────────────────────────────┬────────────────────────────────────────────────┐
+ │               File                │                     Action                     │
+ ├───────────────────────────────────┼────────────────────────────────────────────────┤
+ │ pages/admin/AdminBlogEditPage.tsx │ CREATE - New dedicated edit page               │
+ ├───────────────────────────────────┼────────────────────────────────────────────────┤
+ │ components/admin/BlogForm.tsx     │ MODIFY - Remove modal wrapper, make standalone │
+ ├───────────────────────────────────┼────────────────────────────────────────────────┤
+ │ components/admin/BlogList.tsx     │ MODIFY - Navigate instead of opening modal     │
+ ├───────────────────────────────────┼────────────────────────────────────────────────┤
+ │ App.tsx                           │ MODIFY - Add new routes                        │
+ └───────────────────────────────────┴────────────────────────────────────────────────┘
+ ---
+ Implementation Steps
+
+ 1. Create AdminBlogEditPage.tsx
+
+ Path: frontend/src/pages/admin/AdminBlogEditPage.tsx
+
+ // Pattern following EditVenuePage.tsx
+ - Get id from useParams (null for create mode)
+ - Fetch blog data if editing
+ - Pass blog data to BlogForm
+ - Handle loading/error states
+ - On success: navigate back to /admin/blogs
+
+ Key features:
+ - URL param: :id for edit, no param for create
+ - Fetch blog on mount if editing
+ - Full-page layout with breadcrumb navigation
+ - Success redirects to blog list
+
+ 2. Modify BlogForm.tsx
+
+ Current: Modal-style with backdrop, close button, fixed positioning
+ Change to: Standalone form component (no modal wrapper)
+
+ Changes needed:
+ - Remove modal overlay/backdrop JSX
+ - Remove onClose prop usage for modal closing
+ - Add onSuccess callback prop for navigation
+ - Keep all form logic intact
+ - Remove fixed positioning classes
+
+ 3. Modify BlogList.tsx
+
+ Current:
+ const handleEditBlog = async (blog: Blog) => {
+   setSelectedBlog(fullBlog);
+   setShowBlogForm(true);  // Opens modal
+ };
+
+ Change to:
+ const handleEditBlog = (blog: Blog) => {
+   navigate(`/admin/blogs/${blog._id}/edit`);
+ };
+
+ const handleCreateBlog = () => {
+   navigate('/admin/blogs/create');
+ };
+
+ Remove:
+ - showBlogForm state
+ - selectedBlog state
+ - Modal rendering JSX
+ - Prefetch logic (page will fetch its own data)
+
+ 4. Add Routes in App.tsx
+
+ Add after existing blog route (~line 986):
+ <Route path="blogs/create" element={<AdminBlogEditPage />} />
+ <Route path="blogs/:id/edit" element={<AdminBlogEditPage />} />
+
+ ---
+ Detailed File Changes
+
+ AdminBlogEditPage.tsx (NEW)
+
+ ~150 lines
+ - Imports: useParams, useNavigate, BlogForm, blogAPI
+ - Loading state with spinner
+ - Error state with retry
+ - Breadcrumb: Admin > Blogs > Edit/Create
+ - BlogForm component
+ - Success handler: navigate('/admin/blogs')
+
+ BlogForm.tsx Changes
+
+ Remove:
+ - Modal backdrop div
+ - Fixed positioning classes
+ - Close button (X)
+ - onClose prop calls
+
+ Add:
+ - onSuccess?: () => void prop
+ - Call onSuccess() after successful save
+ - Container styling for page context
+
+ BlogList.tsx Changes
+
+ Remove (~50 lines):
+ - showBlogForm state
+ - selectedBlog state
+ - handleEditBlog fetch logic
+ - Modal JSX at bottom
+ - Import of BlogForm
+
+ Add:
+ - useNavigate hook
+ - Simple navigation handlers
+
+ ---
+ Verification Plan
+
+ 1. Create new blog:
+   - Go to /admin/blogs
+   - Click "Create Blog" button
+   - Verify redirects to /admin/blogs/create
+   - Fill form, submit
+   - Verify redirects back to /admin/blogs
+ 2. Edit existing blog:
+   - Go to /admin/blogs
+   - Click edit on any blog row
+   - Verify redirects to /admin/blogs/{id}/edit
+   - Verify form populates with blog data
+   - Make changes, submit
+   - Verify redirects back to /admin/blogs
+ 3. Deep linking:
+   - Copy edit URL /admin/blogs/123/edit
+   - Open in new tab
+   - Verify blog loads correctly
+ 4. Browser navigation:
+   - Edit a blog
+   - Press browser back button
+   - Verify returns to blog list
+ 5. Error handling:
+   - Navigate to /admin/blogs/invalid-id/edit
+   - Verify error message shown
+
+ ---
+ Questions
+
+ None - the pattern is clear from existing EditVenuePage and AdminEditEventPage.

@@ -1,0 +1,7 @@
+.gz
+.claude/mcp
+.mcp.json
+null
+ai-doc-chatbot/
+frontend/.env.production
+backend/.env.production

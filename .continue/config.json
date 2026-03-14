@@ -1,0 +1,11 @@
+{
+    "mcpServers": {
+        "gema-mcp-server": {
+            "type": "stdio",
+            "command": "node",
+            "args": [
+                "E:/coding/gema/.claude/mcp/gema-mcp-server/build/index.js"
+            ]
+        }
+    }
+}

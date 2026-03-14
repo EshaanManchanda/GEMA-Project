@@ -1,0 +1,147 @@
+import { ApiService } from '../api';
+import { extractApiData, logApiResponse } from '../../utils/apiResponseHandler';
+import {
+  Category,
+  CreateCategoryData,
+  UpdateCategoryData,
+  GetCategoriesParams
+} from '../../types/category';
+
+// Re-export types for backward compatibility
+export type { Category, CreateCategoryData, UpdateCategoryData };
+
+const categoriesAPI = {
+  // Get all categories (tree structure or flat)
+  getAllCategories: async (params?: GetCategoriesParams): Promise<Category[]> => {
+    try {
+      const response = await ApiService.get('/categories', { params });
+      logApiResponse('GET /categories', response);
+      return extractApiData(response);
+    } catch (error) {
+      logApiResponse('GET /categories', null, error);
+      throw error;
+    }
+  },
+
+  // Get single category by ID or slug
+  getCategoryById: async (id: string): Promise<Category> => {
+    try {
+      const response = await ApiService.get(`/categories/${id}`);
+      logApiResponse(`GET /categories/${id}`, response);
+      return extractApiData(response);
+    } catch (error) {
+      logApiResponse(`GET /categories/${id}`, null, error);
+      throw error;
+    }
+  },
+
+  // Get root categories only
+  getRootCategories: async (): Promise<Category[]> => {
+    try {
+      const response = await ApiService.get('/categories/roots');
+      logApiResponse('GET /categories/roots', response);
+      return extractApiData(response);
+    } catch (error) {
+      logApiResponse('GET /categories/roots', null, error);
+      throw error;
+    }
+  },
+
+  // Get categories by parent ID
+  getCategoriesByParent: async (parentId: string | null): Promise<Category[]> => {
+    try {
+      const response = await ApiService.get(`/categories/parent/${parentId || 'null'}`);
+      logApiResponse(`GET /categories/parent/${parentId || 'null'}`, response);
+      return extractApiData(response);
+    } catch (error) {
+      logApiResponse(`GET /categories/parent/${parentId || 'null'}`, null, error);
+      throw error;
+    }
+  },
+
+  // Search categories
+  searchCategories: async (query: string, limit?: number): Promise<Category[]> => {
+    try {
+      const response = await ApiService.get('/categories/search', {
+        params: { q: query, limit }
+      });
+      logApiResponse('GET /categories/search', response);
+      return extractApiData(response);
+    } catch (error) {
+      logApiResponse('GET /categories/search', null, error);
+      throw error;
+    }
+  },
+
+  // Admin only: Create new category
+  createCategory: async (categoryData: CreateCategoryData): Promise<Category> => {
+    try {
+      const response = await ApiService.post('/categories', categoryData);
+      logApiResponse('POST /categories', response);
+      return extractApiData(response);
+    } catch (error: any) {
+      logApiResponse('POST /categories', null, error);
+
+      // Preserve response data for validation errors (400, 422)
+      if (error.response?.status === 400 || error.response?.status === 422) {
+        // Re-throw with preserved response data
+        throw error;
+      }
+
+      // For other errors, throw as-is
+      throw error;
+    }
+  },
+
+  // Admin only: Update category
+  updateCategory: async (id: string, categoryData: UpdateCategoryData): Promise<Category> => {
+    try {
+      const response = await ApiService.put(`/categories/${id}`, categoryData);
+      logApiResponse(`PUT /categories/${id}`, response);
+      return extractApiData(response);
+    } catch (error) {
+      logApiResponse(`PUT /categories/${id}`, null, error);
+      throw error;
+    }
+  },
+
+  // Admin only: Delete category
+  deleteCategory: async (id: string) => {
+    try {
+      const response = await ApiService.delete(`/categories/${id}`);
+      logApiResponse(`DELETE /categories/${id}`, response);
+      return extractApiData(response);
+    } catch (error) {
+      logApiResponse(`DELETE /categories/${id}`, null, error);
+      throw error;
+    }
+  },
+
+  // Admin only: Update category sort order
+  updateSortOrder: async (categories: Array<{ id: string; sortOrder: number }>) => {
+    try {
+      const response = await ApiService.put('/categories/sort-order/bulk', {
+        categories
+      });
+      logApiResponse('PUT /categories/sort-order/bulk', response);
+      return extractApiData(response);
+    } catch (error) {
+      logApiResponse('PUT /categories/sort-order/bulk', null, error);
+      throw error;
+    }
+  },
+
+  // Admin only: Update event counts for all categories
+  updateEventCounts: async () => {
+    try {
+      const response = await ApiService.post('/categories/update-counts');
+      logApiResponse('POST /categories/update-counts', response);
+      return extractApiData(response);
+    } catch (error) {
+      logApiResponse('POST /categories/update-counts', null, error);
+      throw error;
+    }
+  },
+};
+
+export default categoriesAPI;

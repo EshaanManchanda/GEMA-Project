@@ -1,0 +1,30 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(cat:*)",
+      "Bash(find:*)",
+      "Bash(npm ls:*)",
+      "Bash(dir:*)",
+      "Bash(findstr:*)",
+      "Bash(test:*)",
+      "Bash(npm test:*)",
+      "Bash(git log:*)",
+      "Bash(ls:*)"
+    ],
+    "deny": [],
+    "ask": []
+  },
+  "enableAllProjectMcpServers": true,
+  "enabledMcpjsonServers": [
+    "gema-mcp-server"
+  ],
+  "mcpServers": {
+    "gema-mcp-server": {
+      "type": "stdio",
+      "command": "node",
+      "args": [
+        "E:/coding/gema/.claude/mcp/gema-mcp-server/build/index.js"
+      ]
+    }
+  }
+}

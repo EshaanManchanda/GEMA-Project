@@ -1,0 +1,6 @@
+{
+  "enabledMcpjsonServers": [
+    "gema-mcp-server"
+  ],
+  "enableAllProjectMcpServers": true
+}

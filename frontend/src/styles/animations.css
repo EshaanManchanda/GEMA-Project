@@ -1,0 +1,348 @@
+/* ============================================
+   PERFORMANCE-OPTIMIZED CSS ANIMATIONS
+   Replaces heavy Framer Motion on high-traffic pages
+   ~60KB savings on initial bundle load
+   ============================================ */
+
+/* ========== FADE IN ANIMATIONS ========== */
+@keyframes fadeIn {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
+.animate-fade-in {
+  animation: fadeIn 0.5s ease-out forwards;
+  animation-delay: var(--animation-delay, 0ms);
+  opacity: 0; /* Start invisible */
+}
+
+/* ========== SLIDE ANIMATIONS ========== */
+@keyframes slideUp {
+  from {
+    opacity: 0;
+    transform: translateY(30px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes slideDown {
+  from {
+    opacity: 0;
+    transform: translateY(-30px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes slideLeft {
+  from {
+    opacity: 0;
+    transform: translateX(30px);
+  }
+  to {
+    opacity: 1;
+    transform: translateX(0);
+  }
+}
+
+@keyframes slideRight {
+  from {
+    opacity: 0;
+    transform: translateX(-30px);
+  }
+  to {
+    opacity: 1;
+    transform: translateX(0);
+  }
+}
+
+.animate-slide-up {
+  animation: slideUp 0.6s ease-out forwards;
+  animation-delay: var(--animation-delay, 0ms);
+  opacity: 0;
+}
+
+.animate-slide-down {
+  animation: slideDown 0.6s ease-out forwards;
+  animation-delay: var(--animation-delay, 0ms);
+  opacity: 0;
+}
+
+.animate-slide-left {
+  animation: slideLeft 0.6s ease-out forwards;
+  animation-delay: var(--animation-delay, 0ms);
+  opacity: 0;
+}
+
+.animate-slide-right {
+  animation: slideRight 0.6s ease-out forwards;
+  animation-delay: var(--animation-delay, 0ms);
+  opacity: 0;
+}
+
+/* ========== SCALE ANIMATIONS ========== */
+@keyframes scaleIn {
+  from {
+    opacity: 0;
+    transform: scale(0.95);
+  }
+  to {
+    opacity: 1;
+    transform: scale(1);
+  }
+}
+
+.animate-scale-in {
+  animation: scaleIn 0.5s ease-out forwards;
+  animation-delay: var(--animation-delay, 0ms);
+  opacity: 0;
+}
+
+/* ========== SCROLL REVEAL (Intersection Observer) ========== */
+.scroll-reveal {
+  opacity: 0;
+  transform: translateY(30px);
+  transition: opacity 0.6s ease-out, transform 0.6s ease-out;
+}
+
+.scroll-reveal.revealed {
+  opacity: 1;
+  transform: translateY(0);
+}
+
+/* Variant: Slide from left */
+.scroll-reveal-left {
+  opacity: 0;
+  transform: translateX(-30px);
+  transition: opacity 0.6s ease-out, transform 0.6s ease-out;
+}
+
+.scroll-reveal-left.revealed {
+  opacity: 1;
+  transform: translateX(0);
+}
+
+/* Variant: Slide from right */
+.scroll-reveal-right {
+  opacity: 0;
+  transform: translateX(30px);
+  transition: opacity 0.6s ease-out, transform 0.6s ease-out;
+}
+
+.scroll-reveal-right.revealed {
+  opacity: 1;
+  transform: translateX(0);
+}
+
+/* Variant: Scale up */
+.scroll-reveal-scale {
+  opacity: 0;
+  transform: scale(0.95);
+  transition: opacity 0.6s ease-out, transform 0.6s ease-out;
+}
+
+.scroll-reveal-scale.revealed {
+  opacity: 1;
+  transform: scale(1);
+}
+
+/* ========== STAGGER ANIMATIONS ========== */
+.stagger-container > * {
+  animation: fadeIn 0.5s ease-out forwards;
+  opacity: 0;
+}
+
+.stagger-container > *:nth-child(1) { animation-delay: 0ms; }
+.stagger-container > *:nth-child(2) { animation-delay: 100ms; }
+.stagger-container > *:nth-child(3) { animation-delay: 200ms; }
+.stagger-container > *:nth-child(4) { animation-delay: 300ms; }
+.stagger-container > *:nth-child(5) { animation-delay: 400ms; }
+.stagger-container > *:nth-child(6) { animation-delay: 500ms; }
+.stagger-container > *:nth-child(7) { animation-delay: 600ms; }
+.stagger-container > *:nth-child(8) { animation-delay: 700ms; }
+
+/* For more than 8 items, generic stagger */
+.stagger-container > *:nth-child(n+9) {
+  animation-delay: 800ms;
+}
+
+/* ========== HOVER EFFECTS ========== */
+.hover-lift {
+  transition: transform 0.3s ease, box-shadow 0.3s ease;
+}
+
+.hover-lift:hover {
+  transform: translateY(-4px);
+  box-shadow: 0 10px 20px rgba(0, 0, 0, 0.15);
+}
+
+.hover-scale {
+  transition: transform 0.3s ease;
+}
+
+.hover-scale:hover {
+  transform: scale(1.05);
+}
+
+.hover-glow {
+  transition: box-shadow 0.3s ease;
+}
+
+.hover-glow:hover {
+  box-shadow: 0 0 20px rgba(59, 130, 246, 0.5);
+}
+
+/* ========== BUTTON ANIMATIONS ========== */
+.btn-press {
+  transition: transform 0.1s ease;
+}
+
+.btn-press:active {
+  transform: scale(0.95);
+}
+
+.btn-bounce:hover {
+  animation: bounce 0.5s ease;
+}
+
+@keyframes bounce {
+  0%, 100% { transform: translateY(0); }
+  50% { transform: translateY(-10px); }
+}
+
+/* ========== LOADING SKELETONS ========== */
+@keyframes shimmer {
+  0% {
+    background-position: -1000px 0;
+  }
+  100% {
+    background-position: 1000px 0;
+  }
+}
+
+.skeleton {
+  background: linear-gradient(
+    90deg,
+    #f0f0f0 0%,
+    #e0e0e0 50%,
+    #f0f0f0 100%
+  );
+  background-size: 1000px 100%;
+  animation: shimmer 2s infinite linear;
+}
+
+/* ========== PULSE ANIMATION ========== */
+@keyframes pulse {
+  0%, 100% {
+    opacity: 1;
+    transform: scale(1);
+  }
+  50% {
+    opacity: 0.8;
+    transform: scale(1.05);
+  }
+}
+
+.animate-pulse-custom {
+  animation: pulse 2s ease-in-out infinite;
+}
+
+/* ========== GRADIENT SHIFT ========== */
+@keyframes gradientShift {
+  0%, 100% {
+    background-position: 0% 50%;
+  }
+  50% {
+    background-position: 100% 50%;
+  }
+}
+
+.animate-gradient {
+  background-size: 200% 200%;
+  animation: gradientShift 8s ease infinite;
+}
+
+/* ========== FLOAT ANIMATION ========== */
+@keyframes float {
+  0%, 100% {
+    transform: translateY(0);
+  }
+  50% {
+    transform: translateY(-10px);
+  }
+}
+
+.animate-float {
+  animation: float 3s ease-in-out infinite;
+}
+
+/* ========== NUMBER COUNTER (JavaScript-driven) ========== */
+.counter {
+  font-variant-numeric: tabular-nums;
+  font-feature-settings: "tnum";
+}
+
+/* ========== PERFORMANCE OPTIMIZATIONS ========== */
+
+/* Disable animations on low-end devices */
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+  }
+}
+
+/* GPU acceleration for smooth animations */
+.animate-fade-in,
+.animate-slide-up,
+.animate-slide-down,
+.animate-slide-left,
+.animate-slide-right,
+.animate-scale-in,
+.scroll-reveal,
+.scroll-reveal-left,
+.scroll-reveal-right,
+.scroll-reveal-scale {
+  will-change: transform, opacity;
+}
+
+/* Remove will-change after animation completes */
+.animation-complete {
+  will-change: auto;
+}
+
+/* ========== UTILITY CLASSES ========== */
+
+/* Delay utilities */
+.delay-0 { --animation-delay: 0ms; }
+.delay-100 { --animation-delay: 100ms; }
+.delay-200 { --animation-delay: 200ms; }
+.delay-300 { --animation-delay: 300ms; }
+.delay-400 { --animation-delay: 400ms; }
+.delay-500 { --animation-delay: 500ms; }
+.delay-600 { --animation-delay: 600ms; }
+.delay-700 { --animation-delay: 700ms; }
+.delay-800 { --animation-delay: 800ms; }
+.delay-1000 { --animation-delay: 1000ms; }
+
+/* Duration utilities */
+.duration-fast { animation-duration: 0.3s; transition-duration: 0.3s; }
+.duration-normal { animation-duration: 0.5s; transition-duration: 0.5s; }
+.duration-slow { animation-duration: 0.8s; transition-duration: 0.8s; }
+
+/* Easing utilities */
+.ease-in { animation-timing-function: ease-in; transition-timing-function: ease-in; }
+.ease-out { animation-timing-function: ease-out; transition-timing-function: ease-out; }
+.ease-in-out { animation-timing-function: ease-in-out; transition-timing-function: ease-in-out; }
