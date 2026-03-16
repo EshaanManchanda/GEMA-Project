@@ -1,14 +1,19 @@
-import { Request, Response, NextFunction } from 'express';
-import { validationResult } from 'express-validator';
-import { Event, User } from '../models/index';
-import { AppError } from '../middleware/index';
-import { AuthRequest } from '../types/index';
-import { config, checkDBHealth } from '../config/index';
-import { buildPublicEventFilter, sanitizeEventOutput, sanitizeEventsOutput } from '../utils/event.utils';
-import { cacheService } from '../services/cache.service';
-import { invalidateEventCaches } from '../utils/cache.utils';
-import { eventService } from '../services/event.service';
-import { CacheTTL } from '../config/cache-tiers'; // ✅ Phase 2.3: Tiered cache strategy
+import { Request, Response, NextFunction } from "express";
+import { validationResult } from "express-validator";
+import { Event, User } from "../models/index";
+import { AppError } from "../middleware/index";
+import { AuthRequest } from "../types/index";
+import { config, checkDBHealth } from "../config/index";
+import {
+  buildPublicEventFilter,
+  sanitizeEventOutput,
+  sanitizeEventsOutput,
+} from "../utils/event.utils";
+import { cacheService } from "../services/cache.service";
+import { invalidateEventCaches } from "../utils/cache.utils";
+import { eventService } from "../services/event.service";
+import { CacheTTL } from "../config/cache-tiers"; // ✅ Phase 2.3: Tiered cache strategy
+import { emailService } from "../services/email.service";
 
 /**
  * Wrapper to add timeout to database operations
@@ -16,11 +21,13 @@ import { CacheTTL } from '../config/cache-tiers'; // ✅ Phase 2.3: Tiered cache
 const withTimeout = async <T>(
   operation: Promise<T>,
   timeoutMs: number = 30000,
-  operationName: string = 'Database operation'
+  operationName: string = "Database operation",
 ): Promise<T> => {
   const timeoutPromise = new Promise<never>((_, reject) => {
     setTimeout(() => {
-      reject(new AppError(`${operationName} timed out after ${timeoutMs}ms`, 408));
+      reject(
+        new AppError(`${operationName} timed out after ${timeoutMs}ms`, 408),
+      );
     }, timeoutMs);
   });
 
@@ -30,12 +37,12 @@ const withTimeout = async <T>(
 // @desc    Get all events
 // @route   GET /api/events
 // @access  Public
-export const getEvents = async (req: Request, res: Response, next: NextFunction) => {
+export const getEvents = async (
+  req: Request,
+  res: Response,
+  next: NextFunction,
+) => {
   try {
-    console.log('\n=== EVENTS API DEBUG ===');
-    console.log('Request query params:', req.query);
-    console.log('User-Agent:', req.headers['user-agent']?.includes('curl') ? 'curl' : 'browser/app');
-
     const {
       page = 1,
       limit = 12,
@@ -53,8 +60,8 @@ export const getEvents = async (req: Request, res: Response, next: NextFunction)
       tags,
       dateFrom,
       dateTo,
-      sortBy = 'createdAt',
-      sortOrder = 'desc',
+      sortBy = "createdAt",
+      sortOrder = "desc",
       teacherId,
       subject,
       topic,
@@ -67,16 +74,24 @@ export const getEvents = async (req: Request, res: Response, next: NextFunction)
     const MAX_SKIP = 10000; // Prevent deep pagination abuse
 
     // Validate and sanitize pagination parameters
-    const pageNum = Math.max(1, Math.min(parseInt(page as string) || 1, MAX_PAGE));
-    const limitNum = Math.max(1, Math.min(parseInt(limit as string) || DEFAULT_LIMIT, MAX_LIMIT));
+    const pageNum = Math.max(
+      1,
+      Math.min(parseInt(page as string) || 1, MAX_PAGE),
+    );
+    const limitNum = Math.max(
+      1,
+      Math.min(parseInt(limit as string) || DEFAULT_LIMIT, MAX_LIMIT),
+    );
     const skip = (pageNum - 1) * limitNum;
 
     // Protection against deep pagination (MongoDB performance degrades)
     if (skip > MAX_SKIP) {
-      return next(new AppError(
-        'Page number too high. Please use more specific filters or contact support for data export options.',
-        400
-      ));
+      return next(
+        new AppError(
+          "Page number too high. Please use more specific filters or contact support for data export options.",
+          400,
+        ),
+      );
     }
 
     // Generate cache key based on query parameters
@@ -104,16 +119,16 @@ export const getEvents = async (req: Request, res: Response, next: NextFunction)
     // Try to get from cache first
     const cached = await cacheService.get<any>(cacheKey);
     if (cached) {
-      console.log('✅ Cache HIT for events listing');
+      console.log("✅ Cache HIT for events listing");
       return res.status(200).json({
         success: true,
-        message: 'Events retrieved successfully',
+        message: "Events retrieved successfully",
         data: cached,
         cached: true,
       });
     }
 
-    console.log('❌ Cache MISS for events listing');
+    console.log("❌ Cache MISS for events listing");
 
     // Build additional filters based on query params
     const additionalFilters: any = {};
@@ -121,29 +136,39 @@ export const getEvents = async (req: Request, res: Response, next: NextFunction)
     // Case-insensitive category matching (events store category as slugs)
     if (category) {
       // Escape regex special characters to prevent injection
-      const escapedCategory = (category as string).replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
-      additionalFilters.category = new RegExp(`^${escapedCategory}$`, 'i');
+      const escapedCategory = (category as string).replace(
+        /[.*+?^${}()|[\]\\]/g,
+        "\\$&",
+      );
+      additionalFilters.category = new RegExp(`^${escapedCategory}$`, "i");
     }
     if (type) additionalFilters.type = type;
     if (venueType) additionalFilters.venueType = venueType;
-    if (city) additionalFilters['location.city'] = new RegExp(city as string, 'i');
+    if (city)
+      additionalFilters["location.city"] = new RegExp(city as string, "i");
     if (currency) additionalFilters.currency = currency;
     if (featured !== undefined) {
-      additionalFilters.isFeatured = featured === 'true';
+      additionalFilters.isFeatured = featured === "true";
     }
     if (teacherId) additionalFilters.teacherId = teacherId;
     if (subject) {
-      const escapedSubject = (subject as string).replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
-      additionalFilters.subject = new RegExp(`^${escapedSubject}$`, 'i');
+      const escapedSubject = (subject as string).replace(
+        /[.*+?^${}()|[\]\\]/g,
+        "\\$&",
+      );
+      additionalFilters.subject = new RegExp(`^${escapedSubject}$`, "i");
     }
     if (topic) {
-      const escapedTopic = (topic as string).replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
-      additionalFilters.topic = new RegExp(`^${escapedTopic}$`, 'i');
+      const escapedTopic = (topic as string).replace(
+        /[.*+?^${}()|[\]\\]/g,
+        "\\$&",
+      );
+      additionalFilters.topic = new RegExp(`^${escapedTopic}$`, "i");
     }
 
     // Tag filtering
     if (tags) {
-      const tagArray = (tags as string).split(',').map(tag => tag.trim());
+      const tagArray = (tags as string).split(",").map((tag) => tag.trim());
       additionalFilters.tags = { $in: tagArray };
     }
 
@@ -172,47 +197,30 @@ export const getEvents = async (req: Request, res: Response, next: NextFunction)
 
     // Date range filtering
     if (dateFrom || dateTo) {
-      filter['dateSchedule.startDate'] = {};
+      filter["dateSchedule.startDate"] = {};
       if (dateFrom) {
-        filter['dateSchedule.startDate'].$gte = new Date(dateFrom as string);
+        filter["dateSchedule.startDate"].$gte = new Date(dateFrom as string);
       }
       if (dateTo) {
-        filter['dateSchedule.startDate'].$lte = new Date(dateTo as string);
+        filter["dateSchedule.startDate"].$lte = new Date(dateTo as string);
       }
     }
 
     // Build sort query
     const sort: any = {};
     if (search && !sortBy) {
-      sort.score = { $meta: 'textScore' };
+      sort.score = { $meta: "textScore" };
     } else {
-      sort[sortBy as string] = sortOrder === 'asc' ? 1 : -1;
+      sort[sortBy as string] = sortOrder === "asc" ? 1 : -1;
     }
-
-    console.log('Filter being applied:', JSON.stringify(filter, null, 2));
-    console.log('Sort being applied:', JSON.stringify(sort, null, 2));
-    console.log('Pagination: page', pageNum, 'limit', limitNum, 'skip', skip);
 
     // Execute query
     const [events, total] = await Promise.all([
       Event.find(filter)
-        .populate('vendorId', 'firstName lastName email')
-        .populate({
-          path: 'teacherId',
-          select: 'fullName bio specialization profileImageAssetId userId',
-          populate: [
-            {
-              path: 'userId',
-              select: 'firstName lastName email avatar'
-            },
-            {
-              path: 'profileImageAssetId',
-              select: 'url thumbnailUrl'
-            }
-          ]
-        })
-        .populate('imageAssets', 'url thumbnailUrl variations')
-        .select('-dateSchedule.price')
+        .populate("vendorId", "firstName lastName email")
+        .populate("teacherId", "firstName lastName email bio profileImage") // ✅ Populate teacher details
+        .populate("imageAssets", "url thumbnailUrl variations")
+        .select("-dateSchedule.price")
         .sort(sort)
         .skip(skip)
         .limit(limitNum)
@@ -220,10 +228,16 @@ export const getEvents = async (req: Request, res: Response, next: NextFunction)
       Event.countDocuments(filter),
     ]);
 
-    console.log('Query results:');
-    console.log('- Total events matching filter:', total);
-    console.log('- Events returned:', events.length);
-    console.log('- Sample event viewsCounts:', events.map(e => ({ title: e.title.substring(0, 20), viewsCount: e.viewsCount })));
+    console.log("Query results:");
+    console.log("- Total events matching filter:", total);
+    console.log("- Events returned:", events.length);
+    console.log(
+      "- Sample event viewsCounts:",
+      events.map((e) => ({
+        title: e.title.substring(0, 20),
+        viewsCount: e.viewsCount,
+      })),
+    );
 
     // Calculate pagination info
     const totalPages = Math.ceil(total / limitNum);
@@ -246,11 +260,13 @@ export const getEvents = async (req: Request, res: Response, next: NextFunction)
     };
 
     // ✅ Cache with tiered TTL strategy (3 minutes for medium-churn data)
-    await cacheService.set(cacheKey, responseData, { ttl: CacheTTL.EVENT_LISTING });
+    await cacheService.set(cacheKey, responseData, {
+      ttl: CacheTTL.EVENT_LISTING,
+    });
 
     res.status(200).json({
       success: true,
-      message: 'Events retrieved successfully',
+      message: "Events retrieved successfully",
       data: responseData,
       cached: false,
     });
@@ -262,13 +278,17 @@ export const getEvents = async (req: Request, res: Response, next: NextFunction)
 // @desc    Get single event
 // @route   GET /api/events/:slug (supports both slug and legacy ID for backward compatibility)
 // @access  Public
-export const getEvent = async (req: Request, res: Response, next: NextFunction) => {
+export const getEvent = async (
+  req: Request,
+  res: Response,
+  next: NextFunction,
+) => {
   try {
     const { slug } = req.params;
 
     // Check if parameter is a MongoDB ObjectId (24 hex characters) for backward compatibility
     const isMongoId = /^[0-9a-fA-F]{24}$/.test(slug);
-    const lookupField = isMongoId ? '_id' : 'slug';
+    const lookupField = isMongoId ? "_id" : "slug";
     const lookupValue = isMongoId ? slug : slug;
 
     // Try to get from cache first
@@ -278,18 +298,20 @@ export const getEvent = async (req: Request, res: Response, next: NextFunction) 
     if (cached) {
       console.log(`✅ Cache HIT for event ${lookupValue} (${lookupField})`);
       // Still increment view count (async, non-blocking)
-      const updateQuery = isMongoId ? { _id: lookupValue } : { slug: lookupValue };
+      const updateQuery = isMongoId
+        ? { _id: lookupValue }
+        : { slug: lookupValue };
       withTimeout(
         Event.findOneAndUpdate(updateQuery, { $inc: { viewsCount: 1 } }),
         15000,
-        'View count update'
-      ).catch(error => {
-        console.warn('Failed to update view count:', error.message);
+        "View count update",
+      ).catch((error) => {
+        console.warn("Failed to update view count:", error.message);
       });
 
       return res.status(200).json({
         success: true,
-        message: 'Event retrieved successfully',
+        message: "Event retrieved successfully",
         data: cached,
         cached: true,
       });
@@ -300,79 +322,87 @@ export const getEvent = async (req: Request, res: Response, next: NextFunction) 
     // Check database health before proceeding
     const isDBHealthy = await checkDBHealth();
     if (!isDBHealthy) {
-      return next(new AppError('Database is currently unavailable. Please try again later.', 503));
+      return next(
+        new AppError(
+          "Database is currently unavailable. Please try again later.",
+          503,
+        ),
+      );
     }
 
     // Build public filter with expiration check
     // Allow past events for direct lookup (so we don't return 404 for valid but expired events)
-    const filterQuery = isMongoId ? { _id: lookupValue, includePast: true } : { slug: lookupValue, includePast: true };
+    const filterQuery = isMongoId
+      ? { _id: lookupValue, includePast: true }
+      : { slug: lookupValue, includePast: true };
     const filter = buildPublicEventFilter(filterQuery);
 
     // Add timeout to the main query - only show active, published, non-expired events
     const event = await withTimeout(
       Event.findOne(filter)
-        .populate('vendorId', 'firstName lastName email phone avatar')
-        .populate({
-          path: 'teacherId',
-          select: 'fullName bio specialization profileImageAssetId userId',
-          populate: [
-            {
-              path: 'userId',
-              select: 'firstName lastName email avatar'
-            },
-            {
-              path: 'profileImageAssetId',
-              select: 'url thumbnailUrl'
-            }
-          ]
-        })
-        .populate('imageAssets', 'url thumbnailUrl variations')
+        .populate("vendorId", "firstName lastName email phone avatar")
+        .populate("teacherId", "firstName lastName email bio profileImage") // ✅ Populate teacher details
+        .populate("imageAssets", "url thumbnailUrl variations")
         .lean(), // ✅ Read-only query optimization
       config.mongodb.socketTimeoutMS,
-      'Event lookup'
+      "Event lookup",
     );
 
     if (!event) {
       // Diagnostic check: check if event exists but was filtered out (e.g. not published, expired)
       // This helps debug issues where valid events are returned as 404
-      const filterQuery = isMongoId ? { _id: lookupValue } : { slug: lookupValue };
+      const filterQuery = isMongoId
+        ? { _id: lookupValue }
+        : { slug: lookupValue };
       const rawEvent = await Event.findOne(filterQuery).lean(); // ✅ Diagnostic query optimization
 
       if (rawEvent) {
         const reasons: string[] = [];
-        if (!rawEvent.isApproved) reasons.push('not approved');
-        if (!rawEvent.isActive) reasons.push('not active');
-        if (rawEvent.status !== 'published') reasons.push(`status is ${rawEvent.status}`);
-        if (rawEvent.isDeleted) reasons.push('deleted');
+        if (!rawEvent.isApproved) reasons.push("not approved");
+        if (!rawEvent.isActive) reasons.push("not active");
+        if (rawEvent.status !== "published")
+          reasons.push(`status is ${rawEvent.status}`);
+        if (rawEvent.isDeleted) reasons.push("deleted");
 
         // Check dates
         const now = new Date();
         const bufferTime = new Date(now.getTime() - 24 * 60 * 60 * 1000);
-        const hasValidDate = rawEvent.dateSchedule && rawEvent.dateSchedule.some((schedule: any) => {
-          const dateToCheck = schedule.endDate || schedule.date;
-          return dateToCheck && new Date(dateToCheck) >= bufferTime;
-        });
+        const hasValidDate =
+          rawEvent.dateSchedule &&
+          rawEvent.dateSchedule.some((schedule: any) => {
+            const dateToCheck = schedule.endDate || schedule.date;
+            return dateToCheck && new Date(dateToCheck) >= bufferTime;
+          });
 
-        if (!hasValidDate) reasons.push('expired (no future dates)');
+        if (!hasValidDate) reasons.push("expired (no future dates)");
 
         // Log the finding for backend visibility
-        console.warn(`Event ${lookupValue} found but filtered out. Reasons: ${reasons.join(', ')}`);
+        console.warn(
+          `Event ${lookupValue} found but filtered out. Reasons: ${reasons.join(", ")}`,
+        );
 
         // Return a more descriptive error for debugging (you might want to revert this for production security)
-        return next(new AppError(`Event found but not visible: ${reasons.join(', ')}`, 404));
+        return next(
+          new AppError(
+            `Event found but not visible: ${reasons.join(", ")}`,
+            404,
+          ),
+        );
       }
 
-      return next(new AppError('Event not found', 404));
+      return next(new AppError("Event not found", 404));
     }
 
     // Increment view count with timeout (non-blocking, fire and forget)
-    const updateQuery = isMongoId ? { _id: lookupValue } : { slug: lookupValue };
+    const updateQuery = isMongoId
+      ? { _id: lookupValue }
+      : { slug: lookupValue };
     withTimeout(
       Event.findOneAndUpdate(updateQuery, { $inc: { viewsCount: 1 } }),
       15000,
-      'View count update'
-    ).catch(error => {
-      console.warn('Failed to update view count:', error.message);
+      "View count update",
+    ).catch((error) => {
+      console.warn("Failed to update view count:", error.message);
       // Don't fail the request if view count update fails
     });
 
@@ -382,25 +412,39 @@ export const getEvent = async (req: Request, res: Response, next: NextFunction) 
     const responseData = { event: sanitizedEvent };
 
     // ✅ Cache with tiered TTL strategy (15 minutes for low-churn data)
-    await cacheService.set(cacheKey, responseData, { ttl: CacheTTL.SINGLE_EVENT });
+    await cacheService.set(cacheKey, responseData, {
+      ttl: CacheTTL.SINGLE_EVENT,
+    });
 
     res.status(200).json({
       success: true,
-      message: 'Event retrieved successfully',
+      message: "Event retrieved successfully",
       data: responseData,
       cached: false,
     });
   } catch (error) {
     // Enhanced error handling for specific MongoDB errors
     if (error instanceof Error) {
-      if (error.message.includes('timed out')) {
-        return next(new AppError('Request timed out. The database is experiencing high load. Please try again.', 408));
+      if (error.message.includes("timed out")) {
+        return next(
+          new AppError(
+            "Request timed out. The database is experiencing high load. Please try again.",
+            408,
+          ),
+        );
       }
-      if (error.message.includes('buffering timed out')) {
-        return next(new AppError('Database connection is unstable. Please try again in a moment.', 503));
+      if (error.message.includes("buffering timed out")) {
+        return next(
+          new AppError(
+            "Database connection is unstable. Please try again in a moment.",
+            503,
+          ),
+        );
       }
-      if (error.message.includes('MongooseError')) {
-        return next(new AppError('Database error occurred. Please try again later.', 503));
+      if (error.message.includes("MongooseError")) {
+        return next(
+          new AppError("Database error occurred. Please try again later.", 503),
+        );
       }
     }
     next(error);
@@ -410,22 +454,26 @@ export const getEvent = async (req: Request, res: Response, next: NextFunction) 
 // @desc    Create new event
 // @route   POST /api/events
 // @access  Private (Vendor only)
-export const createEvent = async (req: AuthRequest, res: Response, next: NextFunction) => {
+export const createEvent = async (
+  req: AuthRequest,
+  res: Response,
+  next: NextFunction,
+) => {
   try {
     const errors = validationResult(req);
     if (!errors.isEmpty()) {
-      return next(new AppError('Validation failed', 400, errors.array()));
+      return next(new AppError("Validation failed", 400, errors.array()));
     }
 
     const userId = req.user?._id || req.user?.id;
     if (!userId) {
-      return next(new AppError('User not authenticated', 401));
+      return next(new AppError("User not authenticated", 401));
     }
 
     // Verify user is a vendor
     const user = await User.findById(userId).lean(); // ✅ Read-only query optimization
-    if (!user || user.role !== 'vendor') {
-      return next(new AppError('Only vendors can create events', 403));
+    if (!user || user.role !== "vendor") {
+      return next(new AppError("Only vendors can create events", 403));
     }
 
     const eventData = {
@@ -433,7 +481,7 @@ export const createEvent = async (req: AuthRequest, res: Response, next: NextFun
       vendorId: userId,
       isApproved: false, // Events require admin approval
       isActive: true, // Set as active by default
-      status: 'pending', // Status starts as pending approval
+      status: "pending", // Status starts as pending approval
     };
 
     // USE SERVICE LAYER (handles media tracking)
@@ -444,7 +492,7 @@ export const createEvent = async (req: AuthRequest, res: Response, next: NextFun
 
     res.status(201).json({
       success: true,
-      message: 'Event created successfully. Pending admin approval.',
+      message: "Event created successfully. Pending admin approval.",
       data: { event },
     });
   } catch (error) {
@@ -455,11 +503,15 @@ export const createEvent = async (req: AuthRequest, res: Response, next: NextFun
 // @desc    Update event
 // @route   PUT /api/events/:id
 // @access  Private (Vendor - own events only)
-export const updateEvent = async (req: AuthRequest, res: Response, next: NextFunction) => {
+export const updateEvent = async (
+  req: AuthRequest,
+  res: Response,
+  next: NextFunction,
+) => {
   try {
     const errors = validationResult(req);
     if (!errors.isEmpty()) {
-      return next(new AppError('Validation failed', 400, errors.array()));
+      return next(new AppError("Validation failed", 400, errors.array()));
     }
 
     const { id } = req.params;
@@ -472,16 +524,17 @@ export const updateEvent = async (req: AuthRequest, res: Response, next: NextFun
     });
 
     if (!event) {
-      return next(new AppError('Event not found or unauthorized', 404));
+      return next(new AppError("Event not found or unauthorized", 404));
     }
 
     // If event was previously approved and being modified, require re-approval
-    const requiresReapproval = event.isApproved && (
-      req.body.title !== event.title ||
-      req.body.description !== event.description ||
-      req.body.price !== event.price ||
-      JSON.stringify(req.body.dateSchedule) !== JSON.stringify(event.dateSchedule)
-    );
+    const requiresReapproval =
+      event.isApproved &&
+      (req.body.title !== event.title ||
+        req.body.description !== event.description ||
+        req.body.price !== event.price ||
+        JSON.stringify(req.body.dateSchedule) !==
+          JSON.stringify(event.dateSchedule));
 
     const updateData = {
       ...req.body,
@@ -497,8 +550,8 @@ export const updateEvent = async (req: AuthRequest, res: Response, next: NextFun
     res.status(200).json({
       success: true,
       message: requiresReapproval
-        ? 'Event updated successfully. Pending admin re-approval due to significant changes.'
-        : 'Event updated successfully',
+        ? "Event updated successfully. Pending admin re-approval due to significant changes."
+        : "Event updated successfully",
       data: { event: updatedEvent },
     });
   } catch (error) {
@@ -509,7 +562,11 @@ export const updateEvent = async (req: AuthRequest, res: Response, next: NextFun
 // @desc    Delete event (soft delete)
 // @route   DELETE /api/events/:id
 // @access  Private (Vendor - own events only)
-export const deleteEvent = async (req: AuthRequest, res: Response, next: NextFunction) => {
+export const deleteEvent = async (
+  req: AuthRequest,
+  res: Response,
+  next: NextFunction,
+) => {
   try {
     const { id } = req.params;
     const { permanent } = req.query; // Support ?permanent=true for hard delete
@@ -522,10 +579,10 @@ export const deleteEvent = async (req: AuthRequest, res: Response, next: NextFun
     });
 
     if (!event) {
-      return next(new AppError('Event not found or unauthorized', 404));
+      return next(new AppError("Event not found or unauthorized", 404));
     }
 
-    if (permanent === 'true') {
+    if (permanent === "true") {
       // Admin emptying the trash - hard delete with media cleanup
       await eventService.hardDeleteEvent(id);
     } else {
@@ -538,7 +595,10 @@ export const deleteEvent = async (req: AuthRequest, res: Response, next: NextFun
 
     res.status(200).json({
       success: true,
-      message: permanent === 'true' ? 'Event permanently deleted' : 'Event deleted successfully',
+      message:
+        permanent === "true"
+          ? "Event permanently deleted"
+          : "Event deleted successfully",
     });
   } catch (error) {
     next(error);
@@ -548,15 +608,19 @@ export const deleteEvent = async (req: AuthRequest, res: Response, next: NextFun
 // @desc    Get vendor's events
 // @route   GET /api/events/vendor/my-events
 // @access  Private (Vendor only)
-export const getVendorEvents = async (req: AuthRequest, res: Response, next: NextFunction) => {
+export const getVendorEvents = async (
+  req: AuthRequest,
+  res: Response,
+  next: NextFunction,
+) => {
   try {
     const userId = req.user?._id || req.user?.id;
     const {
       page = 1,
       limit = 12,
-      status = 'all',
-      sortBy = 'createdAt',
-      sortOrder = 'desc',
+      status = "all",
+      sortBy = "createdAt",
+      sortOrder = "desc",
     } = req.query;
 
     const pageNum = parseInt(page as string);
@@ -569,15 +633,15 @@ export const getVendorEvents = async (req: AuthRequest, res: Response, next: Nex
       isDeleted: false,
     };
 
-    if (status !== 'all') {
+    if (status !== "all") {
       switch (status) {
-        case 'approved':
+        case "approved":
           filter.isApproved = true;
           break;
-        case 'pending':
+        case "pending":
           filter.isApproved = false;
           break;
-        case 'featured':
+        case "featured":
           filter.isFeatured = true;
           break;
       }
@@ -585,20 +649,13 @@ export const getVendorEvents = async (req: AuthRequest, res: Response, next: Nex
 
     // Build sort query
     const sort: any = {};
-    sort[sortBy as string] = sortOrder === 'asc' ? 1 : -1;
+    sort[sortBy as string] = sortOrder === "asc" ? 1 : -1;
 
     // Execute query
     const [events, total] = await Promise.all([
       Event.find(filter)
-        .populate('imageAssets', 'url thumbnailUrl variations')
-        .populate({
-          path: 'teacherId',
-          select: 'fullName userId',
-          populate: {
-            path: 'userId',
-            select: 'firstName lastName'
-          }
-        })
+        .populate("imageAssets", "url thumbnailUrl variations")
+        .populate("teacherId", "firstName lastName") // ✅ Populate teacher details for vendor view
         .sort(sort)
         .skip(skip)
         .limit(limitNum)
@@ -611,7 +668,7 @@ export const getVendorEvents = async (req: AuthRequest, res: Response, next: Nex
 
     res.status(200).json({
       success: true,
-      message: 'Vendor events retrieved successfully',
+      message: "Vendor events retrieved successfully",
       data: {
         events,
         pagination: {
@@ -632,16 +689,20 @@ export const getVendorEvents = async (req: AuthRequest, res: Response, next: Nex
 // @desc    Get event categories
 // @route   GET /api/events/categories
 // @access  Public
-export const getEventCategories = async (req: Request, res: Response, next: NextFunction) => {
+export const getEventCategories = async (
+  req: Request,
+  res: Response,
+  next: NextFunction,
+) => {
   try {
     // Use public filter to exclude expired/inactive events
     const filter = buildPublicEventFilter();
 
-    const categories = await Event.distinct('category', filter);
+    const categories = await Event.distinct("category", filter);
 
     res.status(200).json({
       success: true,
-      message: 'Event categories retrieved successfully',
+      message: "Event categories retrieved successfully",
       data: { categories: categories.sort() },
     });
   } catch (error) {
@@ -652,7 +713,11 @@ export const getEventCategories = async (req: Request, res: Response, next: Next
 // @desc    Get event analytics for vendor
 // @route   GET /api/events/vendor/analytics
 // @access  Private (Vendor only)
-export const getVendorEventAnalytics = async (req: AuthRequest, res: Response, next: NextFunction) => {
+export const getVendorEventAnalytics = async (
+  req: AuthRequest,
+  res: Response,
+  next: NextFunction,
+) => {
   try {
     const userId = req.user?._id || req.user?.id;
 
@@ -668,16 +733,16 @@ export const getVendorEventAnalytics = async (req: AuthRequest, res: Response, n
           _id: null,
           totalEvents: { $sum: 1 },
           approvedEvents: {
-            $sum: { $cond: [{ $eq: ['$isApproved', true] }, 1, 0] },
+            $sum: { $cond: [{ $eq: ["$isApproved", true] }, 1, 0] },
           },
           pendingEvents: {
-            $sum: { $cond: [{ $eq: ['$isApproved', false] }, 1, 0] },
+            $sum: { $cond: [{ $eq: ["$isApproved", false] }, 1, 0] },
           },
           featuredEvents: {
-            $sum: { $cond: [{ $eq: ['$isFeatured', true] }, 1, 0] },
+            $sum: { $cond: [{ $eq: ["$isFeatured", true] }, 1, 0] },
           },
-          totalViews: { $sum: '$viewsCount' },
-          avgPrice: { $avg: '$price' },
+          totalViews: { $sum: "$viewsCount" },
+          avgPrice: { $avg: "$price" },
         },
       },
     ]);
@@ -693,7 +758,7 @@ export const getVendorEventAnalytics = async (req: AuthRequest, res: Response, n
 
     res.status(200).json({
       success: true,
-      message: 'Vendor analytics retrieved successfully',
+      message: "Vendor analytics retrieved successfully",
       data: { analytics: result },
     });
   } catch (error) {
@@ -706,14 +771,18 @@ export const getVendorEventAnalytics = async (req: AuthRequest, res: Response, n
 // @desc    Get all events for admin
 // @route   GET /api/events/admin/all
 // @access  Private (Admin only)
-export const getAdminEvents = async (req: AuthRequest, res: Response, next: NextFunction) => {
+export const getAdminEvents = async (
+  req: AuthRequest,
+  res: Response,
+  next: NextFunction,
+) => {
   try {
     const {
       page = 1,
       limit = 12,
-      status = 'all',
-      sortBy = 'createdAt',
-      sortOrder = 'desc',
+      status = "all",
+      sortBy = "createdAt",
+      sortOrder = "desc",
     } = req.query;
 
     const pageNum = parseInt(page as string);
@@ -723,15 +792,15 @@ export const getAdminEvents = async (req: AuthRequest, res: Response, next: Next
     // Build filter query
     const filter: any = { isDeleted: false };
 
-    if (status !== 'all') {
+    if (status !== "all") {
       switch (status) {
-        case 'approved':
+        case "approved":
           filter.isApproved = true;
           break;
-        case 'pending':
+        case "pending":
           filter.isApproved = false;
           break;
-        case 'featured':
+        case "featured":
           filter.isFeatured = true;
           break;
       }
@@ -739,21 +808,14 @@ export const getAdminEvents = async (req: AuthRequest, res: Response, next: Next
 
     // Build sort query
     const sort: any = {};
-    sort[sortBy as string] = sortOrder === 'asc' ? 1 : -1;
+    sort[sortBy as string] = sortOrder === "asc" ? 1 : -1;
 
     // Execute query
     const [events, total] = await Promise.all([
       Event.find(filter)
-        .populate('vendorId', 'firstName lastName email')
-        .populate({
-          path: 'teacherId',
-          select: 'fullName userId',
-          populate: {
-            path: 'userId',
-            select: 'firstName lastName email'
-          }
-        })
-        .populate('imageAssets', 'url thumbnailUrl variations')
+        .populate("vendorId", "firstName lastName email")
+        .populate("teacherId", "firstName lastName email") // ✅ Populate teacher details for admin view
+        .populate("imageAssets", "url thumbnailUrl variations")
         .sort(sort)
         .skip(skip)
         .limit(limitNum)
@@ -763,7 +825,7 @@ export const getAdminEvents = async (req: AuthRequest, res: Response, next: Next
 
     res.status(200).json({
       success: true,
-      message: 'Admin events retrieved successfully',
+      message: "Admin events retrieved successfully",
       data: {
         events,
         pagination: {
@@ -784,28 +846,55 @@ export const getAdminEvents = async (req: AuthRequest, res: Response, next: Next
 // @desc    Approve/reject event
 // @route   PUT /api/events/admin/:id/approval
 // @access  Private (Admin only)
-export const updateEventApproval = async (req: AuthRequest, res: Response, next: NextFunction) => {
+export const updateEventApproval = async (
+  req: AuthRequest,
+  res: Response,
+  next: NextFunction,
+) => {
   try {
     const { id } = req.params;
     const { isApproved, reason } = req.body;
 
-    if (typeof isApproved !== 'boolean') {
-      return next(new AppError('isApproved must be a boolean value', 400));
+    if (typeof isApproved !== "boolean") {
+      return next(new AppError("isApproved must be a boolean value", 400));
     }
 
     const event = await Event.findById(id);
     if (!event) {
-      return next(new AppError('Event not found', 404));
+      return next(new AppError("Event not found", 404));
     }
 
     event.isApproved = isApproved;
     await event.save();
 
-    // TODO: Send notification email to vendor about approval/rejection
+    // Notify vendor/teacher about approval or rejection
+    const ownerId = (event as any).vendorId || (event as any).teacherId;
+    if (ownerId) {
+      const owner = await User.findById(ownerId)
+        .select("email firstName")
+        .lean();
+      if (owner) {
+        const ownerAny = owner as any;
+        const statusText = isApproved ? "approved" : "rejected";
+        const reasonHtml = reason
+          ? `<p><strong>Reason:</strong> ${reason}</p>`
+          : "";
+        emailService
+          .sendEmail({
+            to: ownerAny.email,
+            subject: `Your event "${event.title}" has been ${statusText}`,
+            html: `<p>Hi ${ownerAny.firstName},</p>
+<p>Your event <strong>${event.title}</strong> has been <strong>${statusText}</strong> by the admin.</p>
+${reasonHtml}
+<p>Log in to your dashboard to view the event.</p>`,
+          })
+          .catch(() => {}); // fire-and-forget
+      }
+    }
 
     res.status(200).json({
       success: true,
-      message: `Event ${isApproved ? 'approved' : 'rejected'} successfully`,
+      message: `Event ${isApproved ? "approved" : "rejected"} successfully`,
       data: { event },
     });
   } catch (error) {
@@ -816,13 +905,17 @@ export const updateEventApproval = async (req: AuthRequest, res: Response, next:
 // @desc    Toggle event featured status
 // @route   PUT /api/events/admin/:id/featured
 // @access  Private (Admin only)
-export const toggleEventFeatured = async (req: AuthRequest, res: Response, next: NextFunction) => {
+export const toggleEventFeatured = async (
+  req: AuthRequest,
+  res: Response,
+  next: NextFunction,
+) => {
   try {
     const { id } = req.params;
 
     const event = await Event.findById(id);
     if (!event) {
-      return next(new AppError('Event not found', 404));
+      return next(new AppError("Event not found", 404));
     }
 
     event.isFeatured = !event.isFeatured;
@@ -830,7 +923,7 @@ export const toggleEventFeatured = async (req: AuthRequest, res: Response, next:
 
     res.status(200).json({
       success: true,
-      message: `Event ${event.isFeatured ? 'featured' : 'unfeatured'} successfully`,
+      message: `Event ${event.isFeatured ? "featured" : "unfeatured"} successfully`,
       data: { event },
     });
   } catch (error) {
@@ -838,11 +931,14 @@ export const toggleEventFeatured = async (req: AuthRequest, res: Response, next:
   }
 };
 
-
 // @desc    Claim an unclaimed event
 // @route   POST /api/events/:id/claim
 // @access  Private (Vendor only)
-export const claimEvent = async (req: AuthRequest, res: Response, next: NextFunction) => {
+export const claimEvent = async (
+  req: AuthRequest,
+  res: Response,
+  next: NextFunction,
+) => {
   try {
     const { id } = req.params;
     const userId = req.user?._id || req.user?.id;
@@ -850,28 +946,28 @@ export const claimEvent = async (req: AuthRequest, res: Response, next: NextFunc
     const event = await Event.findById(id);
 
     if (!event) {
-      return next(new AppError('Event not found', 404));
+      return next(new AppError("Event not found", 404));
     }
 
     // Check if event is claimable
-    if (event.claimStatus === 'claimed') {
-      return next(new AppError('This event has already been claimed', 400));
+    if (event.claimStatus === "claimed") {
+      return next(new AppError("This event has already been claimed", 400));
     }
     // Allow 'unclaimed' and 'not_claimable' to be claimed
 
     // Verify user is a vendor
     const user = await User.findById(userId);
-    if (!user || user.role !== 'vendor') {
-      return next(new AppError('Only vendors can claim events', 403));
+    if (!user || user.role !== "vendor") {
+      return next(new AppError("Only vendors can claim events", 403));
     }
 
     // Update event ownership
     event.vendorId = userId;
-    event.claimStatus = 'claimed';
+    event.claimStatus = "claimed";
     event.claimedBy = userId;
     event.claimedAt = new Date();
     event.isApproved = false;
-    event.status = 'pending';
+    event.status = "pending";
 
     await event.save();
 
@@ -880,7 +976,8 @@ export const claimEvent = async (req: AuthRequest, res: Response, next: NextFunc
 
     res.status(200).json({
       success: true,
-      message: 'Event claimed successfully. You are now the owner of this event.',
+      message:
+        "Event claimed successfully. You are now the owner of this event.",
       data: { event },
     });
   } catch (error) {
@@ -891,18 +988,23 @@ export const claimEvent = async (req: AuthRequest, res: Response, next: NextFunc
 // @desc    Get unique cities from events
 // @route   GET /api/events/cities
 // @access  Public
-export const getUniqueCities = async (req: Request, res: Response, next: NextFunction) => {
+export const getUniqueCities = async (
+  req: Request,
+  res: Response,
+  next: NextFunction,
+) => {
   try {
     const { country } = req.query;
 
     let cities: string[] = [];
 
     // If country is provided, check for static cities first
-    if (country && typeof country === 'string') {
+    if (country && typeof country === "string") {
       const countryCode = country.toUpperCase();
 
       // Import static cities utility
-      const { getStaticCities, hasStaticCities } = await import('../utils/cities');
+      const { getStaticCities, hasStaticCities } =
+        await import("../utils/cities");
 
       // Use static cities if available (e.g., UAE)
       if (hasStaticCities(countryCode)) {
@@ -913,10 +1015,10 @@ export const getUniqueCities = async (req: Request, res: Response, next: NextFun
           isApproved: true,
           isActive: true,
           isDeleted: false,
-          'location.country': countryCode,
+          "location.country": countryCode,
         };
 
-        const eventCities = await Event.distinct('location.city', filter);
+        const eventCities = await Event.distinct("location.city", filter);
 
         // Merge static + event cities, remove duplicates
         const mergedCities = [...new Set([...staticCities, ...eventCities])];
@@ -927,10 +1029,10 @@ export const getUniqueCities = async (req: Request, res: Response, next: NextFun
           isApproved: true,
           isActive: true,
           isDeleted: false,
-          'location.country': countryCode,
+          "location.country": countryCode,
         };
 
-        cities = await Event.distinct('location.city', filter);
+        cities = await Event.distinct("location.city", filter);
       }
     } else {
       // No country filter, return all cities from events
@@ -940,7 +1042,7 @@ export const getUniqueCities = async (req: Request, res: Response, next: NextFun
         isDeleted: false,
       };
 
-      cities = await Event.distinct('location.city', filter);
+      cities = await Event.distinct("location.city", filter);
     }
 
     // Sort alphabetically

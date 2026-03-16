@@ -4,10 +4,12 @@ import Vendor, { PaymentMode } from "../models/Vendor";
 import Teacher from "../models/Teacher";
 import User from "../models/User";
 import Ticket from "../models/Ticket";
+import Notification, { NotificationType, NotificationPriority, NotificationChannel } from "../models/Notification";
 import Stripe from "stripe";
 import logger from "../config/logger";
 import redisClient from "../config/redis";
 import { emailService } from "./email.service";
+import Affiliate from "../models/Affiliate";
 
 export interface CreatePaymentIntentParams {
   amount: number;
@@ -478,6 +480,22 @@ export class PaymentService {
           await this.handleChargeDispute(event.data.object as Stripe.Dispute);
           break;
 
+        case "charge.refunded":
+          await this.handleChargeRefunded(event.data.object as Stripe.Charge);
+          break;
+
+        case "account.updated":
+          await this.handleConnectAccountUpdated(
+            event.data.object as Stripe.Account,
+          );
+          break;
+
+        case "customer.subscription.deleted":
+          await this.handleSubscriptionDeleted(
+            event.data.object as Stripe.Subscription,
+          );
+          break;
+
         default:
           logger.info(`Unhandled webhook event type: ${event.type}`);
       }
@@ -513,6 +531,26 @@ export class PaymentService {
       logger.info(
         `Order ${orderId} marked as paid, confirmed, and tickets generated`,
       );
+
+      // Attribute affiliate conversion if order has affiliate code
+      if (order.affiliateCode) {
+        try {
+          const affiliate = await Affiliate.findOne({
+            code: order.affiliateCode,
+          });
+          if (affiliate) {
+            await affiliate.recordConversion(
+              order._id,
+              order.total,
+            );
+            logger.info(
+              `Affiliate conversion recorded for code ${order.affiliateCode}`,
+            );
+          }
+        } catch (affiliateError) {
+          logger.error("Failed to record affiliate conversion:", affiliateError);
+        }
+      }
 
       // Send confirmation + ticket emails (fire-and-forget)
       (async () => {
@@ -611,8 +649,27 @@ export class PaymentService {
       // Keep order as pending, but log the failure
       logger.info(`Payment failed for order ${orderId}`);
 
-      // TODO: Send payment failure notification
-      // TODO: Log payment attempt
+      // P1.3: Send payment failure in-app notification
+      if (order.userId) {
+        await Notification.create({
+          userId: order.userId,
+          type: NotificationType.PAYMENT_FAILED,
+          priority: NotificationPriority.HIGH,
+          channels: [NotificationChannel.IN_APP],
+          title: "Payment Failed",
+          message: `Your payment of ${order.currency} ${order.total} for order #${order.orderNumber} could not be processed. Please try again.`,
+          data: {
+            orderId: order._id,
+            orderNumber: order.orderNumber,
+            amount: order.total,
+            currency: order.currency,
+            failureCode: paymentIntent.last_payment_error?.code,
+            failureMessage: paymentIntent.last_payment_error?.message,
+          },
+          scheduledFor: new Date(),
+        }).catch((err: Error) => logger.error("Failed to create payment failure notification:", err));
+      }
+      logger.info(`Payment attempt logged for order ${orderId}, status: failed`);
     } catch (error) {
       logger.error("Error handling payment failed:", error);
     }
@@ -666,10 +723,186 @@ export class PaymentService {
     try {
       logger.info(`Charge dispute created: ${dispute.id}`);
 
-      // TODO: Send admin notification about dispute
-      // TODO: Log dispute for manual review
+      // P1.3: Notify all admins about the dispute
+      const admins = await User.find({ role: "admin" }).select("_id").lean();
+      if (admins.length > 0) {
+        const notifications = admins.map((admin: { _id: unknown }) => ({
+          userId: admin._id,
+          type: NotificationType.SYSTEM_MAINTENANCE,
+          priority: NotificationPriority.URGENT,
+          channels: [NotificationChannel.IN_APP, NotificationChannel.EMAIL],
+          title: "Stripe Dispute Received",
+          message: `A dispute (${dispute.id}) for ${dispute.currency?.toUpperCase()} ${(dispute.amount / 100).toFixed(2)} has been filed. Reason: ${dispute.reason}. Action required.`,
+          data: {
+            disputeId: dispute.id,
+            chargeId: dispute.charge,
+            amount: dispute.amount,
+            currency: dispute.currency,
+            reason: dispute.reason,
+            status: dispute.status,
+            dueBy: dispute.evidence_details?.due_by,
+          },
+          scheduledFor: new Date(),
+        }));
+        await Notification.insertMany(notifications).catch((err: Error) =>
+          logger.error("Failed to create dispute notifications:", err)
+        );
+      }
+      logger.warn(`Dispute ${dispute.id} logged for manual review. Charge: ${dispute.charge}`);
     } catch (error) {
       logger.error("Error handling charge dispute:", error);
+    }
+  }
+
+  /**
+   * Handle charge.refunded — update order refund status and notify
+   */
+  private static async handleChargeRefunded(
+    charge: Stripe.Charge,
+  ): Promise<void> {
+    try {
+      const orderId = charge.metadata?.orderId;
+      if (!orderId) {
+        logger.warn("charge.refunded: no orderId in metadata", {
+          chargeId: charge.id,
+        });
+        return;
+      }
+
+      const order = await Order.findById(orderId);
+      if (!order) {
+        logger.error(`charge.refunded: order not found: ${orderId}`);
+        return;
+      }
+
+      const refundedAmount = charge.amount_refunded / 100;
+      const isFullRefund = charge.refunded;
+
+      await Order.findByIdAndUpdate(orderId, {
+        refundStatus: isFullRefund ? "fully_refunded" : "partially_refunded",
+        refundedAmount,
+        refundedAt: new Date(),
+      });
+
+      logger.info(`Order ${orderId} refund status updated`, {
+        refundedAmount,
+        isFullRefund,
+      });
+
+      // Send refund email (fire-and-forget)
+      (async () => {
+        try {
+          const user = await User.findById(order.userId)
+            .select("email firstName")
+            .lean();
+          if (!user) return;
+          const u = user as any;
+          if (emailService.sendRefundProcessedEmail) {
+            await emailService.sendRefundProcessedEmail({
+              to: u.email,
+              firstName: u.firstName,
+              orderNumber: order.orderNumber,
+              refundAmount: refundedAmount,
+              currency: order.currency || "USD",
+              refundTransactionId: charge.id,
+            });
+          }
+        } catch (emailError) {
+          logger.error("Failed to send refund email:", emailError);
+        }
+      })();
+    } catch (error) {
+      logger.error("Error handling charge.refunded:", error);
+    }
+  }
+
+  /**
+   * Handle account.updated (Stripe Connect) — sync vendor onboarding status
+   */
+  private static async handleConnectAccountUpdated(
+    account: Stripe.Account,
+  ): Promise<void> {
+    try {
+      const stripeAccountId = account.id;
+
+      const vendor = await Vendor.findOne({
+        stripeConnectAccountId: stripeAccountId,
+      });
+
+      if (vendor) {
+        const chargesEnabled = account.charges_enabled;
+        const payoutsEnabled = account.payouts_enabled;
+        const detailsSubmitted = account.details_submitted;
+
+        await Vendor.findByIdAndUpdate(vendor._id, {
+          stripeConnectOnboardingComplete: chargesEnabled && detailsSubmitted,
+          "stripeConnectCapabilities.cardPayments": chargesEnabled
+            ? "active"
+            : "inactive",
+          "stripeConnectCapabilities.transfers": payoutsEnabled
+            ? "active"
+            : "inactive",
+        });
+
+        logger.info(`Vendor ${vendor._id} Stripe Connect status updated`, {
+          chargesEnabled,
+          payoutsEnabled,
+          detailsSubmitted,
+        });
+        return;
+      }
+
+      // Check teacher accounts too
+      const teacher = await Teacher.findOne({
+        stripeConnectAccountId: stripeAccountId,
+      });
+
+      if (teacher) {
+        await Teacher.findByIdAndUpdate(teacher._id, {
+          stripeConnectOnboardingComplete:
+            account.charges_enabled && account.details_submitted,
+        });
+
+        logger.info(`Teacher ${teacher._id} Stripe Connect status updated`);
+      }
+    } catch (error) {
+      logger.error("Error handling account.updated:", error);
+    }
+  }
+
+  /**
+   * Handle customer.subscription.deleted — mark subscription cancelled
+   * Uses subscription metadata (vendorId/teacherId) to locate the record
+   */
+  private static async handleSubscriptionDeleted(
+    subscription: Stripe.Subscription,
+  ): Promise<void> {
+    try {
+      const { vendorId, teacherId } = subscription.metadata || {};
+
+      if (vendorId) {
+        await Vendor.findByIdAndUpdate(vendorId, {
+          "paymentSettings.subscriptionStatus": "cancelled",
+          "paymentSettings.subscriptionPaidUntil": new Date(),
+        });
+        logger.info(`Vendor ${vendorId} subscription cancelled via webhook`);
+        return;
+      }
+
+      if (teacherId) {
+        await Teacher.findByIdAndUpdate(teacherId, {
+          "paymentSettings.subscriptionStatus": "cancelled",
+          "paymentSettings.subscriptionPaidUntil": new Date(),
+        });
+        logger.info(`Teacher ${teacherId} subscription cancelled via webhook`);
+        return;
+      }
+
+      logger.warn("customer.subscription.deleted: no vendorId/teacherId in metadata", {
+        subscriptionId: subscription.id,
+      });
+    } catch (error) {
+      logger.error("Error handling customer.subscription.deleted:", error);
     }
   }
 

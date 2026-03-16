@@ -88,22 +88,6 @@ const VendorDashboardPage: React.FC = () => {
     return Math.round((sold / total) * 100);
   };
 
-  const getEventImage = (event: any): string => {
-    const firstAsset = event?.imageAssets?.[0];
-    const fromAsset = typeof firstAsset === 'string'
-      ? firstAsset
-      : firstAsset?.url || firstAsset?.thumbnailUrl;
-
-    return (
-      fromAsset ||
-      event?.images?.[0] ||
-      event?.coverImage ||
-      event?.image ||
-      event?.bannerImage ||
-      ''
-    );
-  };
-
   if (isLoading) {
     return (
       <>
@@ -268,53 +252,68 @@ const VendorDashboardPage: React.FC = () => {
                 ) : (
                   <div className="space-y-6">
                     {Array.isArray(events) && events.map((event) => (
-                      <div key={event._id} className="bg-white rounded-xl shadow p-4 flex items-center gap-4 hover:shadow-md transition-shadow">
-                        <div className="w-24 h-24 rounded-lg bg-gradient-to-br from-blue-100 to-indigo-100 flex items-center justify-center flex-shrink-0 overflow-hidden">
-                          {getEventImage(event) ? (
+                      <div key={event._id} className="border rounded-lg overflow-hidden shadow-sm hover:shadow-md transition-shadow duration-200">
+                        <div className="flex flex-col sm:flex-row">
+                          <div className="sm:w-1/3 md:w-1/4">
                             <img
-                              src={getEventImage(event)}
+                              className="h-48 w-full object-cover sm:h-full"
+                              src={event.images?.[0] || 'https://placehold.co/600x400/gray/white?text=No+Image'}
                               alt={event.title}
-                              className="w-full h-full object-cover"
-                              onError={(e) => {
-                                e.currentTarget.style.display = 'none';
-                              }}
                             />
-                          ) : (
-                            <svg className="w-8 h-8 text-blue-400" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
-                            </svg>
-                          )}
-                        </div>
-
-                        <div className="flex-1 min-w-0">
-                          <div className="flex items-center gap-2 mb-1">
-                            <h3 className="font-semibold text-gray-900 truncate">
-                              <Link to={`/vendor/events/${event._id}`} className="hover:text-primary">
-                                {event.title}
-                              </Link>
-                            </h3>
-                            <span className={`inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium ${getStatusBadgeClass(event.status)}`}>
-                              {event.status === 'draft' ? 'Pending Approval' : event.status.charAt(0).toUpperCase() + event.status.slice(1)}
-                            </span>
                           </div>
-
-                          <div className="text-sm text-gray-500">
-                            <p><span className="font-medium">Date:</span> {event.dateSchedule?.[0]?.date ? formatDate(event.dateSchedule[0].date) : 'TBD'}</p>
-                            <p className="truncate"><span className="font-medium">Location:</span> {event.location.city}, {event.location.address}</p>
-                            <p>{event.type} • {event.venueType || 'Event'}</p>
+                          <div className="p-4 sm:p-6 sm:w-2/3 md:w-3/4">
+                            <div className="flex flex-col sm:flex-row justify-between">
+                              <div>
+                                <div className="flex items-center mb-2">
+                                  <h3 className="text-lg font-semibold text-gray-900 mr-2">
+                                    <Link to={`/vendor/events/${event._id}`} className="hover:text-primary">
+                                      {event.title}
+                                    </Link>
+                                  </h3>
+                                  <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${getStatusBadgeClass(event.status)}`}>
+                                    {event.status === 'draft' ? 'Pending Approval' : event.status.charAt(0).toUpperCase() + event.status.slice(1)}
+                                  </span>
+                                </div>
+                                <div className="text-sm text-gray-500 mb-4">
+                                  <p><span className="font-medium">Date:</span> {event.dateSchedule?.[0]?.date ? formatDate(event.dateSchedule[0].date) : 'TBD'}</p>
+                                  <p><span className="font-medium">Location:</span> {event.location.city}, {event.location.address}</p>
+                                  <p><span className="font-medium">Price:</span> ${event.price.toFixed(2)}</p>
+                                </div>
+                              </div>
+                              <div className="mt-4 sm:mt-0">
+                                <div className="text-sm text-gray-500 mb-2">
+                                  <span className="font-medium">Tickets sold:</span> {event.dateSchedule?.[0]?.soldSeats || 0} / {event.dateSchedule?.[0]?.totalSeats || 0}
+                                </div>
+                                <div className="w-full bg-gray-200 rounded-full h-2.5 mb-4">
+                                  <div
+                                    className="bg-primary h-2.5 rounded-full"
+                                    style={{ width: `${calculateProgress(event.dateSchedule?.[0]?.soldSeats || 0, event.dateSchedule?.[0]?.totalSeats || 0)}%` }}
+                                  ></div>
+                                </div>
+                                <div className="flex space-x-2">
+                                  <Link
+                                    to={`/vendor/events/${event._id}/edit`}
+                                    className="inline-flex items-center px-3 py-1.5 border border-gray-300 text-xs font-medium rounded text-gray-700 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-primary"
+                                  >
+                                    Edit
+                                  </Link>
+                                  <Link
+                                    to={`/events/${event.slug || event._id}`}
+                                    className="inline-flex items-center px-3 py-1.5 border border-gray-300 text-xs font-medium rounded text-gray-700 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-primary"
+                                  >
+                                    Preview
+                                  </Link>
+                                  {event.status === 'draft' && (
+                                    <button
+                                      className="inline-flex items-center px-3 py-1.5 border border-transparent text-xs font-medium rounded text-white bg-green-600 hover:bg-green-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-green-500"
+                                    >
+                                      Publish
+                                    </button>
+                                  )}
+                                </div>
+                              </div>
+                            </div>
                           </div>
-                        </div>
-
-                        <div className="text-right min-w-[150px]">
-                          <p className="font-semibold text-blue-600">
-                            ${event.price.toFixed(2)}
-                          </p>
-                          <span className={`text-xs px-2 py-1 rounded-full inline-flex mt-1 ${getStatusBadgeClass(event.status)}`}>
-                            {event.status === 'draft' ? 'Pending Approval' : event.status.charAt(0).toUpperCase() + event.status.slice(1)}
-                          </span>
-                          <p className="text-xs text-gray-500 mt-2">
-                            {event.dateSchedule?.[0]?.soldSeats || 0} / {event.dateSchedule?.[0]?.totalSeats || 0} sold
-                          </p>
                         </div>
                       </div>
                     ))}

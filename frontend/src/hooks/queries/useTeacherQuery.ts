@@ -80,7 +80,7 @@ export function usePublicTeacherProfile(
 ) {
   return useQuery({
     queryKey: teacherKeys.profile.public(teacherId),
-    queryFn: () => teacherAPI.getPublicTeacherProfile(teacherId),
+    queryFn: () => teacherAPI.getPublicProfile(teacherId),
     enabled: !!teacherId,
     staleTime: 10 * 60 * 1000, // 10 minutes
     gcTime: 30 * 60 * 1000, // 30 minutes

@@ -1273,7 +1273,10 @@ const AdminUsersPage: React.FC = () => {
                 // Teacher-specific fields
                 if (role === 'teacher') {
                   userData.teacherSpecialization = (formData.get('teacherSpecialization') as string) || undefined;
+                  userData.teacherSubjects = (formData.get('teacherSubjects') as string) || undefined;
+                  userData.teachingMode = (formData.get('teachingMode') as string) || 'online';
                   userData.yearsOfExperience = parseInt(formData.get('yearsOfExperience') as string) || undefined;
+                  userData.teacherBio = (formData.get('teacherBio') as string) || undefined;
                 }
 
                 // Vendor-specific fields
@@ -1606,6 +1609,29 @@ const AdminUsersPage: React.FC = () => {
                             </div>
 
                             <div>
+                              <label className="block text-sm font-medium text-gray-700 mb-1">Subjects (comma-separated)</label>
+                              <input
+                                type="text"
+                                name="teacherSubjects"
+                                placeholder="e.g., Algebra, Calculus, Statistics"
+                                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-teal-500 bg-white text-gray-900"
+                              />
+                            </div>
+
+                            <div>
+                              <label className="block text-sm font-medium text-gray-700 mb-1">Teaching Mode *</label>
+                              <select
+                                name="teachingMode"
+                                defaultValue="online"
+                                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-teal-500 bg-white text-gray-900"
+                              >
+                                <option value="online">Online</option>
+                                <option value="offline">Offline</option>
+                                <option value="hybrid">Hybrid</option>
+                              </select>
+                            </div>
+
+                            <div>
                               <label className="block text-sm font-medium text-gray-700 mb-1">Years of Experience</label>
                               <input
                                 type="number"
@@ -1613,6 +1639,16 @@ const AdminUsersPage: React.FC = () => {
                                 min="0"
                                 max="50"
                                 placeholder="e.g., 5"
+                                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-teal-500 bg-white text-gray-900"
+                              />
+                            </div>
+
+                            <div className="col-span-2">
+                              <label className="block text-sm font-medium text-gray-700 mb-1">Bio</label>
+                              <textarea
+                                name="teacherBio"
+                                rows={3}
+                                placeholder="Brief description about the teacher..."
                                 className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-teal-500 bg-white text-gray-900"
                               />
                             </div>

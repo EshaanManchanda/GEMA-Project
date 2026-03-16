@@ -71,7 +71,7 @@ const NewsletterSubscription: React.FC = () => {
   };
 
   return (
-    <div className="col-span-1">
+    <div className="col-span-2 md:col-span-1">
       <h3 className="font-semibold mb-4 text-gray-900">
         Newsletter
       </h3>

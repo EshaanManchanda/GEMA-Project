@@ -119,9 +119,7 @@ class VendorService {
     return Event.find({
       vendorId: vendorProfile._id,
       isDeleted: false,
-    })
-      .populate("imageAssets", "url thumbnailUrl")
-      .sort({ createdAt: -1 });
+    }).sort({ createdAt: -1 });
   }
 
   /**
@@ -775,7 +773,7 @@ class VendorService {
       _id: vendorUserId,
       role: "vendor",
       status: { $ne: "suspended" },
-    }).select("firstName lastName email phone avatar createdAt");
+    }).select("firstName lastName avatar createdAt");
 
     if (!user) {
       const vendorDoc = await Vendor.findById(vendorUserId).select("userId");
@@ -786,7 +784,7 @@ class VendorService {
         _id: resolvedUserId,
         role: "vendor",
         status: { $ne: "suspended" },
-      }).select("firstName lastName email phone avatar createdAt");
+      }).select("firstName lastName avatar createdAt");
 
       if (!user) throw new AppError("Vendor not found", 404);
     }
@@ -798,8 +796,13 @@ class VendorService {
         "socialMedia businessHours stats",
     );
 
+    if (!vendorProfile) throw new AppError("Vendor not found", 404);
+
+    // Event.vendorId refs Vendor doc _id, not User _id
+    const vendorDocId = vendorProfile._id;
+
     const events = await Event.find({
-      vendorId: resolvedUserId,
+      vendorId: vendorDocId,
       isDeleted: false,
       isActive: true,
       status: "published",
@@ -813,13 +816,28 @@ class VendorService {
       .limit(20);
 
     const totalEvents = await Event.countDocuments({
-      vendorId: resolvedUserId,
+      vendorId: vendorDocId,
       isDeleted: false,
       status: "published",
+      isApproved: true,
     });
 
+    const activeEvents = await Event.countDocuments({
+      vendorId: vendorDocId,
+      isDeleted: false,
+      isActive: true,
+      status: "published",
+      isApproved: true,
+    });
+
+    // Count bookings across ALL vendor events, not just the returned page
+    const allVendorEventIds = await Event.find({
+      vendorId: vendorDocId,
+      isDeleted: false,
+    }).distinct("_id");
+
     const totalBookings = await Booking.countDocuments({
-      eventId: { $in: events.map((e) => e._id) },
+      eventId: { $in: allVendorEventIds },
     });
 
     return {
@@ -829,7 +847,7 @@ class VendorService {
       stats: {
         totalEvents,
         totalBookings,
-        activeEvents: events.length,
+        activeEvents,
       },
     };
   }

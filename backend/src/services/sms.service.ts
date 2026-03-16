@@ -294,6 +294,34 @@ class SMSService {
   }
 
   /**
+   * Send ticket details via SMS (P2.1)
+   * @param phone       - Recipient phone in E.164 format
+   * @param ticketNumber - Unique ticket number
+   * @param eventTitle  - Event name
+   * @param eventDate   - Event date
+   * @param venue       - Venue or meeting link
+   */
+  async sendTicketViaSMS(
+    phone: string,
+    ticketNumber: string,
+    eventTitle: string,
+    eventDate: Date | string,
+    venue: string,
+  ): Promise<SMSSendResult> {
+    const dateStr =
+      eventDate instanceof Date
+        ? eventDate.toLocaleDateString("en-US", { dateStyle: "medium" })
+        : String(eventDate);
+    const message =
+      `Your ticket for "${eventTitle}":\n` +
+      `Ticket #: ${ticketNumber}\n` +
+      `Date: ${dateStr}\n` +
+      `Venue: ${venue}\n` +
+      `Present this number at check-in.`;
+    return this.sendSMS(phone, message);
+  }
+
+  /**
    * Get current provider name
    * @returns Provider name
    */

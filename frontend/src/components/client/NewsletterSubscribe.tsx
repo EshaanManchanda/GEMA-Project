@@ -100,7 +100,7 @@ export default function NewsletterSubscribe() {
   };
 
   return (
-    <section className="w-full bg-gray-50 py-20 px-6 md:px-20 overflow-hidden">
+    <section className="w-full bg-gray-50 py-12 sm:py-20 px-4 sm:px-6 md:px-20 overflow-hidden">
       <motion.div
         ref={ref}
         variants={containerVariants}
@@ -120,14 +120,14 @@ export default function NewsletterSubscribe() {
 
           <motion.h2
             variants={itemVariants}
-            className="text-4xl font-bold text-black mb-4"
+            className="text-2xl sm:text-4xl font-bold text-black mb-4"
           >
             The Kidrove Feed
           </motion.h2>
 
           <motion.p
             variants={itemVariants}
-            className="text-lg text-gray-700 mb-8"
+            className="text-sm sm:text-lg text-gray-700 mb-6 sm:mb-8"
           >
             Join our family and get the latest updates and exclusive deals sent to your inbox!
           </motion.p>
@@ -145,7 +145,7 @@ export default function NewsletterSubscribe() {
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
                 placeholder="Enter your email..."
-                className="px-4 py-4 rounded-lg border border-gray-300 w-full sm:flex-1 focus:border-blue-400 focus:ring-2 focus:ring-blue-200 transition-all"
+                className="px-3 py-3 sm:px-4 sm:py-4 rounded-lg border border-gray-300 w-full sm:flex-1 focus:border-blue-400 focus:ring-2 focus:ring-blue-200 transition-all"
                 disabled={isSubmitted || isLoading}
               />
               <input
@@ -153,7 +153,7 @@ export default function NewsletterSubscribe() {
                 value={name}
                 onChange={(e) => setName(e.target.value)}
                 placeholder="Your name"
-                className="px-4 py-4 rounded-lg border border-gray-300 w-full sm:flex-1 focus:border-blue-400 focus:ring-2 focus:ring-blue-200 transition-all"
+                className="px-3 py-3 sm:px-4 sm:py-4 rounded-lg border border-gray-300 w-full sm:flex-1 focus:border-blue-400 focus:ring-2 focus:ring-blue-200 transition-all"
                 disabled={isSubmitted || isLoading}
               />
             </div>
@@ -163,7 +163,7 @@ export default function NewsletterSubscribe() {
                 value={city}
                 onChange={(e) => setCity(e.target.value)}
                 placeholder="City (optional)"
-                className="px-4 py-4 rounded-lg border border-gray-300 w-full sm:flex-1 focus:border-blue-400 focus:ring-2 focus:ring-blue-200 transition-all"
+                className="px-3 py-3 sm:px-4 sm:py-4 rounded-lg border border-gray-300 w-full sm:flex-1 focus:border-blue-400 focus:ring-2 focus:ring-blue-200 transition-all"
                 disabled={isSubmitted || isLoading}
               />
               <input
@@ -171,7 +171,7 @@ export default function NewsletterSubscribe() {
                 value={ageOfChildren}
                 onChange={(e) => setAgeOfChildren(e.target.value)}
                 placeholder="Age of children (optional, e.g., '3-5')"
-                className="px-4 py-4 rounded-lg border border-gray-300 w-full sm:flex-1 focus:border-blue-400 focus:ring-2 focus:ring-blue-200 transition-all"
+                className="px-3 py-3 sm:px-4 sm:py-4 rounded-lg border border-gray-300 w-full sm:flex-1 focus:border-blue-400 focus:ring-2 focus:ring-blue-200 transition-all"
                 disabled={isSubmitted || isLoading}
               />
             </div>

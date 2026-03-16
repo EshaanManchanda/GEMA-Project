@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { useAppDispatch, useAppSelector } from '@/store/hooks';
-import { registerUser, clearError } from '@/store/slices/authSlice';
+import { registerUser, verifyEmailWithOTP, resendVerificationEmail, clearError } from '@/store/slices/authSlice';
 import PhoneInput from '@/components/forms/PhoneInput';
 import PrivatePageSEO from '@/components/common/PrivatePageSEO';
 
@@ -17,10 +17,17 @@ interface RegisterFormData {
   agreeToTerms: boolean;
 }
 
+interface OTPFormData {
+  otp: string;
+}
+
+type RegistrationStep = 1 | 2;
+
 const RegisterPage: React.FC = () => {
   const navigate = useNavigate();
   const dispatch = useAppDispatch();
   const { isLoading, error } = useAppSelector((state) => state.auth);
+  const [currentStep, setCurrentStep] = useState<RegistrationStep>(1);
   const [formData, setFormData] = useState<RegisterFormData>({
     firstName: '',
     lastName: '',
@@ -32,7 +39,11 @@ const RegisterPage: React.FC = () => {
     role: 'customer', // Default to customer
     agreeToTerms: false
   });
+  const [otpData, setOtpData] = useState<OTPFormData>({
+    otp: ''
+  });
   const [errors, setErrors] = useState<Partial<RegisterFormData>>({});
+  const [otpError, setOtpError] = useState<string>('');
   const [showPassword, setShowPassword] = useState<boolean>(false);
   const [showConfirmPassword, setShowConfirmPassword] = useState<boolean>(false);
 
@@ -82,12 +93,17 @@ const RegisterPage: React.FC = () => {
       isValid = false;
     }
 
-    // Phone is optional — only validate length if the user actually typed something
-    if (formData.phoneNumber) {
-      if (formData.phoneNumber.length < 7 || formData.phoneNumber.length > 15) {
-        newErrors.phoneNumber = 'Phone number must be between 7 and 15 digits';
-        isValid = false;
-      }
+    if (!formData.countryCode) {
+      newErrors.countryCode = 'Country code is required';
+      isValid = false;
+    }
+
+    if (!formData.phoneNumber) {
+      newErrors.phoneNumber = 'Phone number is required';
+      isValid = false;
+    } else if (formData.phoneNumber.length < 7 || formData.phoneNumber.length > 14) {
+      newErrors.phoneNumber = 'Phone number must be between 7 and 14 digits';
+      isValid = false;
     }
 
     if (!formData.agreeToTerms) {
@@ -147,6 +163,12 @@ const RegisterPage: React.FC = () => {
     }
   };
 
+  const handleOtpChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const value = e.target.value.replace(/\D/g, '').slice(0, 4); // Only digits, max 4
+    setOtpData({ otp: value });
+    setOtpError('');
+  };
+
   const handleStep1Submit = async (e: React.FormEvent) => {
     e.preventDefault();
 
@@ -162,23 +184,171 @@ const RegisterPage: React.FC = () => {
         email: formData.email,
         password: formData.password,
         confirmPassword: formData.confirmPassword,
-        phone: formData.phoneNumber ? `${formData.countryCode}${formData.phoneNumber}` : undefined,
+        phone: `${formData.countryCode}${formData.phoneNumber}`,
         role: formData.role,
         acceptTerms: formData.agreeToTerms
       })).unwrap();
 
-      navigate('/verify-email', {
-        state: {
-          email: formData.email,
-          role: formData.role,
-          source: 'register'
-        }
-      });
+      // Move to step 2 for email verification
+      setCurrentStep(2);
     } catch (error: any) {
       console.error('Registration error:', error);
       // Error handling is done by Redux thunk with toast notifications
     }
   };
+
+  const handleOtpSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+
+    if (!otpData.otp || otpData.otp.length !== 4) {
+      setOtpError('Please enter a valid 4-digit OTP');
+      return;
+    }
+
+    setOtpError('');
+
+    try {
+      await dispatch(verifyEmailWithOTP(otpData.otp)).unwrap();
+
+      // Determine redirect path based on role
+      const redirectPath = formData.role === 'teacher'
+        ? '/teacher'
+        : formData.role === 'vendor'
+          ? '/vendor'
+          : '/';
+
+      navigate(redirectPath, {
+        state: {
+          message: 'Registration completed successfully! Your email has been verified.',
+          type: 'success'
+        }
+      });
+    } catch (error: any) {
+      console.error('OTP verification error:', error);
+      setOtpError(error || 'Invalid OTP. Please try again.');
+    }
+  };
+
+  const handleSkipVerification = () => {
+    // Determine redirect path based on role
+    const redirectPath = formData.role === 'teacher'
+      ? '/teacher'
+      : formData.role === 'vendor'
+        ? '/vendor'
+        : '/';
+
+    navigate(redirectPath, {
+      state: {
+        message: 'Registration completed successfully! You can verify your email later.',
+        type: 'info'
+      }
+    });
+  };
+
+  const handleResendOtp = async () => {
+    try {
+      await dispatch(resendVerificationEmail(formData.email)).unwrap();
+      setOtpError('');
+    } catch (error: any) {
+      console.error('Resend OTP error:', error);
+      setOtpError(error || 'Failed to resend OTP');
+    }
+  };
+
+  if (currentStep === 2) {
+    return (
+      <>
+        <PrivatePageSEO title="Verify Email | Kidrove" description="Verify your email address" />
+        <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-primary-50 to-white py-12 px-4 sm:px-6 lg:px-8">
+          <div className="max-w-md w-full space-y-6 animate-fade-in-up">
+            <div className="bg-white p-8 rounded-xl shadow-medium border border-neutral-200">
+              <div className="text-center">
+                <img src="/assets/animations/loading.svg" alt="Logo" className="h-12 w-12 mx-auto mb-4" />
+                <h2 className="text-center text-2xl font-bold text-neutral-800">Verify Your Email</h2>
+                <p className="mt-2 text-center text-sm text-neutral-600">
+                  We've sent a 4-digit verification code to{' '}
+                  <span className="font-medium text-primary-600">{formData.email}</span>
+                </p>
+              </div>
+
+              {otpError && (
+                <div className="alert alert-error flex items-center space-x-3 mb-4" role="alert">
+                  <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 text-error-600" viewBox="0 0 20 20" fill="currentColor">
+                    <path fillRule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7 4a1 1 0 11-2 0 1 1 0 012 0zm-1-9a1 1 0 00-1 1v4a1 1 0 102 0V6a1 1 0 00-1-1z" clipRule="evenodd" />
+                  </svg>
+                  <p className="text-sm font-medium">{otpError}</p>
+                </div>
+              )}
+
+              <form className="mt-6 space-y-6" onSubmit={handleOtpSubmit}>
+                <div className="form-group">
+                  <label htmlFor="otp" className="form-label">Verification Code</label>
+                  <div className="relative">
+                    <input
+                      id="otp"
+                      name="otp"
+                      type="text"
+                      inputMode="numeric"
+                      pattern="[0-9]*"
+                      maxLength={4}
+                      required
+                      className="input text-center text-2xl tracking-widest"
+                      placeholder="••••"
+                      value={otpData.otp}
+                      onChange={handleOtpChange}
+                    />
+                  </div>
+                </div>
+
+                <div className="space-y-4">
+                  <button
+                    type="submit"
+                    disabled={isLoading}
+                    className={`btn btn-lg w-full flex justify-center items-center space-x-2 ${isLoading ? 'bg-primary-400 cursor-not-allowed' : 'bg-primary-600 hover:bg-primary-700'
+                      } text-white font-medium rounded-lg transition-all duration-200 shadow-sm hover:shadow`}
+                  >
+                    {isLoading ? (
+                      <>
+                        <svg className="animate-spin h-5 w-5 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                          <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                          <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                        </svg>
+                        <span>Verifying...</span>
+                      </>
+                    ) : (
+                      <span>Verify Email</span>
+                    )}
+                  </button>
+
+                  <button
+                    type="button"
+                    onClick={handleSkipVerification}
+                    className="btn btn-lg w-full border-2 border-neutral-200 bg-white text-neutral-700 hover:bg-neutral-50 font-medium rounded-lg transition-all duration-200"
+                  >
+                    Skip Verification
+                  </button>
+                </div>
+              </form>
+
+              <div className="text-center">
+                <p className="text-sm text-neutral-600">
+                  Didn't receive the code?{' '}
+                  <button
+                    type="button"
+                    onClick={handleResendOtp}
+                    disabled={isLoading}
+                    className="font-medium text-primary-600 hover:text-primary-700 transition-colors disabled:text-primary-400"
+                  >
+                    Resend Code
+                  </button>
+                </p>
+              </div>
+            </div>
+          </div>
+        </div>
+      </>
+    );
+  }
 
   return (
     <>

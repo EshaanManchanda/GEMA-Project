@@ -10,20 +10,20 @@ const FeaturedInstructors: React.FC = () => {
     const navigate = useNavigate();
 
     return (
-        <section className="py-16 bg-white overflow-hidden">
+        <section className="py-10 sm:py-16 bg-white overflow-hidden">
             <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-                <div className="text-center mb-12">
+                <div className="text-center mb-8 sm:mb-12">
                     <SlideIn direction="down">
-                        <h2 className="text-3xl md:text-4xl font-bold text-gray-900 mb-4">
+                        <h2 className="text-xl sm:text-3xl md:text-4xl font-bold text-gray-900 mb-4">
                             Meet Our Inspiring Instructors
                         </h2>
-                        <p className="text-xl text-gray-600 max-w-2xl mx-auto">
+                        <p className="text-sm sm:text-xl text-gray-600 max-w-2xl mx-auto">
                             Learn from passionate experts who are eager to share their craft with your children.
                         </p>
                     </SlideIn>
                 </div>
 
-                <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-6">
+                <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-3 sm:gap-6">
                     {instructors.map((instructor, index) => (
                         <SlideIn key={instructor.id} direction="up" delay={index * 0.1}>
                             <motion.div
@@ -46,7 +46,7 @@ const FeaturedInstructors: React.FC = () => {
 
                                 {/* Content */}
                                 <div className="absolute bottom-0 left-0 right-0 p-4 text-white transform transition-transform duration-300">
-                                    <h3 className="text-lg font-bold leading-tight mb-1">{instructor.name}</h3>
+                                    <h3 className="text-sm sm:text-lg font-bold leading-tight mb-1">{instructor.name}</h3>
                                     <p className="text-sm font-medium opacity-90 mb-1">
                                         {instructor.personal_info?.title || instructor.workshop}
                                     </p>

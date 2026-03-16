@@ -83,7 +83,7 @@ const TeacherEventCard: React.FC<TeacherEventCardProps> = ({
         {/* Event Type Badge */}
         <div className="absolute top-3 right-3">
           <span className="px-3 py-1 rounded-full text-xs font-semibold bg-white/90 text-gray-700 shadow-sm flex items-center gap-1">
-            {((event as any).venueType === 'Online' || (event as any).eventType === 'Online') ? (
+            {event.eventType === 'Online' ? (
               <>
                 <FaVideo className="w-3 h-3" />
                 Online

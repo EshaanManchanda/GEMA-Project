@@ -2,6 +2,7 @@
 .claude/mcp
 .mcp.json
 null
-ai-doc-chatbot/
+.claude
+.continue
 frontend/.env.production
 backend/.env.production

@@ -6,6 +6,8 @@ import toast from 'react-hot-toast';
 import { format } from 'date-fns';
 import DOMPurify from 'isomorphic-dompurify';
 import { useEventQuery } from '@/hooks/queries/useEventsQuery';
+import { useQuery, useQueryClient } from '@tanstack/react-query';
+import { EventDetailSkeleton } from '@/components/common/SkeletonLoaders';
 import affiliateEventAPI from '../services/api/affiliateEventAPI';
 import eventsAPI from '../services/api/eventsAPI';
 import { EventSEO } from '@/components/common/SEO';
@@ -119,71 +121,24 @@ const mockEvents = [
 ];
 
 
-// Helper to extract YouTube ID
-const getYoutubeId = (url: string) => {
-  if (!url) return null;
-  const regExp = /^.*(youtu.be\/|v\/|u\/\w\/|embed\/|watch\?v=|&v=)([^#&?]*).*/;
-  const match = url.match(regExp);
-  return (match && match[2].length === 11) ? match[2] : null;
-};
 
 const EventDetailPage: React.FC = () => {
   const { slug } = useParams<{ slug: string }>();
   const navigate = useNavigate();
   const dispatch = useDispatch<AppDispatch>();
   const { user } = useAuthContext();
+  const queryClient = useQueryClient();
   const [quantity, setQuantity] = useState(1);
   const [selectedDate, setSelectedDate] = useState<Date | null>(null);
-  const [activeTab, setActiveTab] = useState('about'); // 'about', 'syllabus', 'reviews', 'faqs'
-  const [platformReviews, setPlatformReviews] = useState<any[]>([]);
-  const [googleReviews, setGoogleReviews] = useState<any[]>([]);
-  const [loadingReviews, setLoadingReviews] = useState(false);
+  const [activeTab, setActiveTab] = useState('about'); // 'about', 'location', 'reviews', 'faqs'
   const [isClaimingEvent, setIsClaimingEvent] = useState(false);
   const [openSyllabusItems, setOpenSyllabusItems] = useState<Record<string, boolean>>({});
-
-  // Cart context is not available in this codebase version; keep UI functional.
-  const addItemToCart = (_item?: any, _quantity?: number) => {
-    toast.error('Cart is currently unavailable. Please use Book Now.');
-  };
-  const isItemInCart = (_eventId?: string, _dateIso?: string) => false;
 
   const toggleSyllabusItem = (id: string) => {
     setOpenSyllabusItems(prev => ({
       ...prev,
       [id]: !prev[id]
     }));
-  };
-
-  const getSyllabusItemKey = (item: any, index: number): string => {
-    return String(item?._id || item?.id || index);
-  };
-
-  const getSyllabusLessons = (item: any): Array<{ title: string; duration?: string }> => {
-    const rawLessons = item?.lessons;
-    if (!rawLessons) return [];
-
-    if (Array.isArray(rawLessons)) {
-      return rawLessons
-        .map((lesson: any, idx: number) => {
-          if (typeof lesson === 'string') {
-            return { title: lesson };
-          }
-          if (lesson && typeof lesson === 'object') {
-            return {
-              title: lesson.title || `Lesson ${idx + 1}`,
-              duration: lesson.duration,
-            };
-          }
-          return null;
-        })
-        .filter(Boolean) as Array<{ title: string; duration?: string }>;
-    }
-
-    if (typeof rawLessons === 'string') {
-      return [{ title: rawLessons }];
-    }
-
-    return [];
   };
 
 
@@ -264,25 +219,11 @@ const EventDetailPage: React.FC = () => {
       subject: eventData.subject,
       topic: eventData.topic,
       introVideo: eventData.introVideo,
-      teacher: eventData.teacherId && typeof eventData.teacherId === 'object' ? {
+      teacher: eventData.teacherId ? {
         id: eventData.teacherId._id,
-        name:
-          eventData.teacherId.fullName ||
-          eventData.teacherId.name ||
-          [eventData.teacherId.firstName, eventData.teacherId.lastName].filter(Boolean).join(' ') ||
-          [eventData.teacherId.userId?.firstName, eventData.teacherId.userId?.lastName].filter(Boolean).join(' ') ||
-          'Instructor',
-        email:
-          eventData.teacherId.email ||
-          eventData.teacherId.userId?.email ||
-          '',
-        photo:
-          (typeof eventData.teacherId.profileImage === 'string' ? eventData.teacherId.profileImage : '') ||
-          (typeof eventData.teacherId.profileImageUrl === 'string' ? eventData.teacherId.profileImageUrl : '') ||
-          (typeof eventData.teacherId.avatar === 'string' ? eventData.teacherId.avatar : '') ||
-          (typeof eventData.teacherId.photo === 'string' ? eventData.teacherId.photo : '') ||
-          (typeof eventData.teacherId.userId?.avatar === 'string' ? eventData.teacherId.userId.avatar : '') ||
-          (typeof eventData.teacherId.profileImageAssetId?.url === 'string' ? eventData.teacherId.profileImageAssetId.url : ''),
+        name: `${eventData.teacherId.firstName} ${eventData.teacherId.lastName}`,
+        email: eventData.teacherId.email,
+        photo: eventData.teacherId.photo,
         bio: eventData.teacherId.bio || 'Experienced instructor.',
         specialization: eventData.teacherId.specialization || 'Education'
       } : null
@@ -296,32 +237,36 @@ const EventDetailPage: React.FC = () => {
     }
   }, [event?.slug, slug, navigate]);
 
-  // Handle URL canonicalization (ID -> Slug)
-  useEffect(() => {
-    if (event?.slug && event.slug !== slug) {
-      navigate(`/events/${event.slug}`, { replace: true });
-    }
-  }, [event?.slug, slug, navigate]);
 
+  // Reviews — fetched with TanStack Query for caching & deduplication
+  const reviewsEnabled = activeTab === 'reviews' && !!event?._id;
+  const { data: platformReviewsData, isLoading: loadingReviews } = useQuery({
+    queryKey: ['event-reviews', event?._id],
+    queryFn: async () => {
+      const response = await reviewsAPI.getEventReviews(event!._id);
+      return response.data?.reviews || response.reviews || [];
+    },
+    enabled: reviewsEnabled,
+    staleTime: 5 * 60 * 1000,
+  });
+  const { data: googleReviewsData } = useQuery({
+    queryKey: ['event-google-reviews', event?._id],
+    queryFn: async () => {
+      const response = await reviewsAPI.getGoogleReviews(event!._id);
+      const googleData = response.data || response;
+      return googleData.hasGooglePlaceId ? (googleData.reviews || []) : [];
+    },
+    enabled: reviewsEnabled,
+    staleTime: 10 * 60 * 1000,
+  });
+  const platformReviews: any[] = platformReviewsData || [];
+  const googleReviews: any[] = googleReviewsData || [];
 
   const usingMockData = !eventData && !isLoading;
   const error = queryError ? (queryError as any)?.response?.status === 404 ?
     'Event not found. This event may have been removed or the URL is incorrect.' :
     'Unable to load event details. Please check your internet connection and try again.' :
     null;
-
-  const showSyllabusTab = !!event?.teacher;
-
-  const displaySyllabus = useMemo(() => {
-    if (!event || !showSyllabusTab) return [] as any[];
-    return Array.isArray(event.syllabus) ? event.syllabus : [];
-  }, [event, showSyllabusTab]);
-
-  useEffect(() => {
-    if (!showSyllabusTab && activeTab === 'syllabus') {
-      setActiveTab('about');
-    }
-  }, [showSyllabusTab, activeTab]);
 
   // Memoized schedule calculations - must be before any early returns
   const currentSchedule = useMemo(() => {
@@ -359,77 +304,24 @@ const EventDetailPage: React.FC = () => {
     return currentSchedule?.availableSeats || event?.availableSpots || 0;
   }, [currentSchedule, event?.availableSpots]);
 
+  const isUnlimited = !!(currentSchedule?.unlimitedSeats || currentAvailableSeats >= 999999);
+  const isFree = !!(event?.isFreeEvent || currentPrice === 0);
+
   // Favorites state
   const favorites = useSelector((state: RootState) => state.favorites.items);
   const isFavorite = favorites.some(fav => fav._id === event?._id);
 
-  // Fetch platform reviews
-  // Fetch platform reviews
-  useEffect(() => {
-    const fetchPlatformReviews = async () => {
-      // Must use actual ObjectId for reviews, not slug
-      if (!event?._id) return;
-
-      try {
-        setLoadingReviews(true);
-        const response = await reviewsAPI.getEventReviews(event._id);
-        setPlatformReviews(response.data?.reviews || response.reviews || []);
-      } catch (error) {
-        console.error('Failed to fetch platform reviews:', error);
-        setPlatformReviews([]);
-      } finally {
-        setLoadingReviews(false);
-      }
-    };
-
-    if (activeTab === 'reviews') {
-      fetchPlatformReviews();
-    }
-  }, [event?._id, activeTab]);
 
 
-  // Fetch Google reviews
-  // Fetch Google reviews
-  useEffect(() => {
-    const fetchGoogleReviews = async () => {
-      if (!event?._id) return;
-
-      try {
-        const response = await reviewsAPI.getGoogleReviews(event._id);
-        const googleData = response.data || response;
-        if (googleData.hasGooglePlaceId) {
-          setGoogleReviews(googleData.reviews || []);
-        } else {
-          setGoogleReviews([]);
-        }
-      } catch (error) {
-        console.error('Failed to fetch Google reviews:', error);
-        setGoogleReviews([]);
-      }
-    };
-
-    if (activeTab === 'reviews') {
-      fetchGoogleReviews();
-    }
-  }, [event?._id, activeTab]);
-
-
-  // Handle review submission success
+  // Handle review submission success — invalidate cache so useQuery refetches
   const handleReviewSubmitSuccess = () => {
-    // Refetch platform reviews
     if (event?._id) {
-      reviewsAPI.getEventReviews(event._id)
-        .then(response => setPlatformReviews(response.data?.reviews || response.reviews || []))
-        .catch(error => console.error('Failed to refresh reviews:', error));
+      queryClient.invalidateQueries({ queryKey: ['event-reviews', event._id] });
     }
   };
 
   if (isLoading) {
-    return (
-      <div className="min-h-screen flex items-center justify-center">
-        <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-primary"></div>
-      </div>
-    );
+    return <EventDetailSkeleton />;
   }
 
   if (error && !event) {
@@ -524,7 +416,7 @@ const EventDetailPage: React.FC = () => {
     const currentAvailableSeats = getCurrentAvailableSeats();
     const currentSchedule = getCurrentSchedule();
 
-    if (quantity > currentAvailableSeats) {
+    if (!isUnlimited && quantity > currentAvailableSeats) {
       toast.error(`Only ${currentAvailableSeats} seats available for the selected date`);
       return;
     }
@@ -539,7 +431,7 @@ const EventDetailPage: React.FC = () => {
     dispatch(setBookingEvent(event._id)); // Must be ObjectId
 
     // Create initial participants based on quantity with validation
-    if (quantity < 1 || quantity > currentAvailableSeats) {
+    if (quantity < 1 || (!isUnlimited && quantity > currentAvailableSeats)) {
       toast.error(`Invalid quantity. Please select between 1 and ${currentAvailableSeats} participants.`);
       return;
     }
@@ -633,38 +525,6 @@ const EventDetailPage: React.FC = () => {
     }
   };
 
-  // Handle add to cart
-  const handleAddToCart = () => {
-    if (!selectedDate) {
-      toast.error('Please select a date for your booking');
-      return;
-    }
-
-    const currentPrice = getCurrentPrice();
-    const currentAvailableSeats = getCurrentAvailableSeats();
-
-    if (quantity > currentAvailableSeats) {
-      toast.error(`Only ${currentAvailableSeats} seats available for the selected date`);
-      return;
-    }
-
-    addItemToCart({
-      id: event.id,
-      title: event.title,
-      price: currentPrice,
-      quantity: quantity,
-      image: event.image,
-      date: selectedDate.toISOString(),
-      time: event.time,
-      location: event.location,
-      organizer: event.organizer.name,
-      schedule: getCurrentSchedule()
-    }, quantity);
-  };
-
-  // Check if event is already in cart for the selected date
-  const eventInCart = event && selectedDate ? isItemInCart(event.id, selectedDate.toISOString()) : false;
-
   // Share handler
   const handleShare = async () => {
     if (!event) return;
@@ -711,15 +571,8 @@ const EventDetailPage: React.FC = () => {
 
   // View vendor profile handler
   const handleViewVendorProfile = () => {
-    // For teaching events, navigate to teacher profile
-    if (event?.teacher?.id) {
-      navigate(`/teachers/${event.teacher.id}`);
-      return;
-    }
-    // For vendor events, navigate to vendor profile
-    if (event?.vendorId?._id) {
-      navigate(`/vendors/${event.vendorId._id}`);
-    }
+    if (!event?.vendorId?._id) return;
+    navigate(`/vendors/${event.vendorId._id}`);
   };
 
   // Get Directions handler - opens Google Maps
@@ -774,7 +627,7 @@ const EventDetailPage: React.FC = () => {
         <style dangerouslySetInnerHTML={{ __html: event.customCSS }} />
       )}
 
-      <div className="container mx-auto px-4 py-8">
+      <div className="container mx-auto px-4 py-8 pb-20 lg:pb-8">
         {/* Back button */}
         <button
           onClick={() => navigate('/search')}
@@ -869,7 +722,7 @@ const EventDetailPage: React.FC = () => {
                 <div className="absolute bottom-6 left-6 right-6">
                   <div className="flex items-center justify-between text-white">
                     <div className="flex items-center space-x-6">
-                      <div className="flex items-center bg-black/30 backdrop-blur-md rounded-full px-4 py-2">
+                      <div className="flex items-center bg-black/30 backdrop-blur-md rounded-full px-2 py-1 sm:px-4 sm:py-2">
                         <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                           <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
                           <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
@@ -877,7 +730,7 @@ const EventDetailPage: React.FC = () => {
                         <span className="font-medium">{event.viewsCount || 120} views</span>
                       </div>
 
-                      <div className="flex items-center bg-black/30 backdrop-blur-md rounded-full px-4 py-2">
+                      <div className="flex items-center bg-black/30 backdrop-blur-md rounded-full px-2 py-1 sm:px-4 sm:py-2">
                         <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                           <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z" />
                           <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 11a3 3 0 11-6 0 3 3 0 016 0z" />
@@ -886,7 +739,7 @@ const EventDetailPage: React.FC = () => {
                       </div>
                     </div>
 
-                    <div className="flex items-center space-x-2">
+                    <div className="hidden sm:flex items-center space-x-2">
                       <div className="w-2 h-2 bg-green-400 rounded-full animate-pulse"></div>
                       <span className="text-sm font-medium">Available Now</span>
                     </div>
@@ -988,7 +841,7 @@ const EventDetailPage: React.FC = () => {
               />
               <StatCard
                 title="Capacity"
-                value={event.dateSchedule?.[0]?.totalSeats || 0}
+                value={event.dateSchedule?.[0]?.unlimitedSeats || (event.dateSchedule?.[0]?.totalSeats || 0) >= 999999 ? 'Unlimited' : (event.dateSchedule?.[0]?.totalSeats || 0)}
                 subtitle="Total seats"
                 icon={
                   <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -999,8 +852,8 @@ const EventDetailPage: React.FC = () => {
               />
               <StatCard
                 title="Available"
-                value={getCurrentAvailableSeats()}
-                subtitle={`${((getCurrentAvailableSeats() / (event.dateSchedule?.[0]?.totalSeats || 1)) * 100).toFixed(0)}% remaining`}
+                value={isUnlimited ? 'Unlimited' : getCurrentAvailableSeats()}
+                subtitle={isUnlimited ? 'No seat limit' : `${((getCurrentAvailableSeats() / (event.dateSchedule?.[0]?.totalSeats || 1)) * 100).toFixed(0)}% remaining`}
                 icon={
                   <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
@@ -1011,7 +864,7 @@ const EventDetailPage: React.FC = () => {
             </div>
 
             {/* Low availability warning */}
-            {getCurrentAvailableSeats() <= 10 && selectedDate && (
+            {!isUnlimited && getCurrentAvailableSeats() <= 10 && selectedDate && (
               <div className="bg-gradient-to-r from-red-50 to-orange-50 border border-red-200 rounded-lg p-4 animate-pulse">
                 <div className="flex items-center">
                   <div className="w-10 h-10 bg-red-100 rounded-lg flex items-center justify-center mr-3">
@@ -1031,30 +884,28 @@ const EventDetailPage: React.FC = () => {
               {/* Main Content */}
               {/* Tabs */}
               <div className="bg-white rounded-lg shadow-md overflow-hidden mb-8">
-                <div className="flex border-b">
+                <div className="flex border-b overflow-x-auto">
                   <button
-                    className={`flex-1 py-4 px-6 text-center font-medium ${activeTab === 'about' ? 'text-primary border-b-2 border-primary' : 'text-gray-500 hover:text-gray-700'}`}
+                    className={`flex-none py-3 px-3 sm:flex-1 sm:py-4 sm:px-6 text-center font-medium text-xs sm:text-sm whitespace-nowrap ${activeTab === 'about' ? 'text-primary border-b-2 border-primary' : 'text-gray-500 hover:text-gray-700'}`}
                     onClick={() => setActiveTab('about')}
                   >
                     About
                   </button>
-                  {showSyllabusTab && (
-                    <button
-                      className={`flex-1 py-4 px-6 text-center font-medium ${activeTab === 'syllabus' ? 'text-primary border-b-2 border-primary' : 'text-gray-500 hover:text-gray-700'}`}
-                      onClick={() => setActiveTab('syllabus')}
-                    >
-                      Syllabus 
-                    </button>
-                  )}
                   <button
-                    className={`flex-1 py-4 px-6 text-center font-medium ${activeTab === 'reviews' ? 'text-primary border-b-2 border-primary' : 'text-gray-500 hover:text-gray-700'}`}
+                    className={`flex-none py-3 px-3 sm:flex-1 sm:py-4 sm:px-6 text-center font-medium text-xs sm:text-sm whitespace-nowrap ${activeTab === 'location' ? 'text-primary border-b-2 border-primary' : 'text-gray-500 hover:text-gray-700'}`}
+                    onClick={() => setActiveTab('location')}
+                  >
+                    Location
+                  </button>
+                  <button
+                    className={`flex-none py-3 px-3 sm:flex-1 sm:py-4 sm:px-6 text-center font-medium text-xs sm:text-sm whitespace-nowrap ${activeTab === 'reviews' ? 'text-primary border-b-2 border-primary' : 'text-gray-500 hover:text-gray-700'}`}
                     onClick={() => setActiveTab('reviews')}
                   >
                     Reviews ({platformReviews.length + googleReviews.length})
                   </button>
                   {event.faqs && event.faqs.length > 0 && (
                     <button
-                      className={`flex-1 py-4 px-6 text-center font-medium ${activeTab === 'faqs' ? 'text-primary border-b-2 border-primary' : 'text-gray-500 hover:text-gray-700'}`}
+                      className={`flex-none py-3 px-3 sm:flex-1 sm:py-4 sm:px-6 text-center font-medium text-xs sm:text-sm whitespace-nowrap ${activeTab === 'faqs' ? 'text-primary border-b-2 border-primary' : 'text-gray-500 hover:text-gray-700'}`}
                       onClick={() => setActiveTab('faqs')}
                     >
                       FAQs ({event.faqs.length})
@@ -1102,6 +953,51 @@ const EventDetailPage: React.FC = () => {
                         ))}
                       </ul>
 
+                      {/* Syllabus Section (Educational Events) */}
+                      {event.syllabus && event.syllabus.length > 0 && (
+                        <div className="mb-8">
+                          <h3 className="text-xl font-semibold mb-4 text-blue-600">Course Syllabus</h3>
+                          <div className="space-y-3">
+                            {event.syllabus.map((item: any, index: number) => (
+                              <div key={index} className="border border-gray-200 rounded-lg overflow-hidden">
+                                <button
+                                  onClick={() => toggleSyllabusItem(item._id || index.toString())}
+                                  className="w-full flex justify-between items-center p-4 bg-gray-50 hover:bg-gray-100 transition-colors text-left"
+                                  type="button"
+                                >
+                                  <div>
+                                    <div className="font-medium text-gray-900">{item.title}</div>
+                                    {item.description && <div className="text-sm text-gray-500 mt-1">{item.description}</div>}
+                                  </div>
+                                  <svg
+                                    className={`w-5 h-5 text-gray-500 transform transition-transform ${openSyllabusItems[item._id || index.toString()] ? 'rotate-180' : ''}`}
+                                    fill="none"
+                                    stroke="currentColor"
+                                    viewBox="0 0 24 24"
+                                  >
+                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+                                  </svg>
+                                </button>
+                                {openSyllabusItems[item._id || index.toString()] && item.lessons && item.lessons.length > 0 && (
+                                  <div className="p-4 bg-white border-t border-gray-200">
+                                    <ul className="list-disc list-inside space-y-1 text-gray-700">
+                                      {item.lessons.map((lesson: any, idx: number) => (
+                                        <li key={idx}>
+                                          {typeof lesson === 'string' ? lesson : lesson.title}
+                                          {typeof lesson === 'object' && lesson.duration && (
+                                            <span className="text-gray-400 text-xs ml-2">({lesson.duration})</span>
+                                          )}
+                                        </li>
+                                      ))}
+                                    </ul>
+                                  </div>
+                                )}
+                              </div>
+                            ))}
+                          </div>
+                        </div>
+                      )}
+
                       <div className="bg-gray-50 p-4 rounded-lg border border-gray-200">
                         <h3 className="text-lg font-semibold mb-3 text-blue-600">Additional Information</h3>
                         <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
@@ -1111,83 +1007,69 @@ const EventDetailPage: React.FC = () => {
                           </div>
                           <div>
                             <div className="text-sm text-gray-500 mb-1">Capacity</div>
-                            <div className="font-medium text-gray-900">{event.capacity} participants</div>
+                            <div className="font-medium text-gray-900">{(event.capacity || 0) >= 999999 ? 'Unlimited' : `${event.capacity} participants`}</div>
                           </div>
                         </div>
                       </div>
                     </div>
                   )}
 
-                  {/* Syllabus Tab */}
-                  {showSyllabusTab && activeTab === 'syllabus' && (
+                  {/* Location Tab */}
+                  {activeTab === 'location' && (
                     <div>
-                      <h2 className="text-2xl font-bold mb-4 text-blue-600">Course Syllabus</h2>
-                      {displaySyllabus.length > 0 ? (
-                        <div className="space-y-4">
-                          {displaySyllabus.map((item: any, index: number) => (
-                            <div key={getSyllabusItemKey(item, index)} className="border border-gray-200 rounded-xl overflow-hidden bg-white shadow-sm hover:shadow-md transition-shadow duration-200">
-                              <button
-                                onClick={() => toggleSyllabusItem(getSyllabusItemKey(item, index))}
-                                className="w-full flex justify-between items-center p-4 md:p-5 bg-gradient-to-r from-gray-50 to-white hover:from-gray-100 hover:to-white transition-colors text-left"
-                                type="button"
-                              >
-                                <div className="pr-4">
-                                  <div className="font-semibold text-gray-900 text-lg">{item.title || `Module ${index + 1}`}</div>
-                                  {item.description && <div className="text-sm text-gray-600 mt-1 leading-relaxed">{item.description}</div>}
-                                  <div className="mt-3 flex items-center gap-2 flex-wrap">
-                                    {item.duration && (
-                                      <span className="inline-flex items-center px-2.5 py-1 rounded-full text-xs font-medium bg-blue-50 text-blue-700 border border-blue-100">
-                                        Duration: {item.duration}
-                                      </span>
-                                    )}
-                                    <span className="inline-flex items-center px-2.5 py-1 rounded-full text-xs font-medium bg-indigo-50 text-indigo-700 border border-indigo-100">
-                                      Lessons: {getSyllabusLessons(item).length}
-                                    </span>
-                                  </div>
-                                </div>
-                                <svg
-                                  className={`w-5 h-5 text-gray-500 transform transition-transform ${openSyllabusItems[getSyllabusItemKey(item, index)] ? 'rotate-180' : ''}`}
-                                  fill="none"
-                                  stroke="currentColor"
-                                  viewBox="0 0 24 24"
-                                >
-                                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
-                                </svg>
-                              </button>
-
-                              {openSyllabusItems[getSyllabusItemKey(item, index)] && (
-                                <div className="p-4 bg-white border-t border-gray-200">
-                                  {getSyllabusLessons(item).length > 0 ? (
-                                    <ul className="space-y-3">
-                                      {getSyllabusLessons(item).map((lesson: { title: string; duration?: string }, idx: number) => (
-                                        <li key={idx} className="flex items-start justify-between gap-3 text-gray-700 bg-gray-50 border border-gray-100 rounded-lg p-3">
-                                          <div className="flex items-start min-w-0">
-                                            <span className="mr-3 mt-1.5 h-2 w-2 rounded-full bg-primary flex-shrink-0"></span>
-                                            <span className="text-sm md:text-base text-gray-800">{lesson.title}</span>
-                                          </div>
-                                          {lesson.duration && (
-                                            <span className="text-xs text-gray-600 bg-white border border-gray-200 rounded-full px-2 py-1 whitespace-nowrap">
-                                              {lesson.duration}
-                                            </span>
-                                          )}
-                                        </li>
-                                      ))}
-                                    </ul>
-                                  ) : (
-                                    <p className="text-sm text-gray-500">No lessons listed for this module yet.</p>
-                                  )}
-                                </div>
-                              )}
-                            </div>
-                          ))}
+                      <h2 className="text-2xl font-bold mb-4 text-blue-600">Event Location</h2>
+                      <div className="bg-gray-50 p-4 rounded-lg mb-6 border border-gray-200">
+                        <div className="flex items-center mb-4">
+                          <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6 text-primary mr-3" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z" />
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 11a3 3 0 11-6 0 3 3 0 016 0z" />
+                          </svg>
+                          <div>
+                            <h3 className="font-medium text-gray-900">
+                              {event.location?.city && event.location?.address
+                                ? `${event.location.city}, ${event.location.address}`
+                                : event.location?.city || event.location?.address || 'Location TBD'}
+                            </h3>
+                            <p className="text-gray-600 text-sm">{event.location?.address}</p>
+                          </div>
                         </div>
-                      ) : (
-                        <div className="bg-gray-50 p-5 rounded-lg border border-gray-200 text-gray-600">
-                          Syllabus has not been added for this event yet.
+                        <div className="bg-gray-200 h-64 rounded-lg mb-4">
+                          {/* Map placeholder */}
+                          <div className="h-full flex items-center justify-center text-gray-500">
+                            Map view would be displayed here
+                          </div>
                         </div>
-                      )}
-                      <div className="mt-6 bg-gradient-to-r from-gray-50 to-slate-50 p-4 rounded-lg border border-gray-200 text-gray-700">
-                        Expand each module to view the lessons.
+                        <div className="flex justify-between">
+                          <button onClick={handleGetDirections} className="text-primary hover:text-primary-dark flex items-center">
+                            <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 mr-1" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 20l-5.447-2.724A1 1 0 013 16.382V5.618a1 1 0 011.447-.894L9 7m0 13l6-3m-6 3V7m6 10l4.553 2.276A1 1 0 0021 18.382V7.618a1 1 0 00-.553-.894L15 4m0 13V4m0 0L9 7" />
+                            </svg>
+                            Get Directions
+                          </button>
+                          <button onClick={handleShareLocation} className="text-primary hover:text-primary-dark flex items-center">
+                            <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 mr-1" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8.684 13.342C8.886 12.938 9 12.482 9 12c0-.482-.114-.938-.316-1.342m0 2.684a3 3 0 110-2.684m0 2.684l6.632 3.316m-6.632-6l6.632-3.316m0 0a3 3 0 105.367-2.684 3 3 0 00-5.367 2.684zm0 9.316a3 3 0 105.368 2.684 3 3 0 00-5.368-2.684z" />
+                            </svg>
+                            Share Location
+                          </button>
+                        </div>
+                      </div>
+                      <div className="bg-gray-50 p-4 rounded-lg border border-gray-200 text-gray-900">
+                        <h3 className="font-bold mb-3">Transportation Options</h3>
+                        <ul className="space-y-3">
+                          <li className="flex items-center">
+                            <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 text-primary mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                              <path d="M9 19c-5 1.5-5-2.5-7-3m14 6v-3.87a3.37 3.37 0 0 0-.94-2.61c3.14-.35 6.44-1.54 6.44-7A5.44 5.44 0 0 0 20 4.77 5.07 5.07 0 0 0 19.91 1S18.73.65 16 2.48a13.38 13.38 0 0 0-7 0C6.27.65 5.09 1 5.09 1A5.07 5.07 0 0 0 5 4.77a5.44 5.44 0 0 0-1.5 3.78c0 5.42 3.3 6.61 6.44 7A3.37 3.37 0 0 0 9 18.13V22" />
+                            </svg>
+                            <span>Public Transit: Bus lines 42, 56 stop nearby</span>
+                          </li>
+                          <li className="flex items-center">
+                            <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 text-primary mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 8h14M5 8a2 2 0 110-4h14a2 2 0 110 4M5 8v10a2 2 0 002 2h10a2 2 0 002-2V8m-9 4h4" />
+                            </svg>
+                            <span>Parking: Available on-site (limited spaces)</span>
+                          </li>
+                        </ul>
                       </div>
                     </div>
                   )}
@@ -1425,7 +1307,7 @@ const EventDetailPage: React.FC = () => {
               </Card>
             )}
 
-            <Card variant="glass" className="sticky top-8 shadow-2xl">
+            <Card id="booking-panel" variant="glass" className="sticky top-8 shadow-2xl">
               <CardHeader>
                 <CardTitle className="text-2xl flex items-center">
                   {event.externalBookingLink ? '🔗 Book This Event' : '🎫 Book Your Spot'}
@@ -1435,7 +1317,7 @@ const EventDetailPage: React.FC = () => {
                     <div className="flex items-center justify-between">
                       <span className="text-sm text-gray-600">Starting from</span>
                       <div className="text-3xl font-bold bg-gradient-to-r from-primary-600 to-primary-800 bg-clip-text text-transparent">
-                        {event.currency || 'AED'} {currentPrice}
+                        {isFree ? <span className="text-green-600">Free</span> : `${event.currency || 'AED'} ${currentPrice}`}
                       </div>
                     </div>
                     {/* Enhanced Progress Bar */}
@@ -1444,15 +1326,15 @@ const EventDetailPage: React.FC = () => {
                         <div
                           className="bg-gradient-to-r from-green-400 to-green-600 h-3 rounded-full transition-all duration-500 ease-out shadow-sm"
                           style={{
-                            width: `${((getCurrentAvailableSeats() / (event.dateSchedule?.[0]?.totalSeats || 1)) * 100)}%`
+                            width: isUnlimited ? '100%' : `${((getCurrentAvailableSeats() / (event.dateSchedule?.[0]?.totalSeats || 1)) * 100)}%`
                           }}
                         >
                           <div className="absolute inset-0 bg-white bg-opacity-25 animate-pulse"></div>
                         </div>
                       </div>
                       <div className="flex justify-between text-sm text-gray-600">
-                        <span className="font-medium">{getCurrentAvailableSeats()} available</span>
-                        <span>{event.dateSchedule?.[0]?.totalSeats || 0} total</span>
+                        <span className="font-medium">{isUnlimited ? 'Unlimited' : `${getCurrentAvailableSeats()} available`}</span>
+                        <span>{isUnlimited ? 'No seat limit' : `${event.dateSchedule?.[0]?.totalSeats || 0} total`}</span>
                       </div>
                     </div>
                   </>
@@ -1525,8 +1407,8 @@ const EventDetailPage: React.FC = () => {
                         </div>
                         <button
                           className="flex items-center justify-center w-12 h-12 bg-white text-gray-700 rounded-xl hover:bg-gray-100 hover:shadow-md transition-all focus:outline-none shadow-sm disabled:opacity-50 disabled:cursor-not-allowed"
-                          onClick={() => setQuantity(Math.min(getCurrentAvailableSeats(), quantity + 1))}
-                          disabled={quantity >= getCurrentAvailableSeats()}
+                          onClick={() => setQuantity(isUnlimited ? quantity + 1 : Math.min(getCurrentAvailableSeats(), quantity + 1))}
+                          disabled={!isUnlimited && quantity >= getCurrentAvailableSeats()}
                         >
                           <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
@@ -1537,30 +1419,39 @@ const EventDetailPage: React.FC = () => {
 
                     {/* Enhanced Pricing Breakdown */}
                     <div className="bg-gradient-to-br from-gray-50 to-gray-100 rounded-xl p-5 space-y-3 border border-gray-200">
-                      <div className="flex justify-between text-sm items-center">
-                        <span className="text-gray-600 flex items-center">
-                          <svg className="w-4 h-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 5v2m0 4v2m0 4v2M5 5a2 2 0 00-2 2v3a2 2 0 110 4v3a2 2 0 002 2h14a2 2 0 002-2v-3a2 2 0 110-4V7a2 2 0 00-2-2H5z" />
-                          </svg>
-                          Tickets × {quantity}
-                        </span>
-                        <span className="font-semibold text-gray-900">{event.currency || 'AED'} {(currentPrice * quantity).toFixed(2)}</span>
-                      </div>
-                      <div className="flex justify-between text-sm items-center">
-                        <span className="text-gray-600 flex items-center">
-                          <svg className="w-4 h-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1" />
-                          </svg>
-                          Service Fee (10%)
-                        </span>
-                        <span className="font-semibold text-gray-900">{event.currency || 'AED'} {(currentPrice * quantity * 0.1).toFixed(2)}</span>
-                      </div>
-                      <div className="border-t border-gray-300 pt-3">
+                      {isFree ? (
                         <div className="flex justify-between font-bold text-lg items-center">
                           <span className="text-gray-900">Total</span>
-                          <span className="text-primary-600 text-2xl">{event.currency || 'AED'} {(currentPrice * quantity * 1.1).toFixed(2)}</span>
+                          <span className="text-green-600 text-2xl">Free</span>
                         </div>
-                      </div>
+                      ) : (
+                        <>
+                          <div className="flex justify-between text-sm items-center">
+                            <span className="text-gray-600 flex items-center">
+                              <svg className="w-4 h-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 5v2m0 4v2m0 4v2M5 5a2 2 0 00-2 2v3a2 2 0 110 4v3a2 2 0 002 2h14a2 2 0 002-2v-3a2 2 0 110-4V7a2 2 0 00-2-2H5z" />
+                              </svg>
+                              Tickets × {quantity}
+                            </span>
+                            <span className="font-semibold text-gray-900">{event.currency || 'AED'} {(currentPrice * quantity).toFixed(2)}</span>
+                          </div>
+                          <div className="flex justify-between text-sm items-center">
+                            <span className="text-gray-600 flex items-center">
+                              <svg className="w-4 h-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1" />
+                              </svg>
+                              Service Fee (10%)
+                            </span>
+                            <span className="font-semibold text-gray-900">{event.currency || 'AED'} {(currentPrice * quantity * 0.1).toFixed(2)}</span>
+                          </div>
+                          <div className="border-t border-gray-300 pt-3">
+                            <div className="flex justify-between font-bold text-lg items-center">
+                              <span className="text-gray-900">Total</span>
+                              <span className="text-primary-600 text-2xl">{event.currency || 'AED'} {(currentPrice * quantity * 1.1).toFixed(2)}</span>
+                            </div>
+                          </div>
+                        </>
+                      )}
                     </div>
 
                     {/* Action Buttons */}
@@ -1576,16 +1467,6 @@ const EventDetailPage: React.FC = () => {
                         {!selectedDate ? '📅 Select Date to Book' : getCurrentAvailableSeats() === 0 ? '❌ Sold Out' : '🎫 Book Now'}
                       </button>
 
-                      <button
-                        onClick={handleAddToCart}
-                        disabled={eventInCart || !selectedDate || getCurrentAvailableSeats() === 0}
-                        className={`w-full py-3 rounded-xl font-semibold transition-all duration-300 border-2 ${eventInCart || !selectedDate || getCurrentAvailableSeats() === 0
-                          ? 'bg-gray-100 text-gray-400 border-gray-200 cursor-not-allowed'
-                          : 'bg-white text-primary-600 border-primary-200 hover:bg-primary-50 hover:border-primary-300 transform hover:-translate-y-0.5'
-                          }`}
-                      >
-                        {eventInCart ? '✅ Already in Cart' : !selectedDate ? '🛒 Select Date' : getCurrentAvailableSeats() === 0 ? '❌ Sold Out' : '🛒 Add to Cart'}
-                      </button>
                     </div>
 
                     {/* Enhanced Security Note */}
@@ -1599,9 +1480,47 @@ const EventDetailPage: React.FC = () => {
                 )}
               </CardContent>
             </Card>
+            {/* Instructor Card (Educational Events) */}
+            {event.teacher && (
+              <Card variant="elevated" className='mt-4 mb-4' hover>
+                <CardHeader>
+                  <CardTitle className="flex items-center">
+                    <div className="w-8 h-8 bg-gradient-to-br from-indigo-400 to-indigo-600 rounded-lg flex items-center justify-center mr-3">
+                      <svg className="w-5 h-5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4.354a4 4 0 110 5.292M15 21H3v-1a6 6 0 0112 0v1zm0 0h6v-1a6 6 0 00-9-5.197M13 7a4 4 0 11-8 0 4 4 0 018 0z" />
+                      </svg>
+                    </div>
+                    Instructor
+                  </CardTitle>
+                </CardHeader>
+                <CardContent className="space-y-4">
+                  <div className="flex items-center">
+                    <Avatar
+                      size="lg"
+                      src={event.teacher.photo}
+                      fallback={event.teacher.name}
+                      className="mr-4"
+                    />
+                    <div className="flex-1">
+                      <div className="font-semibold text-lg text-gray-900">
+                        {event.teacher.name}
+                      </div>
+                      <div className="text-sm text-gray-600">{event.teacher.specialization}</div>
+                      {event.teacher.email && <div className="text-xs text-gray-500 mt-1">{event.teacher.email}</div>}
+                    </div>
+                  </div>
 
-            {/* Vendor Information Card - Shows organizer or teacher for teaching events */}
-            <Card variant="elevated" className='mt-4 mb-4' hover>
+                  {event.teacher.bio && (
+                    <div className="bg-gray-50 rounded-lg p-3">
+                      <div className="text-xs text-gray-600 italic">"{event.teacher.bio}"</div>
+                    </div>
+                  )}
+                </CardContent>
+              </Card>
+            )}
+
+            {/* Vendor Information Card (hidden for teaching events – instructor card above replaces it) */}
+            {!event.teacher && <Card variant="elevated" className='mt-4 mb-4' hover>
               <CardHeader>
                 <CardTitle className="flex items-center">
                   <div className="w-8 h-8 bg-gradient-to-br from-primary-400 to-primary-600 rounded-lg flex items-center justify-center mr-3">
@@ -1613,75 +1532,44 @@ const EventDetailPage: React.FC = () => {
                 </CardTitle>
               </CardHeader>
               <CardContent className="space-y-4">
-                {/* For teaching events, show teacher info; otherwise show vendor info */}
-                {event.teacher ? (
-                  <>
-                    <div className="flex items-center">
-                      <Avatar
-                        size="lg"
-                        src={event.teacher.photo}
-                        fallback={event.teacher.name}
-                        className="mr-4"
-                      />
-                      <div className="flex-1">
-                        <div className="font-semibold text-lg text-gray-900">
-                          {event.teacher.name}
-                        </div>
-                        <div className="text-sm text-gray-600">{event.teacher.specialization}</div>
-                        <div className="text-sm text-gray-600">{event.teacher.email}</div>
-                      </div>
+                <div className="flex items-center">
+                  <Avatar
+                    size="lg"
+                    fallback={`${event.vendorId?.firstName} ${event.vendorId?.lastName}`}
+                    className="mr-4"
+                  />
+                  <div className="flex-1">
+                    <div className="font-semibold text-lg text-gray-900">
+                      {event.vendorId?.firstName} {event.vendorId?.lastName}
                     </div>
+                    <div className="text-sm text-gray-600">{event.vendorId?.email}</div>
+                    <div className="text-sm text-gray-600">{event.vendorId?.phone}</div>
+                  </div>
+                </div>
 
-                    <div className="bg-gray-50 rounded-lg p-3">
-                      <div className="text-sm font-medium text-gray-700 mb-1">Professional Event Organizer</div>
-                      <div className="text-xs text-gray-600">Specializing in {event.category?.toLowerCase() || 'education'} events for children</div>
-                    </div>
+                <div className="bg-gray-50 rounded-lg p-3">
+                  <div className="text-sm font-medium text-gray-700 mb-1">Professional Event Organizer</div>
+                  <div className="text-xs text-gray-600">Specializing in {event.category?.toLowerCase() || 'general'} events for children</div>
+                </div>
 
-                    <button
-                      onClick={handleViewVendorProfile}
-                      className="w-full py-2 px-3 border border-primary-200 text-primary-600 text-sm rounded-lg hover:bg-primary-50 transition-colors"
-                      title="View profile"
-                    >
-                      View Profile
-                    </button>
-                  </>
-                ) : (
-                  <>
-                    <div className="flex items-center">
-                      <Avatar
-                        size="lg"
-                        fallback={event.vendorId?.firstName && event.vendorId?.lastName ? 
-                                  `${event.vendorId.firstName} ${event.vendorId.lastName}` : 
-                                  'Event Organizer'}
-                        className="mr-4"
-                      />
-                      <div className="flex-1">
-                        <div className="font-semibold text-lg text-gray-900">
-                          {event.vendorId?.firstName && event.vendorId?.lastName ? 
-                            `${event.vendorId.firstName} ${event.vendorId.lastName}` : 
-                            'Event Organizer'}
-                        </div>
-                        <div className="text-sm text-gray-600">{event.vendorId?.email || ''}</div>
-                        <div className="text-sm text-gray-600">{event.vendorId?.phone || ''}</div>
-                      </div>
-                    </div>
-
-                    <div className="bg-gray-50 rounded-lg p-3">
-                      <div className="text-sm font-medium text-gray-700 mb-1">Professional Event Organizer</div>
-                      <div className="text-xs text-gray-600">Specializing in {event.category?.toLowerCase() || 'general'} events for children</div>
-                    </div>
-
-                    <button
-                      onClick={handleViewVendorProfile}
-                      className="w-full py-2 px-3 border border-primary-200 text-primary-600 text-sm rounded-lg hover:bg-primary-50 transition-colors"
-                      title="View vendor profile"
-                    >
-                      View Profile
-                    </button>
-                  </>
-                )}
+                <div className="flex space-x-2">
+                  <button
+                    onClick={handleContactVendor}
+                    className="flex-1 py-2 px-3 bg-primary-600 text-white text-sm rounded-lg hover:bg-primary-700 transition-colors"
+                    title="Send email to vendor"
+                  >
+                    Contact
+                  </button>
+                  <button
+                    onClick={handleViewVendorProfile}
+                    className="flex-1 py-2 px-3 border border-primary-200 text-primary-600 text-sm rounded-lg hover:bg-primary-50 transition-colors"
+                    title="View vendor profile"
+                  >
+                    View Profile
+                  </button>
+                </div>
               </CardContent>
-            </Card>
+            </Card>}
 
             {/* Location Information Card */}
             <Card variant="elevated" hover className='mt-4 mb-4'>
@@ -1780,8 +1668,8 @@ const EventDetailPage: React.FC = () => {
               </CardContent>
             </Card>
 
-            {/* Claim Event Card - Visible only for unclaimed affiliate events */}
-            {event.isAffiliateEvent && event.claimStatus !== 'claimed' && (
+            {/* Claim Event Card - Visible for all unclaimed events */}
+            {event.claimStatus !== 'claimed' && (
               <Card variant="elevated" className="mt-6 border-2 border-primary-200 bg-gradient-to-br from-blue-50 to-white">
                 <CardHeader>
                   <CardTitle className="flex items-center text-primary-800">
@@ -1853,6 +1741,21 @@ const EventDetailPage: React.FC = () => {
 
 
 
+        {/* Sticky bottom CTA bar — mobile only */}
+        <div className="fixed bottom-0 left-0 right-0 z-50 bg-white border-t border-gray-200 p-3 flex items-center justify-between lg:hidden shadow-2xl" style={{ paddingBottom: 'calc(0.75rem + env(safe-area-inset-bottom))' }}>
+          <div>
+            <div className="text-xs text-gray-500">Starting from</div>
+            <div className="text-lg font-bold text-primary">
+              {isFree ? 'Free' : `${event?.currency || 'AED'} ${currentPrice}`}
+            </div>
+          </div>
+          <button
+            onClick={() => document.getElementById('booking-panel')?.scrollIntoView({ behavior: 'smooth' })}
+            className="bg-primary text-white px-6 py-3 rounded-xl font-bold text-sm"
+          >
+            Book Now →
+          </button>
+        </div>
       </div >
     </>
   );

@@ -68,7 +68,6 @@ export interface ITeacherBankDetails {
   accountNumber?: string;
   iban?: string;
   swiftCode?: string;
-  country?: string;
   isVerified?: boolean;
 }
 
@@ -77,21 +76,6 @@ export interface IStripeConfig {
   stripeConnectOnboardingComplete: boolean;
   stripePublishableKey?: string;
   stripeTestMode: boolean;
-  keysValid?: boolean;
-  lastValidated?: string;
-}
-
-export interface ITeacherVerificationDocument {
-  url?: string;
-  status?: 'pending' | 'verified' | 'rejected' | 'not_uploaded';
-  uploadedAt?: string;
-  rejectionReason?: string;
-}
-
-export interface ITeacherVerificationDocuments {
-  businessLicense?: ITeacherVerificationDocument;
-  taxCertificate?: ITeacherVerificationDocument;
-  identityDocument?: ITeacherVerificationDocument;
 }
 
 export interface ITeacherPaymentSettings {
@@ -128,11 +112,8 @@ export interface ITeacher {
   specialization?: string;
   languagesSpoken?: string[];
   yearsOfExperience?: number;
-  profileImage?: string;
-  profileImageUrl?: string;
   profileImageAssetId?: string;
   demoVideoAssetId?: string;
-  coverImageUrl?: string;
   coverImage?: string;
   teachingMode: TeachingMode;
   email: string;
@@ -142,7 +123,6 @@ export interface ITeacher {
   education?: IQualification[];
   availabilityHours?: IAvailabilityHours;
   paymentSettings: ITeacherPaymentSettings;
-  verificationDocuments?: ITeacherVerificationDocuments;
   verificationStatus: TeacherVerificationStatus;
   isActive: boolean;
   isSuspended: boolean;
@@ -319,8 +299,6 @@ export interface ITeacherPayout {
 
 // Form Input Types
 export interface TeacherProfileUpdateInput {
-  firstName?: string;
-  lastName?: string;
   bio?: string;
   subjects?: string[];
   expertise?: string[];

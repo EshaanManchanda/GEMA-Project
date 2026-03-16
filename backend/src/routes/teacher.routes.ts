@@ -1,5 +1,5 @@
-import { Router } from 'express';
-import { body, query } from 'express-validator';
+import { Router } from "express";
+import { body, query } from "express-validator";
 
 import {
   getTeacherDashboardStats,
@@ -14,12 +14,11 @@ import {
   uploadTeacherMedia,
   updateTeacherAvailabilityHours,
   updateTeacherSocialLinks,
-  updateTeacherCoverImage,
-  deleteTeacherCoverImage,
-  getPublicTeachersList,
   getPublicTeacherProfile,
+  getPublicTeachersList,
   getTeacherPaymentInfo,
-} from '../controllers/teacher.controller';
+  updateTeacherBankDetails,
+} from "../controllers/teacher.controller";
 
 import {
   getTeacherEventById,
@@ -27,35 +26,53 @@ import {
   updateTeacherEvent,
   deleteTeacherEvent,
   restoreTeacherEvent,
-} from '../controllers/teacher.event.controller';
+} from "../controllers/teacher.event.controller";
 
+import { authenticate, authorize, validate } from "../middleware";
+
+import { validateMongoId } from "../validators/common.validator";
 import {
-  authenticate,
-  authorize,
-  validate,
-  
-} from '../middleware';
-
-import { validateMongoId } from '../validators/common.validator';
+  validateCreateEvent,
+  validateUpdateEvent,
+} from "../validators/event.validator";
 
 const router = Router();
 
-// Middleware for authenticated teacher routes
-const teacherAuth = [authenticate, authorize(['teacher'])];
+/**
+ * ============================
+ * PUBLIC ROUTES
+ * ============================
+ */
+router.get("/public", getPublicTeachersList);
+
+router.get(
+  "/public/:id",
+  validateMongoId("id", "param"),
+  validate,
+  getPublicTeacherProfile,
+);
+
+/**
+ * ============================
+ * AUTH MIDDLEWARE
+ * ============================
+ */
+router.use(authenticate);
+router.use(authorize(["teacher"]));
 
 /**
  * ============================
  * DASHBOARD
  * ============================
  */
-router.get('/stats', teacherAuth, getTeacherDashboardStats);
+router.get("/stats", getTeacherDashboardStats);
 
 /**
  * ============================
  * TEACHING EVENTS
  * ============================
  */
-router.get('/events', teacherAuth, getTeacherTeachingEvents);
+router.get("/events", getTeacherTeachingEvents);
 
 /**
  * ============================
@@ -63,11 +80,10 @@ router.get('/events', teacherAuth, getTeacherTeachingEvents);
  * ============================
  */
 router.get(
-  '/:id/payment-info',
-  teacherAuth,
-  validateMongoId('id', 'param'),
+  "/:id/payment-info",
+  validateMongoId("id", "param"),
   validate,
-  getTeacherPaymentInfo
+  getTeacherPaymentInfo,
 );
 
 /**
@@ -76,65 +92,56 @@ router.get(
  * ============================
  */
 router.get(
-  '/bookings',
-  teacherAuth,
+  "/bookings",
   [
-    query('page').optional().isInt({ min: 1 }),
-    query('limit').optional().isInt({ min: 1, max: 100 }),
-    query('search').optional().isString(),
-    query('status').optional().isString(),
-    query('paymentStatus').optional().isString(),
-    query('teachingEventId').optional().isMongoId(),
-    query('startDate').optional().isISO8601(),
-    query('endDate').optional().isISO8601(),
-    query('minAmount').optional().isFloat({ min: 0 }),
-    query('maxAmount').optional().isFloat({ min: 0 }),
-    query('sortBy').optional().isString(),
-    query('sortOrder').optional().isIn(['asc', 'desc']),
+    query("page").optional().isInt({ min: 1 }),
+    query("limit").optional().isInt({ min: 1, max: 100 }),
+    query("search").optional().isString(),
+    query("status").optional().isString(),
+    query("paymentStatus").optional().isString(),
+    query("teachingEventId").optional().isMongoId(),
+    query("startDate").optional().isISO8601(),
+    query("endDate").optional().isISO8601(),
+    query("minAmount").optional().isFloat({ min: 0 }),
+    query("maxAmount").optional().isFloat({ min: 0 }),
+    query("sortBy").optional().isString(),
+    query("sortOrder").optional().isIn(["asc", "desc"]),
   ],
   validate,
-  getTeacherBookings
+  getTeacherBookings,
 );
 
 router.get(
-  '/bookings/export',
-  teacherAuth,
-  [
-    query('format').optional().isIn(['csv', 'json']),
-  ],
+  "/bookings/export",
+  [query("format").optional().isIn(["csv", "json"])],
   validate,
-  exportTeacherBookings
+  exportTeacherBookings,
 );
 
 router.post(
-  '/bookings/import',
-  teacherAuth,
-  [
-    body('csvData').isArray(),
-  ],
+  "/bookings/import",
+  [body("csvData").isArray()],
   validate,
-  importTeacherBookings
+  importTeacherBookings,
 );
 
 router.get(
-  '/bookings/:id',
-  teacherAuth,
-  validateMongoId('id', 'param'),
+  "/bookings/:id",
+  validateMongoId("id", "param"),
   validate,
-  getTeacherBookingById
+  getTeacherBookingById,
 );
 
 router.put(
-  '/bookings/:id',
-  teacherAuth,
+  "/bookings/:id",
   [
-    validateMongoId('id', 'param'),
-    body('teacherNotes').optional().isString(),
-    body('teacherStatus').optional().isString(),
-    body('isFulfilled').optional().isBoolean(),
+    validateMongoId("id", "param"),
+    body("teacherNotes").optional().isString(),
+    body("teacherStatus").optional().isString(),
+    body("isFulfilled").optional().isBoolean(),
   ],
   validate,
-  updateTeacherBooking
+  updateTeacherBooking,
 );
 
 /**
@@ -142,30 +149,29 @@ router.put(
  * PROFILE
  * ============================
  */
-router.get('/profile', teacherAuth, getTeacherProfile);
+router.get("/profile", getTeacherProfile);
 
 router.put(
-  '/profile',
-  teacherAuth,
+  "/profile",
   [
-    body('firstName').optional().isString(),
-    body('lastName').optional().isString(),
-    body('phone').optional().isString(),
-    body('gender').optional().isString(),
-    body('dateOfBirth').optional().isISO8601(),
-    body('addresses').optional().isArray(),
+    body("firstName").optional().isString(),
+    body("lastName").optional().isString(),
+    body("phone").optional().isString(),
+    body("gender").optional().isString(),
+    body("dateOfBirth").optional().isISO8601(),
+    body("addresses").optional().isArray(),
 
-    body('fullName').optional().isString(),
-    body('bio').optional().isString(),
-    body('subjects').optional().isArray(),
-    body('specialization').optional().isString(),
-    body('yearsOfExperience').optional().isInt({ min: 0 }),
-    body('languagesSpoken').optional().isArray(),
-    body('address').optional().isString(),
-    body('socialLinks').optional().isObject(),
+    body("fullName").optional().isString(),
+    body("bio").optional().isString(),
+    body("subjects").optional().isArray(),
+    body("specialization").optional().isString(),
+    body("yearsOfExperience").optional().isInt({ min: 0 }),
+    body("languagesSpoken").optional().isArray(),
+    body("address").optional().isString(),
+    body("socialLinks").optional().isObject(),
   ],
   validate,
-  updateTeacherProfile
+  updateTeacherProfile,
 );
 
 /**
@@ -174,17 +180,11 @@ router.put(
  * ============================
  */
 router.post(
-  '/upload-media',
-  teacherAuth,
-  [
-    body('mediaType').isIn(['profile', 'demoVideo']),
-  ],
+  "/upload-media",
+  [body("mediaType").isIn(["profile", "demoVideo", "cover"])],
   validate,
-  uploadTeacherMedia
+  uploadTeacherMedia,
 );
-
-router.put('/cover-image', teacherAuth, updateTeacherCoverImage);
-router.delete('/cover-image', teacherAuth, deleteTeacherCoverImage);
 
 /**
  * ============================
@@ -192,23 +192,30 @@ router.delete('/cover-image', teacherAuth, deleteTeacherCoverImage);
  * ============================
  */
 router.put(
-  '/availability-hours',
-  teacherAuth,
-  [
-    body('availabilityHours').isObject(),
-  ],
+  "/availability-hours",
+  [body("availabilityHours").isObject()],
   validate,
-  updateTeacherAvailabilityHours
+  updateTeacherAvailabilityHours,
 );
 
 router.put(
-  '/social-links',
-  teacherAuth,
+  "/social-links",
+  [body("socialLinks").isObject()],
+  validate,
+  updateTeacherSocialLinks,
+);
+
+router.put(
+  "/bank-details",
   [
-    body('socialLinks').isObject(),
+    body("accountHolderName").isString().notEmpty(),
+    body("bankName").isString().notEmpty(),
+    body("accountNumber").optional().isString(),
+    body("iban").optional().isString(),
+    body("swiftCode").optional().isString(),
   ],
   validate,
-  updateTeacherSocialLinks
+  updateTeacherBankDetails,
 );
 
 /**
@@ -216,60 +223,39 @@ router.put(
  * @desc    Create a new event
  * @access  Teacher only
  */
-router.post('/events', teacherAuth, createTeacherEvent);
+router.post("/events", validateCreateEvent, validate, createTeacherEvent);
 
 /**
  * @route   GET /api/teachers/events/:id
  * @desc    Get single event by ID
  * @access  Teacher only
  */
-router.get('/events/:id', teacherAuth, getTeacherEventById);
+router.get("/events/:id", getTeacherEventById);
 
 /**
  * @route   PUT /api/teachers/events/:id
  * @desc    Update teacher's own event
  * @access  Teacher only
  */
-router.put('/events/:id', teacherAuth, updateTeacherEvent);
+router.put(
+  "/events/:id",
+  validateMongoId("id", "param"),
+  validateUpdateEvent,
+  validate,
+  updateTeacherEvent,
+);
 
 /**
  * @route   DELETE /api/teachers/events/:id
  * @desc    Delete teacher's own event (soft or permanent)
  * @access  Teacher only
  */
-router.delete('/events/:id', teacherAuth, deleteTeacherEvent);
+router.delete("/events/:id", deleteTeacherEvent);
 
 /**
  * @route   PUT /api/teachers/events/:id/restore
  * @desc    Restore deleted event
  * @access  Teacher only
  */
-router.put('/events/:id/restore', teacherAuth, restoreTeacherEvent);
-
-/**
- * ============================
- * PUBLIC ROUTES (MUST BE LAST)
- * ============================
- * Note: Specific public routes must come before wildcard /:id route
- */
-
-// Public teacher profile by ID
-router.get('/public', getPublicTeachersList);
-
-// Public teacher profile by ID
-router.get(
-  '/public/:id',
-  validateMongoId('id', 'param'),
-  validate,
-  getPublicTeacherProfile
-);
-
-// Legacy route (kept for backward compatibility)
-router.get(
-  '/:id',
-  validateMongoId('id', 'param'),
-  validate,
-  getPublicTeacherProfile
-);
-
+router.put("/events/:id/restore", restoreTeacherEvent);
 export default router;

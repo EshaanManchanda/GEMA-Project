@@ -483,7 +483,7 @@ export const createUser = async (
         userId: user._id,
         fullName: `${user.firstName} ${user.lastName}`,
         email: user.email,
-        phone: user.phone || undefined,
+        phone: user.phone || "",
         bio: teacherBio || undefined,
         specialization: teacherSpecialization || undefined,
         subjects,
@@ -649,13 +649,17 @@ export const deleteUser = async (
     // Note: Admin can delete other admin users if needed
     // Add any additional business logic here if required
 
-    // Delete user and any linked profile docs, even if role was changed previously.
-    await Promise.all([
-      User.findByIdAndDelete(id),
-      Teacher.deleteMany({ userId: id }),
-      Vendor.deleteMany({ userId: id }),
-      Employee.deleteMany({ userId: id }),
-    ]);
+    // Delete user
+    await User.findByIdAndDelete(id);
+
+    // Cascade delete role-specific profile
+    if (user.role === "teacher") {
+      const Teacher = require("../models/Teacher").default;
+      await Teacher.findOneAndDelete({ userId: id });
+    } else if (user.role === "vendor") {
+      const VendorModel = require("../models/Vendor").default;
+      await VendorModel.findOneAndDelete({ userId: id });
+    }
 
     const response: ApiResponse = {
       success: true,

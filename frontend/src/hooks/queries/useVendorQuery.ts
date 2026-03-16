@@ -1,5 +1,6 @@
 import { useQuery, UseQueryOptions } from '@tanstack/react-query';
 import vendorAPI from '@/services/api/vendorAPI';
+import analyticsAPI from '@/services/api/analyticsAPI';
 import { vendorKeys, vendorsKeys } from './queryKeys';
 
 // ============================================
@@ -239,6 +240,86 @@ export function useVendorDocumentsQuery(options?: Omit<UseQueryOptions<any>, 'qu
     queryFn: () => vendorAPI.getVendorDocuments(),
     staleTime: 5 * 60 * 1000, // 5 minutes
     gcTime: 15 * 60 * 1000, // 15 minutes
+    ...options,
+  });
+}
+
+// ============================================
+// Vendor Analytics
+// ============================================
+
+type DateParams = { startDate: string; endDate: string };
+
+export function useVendorDashboardSummaryQuery(options?: Omit<UseQueryOptions<any>, 'queryKey' | 'queryFn'>) {
+  return useQuery({
+    queryKey: vendorKeys.analytics.dashboard(),
+    queryFn: () => analyticsAPI.getDashboardSummary(),
+    staleTime: 2 * 60 * 1000,
+    gcTime: 10 * 60 * 1000,
+    ...options,
+  });
+}
+
+export function useVendorEventAnalyticsQuery(params: DateParams, options?: Omit<UseQueryOptions<any>, 'queryKey' | 'queryFn'>) {
+  return useQuery({
+    queryKey: [...vendorKeys.analytics.all(), 'events', params] as const,
+    queryFn: () => analyticsAPI.getEventAnalytics(params),
+    staleTime: 2 * 60 * 1000,
+    gcTime: 10 * 60 * 1000,
+    ...options,
+  });
+}
+
+export function useVendorOrderAnalyticsQuery(params: DateParams, options?: Omit<UseQueryOptions<any>, 'queryKey' | 'queryFn'>) {
+  return useQuery({
+    queryKey: [...vendorKeys.analytics.all(), 'orders', params] as const,
+    queryFn: () => analyticsAPI.getOrderAnalytics(params),
+    staleTime: 2 * 60 * 1000,
+    gcTime: 10 * 60 * 1000,
+    ...options,
+  });
+}
+
+export function useVendorRevenueReportQuery(
+  params: DateParams & { groupBy?: 'day' | 'month' },
+  options?: Omit<UseQueryOptions<any>, 'queryKey' | 'queryFn'>
+) {
+  return useQuery({
+    queryKey: vendorKeys.analytics.revenue(params),
+    queryFn: () => analyticsAPI.getRevenueReport(params),
+    staleTime: 2 * 60 * 1000,
+    gcTime: 10 * 60 * 1000,
+    ...options,
+  });
+}
+
+export function useVendorTicketAnalyticsQuery(params: DateParams, options?: Omit<UseQueryOptions<any>, 'queryKey' | 'queryFn'>) {
+  return useQuery({
+    queryKey: [...vendorKeys.analytics.all(), 'tickets', params] as const,
+    queryFn: () => analyticsAPI.getTicketAnalytics(params),
+    staleTime: 2 * 60 * 1000,
+    gcTime: 10 * 60 * 1000,
+    ...options,
+  });
+}
+
+export function useVendorVenueAnalyticsQuery(options?: Omit<UseQueryOptions<any>, 'queryKey' | 'queryFn'>) {
+  return useQuery({
+    queryKey: [...vendorKeys.analytics.all(), 'venues'] as const,
+    queryFn: () => analyticsAPI.getVenueAnalytics(),
+    staleTime: 5 * 60 * 1000,
+    gcTime: 15 * 60 * 1000,
+    ...options,
+  });
+}
+
+export function useEventPerformanceQuery(eventId: string, options?: Omit<UseQueryOptions<any>, 'queryKey' | 'queryFn'>) {
+  return useQuery({
+    queryKey: [...vendorKeys.events.detail(eventId), 'performance'] as const,
+    queryFn: () => analyticsAPI.getEventPerformance(eventId),
+    enabled: !!eventId,
+    staleTime: 2 * 60 * 1000,
+    gcTime: 10 * 60 * 1000,
     ...options,
   });
 }

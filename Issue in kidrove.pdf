@@ -1,0 +1,93 @@
+Issue: Account Dropdown Visible Without Login
+
+When a user visits the website without logging in, the account dropdown (Dashboard,
+View Profile, Logout) is visible.
+Current Behavior:
+Non-logged-in users can see Dashboard, View Profile, and Logout. Clicking Logout then
+changes it to a Login button.
+Expected Behavior:
+If the user is not logged in, only the Login button should be displayed. The account
+dropdown should appear only after successful login.
+
+Customer Account –Issues Report
+
+    Sign Up – Email Verification Issue
+Issue: Email verification is not sent during sign-up.
+User account is created and logged in without verifying email.
+
+    Search Page (/search)
+Issue: Search functionality is not working.
+
+    Favorite Button – Search Page
+Issue: Heart (favorite) icon does not work on the /search page.
+
+    Favorite Button – Event Details (events/:id)
+Issues:
+
+    • Heart icon turns red when clicked but cannot remove from favorites.
+    • Favorite icon toggle is not functioning properly.
+
+    Favorites Page (/favorites)
+Issues:
+
+    • Event images are not visible.
+    • Clicking “View Details” shows error: Event not found.
+    Event Details Page (events/:id)
+Issues:
+
+    • Map is not getting displayed.
+    • “Get Direction” is not working.
+    • “Share Direction” is not working.
+    • Event Organizer “View Profile” is not working.
+
+    Booking & Payment (/booking)
+Issues:
+
+    • Payment process is not working.
+    • Confirmation green tick appears before completing payment.
+
+       Events Route Not Accessible
+    • Issue: The /events/ route is not accessible and does not load properly.
+
+Teacher - Issues Report
+
+    Create Event Page
+Route: /teacher/events/create
+Issue: Unable to create an event. Page is not functioning properly.
+
+    Teacher Profile Page
+Route: /teacher/profile
+Issues: Cannot upload profile photo, no option to upload cover image, bank details
+section missing, payment settings option not available.
+
+    Missing Routes
+Issues: /teachers , /teachers/:id route not available, /teaching-event , /teaching-
+event/:id route not available.
+
+    Teacher Dashboard Dropdown
+After login as Teacher, the top-right dropdown does not show: My Teaching-Events,
+Create Teaching-Event, Bookings, Analytics, Teacher Settings, My Account, My
+Bookings, Favorites.
+
+    Event Creation Form – Section Order
+Issue: In the event creation form, the Syllabus section appears after Location & SEO.
+The Syllabus section should be positioned before Location & SEO for proper logical
+flow.
+
+    Teaching Event Upload Section Missing
+Issue: There is no section or option available for uploading or managing teaching events
+in the Teacher dashboard.
+
+Admin Panel – Functional Issues Report
+
+    Admin Dashboard – Total User Count
+Issue: Total user count displayed in /admin dashboard is incorrect.
+
+    Create User Button Not Working
+Issue: /admin/users/create is not working when accessed from the Admin Dashboard
+page, but it works correctly from the “Add User” button in the /admin/users page.
+
+    Events Page – Action Buttons UI
+Issue: In /admin/events, the action buttons are very small and not clearly visible,
+affecting usability.
+

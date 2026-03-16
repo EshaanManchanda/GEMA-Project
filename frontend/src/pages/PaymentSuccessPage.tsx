@@ -1,7 +1,8 @@
 import React, { useEffect, useState } from 'react';
-import { useLocation, useNavigate, Link } from 'react-router-dom';
+import { useLocation, useNavigate, Link, useSearchParams } from 'react-router-dom';
 import { format } from 'date-fns';
 import SEO from '../components/common/SEO';
+import bookingAPI from '../services/api/bookingAPI';
 
 interface Event {
   id: number;
@@ -35,22 +36,114 @@ interface LocationState {
   totalPrice: number;
 }
 
+const SESSION_KEY = 'payment_success_state';
+
 const PaymentSuccessPage: React.FC = () => {
   const location = useLocation();
   const navigate = useNavigate();
-  const state = location.state as LocationState | null;
-  
-  useEffect(() => {
-    // If no state is passed, redirect to home page
-    if (!state || !state.orderId || !state.event || !state.booking) {
-      navigate('/');
-    }
-    
-    // Scroll to top
-    window.scrollTo(0, 0);
-  }, [state, navigate]);
+  const [searchParams] = useSearchParams();
+  const [state, setState] = useState<LocationState | null>(
+    location.state as LocationState | null
+  );
+  const [loading, setLoading] = useState(false);
+  const [notFound, setNotFound] = useState(false);
+  const [showQRCode, setShowQRCode] = useState(false);
 
-  if (!state || !state.orderId || !state.event || !state.booking) {
+  useEffect(() => {
+    window.scrollTo(0, 0);
+  }, []);
+
+  useEffect(() => {
+    if (state?.orderId) {
+      // Persist to sessionStorage so refresh works
+      try {
+        sessionStorage.setItem(SESSION_KEY, JSON.stringify(state));
+      } catch (_) {}
+      return;
+    }
+
+    // Try sessionStorage first (covers F5 refresh)
+    try {
+      const cached = sessionStorage.getItem(SESSION_KEY);
+      if (cached) {
+        const parsed = JSON.parse(cached) as LocationState;
+        setState(parsed);
+        return;
+      }
+    } catch (_) {}
+
+    // Try URL param ?orderId=xxx (covers redirect from payment gateway)
+    const orderId = searchParams.get('orderId');
+    if (!orderId) {
+      navigate('/');
+      return;
+    }
+
+    setLoading(true);
+    bookingAPI.getOrderById(orderId)
+      .then((order: any) => {
+        if (!order) {
+          setNotFound(true);
+          return;
+        }
+        // Map API response to LocationState shape
+        const mapped: LocationState = {
+          orderId: order._id || order.id || orderId,
+          event: {
+            id: order.items?.[0]?.eventId?._id || 0,
+            title: order.items?.[0]?.eventTitle || 'Event',
+            image: order.items?.[0]?.eventId?.featuredImage || '',
+            date: order.items?.[0]?.scheduleDate || '',
+            time: '',
+            location: order.items?.[0]?.eventId?.location?.address || '',
+            price: order.items?.[0]?.unitPrice || 0,
+            category: order.items?.[0]?.eventId?.category || '',
+            description: '',
+            organizer: {
+              id: 0,
+              name: order.items?.[0]?.eventId?.vendorId?.businessName || '',
+              logo: '',
+            },
+          },
+          booking: {
+            quantity: order.items?.[0]?.quantity || 1,
+            name: `${order.billingInfo?.firstName || ''} ${order.billingInfo?.lastName || ''}`.trim(),
+            email: order.billingInfo?.email || '',
+            phone: order.billingInfo?.phone || '',
+            specialRequests: '',
+          },
+          totalPrice: order.total || 0,
+        };
+        setState(mapped);
+        try {
+          sessionStorage.setItem(SESSION_KEY, JSON.stringify(mapped));
+        } catch (_) {}
+      })
+      .catch(() => setNotFound(true))
+      .finally(() => setLoading(false));
+  }, [state, searchParams, navigate]);
+
+  if (loading) {
+    return (
+      <div className="container mx-auto px-4 py-8 text-center">
+        <div className="animate-spin rounded-full h-16 w-16 border-t-2 border-b-2 border-primary mx-auto mb-4"></div>
+        <p>Loading your booking details...</p>
+      </div>
+    );
+  }
+
+  if (notFound || (!loading && !state)) {
+    return (
+      <div className="container mx-auto px-4 py-8 text-center">
+        <p className="text-gray-600 mb-4">Booking details not found.</p>
+        <Link to="/dashboard/bookings" className="text-primary hover:underline">
+          View My Bookings
+        </Link>
+      </div>
+    );
+  }
+
+  if (!state) {
     return (
       <div className="container mx-auto px-4 py-8 text-center">
         <div className="animate-spin rounded-full h-16 w-16 border-t-2 border-b-2 border-primary mx-auto mb-4"></div>
@@ -59,7 +152,6 @@ const PaymentSuccessPage: React.FC = () => {
     );
   }
 
-  // Format date for display
   const formatEventDate = (dateString: string) => {
     try {
       const date = new Date(dateString);
@@ -68,11 +160,8 @@ const PaymentSuccessPage: React.FC = () => {
       return dateString;
     }
   };
-  
+
   const formattedDate = formatEventDate(state.event.date);
-  
-  // Generate QR code placeholder
-  const [showQRCode, setShowQRCode] = useState(false);
 
   return (
     <>
@@ -83,9 +172,8 @@ const PaymentSuccessPage: React.FC = () => {
         noFollow={true}
       />
       <div className="container mx-auto px-4 py-8 max-w-4xl">
-      {/* Back button */}
-      <button 
-        onClick={() => navigate('/events')} 
+      <button
+        onClick={() => navigate('/events')}
         className="flex items-center text-primary hover:text-primary-dark mb-6 transition-colors"
       >
         <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 mr-1" fill="none" viewBox="0 0 24 24" stroke="currentColor">
@@ -93,7 +181,7 @@ const PaymentSuccessPage: React.FC = () => {
         </svg>
         Back to Events
       </button>
-      
+
       <div className="text-center mb-8">
         <div className="inline-flex items-center justify-center w-24 h-24 bg-green-100 rounded-full mb-4 animate-pulse-once">
           <svg className="w-12 h-12 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
@@ -120,7 +208,7 @@ const PaymentSuccessPage: React.FC = () => {
             {showQRCode ? 'Hide Ticket' : 'Show Ticket'}
           </button>
         </div>
-        
+
         {showQRCode && (
           <div className="p-6 bg-gray-50 flex flex-col items-center justify-center border-b border-gray-200">
             <div className="bg-white p-4 rounded-lg shadow-sm mb-3">
@@ -147,14 +235,16 @@ const PaymentSuccessPage: React.FC = () => {
             </div>
           </div>
         )}
-        
+
         <div className="p-6">
           <div className="flex flex-col md:flex-row items-start mb-6 pb-6 border-b border-gray-200">
-            <img 
-              src={state.event.image} 
-              alt={state.event.title} 
-              className="w-full md:w-40 h-40 object-cover rounded-lg mb-4 md:mb-0 md:mr-6"
-            />
+            {state.event.image && (
+              <img
+                src={state.event.image}
+                alt={state.event.title}
+                className="w-full md:w-40 h-40 object-cover rounded-lg mb-4 md:mb-0 md:mr-6"
+              />
+            )}
             <div className="flex-1">
               <div className="flex items-center mb-2">
                 <span className="px-2 py-1 bg-primary bg-opacity-10 text-primary text-xs rounded-full mr-2">
@@ -165,60 +255,68 @@ const PaymentSuccessPage: React.FC = () => {
                 </span>
               </div>
               <h3 className="text-xl font-bold mb-3">{state.event.title}</h3>
-              
+
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-y-3 gap-x-4">
-                <div className="flex items-center text-gray-600">
-                  <div className="flex items-center justify-center w-8 h-8 rounded-full bg-primary bg-opacity-10 mr-3">
-                    <svg className="w-4 h-4 text-primary" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"></path>
-                    </svg>
+                {state.event.date && (
+                  <div className="flex items-center text-gray-600">
+                    <div className="flex items-center justify-center w-8 h-8 rounded-full bg-primary bg-opacity-10 mr-3">
+                      <svg className="w-4 h-4 text-primary" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"></path>
+                      </svg>
+                    </div>
+                    <div>
+                      <span className="block text-xs text-gray-500">Date</span>
+                      <span>{formattedDate}</span>
+                    </div>
                   </div>
-                  <div>
-                    <span className="block text-xs text-gray-500">Date</span>
-                    <span>{formattedDate}</span>
+                )}
+
+                {state.event.time && (
+                  <div className="flex items-center text-gray-600">
+                    <div className="flex items-center justify-center w-8 h-8 rounded-full bg-primary bg-opacity-10 mr-3">
+                      <svg className="w-4 h-4 text-primary" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"></path>
+                      </svg>
+                    </div>
+                    <div>
+                      <span className="block text-xs text-gray-500">Time</span>
+                      <span>{state.event.time}</span>
+                    </div>
                   </div>
-                </div>
-                
-                <div className="flex items-center text-gray-600">
-                  <div className="flex items-center justify-center w-8 h-8 rounded-full bg-primary bg-opacity-10 mr-3">
-                    <svg className="w-4 h-4 text-primary" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"></path>
-                    </svg>
+                )}
+
+                {state.event.location && (
+                  <div className="flex items-center text-gray-600">
+                    <div className="flex items-center justify-center w-8 h-8 rounded-full bg-primary bg-opacity-10 mr-3">
+                      <svg className="w-4 h-4 text-primary" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z"></path>
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M15 11a3 3 0 11-6 0 3 3 0 016 0z"></path>
+                      </svg>
+                    </div>
+                    <div>
+                      <span className="block text-xs text-gray-500">Location</span>
+                      <span>{state.event.location}</span>
+                    </div>
                   </div>
-                  <div>
-                    <span className="block text-xs text-gray-500">Time</span>
-                    <span>{state.event.time}</span>
+                )}
+
+                {state.event.organizer?.name && (
+                  <div className="flex items-center text-gray-600">
+                    <div className="flex items-center justify-center w-8 h-8 rounded-full bg-primary bg-opacity-10 mr-3">
+                      <svg className="w-4 h-4 text-primary" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z"></path>
+                      </svg>
+                    </div>
+                    <div>
+                      <span className="block text-xs text-gray-500">Organizer</span>
+                      <span>{state.event.organizer.name}</span>
+                    </div>
                   </div>
-                </div>
-                
-                <div className="flex items-center text-gray-600">
-                  <div className="flex items-center justify-center w-8 h-8 rounded-full bg-primary bg-opacity-10 mr-3">
-                    <svg className="w-4 h-4 text-primary" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z"></path>
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M15 11a3 3 0 11-6 0 3 3 0 016 0z"></path>
-                    </svg>
-                  </div>
-                  <div>
-                    <span className="block text-xs text-gray-500">Location</span>
-                    <span>{state.event.location}</span>
-                  </div>
-                </div>
-                
-                <div className="flex items-center text-gray-600">
-                  <div className="flex items-center justify-center w-8 h-8 rounded-full bg-primary bg-opacity-10 mr-3">
-                    <svg className="w-4 h-4 text-primary" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z"></path>
-                    </svg>
-                  </div>
-                  <div>
-                    <span className="block text-xs text-gray-500">Organizer</span>
-                    <span>{state.event.organizer.name}</span>
-                  </div>
-                </div>
+                )}
               </div>
             </div>
           </div>
-          
+
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-6">
             <div className="bg-gray-50 p-4 rounded-lg border border-gray-200">
               <h3 className="font-bold text-lg mb-3 flex items-center">
@@ -248,7 +346,7 @@ const PaymentSuccessPage: React.FC = () => {
                 )}
               </div>
             </div>
-            
+
             <div className="bg-gray-50 p-4 rounded-lg border border-gray-200">
               <h3 className="font-bold text-lg mb-3 flex items-center">
                 <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 mr-2 text-primary" fill="none" viewBox="0 0 24 24" stroke="currentColor">
@@ -257,14 +355,15 @@ const PaymentSuccessPage: React.FC = () => {
                 Order Summary
               </h3>
               <div className="space-y-3">
-                <div className="flex justify-between">
-                  <span className="text-gray-600">{state.event.price.toFixed(2)} × {state.booking.quantity} {state.booking.quantity > 1 ? 'tickets' : 'ticket'}</span>
-                  <span>${(state.event.price * state.booking.quantity).toFixed(2)}</span>
-                </div>
-                <div className="flex justify-between text-gray-600">
-                  <span>Service Fee</span>
-                  <span>${(state.event.price * state.booking.quantity * 0.1).toFixed(2)}</span>
-                </div>
+                {state.event.price > 0 && (
+                  <div className="flex justify-between">
+                    <span className="text-gray-600">
+                      {state.event.price.toFixed(2)} × {state.booking.quantity}{' '}
+                      {state.booking.quantity > 1 ? 'tickets' : 'ticket'}
+                    </span>
+                    <span>${(state.event.price * state.booking.quantity).toFixed(2)}</span>
+                  </div>
+                )}
                 <div className="flex justify-between font-bold text-lg pt-3 border-t border-gray-200 mt-2">
                   <span>Total</span>
                   <span>${state.totalPrice.toFixed(2)}</span>
@@ -272,7 +371,7 @@ const PaymentSuccessPage: React.FC = () => {
               </div>
             </div>
           </div>
-          
+
           <div className="bg-gray-50 p-4 rounded-lg mb-6 border border-gray-200">
             <h3 className="font-bold mb-3 flex items-center">
               <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 mr-2 text-primary" fill="none" viewBox="0 0 24 24" stroke="currentColor">
@@ -293,12 +392,14 @@ const PaymentSuccessPage: React.FC = () => {
                 </svg>
                 Bring a valid ID that matches the name on your booking.
               </li>
-              <li className="flex items-start">
-                <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 mr-2 text-green-500 flex-shrink-0 mt-0.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
-                </svg>
-                A confirmation email has been sent to {state.booking.email}.
-              </li>
+              {state.booking.email && (
+                <li className="flex items-start">
+                  <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 mr-2 text-green-500 flex-shrink-0 mt-0.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+                  </svg>
+                  A confirmation email has been sent to {state.booking.email}.
+                </li>
+              )}
               <li className="flex items-start">
                 <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 mr-2 text-green-500 flex-shrink-0 mt-0.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
@@ -307,10 +408,10 @@ const PaymentSuccessPage: React.FC = () => {
               </li>
             </ul>
           </div>
-          
+
           <div className="flex flex-col sm:flex-row gap-4 justify-center">
-            <Link 
-              to="/dashboard/bookings" 
+            <Link
+              to="/dashboard/bookings"
               className="px-6 py-3 bg-primary text-white rounded-lg hover:bg-primary-dark transition-colors text-center flex items-center justify-center"
             >
               <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
@@ -318,8 +419,8 @@ const PaymentSuccessPage: React.FC = () => {
               </svg>
               View My Bookings
             </Link>
-            <Link 
-              to="/events" 
+            <Link
+              to="/events"
               className="px-6 py-3 bg-white border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50 transition-colors text-center flex items-center justify-center"
             >
               <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
@@ -327,23 +428,19 @@ const PaymentSuccessPage: React.FC = () => {
               </svg>
               Browse More Events
             </Link>
-            <Link 
-              to="#" 
+            <button
               className="px-6 py-3 bg-white border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50 transition-colors text-center flex items-center justify-center"
-              onClick={(e) => {
-                e.preventDefault();
-                window.print();
-              }}
+              onClick={() => window.print()}
             >
               <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 17h2a2 2 0 002-2v-4a2 2 0 00-2-2H5a2 2 0 00-2 2v4a2 2 0 002 2h2m2 4h6a2 2 0 002-2v-4a2 2 0 00-2-2H9a2 2 0 00-2 2v4a2 2 0 002 2zm8-12V5a2 2 0 00-2-2H9a2 2 0 00-2 2v4h10z" />
               </svg>
               Print Ticket
-            </Link>
+            </button>
           </div>
         </div>
       </div>
-      
+
       <div className="text-center text-gray-600 bg-white p-4 rounded-lg shadow-sm">
         <h3 className="font-medium mb-2">Need help with your booking?</h3>
         <p className="mb-4">Our support team is available 24/7 to assist you with any questions or concerns.</p>

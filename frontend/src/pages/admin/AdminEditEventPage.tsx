@@ -134,50 +134,6 @@ interface Vendor {
 
 type TabType = 'basic' | 'schedule' | 'advanced' | 'reviews' | 'registration';
 
-const extractId = (value: any): string => {
-  if (!value) return '';
-  if (typeof value === 'string') return value;
-  if (typeof value === 'object') {
-    const raw = value._id || value.id;
-    return raw ? String(raw) : '';
-  }
-  return '';
-};
-
-const splitFullName = (fullName: string): { firstName: string; lastName: string } => {
-  const parts = (fullName || '').trim().split(/\s+/).filter(Boolean);
-  if (parts.length === 0) return { firstName: '', lastName: '' };
-  if (parts.length === 1) return { firstName: parts[0], lastName: '' };
-  return { firstName: parts[0], lastName: parts.slice(1).join(' ') };
-};
-
-const hasName = (teacher: Teacher): boolean =>
-  Boolean((teacher.firstName || '').trim() || (teacher.lastName || '').trim());
-
-const dedupeTeachers = (list: Teacher[]): Teacher[] => {
-  const map = new Map<string, Teacher>();
-
-  for (const teacher of list) {
-    const emailKey = (teacher.email || '').trim().toLowerCase();
-    const idKey = (teacher.id || '').trim();
-    const key = emailKey || `id:${idKey}`;
-    const existing = map.get(key);
-
-    if (!existing) {
-      map.set(key, teacher);
-      continue;
-    }
-
-    // Prefer the richer entry when duplicate email appears.
-    const replace = !hasName(existing) && hasName(teacher);
-    if (replace) {
-      map.set(key, teacher);
-    }
-  }
-
-  return Array.from(map.values());
-};
-
 const AdminEditEventPage: React.FC = () => {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
@@ -265,65 +221,20 @@ const AdminEditEventPage: React.FC = () => {
         setVendors(vendorsData);
 
         // Fetch teachers for all modes (Create & Edit)
-        // IMPORTANT: event.teacherId references Teacher collection IDs, so load from /admin/teachers.
-        let teacherOptions: Teacher[] = [];
-        try {
-          const teachersResponse = await adminAPI.getAllTeachers({
-            page: 1,
-            limit: 100,
-            sortBy: 'createdAt',
-            sortOrder: 'desc'
-          });
-          const teachersData = teachersResponse?.data?.teachers || teachersResponse?.teachers || [];
-          const teachersArray = Array.isArray(teachersData) ? teachersData : [];
-          teacherOptions = dedupeTeachers(teachersArray.map((t: any) => {
-            const parsedName = splitFullName(t.fullName || '');
-            return {
-              id: String(t._id || t.id || ''),
-              firstName: t.user?.firstName || parsedName.firstName || '',
-              lastName: t.user?.lastName || parsedName.lastName || '',
-              email: t.email || t.user?.email || ''
-            };
-          }).filter((t: Teacher) => t.id));
-          setTeachers(teacherOptions);
-        } catch (teacherError) {
-          logger.warn('Failed to load teachers list:', teacherError);
-          setTeachers([]);
-        }
+        const teachersResponse = await adminAPI.getAllUsers({ role: 'teacher' });
+        const teachersData = teachersResponse?.data?.users || teachersResponse?.data || [];
+        setTeachers(teachersData.map((t: any) => ({
+          id: t._id || t.id,
+          firstName: t.firstName,
+          lastName: t.lastName,
+          email: t.email
+        })));
 
 
         if (id) {
           // EDIT MODE: Fetch event details
           const eventResponse = await adminAPI.getEventById(id);
-          const event = eventResponse?.data?.event || eventResponse?.event || eventResponse?.data || eventResponse;
-          const resolvedVendorId = extractId(event.vendorId || event.vendor?.id);
-          const resolvedTeacherId = extractId(event.teacherId || event.teacher?.id);
-          let effectiveTeacherId = resolvedTeacherId;
-
-          // Ensure event's assigned teacher is available in dropdown even if not in first page
-          if (resolvedTeacherId) {
-            const fallbackTeacher: Teacher = {
-              id: resolvedTeacherId,
-              firstName: event.teacher?.firstName || '',
-              lastName: event.teacher?.lastName || '',
-              email: event.teacher?.email || ''
-            };
-            const matchById = teacherOptions.find((t) => t.id === resolvedTeacherId);
-            const eventTeacherEmail = (fallbackTeacher.email || '').trim().toLowerCase();
-            const matchByEmail = eventTeacherEmail
-              ? teacherOptions.find((t) => (t.email || '').trim().toLowerCase() === eventTeacherEmail)
-              : undefined;
-
-            if (matchById) {
-              effectiveTeacherId = matchById.id;
-            } else if (matchByEmail) {
-              // Prefer canonical teacher record instead of creating blank duplicate.
-              effectiveTeacherId = matchByEmail.id;
-            } else {
-              teacherOptions = dedupeTeachers([fallbackTeacher, ...teacherOptions]);
-              setTeachers(teacherOptions);
-            }
-          }
+          const event = eventResponse.data || eventResponse;
 
           // Populate form data
           setFormData({
@@ -340,21 +251,15 @@ const AdminEditEventPage: React.FC = () => {
             // Use MediaAsset IDs (not raw URL strings from images[])
             images: event.imageAssets?.map((a: any) => a._id).filter(Boolean) || [],
             // Use URLs for preview — prefer imageAssets, fall back to images[]
-            // NOTE: must use .length check because [] is truthy and would skip fallback
-            imagePreviewUrls: (() => {
-              const fromAssets = (event.imageAssets || [])
-                .map((a: any) => a.url).filter(Boolean);
-              if (fromAssets.length > 0) return fromAssets;
-              return (event.images || []).filter(
-                (s: any) => typeof s === 'string' && s.length > 0
-              );
-            })(),
+            imagePreviewUrls: event.imageAssets?.map((a: any) => a.url).filter(Boolean)
+              || (event.images || []).filter((s: any) => typeof s === 'string' && s.startsWith('http')),
             isApproved: event.isApproved || false,
             isFeatured: event.isFeatured || false,
             requirePhoneVerification: event.requirePhoneVerification || false,
             status: event.status || 'draft',
             isActive: event.isActive || false,
-            vendorId: resolvedVendorId,
+            // vendorId may come back as a populated object — extract the ID
+            vendorId: event.vendorId?._id || event.vendorId || '',
             isAffiliateEvent: !!event.externalBookingLink, // Infer from link existence if flag missing
             externalBookingLink: event.externalBookingLink || '',
             claimStatus: event.claimStatus || 'unclaimed',
@@ -378,7 +283,7 @@ const AdminEditEventPage: React.FC = () => {
             subject: event.subject || '',
             topic: event.topic || '',
             introVideo: event.introVideo || '',
-            teacherId: effectiveTeacherId,
+            teacherId: event.teacherId?._id || event.teacherId || '', // Handle populated object or ID
             faqs: event.faqs || [],
             googlePlaceId: event.googlePlaceId || ''
           });
@@ -696,8 +601,8 @@ const AdminEditEventPage: React.FC = () => {
       if (!formData.title?.trim()) newErrors.title = 'Title is required';
       if (!formData.description?.trim()) newErrors.description = 'Description is required';
       if (!formData.category) newErrors.category = 'Category is required';
-      if (!formData.isAffiliateEvent && (!formData.vendorId || formData.vendorId.trim() === '') && (!formData.teacherId || formData.teacherId.trim() === '')) {
-        newErrors.vendorId = 'Either a vendor or a teacher must be assigned';
+      if (!formData.isAffiliateEvent && (!formData.vendorId || formData.vendorId.trim() === '')) {
+        newErrors.vendorId = 'Vendor assignment is required';
       }
       if (!formData.ageRangeMin?.trim()) newErrors.ageRangeMin = 'Minimum age is required';
       if (!formData.ageRangeMax?.trim()) newErrors.ageRangeMax = 'Maximum age is required';
@@ -847,7 +752,7 @@ const AdminEditEventPage: React.FC = () => {
         meetingLink: formData.venueType === 'Online' ? formData.meetingLink : undefined,
         meetingPassword: formData.venueType === 'Online' && formData.meetingPassword ? formData.meetingPassword : undefined,
         isFreeEvent: formData.isFreeEvent,
-        vendorId: formData.teacherId ? undefined : (formData.vendorId?.trim() || undefined),
+        vendorId: formData.vendorId,
         price: formData.isFreeEvent ? 0 : parseFloat(formData.basePrice),
         currency: formData.currency,
         tags: formData.tags,
@@ -911,7 +816,7 @@ const AdminEditEventPage: React.FC = () => {
         subject: formData.subject,
         topic: formData.topic,
         introVideo: formData.introVideo,
-        teacherId: formData.teacherId?.trim() || undefined
+        teacherId: formData.teacherId || undefined
       };
 
       if (isCreateMode) {
@@ -1106,7 +1011,6 @@ const AdminEditEventPage: React.FC = () => {
           <div className="space-y-8 pb-12">
             {activeTab === 'basic' && (
               <BasicInfoTab
-                isCreateMode={isCreateMode}
                 formData={formData}
                 categories={categories}
                 vendors={vendors}

@@ -170,14 +170,9 @@ export const verifyEmail = createAsyncThunk(
 
 export const verifyEmailWithOTP = createAsyncThunk(
   'auth/verifyEmailWithOTP',
-  async (
-    payload: string | { otp: string; email?: string },
-    { rejectWithValue }
-  ) => {
+  async (otp: string, { rejectWithValue }) => {
     try {
-      const otp = typeof payload === 'string' ? payload : payload.otp;
-      const email = typeof payload === 'string' ? undefined : payload.email;
-      const response = await authAPI.verifyEmailWithOTP(otp, email);
+      const response = await authAPI.verifyEmailWithOTP(otp);
       toast.success('Email verified successfully!');
       return response;
     } catch (error: any) {
@@ -513,14 +508,12 @@ const authSlice = createSlice({
       .addCase(registerUser.fulfilled, (state, action: PayloadAction<AuthResponse>) => {
         state.isLoading = false;
         state.user = action.payload.user;
-        state.isAuthenticated = true;
-        state.isEmailVerified = action.payload.user.isEmailVerified;
+        state.isAuthenticated = false; // Not authenticated until email is verified
+        state.isEmailVerified = false;
+        state.isInitialized = true; // Auth state is known: pending verification
         state.error = null;
 
-        // Mark that user has registered
-        localStorage.setItem('gema_ever_authenticated', 'true');
-
-        // Store tokens for fallback (if cookies blocked)
+        // Store tokens for fallback (if cookies blocked) — needed to call verifyEmailWithOTP
         if (action.payload.tokens) {
           localStorage.setItem('token', action.payload.tokens.accessToken);
           localStorage.setItem('refreshToken', action.payload.tokens.refreshToken);
@@ -604,17 +597,23 @@ const authSlice = createSlice({
       // Verify Email
       .addCase(verifyEmail.fulfilled, (state, _action) => {
         state.isEmailVerified = true;
+        state.isAuthenticated = true;
+        state.isInitialized = true;
         if (state.user) {
           state.user.isEmailVerified = true;
         }
+        localStorage.setItem('gema_ever_authenticated', 'true');
       })
 
       // Verify Email with OTP
       .addCase(verifyEmailWithOTP.fulfilled, (state, _action) => {
         state.isEmailVerified = true;
+        state.isAuthenticated = true;
+        state.isInitialized = true;
         if (state.user) {
           state.user.isEmailVerified = true;
         }
+        localStorage.setItem('gema_ever_authenticated', 'true');
       })
 
       // Verify Phone with OTP

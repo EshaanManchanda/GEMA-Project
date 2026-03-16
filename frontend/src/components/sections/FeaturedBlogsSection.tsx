@@ -258,8 +258,8 @@ const FeaturedBlogsSection: React.FC<FeaturedBlogsSectionProps> = ({
 
   if (loading) {
     return (
-      <section className="w-full py-16 bg-white">
-        <div className="max-w-screen-xl mx-auto px-6">
+      <section className="w-full py-10 sm:py-16 bg-white">
+        <div className="max-w-screen-xl mx-auto px-4 sm:px-6">
           {/* Header Skeleton */}
           <div className="flex justify-between items-center mb-8">
             <div className="w-64 h-10 bg-gray-200 rounded animate-pulse"></div>
@@ -282,8 +282,8 @@ const FeaturedBlogsSection: React.FC<FeaturedBlogsSectionProps> = ({
 
   if (blogs.length === 0) {
     return (
-      <section className="w-full py-16 bg-white">
-        <div className="max-w-screen-xl mx-auto px-6">
+      <section className="w-full py-10 sm:py-16 bg-white">
+        <div className="max-w-screen-xl mx-auto px-4 sm:px-6">
           <div className="text-center">
             <h2 className="text-3xl md:text-4xl font-bold mb-4">Get Our Latest Blogs</h2>
             <p className="text-gray-600 max-w-2xl mx-auto mb-8">
@@ -304,11 +304,11 @@ const FeaturedBlogsSection: React.FC<FeaturedBlogsSectionProps> = ({
   }
 
   return (
-    <section className="w-full py-16 bg-white">
-      <div className="max-w-screen-xl mx-auto px-6">
+    <section className="w-full py-10 sm:py-16 bg-white">
+      <div className="max-w-screen-xl mx-auto px-4 sm:px-6">
         {/* Header Section */}
-        <div className="flex justify-between items-center mb-8">
-          <h2 className="text-3xl md:text-4xl font-bold text-gray-900">Get Our Latest Blogs</h2>
+        <div className="flex justify-between items-center mb-6 sm:mb-8">
+          <h2 className="text-xl sm:text-3xl md:text-4xl font-bold text-gray-900">Get Our Latest Blogs</h2>
           <Link
             to="/blog"
             className="text-sm md:text-base font-medium hover:underline transition-colors"
@@ -329,7 +329,7 @@ const FeaturedBlogsSection: React.FC<FeaturedBlogsSectionProps> = ({
                 to={`/blog/${blog.slug || blog._id}`}
                 className={`
                   group relative rounded-xl overflow-hidden
-                  ${isLargeCard ? 'lg:col-span-2 lg:row-span-2 min-h-[600px]' : 'min-h-[280px]'}
+                  ${isLargeCard ? 'lg:col-span-2 lg:row-span-2 min-h-[300px] sm:min-h-[600px]' : 'min-h-[200px] sm:min-h-[280px]'}
                   transition-transform duration-300 hover:scale-[1.02]
                 `}
               >
@@ -355,7 +355,7 @@ const FeaturedBlogsSection: React.FC<FeaturedBlogsSectionProps> = ({
                   {/* Title - Larger for big card */}
                   <h3 className={`
                     font-bold mb-3 line-clamp-2
-                    ${isLargeCard ? 'text-2xl md:text-3xl lg:text-4xl' : 'text-xl lg:text-2xl'}
+                    ${isLargeCard ? 'text-lg sm:text-2xl md:text-3xl lg:text-4xl' : 'text-base sm:text-xl lg:text-2xl'}
                   `}>
                     {blog.title}
                   </h3>

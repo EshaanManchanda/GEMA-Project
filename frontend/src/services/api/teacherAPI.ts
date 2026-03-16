@@ -51,19 +51,6 @@ const teacherAPI = {
   },
 
   /**
-   * Alias for getProfile - used by some frontend code
-   */
-  // Get current teacher's profile
-  getTeacherProfile: async () => {
-    try {
-      const response = await ApiService.get('/teachers/profile');
-      return response.data?.data || response.data;
-    } catch (error) {
-      throw error;
-    }
-  },
-
-  /**
    * Update teacher profile
    */
   updateProfile: async (data: TeacherProfileUpdateInput): Promise<{ teacher: ITeacher; user: any }> => {
@@ -77,8 +64,10 @@ const teacherAPI = {
     }
   },
 
-    // Public list of teachers
-  getPublicTeachers: async (params?: any) => {
+  /**
+   * Get public list of teachers
+   */
+  getPublicTeachersList: async (params?: { page?: number; limit?: number; search?: string }): Promise<{ teachers: any[]; pagination: any }> => {
     try {
       const response = await ApiService.get('/teachers/public', { params });
       logApiResponse('GET /teachers/public', response);
@@ -89,8 +78,10 @@ const teacherAPI = {
     }
   },
 
-  // Get public teacher profile (no authentication required)
-  getPublicTeacherProfile: async (id: string) => {
+  /**
+   * Get public teacher profile by ID
+   */
+  getPublicProfile: async (id: string): Promise<{ user: any; teacher: ITeacher; teachingEvents: ITeachingEvent[]; stats: any }> => {
     try {
       const response = await ApiService.get(`/teachers/public/${id}`);
       logApiResponse(`GET /teachers/public/${id}`, response);
@@ -99,15 +90,6 @@ const teacherAPI = {
       logApiResponse(`GET /teachers/public/${id}`, null, error);
       throw error;
     }
-  },
-
-  // Backward-compatible aliases used across older pages/hooks
-  getPublicTeachersList: async (params?: any) => {
-    return teacherAPI.getPublicTeachers(params);
-  },
-
-  getPublicProfile: async (id: string) => {
-    return teacherAPI.getPublicTeacherProfile(id);
   },
 
   /**
@@ -160,71 +142,6 @@ const teacherAPI = {
     }
   },
 
-  /**
-   * Upload teacher cover image
-   */
-  // Upload teacher images (avatar or cover image)
-  uploadTeacherImage: async (imageFile: File, imageType: 'avatar' | 'coverImage' = 'avatar') => {
-    try {
-      const formData = new FormData();
-      formData.append('file', imageFile);
-      formData.append('mediaType', imageType === 'coverImage' ? 'demoVideo' : 'profile');
-
-      const response = await ApiService.post('/teachers/upload-media', formData, {
-        headers: {
-          'Content-Type': 'multipart/form-data',
-        },
-      });
-      return response.data;
-    } catch (error) {
-      throw error;
-    }
-  },
-
-  // Upload teacher cover image (same pattern as avatar - upload then save)
-  uploadCoverImage: async (imageFile: File): Promise<{ coverImageUrl: string; teacher: ITeacher }> => {
-    try {
-      // Step 1: Upload to uploads/avatar endpoint (reuses avatar infrastructure)
-      const formData = new FormData();
-      formData.append('avatar', imageFile);
-
-      const uploadResponse = await ApiService.post('/uploads/avatar', formData, {
-        headers: {
-          'Content-Type': 'multipart/form-data',
-        },
-      });
-
-      // Extract URL from various possible response structures
-      const coverImageUrl = 
-        uploadResponse.data?.url || 
-        uploadResponse.data?.data?.url ||
-        uploadResponse.data?.avatarUrl ||
-        uploadResponse.data?.data?.avatarUrl;
-
-      if (!coverImageUrl) {
-        throw new Error('Failed to extract image URL from upload response. Response: ' + JSON.stringify(uploadResponse.data));
-      }
-
-      // Step 2: Save the cover image URL to teacher profile
-      const response = await ApiService.put('/teachers/cover-image', { coverImageUrl });
-      
-      // Extract using standard handler
-      const result = extractApiData(response);
-      return result;
-    } catch (error) {
-      throw error;
-    }
-  },
-
-  // Delete teacher cover image
-  deleteCoverImage: async (): Promise<{ teacher: ITeacher }> => {
-    try {
-      const response = await ApiService.delete('/teachers/cover-image');
-      return extractApiData(response);
-    } catch (error) {
-      throw error;
-    }
-  },
   // ==================== TEACHING EVENTS ====================
 
   /**
@@ -539,23 +456,6 @@ const teacherAPI = {
     }
   },
 
-  /**
-   * Validate custom Stripe API keys
-   */
-  validateStripeApiKeys: async (publishableKey: string, secretKey: string): Promise<{ valid: boolean; message?: string }> => {
-    try {
-      const response = await ApiService.post('/teachers/stripe-keys/validate', {
-        publishableKey,
-        secretKey,
-      });
-      logApiResponse('POST /teachers/stripe-keys/validate', response);
-      return extractApiData(response);
-    } catch (error) {
-      logApiResponse('POST /teachers/stripe-keys/validate', null, error);
-      throw error;
-    }
-  },
-
   // ==================== SUBSCRIPTION ====================
 
   /**
@@ -600,11 +500,8 @@ const teacherAPI = {
     accountHolderName: string;
     bankName: string;
     accountNumber?: string;
-    routingNumber?: string;
     iban?: string;
     swiftCode?: string;
-    accountType?: 'checking' | 'savings';
-    country?: string;
   }): Promise<any> => {
     try {
       const response = await ApiService.put('/teachers/bank-details', bankDetails);
@@ -612,44 +509,6 @@ const teacherAPI = {
       return extractApiData(response);
     } catch (error) {
       logApiResponse('PUT /teachers/bank-details', null, error);
-      throw error;
-    }
-  },
-
-  // ==================== VERIFICATION DOCUMENTS ====================
-
-  /**
-   * Upload verification document
-   */
-  uploadDocument: async (type: string, file: File): Promise<any> => {
-    try {
-      const formData = new FormData();
-      formData.append('type', type);
-      formData.append('document', file);
-
-      const response = await ApiService.post('/teachers/documents/upload', formData, {
-        headers: {
-          'Content-Type': 'multipart/form-data',
-        },
-      });
-      logApiResponse('POST /teachers/documents/upload', response);
-      return extractApiData(response);
-    } catch (error) {
-      logApiResponse('POST /teachers/documents/upload', null, error);
-      throw error;
-    }
-  },
-
-  /**
-   * Delete verification document by type
-   */
-  deleteDocument: async (type: string): Promise<any> => {
-    try {
-      const response = await ApiService.delete(`/teachers/documents/${type}`);
-      logApiResponse(`DELETE /teachers/documents/${type}`, response);
-      return extractApiData(response);
-    } catch (error) {
-      logApiResponse(`DELETE /teachers/documents/${type}`, null, error);
       throw error;
     }
   },

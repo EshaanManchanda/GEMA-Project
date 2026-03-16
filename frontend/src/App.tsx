@@ -68,6 +68,7 @@ const VendorDashboardPage = React.lazy(() => import(/* webpackChunkName: "vendor
 const VendorEventsPage = React.lazy(() => import(/* webpackChunkName: "vendor" */ './pages/vendor/VendorEventsPage'));
 const VendorCreateEventPage = React.lazy(() => import(/* webpackChunkName: "vendor" */ './pages/vendor/VendorCreateEventPage'));
 const VendorEditEventPage = React.lazy(() => import(/* webpackChunkName: "vendor" */ './pages/vendor/VendorEditEventPage'));
+const VendorEventDetailPage = React.lazy(() => import(/* webpackChunkName: "vendor" */ './pages/vendor/VendorEventDetailPage'));
 const VendorBookingsPage = React.lazy(() => import(/* webpackChunkName: "vendor" */ './pages/vendor/VendorBookingsPage'));
 const VendorEmployeesPage = React.lazy(() => import(/* webpackChunkName: "vendor" */ './pages/vendor/VendorEmployeesPage'));
 const VendorCreateEmployeePage = React.lazy(() => import(/* webpackChunkName: "vendor" */ './pages/vendor/VendorCreateEmployeePage'));
@@ -139,6 +140,8 @@ const FileManager = React.lazy(() => import(/* webpackChunkName: "upload" */ './
 // Employee Dashboard Pages
 const EmployeeDashboard = React.lazy(() => import(/* webpackChunkName: "employee" */ './pages/employee/EmployeeDashboard'));
 const EmployeeTicketScanPage = React.lazy(() => import(/* webpackChunkName: "employee" */ './pages/employee/EmployeeTicketScanPage'));
+const EmployeeTasksPage = React.lazy(() => import(/* webpackChunkName: "employee" */ './pages/employee/EmployeeTasksPage'));
+const EmployeeReportsPage = React.lazy(() => import(/* webpackChunkName: "employee" */ './pages/employee/EmployeeReportsPage'));
 
 // Static Pages
 const AboutPage = React.lazy(() => import(/* webpackChunkName: "static" */ './pages/static/AboutPage'));
@@ -614,6 +617,11 @@ function AppContent() {
                   <VendorCreateEventPage />
                 </Suspense>
               } />
+              <Route path="events/:id" element={
+                <Suspense fallback={<GenericPageSkeleton />}>
+                  <VendorEventDetailPage />
+                </Suspense>
+              } />
               <Route path="events/:id/edit" element={
                 <Suspense fallback={<GenericPageSkeleton />}>
                   <VendorEditEventPage />
@@ -820,7 +828,7 @@ function AppContent() {
           <Route path="tasks" element={
             <EmployeeRoute>
               <Suspense fallback={<GenericPageSkeleton />}>
-                <EmployeeDashboard />
+                <EmployeeTasksPage />
               </Suspense>
             </EmployeeRoute>
           } />
@@ -838,7 +846,7 @@ function AppContent() {
           <Route path="reports" element={
             <EmployeeRoute>
               <Suspense fallback={<GenericPageSkeleton />}>
-                <EmployeeDashboard />
+                <EmployeeReportsPage />
               </Suspense>
             </EmployeeRoute>
           } />

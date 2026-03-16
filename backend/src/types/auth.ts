@@ -89,7 +89,6 @@ export interface UpdateProfileRequest {
 // Email verification request type
 export interface VerifyEmailRequest {
   otp: string;
-  email?: string;
 }
 
 // Firebase auth request type

@@ -8,10 +8,10 @@ interface GiftCardPromoProps {
 
 const GiftCardPromo: React.FC<GiftCardPromoProps> = ({ activityCount = 100 }) => {
   return (
-    <section className="w-full py-16 md:py-20 px-6 bg-gray-50">
+    <section className="w-full py-10 sm:py-16 md:py-20 px-4 sm:px-6 bg-gray-50">
       <div className="max-w-screen-xl mx-auto">
         <div
-          className="relative overflow-visible rounded-3xl p-8 md:p-12 lg:p-16"
+          className="relative overflow-visible rounded-3xl p-5 sm:p-8 md:p-12 lg:p-16"
           style={{
             background: 'linear-gradient(135deg, #2E1065 0%, #7C3AED 50%, #1E3A8A 100%)'
           }}
@@ -52,7 +52,7 @@ const GiftCardPromo: React.FC<GiftCardPromoProps> = ({ activityCount = 100 }) =>
           <div className="relative z-10 grid grid-cols-1 lg:grid-cols-2 gap-8 md:gap-12 items-center">
             {/* Left Column - Text Content */}
             <div className="text-white relative z-10">
-              <h2 className="text-3xl md:text-4xl lg:text-5xl font-bold mb-6 leading-tight">
+              <h2 className="text-xl sm:text-3xl md:text-4xl lg:text-5xl font-bold mb-4 sm:mb-6 leading-tight">
                 Stuck for ideas?<br />
                 Give the gift card<br />
                 for {activityCount}+ activities!
@@ -81,7 +81,7 @@ const GiftCardPromo: React.FC<GiftCardPromoProps> = ({ activityCount = 100 }) =>
 
               <Link
                 to="/contact"
-                className="inline-block px-8 py-4 bg-pink-600 text-white text-lg font-semibold rounded-full hover:bg-pink-700 hover:scale-105 transition-all duration-300 shadow-lg hover:shadow-xl focus:outline-none focus:ring-4 focus:ring-pink-400"
+                className="inline-block px-5 py-3 sm:px-8 sm:py-4 bg-pink-600 text-white text-sm sm:text-lg font-semibold rounded-full hover:bg-pink-700 hover:scale-105 transition-all duration-300 shadow-lg hover:shadow-xl focus:outline-none focus:ring-4 focus:ring-pink-400"
                 aria-label="Contact us to purchase gift card"
               >
                 Gift Now

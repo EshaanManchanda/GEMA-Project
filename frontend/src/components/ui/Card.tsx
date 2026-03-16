@@ -28,9 +28,9 @@ const Card = React.forwardRef<HTMLDivElement, CardProps>(
         case 'sm':
           return 'p-3';
         case 'lg':
-          return 'p-8';
+          return 'p-5 sm:p-8';
         default:
-          return 'p-6';
+          return 'p-4 sm:p-6';
       }
     };
 

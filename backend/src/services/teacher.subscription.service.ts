@@ -7,6 +7,7 @@ import TeacherSubscription, {
   TeacherSubscriptionStatus,
 } from "../models/TeacherSubscription";
 import { stripe } from "../config/stripe";
+import { emailService } from "./email.service";
 
 interface ITeacherSubscriptionService {
   createSubscription(
@@ -522,10 +523,16 @@ class TeacherSubscriptionService implements ITeacherSubscriptionService {
         throw new Error("Teacher not found");
       }
 
-      // TODO: Email integration
-      console.log(
-        `📧 Sending payment reminder to teacher ${teacherId} (${daysUntilDue} days until due)`,
-      );
+      const dueLabel = daysUntilDue > 0 ? `in ${daysUntilDue} days` : `${Math.abs(daysUntilDue)} days ago`;
+      console.log(`📧 Sending payment reminder to teacher ${teacherId} (${dueLabel})`);
+
+      emailService.sendEmail({
+        to: teacher.email,
+        subject: "Subscription payment reminder",
+        html: `<p>Hi ${teacher.fullName || "Teacher"},</p>
+<p>Your subscription payment is due ${dueLabel}. Please renew to keep your account active.</p>
+<p><a href="${process.env.FRONTEND_URL}/teacher/subscription">Renew subscription</a></p>`,
+      }).catch((err: Error) => console.error("Teacher subscription reminder email failed:", err));
     } catch (error: any) {
       console.error("Error sending payment reminder:", error);
       throw new Error(`Failed to send payment reminder: ${error.message}`);

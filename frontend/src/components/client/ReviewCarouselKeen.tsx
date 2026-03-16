@@ -1,9 +1,8 @@
 import { Swiper, SwiperSlide } from "swiper/react";
 import { Navigation, Pagination, Autoplay } from "swiper/modules";
 import "swiper/css";
-import "swiper/css/navigation";
 import "swiper/css/pagination";
-import { FaStar, FaStarHalfAlt, FaRegStar, FaQuoteLeft } from "react-icons/fa";
+import { FaStar, FaStarHalfAlt, FaRegStar, FaQuoteLeft, FaChevronLeft, FaChevronRight } from "react-icons/fa";
 import { TestimonialReview } from '../../types/review';
 
 // Static reviews
@@ -67,20 +66,21 @@ const renderStars = (rating: number) => {
 export default function ReviewCarouselSwiper() {
   
   return (
-    <section className="w-full py-20" style={{
+    <section className="w-full py-12 sm:py-20" style={{
       backgroundImage: 'url(/assets/images/review-background.png)',
       backgroundSize: 'cover',
       backgroundPosition: 'center'
     }}>
-      <div className="max-w-screen-xl mx-auto px-6">
-        <div className="text-center mb-12">
-          <h2 className="text-3xl md:text-4xl font-bold mb-2">Our customers love it! ⭐ 4.7/5</h2>
-          <p className="text-gray-700 max-w-2xl mx-auto">100,000 reviews to help you choose</p>
+      <div className="max-w-screen-xl mx-auto px-4 sm:px-6">
+        <div className="text-center mb-8 sm:mb-12">
+          <h2 className="text-xl sm:text-3xl md:text-4xl font-bold mb-2">Our customers love it! ⭐ 4.7/5</h2>
+          <p className="text-sm sm:text-base text-gray-700 max-w-2xl mx-auto">100,000 reviews to help you choose</p>
         </div>
 
-        <Swiper
+        <div className="relative">
+          <Swiper
             modules={[Navigation, Pagination, Autoplay]}
-            navigation
+            navigation={{ prevEl: '.review-prev', nextEl: '.review-next' }}
             pagination={{ clickable: true }}
             spaceBetween={30}
             slidesPerView={1}
@@ -94,7 +94,7 @@ export default function ReviewCarouselSwiper() {
           >
             {staticReviews.map((review) => (
               <SwiperSlide key={review._id}>
-                <div className="bg-white rounded-xl shadow-md p-8 min-h-[320px] flex flex-col gap-4 hover:shadow-lg transition-all duration-300 border border-gray-100">
+                <div className="bg-white rounded-xl shadow-md p-4 sm:p-8 min-h-[280px] sm:min-h-[320px] flex flex-col gap-3 sm:gap-4 hover:shadow-lg transition-all duration-300 border border-gray-100">
                   <div className="flex items-center justify-between mb-2">
                     <FaQuoteLeft className="text-3xl opacity-20" style={{ color: 'var(--primary-color)' }} />
                     {review.verified && (
@@ -129,6 +129,21 @@ export default function ReviewCarouselSwiper() {
               </SwiperSlide>
             ))}
           </Swiper>
+
+          {/* Custom navigation buttons */}
+          <button
+            className="review-prev absolute left-0 top-1/2 -translate-y-1/2 -translate-x-4 z-10 w-10 h-10 rounded-full bg-white shadow-md border border-gray-200 flex items-center justify-center text-gray-700 hover:bg-gray-50 hover:shadow-lg transition-all duration-200 hidden sm:flex"
+            aria-label="Previous review"
+          >
+            <FaChevronLeft size={14} />
+          </button>
+          <button
+            className="review-next absolute right-0 top-1/2 -translate-y-1/2 translate-x-4 z-10 w-10 h-10 rounded-full bg-white shadow-md border border-gray-200 flex items-center justify-center text-gray-700 hover:bg-gray-50 hover:shadow-lg transition-all duration-200 hidden sm:flex"
+            aria-label="Next review"
+          >
+            <FaChevronRight size={14} />
+          </button>
+        </div>
       </div>
     </section>
   );

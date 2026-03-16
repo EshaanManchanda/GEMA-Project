@@ -4,6 +4,12 @@ import mongoose from "mongoose";
 import Comment from "../models/Comment";
 import { Blog } from "../models/Blog";
 import { AppError } from "../middleware/error";
+import ContentReport from "../models/ContentReport";
+import Notification, {
+  NotificationType,
+  NotificationPriority,
+} from "../models/Notification";
+import User, { UserRole } from "../models/User";
 import createDOMPurify from "dompurify";
 import { JSDOM } from "jsdom";
 
@@ -390,8 +396,32 @@ export const reportComment = async (
 
     await comment.save();
 
-    // TODO: Create a report record in a separate reports collection
-    // This would include the reporter, reason, timestamp, etc.
+    // Create a report record
+    if (userId) {
+      await ContentReport.create({
+        contentType: "comment",
+        contentId: comment._id,
+        reportedBy: userId,
+        reason: req.body.reason || "inappropriate",
+        description: req.body.description,
+      });
+    }
+
+    // Alert admins when comment is auto-flagged
+    if (comment.reportCount >= 5) {
+      const admins = await User.find({ role: UserRole.ADMIN }).select("_id").lean();
+      const adminNotifications = admins.map((admin) => ({
+        userId: admin._id,
+        type: NotificationType.SYSTEM_MAINTENANCE,
+        priority: NotificationPriority.URGENT,
+        title: "Comment Auto-Flagged",
+        message: `A comment has been flagged by ${comment.reportCount} users and requires moderation review.`,
+        data: { commentId: comment._id, reportCount: comment.reportCount },
+      }));
+      if (adminNotifications.length) {
+        await Notification.insertMany(adminNotifications);
+      }
+    }
 
     res.status(200).json({
       success: true,

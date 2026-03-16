@@ -84,11 +84,11 @@ const FeaturedEventsCarousel: React.FC<{
     );
 
     return (
-        <div className="px-6 py-16 max-w-screen-xl mx-auto">
+        <div className="px-4 sm:px-6 py-10 sm:py-16 max-w-screen-xl mx-auto">
             <div className="flex flex-col md:flex-row justify-between items-start md:items-center">
                 <div>
-                    <h2 className="text-3xl font-bold mb-2 text-gray-900">Our Top Recommendations</h2>
-                    <p className="text-gray-700">Only the highest-rated activities in Dubai, Abu Dhabi, and the UAE make our list</p>
+                    <h2 className="text-xl sm:text-3xl font-bold mb-2 text-gray-900">Our Top Recommendations</h2>
+                    <p className="text-sm sm:text-base text-gray-700">Only the highest-rated activities in Dubai, Abu Dhabi, and the UAE make our list</p>
                 </div>
                 <AnimatedButton
                     className="mt-4 md:mt-0 flex items-center gap-2 font-medium text-primary-600 hover:text-primary-700 hover:underline focus:outline-none focus:ring-2 focus:ring-primary-500 rounded px-2 py-1 transition-colors"

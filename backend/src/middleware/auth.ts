@@ -90,9 +90,9 @@ export const authenticate = async (
 
   try {
     // Add clock tolerance to handle time synchronization issues
-    // Reduced from 60s to 10s for better security (still handles NTP drift)
+    // Keep at 60s to handle NTP drift on KVM1 VPS (see CLAUDE.md)
     const decoded = jwt.verify(token, config.jwtSecret, {
-      clockTolerance: 10, // Allow 10 seconds clock skew
+      clockTolerance: 60, // Allow 60 seconds clock skew
     }) as JwtPayload;
 
     // Try to get user from cache first (huge performance boost!)

@@ -84,20 +84,6 @@ export const getTeacherTeachingEvents = catchAsync(
     const teacherProfile = await getOrCreateTeacherProfile(userId);
     const teacherId = teacherProfile._id;
 
-    // Auto-heal legacy teacher events created as draft before pending-moderation policy.
-    await EventModel.updateMany(
-      {
-        teacherId,
-        type: { $in: ["Class", "Course", "Workshop", "Bootcamp", "Masterclass"] },
-        isDeleted: false,
-        isApproved: false,
-        status: "draft",
-      },
-      {
-        $set: { status: "pending" },
-      },
-    );
-
     const teachingEvents = await EventModel.find({
       teacherId,
       type: { $in: ["Class", "Course", "Workshop", "Bootcamp", "Masterclass"] },
@@ -962,19 +948,24 @@ export const getPublicTeacherProfile = catchAsync(
   async (req: AuthRequest, res: Response, next: NextFunction) => {
     const { id } = req.params;
 
-    // Accept both teacher profile ID and user ID for public profile route.
+    // Find user with teacher role
+    const user = await User.findOne({
+      _id: id,
+      role: "teacher",
+      status: "active",
+    }).select("firstName lastName email phone avatar createdAt");
+
+    if (!user) {
+      return next(new AppError("Teacher not found", 404));
+    }
+
+    // Find teacher profile
     const teacherProfile = await Teacher.findOne({
+      userId: id,
       isDeleted: false,
       isActive: true,
-      $or: [{ _id: id }, { userId: id }],
     }).select(
-      `userId
-      fullName
-      email
-      phone
-      profileImage
-      memberSince
-      createdAt
+      `
       bio
       subjects
       expertise
@@ -983,11 +974,6 @@ export const getPublicTeacherProfile = catchAsync(
       languagesSpoken
       teachingDescription
       profileImage
-      coverImageUrl
-      socialLinks
-      education
-      verificationStatus
-      stats
       website
       socialMedia
       averageRating
@@ -1001,43 +987,6 @@ export const getPublicTeacherProfile = catchAsync(
     if (!teacherProfile) {
       return next(new AppError("Teacher profile not found", 404));
     }
-
-    // Resolve profile owner user. Keep strict check first, then gracefully fallback
-    // to owner by id to avoid false 404s when role/status drift exists.
-    let user = await User.findOne({
-      _id: teacherProfile.userId,
-      role: "teacher",
-      status: "active",
-    }).select("firstName lastName email phone avatar createdAt role status");
-
-    if (!user) {
-      user = await User.findById(teacherProfile.userId)
-        .select("firstName lastName email phone avatar createdAt role status");
-    }
-
-    const fallbackFullName = ((teacherProfile as any).fullName || "").trim();
-    const [fallbackFirstName, ...fallbackLastNameParts] = fallbackFullName.split(/\s+/);
-
-    const publicUser = user
-      ? {
-          _id: user._id,
-          firstName: user.firstName,
-          lastName: user.lastName,
-          email: user.email,
-          phone: user.phone,
-          avatar: user.avatar,
-          createdAt: user.createdAt,
-        }
-      : {
-          _id: teacherProfile.userId,
-          firstName: fallbackFirstName || "Teacher",
-          lastName: fallbackLastNameParts.join(" "),
-          email: (teacherProfile as any).email || "",
-          phone: (teacherProfile as any).phone || "",
-          avatar: (teacherProfile as any).profileImage || "",
-          createdAt:
-            (teacherProfile as any).memberSince || (teacherProfile as any).createdAt,
-        };
 
     // Get published events for this teacher
     const teachingEvents = await EventModel.find({
@@ -1056,9 +1005,6 @@ export const getPublicTeacherProfile = catchAsync(
         teachingMode
         price
         currency
-        images
-        image
-        bannerImage
         coverImage
         schedules
         viewsCount
@@ -1074,58 +1020,24 @@ export const getPublicTeacherProfile = catchAsync(
       teacherId: teacherProfile._id,
       type: { $in: ["Class", "Course", "Workshop", "Bootcamp", "Masterclass"] },
       isDeleted: false,
-      isActive: true,
       status: "published",
-      isApproved: true,
     });
-
-    const allTeachingEventIds = await EventModel.find({
-      teacherId: teacherProfile._id,
-      type: { $in: ["Class", "Course", "Workshop", "Bootcamp", "Masterclass"] },
-      isDeleted: false,
-      isActive: true,
-      status: "published",
-      isApproved: true,
-    }).distinct("_id");
 
     const totalBookings = await TeacherBooking.countDocuments({
-      "sessions.teachingEventId": { $in: allTeachingEventIds },
+      "sessions.teachingEventId": { $in: teachingEvents.map((e) => e._id) },
     });
-
-    const profileStats = (teacherProfile as any)?.stats || {};
-    const computedAverageFromEvents = teachingEvents.length
-      ? teachingEvents.reduce((sum: number, event: any) => {
-          return sum + (Number(event?.averageRating) || 0);
-        }, 0) / teachingEvents.length
-      : 0;
 
     res.status(200).json({
       success: true,
       message: "Teacher profile retrieved successfully",
       data: {
-        user: publicUser,
-        teacher: {
-          ...(teacherProfile.toObject() as any),
-          // Keep legacy key used in public page card/header rendering.
-          coverImage:
-            (teacherProfile as any).coverImageUrl || (teacherProfile as any).coverImage,
-          socialLinks:
-            (teacherProfile as any).socialLinks || (teacherProfile as any).socialMedia || {},
-        },
+        user,
+        teacher: teacherProfile,
         teachingEvents,
         stats: {
           totalTeachingEvents,
           totalBookings,
           activeEvents: teachingEvents.length,
-          // Compatibility keys expected by teachers listing/profile UI.
-          totalEvents: Math.max(Number(profileStats?.totalClasses) || 0, totalTeachingEvents),
-          totalStudents:
-            Number((teacherProfile as any)?.totalStudents) || Number(profileStats?.totalStudents) || 0,
-          averageRating:
-            Number((teacherProfile as any)?.averageRating) ||
-            Number(profileStats?.averageRating) ||
-            computedAverageFromEvents ||
-            0,
         },
       },
     });
@@ -1540,41 +1452,11 @@ export const getPublicTeachersList = catchAsync(
 
     const [teacherProfiles, total] = await Promise.all([
       Teacher.find({ userId: { $in: userIds }, isDeleted: false, isActive: true })
-        .select("userId fullName bio subjects specialization yearsOfExperience languagesSpoken coverImageUrl socialLinks stats averageRating totalStudents totalClasses")
+        .select("userId fullName bio subjects specialization yearsOfExperience languagesSpoken coverImage stats")
         .skip(skip)
         .limit(limit),
       Teacher.countDocuments({ userId: { $in: userIds }, isDeleted: false, isActive: true }),
     ]);
-
-    const teacherProfileIds = teacherProfiles.map((t) => t._id);
-
-    const eventCountAgg = await EventModel.aggregate([
-      {
-        $match: {
-          teacherId: { $in: teacherProfileIds },
-          type: { $in: ["Class", "Course", "Workshop", "Bootcamp", "Masterclass"] },
-          isDeleted: false,
-          isActive: true,
-          status: "published",
-          isApproved: true,
-        },
-      },
-      {
-        $group: {
-          _id: "$teacherId",
-          totalEvents: { $sum: 1 },
-          avgEventRating: { $avg: { $ifNull: ["$averageRating", 0] } },
-        },
-      },
-    ]);
-
-    const eventStatsByTeacher: Record<string, { totalEvents: number; avgEventRating: number }> = {};
-    eventCountAgg.forEach((row: any) => {
-      eventStatsByTeacher[row._id.toString()] = {
-        totalEvents: Number(row.totalEvents) || 0,
-        avgEventRating: Number(row.avgEventRating) || 0,
-      };
-    });
 
     const userMap: Record<string, any> = {};
     teacherUsers.forEach((u) => { userMap[u._id.toString()] = u; });
@@ -1588,24 +1470,8 @@ export const getPublicTeachersList = catchAsync(
       specialization: t.specialization,
       yearsOfExperience: t.yearsOfExperience,
       languagesSpoken: t.languagesSpoken,
-      coverImage: (t as any).coverImageUrl || (t as any).coverImage,
-      coverImageUrl: (t as any).coverImageUrl,
-      socialLinks: (t as any).socialLinks || {},
-      stats: {
-        totalEvents: Math.max(
-          Number((t as any)?.stats?.totalClasses) || 0,
-          eventStatsByTeacher[(t._id as any).toString()]?.totalEvents || 0,
-        ),
-        totalStudents:
-          Number((t as any)?.totalStudents) ||
-          Number((t as any)?.stats?.totalStudents) ||
-          0,
-        averageRating:
-          Number((t as any)?.averageRating) ||
-          Number((t as any)?.stats?.averageRating) ||
-          eventStatsByTeacher[(t._id as any).toString()]?.avgEventRating ||
-          0,
-      },
+      coverImage: (t as any).coverImage,
+      stats: t.stats,
       user: userMap[(t.userId as any).toString()] || null,
     }));
 
@@ -1618,91 +1484,4 @@ export const getPublicTeachersList = catchAsync(
       },
     });
   },
-);
-
-// @desc    Update teacher cover image
-// @route   PUT /api/teachers/cover-image
-// @access  Private (Teacher only)
-export const updateTeacherCoverImage = catchAsync(
-  async (req: AuthRequest, res: Response, next: NextFunction) => {
-    const userId = req.user?._id || req.user?.id;
-
-    if (!userId) {
-      return next(new AppError('User not authenticated', 401));
-    }
-
-    const { coverImageUrl }: { coverImageUrl: string } = req.body;
-
-    if (!coverImageUrl) {
-      return next(new AppError('Cover image URL is required', 400));
-    }
-
-    const teacher = await getOrCreateTeacherProfile(userId);
-
-    // Extract UUID from URL if it's a UUID-based URL (for MediaAsset tracking)
-    let newMediaAssetId: string | null = null;
-    const uuidMatch = (coverImageUrl as string).match(/\/api\/media\/file\/([a-f0-9-]+)/i);
-
-    if (uuidMatch) {
-      // UUID-based URL - verify MediaAsset exists
-      const uuid = uuidMatch[1];
-      const mediaAsset = await (require('../models')?.MediaAsset?.findOne({ uuid }));
-
-      if (mediaAsset) {
-        // Verify it's an image
-        if (mediaAsset.mimeType?.startsWith('image/')) {
-          // Verify it belongs to this user (security check)
-          if (mediaAsset.uploadedBy?.toString() === userId.toString()) {
-            newMediaAssetId = mediaAsset._id.toString();
-          }
-        }
-      }
-    }
-
-    // Update teacher's cover image
-    teacher.coverImageUrl = coverImageUrl;
-    if (newMediaAssetId) {
-      (teacher as any).coverImageAssetId = newMediaAssetId;
-    }
-    await teacher.save();
-
-    res.status(200).json({
-      success: true,
-      message: 'Cover image updated successfully',
-      data: {
-        teacher,
-        coverImageUrl: teacher.coverImageUrl,
-      },
-    });
-  }
-);
-
-// @desc    Delete teacher cover image
-// @route   DELETE /api/teachers/cover-image
-// @access  Private (Teacher only)
-export const deleteTeacherCoverImage = catchAsync(
-  async (req: AuthRequest, res: Response, next: NextFunction) => {
-    const userId = req.user?._id || req.user?.id;
-
-    if (!userId) {
-      return next(new AppError('User not authenticated', 401));
-    }
-
-    const teacher = await getOrCreateTeacherProfile(userId);
-
-    if (!teacher.coverImageUrl) {
-      return next(new AppError('No cover image to delete', 404));
-    }
-
-    (teacher as any).coverImageAssetId = undefined;
-    teacher.coverImageUrl = undefined;
-
-    await teacher.save();
-
-    res.status(200).json({
-      success: true,
-      message: 'Cover image deleted successfully',
-      data: { teacher },
-    });
-  }
 );

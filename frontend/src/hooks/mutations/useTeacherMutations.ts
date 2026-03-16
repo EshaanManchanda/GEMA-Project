@@ -32,8 +32,8 @@ export function useUploadTeacherMedia() {
   const queryClient = useQueryClient();
 
   return useMutation({
-    mutationFn: ({ file, mediaType }: { file: File; mediaType: 'profile' | 'demoVideo' }) =>
-      teacherAPI.uploadMedia(file, mediaType),
+    mutationFn: ({ file, mediaType }: { file: File; mediaType: 'profile' | 'demoVideo' | 'cover' }) =>
+      teacherAPI.uploadMedia(file, mediaType as any),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: teacherKeys.profile.all() });
     },

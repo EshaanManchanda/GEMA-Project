@@ -409,12 +409,13 @@ const VendorCreateEventPage: React.FC = () => {
         isAffiliateEvent: bookingMethod === 'external'
       };
 
-      await vendorAPI.createVendorEvent(eventData);
+      const response = await vendorAPI.createVendorEvent(eventData);
+      const newEventId = response.event?._id || response.event?.id;
 
-      setSaveStatus({ type: 'success', message: 'Event created successfully! Redirecting to events list...' });
+      setSaveStatus({ type: 'success', message: 'Event created successfully! Redirecting to edit page...' });
 
       setTimeout(() => {
-        navigate('/vendor/events');
+        navigate(`/vendor/events/${newEventId}/edit`);
       }, 1500);
 
     } catch (error: any) {

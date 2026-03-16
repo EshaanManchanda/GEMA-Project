@@ -352,14 +352,8 @@ export const register = async (
         email: user.email,
         error: emailError.message,
       });
-      if (config.nodeEnv === "production") {
-        await User.findByIdAndDelete(user._id);
-        return next(new AppError("Failed to send verification email. Please try again.", 500));
-      }
-      // In development: keep user, log warning — fix SMTP config in .env
-      logger.warn("[REGISTER] DEV: Email failed but user kept. Check EMAIL_* in .env", {
-        hint: "Set EMAIL_HOST=smtp.gmail.com with a Gmail App Password",
-      });
+      await User.findByIdAndDelete(user._id);
+      return next(new AppError("Failed to send verification email. Please try again.", 500));
     }
 
     // Return response
@@ -1116,19 +1110,13 @@ export const verifyEmail = async (
   next: NextFunction,
 ): Promise<void> => {
   try {
-    const { otp, email }: VerifyEmailRequest = req.body;
+    const { otp }: VerifyEmailRequest = req.body;
 
-    // Prefer email+otp matching to avoid cross-account OTP collisions.
-    const verificationQuery: Record<string, any> = {
+    // Find user by verification OTP
+    const user = await User.findOne({
       "emailVerification.otp": otp,
       "emailVerification.expiresAt": { $gt: new Date() },
-    };
-
-    if (email) {
-      verificationQuery.email = email;
-    }
-
-    const user = await User.findOne(verificationQuery);
+    });
 
     if (!user) {
       throw new AppError("Invalid or expired verification OTP", 400);

@@ -28,8 +28,7 @@ export const getAllVendors = async (
       sortOrder = "desc",
     } = req.query;
 
-    const vendorUserIds = await User.distinct("_id", { role: "vendor" });
-    const query: any = { userId: { $in: vendorUserIds } };
+    const query: any = {};
 
     // Search by business name or email
     if (search) {
@@ -527,9 +526,6 @@ export const getVendorStats = async (
   next: NextFunction,
 ): Promise<void> => {
   try {
-    const vendorUserIds = await User.distinct("_id", { role: "vendor" });
-    const baseQuery = { userId: { $in: vendorUserIds } };
-
     const [
       totalVendors,
       activeVendors,
@@ -537,16 +533,14 @@ export const getVendorStats = async (
       vendorsBySubscriptionStatus,
       expiringSoon,
     ] = await Promise.all([
-      Vendor.countDocuments(baseQuery),
-      Vendor.countDocuments({ ...baseQuery, isActive: true, isSuspended: false }),
+      Vendor.countDocuments(),
+      Vendor.countDocuments({ isActive: true, isSuspended: false }),
       Vendor.aggregate([
-        { $match: baseQuery },
         { $group: { _id: "$paymentSettings.paymentMode", count: { $sum: 1 } } },
       ]),
       Vendor.aggregate([
         {
           $match: {
-            ...baseQuery,
             "paymentSettings.paymentMode": PaymentMode.CUSTOM_STRIPE,
           },
         },
@@ -559,7 +553,6 @@ export const getVendorStats = async (
       ]),
       // Vendors with subscription expiring in next 7 days
       Vendor.countDocuments({
-        ...baseQuery,
         "paymentSettings.paymentMode": PaymentMode.CUSTOM_STRIPE,
         "paymentSettings.subscriptionPaidUntil": {
           $gte: new Date(),

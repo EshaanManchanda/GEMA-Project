@@ -6,7 +6,7 @@ import DOMPurify from 'isomorphic-dompurify';
 import { useQueryClient } from '@tanstack/react-query';
 
 import EventEditModal from '../../components/admin/EventEditModal';
-import { Category } from '../../services/api/categoriesAPI';
+
 import adminAPI from '../../services/api/adminAPI';
 import { useAdminEventsQuery } from '@/hooks/queries/useAdminQuery';
 import PrivatePageSEO from '@/components/common/PrivatePageSEO';
@@ -177,7 +177,7 @@ const AdminEventsPage: React.FC = () => {
   const [isEditModalOpen, setIsEditModalOpen] = useState(false);
   const [eventToDelete, setEventToDelete] = useState<string | null>(null);
   const [eventToApprove, setEventToApprove] = useState<string | null>(null);
-  const [selectedEvent, setSelectedEvent] = useState<Event | null>(null);
+  const [selectedEvent] = useState<Event | null>(null);
   const [eventToEdit, setEventToEdit] = useState<Event | null>(null);
   const [actionType, setActionType] = useState<'approve' | 'reject' | null>(null);
   const [rejectionReason, setRejectionReason] = useState<string>('');
@@ -414,7 +414,7 @@ const AdminEventsPage: React.FC = () => {
                 className="w-full md:w-1/3 px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 bg-white text-gray-900"
               >
                 <option value="all">All Categories</option>
-                {categories.map((cat) => (
+                {categories.map((cat: any) => (
                   <option key={cat._id} value={cat.slug}>
                     {cat.name}
                   </option>
@@ -478,7 +478,7 @@ const AdminEventsPage: React.FC = () => {
           </div>
 
           {/* Events Table with Virtualization */}
-          <div className="bg-white rounded-lg shadow overflow-hidden">
+          <div className="bg-white rounded-lg shadow overflow-x-auto">
             <div
               ref={parentRef}
               className="overflow-auto"
@@ -593,26 +593,23 @@ const AdminEventsPage: React.FC = () => {
                           {event.viewsCount.toLocaleString()}
                         </td>
                         <td className="px-6 py-4 whitespace-nowrap text-sm font-medium">
-                          <div className="flex items-center gap-1 flex-nowrap">
-                            {!event.isDeleted ? (
+                          <div className="flex items-center gap-1.5">
+                            <button
+                              onClick={() => navigate(`/admin/events/${event.id}`)}
+                              className="p-3 rounded-lg text-blue-600 hover:text-blue-900 hover:bg-blue-50 transition-colors"
+                              title="View Details"
+                            >
+                              <FaEye className="w-5 h-5" />
+                            </button>
+
+                            {!event.isDeleted && (
                               <>
                                 <button
-                                  onClick={() => {
-                                    setSelectedEvent(event);
-                                    setIsViewModalOpen(true);
-                                  }}
-                                  className="p-2 rounded-lg text-blue-600 hover:text-blue-900 hover:bg-blue-50 transition-colors flex-shrink-0"
-                                  title="View Details"
-                                >
-                                  <FaEye className="text-[20px]" />
-                                </button>
-
-                                <button
                                   onClick={() => navigate(`/admin/events/${event.id}/edit`)}
-                                  className="p-2 rounded-lg text-indigo-600 hover:text-indigo-900 hover:bg-indigo-50 transition-colors flex-shrink-0"
+                                  className="p-3 rounded-lg text-indigo-600 hover:text-indigo-900 hover:bg-indigo-50 transition-colors"
                                   title="Edit Event"
                                 >
-                                  <FaEdit className="text-[20px]" />
+                                  <FaEdit className="w-5 h-5" />
                                 </button>
 
                                 {!event.isApproved && (
@@ -622,27 +619,27 @@ const AdminEventsPage: React.FC = () => {
                                       setActionType('approve');
                                       setIsApprovalModalOpen(true);
                                     }}
-                                    className="p-2 rounded-lg text-green-600 hover:text-green-900 hover:bg-green-50 transition-colors flex-shrink-0"
+                                    className="p-3 rounded-lg text-green-600 hover:text-green-900 hover:bg-green-50 transition-colors"
                                     title="Approve Event"
                                   >
-                                    <FaCheck className="text-[20px]" />
+                                    <FaCheck className="w-5 h-5" />
                                   </button>
                                 )}
 
                                 <button
                                   onClick={() => handleToggleFeatured(event.id)}
-                                  className={`p-2 rounded-lg hover:bg-yellow-50 transition-colors flex-shrink-0 ${event.isFeatured ? 'text-yellow-500' : 'text-gray-400'} hover:text-yellow-600`}
+                                  className={`p-3 rounded-lg hover:bg-yellow-50 transition-colors ${event.isFeatured ? 'text-yellow-500' : 'text-gray-400'} hover:text-yellow-600`}
                                   title="Toggle Featured"
                                 >
-                                  <FaStar className="text-[20px]" />
+                                  <FaStar className="w-5 h-5" />
                                 </button>
 
                                 <button
                                   onClick={() => navigate(`/admin/events/${event.id}/registration/builder`)}
-                                  className="p-2 rounded-lg text-purple-600 hover:text-purple-900 hover:bg-purple-50 transition-colors flex-shrink-0"
+                                  className="p-3 rounded-lg text-purple-600 hover:text-purple-900 hover:bg-purple-50 transition-colors"
                                   title="Form Builder"
                                 >
-                                  <FaWpforms className="text-[20px]" />
+                                  <FaWpforms className="w-5 h-5" />
                                 </button>
 
                                 <button
@@ -650,33 +647,22 @@ const AdminEventsPage: React.FC = () => {
                                     setEventToDelete(event.id);
                                     setIsDeleteModalOpen(true);
                                   }}
-                                  className="p-2 rounded-lg text-red-600 hover:text-red-900 hover:bg-red-50 transition-colors flex-shrink-0"
+                                  className="p-3 rounded-lg text-red-600 hover:text-red-900 hover:bg-red-50 transition-colors"
                                   title="Delete Event"
                                 >
-                                  <FaTrash className="text-[20px]" />
+                                  <FaTrash className="w-5 h-5" />
                                 </button>
                               </>
-                            ) : (
-                              <>
-                                <button
-                                  onClick={() => {
-                                    setSelectedEvent(event);
-                                    setIsViewModalOpen(true);
-                                  }}
-                                  className="p-2 rounded-lg text-blue-600 hover:text-blue-900 hover:bg-blue-50 transition-colors flex-shrink-0"
-                                  title="View Details"
-                                >
-                                  <FaEye className="text-[20px]" />
-                                </button>
+                            )}
 
-                                <button
-                                  onClick={() => handleRestoreEvent(event.id)}
-                                  className="p-2 rounded-lg text-blue-600 hover:text-blue-900 hover:bg-blue-50 transition-colors flex-shrink-0"
-                                  title="Restore Event"
-                                >
-                                  <FaUndo className="text-[20px]" />
-                                </button>
-                              </>
+                            {event.isDeleted && (
+                              <button
+                                onClick={() => handleRestoreEvent(event.id)}
+                                className="p-3 rounded-lg text-blue-600 hover:text-blue-900 hover:bg-blue-50 transition-colors"
+                                title="Restore Event"
+                              >
+                                <FaUndo className="w-5 h-5" />
+                              </button>
                             )}
                           </div>
                         </td>
@@ -846,7 +832,7 @@ const AdminEventsPage: React.FC = () => {
                       onClick={() => setIsViewModalOpen(false)}
                       className="text-gray-400 hover:text-gray-600"
                     >
-                      <FaTimes className="text-[20px]" />
+                      <FaTimes className="w-6 h-6" />
                     </button>
                   </div>
 

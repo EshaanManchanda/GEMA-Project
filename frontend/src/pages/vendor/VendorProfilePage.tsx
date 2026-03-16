@@ -15,7 +15,6 @@ import {
 } from 'react-icons/fa';
 import PrivatePageSEO from '@/components/common/PrivatePageSEO';
 import vendorAPI from '../../services/api/vendorAPI';
-import { API_BASE_URL } from '@/config/api';
 
 import StripeConnectSetup from '../../components/vendor/StripeConnectSetup';
 import BankDetailsForm from '../../components/vendor/BankDetailsForm';
@@ -33,7 +32,6 @@ interface VendorProfile {
   isPhoneVerified?: boolean;
   description: string;
   logo: string;
-  userAvatar?: string;
   coverImage: string;
   address: {
     street: string;
@@ -76,34 +74,6 @@ const VendorProfilePage: React.FC = () => {
   const [activeTab, setActiveTab] = useState('business');
   const [isSaving, setSaving] = useState(false);
 
-  const toAbsoluteMediaUrl = (url?: string): string => {
-    if (!url) return '';
-    const raw = String(url).trim();
-    if (!raw) return '';
-    if (/^https?:\/\//i.test(raw)) return raw;
-
-    const apiOrigin = API_BASE_URL.replace(/\/api\/?$/, '');
-
-    // Legacy: UUID-only media references stored in DB
-    if (/^[a-f0-9-]{36}$/i.test(raw)) {
-      return `${apiOrigin}/api/media/file/${raw}`;
-    }
-
-    // Normalize Windows-style paths and map upload-relative paths
-    const normalized = raw.replace(/\\/g, '/');
-    const uploadMarker = '/uploads/';
-    const markerIndex = normalized.toLowerCase().indexOf(uploadMarker);
-    if (markerIndex >= 0) {
-      const rel = normalized.slice(markerIndex + uploadMarker.length).replace(/^\/+/, '');
-      return `${apiOrigin}/api/uploads/files/${rel}`;
-    }
-
-    if (normalized.startsWith('/')) return `${apiOrigin}${normalized}`;
-    if (normalized.startsWith('api/')) return `${apiOrigin}/${normalized}`;
-
-    return `${apiOrigin}/${normalized}`;
-  };
-
   // Fetch vendor profile
   useEffect(() => {
     fetchVendorProfile();
@@ -126,9 +96,8 @@ const VendorProfilePage: React.FC = () => {
         phone: vendor.phone || user.phone || '',
         isPhoneVerified: user.isPhoneVerified || false,
         description: vendor.description || '',
-        logo: toAbsoluteMediaUrl(vendor.logo || ''),
-        userAvatar: toAbsoluteMediaUrl(user.avatar || ''),
-        coverImage: toAbsoluteMediaUrl(vendor.coverImage || ''),
+        logo: vendor.logo || user.avatar || '',
+        coverImage: vendor.coverImage || '',
         address: {
           street: vendor.address?.street || '',
           city: vendor.address?.city || '',
@@ -178,12 +147,11 @@ const VendorProfilePage: React.FC = () => {
     try {
       const imageType = type === 'logo' ? 'logo' : 'coverImage';
       const response = await vendorAPI.uploadVendorImage(file, imageType);
-      const payload = response?.data || response;
-      if (payload?.logo || payload?.coverImage) {
+      if (response?.data?.logo || response?.data?.coverImage) {
         setProfile(prev => prev ? {
           ...prev,
-          logo: toAbsoluteMediaUrl(payload.logo || prev.logo),
-          coverImage: toAbsoluteMediaUrl(payload.coverImage || prev.coverImage),
+          logo: response.data.logo || prev.logo,
+          coverImage: response.data.coverImage || prev.coverImage
         } : null);
         toast.success(`${type === 'logo' ? 'Logo' : 'Cover image'} uploaded successfully`);
       }
@@ -289,19 +257,8 @@ const VendorProfilePage: React.FC = () => {
                 {/* Logo */}
                 <div className="relative group">
                   <div className="w-32 h-32 rounded-full overflow-hidden bg-white/20 backdrop-blur-sm border-4 border-white/30">
-                    {(profile.logo || profile.userAvatar) ? (
-                      <img
-                        src={profile.logo || profile.userAvatar || ''}
-                        alt="Logo"
-                        className="w-full h-full object-cover"
-                        onError={(e) => {
-                          if (profile.userAvatar && e.currentTarget.src !== profile.userAvatar) {
-                            e.currentTarget.src = profile.userAvatar;
-                            return;
-                          }
-                          e.currentTarget.style.display = 'none';
-                        }}
-                      />
+                    {profile.logo ? (
+                      <img src={profile.logo} alt="Logo" className="w-full h-full object-cover" />
                     ) : (
                       <div className="w-full h-full flex items-center justify-center text-white/60">
                         <FaBuilding size={48} />

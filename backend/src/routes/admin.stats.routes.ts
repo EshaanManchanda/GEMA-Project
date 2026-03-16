@@ -3,6 +3,10 @@ import { AuthRequest } from "../types/index";
 import { authenticate, authorize, validate } from "../middleware/index";
 import { UserRole } from "../models/User";
 import { validateDashboardDateRange } from "../validators/admin.validator";
+import Payout, { PayoutRequestStatus } from "../models/Payout";
+import CommissionTransaction, {
+  CommissionTransactionStatus,
+} from "../models/CommissionTransaction";
 
 const router = Router();
 
@@ -19,28 +23,83 @@ router.get(
   "/payout-stats",
   async (req: AuthRequest, res: Response, next: NextFunction) => {
     try {
-      // For now, return mock data that matches the expected interface
-      // TODO: Implement actual payout statistics calculation
-      const mockPayoutStats = {
-        totalPayouts: 0,
-        totalAmount: 0,
-        pendingPayouts: 0,
-        pendingAmount: 0,
-        completedPayouts: 0,
-        completedAmount: 0,
-        rejectedPayouts: 0,
-        averagePayoutAmount: 0,
-        currency: "AED",
-        periodComparison: {
-          payoutGrowth: 0,
-          amountGrowth: 0,
-        },
-      };
+      const { startDate, endDate, vendorType } = req.query as Record<string, string>;
+
+      const matchStage: Record<string, unknown> = {};
+      if (startDate || endDate) {
+        matchStage.requestedAt = {};
+        if (startDate) (matchStage.requestedAt as Record<string, unknown>).$gte = new Date(startDate);
+        if (endDate)   (matchStage.requestedAt as Record<string, unknown>).$lte = new Date(endDate);
+      }
+      if (vendorType === "vendor" || vendorType === "teacher") {
+        matchStage.vendorType = vendorType;
+      }
+
+      const [byStatus, totals, topVendors] = await Promise.all([
+        // Sum by status
+        Payout.aggregate([
+          { $match: matchStage },
+          {
+            $group: {
+              _id: "$status",
+              count: { $sum: 1 },
+              totalAmount: { $sum: "$amount" },
+            },
+          },
+        ]),
+
+        // Overall totals
+        Payout.aggregate([
+          { $match: matchStage },
+          {
+            $group: {
+              _id: null,
+              total: { $sum: 1 },
+              totalAmount: { $sum: "$amount" },
+              avgAmount: { $avg: "$amount" },
+            },
+          },
+        ]),
+
+        // Top vendors by payout amount
+        Payout.aggregate([
+          { $match: { ...matchStage, status: PayoutRequestStatus.COMPLETED } },
+          {
+            $group: {
+              _id: "$vendorId",
+              vendorName: { $first: "$vendorName" },
+              totalPaid: { $sum: "$amount" },
+              count: { $sum: 1 },
+            },
+          },
+          { $sort: { totalPaid: -1 } },
+          { $limit: 10 },
+        ]),
+      ]);
+
+      const statusMap: Record<string, { count: number; totalAmount: number }> = {};
+      for (const row of byStatus) {
+        statusMap[row._id] = { count: row.count, totalAmount: row.totalAmount };
+      }
+      const overall = totals[0] || {};
 
       res.status(200).json({
         success: true,
         message: "Payout statistics retrieved successfully",
-        data: mockPayoutStats,
+        data: {
+          totalPayouts:     overall.total      || 0,
+          totalAmount:      overall.totalAmount || 0,
+          averagePayoutAmount: overall.avgAmount || 0,
+          pendingPayouts:   statusMap[PayoutRequestStatus.PENDING]?.count       || 0,
+          pendingAmount:    statusMap[PayoutRequestStatus.PENDING]?.totalAmount  || 0,
+          completedPayouts: statusMap[PayoutRequestStatus.COMPLETED]?.count      || 0,
+          completedAmount:  statusMap[PayoutRequestStatus.COMPLETED]?.totalAmount || 0,
+          rejectedPayouts:  statusMap[PayoutRequestStatus.REJECTED]?.count       || 0,
+          processingPayouts:statusMap[PayoutRequestStatus.PROCESSING]?.count     || 0,
+          currency: "AED",
+          topVendors,
+          byStatus: statusMap,
+        },
       });
     } catch (error) {
       next(error);
@@ -57,25 +116,109 @@ router.get(
   "/commission-stats",
   async (req: AuthRequest, res: Response, next: NextFunction) => {
     try {
-      // For now, return mock data that matches the expected interface
-      // TODO: Implement actual commission statistics calculation
-      const mockCommissionStats = {
-        totalCommissions: 0,
-        totalAmount: 0,
-        pendingCommissions: 0,
-        pendingAmount: 0,
-        approvedCommissions: 0,
-        approvedAmount: 0,
-        paidCommissions: 0,
-        paidAmount: 0,
-        averageCommissionRate: 0,
-        topVendors: [],
-      };
+      const { startDate, endDate } = req.query as Record<string, string>;
+
+      const matchStage: Record<string, unknown> = {};
+      if (startDate || endDate) {
+        matchStage.calculatedAt = {};
+        if (startDate) (matchStage.calculatedAt as Record<string, unknown>).$gte = new Date(startDate);
+        if (endDate)   (matchStage.calculatedAt as Record<string, unknown>).$lte = new Date(endDate);
+      }
+
+      const [byStatus, totals, topVendors, avgRate] = await Promise.all([
+        // By status
+        CommissionTransaction.aggregate([
+          { $match: matchStage },
+          {
+            $group: {
+              _id: "$status",
+              count: { $sum: 1 },
+              totalAmount: { $sum: "$platformCommission" },
+            },
+          },
+        ]),
+
+        // Totals
+        CommissionTransaction.aggregate([
+          { $match: matchStage },
+          {
+            $group: {
+              _id: null,
+              total: { $sum: 1 },
+              totalPlatformCommission: { $sum: "$platformCommission" },
+              totalOriginal: { $sum: "$originalAmount" },
+            },
+          },
+        ]),
+
+        // Top vendors by commission paid
+        CommissionTransaction.aggregate([
+          { $match: { ...matchStage, status: CommissionTransactionStatus.PAID } },
+          {
+            $group: {
+              _id: "$vendorId",
+              vendorName: { $first: "$vendorName" },
+              totalCommission: { $sum: "$platformCommission" },
+              orderCount: { $sum: 1 },
+            },
+          },
+          { $sort: { totalCommission: -1 } },
+          { $limit: 10 },
+        ]),
+
+        // Average commission rate
+        CommissionTransaction.aggregate([
+          { $match: matchStage },
+          {
+            $group: {
+              _id: null,
+              avgRate: {
+                $avg: {
+                  $cond: [
+                    { $gt: ["$originalAmount", 0] },
+                    { $multiply: [{ $divide: ["$platformCommission", "$originalAmount"] }, 100] },
+                    0,
+                  ],
+                },
+              },
+            },
+          },
+        ]),
+      ]);
+
+      const statusMap: Record<string, { count: number; totalAmount: number }> = {};
+      for (const row of byStatus) {
+        statusMap[row._id] = { count: row.count, totalAmount: row.totalAmount };
+      }
+      const overall = totals[0] || {};
+
+      // Shape topVendors to match frontend CommissionStats interface
+      const topVendorsMapped = topVendors.map((v: any) => ({
+        vendorId:         String(v._id),
+        vendorName:       v.vendorName || "",
+        totalCommissions: v.orderCount || 0,
+        totalAmount:      v.totalCommission || 0,
+      }));
 
       res.status(200).json({
         success: true,
         message: "Commission statistics retrieved successfully",
-        data: mockCommissionStats,
+        data: {
+          totalCommissions:    overall.total || 0,
+          totalAmount:         overall.totalPlatformCommission || 0,
+          totalGrossAmount:    overall.totalOriginal || 0,
+          averageCommissionRate: parseFloat((avgRate[0]?.avgRate || 0).toFixed(2)),
+          pendingCommissions:    statusMap[CommissionTransactionStatus.CALCULATED]?.count       || 0,
+          pendingAmount:         statusMap[CommissionTransactionStatus.CALCULATED]?.totalAmount  || 0,
+          approvedCommissions:   statusMap[CommissionTransactionStatus.APPROVED]?.count          || 0,
+          approvedAmount:        statusMap[CommissionTransactionStatus.APPROVED]?.totalAmount    || 0,
+          paidCommissions:       statusMap[CommissionTransactionStatus.PAID]?.count              || 0,
+          paidAmount:            statusMap[CommissionTransactionStatus.PAID]?.totalAmount        || 0,
+          cancelledCommissions:  statusMap[CommissionTransactionStatus.CANCELLED]?.count         || 0,
+          currency: "AED",
+          topVendors: topVendorsMapped,
+          byStatus: statusMap,
+        },
       });
     } catch (error) {
       next(error);
@@ -101,49 +244,55 @@ router.get(
       // Fetch dashboard summary from analytics service
       const dashboardSummary = await analyticsService.getDashboardSummary();
 
-      // Add payout and commission stats
+      // Add real payout and commission stats
+      const [payoutAgg, commissionAgg] = await Promise.all([
+        Payout.aggregate([
+          {
+            $group: {
+              _id: "$status",
+              count: { $sum: 1 },
+              totalAmount: { $sum: "$amount" },
+            },
+          },
+        ]),
+        CommissionTransaction.aggregate([
+          {
+            $group: {
+              _id: "$status",
+              count: { $sum: 1 },
+              totalAmount: { $sum: "$platformCommission" },
+            },
+          },
+        ]),
+      ]);
+
+      const payoutByStatus: Record<string, { count: number; totalAmount: number }> = {};
+      for (const r of payoutAgg) payoutByStatus[r._id] = { count: r.count, totalAmount: r.totalAmount };
+      const commByStatus: Record<string, { count: number; totalAmount: number }> = {};
+      for (const r of commissionAgg) commByStatus[r._id] = { count: r.count, totalAmount: r.totalAmount };
+
       const payoutStats = {
-        totalPayouts: 0,
-        totalAmount: 0,
-        pendingPayouts: 0,
-        pendingAmount: 0,
-        completedPayouts: 0,
-        completedAmount: 0,
-        rejectedPayouts: 0,
-        averagePayoutAmount: 0,
+        pendingPayouts:   payoutByStatus[PayoutRequestStatus.PENDING]?.count        || 0,
+        pendingAmount:    payoutByStatus[PayoutRequestStatus.PENDING]?.totalAmount   || 0,
+        completedPayouts: payoutByStatus[PayoutRequestStatus.COMPLETED]?.count       || 0,
+        completedAmount:  payoutByStatus[PayoutRequestStatus.COMPLETED]?.totalAmount || 0,
+        rejectedPayouts:  payoutByStatus[PayoutRequestStatus.REJECTED]?.count        || 0,
         currency: "AED",
-        periodComparison: {
-          payoutGrowth: 0,
-          amountGrowth: 0,
-        },
       };
 
       const commissionStats = {
-        totalCommissions: 0,
-        totalAmount: 0,
-        pendingCommissions: 0,
-        pendingAmount: 0,
-        approvedCommissions: 0,
-        approvedAmount: 0,
-        paidCommissions: 0,
-        paidAmount: 0,
-        averageCommissionRate: 0,
-        topVendors: [],
+        paidCommissions:     commByStatus[CommissionTransactionStatus.PAID]?.count        || 0,
+        paidAmount:          commByStatus[CommissionTransactionStatus.PAID]?.totalAmount   || 0,
+        approvedCommissions: commByStatus[CommissionTransactionStatus.APPROVED]?.count     || 0,
+        approvedAmount:      commByStatus[CommissionTransactionStatus.APPROVED]?.totalAmount || 0,
+        pendingCommissions:  commByStatus[CommissionTransactionStatus.CALCULATED]?.count   || 0,
+        pendingAmount:       commByStatus[CommissionTransactionStatus.CALCULATED]?.totalAmount || 0,
       };
 
       const allDashboardData = {
         ...dashboardSummary,
         payoutStats,
         commissionStats,
-        recentActivity: [
-          {
-            id: "activity-1",
-            type: "user_registered",
-            title: "Dashboard Data Loaded",
-            description: "All dashboard statistics updated successfully",
-            timestamp: new Date().toISOString(),
-          },
-        ],
       };
 
       res.status(200).json({

@@ -13,6 +13,7 @@ import {
   updateTeacherStatus,
   getTeacherStats,
 } from "../controllers/admin.teacher.controller";
+import { adminVerifyTeacherBank } from "../controllers/teacher.payment.controller";
 
 import { authenticate, authorize, validate, adminLimiter } from "../middleware";
 
@@ -195,6 +196,22 @@ router.delete(
   validateMongoId("id", "param"),
   validate,
   softDeleteTeacher,
+);
+
+/**
+ * ============================
+ * VERIFY BANK ACCOUNT
+ * ============================
+ */
+router.patch(
+  "/:teacherId/verify-bank",
+  [
+    validateMongoId("teacherId", "param"),
+    body("verified").isBoolean().withMessage("verified must be a boolean"),
+    body("reason").optional().isString().isLength({ max: 500 }),
+  ],
+  validate,
+  adminVerifyTeacherBank,
 );
 
 export default router;

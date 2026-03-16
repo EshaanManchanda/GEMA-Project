@@ -320,10 +320,10 @@ export const VendorSEO: React.FC<{ vendor: any; breadcrumbs?: SEOProps['breadcru
 
   const seoData: SEOProps = {
     title: `${vendor.name} - Kids Events Vendor | ${getAppNameFull()}`,
-    description: vendor.description.length > 160
+    description: (vendor.description || '').length > 160
       ? `${vendor.description.substring(0, 157)}...`
-      : vendor.description,
-    keywords: ['kids events vendor', 'event organizer', vendor.name, vendor.location, ...vendor.categories].filter(Boolean),
+      : (vendor.description || ''),
+    keywords: ['kids events vendor', 'event organizer', vendor.name, vendor.location, ...(vendor.categories || [])].filter(Boolean),
     canonicalUrl: `${baseUrl}/vendors/${vendor.id}`,
     ogImage: vendor.logo || vendor.coverImage,
     breadcrumbs,

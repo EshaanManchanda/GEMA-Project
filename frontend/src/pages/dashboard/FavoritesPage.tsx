@@ -142,7 +142,7 @@ const FavoritesPage: React.FC = () => {
                   <div className="p-4">
                     <div className="flex justify-between items-start mb-2">
                       <h3 className="text-lg font-semibold text-gray-900 hover:text-primary">
-                        <Link to={`/events/${event.slug}`}>
+                        <Link to={`/events/${event.slug || event._id}`}>
                           {event.title}
                         </Link>
                       </h3>
@@ -180,7 +180,7 @@ const FavoritesPage: React.FC = () => {
                     </div>
                     <div className="flex justify-between items-center">
                       <Link
-                        to={`/events/${event.slug}`}
+                        to={`/events/${event.slug || event._id}`}
                         className="inline-flex items-center px-3 py-1.5 border border-transparent text-xs font-medium rounded-md text-white bg-primary hover:bg-primary-dark focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-primary"
                       >
                         View Details
@@ -222,7 +222,7 @@ const FavoritesPage: React.FC = () => {
                         <div>
                           <div className="flex items-center mb-2">
                             <h3 className="text-lg font-semibold text-gray-900 mr-2">
-                              <Link to={`/events/${event.slug}`} className="hover:text-primary">
+                              <Link to={`/events/${event.slug || event._id}`} className="hover:text-primary">
                                 {event.title}
                               </Link>
                             </h3>
@@ -256,7 +256,7 @@ const FavoritesPage: React.FC = () => {
                         </div>
                         <div className="mt-4 sm:mt-0 flex flex-col space-y-2">
                           <Link
-                            to={`/events/${event.slug}`}
+                            to={`/events/${event.slug || event._id}`}
                             className="inline-flex items-center justify-center px-4 py-2 border border-transparent text-sm font-medium rounded-md text-white bg-primary hover:bg-primary-dark focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-primary"
                           >
                             View Details

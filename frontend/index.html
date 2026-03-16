@@ -3,7 +3,7 @@
 
 <head>
   <meta charset="UTF-8" />
-  <link rel="icon" type="image/x-icon" href="%VITE_SITE_ICON%" />
+  <link rel="icon" type="image/png" href="%VITE_FAVICON%" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
 
   <!-- SEO Meta Tags -->
@@ -106,7 +106,7 @@
   <link rel="manifest" href="/manifest.json" />
 
   <!-- Apple Touch Icons -->
-  <link rel="apple-touch-icon" href="/apple-touch-icon.png" />
+  <link rel="apple-touch-icon" href="%VITE_FAVICON%" />
 
 
   <!-- Preconnect to external domains (Phase 6 optimization) -->
@@ -138,10 +138,6 @@
 
   <!-- Preload critical assets -->
   <link rel="preload" fetchpriority="high" as="image" href="%VITE_SITE_LOGO%" type="image/png" />
-
-  <!-- Leaflet CSS for maps - minified for better SEO -->
-  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" media="print"
-    onload="this.media='all'" />
 
   <!-- Add native lazy loading and fetchpriority attributes -->
 

@@ -10,7 +10,7 @@ import SchedulePricingTab from '../../components/vendor/SchedulePricingTab';
 import AdvancedTab from '../../components/vendor/AdvancedTab';
 import FormBuilder from '@/components/registration/FormBuilder';
 import { MediaAsset } from '@/store/slices/mediaSlice';
-import { API_BASE_URL } from '@/config/api';
+import CancelEventModal from '../../components/vendor/CancelEventModal';
 
 interface EventFormData {
   title: string;
@@ -124,16 +124,9 @@ const VendorEditEventPage: React.FC = () => {
   const [isSaving, setIsSaving] = useState<boolean>(false);
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [saveStatus, setSaveStatus] = useState<{ type: 'success' | 'error'; message: string } | null>(null);
+  const [showCancelModal, setShowCancelModal] = useState<boolean>(false);
   const [showMediaPicker, setShowMediaPicker] = useState<boolean>(false);
   const [bookingMethod, setBookingMethod] = useState<'internal' | 'external'>('internal');
-
-  const toAbsoluteMediaUrl = (url?: string): string => {
-    if (!url) return '';
-    if (/^https?:\/\//i.test(url)) return url;
-    const apiOrigin = API_BASE_URL.replace(/\/api\/?$/, '');
-    if (url.startsWith('/')) return `${apiOrigin}${url}`;
-    return `${apiOrigin}/${url}`;
-  };
 
   useEffect(() => {
     const fetchCategories = async () => {
@@ -202,40 +195,19 @@ const VendorEditEventPage: React.FC = () => {
           featured: eventData.isFeatured || false,
           requirePhoneVerification: eventData.requirePhoneVerification || false,
           imageAssets: Array.isArray(eventData.imageAssets)
-            ? eventData.imageAssets
-              .map((a: any) => {
-                if (typeof a === 'object' && a !== null) return a._id || a.id;
-                return a;
-              })
-              .filter(Boolean)
+            ? eventData.imageAssets.map((a: any) => (typeof a === 'object' && a !== null ? a._id : a)).filter(Boolean)
             : [],
           imagePreviewUrls: (() => {
-            const asUrl = (s: any) => (typeof s === 'string' ? toAbsoluteMediaUrl(s) : '');
-
+            const isHttpUrl = (s: any) => typeof s === 'string' && s.startsWith('http');
             // Prefer imageAssets if populated as objects (new format)
             if (Array.isArray(eventData.imageAssets) && eventData.imageAssets.length > 0) {
               const fromAssets = eventData.imageAssets
-                .map((a: any) => {
-                  if (typeof a === 'object' && a !== null) {
-                    return asUrl(a.url || a.secureUrl || a.thumbnailUrl || a.directUrl);
-                  }
-                  return '';
-                })
-                .filter(Boolean);
+                .map((a: any) => (typeof a === 'object' && a !== null) ? (a.url || a.secureUrl) : null)
+                .filter(isHttpUrl);
               if (fromAssets.length > 0) return fromAssets;
             }
-
-            // Fall back to legacy event image fields.
-            const fromLegacy = [
-              ...(eventData.images || []),
-              eventData.coverImage,
-              eventData.image,
-              eventData.bannerImage,
-            ]
-              .map(asUrl)
-              .filter(Boolean);
-
-            return fromLegacy;
+            // Fall back to images[] — filter out non-URL values (e.g. bare ObjectIds)
+            return (eventData.images || []).filter(isHttpUrl);
           })(),
           faqs: (eventData.faqs || []).map((f: any) => ({
             id: f._id || uuidv4(),
@@ -657,18 +629,16 @@ const VendorEditEventPage: React.FC = () => {
             <div className="flex space-x-3">
               <button
                 type="button"
+                onClick={() => setShowCancelModal(true)}
+                className="inline-flex items-center px-4 py-2 border border-red-300 shadow-sm text-sm font-medium rounded-md text-red-700 bg-white hover:bg-red-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-red-500"
+              >
+                Cancel Event
+              </button>
+              <button
                 onClick={() => navigate('/vendor/events')}
                 className="inline-flex items-center px-4 py-2 border border-gray-300 shadow-sm text-sm font-medium rounded-md text-gray-700 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-primary"
               >
-                Cancel
-              </button>
-              <button
-                type="submit"
-                form="vendor-edit-event-form"
-                disabled={isSaving}
-                className="inline-flex items-center px-4 py-2 border border-transparent shadow-sm text-sm font-medium rounded-md text-white bg-primary-600 hover:bg-primary-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-primary disabled:opacity-50"
-              >
-                {isSaving ? 'Updating...' : 'Update Event'}
+                Back
               </button>
             </div>
           </div>
@@ -742,7 +712,7 @@ const VendorEditEventPage: React.FC = () => {
             </div>
 
             {/* Tab Content */}
-            <form id="vendor-edit-event-form" onSubmit={handleSubmit}>
+            <form onSubmit={handleSubmit}>
               <div className="p-6">
                 {activeTab === 'basic' && (
                   <BasicInfoTab
@@ -854,9 +824,9 @@ const VendorEditEventPage: React.FC = () => {
                               <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
                               <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
                             </svg>
-                            Updating...
+                            Saving...
                           </>
-                        ) : 'Update Event'}
+                        ) : 'Save Changes'}
                       </button>
                     )}
                   </div>
@@ -866,6 +836,15 @@ const VendorEditEventPage: React.FC = () => {
           </div>
         </div>
       </div>
+
+      {/* Cancel Event Modal */}
+      <CancelEventModal
+        isOpen={showCancelModal}
+        onClose={() => setShowCancelModal(false)}
+        eventId={id || ''}
+        eventTitle={formData.title}
+        onSuccess={() => navigate('/vendor/events')}
+      />
     </>
   );
 };

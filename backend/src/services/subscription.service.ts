@@ -189,7 +189,7 @@ class SubscriptionService implements ISubscriptionService {
         periodEnd,
         status: "paid",
         transactionId: paymentIntent.id,
-        invoiceUrl: undefined, // TODO: Generate invoice PDF
+        invoiceUrl: `https://dashboard.stripe.com/payments/${paymentIntent.id}`,
       });
 
       await vendor.save();
@@ -554,7 +554,13 @@ class SubscriptionService implements ISubscriptionService {
               `⚠️  Vendor ${vendor._id} subscription expired and deactivated (${daysExpired} days expired). Events hidden.`,
             );
 
-            // TODO: Send email notification to vendor about deactivation
+            emailService.sendEmail({
+              to: vendor.email,
+              subject: "Your subscription has expired — events hidden",
+              html: `<p>Hi ${vendor.businessName || "Vendor"},</p>
+<p>Your subscription has expired and your events have been hidden from the platform.</p>
+<p>Please renew at <a href="${process.env.FRONTEND_URL}/vendor/subscription">your subscription page</a>.</p>`,
+            }).catch((err: Error) => console.error("Vendor deactivation email failed:", err));
           }
         }
       }

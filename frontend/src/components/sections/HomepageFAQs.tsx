@@ -66,14 +66,14 @@ const HomepageFAQs: React.FC<HomepageFAQsProps> = ({ faqItems }) => {
   };
 
   return (
-    <section className="py-16 bg-white">
-      <div className="max-w-4xl mx-auto px-6">
+    <section className="py-10 sm:py-16 bg-white">
+      <div className="max-w-4xl mx-auto px-4 sm:px-6">
         <ScrollReveal>
           <div className="text-center mb-12">
             <div className="inline-flex items-center justify-center w-16 h-16 rounded-full bg-gradient-to-br from-blue-500 to-purple-600 text-white mb-4">
               <FaQuestionCircle className="w-8 h-8" />
             </div>
-            <h2 className="text-3xl md:text-4xl font-bold text-gray-900 mb-4">
+            <h2 className="text-xl sm:text-3xl md:text-4xl font-bold text-gray-900 mb-4">
               Frequently Asked Questions
             </h2>
             <p className="text-gray-600 max-w-2xl mx-auto">
@@ -88,10 +88,10 @@ const HomepageFAQs: React.FC<HomepageFAQsProps> = ({ faqItems }) => {
               <div className="bg-gray-50 rounded-lg shadow-md hover:shadow-lg transition-shadow duration-300 overflow-hidden">
                 <button
                   onClick={() => toggleFAQ(index)}
-                  className="w-full flex items-center justify-between p-6 text-left hover:bg-gray-100 transition-colors duration-200"
+                  className="w-full flex items-center justify-between p-4 sm:p-6 min-h-[48px] text-left hover:bg-gray-100 transition-colors duration-200"
                   aria-expanded={openIndex === index}
                 >
-                  <h3 className="text-lg font-semibold text-gray-900 pr-8">
+                  <h3 className="text-sm sm:text-lg font-semibold text-gray-900 pr-8">
                     {faq.question}
                   </h3>
                   <span className="flex-shrink-0 text-blue-600">
@@ -110,7 +110,7 @@ const HomepageFAQs: React.FC<HomepageFAQsProps> = ({ faqItems }) => {
                       : 'max-h-0 opacity-0'
                   } overflow-hidden`}
                 >
-                  <div className="px-6 pb-6 text-gray-600 leading-relaxed">
+                  <div className="px-4 sm:px-6 pb-4 sm:pb-6 text-sm sm:text-base text-gray-600 leading-relaxed">
                     {faq.answer}
                   </div>
                 </div>

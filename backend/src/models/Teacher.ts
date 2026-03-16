@@ -1,51 +1,51 @@
-import mongoose, { Schema, model, Document } from 'mongoose';
+import mongoose, { Schema, model, Document } from "mongoose";
 
 /* ============================
    ENUMS
 ============================ */
 
 export enum TeacherVerificationStatus {
-  VERIFIED = 'verified',
-  PENDING = 'pending',
-  UNVERIFIED = 'unverified',
-  REJECTED = 'rejected'
+  VERIFIED = "verified",
+  PENDING = "pending",
+  UNVERIFIED = "unverified",
+  REJECTED = "rejected",
 }
 
 export enum TeachingMode {
-  ONLINE = 'online',
-  OFFLINE = 'offline',
-  HYBRID = 'hybrid'
+  ONLINE = "online",
+  OFFLINE = "offline",
+  HYBRID = "hybrid",
 }
 export enum UAE_LANGUAGE {
-  ENGLISH = 'english',
-  ARABIC = 'arabic',
-  HINDI = 'hindi',
-  URDU = 'urdu',
-  MALAYALAM = 'malayalam',
-  TAMIL = 'tamil',
-  TAGALOG = 'tagalog',
-  BENGALI = 'bengali',
-  PERSIAN = 'persian',
-  FRENCH = 'french',
-  GERMAN = 'german',
-  SPANISH = 'spanish',
-  CHINESE = 'chinese',
-  JAPANESE = 'japanese',
-  KOREAN = 'korean',
-  RUSSIAN = 'russian',
-  PORTUGUESE = 'portuguese',
-  ITALIAN = 'italian',
-  DUTCH = 'dutch',
-  TURKISH = 'turkish',
-  OTHER = 'other',
+  ENGLISH = "english",
+  ARABIC = "arabic",
+  HINDI = "hindi",
+  URDU = "urdu",
+  MALAYALAM = "malayalam",
+  TAMIL = "tamil",
+  TAGALOG = "tagalog",
+  BENGALI = "bengali",
+  PERSIAN = "persian",
+  FRENCH = "french",
+  GERMAN = "german",
+  SPANISH = "spanish",
+  CHINESE = "chinese",
+  JAPANESE = "japanese",
+  KOREAN = "korean",
+  RUSSIAN = "russian",
+  PORTUGUESE = "portuguese",
+  ITALIAN = "italian",
+  DUTCH = "dutch",
+  TURKISH = "turkish",
+  OTHER = "other",
 }
 
 export enum TeacherPaymentMode {
-  PLATFORM_STRIPE = 'platform_stripe',
-  CUSTOM_STRIPE = 'custom_stripe'
+  PLATFORM_STRIPE = "platform_stripe",
+  CUSTOM_STRIPE = "custom_stripe",
 }
 
-import { TeacherSubscriptionStatus } from './TeacherSubscription';
+import { TeacherSubscriptionStatus } from "./TeacherSubscription";
 export { TeacherSubscriptionStatus };
 
 /* ============================
@@ -115,9 +115,9 @@ export interface ITeacherPaymentSettings {
   subscriptionAmount: number;
   subscriptionPaidUntil?: Date;
 
-  payoutSchedule: 'daily' | 'weekly' | 'monthly';
+  payoutSchedule: "daily" | "weekly" | "monthly";
   minimumPayout: number;
-  preferredPayoutMethod: 'bank_transfer' | 'stripe' | 'paypal';
+  preferredPayoutMethod: "bank_transfer" | "stripe" | "paypal";
   bankDetails?: ITeacherBankDetails;
 
   acceptsPlatformPayments: boolean;
@@ -139,14 +139,12 @@ export interface ITeacher extends Document {
   yearsOfExperience?: number;
 
   profileImageAssetId?: mongoose.Types.ObjectId;
-  coverImageAssetId?: mongoose.Types.ObjectId;
-  coverImageUrl?: string;
   demoVideoAssetId?: mongoose.Types.ObjectId;
 
   teachingMode: TeachingMode;
 
   email: string;
-  phone?: string;
+  phone: string;
   address: ITeachingAddress;
   socialLinks?: ISocialLinks;
   education?: IQualification[];
@@ -188,7 +186,12 @@ export interface ITeacher extends Document {
 
 const TeacherSchema = new Schema<ITeacher>(
   {
-    userId: { type: Schema.Types.ObjectId, ref: 'User', required: true, unique: true },
+    userId: {
+      type: Schema.Types.ObjectId,
+      ref: "User",
+      required: true,
+      unique: true,
+    },
 
     fullName: { type: String, required: true },
     bio: String,
@@ -197,32 +200,30 @@ const TeacherSchema = new Schema<ITeacher>(
     languagesSpoken: [
       {
         type: String,
-        enum: Object.values(UAE_LANGUAGE)
-      }
+        enum: Object.values(UAE_LANGUAGE),
+      },
     ],
 
     yearsOfExperience: Number,
 
-    profileImageAssetId: { type: Schema.Types.ObjectId, ref: 'MediaAsset' },
-    coverImageAssetId: { type: Schema.Types.Mixed, ref: 'MediaAsset' },
-    coverImageUrl: { type: String },
-    demoVideoAssetId: { type: Schema.Types.ObjectId, ref: 'MediaAsset' },
+    profileImageAssetId: { type: Schema.Types.ObjectId, ref: "MediaAsset" },
+    demoVideoAssetId: { type: Schema.Types.ObjectId, ref: "MediaAsset" },
 
     teachingMode: {
       type: String,
       enum: Object.values(TeachingMode),
       default: TeachingMode.ONLINE,
-      index: true
+      index: true,
     },
 
     email: { type: String, required: true },
-    phone: { type: String, required: false, default: undefined },
+    phone: { type: String, required: true },
 
     address: {
       address: String,
       city: String,
-      country: { type: String, default: 'United Arab Emirates' },
-      postalCode: String
+      country: { type: String, default: "United Arab Emirates" },
+      postalCode: String,
     },
 
     socialLinks: {
@@ -231,16 +232,18 @@ const TeacherSchema = new Schema<ITeacher>(
       instagram: String,
       youtube: String,
       website: String,
-      portfolio: String
+      portfolio: String,
     },
 
-    education: [{
-      degree: String,
-      institution: String,
-      year: Number,
-      country: String,
-      certificateAssetId: { type: Schema.Types.ObjectId, ref: 'MediaAsset' }
-    }],
+    education: [
+      {
+        degree: String,
+        institution: String,
+        year: Number,
+        country: String,
+        certificateAssetId: { type: Schema.Types.ObjectId, ref: "MediaAsset" },
+      },
+    ],
 
     availabilityHours: { type: Object, default: {} },
 
@@ -248,47 +251,54 @@ const TeacherSchema = new Schema<ITeacher>(
       paymentMode: {
         type: String,
         enum: Object.values(TeacherPaymentMode),
-        default: TeacherPaymentMode.PLATFORM_STRIPE
+        default: TeacherPaymentMode.PLATFORM_STRIPE,
       },
       paymentModeChangedAt: Date,
-      paymentModeChangedBy: { type: Schema.Types.ObjectId, ref: 'User' },
+      paymentModeChangedBy: { type: Schema.Types.ObjectId, ref: "User" },
 
       stripeSettings: {
         stripeConnectAccountId: String,
         stripeConnectOnboardingComplete: { type: Boolean, default: false },
         stripePublishableKey: String,
         stripeSecretKey: { type: String, select: false },
-        stripeTestMode: { type: Boolean, default: true }
+        stripeTestMode: { type: Boolean, default: true },
       },
 
       commissionRate: { type: Number, default: 5 },
-      commissionConfigId: { type: Schema.Types.ObjectId, ref: 'CommissionConfig' },
+      commissionConfigId: {
+        type: Schema.Types.ObjectId,
+        ref: "CommissionConfig",
+      },
 
       subscriptionStatus: {
         type: String,
         enum: Object.values(TeacherSubscriptionStatus),
-        default: TeacherSubscriptionStatus.INACTIVE
+        default: TeacherSubscriptionStatus.INACTIVE,
       },
 
       subscriptionAmount: { type: Number, default: 150 },
       subscriptionPaidUntil: Date,
 
-      payoutSchedule: { type: String, enum: ['daily', 'weekly', 'monthly'], default: 'weekly' },
+      payoutSchedule: {
+        type: String,
+        enum: ["daily", "weekly", "monthly"],
+        default: "weekly",
+      },
       minimumPayout: { type: Number, default: 50 },
       preferredPayoutMethod: {
         type: String,
-        enum: ['bank_transfer', 'stripe', 'paypal'],
-        default: 'bank_transfer'
+        enum: ["bank_transfer", "stripe", "paypal"],
+        default: "bank_transfer",
       },
 
       acceptsPlatformPayments: { type: Boolean, default: true },
-      autoPayoutEnabled: { type: Boolean, default: false }
+      autoPayoutEnabled: { type: Boolean, default: false },
     },
 
     verificationStatus: {
       type: String,
       enum: Object.values(TeacherVerificationStatus),
-      default: TeacherVerificationStatus.UNVERIFIED
+      default: TeacherVerificationStatus.UNVERIFIED,
     },
 
     isActive: { type: Boolean, default: true },
@@ -300,38 +310,42 @@ const TeacherSchema = new Schema<ITeacher>(
       totalEarnings: { type: Number, default: 0 },
       averageRating: { type: Number, default: 0 },
       totalReviews: { type: Number, default: 0 },
-      viewsCount: { type: Number, default: 0 }
+      viewsCount: { type: Number, default: 0 },
     },
 
     isDeleted: { type: Boolean, default: false },
     deletedAt: Date,
 
-    memberSince: { type: Date, default: Date.now }
+    memberSince: { type: Date, default: Date.now },
   },
-  { timestamps: true, toJSON: { virtuals: true }, toObject: { virtuals: true } }
+  {
+    timestamps: true,
+    toJSON: { virtuals: true },
+    toObject: { virtuals: true },
+  },
 );
 
 /* ============================
    VIRTUALS
 ============================ */
 
-TeacherSchema.virtual('subscription', {
-  ref: 'TeacherSubscription',
-  localField: '_id',
-  foreignField: 'teacherId',
-  justOne: true
+TeacherSchema.virtual("subscription", {
+  ref: "TeacherSubscription",
+  localField: "_id",
+  foreignField: "teacherId",
+  justOne: true,
 });
 
-TeacherSchema.virtual('commissionTransactions', {
-  ref: 'CommissionTransaction',
-  localField: '_id',
-  foreignField: 'commissions.recipientId'
+TeacherSchema.virtual("commissionTransactions", {
+  ref: "CommissionTransaction",
+  localField: "_id",
+  foreignField: "commissions.recipientId",
 });
 
-TeacherSchema.virtual('mediaAssets', {
-  ref: 'MediaAsset',
-  localField: '_id',
-  foreignField: 'usedBy.documentId'
+TeacherSchema.virtual("mediaAssets", {
+  ref: "MediaAsset",
+  localField: "_id",
+  foreignField: "usedBy.documentId",
 });
 
 /* ============================
@@ -370,4 +384,4 @@ TeacherSchema.methods.needsSubscriptionPayment = function () {
   );
 };
 
-export default model<ITeacher>('Teacher', TeacherSchema);
+export default model<ITeacher>("Teacher", TeacherSchema);

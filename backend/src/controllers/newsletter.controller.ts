@@ -3,6 +3,8 @@ import { AuthRequest } from "../types/express.d";
 import NewsletterSubscriber from "../models/NewsletterSubscriber";
 import { AppError } from "../middleware/error";
 import { NewsletterService } from "../services/newsletter.service";
+import { emailService } from "../services/email.service";
+import logger from "../config/logger";
 
 const newsletterService = new NewsletterService();
 
@@ -36,6 +38,17 @@ export const subscribe = async (
         receivePromotions: preferences.receivePromotions !== false,
       },
     });
+
+    // Send welcome/reactivation confirmation email (non-blocking)
+    emailService.sendEmail({
+      to: subscriber.email,
+      subject: subscriber.wasReactivated
+        ? "Welcome back to our newsletter!"
+        : "Welcome to our newsletter!",
+      html: `<p>Hi${subscriber.name ? ` ${subscriber.name}` : ""},</p>
+<p>You are now subscribed to our newsletter.</p>
+<p><a href="${process.env.FRONTEND_URL}/newsletter/unsubscribe/${(subscriber as any).unsubscribeToken}">Unsubscribe</a></p>`,
+    }).catch((err: Error) => logger.error("Newsletter welcome email failed:", err));
 
     res.status(subscriber.wasReactivated ? 200 : 201).json({
       success: true,

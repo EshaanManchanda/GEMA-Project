@@ -354,10 +354,9 @@ export const authAPI = {
     }
   },
 
-  verifyEmailWithOTP: async (otp: string, email?: string): Promise<AuthResponse> => {
+  verifyEmailWithOTP: async (otp: string): Promise<AuthResponse> => {
     try {
-      const payload = email ? { otp, email } : { otp };
-      const response = await ApiService.post('/auth/verify-email', payload);
+      const response = await ApiService.post('/auth/verify-email', { otp });
       return response.data;
     } catch (error) {
       throw error;

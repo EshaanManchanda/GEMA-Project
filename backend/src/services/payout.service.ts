@@ -1,5 +1,6 @@
 import mongoose from "mongoose";
 import Stripe from "stripe";
+import { Affiliate } from "../models/index";
 import RevenueTransaction, {
   PayoutStatus,
   TransactionStatus,
@@ -15,6 +16,9 @@ import AdminRevenueSettings from "../models/AdminRevenueSettings";
 import User, { UserRole, IUser } from "../models/User";
 import Vendor, { IVendor } from "../models/Vendor";
 import { AppError } from "../middleware/index";
+import CommissionTransaction, {
+  CommissionTransactionStatus,
+} from "../models/CommissionTransaction";
 
 // Initialize Stripe (will be configured from admin settings)
 let stripe: Stripe | null = null;
@@ -219,6 +223,24 @@ class PayoutService {
         await Promise.all(
           transactions.map((tx) => tx.markAsPaid(payoutMethod, payoutId)),
         );
+
+        // Mark related CommissionTransactions as PAID
+        const orderIds = transactions
+          .filter((tx) => tx.orderId)
+          .map((tx) => tx.orderId);
+        if (orderIds.length > 0) {
+          await CommissionTransaction.updateMany(
+            {
+              orderId: { $in: orderIds },
+              vendorId,
+              status: CommissionTransactionStatus.APPROVED,
+            },
+            {
+              status: CommissionTransactionStatus.PAID,
+              paidAt: new Date(),
+            },
+          );
+        }
 
         // Create revenue transaction for payout processing fee (if applicable)
         await this.createPayoutFeeTransaction(
@@ -995,6 +1017,52 @@ class PayoutService {
         `[PayoutService] Queued bank payout request for vendor ${vendorId}: ${amount}`,
       );
     }
+  }
+
+  /**
+   * Process affiliate payouts — transfer pending commissions via Stripe
+   */
+  public async processAffiliatePayouts(affiliateId: string): Promise<void> {
+    await this.initializeStripe();
+
+    const affiliate = await Affiliate.findById(affiliateId).populate("userId", "email firstName lastName");
+    if (!affiliate) throw new AppError("Affiliate not found", 404);
+    if (!affiliate.canReceivePayout()) {
+      throw new AppError("Affiliate is not eligible for payout", 400);
+    }
+
+    const pendingCommissions = affiliate.getPendingCommissions();
+    if (!pendingCommissions.length) {
+      throw new AppError("No pending commissions to pay out", 400);
+    }
+
+    const totalAmount = pendingCommissions.reduce(
+      (sum, c) => sum + c.commissionAmount, 0
+    );
+
+    if (affiliate.paymentMethod === "stripe") {
+      if (!stripe) throw new AppError("Stripe not configured", 500);
+      const stripeAccountId = affiliate.paymentDetails?.stripeAccountId;
+      if (!stripeAccountId) throw new AppError("Affiliate Stripe account not configured", 400);
+
+      await stripe.transfers.create({
+        amount: Math.round(totalAmount * 100), // cents
+        currency: "usd",
+        destination: stripeAccountId,
+        description: `Affiliate commission payout — ${affiliateId}`,
+      });
+    }
+    // For other payment methods, mark as paid without transfer (manual process)
+
+    const now = new Date();
+    for (const commission of pendingCommissions) {
+      commission.status = "paid";
+      commission.paidAt = now;
+    }
+    affiliate.totalCommissionPaid += totalAmount;
+    await affiliate.save();
+
+    console.log(`[PayoutService] Affiliate payout processed: ${affiliateId} — ${totalAmount}`);
   }
 }
 

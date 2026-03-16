@@ -1,7 +1,6 @@
 import React, { useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
-import { toast } from 'react-hot-toast';
 import {
   FaPlus,
   FaSearch,
@@ -48,7 +47,7 @@ const TeacherEventsPage: React.FC = () => {
   };
 
   const handleView = (event: ITeachingEvent) => {
-    navigate(`/events/${event.slug || event._id}`);
+    navigate(`/events/${(event as any).slug || event._id}`);
   };
 
   const handleDelete = async () => {
@@ -56,13 +55,9 @@ const TeacherEventsPage: React.FC = () => {
 
     try {
       await deleteEventMutation.mutateAsync({ id: deleteConfirm._id });
-      toast.success('Class deleted successfully');
       setDeleteConfirm(null);
       refetch();
-    } catch (error: any) {
-      const apiMessage =
-        error?.response?.data?.message || error?.message || 'Failed to delete class';
-      toast.error(apiMessage);
+    } catch (error) {
       console.error('Failed to delete event:', error);
     }
   };
@@ -265,7 +260,7 @@ const TeacherEventsPage: React.FC = () => {
                         </div>
                         <div>
                           <p className="font-medium text-gray-900">{event.title}</p>
-                          <p className="text-sm text-gray-500">{(event as any).venueType || event.eventType}</p>
+                          <p className="text-sm text-gray-500">{event.eventType}</p>
                         </div>
                       </div>
                     </td>
@@ -287,7 +282,7 @@ const TeacherEventsPage: React.FC = () => {
                             : 'bg-gray-100 text-gray-600'
                         }`}
                       >
-                        {event.status.charAt(0).toUpperCase() + event.status.slice(1)}
+                        {event.status}
                       </span>
                     </td>
                     <td className="px-6 py-4">

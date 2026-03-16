@@ -152,7 +152,7 @@ export const createTeacherEvent = catchAsync(
       isApproved: false,
       isDeleted: false,
       isActive: true,
-      status: "pending",
+      status: "draft",
       viewsCount: 0,
     });
 
@@ -201,6 +201,7 @@ export const updateTeacherEvent = catchAsync(
       dateSchedule,
       seoMeta,
       faqs,
+      status,
       slug: updateSlug,
       syllabus,
       subject,
@@ -262,14 +263,11 @@ export const updateTeacherEvent = catchAsync(
 
     if (seoMeta) event.seoMeta = seoMeta;
     if (faqs) event.faqs = faqs;
+    if (status) event.status = status;
     if (syllabus) event.syllabus = syllabus;
     if (subject) event.subject = subject;
     if (topic) event.topic = topic;
     if (introVideo) event.introVideo = introVideo;
-
-    // Any teacher-side edit must go back to moderation queue.
-    event.isApproved = false;
-    event.status = "pending";
 
     await event.save();
 
@@ -304,35 +302,21 @@ export const deleteTeacherEvent = catchAsync(
     }
 
     if (permanent === "true") {
-      await Event.findOneAndDelete({ _id: id, teacherId });
+      await Event.findByIdAndDelete(id);
 
       res.status(200).json({
         success: true,
         message: "Event permanently deleted",
       });
     } else {
-      // Use direct update to avoid failing on unrelated schema validations
-      // when soft-deleting legacy/incomplete events.
-      const deletedEvent = await Event.findOneAndUpdate(
-        { _id: id, teacherId, isDeleted: false },
-        {
-          $set: {
-            isDeleted: true,
-            status: "archived",
-            deletedAt: new Date(),
-          },
-        },
-        { new: true },
-      );
-
-      if (!deletedEvent) {
-        return next(new AppError("Event already deleted or not found", 404));
-      }
+      event.isDeleted = true;
+      event.status = "archived";
+      await event.save();
 
       res.status(200).json({
         success: true,
         message: "Event deleted successfully",
-        data: { event: deletedEvent },
+        data: { event },
       });
     }
   },
@@ -364,9 +348,7 @@ export const restoreTeacherEvent = catchAsync(
     }
 
     event.isDeleted = false;
-    // Restored teacher events should return to moderation queue.
-    event.status = "pending";
-    event.isApproved = false;
+    event.status = "draft";
     await event.save();
 
     res.status(200).json({

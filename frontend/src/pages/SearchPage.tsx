@@ -1,11 +1,10 @@
-import React, { useState, useEffect, useMemo, useCallback } from 'react';
-import { useSearchParams, useNavigate } from 'react-router-dom';
+import React, { useState, useEffect, useMemo, useCallback, useRef } from 'react';
+import { useSearchParams } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
 import { FaSearch, FaFilter, FaTimes, FaChevronDown, FaChevronUp, FaMapMarkerAlt, FaCalendarAlt, FaTag, FaDollarSign, FaUsers, FaBuilding, FaStar } from 'react-icons/fa';
 import { SearchEvent, SearchFilters, FilterOptions } from '../types/search';
 import { useEventsSearchQuery } from '@/hooks/queries/useEventsQuery';
 import SEO from '@/components/common/SEO';
-import { logger } from '@/config/app';
 import EventCard from '@/components/client/EventCard';
 import { useSelector, useDispatch } from 'react-redux';
 import { RootState, AppDispatch } from '@/store';
@@ -218,17 +217,25 @@ const ActiveFilters: React.FC<ActiveFiltersProps> = ({ filters, filterOptions, o
 // FilterContent Component
 interface FilterContentProps {
   filters: SearchFilters;
-  setFilters: (filters: SearchFilters) => void;
+  pendingFilters: SearchFilters;
+  setFilters: React.Dispatch<React.SetStateAction<SearchFilters>>;
+  setPendingFilters: React.Dispatch<React.SetStateAction<SearchFilters>>;
   filterOptions: FilterOptions;
   resetFilters: () => void;
+  onApply: () => void;
+  hasChanges: boolean;
   loading?: boolean;
 }
 
 const FilterContent: React.FC<FilterContentProps> = ({
   filters,
+  pendingFilters,
   setFilters,
+  setPendingFilters,
   filterOptions,
   resetFilters,
+  onApply,
+  hasChanges,
   loading = false
 }) => {
 
@@ -244,6 +251,7 @@ const FilterContent: React.FC<FilterContentProps> = ({
       delete newFilters[key];
     }
     setFilters({ ...newFilters, page: 1 });
+    setPendingFilters({ ...newFilters, page: 1 });
   };
 
   // Filter valid options
@@ -273,8 +281,8 @@ const FilterContent: React.FC<FilterContentProps> = ({
                   <input
                     type="radio"
                     name="category"
-                    checked={filters.category === category.value}
-                    onChange={() => setFilters({ ...filters, category: category.value, page: 1 })}
+                    checked={pendingFilters.category === category.value}
+                    onChange={() => setPendingFilters({ ...pendingFilters, category: category.value, page: 1 })}
                     className="mr-3 w-4 h-4 accent-primary"
                     disabled={loading}
                   />
@@ -299,8 +307,8 @@ const FilterContent: React.FC<FilterContentProps> = ({
                   <input
                     type="radio"
                     name="eventType"
-                    checked={filters.type === eventType.value}
-                    onChange={() => setFilters({ ...filters, type: eventType.value, page: 1 })}
+                    checked={pendingFilters.type === eventType.value}
+                    onChange={() => setPendingFilters({ ...pendingFilters, type: eventType.value, page: 1 })}
                     className="mr-3 w-4 h-4 accent-primary"
                     disabled={loading}
                   />
@@ -325,8 +333,8 @@ const FilterContent: React.FC<FilterContentProps> = ({
                   <input
                     type="radio"
                     name="venueType"
-                    checked={filters.venueType === venueType.value}
-                    onChange={() => setFilters({ ...filters, venueType: venueType.value, page: 1 })}
+                    checked={pendingFilters.venueType === venueType.value}
+                    onChange={() => setPendingFilters({ ...pendingFilters, venueType: venueType.value, page: 1 })}
                     className="mr-3 w-4 h-4 accent-primary"
                     disabled={loading}
                   />
@@ -351,8 +359,8 @@ const FilterContent: React.FC<FilterContentProps> = ({
                   <input
                     type="radio"
                     name="city"
-                    checked={filters.city === city.value}
-                    onChange={() => setFilters({ ...filters, city: city.value, page: 1 })}
+                    checked={pendingFilters.city === city.value}
+                    onChange={() => setPendingFilters({ ...pendingFilters, city: city.value, page: 1 })}
                     className="mr-3 w-4 h-4 accent-primary"
                     disabled={loading}
                   />
@@ -373,8 +381,8 @@ const FilterContent: React.FC<FilterContentProps> = ({
           {/* Currency Selector */}
           {validCurrencies.length > 0 && (
             <select
-              value={filters.currency || ''}
-              onChange={(e) => setFilters({ ...filters, currency: e.target.value, page: 1 })}
+              value={pendingFilters.currency || ''}
+              onChange={(e) => setPendingFilters({ ...pendingFilters, currency: e.target.value, page: 1 })}
               className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary bg-white text-gray-900 mb-3"
               disabled={loading}
             >
@@ -391,11 +399,11 @@ const FilterContent: React.FC<FilterContentProps> = ({
           <DualRangeSlider
             min={filterOptions.priceRange.min}
             max={filterOptions.priceRange.max}
-            valueMin={filters.minPrice || filterOptions.priceRange.min}
-            valueMax={filters.maxPrice || filterOptions.priceRange.max}
-            onChange={(min, max) => setFilters({ ...filters, minPrice: min, maxPrice: max, page: 1 })}
+            valueMin={pendingFilters.minPrice || filterOptions.priceRange.min}
+            valueMax={pendingFilters.maxPrice || filterOptions.priceRange.max}
+            onChange={(min, max) => setPendingFilters({ ...pendingFilters, minPrice: min, maxPrice: max, page: 1 })}
             step={10}
-            suffix={` ${filters.currency || 'AED'}`}
+            suffix={` ${pendingFilters.currency || 'AED'}`}
             disabled={loading}
           />
         </div>
@@ -406,9 +414,9 @@ const FilterContent: React.FC<FilterContentProps> = ({
         <DualRangeSlider
           min={filterOptions.ageRange.min}
           max={filterOptions.ageRange.max}
-          valueMin={filters.ageMin || filterOptions.ageRange.min}
-          valueMax={filters.ageMax || filterOptions.ageRange.max}
-          onChange={(min, max) => setFilters({ ...filters, ageMin: min, ageMax: max, page: 1 })}
+          valueMin={pendingFilters.ageMin || filterOptions.ageRange.min}
+          valueMax={pendingFilters.ageMax || filterOptions.ageRange.max}
+          onChange={(min, max) => setPendingFilters({ ...pendingFilters, ageMin: min, ageMax: max, page: 1 })}
           step={1}
           suffix=" yrs"
           disabled={loading}
@@ -422,8 +430,8 @@ const FilterContent: React.FC<FilterContentProps> = ({
             <label className="block text-sm font-medium text-gray-700 mb-2">From</label>
             <input
               type="date"
-              value={filters.dateFrom || ''}
-              onChange={(e) => setFilters({ ...filters, dateFrom: e.target.value, page: 1 })}
+              value={pendingFilters.dateFrom || ''}
+              onChange={(e) => setPendingFilters({ ...pendingFilters, dateFrom: e.target.value, page: 1 })}
               className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary bg-white text-gray-900"
               disabled={loading}
             />
@@ -432,8 +440,8 @@ const FilterContent: React.FC<FilterContentProps> = ({
             <label className="block text-sm font-medium text-gray-700 mb-2">To</label>
             <input
               type="date"
-              value={filters.dateTo || ''}
-              onChange={(e) => setFilters({ ...filters, dateTo: e.target.value, page: 1 })}
+              value={pendingFilters.dateTo || ''}
+              onChange={(e) => setPendingFilters({ ...pendingFilters, dateTo: e.target.value, page: 1 })}
               className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary bg-white text-gray-900"
               disabled={loading}
             />
@@ -446,9 +454,9 @@ const FilterContent: React.FC<FilterContentProps> = ({
         <label className="flex items-center py-2 px-3 rounded-lg hover:bg-blue-50 cursor-pointer transition-colors">
           <input
             type="checkbox"
-            checked={filters.featured || false}
-            onChange={(e) => setFilters({
-              ...filters,
+            checked={pendingFilters.featured || false}
+            onChange={(e) => setPendingFilters({
+              ...pendingFilters,
               featured: e.target.checked ? true : undefined,
               page: 1
             })}
@@ -463,10 +471,10 @@ const FilterContent: React.FC<FilterContentProps> = ({
       <div className="mb-6 md:hidden">
         <h3 className="font-medium mb-3">Sort By</h3>
         <select
-          value={`${filters.sortBy || 'createdAt'}-${filters.sortOrder || 'desc'}`}
+          value={`${pendingFilters.sortBy || 'createdAt'}-${pendingFilters.sortOrder || 'desc'}`}
           onChange={(e) => {
             const [sortBy, sortOrder] = e.target.value.split('-');
-            setFilters({ ...filters, sortBy, sortOrder: sortOrder as 'asc' | 'desc', page: 1 });
+            setPendingFilters({ ...pendingFilters, sortBy, sortOrder: sortOrder as 'asc' | 'desc', page: 1 });
           }}
           className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary bg-white text-gray-900"
           disabled={loading}
@@ -480,14 +488,29 @@ const FilterContent: React.FC<FilterContentProps> = ({
         </select>
       </div>
 
-      <button
-        onClick={resetFilters}
-        className="w-full px-4 py-3 bg-gradient-to-r from-red-500 to-red-600 text-white rounded-lg hover:from-red-600 hover:to-red-700 transition-all shadow-md hover:shadow-lg flex items-center justify-center gap-2 font-medium"
-        disabled={loading}
-      >
-        <FaTimes className="w-4 h-4" />
-        <span>Reset All Filters</span>
-      </button>
+      {/* Apply / Reset buttons */}
+      <div className="flex flex-col gap-2 mt-4">
+        <button
+          onClick={onApply}
+          disabled={!hasChanges || loading}
+          className="w-full px-4 py-3 bg-primary text-white rounded-lg font-medium
+                     hover:bg-primary-dark transition-all disabled:opacity-50
+                     disabled:cursor-not-allowed flex items-center justify-center gap-2"
+        >
+          Apply Filters
+          {hasChanges && <span className="bg-white/20 text-xs px-2 py-0.5 rounded-full">!</span>}
+        </button>
+        <button
+          onClick={resetFilters}
+          className="w-full px-4 py-3 bg-gradient-to-r from-red-500 to-red-600 text-white
+                     rounded-lg hover:from-red-600 hover:to-red-700 transition-all shadow-md
+                     flex items-center justify-center gap-2 font-medium"
+          disabled={loading}
+        >
+          <FaTimes className="w-4 h-4" />
+          Reset All
+        </button>
+      </div>
     </>
   );
 };
@@ -506,7 +529,6 @@ const decodeHTMLEntities = (str: string): string => {
 
 const SearchPage: React.FC = () => {
   const [searchParams, setSearchParams] = useSearchParams();
-  useNavigate();
   const dispatch = useDispatch<AppDispatch>();
   const favoriteItems = useSelector((state: RootState) => state.favorites.items);
 
@@ -552,6 +574,27 @@ const SearchPage: React.FC = () => {
     };
   });
 
+  // Pending filters: what's shown in filter UI (changes on every checkbox/radio/slider)
+  // Only applied to the API when Apply is clicked
+  const [pendingFilters, setPendingFilters] = useState<SearchFilters>(() => ({
+    category: searchParams.get('category') || undefined,
+    type: searchParams.get('type') || undefined,
+    venueType: searchParams.get('venueType') || undefined,
+    city: searchParams.get('city') || undefined,
+    minPrice: searchParams.get('minPrice') ? Number(searchParams.get('minPrice')) : undefined,
+    maxPrice: searchParams.get('maxPrice') ? Number(searchParams.get('maxPrice')) : undefined,
+    currency: searchParams.get('currency') || undefined,
+    ageMin: searchParams.get('ageMin') ? Number(searchParams.get('ageMin')) : undefined,
+    ageMax: searchParams.get('ageMax') ? Number(searchParams.get('ageMax')) : undefined,
+    featured: searchParams.get('featured') === 'true' ? true : undefined,
+    dateFrom: searchParams.get('dateFrom') || undefined,
+    dateTo: searchParams.get('dateTo') || undefined,
+    sortBy: searchParams.get('sortBy') || 'createdAt',
+    sortOrder: (searchParams.get('sortOrder') as 'asc' | 'desc') || 'desc',
+    page: searchParams.get('page') ? Number(searchParams.get('page')) : 1,
+    limit: 12
+  }));
+
   // Debounced search query update (300ms delay) - reacts to URL param changes
   useEffect(() => {
     const handler = setTimeout(() => {
@@ -561,27 +604,30 @@ const SearchPage: React.FC = () => {
     return () => clearTimeout(handler);
   }, [query]);
 
-  // Keep the search input in sync with URL query changes.
-  useEffect(() => {
-    setSearchInput(query);
-  }, [query]);
-
   // Live search: update URL when user types (debounced 500ms)
   useEffect(() => {
     const handler = setTimeout(() => {
-      const params = new URLSearchParams(searchParams);
+      const params = new URLSearchParams(searchParamsRef.current);
       if (searchInput.trim()) {
         params.set('q', searchInput.trim());
       } else {
         params.delete('q');
       }
-      if (params.toString() !== searchParams.toString()) {
-        setSearchParams(params, { replace: true });
-      }
+      // Guard: skip if URL hasn't actually changed (prevents spurious re-renders)
+      if (params.toString() === searchParamsRef.current.toString()) return;
+      setSearchParams(params, { replace: true });
     }, 500);
 
     return () => clearTimeout(handler);
-  }, [searchInput, searchParams, setSearchParams]);
+  }, [searchInput]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  // Sync input box when URL q param changes externally (browser back/forward, link click)
+  // Guard: only update if value actually differs (prevents retriggering live-search debounce)
+  useEffect(() => {
+    if (searchInput !== query) {
+      setSearchInput(query);
+    }
+  }, [query]); // eslint-disable-line react-hooks/exhaustive-deps
 
   // Prepare API parameters from filters
   const searchParams_API = useMemo(() => {
@@ -616,8 +662,7 @@ const SearchPage: React.FC = () => {
   );
 
   // Extract events and pagination from query response
-  logger.debug("search data:", searchData);
-  const events = searchData?.events || [];
+  const events = useMemo(() => searchData?.events || [], [searchData]);
   const pagination = searchData?.pagination || null;
   const error = queryError ? 'Failed to load search results. Please try again.' : null;
 
@@ -721,9 +766,14 @@ const SearchPage: React.FC = () => {
     if (events.length > 0) {
       updateFilterOptions(events);
     }
-  }, [events]);
+  }, [events, updateFilterOptions]);
 
   // Update URL params when filters change
+  // searchParams ref prevents the effect from depending on searchParams (would cause a loop:
+  // effect fires → setSearchParams → searchParams changes → effect fires again)
+  const searchParamsRef = useRef(searchParams);
+  searchParamsRef.current = searchParams;
+
   useEffect(() => {
     const params = new URLSearchParams();
 
@@ -744,10 +794,11 @@ const SearchPage: React.FC = () => {
     if (filters.sortOrder && filters.sortOrder !== 'desc') params.set('sortOrder', filters.sortOrder);
     if (filters.page && filters.page !== 1) params.set('page', filters.page.toString());
 
-    if (params.toString() !== searchParams.toString()) {
-      setSearchParams(params, { replace: true });
-    }
-  }, [filters, query, searchParams, setSearchParams]);
+    // Guard: skip if URL string is already identical — prevents feedback loops
+    if (params.toString() === searchParamsRef.current.toString()) return;
+
+    setSearchParams(params, { replace: true });
+  }, [filters, query]); // eslint-disable-line react-hooks/exhaustive-deps
 
   // Handle search submission
   const handleSearch = (e?: React.FormEvent) => {
@@ -763,12 +814,9 @@ const SearchPage: React.FC = () => {
 
   // Reset filters function
   const resetFilters = useCallback(() => {
-    setFilters({
-      sortBy: 'createdAt',
-      sortOrder: 'desc',
-      page: 1,
-      limit: 12
-    });
+    const defaults: SearchFilters = { sortBy: 'createdAt', sortOrder: 'desc', page: 1, limit: 12 };
+    setFilters(defaults);
+    setPendingFilters(defaults);
   }, []);
 
   // Handle pagination
@@ -777,8 +825,16 @@ const SearchPage: React.FC = () => {
     window.scrollTo({ top: 0, behavior: 'smooth' });
   }, []);
 
-  const hasEvents = events.length > 0;
-  const showInitialLoadingState = loading && !hasEvents;
+  const hasChanges = useMemo(
+    () => JSON.stringify(pendingFilters) !== JSON.stringify(filters),
+    [pendingFilters, filters]
+  );
+
+  const onApply = useCallback(() => {
+    setFilters({ ...pendingFilters, page: 1 });
+  }, [pendingFilters]);
+
+  const isInitialLoad = loading && !searchData;
 
   const searchQuery = searchParams.get('q') || '';
   const breadcrumbs = [
@@ -832,6 +888,20 @@ const SearchPage: React.FC = () => {
 
         <div className="container mx-auto px-4 py-6">
 
+          {isInitialLoad ? (
+            <div className="flex flex-col items-center justify-center min-h-[60vh]">
+              <motion.div
+                animate={{ rotate: 360 }}
+                transition={{ duration: 1, repeat: Infinity, ease: "linear" }}
+                className="w-16 h-16 mb-4"
+              >
+                <FaSearch className="w-full h-full text-primary opacity-50" />
+              </motion.div>
+              <h2 className="text-xl font-semibold text-gray-600 mb-2">Searching for events</h2>
+              <p className="text-gray-500">Finding the best matches for "{query}"</p>
+            </div>
+          ) : null}
+
           {error && (
             <div className="bg-red-100 border-l-4 border-red-500 text-red-700 p-4 mb-6 rounded-r-lg" role="alert">
               <p className="font-bold">Error</p>
@@ -839,13 +909,14 @@ const SearchPage: React.FC = () => {
             </div>
           )}
 
+          {!isInitialLoad && (<>
           <div className="flex items-center justify-between mb-6">
             <div>
-              <h1 className="text-2xl font-bold mb-1">
+              <h1 className="text-lg sm:text-2xl font-bold mb-1 line-clamp-1">
                 {query ? `Search Results for "${query}"` : 'All Events'}
               </h1>
               <p className="text-gray-600">
-                {showInitialLoadingState ? 'Loading...' : `${pagination?.totalEvents || events.length} results found`}
+                {loading ? 'Loading...' : `${pagination?.totalEvents || events.length} results found`}
                 {pagination && (
                   <span className="ml-2 text-sm">
                     (Page {pagination.currentPage} of {pagination.totalPages})
@@ -860,6 +931,7 @@ const SearchPage: React.FC = () => {
                 onChange={(e) => {
                   const [sortBy, sortOrder] = e.target.value.split('-');
                   setFilters(prev => ({ ...prev, sortBy, sortOrder: sortOrder as 'asc' | 'desc', page: 1 }));
+                  setPendingFilters(prev => ({ ...prev, sortBy, sortOrder: sortOrder as 'asc' | 'desc', page: 1 }));
                 }}
                 className="border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary bg-white text-gray-900"
                 disabled={loading}
@@ -906,9 +978,13 @@ const SearchPage: React.FC = () => {
                       {/* Mobile Filters Content */}
                       <FilterContent
                         filters={filters}
+                        pendingFilters={pendingFilters}
                         setFilters={setFilters}
+                        setPendingFilters={setPendingFilters}
                         filterOptions={filterOptions}
                         resetFilters={resetFilters}
+                        onApply={onApply}
+                        hasChanges={hasChanges}
                         loading={loading}
                       />
                     </div>
@@ -933,9 +1009,13 @@ const SearchPage: React.FC = () => {
 
                 <FilterContent
                   filters={filters}
+                  pendingFilters={pendingFilters}
                   setFilters={setFilters}
+                  setPendingFilters={setPendingFilters}
                   filterOptions={filterOptions}
                   resetFilters={resetFilters}
+                  onApply={onApply}
+                  hasChanges={hasChanges}
                   loading={loading}
                 />
               </div>
@@ -943,7 +1023,7 @@ const SearchPage: React.FC = () => {
 
             {/* Search Results */}
             <div className="lg:col-span-3">
-              {showInitialLoadingState ? (
+              {loading ? (
                 <div className="text-center py-16 bg-white rounded-lg shadow-sm">
                   <motion.div
                     animate={{ rotate: 360 }}
@@ -976,7 +1056,7 @@ const SearchPage: React.FC = () => {
                 </div>
               ) : (
                 <>
-                  <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-2 xl:grid-cols-3 gap-6 mb-8">
+                  <div className="grid grid-cols-2 sm:grid-cols-2 lg:grid-cols-2 xl:grid-cols-3 gap-4 sm:gap-6 mb-8">
                     {events.map((event: SearchEvent) => (
                       <motion.div
                         key={event._id}
@@ -1068,6 +1148,7 @@ const SearchPage: React.FC = () => {
               )}
             </div>
           </div>
+          </>)}
         </div>
       </div>
     </>

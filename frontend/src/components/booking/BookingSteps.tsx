@@ -67,15 +67,15 @@ const BookingSteps: React.FC<BookingStepsProps> = ({
             </button>
 
             {/* Step Label */}
-            <div className="ml-3 min-w-0">
+            <div className="ml-1 sm:ml-3 min-w-0 hidden xs:block sm:block">
               <p className={`
-                text-sm font-medium truncate
-                ${isCurrent 
-                  ? 'text-primary' 
-                  : isComplete 
-                  ? 'text-green-600' 
-                  : isPast 
-                  ? 'text-gray-600' 
+                text-xs sm:text-sm font-medium truncate
+                ${isCurrent
+                  ? 'text-primary'
+                  : isComplete
+                  ? 'text-green-600'
+                  : isPast
+                  ? 'text-gray-600'
                   : 'text-gray-400'
                 }
               `}>

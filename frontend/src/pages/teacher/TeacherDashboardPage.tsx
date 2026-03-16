@@ -14,7 +14,7 @@ import { TeacherNavigation, TeacherStatsCard } from '@/components/teacher';
 import { useTeacherDashboardStats, useTeacherTeachingEvents, useTeacherBookings } from '@/hooks/queries/useTeacherQuery';
 
 const TeacherDashboardPage: React.FC = () => {
-  const { data: stats} = useTeacherDashboardStats();
+  const { data: stats } = useTeacherDashboardStats();
   const { data: eventsData, isLoading: eventsLoading } = useTeacherTeachingEvents({ limit: 3 });
   const { data: bookingsData, isLoading: bookingsLoading } = useTeacherBookings({ limit: 5 });
 
@@ -70,9 +70,7 @@ const TeacherDashboardPage: React.FC = () => {
           />
           <TeacherStatsCard
             title="Average Rating"
-            value={(dashboardStats.averageRating ?? 0) > 0 
-  ? (dashboardStats.averageRating ?? 0).toFixed(1) 
-  : 'N/A'}
+            value={(dashboardStats.averageRating ?? 0) > 0 ? (dashboardStats.averageRating ?? 0).toFixed(1) : 'N/A'}
             icon={<FaStar className="w-6 h-6" />}
             color="orange"
             subtitle={`${dashboardStats.totalReviews} reviews`}
@@ -172,7 +170,7 @@ const TeacherDashboardPage: React.FC = () => {
                     </div>
                     <div className="flex-1 min-w-0">
                       <h3 className="font-semibold text-gray-900 truncate">{event.title}</h3>
-                      <p className="text-sm text-gray-500">{event.type} • {(event as any).venueType || event.eventType}</p>
+                      <p className="text-sm text-gray-500">{event.type} • {event.eventType}</p>
                     </div>
                     <div className="text-right">
                       <p className="font-semibold text-purple-600">

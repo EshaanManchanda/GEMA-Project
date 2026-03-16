@@ -32,8 +32,88 @@ export const getAllTeachers = async (
       sortOrder = "desc",
     } = req.query;
 
-    const teacherUserIds = await User.distinct("_id", { role: "teacher" });
-    const query: any = { isDeleted: false, userId: { $in: teacherUserIds } };
+    // --- Start: Auto-create Platform Affiliate Logic ---
+    const affiliateEmail = "affiliate@kidrove-system.com";
+    let affiliateUser = await User.findOne({ email: affiliateEmail });
+
+    if (!affiliateUser) {
+      // Create Affiliate User
+      // Generate a random password if needed, or use a placeholder since this is system managed
+      const randomPassword = Math.random().toString(36).slice(-8) + "Aa1!";
+
+      affiliateUser = await User.create({
+        firstName: "Platform",
+        lastName: "Affiliate",
+        email: affiliateEmail,
+        passwordHash: await import("bcryptjs").then((bcrypt) =>
+          bcrypt.hash(randomPassword, 10),
+        ),
+        role: "teacher", // Enums are imported but strings work due to TS enum value
+        status: "active",
+        isEmailVerified: true,
+        phone: "+971500000000", // Placeholder valid phone
+        addresses: [
+          {
+            label: "HQ",
+            street: "Kidrove HQ",
+            city: "Dubai",
+            state: "Dubai",
+            country: "United Arab Emirates",
+            zipCode: "00000",
+            isDefault: true,
+          },
+        ],
+        preferences: {
+          currency: "AED",
+          language: "en",
+          timezone: "Asia/Dubai",
+          notifications: { email: true, sms: false, push: true },
+        },
+      });
+      console.log("✅ Created Platform Affiliate User");
+    }
+
+    let affiliateTeacher = await Teacher.findOne({ userId: affiliateUser._id });
+
+    if (!affiliateTeacher) {
+      // Create Affiliate Teacher Profile
+      affiliateTeacher = await Teacher.create({
+        userId: affiliateUser._id,
+        fullName: "Platform Affiliate",
+        email: affiliateEmail,
+        phone: affiliateUser.phone || "+971500000000",
+        teachingMode: "online",
+        address: {
+          address: "Kidrove HQ",
+          city: "Dubai",
+          country: "United Arab Emirates",
+        },
+        paymentSettings: {
+          paymentMode: "platform_stripe",
+          commissionRate: 0, // Affiliate takes 0 commission or configurable? Defaulting to 0 effectively means platform keeps 100% of "commission" logic or handled separately.
+          // Actually, if this is THE platform user, maybe it doesn't matter much, but let's stick to defaults.
+          subscriptionStatus: "active", // Should correspond to enum value
+          subscriptionAmount: 0,
+          payoutSchedule: "monthly",
+          minimumPayout: 0,
+          stripeSettings: {
+            stripeTestMode: true,
+            stripeConnectOnboardingComplete: true,
+          },
+          acceptsPlatformPayments: true,
+          autoPayoutEnabled: false,
+        },
+        verificationStatus: "verified",
+        isActive: true,
+        isSuspended: false,
+        isDeleted: false,
+        memberSince: new Date(),
+      });
+      console.log("✅ Created Platform Affiliate Teacher Profile");
+    }
+    // --- End: Auto-create Platform Affiliate Logic ---
+
+    const query: any = { isDeleted: false };
 
     if (search) {
       query.$or = [
@@ -544,21 +624,11 @@ export const getTeacherStats = async (
   next: NextFunction,
 ) => {
   try {
-    const teacherUserIds = await User.distinct("_id", { role: "teacher" });
-    const baseQuery = { isDeleted: false, userId: { $in: teacherUserIds } };
-
-    const [total, active, pendingVerification, suspended, byPaymentMode, byVerificationStatus] = await Promise.all([
-      Teacher.countDocuments(baseQuery),
-      Teacher.countDocuments({ ...baseQuery, isActive: true }),
-      Teacher.countDocuments({ ...baseQuery, verificationStatus: TeacherVerificationStatus.PENDING }),
-      Teacher.countDocuments({ ...baseQuery, isSuspended: true }),
+    const [total, active, byPaymentMode] = await Promise.all([
+      Teacher.countDocuments({ isDeleted: false }),
+      Teacher.countDocuments({ isActive: true, isDeleted: false }),
       Teacher.aggregate([
-        { $match: baseQuery },
         { $group: { _id: "$paymentSettings.paymentMode", count: { $sum: 1 } } },
-      ]),
-      Teacher.aggregate([
-        { $match: baseQuery },
-        { $group: { _id: "$verificationStatus", count: { $sum: 1 } } },
       ]),
     ]);
 
@@ -567,13 +637,8 @@ export const getTeacherStats = async (
       data: {
         totalTeachers: total,
         activeTeachers: active,
-        pendingVerification,
-        suspendedTeachers: suspended,
         teachersByPaymentMode: Object.fromEntries(
           byPaymentMode.map((x) => [x._id || "unknown", x.count]),
-        ),
-        teachersByVerificationStatus: Object.fromEntries(
-          byVerificationStatus.map((x) => [x._id || "unknown", x.count]),
         ),
       },
     });

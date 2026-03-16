@@ -3,7 +3,7 @@ import { useParams, Link } from 'react-router-dom';
 import { VendorSEO } from '@/components/common/SEO';
 import vendorAPI from '@/services/api/vendorAPI';
 import reviewsAPI from '@/services/api/reviewsAPI';
-import { getEventImage } from '@/utils/imageFallbacks';
+import { getEventImage, generateFallbackImage } from '@/utils/imageFallbacks';
 
 const StarRating: React.FC<{ rating: number; size?: string }> = ({ rating, size = 'w-4 h-4' }) => (
   <div className="flex items-center gap-0.5">
@@ -92,7 +92,8 @@ const VendorPage: React.FC = () => {
   const socialMedia = vendorProfile?.socialMedia || {};
   const contactEmail = userData.email;
   const contactPhone = userData.phone || '';
-  const locationCity = vendorProfile?.location?.city || vendorProfile?.address || '';
+  const locationCity = vendorProfile?.location?.city ||
+    (typeof vendorProfile?.address === 'string' ? vendorProfile.address : vendorProfile?.address?.city) || '';
   const avgRating = vendorProfile?.stats?.averageRating || 0;
   const reviewCount = vendorProfile?.stats?.totalReviews || 0;
   const category = vendorProfile?.category;
@@ -104,7 +105,14 @@ const VendorPage: React.FC = () => {
   ];
 
   // Minimal vendor shape for SEO
-  const vendorSeoData = { name: displayName, logo: avatar, description };
+  const vendorSeoData = {
+    name: displayName,
+    logo: avatar,
+    description: description || '',
+    categories: [],
+    location: locationCity,
+    id,
+  };
 
   return (
     <>
@@ -185,7 +193,7 @@ const VendorPage: React.FC = () => {
               </div>
 
               {/* Stats */}
-              <div className="grid grid-cols-3 gap-4">
+              <div className="grid grid-cols-3 sm:grid-cols-3 gap-4">
                 {[
                   { label: 'Events', value: stats.totalEvents ?? 0 },
                   { label: 'Bookings', value: stats.totalBookings ?? 0 },
@@ -291,7 +299,7 @@ const VendorPage: React.FC = () => {
                 <p className="text-gray-500 font-medium">No published events</p>
               </div>
             ) : (
-              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
                 {events.map((event: any) => {
                   const eventLink = `/events/${event.slug || event._id}`;
                   const firstDate = event.dateSchedule?.[0]?.date || event.dateSchedule?.[0]?.startDate;
@@ -306,10 +314,20 @@ const VendorPage: React.FC = () => {
                           src={getEventImage(event.images, event.title, 400, 300)}
                           alt={event.title}
                           className="w-full h-full object-cover"
+                          onError={(e) => {
+                            const target = e.currentTarget;
+                            const fallback = generateFallbackImage(event.title, 400, 300);
+                            if (target.src !== fallback) target.src = fallback;
+                          }}
                         />
                         {event.price != null && (
                           <div className="absolute top-2 right-2 bg-primary text-white px-2.5 py-1 rounded-full text-xs font-semibold">
-                            {event.price === 0 ? 'Free' : `$${event.price}`}
+                            {event.price === 0 ? 'Free' : new Intl.NumberFormat('en-US', {
+                              style: 'currency',
+                              currency: event.currency || 'USD',
+                              minimumFractionDigits: 0,
+                              maximumFractionDigits: 0,
+                            }).format(event.price)}
                           </div>
                         )}
                         {event.category && (

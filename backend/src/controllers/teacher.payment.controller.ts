@@ -1,4 +1,4 @@
-import { Request, Response } from "express";
+import { Request, Response, NextFunction } from "express";
 import Teacher, {
   TeacherPaymentMode,
   TeacherSubscriptionStatus,
@@ -7,6 +7,11 @@ import { stripeConnectService } from "../services/stripe-connect.service";
 import { subscriptionService } from "../services/subscription.service";
 import { getOrCreateTeacherProfile } from "../utils/teacherHelpers";
 import { Types } from "mongoose";
+import { AppError } from "../middleware/error";
+import Notification, {
+  NotificationType,
+  NotificationPriority,
+} from "../models/Notification";
 
 import User from "../models/User";
 
@@ -87,7 +92,7 @@ export const getTeacherPaymentOverview = async (
       // Bank account
       bankAccount: {
         hasAccount: !!teacher.paymentSettings.bankDetails?.accountNumber,
-        isVerified: false, // verification flow not implemented yet
+        isVerified: teacher.paymentSettings.bankDetails?.isVerified ?? false,
         accountHolderName:
           teacher.paymentSettings.bankDetails?.accountHolderName,
         bankName: teacher.paymentSettings.bankDetails?.bankName,
@@ -670,5 +675,56 @@ export const calculateTeacherCommissionComparison = async (
       message: "Failed to calculate comparison",
       error: error.message,
     });
+  }
+};
+
+/**
+ * PATCH /api/admin/teachers/:teacherId/verify-bank
+ * Admin: approve or reject a teacher's bank account
+ */
+export const adminVerifyTeacherBank = async (
+  req: Request,
+  res: Response,
+  next: NextFunction,
+) => {
+  try {
+    const { teacherId } = req.params;
+    const { verified, reason } = req.body;
+
+    const teacher = await Teacher.findById(teacherId);
+    if (!teacher) return next(new AppError("Teacher not found", 404));
+
+    if (!teacher.paymentSettings.bankDetails) {
+      return next(new AppError("Teacher has no bank details on file", 400));
+    }
+
+    teacher.paymentSettings.bankDetails.isVerified = verified === true;
+    await teacher.save();
+
+    // Notify teacher
+    const notificationType = verified ? "bank_verified" : "bank_rejected";
+    const title = verified
+      ? "Bank Account Verified"
+      : "Bank Account Verification Failed";
+    const message = verified
+      ? "Your bank account has been verified and payouts are now enabled."
+      : `Your bank account verification was unsuccessful.${reason ? ` Reason: ${reason}` : ""}`;
+
+    await Notification.create({
+      userId: teacher.userId,
+      type: NotificationType.SYSTEM_MAINTENANCE,
+      priority: NotificationPriority.HIGH,
+      title,
+      message,
+      data: { teacherId, verified, reason },
+    });
+
+    res.json({
+      success: true,
+      message: `Bank account ${verified ? "verified" : "rejected"} successfully`,
+      isVerified: verified === true,
+    });
+  } catch (error) {
+    next(error);
   }
 };

@@ -107,9 +107,10 @@ const BookingConfirmation: React.FC<BookingConfirmationProps> = ({
   const handleDownloadTickets = async () => {
     if (isDownloading) return;
     setIsDownloading(true);
-    const orderId = (bookingFlow as any)?.orderId;
+    const orderId = checkout?.orderId || currentBooking?.id;
     if (!orderId) {
       toast.error('Booking ID not found. Visit My Bookings to download tickets.');
+      setIsDownloading(false);
       return;
     }
     try {

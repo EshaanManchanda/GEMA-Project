@@ -636,14 +636,13 @@ export async function restoreTeacher(
     teacher.isActive = true;
     await teacher.save({ session });
 
-    // Restore events back to moderation queue
+    // Restore events (but keep them as drafts)
     await Event.updateMany(
       { teacherId, isDeleted: true },
       {
         $set: {
           isDeleted: false,
-          status: "pending",
-          isApproved: false,
+          status: "draft",
           isActive: false,
         },
         $unset: { deletedAt: 1 },

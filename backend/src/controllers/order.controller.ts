@@ -6,6 +6,7 @@ import { AppError } from "../middleware/index";
 import { AuthRequest } from "../types/index";
 import { emailService } from "../services/email.service";
 import { CouponService } from "../services/coupon.service";
+import { stripe } from "../config/stripe";
 import logger from "../config/logger";
 
 // @desc    Create new order
@@ -375,11 +376,26 @@ export const processPayment = async (
       return next(new AppError("Order already paid", 400));
     }
 
-    // TODO: Integrate with actual payment gateway (Stripe, PayPal, etc.)
-    // This is a placeholder for payment processing logic
+    // Verify PaymentIntent status with Stripe
+    if (!paymentIntentId) {
+      return next(new AppError("paymentIntentId is required", 400));
+    }
 
-    // Simulate payment processing
-    const paymentSuccessful = true; // This would come from payment gateway
+    const paymentIntent = await stripe.paymentIntents.retrieve(paymentIntentId);
+    if (!paymentIntent) {
+      return next(new AppError("PaymentIntent not found", 404));
+    }
+
+    const paymentSuccessful = paymentIntent.status === "succeeded";
+
+    if (!paymentSuccessful) {
+      return next(
+        new AppError(
+          `Payment not completed. Status: ${paymentIntent.status}`,
+          400,
+        ),
+      );
+    }
 
     if (paymentSuccessful) {
       // Mark order as paid
@@ -419,7 +435,7 @@ export const processPayment = async (
       const user = await User.findById(userId);
       if (user) {
         // Populate order with event details for email
-        await order.populate("items.eventId", "venueType meetingLink");
+        await order.populate("items.eventId", "venueType meetingLink location");
 
         await emailService.sendOrderConfirmationEmail({
           to: user.email,
@@ -437,7 +453,22 @@ export const processPayment = async (
           })),
         });
 
-        // TODO: Send tickets email separately with QR codes
+        // Send tickets email with QR codes
+        try {
+          await emailService.sendTicketsEmail({
+            to: user.email,
+            firstName: user.firstName,
+            tickets: tickets.map((t: any) => ({
+              ticketNumber: t.ticketNumber,
+              qrCode: t.qrCodeImage || t.qrCode || "",
+              eventTitle: (order.items[0] as any)?.eventTitle || "",
+              eventDate: t.eventDate,
+              venue: (order.items[0] as any)?.eventId?.location?.address || "",
+            })),
+          });
+        } catch (ticketEmailError) {
+          logger.error("Failed to send tickets email:", ticketEmailError);
+        }
       }
 
       res.status(200).json({
@@ -447,11 +478,6 @@ export const processPayment = async (
           order,
           tickets,
         },
-      });
-    } else {
-      res.status(400).json({
-        success: false,
-        message: "Payment failed",
       });
     }
   } catch (error) {

@@ -683,28 +683,12 @@ export const validateEventApproval = [
  * Admin-specific field validations
  */
 const adminSpecificFields = [
-  // Ownership: either vendorId or teacherId must be provided for admin create
-  body()
-    .custom((_, { req }) => {
-      const vendorId = req.body?.vendorId;
-      const teacherId = req.body?.teacherId;
-      if (!vendorId && !teacherId) {
-        throw new Error("Either vendor ID or teacher ID is required");
-      }
-      return true;
-    }),
-
-  // Vendor ID
+  // Vendor ID (required for admin create)
   body("vendorId")
-    .optional({ values: "falsy" })
+    .notEmpty()
+    .withMessage("Vendor ID is required")
     .isMongoId()
     .withMessage("Invalid vendor ID format"),
-
-  // Teacher ID
-  body("teacherId")
-    .optional({ values: "falsy" })
-    .isMongoId()
-    .withMessage("Invalid teacher ID format"),
 
   // Admin control fields
   body("isApproved")
@@ -758,14 +742,9 @@ const adminSpecificFields = [
 const adminSpecificFieldsUpdate = [
   // Vendor ID (optional for updates)
   body("vendorId")
-    .optional({ values: "falsy" })
+    .optional()
     .isMongoId()
     .withMessage("Invalid vendor ID format"),
-
-  body("teacherId")
-    .optional({ values: "falsy" })
-    .isMongoId()
-    .withMessage("Invalid teacher ID format"),
 
   // Admin control fields
   body("isApproved")

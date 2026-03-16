@@ -100,8 +100,18 @@ const BannerCarousel: React.FC<BannerCarouselProps> = ({ banners }) => {
         {validBanners.map((banner, index) => (
           <div
             key={banner._id}
-            className="keen-slider__slide relative w-full h-[250px] sm:h-[300px] md:h-[650px] max-h-[70vh] md:max-h-[100vh]"
+            className="keen-slider__slide relative w-full aspect-video sm:aspect-auto sm:h-[55vh] md:h-[65vh] lg:h-[70vh] max-h-[800px]"
           >
+            {/* Blurred background fill — only for explicitly 'contain' banners */}
+            {banner.objectFit === 'contain' && (
+              <img
+                src={banner.imageAsset?.url}
+                alt=""
+                aria-hidden="true"
+                className="absolute inset-0 w-full h-full object-cover blur-2xl scale-110 opacity-60"
+              />
+            )}
+
             {/* Banner Image with WebP optimization */}
             <picture className="block absolute inset-0 w-full h-full">
               {/* LQIP as background for perceived performance */}
@@ -146,22 +156,22 @@ const BannerCarousel: React.FC<BannerCarouselProps> = ({ banners }) => {
             {/* Text Overlay */}
             {(banner.titleVisible && banner.title || banner.descriptionVisible && banner.description || banner.ctaVisible && banner.ctaText) && (
               <div className="absolute inset-0 flex items-center">
-                <div className="container mx-auto px-6 md:px-12 lg:px-20">
+                <div className="container mx-auto px-4 sm:px-6 md:px-12 lg:px-20">
                   <div className="max-w-2xl">
                     {banner.titleVisible && banner.title && (
-                      <h2 className="text-3xl md:text-5xl lg:text-6xl font-bold text-white mb-4 leading-tight">
+                      <h2 className="text-xl sm:text-3xl md:text-5xl lg:text-6xl font-bold text-white mb-3 sm:mb-4 leading-tight">
                         {banner.title}
                       </h2>
                     )}
                     {banner.descriptionVisible && banner.description && (
-                      <p className="text-lg md:text-xl text-white/90 mb-6 leading-relaxed">
+                      <p className="text-sm sm:text-base md:text-xl text-white/90 mb-4 sm:mb-6 leading-relaxed">
                         {banner.description}
                       </p>
                     )}
                     {banner.ctaVisible && banner.ctaText && banner.ctaLink && (
                       <button
                         onClick={(e) => handleCtaClick(e, banner)}
-                        className="inline-block px-8 py-4 bg-orange-500 hover:bg-orange-600 text-white font-bold text-lg rounded-lg transition-all duration-300 hover:scale-105 shadow-lg"
+                        className="inline-block px-4 py-2 sm:px-8 sm:py-4 bg-orange-500 hover:bg-orange-600 text-white font-bold text-sm sm:text-lg rounded-lg transition-all duration-300 hover:scale-105 shadow-lg"
                       >
                         {banner.ctaText}
                       </button>
@@ -189,14 +199,14 @@ const BannerCarousel: React.FC<BannerCarouselProps> = ({ banners }) => {
         <>
           <button
             onClick={() => instanceRef.current?.prev()}
-            className="absolute left-4 top-1/2 -translate-y-1/2 w-12 h-12 flex items-center justify-center bg-white/80 hover:bg-white rounded-full shadow-lg transition-all duration-300 hover:scale-110 z-10"
+            className="absolute left-4 top-1/2 -translate-y-1/2 w-9 h-9 sm:w-12 sm:h-12 flex items-center justify-center bg-white/80 hover:bg-white rounded-full shadow-lg transition-all duration-300 hover:scale-110 z-10"
             aria-label="Previous banner"
           >
             <ChevronLeft className="w-6 h-6 text-gray-800" />
           </button>
           <button
             onClick={() => instanceRef.current?.next()}
-            className="absolute right-4 top-1/2 -translate-y-1/2 w-12 h-12 flex items-center justify-center bg-white/80 hover:bg-white rounded-full shadow-lg transition-all duration-300 hover:scale-110 z-10"
+            className="absolute right-4 top-1/2 -translate-y-1/2 w-9 h-9 sm:w-12 sm:h-12 flex items-center justify-center bg-white/80 hover:bg-white rounded-full shadow-lg transition-all duration-300 hover:scale-110 z-10"
             aria-label="Next banner"
           >
             <ChevronRight className="w-6 h-6 text-gray-800" />

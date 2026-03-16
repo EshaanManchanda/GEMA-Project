@@ -65,7 +65,7 @@ const PhoneInput: React.FC<PhoneInputProps> = ({
   return (
     <div className={`form-group ${className}`}>
       <label className="form-label">
-        Phone number {required ? <span className="text-red-500">*</span> : <span className="text-gray-400 text-xs font-normal">(Optional)</span>}
+        Phone number {required && <span className="text-red-500">*</span>}
       </label>
 
       <div className="relative flex">
@@ -145,7 +145,7 @@ const PhoneInput: React.FC<PhoneInputProps> = ({
 
       {/* Helper Text */}
       <p className="text-xs text-gray-500 mt-1">
-        Enter your phone number without the country code. You can skip this field.
+        Enter your phone number without the country code
       </p>
 
       {/* Dropdown Backdrop */}

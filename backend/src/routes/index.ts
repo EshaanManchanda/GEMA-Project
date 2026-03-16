@@ -33,7 +33,7 @@ import blogCommentsRoutes from "./blog.comments.routes";
 import categoryRoutes from "./category.routes";
 import couponRoutes from "./coupon.routes";
 import adminCollectionRoutes from "./admin.collection.routes";
-// import notificationRoutes from './notification.routes';
+import notificationRoutes from './notification.routes';
 import affiliateRoutes from "./affiliate.routes";
 import bookingRoutes from "./booking.routes";
 import newsletterRoutes from "./newsletter.routes";
@@ -193,7 +193,7 @@ router.use("/admin/blogs", adminBlogRoutes);
 // New feature routes
 router.use("/categories", categoryRoutes);
 router.use("/coupons", couponRoutes);
-// router.use('/notifications', notificationRoutes); // Commented out - notification system disabled
+router.use('/notifications', notificationRoutes);
 router.use("/affiliates", affiliateRoutes);
 router.use("/newsletter", newsletterRoutes);
 
@@ -250,6 +250,12 @@ router.use("/", venueAffiliateRoutes);
 
 import adminTeacherPayoutRoutes from "./admin.teacher.payout.routes";
 import adminTeacherRevenueRoutes from "./admin.teacher.revenue.routes";
+import chatbotProxyRouter from "./chatbot.proxy.routes";
+import { authenticate, authorize } from "../middleware/auth";
+import { UserRole } from "../models/index";
+
+// AI Chatbot proxy routes (admin only)
+router.use("/chatbot", authenticate, authorize([UserRole.ADMIN]), chatbotProxyRouter);
 
 // Admin Teacher Payout routes
 router.use("/admin/teachers/payouts", adminTeacherPayoutRoutes);

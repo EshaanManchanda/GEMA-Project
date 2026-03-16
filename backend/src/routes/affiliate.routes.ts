@@ -11,6 +11,7 @@ import {
   updateAffiliateStatus,
   getTopPerformers,
   getAffiliateAnalytics,
+  requestAffiliatePayout,
 } from "../controllers/affiliate.controller";
 import { authenticate, authorize } from "../middleware/auth";
 import { validateRequest } from "../middleware/validation";
@@ -225,6 +226,8 @@ router.get(
   validateRequest,
   getCommissions,
 );
+
+router.post("/payout-request", requestAffiliatePayout);
 
 // Admin only routes
 router.get(

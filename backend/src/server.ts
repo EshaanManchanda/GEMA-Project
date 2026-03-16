@@ -102,6 +102,9 @@ app.use(
           "http://localhost:3000",
           "http://localhost:3001",
           "http://localhost:5173", // Vite default port
+          "http://127.0.0.1:3000",
+          "http://127.0.0.1:3001",
+          "http://127.0.0.1:5173",
         );
       }
 
@@ -263,9 +266,13 @@ app.use("/api/currency", currencyRoutes);
 app.use("/api/health", healthRoutes);
 
 import seoRoutes from "./routes/seo.routes";
+import ogRoutes from "./routes/og.routes";
 
 // SEO Routes (sitemap.xml, robots.txt) - Mount at root
 app.use("/", seoRoutes);
+
+// OG HTML Routes for social bot link previews
+app.use("/og", ogRoutes);
 
 // Also keep standalone health routes for direct access
 app.use("/health", healthRoutes);

@@ -1,6 +1,7 @@
 import { Request, Response, NextFunction } from "express";
 import { Review, Event, User } from "../models/index";
 import { AppError } from "../middleware/index";
+import Notification, { NotificationType, NotificationPriority, NotificationChannel } from "../models/Notification";
 
 /**
  * Get all reviews pending moderation
@@ -98,7 +99,25 @@ export const moderateReview = async (
 
     await review.save();
 
-    // TODO: Send notification to user if notifyUser is true
+    // P2.3: Notify user about moderation action
+    if (notifyUser && review.user) {
+      const actionMessages: Record<string, string> = {
+        approve: "Your review has been approved and is now visible.",
+        reject: `Your review has been rejected${reason ? `: ${reason}` : "."}`,
+        flag: "Your review has been flagged for further review.",
+      };
+      const message = actionMessages[action] || `Your review has been ${action}ed.`;
+      await Notification.create({
+        userId: review.user,
+        type: NotificationType.REVIEW_RECEIVED,
+        priority: NotificationPriority.MEDIUM,
+        channels: [NotificationChannel.IN_APP],
+        title: "Review Update",
+        message,
+        data: { reviewId: review._id, action, reason },
+        scheduledFor: new Date(),
+      }).catch(() => {/* non-critical — log silently */});
+    }
 
     res.status(200).json({
       success: true,

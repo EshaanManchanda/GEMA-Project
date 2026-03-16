@@ -163,7 +163,7 @@ const ContactPage: React.FC = () => {
         >
           {/* Header */}
           <motion.div variants={itemVariants} className="text-center mb-12">
-            <h1 className="text-4xl md:text-5xl font-bold mb-4 text-gray-800">Contact Us</h1>
+            <h1 className="text-3xl sm:text-4xl md:text-5xl font-bold mb-4 text-gray-800">Contact Us</h1>
             <p className="text-xl text-gray-600 max-w-2xl mx-auto">We'd love to hear from you! Whether you have a question about our events, need help with a booking, or want to partner with us.</p>
           </motion.div>
 

@@ -29,7 +29,6 @@ interface Vendor {
 }
 
 interface BasicInfoTabProps {
-  isCreateMode?: boolean;
   formData: {
     title: string;
     description: string;
@@ -81,7 +80,6 @@ interface BasicInfoTabProps {
 }
 
 const BasicInfoTab: React.FC<BasicInfoTabProps> = ({
-  isCreateMode = false,
   formData,
   categories,
   vendors,
@@ -100,8 +98,6 @@ const BasicInfoTab: React.FC<BasicInfoTabProps> = ({
 }) => {
   // Educational types check
   const isEducational = ['Class', 'Bootcamp', 'Masterclass', 'Course', 'Workshop'].includes(formData.type);
-  const showVendorAssignment = isCreateMode || !formData.teacherId;
-  const showTeacherAssignment = isCreateMode || !!formData.teacherId;
 
   // Helper for syllabus
   const handleAddSyllabusItem = () => {
@@ -166,64 +162,34 @@ const BasicInfoTab: React.FC<BasicInfoTabProps> = ({
         <CardContent>
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
             {/* Vendor Assignment */}
-            {showVendorAssignment && (
-              <div>
-                <label htmlFor="vendorId" className="block text-sm font-medium text-gray-700 mb-1">
-                  Assigned Vendor
-                </label>
-                <select
-                  id="vendorId"
-                  name="vendorId"
-                  value={formData.vendorId}
-                  onChange={onInputChange}
-                  disabled={formData.isAffiliateEvent}
-                  className={`w-full px-3 py-2 border ${errors.vendorId ? 'border-red-500' : 'border-gray-300'} rounded-md shadow-sm focus:outline-none focus:ring-primary focus:border-primary ${formData.isAffiliateEvent ? 'bg-gray-100 cursor-not-allowed' : ''}`}
-                >
-                  <option value="">Select a vendor</option>
-                  {(vendors || []).map(vendor => (
-                    <option key={vendor._id} value={vendor._id}>
-                      {vendor.businessName} ({vendor.email})
-                    </option>
-                  ))}
-                </select>
-                {errors.vendorId && <p className="mt-1 text-sm text-red-500">{errors.vendorId}</p>}
-                {formData.isAffiliateEvent ? (
-                  <p className="mt-1 text-xs text-blue-600 font-medium">
-                    Auto-assigned to "Platform Affiliate" for affiliate events
-                  </p>
-                ) : (
-                  <p className="mt-1 text-xs text-gray-500">Assign this event to a vendor</p>
-                )}
-              </div>
-            )}
-
-            {/* Teacher Assignment (show only for teacher-owned events) */}
-            {showTeacherAssignment && (
-              <div className="md:col-span-2">
-                <label htmlFor="teacherId-admin" className="block text-sm font-medium text-gray-700 mb-1">
-                  Assigned Teacher / Instructor
-                </label>
-                <select
-                  id="teacherId-admin"
-                  name="teacherId"
-                  value={formData.teacherId}
-                  onChange={onInputChange}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-primary focus:border-primary"
-                >
-                  <option value="">No teacher assigned</option>
-                  {(teachers || []).map(teacher => (
-                    <option key={teacher.id} value={teacher.id}>
-                      {`${teacher.firstName || ''} ${teacher.lastName || ''}`.trim()
-                        ? `${`${teacher.firstName || ''} ${teacher.lastName || ''}`.trim()} (${teacher.email})`
-                        : teacher.email}
-                    </option>
-                  ))}
-                </select>
-                <p className="mt-1 text-xs text-gray-500">
-                  This event is managed by the selected teacher
+            <div className="md:col-span-2">
+              <label htmlFor="vendorId" className="block text-sm font-medium text-gray-700 mb-1">
+                Assigned Vendor <span className="text-red-500">*</span>
+              </label>
+              <select
+                id="vendorId"
+                name="vendorId"
+                value={formData.vendorId}
+                onChange={onInputChange}
+                disabled={formData.isAffiliateEvent}
+                className={`w-full px-3 py-2 border ${errors.vendorId ? 'border-red-500' : 'border-gray-300'} rounded-md shadow-sm focus:outline-none focus:ring-primary focus:border-primary ${formData.isAffiliateEvent ? 'bg-gray-100 cursor-not-allowed' : ''}`}
+              >
+                <option value="">Select a vendor</option>
+                {(vendors || []).map(vendor => (
+                  <option key={vendor._id} value={vendor._id}>
+                    {vendor.businessName} ({vendor.email})
+                  </option>
+                ))}
+              </select>
+              {errors.vendorId && <p className="mt-1 text-sm text-red-500">{errors.vendorId}</p>}
+              {formData.isAffiliateEvent ? (
+                <p className="mt-1 text-xs text-blue-600 font-medium">
+                  Auto-assigned to "Platform Affiliate" for affiliate events
                 </p>
-              </div>
-            )}
+              ) : (
+                <p className="mt-1 text-xs text-gray-500">Assign this event to a vendor</p>
+              )}
+            </div>
 
             {/* Booking Configuration Section */}
             <div className="md:col-span-2 border-t pt-4">
@@ -582,7 +548,26 @@ const BasicInfoTab: React.FC<BasicInfoTabProps> = ({
               </div>
 
               <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-6">
-                <div className="md:col-span-2">
+                <div>
+                  <label htmlFor="teacherId" className="block text-sm font-medium text-gray-700 mb-1">
+                    Instructor / Teacher
+                  </label>
+                  <select
+                    id="teacherId"
+                    name="teacherId"
+                    value={formData.teacherId}
+                    onChange={onInputChange}
+                    className="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-primary focus:border-primary"
+                  >
+                    <option value="">Select Instructor</option>
+                    {(teachers || []).map(teacher => (
+                      <option key={teacher.id} value={teacher.id}>
+                        {teacher.firstName} {teacher.lastName} ({teacher.email})
+                      </option>
+                    ))}
+                  </select>
+                </div>
+                <div>
                   <label htmlFor="introVideo" className="block text-sm font-medium text-gray-700 mb-1">
                     Intro Video URL
                   </label>

@@ -1,5 +1,5 @@
 import React, { useState, useMemo, useTransition } from 'react';
-import { Link, useSearchParams } from 'react-router-dom';
+import { Link } from 'react-router-dom';
 import { format } from 'date-fns';
 import { useInView } from 'react-intersection-observer';
 import { useEventsQuery } from '@/hooks/queries/useEventsQuery';
@@ -140,10 +140,6 @@ const mockEvents = [
 ];
 
 const EventsPage: React.FC = () => {
-  const [searchParams] = useSearchParams();
-  const teacherIdFilter = searchParams.get('teacherId') || '';
-  const teacherNameFilter = searchParams.get('teacherName') || '';
-
   // TanStack Query hook replaces useEffect + manual state management (30+ lines → 2 lines!)
   const { data: eventsData, isLoading, error } = useEventsQuery();
 
@@ -154,6 +150,7 @@ const EventsPage: React.FC = () => {
     searchQuery: ''
   });
   const [sortBy, setSortBy] = useState('date'); // 'date', 'price-low', 'price-high'
+  const [showFilters, setShowFilters] = useState(false);
   const [isPending, startTransition] = useTransition();
 
   // Debounce search query to prevent expensive filtering on every keystroke
@@ -178,25 +175,7 @@ const EventsPage: React.FC = () => {
 
   // Memoize filtered events to prevent recalculation on every render
   const filteredEvents = useMemo(() => {
-    const getEventTeacherId = (event: any): string => {
-      const rawTeacher = event?.teacherId;
-      if (!rawTeacher) return '';
-
-      if (typeof rawTeacher === 'string') return rawTeacher;
-      if (typeof rawTeacher?._id === 'string') return rawTeacher._id;
-      if (typeof rawTeacher?.id === 'string') return rawTeacher.id;
-
-      if (rawTeacher?._id?.toString) return rawTeacher._id.toString();
-      if (rawTeacher?.toString) return rawTeacher.toString();
-      return '';
-    };
-
     const filtered = events.filter(event => {
-      if (teacherIdFilter) {
-        const eventTeacherId = getEventTeacherId(event);
-        if (!eventTeacherId || eventTeacherId !== teacherIdFilter) return false;
-      }
-
       // Apply category filter
       if (filters.category && event.category !== filters.category) return false;
 
@@ -235,15 +214,7 @@ const EventsPage: React.FC = () => {
       default:
         return [...filtered].sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime());
     }
-  }, [
-    events,
-    teacherIdFilter,
-    filters.category,
-    filters.priceRange,
-    filters.date,
-    debouncedSearchQuery,
-    sortBy,
-  ]);
+  }, [events, filters.category, filters.priceRange, filters.date, debouncedSearchQuery, sortBy]);
 
   const breadcrumbs = [
     { name: 'Home', url: '/' },
@@ -273,20 +244,7 @@ const EventsPage: React.FC = () => {
           </div>
         )}
 
-        <h1 className="text-3xl font-bold mb-4">
-          {teacherNameFilter ? `Events by ${teacherNameFilter}` : 'Upcoming Events'}
-        </h1>
-
-        {teacherIdFilter && (
-          <div className="mb-6">
-            <Link
-              to="/events"
-              className="inline-flex items-center px-3 py-1.5 text-sm rounded-lg bg-gray-100 text-gray-700 hover:bg-gray-200"
-            >
-              Clear teacher filter
-            </Link>
-          </div>
-        )}
+        <h1 className="text-2xl md:text-3xl font-bold mb-4">Upcoming Events</h1>
 
         {/* Search bar */}
         <div className="mb-8">
@@ -320,7 +278,23 @@ const EventsPage: React.FC = () => {
 
         <div className="flex flex-col md:flex-row gap-6 mb-8">
           {/* Filters sidebar */}
-          <div className="w-full md:w-1/4 bg-white p-6 rounded-lg shadow-md">
+          <div className="w-full md:w-1/4">
+            <button
+              className="md:hidden w-full flex justify-between items-center p-3 bg-white rounded-lg border border-gray-200 mb-4"
+              onClick={() => setShowFilters(!showFilters)}
+            >
+              <span className="font-medium">Filters &amp; Sort</span>
+              <svg
+                xmlns="http://www.w3.org/2000/svg"
+                className={`h-5 w-5 transition-transform ${showFilters ? 'rotate-180' : ''}`}
+                fill="none"
+                viewBox="0 0 24 24"
+                stroke="currentColor"
+              >
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+              </svg>
+            </button>
+            <div className={`${showFilters ? 'block' : 'hidden'} md:block bg-white p-6 rounded-lg shadow-md`}>
             <h2 className="text-xl font-semibold mb-4">Filters</h2>
 
             <div className="mb-6">
@@ -402,6 +376,7 @@ const EventsPage: React.FC = () => {
               Reset All Filters
             </button>
           </div>
+          </div>
 
           {/* Events grid */}
           <div className="w-full md:w-3/4">
@@ -426,7 +401,7 @@ const EventsPage: React.FC = () => {
               </div>
             </div>
 
-            <StaggerContainer className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+            <StaggerContainer className="grid grid-cols-2 md:grid-cols-2 lg:grid-cols-3 gap-4 sm:gap-6">
               {filteredEvents.map(event => {
                 const eventDate = new Date(event.date);
                 const formattedDate = format(eventDate, 'MMM d, yyyy');

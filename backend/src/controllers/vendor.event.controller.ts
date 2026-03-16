@@ -20,8 +20,7 @@ export const getVendorEventById = catchAsync(
     const vendorProfile = await getOrCreateVendorProfile(userId);
     const vendorId = vendorProfile._id;
 
-    const event = await Event.findOne({ _id: id, vendorId, isDeleted: false })
-      .populate("imageAssets", "url thumbnailUrl");
+    const event = await Event.findOne({ _id: id, vendorId, isDeleted: false });
 
     if (!event) {
       return next(new AppError("Event not found", 404));

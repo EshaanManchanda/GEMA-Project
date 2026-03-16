@@ -228,10 +228,10 @@ const ReelsFeed: React.FC<ReelsFeedProps> = ({ reels, onLike, onShare, variant =
     return (
       <section className="py-12 bg-gray-50/50">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="flex justify-between items-end mb-8">
+          <div className="flex justify-between items-end mb-6 sm:mb-8">
             <div>
-              <h2 className="text-3xl font-bold text-gray-900 tracking-tight">{title}</h2>
-              <p className="mt-2 text-gray-600 font-medium">Short videos from our community</p>
+              <h2 className="text-xl sm:text-3xl font-bold text-gray-900 tracking-tight">{title}</h2>
+              <p className="mt-1 sm:mt-2 text-sm sm:text-base text-gray-600 font-medium">Short videos from our community</p>
             </div>
             <button
               onClick={() => navigate('/reels')}

@@ -22,7 +22,12 @@ export interface BankPayoutRequestJobData {
   amount: number;
 }
 
-export type PayoutJobData = StripePayoutJobData | BankPayoutRequestJobData;
+export interface AffiliatePayoutJobData {
+  type: "process-affiliate-payout";
+  affiliateId: string;
+}
+
+export type PayoutJobData = StripePayoutJobData | BankPayoutRequestJobData | AffiliatePayoutJobData;
 
 const payoutWorker = areQueuesEnabled
   ? new Worker(
@@ -32,8 +37,8 @@ const payoutWorker = areQueuesEnabled
 
         logger.info(`Processing payout job ${job.id}`, {
           type: data.type,
-          vendorId: data.vendorId,
-          amount: data.amount,
+          vendorId: (data as any).vendorId,
+          amount: (data as any).amount,
         });
 
         switch (data.type) {
@@ -75,6 +80,12 @@ const payoutWorker = areQueuesEnabled
             );
 
             return { success: true, payoutId: result.payout?.id };
+          }
+
+          case "process-affiliate-payout": {
+            await PayoutService.processAffiliatePayouts(data.affiliateId);
+            logger.info(`Affiliate payout completed: ${data.affiliateId}`);
+            return { success: true };
           }
 
           default:

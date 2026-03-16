@@ -4,6 +4,7 @@ import { useSelector, useDispatch } from 'react-redux';
 import { RootState } from '@store/index';
 import { logoutUser } from '@store/slices/authSlice';
 import { getBrandConfig } from '../../utils/brandConfig';
+import AIChatbot from '../admin/AIChatbot';
 
 const AdminLayout: React.FC = () => {
   const location = useLocation();
@@ -405,6 +406,7 @@ const AdminLayout: React.FC = () => {
           <Outlet />
         </main>
       </div>
+      <AIChatbot />
     </div>
   );
 };

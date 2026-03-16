@@ -1,38 +1,13 @@
 import React, { useState, useEffect } from 'react';
 import { Link, useNavigate, useLocation } from 'react-router-dom';
 import PrivatePageSEO from '@/components/common/PrivatePageSEO';
-import { useAppSelector } from '@/store/hooks';
-
-type RegisterRole = 'customer' | 'vendor' | 'teacher';
-
-interface VerifyEmailLocationState {
-  email?: string;
-  role?: RegisterRole;
-  source?: string;
-}
-
-const getPostVerifyRoute = (role?: string): string => {
-  if (role === 'vendor') {
-    return '/vendor';
-  }
-
-  if (role === 'teacher') {
-    return '/teacher';
-  }
-
-  return '/';
-};
 
 const VerifyEmailPage: React.FC = () => {
   const navigate = useNavigate();
   const location = useLocation();
-  const authUser = useAppSelector((state) => state.auth.user);
-  const locationState = (location.state as VerifyEmailLocationState | null) || null;
-  const verificationEmail = locationState?.email || authUser?.email || '';
-  const redirectPath = getPostVerifyRoute(locationState?.role || authUser?.role);
   const [, setToken] = useState<string | null>(null);
   const [otp, setOtp] = useState<string>('');
-  const [isLoading, setIsLoading] = useState<boolean>(false);
+  const [isLoading, setIsLoading] = useState<boolean>(true);
   const [verificationStatus, setVerificationStatus] = useState<'success' | 'error' | 'pending' | 'otp-required'>('pending');
   const [errorMessage, setErrorMessage] = useState<string>('');
   const [verificationMode, setVerificationMode] = useState<'token' | 'otp'>('token');
@@ -47,11 +22,6 @@ const VerifyEmailPage: React.FC = () => {
       setVerificationMode('otp');
       setVerificationStatus('otp-required');
       setIsLoading(false);
-
-      if (!verificationEmail) {
-        setErrorMessage('Sign up first to receive OTP, then verify your email here.');
-      }
-
       return;
     }
 
@@ -75,7 +45,7 @@ const VerifyEmailPage: React.FC = () => {
     };
 
     verifyWithToken();
-  }, [location, verificationEmail]);
+  }, [location]);
 
   const handleOtpChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const value = e.target.value.replace(/\D/g, '').slice(0, 4); // Only digits, max 4
@@ -96,15 +66,8 @@ const VerifyEmailPage: React.FC = () => {
 
     try {
       const { authAPI } = await import('@/services/api/authAPI');
-      await authAPI.verifyEmailWithOTP(otp, verificationEmail || undefined);
+      await authAPI.verifyEmailWithOTP(otp);
       setVerificationStatus('success');
-
-      navigate(redirectPath, {
-        state: {
-          message: 'Email verified successfully. Welcome! ',
-          type: 'success'
-        }
-      });
     } catch (error: any) {
       console.error('OTP verification error:', error);
       setErrorMessage(error.response?.data?.message || error.message || 'Invalid OTP. Please try again.');
@@ -123,18 +86,13 @@ const VerifyEmailPage: React.FC = () => {
   };
 
   const handleResendOtp = async () => {
-    if (!verificationEmail) {
-      setErrorMessage('Unable to resend OTP because no email was found. Please sign up again.');
-      return;
-    }
-
     try {
       setIsLoading(true);
-      const { authAPI } = await import('@/services/api/authAPI');
-      await authAPI.sendVerificationEmail(verificationEmail);
-      setErrorMessage('A new OTP has been sent to your email.');
+      // For this to work, we'd need the user's email - this could come from URL params or user state
+      // For now, show a message asking user to check their email
+      setErrorMessage('Please check your email for a new verification code, or contact support if you need help.');
     } catch (error: any) {
-      setErrorMessage(error.response?.data?.message || error.message || 'Failed to resend verification code.');
+      setErrorMessage('Failed to resend verification code. Please try again or contact support.');
     } finally {
       setIsLoading(false);
     }
@@ -154,9 +112,7 @@ const VerifyEmailPage: React.FC = () => {
             <p className="mt-2 text-center text-sm text-neutral-600">
               {isLoading ? 'Verifying your email address...' :
                 verificationStatus === 'success' ? 'Your email has been verified!' :
-                verificationStatus === 'otp-required'
-                  ? `Enter the 4-digit code sent to ${verificationEmail || 'your email'}`
-                  :
+                verificationStatus === 'otp-required' ? 'Enter the 4-digit code sent to your email' :
                 'There was a problem verifying your email.'}
             </p>
           </div>

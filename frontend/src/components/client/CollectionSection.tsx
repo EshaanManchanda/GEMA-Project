@@ -22,19 +22,19 @@ const getGapClass = (gap: GapSize = 'lg'): string => {
 const getPaddingClass = (padding: PaddingSize = 'md'): string => {
   const paddingMap = {
     'none': 'px-0 py-0',
-    'sm': 'px-4 py-8',
-    'md': 'px-6 py-16',
-    'lg': 'px-8 py-20'
+    'sm': 'px-3 py-6 sm:px-4 sm:py-8',
+    'md': 'px-4 py-10 sm:px-6 sm:py-16',
+    'lg': 'px-4 py-12 sm:px-8 sm:py-20'
   };
   return paddingMap[padding] || paddingMap['md'];
 };
 
 const getTitleSizeClass = (size: TitleSize = 'lg'): string => {
   const sizeMap = {
-    'sm': 'text-2xl',
-    'md': 'text-3xl',
-    'lg': 'text-4xl',
-    'xl': 'text-5xl'
+    'sm': 'text-xl sm:text-2xl',
+    'md': 'text-2xl sm:text-3xl',
+    'lg': 'text-2xl sm:text-3xl md:text-4xl',
+    'xl': 'text-3xl sm:text-4xl md:text-5xl'
   };
   return sizeMap[size] || sizeMap['lg'];
 };
@@ -125,7 +125,7 @@ const CollectionSectionHeader: React.FC<CollectionSectionHeaderProps> = ({
           {title}
         </h2>
         {subtitle && (
-          <p style={{ color: subtitleColor || '#374151' }}>
+          <p className="text-sm sm:text-base" style={{ color: subtitleColor || '#374151' }}>
             {subtitle}
           </p>
         )}

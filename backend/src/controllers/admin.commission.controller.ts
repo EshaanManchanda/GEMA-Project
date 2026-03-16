@@ -7,6 +7,7 @@ import CommissionTransaction, {
 } from "../models/CommissionTransaction";
 import mongoose from "mongoose";
 import { CacheService } from "../services/cache.service";
+import commissionService from "../services/commission.service";
 
 const cacheService = new CacheService();
 
@@ -854,18 +855,18 @@ export const recalculateCommissionTransaction = async (
       return next(new AppError("Invalid transaction ID", 400));
     }
 
-    // For now, just return the transaction
-    // TODO: Implement actual recalculation logic
     const transaction = await CommissionTransaction.findById(id);
 
     if (!transaction) {
       return next(new AppError("Commission transaction not found", 404));
     }
 
+    const recalculated = await commissionService.recalculateCommission(id);
+
     res.status(200).json({
       success: true,
       message: "Commission recalculated successfully",
-      data: transaction,
+      data: recalculated || transaction,
     });
   } catch (error) {
     next(new AppError((error as Error).message, 500));
@@ -888,11 +889,16 @@ export const batchCalculateCommissions = async (
       return next(new AppError("Order IDs are required", 400));
     }
 
-    // TODO: Implement batch commission calculation
+    const results = await commissionService.batchCalculateCommissions(orderIds);
+
     res.status(200).json({
       success: true,
-      message: `Batch calculation initiated for ${orderIds.length} orders`,
-      data: { orderIds, calculated: 0, failed: 0 },
+      message: `Batch calculation completed for ${orderIds.length} orders`,
+      data: {
+        calculated: results.success.length,
+        failed: results.failed.length,
+        details: results,
+      },
     });
   } catch (error) {
     next(new AppError((error as Error).message, 500));
@@ -969,11 +975,50 @@ export const exportCommissionData = async (
       .populate("customerId", "firstName lastName")
       .lean();
 
-    // TODO: Implement actual export formatting
+    if (format === "csv") {
+      const HEADERS = [
+        "Transaction ID",
+        "Order Number",
+        "Vendor",
+        "Customer",
+        "Original Amount (AED)",
+        "Platform Commission (AED)",
+        "Vendor Commission (AED)",
+        "Status",
+        "Calculated At",
+      ].join(",");
+
+      const rows = transactions.map((t: any) => {
+        const vendor   = t.vendorId   ? `${t.vendorId.firstName ?? ""} ${t.vendorId.lastName ?? ""}`.trim() : t.vendorName  || "";
+        const customer = t.customerId ? `${t.customerId.firstName ?? ""} ${t.customerId.lastName ?? ""}`.trim() : t.customerName || "";
+        return [
+          t.transactionId   || t._id,
+          t.orderNumber     || "",
+          `"${vendor}"`,
+          `"${customer}"`,
+          (t.originalAmount          || 0).toFixed(2),
+          (t.platformCommission      || 0).toFixed(2),
+          (t.vendorCommission        || 0).toFixed(2),
+          t.status         || "",
+          t.calculatedAt   ? new Date(t.calculatedAt).toISOString().slice(0, 10) : "",
+        ].join(",");
+      });
+
+      const csv = [HEADERS, ...rows].join("\n");
+      res.setHeader("Content-Type", "text/csv");
+      res.setHeader(
+        "Content-Disposition",
+        `attachment; filename="commissions-${Date.now()}.csv"`,
+      );
+      res.status(200).send(csv);
+      return;
+    }
+
+    // JSON fallback
     res.status(200).json({
       success: true,
       message: `Export prepared in ${format} format`,
-      data: { count: transactions.length, format },
+      data: { count: transactions.length, transactions },
     });
   } catch (error) {
     next(new AppError((error as Error).message, 500));

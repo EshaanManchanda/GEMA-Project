@@ -23,10 +23,9 @@ interface TestAccount {
 }
 
 const TEST_ACCOUNTS: TestAccount[] = [
-  { email: 'customer@gema.com', password: 'customer123', role: 'customer', label: 'Customer' },
-  { email: 'vendor@gema.com', password: 'vendor123', role: 'vendor', label: 'Vendor' },
-  { email: 'teacher@gema.com', password: 'teacher123', role: 'teacher', label: 'Teacher' },
-  { email: 'admin@gema.com', password: 'admin123', role: 'admin', label: 'Admin' },
+  { email: 'customer@gema.com', password: 'Customer123@@', role: 'customer', label: 'Customer' },
+  { email: 'vendor@gema.com', password: 'Vendor123@@', role: 'vendor', label: 'Vendor' },
+  { email: 'admin@gema.com', password: 'Admin123@@', role: 'admin', label: 'Admin' },
   { email: 'employee@gema.com', password: 'Employee123!', role: 'employee', label: 'Employee' },
 ];
 

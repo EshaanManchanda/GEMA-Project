@@ -11,13 +11,12 @@ import {
   FaPlus,
   FaTrash,
 } from 'react-icons/fa';
-import { Image as ImageIcon, Trash2 } from 'lucide-react';
 import { TeacherNavigation } from '@/components/teacher';
 import { useTeacherTeachingEvent } from '@/hooks/queries/useTeacherQuery';
 import { useCreateTeachingEvent, useUpdateTeachingEvent } from '@/hooks/mutations/useTeacherMutations';
 import TipTapEditor from '@/components/common/TipTapEditor';
-import MediaPickerModal from '@/components/admin/media/MediaPickerModal';
-import { MediaAsset } from '@/store/slices/mediaSlice';
+import categoriesAPI from '@/services/api/categoriesAPI';
+import type { Category } from '@/services/api/categoriesAPI';
 import type { TeachingEventCreateInput } from '@/types/teacher';
 
 interface Schedule {
@@ -51,18 +50,7 @@ interface SyllabusSection {
 
 type TabType = 'basic' | 'schedule' | 'location' | 'syllabus';
 
-const CATEGORIES = [
-  'Arts & Crafts',
-  'Music',
-  'Dance',
-  'Sports',
-  'Education',
-  'Languages',
-  'Science & Technology',
-  'Cooking',
-  'Life Skills',
-  'Other',
-];
+// Categories are fetched from API - no hardcoded list
 
 const CURRENCIES = ['AED', 'USD', 'EUR', 'GBP'];
 
@@ -88,6 +76,14 @@ const TeacherEventFormPage: React.FC = () => {
   const createMutation = useCreateTeachingEvent();
   const updateMutation = useUpdateTeachingEvent();
 
+  // Categories from API
+  const [categories, setCategories] = useState<Category[]>([]);
+  useEffect(() => {
+    categoriesAPI.getAllCategories({ tree: false, includeInactive: false })
+      .then((cats) => setCategories(cats))
+      .catch(() => {/* silent fail, user can still type */});
+  }, []);
+
   // Form state
   const [activeTab, setActiveTab] = useState<TabType>('basic');
   const [isSaving, setIsSaving] = useState(false);
@@ -103,8 +99,6 @@ const TeacherEventFormPage: React.FC = () => {
   const [tags, setTags] = useState<string[]>([]);
   const [tagInput, setTagInput] = useState('');
   const [images, setImages] = useState<string[]>([]);
-  const [imagePreviewUrls, setImagePreviewUrls] = useState<string[]>([]);
-  const [showMediaPicker, setShowMediaPicker] = useState<boolean>(false);
   const [meetingLink, setMeetingLink] = useState('');
 
   // Course specific
@@ -148,12 +142,11 @@ const TeacherEventFormPage: React.FC = () => {
       setDescription(event.description || '');
       setCategory(event.category || '');
       setType(event.type || 'Class');
-      setEventType((event as any).venueType || event.eventType || 'Online');
+      setEventType(event.eventType || 'Online');
       setAgeRangeMin(event.ageRange?.[0]?.toString() || '3');
       setAgeRangeMax(event.ageRange?.[1]?.toString() || '12');
       setTags(event.tags || []);
       setImages(event.images || []);
-      setImagePreviewUrls(event.images || []);
       setMeetingLink(event.meetingLink || '');
       setBasePrice(event.price?.toString() || '');
       setCurrency(event.currency || 'AED');
@@ -328,19 +321,6 @@ const TeacherEventFormPage: React.FC = () => {
     setTags(tags.filter((t) => t !== tag));
   };
 
-  // Image handlers
-  const handleImagesChange = (assets: MediaAsset[], previewUrls: string[]) => {
-    setImages([...images, ...previewUrls]);
-    setImagePreviewUrls([...imagePreviewUrls, ...previewUrls]);
-  };
-
-  const removeImage = (index: number) => {
-    const newImages = images.filter((_, i) => i !== index);
-    const newPreviewUrls = imagePreviewUrls.filter((_, i) => i !== index);
-    setImages(newImages);
-    setImagePreviewUrls(newPreviewUrls);
-  };
-
   // FAQ handlers
   const addFaq = () => {
     setFaqs([...faqs, { id: `faq-${Date.now()}`, question: '', answer: '' }]);
@@ -477,9 +457,9 @@ const TeacherEventFormPage: React.FC = () => {
                         }`}
                     >
                       <option value="">Select a category</option>
-                      {CATEGORIES.map((cat) => (
-                        <option key={cat} value={cat}>
-                          {cat}
+                      {categories.map((cat) => (
+                        <option key={cat.slug} value={cat.slug}>
+                          {cat.name}
                         </option>
                       ))}
                     </select>
@@ -642,63 +622,41 @@ const TeacherEventFormPage: React.FC = () => {
                   </div>
                 </div>
 
-                {/* Event Images Section */}
-                <div className="border border-gray-200 rounded-xl p-6 bg-gray-50">
-                  <h4 className="text-sm font-semibold text-gray-900 mb-4 flex items-center">
-                    <ImageIcon className="w-5 h-5 mr-2" />
-                    Event Images ({imagePreviewUrls.length}/20)
-                  </h4>
-                  <div>
-                    {/* Image Preview Grid */}
-                    {imagePreviewUrls.length > 0 && (
-                      <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-6 mb-6">
-                        {imagePreviewUrls.map((url, index) => (
-                          <div key={index} className="relative group">
-                            <div className="relative rounded-xl overflow-hidden shadow-lg hover:shadow-2xl transform hover:scale-105 transition-all duration-200">
-                              <img
-                                src={url}
-                                alt={`Event image ${index + 1}`}
-                                className="h-40 w-full object-cover"
-                                onError={(e) => {
-                                  e.currentTarget.style.display = 'none';
-                                  const placeholder = e.currentTarget.nextElementSibling as HTMLElement;
-                                  if (placeholder) placeholder.style.display = 'flex';
-                                }}
-                              />
-                              <div
-                                className="h-40 w-full bg-gray-100 items-center justify-center text-gray-400 text-xs text-center p-2"
-                                style={{ display: 'none' }}
-                              >
-                                Image unavailable
-                              </div>
-                              <button
-                                type="button"
-                                onClick={() => removeImage(index)}
-                                className="absolute top-2 right-2 bg-red-500 text-white rounded-full p-1 w-8 h-8 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-all hover:bg-red-600 hover:scale-110"
-                              >
-                                <Trash2 className="w-5 h-5" />
-                              </button>
-                              <div className="absolute bottom-0 left-0 right-0 bg-gradient-to-t from-black/70 to-transparent text-white text-xs p-2 font-medium">
-                                Image {index + 1}
-                              </div>
-                            </div>
-                          </div>
-                        ))}
+                {/* Images */}
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">Event Images</label>
+                  <p className="text-xs text-gray-500 mb-3">Add image URLs to display for your event. First image will be used as the cover.</p>
+                  <div className="space-y-2">
+                    {images.map((img, idx) => (
+                      <div key={idx} className="flex gap-2 items-center">
+                        <input
+                          type="url"
+                          value={img}
+                          onChange={(e) => {
+                            const updated = [...images];
+                            updated[idx] = e.target.value;
+                            setImages(updated);
+                          }}
+                          placeholder="https://example.com/image.jpg"
+                          className="flex-1 px-4 py-3 border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-purple-500 text-sm"
+                        />
+                        <button
+                          type="button"
+                          onClick={() => setImages(images.filter((_, i) => i !== idx))}
+                          className="p-3 text-red-500 hover:bg-red-50 rounded-xl transition-colors"
+                        >
+                          <FaTrash className="w-4 h-4" />
+                        </button>
                       </div>
-                    )}
-
+                    ))}
                     <button
                       type="button"
-                      onClick={() => setShowMediaPicker(true)}
-                      className="inline-flex items-center px-6 py-3 bg-gradient-to-r from-purple-600 to-indigo-600 text-white font-semibold rounded-xl hover:from-purple-700 hover:to-indigo-700 hover:shadow-xl transition-all duration-200"
+                      onClick={() => setImages([...images, ''])}
+                      className="flex items-center gap-2 px-4 py-2 text-purple-600 hover:bg-purple-50 rounded-xl transition-colors text-sm font-medium"
                     >
-                      <ImageIcon className="w-5 h-5 mr-2" />
-                      {imagePreviewUrls.length > 0 ? 'Add More Images' : 'Select Images'}
+                      <FaPlus className="w-3 h-3" />
+                      Add Image URL
                     </button>
-
-                    <p className="mt-3 text-xs text-gray-600">
-                      Upload high-quality images to showcase your class. First image will be the featured image.
-                    </p>
                   </div>
                 </div>
               </motion.div>
@@ -1154,20 +1112,6 @@ const TeacherEventFormPage: React.FC = () => {
           </div>
         </div>
       </div>
-
-      {/* Media Picker Modal */}
-      <MediaPickerModal
-        isOpen={showMediaPicker}
-        onClose={() => setShowMediaPicker(false)}
-        onSelect={(assets) => {
-          handleImagesChange(assets, assets.map(a => a.url));
-          setShowMediaPicker(false);
-        }}
-        category="event"
-        folder="teaching-events"
-        multiple={true}
-        title="Select Event Images"
-      />
     </div>
   );
 };

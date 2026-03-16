@@ -468,7 +468,7 @@ const BlogDetailPage: React.FC = () => {
       {relatedBlogs.length > 0 && (
         <section className="mb-12">
           <h2 className="text-2xl font-bold mb-6 text-gray-900">Related Articles</h2>
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
             {relatedBlogs.map((relatedBlog) => (
               <Link
                 key={relatedBlog._id}

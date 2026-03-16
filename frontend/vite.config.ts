@@ -9,7 +9,7 @@ export default defineConfig({
     react(),
     VitePWA({
       registerType: 'autoUpdate',
-      includeAssets: ['favicon.ico', 'apple-touch-icon.svg', 'robots.txt', 'humans.txt', 'sitemap.xml', 'llms.txt'],
+      includeAssets: ['favicon.ico', 'favicon.png', 'apple-touch-icon.svg', 'robots.txt', 'humans.txt', 'sitemap.xml', 'llms.txt'],
       manifest: {
         name: 'Kidrove - Event Management Platform',
         short_name: 'Kidrove',
@@ -165,7 +165,7 @@ export default defineConfig({
             if (!id.includes('react-router') && !id.includes('react-redux') &&
               !id.includes('react-hook-form') && !id.includes('react-query') &&
               !id.includes('react-icons') && !id.includes('react-chartjs') &&
-              !id.includes('react-leaflet') && !id.includes('react-i18next') &&
+              !id.includes('react-i18next') &&
               !id.includes('react-helmet') && !id.includes('react-hot-toast') &&
               !id.includes('react-stripe')) {
               return undefined; // Main entry chunk - always loads first
@@ -224,12 +224,6 @@ export default defineConfig({
             return 'sliders';
           }
 
-          // Maps
-          if (id.includes('node_modules/react-leaflet') ||
-            id.includes('node_modules/leaflet')) {
-            return 'maps';
-          }
-
           // Payments
           if (id.includes('node_modules/@stripe/stripe-js') ||
             id.includes('node_modules/@stripe/react-stripe-js')) {
@@ -237,10 +231,8 @@ export default defineConfig({
           }
 
           // Utilities
-          if (id.includes('node_modules/lodash') ||
-            id.includes('node_modules/date-fns') ||
-            id.includes('node_modules/clsx') ||
-            id.includes('node_modules/tailwind-merge')) {
+          if (id.includes('node_modules/date-fns') ||
+            id.includes('node_modules/clsx')) {
             return 'utils';
           }
 
@@ -286,7 +278,7 @@ export default defineConfig({
           }
 
           // UI component libraries not covered above
-          if (id.includes('@headlessui') || id.includes('react-select') || id.includes('react-datepicker')) {
+          if (id.includes('react-datepicker')) {
             return 'ui-libs';
           }
 
@@ -365,7 +357,6 @@ export default defineConfig({
       'react-icons/io',
       'date-fns',
       'clsx',
-      'lodash',
       '@tanstack/react-query',
       'react-hook-form'
     ],

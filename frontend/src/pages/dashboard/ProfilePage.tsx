@@ -1,4 +1,6 @@
 import React, { useState, useEffect, useRef, useCallback } from 'react';
+import { pwaService } from '@/services/pwaService';
+import { ApiService } from '@/services/api';
 import { useNavigate } from 'react-router-dom';
 import { useDispatch, useSelector } from 'react-redux';
 import { motion, AnimatePresence } from 'framer-motion';
@@ -14,12 +16,9 @@ import {
   FaPlus,
   FaEdit,
   FaTrash,
-
   FaLock,
-
   FaCalendar,
   FaUserTag,
-
   FaCheck,
   FaTimes,
   FaSpinner
@@ -29,7 +28,6 @@ import {
   SlideIn,
   HoverCard,
   AnimatedButton,
-  PageTransition,
   StaggerContainer
 } from '@/components/animations';
 import {
@@ -47,7 +45,7 @@ import {
   resendPhoneVerificationOTP,
   selectUserProfile,
   selectIsProfileLoading,
-  selectProfileError,
+  selectProfileError
 } from '@/store/slices/authSlice';
 import EmailVerificationSection from '@/components/profile/EmailVerificationSection';
 import PhoneVerificationSection from '@/components/profile/PhoneVerificationSection';
@@ -350,7 +348,7 @@ const PersonalInfoTab: React.FC<{
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     if (validate()) {
-      onUpdate(formData);
+      onUpdate(formData as UpdateProfileData);
     }
   };
 
@@ -1064,7 +1062,85 @@ const PreferencesTab: React.FC<{
           </AnimatedButton>
         </div>
       </form>
+      <PushNotificationToggle />
     </HoverCard>
+  );
+};
+
+const PushNotificationToggle: React.FC = () => {
+  const [pushEnabled, setPushEnabled] = useState(false);
+  const [pushLoading, setPushLoading] = useState(false);
+
+  useEffect(() => {
+    if ('serviceWorker' in navigator && 'PushManager' in window) {
+      navigator.serviceWorker.ready.then((reg) => {
+        reg.pushManager.getSubscription().then((sub) => {
+          setPushEnabled(!!sub);
+        });
+      });
+    }
+  }, []);
+
+  const handleToggle = async () => {
+    setPushLoading(true);
+    try {
+      if (pushEnabled) {
+        await pwaService.unsubscribeFromPush();
+        await ApiService.delete('/notifications/push/subscribe');
+        setPushEnabled(false);
+        toast.success('Browser push notifications disabled');
+      } else {
+        const permission = await pwaService.requestNotificationPermission();
+        if (permission !== 'granted') {
+          toast.error('Please allow notifications in your browser settings');
+          return;
+        }
+        const vapidKey = import.meta.env.VITE_VAPID_PUBLIC_KEY || '';
+        const sub = await pwaService.subscribeToPush(vapidKey);
+        if (sub) {
+          const subJson = sub.toJSON();
+          await ApiService.post('/notifications/push/subscribe', {
+            endpoint: sub.endpoint,
+            keys: { p256dh: subJson.keys?.p256dh, auth: subJson.keys?.auth },
+          });
+          setPushEnabled(true);
+          toast.success('Browser push notifications enabled');
+        }
+      }
+    } catch {
+      toast.error('Failed to update push notification settings');
+    } finally {
+      setPushLoading(false);
+    }
+  };
+
+  if (!('PushManager' in window)) return null;
+
+  return (
+    <div className="mt-6 pt-6 border-t border-gray-100">
+      <h4 className="font-medium mb-3 text-gray-900">Browser Push Notifications</h4>
+      <div className="flex items-center justify-between p-3 bg-gray-50 rounded-lg">
+        <div className="flex-1">
+          <span className="font-medium text-gray-900 block">Enable Push Notifications</span>
+          <span className="text-sm text-gray-600">
+            {pushEnabled ? 'Push notifications are active on this device' : 'Allow real-time alerts in your browser'}
+          </span>
+        </div>
+        <button
+          type="button"
+          onClick={handleToggle}
+          disabled={pushLoading}
+          className={`px-4 py-2 rounded-lg text-sm font-medium transition-colors flex items-center gap-2 ${
+            pushEnabled
+              ? 'bg-red-100 text-red-700 hover:bg-red-200'
+              : 'bg-blue-600 text-white hover:bg-blue-700'
+          }`}
+        >
+          {pushLoading && <FaSpinner className="animate-spin" />}
+          {pushEnabled ? 'Disable' : 'Enable'}
+        </button>
+      </div>
+    </div>
   );
 };
 
@@ -1101,6 +1177,7 @@ const ProfilePage: React.FC = () => {
       window.addEventListener('beforeunload', handleBeforeUnload);
       return () => window.removeEventListener('beforeunload', handleBeforeUnload);
     }
+    return undefined;
   }, [isUploading]);
 
   // Profile update handlers
@@ -1229,8 +1306,7 @@ const ProfilePage: React.FC = () => {
   ];
 
   return (
-    <PageTransition>
-      <div className="min-h-screen bg-gray-50 py-8">
+    <div className="min-h-screen bg-gray-50 py-8">
         <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8">
           <StaggerContainer staggerDelay={0.1}>
             {/* Profile Header */}
@@ -1425,7 +1501,6 @@ const ProfilePage: React.FC = () => {
           </StaggerContainer>
         </div>
       </div>
-    </PageTransition>
   );
 };
 

@@ -4,6 +4,8 @@ import { useForm } from 'react-hook-form';
 import { toast } from 'react-hot-toast';
 import {
   FaUser,
+  FaEnvelope,
+  FaPhone,
   FaGlobe,
   FaLinkedin,
   FaInstagram,
@@ -16,23 +18,18 @@ import {
   FaLanguage,
   FaBriefcase,
   FaTimes,
-  FaTrash,
   FaCreditCard,
   FaUniversity,
-  FaFileAlt,
 } from 'react-icons/fa';
 import { TeacherNavigation } from '@/components/teacher';
-import BankDetailsForm from '@/components/vendor/BankDetailsForm';
-import DocumentUpload from '@/components/vendor/DocumentUpload';
-import StripeConnectSetup from '@/components/vendor/StripeConnectSetup';
 import { useTeacherProfile } from '@/hooks/queries/useTeacherQuery';
 import {
   useUpdateTeacherProfile,
+  useUploadTeacherMedia,
   useUpdateAvailabilityHours,
+  useUpdateBankDetails,
 } from '@/hooks/mutations/useTeacherMutations';
 import type { TeacherProfileUpdateInput, IAvailabilityHours } from '@/types/teacher';
-import authAPI from '@/services/api/authAPI';
-import teacherAPI from '@/services/api/teacherAPI';
 
 const AVAILABLE_LANGUAGES = [
   { value: 'english', label: 'English' },
@@ -61,46 +58,36 @@ const AVAILABLE_LANGUAGES = [
 const DAYS_OF_WEEK = ['monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday', 'sunday'];
 
 const TeacherProfilePage: React.FC = () => {
-  const [activeTab, setActiveTab] = useState<'personal' | 'professional' | 'social' | 'availability' | 'payments' | 'bank' | 'documents'>(
+  const [activeTab, setActiveTab] = useState<'personal' | 'professional' | 'social' | 'availability' | 'payments'>(
     'personal'
   );
   const [isSaving, setIsSaving] = useState(false);
   const [saveSuccess, setSaveSuccess] = useState(false);
+
+  // Bank details state
+  const [bankDetails, setBankDetails] = useState({
+    accountHolderName: '',
+    bankName: '',
+    accountNumber: '',
+    iban: '',
+    swiftCode: '',
+  });
+  const [isSavingBank, setIsSavingBank] = useState(false);
 
   // Local state for array fields
   const [subjects, setSubjects] = useState<string[]>([]);
   const [subjectInput, setSubjectInput] = useState('');
   const [languages, setLanguages] = useState<string[]>([]);
   const [availability, setAvailability] = useState<IAvailabilityHours>({});
-  
-  // Image state
-  const [profileImage, setProfileImage] = useState<string>('');
-  const [coverImage, setCoverImage] = useState<string>('');
 
   const { data, isLoading, refetch } = useTeacherProfile();
   const updateProfileMutation = useUpdateTeacherProfile();
+  const uploadMediaMutation = useUploadTeacherMedia();
   const updateAvailabilityMutation = useUpdateAvailabilityHours();
+  const updateBankDetailsMutation = useUpdateBankDetails();
 
   const teacher = data?.teacher;
   const user = data?.user;
-
-  const stripeSettings = teacher?.paymentSettings?.stripeSettings;
-  const hasStripeKeys = !!stripeSettings?.stripePublishableKey || !!stripeSettings?.keysValid || !!stripeSettings?.lastValidated;
-  const stripeStatus = stripeSettings
-    ? {
-        isConnected: hasStripeKeys,
-        accountId: stripeSettings.stripeConnectAccountId,
-        onboardingComplete: !!stripeSettings.stripeConnectOnboardingComplete,
-        chargesEnabled: false,
-        payoutsEnabled: false,
-        detailsSubmitted: !!stripeSettings.stripeConnectOnboardingComplete,
-        stripePublishableKey: stripeSettings.stripePublishableKey,
-        stripeTestMode: stripeSettings.stripeTestMode,
-        keysValid: stripeSettings.keysValid,
-        lastValidated: stripeSettings.lastValidated,
-        stripeSecretKey: hasStripeKeys ? '••••••••••••••••••••••••••••••••' : undefined,
-      }
-    : undefined;
 
   const {
     register,
@@ -111,10 +98,7 @@ const TeacherProfilePage: React.FC = () => {
   // Initialize form and local state when data loads
   useEffect(() => {
     if (teacher && user) {
-      console.log('Initializing form with data:', { teacher, user });
       reset({
-        firstName: user.firstName || '',
-        lastName: user.lastName || '',
         bio: teacher.bio || '',
         specialization: teacher.specialization || '',
         yearsOfExperience: teacher.yearsOfExperience || 0,
@@ -125,63 +109,18 @@ const TeacherProfilePage: React.FC = () => {
       setSubjects(teacher.subjects || []);
       setLanguages(teacher.languagesSpoken || []);
       setAvailability(teacher.availabilityHours || {});
-      
-      // Initialize images - user.avatar is the source of truth for profile image
-      // Only update if the image URLs from server are different from current state
-      const teacherProfileImage = user.avatar || teacher.profileImageUrl || teacher.profileImage || '';
-      const teacherCoverImage = teacher.coverImageUrl || teacher.coverImage || '';
-      
-      console.log('Image initialization:', {
-        profileFromServer: teacherProfileImage,
-        coverFromServer: teacherCoverImage,
-        userAvatar: user.avatar,
-        teacherProfileImageUrl: teacher.profileImageUrl,
-        teacherCoverImageUrl: teacher.coverImageUrl
-      });
-      
-      setProfileImage(prev => {
-        // Only update if server has a different URL or if we don't have one yet
-        if (teacherProfileImage && teacherProfileImage !== prev) {
-          console.log('Updating profile image:', prev, '->', teacherProfileImage);
-          return teacherProfileImage;
-        }
-        return prev || teacherProfileImage;
-      });
-      
-      setCoverImage(prev => {
-        // Only update if server has a different URL or if we don't have one yet
-        if (teacherCoverImage && teacherCoverImage !== prev) {
-          console.log('Updating cover image:', prev, '->', teacherCoverImage);
-          return teacherCoverImage;
-        }
-        return prev || teacherCoverImage;
-      });
     }
   }, [teacher, user, reset]);
 
   const onSubmit = async (formData: TeacherProfileUpdateInput) => {
     setIsSaving(true);
     try {
-      // Validate and sanitize data before sending
+      // Include array fields in submission
       const profileData: TeacherProfileUpdateInput = {
-        firstName: formData.firstName?.trim() || undefined,
-        lastName: formData.lastName?.trim() || undefined,
         ...formData,
-        subjects: subjects && subjects.length > 0 ? subjects : undefined,
-        languagesSpoken: languages && languages.length > 0 ? languages : undefined,
-        yearsOfExperience: formData.yearsOfExperience ? Number(formData.yearsOfExperience) : undefined,
+        subjects,
+        languagesSpoken: languages,
       };
-
-      // Remove empty/undefined fields to avoid validation errors
-      Object.keys(profileData).forEach(key => {
-        if (profileData[key as keyof TeacherProfileUpdateInput] === undefined || 
-            profileData[key as keyof TeacherProfileUpdateInput] === '' ||
-            (Array.isArray(profileData[key as keyof TeacherProfileUpdateInput]) && (profileData[key as keyof TeacherProfileUpdateInput] as any[]).length === 0)) {
-          delete profileData[key as keyof TeacherProfileUpdateInput];
-        }
-      });
-
-      console.log('Submitting profile data:', profileData);
 
       await updateProfileMutation.mutateAsync(profileData);
 
@@ -195,80 +134,57 @@ const TeacherProfilePage: React.FC = () => {
       setTimeout(() => setSaveSuccess(false), 3000);
       refetch();
     } catch (error: any) {
-      console.error('Profile update error:', error);
       toast.error(error?.message || 'Failed to update profile');
     } finally {
       setIsSaving(false);
     }
   };
 
-  const handleProfileImageUpload = async (file: File) => {
+  const handleImageUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
     try {
-      const loadingToast = toast.loading('Uploading profile image...');
-      const { avatarUrl } = await authAPI.uploadAvatar({ file });
-      toast.dismiss(loadingToast);
-      
-      if (avatarUrl) {
-        setProfileImage(avatarUrl);
-        toast.success('Profile image uploaded successfully');
-      }
-    } catch (error: any) {
-      console.error('Error uploading profile image:', error);
+      await uploadMediaMutation.mutateAsync({ file, mediaType: 'profile' });
+      toast.success('Profile image updated!');
+      refetch();
+    } catch (error) {
       toast.error('Failed to upload image');
     }
   };
 
-  const handleProfileImageDelete = async () => {
+  const handleCoverUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
     try {
-      const loadingToast = toast.loading('Removing profile image...');
-      await authAPI.removeAvatar();
-      toast.dismiss(loadingToast);
-      
-      setProfileImage('');
-      toast.success('Profile image removed successfully');
-    } catch (error: any) {
-      console.error('Error removing profile image:', error);
-      toast.error('Failed to remove image');
+      await uploadMediaMutation.mutateAsync({ file, mediaType: 'cover' as any });
+      toast.success('Cover image updated!');
+      refetch();
+    } catch (error) {
+      toast.error('Failed to upload cover image');
     }
   };
 
-  const handleCoverImageUpload = async (file: File) => {
-    try {
-      const loadingToast = toast.loading('Uploading cover image...');
-      const response = await teacherAPI.uploadCoverImage(file);
-      toast.dismiss(loadingToast);
-      
-      console.log('Cover image upload response:', response);
-      
-      // Response is already extracted by extractApiData in uploadCoverImage
-      const coverUrl = response?.coverImageUrl;
-      
-      if (coverUrl) {
-        setCoverImage(coverUrl);
-        refetch(); // Refetch to update all profile data
-        toast.success('Cover image uploaded successfully');
-      } else {
-        console.warn('No coverImageUrl in response');
-        toast.error('Failed to get cover image URL');
-      }
-    } catch (error: any) {
-      console.error('Error uploading cover image:', error);
-      toast.error(error?.response?.data?.message || 'Failed to upload cover image');
+  const handleSaveBankDetails = async () => {
+    if (!bankDetails.accountHolderName.trim() || !bankDetails.bankName.trim()) {
+      toast.error('Account holder name and bank name are required');
+      return;
     }
-  };
-
-  const handleCoverImageDelete = async () => {
+    setIsSavingBank(true);
     try {
-      const loadingToast = toast.loading('Removing cover image...');
-      await teacherAPI.deleteCoverImage();
-      toast.dismiss(loadingToast);
-      
-      setCoverImage('');
-      refetch(); // Refetch to update all profile data
-      toast.success('Cover image removed successfully');
+      await updateBankDetailsMutation.mutateAsync({
+        accountHolderName: bankDetails.accountHolderName,
+        bankName: bankDetails.bankName,
+        accountNumber: bankDetails.accountNumber || undefined,
+        iban: bankDetails.iban || undefined,
+        swiftCode: bankDetails.swiftCode || undefined,
+      });
+      toast.success('Bank details saved!');
     } catch (error: any) {
-      console.error('Error removing cover image:', error);
-      toast.error('Failed to remove cover image');
+      toast.error(error?.message || 'Failed to save bank details');
+    } finally {
+      setIsSavingBank(false);
     }
   };
 
@@ -331,126 +247,83 @@ const TeacherProfilePage: React.FC = () => {
           <p className="text-gray-600 mt-1">Manage your teacher profile and settings</p>
         </div>
 
-        {/* Profile Card with Cover Image */}
-        <div className="relative rounded-3xl overflow-hidden mb-8 group">
-          {/* Cover Image Background */}
-          <div className="relative h-64 sm:h-80 md:h-96 bg-gradient-to-br from-purple-600 via-purple-700 to-indigo-800 overflow-hidden">
-            {coverImage ? (
-              <img 
-                key={coverImage}
-                src={coverImage} 
-                alt="Cover" 
-                className="w-full h-full object-cover"
-                onError={(e) => {
-                  console.error('Failed to load cover image:', coverImage);
-                  // Optionally hide the broken image
-                  e.currentTarget.style.display = 'none';
-                }}
-              />
-            ) : (
-              <div className="w-full h-full bg-gradient-to-br from-purple-600 via-purple-700 to-indigo-800">
-                {/* Background decoration */}
-                <div className="absolute inset-0 opacity-10">
-                  <div className="absolute top-0 right-0 w-96 h-96 rounded-full bg-white transform translate-x-32 -translate-y-32"></div>
-                  <div className="absolute bottom-0 left-0 w-64 h-64 rounded-full bg-white transform -translate-x-16 translate-y-16"></div>
-                </div>
-              </div>
+        {/* Profile Card */}
+        <div className="bg-white rounded-2xl shadow-lg overflow-hidden mb-8">
+          <div className="relative bg-gradient-to-r from-purple-600 to-indigo-600 h-32 overflow-hidden">
+            {teacher?.coverImage && (
+              <img src={teacher.coverImage} alt="Cover" className="w-full h-full object-cover" />
             )}
-            
-            {/* Cover Image Controls */}
-            <div className="absolute inset-0 bg-black/50 opacity-0 group-hover:opacity-100 transition-opacity duration-300 flex items-center justify-center gap-4">
-              <label className="p-3 bg-white/20 rounded-full hover:bg-white/30 transition-colors cursor-pointer">
-                <FaCamera size={20} className="text-white" />
-                <input
-                  type="file"
-                  className="hidden"
-                  accept="image/*"
-                  onChange={(e) => e.target.files?.[0] && handleCoverImageUpload(e.target.files[0])}
-                />
-              </label>
-              {coverImage && (
-                <button
-                  onClick={handleCoverImageDelete}
-                  className="p-3 bg-red-500/60 rounded-full hover:bg-red-500/80 transition-colors"
-                >
-                  <FaTrash size={20} className="text-white" />
-                </button>
-              )}
-            </div>
+            <label className="absolute top-2 right-2 flex items-center gap-2 px-3 py-1.5 bg-white/20 backdrop-blur-sm text-white rounded-lg cursor-pointer hover:bg-white/30 transition-colors text-sm font-medium">
+              <FaCamera className="w-3 h-3" />
+              Change Cover
+              <input type="file" accept="image/*" className="hidden" onChange={handleCoverUpload} />
+            </label>
           </div>
-
-          {/* Profile Card with Avatar - overlapped on cover image */}
-          <div className="relative px-8 pb-8 pt-0 bg-white rounded-b-3xl shadow-lg">
-            <div className="flex flex-col md:flex-row items-start gap-8">
-              {/* Avatar - positioned to overlap cover image */}
-              <div className="relative group/avatar -mt-20">
-                <div className="w-32 h-32 rounded-full overflow-hidden bg-white border-4 border-white shadow-lg">
-                  {profileImage ? (
-                    <img 
-                      key={profileImage}
-                      src={profileImage} 
-                      alt="Profile" 
+          <div className="px-6 pb-6">
+            <div className="flex flex-col md:flex-row md:items-end gap-4 -mt-16">
+              {/* Avatar */}
+              <div className="relative">
+                <div className="w-32 h-32 rounded-2xl bg-white shadow-lg overflow-hidden border-4 border-white">
+                  {user?.avatar ? (
+                    <img
+                      src={user.avatar}
+                      alt={user.firstName}
                       className="w-full h-full object-cover"
-                      onError={(e) => {
-                        console.error('Failed to load profile image:', profileImage);
-                        e.currentTarget.style.display = 'none';
-                      }}
                     />
                   ) : (
-                    <div className="w-full h-full flex items-center justify-center text-gray-400 bg-gray-100">
-                      <FaUser size={48} />
+                    <div className="w-full h-full bg-gradient-to-br from-purple-500 to-indigo-500 flex items-center justify-center text-white text-4xl font-bold">
+                      {user?.firstName?.[0] || 'T'}
                     </div>
                   )}
                 </div>
-                <div className="absolute inset-0 bg-black/50 rounded-full opacity-0 group-hover/avatar:opacity-100 transition-opacity duration-300 flex items-center justify-center">
-                  <div className="flex gap-2">
-                    <label className="p-2 bg-white/20 rounded-full hover:bg-white/30 transition-colors cursor-pointer">
-                      <FaCamera size={16} className="text-white" />
-                      <input
-                        type="file"
-                        className="hidden"
-                        accept="image/*"
-                        onChange={(e) => e.target.files?.[0] && handleProfileImageUpload(e.target.files[0])}
-                      />
-                    </label>
-                    {profileImage && (
-                      <button
-                        onClick={handleProfileImageDelete}
-                        className="p-2 bg-red-500/60 rounded-full hover:bg-red-500/80 transition-colors"
-                      >
-                        <FaTrash size={16} className="text-white" />
-                      </button>
-                    )}
-                  </div>
+                <label className="absolute bottom-2 right-2 p-2 bg-white rounded-full shadow-lg cursor-pointer hover:bg-gray-50 transition-colors">
+                  <FaCamera className="w-4 h-4 text-gray-600" />
+                  <input
+                    type="file"
+                    accept="image/*"
+                    className="hidden"
+                    onChange={handleImageUpload}
+                  />
+                </label>
+              </div>
+
+              {/* Basic Info */}
+              <div className="flex-1">
+                <h2 className="text-2xl font-bold text-gray-900">
+                  {user?.firstName} {user?.lastName}
+                </h2>
+                <p className="text-gray-600">{teacher?.specialization || 'Teacher'}</p>
+                <div className="flex items-center gap-4 mt-2 text-sm text-gray-500">
+                  <span className="flex items-center gap-1">
+                    <FaEnvelope className="w-4 h-4" />
+                    {user?.email}
+                  </span>
+                  {user?.phone && (
+                    <span className="flex items-center gap-1">
+                      <FaPhone className="w-4 h-4" />
+                      {user.phone}
+                    </span>
+                  )}
                 </div>
               </div>
 
-              {/* Profile Info */}
-              <div className="flex-1 text-left pt-4">
-                <h1 className="text-3xl font-bold mb-2 text-gray-900">
-                  {user?.firstName} {user?.lastName}
-                </h1>
-                <p className="text-gray-600 mb-4">{user?.email}</p>
-
-                <div className="flex flex-wrap gap-4 text-sm">
-                  <div className="flex items-center gap-2">
-                    <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${
-                      teacher?.verificationStatus === 'verified'
-                        ? 'bg-green-100 text-green-800'
-                        : teacher?.verificationStatus === 'pending'
-                        ? 'bg-yellow-100 text-yellow-800'
-                        : 'bg-gray-100 text-gray-800'
-                    }`}>
-                      {teacher?.verificationStatus === 'verified' && 'Verified'}
-                      {teacher?.verificationStatus === 'pending' && 'Pending'}
-                      {teacher?.verificationStatus === 'unverified' && 'Unverified'}
-                      {teacher?.verificationStatus === 'rejected' && 'Rejected'}
-                    </span>
-                  </div>
-                  <div className="flex items-center gap-2 px-3 py-1">
-                    Member since {teacher?.createdAt ? new Date(teacher.createdAt).getFullYear() : new Date().getFullYear()}
-                  </div>
-                </div>
+              {/* Verification Badge */}
+              <div className="md:ml-auto">
+                <span
+                  className={`px-4 py-2 rounded-full text-sm font-medium ${
+                    teacher?.verificationStatus === 'verified'
+                      ? 'bg-green-100 text-green-700'
+                      : teacher?.verificationStatus === 'pending'
+                      ? 'bg-yellow-100 text-yellow-700'
+                      : 'bg-gray-100 text-gray-600'
+                  }`}
+                >
+                  {teacher?.verificationStatus === 'verified'
+                    ? 'Verified Teacher'
+                    : teacher?.verificationStatus === 'pending'
+                    ? 'Verification Pending'
+                    : 'Not Verified'}
+                </span>
               </div>
             </div>
           </div>
@@ -465,9 +338,7 @@ const TeacherProfilePage: React.FC = () => {
                 { key: 'professional', label: 'Professional', icon: <FaBriefcase /> },
                 { key: 'social', label: 'Social Links', icon: <FaGlobe /> },
                 { key: 'availability', label: 'Availability', icon: <FaClock /> },
-                { key: 'payments', label: 'Payment Settings', icon: <FaCreditCard /> },
-                { key: 'bank', label: 'Bank Details', icon: <FaUniversity /> },
-                { key: 'documents', label: 'Documents', icon: <FaFileAlt /> },
+                { key: 'payments', label: 'Payments', icon: <FaCreditCard /> },
               ].map((tab) => (
                 <button
                   key={tab.key}
@@ -485,13 +356,7 @@ const TeacherProfilePage: React.FC = () => {
             </div>
           </div>
 
-          <form
-            onSubmit={(e) => {
-              e.preventDefault();
-              handleSubmit(onSubmit)(e);
-            }}
-            className="p-6"
-          >
+          <form onSubmit={handleSubmit(onSubmit)} className="p-6">
             {/* Personal Info Tab */}
             {activeTab === 'personal' && (
               <motion.div
@@ -506,11 +371,11 @@ const TeacherProfilePage: React.FC = () => {
                     </label>
                     <input
                       type="text"
-                      {...register('firstName', { required: false })}
-                      defaultValue={user?.firstName || ''}
-                      placeholder="First name"
-                      className="w-full px-4 py-3 border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-purple-500 transition-colors"
+                      defaultValue={user?.firstName}
+                      disabled
+                      className="w-full px-4 py-3 border border-gray-200 rounded-xl bg-gray-50 text-gray-500"
                     />
+                    <p className="text-xs text-gray-500 mt-1">Contact support to change your name</p>
                   </div>
                   <div>
                     <label className="block text-sm font-medium text-gray-700 mb-2">
@@ -518,10 +383,9 @@ const TeacherProfilePage: React.FC = () => {
                     </label>
                     <input
                       type="text"
-                      {...register('lastName', { required: false })}
-                      defaultValue={user?.lastName || ''}
-                      placeholder="Last name"
-                      className="w-full px-4 py-3 border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-purple-500 transition-colors"
+                      defaultValue={user?.lastName}
+                      disabled
+                      className="w-full px-4 py-3 border border-gray-200 rounded-xl bg-gray-50 text-gray-500"
                     />
                   </div>
                 </div>
@@ -817,147 +681,100 @@ const TeacherProfilePage: React.FC = () => {
               </motion.div>
             )}
 
-            {/* Payment Settings Tab */}
-            {activeTab === 'payments' && teacher && (
+            {/* Payments Tab */}
+            {activeTab === 'payments' && (
               <motion.div
-                key="payments"
-                initial={{ opacity: 0, y: 20 }}
+                initial={{ opacity: 0, y: 10 }}
                 animate={{ opacity: 1, y: 0 }}
-                exit={{ opacity: 0, y: -20 }}
-                className="bg-white rounded-2xl p-8 shadow-lg border border-gray-100"
+                className="space-y-6"
               >
-                <StripeConnectSetup
-                  currentStatus={stripeStatus}
-                  onSaveApiKeys={async (pk, sk, tm) => {
-                    try {
-                      await teacherAPI.saveStripeApiKeys(pk, sk, tm);
-                      toast.success('Stripe API keys saved successfully');
-                      // Force immediate refetch with cache bypass
-                      setTimeout(() => refetch(), 300);
-                    } catch (error: any) {
-                      console.error('Error saving stripe keys:', error);
-                      const errorMsg = error.response?.data?.message || error.message || 'Failed to save Stripe API keys';
-                      toast.error(errorMsg);
-                    }
-                  }}
-                  onValidateKeys={async (pk, sk) => {
-                    try {
-                      const result = await teacherAPI.validateStripeApiKeys(pk, sk);
-                      return result;
-                    } catch (error: any) {
-                      toast.error(error.response?.data?.message || 'Failed to validate Stripe API keys');
-                      throw error;
-                    }
-                  }}
-                  isLoading={isSaving}
-                />
-                {teacher.paymentSettings?.commissionRate !== undefined && (
-                  <div className="mt-8 p-6 bg-blue-50 rounded-xl">
-                    <h4 className="font-semibold text-gray-900 mb-2">Commission Rate</h4>
-                    <p className="text-3xl font-bold text-blue-600">{teacher.paymentSettings.commissionRate}%</p>
-                    <p className="text-sm text-gray-600 mt-1">Platform commission on each transaction</p>
+                <div className="flex items-center gap-2 mb-2">
+                  <FaUniversity className="text-purple-600" />
+                  <h3 className="text-lg font-semibold text-gray-900">Bank Details</h3>
+                </div>
+                <p className="text-gray-500 text-sm">
+                  Add your bank account details to receive payouts for your classes.
+                </p>
+
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-2">
+                      Account Holder Name *
+                    </label>
+                    <input
+                      type="text"
+                      value={bankDetails.accountHolderName}
+                      onChange={(e) => setBankDetails({ ...bankDetails, accountHolderName: e.target.value })}
+                      placeholder="Full name as on bank account"
+                      className="w-full px-4 py-3 border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-purple-500"
+                    />
                   </div>
-                )}
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-2">
+                      Bank Name *
+                    </label>
+                    <input
+                      type="text"
+                      value={bankDetails.bankName}
+                      onChange={(e) => setBankDetails({ ...bankDetails, bankName: e.target.value })}
+                      placeholder="e.g., Emirates NBD"
+                      className="w-full px-4 py-3 border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-purple-500"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-2">
+                      Account Number
+                    </label>
+                    <input
+                      type="text"
+                      value={bankDetails.accountNumber}
+                      onChange={(e) => setBankDetails({ ...bankDetails, accountNumber: e.target.value })}
+                      placeholder="Bank account number"
+                      className="w-full px-4 py-3 border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-purple-500"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-2">
+                      IBAN
+                    </label>
+                    <input
+                      type="text"
+                      value={bankDetails.iban}
+                      onChange={(e) => setBankDetails({ ...bankDetails, iban: e.target.value })}
+                      placeholder="AE070331234567890123456"
+                      className="w-full px-4 py-3 border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-purple-500"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-2">
+                      SWIFT / BIC Code
+                    </label>
+                    <input
+                      type="text"
+                      value={bankDetails.swiftCode}
+                      onChange={(e) => setBankDetails({ ...bankDetails, swiftCode: e.target.value })}
+                      placeholder="e.g., EBILAEAD"
+                      className="w-full px-4 py-3 border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-purple-500"
+                    />
+                  </div>
+                </div>
+
+                <div className="flex justify-end pt-4 border-t border-gray-200">
+                  <button
+                    type="button"
+                    onClick={handleSaveBankDetails}
+                    disabled={isSavingBank}
+                    className="inline-flex items-center gap-2 px-6 py-3 bg-gradient-to-r from-purple-600 to-indigo-600 text-white rounded-xl font-semibold shadow-lg hover:shadow-xl transition-all disabled:opacity-50"
+                  >
+                    <FaSave className="w-4 h-4" />
+                    {isSavingBank ? 'Saving...' : 'Save Bank Details'}
+                  </button>
+                </div>
               </motion.div>
             )}
 
-            {/* Bank Details Tab */}
-            {activeTab === 'bank' && teacher && (
-              <motion.div
-                key="bank"
-                initial={{ opacity: 0, y: 20 }}
-                animate={{ opacity: 1, y: 0 }}
-                exit={{ opacity: 0, y: -20 }}
-                className="bg-white rounded-2xl p-8 shadow-lg border border-gray-100"
-              >
-                <BankDetailsForm
-                  currentDetails={{
-                    accountHolderName: teacher.paymentSettings?.bankDetails?.accountHolderName || '',
-                    bankName: teacher.paymentSettings?.bankDetails?.bankName || '',
-                    accountNumber: teacher.paymentSettings?.bankDetails?.accountNumber || '',
-                    iban: teacher.paymentSettings?.bankDetails?.iban,
-                    swiftCode: teacher.paymentSettings?.bankDetails?.swiftCode,
-                    country: teacher.paymentSettings?.bankDetails?.country || 'United States',
-                  }}
-                  onSave={async (details: any) => {
-                    try {
-                      await teacherAPI.updateBankDetails(details);
-                      toast.success('Bank details saved successfully');
-                      refetch();
-                    } catch (error: any) {
-                      toast.error('Failed to save bank details');
-                      throw error;
-                    }
-                  }}
-                />
-              </motion.div>
-            )}
-
-            {/* Documents Tab */}
-            {activeTab === 'documents' && teacher && (
-              <motion.div
-                key="documents"
-                initial={{ opacity: 0, y: 20 }}
-                animate={{ opacity: 1, y: 0 }}
-                exit={{ opacity: 0, y: -20 }}
-                className="bg-white rounded-2xl p-8 shadow-lg border border-gray-100"
-              >
-                <DocumentUpload
-                  documents={(() => {
-                    const docsArray: any[] = [];
-                    if (teacher.verificationDocuments && typeof teacher.verificationDocuments === 'object') {
-                      ['businessLicense', 'taxCertificate', 'identityDocument'].forEach((type: string) => {
-                        const doc = (teacher.verificationDocuments as any)[type];
-                        if (doc) {
-                          docsArray.push({
-                            type: type as any,
-                            url: doc.url,
-                            status: doc.status || 'not_uploaded',
-                            uploadedAt: doc.uploadedAt,
-                            rejectionReason: doc.rejectionReason,
-                          });
-                        } else {
-                          docsArray.push({
-                            type: type as any,
-                            status: 'not_uploaded',
-                          });
-                        }
-                      });
-                    } else {
-                      docsArray.push(
-                        { type: 'businessLicense' as const, status: 'not_uploaded' },
-                        { type: 'taxCertificate' as const, status: 'not_uploaded' },
-                        { type: 'identityDocument' as const, status: 'not_uploaded' }
-                      );
-                    }
-                    return docsArray;
-                  })()}
-                  onUpload={async (type: string, file: File) => {
-                    try {
-                      await teacherAPI.uploadDocument(type, file);
-                      toast.success('Document uploaded successfully');
-                      refetch();
-                    } catch (error: any) {
-                      toast.error('Failed to upload document');
-                      throw error;
-                    }
-                  }}
-                  onDelete={async (type: string) => {
-                    try {
-                      await teacherAPI.deleteDocument(type);
-                      toast.success('Document deleted successfully');
-                      refetch();
-                    } catch (error: any) {
-                      toast.error('Failed to delete document');
-                      throw error;
-                    }
-                  }}
-                />
-              </motion.div>
-            )}
-
-            {/* Save Button */}
-            {['personal', 'professional', 'social', 'availability'].includes(activeTab) && (
+            {/* Save Button (hidden on Payments tab which has its own save) */}
+            {activeTab !== 'payments' && (
               <div className="flex items-center justify-end gap-4 mt-8 pt-6 border-t border-gray-200">
                 {saveSuccess && (
                   <span className="text-green-600 font-medium">Profile saved successfully!</span>

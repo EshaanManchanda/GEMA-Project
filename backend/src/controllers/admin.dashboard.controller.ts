@@ -149,8 +149,13 @@ export const getDashboardStats = async (
         { $sort: { revenue: -1 } },
         { $limit: 5 },
       ]),
-      // Top Performing Venues logic update needed - currently stubbed as relationship changed
-      Promise.resolve([]),
+      Event.aggregate([
+        { $match: { isDeleted: false } },
+        { $group: { _id: "$location.city", count: { $sum: 1 } } },
+        { $sort: { count: -1 } },
+        { $limit: 5 },
+        { $project: { _id: 0, city: "$_id", count: 1 } },
+      ]),
       Order.aggregate([
         { $match: { paymentStatus: "paid" } },
         {

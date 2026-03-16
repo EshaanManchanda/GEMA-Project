@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
-import { useDispatch, useSelector } from 'react-redux';
 import { Link } from 'react-router-dom';
+import { useDispatch, useSelector } from 'react-redux';
 import { toast } from 'react-hot-toast';
 import {
   fetchCommissionConfigs,
@@ -43,6 +43,7 @@ const AdminCommissionsPage: React.FC = () => {
   const commissionSummary = useSelector(selectCommissionSummary);
 
   const [activeTab, setActiveTab] = useState<'configs' | 'transactions' | 'analytics'>('configs');
+  const [exporting, setExporting] = useState(false);
   const [selectedTransactions, setSelectedTransactions] = useState<string[]>([]);
   const [filters, setFilters] = useState<CommissionFilters>({
     status: 'all',
@@ -280,6 +281,31 @@ const AdminCommissionsPage: React.FC = () => {
     });
   };
 
+  const handleExportCSV = async () => {
+    setExporting(true);
+    try {
+      const apiBase = (import.meta.env.VITE_API_URL || '/api').replace(/\/+$/, '');
+      const res = await fetch(`${apiBase}/admin/commission-export?format=csv`, {
+        credentials: 'include',  // send httpOnly auth cookies
+      });
+      if (!res.ok) throw new Error(`HTTP ${res.status}`);
+      const blob = await res.blob();
+      const url  = URL.createObjectURL(blob);
+      const a    = document.createElement('a');
+      a.href     = url;
+      a.download = `commissions-${new Date().toISOString().slice(0, 10)}.csv`;
+      document.body.appendChild(a);
+      a.click();
+      a.remove();
+      URL.revokeObjectURL(url);
+    } catch (err) {
+      logger.error('CSV export failed:', err);
+      toast.error('Export failed. Please try again.');
+    } finally {
+      setExporting(false);
+    }
+  };
+
   if (isLoading && commissionConfigs.length === 0) {
     return (
       <>
@@ -320,13 +346,14 @@ const AdminCommissionsPage: React.FC = () => {
                 Approve Selected ({selectedTransactions.length})
               </button>
             )}
-            <Link
-              to="/admin/commissions/export"
-              className="inline-flex items-center px-4 py-2 bg-purple-600 text-white rounded-lg font-medium hover:bg-purple-700 transition-colors"
+            <button
+              onClick={handleExportCSV}
+              disabled={exporting}
+              className="inline-flex items-center px-4 py-2 bg-purple-600 text-white rounded-lg font-medium hover:bg-purple-700 disabled:opacity-50 transition-colors"
             >
-              <span className="mr-2">📊</span>
-              Export Data
-            </Link>
+              <span className="mr-2">{exporting ? '⏳' : '📊'}</span>
+              {exporting ? 'Exporting…' : 'Export CSV'}
+            </button>
           </div>
         </div>
 

@@ -142,7 +142,7 @@ const FAQPage: React.FC = () => {
         >
           {/* Header */}
           <motion.div variants={itemVariants} className="text-center mb-12">
-            <h1 className="text-4xl md:text-5xl font-bold mb-4 text-gray-800">Frequently Asked Questions</h1>
+            <h1 className="text-3xl sm:text-4xl md:text-5xl font-bold mb-4 text-gray-800">Frequently Asked Questions</h1>
             <p className="text-gray-600 max-w-2xl mx-auto">Find answers to common questions about {getAppNameFull()}. If you can't find what you're looking for, please contact our support team.</p>
           </motion.div>
 
@@ -187,7 +187,7 @@ const FAQPage: React.FC = () => {
               filteredFAQs.map(faq => (
                 <div key={faq.id} className="bg-white rounded-lg shadow-md overflow-hidden">
                   <button
-                    className="w-full p-6 text-left flex justify-between items-center focus:outline-none"
+                    className="w-full p-4 sm:p-6 text-left flex justify-between items-center focus:outline-none min-h-[48px]"
                     onClick={() => toggleQuestion(faq.id)}
                   >
                     <h3 className="text-lg font-semibold text-gray-800">{faq.question}</h3>

@@ -9,6 +9,7 @@ import {
 } from "../utils/qrcode";
 import { TicketGenerationService } from "../services/ticketGeneration.service";
 import { sendTicketByEmail } from "../utils/mailer";
+import { smsService } from "../services/sms.service";
 import { v4 as uuidv4 } from "uuid";
 
 // Helper function to generate a unique ticket number
@@ -321,11 +322,26 @@ export const resendTicket = async (
         message: "Ticket resent via email successfully",
       });
     } else if (method === "sms") {
-      // Implement SMS sending logic here
-      // await sendTicketBySMS(ticket.attendeePhone, ticket.ticketNumber, event.name);
-      res.status(501).json({
-        success: false,
-        message: "SMS sending not yet implemented",
+      const phone = ticket.attendeePhone;
+      if (!phone) {
+        return next(new AppError("No phone number on file for this ticket", 400));
+      }
+      const venue = event.venueType === "Online"
+        ? (event.meetingLink || "Online")
+        : `${event.location?.address || ""}, ${event.location?.city || ""}`.trim().replace(/^,\s*/, "");
+      const result = await smsService.sendTicketViaSMS(
+        phone,
+        ticket.ticketNumber,
+        event.title,
+        event.dateSchedule[0]?.date || new Date(),
+        venue,
+      );
+      if (!result.success) {
+        return next(new AppError(`SMS delivery failed: ${result.error || "unknown error"}`, 502));
+      }
+      res.status(200).json({
+        success: true,
+        message: "Ticket resent via SMS successfully",
       });
     }
   } catch (error) {

@@ -10,6 +10,7 @@ import {
 import { AppError } from "../middleware/index";
 import { ApiResponse } from "../types/index";
 import * as crypto from "crypto";
+import PayoutService from "../services/payout.service";
 
 /**
  * Apply to become an affiliate
@@ -689,6 +690,36 @@ export const getAffiliateAnalytics = async (
         averageCommissionRate: 0,
       },
       message: "Affiliate analytics retrieved successfully",
+    });
+  } catch (error) {
+    next(error);
+  }
+};
+
+/**
+ * POST /api/affiliates/payout-request
+ * Request a payout for pending commissions
+ */
+export const requestAffiliatePayout = async (
+  req: Request,
+  res: Response,
+  next: NextFunction,
+): Promise<void> => {
+  try {
+    const userId = req.user?._id || req.user?.id;
+    if (!userId) return next(new AppError("Authentication required", 401));
+
+    const affiliate = await Affiliate.findOne({ userId });
+    if (!affiliate) return next(new AppError("Affiliate account not found", 404));
+    if (!affiliate.canReceivePayout()) {
+      return next(new AppError("Not eligible for payout. Check status and minimum amount.", 400));
+    }
+
+    await PayoutService.processAffiliatePayouts(affiliate._id.toString());
+
+    res.status(200).json({
+      success: true,
+      message: "Affiliate payout processed successfully",
     });
   } catch (error) {
     next(error);

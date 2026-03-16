@@ -79,14 +79,14 @@ const AboutPage: React.FC = () => {
         >
           {/* Hero Section */}
           <motion.div variants={itemVariants} className="text-center mb-16">
-            <h1 className="text-4xl md:text-5xl font-bold mb-6 text-gray-800">About {getAppNameFull()}</h1>
+            <h1 className="text-3xl sm:text-4xl md:text-5xl font-bold mb-6 text-gray-800">About {getAppNameFull()}</h1>
             <p className="text-xl text-gray-600 mb-8">Connecting families with amazing experiences for children</p>
             <div className="w-24 h-1 bg-primary mx-auto"></div>
           </motion.div>
 
           {/* Our Story */}
           <motion.div variants={itemVariants} className="mb-16">
-            <h2 className="text-3xl font-bold mb-6 text-gray-800">Our Story</h2>
+            <h2 className="text-2xl sm:text-3xl font-bold mb-6 text-gray-800">Our Story</h2>
             <div className="bg-white rounded-lg shadow-md p-8">
               <p className="text-gray-600 mb-4">
                 {getAppNameFull()} was born from a simple idea: parents in the UAE deserve a single, trusted destination to discover and book the best activities for their children. We understood the challenge of finding quality, age-appropriate experiences across a fast-growing country with so much to offer.
@@ -102,7 +102,7 @@ const AboutPage: React.FC = () => {
 
           {/* Our Mission */}
           <motion.div variants={itemVariants} className="mb-16">
-            <h2 className="text-3xl font-bold mb-6 text-gray-800">Our Mission</h2>
+            <h2 className="text-2xl sm:text-3xl font-bold mb-6 text-gray-800">Our Mission</h2>
             <div className="bg-primary bg-opacity-5 rounded-lg p-8 border-l-4 border-primary">
               <p className="text-xl italic text-gray-700">
                 "To enrich children's lives by connecting families with diverse, high-quality experiences that inspire learning, creativity, and joy."
@@ -112,7 +112,7 @@ const AboutPage: React.FC = () => {
 
           {/* Key Features */}
           <motion.div variants={itemVariants} className="mb-16">
-            <h2 className="text-3xl font-bold mb-6 text-gray-800">What We Offer</h2>
+            <h2 className="text-2xl sm:text-3xl font-bold mb-6 text-gray-800">What We Offer</h2>
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
               <div className="bg-white rounded-lg shadow-md p-6 flex">
                 <div className="mr-4">
@@ -166,7 +166,7 @@ const AboutPage: React.FC = () => {
 
           {/* Stats */}
           <motion.div variants={itemVariants} className="mb-16">
-            <h2 className="text-3xl font-bold mb-6 text-gray-800">Our Impact</h2>
+            <h2 className="text-2xl sm:text-3xl font-bold mb-6 text-gray-800">Our Impact</h2>
             <div className="grid grid-cols-2 md:grid-cols-4 gap-4 text-center">
               <div className="bg-white rounded-lg shadow-md p-6">
                 <div className="text-4xl font-bold text-primary mb-2">{getStatsEventVendors()}</div>

@@ -1,5 +1,5 @@
 import { Request, Response, NextFunction } from "express";
-import { Event, User, IEvent, UserRole, Teacher } from "../models/index";
+import { Event, User, IEvent, UserRole } from "../models/index";
 import Vendor from "../models/Vendor";
 import { AppError } from "../middleware/index";
 import { ApiResponse, AuthRequest } from "../types/index";
@@ -65,7 +65,6 @@ interface UpdateEventRequest {
     answer: string;
   }>;
   vendorId?: string;
-  teacherId?: string;
   googlePlaceId?: string;
   customCSS?: string;
   meetingLink?: string;
@@ -89,8 +88,7 @@ interface CreateEventRequest {
   };
   price: number;
   currency: string;
-  vendorId?: string;
-  teacherId?: string;
+  vendorId: string;
   isApproved?: boolean;
   isFeatured?: boolean;
   tags?: string[];
@@ -124,12 +122,6 @@ interface CreateEventRequest {
 const formatAdminEventResponse = (event: any) => {
   // Apply transformation to extract image URLs from MediaAssets
   const transformedEvent = transformEventResponse(event);
-  const resolvedTeacherId =
-    transformedEvent.teacherId?._id?.toString() ||
-    transformedEvent.teacherId?.id ||
-    transformedEvent.teacherId?.toString?.() ||
-    transformedEvent.teacherId ||
-    null;
 
   return {
     id: transformedEvent._id?.toString() || transformedEvent.id,
@@ -140,15 +132,6 @@ const formatAdminEventResponse = (event: any) => {
     venueType: transformedEvent.venueType,
     ageRange: transformedEvent.ageRange,
     location: transformedEvent.location,
-    teacherId: resolvedTeacherId,
-    teacher: transformedEvent.teacherId
-      ? {
-          id: resolvedTeacherId,
-          firstName: transformedEvent.teacherId.firstName,
-          lastName: transformedEvent.teacherId.lastName,
-          email: transformedEvent.teacherId.email,
-        }
-      : null,
     vendor: transformedEvent.vendorId
       ? {
           id:
@@ -303,7 +286,6 @@ export const getAllEvents = async (
     const [events, totalEvents] = await Promise.all([
       Event.find(query)
         .populate("vendorId", "businessName email phone")
-        .populate("teacherId", "firstName lastName email")
         .populate("imageAssets", "url thumbnailUrl variations provider")
         .sort(sortObj)
         .skip(skip)
@@ -373,7 +355,6 @@ export const getEventById = async (
 
     const event = await Event.findById(id)
       .populate("vendorId", "businessName email phone")
-      .populate("teacherId", "firstName lastName email")
       .populate("imageAssets", "url thumbnailUrl variations provider");
 
     if (!event) {
@@ -405,45 +386,24 @@ export const createEvent = async (
   try {
     const eventData = req.body as CreateEventRequest;
 
-    const hasVendor = Boolean(eventData.vendorId);
-    const hasTeacher = Boolean(eventData.teacherId);
-
-    // Validate required ownership fields
-    if (!hasVendor && !hasTeacher) {
-      return next(new AppError("Either vendor ID or teacher ID is required", 400));
+    // Validate required fields
+    if (!eventData.vendorId) {
+      return next(new AppError("Vendor ID is required", 400));
     }
 
-    if (hasVendor) {
-      if (!mongoose.Types.ObjectId.isValid(eventData.vendorId!)) {
-        return next(new AppError("Invalid vendor ID", 400));
-      }
-
-      const vendor = await Vendor.findOne({
-        _id: eventData.vendorId,
-        isActive: true,
-        isSuspended: false,
-      });
-
-      if (!vendor) {
-        return next(new AppError("Vendor not found or inactive", 404));
-      }
+    // Validate vendor exists and is active
+    if (!mongoose.Types.ObjectId.isValid(eventData.vendorId)) {
+      return next(new AppError("Invalid vendor ID", 400));
     }
 
-    if (hasTeacher) {
-      if (!mongoose.Types.ObjectId.isValid(eventData.teacherId!)) {
-        return next(new AppError("Invalid teacher ID", 400));
-      }
+    const vendor = await Vendor.findOne({
+      _id: eventData.vendorId,
+      isActive: true,
+      isSuspended: false,
+    });
 
-      const teacher = await Teacher.findOne({
-        _id: eventData.teacherId,
-        isDeleted: false,
-        isActive: true,
-        isSuspended: false,
-      });
-
-      if (!teacher) {
-        return next(new AppError("Teacher not found or inactive", 404));
-      }
+    if (!vendor) {
+      return next(new AppError("Vendor not found or inactive", 404));
     }
 
     // Validate dateSchedule dates are in the future
@@ -471,9 +431,10 @@ export const createEvent = async (
     });
 
     // Populate vendor information
-    const populatedEvent = await Event.findById(newEvent._id)
-      .populate("vendorId", "businessName email phone")
-      .populate("teacherId", "firstName lastName email");
+    const populatedEvent = await Event.findById(newEvent._id).populate(
+      "vendorId",
+      "businessName email phone",
+    );
 
     const response: ApiResponse = {
       success: true,
@@ -533,9 +494,7 @@ export const changeEventVendor = async (
       id,
       { vendorId },
       { new: true, runValidators: true },
-    )
-      .populate("vendorId", "businessName email phone")
-      .populate("teacherId", "firstName lastName email");
+    ).populate("vendorId", "businessName email phone");
 
     const response: ApiResponse = {
       success: true,
@@ -720,9 +679,7 @@ export const restoreEvent = async (
       id,
       { isDeleted: false },
       { new: true, runValidators: true },
-    )
-      .populate("vendorId", "businessName email phone")
-      .populate("teacherId", "firstName lastName email");
+    ).populate("vendorId", "businessName email phone");
 
     const response: ApiResponse = {
       success: true,
@@ -759,9 +716,7 @@ export const approveEvent = async (
       id,
       { isApproved: true, status: "published" },
       { new: true, runValidators: true },
-    )
-      .populate("vendorId", "businessName email phone")
-      .populate("teacherId", "firstName lastName email");
+    ).populate("vendorId", "businessName email phone");
 
     if (!event) {
       return next(new AppError("Event not found", 404));
@@ -807,9 +762,7 @@ export const rejectEvent = async (
         // You could add a rejectionReason field to the Event model if needed
       },
       { new: true, runValidators: true },
-    )
-      .populate("vendorId", "businessName email phone")
-      .populate("teacherId", "firstName lastName email");
+    ).populate("vendorId", "businessName email phone");
 
     if (!event) {
       return next(new AppError("Event not found", 404));
@@ -857,9 +810,7 @@ export const toggleFeatured = async (
       id,
       { isFeatured: !currentEvent.isFeatured },
       { new: true, runValidators: true },
-    )
-      .populate("vendorId", "businessName email phone")
-      .populate("teacherId", "firstName lastName email");
+    ).populate("vendorId", "businessName email phone");
 
     const response: ApiResponse = {
       success: true,
@@ -993,7 +944,6 @@ export const getEventStats = async (
       ]),
       Event.find({ isDeleted: false })
         .populate("vendorId", "businessName email phone")
-        .populate("teacherId", "firstName lastName email")
         .sort({ createdAt: -1 })
         .limit(5)
         .lean(),

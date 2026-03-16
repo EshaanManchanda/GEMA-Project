@@ -290,7 +290,7 @@ const BlogPage: React.FC = () => {
 
       {/* Loading State */}
       {loading ? (
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6 sm:gap-8">
           {[1, 2, 3, 4, 5, 6].map((i) => (
             <div key={i} className="bg-white rounded-lg overflow-hidden shadow-md animate-pulse">
               <div className="h-48 bg-gray-200"></div>
@@ -337,7 +337,7 @@ const BlogPage: React.FC = () => {
           <p className="text-gray-600">Check back later for new content!</p>
         </div>
       ) : (
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6 sm:gap-8">
           {paginatedBlogs.map((blog) => (
             <BlogCard
               key={blog._id}

@@ -3,10 +3,8 @@ import { FaSearch, FaEdit, FaTrash, FaEye, FaUndo, FaPlus, FaWpforms, FaClipboar
 import { useNavigate } from 'react-router-dom';
 import vendorAPI from '../../services/api/vendorAPI';
 import categoriesAPI, { Category } from '../../services/api/categoriesAPI';
-import VendorEventViewModal from '../../components/vendor/VendorEventViewModal';
 import PrivatePageSEO from '@/components/common/PrivatePageSEO';
 import logger from '../../utils/logger';
-import { API_BASE_URL } from '@/config/api';
 
 interface Event {
   _id: string;
@@ -30,10 +28,6 @@ interface Event {
   isFeatured?: boolean;
   viewsCount?: number;
   images: string[];
-  imageAssets?: Array<string | { url?: string; thumbnailUrl?: string }>;
-  coverImage?: string;
-  image?: string;
-  bannerImage?: string;
   isDeleted: boolean;
   tags: string[];
   dateSchedule: Array<{
@@ -73,35 +67,9 @@ const VendorEventsPage: React.FC = () => {
   const [categoryFilter, setCategoryFilter] = useState<string>('all');
   const [typeFilter, setTypeFilter] = useState<string>('all');
 
-  // Modal states
-  const [isViewModalOpen, setIsViewModalOpen] = useState(false);
+  // Delete modal state
   const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);
-  const [selectedEvent, setSelectedEvent] = useState<Event | null>(null);
   const [eventToDelete, setEventToDelete] = useState<string | null>(null);
-
-  const toAbsoluteMediaUrl = (url?: string): string => {
-    if (!url) return '';
-    if (/^https?:\/\//i.test(url)) return url;
-    const apiOrigin = API_BASE_URL.replace(/\/api\/?$/, '');
-    if (url.startsWith('/')) return `${apiOrigin}${url}`;
-    return `${apiOrigin}/${url}`;
-  };
-
-  const getEventImageUrl = (event: Event): string => {
-    const firstAsset = event.imageAssets?.[0];
-    const assetUrl = typeof firstAsset === 'string'
-      ? firstAsset
-      : firstAsset?.url || firstAsset?.thumbnailUrl;
-
-    return toAbsoluteMediaUrl(
-      assetUrl ||
-      event.images?.[0] ||
-      event.coverImage ||
-      event.image ||
-      event.bannerImage ||
-      ''
-    );
-  };
 
 
   useEffect(() => {
@@ -365,11 +333,8 @@ const VendorEventsPage: React.FC = () => {
                             <div className="flex-shrink-0 h-10 w-10">
                               <img
                                 className="h-10 w-10 rounded-full object-cover"
-                                src={getEventImageUrl(event) || 'https://placehold.co/40x40/gray/white?text=N'}
+                                src={event.images?.[0] || 'https://placehold.co/40x40/gray/white?text=N'}
                                 alt=""
-                                onError={(e) => {
-                                  e.currentTarget.src = 'https://placehold.co/40x40/gray/white?text=N';
-                                }}
                               />
                             </div>
                             <div className="ml-4">
@@ -414,10 +379,7 @@ const VendorEventsPage: React.FC = () => {
                         <td className="px-6 py-4 whitespace-nowrap text-sm font-medium">
                           <div className="flex space-x-2">
                             <button
-                              onClick={() => {
-                                setSelectedEvent(event);
-                                setIsViewModalOpen(true);
-                              }}
+                              onClick={() => navigate(`/vendor/events/${event._id}`)}
                               className="text-blue-600 hover:text-blue-900"
                               title="View Details"
                             >
@@ -483,24 +445,6 @@ const VendorEventsPage: React.FC = () => {
           </div>
         </div>
       </div>
-
-      {/* View Modal */}
-      {isViewModalOpen && selectedEvent && (
-        <VendorEventViewModal
-          event={selectedEvent}
-          isOpen={isViewModalOpen}
-          onClose={() => {
-            setIsViewModalOpen(false);
-            setSelectedEvent(null);
-          }}
-          onEdit={() => {
-            setIsViewModalOpen(false);
-            if (selectedEvent) {
-              navigate(`/vendor/events/${selectedEvent._id}/edit`);
-            }
-          }}
-        />
-      )}
 
       {/* Delete Confirmation Modal */}
       {isDeleteModalOpen && (

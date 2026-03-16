@@ -38,15 +38,17 @@ export const generateFallbackImage = (
  * @param height - Image height
  * @returns Image URL or fallback
  */
+const isAbsoluteUrl = (url: string): boolean =>
+  /^(https?:\/\/|data:)/.test(url);
+
 export const getEventImage = (
   images?: string[],
   title?: string,
   width: number = 400,
   height: number = 300
 ): string => {
-  if (images && images.length > 0 && images[0]) {
-    return images[0];
-  }
+  const validUrl = images?.find((url) => url && isAbsoluteUrl(url));
+  if (validUrl) return validUrl;
 
   return generateFallbackImage(title || 'Event Image', width, height);
 };

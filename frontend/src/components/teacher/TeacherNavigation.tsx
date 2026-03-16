@@ -9,6 +9,7 @@ import {
   FaChartBar,
   FaHome,
   FaUserCircle,
+  FaHeart,
 } from 'react-icons/fa';
 
 interface NavItem {
@@ -55,6 +56,11 @@ const TeacherNavigation: React.FC = () => {
       path: '/teacher/profile',
       label: 'Profile',
       icon: <FaUserCircle className="w-4 h-4" />,
+    },
+    {
+      path: '/favorites',
+      label: 'Favorites',
+      icon: <FaHeart className="w-4 h-4" />,
     },
   ];
 

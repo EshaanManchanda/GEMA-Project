@@ -15,7 +15,6 @@ import {
 } from 'react-icons/fa';
 import teacherAPI from '@/services/api/teacherAPI';
 import type { ITeacher, ITeachingEvent } from '@/types/teacher';
-import { API_BASE_URL } from '@/config/api';
 
 const TeacherPublicProfilePage: React.FC = () => {
   const { id } = useParams<{ id: string }>();
@@ -33,7 +32,7 @@ const TeacherPublicProfilePage: React.FC = () => {
     const fetch = async () => {
       try {
         setIsLoading(true);
-        const result = await teacherAPI.getPublicTeacherProfile(id);
+        const result = await teacherAPI.getPublicProfile(id);
         setData(result);
       } catch (err) {
         setError('Teacher profile not found or unavailable.');
@@ -66,22 +65,7 @@ const TeacherPublicProfilePage: React.FC = () => {
   }
 
   const { user, teacher, teachingEvents, stats } = data;
-
-  const toAbsoluteMediaUrl = (url?: string): string => {
-    if (!url) return '';
-    if (/^https?:\/\//i.test(url)) return url;
-    const apiOrigin = API_BASE_URL.replace(/\/api\/?$/, '');
-    if (url.startsWith('/')) {
-      return `${apiOrigin}${url}`;
-    }
-    return `${apiOrigin}/${url}`;
-  };
-
-  const socialLinks = ((teacher as any).socialLinks || (teacher as any).socialMedia || {}) as Record<string, string>;
-  const coverImage = toAbsoluteMediaUrl(
-    (teacher as any).coverImage || (teacher as any).coverImageUrl || ''
-  );
-  const avatarImage = toAbsoluteMediaUrl(user?.avatar || '');
+  const socialLinks = teacher.socialLinks || {};
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-gray-50 to-purple-50">
@@ -104,46 +88,29 @@ const TeacherPublicProfilePage: React.FC = () => {
           className="bg-white rounded-2xl shadow-lg overflow-hidden mb-8"
         >
           {/* Cover */}
-          <div className="h-48 bg-gradient-to-r from-purple-600 to-indigo-600 relative z-0">
-            {coverImage && (
-              <img
-                src={coverImage}
-                alt="cover"
-                className="w-full h-full object-cover"
-                onError={(e) => {
-                  e.currentTarget.style.display = 'none';
-                }}
-              />
+          <div className="h-48 bg-gradient-to-r from-purple-600 to-indigo-600 relative">
+            {teacher.coverImage && (
+              <img src={teacher.coverImage} alt="cover" className="w-full h-full object-cover" />
             )}
+          </div>
 
-            {/* Avatar overlay on cover */}
-            <div className="absolute z-20 -bottom-12 left-1/2 -translate-x-1/2 md:left-8 md:translate-x-0">
-              <div className="w-24 h-24 md:w-32 md:h-32 rounded-full border-4 border-white shadow-lg overflow-hidden bg-gradient-to-br from-purple-400 to-indigo-400 flex-shrink-0">
-                {avatarImage ? (
-                  <img
-                    src={avatarImage}
-                    alt={user.firstName}
-                    className="w-full h-full object-cover"
-                    onError={(e) => {
-                      e.currentTarget.style.display = 'none';
-                    }}
-                  />
+          <div className="px-6 pb-6">
+            <div className="flex flex-col md:flex-row md:items-end gap-4 -mt-16">
+              {/* Avatar */}
+              <div className="w-32 h-32 rounded-2xl border-4 border-white shadow-lg overflow-hidden bg-gradient-to-br from-purple-400 to-indigo-400 flex-shrink-0">
+                {user?.avatar ? (
+                  <img src={user.avatar} alt={user.firstName} className="w-full h-full object-cover" />
                 ) : (
                   <div className="w-full h-full flex items-center justify-center text-white text-4xl font-bold">
                     {user?.firstName?.[0]}
                   </div>
                 )}
               </div>
-            </div>
-          </div>
-
-          <div className="px-6 pb-6 pt-16 md:pt-6">
-            <div className="flex flex-col md:flex-row md:items-end gap-4 md:pl-36">
 
               {/* Info */}
               <div className="flex-1 mt-6 md:mt-0">
                 <div className="flex flex-wrap items-center gap-3 mb-1">
-                  <h1 className="text-3xl font-bold text-gray-900">
+                  <h1 className="text-2xl sm:text-3xl font-bold text-gray-900">
                     {user?.firstName} {user?.lastName}
                   </h1>
                   {teacher.verificationStatus === 'verified' && (
@@ -298,39 +265,29 @@ const TeacherPublicProfilePage: React.FC = () => {
               animate={{ opacity: 1, x: 0 }}
               transition={{ delay: 0.1 }}
             >
-          
+              <h2 className="text-xl font-bold text-gray-900 mb-4">
+                Classes by {user?.firstName}
+              </h2>
               {teachingEvents && teachingEvents.length > 0 ? (
                 <div className="space-y-4">
-                  {teachingEvents.map((event) => {
-                    const eventImage = toAbsoluteMediaUrl(
-                      (event as any).images?.[0] ||
-                      (event as any).coverImage ||
-                      (event as any).image ||
-                      (event as any).bannerImage ||
-                      ''
-                    );
-
-                    return (
-                      <Link
-                        key={event._id}
-                        to={`/events/${event._id}`}
-                        className="block bg-white rounded-2xl shadow-md hover:shadow-lg transition-shadow overflow-hidden group"
-                      >
-                        <div className="flex gap-4 p-4">
-                          {eventImage ? (
-                            <img
-                              src={eventImage}
-                              alt={event.title}
-                              className="w-24 h-24 rounded-xl object-cover flex-shrink-0"
-                              onError={(e) => {
-                                e.currentTarget.style.display = 'none';
-                              }}
-                            />
-                          ) : (
-                            <div className="w-24 h-24 rounded-xl bg-gradient-to-br from-purple-400 to-indigo-500 flex-shrink-0 flex items-center justify-center">
-                              <FaChalkboardTeacher className="text-white w-8 h-8" />
-                            </div>
-                          )}
+                  {teachingEvents.map((event) => (
+                    <Link
+                      key={event._id}
+                      to={`/events/${event._id}`}
+                      className="block bg-white rounded-2xl shadow-md hover:shadow-lg transition-shadow overflow-hidden group"
+                    >
+                      <div className="flex gap-4 p-4">
+                        {event.images && event.images.length > 0 ? (
+                          <img
+                            src={event.images[0]}
+                            alt={event.title}
+                            className="w-24 h-24 rounded-xl object-cover flex-shrink-0"
+                          />
+                        ) : (
+                          <div className="w-24 h-24 rounded-xl bg-gradient-to-br from-purple-400 to-indigo-500 flex-shrink-0 flex items-center justify-center">
+                            <FaChalkboardTeacher className="text-white w-8 h-8" />
+                          </div>
+                        )}
                         <div className="flex-1 min-w-0">
                           <h3 className="font-semibold text-gray-900 group-hover:text-purple-600 transition-colors mb-1 truncate">
                             {event.title}
@@ -356,10 +313,9 @@ const TeacherPublicProfilePage: React.FC = () => {
                             </p>
                           )}
                         </div>
-                        </div>
-                      </Link>
-                    );
-                  })}
+                      </div>
+                    </Link>
+                  ))}
                 </div>
               ) : (
                 <div className="bg-white rounded-2xl shadow-md p-12 text-center">

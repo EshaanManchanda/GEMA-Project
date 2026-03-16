@@ -457,7 +457,7 @@ const EventCardContent: React.FC<EventCardContentProps> = ({
 
   return (
     <>
-      <h3 className="text-lg font-semibold mb-2 line-clamp-2 min-h-[3.5rem] text-gray-900 group-hover:text-primary-600 transition-colors">
+      <h3 className="text-sm sm:text-lg font-semibold mb-2 line-clamp-2 min-w-0 min-h-[3.5rem] text-gray-900 group-hover:text-primary-600 transition-colors">
         {title}
       </h3>
       {showDescription && truncatedDescription && (
@@ -872,7 +872,7 @@ const EventCard: React.FC<EventCardProps> = (props) => {
         ) : (
           <div className="absolute inset-0 p-6 flex flex-col justify-end text-white">
             {renderHeader ? renderHeader(renderProps) : null}
-            <h3 className="text-2xl font-bold mb-2">{event.title}</h3>
+            <h3 className="text-xl sm:text-2xl font-bold mb-2 min-w-0 line-clamp-2">{event.title}</h3>
             {finalShowDescription && event.description && (
               <div
                 className="text-sm text-white/90 mb-3 line-clamp-2"
@@ -932,7 +932,7 @@ const EventCard: React.FC<EventCardProps> = (props) => {
 
       <div className="text-center">
         {renderHeader ? renderHeader(renderProps) : null}
-        <h3 className="text-base font-semibold mb-2 line-clamp-1 text-gray-900 group-hover:text-blue-600 transition-colors">
+        <h3 className="text-sm sm:text-base font-semibold mb-2 line-clamp-1 min-w-0 text-gray-900 group-hover:text-blue-600 transition-colors">
           {event.title}
         </h3>
         {showPrice && event.price && (
@@ -980,7 +980,7 @@ const EventCard: React.FC<EventCardProps> = (props) => {
             {event.category}
           </div>
         )}
-        <h3 className="text-xl font-bold mb-3 leading-tight text-gray-900 group-hover:text-blue-600 transition-colors">
+        <h3 className="text-lg sm:text-xl font-bold mb-3 leading-tight min-w-0 line-clamp-2 text-gray-900 group-hover:text-blue-600 transition-colors">
           {event.title}
         </h3>
         {finalShowDescription && event.description && (
