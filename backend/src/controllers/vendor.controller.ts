@@ -150,6 +150,34 @@ export const exportVendorBookings = catchAsync(
   },
 );
 
+// @desc    Export participants for a specific event
+// @route   GET /api/vendors/events/:eventId/participants/export
+export const exportEventParticipants = catchAsync(
+  async (req: AuthRequest, res: Response, next: NextFunction) => {
+    const userId = req.user?._id || req.user?.id;
+    if (!userId) return next(new AppError("User not authenticated", 401));
+
+    const { eventId } = req.params;
+    const { format = "csv" } = req.query;
+    const result = await vendorService.exportEventParticipants(
+      userId.toString(),
+      eventId,
+      format as string,
+    );
+
+    if (result.type === "json") {
+      return res.json({ success: true, data: result.data });
+    }
+
+    res.setHeader("Content-Type", "text/csv");
+    res.setHeader(
+      "Content-Disposition",
+      `attachment; filename="participants-${eventId}-${Date.now()}.csv"`,
+    );
+    return res.send(result.data);
+  },
+);
+
 // @desc    Import vendor bookings from CSV
 // @route   POST /api/vendors/bookings/import
 export const importVendorBookings = catchAsync(

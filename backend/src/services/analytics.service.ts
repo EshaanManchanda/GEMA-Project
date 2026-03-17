@@ -25,6 +25,7 @@ export interface OrderAnalytics {
   averageOrderValue: number;
   ordersByStatus: Array<{ status: string; count: number; revenue: number }>;
   ordersByMonth: Array<{ month: string; count: number; revenue: number }>;
+  ordersByDay?: Array<{ day: string; count: number; revenue: number }>;
   topCurrencies: Array<{ currency: string; count: number; revenue: number }>;
   conversionRate: number;
   refundRate: number;
@@ -84,7 +85,7 @@ class AnalyticsService {
     vendorId?: string,
     dateRange?: { start: Date; end: Date },
   ): Promise<EventAnalytics> {
-    const matchFilter: any = {};
+    const matchFilter: any = { isDeleted: { $ne: true } };
     if (vendorId) matchFilter.vendorId = new mongoose.Types.ObjectId(vendorId);
     if (dateRange) {
       matchFilter.createdAt = { $gte: dateRange.start, $lte: dateRange.end };
@@ -190,6 +191,7 @@ class AnalyticsService {
       orderStats,
       statusStats,
       monthlyStats,
+      dailyStats,
       currencyStats,
       viewStats,
     ] = await Promise.all([
@@ -236,6 +238,17 @@ class AnalyticsService {
         { $match: paidFilter },
         {
           $group: {
+            _id: { $dateToString: { format: "%Y-%m-%d", date: "$createdAt" } },
+            count: { $sum: 1 },
+            revenue: { $sum: "$total" },
+          },
+        },
+        { $sort: { _id: 1 } },
+      ]),
+      Order.aggregate([
+        { $match: paidFilter },
+        {
+          $group: {
             _id: "$currency",
             count: { $sum: 1 },
             revenue: { $sum: "$total" },
@@ -243,9 +256,8 @@ class AnalyticsService {
         },
         { $sort: { count: -1 } },
       ]),
-      // Total event views in scope — used for conversion rate
       Event.aggregate([
-        { $match: vendorId ? eventMatchFilter : {} },
+        { $match: vendorId ? { ...eventMatchFilter, isDeleted: { $ne: true } } : { isDeleted: { $ne: true } } },
         { $group: { _id: null, totalViews: { $sum: "$viewsCount" } } },
       ]),
     ]);
@@ -260,10 +272,11 @@ class AnalyticsService {
     const computedConversionRate =
       totalViews > 0 ? (confirmedOrderCount / totalViews) * 100 : 0;
 
+    const round2 = (n: number) => Math.round(n * 100) / 100;
     return {
       totalOrders,
-      totalRevenue: stats.totalRevenue || 0,
-      averageOrderValue: stats.avgOrderValue || 0,
+      totalRevenue: round2(stats.totalRevenue || 0),
+      averageOrderValue: round2(stats.avgOrderValue || 0),
       ordersByStatus: statusStats.map((item: any) => ({
         status: item._id,
         count: item.count,
@@ -272,7 +285,12 @@ class AnalyticsService {
       ordersByMonth: monthlyStats.map((item: any) => ({
         month: item._id,
         count: item.count,
-        revenue: item.revenue,
+        revenue: Math.round(item.revenue * 100) / 100,
+      })),
+      ordersByDay: dailyStats.map((item: any) => ({
+        day: item._id,
+        count: item.count,
+        revenue: Math.round(item.revenue * 100) / 100,
       })),
       topCurrencies: currencyStats.map((item: any) => ({
         currency: item._id,
@@ -453,10 +471,11 @@ class AnalyticsService {
    * Get venue analytics
    */
   async getVenueAnalytics(vendorId?: string): Promise<VenueAnalytics> {
-    const matchFilter: any = {};
+    const matchFilter: any = { isDeleted: { $ne: true } };
     if (vendorId) matchFilter.vendorId = new mongoose.Types.ObjectId(vendorId);
 
-    const venueFilter = { ...matchFilter, type: "Venue" };
+    // "Venues" = offline/physical events in this system
+    const venueFilter = { ...matchFilter, venueType: "Offline" };
 
     const [totalVenues, venueStats, typeStats, cityStats, seatStats] =
       await Promise.all([
@@ -475,7 +494,7 @@ class AnalyticsService {
         ]),
         Event.aggregate([
           { $match: venueFilter },
-          { $group: { _id: "$venueType", count: { $sum: 1 } } },
+          { $group: { _id: "$type", count: { $sum: 1 } } },
           { $sort: { count: -1 } },
         ]),
         Event.aggregate([
@@ -593,7 +612,7 @@ class AnalyticsService {
     vendorId?: string,
     dateRange?: { start: Date; end: Date },
   ) {
-    const matchFilter: any = {};
+    const matchFilter: any = { isDeleted: { $ne: true } };
     if (vendorId) matchFilter.vendorId = new mongoose.Types.ObjectId(vendorId);
     if (dateRange) {
       matchFilter.createdAt = { $gte: dateRange.start, $lte: dateRange.end };
@@ -649,7 +668,7 @@ class AnalyticsService {
       dateFilter.createdAt = { $gte: dateRange.start, $lte: dateRange.end };
     }
 
-    const eventMatchFilter: any = { ...dateFilter };
+    const eventMatchFilter: any = { ...dateFilter, isDeleted: { $ne: true } };
     const orderMatchFilter: any = { ...dateFilter, paymentStatus: "paid" };
     const ticketMatchFilter: any = { ...dateFilter };
 
@@ -686,7 +705,7 @@ class AnalyticsService {
    * Helper: Get top performing events
    */
   private async getTopPerformingEvents(vendorId?: string, limit: number = 10) {
-    const matchFilter: any = {};
+    const matchFilter: any = { isDeleted: { $ne: true } };
     if (vendorId) matchFilter.vendorId = new mongoose.Types.ObjectId(vendorId);
 
     return await Event.aggregate([

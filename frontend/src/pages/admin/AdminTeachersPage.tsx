@@ -23,10 +23,22 @@ interface Teacher {
   isSuspended: boolean;
   verificationStatus: 'pending' | 'verified' | 'rejected';
   createdAt: string;
+  // Payment / Stripe fields
+  stripeConnectAccountId?: string;
+  stripeConnectOnboardingComplete?: boolean;
+  bankDetails?: {
+    accountHolderName?: string;
+    bankName?: string;
+    accountNumber?: string;
+    iban?: string;
+    swiftCode?: string;
+    isVerified?: boolean;
+  };
   user?: {
     firstName: string;
     lastName: string;
     email: string;
+    avatar?: string;
   };
 }
 
@@ -104,6 +116,19 @@ const AdminTeachersPage: React.FC = () => {
       setStats(response.data || response);
     } catch (error) {
       logger.error('Failed to fetch stats:', error);
+    }
+  };
+
+  const handleUpdateVerification = async (teacherId: string, status: 'verified' | 'rejected' | 'pending') => {
+    try {
+      await adminAPI.updateTeacherStatus(teacherId, { verificationStatus: status });
+      toast.success(`Teacher verification ${status}`);
+      setTeachers((prev) =>
+        prev.map((t) => (t._id === teacherId ? { ...t, verificationStatus: status } : t)),
+      );
+      fetchTeachers();
+    } catch (error: any) {
+      toast.error(error?.response?.data?.message || 'Failed to update verification');
     }
   };
 
@@ -543,51 +568,110 @@ const AdminTeachersPage: React.FC = () => {
               {modalMode === 'view' && (
                 <>
                   <h2 className="text-xl font-bold text-gray-900 mb-4">Teacher Details</h2>
-                  <div className="space-y-3">
-                    <div>
-                      <span className="text-sm text-gray-500">Name:</span>
-                      <p className="font-medium">{selectedTeacher.fullName}</p>
-                    </div>
-                    <div>
-                      <span className="text-sm text-gray-500">Email:</span>
-                      <p className="font-medium">{selectedTeacher.email}</p>
-                    </div>
-                    <div>
-                      <span className="text-sm text-gray-500">Phone:</span>
-                      <p className="font-medium">{selectedTeacher.phone}</p>
-                    </div>
-                    <div>
-                      <span className="text-sm text-gray-500">Bio:</span>
-                      <p className="font-medium">{selectedTeacher.bio || 'N/A'}</p>
-                    </div>
-                    <div>
-                      <span className="text-sm text-gray-500">Specialization:</span>
-                      <p className="font-medium">{selectedTeacher.specialization || 'N/A'}</p>
-                    </div>
-                    <div>
-                      <span className="text-sm text-gray-500">Subjects:</span>
-                      <p className="font-medium">{selectedTeacher.subjects?.join(', ') || 'N/A'}</p>
-                    </div>
-                    <div>
-                      <span className="text-sm text-gray-500">Experience:</span>
-                      <p className="font-medium">
-                        {selectedTeacher.yearsOfExperience ? `${selectedTeacher.yearsOfExperience} years` : 'N/A'}
-                      </p>
-                    </div>
-                    <div>
-                      <span className="text-sm text-gray-500">Languages:</span>
-                      <p className="font-medium">{selectedTeacher.languagesSpoken?.join(', ') || 'N/A'}</p>
-                    </div>
-                    <div>
-                      <span className="text-sm text-gray-500">Teaching Mode:</span>
-                      <p className="font-medium">{selectedTeacher.teachingMode || 'N/A'}</p>
-                    </div>
-                    <div>
-                      <span className="text-sm text-gray-500">Created:</span>
-                      <p className="font-medium">{new Date(selectedTeacher.createdAt).toLocaleDateString()}</p>
+
+                  {/* Profile section */}
+                  <div className="mb-4 pb-4 border-b border-gray-100">
+                    <h3 className="text-sm font-semibold text-gray-700 uppercase tracking-wide mb-3">Profile</h3>
+                    <div className="space-y-2">
+                      {[
+                        ['Name', selectedTeacher.fullName],
+                        ['Email', selectedTeacher.email],
+                        ['Phone', selectedTeacher.phone || 'N/A'],
+                        ['Specialization', selectedTeacher.specialization || 'N/A'],
+                        ['Subjects', selectedTeacher.subjects?.join(', ') || 'N/A'],
+                        ['Experience', selectedTeacher.yearsOfExperience ? `${selectedTeacher.yearsOfExperience} years` : 'N/A'],
+                        ['Languages', selectedTeacher.languagesSpoken?.join(', ') || 'N/A'],
+                        ['Teaching Mode', selectedTeacher.teachingMode || 'N/A'],
+                        ['Joined', new Date(selectedTeacher.createdAt).toLocaleDateString()],
+                      ].map(([label, value]) => (
+                        <div key={label} className="flex gap-2">
+                          <span className="text-xs text-gray-500 w-28 flex-shrink-0">{label}:</span>
+                          <span className="text-sm font-medium text-gray-800 break-all">{value as string}</span>
+                        </div>
+                      ))}
+                      {selectedTeacher.bio && (
+                        <div className="flex gap-2">
+                          <span className="text-xs text-gray-500 w-28 flex-shrink-0">Bio:</span>
+                          <span className="text-sm text-gray-800 line-clamp-3">{selectedTeacher.bio}</span>
+                        </div>
+                      )}
                     </div>
                   </div>
-                  <div className="mt-6 flex gap-3">
+
+                  {/* Verification section */}
+                  <div className="mb-4 pb-4 border-b border-gray-100">
+                    <h3 className="text-sm font-semibold text-gray-700 uppercase tracking-wide mb-3">Verification</h3>
+                    <div className="flex items-center gap-3 mb-3">
+                      <span className={`px-2.5 py-1 rounded-full text-xs font-medium ${
+                        selectedTeacher.verificationStatus === 'verified' ? 'bg-green-100 text-green-800' :
+                        selectedTeacher.verificationStatus === 'rejected' ? 'bg-red-100 text-red-800' :
+                        'bg-yellow-100 text-yellow-800'
+                      }`}>
+                        {selectedTeacher.verificationStatus}
+                      </span>
+                    </div>
+                    <div className="flex gap-2">
+                      <button
+                        onClick={() => {
+                          handleUpdateVerification(selectedTeacher._id, 'verified');
+                          setSelectedTeacher({ ...selectedTeacher, verificationStatus: 'verified' });
+                        }}
+                        disabled={selectedTeacher.verificationStatus === 'verified'}
+                        className="flex-1 bg-green-600 text-white px-3 py-1.5 rounded-lg text-sm font-medium hover:bg-green-700 disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
+                      >
+                        Approve
+                      </button>
+                      <button
+                        onClick={() => {
+                          handleUpdateVerification(selectedTeacher._id, 'rejected');
+                          setSelectedTeacher({ ...selectedTeacher, verificationStatus: 'rejected' });
+                        }}
+                        disabled={selectedTeacher.verificationStatus === 'rejected'}
+                        className="flex-1 bg-red-600 text-white px-3 py-1.5 rounded-lg text-sm font-medium hover:bg-red-700 disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
+                      >
+                        Reject
+                      </button>
+                    </div>
+                  </div>
+
+                  {/* Payment / Stripe section */}
+                  <div className="mb-4">
+                    <h3 className="text-sm font-semibold text-gray-700 uppercase tracking-wide mb-3">Payment & Stripe</h3>
+                    <div className="space-y-2">
+                      {[
+                        ['Payment Mode', selectedTeacher.paymentMode || 'platform_stripe'],
+                        ['Commission Rate', selectedTeacher.commissionRate != null ? `${selectedTeacher.commissionRate}%` : 'Default'],
+                        ['Stripe Account ID', selectedTeacher.stripeConnectAccountId || 'Not connected'],
+                        ['Stripe Onboarding', selectedTeacher.stripeConnectOnboardingComplete ? 'Complete' : 'Incomplete'],
+                      ].map(([label, value]) => (
+                        <div key={label} className="flex gap-2">
+                          <span className="text-xs text-gray-500 w-36 flex-shrink-0">{label}:</span>
+                          <span className="text-sm font-medium text-gray-800 break-all">{value as string}</span>
+                        </div>
+                      ))}
+                      {selectedTeacher.bankDetails && (
+                        <>
+                          <div className="border-t border-gray-100 pt-2 mt-2">
+                            <span className="text-xs font-medium text-gray-600">Bank Details</span>
+                          </div>
+                          {[
+                            ['Account Holder', selectedTeacher.bankDetails.accountHolderName],
+                            ['Bank Name', selectedTeacher.bankDetails.bankName],
+                            ['Account No.', selectedTeacher.bankDetails.accountNumber ? `****${selectedTeacher.bankDetails.accountNumber.slice(-4)}` : undefined],
+                            ['IBAN', selectedTeacher.bankDetails.iban ? `****${selectedTeacher.bankDetails.iban.slice(-6)}` : undefined],
+                            ['Bank Verified', selectedTeacher.bankDetails.isVerified ? 'Yes' : 'No'],
+                          ].filter(([, v]) => v).map(([label, value]) => (
+                            <div key={label} className="flex gap-2">
+                              <span className="text-xs text-gray-500 w-36 flex-shrink-0">{label}:</span>
+                              <span className="text-sm font-medium text-gray-800">{value as string}</span>
+                            </div>
+                          ))}
+                        </>
+                      )}
+                    </div>
+                  </div>
+
+                  <div className="mt-4 flex gap-3">
                     <button
                       onClick={() => openEditModal(selectedTeacher)}
                       className="flex-1 bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700 transition-colors font-medium"

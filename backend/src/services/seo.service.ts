@@ -2,6 +2,7 @@ import Event from "../models/Event";
 import { Blog } from "../models/Blog";
 import Category from "../models/Category";
 import Collection from "../models/Collection";
+import Teacher from "../models/Teacher";
 import { SEO_CONFIG } from "../config/env";
 import { getBrandConfig } from "../utils/brandConfig";
 
@@ -60,7 +61,7 @@ export class SEOService {
   async generateSitemap(domain?: string): Promise<string> {
     const baseUrl = domain ? `https://${domain}` : this.baseUrl;
     try {
-      const [events, blogs, categories, collections] = await Promise.all([
+      const [events, blogs, categories, collections, teachers] = await Promise.all([
         Event.find({
           status: "published",
           isActive: true,
@@ -85,6 +86,10 @@ export class SEOService {
           isActive: true,
         })
           .select("_id name slug updatedAt")
+          .lean(),
+
+        Teacher.find({ isActive: true, isDeleted: false, slug: { $exists: true, $ne: null } })
+          .select("slug updatedAt")
           .lean(),
       ]);
 
@@ -142,6 +147,13 @@ export class SEOService {
         const url = `${baseUrl}/collections/${collection.slug || collection._id}`;
         const lastmod = collection.updatedAt || new Date();
         urls.push(this.generateSitemapUrl(url, lastmod, "weekly", 0.6));
+      });
+
+      // Teachers
+      teachers.forEach((teacher: any) => {
+        const url = `${baseUrl}/teachers/${teacher.slug}`;
+        const lastmod = teacher.updatedAt || new Date();
+        urls.push(this.generateSitemapUrl(url, lastmod, "monthly", 0.6));
       });
 
       const sitemap = `<?xml version="1.0" encoding="UTF-8"?>

@@ -2,6 +2,8 @@ import cron from "node-cron";
 import { collectionSyncQueue, areQueuesEnabled } from "../config/queue";
 import logger from "../config/logger";
 import PayoutService from "../services/payout.service";
+import CommissionService from "../services/commission.service";
+import Event from "../models/Event";
 
 /**
  * Collection reconciliation cron job
@@ -91,5 +93,69 @@ export function startScheduledPayoutCron() {
   );
 
   logger.info("Scheduled bank payout cron started (daily at 6 AM UTC)");
+  return job;
+}
+
+/**
+ * Commission backfill cron — runs every hour at :30.
+ * Finds paid orders past the 7-day refund window with no CommissionTransaction
+ * and creates both CommissionTransaction and RevenueTransaction for each.
+ */
+export function startCommissionBackfillCron() {
+  const job = cron.schedule(
+    "30 * * * *",
+    async () => {
+      try {
+        const result = await CommissionService.processUncommissionedOrders();
+        if (result.processed > 0 || result.failed > 0) {
+          logger.info(
+            `Commission backfill: processed=${result.processed}, failed=${result.failed}`,
+          );
+        }
+      } catch (error) {
+        logger.error("Commission backfill cron failed:", error);
+      }
+    },
+    { timezone: "UTC" },
+  );
+
+  logger.info("Commission backfill cron started (every hour at :30)");
+  return job;
+}
+
+/**
+ * Promotion expiry cron — runs daily at midnight UTC.
+ * Clears promotionTier, featuredUntil, promotionPaidAt from expired events
+ * and resets isFeatured to false.
+ */
+export function startPromotionExpiryCron() {
+  const job = cron.schedule(
+    "0 0 * * *",
+    async () => {
+      try {
+        logger.info("Running promotion expiry cleanup");
+        const result = await Event.updateMany(
+          {
+            featuredUntil: { $lt: new Date() },
+            promotionTier: { $exists: true },
+          },
+          {
+            $unset: {
+              promotionTier: "",
+              featuredUntil: "",
+              promotionPaidAt: "",
+            },
+            $set: { isFeatured: false },
+          },
+        );
+        logger.info(`Promotion expiry: cleared ${result.modifiedCount} events`);
+      } catch (error) {
+        logger.error("Promotion expiry cron failed:", error);
+      }
+    },
+    { timezone: "UTC" },
+  );
+
+  logger.info("Promotion expiry cron started (daily at midnight UTC)");
   return job;
 }

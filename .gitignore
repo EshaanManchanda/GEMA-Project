@@ -6,3 +6,4 @@ null
 .continue
 frontend/.env.production
 backend/.env.production
+ai-doc-chatbot

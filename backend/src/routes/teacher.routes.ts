@@ -28,12 +28,18 @@ import {
   restoreTeacherEvent,
 } from "../controllers/teacher.event.controller";
 
+import {
+  initiateTeacherStripeConnect,
+  getTeacherStripeConnectStatus,
+  updateTeacherStripeKey,
+} from "../controllers/teacher.payment.controller";
+
 import { authenticate, authorize, validate } from "../middleware";
 
 import { validateMongoId } from "../validators/common.validator";
 import {
-  validateCreateEvent,
-  validateUpdateEvent,
+  validateCreateTeacherEvent,
+  validateUpdateTeacherEvent,
 } from "../validators/event.validator";
 
 const router = Router();
@@ -66,6 +72,15 @@ router.use(authorize(["teacher"]));
  * ============================
  */
 router.get("/stats", getTeacherDashboardStats);
+
+/**
+ * ============================
+ * STRIPE CONNECT (shorthand aliases)
+ * ============================
+ */
+router.post("/stripe-connect/onboard", initiateTeacherStripeConnect);
+router.get("/stripe-connect/status", getTeacherStripeConnectStatus);
+router.put("/stripe-keys", updateTeacherStripeKey);
 
 /**
  * ============================
@@ -181,8 +196,6 @@ router.put(
  */
 router.post(
   "/upload-media",
-  [body("mediaType").isIn(["profile", "demoVideo", "cover"])],
-  validate,
   uploadTeacherMedia,
 );
 
@@ -223,7 +236,7 @@ router.put(
  * @desc    Create a new event
  * @access  Teacher only
  */
-router.post("/events", validateCreateEvent, validate, createTeacherEvent);
+router.post("/events", validateCreateTeacherEvent, validate, createTeacherEvent);
 
 /**
  * @route   GET /api/teachers/events/:id
@@ -240,7 +253,7 @@ router.get("/events/:id", getTeacherEventById);
 router.put(
   "/events/:id",
   validateMongoId("id", "param"),
-  validateUpdateEvent,
+  validateUpdateTeacherEvent,
   validate,
   updateTeacherEvent,
 );

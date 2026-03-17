@@ -42,6 +42,8 @@ import {
   startCollectionReconciliationCron,
   startPayoutEligibilityCron,
   startScheduledPayoutCron,
+  startPromotionExpiryCron,
+  startCommissionBackfillCron,
 } from "./utils/cron";
 import { redisClient, redisPool } from "./config/redis";
 import {
@@ -56,6 +58,11 @@ import { getTimeoutForFileSize } from "./utils/uploadHelpers";
 import { terminateWorkerPool } from "./utils/json-worker.util";
 
 logger.info("Server starting...");
+
+// Fail fast if critical secrets are missing
+if (!process.env.JWT_SECRET || !process.env.JWT_REFRESH_SECRET) {
+  throw new Error("FATAL: JWT_SECRET and JWT_REFRESH_SECRET must be set");
+}
 
 // Create Express app
 const app: Application = express();
@@ -372,6 +379,8 @@ async function startServer() {
     startCollectionReconciliationCron();
     startPayoutEligibilityCron();
     startScheduledPayoutCron();
+    startPromotionExpiryCron();
+    startCommissionBackfillCron();
     logger.info("Scheduled jobs initialized successfully");
 
     // Step 5: Start performance monitoring

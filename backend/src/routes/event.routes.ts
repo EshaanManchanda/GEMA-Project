@@ -14,6 +14,7 @@ import {
   toggleEventFeatured,
   getUniqueCities,
   claimEvent,
+  promoteEvent,
 } from "../controllers/event.controller";
 import { authenticate, authorize } from "../middleware/auth";
 import { validateEventSEO } from "../validators/event.validator";
@@ -219,9 +220,23 @@ router.delete(
 
 router.post(
   "/:id/claim",
-  authorize(["vendor"]),
+  authorize(["vendor", "teacher"]),
   [param("id").isMongoId().withMessage("Invalid event ID")],
   claimEvent,
+);
+
+// Promote event (vendor or teacher)
+router.post(
+  "/:id/promote",
+  authorize(["vendor", "teacher"]),
+  [
+    param("id").isMongoId().withMessage("Invalid event ID"),
+    body("tier")
+      .isIn(["boost", "featured", "premium"])
+      .withMessage("tier must be boost, featured, or premium"),
+    body("paymentMethodId").notEmpty().withMessage("paymentMethodId is required"),
+  ],
+  promoteEvent,
 );
 
 // Admin routes

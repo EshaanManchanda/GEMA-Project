@@ -119,6 +119,7 @@ const AnnouncementBar: React.FC = () => {
   const [direction, setDirection] = useState(1);
   const [isVisible, setIsVisible] = useState(false);
   const [isPaused, setIsPaused] = useState(false);
+  const [dismissalVersion, setDismissalVersion] = useState(0);
   const announcementRef = useRef<HTMLDivElement>(null);
   const impressionSet = useRef<Set<string>>(new Set());
 
@@ -133,7 +134,9 @@ const AnnouncementBar: React.FC = () => {
     return announcements.filter(
       (ann) => !isDismissed(ann._id) && !isSessionDismissed(ann._id)
     );
-  }, [announcements]);
+  // dismissalVersion forces recompute after localStorage write
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [announcements, dismissalVersion]);
 
   useEffect(() => {
     if (isLoading) return;
@@ -225,10 +228,9 @@ const AnnouncementBar: React.FC = () => {
     recordDismissal.mutate(current._id);
     logger.debug('[AnnouncementBar] Dismissed:', current._id);
 
-    if (activeAnnouncements.length <= 1) {
-      setIsVisible(false);
-      document.documentElement.style.setProperty('--announcement-height', '0px');
-    }
+    // Bump version so useMemo recomputes and drops the dismissed item.
+    // The useEffect on activeAnnouncements.length handles hide/show.
+    setDismissalVersion(v => v + 1);
   }, [activeIndex, activeAnnouncements, recordDismissal]);
 
   const handleClick = useCallback(() => {

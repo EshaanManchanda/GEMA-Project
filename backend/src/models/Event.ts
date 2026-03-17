@@ -138,7 +138,10 @@ export interface IEvent extends Document {
     _id?: mongoose.Types.ObjectId;
   }>;
   viewsCount: number;
-  isFeatured: boolean;
+  isFeatured: boolean; // virtual — true when featuredUntil > now
+  promotionTier?: "boost" | "featured" | "premium";
+  featuredUntil?: Date;
+  promotionPaidAt?: Date;
   images: string[]; // OLD - deprecated, keep for backward compatibility
   imageAssets?: mongoose.Types.ObjectId[]; // NEW - shadow field for migration
   isDeleted: boolean;
@@ -616,6 +619,16 @@ const eventSchema = new Schema<IEvent>(
     isFeatured: {
       type: Boolean,
       default: false,
+    },
+    promotionTier: {
+      type: String,
+      enum: ["boost", "featured", "premium"],
+    },
+    featuredUntil: {
+      type: Date,
+    },
+    promotionPaidAt: {
+      type: Date,
     },
     images: {
       type: [String],
@@ -1249,6 +1262,9 @@ eventSchema.index({ "affiliateClickTracking.totalClicks": -1 }); // For analytic
 
 // Google Maps integration index
 eventSchema.index({ googlePlaceId: 1 }); // For fetching events by Google Place ID
+
+// Promotion index
+eventSchema.index({ featuredUntil: 1, isApproved: 1, isDeleted: 1 });
 
 // Text search index
 eventSchema.index({

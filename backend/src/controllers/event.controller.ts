@@ -1,6 +1,9 @@
 import { Request, Response, NextFunction } from "express";
 import { validationResult } from "express-validator";
 import { Event, User } from "../models/index";
+import Vendor from "../models/Vendor";
+import Teacher from "../models/Teacher";
+import MediaAsset from "../models/MediaAsset";
 import { AppError } from "../middleware/index";
 import { AuthRequest } from "../types/index";
 import { config, checkDBHealth } from "../config/index";
@@ -14,6 +17,11 @@ import { invalidateEventCaches } from "../utils/cache.utils";
 import { eventService } from "../services/event.service";
 import { CacheTTL } from "../config/cache-tiers"; // ✅ Phase 2.3: Tiered cache strategy
 import { emailService } from "../services/email.service";
+import { stripe } from "../config/stripe";
+import {
+  PROMOTION_TIERS,
+  PromotionTier,
+} from "../config/promotionPricing";
 
 /**
  * Wrapper to add timeout to database operations
@@ -206,8 +214,9 @@ export const getEvents = async (
       }
     }
 
-    // Build sort query
+    // Build sort query — always pin active promoted events first
     const sort: any = {};
+    sort.featuredUntil = -1; // nulls sort last in desc; active promotions bubble up
     if (search && !sortBy) {
       sort.score = { $meta: "textScore" };
     } else {
@@ -944,40 +953,65 @@ export const claimEvent = async (
     const userId = req.user?._id || req.user?.id;
 
     const event = await Event.findById(id);
-
     if (!event) {
       return next(new AppError("Event not found", 404));
     }
 
-    // Check if event is claimable
     if (event.claimStatus === "claimed") {
       return next(new AppError("This event has already been claimed", 400));
     }
-    // Allow 'unclaimed' and 'not_claimable' to be claimed
 
-    // Verify user is a vendor
     const user = await User.findById(userId);
-    if (!user || user.role !== "vendor") {
-      return next(new AppError("Only vendors can claim events", 403));
+    if (!user || (user.role !== "vendor" && user.role !== "teacher")) {
+      return next(new AppError("Only vendors or teachers can claim events", 403));
     }
 
-    // Update event ownership
-    event.vendorId = userId;
+    const TEACHING_TYPES = ["Class", "Course", "Workshop", "Bootcamp", "Masterclass"];
+    const isTeachingEvent = TEACHING_TYPES.includes(event.type);
+
+    if (isTeachingEvent && user.role !== "teacher") {
+      return next(new AppError("Teaching events can only be claimed by teachers", 403));
+    }
+    if (!isTeachingEvent && user.role !== "vendor") {
+      return next(new AppError("This event type can only be claimed by vendors", 403));
+    }
+
+    if (user.role === "vendor") {
+      const vendor = await Vendor.findOne({ userId }).select("_id").lean();
+      if (!vendor) {
+        return next(new AppError("Vendor profile not found", 404));
+      }
+      event.vendorId = vendor._id as any;
+      event.claimedBy = vendor._id as any;
+    } else {
+      // teacher
+      const teacher = await Teacher.findOne({ userId }).select("_id").lean();
+      if (!teacher) {
+        return next(new AppError("Teacher profile not found", 404));
+      }
+      (event as any).teacherId = teacher._id;
+      event.claimedBy = teacher._id as any;
+    }
+
     event.claimStatus = "claimed";
-    event.claimedBy = userId;
     event.claimedAt = new Date();
     event.isApproved = false;
     event.status = "pending";
 
-    await event.save();
+    // Transfer media assets to claimer so they appear in their media library
+    if (event.imageAssets && event.imageAssets.length > 0) {
+      await MediaAsset.updateMany(
+        { _id: { $in: event.imageAssets } },
+        { $set: { uploadedBy: userId } },
+      );
+    }
 
-    // Invalidate caches
+    await event.save();
     await invalidateEventCaches(id);
 
     res.status(200).json({
       success: true,
-      message:
-        "Event claimed successfully. You are now the owner of this event.",
+      message: "Event claimed successfully. You are now the owner of this event.",
       data: { event },
     });
   } catch (error) {
@@ -1052,6 +1086,94 @@ export const getUniqueCities = async (
       success: true,
       data: sortedCities,
       count: sortedCities.length,
+    });
+  } catch (error) {
+    next(error);
+  }
+};
+
+// @desc    Promote event (vendor or teacher)
+// @route   POST /api/events/:id/promote
+// @access  Vendor | Teacher
+export const promoteEvent = async (
+  req: AuthRequest,
+  res: Response,
+  next: NextFunction,
+) => {
+  try {
+    const { id } = req.params;
+    const { tier, paymentMethodId } = req.body as {
+      tier: PromotionTier;
+      paymentMethodId: string;
+    };
+
+    const tierConfig = PROMOTION_TIERS[tier];
+    if (!tierConfig) {
+      return next(new AppError("Invalid promotion tier", 400));
+    }
+
+    const event = await Event.findById(id);
+    if (!event || event.isDeleted) {
+      return next(new AppError("Event not found", 404));
+    }
+
+    // Verify ownership
+    const userId = req.user?.id || req.user?._id;
+    const vendorProfile = await Vendor.findOne({ userId });
+    const teacherProfile = await Teacher.findOne({ userId });
+
+    const isVendorOwner =
+      vendorProfile && event.vendorId?.toString() === vendorProfile._id.toString();
+    const isTeacherOwner =
+      teacherProfile && event.teacherId?.toString() === teacherProfile._id.toString();
+
+    if (!isVendorOwner && !isTeacherOwner) {
+      return next(new AppError("Not authorized to promote this event", 403));
+    }
+
+    if (!event.isApproved) {
+      return next(new AppError("Event must be approved before promotion", 400));
+    }
+
+    // Charge platform Stripe account
+    const amountInFilsAED = tierConfig.priceAED * 100;
+    const paymentIntent = await stripe.paymentIntents.create({
+      amount: amountInFilsAED,
+      currency: "aed",
+      payment_method: paymentMethodId,
+      confirm: true,
+      return_url: `${process.env.FRONTEND_URL}/vendor/events`,
+      metadata: { eventId: event._id.toString(), promotionTier: tier },
+    });
+
+    if (paymentIntent.status !== "succeeded") {
+      return next(new AppError("Payment failed — promotion not applied", 402));
+    }
+
+    // Apply promotion
+    const now = new Date();
+    const featuredUntil = new Date(
+      now.getTime() + tierConfig.days * 24 * 60 * 60 * 1000,
+    );
+
+    (event as any).promotionTier = tier;
+    (event as any).featuredUntil = featuredUntil;
+    (event as any).promotionPaidAt = now;
+    event.isFeatured = true;
+    await event.save();
+
+    await invalidateEventCaches(event._id.toString());
+
+    res.status(200).json({
+      success: true,
+      message: `Event promoted as ${tierConfig.label} until ${featuredUntil.toLocaleDateString()}`,
+      data: {
+        promotionTier: tier,
+        featuredUntil,
+        priceCharged: tierConfig.priceAED,
+        currency: "AED",
+        paymentIntentId: paymentIntent.id,
+      },
     });
   } catch (error) {
     next(error);

@@ -793,6 +793,193 @@ const adminSpecificFieldsUpdate = [
 ];
 
 /**
+ * Teacher-specific create event validation
+ * Differences from base: accepts eventType (Online/Offline) instead of requiring venueType,
+ * lower description min (10), lenient image URL check
+ */
+export const validateCreateTeacherEvent = [
+  validateStringLength("title", 1, 200, true),
+
+  validateHtmlLength("description", 10, 10000, true),
+
+  sanitizeHtml("description"),
+
+  body("category")
+    .trim()
+    .notEmpty()
+    .withMessage("Category is required")
+    .isLength({ min: 2, max: 100 })
+    .withMessage("Category must be between 2 and 100 characters")
+    .escape(),
+
+  validateEnum("type", EVENT_TYPES, true),
+
+  // Teacher form sends eventType (Online/Offline), venueType is optional
+  body("eventType")
+    .optional({ nullable: true, checkFalsy: true })
+    .isIn(["Online", "Offline"])
+    .withMessage("eventType must be Online or Offline"),
+
+  validateEnum("venueType", VENUE_TYPES, false),
+
+  body("ageRange")
+    .isArray({ min: 2, max: 2 })
+    .withMessage("Age range must be an array with exactly 2 elements [min, max]"),
+
+  body("ageRange.*")
+    .isInt({ min: 0, max: 100 })
+    .withMessage("Age range values must be between 0 and 100")
+    .toInt(),
+
+  body("ageRange").custom((value) => {
+    if (value[0] > value[1]) {
+      throw new Error("Minimum age cannot be greater than maximum age");
+    }
+    return true;
+  }),
+
+  body("location.country")
+    .optional()
+    .trim()
+    .isLength({ min: 2, max: 2 })
+    .withMessage("Country must be a 2-letter ISO code")
+    .isIn(COUNTRY_CODES)
+    .withMessage("Invalid country code")
+    .toUpperCase(),
+
+  body("location.city")
+    .trim()
+    .notEmpty()
+    .withMessage("City is required")
+    .isLength({ min: 2, max: 100 })
+    .withMessage("City must be between 2 and 100 characters")
+    .escape(),
+
+  body("location.address")
+    .optional()
+    .custom((value) => {
+      if (value && value.trim().length > 0) {
+        if (value.trim().length < 5) throw new Error("Address must be at least 5 characters if provided");
+        if (value.trim().length > 300) throw new Error("Address cannot exceed 300 characters");
+      }
+      return true;
+    })
+    .trim(),
+
+  validateNumericRange("price", 0, undefined, true),
+  validateEnum("currency", CURRENCIES, false),
+
+  body("dateSchedule")
+    .isArray({ min: 1 })
+    .withMessage("At least one date schedule is required"),
+
+  body("dateSchedule.*.availableSeats")
+    .notEmpty()
+    .withMessage("Available seats is required")
+    .isInt({ min: 0, max: 999999 })
+    .withMessage("Available seats must be between 0 and 999,999")
+    .toInt(),
+
+  body("dateSchedule.*.price")
+    .notEmpty()
+    .withMessage("Schedule price is required")
+    .isFloat({ min: 0 })
+    .withMessage("Schedule price cannot be negative")
+    .toFloat(),
+
+  body("tags")
+    .optional()
+    .isArray({ max: 20 })
+    .withMessage("Cannot have more than 20 tags"),
+
+  body("tags.*")
+    .optional()
+    .trim()
+    .isLength({ min: 2, max: 50 })
+    .withMessage("Each tag must be between 2 and 50 characters")
+    .escape(),
+
+  // Lenient image check — skip empty/falsy array items
+  body("images")
+    .optional()
+    .isArray({ max: 10 })
+    .withMessage("Cannot have more than 10 images"),
+
+  body("images.*").optional().custom((value) => {
+    if (!value || !value.trim()) return true;
+    const urlRegex = /^https?:\/\/.+/;
+    if (!urlRegex.test(value.trim())) {
+      throw new Error("Each image must be a valid URL");
+    }
+    return true;
+  }),
+
+  body("status")
+    .optional()
+    .isIn(EVENT_STATUSES)
+    .withMessage(`Status must be one of: ${EVENT_STATUSES.join(", ")}`),
+];
+
+/**
+ * Teacher-specific update event validation
+ */
+export const validateUpdateTeacherEvent = [
+  validateStringLength("title", 1, 200, false),
+
+  validateHtmlLength("description", 10, 10000, false),
+
+  sanitizeHtml("description"),
+
+  body("category")
+    .optional()
+    .trim()
+    .isLength({ min: 2, max: 100 })
+    .withMessage("Category must be between 2 and 100 characters")
+    .escape(),
+
+  validateEnum("type", EVENT_TYPES, false),
+  validateEnum("currency", CURRENCIES, false),
+  validateEnum("status", EVENT_STATUSES, false),
+
+  body("eventType")
+    .optional({ nullable: true, checkFalsy: true })
+    .isIn(["Online", "Offline"])
+    .withMessage("eventType must be Online or Offline"),
+
+  validateEnum("venueType", VENUE_TYPES, false),
+
+  body("ageRange")
+    .optional()
+    .isArray({ min: 2, max: 2 })
+    .withMessage("Age range must be an array with exactly 2 elements [min, max]"),
+
+  body("price")
+    .optional()
+    .isFloat({ min: 0 })
+    .withMessage("Price cannot be negative")
+    .toFloat(),
+
+  body("tags")
+    .optional()
+    .isArray({ max: 20 })
+    .withMessage("Cannot have more than 20 tags"),
+
+  body("images")
+    .optional()
+    .isArray({ max: 10 })
+    .withMessage("Cannot have more than 10 images"),
+
+  body("images.*").optional().custom((value) => {
+    if (!value || !value.trim()) return true;
+    const urlRegex = /^https?:\/\/.+/;
+    if (!urlRegex.test(value.trim())) {
+      throw new Error("Each image must be a valid URL");
+    }
+    return true;
+  }),
+];
+
+/**
  * Admin create event validation (extends base validation with admin fields)
  */
 export const validateAdminCreateEvent = [
@@ -814,6 +1001,8 @@ export const validateAdminUpdateEvent = [
 export default {
   validateCreateEvent,
   validateUpdateEvent,
+  validateCreateTeacherEvent,
+  validateUpdateTeacherEvent,
   validateEventFAQ,
   validateEventSEO,
   validateEventSearch,

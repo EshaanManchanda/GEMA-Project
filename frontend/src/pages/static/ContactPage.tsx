@@ -387,11 +387,16 @@ const ContactPage: React.FC = () => {
           <motion.div variants={itemVariants} className="mt-12">
             <div className="bg-white rounded-lg shadow-md p-6">
               <h2 className="text-2xl font-bold mb-6 text-gray-800">Our Location</h2>
-              <div className="h-96 bg-gray-200 rounded-md">
-                {/* In a real application, you would embed a Google Map or similar here */}
-                <div className="w-full h-full flex items-center justify-center text-gray-500">
-                  <p>Map Embed Would Go Here</p>
-                </div>
+              <div className="h-96 rounded-md overflow-hidden">
+                <iframe
+                  title="Our Location"
+                  width="100%"
+                  height="100%"
+                  style={{ border: 0 }}
+                  loading="lazy"
+                  src="https://www.openstreetmap.org/export/embed.html?bbox=55.2700,25.1900,55.2900,25.2100&layer=mapnik&marker=25.1972,55.2796"
+                  allowFullScreen
+                />
               </div>
             </div>
           </motion.div>

@@ -22,6 +22,10 @@ interface SchedulePricingTabProps {
   capacity: string;
   eventType?: string;
   errors: Record<string, string>;
+  isFreeEvent?: boolean;
+  basePrice?: string;
+  onFreeEventChange?: (val: boolean) => void;
+  onBasePriceChange?: (e: React.ChangeEvent<HTMLInputElement>) => void;
   onScheduleChange: (index: number, field: keyof Schedule, value: string | boolean | string[] | number) => void;
   onAddSchedule: (isSpecialDate?: boolean) => void;
   onRemoveSchedule: (index: number) => void;
@@ -59,6 +63,10 @@ const SchedulePricingTab: React.FC<SchedulePricingTabProps> = ({
   capacity,
   eventType,
   errors,
+  isFreeEvent = false,
+  basePrice = '',
+  onFreeEventChange,
+  onBasePriceChange,
   onScheduleChange,
   onAddSchedule,
   onRemoveSchedule,
@@ -67,6 +75,23 @@ const SchedulePricingTab: React.FC<SchedulePricingTabProps> = ({
 }) => {
   return (
     <div className="space-y-6">
+      {/* Free Event Toggle */}
+      {onFreeEventChange && (
+        <div
+          className={`flex items-center gap-3 p-4 rounded-lg border-2 cursor-pointer transition-colors ${isFreeEvent ? 'bg-green-50 border-green-400' : 'bg-gray-50 border-gray-200 hover:border-green-300'}`}
+          onClick={() => onFreeEventChange(!isFreeEvent)}
+        >
+          <div className={`w-5 h-5 rounded border-2 flex items-center justify-center flex-shrink-0 transition-colors ${isFreeEvent ? 'bg-green-500 border-green-500' : 'border-gray-400'}`}>
+            {isFreeEvent && <svg className="w-3 h-3 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={3}><path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" /></svg>}
+          </div>
+          <div>
+            <p className={`font-semibold text-sm ${isFreeEvent ? 'text-green-700' : 'text-gray-700'}`}>Free Event (No Payment Required)</p>
+            <p className="text-xs text-gray-500">Attendees register without paying — registration form is still collected</p>
+          </div>
+          {isFreeEvent && <span className="ml-auto bg-green-500 text-white text-xs font-bold px-2 py-1 rounded-full">FREE</span>}
+        </div>
+      )}
+
       {/* Capacity */}
       <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
         <div>
@@ -370,22 +395,24 @@ const SchedulePricingTab: React.FC<SchedulePricingTabProps> = ({
                   {/* Price */}
                   <div>
                     <label className="block text-sm font-medium text-gray-700 mb-1">
-                      {schedule.isSpecialDate ? 'Special Price' : 'Price'} ({currency}) <span className="text-red-500">*</span>
+                      {schedule.isSpecialDate ? 'Special Price' : 'Price'} ({currency}) {!isFreeEvent && <span className="text-red-500">*</span>}
                     </label>
                     <input
                       type="number"
-                      value={schedule.price}
+                      value={isFreeEvent ? '0' : schedule.price}
                       onChange={(e) => onScheduleChange(index, 'price', e.target.value)}
                       min="0"
                       step="0.01"
+                      disabled={isFreeEvent}
                       className={`w-full px-3 py-2 border ${
                         errors[`schedule_${index}_price`] ? 'border-red-500' : 'border-gray-300'
-                      } rounded-md shadow-sm focus:outline-none focus:ring-primary focus:border-primary`}
+                      } rounded-md shadow-sm focus:outline-none focus:ring-primary focus:border-primary ${isFreeEvent ? 'bg-gray-100 text-gray-400 cursor-not-allowed' : ''}`}
                       placeholder={schedule.isSpecialDate ? 'e.g. 35.00 (special pricing)' : 'e.g. 25.00'}
                     />
                     {errors[`schedule_${index}_price`] && (
                       <p className="mt-1 text-sm text-red-500">{errors[`schedule_${index}_price`]}</p>
                     )}
+                    {isFreeEvent && <p className="mt-1 text-xs text-green-600">Free — no charge</p>}
                   </div>
                 </div>
               </div>

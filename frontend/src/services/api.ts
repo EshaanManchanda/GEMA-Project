@@ -56,24 +56,8 @@ api.interceptors.request.use(
       });
     }
 
-    // Add Authorization header from localStorage as fallback
-    // This helps if httpOnly cookies are blocked or missing
-    const token = localStorage.getItem('token');
-    // Check if token exists and is not the string "undefined" or "null"
-    if (token && token !== 'undefined' && token !== 'null') {
-      if (!config.headers) {
-        config.headers = {} as any;
-      }
-      (config.headers as any).Authorization = `Bearer ${token}`;
-      if (import.meta.env.DEV) {
-        logger.debug('[API] Attaching fallback token from localStorage');
-      }
-    } else if (token === 'undefined' || token === 'null') {
-      // Clean up explicitly invalid token strings
-      localStorage.removeItem('token');
-      localStorage.removeItem('refreshToken');
-    }
-    // No token in localStorage is normal for httpOnly cookie auth — no log needed
+    // Auth tokens are sent via httpOnly cookies (withCredentials: true above)
+    // No localStorage fallback — tokens must not be XSS-accessible
 
     // Add request deduplication for GET requests (stats/dashboard endpoints)
     if (config.method?.toLowerCase() === 'get' && (

@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { motion } from 'framer-motion';
 import { toast } from 'react-hot-toast';
@@ -10,7 +10,12 @@ import {
   FaMapMarkerAlt,
   FaPlus,
   FaTrash,
+  FaUpload,
+  FaImages,
 } from 'react-icons/fa';
+import { ApiService } from '@/services/api';
+import MediaPickerModal from '@/components/admin/media/MediaPickerModal';
+import type { MediaAsset } from '@/store/slices/mediaSlice';
 import { TeacherNavigation } from '@/components/teacher';
 import { useTeacherTeachingEvent } from '@/hooks/queries/useTeacherQuery';
 import { useCreateTeachingEvent, useUpdateTeachingEvent } from '@/hooks/mutations/useTeacherMutations';
@@ -98,8 +103,12 @@ const TeacherEventFormPage: React.FC = () => {
   const [ageRangeMax, setAgeRangeMax] = useState('12');
   const [tags, setTags] = useState<string[]>([]);
   const [tagInput, setTagInput] = useState('');
-  const [images, setImages] = useState<string[]>([]);
+  const [imageAssets, setImageAssets] = useState<string[]>([]);
+  const [imagePreviewUrls, setImagePreviewUrls] = useState<string[]>([]);
   const [meetingLink, setMeetingLink] = useState('');
+  const [isUploadingImage, setIsUploadingImage] = useState(false);
+  const [isMediaPickerOpen, setIsMediaPickerOpen] = useState(false);
+  const imageFileRef = useRef<HTMLInputElement>(null);
 
   // Course specific
   const [subject, setSubject] = useState('');
@@ -108,6 +117,7 @@ const TeacherEventFormPage: React.FC = () => {
   const [syllabus, setSyllabus] = useState<SyllabusSection[]>([]);
 
   // Schedule & Pricing
+  const [isFreeEvent, setIsFreeEvent] = useState(false);
   const [basePrice, setBasePrice] = useState('');
   const [currency, setCurrency] = useState('AED');
   const [schedules, setSchedules] = useState<Schedule[]>([
@@ -146,8 +156,24 @@ const TeacherEventFormPage: React.FC = () => {
       setAgeRangeMin(event.ageRange?.[0]?.toString() || '3');
       setAgeRangeMax(event.ageRange?.[1]?.toString() || '12');
       setTags(event.tags || []);
-      setImages(event.images || []);
+      // Load imageAssets (IDs) and preview URLs — prefer populated imageAssets, fall back to images[]
+      const isHttpUrl = (s: any) => typeof s === 'string' && s.startsWith('http');
+      setImageAssets(
+        Array.isArray(event.imageAssets)
+          ? event.imageAssets.map((a: any) => (typeof a === 'object' && a !== null ? a._id : a)).filter(Boolean)
+          : []
+      );
+      setImagePreviewUrls((() => {
+        if (Array.isArray(event.imageAssets) && event.imageAssets.length > 0) {
+          const fromAssets = event.imageAssets
+            .map((a: any) => (typeof a === 'object' && a !== null) ? (a.url || a.secureUrl) : null)
+            .filter(isHttpUrl);
+          if (fromAssets.length > 0) return fromAssets;
+        }
+        return (event.images || []).filter(isHttpUrl);
+      })());
       setMeetingLink(event.meetingLink || '');
+      setIsFreeEvent(event.isFreeEvent || false);
       setBasePrice(event.price?.toString() || '');
       setCurrency(event.currency || 'AED');
       setCity(event.location?.city || '');
@@ -192,7 +218,7 @@ const TeacherEventFormPage: React.FC = () => {
     if (!title.trim()) newErrors.title = 'Title is required';
     if (!description.trim()) newErrors.description = 'Description is required';
     if (!category) newErrors.category = 'Category is required';
-    if (!basePrice.trim()) newErrors.basePrice = 'Base price is required';
+    if (!isFreeEvent && !basePrice.trim()) newErrors.basePrice = 'Base price is required';
 
     // Validate age range
     const minAge = parseInt(ageRangeMin);
@@ -244,7 +270,8 @@ const TeacherEventFormPage: React.FC = () => {
           city,
           address: eventType === 'Offline' ? address : undefined,
         },
-        price: parseFloat(basePrice),
+        isFreeEvent,
+        price: isFreeEvent ? 0 : parseFloat(basePrice),
         currency,
         tags,
         dateSchedule: schedules.map((s) => ({
@@ -253,10 +280,11 @@ const TeacherEventFormPage: React.FC = () => {
           startTime: s.startTime,
           endTime: s.endTime,
           availableSeats: s.unlimitedSeats ? 999999 : parseInt(s.availableSeats) || 10,
-          price: s.price ? parseFloat(s.price) : parseFloat(basePrice),
+          price: isFreeEvent ? 0 : (s.price ? parseFloat(s.price) : parseFloat(basePrice)),
           unlimitedSeats: s.unlimitedSeats,
         })),
-        images,
+        images: [],
+        imageAssets,
         subject,
         topic,
         introVideo,
@@ -273,7 +301,11 @@ const TeacherEventFormPage: React.FC = () => {
 
       navigate('/teacher/events');
     } catch (error: any) {
-      toast.error(error?.message || 'Failed to save event');
+      const msg =
+        error?.response?.data?.message ||
+        error?.message ||
+        'Failed to save event. Please check all required fields.';
+      toast.error(msg);
     } finally {
       setIsSaving(false);
     }
@@ -334,6 +366,33 @@ const TeacherEventFormPage: React.FC = () => {
 
   const removeFaq = (idx: number) => {
     setFaqs(faqs.filter((_, i) => i !== idx));
+  };
+
+  // Image upload handler — creates a tracked MediaAsset record
+  const handleImageFileUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    setIsUploadingImage(true);
+    try {
+      const fd = new FormData();
+      fd.append('file', file);
+      fd.append('category', 'event');
+      fd.append('folder', 'events');
+      const res = await ApiService.post('/media/upload', fd, {
+        headers: { 'Content-Type': 'multipart/form-data' },
+      });
+      const asset = res?.data;
+      if (asset?._id && asset?.url) {
+        setImageAssets((prev) => [...prev, asset._id]);
+        setImagePreviewUrls((prev) => [...prev, asset.url]);
+        toast.success('Image uploaded');
+      }
+    } catch {
+      toast.error('Image upload failed');
+    } finally {
+      setIsUploadingImage(false);
+      if (imageFileRef.current) imageFileRef.current.value = '';
+    }
   };
 
   if (isEditMode && isLoadingEvent) {
@@ -625,40 +684,80 @@ const TeacherEventFormPage: React.FC = () => {
                 {/* Images */}
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-2">Event Images</label>
-                  <p className="text-xs text-gray-500 mb-3">Add image URLs to display for your event. First image will be used as the cover.</p>
+                  <p className="text-xs text-gray-500 mb-3">
+                    Select from media library or upload new images. First image is the cover.
+                  </p>
+
+                  {/* Preview grid */}
+                  {imagePreviewUrls.length > 0 && (
+                    <div className="flex flex-wrap gap-2 mb-3">
+                      {imagePreviewUrls.map((img, idx) => (
+                        <div key={idx} className="relative w-20 h-20 rounded-lg overflow-hidden border border-gray-200">
+                          <img src={img} alt="" className="w-full h-full object-cover" />
+                          <button
+                            type="button"
+                            onClick={() => {
+                              setImageAssets((prev) => prev.filter((_, i) => i !== idx));
+                              setImagePreviewUrls((prev) => prev.filter((_, i) => i !== idx));
+                            }}
+                            className="absolute top-0.5 right-0.5 bg-red-500 text-white rounded-full w-5 h-5 flex items-center justify-center text-xs leading-none"
+                          >
+                            ×
+                          </button>
+                          {idx === 0 && (
+                            <span className="absolute bottom-0 left-0 right-0 bg-black/50 text-white text-xs text-center py-0.5">
+                              Cover
+                            </span>
+                          )}
+                        </div>
+                      ))}
+                    </div>
+                  )}
+
                   <div className="space-y-2">
-                    {images.map((img, idx) => (
-                      <div key={idx} className="flex gap-2 items-center">
-                        <input
-                          type="url"
-                          value={img}
-                          onChange={(e) => {
-                            const updated = [...images];
-                            updated[idx] = e.target.value;
-                            setImages(updated);
-                          }}
-                          placeholder="https://example.com/image.jpg"
-                          className="flex-1 px-4 py-3 border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-purple-500 text-sm"
-                        />
-                        <button
-                          type="button"
-                          onClick={() => setImages(images.filter((_, i) => i !== idx))}
-                          className="p-3 text-red-500 hover:bg-red-50 rounded-xl transition-colors"
-                        >
-                          <FaTrash className="w-4 h-4" />
-                        </button>
-                      </div>
-                    ))}
-                    <button
-                      type="button"
-                      onClick={() => setImages([...images, ''])}
-                      className="flex items-center gap-2 px-4 py-2 text-purple-600 hover:bg-purple-50 rounded-xl transition-colors text-sm font-medium"
-                    >
-                      <FaPlus className="w-3 h-3" />
-                      Add Image URL
-                    </button>
+                    <div className="flex gap-2 flex-wrap">
+                      <button
+                        type="button"
+                        onClick={() => setIsMediaPickerOpen(true)}
+                        className="flex items-center gap-2 px-4 py-2 bg-purple-600 text-white hover:bg-purple-700 rounded-xl transition-colors text-sm font-medium"
+                      >
+                        <FaImages className="w-3.5 h-3.5" />
+                        Media Library
+                      </button>
+
+                      <input
+                        ref={imageFileRef}
+                        type="file"
+                        accept="image/*"
+                        className="hidden"
+                        onChange={handleImageFileUpload}
+                      />
+                      <button
+                        type="button"
+                        onClick={() => imageFileRef.current?.click()}
+                        disabled={isUploadingImage}
+                        className="flex items-center gap-2 px-4 py-2 bg-gray-100 text-gray-600 hover:bg-gray-200 rounded-xl transition-colors text-sm font-medium disabled:opacity-50"
+                      >
+                        <FaUpload className="w-3 h-3" />
+                        {isUploadingImage ? 'Uploading...' : 'Upload File'}
+                      </button>
+                    </div>
                   </div>
                 </div>
+
+                {/* Media Picker Modal */}
+                <MediaPickerModal
+                  isOpen={isMediaPickerOpen}
+                  onClose={() => setIsMediaPickerOpen(false)}
+                  onSelect={(assets: MediaAsset[]) => {
+                    setImageAssets((prev) => [...prev, ...assets.map((a) => a._id)]);
+                    setImagePreviewUrls((prev) => [...prev, ...assets.map((a) => a.url).filter(Boolean)]);
+                    setIsMediaPickerOpen(false);
+                  }}
+                  category="event"
+                  multiple={true}
+                  title="Select Event Images"
+                />
               </motion.div>
             )}
 
@@ -792,25 +891,41 @@ const TeacherEventFormPage: React.FC = () => {
                 animate={{ opacity: 1, y: 0 }}
                 className="space-y-6"
               >
+                {/* Free Event Toggle */}
+                <div
+                  className={`flex items-center gap-3 p-4 rounded-lg border-2 cursor-pointer transition-colors ${isFreeEvent ? 'bg-green-50 border-green-400' : 'bg-gray-50 border-gray-200 hover:border-green-300'}`}
+                  onClick={() => setIsFreeEvent(!isFreeEvent)}
+                >
+                  <div className={`w-5 h-5 rounded border-2 flex items-center justify-center flex-shrink-0 transition-colors ${isFreeEvent ? 'bg-green-500 border-green-500' : 'border-gray-400'}`}>
+                    {isFreeEvent && <svg className="w-3 h-3 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={3}><path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" /></svg>}
+                  </div>
+                  <div>
+                    <p className={`font-semibold text-sm ${isFreeEvent ? 'text-green-700' : 'text-gray-700'}`}>Free Event (No Payment Required)</p>
+                    <p className="text-xs text-gray-500">Attendees register without paying — registration form is still collected</p>
+                  </div>
+                  {isFreeEvent && <span className="ml-auto bg-green-500 text-white text-xs font-bold px-2 py-1 rounded-full">FREE</span>}
+                </div>
+
                 {/* Base Price */}
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                   <div>
                     <label className="block text-sm font-medium text-gray-700 mb-2">
-                      Base Price *
+                      Base Price {!isFreeEvent && '*'}
                     </label>
                     <input
                       type="number"
-                      value={basePrice}
+                      value={isFreeEvent ? '0' : basePrice}
                       onChange={(e) => setBasePrice(e.target.value)}
                       min="0"
                       step="0.01"
                       placeholder="0.00"
-                      className={`w-full px-4 py-3 border rounded-xl focus:outline-none focus:ring-2 focus:ring-purple-500 ${errors.basePrice ? 'border-red-500' : 'border-gray-200'
-                        }`}
+                      disabled={isFreeEvent}
+                      className={`w-full px-4 py-3 border rounded-xl focus:outline-none focus:ring-2 focus:ring-purple-500 ${errors.basePrice ? 'border-red-500' : 'border-gray-200'} ${isFreeEvent ? 'bg-gray-100 text-gray-400 cursor-not-allowed' : ''}`}
                     />
                     {errors.basePrice && (
                       <p className="text-red-500 text-sm mt-1">{errors.basePrice}</p>
                     )}
+                    {isFreeEvent && <p className="mt-1 text-xs text-green-600">Free — no charge</p>}
                   </div>
 
                   <div>
@@ -935,13 +1050,15 @@ const TeacherEventFormPage: React.FC = () => {
                             </label>
                             <input
                               type="number"
-                              value={schedule.price}
+                              value={isFreeEvent ? '0' : schedule.price}
                               onChange={(e) => updateSchedule(idx, 'price', e.target.value)}
                               placeholder={basePrice || '0'}
                               min="0"
                               step="0.01"
-                              className="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-purple-500"
+                              disabled={isFreeEvent}
+                              className={`w-full px-3 py-2 border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-purple-500 ${isFreeEvent ? 'bg-gray-100 text-gray-400 cursor-not-allowed' : ''}`}
                             />
+                            {isFreeEvent && <p className="mt-1 text-xs text-green-600">Free — no charge</p>}
                           </div>
 
                           <div className="flex items-end">

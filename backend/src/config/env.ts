@@ -212,10 +212,9 @@ export const config: Config = {
     retryWrites: process.env.MONGODB_RETRY_WRITES !== "false",
     retryReads: process.env.MONGODB_RETRY_READS !== "false",
   },
-  jwtSecret: process.env.JWT_SECRET || "default_jwt_secret",
+  jwtSecret: process.env.JWT_SECRET as string,
   jwtExpiresIn: process.env.JWT_EXPIRES_IN || "7d",
-  jwtRefreshSecret:
-    process.env.JWT_REFRESH_SECRET || "default_jwt_refresh_secret",
+  jwtRefreshSecret: process.env.JWT_REFRESH_SECRET as string,
   jwtRefreshExpiresIn: process.env.JWT_REFRESH_EXPIRES_IN || "30d",
   frontendUrl: process.env.FRONTEND_URL || "http://localhost:3001",
   rateLimitWindowMs: parseInt(process.env.RATE_LIMIT_WINDOW_MS || "900000", 10),

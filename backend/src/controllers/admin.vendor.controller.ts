@@ -479,6 +479,52 @@ export const updateVendorVerification = async (
 };
 
 /**
+ * Approve or reject a specific vendor verification document
+ * @route PATCH /api/admin/vendors/:id/verify-document
+ */
+export const verifyVendorDocument = async (
+  req: Request,
+  res: Response,
+  next: NextFunction,
+): Promise<void> => {
+  try {
+    const { id } = req.params;
+    const { docType, status } = req.body;
+
+    if (!mongoose.Types.ObjectId.isValid(id)) {
+      return next(new AppError("Invalid vendor ID", 400));
+    }
+
+    const allowedDocs = ["businessLicense", "taxCertificate", "identityDocument"];
+    if (!allowedDocs.includes(docType)) {
+      return next(new AppError("Invalid document type", 400));
+    }
+
+    if (!["approved", "rejected"].includes(status)) {
+      return next(new AppError("Status must be 'approved' or 'rejected'", 400));
+    }
+
+    const vendor = await Vendor.findByIdAndUpdate(
+      id,
+      { [`verificationDocuments.${docType}.status`]: status },
+      { new: true },
+    );
+
+    if (!vendor) {
+      return next(new AppError("Vendor not found", 404));
+    }
+
+    res.status(200).json({
+      success: true,
+      message: `Document ${status}`,
+      data: { verificationDocuments: vendor.verificationDocuments },
+    });
+  } catch (error) {
+    next(error);
+  }
+};
+
+/**
  * Get simple vendors list for dropdowns
  * @route GET /api/admin/vendors/list
  */

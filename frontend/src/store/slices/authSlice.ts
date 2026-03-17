@@ -488,11 +488,7 @@ const authSlice = createSlice({
         // Mark that user has logged in at least once
         localStorage.setItem('gema_ever_authenticated', 'true');
 
-        // Store tokens for fallback (if cookies blocked)
-        if (action.payload.tokens) {
-          localStorage.setItem('token', action.payload.tokens.accessToken);
-          localStorage.setItem('refreshToken', action.payload.tokens.refreshToken);
-        }
+        // Tokens are managed via httpOnly cookies — no localStorage storage
       })
       .addCase(loginUser.rejected, (state, action) => {
         state.isLoading = false;
@@ -513,11 +509,7 @@ const authSlice = createSlice({
         state.isInitialized = true; // Auth state is known: pending verification
         state.error = null;
 
-        // Store tokens for fallback (if cookies blocked) — needed to call verifyEmailWithOTP
-        if (action.payload.tokens) {
-          localStorage.setItem('token', action.payload.tokens.accessToken);
-          localStorage.setItem('refreshToken', action.payload.tokens.refreshToken);
-        }
+        // Tokens are managed via httpOnly cookies — no localStorage storage
       })
       .addCase(registerUser.rejected, (state, action) => {
         state.isLoading = false;
@@ -553,11 +545,7 @@ const authSlice = createSlice({
         state.isAuthenticated = true;
         state.error = null;
 
-        // Store tokens for fallback (if cookies blocked)
-        if (action.payload.tokens) {
-          localStorage.setItem('token', action.payload.tokens.accessToken);
-          localStorage.setItem('refreshToken', action.payload.tokens.refreshToken);
-        }
+        // Tokens are managed via httpOnly cookies — no localStorage storage
       })
       .addCase(refreshToken.rejected, (state) => {
         state.user = null;
@@ -582,11 +570,7 @@ const authSlice = createSlice({
         // Mark that user has logged in
         localStorage.setItem('gema_ever_authenticated', 'true');
 
-        // Store tokens for fallback (if cookies blocked)
-        if (action.payload.tokens) {
-          localStorage.setItem('token', action.payload.tokens.accessToken);
-          localStorage.setItem('refreshToken', action.payload.tokens.refreshToken);
-        }
+        // Tokens are managed via httpOnly cookies — no localStorage storage
       })
       .addCase(loginWithGoogleThunk.rejected, (state, action) => {
         state.isLoading = false;

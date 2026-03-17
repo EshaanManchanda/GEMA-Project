@@ -593,10 +593,10 @@ const AdminEventsPage: React.FC = () => {
                           {event.viewsCount.toLocaleString()}
                         </td>
                         <td className="px-6 py-4 whitespace-nowrap text-sm font-medium">
-                          <div className="flex items-center gap-1.5">
+                          <div className="flex items-center gap-2">
                             <button
                               onClick={() => navigate(`/admin/events/${event.id}`)}
-                              className="p-3 rounded-lg text-blue-600 hover:text-blue-900 hover:bg-blue-50 transition-colors"
+                              className="p-2.5 rounded-lg text-blue-600 hover:text-blue-900 hover:bg-blue-50 transition-colors"
                               title="View Details"
                             >
                               <FaEye className="w-5 h-5" />
@@ -606,7 +606,7 @@ const AdminEventsPage: React.FC = () => {
                               <>
                                 <button
                                   onClick={() => navigate(`/admin/events/${event.id}/edit`)}
-                                  className="p-3 rounded-lg text-indigo-600 hover:text-indigo-900 hover:bg-indigo-50 transition-colors"
+                                  className="p-2.5 rounded-lg text-indigo-600 hover:text-indigo-900 hover:bg-indigo-50 transition-colors"
                                   title="Edit Event"
                                 >
                                   <FaEdit className="w-5 h-5" />
@@ -619,7 +619,7 @@ const AdminEventsPage: React.FC = () => {
                                       setActionType('approve');
                                       setIsApprovalModalOpen(true);
                                     }}
-                                    className="p-3 rounded-lg text-green-600 hover:text-green-900 hover:bg-green-50 transition-colors"
+                                    className="p-2.5 rounded-lg text-green-600 hover:text-green-900 hover:bg-green-50 transition-colors"
                                     title="Approve Event"
                                   >
                                     <FaCheck className="w-5 h-5" />
@@ -628,7 +628,7 @@ const AdminEventsPage: React.FC = () => {
 
                                 <button
                                   onClick={() => handleToggleFeatured(event.id)}
-                                  className={`p-3 rounded-lg hover:bg-yellow-50 transition-colors ${event.isFeatured ? 'text-yellow-500' : 'text-gray-400'} hover:text-yellow-600`}
+                                  className={`p-2.5 rounded-lg hover:bg-yellow-50 transition-colors ${event.isFeatured ? 'text-yellow-500' : 'text-gray-400'} hover:text-yellow-600`}
                                   title="Toggle Featured"
                                 >
                                   <FaStar className="w-5 h-5" />
@@ -636,7 +636,7 @@ const AdminEventsPage: React.FC = () => {
 
                                 <button
                                   onClick={() => navigate(`/admin/events/${event.id}/registration/builder`)}
-                                  className="p-3 rounded-lg text-purple-600 hover:text-purple-900 hover:bg-purple-50 transition-colors"
+                                  className="p-2.5 rounded-lg text-purple-600 hover:text-purple-900 hover:bg-purple-50 transition-colors"
                                   title="Form Builder"
                                 >
                                   <FaWpforms className="w-5 h-5" />
@@ -647,7 +647,7 @@ const AdminEventsPage: React.FC = () => {
                                     setEventToDelete(event.id);
                                     setIsDeleteModalOpen(true);
                                   }}
-                                  className="p-3 rounded-lg text-red-600 hover:text-red-900 hover:bg-red-50 transition-colors"
+                                  className="p-2.5 rounded-lg text-red-600 hover:text-red-900 hover:bg-red-50 transition-colors"
                                   title="Delete Event"
                                 >
                                   <FaTrash className="w-5 h-5" />
@@ -658,7 +658,7 @@ const AdminEventsPage: React.FC = () => {
                             {event.isDeleted && (
                               <button
                                 onClick={() => handleRestoreEvent(event.id)}
-                                className="p-3 rounded-lg text-blue-600 hover:text-blue-900 hover:bg-blue-50 transition-colors"
+                                className="p-2.5 rounded-lg text-blue-600 hover:text-blue-900 hover:bg-blue-50 transition-colors"
                                 title="Restore Event"
                               >
                                 <FaUndo className="w-5 h-5" />

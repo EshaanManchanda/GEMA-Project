@@ -14,6 +14,7 @@ import {
   updateVendorSubscriptionStatus,
   updateVendorStatus,
   updateVendorVerification,
+  verifyVendorDocument,
   getVendorStats,
 } from "../controllers/admin.vendor.controller";
 import { validateMongoId } from "../validators/common.validator";
@@ -105,6 +106,19 @@ router.put(
   validateMongoId("id", "param"),
   validate,
   updateVendorVerification,
+);
+
+/**
+ * @route   PATCH /api/admin/vendors/:id/verify-document
+ * @desc    Approve or reject a specific vendor document
+ * @access  Admin only
+ * @body    { docType: 'businessLicense' | 'taxCertificate' | 'identityDocument', status: 'approved' | 'rejected' }
+ */
+router.patch(
+  "/:id/verify-document",
+  validateMongoId("id", "param"),
+  validate,
+  verifyVendorDocument,
 );
 
 export default router;

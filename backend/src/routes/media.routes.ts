@@ -159,7 +159,7 @@ router.get(
 router.use(authenticate);
 
 // Roles allowed to browse and upload media
-const MEDIA_UPLOAD_ROLES = [UserRole.ADMIN, UserRole.VENDOR];
+const MEDIA_UPLOAD_ROLES = [UserRole.ADMIN, UserRole.VENDOR, UserRole.TEACHER];
 
 /**
  * Upload Routes — Admin + Vendor

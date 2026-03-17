@@ -13,6 +13,8 @@ import { UserRole, UserStatus } from "../models/User";
 // Venue imports removed
 import { ReviewType, ReviewStatus } from "../models/Review";
 import { TicketStatus } from "../models/Ticket";
+import PopupNotification from "../models/PopupNotification";
+import AnnouncementBar from "../models/AnnouncementBar";
 
 // Sample data
 const sampleUsers = [
@@ -2580,6 +2582,148 @@ async function seedCheckinLogs(
 }
 
 /**
+ * Seed popup notifications
+ */
+async function seedPopups() {
+  try {
+    await PopupNotification.deleteMany({});
+    logger.info("Cleared existing popups");
+
+    const adminUser = await User.findOne({ role: "admin" });
+    if (!adminUser) throw new Error("Admin user not found — run seedUsers first");
+
+    const popups = await PopupNotification.insertMany([
+      {
+        title: "Welcome to Gema!",
+        message: "Discover amazing events happening around you. Browse and book your next experience today.",
+        targetAudience: "anonymous",
+        targetPages: "all",
+        trigger: "pageLoad",
+        frequency: "once",
+        status: "active",
+        isActive: true,
+        displayOrder: 1,
+        ctaText: "Browse Events",
+        ctaLink: "/events",
+        createdBy: adminUser._id,
+      },
+      {
+        title: "Complete Your Profile",
+        message: "Add your preferences and payment details to unlock personalised recommendations and faster checkout.",
+        targetAudience: "authenticated",
+        targetPages: "all",
+        trigger: "timeDelay",
+        triggerValue: 5,
+        frequency: "once",
+        status: "active",
+        isActive: true,
+        displayOrder: 2,
+        ctaText: "Update Profile",
+        ctaLink: "/profile",
+        createdBy: adminUser._id,
+      },
+      {
+        title: "Summer Sale — 20% Off",
+        message: "Use code SUMMER20 at checkout to save 20% on all events this season. Limited time only!",
+        targetAudience: "all",
+        targetPages: "all",
+        trigger: "scrollPercent",
+        triggerValue: 50,
+        frequency: "session",
+        status: "scheduled",
+        startDate: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000),
+        endDate: new Date(Date.now() + 37 * 24 * 60 * 60 * 1000),
+        isActive: false,
+        displayOrder: 3,
+        ctaText: "Shop Now",
+        ctaLink: "/events",
+        createdBy: adminUser._id,
+      },
+      {
+        title: "Join as a Vendor",
+        message: "Host your own events on Gema and reach thousands of attendees. Sign up today — it's free!",
+        targetAudience: "anonymous",
+        targetPages: "all",
+        trigger: "exitIntent",
+        frequency: "daily",
+        status: "inactive",
+        isActive: false,
+        displayOrder: 4,
+        ctaText: "Become a Vendor",
+        ctaLink: "/vendor/register",
+        createdBy: adminUser._id,
+      },
+    ]);
+
+    logger.info(`Seeded ${popups.length} popups`);
+    return popups;
+  } catch (error) {
+    console.error("seedPopups failed:", error);
+    throw error;
+  }
+}
+
+/**
+ * Seed announcement bars
+ */
+async function seedAnnouncements() {
+  try {
+    await AnnouncementBar.deleteMany({});
+    logger.info("Cleared existing announcements");
+
+    const adminUser = await User.findOne({ role: "admin" });
+    if (!adminUser) throw new Error("Admin user not found — run seedUsers first");
+
+    const announcements = await AnnouncementBar.insertMany([
+      {
+        message: "Free shipping on orders over AED 200!",
+        backgroundColor: "#1a1a2e",
+        textColor: "#ffffff",
+        variant: "info",
+        status: "active",
+        isActive: true,
+        displayOrder: 1,
+        targetPages: "all",
+        isDismissible: true,
+        createdBy: adminUser._id,
+      },
+      {
+        message: "Platform maintenance scheduled for Sunday 2 AM — brief downtime expected.",
+        backgroundColor: "#1a1a2e",
+        textColor: "#ffffff",
+        variant: "warning",
+        status: "scheduled",
+        startDate: new Date(Date.now() + 3 * 24 * 60 * 60 * 1000),
+        endDate: new Date(Date.now() + 4 * 24 * 60 * 60 * 1000),
+        isActive: false,
+        displayOrder: 2,
+        targetPages: "all",
+        isDismissible: false,
+        createdBy: adminUser._id,
+      },
+      {
+        message: "New: Vendor dashboard analytics are live — track your event performance in real time.",
+        backgroundColor: "#1a1a2e",
+        textColor: "#ffffff",
+        variant: "success",
+        status: "active",
+        isActive: true,
+        displayOrder: 3,
+        targetPages: "all",
+        isDismissible: true,
+        createdBy: adminUser._id,
+      },
+    ]);
+
+    logger.info(`Seeded ${announcements.length} announcements`);
+    return announcements;
+  } catch (error) {
+    console.error("seedAnnouncements failed:", error);
+    throw error;
+  }
+}
+
+/**
  * Main seed function
  */
 async function seed() {
@@ -2606,6 +2750,9 @@ async function seed() {
       employees,
     );
 
+    const popups = await seedPopups();
+    const announcements = await seedAnnouncements();
+
     // Update statistics
     await updateEventStats(events, orders, reviews);
 
@@ -2619,6 +2766,8 @@ async function seed() {
       - Reviews: ${reviews.length}
       - Employees: ${employees.length}
       - Check-in Logs: ${checkinLogs.length}
+      - Popups: ${popups.length}
+      - Announcements: ${announcements.length}
     `);
 
     // Display login credentials

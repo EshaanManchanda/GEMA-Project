@@ -527,21 +527,76 @@ const AdminVendorsPage: React.FC = () => {
                         identityDocument: 'Identity Document',
                       };
                       return (
-                        <div key={docType} className="flex items-center justify-between bg-gray-50 rounded-lg p-3">
-                          <div>
-                            <p className="text-sm font-medium text-gray-700">{labels[docType]}</p>
-                            {doc.uploadedAt && (
-                              <p className="text-xs text-gray-500">Uploaded {new Date(doc.uploadedAt).toLocaleDateString()}</p>
-                            )}
+                        <div key={docType} className="bg-gray-50 rounded-lg p-3">
+                          <div className="flex items-center justify-between mb-2">
+                            <div>
+                              <p className="text-sm font-medium text-gray-700">{labels[docType]}</p>
+                              {doc.uploadedAt && (
+                                <p className="text-xs text-gray-500">Uploaded {new Date(doc.uploadedAt).toLocaleDateString()}</p>
+                              )}
+                              {doc.status && (
+                                <span className={`text-xs font-medium px-1.5 py-0.5 rounded-full ${
+                                  doc.status === 'approved' ? 'bg-green-100 text-green-700' :
+                                  doc.status === 'rejected' ? 'bg-red-100 text-red-700' :
+                                  'bg-gray-100 text-gray-600'
+                                }`}>
+                                  {doc.status}
+                                </span>
+                              )}
+                            </div>
+                            <a
+                              href={doc.url}
+                              target="_blank"
+                              rel="noopener noreferrer"
+                              className="text-xs font-medium text-blue-600 hover:text-blue-800 underline"
+                            >
+                              View
+                            </a>
                           </div>
-                          <a
-                            href={doc.url}
-                            target="_blank"
-                            rel="noopener noreferrer"
-                            className="text-xs font-medium text-blue-600 hover:text-blue-800 underline"
-                          >
-                            View
-                          </a>
+                          <div className="flex gap-1.5">
+                            <button
+                              onClick={async () => {
+                                try {
+                                  await api.patch(`/admin/vendors/${viewVendor.id}/verify-document`, { docType, status: 'approved' });
+                                  toast.success('Document approved');
+                                  setViewVendor(prev => prev ? {
+                                    ...prev,
+                                    verificationDocuments: {
+                                      ...prev.verificationDocuments,
+                                      [docType]: { ...doc, status: 'approved' },
+                                    },
+                                  } : null);
+                                } catch {
+                                  toast.error('Failed to approve document');
+                                }
+                              }}
+                              disabled={doc.status === 'approved'}
+                              className="flex-1 bg-green-600 text-white px-2 py-1 rounded text-xs font-medium hover:bg-green-700 disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
+                            >
+                              Approve
+                            </button>
+                            <button
+                              onClick={async () => {
+                                try {
+                                  await api.patch(`/admin/vendors/${viewVendor.id}/verify-document`, { docType, status: 'rejected' });
+                                  toast.error('Document rejected');
+                                  setViewVendor(prev => prev ? {
+                                    ...prev,
+                                    verificationDocuments: {
+                                      ...prev.verificationDocuments,
+                                      [docType]: { ...doc, status: 'rejected' },
+                                    },
+                                  } : null);
+                                } catch {
+                                  toast.error('Failed to reject document');
+                                }
+                              }}
+                              disabled={doc.status === 'rejected'}
+                              className="flex-1 bg-red-600 text-white px-2 py-1 rounded text-xs font-medium hover:bg-red-700 disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
+                            >
+                              Reject
+                            </button>
+                          </div>
                         </div>
                       );
                     })}

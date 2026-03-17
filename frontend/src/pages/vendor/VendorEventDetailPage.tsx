@@ -5,7 +5,7 @@ import {
   Calendar, ChevronDown, ChevronUp, Trash2, BookOpen, Video, Globe, Eye,
   Clock, Wifi, Shield, Award, Tag, AlertTriangle, ExternalLink, Copy,
   CheckCircle, XCircle, Info, RotateCcw, Link, Lock, Unlock, TrendingUp,
-  Layers, Building2, Zap
+  Layers, Building2, Zap, Download
 } from 'lucide-react';
 import { FaWpforms, FaClipboardList, FaStar, FaStarHalfAlt, FaRegStar, FaGoogle } from 'react-icons/fa';
 import { toast } from 'react-hot-toast';
@@ -124,6 +124,7 @@ const VendorEventDetailPage: React.FC = () => {
   const [showPassword, setShowPassword] = useState(false);
   const [isDeleteOpen, setIsDeleteOpen] = useState(false);
   const [deleteLoading,setDeleteLoading]= useState(false);
+  const [isExporting,  setIsExporting]  = useState(false);
 
   const { data: eventRaw, isLoading: eventLoading, isError: eventError } = useVendorEventQuery(id ?? '');
   const { data: perfRaw,  isLoading: perfLoading  } = useEventPerformanceQuery(id ?? '');
@@ -150,6 +151,19 @@ const VendorEventDetailPage: React.FC = () => {
     } finally {
       setDeleteLoading(false);
       setIsDeleteOpen(false);
+    }
+  };
+
+  const handleExportParticipants = async () => {
+    if (!id) return;
+    setIsExporting(true);
+    try {
+      await vendorAPI.exportEventParticipants(id, 'csv');
+      toast.success('Participants exported');
+    } catch {
+      toast.error('Export failed');
+    } finally {
+      setIsExporting(false);
     }
   };
 
@@ -305,6 +319,12 @@ const VendorEventDetailPage: React.FC = () => {
                 <button onClick={() => navigate(`/vendor/events/${id}/registrations`)}
                   className="flex items-center gap-1.5 px-3 py-1.5 bg-indigo-600 text-white rounded-lg text-xs font-medium hover:bg-indigo-700 transition-colors shadow-sm">
                   <FaClipboardList size={12} /> Registrations
+                </button>
+                <button onClick={handleExportParticipants} disabled={isExporting}
+                  className="flex items-center gap-1.5 px-3 py-1.5 bg-emerald-600 text-white rounded-lg
+                             text-xs font-medium hover:bg-emerald-700 transition-colors shadow-sm disabled:opacity-50">
+                  <Download size={12} />
+                  {isExporting ? 'Exporting…' : 'Export Participants'}
                 </button>
                 <button onClick={() => setIsDeleteOpen(true)}
                   className="flex items-center gap-1.5 px-3 py-1.5 bg-red-50 text-red-600 border border-red-200 rounded-lg text-xs font-medium hover:bg-red-100 transition-colors">

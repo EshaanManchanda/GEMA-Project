@@ -1382,10 +1382,13 @@ const adminSlice = createSlice({
       })
       .addCase(fetchCommissionTransactions.fulfilled, (state, action) => {
         state.isCommissionLoading = false;
-        state.commissionTransactions = action.payload.transactions || [];
-        state.pendingCommissions = action.payload.transactions?.filter(
-          (transaction: CommissionTransaction) => transaction.status === 'calculated'
-        ) || [];
+        state.commissionTransactions = (action.payload.transactions || []).map((t: any) => ({
+          ...t,
+          id: t._id?.toString() || t.id,
+        }));
+        state.pendingCommissions = state.commissionTransactions.filter(
+          (t) => t.status === 'calculated'
+        );
         state.commissionError = null;
       })
       .addCase(fetchCommissionTransactions.rejected, (state, action) => {
@@ -1437,10 +1440,29 @@ const adminSlice = createSlice({
       })
       .addCase(fetchPayoutRequests.fulfilled, (state, action) => {
         state.isPayoutLoading = false;
-        state.payoutRequests = action.payload.payouts || [];
-        state.pendingPayouts = action.payload.payouts?.filter(
+        const raw: any[] = action.payload.data || action.payload.payouts || [];
+        state.payoutRequests = raw.map((p: any) => {
+          const vendor = p.vendorId && typeof p.vendorId === 'object' ? p.vendorId : null;
+          const teacher = p.teacherId && typeof p.teacherId === 'object' ? p.teacherId : null;
+          const recipientName = vendor?.businessName || teacher?.fullName || '—';
+          const recipientEmail = vendor?.email || teacher?.email || '—';
+          return {
+            ...p,
+            id: p._id?.toString() || p.id,
+            payoutId: p._id?.toString() || p.id,
+            vendorName: recipientName,
+            vendorEmail: recipientEmail,
+            requestedAmount: p.amount,
+            finalAmount: p.amount,
+            priority: p.priority || 'normal',
+            paymentMethod: typeof p.payoutMethod === 'object'
+              ? p.payoutMethod
+              : { type: p.payoutMethod || 'bank_transfer', details: {} },
+          };
+        });
+        state.pendingPayouts = state.payoutRequests.filter(
           (payout: PayoutRequest) => payout.status === 'pending'
-        ) || [];
+        );
         state.payoutError = null;
       })
       .addCase(fetchPayoutRequests.rejected, (state, action) => {

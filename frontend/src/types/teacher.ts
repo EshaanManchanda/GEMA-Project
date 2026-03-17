@@ -342,6 +342,7 @@ export interface TeachingEventCreateInput {
     unlimitedSeats?: boolean;
   }>;
   images?: string[];
+  imageAssets?: string[];
   registrationConfig?: {
     enabled: boolean;
     requiresApproval: boolean;

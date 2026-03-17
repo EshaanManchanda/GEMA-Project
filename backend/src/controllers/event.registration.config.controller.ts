@@ -1,10 +1,31 @@
 import { Request, Response, NextFunction } from "express";
 import { validationResult } from "express-validator";
 import { Event } from "../models/index";
+import Vendor from "../models/Vendor";
+import Teacher from "../models/Teacher";
 import { AppError } from "../middleware/index";
 import { AuthRequest } from "../types/index";
 import { logger } from "../config/index";
 import { v4 as uuidv4 } from "uuid";
+
+/**
+ * event.vendorId and event.teacherId are profile _ids (Vendor/Teacher model),
+ * NOT the user._id. Must look up the profile by userId before comparing.
+ */
+async function checkEventOwnership(event: any, userId: any): Promise<boolean> {
+  if (!userId) return false;
+  const uid = userId.toString();
+
+  if (event.vendorId) {
+    const vendor = await Vendor.findOne({ userId: uid }).select("_id").lean();
+    if (vendor && event.vendorId.toString() === (vendor as any)._id.toString()) return true;
+  }
+  if (event.teacherId) {
+    const teacher = await Teacher.findOne({ userId: uid }).select("_id").lean();
+    if (teacher && event.teacherId.toString() === (teacher as any)._id.toString()) return true;
+  }
+  return false;
+}
 
 // @desc    Create or update event registration configuration
 // @route   POST /api/events/:eventId/registration-config
@@ -38,11 +59,8 @@ export const createOrUpdateRegistrationConfig = async (
       return next(new AppError("Event not found", 404));
     }
 
-    // Check permissions (support both vendor and teacher events)
-    const vendorMatch = event.vendorId && event.vendorId.toString() === userId;
-    const teacherMatch = (event as any).teacherId && (event as any).teacherId.toString() === userId;
-    const isOwner = vendorMatch || teacherMatch;
     const isAdmin = userRole === "admin";
+    const isOwner = isAdmin ? false : await checkEventOwnership(event, userId);
 
     if (!isOwner && !isAdmin) {
       return next(
@@ -144,12 +162,26 @@ export const getRegistrationConfig = async (
     }
 
     // Determine if the requester is the vendor/teacher owner or admin
+    // event.vendorId refs Vendor profile, event.teacherId refs Teacher profile — NOT User IDs
     const userId = req.user?._id || req.user?.id;
     const userRole = req.user?.role;
-    const vendorMatch = userId && event.vendorId && event.vendorId.toString() === userId.toString();
-    const teacherMatch = userId && (event as any).teacherId && (event as any).teacherId.toString() === userId.toString();
-    const isOwner = vendorMatch || teacherMatch;
     const isAdmin = userRole === "admin";
+
+    let isOwner = false;
+    if (userId) {
+      if (event.vendorId) {
+        const vendor = await Vendor.findOne({ userId }).select("_id").lean();
+        if (vendor && vendor._id.toString() === event.vendorId.toString()) {
+          isOwner = true;
+        }
+      }
+      if (!isOwner && (event as any).teacherId) {
+        const teacher = await Teacher.findOne({ userId }).select("_id").lean();
+        if (teacher && teacher._id.toString() === (event as any).teacherId.toString()) {
+          isOwner = true;
+        }
+      }
+    }
 
     // Only block public/non-owner requests when registration is not enabled.
     // Vendor owners and admins must always be able to view/edit the config
@@ -216,11 +248,8 @@ export const disableRegistration = async (
       return next(new AppError("Event not found", 404));
     }
 
-    // Check permissions (support both vendor and teacher events)
-    const vendorMatch = event.vendorId && event.vendorId.toString() === userId;
-    const teacherMatch = (event as any).teacherId && (event as any).teacherId.toString() === userId;
-    const isOwner = vendorMatch || teacherMatch;
     const isAdmin = userRole === "admin";
+    const isOwner = isAdmin ? false : await checkEventOwnership(event, userId);
 
     if (!isOwner && !isAdmin) {
       return next(
@@ -281,12 +310,13 @@ export const duplicateRegistrationConfig = async (
       return next(new AppError("Source event not found", 404));
     }
 
-    // Check permissions on both events (support vendor and teacher events)
-    const isOwnerOfTarget = (targetEvent.vendorId && targetEvent.vendorId.toString() === userId) ||
-      ((targetEvent as any).teacherId && (targetEvent as any).teacherId.toString() === userId);
-    const isOwnerOfSource = (sourceEvent.vendorId && sourceEvent.vendorId.toString() === userId) ||
-      ((sourceEvent as any).teacherId && (sourceEvent as any).teacherId.toString() === userId);
     const isAdmin = userRole === "admin";
+    const [isOwnerOfTarget, isOwnerOfSource] = isAdmin
+      ? [false, false]
+      : await Promise.all([
+          checkEventOwnership(targetEvent, userId),
+          checkEventOwnership(sourceEvent, userId),
+        ]);
 
     if (!isAdmin && (!isOwnerOfTarget || !isOwnerOfSource)) {
       return next(

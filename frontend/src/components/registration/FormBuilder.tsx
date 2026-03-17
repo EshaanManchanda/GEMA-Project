@@ -346,6 +346,7 @@ const FormBuilder: React.FC<FormBuilderProps> = ({ eventId, onSaveSuccess }) => 
         <div className="border-b">
           <div className="flex space-x-1 p-2">
             <button
+              type="button"
               onClick={() => setActiveTab('build')}
               className={`
                 px-4 py-2 rounded-lg font-medium text-sm transition-colors flex items-center space-x-2
@@ -359,6 +360,7 @@ const FormBuilder: React.FC<FormBuilderProps> = ({ eventId, onSaveSuccess }) => 
               <span>Build</span>
             </button>
             <button
+              type="button"
               onClick={() => setActiveTab('preview')}
               className={`
                 px-4 py-2 rounded-lg font-medium text-sm transition-colors flex items-center space-x-2
@@ -372,6 +374,7 @@ const FormBuilder: React.FC<FormBuilderProps> = ({ eventId, onSaveSuccess }) => 
               <span>Preview</span>
             </button>
             <button
+              type="button"
               onClick={() => setActiveTab('settings')}
               className={`
                 px-4 py-2 rounded-lg font-medium text-sm transition-colors flex items-center space-x-2
@@ -385,6 +388,7 @@ const FormBuilder: React.FC<FormBuilderProps> = ({ eventId, onSaveSuccess }) => 
               <span>Settings</span>
             </button>
             <button
+              type="button"
               onClick={() => setActiveTab('load')}
               className={`
                 px-4 py-2 rounded-lg font-medium text-sm transition-colors flex items-center space-x-2
@@ -414,6 +418,7 @@ const FormBuilder: React.FC<FormBuilderProps> = ({ eventId, onSaveSuccess }) => 
                     {quickAddButtons.map((btn) => (
                       <button
                         key={btn.type}
+                        type="button"
                         onClick={() => handleAddField(btn.type)}
                         className="w-full flex items-center space-x-3 p-3 border-2 border-dashed border-gray-300 rounded-lg hover:border-blue-500 hover:bg-blue-50 transition-all group"
                       >

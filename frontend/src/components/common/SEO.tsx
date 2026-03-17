@@ -357,6 +357,49 @@ export const VendorSEO: React.FC<{ vendor: any; breadcrumbs?: SEOProps['breadcru
   return <SEO {...seoData} />;
 };
 
+export const TeacherSEO: React.FC<{ teacher: any; breadcrumbs?: SEOProps['breadcrumbs'] }> = ({ teacher, breadcrumbs }) => {
+  const baseUrl = import.meta.env.VITE_APP_URL || 'https://gema-events.com';
+
+  const name = teacher.fullName || `${teacher.firstName || ''} ${teacher.lastName || ''}`.trim();
+  const bio = teacher.bio || '';
+  const subjects = teacher.subjects || [];
+  const profileImage = teacher.profileImage || teacher.avatar;
+  const slug = teacher.slug;
+
+  const seoData: SEOProps = {
+    title: `${name} - ${teacher.specialization || 'Instructor'} | ${getAppNameFull()}`,
+    description: bio.length > 160 ? `${bio.substring(0, 157)}...` : bio,
+    keywords: [
+      'teacher', 'instructor', 'tutor', name,
+      teacher.specialization,
+      ...subjects,
+      'kids classes UAE', 'online classes',
+    ].filter(Boolean),
+    canonicalUrl: `${baseUrl}/teachers/${slug || teacher._id}`,
+    ogImage: profileImage,
+    ogType: 'article',
+    breadcrumbs,
+    structuredData: {
+      '@context': 'https://schema.org',
+      '@type': 'Person',
+      name,
+      description: bio,
+      ...(subjects.length > 0 && { knowsAbout: subjects }),
+      ...(teacher.specialization && { jobTitle: teacher.specialization }),
+      ...(profileImage && { image: profileImage }),
+      url: `${baseUrl}/teachers/${slug || teacher._id}`,
+      ...(teacher.verificationStatus === 'verified' && {
+        hasCredential: {
+          '@type': 'EducationalOccupationalCredential',
+          credentialCategory: 'Verified Teacher',
+        },
+      }),
+    },
+  };
+
+  return <SEO {...seoData} />;
+};
+
 export const CollectionSEO: React.FC<{ collection: any; breadcrumbs?: SEOProps['breadcrumbs'] }> = ({ collection, breadcrumbs }) => {
   const baseUrl = import.meta.env.VITE_APP_URL || 'https://gema-events.com';
 

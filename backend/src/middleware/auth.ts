@@ -107,7 +107,7 @@ export const authenticate = async (
         return next(new AppError("User not found", 404));
       }
 
-      user = userDoc.toObject() as IUser;
+      user = userDoc.toObject({ virtuals: ["id"] }) as IUser;
 
       // Cache user data for 2 minutes so role/permission changes propagate quickly
       await cacheService.set(cacheKey, user, { ttl: 120 });
@@ -212,7 +212,7 @@ export const authenticateOptional = async (
     if (!user) {
       const userDoc = await User.findById(decoded.id);
       if (userDoc) {
-        user = userDoc.toObject() as IUser;
+        user = userDoc.toObject({ virtuals: ["id"] }) as IUser;
         await cacheService.set(cacheKey, user, { ttl: 600 });
       }
     }

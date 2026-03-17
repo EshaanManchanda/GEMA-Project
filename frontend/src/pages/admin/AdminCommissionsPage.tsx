@@ -705,7 +705,14 @@ const AdminCommissionsPage: React.FC = () => {
                               </Link>
                               {transaction.status === 'calculated' && (
                                 <button
-                                  onClick={() => handleApproveSelected()}
+                                  onClick={async () => {
+                                    try {
+                                      await dispatch(approveCommissions([transaction.id])).unwrap();
+                                      toast.success('Commission approved');
+                                    } catch {
+                                      toast.error('Approval failed');
+                                    }
+                                  }}
                                   className="text-green-600 hover:text-green-900"
                                 >
                                   Approve
@@ -735,11 +742,48 @@ const AdminCommissionsPage: React.FC = () => {
                 <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
                   <div className="bg-white rounded-lg shadow p-6">
                     <h3 className="text-lg font-medium text-gray-900 mb-4">Commission Trends</h3>
-                    <div className="h-64 flex items-center justify-center border-2 border-dashed border-gray-300 rounded-lg">
-                      <div className="text-center">
-                        <div className="text-gray-400 text-4xl mb-2">📈</div>
-                        <p className="text-gray-500">Commission trend chart will be displayed here</p>
-                      </div>
+                    <div className="space-y-4">
+                      {[
+                        {
+                          label: 'Calculated',
+                          count: commissionStats?.pendingCommissions ?? 0,
+                          amount: commissionStats?.pendingAmount ?? 0,
+                          color: 'bg-yellow-400',
+                        },
+                        {
+                          label: 'Approved',
+                          count: commissionStats?.approvedCommissions ?? 0,
+                          amount: commissionStats?.approvedAmount ?? 0,
+                          color: 'bg-blue-500',
+                        },
+                        {
+                          label: 'Paid',
+                          count: commissionStats?.paidCommissions ?? 0,
+                          amount: commissionStats?.paidAmount ?? 0,
+                          color: 'bg-green-500',
+                        },
+                      ].map((item) => {
+                        const total = commissionStats?.totalAmount ?? 0;
+                        const pct = total > 0 ? Math.round((item.amount / total) * 100) : 0;
+                        return (
+                          <div key={item.label}>
+                            <div className="flex justify-between text-sm mb-1">
+                              <span className="font-medium text-gray-700">
+                                {item.label} ({item.count})
+                              </span>
+                              <span className="text-gray-500">
+                                {commissionStats?.currency ?? 'AED'} {item.amount.toLocaleString()} ({pct}%)
+                              </span>
+                            </div>
+                            <div className="w-full bg-gray-100 rounded-full h-3">
+                              <div
+                                className={`${item.color} h-3 rounded-full transition-all`}
+                                style={{ width: `${pct}%` }}
+                              />
+                            </div>
+                          </div>
+                        );
+                      })}
                     </div>
                   </div>
 
@@ -768,24 +812,74 @@ const AdminCommissionsPage: React.FC = () => {
 
                   <div className="bg-white rounded-lg shadow p-6">
                     <h3 className="text-lg font-medium text-gray-900 mb-4">Commission Distribution</h3>
-                    <div className="h-64 flex items-center justify-center border-2 border-dashed border-gray-300 rounded-lg">
-                      <div className="text-center">
-                        <div className="text-gray-400 text-4xl mb-2">🥧</div>
-                        <p className="text-gray-500">Commission distribution pie chart</p>
-                      </div>
+                    <div className="grid grid-cols-2 gap-4">
+                      {[
+                        {
+                          label: 'Calculated',
+                          count: commissionStats?.pendingCommissions ?? 0,
+                          amount: commissionStats?.pendingAmount ?? 0,
+                          bg: 'bg-yellow-50',
+                          text: 'text-yellow-700',
+                          border: 'border-yellow-200',
+                        },
+                        {
+                          label: 'Approved',
+                          count: commissionStats?.approvedCommissions ?? 0,
+                          amount: commissionStats?.approvedAmount ?? 0,
+                          bg: 'bg-blue-50',
+                          text: 'text-blue-700',
+                          border: 'border-blue-200',
+                        },
+                        {
+                          label: 'Paid',
+                          count: commissionStats?.paidCommissions ?? 0,
+                          amount: commissionStats?.paidAmount ?? 0,
+                          bg: 'bg-green-50',
+                          text: 'text-green-700',
+                          border: 'border-green-200',
+                        },
+                        {
+                          label: 'Total',
+                          count: commissionStats?.totalCommissions ?? 0,
+                          amount: commissionStats?.totalAmount ?? 0,
+                          bg: 'bg-gray-50',
+                          text: 'text-gray-700',
+                          border: 'border-gray-200',
+                        },
+                      ].map((item) => (
+                        <div key={item.label} className={`${item.bg} border ${item.border} rounded-lg p-4`}>
+                          <p className={`text-xs font-medium uppercase tracking-wide ${item.text} mb-1`}>
+                            {item.label}
+                          </p>
+                          <p className={`text-xl font-bold ${item.text}`}>{item.count}</p>
+                          <p className="text-sm text-gray-500 mt-1">
+                            {commissionStats?.currency ?? 'AED'} {item.amount.toLocaleString()}
+                          </p>
+                        </div>
+                      ))}
                     </div>
                   </div>
 
                   <div className="bg-white rounded-lg shadow p-6">
                     <h3 className="text-lg font-medium text-gray-900 mb-4">Export Reports</h3>
                     <div className="space-y-3">
-                      <button className="w-full px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors">
+                      <button
+                        onClick={() => toast.info('Only CSV export is available')}
+                        className="w-full px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
+                      >
                         Export Commission Summary (PDF)
                       </button>
-                      <button className="w-full px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors">
+                      <button
+                        onClick={handleExportCSV}
+                        disabled={exporting}
+                        className="w-full px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 disabled:opacity-50 transition-colors"
+                      >
                         Export Transaction Log (CSV)
                       </button>
-                      <button className="w-full px-4 py-2 bg-purple-600 text-white rounded-lg hover:bg-purple-700 transition-colors">
+                      <button
+                        onClick={() => toast.info('Only CSV export is available')}
+                        className="w-full px-4 py-2 bg-purple-600 text-white rounded-lg hover:bg-purple-700 transition-colors"
+                      >
                         Export Vendor Performance (Excel)
                       </button>
                     </div>

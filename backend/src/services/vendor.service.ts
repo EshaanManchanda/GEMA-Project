@@ -93,22 +93,44 @@ class VendorService {
     const vendorProfile = await getOrCreateVendorProfile(userId);
     const vendorId = vendorProfile._id;
 
-    const totalEvents = await Event.countDocuments({ vendorId });
-    const vendorEvents = await Event.find({ vendorId }).select("_id").lean();
+    const [totalEvents, activeEvents, vendorEvents] = await Promise.all([
+      Event.countDocuments({ vendorId, isDeleted: false }),
+      Event.countDocuments({ vendorId, isDeleted: false, isApproved: true, isActive: true }),
+      Event.find({ vendorId, isDeleted: false }).select("_id").lean(),
+    ]);
+
     const eventIds = vendorEvents.map((e) => e._id);
-    const totalBookings = await Booking.countDocuments({
-      eventId: { $in: eventIds },
-    });
+    const orderFilter = { "items.eventId": { $in: eventIds } };
 
-    const bookings = await Booking.find({ eventId: { $in: eventIds } })
-      .populate("eventId", "price")
-      .lean();
-    const totalRevenue = bookings.reduce(
-      (acc, b) => acc + ((b.eventId as any)?.price || 0),
-      0,
-    );
+    const now = new Date();
+    const startOfThisMonth = new Date(now.getFullYear(), now.getMonth(), 1);
+    const startOfLastMonth = new Date(now.getFullYear(), now.getMonth() - 1, 1);
+    const endOfLastMonth = new Date(now.getFullYear(), now.getMonth(), 0, 23, 59, 59, 999);
 
-    return { totalEvents, totalBookings, totalRevenue };
+    const [aggAll, aggThisMonth, aggLastMonth] = await Promise.all([
+      Order.aggregate([
+        { $match: orderFilter },
+        { $group: { _id: null, totalRevenue: { $sum: "$total" }, totalBookings: { $sum: 1 } } },
+      ]),
+      Order.aggregate([
+        { $match: { ...orderFilter, createdAt: { $gte: startOfThisMonth } } },
+        { $group: { _id: null, revenue: { $sum: "$total" } } },
+      ]),
+      Order.aggregate([
+        { $match: { ...orderFilter, createdAt: { $gte: startOfLastMonth, $lte: endOfLastMonth } } },
+        { $group: { _id: null, revenue: { $sum: "$total" } } },
+      ]),
+    ]);
+
+    const round2 = (n: number) => Math.round(n * 100) / 100;
+    return {
+      totalEvents,
+      activeEvents,
+      totalBookings: aggAll[0]?.totalBookings || 0,
+      totalRevenue: round2(aggAll[0]?.totalRevenue || 0),
+      revenueThisMonth: round2(aggThisMonth[0]?.revenue || 0),
+      revenueLastMonth: round2(aggLastMonth[0]?.revenue || 0),
+    };
   }
 
   /**
@@ -116,10 +138,9 @@ class VendorService {
    */
   async getEvents(userId: string) {
     const vendorProfile = await getOrCreateVendorProfile(userId);
-    return Event.find({
-      vendorId: vendorProfile._id,
-      isDeleted: false,
-    }).sort({ createdAt: -1 });
+    return Event.find({ vendorId: vendorProfile._id })
+      .populate("imageAssets", "url secureUrl publicId")
+      .sort({ createdAt: -1 });
   }
 
   /**
@@ -140,9 +161,8 @@ class VendorService {
 
     if (params.status) {
       filter.status = params.status;
-    } else {
-      filter.status = { $nin: ["pending"] };
     }
+    // No default status filter — vendors see all bookings including pending
 
     if (params.paymentStatus) filter.paymentStatus = params.paymentStatus;
     if (params.eventId) filter["items.eventId"] = params.eventId;
@@ -251,8 +271,7 @@ class VendorService {
     const vendorProfile = await getOrCreateVendorProfile(userId);
     const vendorId = vendorProfile._id;
 
-    const vendorEvents = await Event.find({ vendorId }).select("_id");
-    const eventIds = vendorEvents.map((e) => e._id);
+    const eventIds = await Event.distinct("_id", { vendorId });
 
     const booking = await Order.findOne({
       _id: bookingId,
@@ -283,8 +302,7 @@ class VendorService {
     const vendorProfile = await getOrCreateVendorProfile(userId);
     const vendorId = vendorProfile._id;
 
-    const vendorEvents = await Event.find({ vendorId }).select("_id");
-    const eventIds = vendorEvents.map((e) => e._id);
+    const eventIds = await Event.distinct("_id", { vendorId });
 
     const booking = await Order.findOne({
       _id: bookingId,
@@ -322,12 +340,10 @@ class VendorService {
     const vendorProfile = await getOrCreateVendorProfile(userId);
     const vendorId = vendorProfile._id;
 
-    const vendorEvents = await Event.find({ vendorId }).select("_id");
-    const eventIds = vendorEvents.map((e) => e._id);
+    const eventIds = await Event.distinct("_id", { vendorId });
 
     const filter: any = {
       "items.eventId": { $in: eventIds },
-      status: { $nin: ["pending"] },
     };
 
     if (filters.status) filter.status = filters.status;
@@ -413,6 +429,132 @@ class VendorService {
           ].join(","),
         );
       });
+    });
+
+    return { type: "csv", data: csvRows.join("\n") };
+  }
+
+  /**
+   * Export participant-level rows for a specific event
+   */
+  async exportEventParticipants(userId: string, eventId: string, format: string) {
+    const vendorProfile = await getOrCreateVendorProfile(userId);
+
+    // Verify vendor owns the event
+    const event = await Event.findOne({ _id: eventId, vendorId: vendorProfile._id });
+    if (!event) {
+      throw new AppError("Event not found or access denied", 404);
+    }
+
+    const orders = await Order.find({
+      "items.eventId": eventId,
+      status: { $nin: ["pending"] },
+    })
+      .populate("userId", "firstName lastName email phone")
+      .lean();
+
+    if (format === "json") {
+      const rows: any[] = [];
+      orders.forEach((order: any) => {
+        order.items
+          .filter((item: any) => String(item.eventId) === String(eventId))
+          .forEach((item: any) => {
+            const participants: any[] = item.participants || [];
+            if (participants.length === 0) {
+              rows.push({
+                orderNumber: order.orderNumber || order._id,
+                eventTitle: item.eventTitle,
+                scheduleDate: item.scheduleDate,
+                customerName: `${order.billingAddress.firstName} ${order.billingAddress.lastName}`,
+                customerEmail: order.billingAddress.email,
+                customerPhone: order.billingAddress.phone || "",
+                participant: null,
+              });
+            } else {
+              participants.forEach((p: any) => {
+                rows.push({
+                  orderNumber: order.orderNumber || order._id,
+                  eventTitle: item.eventTitle,
+                  scheduleDate: item.scheduleDate,
+                  customerName: `${order.billingAddress.firstName} ${order.billingAddress.lastName}`,
+                  customerEmail: order.billingAddress.email,
+                  customerPhone: order.billingAddress.phone || "",
+                  participant: p,
+                });
+              });
+            }
+          });
+      });
+      return { type: "json", data: rows };
+    }
+
+    // CSV — one row per participant
+    const csvRows: string[] = [];
+    csvRows.push(
+      [
+        "Order Number",
+        "Event Title",
+        "Schedule Date",
+        "Customer Name",
+        "Customer Email",
+        "Customer Phone",
+        "Participant Name",
+        "Age",
+        "Gender",
+        "Phone",
+        "Allergies",
+        "Medical Conditions",
+        "Emergency Contact Name",
+        "Emergency Contact Phone",
+        "Emergency Contact Relation",
+        "Special Requirements",
+        "Registration Data",
+      ].join(","),
+    );
+
+    orders.forEach((order: any) => {
+      order.items
+        .filter((item: any) => String(item.eventId) === String(eventId))
+        .forEach((item: any) => {
+          const customerName = `${order.billingAddress.firstName} ${order.billingAddress.lastName}`;
+          const participants: any[] = item.participants || [];
+
+          const baseRow = [
+            order.orderNumber || order._id,
+            `"${item.eventTitle || ""}"`,
+            item.scheduleDate ? new Date(item.scheduleDate).toLocaleDateString() : "",
+            `"${customerName}"`,
+            order.billingAddress.email || "",
+            order.billingAddress.phone || "",
+          ];
+
+          if (participants.length === 0) {
+            csvRows.push([...baseRow, "", "", "", "", "", "", "", "", "", "", ""].join(","));
+            return;
+          }
+
+          participants.forEach((p: any) => {
+            const regData = (p.registrationData || [])
+              .map((f: any) => `${f.fieldLabel}: ${f.value}`)
+              .join("; ");
+            csvRows.push(
+              [
+                ...baseRow,
+                `"${p.name || ""}"`,
+                p.age ?? "",
+                p.gender || "",
+                p.phone || "",
+                `"${(p.allergies || []).join("; ")}"`,
+                `"${(p.medicalConditions || []).join("; ")}"`,
+                `"${p.emergencyContact?.name || ""}"`,
+                `"${p.emergencyContact?.phone || ""}"`,
+                `"${p.emergencyContact?.relationship || ""}"`,
+                `"${p.specialRequirements || ""}"`,
+                `"${regData}"`,
+              ].join(","),
+            );
+          });
+        });
     });
 
     return { type: "csv", data: csvRows.join("\n") };
@@ -766,27 +908,42 @@ class VendorService {
    * Get public vendor profile by ID
    */
   async getPublicVendorProfile(vendorUserId: string) {
+    const isObjectId = /^[a-f\d]{24}$/i.test(vendorUserId);
     let resolvedUserId = vendorUserId;
+    let user: any;
 
-    // Try User lookup first; if not found, treat ID as Vendor doc _id
-    let user = await User.findOne({
-      _id: vendorUserId,
-      role: "vendor",
-      status: { $ne: "suspended" },
-    }).select("firstName lastName avatar createdAt");
-
-    if (!user) {
-      const vendorDoc = await Vendor.findById(vendorUserId).select("userId");
+    if (!isObjectId) {
+      // Slug-based lookup
+      const vendorDoc = await Vendor.findOne({ slug: vendorUserId }).select("userId");
       if (!vendorDoc) throw new AppError("Vendor not found", 404);
-
       resolvedUserId = vendorDoc.userId.toString();
       user = await User.findOne({
         _id: resolvedUserId,
         role: "vendor",
         status: { $ne: "suspended" },
       }).select("firstName lastName avatar createdAt");
-
       if (!user) throw new AppError("Vendor not found", 404);
+    } else {
+      // Try User lookup first; if not found, treat ID as Vendor doc _id
+      user = await User.findOne({
+        _id: vendorUserId,
+        role: "vendor",
+        status: { $ne: "suspended" },
+      }).select("firstName lastName avatar createdAt");
+
+      if (!user) {
+        const vendorDoc = await Vendor.findById(vendorUserId).select("userId");
+        if (!vendorDoc) throw new AppError("Vendor not found", 404);
+
+        resolvedUserId = vendorDoc.userId.toString();
+        user = await User.findOne({
+          _id: resolvedUserId,
+          role: "vendor",
+          status: { $ne: "suspended" },
+        }).select("firstName lastName avatar createdAt");
+
+        if (!user) throw new AppError("Vendor not found", 404);
+      }
     }
 
     const vendorProfile = await Vendor.findOne({

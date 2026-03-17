@@ -7,8 +7,17 @@ import CommissionTransaction, {
   CommissionTransactionStatus,
   CommissionRecipientType,
 } from "../models/CommissionTransaction";
+import RevenueTransaction, {
+  RevenueStream,
+  TransactionStatus,
+  PayoutStatus,
+} from "../models/RevenueTransaction";
 import Order from "../models/Order";
 import User from "../models/User";
+import Vendor from "../models/Vendor";
+import Teacher from "../models/Teacher";
+
+const REFUND_WINDOW_DAYS = 7;
 
 /**
  * Commission calculation service
@@ -81,7 +90,7 @@ class CommissionService {
       // Fetch the order with populated data
       const order = await Order.findById(orderId)
         .populate("userId", "firstName lastName email")
-        .populate("items.eventId")
+        .populate("items.eventId", "vendorId teacherId")
         .lean();
 
       if (!order) {
@@ -93,16 +102,31 @@ class CommissionService {
 
       // Get vendor info from the event
       const event: any = orderData.items[0]?.eventId;
-      if (!event || !event.vendorId) {
-        throw new Error(`Event or vendor not found for order: ${orderId}`);
+      if (!event) {
+        throw new Error(`Event not found for order: ${orderId}`);
       }
 
-      // Fetch vendor details
-      const vendor = await User.findById(event.vendorId)
-        .select("firstName lastName email")
-        .lean();
-      if (!vendor) {
-        throw new Error(`Vendor not found: ${event.vendorId}`);
+      // event.vendorId is Vendor._id (not User._id)
+      const vendorProfile = event.vendorId
+        ? await Vendor.findById(event.vendorId)
+        : null;
+      const teacherProfile = event.teacherId
+        ? await Teacher.findById(event.teacherId)
+        : null;
+
+      if (!vendorProfile && !teacherProfile) {
+        throw new Error(`No vendor or teacher found for order: ${orderId}`);
+      }
+
+      // Resolve display name for the transaction
+      let vendorName = "Unknown Vendor";
+      if (vendorProfile) {
+        const vendorUser = await User.findById(vendorProfile.userId)
+          .select("firstName lastName")
+          .lean();
+        if (vendorUser) {
+          vendorName = `${(vendorUser as any).firstName} ${(vendorUser as any).lastName}`;
+        }
       }
 
       // Check if commission already exists for this order
@@ -112,6 +136,42 @@ class CommissionService {
       if (existingCommission) {
         console.log(`ℹ️  Commission already exists for order ${orderId}`);
         return existingCommission;
+      }
+      const profile: any = vendorProfile || teacherProfile;
+
+      if (
+        profile &&
+        profile.paymentSettings?.paymentMode === "custom_stripe" &&
+        profile.isSubscriptionActive()
+      ) {
+        const transactionId = await this.generateTransactionId();
+        const totalAmount = orderData.total || 0;
+        const zeroCommission = new CommissionTransaction({
+          transactionId,
+          orderId: orderData._id,
+          orderNumber: orderData.orderNumber || orderId.toString(),
+          vendorId: event.vendorId,
+          vendorName,
+          customerId: orderData.userId,
+          customerName: orderData.userId
+            ? `${(orderData.userId as any).firstName} ${(orderData.userId as any).lastName}`
+            : "Guest",
+          commissionConfigId: null,
+          originalAmount: totalAmount,
+          totalCommissionAmount: 0,
+          platformCommission: 0,
+          vendorCommission: totalAmount,
+          commissions: [],
+          status: CommissionTransactionStatus.CALCULATED,
+          calculatedAt: new Date(),
+          metadata: { reason: "subscription_model_active" },
+        });
+        await zeroCommission.save();
+        await this.createRevenueTransaction(orderData, event.vendorId, totalAmount, 0);
+        console.log(
+          `✅ Zero commission for order ${orderId}: subscription model active`,
+        );
+        return zeroCommission;
       }
 
       // Get active commission configuration
@@ -138,7 +198,7 @@ class CommissionService {
             orderId: orderData._id,
             orderNumber: orderData.orderNumber || orderId.toString(),
             vendorId: event.vendorId,
-            vendorName: `${vendor.firstName} ${vendor.lastName}`,
+            vendorName,
             customerId: orderData.userId,
             customerName: orderData.userId
               ? `${(orderData.userId as any).firstName} ${(orderData.userId as any).lastName}`
@@ -158,6 +218,13 @@ class CommissionService {
         await session.endSession();
       }
 
+      await this.createRevenueTransaction(
+        orderData,
+        event.vendorId,
+        totalAmount,
+        commissionResult.totalCommission,
+      );
+
       console.log(
         `✅ Commission calculated: ${commissionResult.totalCommission} AED (${commissionResult.rate}%)`,
       );
@@ -167,6 +234,103 @@ class CommissionService {
       console.error("❌ Error calculating commission:", error);
       throw error;
     }
+  }
+
+  /**
+   * Create RevenueTransaction for a paid order (idempotent).
+   * payoutEligibleAt = order.createdAt + REFUND_WINDOW_DAYS.
+   */
+  private async createRevenueTransaction(
+    orderData: any,
+    vendorId: any,
+    totalAmount: number,
+    commissionAmount: number,
+  ): Promise<void> {
+    try {
+      if (!vendorId) return;
+      const existing = await RevenueTransaction.findOne({ orderId: orderData._id });
+      if (existing) return;
+
+      const transactionDate: Date = orderData.createdAt
+        ? new Date(orderData.createdAt)
+        : new Date();
+      const payoutEligibleAt = new Date(transactionDate);
+      payoutEligibleAt.setDate(payoutEligibleAt.getDate() + REFUND_WINDOW_DAYS);
+
+      await new RevenueTransaction({
+        orderId: orderData._id,
+        vendorId,
+        customerId: orderData.userId?._id || orderData.userId,
+        totalAmount,
+        adminCommission: commissionAmount,
+        vendorPayout: totalAmount - commissionAmount,
+        serviceFeeRate: totalAmount > 0 ? (commissionAmount / totalAmount) * 100 : 0,
+        currency: orderData.currency || "AED",
+        revenueStream: RevenueStream.BOOKING,
+        status: TransactionStatus.COMPLETED,
+        payoutStatus: PayoutStatus.PENDING,
+        transactionDate,
+        payoutEligibleAt,
+        stripePaymentId: orderData.stripePaymentIntentId,
+        metadata: {
+          eventTitle: orderData.items?.[0]?.eventTitle || "Event Booking",
+        },
+      }).save();
+    } catch (err) {
+      // Non-fatal: log but don't fail the commission calculation
+      console.error("⚠️  Failed to create RevenueTransaction:", err);
+    }
+  }
+
+  /**
+   * Backfill: find paid orders past the refund window with no CommissionTransaction
+   * and calculate commission + create RevenueTransaction for each.
+   * Called hourly by cron.
+   */
+  async processUncommissionedOrders(): Promise<{ processed: number; failed: number }> {
+    const cutoff = new Date();
+    cutoff.setDate(cutoff.getDate() - REFUND_WINDOW_DAYS);
+
+    const paidOrders = await Order.find({
+      paymentStatus: "paid",
+      "items.0": { $exists: true },
+      createdAt: { $lte: cutoff },
+    })
+      .select("_id")
+      .lean();
+
+    if (paidOrders.length === 0) return { processed: 0, failed: 0 };
+
+    const orderIds = paidOrders.map((o) => (o as any)._id);
+    const existingCommissions = await CommissionTransaction.find({
+      orderId: { $in: orderIds },
+    })
+      .select("orderId")
+      .lean();
+    const commissionsSet = new Set(
+      existingCommissions.map((c) => c.orderId.toString()),
+    );
+
+    const toProcess = paidOrders.filter(
+      (o) => !commissionsSet.has((o as any)._id.toString()),
+    );
+
+    let processed = 0;
+    let failed = 0;
+    for (const order of toProcess) {
+      try {
+        await this.calculateCommissionForOrder((order as any)._id);
+        processed++;
+      } catch (err) {
+        console.error(`Commission backfill failed for order ${(order as any)._id}:`, err);
+        failed++;
+      }
+    }
+
+    if (processed > 0 || failed > 0) {
+      console.log(`📊 Commission backfill: processed=${processed}, failed=${failed}`);
+    }
+    return { processed, failed };
   }
 
   /**

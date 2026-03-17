@@ -506,11 +506,13 @@ export const searchCategories = async (
       return next(new AppError("Search query is required", 400));
     }
 
+    const safeLimit = Math.min(100, Math.max(1, parseInt(limit as string) || 10));
+
     const categories = await Category.find({
       $text: { $search: q as string },
       isActive: true,
     })
-      .limit(parseInt(limit as string))
+      .limit(safeLimit)
       .sort({ score: { $meta: "textScore" } })
       .populate("parentId", "name slug")
       .populate("iconAsset")

@@ -358,24 +358,19 @@ export const handleWebhook = async (
   res: Response,
   next: NextFunction,
 ) => {
-  try {
-    const signature = req.headers["stripe-signature"] as string;
+  const signature = req.headers["stripe-signature"] as string;
 
-    if (!signature) {
-      return next(new AppError("Missing Stripe signature", 400));
-    }
-
-    // Process webhook event
-    await PaymentService.processWebhookEvent(req.body, signature);
-
-    res.status(200).json({ received: true });
-  } catch (error) {
-    console.error("Webhook error:", error);
-    res.status(400).json({
-      success: false,
-      message: "Webhook processing failed",
-    });
+  if (!signature) {
+    return next(new AppError("Missing Stripe signature", 400));
   }
+
+  // Acknowledge immediately to prevent Stripe retries (must respond < 30s)
+  res.status(200).json({ received: true });
+
+  // Process asynchronously — already idempotent via Redis dedup
+  PaymentService.processWebhookEvent(req.body, signature).catch((err) => {
+    console.error("[WEBHOOK] Async processing error:", err);
+  });
 };
 
 // @desc    Get Stripe publishable key

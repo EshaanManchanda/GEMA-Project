@@ -480,17 +480,21 @@ const EventDetailPage: React.FC = () => {
       return;
     }
 
-    // Check if user is a vendor
-    if (user.role !== 'vendor') {
-      if (window.confirm('You need a vendor account to claim events. Would you like to upgrade your account or create a new vendor account?')) {
-        // Redirect to vendor registration or upgrade page
-        // For now, redirecting to vendor registration
-        navigate('/vendor/register');
-      }
+    const TEACHING_TYPES = ['Class', 'Course', 'Workshop', 'Bootcamp', 'Masterclass'];
+    const isTeachingEvent = TEACHING_TYPES.includes(event.type);
+    const requiredRole = isTeachingEvent ? 'teacher' : 'vendor';
+
+    if (user.role !== requiredRole) {
+      toast.error(
+        isTeachingEvent
+          ? 'You need a teacher account to claim this event.'
+          : 'You need a vendor account to claim this event.'
+      );
+      navigate(isTeachingEvent ? '/teacher/register' : '/vendor/register');
       return;
     }
 
-    if (!window.confirm('Are you sure you want to claim this event? Once claimed, it will be associated with your vendor account.')) {
+    if (!window.confirm(`Are you sure you want to claim this event? Once claimed, it will be associated with your ${requiredRole} account.`)) {
       return;
     }
 
@@ -499,22 +503,12 @@ const EventDetailPage: React.FC = () => {
       if (event.isAffiliateEvent) {
         await affiliateEventAPI.claimEvent(event._id);
       } else {
-        // Standard event claim
-        // We need to import eventsAPI or use the imported one if available. 
-        // Assuming eventsAPI is imported at the top. If not, I'll need to add it.
-        // Based on file context, affiliateEventAPI is imported, but eventsAPI might not be?
-        // Let's check imports. Just use affiliateEventAPI for now if it's the only one, 
-        // OR better, import eventsAPI which I just updated. 
-        // Since I can't check imports mid-edit easily, I will assume eventsAPI is available 
-        // or I will add it to imports in a separate edit if needed.
-        // Note: create-react-app might complain if I use undefined variable.
-        // I will use `eventsAPI` and ensure it is imported.
         await eventsAPI.claimEvent(event._id);
       }
 
       toast.success('Event claimed successfully! Redirecting to your dashboard...');
       setTimeout(() => {
-        navigate('/vendor');
+        navigate(isTeachingEvent ? '/teacher' : '/vendor');
       }, 2000);
     } catch (error: any) {
       console.error('Error claiming event:', error);
@@ -1669,7 +1663,10 @@ const EventDetailPage: React.FC = () => {
             </Card>
 
             {/* Claim Event Card - Visible for all unclaimed events */}
-            {event.claimStatus !== 'claimed' && (
+            {event.claimStatus !== 'claimed' && (() => {
+              const TEACHING_TYPES = ['Class', 'Course', 'Workshop', 'Bootcamp', 'Masterclass'];
+              const claimRoleLabel = TEACHING_TYPES.includes(event.type) ? 'teacher' : 'vendor';
+              return (
               <Card variant="elevated" className="mt-6 border-2 border-primary-200 bg-gradient-to-br from-blue-50 to-white">
                 <CardHeader>
                   <CardTitle className="flex items-center text-primary-800">
@@ -1678,6 +1675,7 @@ const EventDetailPage: React.FC = () => {
                     </svg>
                     Is this your event?
                   </CardTitle>
+                  <p className="text-sm text-gray-600 mt-1">Claim this event as its {claimRoleLabel}</p>
                 </CardHeader>
                 <CardContent className="space-y-4">
                   <div className="bg-white/50 rounded-lg p-3 space-y-2 text-sm border border-blue-100">
@@ -1705,7 +1703,7 @@ const EventDetailPage: React.FC = () => {
                   </div>
 
                   <div className="bg-yellow-50 p-3 rounded text-xs text-yellow-800 border border-yellow-200">
-                    <strong>Disclaimer:</strong> This event listing was automatically generated or imported and has not yet been verified by the organizer. Information such as dates, times, and location may be subject to change.
+                    <strong>Disclaimer:</strong> Once claimed, it will be associated with your {claimRoleLabel} account. This event listing was automatically generated or imported and has not yet been verified by the organizer.
                   </div>
 
                   <button
@@ -1722,12 +1720,13 @@ const EventDetailPage: React.FC = () => {
                         Processing...
                       </span>
                     ) : (
-                      'Claim This Event'
+                      `Claim as ${claimRoleLabel}`
                     )}
                   </button>
                 </CardContent>
               </Card>
-            )}
+              );
+            })()}
 
             {/* Affiliate Disclaimer */}
             {event.isAffiliateEvent && event.claimStatus !== 'claimed' && (

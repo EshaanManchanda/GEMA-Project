@@ -1,10 +1,33 @@
 import React, { useState, useEffect } from 'react';
-import { FaSearch, FaEdit, FaTrash, FaEye, FaUndo, FaPlus, FaWpforms, FaClipboardList } from 'react-icons/fa';
+import { FaSearch, FaEdit, FaTrash, FaEye, FaUndo, FaPlus, FaWpforms, FaClipboardList, FaStar } from 'react-icons/fa';
 import { useNavigate } from 'react-router-dom';
 import vendorAPI from '../../services/api/vendorAPI';
 import categoriesAPI, { Category } from '../../services/api/categoriesAPI';
+import { ApiService } from '../../services/api';
 import PrivatePageSEO from '@/components/common/PrivatePageSEO';
 import logger from '../../utils/logger';
+import { toast } from 'react-hot-toast';
+
+const PROMOTION_TIERS = [
+  { id: 'boost', label: 'Boost', days: 7, priceAED: 49, desc: 'Highlighted for 7 days' },
+  { id: 'featured', label: 'Featured', days: 30, priceAED: 149, desc: 'Top placement for 30 days' },
+  { id: 'premium', label: 'Premium', days: 90, priceAED: 399, desc: 'Maximum visibility for 90 days' },
+] as const;
+
+const getEventThumbnail = (event: { images?: string[]; imageAssets?: any[] }): string => {
+  // Prefer populated imageAssets
+  if (Array.isArray(event.imageAssets) && event.imageAssets.length > 0) {
+    const first = event.imageAssets[0];
+    const url = typeof first === 'object' ? (first.url || first.secureUrl) : null;
+    if (typeof url === 'string' && url.startsWith('http')) return url;
+  }
+  // Fall back to images[] if it's a full URL
+  if (Array.isArray(event.images) && event.images.length > 0) {
+    const url = event.images[0];
+    if (typeof url === 'string' && url.startsWith('http')) return url;
+  }
+  return 'https://placehold.co/40x40/e5e7eb/9ca3af?text=No+Image';
+};
 
 interface Event {
   _id: string;
@@ -28,6 +51,7 @@ interface Event {
   isFeatured?: boolean;
   viewsCount?: number;
   images: string[];
+  imageAssets: Array<{ _id: string; url: string; secureUrl?: string } | string>;
   isDeleted: boolean;
   tags: string[];
   dateSchedule: Array<{
@@ -70,6 +94,12 @@ const VendorEventsPage: React.FC = () => {
   // Delete modal state
   const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);
   const [eventToDelete, setEventToDelete] = useState<string | null>(null);
+
+  // Promote modal state
+  const [isPromoteModalOpen, setIsPromoteModalOpen] = useState(false);
+  const [eventToPromote, setEventToPromote] = useState<Event | null>(null);
+  const [selectedTier, setSelectedTier] = useState<'boost' | 'featured' | 'premium'>('boost');
+  const [isPromoting, setIsPromoting] = useState(false);
 
 
   useEffect(() => {
@@ -123,14 +153,15 @@ const VendorEventsPage: React.FC = () => {
     }
 
     // Status filter
-    if (statusFilter !== 'all') {
-      if (statusFilter === 'approved') {
-        filtered = filtered.filter(e => e.isApproved && !e.isDeleted);
-      } else if (statusFilter === 'pending') {
-        filtered = filtered.filter(e => !e.isApproved && !e.isDeleted);
-      } else if (statusFilter === 'deleted') {
-        filtered = filtered.filter(e => e.isDeleted);
-      }
+    if (statusFilter === 'deleted') {
+      filtered = filtered.filter(e => e.isDeleted);
+    } else if (statusFilter === 'approved') {
+      filtered = filtered.filter(e => e.isApproved && !e.isDeleted);
+    } else if (statusFilter === 'pending') {
+      filtered = filtered.filter(e => !e.isApproved && !e.isDeleted);
+    } else {
+      // 'all' — hide deleted unless explicitly viewing deleted
+      filtered = filtered.filter(e => !e.isDeleted);
     }
 
     // Category filter
@@ -165,6 +196,28 @@ const VendorEventsPage: React.FC = () => {
     } catch (err: any) {
       logger.error('Error restoring event:', err);
       setError(err.response?.data?.message || err.message || 'Failed to restore event');
+    }
+  };
+
+  const handlePromoteEvent = async () => {
+    if (!eventToPromote) return;
+    setIsPromoting(true);
+    try {
+      // paymentMethodId would come from Stripe Elements in production.
+      // For now we pass a placeholder; real impl needs Stripe.js.
+      await ApiService.post(`/events/${eventToPromote._id}/promote`, {
+        tier: selectedTier,
+        paymentMethodId: 'pm_card_visa', // replace with real Stripe Elements token
+      });
+      toast.success('Event promoted successfully!');
+      setIsPromoteModalOpen(false);
+      setEventToPromote(null);
+      await fetchEvents();
+    } catch (err: any) {
+      toast.error(err?.response?.data?.message || 'Failed to promote event');
+      logger.error('Promote event error:', err);
+    } finally {
+      setIsPromoting(false);
     }
   };
 
@@ -259,7 +312,7 @@ const VendorEventsPage: React.FC = () => {
                 >
                   <option value="all">All Categories</option>
                   {categories.map((cat) => (
-                    <option key={cat._id} value={cat.slug}>
+                    <option key={cat._id} value={cat.name}>
                       {cat.name}
                     </option>
                   ))}
@@ -333,7 +386,7 @@ const VendorEventsPage: React.FC = () => {
                             <div className="flex-shrink-0 h-10 w-10">
                               <img
                                 className="h-10 w-10 rounded-full object-cover"
-                                src={event.images?.[0] || 'https://placehold.co/40x40/gray/white?text=N'}
+                                src={getEventThumbnail(event)}
                                 alt=""
                               />
                             </div>
@@ -412,6 +465,20 @@ const VendorEventsPage: React.FC = () => {
                                   <FaWpforms className="w-4 h-4" />
                                 </button>
 
+                                {event.isApproved && (
+                                  <button
+                                    onClick={() => {
+                                      setEventToPromote(event);
+                                      setSelectedTier('boost');
+                                      setIsPromoteModalOpen(true);
+                                    }}
+                                    className="text-yellow-600 hover:text-yellow-900"
+                                    title="Promote Event"
+                                  >
+                                    <FaStar className="w-4 h-4" />
+                                  </button>
+                                )}
+
                                 <button
                                   onClick={() => {
                                     setEventToDelete(event._id);
@@ -445,6 +512,56 @@ const VendorEventsPage: React.FC = () => {
           </div>
         </div>
       </div>
+
+      {/* Promote Event Modal */}
+      {isPromoteModalOpen && eventToPromote && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+          <div className="bg-white rounded-xl p-6 w-full max-w-lg shadow-2xl">
+            <h3 className="text-xl font-bold text-gray-900 mb-1">Promote Event</h3>
+            <p className="text-sm text-gray-500 mb-5">{eventToPromote.title}</p>
+
+            <div className="space-y-3 mb-6">
+              {PROMOTION_TIERS.map((tier) => (
+                <button
+                  key={tier.id}
+                  onClick={() => setSelectedTier(tier.id)}
+                  className={`w-full flex items-center justify-between p-4 rounded-lg border-2 transition-all ${
+                    selectedTier === tier.id
+                      ? 'border-yellow-500 bg-yellow-50'
+                      : 'border-gray-200 hover:border-yellow-300'
+                  }`}
+                >
+                  <div className="text-left">
+                    <div className="font-semibold text-gray-900">{tier.label}</div>
+                    <div className="text-sm text-gray-500">{tier.desc}</div>
+                  </div>
+                  <div className="text-right">
+                    <div className="font-bold text-yellow-600">{tier.priceAED} AED</div>
+                    <div className="text-xs text-gray-400">{tier.days} days</div>
+                  </div>
+                </button>
+              ))}
+            </div>
+
+            <div className="flex justify-end gap-3">
+              <button
+                onClick={() => { setIsPromoteModalOpen(false); setEventToPromote(null); }}
+                className="px-4 py-2 text-gray-600 border border-gray-300 rounded-lg hover:bg-gray-50"
+                disabled={isPromoting}
+              >
+                Cancel
+              </button>
+              <button
+                onClick={handlePromoteEvent}
+                disabled={isPromoting}
+                className="px-6 py-2 bg-yellow-500 text-white rounded-lg hover:bg-yellow-600 font-semibold disabled:opacity-50"
+              >
+                {isPromoting ? 'Processing...' : `Pay & Promote`}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* Delete Confirmation Modal */}
       {isDeleteModalOpen && (

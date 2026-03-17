@@ -1,5 +1,7 @@
-import React, { useState } from 'react';
-import { ChevronDown, Phone } from 'lucide-react';
+import React, { useState, useMemo } from 'react';
+import { ChevronDown, Phone, Search } from 'lucide-react';
+import { getCountries, getCountryCallingCode } from 'react-phone-number-input';
+import en from 'react-phone-number-input/locale/en.json';
 
 export interface PhoneInputProps {
   countryCode: string;
@@ -12,31 +14,27 @@ export interface PhoneInputProps {
   className?: string;
 }
 
-const POPULAR_COUNTRIES = [
-  { code: '+1', name: 'United States', flag: '🇺🇸' },
-  { code: '+44', name: 'United Kingdom', flag: '🇬🇧' },
-  { code: '+971', name: 'United Arab Emirates', flag: '🇦🇪' },
-  { code: '+966', name: 'Saudi Arabia', flag: '🇸🇦' },
-  { code: '+91', name: 'India', flag: '🇮🇳' },
-  { code: '+92', name: 'Pakistan', flag: '🇵🇰' },
-  { code: '+880', name: 'Bangladesh', flag: '🇧🇩' },
-  { code: '+65', name: 'Singapore', flag: '🇸🇬' },
-  { code: '+60', name: 'Malaysia', flag: '🇲🇾' },
-  { code: '+62', name: 'Indonesia', flag: '🇮🇩' },
-  { code: '+63', name: 'Philippines', flag: '🇵🇭' },
-  { code: '+86', name: 'China', flag: '🇨🇳' },
-  { code: '+81', name: 'Japan', flag: '🇯🇵' },
-  { code: '+82', name: 'South Korea', flag: '🇰🇷' },
-  { code: '+49', name: 'Germany', flag: '🇩🇪' },
-  { code: '+33', name: 'France', flag: '🇫🇷' },
-  { code: '+39', name: 'Italy', flag: '🇮🇹' },
-  { code: '+34', name: 'Spain', flag: '🇪🇸' },
-  { code: '+7', name: 'Russia', flag: '🇷🇺' },
-  { code: '+52', name: 'Mexico', flag: '🇲🇽' },
-  { code: '+55', name: 'Brazil', flag: '🇧🇷' },
-  { code: '+61', name: 'Australia', flag: '🇦🇺' },
-  { code: '+27', name: 'South Africa', flag: '🇿🇦' }
-];
+interface CountryOption {
+  iso: string;
+  code: string;
+  name: string;
+  flag: string;
+}
+
+// Build full country list from libphonenumber-js
+const ALL_COUNTRIES: CountryOption[] = getCountries()
+  .map((iso) => {
+    const callingCode = getCountryCallingCode(iso);
+    return {
+      iso,
+      code: `+${callingCode}`,
+      name: (en as Record<string, string>)[iso] || iso,
+      flag: iso
+        .toUpperCase()
+        .replace(/./g, (char) => String.fromCodePoint(127397 + char.charCodeAt(0))),
+    };
+  })
+  .sort((a, b) => a.name.localeCompare(b.name));
 
 const PhoneInput: React.FC<PhoneInputProps> = ({
   countryCode,
@@ -46,19 +44,30 @@ const PhoneInput: React.FC<PhoneInputProps> = ({
   error,
   disabled = false,
   required = false,
-  className = ''
+  className = '',
 }) => {
   const [isDropdownOpen, setIsDropdownOpen] = useState(false);
+  const [search, setSearch] = useState('');
 
-  const selectedCountry = POPULAR_COUNTRIES.find(country => country.code === countryCode) || POPULAR_COUNTRIES[0];
+  const selectedCountry =
+    ALL_COUNTRIES.find((c) => c.code === countryCode) || ALL_COUNTRIES[0];
+
+  const filtered = useMemo(() => {
+    const q = search.toLowerCase();
+    if (!q) return ALL_COUNTRIES;
+    return ALL_COUNTRIES.filter(
+      (c) => c.name.toLowerCase().includes(q) || c.code.includes(q),
+    );
+  }, [search]);
 
   const handleCountrySelect = (code: string) => {
     onCountryCodeChange(code);
     setIsDropdownOpen(false);
+    setSearch('');
   };
 
   const handlePhoneNumberChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const value = e.target.value.replace(/\D/g, ''); // Only allow digits
+    const value = e.target.value.replace(/\D/g, '');
     onPhoneNumberChange(value);
   };
 
@@ -90,27 +99,48 @@ const PhoneInput: React.FC<PhoneInputProps> = ({
               <span className="text-lg">{selectedCountry.flag}</span>
               <span className="text-sm font-medium text-gray-700">{selectedCountry.code}</span>
             </div>
-            <ChevronDown className={`h-4 w-4 text-gray-400 transition-transform ${isDropdownOpen ? 'rotate-180' : ''}`} />
+            <ChevronDown
+              className={`h-4 w-4 text-gray-400 transition-transform ${isDropdownOpen ? 'rotate-180' : ''}`}
+            />
           </button>
 
-          {/* Dropdown Menu */}
           {isDropdownOpen && (
-            <div className="absolute top-full left-0 z-50 w-80 mt-1 bg-white border border-gray-300 rounded-lg shadow-lg max-h-60 overflow-y-auto">
-              {POPULAR_COUNTRIES.map((country) => (
-                <button
-                  key={country.code}
-                  type="button"
-                  onClick={() => handleCountrySelect(country.code)}
-                  className={`
-                    w-full flex items-center px-3 py-2 text-left hover:bg-gray-50
-                    ${country.code === countryCode ? 'bg-primary-50 text-primary-700' : 'text-gray-700'}
-                  `}
-                >
-                  <span className="text-lg mr-3">{country.flag}</span>
-                  <span className="flex-1 text-sm">{country.name}</span>
-                  <span className="text-sm font-medium text-gray-500">{country.code}</span>
-                </button>
-              ))}
+            <div className="absolute top-full left-0 z-50 w-80 mt-1 bg-white border border-gray-300 rounded-lg shadow-lg">
+              {/* Search */}
+              <div className="p-2 border-b border-gray-100">
+                <div className="relative">
+                  <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400" />
+                  <input
+                    type="text"
+                    value={search}
+                    onChange={(e) => setSearch(e.target.value)}
+                    placeholder="Search country..."
+                    className="w-full pl-9 pr-3 py-1.5 text-sm border border-gray-200 rounded-md focus:outline-none focus:ring-1 focus:ring-primary-500"
+                    autoFocus
+                  />
+                </div>
+              </div>
+              {/* List */}
+              <div className="max-h-56 overflow-y-auto">
+                {filtered.map((country) => (
+                  <button
+                    key={country.iso}
+                    type="button"
+                    onClick={() => handleCountrySelect(country.code)}
+                    className={`
+                      w-full flex items-center px-3 py-2 text-left hover:bg-gray-50
+                      ${country.code === countryCode ? 'bg-primary-50 text-primary-700' : 'text-gray-700'}
+                    `}
+                  >
+                    <span className="text-lg mr-3">{country.flag}</span>
+                    <span className="flex-1 text-sm">{country.name}</span>
+                    <span className="text-sm font-medium text-gray-500">{country.code}</span>
+                  </button>
+                ))}
+                {filtered.length === 0 && (
+                  <p className="text-sm text-gray-500 text-center py-4">No countries found</p>
+                )}
+              </div>
             </div>
           )}
         </div>
@@ -138,22 +168,12 @@ const PhoneInput: React.FC<PhoneInputProps> = ({
         </div>
       </div>
 
-      {/* Error Message */}
-      {error && (
-        <p className="form-error mt-1">{error}</p>
-      )}
+      {error && <p className="form-error mt-1">{error}</p>}
 
-      {/* Helper Text */}
-      <p className="text-xs text-gray-500 mt-1">
-        Enter your phone number without the country code
-      </p>
+      <p className="text-xs text-gray-500 mt-1">Enter your phone number without the country code</p>
 
-      {/* Dropdown Backdrop */}
       {isDropdownOpen && (
-        <div
-          className="fixed inset-0 z-40"
-          onClick={() => setIsDropdownOpen(false)}
-        />
+        <div className="fixed inset-0 z-40" onClick={() => { setIsDropdownOpen(false); setSearch(''); }} />
       )}
     </div>
   );

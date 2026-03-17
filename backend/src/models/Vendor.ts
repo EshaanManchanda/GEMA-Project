@@ -218,6 +218,8 @@ export interface IVendor extends Document {
     lastCalculatedAt: Date;
   };
 
+  slug?: string;
+
   // Timestamps
   memberSince: Date;
   createdAt: Date;
@@ -562,6 +564,15 @@ const VendorSchema = new Schema<IVendor>(
       lastCalculatedAt: Date,
     },
 
+    slug: {
+      type: String,
+      unique: true,
+      sparse: true,
+      lowercase: true,
+      trim: true,
+      index: true,
+    },
+
     // Timestamps
     memberSince: {
       type: Date,
@@ -692,11 +703,39 @@ VendorSchema.methods.needsSubscriptionPayment = function (): boolean {
   return paidUntil <= now;
 };
 
-// Pre-save middleware to update member since date
-VendorSchema.pre("save", function (next) {
+const generateVendorSlug = (name: string): string =>
+  name
+    .toLowerCase()
+    .trim()
+    .replace(/[^\w\s-]/g, "")
+    .replace(/\s+/g, "-")
+    .replace(/-+/g, "-")
+    .substring(0, 200);
+
+// Pre-save middleware: memberSince + slug generation
+VendorSchema.pre("save", async function (next) {
   if (this.isNew && !this.memberSince) {
     this.memberSince = new Date();
   }
+
+  if (this.isNew || this.isModified("businessName")) {
+    const base = generateVendorSlug(this.businessName);
+    let slug = base;
+    let count = 0;
+    const MAX = 100;
+    while (count <= MAX) {
+      const existing = await mongoose
+        .model("Vendor")
+        .findOne({ slug, _id: { $ne: this._id } })
+        .lean();
+      if (!existing) {
+        this.slug = slug;
+        break;
+      }
+      slug = `${base}-${++count}`;
+    }
+  }
+
   next();
 });
 

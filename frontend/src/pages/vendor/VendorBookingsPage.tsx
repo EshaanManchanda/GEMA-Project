@@ -1,4 +1,5 @@
 import React, { useState, useMemo, useRef } from 'react';
+import { Link } from 'react-router-dom';
 import { useQueryClient } from '@tanstack/react-query';
 import { useVirtualizer } from '@tanstack/react-virtual';
 import BookingFilters from '../../components/vendor/BookingFilters';
@@ -616,9 +617,15 @@ const VendorBookingsPage: React.FC = () => {
                             {formatDate(booking.createdAt)}
                           </td>
                           <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
+                            <Link
+                              to={`/vendor/bookings/${booking._id}`}
+                              className="text-indigo-600 hover:text-indigo-800 text-xs font-medium px-2 py-1 rounded mr-2"
+                            >
+                              View
+                            </Link>
                             <button
                               onClick={() => handleEdit(booking)}
-                              className="text-primary hover:text-primary-dark mr-4"
+                              className="text-primary hover:text-primary-dark"
                             >
                               Edit
                             </button>

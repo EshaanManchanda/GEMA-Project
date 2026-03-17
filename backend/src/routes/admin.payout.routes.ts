@@ -7,6 +7,7 @@ import {
   approvePayoutRequest,
   rejectPayoutRequest,
   processPayoutRequest,
+  executePayout,
   bulkApprovePayouts,
   bulkRejectPayouts,
   getPayoutStats,
@@ -229,6 +230,13 @@ router.put(
   processPayoutValidation,
   validateRequest,
   processPayoutRequest,
+);
+
+router.post(
+  "/payout-requests/:id/execute",
+  payoutIdValidation,
+  validateRequest,
+  executePayout,
 );
 
 // Bulk operations

@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import vendorAPI from '../../services/api/vendorAPI';
 
-import { Event } from '../../types/event';
+import { Event as EventType } from '../../types/event';
 import PrivatePageSEO from '@/components/common/PrivatePageSEO';
 
 interface Booking {
@@ -26,8 +26,25 @@ interface Stats {
   revenueLastMonth: number;
 }
 
+interface DashboardEvent extends Omit<EventType, 'imageAssets'> {
+  imageAssets?: Array<{ _id: string; url: string; secureUrl?: string } | string>;
+}
+
+const getEventThumbnail = (event: DashboardEvent): string => {
+  if (Array.isArray(event.imageAssets) && event.imageAssets.length > 0) {
+    const first = event.imageAssets[0];
+    const url = typeof first === 'object' ? (first.url || first.secureUrl) : null;
+    if (typeof url === 'string' && url.startsWith('http')) return url;
+  }
+  if (Array.isArray(event.images) && event.images.length > 0) {
+    const url = event.images[0];
+    if (typeof url === 'string' && url.startsWith('http')) return url;
+  }
+  return 'https://placehold.co/400x300/e5e7eb/9ca3af?text=No+Image';
+};
+
 const VendorDashboardPage: React.FC = () => {
-  const [events, setEvents] = useState<Event[]>([]);
+  const [events, setEvents] = useState<DashboardEvent[]>([]);
   const [recentBookings, setRecentBookings] = useState<Booking[]>([]);
   const [stats, setStats] = useState<Stats | null>(null);
   const [isLoading, setIsLoading] = useState<boolean>(true);
@@ -212,7 +229,9 @@ const VendorDashboardPage: React.FC = () => {
                 <div>
                   <p className="text-sm font-semibold text-gray-700 group-hover:text-gray-800 transition-colors duration-300">Monthly Growth</p>
                   <p className="text-2xl font-bold text-gray-900 group-hover:text-orange-700 transition-colors duration-300">
-                    {stats.revenueThisMonth > stats.revenueLastMonth ? (
+                    {stats.revenueLastMonth === 0 ? (
+                      <span className="text-gray-500 bg-gray-100 px-2 py-1 rounded-full font-bold text-lg">— N/A</span>
+                    ) : stats.revenueThisMonth >= stats.revenueLastMonth ? (
                       <span className="text-green-600 bg-green-100 px-2 py-1 rounded-full font-bold text-lg">↗ +{Math.round((stats.revenueThisMonth - stats.revenueLastMonth) / stats.revenueLastMonth * 100)}%</span>
                     ) : (
                       <span className="text-red-600 bg-red-100 px-2 py-1 rounded-full font-bold text-lg">↘ -{Math.round((stats.revenueLastMonth - stats.revenueThisMonth) / stats.revenueLastMonth * 100)}%</span>
@@ -257,7 +276,7 @@ const VendorDashboardPage: React.FC = () => {
                           <div className="sm:w-1/3 md:w-1/4">
                             <img
                               className="h-48 w-full object-cover sm:h-full"
-                              src={event.images?.[0] || 'https://placehold.co/600x400/gray/white?text=No+Image'}
+                              src={getEventThumbnail(event)}
                               alt={event.title}
                             />
                           </div>

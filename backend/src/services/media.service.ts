@@ -113,8 +113,8 @@ export class MediaService {
     const limit = filters.limit || 20;
     const query: any = {};
 
-    // Vendors can only see their own uploads
-    if (userRole === "vendor" && userId) {
+    // Vendors and teachers can only see their own uploads
+    if ((userRole === "vendor" || userRole === "teacher") && userId) {
       query.uploadedBy = userId;
     }
 

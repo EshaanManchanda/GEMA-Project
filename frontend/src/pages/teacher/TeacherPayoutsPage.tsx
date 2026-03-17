@@ -1,21 +1,21 @@
 import React, { useState } from 'react';
 import { motion } from 'framer-motion';
 import { toast } from 'react-hot-toast';
+import { Link } from 'react-router-dom';
 import {
   FaDollarSign,
   FaClock,
   FaCheckCircle,
   FaSpinner,
   FaExternalLinkAlt,
-  FaUniversity,
+  FaCreditCard,
 } from 'react-icons/fa';
 import { TeacherNavigation } from '@/components/teacher';
 import {
   useTeacherPayoutDashboard,
   useTeacherPayoutHistory,
-  useTeacherStripeConnectStatus,
 } from '@/hooks/queries/useTeacherQuery';
-import { useRequestPayout, useInitiateStripeConnect } from '@/hooks/mutations/useTeacherMutations';
+import { useRequestPayout } from '@/hooks/mutations/useTeacherMutations';
 
 const TeacherPayoutsPage: React.FC = () => {
   const [showPayoutModal, setShowPayoutModal] = useState(false);
@@ -28,11 +28,9 @@ const TeacherPayoutsPage: React.FC = () => {
     page: historyPage,
     limit: 10,
   });
-  const { data: stripeStatus, isLoading: isLoadingStripe } = useTeacherStripeConnectStatus();
 
   // Mutations
   const requestPayoutMutation = useRequestPayout();
-  const stripeConnectMutation = useInitiateStripeConnect();
 
   // Handle payout request
   const handleRequestPayout = async () => {
@@ -45,8 +43,8 @@ const TeacherPayoutsPage: React.FC = () => {
 
     try {
       await requestPayoutMutation.mutateAsync({
-        amount: amount || dashboard?.pendingBalance || 0,
-        currency: dashboard?.currency || 'AED',
+        amount: amount || dashboard?.earnings?.pendingBalance || 0,
+        currency: dashboard?.earnings?.currency || 'AED',
       });
       toast.success('Payout request submitted!');
       setShowPayoutModal(false);
@@ -56,20 +54,9 @@ const TeacherPayoutsPage: React.FC = () => {
     }
   };
 
-  // Handle Stripe Connect
-  const handleStripeConnect = async () => {
-    try {
-      const result = await stripeConnectMutation.mutateAsync();
-      if (result?.onboardingUrl) {
-        window.location.href = result.onboardingUrl;
-      }
-    } catch (error: any) {
-      toast.error(error?.message || 'Failed to initiate Stripe Connect');
-    }
-  };
-
   const canRequestPayout =
-    dashboard?.pendingBalance && dashboard.pendingBalance >= (dashboard?.minimumPayout || 50);
+    dashboard?.earnings?.pendingBalance &&
+    dashboard.earnings.pendingBalance >= (dashboard?.paymentSettings?.minimumPayout || 50);
 
   const getStatusColor = (status: string) => {
     switch (status) {
@@ -111,7 +98,7 @@ const TeacherPayoutsPage: React.FC = () => {
                   {isLoadingDashboard ? (
                     <span className="animate-pulse bg-gray-200 rounded h-8 w-24 inline-block" />
                   ) : (
-                    `${dashboard?.currency || 'AED'} ${(dashboard?.totalEarned || 0).toFixed(2)}`
+                    `${dashboard?.earnings?.currency || 'AED'} ${(dashboard?.earnings?.totalEarned || 0).toFixed(2)}`
                   )}
                 </p>
               </div>
@@ -134,7 +121,7 @@ const TeacherPayoutsPage: React.FC = () => {
                   {isLoadingDashboard ? (
                     <span className="animate-pulse bg-gray-200 rounded h-8 w-24 inline-block" />
                   ) : (
-                    `${dashboard?.currency || 'AED'} ${(dashboard?.pendingBalance || 0).toFixed(2)}`
+                    `${dashboard?.earnings?.currency || 'AED'} ${(dashboard?.earnings?.pendingBalance || 0).toFixed(2)}`
                   )}
                 </p>
               </div>
@@ -157,7 +144,7 @@ const TeacherPayoutsPage: React.FC = () => {
                   {isLoadingDashboard ? (
                     <span className="animate-pulse bg-gray-200 rounded h-8 w-24 inline-block" />
                   ) : (
-                    `${dashboard?.currency || 'AED'} ${(dashboard?.totalPaidOut || 0).toFixed(2)}`
+                    `${dashboard?.earnings?.currency || 'AED'} ${(dashboard?.earnings?.totalPaidOut || 0).toFixed(2)}`
                   )}
                 </p>
               </div>
@@ -180,7 +167,7 @@ const TeacherPayoutsPage: React.FC = () => {
                   {isLoadingDashboard ? (
                     <span className="animate-pulse bg-gray-200 rounded h-8 w-24 inline-block" />
                   ) : (
-                    `${dashboard?.currency || 'AED'} ${(dashboard?.inProcessing || 0).toFixed(2)}`
+                    `${dashboard?.earnings?.currency || 'AED'} ${(dashboard?.earnings?.inProcessing || 0).toFixed(2)}`
                   )}
                 </p>
               </div>
@@ -191,7 +178,7 @@ const TeacherPayoutsPage: React.FC = () => {
           </motion.div>
         </div>
 
-        {/* Stripe Connect Status */}
+        {/* Stripe Settings Link */}
         <motion.div
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
@@ -201,59 +188,22 @@ const TeacherPayoutsPage: React.FC = () => {
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-4">
               <div className="p-3 bg-indigo-100 rounded-xl">
-                <FaUniversity className="w-6 h-6 text-indigo-600" />
+                <FaCreditCard className="w-6 h-6 text-indigo-600" />
               </div>
               <div>
-                <h3 className="text-lg font-semibold text-gray-900">Stripe Connect</h3>
+                <h3 className="text-lg font-semibold text-gray-900">Stripe Integration</h3>
                 <p className="text-sm text-gray-500">
-                  {isLoadingStripe ? (
-                    'Loading...'
-                  ) : stripeStatus?.isOnboarded ? (
-                    <span className="text-green-600 flex items-center gap-1">
-                      <FaCheckCircle className="w-4 h-4" />
-                      Connected and ready to receive payouts
-                    </span>
-                  ) : (
-                    'Connect your Stripe account to receive payouts'
-                  )}
+                  Configure your Stripe API key to accept payments for your events
                 </p>
               </div>
             </div>
-
-            {!stripeStatus?.isOnboarded && (
-              <button
-                onClick={handleStripeConnect}
-                disabled={stripeConnectMutation.isPending}
-                className="inline-flex items-center gap-2 px-6 py-3 bg-indigo-600 text-white rounded-xl font-semibold hover:bg-indigo-700 transition-colors disabled:opacity-50"
-              >
-                {stripeConnectMutation.isPending ? (
-                  <>
-                    <FaSpinner className="w-4 h-4 animate-spin" />
-                    Connecting...
-                  </>
-                ) : (
-                  <>
-                    Connect Stripe
-                    <FaExternalLinkAlt className="w-4 h-4" />
-                  </>
-                )}
-              </button>
-            )}
-
-            {stripeStatus?.isOnboarded && (
-              <div className="flex items-center gap-2">
-                {stripeStatus.chargesEnabled && (
-                  <span className="px-3 py-1 bg-green-100 text-green-700 rounded-full text-sm">
-                    Charges Enabled
-                  </span>
-                )}
-                {stripeStatus.payoutsEnabled && (
-                  <span className="px-3 py-1 bg-green-100 text-green-700 rounded-full text-sm">
-                    Payouts Enabled
-                  </span>
-                )}
-              </div>
-            )}
+            <Link
+              to="/teacher/payment-settings"
+              className="inline-flex items-center gap-2 px-6 py-3 bg-indigo-600 text-white rounded-xl font-semibold hover:bg-indigo-700 transition-colors"
+            >
+              Payment Settings
+              <FaExternalLinkAlt className="w-4 h-4" />
+            </Link>
           </div>
         </motion.div>
 
@@ -269,7 +219,7 @@ const TeacherPayoutsPage: React.FC = () => {
               <div className="text-white">
                 <h3 className="text-lg font-semibold">Request Payout</h3>
                 <p className="text-purple-100 mt-1">
-                  You have {dashboard?.currency} {dashboard?.pendingBalance?.toFixed(2)} available
+                  You have {dashboard?.earnings?.currency} {dashboard?.earnings?.pendingBalance?.toFixed(2)} available
                 </p>
               </div>
               <button
@@ -400,9 +350,9 @@ const TeacherPayoutsPage: React.FC = () => {
             <div>
               <h4 className="font-medium text-blue-900">Payment Information</h4>
               <p className="text-sm text-blue-700 mt-1">
-                Minimum payout: {dashboard?.currency || 'AED'} {dashboard?.minimumPayout || 50} |
-                Commission rate: {dashboard?.commissionRate || 5}% |
-                Preferred method: {dashboard?.preferredPayoutMethod || 'Bank Transfer'}
+                Minimum payout: {dashboard?.earnings?.currency || 'AED'} {dashboard?.paymentSettings?.minimumPayout || 50} |
+                Commission rate: {dashboard?.paymentSettings?.commissionRate || 5}% |
+                Preferred method: {dashboard?.paymentSettings?.preferredPayoutMethod || 'Bank Transfer'}
               </p>
             </div>
           </div>
@@ -419,7 +369,7 @@ const TeacherPayoutsPage: React.FC = () => {
           >
             <h2 className="text-2xl font-bold text-gray-900 mb-4">Request Payout</h2>
             <p className="text-gray-600 mb-4">
-              Available balance: {dashboard?.currency} {dashboard?.pendingBalance?.toFixed(2)}
+              Available balance: {dashboard?.earnings?.currency} {dashboard?.earnings?.pendingBalance?.toFixed(2)}
             </p>
 
             <div className="mb-6">
@@ -431,9 +381,9 @@ const TeacherPayoutsPage: React.FC = () => {
                 value={payoutAmount}
                 onChange={(e) => setPayoutAmount(e.target.value)}
                 min="0"
-                max={dashboard?.pendingBalance}
+                max={dashboard?.earnings?.pendingBalance}
                 step="0.01"
-                placeholder={`Max: ${dashboard?.pendingBalance?.toFixed(2)}`}
+                placeholder={`Max: ${dashboard?.earnings?.pendingBalance?.toFixed(2)}`}
                 className="w-full px-4 py-3 border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-purple-500"
               />
             </div>

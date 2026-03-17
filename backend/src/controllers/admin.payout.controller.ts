@@ -1,7 +1,9 @@
 import { Request, Response, NextFunction } from "express";
+import mongoose from "mongoose";
 import { AppError } from "../middleware/index";
 import PayoutService from "../services/payout.service";
-import RevenueTransaction, { PayoutStatus } from "../models/RevenueTransaction";
+import RevenueTransaction from "../models/RevenueTransaction";
+import Payout from "../models/Payout";
 import User from "../models/User";
 
 /**
@@ -99,34 +101,32 @@ export const getPayoutRequests = async (
       limit = 20,
       status = "all",
       vendorId,
-      sortBy = "createdAt",
+      sortBy = "requestedAt",
       sortOrder = "desc",
     } = req.query;
 
     const skip = (parseInt(page as string) - 1) * parseInt(limit as string);
 
-    // Build query
-    const query: any = {
-      payoutStatus: { $in: ["scheduled", "processing", "completed", "failed"] },
-    };
+    const query: any = {};
 
     if (status !== "all") {
-      query.payoutStatus = status;
+      query.status = status;
     }
 
     if (vendorId) {
       query.vendorId = vendorId;
     }
 
-    // Get payout requests
     const [payoutRequests, totalRequests] = await Promise.all([
-      RevenueTransaction.find(query)
-        .populate("vendorId", "firstName lastName email")
+      Payout.find(query)
+        .populate("vendorId", "businessName email phone")
+        .populate("teacherId", "fullName email phone")
+        .populate("requestedBy", "firstName lastName email")
         .sort({ [sortBy as string]: sortOrder === "asc" ? 1 : -1 })
         .skip(skip)
         .limit(parseInt(limit as string))
         .lean(),
-      RevenueTransaction.countDocuments(query),
+      Payout.countDocuments(query),
     ]);
 
     const totalPages = Math.ceil(totalRequests / parseInt(limit as string));
@@ -159,8 +159,11 @@ export const getPayoutRequest = async (
   try {
     const { id } = req.params;
 
-    const payoutRequest = await RevenueTransaction.findById(id)
-      .populate("vendorId", "firstName lastName email vendorPaymentSettings")
+    const payoutRequest = await Payout.findById(id)
+      .populate("vendorId", "businessName email phone")
+      .populate("teacherId", "fullName email phone")
+      .populate("requestedBy", "firstName lastName email")
+      .populate("approvedBy", "firstName lastName email")
       .lean();
 
     if (!payoutRequest) {
@@ -186,41 +189,20 @@ export const approvePayoutRequest = async (
 ): Promise<void> => {
   try {
     const { id } = req.params;
-    const { payoutMethod = "bank_transfer", notes } = req.body;
+    const { notes } = req.body;
 
-    const payoutRequest = await RevenueTransaction.findById(id);
+    const payoutRequest = await Payout.findById(id);
     if (!payoutRequest) {
       return next(new AppError("Payout request not found", 404));
     }
 
-    // Process the payout
-    const result = await PayoutService.processVendorPayout(
-      payoutRequest.vendorId.toString(),
-      [id],
-      payoutMethod,
-    );
-
-    if (!result.success) {
-      return next(
-        new AppError(result.error || "Failed to process payout", 500),
-      );
-    }
-
-    // Add admin notes if provided
-    if (notes) {
-      payoutRequest.metadata = {
-        ...payoutRequest.metadata,
-        adminNotes: notes,
-        approvedBy: req.user?._id || req.user?.id,
-        approvedAt: new Date(),
-      };
-      await payoutRequest.save();
-    }
+    const adminId = (req.user?._id || req.user?.id) as mongoose.Types.ObjectId;
+    await payoutRequest.approve(adminId, notes);
 
     res.status(200).json({
       success: true,
-      message: "Payout request approved and processed",
-      data: result,
+      message: "Payout request approved",
+      data: payoutRequest,
     });
   } catch (error) {
     next(new AppError((error as Error).message, 500));
@@ -243,20 +225,13 @@ export const rejectPayoutRequest = async (
       return next(new AppError("Rejection reason is required", 400));
     }
 
-    const payoutRequest = await RevenueTransaction.findById(id);
+    const payoutRequest = await Payout.findById(id);
     if (!payoutRequest) {
       return next(new AppError("Payout request not found", 404));
     }
 
-    // Update status to failed with reason
-    payoutRequest.payoutStatus = PayoutStatus.FAILED;
-    payoutRequest.metadata = {
-      ...payoutRequest.metadata,
-      rejectionReason: reason,
-      rejectedBy: req.user?._id || req.user?.id,
-      rejectedAt: new Date(),
-    };
-    await payoutRequest.save();
+    const adminId = (req.user?._id || req.user?.id) as mongoose.Types.ObjectId;
+    await payoutRequest.reject(adminId, reason);
 
     res.status(200).json({
       success: true,
@@ -278,24 +253,19 @@ export const processPayoutRequest = async (
 ): Promise<void> => {
   try {
     const { id } = req.params;
-    const { payoutMethod = "manual", paymentReference, notes } = req.body;
+    const { paymentReference, notes } = req.body;
 
-    const payoutRequest = await RevenueTransaction.findById(id);
+    const payoutRequest = await Payout.findById(id);
     if (!payoutRequest) {
       return next(new AppError("Payout request not found", 404));
     }
 
-    // Mark as paid with manual method
-    await payoutRequest.markAsPaid(payoutMethod, paymentReference);
+    await payoutRequest.markAsCompleted(paymentReference);
 
-    // Add admin notes
-    payoutRequest.metadata = {
-      ...payoutRequest.metadata,
-      adminNotes: notes,
-      processedBy: req.user?._id || req.user?.id,
-      processedAt: new Date(),
-    };
-    await payoutRequest.save();
+    if (notes) {
+      payoutRequest.adminNotes = notes;
+      await payoutRequest.save();
+    }
 
     res.status(200).json({
       success: true,
@@ -325,25 +295,18 @@ export const bulkApprovePayouts = async (
     const results = [];
     const failed = [];
 
+    const adminId = (req.user?._id || req.user?.id) as mongoose.Types.ObjectId;
+
     for (const payoutId of payoutIds) {
       try {
-        const payoutRequest = await RevenueTransaction.findById(payoutId);
+        const payoutRequest = await Payout.findById(payoutId);
         if (!payoutRequest) {
           failed.push({ id: payoutId, reason: "Not found" });
           continue;
         }
 
-        const result = await PayoutService.processVendorPayout(
-          payoutRequest.vendorId.toString(),
-          [payoutId],
-          payoutMethod,
-        );
-
-        if (result.success) {
-          results.push(result);
-        } else {
-          failed.push({ id: payoutId, reason: result.error });
-        }
+        await payoutRequest.approve(adminId);
+        results.push({ id: payoutId, status: "approved" });
       } catch (error) {
         failed.push({ id: payoutId, reason: (error as Error).message });
       }
@@ -381,24 +344,25 @@ export const bulkRejectPayouts = async (
       return next(new AppError("Rejection reason is required", 400));
     }
 
-    const results = await RevenueTransaction.updateMany(
-      { _id: { $in: payoutIds } },
-      {
-        $set: {
-          payoutStatus: PayoutStatus.FAILED,
-          "metadata.rejectionReason": reason,
-          "metadata.rejectedBy": req.user?._id || req.user?.id,
-          "metadata.rejectedAt": new Date(),
-        },
-      },
-    );
+    const adminId = (req.user?._id || req.user?.id) as mongoose.Types.ObjectId;
+    let rejectedCount = 0;
+
+    for (const payoutId of payoutIds) {
+      try {
+        const payoutRequest = await Payout.findById(payoutId);
+        if (payoutRequest) {
+          await payoutRequest.reject(adminId, reason);
+          rejectedCount++;
+        }
+      } catch {
+        // continue with remaining
+      }
+    }
 
     res.status(200).json({
       success: true,
-      message: `${results.modifiedCount} payout(s) rejected`,
-      data: {
-        modified: results.modifiedCount,
-      },
+      message: `${rejectedCount} payout(s) rejected`,
+      data: { modified: rejectedCount },
     });
   } catch (error) {
     next(new AppError((error as Error).message, 500));
@@ -588,6 +552,29 @@ export const getPayoutAnalytics = async (
         byMethod,
         topVendors,
       },
+    });
+  } catch (error) {
+    next(new AppError((error as Error).message, 500));
+  }
+};
+
+/**
+ * Execute an approved Payout via Stripe transfer or bank transfer
+ */
+export const executePayout = async (
+  req: Request,
+  res: Response,
+  next: NextFunction,
+): Promise<void> => {
+  try {
+    const { id } = req.params;
+
+    const payout = await PayoutService.executePayout(id);
+
+    res.status(200).json({
+      success: true,
+      message: "Payout executed successfully",
+      data: payout,
     });
   } catch (error) {
     next(new AppError((error as Error).message, 500));

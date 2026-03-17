@@ -140,6 +140,7 @@ export interface ITeacher extends Document {
 
   profileImageAssetId?: mongoose.Types.ObjectId;
   demoVideoAssetId?: mongoose.Types.ObjectId;
+  coverImage?: string;
 
   teachingMode: TeachingMode;
 
@@ -165,6 +166,8 @@ export interface ITeacher extends Document {
     totalReviews: number;
     viewsCount: number;
   };
+
+  slug?: string;
 
   isDeleted: boolean;
   deletedAt?: Date;
@@ -194,7 +197,13 @@ const TeacherSchema = new Schema<ITeacher>(
     },
 
     fullName: { type: String, required: true },
-    bio: String,
+    bio: {
+      type: String,
+      validate: {
+        validator: (v: string) => !v || v.trim().split(/\s+/).length <= 250,
+        message: 'Bio cannot exceed 250 words',
+      },
+    },
     subjects: [String],
     specialization: String,
     languagesSpoken: [
@@ -208,6 +217,7 @@ const TeacherSchema = new Schema<ITeacher>(
 
     profileImageAssetId: { type: Schema.Types.ObjectId, ref: "MediaAsset" },
     demoVideoAssetId: { type: Schema.Types.ObjectId, ref: "MediaAsset" },
+    coverImage: { type: String },
 
     teachingMode: {
       type: String,
@@ -316,6 +326,16 @@ const TeacherSchema = new Schema<ITeacher>(
     isDeleted: { type: Boolean, default: false },
     deletedAt: Date,
 
+    slug: {
+      type: String,
+      unique: true,
+      sparse: true,
+      lowercase: true,
+      trim: true,
+      index: true,
+      maxlength: [250, "Slug cannot exceed 250 characters"],
+    },
+
     memberSince: { type: Date, default: Date.now },
   },
   {
@@ -328,6 +348,9 @@ const TeacherSchema = new Schema<ITeacher>(
 /* ============================
    VIRTUALS
 ============================ */
+
+// Compound index for public teacher listing filter
+TeacherSchema.index({ verificationStatus: 1, isActive: 1, isSuspended: 1 });
 
 TeacherSchema.virtual("subscription", {
   ref: "TeacherSubscription",
@@ -383,5 +406,35 @@ TeacherSchema.methods.needsSubscriptionPayment = function () {
     new Date(this.paymentSettings.subscriptionPaidUntil) <= new Date()
   );
 };
+
+const generateTeacherSlug = (name: string): string =>
+  name
+    .toLowerCase()
+    .trim()
+    .replace(/[^\w\s-]/g, "")
+    .replace(/\s+/g, "-")
+    .replace(/-+/g, "-")
+    .substring(0, 200);
+
+TeacherSchema.pre("save", async function (next) {
+  if (!this.isNew && !this.isModified("fullName")) return next();
+  if (this.slug && !this.isModified("fullName")) return next();
+  const base = generateTeacherSlug(this.fullName);
+  let slug = base;
+  let count = 0;
+  const MAX = 100;
+  while (count <= MAX) {
+    const existing = await mongoose
+      .model("Teacher")
+      .findOne({ slug, _id: { $ne: this._id } })
+      .lean();
+    if (!existing) {
+      this.slug = slug;
+      break;
+    }
+    slug = `${base}-${++count}`;
+  }
+  next();
+});
 
 export default model<ITeacher>("Teacher", TeacherSchema);

@@ -57,7 +57,8 @@ const getCookieOptions = (): CookieOptions => {
   // This allows testing production mode locally without HTTPS
   const useSecureCookies = isProduction && !isLocalhost;
 
-  console.log("[COOKIE_CONFIG] Environment:", config.nodeEnv, {
+  logger.debug("[COOKIE_CONFIG] Environment:", {
+    env: config.nodeEnv,
     isProduction,
     frontendUrl,
     isLocalhost,
@@ -116,17 +117,21 @@ const setAuthCookies = (
   const cookieOptions = getCookieOptions();
   const refreshOptions = getRefreshCookieOptions();
 
-  console.log("[SET_COOKIES] Setting auth cookies with options:", {
-    cookieOptions,
-    refreshOptions,
-    accessTokenLength: accessToken.length,
-    refreshTokenLength: refreshToken.length,
-  });
+  if (process.env.DEBUG_AUTH === "true" && process.env.NODE_ENV !== "production") {
+    logger.debug("[SET_COOKIES] Setting auth cookies with options:", {
+      cookieOptions,
+      refreshOptions,
+      accessTokenLength: accessToken.length,
+      refreshTokenLength: refreshToken.length,
+    });
+  }
 
   res.cookie("accessToken", accessToken, cookieOptions);
   res.cookie("refreshToken", refreshToken, refreshOptions);
 
-  console.log("[SET_COOKIES] Cookies set successfully");
+  if (process.env.DEBUG_AUTH === "true" && process.env.NODE_ENV !== "production") {
+    logger.debug("[SET_COOKIES] Cookies set successfully");
+  }
 };
 
 /**
@@ -206,9 +211,7 @@ const generateAuthTokens = async (
   } catch (error: any) {
     // Handle duplicate key errors from race conditions (multiple simultaneous requests)
     if (error.code === 11000) {
-      console.log(
-        "[Auth] Refresh token already exists (race condition), continuing...",
-      );
+      logger.info("[Auth] Refresh token already exists (race condition), continuing...");
       // Token already exists in DB, which is fine - the operation succeeded in another request
     } else {
       // Re-throw other errors
@@ -229,7 +232,7 @@ export const register = async (
   res: Response,
   next: NextFunction,
 ): Promise<void> => {
-  console.log("[REGISTER] Function entered");
+  logger.debug("[REGISTER] Function entered");
   try {
     if (!req.body) {
       throw new AppError("Request body is missing", 400);
@@ -240,14 +243,12 @@ export const register = async (
       email,
       password,
       phone,
-      role,
     }: RegisterRequest = req.body;
-    console.log("[REGISTER] Request body received:", {
+    logger.debug("[REGISTER] Request body received:", {
       firstName,
       lastName,
       email,
       phone,
-      role,
     });
 
     if (!email || !password) {
@@ -255,12 +256,9 @@ export const register = async (
     }
 
     // Check if user already exists
-    console.log("[REGISTER] Checking for existing user...");
+    logger.debug("[REGISTER] Checking for existing user...");
     const existingUser = await User.findOne({ email });
-    console.log(
-      "[REGISTER] Existing user check complete. User found:",
-      !!existingUser,
-    );
+    logger.debug("[REGISTER] Existing user check complete. User found: " + !!existingUser);
     if (existingUser) {
       throw new AppError("User with this email already exists", 400);
     }
@@ -269,9 +267,8 @@ export const register = async (
     const verificationOTP = generateOTP();
     const otpExpiry = getOTPExpiry(); // 10 minutes from now
 
-    // Determine user role
-    const userRole = role || "customer";
-    console.log("[REGISTER] Creating user with role:", userRole);
+    // Public registration always creates customers — role cannot be set by caller
+    logger.debug("[REGISTER] Creating user with role: customer");
 
     // Create new user
     const user = await User.create({
@@ -280,7 +277,7 @@ export const register = async (
       email,
       passwordHash: password, // Will be hashed by pre-save hook
       phone,
-      role: userRole,
+      role: "customer",
       status: UserStatus.PENDING,
       emailVerification: {
         otp: verificationOTP,
@@ -288,49 +285,15 @@ export const register = async (
       },
     });
 
-    console.log("[REGISTER] User created successfully:", {
-      id: user._id,
-      email: user.email,
-      role: user.role,
-      hasPassword: !!user.passwordHash,
-      passwordHashLength: user.passwordHash?.length,
-      passwordHashStart: user.passwordHash?.substring(0, 10) + "***",
-    });
-
-    // Auto-create Vendor profile if user is registering as vendor
-    if (userRole === "vendor") {
-      try {
-        await getOrCreateVendorProfile(user._id);
-        console.log(
-          "[REGISTER] Vendor profile auto-created for user:",
-          user._id,
-        );
-      } catch (vendorError) {
-        console.error(
-          "[REGISTER] Failed to create vendor profile:",
-          vendorError,
-        );
-        // Don't fail registration if vendor profile creation fails
-        // It will be created on first access via getOrCreateVendorProfile
-      }
-    }
-
-    // Auto-create Teacher profile if user is registering as teacher
-    if (userRole === "teacher") {
-      try {
-        await getOrCreateTeacherProfile(user._id);
-        console.log(
-          "[REGISTER] Teacher profile auto-created for user:",
-          user._id,
-        );
-      } catch (teacherError) {
-        console.error(
-          "[REGISTER] Failed to create teacher profile:",
-          teacherError,
-        );
-        // Don't fail registration if teacher profile creation fails
-        // It will be created on first access via getOrCreateTeacherProfile
-      }
+    if (process.env.DEBUG_AUTH === "true" && process.env.NODE_ENV !== "production") {
+      logger.debug("[REGISTER] User created successfully:", {
+        id: user._id,
+        email: user.email,
+        role: user.role,
+        hasPassword: !!user.passwordHash,
+        passwordHashLength: user.passwordHash?.length,
+        passwordHashStart: user.passwordHash?.substring(0, 10) + "***",
+      });
     }
 
     // Generate tokens
@@ -357,7 +320,7 @@ export const register = async (
     }
 
     // Return response
-    console.log("Registration successful");
+    logger.info("Registration successful");
     res.status(201).json({
       success: true,
       message: "User registered successfully. Auth cookies have been set.",
@@ -520,16 +483,16 @@ export const login = async (
   try {
     const { email, password }: LoginRequest = req.body;
 
-    console.log("[LOGIN] Attempting login for:", email);
+    logger.auth("Attempting login for:", { email });
 
     // Find user by email
     const user = await User.findOne({ email });
     if (!user) {
-      console.log("[LOGIN] User not found:", email);
+      logger.auth("User not found:", { email });
       throw new AppError("Invalid credentials", 401);
     }
 
-    console.log("[LOGIN] User found:", {
+    logger.auth("User found:", {
       id: user._id,
       email: user.email,
       role: user.role,
@@ -539,7 +502,7 @@ export const login = async (
 
     // Check if user has a password (might be social login only)
     if (!user.passwordHash) {
-      console.log("[LOGIN] No password hash found for user");
+      logger.auth("No password hash found for user");
       throw new AppError(
         "This account does not have a password. Please use social login.",
         400,
@@ -547,17 +510,19 @@ export const login = async (
     }
 
     // Verify password
-    console.log("[LOGIN] Comparing passwords...");
-    console.log(
-      "[LOGIN] Password provided (first 3 chars):",
-      password.substring(0, 3) + "***",
-    );
-    console.log(
-      "[LOGIN] Stored hash (first 10 chars):",
-      user.passwordHash.substring(0, 10) + "***",
-    );
+    if (process.env.DEBUG_AUTH === "true" && process.env.NODE_ENV !== "production") {
+      logger.debug("[LOGIN] Comparing passwords...");
+      logger.debug("[LOGIN] Password provided (first 3 chars):", {
+        partial: password.substring(0, 3) + "***",
+      });
+      logger.debug("[LOGIN] Stored hash (first 10 chars):", {
+        partial: user.passwordHash.substring(0, 10) + "***",
+      });
+    }
     const isMatch = await user.comparePassword(password);
-    console.log("[LOGIN] Password match result:", isMatch);
+    if (process.env.DEBUG_AUTH === "true" && process.env.NODE_ENV !== "production") {
+      logger.debug("[LOGIN] Password match result:", { isMatch });
+    }
 
     if (!isMatch) {
       // Record failed login attempt
@@ -570,7 +535,7 @@ export const login = async (
       });
       await user.save();
 
-      console.log("[LOGIN] Password mismatch for user:", email);
+      logger.auth("Password mismatch for user:", { email });
       throw new AppError("Invalid credentials", 401);
     }
 
@@ -1205,10 +1170,7 @@ export const firebaseAuth = async (
     if (user.role === "vendor") {
       try {
         await getOrCreateVendorProfile(user._id);
-        console.log(
-          "[FIREBASE_AUTH] Vendor profile auto-created for user:",
-          user._id,
-        );
+        logger.info("[FIREBASE_AUTH] Vendor profile auto-created for user:", { userId: user._id });
       } catch (vendorError) {
         console.error(
           "[FIREBASE_AUTH] Failed to create vendor profile:",
@@ -1815,9 +1777,7 @@ export const sendPhoneVerificationOTP = async (
     // Only send OTP in response during development mode
     if (process.env.NODE_ENV === "development") {
       responseData.otp = verificationOTP; // For testing only - remove in production
-      console.log(
-        `[DEV] Phone verification OTP for ${phone}: ${verificationOTP}`,
-      );
+      logger.debug(`[DEV] Phone verification OTP for ${phone}: ${verificationOTP}`);
     }
 
     res.status(200).json({
@@ -1959,9 +1919,7 @@ export const resendPhoneVerificationOTP = async (
     // Only send OTP in response during development mode
     if (process.env.NODE_ENV === "development") {
       responseData.otp = verificationOTP; // For testing only - remove in production
-      console.log(
-        `[DEV] Phone verification OTP for ${user.phone}: ${verificationOTP}`,
-      );
+      logger.debug(`[DEV] Phone verification OTP for ${user.phone}: ${verificationOTP}`);
     }
 
     res.status(200).json({

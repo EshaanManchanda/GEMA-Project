@@ -16,7 +16,7 @@ export async function getOrCreateTeacherProfile(
   const userIdObj =
     typeof userId === "string" ? new Types.ObjectId(userId) : userId;
 
-  // Try to find existing teacher
+  // Try to find existing teacher by userId
   let teacher = await Teacher.findOne({ userId: userIdObj });
 
   if (teacher) {
@@ -32,6 +32,16 @@ export async function getOrCreateTeacherProfile(
   // Validate user role
   if (user.role !== "teacher") {
     throw new Error("User is not a teacher");
+  }
+
+  // Fallback: find by email in case userId was never set on an existing record
+  // (can happen if profile was created via a different path)
+  const existingByEmail = await Teacher.findOne({ email: user.email, isDeleted: false });
+  if (existingByEmail) {
+    // Link the userId to this record so future lookups succeed
+    existingByEmail.userId = userIdObj;
+    await existingByEmail.save();
+    return existingByEmail;
   }
 
   // Create teacher profile from user data

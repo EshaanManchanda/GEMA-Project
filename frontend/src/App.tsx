@@ -70,6 +70,7 @@ const VendorCreateEventPage = React.lazy(() => import(/* webpackChunkName: "vend
 const VendorEditEventPage = React.lazy(() => import(/* webpackChunkName: "vendor" */ './pages/vendor/VendorEditEventPage'));
 const VendorEventDetailPage = React.lazy(() => import(/* webpackChunkName: "vendor" */ './pages/vendor/VendorEventDetailPage'));
 const VendorBookingsPage = React.lazy(() => import(/* webpackChunkName: "vendor" */ './pages/vendor/VendorBookingsPage'));
+const VendorBookingDetailPage = React.lazy(() => import(/* webpackChunkName: "vendor" */ './pages/vendor/VendorBookingDetailPage'));
 const VendorEmployeesPage = React.lazy(() => import(/* webpackChunkName: "vendor" */ './pages/vendor/VendorEmployeesPage'));
 const VendorCreateEmployeePage = React.lazy(() => import(/* webpackChunkName: "vendor" */ './pages/vendor/VendorCreateEmployeePage'));
 const VendorEditEmployeePage = React.lazy(() => import(/* webpackChunkName: "vendor" */ './pages/vendor/VendorEditEmployeePage'));
@@ -91,6 +92,7 @@ const TeacherEventFormPage = React.lazy(() => import(/* webpackChunkName: "teach
 const TeacherBookingsPage = React.lazy(() => import(/* webpackChunkName: "teacher" */ './pages/teacher/TeacherBookingsPage'));
 const TeacherAnalyticsPage = React.lazy(() => import(/* webpackChunkName: "teacher" */ './pages/teacher/TeacherAnalyticsPage'));
 const TeacherPayoutsPage = React.lazy(() => import(/* webpackChunkName: "teacher" */ './pages/teacher/TeacherPayoutsPage'));
+const TeacherPaymentSettingsPage = React.lazy(() => import(/* webpackChunkName: "teacher" */ './pages/teacher/TeacherPaymentSettingsPage'));
 const TeacherProfilePage = React.lazy(() => import(/* webpackChunkName: "teacher" */ './pages/teacher/TeacherProfilePage'));
 
 // Admin Dashboard Pages
@@ -109,6 +111,7 @@ const AdminOrdersPage = React.lazy(() => import(/* webpackChunkName: "admin" */ 
 const AdminOrderDetailPage = React.lazy(() => import(/* webpackChunkName: "admin" */ './pages/admin/AdminOrderDetailPage'));
 const AdminPayoutsPage = React.lazy(() => import(/* webpackChunkName: "admin" */ './pages/admin/AdminPayoutsPage'));
 const AdminCommissionsPage = React.lazy(() => import(/* webpackChunkName: "admin" */ './pages/admin/AdminCommissionsPage'));
+const AdminCommissionTransactionDetailPage = React.lazy(() => import(/* webpackChunkName: "admin" */ './pages/admin/AdminCommissionTransactionDetailPage'));
 const AdminBlogsPage = React.lazy(() => import(/* webpackChunkName: "admin" */ './pages/admin/AdminBlogsPage'));
 const AdminBlogEditPage = React.lazy(() => import(/* webpackChunkName: "admin" */ './pages/admin/AdminBlogEditPage'));
 const AdminBlogCategoriesPage = React.lazy(() => import(/* webpackChunkName: "admin" */ './pages/admin/AdminBlogCategoriesPage'));
@@ -641,6 +644,11 @@ function AppContent() {
                   <VendorBookingsPage />
                 </Suspense>
               } />
+              <Route path="bookings/:id" element={
+                <Suspense fallback={<GenericPageSkeleton />}>
+                  <VendorBookingDetailPage />
+                </Suspense>
+              } />
 
               {/* Employee Management */}
               <Route path="employees" element={
@@ -807,6 +815,15 @@ function AppContent() {
             <TeacherRoute>
               <Suspense fallback={<GenericPageSkeleton />}>
                 <TeacherPayoutsPage />
+              </Suspense>
+            </TeacherRoute>
+          } />
+
+          {/* Payment Settings */}
+          <Route path="payment-settings" element={
+            <TeacherRoute>
+              <Suspense fallback={<GenericPageSkeleton />}>
+                <TeacherPaymentSettingsPage />
               </Suspense>
             </TeacherRoute>
           } />
@@ -1016,6 +1033,13 @@ function AppContent() {
             <AdminRoute>
               <Suspense fallback={<GenericPageSkeleton />}>
                 <AdminCommissionsPage />
+              </Suspense>
+            </AdminRoute>
+          } />
+          <Route path="commissions/transactions/:id" element={
+            <AdminRoute>
+              <Suspense fallback={<GenericPageSkeleton />}>
+                <AdminCommissionTransactionDetailPage />
               </Suspense>
             </AdminRoute>
           } />

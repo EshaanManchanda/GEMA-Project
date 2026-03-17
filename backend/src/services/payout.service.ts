@@ -1020,6 +1020,52 @@ class PayoutService {
   }
 
   /**
+   * Execute an approved Payout doc — calls Stripe transfer or marks bank transfer for finance team.
+   */
+  public async executePayout(payoutId: string): Promise<any> {
+    const payout = await Payout.findById(payoutId).populate("vendorId");
+    if (!payout) throw new AppError("Payout not found", 404);
+    if (payout.status !== PayoutRequestStatus.APPROVED) {
+      throw new AppError("Payout must be in APPROVED state to execute", 400);
+    }
+
+    await payout.markAsProcessing();
+
+    try {
+      if (payout.payoutMethod === PayoutMethodType.STRIPE) {
+        await this.initializeStripe();
+        if (!stripe) throw new AppError("Stripe not configured", 500);
+
+        // Fetch stripeConnectAccountId from Vendor profile
+        const vendorDoc = await Vendor.findById(payout.vendorId);
+        const connectAccountId =
+          vendorDoc?.paymentSettings?.stripeSettings?.stripeConnectAccountId;
+        if (!connectAccountId) {
+          throw new AppError("No Stripe Connect account linked", 400);
+        }
+
+        const transfer = await stripe.transfers.create({
+          amount: Math.round(payout.amount * 100), // smallest currency unit
+          currency: (payout.currency || "AED").toLowerCase(),
+          destination: connectAccountId,
+          metadata: { payoutId: payout._id.toString() },
+        });
+
+        await payout.markAsCompleted(transfer.id);
+      } else {
+        // BANK_TRANSFER / MANUAL: record reference, mark completed (finance team processes manually)
+        payout.paymentReference = `MANUAL-${Date.now()}`;
+        await payout.markAsCompleted(payout.paymentReference);
+      }
+    } catch (err: any) {
+      await payout.markAsFailed(err.message || "Unknown error");
+      throw err;
+    }
+
+    return payout;
+  }
+
+  /**
    * Process affiliate payouts — transfer pending commissions via Stripe
    */
   public async processAffiliatePayouts(affiliateId: string): Promise<void> {

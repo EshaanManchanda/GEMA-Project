@@ -16,6 +16,7 @@ const parseExpiration = (value: string): number | StringValue => {
  */
 export const generateToken = (payload: object): string => {
   const options: SignOptions = {
+    algorithm: 'HS256',
     expiresIn: parseExpiration(config.jwtExpiresIn),
   };
   return jwt.sign(payload, config.jwtSecret as Secret, options);
@@ -26,6 +27,7 @@ export const generateToken = (payload: object): string => {
  */
 export const generateRefreshToken = (payload: object): string => {
   const options: SignOptions = {
+    algorithm: 'HS256',
     expiresIn: parseExpiration(config.jwtRefreshExpiresIn),
   };
   return jwt.sign(payload, config.jwtRefreshSecret as Secret, options);
@@ -37,6 +39,7 @@ export const generateRefreshToken = (payload: object): string => {
 export const verifyToken = (token: string): any => {
   try {
     return jwt.verify(token, config.jwtSecret as Secret, {
+      algorithms: ['HS256'],
       clockTolerance: 60, // Allow 60 seconds clock skew
     });
   } catch {
@@ -50,6 +53,7 @@ export const verifyToken = (token: string): any => {
 export const verifyRefreshToken = (token: string): any => {
   try {
     return jwt.verify(token, config.jwtRefreshSecret as Secret, {
+      algorithms: ['HS256'],
       clockTolerance: 60, // Allow 60 seconds clock skew
     });
   } catch {

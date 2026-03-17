@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { useDispatch, useSelector } from 'react-redux';
 import { Link } from 'react-router-dom';
 import { toast } from 'react-hot-toast';
+import { ApiService } from '../../services/api';
 import PrivatePageSEO from '@/components/common/PrivatePageSEO';
 import logger from '@/utils/logger';
 import {
@@ -159,6 +160,17 @@ const AdminPayoutsPage: React.FC = () => {
       setPaymentData({ paymentMethod: 'bank_transfer', transactionId: '', notes: '' });
     } catch (error) {
       logger.error('Failed to process payout:', error);
+    }
+  };
+
+  const handleExecutePayout = async (payout: PayoutRequest) => {
+    try {
+      await ApiService.post(`/admin/payout-requests/${payout.id}/execute`, {});
+      toast.success('Payout executed successfully');
+      await loadPayoutData();
+    } catch (error: any) {
+      toast.error(error?.response?.data?.message || 'Failed to execute payout');
+      logger.error('Execute payout failed:', error);
     }
   };
 
@@ -524,15 +536,24 @@ const AdminPayoutsPage: React.FC = () => {
                                 </>
                               )}
                               {payout.status === 'approved' && (
-                                <button
-                                  onClick={() => {
-                                    setSelectedPayout(payout);
-                                    setShowProcessModal(true);
-                                  }}
-                                  className="text-blue-600 hover:text-blue-900"
-                                >
-                                  Process
-                                </button>
+                                <>
+                                  <button
+                                    onClick={() => {
+                                      setSelectedPayout(payout);
+                                      setShowProcessModal(true);
+                                    }}
+                                    className="text-blue-600 hover:text-blue-900"
+                                  >
+                                    Process
+                                  </button>
+                                  <button
+                                    onClick={() => handleExecutePayout(payout)}
+                                    className="text-purple-600 hover:text-purple-900"
+                                    title="Execute Stripe transfer automatically"
+                                  >
+                                    Execute
+                                  </button>
+                                </>
                               )}
                               <Link
                                 to={`/admin/payouts/${payout.id}`}

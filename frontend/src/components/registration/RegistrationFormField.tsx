@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { FormField } from '@/types/registration';
 import { FileUp, Calendar, Clock, Globe, MapPin, ChevronDown, CheckCircle, Loader2 } from 'lucide-react';
+import { sanitizeHtml } from '@/utils/sanitize';
 import UploadAPI from '@/services/api/uploadAPI';
 import logger from '@/utils/logger';
 
@@ -253,7 +254,7 @@ const RegistrationFormField: React.FC<RegistrationFormFieldProps> = ({
         return (
           <div 
             className="p-4 border border-gray-200 rounded-xl bg-gray-50"
-            dangerouslySetInnerHTML={{ __html: value || field.placeholder || '' }}
+            dangerouslySetInnerHTML={{ __html: sanitizeHtml(value || field.placeholder || '') }}
           />
         );
         

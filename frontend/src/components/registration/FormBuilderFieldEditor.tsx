@@ -72,6 +72,7 @@ const FormBuilderFieldEditor: React.FC<FormBuilderFieldEditorProps> = ({
           {field.required && <span className="text-xs text-red-500 font-bold">*</span>}
         </div>
         <button
+          type="button"
           onClick={(e) => {
             e.stopPropagation();
             onRemove();
@@ -203,6 +204,7 @@ const FormBuilderFieldEditor: React.FC<FormBuilderFieldEditorProps> = ({
                       className="flex-1 px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
                     />
                     <button
+                      type="button"
                       onClick={() => {
                         const newOptions = field.options?.filter((_, i) => i !== index) || [];
                         onUpdate({ options: newOptions });

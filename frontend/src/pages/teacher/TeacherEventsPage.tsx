@@ -10,11 +10,20 @@ import {
   FaTrash,
   FaEdit,
   FaEye,
+  FaStar,
 } from 'react-icons/fa';
 import { TeacherNavigation, TeacherEventCard } from '@/components/teacher';
 import { useTeacherTeachingEvents } from '@/hooks/queries/useTeacherQuery';
 import { useDeleteTeachingEvent } from '@/hooks/mutations/useTeacherMutations';
 import type { ITeachingEvent, TeachingEventFilters } from '@/types/teacher';
+import { ApiService } from '@/services/api';
+import { toast } from 'react-hot-toast';
+
+const PROMOTION_TIERS = [
+  { id: 'boost', label: 'Boost', days: 7, priceAED: 49, desc: 'Highlighted for 7 days' },
+  { id: 'featured', label: 'Featured', days: 30, priceAED: 149, desc: 'Top placement for 30 days' },
+  { id: 'premium', label: 'Premium', days: 90, priceAED: 399, desc: 'Maximum visibility for 90 days' },
+] as const;
 
 const TeacherEventsPage: React.FC = () => {
   const navigate = useNavigate();
@@ -27,6 +36,9 @@ const TeacherEventsPage: React.FC = () => {
   });
   const [searchTerm, setSearchTerm] = useState('');
   const [deleteConfirm, setDeleteConfirm] = useState<ITeachingEvent | null>(null);
+  const [promoteConfirm, setPromoteConfirm] = useState<ITeachingEvent | null>(null);
+  const [selectedTier, setSelectedTier] = useState<'boost' | 'featured' | 'premium'>('boost');
+  const [isPromoting, setIsPromoting] = useState(false);
 
   const { data, isLoading, refetch } = useTeacherTeachingEvents(filters);
   const deleteEventMutation = useDeleteTeachingEvent();
@@ -59,6 +71,24 @@ const TeacherEventsPage: React.FC = () => {
       refetch();
     } catch (error) {
       console.error('Failed to delete event:', error);
+    }
+  };
+
+  const handlePromote = async () => {
+    if (!promoteConfirm) return;
+    setIsPromoting(true);
+    try {
+      await ApiService.post(`/events/${promoteConfirm._id}/promote`, {
+        tier: selectedTier,
+        paymentMethodId: 'pm_card_visa', // replace with Stripe Elements in production
+      });
+      toast.success('Event promoted successfully!');
+      setPromoteConfirm(null);
+      refetch();
+    } catch (err: any) {
+      toast.error(err?.response?.data?.message || 'Failed to promote event');
+    } finally {
+      setIsPromoting(false);
     }
   };
 
@@ -299,6 +329,15 @@ const TeacherEventsPage: React.FC = () => {
                         >
                           <FaEdit className="w-4 h-4" />
                         </button>
+                        {(event as any).isApproved && (
+                          <button
+                            onClick={() => { setPromoteConfirm(event); setSelectedTier('boost'); }}
+                            className="p-2 rounded-lg text-gray-500 hover:text-yellow-600 hover:bg-yellow-50 transition-colors"
+                            title="Promote"
+                          >
+                            <FaStar className="w-4 h-4" />
+                          </button>
+                        )}
                         <button
                           onClick={() => setDeleteConfirm(event)}
                           className="p-2 rounded-lg text-gray-500 hover:text-red-600 hover:bg-red-50 transition-colors"
@@ -313,6 +352,70 @@ const TeacherEventsPage: React.FC = () => {
             </table>
           </div>
         )}
+
+        {/* Promote Event Modal */}
+        <AnimatePresence>
+          {promoteConfirm && (
+            <motion.div
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4"
+              onClick={() => setPromoteConfirm(null)}
+            >
+              <motion.div
+                initial={{ scale: 0.9, opacity: 0 }}
+                animate={{ scale: 1, opacity: 1 }}
+                exit={{ scale: 0.9, opacity: 0 }}
+                className="bg-white rounded-2xl shadow-xl p-6 max-w-lg w-full"
+                onClick={(e) => e.stopPropagation()}
+              >
+                <h3 className="text-xl font-bold text-gray-900 mb-1">Promote Class</h3>
+                <p className="text-sm text-gray-500 mb-5">{promoteConfirm.title}</p>
+
+                <div className="space-y-3 mb-6">
+                  {PROMOTION_TIERS.map((tier) => (
+                    <button
+                      key={tier.id}
+                      onClick={() => setSelectedTier(tier.id)}
+                      className={`w-full flex items-center justify-between p-4 rounded-xl border-2 transition-all ${
+                        selectedTier === tier.id
+                          ? 'border-purple-500 bg-purple-50'
+                          : 'border-gray-200 hover:border-purple-300'
+                      }`}
+                    >
+                      <div className="text-left">
+                        <div className="font-semibold text-gray-900">{tier.label}</div>
+                        <div className="text-sm text-gray-500">{tier.desc}</div>
+                      </div>
+                      <div className="text-right">
+                        <div className="font-bold text-purple-600">{tier.priceAED} AED</div>
+                        <div className="text-xs text-gray-400">{tier.days} days</div>
+                      </div>
+                    </button>
+                  ))}
+                </div>
+
+                <div className="flex items-center justify-end gap-3">
+                  <button
+                    onClick={() => setPromoteConfirm(null)}
+                    className="px-4 py-2 text-gray-600 hover:text-gray-800 font-medium"
+                    disabled={isPromoting}
+                  >
+                    Cancel
+                  </button>
+                  <button
+                    onClick={handlePromote}
+                    disabled={isPromoting}
+                    className="px-6 py-2 bg-purple-600 text-white rounded-xl font-semibold hover:bg-purple-700 transition-colors disabled:opacity-50"
+                  >
+                    {isPromoting ? 'Processing...' : 'Pay & Promote'}
+                  </button>
+                </div>
+              </motion.div>
+            </motion.div>
+          )}
+        </AnimatePresence>
 
         {/* Delete Confirmation Modal */}
         <AnimatePresence>

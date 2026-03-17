@@ -127,6 +127,8 @@ const VendorEditEventPage: React.FC = () => {
   const [showCancelModal, setShowCancelModal] = useState<boolean>(false);
   const [showMediaPicker, setShowMediaPicker] = useState<boolean>(false);
   const [bookingMethod, setBookingMethod] = useState<'internal' | 'external'>('internal');
+  const [isFreeEvent, setIsFreeEvent] = useState<boolean>(false);
+  const [basePrice, setBasePrice] = useState<string>('');
 
   useEffect(() => {
     const fetchCategories = async () => {
@@ -228,6 +230,9 @@ const VendorEditEventPage: React.FC = () => {
         } else {
           setBookingMethod('internal');
         }
+
+        // Load free event state
+        setIsFreeEvent(eventData.isFreeEvent || false);
 
         // Transform dateSchedule to schedules format
         const transformedSchedules = eventData.dateSchedule?.map((schedule: any) => ({
@@ -530,9 +535,10 @@ const VendorEditEventPage: React.FC = () => {
     setSaveStatus(null);
 
     try {
-      const minPrice = Math.min(...schedules.map(s => parseFloat(s.price)));
+      const minPrice = isFreeEvent ? 0 : Math.min(...schedules.map(s => parseFloat(s.price)));
 
       const eventData = {
+        isFreeEvent,
         title: formData.title,
         description: formData.description,
         category: formData.category,
@@ -569,7 +575,7 @@ const VendorEditEventPage: React.FC = () => {
           startTime: schedule.startTime || '',
           endTime: schedule.endTime || '',
           availableSeats: schedule.unlimitedSeats ? 999999 : parseInt(schedule.availableSeats),
-          price: parseFloat(schedule.price),
+          price: isFreeEvent ? 0 : parseFloat(schedule.price),
           unlimitedSeats: schedule.unlimitedSeats || false,
           isOverride: schedule.isOverride || false
         })),
@@ -738,6 +744,10 @@ const VendorEditEventPage: React.FC = () => {
                     capacity={formData.capacity}
                     eventType={formData.type}
                     errors={errors}
+                    isFreeEvent={isFreeEvent}
+                    basePrice={basePrice}
+                    onFreeEventChange={setIsFreeEvent}
+                    onBasePriceChange={(e) => setBasePrice(e.target.value)}
                     onScheduleChange={handleScheduleChange}
                     onAddSchedule={handleAddSchedule}
                     onRemoveSchedule={handleRemoveSchedule}

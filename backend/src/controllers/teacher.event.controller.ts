@@ -23,7 +23,7 @@ export const getTeacherEventById = catchAsync(
       _id: id,
       teacherId,
       isDeleted: false,
-    });
+    }).populate("imageAssets", "url secureUrl publicId");
 
     if (!event) {
       return next(new AppError("Event not found", 404));
@@ -61,9 +61,11 @@ export const createTeacherEvent = catchAsync(
       meetingLink,
       ageRange,
       price,
+      isFreeEvent,
       currency,
       tags,
       images,
+      imageAssets,
       dateSchedule,
       seoMeta,
       faqs,
@@ -129,17 +131,19 @@ export const createTeacherEvent = catchAsync(
       },
       meetingLink,
       ageRange: ageRange || [0, 100],
-      price: price || 0,
+      isFreeEvent: isFreeEvent || false,
+      price: isFreeEvent ? 0 : (price || 0),
       currency: currency || "AED",
       tags: tags || [],
       images: images || [],
+      imageAssets: imageAssets || [],
       dateSchedule: dateSchedule.map((schedule: any) => ({
         startDate: schedule.startDate,
         endDate: schedule.endDate,
         availableSeats: schedule.unlimitedSeats
           ? 999999
           : schedule.availableSeats || schedule.maxStudents || 0,
-        price: schedule.price || price || 0,
+        price: isFreeEvent ? 0 : (schedule.price || price || 0),
         unlimitedSeats: schedule.unlimitedSeats || false,
         isOverride: schedule.isOverride || false,
       })),
@@ -198,6 +202,7 @@ export const updateTeacherEvent = catchAsync(
       meetingLink,
       tags,
       images,
+      imageAssets,
       dateSchedule,
       seoMeta,
       faqs,
@@ -209,6 +214,7 @@ export const updateTeacherEvent = catchAsync(
       introVideo,
       ageRange,
       price,
+      isFreeEvent,
       currency,
     } = req.body;
 
@@ -230,10 +236,12 @@ export const updateTeacherEvent = catchAsync(
     }
 
     if (ageRange) event.ageRange = ageRange;
-    if (price !== undefined) event.price = price;
+    if (isFreeEvent !== undefined) (event as any).isFreeEvent = isFreeEvent;
+    if (price !== undefined) event.price = isFreeEvent ? 0 : price;
     if (currency) event.currency = currency;
     if (tags) event.tags = tags;
     if (images) event.images = images;
+    if (imageAssets !== undefined) event.imageAssets = imageAssets;
     if (type) event.type = type;
     if (eventType) event.venueType = eventType; // map eventType -> venueType
     if (location) {
@@ -255,7 +263,7 @@ export const updateTeacherEvent = catchAsync(
         availableSeats: schedule.unlimitedSeats
           ? 999999
           : schedule.availableSeats || schedule.maxStudents || 0,
-        price: schedule.price || event.price || 0,
+        price: (isFreeEvent ?? (event as any).isFreeEvent) ? 0 : (schedule.price || event.price || 0),
         unlimitedSeats: schedule.unlimitedSeats || false,
         isOverride: schedule.isOverride || false,
       }));

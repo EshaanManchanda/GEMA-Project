@@ -101,7 +101,8 @@ const vendorAPI = {
 
       if (format === 'csv') {
         // Create download link for CSV
-        const url = window.URL.createObjectURL(new Blob([response.data]));
+        // Note: ApiService.get returns response.data directly, so response IS the Blob
+        const url = window.URL.createObjectURL(new Blob([response as any]));
         const link = document.createElement('a');
         link.href = url;
         link.setAttribute('download', `bookings-${Date.now()}.csv`);
@@ -112,7 +113,7 @@ const vendorAPI = {
         return { success: true, message: 'CSV exported successfully' };
       } else {
         // For JSON, trigger download
-        const dataStr = JSON.stringify(response.data, null, 2);
+        const dataStr = JSON.stringify(response, null, 2);
         const dataBlob = new Blob([dataStr], { type: 'application/json' });
         const url = window.URL.createObjectURL(dataBlob);
         const link = document.createElement('a');
@@ -126,6 +127,30 @@ const vendorAPI = {
       }
     } catch (error) {
       logApiResponse('GET /vendors/bookings/export', null, error);
+      throw error;
+    }
+  },
+
+  exportEventParticipants: async (eventId: string, format: 'csv' | 'json' = 'csv') => {
+    try {
+      const response = await ApiService.get(
+        `/vendors/events/${eventId}/participants/export`,
+        { params: { format }, responseType: format === 'csv' ? 'blob' : 'json' }
+      );
+      if (format === 'csv') {
+        const url = window.URL.createObjectURL(new Blob([response as any]));
+        const link = document.createElement('a');
+        link.href = url;
+        link.setAttribute('download', `participants-${eventId}-${Date.now()}.csv`);
+        document.body.appendChild(link);
+        link.click();
+        link.remove();
+        window.URL.revokeObjectURL(url);
+        return { success: true };
+      }
+      return response;
+    } catch (error) {
+      logApiResponse(`GET /vendors/events/${eventId}/participants/export`, null, error);
       throw error;
     }
   },

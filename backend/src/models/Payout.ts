@@ -28,7 +28,8 @@ export interface IBankDetails {
 
 export interface IPayout extends Document {
   // Core payout info
-  vendorId: mongoose.Types.ObjectId;
+  vendorId?: mongoose.Types.ObjectId;
+  teacherId?: mongoose.Types.ObjectId;
   amount: number;
   currency: string;
   status: PayoutRequestStatus;
@@ -122,8 +123,12 @@ const payoutSchema = new Schema<IPayout>(
   {
     vendorId: {
       type: Schema.Types.ObjectId,
-      ref: "Vendor", // Changed from 'User' to 'Vendor'
-      required: [true, "Vendor ID is required"],
+      ref: "Vendor",
+      index: true,
+    },
+    teacherId: {
+      type: Schema.Types.ObjectId,
+      ref: "Teacher",
       index: true,
     },
     amount: {

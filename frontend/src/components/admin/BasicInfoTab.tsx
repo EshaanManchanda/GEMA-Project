@@ -191,6 +191,33 @@ const BasicInfoTab: React.FC<BasicInfoTabProps> = ({
               )}
             </div>
 
+            {/* Teacher / Instructor Assignment — only for teaching events */}
+            {(['Class', 'Course', 'Workshop', 'Bootcamp', 'Masterclass'] as const).includes(
+              formData.type as any,
+            ) && (
+              <div className="md:col-span-2">
+                <label htmlFor="teacherId" className="block text-sm font-medium text-gray-700 mb-1">
+                  Instructor / Teacher{' '}
+                  <span className="text-xs text-purple-600 font-normal">(Teaching Events)</span>
+                </label>
+                <select
+                  id="teacherId"
+                  name="teacherId"
+                  value={formData.teacherId}
+                  onChange={onInputChange}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-primary focus:border-primary"
+                >
+                  <option value="">Select Instructor</option>
+                  {(teachers || []).map((teacher) => (
+                    <option key={teacher.id} value={teacher.id}>
+                      {teacher.firstName} {teacher.lastName} ({teacher.email})
+                    </option>
+                  ))}
+                </select>
+                <p className="mt-1 text-xs text-gray-500">Assign an instructor to this teaching event</p>
+              </div>
+            )}
+
             {/* Booking Configuration Section */}
             <div className="md:col-span-2 border-t pt-4">
               <label className="flex items-center mb-3">
@@ -548,25 +575,6 @@ const BasicInfoTab: React.FC<BasicInfoTabProps> = ({
               </div>
 
               <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-6">
-                <div>
-                  <label htmlFor="teacherId" className="block text-sm font-medium text-gray-700 mb-1">
-                    Instructor / Teacher
-                  </label>
-                  <select
-                    id="teacherId"
-                    name="teacherId"
-                    value={formData.teacherId}
-                    onChange={onInputChange}
-                    className="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-primary focus:border-primary"
-                  >
-                    <option value="">Select Instructor</option>
-                    {(teachers || []).map(teacher => (
-                      <option key={teacher.id} value={teacher.id}>
-                        {teacher.firstName} {teacher.lastName} ({teacher.email})
-                      </option>
-                    ))}
-                  </select>
-                </div>
                 <div>
                   <label htmlFor="introVideo" className="block text-sm font-medium text-gray-700 mb-1">
                     Intro Video URL

@@ -139,13 +139,7 @@ const LoginPage: React.FC = () => {
 
         setLoginStatus('Login successful! Redirecting...');
 
-        // Store auth data consistently with backend response
-        const tokens = response.tokens || {
-          accessToken: response.token,
-          refreshToken: response.refreshToken
-        };
-        localStorage.setItem('token', tokens.accessToken);
-        localStorage.setItem('refreshToken', tokens.refreshToken);
+        // Store user data; tokens are managed via httpOnly cookies
         localStorage.setItem('user', JSON.stringify(response.user));
 
         if (formData.rememberMe) {

@@ -62,16 +62,16 @@ const FeaturedInstructors: React.FC = () => {
                     ))}
                 </div>
 
-                {/* <div className="mt-12 text-center">
+                <div className="mt-12 text-center">
                     <SlideIn direction="up" delay={0.6}>
                         <button
-                            onClick={() => navigate('/vendors')}
-                            className="inline-flex items-center px-8 py-3 bg-gradient-to-r from-pink-500 to-rose-500 text-white font-bold rounded-full shadow-lg hover:shadow-xl transform hover:-translate-y-1 transition-all duration-300"
+                            onClick={() => navigate('/teachers')}
+                            className="inline-flex items-center px-8 py-3 bg-gradient-to-r from-purple-600 to-indigo-600 text-white font-bold rounded-full shadow-lg hover:shadow-xl transform hover:-translate-y-1 transition-all duration-300"
                         >
-                            View All Workshops
+                            View All Teachers
                         </button>
                     </SlideIn>
-                </div> */}
+                </div>
             </div>
         </section>
     );

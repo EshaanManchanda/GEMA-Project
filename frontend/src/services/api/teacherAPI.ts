@@ -408,7 +408,7 @@ const teacherAPI = {
   /**
    * Initialize Stripe Connect onboarding
    */
-  initiateStripeConnect: async (): Promise<{ onboardingUrl: string }> => {
+  initiateStripeConnect: async (): Promise<{ url: string; message?: string }> => {
     try {
       const response = await ApiService.post('/teachers/stripe-connect/onboard');
       logApiResponse('POST /teachers/stripe-connect/onboard', response);
@@ -441,17 +441,16 @@ const teacherAPI = {
   /**
    * Save custom Stripe API keys
    */
-  saveStripeApiKeys: async (publishableKey: string, secretKey: string, testMode: boolean): Promise<any> => {
+  saveStripeApiKeys: async (secretKey: string, testMode: boolean): Promise<any> => {
     try {
-      const response = await ApiService.post('/teachers/stripe-keys', {
-        publishableKey,
-        secretKey,
-        testMode,
+      const response = await ApiService.put('/teachers/stripe-keys', {
+        manualStripeKey: secretKey,
+        isTestMode: testMode,
       });
-      logApiResponse('POST /teachers/stripe-keys', response);
+      logApiResponse('PUT /teachers/stripe-keys', response);
       return extractApiData(response);
     } catch (error) {
-      logApiResponse('POST /teachers/stripe-keys', null, error);
+      logApiResponse('PUT /teachers/stripe-keys', null, error);
       throw error;
     }
   },

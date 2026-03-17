@@ -10,6 +10,8 @@ import mongoose from "mongoose";
 import { AuthRequest } from "../types/index";
 import { NextFunction, Response } from "express";
 import { getOrCreateTeacherProfile } from "../utils/teacherHelpers";
+import { cacheService } from "../services/cache.service";
+import { CacheTTL } from "../config/cache-tiers";
 
 /**
  * @desc    Get teacher dashboard statistics
@@ -946,47 +948,52 @@ export const updateTeacherSocialMedia = catchAsync(
 // @access  Public
 export const getPublicTeacherProfile = catchAsync(
   async (req: AuthRequest, res: Response, next: NextFunction) => {
-    const { id } = req.params;
+    const param = req.params.id;
+    const isObjectId = /^[a-f\d]{24}$/i.test(param);
 
-    // Find user with teacher role
-    const user = await User.findOne({
-      _id: id,
-      role: "teacher",
-      status: "active",
-    }).select("firstName lastName email phone avatar createdAt");
+    const teacherSelect = `
+      bio subjects expertise specialization yearsOfExperience languagesSpoken
+      teachingDescription profileImage coverImage website socialMedia socialLinks
+      averageRating totalReviews totalStudents totalClasses viewsCount slug
+    `;
 
-    if (!user) {
-      return next(new AppError("Teacher not found", 404));
+    let user: any;
+    let teacherProfile: any;
+
+    if (isObjectId) {
+      // Existing behavior: param is a User._id
+      user = await User.findOne({
+        _id: param,
+        role: "teacher",
+        status: "active",
+      }).select("firstName lastName email phone avatar createdAt");
+
+      if (!user) return next(new AppError("Teacher not found", 404));
+
+      teacherProfile = await Teacher.findOne({
+        userId: param,
+        isDeleted: false,
+        isActive: true,
+      }).select(teacherSelect);
+    } else {
+      // Slug-based lookup
+      teacherProfile = await Teacher.findOne({
+        slug: param,
+        isDeleted: false,
+        isActive: true,
+      }).select(teacherSelect);
+
+      if (!teacherProfile) return next(new AppError("Teacher not found", 404));
+
+      user = await User.findOne({
+        _id: teacherProfile.userId,
+        role: "teacher",
+        status: "active",
+      }).select("firstName lastName email phone avatar createdAt");
     }
 
-    // Find teacher profile
-    const teacherProfile = await Teacher.findOne({
-      userId: id,
-      isDeleted: false,
-      isActive: true,
-    }).select(
-      `
-      bio
-      subjects
-      expertise
-      specialization
-      yearsOfExperience
-      languagesSpoken
-      teachingDescription
-      profileImage
-      website
-      socialMedia
-      averageRating
-      totalReviews
-      totalStudents
-      totalClasses
-      viewsCount
-      `,
-    );
-
-    if (!teacherProfile) {
-      return next(new AppError("Teacher profile not found", 404));
-    }
+    if (!teacherProfile) return next(new AppError("Teacher profile not found", 404));
+    if (!user) return next(new AppError("Teacher not found", 404));
 
     // Get published events for this teacher
     const teachingEvents = await EventModel.find({
@@ -998,34 +1005,23 @@ export const getPublicTeacherProfile = catchAsync(
       isApproved: true,
     })
       .select(
-        `
-        title
-        description
-        subject
-        teachingMode
-        price
-        currency
-        coverImage
-        schedules
-        viewsCount
-        averageRating
-        reviewCount
-        `,
+        "title description subject teachingMode price currency coverImage " +
+        "schedules viewsCount averageRating reviewCount",
       )
       .sort({ createdAt: -1 })
       .limit(20);
 
-    // Statistics
-    const totalTeachingEvents = await EventModel.countDocuments({
-      teacherId: teacherProfile._id,
-      type: { $in: ["Class", "Course", "Workshop", "Bootcamp", "Masterclass"] },
-      isDeleted: false,
-      status: "published",
-    });
-
-    const totalBookings = await TeacherBooking.countDocuments({
-      "sessions.teachingEventId": { $in: teachingEvents.map((e) => e._id) },
-    });
+    const [totalTeachingEvents, totalBookings] = await Promise.all([
+      EventModel.countDocuments({
+        teacherId: teacherProfile._id,
+        type: { $in: ["Class", "Course", "Workshop", "Bootcamp", "Masterclass"] },
+        isDeleted: false,
+        status: "published",
+      }),
+      TeacherBooking.countDocuments({
+        "sessions.teachingEventId": { $in: teachingEvents.map((e) => e._id) },
+      }),
+    ]);
 
     res.status(200).json({
       success: true,
@@ -1250,6 +1246,16 @@ export const uploadTeacherMedia = [
           mediaType,
         },
       });
+    } else if (mediaType === "eventImage") {
+      // Generic event image upload — just return the URL, caller stores it
+      res.status(200).json({
+        success: true,
+        message: "Event image uploaded successfully",
+        data: {
+          uploadedFile: fileInfo,
+          mediaType,
+        },
+      });
     } else {
       return next(new AppError("Unsupported media type", 400));
     }
@@ -1436,6 +1442,12 @@ export const getPublicTeachersList = catchAsync(
     const search = (req.query.search as string) || "";
     const skip = (page - 1) * limit;
 
+    const cacheKey = `public:teachers:${page}:${limit}:${search}`;
+    const cached = await cacheService.get<any>(cacheKey);
+    if (cached) {
+      return res.status(200).json(cached);
+    }
+
     const userQuery: any = { role: "teacher", status: "active" };
     if (search) {
       userQuery.$or = [
@@ -1452,7 +1464,7 @@ export const getPublicTeachersList = catchAsync(
 
     const [teacherProfiles, total] = await Promise.all([
       Teacher.find({ userId: { $in: userIds }, isDeleted: false, isActive: true })
-        .select("userId fullName bio subjects specialization yearsOfExperience languagesSpoken coverImage stats")
+        .select("userId fullName bio subjects specialization yearsOfExperience languagesSpoken coverImage teachingMode verificationStatus stats createdAt")
         .skip(skip)
         .limit(limit),
       Teacher.countDocuments({ userId: { $in: userIds }, isDeleted: false, isActive: true }),
@@ -1462,26 +1474,36 @@ export const getPublicTeachersList = catchAsync(
     teacherUsers.forEach((u) => { userMap[u._id.toString()] = u; });
 
     const teachers = teacherProfiles.map((t) => ({
-      _id: t._id,
-      userId: t.userId,
-      fullName: t.fullName,
-      bio: t.bio,
-      subjects: t.subjects,
-      specialization: t.specialization,
-      yearsOfExperience: t.yearsOfExperience,
-      languagesSpoken: t.languagesSpoken,
-      coverImage: (t as any).coverImage,
-      stats: t.stats,
+      teacher: {
+        _id: t._id,
+        userId: t.userId,
+        fullName: t.fullName,
+        bio: t.bio,
+        subjects: t.subjects,
+        specialization: t.specialization,
+        yearsOfExperience: t.yearsOfExperience,
+        languagesSpoken: t.languagesSpoken,
+        coverImage: (t as any).coverImage,
+        teachingMode: t.teachingMode,
+        verificationStatus: t.verificationStatus,
+        stats: t.stats,
+        createdAt: (t as any).createdAt,
+      },
       user: userMap[(t.userId as any).toString()] || null,
+      stats: t.stats,
     }));
 
-    res.status(200).json({
+    const responseData = {
       success: true,
       message: "Teachers retrieved successfully",
       data: {
         teachers,
         pagination: { page, limit, total, totalPages: Math.ceil(total / limit) },
       },
-    });
+    };
+
+    await cacheService.set(cacheKey, responseData, { ttl: CacheTTL.HOMEPAGE_DATA });
+
+    res.status(200).json(responseData);
   },
 );

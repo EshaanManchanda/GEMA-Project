@@ -20,7 +20,8 @@ export const getVendorEventById = catchAsync(
     const vendorProfile = await getOrCreateVendorProfile(userId);
     const vendorId = vendorProfile._id;
 
-    const event = await Event.findOne({ _id: id, vendorId, isDeleted: false });
+    const event = await Event.findOne({ _id: id, vendorId, isDeleted: false })
+      .populate("imageAssets", "url secureUrl publicId");
 
     if (!event) {
       return next(new AppError("Event not found", 404));
@@ -67,6 +68,7 @@ export const createVendorEvent = catchAsync(
       faqs,
       externalBookingLink,
       isAffiliateEvent,
+      isFreeEvent,
       meetingLink,
       competitionFormat,
       teamSize,
@@ -133,7 +135,8 @@ export const createVendorEvent = catchAsync(
           lng: location.coordinates?.lng || 0,
         },
       },
-      price: price || 0,
+      isFreeEvent: isFreeEvent || false,
+      price: isFreeEvent ? 0 : (price || 0),
       currency: currency || "AED",
       tags: tags || [],
       images: images || [],
@@ -150,7 +153,7 @@ export const createVendorEvent = catchAsync(
         totalSeats: schedule.unlimitedSeats
           ? 999999
           : schedule.totalSeats || schedule.availableSeats || 0,
-        price: schedule.price || price || 0,
+        price: isFreeEvent ? 0 : (schedule.price || price || 0),
         unlimitedSeats: schedule.unlimitedSeats || false,
         isOverride: schedule.isOverride || false,
       })),
@@ -231,6 +234,7 @@ export const updateVendorEvent = catchAsync(
       status,
       externalBookingLink,
       isAffiliateEvent,
+      isFreeEvent,
       meetingLink,
       competitionFormat,
       teamSize,
@@ -275,7 +279,8 @@ export const updateVendorEvent = catchAsync(
       };
     }
 
-    if (price !== undefined) event.price = price;
+    if (isFreeEvent !== undefined) (event as any).isFreeEvent = isFreeEvent;
+    if (price !== undefined) event.price = isFreeEvent ? 0 : price;
     if (currency) event.currency = currency;
     if (tags) event.tags = tags;
 
@@ -300,7 +305,7 @@ export const updateVendorEvent = catchAsync(
         totalSeats: schedule.unlimitedSeats
           ? 999999
           : schedule.totalSeats || schedule.availableSeats || 0,
-        price: schedule.price || event.price || 0,
+        price: (isFreeEvent ?? (event as any).isFreeEvent) ? 0 : (schedule.price || event.price || 0),
         unlimitedSeats: schedule.unlimitedSeats || false,
         isOverride: schedule.isOverride || false,
       }));

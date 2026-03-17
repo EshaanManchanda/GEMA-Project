@@ -36,6 +36,7 @@ import {
   getVendorDocuments,
   initializeStripeConnectOnboarding,
   getStripeConnectStatus,
+  exportEventParticipants,
 } from "../controllers/vendor.controller";
 import {
   getVendorEventById,
@@ -140,6 +141,13 @@ router.delete("/events/:id", deleteVendorEvent);
  * @access  Vendor only
  */
 router.put("/events/:id/restore", restoreVendorEvent);
+
+/**
+ * @route   GET /api/vendors/events/:eventId/participants/export
+ * @desc    Export participant-level rows for a specific event
+ * @access  Vendor only
+ */
+router.get("/events/:eventId/participants/export", authenticate, exportEventParticipants);
 
 /**
  * @route   GET /api/vendors/bookings/export

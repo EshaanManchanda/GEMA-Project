@@ -691,6 +691,16 @@ const registrationsSlice = createSlice({
       .addCase(fetchRegistrationConfig.rejected, (state, action) => {
         state.formBuilder.isLoading = false;
         state.error = action.payload as string;
+        // No config yet — seed a blank default so the builder is usable
+        if (!state.formBuilder.config) {
+          state.formBuilder.config = {
+            enabled: false,
+            fields: [],
+            requiresApproval: false,
+            emailNotifications: { toVendor: true, toParticipant: true },
+          } as any;
+          state.formBuilder.isDirty = false;
+        }
       })
 
       // Save Registration Config
