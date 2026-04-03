@@ -64,14 +64,16 @@ const queryClient = new QueryClient({
   },
 });
 
-// Initialize PWA and clear HTML cache for SEO
-initializePWA()
-  .then(() => {
-    // Critical for SEO: Clear any cached HTML on startup
-    // This ensures fresh content delivery to search engines
-    pwaService.clearHTMLCache();
-  })
-  .catch(console.error);
+// Initialize PWA after load — deferred to keep it off the critical rendering path
+window.addEventListener('load', () => {
+  initializePWA()
+    .then(() => {
+      // Critical for SEO: Clear any cached HTML on startup
+      // This ensures fresh content delivery to search engines
+      pwaService.clearHTMLCache();
+    })
+    .catch(console.error);
+});
 
 // DevTools component — only renders in dev, named so Vite Fast Refresh is happy
 const DevTools: React.FC = () => {

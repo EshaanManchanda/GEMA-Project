@@ -96,12 +96,25 @@ export const CurrencyProvider: React.FC<{ children: React.ReactNode }> = ({ chil
     }
   };
 
+  const DETECT_CACHE_KEY = 'currency_detect_v1';
+  const DETECT_CACHE_TTL = 24 * 60 * 60 * 1000; // 24 hours
+
   const autoDetectCurrency = async () => {
-    // Prevent repeated auto-detection calls if already detected in the session
-    if (localStorage.getItem('currencyAutoDetected') === 'true') {
-      setIsLoading(false);
-      return;
-    }
+    // Check timestamp-based cache — skip API call if result is fresh
+    try {
+      const cached = localStorage.getItem(DETECT_CACHE_KEY);
+      if (cached) {
+        const { currency, timestamp } = JSON.parse(cached);
+        if (Date.now() - timestamp < DETECT_CACHE_TTL) {
+          const cachedCode = currency as Currency;
+          if (supportedCurrencies.some(c => c.code === cachedCode)) {
+            setCurrentCurrency(cachedCode);
+          }
+          setIsLoading(false);
+          return;
+        }
+      }
+    } catch (_) {}
 
     setIsLoading(true);
     try {
@@ -124,14 +137,18 @@ export const CurrencyProvider: React.FC<{ children: React.ReactNode }> = ({ chil
 
       if (supportedCurrencies.some(c => c.code === detectedCurrencyCode)) {
         setCurrentCurrency(detectedCurrencyCode);
-        localStorage.setItem('currencyAutoDetected', 'true'); // Persist auto-detected status
+        localStorage.setItem(DETECT_CACHE_KEY, JSON.stringify({
+          currency: detectedCurrencyCode,
+          timestamp: Date.now()
+        }));
+        localStorage.setItem('currencyAutoDetected', 'true');
       } else {
-        setCurrentCurrency('AED'); // Default to AED if detected currency is not supported
+        setCurrentCurrency('AED');
         localStorage.setItem('currencyAutoDetected', 'false');
       }
     } catch (error) {
       console.warn('Currency auto-detection unavailable, using default AED:', error);
-      setCurrentCurrency('AED'); // Default to AED on error
+      setCurrentCurrency('AED');
       localStorage.setItem('currencyAutoDetected', 'false');
     } finally {
       setIsLoading(false);

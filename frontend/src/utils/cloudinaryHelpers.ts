@@ -152,20 +152,21 @@ export const getLQIP = (imageUrl: string | undefined): string => {
  * Useful for images where you want Cloudinary to auto-select best format
  * @param url Original Cloudinary URL
  * @param quality Quality setting (default 'auto:good')
- * @returns Optimized URL with auto format
+ * @param width Optional display width in pixels — adds w_{width},c_scale transform
+ * @returns Optimized URL with auto format (and optional width constraint)
  */
 export const optimizeCloudinaryUrl = (
   url: string | undefined,
-  quality: 'auto:best' | 'auto:good' | 'auto:eco' | 'auto:low' = 'auto:good'
+  quality: 'auto:best' | 'auto:good' | 'auto:eco' | 'auto:low' = 'auto:good',
+  width?: number
 ): string => {
   if (!url || !url.includes('cloudinary.com')) return url || '';
 
-  const optimized = url.replace(
-    '/upload/',
-    `/upload/f_auto,q_${quality}/`
-  );
+  const transforms = width
+    ? `f_auto,q_${quality},w_${width},c_scale`
+    : `f_auto,q_${quality}`;
 
-  return optimized;
+  return url.replace('/upload/', `/upload/${transforms}/`);
 };
 
 /**

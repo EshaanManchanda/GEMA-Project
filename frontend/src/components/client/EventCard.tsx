@@ -200,7 +200,7 @@ const getImageHeightClass = (variant: string, custom?: string): string => {
     'compact': 'h-40',
     'horizontal': 'h-full',
     'vertical-tall': 'h-72',
-    'overlay': 'h-80',
+    'overlay': 'h-full',
     'minimal': 'h-48',
     'magazine': 'h-64',
     'list-item': 'h-16 w-16'
@@ -854,7 +854,7 @@ const EventCard: React.FC<EventCardProps> = (props) => {
 
   const renderOverlayVariant = () => (
     <>
-      <div className="relative overflow-hidden">
+      <div className="relative overflow-hidden" style={{ aspectRatio: '4/3' }}>
         <EventCardImage
           src={eventImage}
           alt={event.title}
