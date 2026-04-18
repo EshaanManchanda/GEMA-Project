@@ -8,8 +8,8 @@ import { render, screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { Provider } from 'react-redux';
 import { BrowserRouter } from 'react-router-dom';
-import { store } from '../../store';
-import { loginUser, logoutUser } from '../../store/slices/authSlice';
+import { store } from '../../store/legacyStore';
+import { loginUser, logoutUser } from '../../store/legacySlices/authSlice';
 
 // Import components for security testing
 import UserManagement from '../../components/admin/UserManagement';

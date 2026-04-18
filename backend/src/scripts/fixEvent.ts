@@ -1,7 +1,7 @@
 import mongoose from "mongoose";
 import { Event } from "../models/index";
 import { config } from "../config/env";
-import { cacheService } from "../services/cache.service";
+import { cacheService } from "../shared/services/cache.service";
 import {
   getEventCacheKey,
   getEventListCachePattern,

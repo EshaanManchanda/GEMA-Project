@@ -4,7 +4,7 @@ import { config, logger } from "../config/index";
 import { AppError } from "./error";
 import { User, IUser } from "../models/index"; // Removed Role import
 import { getAuth } from "firebase-admin/auth";
-import { cacheService } from "../services/cache.service";
+import { cacheService } from "../shared/services/cache.service";
 
 interface JwtPayload {
   id: string;

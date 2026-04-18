@@ -1,108 +1,125 @@
 import React, { useEffect, useState } from 'react';
-import { useDispatch, useSelector } from 'react-redux';
 import { Upload, Grid3x3, List, Trash2, RefreshCw, BarChart3 } from 'lucide-react';
 import Button from '../../components/ui/Button';
 import Modal from '../../components/ui/Modal';
 import LoadingSpinner from '../../components/common/LoadingSpinner';
 import PrivatePageSEO from '@/components/common/PrivatePageSEO';
-import { AppDispatch, RootState } from '../../store';
-import {
-  fetchMedia,
-  setFilters,
-  clearSelection,
-  bulkDeleteMedia,
-  fetchMediaStats,
-  setCurrentAsset,
-  deleteMedia
-} from '../../store/slices/mediaSlice';
+import { useAdminMedia, useDeleteMedia } from '@/features/admin/hooks/useAdminApis';
+import { adminMediaAPI } from '@/features/admin/services/adminApis';
 import MediaGrid from '../../components/admin/media/MediaGrid';
 import MediaUploadZone from '../../components/admin/media/MediaUploadZone';
 import MediaFilters from '../../components/admin/media/MediaFilters';
 import MediaDetailModal from '../../components/admin/media/MediaDetailModal';
+import { AdminPageHeader, AdminStatCard } from '@/shared/components/admin';
+import type { MediaAsset } from '../../store/legacySlices/mediaSlice';
 
-/**
- * AdminMediaPage - WordPress-style Media Manager
- *
- * Features:
- * - Tabbed interface (All, Blogs, Events, Profiles)
- * - Grid/List view toggle
- * - Drag & drop upload
- * - Bulk operations
- * - Statistics
- */
+interface MediaFiltersState {
+  folder?: string;
+  category?: string;
+  type?: string;
+}
+
+interface PaginationState {
+  page: number;
+  limit: number;
+  total: number;
+  pages: number;
+}
+
+interface MediaStats {
+  total: number;
+  totalSize: number;
+  unused: number;
+  byCategory?: Record<string, number>;
+}
+
 const AdminMediaPage: React.FC = () => {
-  const dispatch = useDispatch<AppDispatch>();
-  const { assets, loading, pagination, filters, selectedAssets, stats, currentAsset } = useSelector(
-    (state: RootState) => state.media
-  );
-
   const [activeTab, setActiveTab] = useState<'all' | 'blog' | 'event' | 'profile'>('all');
   const [viewMode, setViewMode] = useState<'grid' | 'list'>('grid');
   const [uploadModalOpen, setUploadModalOpen] = useState(false);
   const [showStats, setShowStats] = useState(false);
+  const [filters, setFilters] = useState<MediaFiltersState>({});
+  const [pagination, setPagination] = useState<PaginationState>({ page: 1, limit: 20, total: 0, pages: 1 });
+  const [selectedAssets, setSelectedAssets] = useState<string[]>([]);
+  const [currentAsset, setCurrentAsset] = useState<MediaAsset | null>(null);
 
-  // Fetch media on mount and when filters/pagination change
+  const { data: mediaResponse, isLoading, refetch } = useAdminMedia({
+    ...filters,
+    page: pagination.page,
+    limit: pagination.limit,
+  });
+
+  const deleteMedia = useDeleteMedia();
+
+  const assets: MediaAsset[] = mediaResponse?.data?.assets || mediaResponse?.assets || [];
+
   useEffect(() => {
-    dispatch(fetchMedia({
-      ...filters,
-      page: pagination.page,
-      limit: pagination.limit
-    }));
-  }, [dispatch, filters, pagination.page, pagination.limit]);
+    if (mediaResponse) {
+      const pag = mediaResponse?.data?.pagination || mediaResponse?.pagination;
+      if (pag) {
+        setPagination(prev => ({
+          ...prev,
+          total: pag.total || prev.total,
+          pages: pag.pages || pag.totalPages || prev.pages,
+        }));
+      }
+    }
+  }, [mediaResponse]);
 
-  // Fetch stats
+  const [stats, setStats] = useState<MediaStats | null>(null);
+
   useEffect(() => {
-    dispatch(fetchMediaStats());
-  }, [dispatch]);
+    const fetchStats = async () => {
+      try {
+        const response = await adminMediaAPI.getStats();
+        setStats(response.data?.stats || response.data);
+      } catch (error) {
+        // silently fail
+      }
+    };
+    fetchStats();
+  }, []);
 
-  // Handle tab change
   const handleTabChange = (tab: 'all' | 'blog' | 'event' | 'profile') => {
     setActiveTab(tab);
-
-    // Map tab to folder filter
     const folderMap: Record<string, string | undefined> = {
       all: undefined,
       blog: 'blogs',
       event: 'events',
       profile: 'profile'
     };
-
-    dispatch(setFilters({
+    setFilters({
       folder: folderMap[tab],
-      category: tab === 'all' ? undefined : tab
-    }));
-    dispatch(clearSelection());
+      category: tab === 'all' ? undefined : tab,
+    });
+    setSelectedAssets([]);
   };
 
-  // Handle bulk delete
   const handleBulkDelete = async () => {
     if (selectedAssets.length === 0) return;
-
     const confirmMessage = `Are you sure you want to delete ${selectedAssets.length} selected item(s)? This action cannot be undone.`;
-
     if (window.confirm(confirmMessage)) {
       try {
-        await dispatch(bulkDeleteMedia({ ids: selectedAssets })).unwrap();
-        // Refresh list
-        dispatch(fetchMedia({ ...filters }));
+        for (const id of selectedAssets) {
+          await deleteMedia.mutateAsync(id);
+        }
+        setSelectedAssets([]);
+        refetch();
       } catch (error: any) {
         alert(`Error deleting media: ${error.message || 'Unknown error'}`);
       }
     }
   };
 
-  // Handle refresh
   const handleRefresh = () => {
-    dispatch(fetchMedia({ ...filters, page: pagination.page }));
-    dispatch(fetchMediaStats());
+    refetch();
+    adminMediaAPI.getStats().then(r => setStats(r.data?.stats || r.data)).catch(() => {});
   };
 
-  // Handle modal close
   const handleCloseDetailModal = () => {
-    dispatch(setCurrentAsset(null));
+    setCurrentAsset(null);
   };
 
-  // Get current folder display name
   const getFolderDisplayName = (tab: string) => {
     const names: Record<string, string> = {
       all: 'All Media',
@@ -115,75 +132,31 @@ const AdminMediaPage: React.FC = () => {
 
   return (
     <>
-      <PrivatePageSEO title="Admin - Media Library | Kidrove" description="Manage media assets" />
+      <PrivatePageSEO title="Admin - Media Library | Gema" description="Manage media assets" />
       <div className="min-h-screen bg-gray-50">
-        {/* Header */}
         <div className="bg-white shadow-sm border-b border-gray-200">
           <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6">
-            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-              <div>
-                <h1 className="text-3xl font-bold text-gray-900">Media Library</h1>
-                <p className="text-gray-600 mt-1">
-                  Manage your images, videos, and documents
-                </p>
-              </div>
+            <AdminPageHeader
+              title="Media Library"
+              description="Manage your images, videos, and documents"
+              actions={
+                <>
+                  <Button variant="outline" size="sm" onClick={() => setShowStats(!showStats)} leftIcon={<BarChart3 className="h-4 w-4" />}>Stats</Button>
+                  <Button variant="outline" size="sm" onClick={handleRefresh} leftIcon={<RefreshCw className="h-4 w-4" />}>Refresh</Button>
+                  <Button variant="primary" onClick={() => setUploadModalOpen(true)} leftIcon={<Upload className="h-4 w-4" />}>Upload Media</Button>
+                </>
+              }
+            />
 
-              <div className="flex items-center gap-3">
-                <Button
-                  variant="outline"
-                  size="sm"
-                  onClick={() => setShowStats(!showStats)}
-                  leftIcon={<BarChart3 className="h-4 w-4" />}
-                >
-                  Stats
-                </Button>
-
-                <Button
-                  variant="outline"
-                  size="sm"
-                  onClick={handleRefresh}
-                  leftIcon={<RefreshCw className="h-4 w-4" />}
-                >
-                  Refresh
-                </Button>
-
-                <Button
-                  variant="primary"
-                  onClick={() => setUploadModalOpen(true)}
-                  leftIcon={<Upload className="h-4 w-4" />}
-                >
-                  Upload Media
-                </Button>
-              </div>
-            </div>
-
-            {/* Stats Banner */}
             {showStats && stats && (
               <div className="mt-6 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-                <div className="bg-blue-50 rounded-lg p-4 border border-blue-200">
-                  <div className="text-sm font-medium text-blue-900">Total Assets</div>
-                  <div className="text-2xl font-bold text-blue-700 mt-1">{stats.total}</div>
-                </div>
-                <div className="bg-green-50 rounded-lg p-4 border border-green-200">
-                  <div className="text-sm font-medium text-green-900">Total Size</div>
-                  <div className="text-2xl font-bold text-green-700 mt-1">
-                    {(stats.totalSize / 1024 / 1024).toFixed(1)} MB
-                  </div>
-                </div>
-                <div className="bg-purple-50 rounded-lg p-4 border border-purple-200">
-                  <div className="text-sm font-medium text-purple-900">Unused</div>
-                  <div className="text-2xl font-bold text-purple-700 mt-1">{stats.unused}</div>
-                </div>
-                <div className="bg-orange-50 rounded-lg p-4 border border-orange-200">
-                  <div className="text-sm font-medium text-orange-900">Categories</div>
-                  <div className="text-2xl font-bold text-orange-700 mt-1">
-                    {Object.keys(stats.byCategory || {}).length}
-                  </div>
-                </div>
+                <AdminStatCard label="Total Assets" value={stats.total} color="bg-blue-500" icon={<span className="text-xl">📁</span>} />
+                <AdminStatCard label="Total Size" value={`${(stats.totalSize / 1024 / 1024).toFixed(1)} MB`} color="bg-green-500" icon={<span className="text-xl">💾</span>} />
+                <AdminStatCard label="Unused" value={stats.unused} color="bg-purple-500" icon={<span className="text-xl">🗑️</span>} />
+                <AdminStatCard label="Categories" value={Object.keys(stats.byCategory || {}).length} color="bg-orange-500" icon={<span className="text-xl">📂</span>} />
               </div>
             )}
 
-            {/* Tabs */}
             <div className="mt-6 border-b border-gray-200">
               <nav className="-mb-px flex space-x-8">
                 {[
@@ -195,13 +168,7 @@ const AdminMediaPage: React.FC = () => {
                   <button
                     key={tab.key}
                     onClick={() => handleTabChange(tab.key as any)}
-                    className={`
-                    pb-4 px-1 border-b-2 font-medium text-sm transition-colors
-                    ${activeTab === tab.key
-                        ? 'border-blue-500 text-blue-600'
-                        : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
-                      }
-                  `}
+                    className={`pb-4 px-1 border-b-2 font-medium text-sm transition-colors ${activeTab === tab.key ? 'border-blue-500 text-blue-600' : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'}`}
                   >
                     {tab.label}
                   </button>
@@ -211,60 +178,32 @@ const AdminMediaPage: React.FC = () => {
           </div>
         </div>
 
-        {/* Content */}
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
           <div className="flex gap-6">
-            {/* Sidebar Filters */}
             <aside className="hidden lg:block w-64 flex-shrink-0">
               <MediaFilters />
             </aside>
 
-            {/* Main Content */}
             <main className="flex-1 min-w-0">
-              {/* Toolbar */}
               <div className="bg-white rounded-lg shadow-sm p-4 mb-6 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
                 <div className="flex items-center gap-4">
                   <span className="text-sm text-gray-600">
                     {pagination.total} items
                     {selectedAssets.length > 0 && (
-                      <span className="ml-2 text-blue-600 font-medium">
-                        ({selectedAssets.length} selected)
-                      </span>
+                      <span className="ml-2 text-blue-600 font-medium">({selectedAssets.length} selected)</span>
                     )}
                   </span>
-
                   {selectedAssets.length > 0 && (
-                    <Button
-                      variant="danger"
-                      size="sm"
-                      leftIcon={<Trash2 className="h-4 w-4" />}
-                      onClick={handleBulkDelete}
-                    >
-                      Delete Selected
-                    </Button>
+                    <Button variant="danger" size="sm" leftIcon={<Trash2 className="h-4 w-4" />} onClick={handleBulkDelete}>Delete Selected</Button>
                   )}
                 </div>
-
                 <div className="flex gap-2">
-                  <Button
-                    variant={viewMode === 'grid' ? 'primary' : 'ghost'}
-                    size="sm"
-                    onClick={() => setViewMode('grid')}
-                  >
-                    <Grid3x3 className="h-4 w-4" />
-                  </Button>
-                  <Button
-                    variant={viewMode === 'list' ? 'primary' : 'ghost'}
-                    size="sm"
-                    onClick={() => setViewMode('list')}
-                  >
-                    <List className="h-4 w-4" />
-                  </Button>
+                  <Button variant={viewMode === 'grid' ? 'primary' : 'ghost'} size="sm" onClick={() => setViewMode('grid')}><Grid3x3 className="h-4 w-4" /></Button>
+                  <Button variant={viewMode === 'list' ? 'primary' : 'ghost'} size="sm" onClick={() => setViewMode('list')}><List className="h-4 w-4" /></Button>
                 </div>
               </div>
 
-              {/* Media Grid/List */}
-              {loading ? (
+              {isLoading ? (
                 <div className="flex items-center justify-center py-12">
                   <LoadingSpinner size="large" />
                 </div>
@@ -272,29 +211,12 @@ const AdminMediaPage: React.FC = () => {
                 <MediaGrid assets={assets} viewMode={viewMode} />
               )}
 
-              {/* Pagination */}
               {pagination.pages > 1 && (
                 <div className="mt-6 flex justify-center">
                   <div className="flex gap-2">
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      onClick={() => dispatch(fetchMedia({ ...filters, page: pagination.page - 1 }))}
-                      disabled={pagination.page <= 1}
-                    >
-                      Previous
-                    </Button>
-                    <span className="px-4 py-2 text-sm text-gray-700">
-                      Page {pagination.page} of {pagination.pages}
-                    </span>
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      onClick={() => dispatch(fetchMedia({ ...filters, page: pagination.page + 1 }))}
-                      disabled={pagination.page >= pagination.pages}
-                    >
-                      Next
-                    </Button>
+                    <Button variant="outline" size="sm" onClick={() => setPagination(prev => ({ ...prev, page: prev.page - 1 }))} disabled={pagination.page <= 1}>Previous</Button>
+                    <span className="px-4 py-2 text-sm text-gray-700">Page {pagination.page} of {pagination.pages}</span>
+                    <Button variant="outline" size="sm" onClick={() => setPagination(prev => ({ ...prev, page: prev.page + 1 }))} disabled={pagination.page >= pagination.pages}>Next</Button>
                   </div>
                 </div>
               )}
@@ -302,34 +224,23 @@ const AdminMediaPage: React.FC = () => {
           </div>
         </div>
 
-        {/* Upload Modal */}
-        <Modal
-          isOpen={uploadModalOpen}
-          onClose={() => setUploadModalOpen(false)}
-          title={`Upload to ${getFolderDisplayName(activeTab)}`}
-          size="lg"
-        >
+        <Modal isOpen={uploadModalOpen} onClose={() => setUploadModalOpen(false)} title={`Upload to ${getFolderDisplayName(activeTab)}`} size="lg">
           <MediaUploadZone
             category={activeTab === 'all' ? 'misc' : activeTab}
-            folder={activeTab === 'all' ? 'misc' :
-              activeTab === 'blog' ? 'blogs' :
-                activeTab === 'event' ? 'events' :
-                  'profile'
-            }
+            folder={activeTab === 'all' ? 'misc' : activeTab === 'blog' ? 'blogs' : activeTab === 'event' ? 'events' : 'profile'}
             onUploadComplete={() => {
               setUploadModalOpen(false);
-              dispatch(fetchMedia({ ...filters }));
+              refetch();
             }}
           />
         </Modal>
 
-        {/* Media Detail Modal */}
         {currentAsset && (
           <MediaDetailModal
             asset={currentAsset}
             onClose={handleCloseDetailModal}
             onDelete={(id) => {
-              dispatch(deleteMedia({ id }));
+              deleteMedia.mutate(id);
               handleCloseDetailModal();
             }}
           />

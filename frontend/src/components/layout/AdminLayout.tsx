@@ -1,8 +1,8 @@
 import React, { useState, useEffect } from 'react';
 import { Link, useLocation, useNavigate, Outlet } from 'react-router-dom';
 import { useSelector, useDispatch } from 'react-redux';
-import { RootState } from '@store/index';
-import { logoutUser } from '@store/slices/authSlice';
+import { RootState } from '@store/legacyStore';
+import { logoutUser } from '@store/legacySlices/authSlice';
 import { getBrandConfig } from '../../utils/brandConfig';
 import AIChatbot from '../admin/AIChatbot';
 

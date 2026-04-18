@@ -15,7 +15,7 @@ import {
 } from 'lucide-react';
 import PrivatePageSEO from '@/components/common/PrivatePageSEO';
 
-import { AppDispatch } from '@/store';
+import { AppDispatch } from '@/store/legacyStore';
 import {
   fetchUserRegistrations,
   selectRegistrations,
@@ -24,7 +24,7 @@ import {
   selectRegistrationFilters,
   setFilters,
   clearFilters,
-} from '@/store/slices/registrationsSlice';
+} from '@/store/legacySlices/registrationsSlice';
 import { RegistrationStatus } from '@/types/registration';
 
 import { Card, CardContent } from '@/components/ui/Card';

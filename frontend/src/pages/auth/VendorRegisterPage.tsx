@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { useAppDispatch, useAppSelector } from '@/store/hooks';
-import { registerUser, verifyEmailWithOTP, resendVerificationEmail, clearError } from '@/store/slices/authSlice';
+import { registerUser, verifyEmailWithOTP, resendVerificationEmail, clearError } from '@/store/legacySlices/authSlice';
 import PhoneInput from '@/components/forms/PhoneInput';
 import PrivatePageSEO from '@/components/common/PrivatePageSEO';
 

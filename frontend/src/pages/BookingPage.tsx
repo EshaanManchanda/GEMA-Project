@@ -5,7 +5,7 @@ import toast from 'react-hot-toast';
 
 import { CheckCircle, Clock, CreditCard, Users, AlertCircle, ChevronLeft } from 'lucide-react';
 
-import { AppDispatch } from '../store';
+import { AppDispatch } from '../store/legacyStore';
 import {
   setBookingEvent,
   setBookingSchedule,
@@ -17,7 +17,7 @@ import {
   selectIsCreatingBooking,
   selectBookingCreateError,
   selectCheckout,
-} from '../store/slices/bookingsSlice';
+} from '../store/legacySlices/bookingsSlice';
 
 import eventsAPI from '../services/api/eventsAPI';
 import bookingAPI from '../services/api/bookingAPI';

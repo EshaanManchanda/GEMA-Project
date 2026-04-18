@@ -14,13 +14,13 @@ import {
   FaCalendarAlt
 } from 'react-icons/fa';
 import { format, startOfMonth, endOfMonth } from 'date-fns';
-import { AppDispatch } from '../../store';
+import { AppDispatch } from '../../store/legacyStore';
 import {
   fetchAllPayments,
   processRefund,
   selectPayments,
   selectPaymentsLoading
-} from '../../store/slices/paymentsSlice';
+} from '../../store/legacySlices/paymentsSlice';
 import type { Payment, PaymentStatus, PaymentMethodType } from '../../services/api/index';
 import LoadingSpinner from '../common/LoadingSpinner';
 import Modal from '../interactive/Modal';

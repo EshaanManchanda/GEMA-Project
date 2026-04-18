@@ -3,12 +3,12 @@ import { useDispatch, useSelector } from 'react-redux';
 import { User, Phone, Mail, Calendar, Heart, AlertTriangle, ChevronLeft, ChevronRight } from 'lucide-react';
 import toast from 'react-hot-toast';
 
-import { AppDispatch } from '../../store';
+import { AppDispatch } from '../../store/legacyStore';
 import {
   updateParticipant,
   updateParticipantRegistrationData,
   selectBookingParticipants
-} from '../../store/slices/bookingsSlice';
+} from '../../store/legacySlices/bookingsSlice';
 import { Event } from '../../types/event';
 import { BookingParticipant } from '../../services/api/bookingAPI';
 import logger from '../../utils/logger';

@@ -11,7 +11,7 @@ import Badge from '../../components/ui/Badge';
 import ReviewsTab from '../../components/admin/ReviewsTab';
 // import MediaPickerModal from '@/components/admin/media/MediaPickerModal';
 // import MediaPickerModal from '@/components/admin/media/MediaPickerModal';
-import { MediaAsset } from '@/store/slices/mediaSlice';
+import { MediaAsset } from '@/store/legacySlices/mediaSlice';
 import { Plus, Trash2, GripVertical } from 'lucide-react';
 import logger from '@/utils/logger';
 

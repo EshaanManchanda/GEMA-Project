@@ -3,7 +3,7 @@ import { FaTimes, FaPlus, FaTrash, FaSave, FaMapMarkerAlt } from 'react-icons/fa
 import adminAPI from '../../services/api/adminAPI';
 import TipTapEditor from '../common/TipTapEditor';
 import MediaPickerModal from './media/MediaPickerModal';
-import { MediaAsset } from '../../store/slices/mediaSlice';
+import { MediaAsset } from '../../store/legacySlices/mediaSlice';
 import SEOEditor from '../seo/SEOEditor';
 import { config } from '../../config';
 import logger from '../../utils/logger';

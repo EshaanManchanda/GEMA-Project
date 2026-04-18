@@ -4,7 +4,7 @@ import { Link } from 'react-router-dom';
 import { CreditCard, Shield, Lock, AlertCircle, CheckCircle, ChevronLeft, AlertTriangle, Info } from 'lucide-react';
 import toast from 'react-hot-toast';
 
-import { AppDispatch } from '../../store';
+import { AppDispatch } from '../../store/legacyStore';
 import StripeElementsWrapper from '../payment/StripeElementsWrapper';
 import StripePaymentElement from '../payment/StripePaymentElement';
 import { getRegionalPaymentMethods, getPreferredPaymentMethod, shouldShowRegulatoryWarning, getRegulatoryMessage } from '../../utils/paymentConfig';
@@ -20,7 +20,7 @@ import {
   selectCheckout,
   createPaymentIntent,
   resetCheckout,
-} from '../../store/slices/bookingsSlice';
+} from '../../store/legacySlices/bookingsSlice';
 import { Event } from '../../types/event';
 import bookingAPI from '../../services/api/bookingAPI';
 import { useErrorHandler } from '../../utils/errorHandler';

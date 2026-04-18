@@ -1,13 +1,13 @@
 import React from 'react';
 import { useDispatch, useSelector } from 'react-redux';
 import { Copy, Trash2, Eye, Check, Image as ImageIcon } from 'lucide-react';
-import { AppDispatch, RootState } from '../../../store';
+import { AppDispatch, RootState } from '../../../store/legacyStore';
 import {
   toggleAssetSelection,
   setCurrentAsset,
   deleteMedia
-} from '../../../store/slices/mediaSlice';
-import { MediaAsset } from '../../../store/slices/mediaSlice';
+} from '../../../store/legacySlices/mediaSlice';
+import { MediaAsset } from '../../../store/legacySlices/mediaSlice';
 import Button from '../../ui/Button';
 import toast from 'react-hot-toast';
 

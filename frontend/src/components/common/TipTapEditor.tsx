@@ -29,7 +29,7 @@ import HtmlInsertModal from './HtmlInsertModal';
 // Initialize lowlight with common languages
 const lowlight = createLowlight(common);
 import MediaPickerModal from '../admin/media/MediaPickerModal';
-import { MediaAsset } from '../../store/slices/mediaSlice';
+import { MediaAsset } from '../../store/legacySlices/mediaSlice';
 import {
   Bold,
   Italic,

@@ -15,8 +15,8 @@ import toast from 'react-hot-toast';
 import Button from '../ui/Button';
 import { Card, CardContent } from '../ui/Card';
 import Badge from '../ui/Badge';
-import { RootState, AppDispatch } from '../../store';
-import { validateCoupon, clearValidationResult } from '../../store/slices/couponsSlice';
+import { RootState, AppDispatch } from '../../store/legacyStore';
+import { validateCoupon, clearValidationResult } from '../../store/legacySlices/couponsSlice';
 
 interface CouponValidatorProps {
   orderAmount: number;

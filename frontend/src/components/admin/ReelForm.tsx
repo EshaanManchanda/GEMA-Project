@@ -9,7 +9,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '../ui/Card';
 import Input from '../ui/Input';
 import Modal from '../ui/Modal';
 import MediaPickerModal from './media/MediaPickerModal';
-import { MediaAsset } from '../../store/slices/mediaSlice';
+import { MediaAsset } from '../../store/legacySlices/mediaSlice';
 import { Reel } from '../../services/api/reelsAPI';
 import adminAPI from '../../services/api/adminAPI';
 import logger from '../../utils/logger';

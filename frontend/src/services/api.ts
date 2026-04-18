@@ -1,6 +1,6 @@
 import axios, { AxiosInstance, AxiosRequestConfig, AxiosResponse } from 'axios';
-import { store } from '../store';
-import { logoutUser, refreshToken, clearAuthOnFailure } from '../store/slices/authSlice';
+import { store } from '../store/legacyStore';
+import { logoutUser, refreshToken, clearAuthOnFailure } from '../store/legacySlices/authSlice';
 import { API_BASE_URL } from '../config/api';
 import logger from '../utils/logger';
 

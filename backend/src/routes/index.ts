@@ -1,67 +1,84 @@
-import authRoutes from "./auth.routes";
-import ticketRoutes from "./ticket.routes";
-import employeeRoutes from "./employee.routes";
-import checkinRoutes from "./checkin.routes";
-import venueRoutes from "./venue.routes";
-import eventRoutes from "./event.routes";
-import orderRoutes from "./order.routes";
-import paymentRoutes from "./payment.routes";
-import reviewRoutes from "./review.routes";
-import uploadRoutes from "./upload.routes";
-import analyticsRoutes from "./analytics.routes";
-import adminUserRoutes from "./admin.user.routes";
-import adminEmployeeRoutes from "./admin.employee.routes";
-import adminEventRoutes from "./admin.event.routes";
-import adminVenueRoutes from "./admin.venue.routes";
-import adminVendorRoutes from "./admin.vendor.routes";
-import adminTeacherRoutes from "./admin.teacher.routes";
-import adminDashboardRoutes from "./admin.dashboard.routes";
-import adminModerationRoutes from "./admin.moderation.routes";
-import adminPayoutRoutes from "./admin.payout.routes";
-import adminSettingsRoutes from "./admin.settings.routes";
-import adminCommissionRoutes from "./admin.commission.routes";
-import vendorRoutes from "./vendor.routes";
-import vendorPayoutRoutes from "./vendor.payout.routes";
-import vendorPaymentRoutes from "./vendor.payment.routes";
-import teacherRoutes from "./teacher.routes";
-import teacherPayoutRoutes from "./teacher.payout.routes";
-import teacherPaymentRoutes from "./teacher.payment.routes";
-import blogRoutes from "./blog.routes";
-import adminBlogRoutes from "./admin.blog.routes";
-import blogCommentsRoutes from "./blog.comments.routes";
-// New routes
-import categoryRoutes from "./category.routes";
-import couponRoutes from "./coupon.routes";
-import adminCollectionRoutes from "./admin.collection.routes";
-import notificationRoutes from './notification.routes';
-import affiliateRoutes from "./affiliate.routes";
-import bookingRoutes from "./booking.routes";
-import newsletterRoutes from "./newsletter.routes";
-import searchRoutes from "./search.routes";
-import collectionRoutes from "./collection.routes";
-import favoritesRoutes from "./favorites.routes";
-import adminRevenueRoutes from "./admin.revenue.routes";
-import adminStatsRoutes from "./admin.stats.routes";
-import adminBulkImportRoutes from "./admin.bulk-import.routes";
-import statsRoutes from "./stats.routes";
-import seoRoutes from "./seo.routes";
-import registrationRoutes from "./registration.routes";
-import currencyRoutes from "./currency.routes";
-import contactRoutes from "./contact.routes";
-import partnershipRoutes from "./partnership.routes";
-import cancellationRoutes from "./event.cancellation.routes";
-import eventAffiliateRoutes from "./event.affiliate.routes";
-import venueAffiliateRoutes from "./venue.affiliate.routes";
-import publicSettingsRoutes from "./public.settings.routes";
-import mediaRoutes from "./media.routes";
-import bannerRoutes from "./banner.routes";
-import seoContentRoutes from "./seoContent.routes";
-import announcementBarRoutes from "./announcementBar.routes";
-import popupRoutes from "./popup.routes";
-import homepageRoutes from "./homepage.routes";
-import reelRoutes from "./reel.routes";
-import adminReelRoutes from "./admin.reel.routes";
+// Barrel export for all routes — re-exports from modules/
 import { Router } from "express";
+
+// Auth
+import authRoutes from "../modules/auth/auth.routes";
+import ticketRoutes from "../modules/tickets/tickets.routes";
+import employeeRoutes from "../modules/employees/employees.routes";
+import checkinRoutes from "../modules/checkin/checkin.routes";
+import venueRoutes from "../modules/venues/venue.routes";
+import eventRoutes from "../modules/events/events.routes";
+import orderRoutes from "../modules/orders/orders.routes";
+import paymentRoutes from "../modules/payments/payment.routes";
+import reviewRoutes from "../modules/reviews/reviews.routes";
+import uploadRoutes from "../modules/media/upload.routes";
+import analyticsRoutes from "../modules/analytics/analytics.routes";
+import adminUserRoutes from "../modules/users/admin-users.routes";
+import adminEmployeeRoutes from "../modules/employees/admin-employees.routes";
+import adminEventRoutes from "../modules/events/admin-events.routes";
+import adminVenueRoutes from "../modules/venues/admin-venue.routes";
+import adminVendorRoutes from "../modules/admin/admin-vendors.routes";
+import adminTeacherRoutes from "../modules/admin/admin-teachers.routes";
+import adminDashboardRoutes from "../modules/analytics/admin-dashboard.routes";
+import adminModerationRoutes from "../modules/admin/admin-moderation.routes";
+import adminPayoutRoutes from "../modules/admin/admin-payouts.routes";
+import adminSettingsRoutes from "../modules/settings/admin-settings.routes";
+import adminCommissionRoutes from "../modules/admin/admin-commissions.routes";
+import vendorRoutes from "../modules/vendors/vendor.routes";
+import vendorPayoutRoutes from "../modules/vendors/vendor-payout.routes";
+import vendorPaymentRoutes from "../modules/payments/vendor-payment.routes";
+import teacherRoutes from "../modules/teachers/teacher.routes";
+import teacherPayoutRoutes from "../modules/teachers/teacher-payout.routes";
+import teacherPaymentRoutes from "../modules/payments/teacher-payment.routes";
+import blogRoutes from "../modules/content/blog.routes";
+import adminBlogRoutes from "../modules/content/blog.routes";
+import blogCommentsRoutes from "../modules/content/blog-comments.routes";
+import categoryRoutes from "../modules/categories/category.routes";
+import couponRoutes from "../modules/coupons/coupon.routes";
+import adminCollectionRoutes from "../modules/collections/admin-collections.routes";
+import notificationRoutes from "../modules/notifications/notifications.routes";
+import affiliateRoutes from "../modules/affiliates/affiliates.routes";
+import bookingRoutes from "../modules/bookings/bookings.routes";
+import newsletterRoutes from "../modules/content/newsletter.routes";
+import searchRoutes from "../modules/search/search.routes";
+import collectionRoutes from "../modules/collections/collections.routes";
+import favoritesRoutes from "../modules/favorites/favorites.routes";
+import adminRevenueRoutes from "../modules/admin/admin-teacher-revenue.routes";
+import adminStatsRoutes from "../modules/analytics/admin-stats.routes";
+import adminBulkImportRoutes from "../modules/admin/admin-bulk-import.routes";
+import statsRoutes from "../modules/analytics/stats.routes";
+import registrationRoutes from "../modules/registrations/registration.routes";
+import currencyRoutes from "../modules/currency/currency.routes";
+import contactRoutes from "../modules/contact/contact.routes";
+import partnershipRoutes from "../modules/partnerships/partnership.routes";
+import cancellationRoutes from "../modules/checkin/event-cancellation.routes";
+import eventAffiliateRoutes from "../modules/affiliates/event-affiliate.routes";
+import venueAffiliateRoutes from "../modules/affiliates/venue-affiliate.routes";
+import publicSettingsRoutes from "../modules/settings/public-settings.routes";
+import mediaRoutes from "../modules/media/media.routes";
+import bannerRoutes from "../modules/content/banners.routes";
+import seoContentRoutes from "../modules/content/seo-content.routes";
+import announcementBarRoutes from "../modules/content/announcements.routes";
+import popupRoutes from "../modules/content/popups.routes";
+import homepageRoutes from "../modules/analytics/homepage.routes";
+import reelRoutes from "../modules/content/reels.routes";
+import adminReelRoutes from "../modules/content/admin-reels.routes";
+import adminTeacherPayoutRoutes from "../modules/admin/admin-teacher-payouts.routes";
+import adminTeacherRevenueRoutes from "../modules/admin/admin-teacher-revenue.routes";
+import superAdminRoutes from "../modules/admin/super-admin.routes";
+import chatbotProxyRouter from "./chatbot.proxy.routes";
+import { authenticate, authorize } from "../middleware/auth";
+import { UserRole } from "../models/index";
+
+// New education modules
+import certificatesRoutes from "../modules/certificates/certificates.routes";
+import studentPortalRoutes from "../modules/student-portal/portal.routes";
+import lmsRoutes from "../modules/lms/lms.routes";
+import examinationsRoutes from "../modules/examinations/examinations.routes";
+import erpRoutes from "../modules/erp/erp.routes";
+import messagingRoutes from "../modules/messaging/messaging.routes";
+import noticesRoutes from "../modules/notices/notices.routes";
+import calendarRoutes from "../modules/calendar/calendar.routes";
 
 const router = Router();
 
@@ -227,9 +244,6 @@ router.use("/admin/bulk-import", adminBulkImportRoutes);
 // Registration routes (event registration system)
 router.use("/registrations", registrationRoutes);
 
-// SEO routes (sitemap, robots.txt, etc.)
-router.use("/", seoRoutes);
-
 // Contact routes (contact form submissions)
 router.use("/contact", contactRoutes);
 
@@ -248,12 +262,6 @@ router.use("/", eventAffiliateRoutes);
 // Venue Affiliate routes (affiliate venue tracking and claiming)
 router.use("/", venueAffiliateRoutes);
 
-import adminTeacherPayoutRoutes from "./admin.teacher.payout.routes";
-import adminTeacherRevenueRoutes from "./admin.teacher.revenue.routes";
-import chatbotProxyRouter from "./chatbot.proxy.routes";
-import { authenticate, authorize } from "../middleware/auth";
-import { UserRole } from "../models/index";
-
 // AI Chatbot proxy routes (admin only)
 router.use("/chatbot", authenticate, authorize([UserRole.ADMIN]), chatbotProxyRouter);
 
@@ -262,5 +270,32 @@ router.use("/admin/teachers/payouts", adminTeacherPayoutRoutes);
 
 // Admin Teacher Revenue routes
 router.use("/admin/teacher-revenue", adminTeacherRevenueRoutes);
+
+// Certificate Generator module
+router.use("/certificates", certificatesRoutes);
+
+// Student Portal module
+router.use("/portal", studentPortalRoutes);
+
+// LMS module
+router.use("/lms", lmsRoutes);
+
+// Examinations module
+router.use("/examinations", examinationsRoutes);
+
+// ERP module
+router.use("/erp", erpRoutes);
+
+// Messaging module
+router.use("/messaging", messagingRoutes);
+
+// Notices module
+router.use("/notices", noticesRoutes);
+
+// Calendar module
+router.use("/calendar", calendarRoutes);
+
+// Super Admin module
+router.use("/super-admin", superAdminRoutes);
 
 export default router;

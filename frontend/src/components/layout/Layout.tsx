@@ -3,19 +3,19 @@ import { Outlet, Link, useNavigate, useLocation } from 'react-router-dom';
 import { motion } from 'framer-motion';
 import logger from '@/utils/logger';
 import { useSelector, useDispatch, shallowEqual } from 'react-redux';
-import { RootState, AppDispatch } from '@/store';
-import { logoutUser } from '@/store/slices/authSlice';
+import { RootState, AppDispatch } from '@/store/legacyStore';
+import { logoutUser } from '@/store/legacySlices/authSlice';
 import {
   fetchRootCategories,
   selectCategories,
   selectCategoriesLoading
-} from '@/store/slices/categoriesSlice';
-import { selectSocialSettings } from '@/store/slices/settingsSlice';
+} from '@/store/legacySlices/categoriesSlice';
+import { selectSocialSettings } from '@/store/legacySlices/settingsSlice';
 // Commented out - notification system disabled
 // import {
 //   fetchNotifications,
 //   selectUnreadCount
-// } from '@/store/slices/notificationsSlice';
+// } from '@/store/legacySlices/notificationsSlice';
 // import NotificationDropdown from './NotificationDropdown';
 import NewsletterSubscription from './NewsletterSubscription';
 import ConnectionStatus from './ConnectionStatus';

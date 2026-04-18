@@ -1,7 +1,7 @@
 import React from 'react';
 import { Navigate, Outlet } from 'react-router-dom';
 import { useSelector, shallowEqual } from 'react-redux';
-import { RootState } from '@/store';
+import { RootState } from '@/store/legacyStore';
 import LoadingSpinner from '../common/LoadingSpinner';
 
 interface AdminRouteProps {

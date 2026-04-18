@@ -1,9 +1,9 @@
 import cron from "node-cron";
 import { collectionSyncQueue, areQueuesEnabled } from "../config/queue";
 import logger from "../config/logger";
-import PayoutService from "../services/payout.service";
-import CommissionService from "../services/commission.service";
-import Event from "../models/Event";
+import PayoutService from "../modules/payouts/payout.service";
+import CommissionService from "../modules/commissions/commission.service";
+import { Event } from "../models/index";
 
 /**
  * Collection reconciliation cron job

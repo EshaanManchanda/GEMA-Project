@@ -1,8 +1,8 @@
 import React, { useState } from 'react';
 import { useDispatch, useSelector } from 'react-redux';
 import { Filter, X } from 'lucide-react';
-import { AppDispatch, RootState } from '../../../store';
-import { setFilters, clearFilters } from '../../../store/slices/mediaSlice';
+import { AppDispatch, RootState } from '../../../store/legacyStore';
+import { setFilters, clearFilters } from '../../../store/legacySlices/mediaSlice';
 import Button from '../../ui/Button';
 
 /**

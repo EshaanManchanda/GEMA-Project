@@ -1,0 +1,15 @@
+export type {
+  Registration,
+  SubmitRegistrationRequest,
+  SubmitRegistrationResponse,
+  ConfirmPaymentRequest,
+  ConfirmPaymentResponse,
+  GetRegistrationsParams,
+  GetRegistrationsResponse,
+  UpdateRegistrationRequest,
+  WithdrawRegistrationRequest,
+  ReviewRegistrationRequest,
+  CreateOrUpdateConfigRequest,
+  GetConfigResponse,
+  DuplicateConfigRequest,
+} from '@/types/registration';

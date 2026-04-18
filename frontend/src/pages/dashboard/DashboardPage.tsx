@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import { useSelector } from 'react-redux';
 import toast from 'react-hot-toast';
-import { RootState } from '../../store';
+import { RootState } from '../../store/legacyStore';
 import bookingAPI from '../../services/api/bookingAPI';
 
 import favoritesAPI from '../../services/api/favoritesAPI';

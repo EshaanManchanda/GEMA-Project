@@ -211,14 +211,14 @@ export function useSaveStripeApiKeys() {
 
   return useMutation({
     mutationFn: ({
-      publishableKey,
+      publishableKey: _publishableKey,
       secretKey,
       testMode,
     }: {
       publishableKey: string;
       secretKey: string;
       testMode: boolean;
-    }) => teacherAPI.saveStripeApiKeys(publishableKey, secretKey, testMode),
+    }) => teacherAPI.saveStripeApiKeys(secretKey, testMode),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: teacherKeys.stripeConnect() });
       queryClient.invalidateQueries({ queryKey: teacherKeys.profile.all() });

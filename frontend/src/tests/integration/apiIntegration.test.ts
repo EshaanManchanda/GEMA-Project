@@ -4,23 +4,23 @@
  */
 
 import { describe, it, expect, beforeEach, afterEach } from '@jest/globals';
-import { store } from '../../store';
+import { store } from '../../store/legacyStore';
 import { 
   loginUser, 
   registerUser, 
   logoutUser 
-} from '../../store/slices/authSlice';
+} from '../../store/legacySlices/authSlice';
 import {
   fetchEvents,
   createEvent
-} from '../../store/slices/eventsSlice';
+} from '../../store/legacySlices/eventsSlice';
 import {
   createBooking,
   updateBooking
-} from '../../store/slices/bookingsSlice';
+} from '../../store/legacySlices/bookingsSlice';
 import {
   createNotification,
-} from '../../store/slices/notificationsSlice';
+} from '../../store/legacySlices/notificationsSlice';
 
 // These thunks are not yet implemented in paymentsSlice — tests are stubs
 const processPayment: (...args: any[]) => any = (data: any) => async () =>

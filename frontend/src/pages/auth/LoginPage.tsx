@@ -3,8 +3,8 @@ import { Link, useNavigate } from 'react-router-dom';
 import { useDispatch } from 'react-redux';
 
 
-import { loginUser } from '@/store/slices/authSlice';
-import { AppDispatch } from '@/store';
+import { loginUser } from '@/store/legacySlices/authSlice';
+import { AppDispatch } from '@/store/legacyStore';
 import { API_BASE_URL } from '@/config/api';
 import logger from '@/utils/logger';
 import PrivatePageSEO from '@/components/common/PrivatePageSEO';

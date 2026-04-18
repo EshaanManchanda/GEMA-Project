@@ -1,25 +1,18 @@
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect } from 'react';
 import { FaSearch, FaEdit, FaTrash, FaPlus, FaSort, FaEye, FaUsers, FaChevronLeft, FaChevronRight, FaShieldAlt, FaCreditCard, FaHistory, FaDatabase, FaCheck, FaTimes, FaKey } from 'react-icons/fa';
 import { format } from 'date-fns';
 import toast from 'react-hot-toast';
 import { useLocation, useNavigate } from 'react-router-dom';
+import { useAdminUsers } from '@/features/admin/hooks/useAdminApis';
+import { adminUsersAPI } from '@/features/admin/services/adminApis';
 import adminAPI from '@services/api/adminAPI';
 import { AdminUser } from '@/types/auth';
 import PrivatePageSEO from '@/components/common/PrivatePageSEO';
 import logger from '@/utils/logger';
 
-interface PaginationInfo {
-  currentPage: number;
-  totalPages: number;
-  totalUsers: number;
-  limit: number;
-}
-
 const AdminUsersPage: React.FC = () => {
   const location = useLocation();
   const navigate = useNavigate();
-  const [users, setUsers] = useState<AdminUser[]>([]);
-  const [isLoading, setIsLoading] = useState<boolean>(true);
   const [searchTerm, setSearchTerm] = useState<string>('');
   const [debouncedSearch, setDebouncedSearch] = useState<string>('');
   const [roleFilter, setRoleFilter] = useState<string>('all');
@@ -29,12 +22,6 @@ const AdminUsersPage: React.FC = () => {
     direction: 'desc'
   });
   const [currentPage, setCurrentPage] = useState<number>(1);
-  const [pagination, setPagination] = useState<PaginationInfo>({
-    currentPage: 1,
-    totalPages: 1,
-    totalUsers: 0,
-    limit: 20
-  });
   const [isDeleteModalOpen, setIsDeleteModalOpen] = useState<boolean>(false);
   const [userToDelete, setUserToDelete] = useState<string | null>(null);
   const [isCreateModalOpen, setIsCreateModalOpen] = useState<boolean>(false);
@@ -56,57 +43,28 @@ const AdminUsersPage: React.FC = () => {
   useEffect(() => {
     const timer = setTimeout(() => {
       setDebouncedSearch(searchTerm);
-      setCurrentPage(1); // Reset to first page on search
+      setCurrentPage(1);
     }, 500);
-
     return () => clearTimeout(timer);
   }, [searchTerm]);
 
-  // Fetch users function
-  const fetchUsers = useCallback(async () => {
-    try {
-      setIsLoading(true);
+  const { data: usersResponse, isLoading, refetch } = useAdminUsers({
+    page: currentPage,
+    limit: 20,
+    search: debouncedSearch || undefined,
+    role: roleFilter !== 'all' ? roleFilter : undefined,
+    status: statusFilter !== 'all' ? statusFilter : undefined,
+    sortBy: sortConfig.key,
+    sortOrder: sortConfig.direction,
+  });
 
-      const params = {
-        page: currentPage,
-        limit: 20,
-        search: debouncedSearch || undefined,
-        role: roleFilter !== 'all' ? roleFilter : undefined,
-        status: statusFilter !== 'all' ? statusFilter : undefined,
-        sortBy: sortConfig.key,
-        sortOrder: sortConfig.direction
-      };
-
-      const usersResponse = await adminAPI.getAllUsers(params);
-
-      if (usersResponse.success) {
-        setUsers(usersResponse.data.users || []);
-        setPagination({
-          currentPage: usersResponse.data.pagination?.currentPage || 1,
-          totalPages: usersResponse.data.pagination?.totalPages || 1,
-          totalUsers: usersResponse.data.pagination?.totalUsers || 0,
-          limit: usersResponse.data.pagination?.limit || 20
-        });
-      }
-    } catch (error: any) {
-      logger.error('Error fetching users:', error);
-      toast.error(error?.response?.data?.message || 'Failed to fetch users');
-      setUsers([]);
-      setPagination({
-        currentPage: 1,
-        totalPages: 1,
-        totalUsers: 0,
-        limit: 20
-      });
-    } finally {
-      setIsLoading(false);
-    }
-  }, [currentPage, debouncedSearch, roleFilter, statusFilter, sortConfig]);
-
-  // Fetch users when dependencies change
-  useEffect(() => {
-    fetchUsers();
-  }, [fetchUsers]);
+  const users: AdminUser[] = usersResponse?.data?.users || usersResponse?.users || [];
+  const pagination = {
+    currentPage: usersResponse?.data?.pagination?.currentPage || usersResponse?.pagination?.currentPage || currentPage,
+    totalPages: usersResponse?.data?.pagination?.totalPages || usersResponse?.pagination?.totalPages || 1,
+    totalUsers: usersResponse?.data?.pagination?.totalUsers || usersResponse?.pagination?.totalUsers || 0,
+    limit: usersResponse?.data?.pagination?.limit || usersResponse?.pagination?.limit || 20,
+  };
 
   const handleSort = (key: keyof AdminUser) => {
     // Map fullName to firstName for backend compatibility
@@ -124,14 +82,11 @@ const AdminUsersPage: React.FC = () => {
   const handleDeleteUser = async (userId: string) => {
     try {
       setActionLoading({ ...actionLoading, [`delete_${userId}`]: true });
-      const response = await adminAPI.deleteUser(userId);
-
-      if (response.success) {
-        toast.success('User deleted successfully');
-        setUserToDelete(null);
-        setIsDeleteModalOpen(false);
-        await fetchUsers(); // Refetch to update the list
-      }
+      await adminUsersAPI.delete(userId);
+      toast.success('User deleted successfully');
+      setUserToDelete(null);
+      setIsDeleteModalOpen(false);
+      refetch();
     } catch (error: any) {
       logger.error('Error deleting user:', error);
       toast.error(error?.response?.data?.message || 'Failed to delete user');
@@ -1325,7 +1280,7 @@ const AdminUsersPage: React.FC = () => {
                   if (response.success) {
                     toast.success('User created successfully');
                     setIsCreateModalOpen(false);
-                    await fetchUsers();
+                    await refetch();
                   }
                 } catch (error: any) {
                   logger.error('Error saving user:', error);

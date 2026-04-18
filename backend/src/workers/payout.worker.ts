@@ -5,8 +5,8 @@ import {
   areQueuesEnabled,
 } from "../config/queue";
 import logger from "../config/logger";
-import PayoutService from "../services/payout.service";
-import RevenueTransaction from "../models/RevenueTransaction";
+import PayoutService from "../modules/payouts/payout.service";
+import { RevenueTransaction } from "../models/index";
 
 export interface StripePayoutJobData {
   type: "process-stripe-payout";

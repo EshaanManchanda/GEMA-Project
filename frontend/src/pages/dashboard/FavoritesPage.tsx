@@ -1,8 +1,8 @@
 import React, { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import { useDispatch, useSelector } from 'react-redux';
-import { AppDispatch, RootState } from '@/store';
-import { fetchFavorites, removeFromFavorites } from '@/store/slices/favoritesSlice';
+import { AppDispatch, RootState } from '@/store/legacyStore';
+import { fetchFavorites, removeFromFavorites } from '@/store/legacySlices/favoritesSlice';
 import { Event } from '@/types/event';
 import PrivatePageSEO from '@/components/common/PrivatePageSEO';
 

@@ -3,13 +3,13 @@ import { useParams, useNavigate } from 'react-router-dom';
 import { useDispatch } from 'react-redux';
 import teachingEventAPI from '../services/api/teachingEventAPI';
 import { ITeachingEvent } from '../types/teacher';
-import { AppDispatch } from '../store';
+import { AppDispatch } from '../store/legacyStore';
 import {
     setBookingEvent,
     setBookingSchedule,
     resetBookingFlow,
     setBookingParticipants,
-} from '../store/slices/bookingsSlice';
+} from '../store/legacySlices/bookingsSlice';
 import {
     ArrowLeft, MapPin, Clock, User,
     PlayCircle, BookOpen, CheckCircle2, Minus, Plus, Shield,

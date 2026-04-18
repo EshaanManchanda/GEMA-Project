@@ -7,7 +7,7 @@ import BannerCarousel from '@/components/client/BannerCarousel';
 import { useHomepageQuery } from '@/hooks/queries/useHomepageQuery';
 import ReelsFeed from '@/components/client/ReelsFeed';
 import { HomeSEO } from '@/components/common/SEO';
-import { selectSocialSettings } from '@/store/slices/settingsSlice';
+import { selectSocialSettings } from '@/store/legacySlices/settingsSlice';
 import type { Event as UIEvent } from '@/components/client/CollectionSection.types';
 import type { Event as ApiEvent } from '../types/event';
 import { getPlaceholderUrl } from '../utils/placeholderImage';

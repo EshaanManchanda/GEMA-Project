@@ -7,8 +7,8 @@ import {
   selectPendingPayouts,
   selectPayoutSummary,
   selectIsPayoutLoading
-} from '../../store/slices/adminSlice';
-import type { AppDispatch } from '../../store';
+} from '../../store/legacySlices/adminSlice';
+import type { AppDispatch } from '../../store/legacyStore';
 import logger from '../../utils/logger';
 
 interface PayoutSummaryCardProps {

@@ -1,9 +1,5 @@
 import mongoose from "mongoose";
-import AdminRevenueSettings, {
-  PayoutFrequency,
-  CommissionStructure,
-  TaxCalculationMethod,
-} from "../models/AdminRevenueSettings";
+import { AdminRevenueSettings, PayoutFrequency, CommissionStructure, TaxCalculationMethod } from "../models/index";
 
 /**
  * Ensure default admin revenue settings exist

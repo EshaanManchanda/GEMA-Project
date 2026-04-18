@@ -2,8 +2,8 @@ import mongoose from "mongoose";
 import dotenv from "dotenv";
 import path from "path";
 import bcrypt from "bcryptjs";
-import Vendor from "../models/Vendor";
-import User from "../models/User";
+import { Vendor } from "../models/index";
+import { User } from "../models/index";
 import logger from "../config/logger";
 
 // Load environment variables

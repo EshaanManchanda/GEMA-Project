@@ -15,7 +15,7 @@ import {
 } from 'react-icons/fa';
 import { ApiService } from '@/services/api';
 import MediaPickerModal from '@/components/admin/media/MediaPickerModal';
-import type { MediaAsset } from '@/store/slices/mediaSlice';
+import type { MediaAsset } from '@/store/legacySlices/mediaSlice';
 import { TeacherNavigation } from '@/components/teacher';
 import { useTeacherTeachingEvent } from '@/hooks/queries/useTeacherQuery';
 import { useCreateTeachingEvent, useUpdateTeachingEvent } from '@/hooks/mutations/useTeacherMutations';
@@ -158,14 +158,15 @@ const TeacherEventFormPage: React.FC = () => {
       setTags(event.tags || []);
       // Load imageAssets (IDs) and preview URLs — prefer populated imageAssets, fall back to images[]
       const isHttpUrl = (s: any) => typeof s === 'string' && s.startsWith('http');
+      const eventAny = event as any;
       setImageAssets(
-        Array.isArray(event.imageAssets)
-          ? event.imageAssets.map((a: any) => (typeof a === 'object' && a !== null ? a._id : a)).filter(Boolean)
+        Array.isArray(eventAny.imageAssets)
+          ? eventAny.imageAssets.map((a: any) => (typeof a === 'object' && a !== null ? a._id : a)).filter(Boolean)
           : []
       );
       setImagePreviewUrls((() => {
-        if (Array.isArray(event.imageAssets) && event.imageAssets.length > 0) {
-          const fromAssets = event.imageAssets
+        if (Array.isArray(eventAny.imageAssets) && eventAny.imageAssets.length > 0) {
+          const fromAssets = eventAny.imageAssets
             .map((a: any) => (typeof a === 'object' && a !== null) ? (a.url || a.secureUrl) : null)
             .filter(isHttpUrl);
           if (fromAssets.length > 0) return fromAssets;
@@ -173,7 +174,7 @@ const TeacherEventFormPage: React.FC = () => {
         return (event.images || []).filter(isHttpUrl);
       })());
       setMeetingLink(event.meetingLink || '');
-      setIsFreeEvent(event.isFreeEvent || false);
+      setIsFreeEvent((eventAny as any).isFreeEvent || false);
       setBasePrice(event.price?.toString() || '');
       setCurrency(event.currency || 'AED');
       setCity(event.location?.city || '');
@@ -270,7 +271,6 @@ const TeacherEventFormPage: React.FC = () => {
           city,
           address: eventType === 'Offline' ? address : undefined,
         },
-        isFreeEvent,
         price: isFreeEvent ? 0 : parseFloat(basePrice),
         currency,
         tags,

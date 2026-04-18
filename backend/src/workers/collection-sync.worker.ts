@@ -6,7 +6,7 @@ import {
   areQueuesEnabled,
 } from "../config/queue";
 import logger from "../config/logger";
-import { collectionSyncService } from "../services/collection-sync.service";
+import { collectionSyncService } from "../modules/collections/collection-sync.service";
 
 export interface CollectionSyncJobData {
   type: "syncEvent" | "removeEvent" | "syncCollection" | "reconcileAll";

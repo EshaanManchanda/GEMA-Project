@@ -12,8 +12,8 @@ import {
   selectPaymentSettings,
   selectIsDashboardLoading,
   selectDashboardError,
-} from '../../store/slices/vendorPayoutSlice';
-import type { AppDispatch } from '../../store';
+} from '../../store/legacySlices/vendorPayoutSlice';
+import type { AppDispatch } from '../../store/legacyStore';
 
 import vendorPayoutAPI, { SubscriptionStatusData, CommissionHistoryData } from '../../services/api/vendorPayoutAPI';
 import PrivatePageSEO from '@/components/common/PrivatePageSEO';

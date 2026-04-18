@@ -1,7 +1,7 @@
 import cron, { ScheduledTask } from "node-cron";
 import mongoose from "mongoose";
 import { Event } from "../models/index";
-import { cacheService } from "../services/cache.service";
+import { cacheService } from "../shared/services/cache.service";
 import { getEventCacheKey, getEventListCachePattern } from "./event.utils";
 
 // Function to archive expired events using raw MongoDB queries for reliability

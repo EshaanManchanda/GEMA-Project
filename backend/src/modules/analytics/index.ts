@@ -1,0 +1,12 @@
+export { analyticsService, default as analyticsServiceDefault } from "./analytics.service";
+export { dashboardOptimizedService, DashboardOptimizedService } from "./dashboard-optimized.service";
+export { default as statsService, PublicStats } from "./stats.service";
+export { default as homepageService, HomepageData, HomepageVenue } from "./homepage.service";
+export { getDashboardStats, getRecentActivity, getTopPerformers, getAnalytics, getSystemHealth } from "./admin-dashboard.controller";
+export { getPublicStats } from "./stats.controller";
+export { getHomepageData, invalidateHomepageCache } from "./homepage.controller";
+export { default as adminDashboardRoutes } from "./admin-dashboard.routes";
+export { default as adminStatsRoutes } from "./admin-stats.routes";
+export { default as statsRoutes } from "./stats.routes";
+export { default as homepageRoutes } from "./homepage.routes";
+export { default as analyticsRoutes } from "./analytics.routes";

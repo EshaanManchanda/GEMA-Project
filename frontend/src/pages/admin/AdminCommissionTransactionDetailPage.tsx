@@ -2,9 +2,9 @@ import React, { useEffect, useState } from 'react';
 import { Link, useParams } from 'react-router-dom';
 import { useDispatch } from 'react-redux';
 import { toast } from 'react-hot-toast';
-import { approveCommissions } from '../../store/slices/adminSlice';
-import type { AppDispatch } from '../../store';
-import type { CommissionTransaction } from '../../store/slices/adminSlice';
+import { approveCommissions } from '../../store/legacySlices/adminSlice';
+import type { AppDispatch } from '../../store/legacyStore';
+import type { CommissionTransaction } from '../../store/legacySlices/adminSlice';
 import adminAPI from '../../services/api/adminAPI';
 import PrivatePageSEO from '@/components/common/PrivatePageSEO';
 

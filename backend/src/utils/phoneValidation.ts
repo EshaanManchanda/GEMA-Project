@@ -7,7 +7,7 @@ import {
   CountryCode,
   PhoneNumber,
 } from "libphonenumber-js";
-import User from "../models/User";
+import { User } from "../models/index";
 
 /**
  * Result of phone validation

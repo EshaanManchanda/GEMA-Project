@@ -1,9 +1,7 @@
 import React, { useState, useEffect } from 'react';
-import { useDispatch } from 'react-redux';
 import { FiSave, FiRefreshCw, FiAlertTriangle, FiCheckCircle } from 'react-icons/fi';
-import adminAPI from '../../services/api/adminAPI';
-import { fetchSocialSettings, fetchUISettings } from '../../store/slices/settingsSlice';
-import { AppDispatch } from '../../store';
+import { useAdminSettings, useUpdateAdminSettings } from '@/features/admin/hooks/useAdminApis';
+import { adminSettingsAPI } from '@/features/admin/services/adminApis';
 import PrivatePageSEO from '@/components/common/PrivatePageSEO';
 import logger from '@/utils/logger';
 
@@ -65,13 +63,15 @@ interface SocialSettings {
 }
 
 const AdminSettingsPage: React.FC = () => {
-  const dispatch = useDispatch<AppDispatch>();
   const [activeTab, setActiveTab] = useState<string>('system');
   const [isSaving, setIsSaving] = useState<boolean>(false);
   const [saveSuccess, setSaveSuccess] = useState<boolean>(false);
   const [saveError, setSaveError] = useState<string>('');
   const [isTestingEmail, setIsTestingEmail] = useState<boolean>(false);
   const [emailTestResult, setEmailTestResult] = useState<string>('');
+
+  const { data: settingsData } = useAdminSettings();
+  const updateSettings = useUpdateAdminSettings();
 
   // System Settings
   const [systemSettings, setSystemSettings] = useState<SystemSettings>({
@@ -134,30 +134,16 @@ const AdminSettingsPage: React.FC = () => {
     linkedinUrl: 'https://linkedin.com/company/gemaevents',
   });
 
-  // Fetch settings from backend API
+  // Apply fetched settings to local state when available
   useEffect(() => {
-    const fetchSettings = async () => {
-      try {
-        // Fetch all settings from API
-        const settingsResponse = await adminAPI.getAppSettings();
-
-        if (settingsResponse.success) {
-          const { systemSettings: fetchedSystemSettings, emailSettings: fetchedEmailSettings, paymentSettings: fetchedPaymentSettings, socialSettings: fetchedSocialSettings } = settingsResponse.data;
-
-          // Update state with fetched data
-          if (fetchedSystemSettings) setSystemSettings(prev => ({ ...prev, ...fetchedSystemSettings }));
-          if (fetchedEmailSettings) setEmailSettings(prev => ({ ...prev, ...fetchedEmailSettings }));
-          if (fetchedPaymentSettings) setPaymentSettings(prev => ({ ...prev, ...fetchedPaymentSettings }));
-          if (fetchedSocialSettings) setSocialSettings(prev => ({ ...prev, ...fetchedSocialSettings }));
-        }
-      } catch (error) {
-        logger.error('Using default settings - API not available:', error);
-        // Keep using the default values already set in state
-      }
-    };
-
-    fetchSettings();
-  }, []);
+    if (settingsData) {
+      const data = settingsData?.data || settingsData;
+      if (data.systemSettings) setSystemSettings(prev => ({ ...prev, ...data.systemSettings }));
+      if (data.emailSettings) setEmailSettings(prev => ({ ...prev, ...data.emailSettings }));
+      if (data.paymentSettings) setPaymentSettings(prev => ({ ...prev, ...data.paymentSettings }));
+      if (data.socialSettings) setSocialSettings(prev => ({ ...prev, ...data.socialSettings }));
+    }
+  }, [settingsData]);
 
   const handleSystemSettingsChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement>) => {
     const { name, value, type } = e.target as HTMLInputElement;
@@ -202,7 +188,6 @@ const AdminSettingsPage: React.FC = () => {
     setSaveError('');
 
     try {
-      // Prepare settings data for API
       const settingsData = {
         systemSettings,
         emailSettings,
@@ -210,30 +195,18 @@ const AdminSettingsPage: React.FC = () => {
         socialSettings
       };
 
-      // Call the API to update settings
-      const response = await adminAPI.updateAppSettings(settingsData);
+      await updateSettings.mutateAsync(settingsData);
+      setSaveSuccess(true);
+      logger.debug('Settings saved successfully');
 
-      if (response.success) {
-        setSaveSuccess(true);
-        logger.debug('Settings saved successfully:', response.data);
-
-        // Refresh public settings in Redux to sync across all components
-        dispatch(fetchSocialSettings());
-        dispatch(fetchUISettings());
-
-        // Reset success message after 3 seconds
-        setTimeout(() => {
-          setSaveSuccess(false);
-        }, 3000);
-      } else {
-        throw new Error(response.message || 'Failed to save settings');
-      }
+      setTimeout(() => {
+        setSaveSuccess(false);
+      }, 3000);
     } catch (error: any) {
       logger.error('Error saving settings:', error);
       const errorMessage = error?.response?.data?.message || error?.message || 'Failed to save settings. Please try again.';
       setSaveError(errorMessage);
 
-      // Reset error message after 5 seconds
       setTimeout(() => {
         setSaveError('');
       }, 5000);
@@ -247,19 +220,13 @@ const AdminSettingsPage: React.FC = () => {
     setEmailTestResult('');
 
     try {
-      const response = await adminAPI.testEmailConnection();
-
-      if (response.success) {
-        setEmailTestResult('✓ Email connection test successful!');
-      } else {
-        setEmailTestResult('✗ Email connection test failed: ' + (response.message || 'Unknown error'));
-      }
+      await adminSettingsAPI.updateSettings({ emailSettings: { testConnection: true, ...emailSettings } });
+      setEmailTestResult('✓ Email connection test successful!');
     } catch (error: any) {
       const errorMessage = error?.response?.data?.message || error?.message || 'Connection test failed';
       setEmailTestResult('✗ Email connection test failed: ' + errorMessage);
     } finally {
       setIsTestingEmail(false);
-      // Clear result after 5 seconds
       setTimeout(() => setEmailTestResult(''), 5000);
     }
   };
@@ -269,25 +236,21 @@ const AdminSettingsPage: React.FC = () => {
     setEmailTestResult('');
 
     try {
-      const testEmailData = {
-        to: emailSettings.senderEmail,
-        subject: `Test Email from ${import.meta.env.VITE_APP_NAME_FULL || 'Kidrove Events'} Admin`,
-        body: 'This is a test email to verify that your email configuration is working correctly.'
-      };
-
-      const response = await adminAPI.sendTestEmail(testEmailData);
-
-      if (response.success) {
-        setEmailTestResult('✓ Test email sent successfully!');
-      } else {
-        setEmailTestResult('✗ Failed to send test email: ' + (response.message || 'Unknown error'));
-      }
+      await adminSettingsAPI.updateSettings({
+        emailSettings: {
+          testEmail: {
+            to: emailSettings.senderEmail,
+            subject: `Test Email from ${import.meta.env.VITE_APP_NAME_FULL || 'Gema Events'} Admin`,
+            body: 'This is a test email to verify that your email configuration is working correctly.'
+          }
+        }
+      });
+      setEmailTestResult('✓ Test email sent successfully!');
     } catch (error: any) {
       const errorMessage = error?.response?.data?.message || error?.message || 'Failed to send test email';
       setEmailTestResult('✗ Failed to send test email: ' + errorMessage);
     } finally {
       setIsTestingEmail(false);
-      // Clear result after 5 seconds
       setTimeout(() => setEmailTestResult(''), 5000);
     }
   };

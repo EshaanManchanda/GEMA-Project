@@ -4,8 +4,8 @@
 import { Request, Response, NextFunction } from "express";
 import { AppError } from "./error";
 import { config } from "../config/env";
-import Event from "../models/Event";
-import Order from "../models/Order";
+import { Event } from "../models/index";
+import { Order } from "../models/index";
 
 /**
  * Middleware to check if user has verified their phone number

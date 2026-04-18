@@ -1,6 +1,6 @@
 import React, { useEffect } from 'react';
 import { X, Copy, Trash2, Download, FileText, File } from 'lucide-react';
-import { MediaAsset } from '../../../store/slices/mediaSlice';
+import { MediaAsset } from '../../../store/legacySlices/mediaSlice';
 import Button from '../../ui/Button';
 import toast from 'react-hot-toast';
 import { format } from 'date-fns';

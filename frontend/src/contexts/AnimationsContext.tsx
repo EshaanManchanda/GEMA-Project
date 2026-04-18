@@ -5,7 +5,7 @@
  */
 import React, { ReactNode } from 'react';
 import { useSelector } from 'react-redux';
-import { selectAnimationsEnabled } from '@/store/slices/settingsSlice';
+import { selectAnimationsEnabled } from '@/store/legacySlices/settingsSlice';
 import { AnimationsContext } from './animationsContextDef';
 
 export const AnimationsProvider: React.FC<{ children: ReactNode }> = ({ children }) => {

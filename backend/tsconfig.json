@@ -37,5 +37,5 @@
     "types": []
   },
   "include": ["src/**/*"],
-  "exclude": ["node_modules", "dist", "**/*.test.ts", "**/*.spec.ts", "src/tests/**/*"]
+  "exclude": ["node_modules", "dist", "**/*.test.ts", "**/*.spec.ts", "src/tests/**/*", "src/scripts/migrations/**/*", "src/scripts/debug/**/*", "src/scripts/utilities/**/*", "src/scripts/seeds/runSeedSettings.ts", "src/scripts/seeds/seed.ts", "src/scripts/seeds/seedBanners.ts", "src/scripts/seeds/seedBlogs.ts", "src/scripts/seeds/seedCategories.ts", "src/scripts/seeds/seedCollections.ts", "src/scripts/seeds/seedCoupons.ts", "src/scripts/seeds/seedSEOContent.ts", "src/scripts/seeds/seedAdminSettings.ts", "src/scripts/seeds/seedAffiliateVendor.ts", "src/scripts/seeds/seedCommissions.ts", "src/scripts/seeds/seed-faq-standalone.ts", "src/scripts/seeds/seed-json.ts", "src/scripts/seeds/seed-production-seo.ts"]
 }

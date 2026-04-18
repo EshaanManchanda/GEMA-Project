@@ -7,7 +7,7 @@ import { describe, it, expect, beforeEach } from '@jest/globals';
 import { render, screen, waitFor } from '@testing-library/react';
 import { Provider } from 'react-redux';
 import { BrowserRouter } from 'react-router-dom';
-import { store } from '../../store';
+import { store } from '../../store/legacyStore';
 // Use browser-compatible performance API instead of Node.js perf_hooks
 const performance = globalThis.performance || window.performance;
 

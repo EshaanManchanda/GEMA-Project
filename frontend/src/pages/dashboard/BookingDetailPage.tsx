@@ -23,9 +23,9 @@ import {
 } from 'lucide-react';
 import toast from 'react-hot-toast';
 
-import { AppDispatch, RootState } from '@/store';
-import { fetchTicketsByOrder, generateMissingTickets } from '@/store/slices/ticketsSlice';
-import { generateQRCodesForBooking } from '@/store/slices/bookingsSlice';
+import { AppDispatch, RootState } from '@/store/legacyStore';
+import { fetchTicketsByOrder, generateMissingTickets } from '@/store/legacySlices/ticketsSlice';
+import { generateQRCodesForBooking } from '@/store/legacySlices/bookingsSlice';
 import bookingAPI from '@/services/api/bookingAPI';
 import { downloadTicketAsPNG } from '@/utils/ticketDownload';
 import TicketCard from '@/components/booking/TicketCard';

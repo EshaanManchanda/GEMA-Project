@@ -1,9 +1,4 @@
-import Teacher, {
-  TeacherPaymentMode,
-  TeacherSubscriptionStatus,
-  TeacherVerificationStatus,
-} from "../models/Teacher";
-import User from "../models/User";
+import { Teacher, TeacherPaymentMode, TeacherSubscriptionStatus, TeacherVerificationStatus, User } from "../models/index";
 import { Types } from "mongoose";
 
 /**

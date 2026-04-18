@@ -13,7 +13,7 @@ const TipTapEditorFallback = () => (
   </div>
 );
 import MediaPickerModal from '@/components/admin/media/MediaPickerModal';
-import { MediaAsset } from '@/store/slices/mediaSlice';
+import { MediaAsset } from '@/store/legacySlices/mediaSlice';
 import { Card, CardHeader, CardTitle, CardContent } from '../ui/Card';
 import { Shield, FileText, Hash, Image as ImageIcon, X, ExternalLink } from 'lucide-react';
 

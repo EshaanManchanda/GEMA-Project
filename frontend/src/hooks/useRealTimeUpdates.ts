@@ -1,6 +1,6 @@
 import { useEffect, useCallback, useRef } from 'react';
 import { useDispatch } from 'react-redux';
-import { AppDispatch } from '../store';
+import { AppDispatch } from '../store/legacyStore';
 import logger from '@/utils/logger';
 
 interface UseRealTimeUpdatesOptions {

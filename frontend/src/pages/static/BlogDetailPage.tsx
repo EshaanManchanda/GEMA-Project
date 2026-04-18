@@ -21,7 +21,7 @@ import { Blog } from '../../types/blog';
 import { getCurrentPageUrl } from '../../utils/urlHelper';
 import CommentSection from '../../components/blog/CommentSection';
 import { useSelector } from 'react-redux';
-import { RootState } from '../../store';
+import { RootState } from '../../store/legacyStore';
 
 const BlogDetailPage: React.FC = () => {
   const { slug } = useParams<{ slug: string }>();

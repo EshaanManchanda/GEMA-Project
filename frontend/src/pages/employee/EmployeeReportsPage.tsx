@@ -2,12 +2,6 @@ import React, { useState, useEffect } from 'react';
 import { ApiService } from '@/services/api';
 import { format } from 'date-fns';
 
-interface CheckinStat {
-  date: string;
-  count: number;
-  eventTitle?: string;
-}
-
 interface ReportSummary {
   totalShifts: number;
   totalCheckins: number;

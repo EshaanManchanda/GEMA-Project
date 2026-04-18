@@ -1,6 +1,6 @@
 import nodemailer from "nodemailer";
 import { AppError } from "../middleware/error";
-import { emailService } from "../services/email.service";
+import { emailService } from "../modules/notifications/email.service";
 
 interface EmailOptions {
   to: string;

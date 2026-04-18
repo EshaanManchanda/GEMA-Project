@@ -19,7 +19,7 @@ import {
 import toast from 'react-hot-toast';
 import PrivatePageSEO from '@/components/common/PrivatePageSEO';
 
-import { AppDispatch } from '@/store';
+import { AppDispatch } from '@/store/legacyStore';
 import {
   fetchRegistrationById,
   withdrawRegistration,
@@ -27,8 +27,8 @@ import {
   downloadRegistrationFile,
   selectCurrentRegistration,
   selectIsRegistrationLoading,
-} from '@/store/slices/registrationsSlice';
-import { selectUser } from '@/store/slices/authSlice';
+} from '@/store/legacySlices/registrationsSlice';
+import { selectUser } from '@/store/legacySlices/authSlice';
 import { RegistrationStatus, RegistrationReviewStatus } from '@/types/registration';
 
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/Card';

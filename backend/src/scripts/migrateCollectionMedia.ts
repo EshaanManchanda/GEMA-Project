@@ -1,5 +1,5 @@
 import mongoose from "mongoose";
-import Collection from "../models/Collection";
+import { Collection } from "../models/index";
 import { connectDB } from "../config/database";
 
 /**
@@ -12,7 +12,7 @@ async function migrateCollectionMedia() {
     console.log("Connected to database");
 
     // Import MediaAsset model dynamically to avoid circular dependencies
-    const MediaAsset = (await import("../models/MediaAsset")).default;
+    const MediaAsset = (await import("../models/index")).MediaAsset;
 
     // Find collections without iconAsset or featuredImageAsset
     const collections = await Collection.find({

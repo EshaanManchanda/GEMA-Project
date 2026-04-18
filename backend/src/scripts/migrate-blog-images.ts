@@ -1,8 +1,8 @@
 import mongoose from "mongoose";
-import { Blog } from "../models/Blog";
-import MediaAsset from "../models/MediaAsset";
+import { Blog } from "../models/index";
+import { MediaAsset } from "../models/index";
 import { config } from "../config/env";
-import { blogService } from "../services/blog.service";
+import { blogService } from "../modules/content/blog.service";
 
 /**
  * Migration Script: Blog Images to MediaAssets

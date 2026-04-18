@@ -46,7 +46,7 @@ import {
   selectUserProfile,
   selectIsProfileLoading,
   selectProfileError
-} from '@/store/slices/authSlice';
+} from '@/store/legacySlices/authSlice';
 import EmailVerificationSection from '@/components/profile/EmailVerificationSection';
 import PhoneVerificationSection from '@/components/profile/PhoneVerificationSection';
 import ConfirmDialog from '@/components/common/ConfirmDialog';

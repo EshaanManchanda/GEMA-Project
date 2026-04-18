@@ -14,7 +14,7 @@ import {
   FaGripLines
 } from 'react-icons/fa';
 import { toast } from 'react-hot-toast';
-import { AppDispatch } from '../../store';
+import { AppDispatch } from '../../store/legacyStore';
 import {
   fetchCategoryTree,
   updateCategory,
@@ -22,7 +22,7 @@ import {
   deleteCategory,
   selectCategoryTree,
   selectCategoriesLoading
-} from '../../store/slices/categoriesSlice';
+} from '../../store/legacySlices/categoriesSlice';
 import type { Category } from '../../services/api/categoriesAPI';
 import LoadingSpinner from '../common/LoadingSpinner';
 import Modal from '../interactive/Modal';

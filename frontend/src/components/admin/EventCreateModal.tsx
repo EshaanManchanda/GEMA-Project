@@ -15,7 +15,7 @@ const TipTapEditorFallback = () => (
     </div>
   </div>
 );
-import { MediaAsset } from '../../store/slices/mediaSlice';
+import { MediaAsset } from '../../store/legacySlices/mediaSlice';
 import SEOEditor from '../seo/SEOEditor';
 import { config } from '../../config';
 import { logger } from '../../utils/logger';
@@ -61,6 +61,7 @@ const EventCreateModal: React.FC<EventCreateModalProps> = ({ isOpen, onClose, on
 
   // Form data
   const [title, setTitle] = useState('');
+  const [shortDescription, setShortDescription] = useState('');
   const [description, setDescription] = useState('');
   const [category, setCategory] = useState('');
   const [type, setType] = useState<'Olympiad' | 'Championship' | 'Competition' | 'Event' | 'Course' | 'Venue' | 'Workshop' | 'Class' | 'Bootcamp' | 'Masterclass'>('Event');
@@ -164,6 +165,7 @@ const EventCreateModal: React.FC<EventCreateModalProps> = ({ isOpen, onClose, on
 
   const resetForm = () => {
     setTitle('');
+    setShortDescription('');
     setDescription('');
     setCategory('');
     setType('Event');
@@ -229,13 +231,15 @@ const EventCreateModal: React.FC<EventCreateModalProps> = ({ isOpen, onClose, on
         setError('Category is required');
         return;
       }
-      if (!city.trim()) {
-        setError('City is required');
-        return;
-      }
-      if (!address.trim()) {
-        setError('Address is required');
-        return;
+      if (venueType !== 'Online') {
+        if (!city.trim()) {
+          setError('City is required');
+          return;
+        }
+        if (!address.trim()) {
+          setError('Address is required');
+          return;
+        }
       }
       if (!vendorId) {
         setError('Please select a vendor');
@@ -262,6 +266,7 @@ const EventCreateModal: React.FC<EventCreateModalProps> = ({ isOpen, onClose, on
       const eventData: any = {
         title,
         description,
+        shortDescription: shortDescription.trim() || undefined,
         category,
         type,
         venueType,
@@ -422,6 +427,21 @@ const EventCreateModal: React.FC<EventCreateModalProps> = ({ isOpen, onClose, on
                 </ErrorBoundary>
               </div>
 
+              <div>
+                <label htmlFor="event-short-description" className="block text-sm font-medium text-gray-700 mb-2">Short Description <span className="text-gray-400 font-normal">(plain text, max 500 chars)</span></label>
+                <textarea
+                  id="event-short-description"
+                  name="shortDescription"
+                  value={shortDescription}
+                  onChange={(e) => setShortDescription(e.target.value)}
+                  rows={2}
+                  maxLength={500}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 resize-none"
+                  placeholder="Brief summary shown in event cards and search results..."
+                />
+                <p className="text-xs text-gray-400 mt-1">{shortDescription.length}/500</p>
+              </div>
+
               <div className="grid grid-cols-2 gap-4">
                 <div>
                   <label htmlFor="event-category" className="block text-sm font-medium text-gray-700 mb-2">Category *</label>
@@ -558,17 +578,19 @@ const EventCreateModal: React.FC<EventCreateModalProps> = ({ isOpen, onClose, on
           {activeTab === 'location' && (
             <div className="space-y-4">
               <div className="grid grid-cols-2 gap-4">
-                <div>
-                  <label htmlFor="event-city" className="block text-sm font-medium text-gray-700 mb-2">City *</label>
-                  <input
-                    type="text"
-                    id="event-city"
-                    name="city"
-                    value={city}
-                    onChange={(e) => setCity(e.target.value)}
-                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-                  />
-                </div>
+                {venueType !== 'Online' && (
+                  <div>
+                    <label htmlFor="event-city" className="block text-sm font-medium text-gray-700 mb-2">City *</label>
+                    <input
+                      type="text"
+                      id="event-city"
+                      name="city"
+                      value={city}
+                      onChange={(e) => setCity(e.target.value)}
+                      className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                    />
+                  </div>
+                )}
 
                 <div>
                   <label htmlFor="event-currency" className="block text-sm font-medium text-gray-700 mb-2">Currency *</label>
@@ -587,43 +609,47 @@ const EventCreateModal: React.FC<EventCreateModalProps> = ({ isOpen, onClose, on
                 </div>
               </div>
 
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">Address *</label>
-                <input
-                  type="text"
-                  value={address}
-                  onChange={(e) => setAddress(e.target.value)}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-                />
-              </div>
+              {venueType !== 'Online' && (
+                <>
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-2">Address *</label>
+                    <input
+                      type="text"
+                      value={address}
+                      onChange={(e) => setAddress(e.target.value)}
+                      className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                    />
+                  </div>
 
-              <div className="grid grid-cols-2 gap-4">
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">Latitude *</label>
-                  <input
-                    type="number"
-                    step="any"
-                    value={lat}
-                    onChange={(e) => setLat(parseFloat(e.target.value) || 0)}
-                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-                    min="-90"
-                    max="90"
-                  />
-                </div>
+                  <div className="grid grid-cols-2 gap-4">
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-2">Latitude</label>
+                      <input
+                        type="number"
+                        step="any"
+                        value={lat}
+                        onChange={(e) => setLat(parseFloat(e.target.value) || 0)}
+                        className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                        min="-90"
+                        max="90"
+                      />
+                    </div>
 
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">Longitude *</label>
-                  <input
-                    type="number"
-                    step="any"
-                    value={lng}
-                    onChange={(e) => setLng(parseFloat(e.target.value) || 0)}
-                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-                    min="-180"
-                    max="180"
-                  />
-                </div>
-              </div>
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-2">Longitude</label>
+                      <input
+                        type="number"
+                        step="any"
+                        value={lng}
+                        onChange={(e) => setLng(parseFloat(e.target.value) || 0)}
+                        className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                        min="-180"
+                        max="180"
+                      />
+                    </div>
+                  </div>
+                </>
+              )}
 
               <div className="flex items-center gap-2">
                 <input

@@ -3,7 +3,7 @@ import { FaTimes, FaPlus, FaTrash, FaSave } from 'react-icons/fa';
 import vendorAPI from '../../services/api/vendorAPI';
 import categoriesAPI, { Category } from '../../services/api/categoriesAPI';
 import MediaPickerModal from '../admin/media/MediaPickerModal';
-import { MediaAsset } from '../../store/slices/mediaSlice';
+import { MediaAsset } from '../../store/legacySlices/mediaSlice';
 import logger from '../../utils/logger';
 
 interface DateSchedule {

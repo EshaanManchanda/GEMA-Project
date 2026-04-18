@@ -9,7 +9,7 @@ import AdvancedTab from '../../components/admin/AdvancedTab';
 import ReviewsTab from '../../components/admin/ReviewsTab';
 import { Calendar, MapPin, Star, FileText, ArrowLeft, Save, CheckCircle2 } from 'lucide-react';
 import Badge from '../../components/ui/Badge';
-import { MediaAsset } from '@/store/slices/mediaSlice';
+import { MediaAsset } from '@/store/legacySlices/mediaSlice';
 import PrivatePageSEO from '@/components/common/PrivatePageSEO';
 import logger from '@/utils/logger';
 

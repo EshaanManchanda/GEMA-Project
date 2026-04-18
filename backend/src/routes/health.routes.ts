@@ -1,15 +1,5 @@
 import { Router } from "express";
-import {
-  getHealthStatus,
-  getBasicHealthStatus,
-  getRedisConnectionStats,
-} from "../controllers/health.controller";
-
+import healthRoutes from "../modules/health/health.routes";
 const router = Router();
-
-// Health check routes
-router.get("/", getHealthStatus);
-router.get("/basic", getBasicHealthStatus);
-router.get("/redis", getRedisConnectionStats);
-
+router.use("/", healthRoutes);
 export default router;

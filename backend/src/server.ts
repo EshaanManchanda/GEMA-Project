@@ -27,9 +27,11 @@ import {
   logPerformanceSummary,
 } from "./middleware/performance";
 import { setQueryTimeout } from "./middleware/query-timeout";
-import routes from "./routes/index";
+import { registerModules } from "./modules/index";
 import healthRoutes from "./routes/health.routes";
 import currencyRoutes from "./routes/currency.routes";
+import seoRoutes from "./routes/seo.routes";
+import ogRoutes from "./routes/og.routes";
 import { scheduleTicketJobs, stopTicketJobs } from "./utils/ticketExpiration";
 import { ensureDefaultCommissionConfig } from "./scripts/seedCommissions";
 import { ensureAdminRevenueSettings } from "./scripts/seedAdminSettings";
@@ -265,15 +267,12 @@ app.use((req: Request, res: Response, next: NextFunction) => {
   }
 });
 
-// API routes
-app.use("/api", routes);
+// API routes — modular monolith registration
+registerModules(app);
 app.use("/api/currency", currencyRoutes);
 
 // Enhanced health check routes (also mounted under /api for API consistency)
 app.use("/api/health", healthRoutes);
-
-import seoRoutes from "./routes/seo.routes";
-import ogRoutes from "./routes/og.routes";
 
 // SEO Routes (sitemap.xml, robots.txt) - Mount at root
 app.use("/", seoRoutes);
@@ -359,7 +358,7 @@ async function startServer() {
 
     // Step 3.8: Pre-warm homepage cache
     logger.info("Pre-warming homepage cache...");
-    import("./services/homepage.service").then(
+    import("./modules/analytics/homepage.service").then(
       ({ default: homepageService }) => {
         homepageService
           .getHomepageData()

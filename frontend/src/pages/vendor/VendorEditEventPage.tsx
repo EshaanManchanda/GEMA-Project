@@ -9,7 +9,7 @@ import BasicInfoTab from '../../components/vendor/BasicInfoTab';
 import SchedulePricingTab from '../../components/vendor/SchedulePricingTab';
 import AdvancedTab from '../../components/vendor/AdvancedTab';
 import FormBuilder from '@/components/registration/FormBuilder';
-import { MediaAsset } from '@/store/slices/mediaSlice';
+import { MediaAsset } from '@/store/legacySlices/mediaSlice';
 import CancelEventModal from '../../components/vendor/CancelEventModal';
 
 interface EventFormData {

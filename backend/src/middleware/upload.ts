@@ -4,7 +4,7 @@ import fs from "fs";
 import { Request } from "express";
 import { config } from "../config/env";
 import { AppError } from "./error";
-import uploadService, { UploadResult } from "../services/upload.service";
+import uploadService, { UploadResult } from "../modules/media/upload.service";
 import { CloudinaryStorage } from "multer-storage-cloudinary";
 import cloudinary from "../config/cloudinary";
 

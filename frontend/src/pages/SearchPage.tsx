@@ -7,8 +7,8 @@ import { useEventsSearchQuery } from '@/hooks/queries/useEventsQuery';
 import SEO from '@/components/common/SEO';
 import EventCard from '@/components/client/EventCard';
 import { useSelector, useDispatch } from 'react-redux';
-import { RootState, AppDispatch } from '@/store';
-import { toggleFavorite } from '@/store/slices/favoritesSlice';
+import { RootState, AppDispatch } from '@/store/legacyStore';
+import { toggleFavorite } from '@/store/legacySlices/favoritesSlice';
 
 // Collapsible Filter Section Component
 interface CollapsibleSectionProps {

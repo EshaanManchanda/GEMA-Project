@@ -1,15 +1,15 @@
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState } from 'react';
 import { Link } from 'react-router-dom';
-import adminAPI from '../../services/api/adminAPI';
-import { IOrder, GetOrdersParams } from '../../types/order';
+import { useAdminOrders } from '@/features/admin/hooks/useAdminApis';
+import { adminOrdersAPI } from '@/features/admin/services/adminApis';
+import { IOrder } from '../../types/order';
 import { Search, ChevronDown, ChevronUp, Check, X, Trash2, DollarSign, Eye } from 'lucide-react';
 import { toast } from 'react-hot-toast';
 import PrivatePageSEO from '@/components/common/PrivatePageSEO';
 import logger from '@/utils/logger';
+import { AdminPageHeader, AdminEmptyState, AdminStatusBadge } from '@/shared/components/admin';
 
 const AdminOrdersPage: React.FC = () => {
-  const [orders, setOrders] = useState<IOrder[]>([]);
-  const [isLoading, setIsLoading] = useState<boolean>(true);
   const [searchTerm, setSearchTerm] = useState<string>('');
   const [statusFilter, setStatusFilter] = useState<string>('all');
   const [paymentStatusFilter, setPaymentStatusFilter] = useState<string>('all');
@@ -22,51 +22,22 @@ const AdminOrdersPage: React.FC = () => {
   const [refundAmount, setRefundAmount] = useState<string>('');
   const [refundReason, setRefundReason] = useState<string>('');
 
-  // Pagination
   const [currentPage, setCurrentPage] = useState<number>(1);
-  const [totalPages, setTotalPages] = useState<number>(1);
-  const [totalOrders, setTotalOrders] = useState<number>(0);
   const [limit, setLimit] = useState<number>(20);
 
-  const fetchOrders = useCallback(async () => {
-    try {
-      setIsLoading(true);
+  const { data: ordersResponse, isLoading, refetch } = useAdminOrders({
+    page: currentPage,
+    limit,
+    sortBy,
+    sortOrder,
+    status: statusFilter !== 'all' ? statusFilter : undefined,
+    paymentStatus: paymentStatusFilter !== 'all' ? paymentStatusFilter : undefined,
+    search: searchTerm || undefined,
+  });
 
-      const params: GetOrdersParams = {
-        page: currentPage,
-        limit: limit,
-        sortBy: sortBy,
-        sortOrder: sortOrder,
-      };
-
-      if (statusFilter !== 'all') {
-        params.status = statusFilter as any;
-      }
-
-      if (paymentStatusFilter !== 'all') {
-        params.paymentStatus = paymentStatusFilter as any;
-      }
-
-      if (searchTerm) {
-        params.search = searchTerm;
-      }
-
-      const response = await adminAPI.getAllOrders(params);
-
-      setOrders(response.orders);
-      setTotalPages(response.pagination.totalPages);
-      setTotalOrders(response.pagination.totalOrders);
-    } catch (error: any) {
-      logger.error('Error fetching orders:', error);
-      toast.error(error?.message || 'Failed to fetch orders');
-    } finally {
-      setIsLoading(false);
-    }
-  }, [currentPage, limit, sortBy, sortOrder, statusFilter, paymentStatusFilter, searchTerm]);
-
-  useEffect(() => {
-    fetchOrders();
-  }, [fetchOrders]);
+  const orders: IOrder[] = ordersResponse?.data?.orders || ordersResponse?.orders || [];
+  const totalPages = ordersResponse?.data?.pagination?.totalPages || ordersResponse?.pagination?.totalPages || 1;
+  const totalOrders = ordersResponse?.data?.pagination?.totalOrders || ordersResponse?.pagination?.totalOrders || 0;
 
   const handleSort = (key: 'createdAt' | 'total' | 'status' | 'paymentStatus') => {
     if (sortBy === key) {
@@ -108,26 +79,25 @@ const AdminOrdersPage: React.FC = () => {
     try {
       switch (actionType) {
         case 'confirm':
-          await adminAPI.confirmOrder(orderToAction);
+          await adminOrdersAPI.updateStatus(orderToAction, { status: 'confirmed' });
           toast.success('Order confirmed successfully');
           break;
         case 'cancel':
-          await adminAPI.updateOrder(orderToAction, { status: 'cancelled' });
+          await adminOrdersAPI.updateStatus(orderToAction, { status: 'cancelled' });
           toast.success('Order cancelled successfully');
           break;
-        case 'refund':
-          const amount = refundAmount ? parseFloat(refundAmount) : undefined;
-          await adminAPI.refundOrder(orderToAction, amount, refundReason);
+        case 'refund': {
+          await adminOrdersAPI.updateStatus(orderToAction, { status: 'refunded', refundAmount, refundReason });
           toast.success('Order refunded successfully');
           break;
+        }
         case 'delete':
-          await adminAPI.deleteOrder(orderToAction);
+          await adminOrdersAPI.updateStatus(orderToAction, { status: 'deleted' });
           toast.success('Order deleted successfully');
           break;
       }
 
-      // Refresh orders after action
-      await fetchOrders();
+      await refetch();
     } catch (error: any) {
       logger.error('Error performing order action:', error);
       toast.error(error?.response?.data?.message || `Failed to ${actionType} order`);
@@ -147,20 +117,14 @@ const AdminOrdersPage: React.FC = () => {
     }
 
     try {
-      const response = await adminAPI.bulkUpdateOrders(selectedOrders, action);
-
-      const { successful, failed } = response;
-
-      if (successful.length > 0) {
-        toast.success(`${successful.length} order(s) ${action}ed successfully`);
+      for (const orderId of selectedOrders) {
+        await adminOrdersAPI.updateStatus(orderId, {
+          status: action === 'confirm' ? 'confirmed' : action === 'cancel' ? 'cancelled' : 'refunded',
+        });
       }
 
-      if (failed.length > 0) {
-        toast.error(`${failed.length} order(s) failed: ${failed[0].reason}`);
-      }
-
-      // Refresh orders after bulk action
-      await fetchOrders();
+      toast.success(`${selectedOrders.length} order(s) ${action}ed successfully`);
+      await refetch();
       setSelectedOrders([]);
     } catch (error: any) {
       logger.error('Error performing bulk action:', error);
@@ -184,38 +148,6 @@ const AdminOrdersPage: React.FC = () => {
       style: 'currency',
       currency: currency,
     }).format(amount);
-  };
-
-  const getStatusBadgeClass = (status: IOrder['status']) => {
-    switch (status) {
-      case 'pending':
-        return 'bg-yellow-100 text-yellow-800';
-      case 'confirmed':
-        return 'bg-green-100 text-green-800';
-      case 'cancelled':
-        return 'bg-red-100 text-red-800';
-      case 'refunded':
-        return 'bg-orange-100 text-orange-800';
-      default:
-        return 'bg-gray-100 text-gray-800';
-    }
-  };
-
-  const getPaymentStatusBadgeClass = (paymentStatus: IOrder['paymentStatus']) => {
-    switch (paymentStatus) {
-      case 'pending':
-        return 'bg-yellow-100 text-yellow-800';
-      case 'paid':
-        return 'bg-green-100 text-green-800';
-      case 'failed':
-        return 'bg-red-100 text-red-800';
-      case 'refunded':
-        return 'bg-orange-100 text-orange-800';
-      case 'free':
-        return 'bg-blue-100 text-blue-800';
-      default:
-        return 'bg-gray-100 text-gray-800';
-    }
   };
 
   const getActionModalTitle = () => {
@@ -262,18 +194,15 @@ const AdminOrdersPage: React.FC = () => {
 
   return (
     <>
-      <PrivatePageSEO title="Admin - Orders | Kidrove" description="Manage orders and bookings" />
+      <PrivatePageSEO title="Admin - Orders | Gema" description="Manage orders and bookings" />
       <div className="max-w-7xl mx-auto">
-        {/* Header */}
-        <div className="mb-8">
-          <h1 className="text-3xl font-bold text-gray-900">Order Management</h1>
-          <p className="mt-2 text-gray-600">View and manage all customer orders</p>
-        </div>
+        <AdminPageHeader
+          title="Order Management"
+          description="View and manage all customer orders"
+        />
 
-        {/* Filters */}
         <div className="bg-white rounded-lg shadow-sm p-6 mb-6">
           <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
-            {/* Search */}
             <div className="relative">
               <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-5 h-5" />
               <input
@@ -288,7 +217,6 @@ const AdminOrdersPage: React.FC = () => {
               />
             </div>
 
-            {/* Status Filter */}
             <select
               value={statusFilter}
               onChange={(e) => {
@@ -304,7 +232,6 @@ const AdminOrdersPage: React.FC = () => {
               <option value="refunded">Refunded</option>
             </select>
 
-            {/* Payment Status Filter */}
             <select
               value={paymentStatusFilter}
               onChange={(e) => {
@@ -321,7 +248,6 @@ const AdminOrdersPage: React.FC = () => {
               <option value="free">Free (Registration)</option>
             </select>
 
-            {/* Limit */}
             <select
               value={limit}
               onChange={(e) => {
@@ -338,7 +264,6 @@ const AdminOrdersPage: React.FC = () => {
           </div>
         </div>
 
-        {/* Bulk Actions */}
         {selectedOrders.length > 0 && (
           <div className="bg-blue-50 border border-blue-200 rounded-lg p-4 mb-6">
             <div className="flex items-center justify-between">
@@ -372,7 +297,6 @@ const AdminOrdersPage: React.FC = () => {
           </div>
         )}
 
-        {/* Orders Table */}
         <div className="bg-white rounded-lg shadow-sm overflow-hidden">
           <div className="overflow-x-auto">
             <table className="min-w-full divide-y divide-gray-200">
@@ -460,14 +384,10 @@ const AdminOrdersPage: React.FC = () => {
                       </div>
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap">
-                      <span className={`px-2 py-1 inline-flex text-xs leading-5 font-semibold rounded-full ${getStatusBadgeClass(order.status)}`}>
-                        {order.status}
-                      </span>
+                      <AdminStatusBadge status={order.status} />
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap">
-                      <span className={`px-2 py-1 inline-flex text-xs leading-5 font-semibold rounded-full ${getPaymentStatusBadgeClass(order.paymentStatus)}`}>
-                        {order.paymentStatus}
-                      </span>
+                      <AdminStatusBadge status={order.paymentStatus} />
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
                       {formatDate(order.createdAt)}
@@ -521,89 +441,59 @@ const AdminOrdersPage: React.FC = () => {
           </div>
 
           {orders.length === 0 && !isLoading && (
-            <div className="text-center py-12">
-              <p className="text-gray-500">No orders found</p>
-            </div>
+            <AdminEmptyState title="No orders found" />
           )}
 
-          {/* Pagination */}
           {totalPages > 1 && (
             <div className="bg-gray-50 px-6 py-4 flex items-center justify-between border-t border-gray-200">
-              <div className="flex-1 flex justify-between sm:hidden">
+              <div className="text-sm text-gray-700">
+                Showing <span className="font-medium">{(currentPage - 1) * limit + 1}</span> to{' '}
+                <span className="font-medium">{Math.min(currentPage * limit, totalOrders)}</span> of{' '}
+                <span className="font-medium">{totalOrders}</span> results
+              </div>
+              <div className="flex items-center gap-2">
                 <button
                   onClick={() => setCurrentPage(Math.max(1, currentPage - 1))}
                   disabled={currentPage === 1}
-                  className="relative inline-flex items-center px-4 py-2 border border-gray-300 text-sm font-medium rounded-md text-gray-700 bg-white hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed"
+                  className="relative inline-flex items-center px-2 py-2 rounded-l-md border border-gray-300 bg-white text-sm font-medium text-gray-500 hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed"
                 >
                   Previous
                 </button>
+                {Array.from({ length: totalPages }, (_, i) => i + 1)
+                  .filter(page => page === 1 || page === totalPages || Math.abs(page - currentPage) <= 2)
+                  .map((page, index, array) => {
+                    const showEllipsis = index > 0 && page - array[index - 1] > 1;
+                    return (
+                      <React.Fragment key={page}>
+                        {showEllipsis && (
+                          <span className="relative inline-flex items-center px-4 py-2 border border-gray-300 bg-white text-sm font-medium text-gray-700">
+                            ...
+                          </span>
+                        )}
+                        <button
+                          onClick={() => setCurrentPage(page)}
+                          className={`relative inline-flex items-center px-4 py-2 border text-sm font-medium ${page === currentPage
+                            ? 'z-10 bg-primary border-primary text-white'
+                            : 'bg-white border-gray-300 text-gray-500 hover:bg-gray-50'
+                            }`}
+                        >
+                          {page}
+                        </button>
+                      </React.Fragment>
+                    );
+                  })}
                 <button
                   onClick={() => setCurrentPage(Math.min(totalPages, currentPage + 1))}
                   disabled={currentPage === totalPages}
-                  className="ml-3 relative inline-flex items-center px-4 py-2 border border-gray-300 text-sm font-medium rounded-md text-gray-700 bg-white hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed"
+                  className="relative inline-flex items-center px-2 py-2 rounded-r-md border border-gray-300 bg-white text-sm font-medium text-gray-500 hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed"
                 >
                   Next
                 </button>
-              </div>
-              <div className="hidden sm:flex-1 sm:flex sm:items-center sm:justify-between">
-                <div>
-                  <p className="text-sm text-gray-700">
-                    Showing <span className="font-medium">{(currentPage - 1) * limit + 1}</span> to{' '}
-                    <span className="font-medium">{Math.min(currentPage * limit, totalOrders)}</span> of{' '}
-                    <span className="font-medium">{totalOrders}</span> results
-                  </p>
-                </div>
-                <div>
-                  <nav className="relative z-0 inline-flex rounded-md shadow-sm -space-x-px" aria-label="Pagination">
-                    <button
-                      onClick={() => setCurrentPage(Math.max(1, currentPage - 1))}
-                      disabled={currentPage === 1}
-                      className="relative inline-flex items-center px-2 py-2 rounded-l-md border border-gray-300 bg-white text-sm font-medium text-gray-500 hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed"
-                    >
-                      Previous
-                    </button>
-                    {Array.from({ length: totalPages }, (_, i) => i + 1)
-                      .filter(page => {
-                        // Show first page, last page, current page, and pages around current
-                        return page === 1 || page === totalPages || Math.abs(page - currentPage) <= 2;
-                      })
-                      .map((page, index, array) => {
-                        // Add ellipsis if there's a gap
-                        const showEllipsis = index > 0 && page - array[index - 1] > 1;
-                        return (
-                          <React.Fragment key={page}>
-                            {showEllipsis && (
-                              <span className="relative inline-flex items-center px-4 py-2 border border-gray-300 bg-white text-sm font-medium text-gray-700">
-                                ...
-                              </span>
-                            )}
-                            <button
-                              onClick={() => setCurrentPage(page)}
-                              className={`relative inline-flex items-center px-4 py-2 border text-sm font-medium ${page === currentPage
-                                ? 'z-10 bg-primary border-primary text-white'
-                                : 'bg-white border-gray-300 text-gray-500 hover:bg-gray-50'
-                                }`}
-                            >
-                              {page}
-                            </button>
-                          </React.Fragment>
-                        );
-                      })}
-                    <button
-                      onClick={() => setCurrentPage(Math.min(totalPages, currentPage + 1))}
-                      disabled={currentPage === totalPages}
-                      className="relative inline-flex items-center px-2 py-2 rounded-r-md border border-gray-300 bg-white text-sm font-medium text-gray-500 hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed"
-                    >
-                      Next
-                    </button>
-                  </nav>
-                </div>
               </div>
             </div>
           )}
         </div>
 
-        {/* Action Modal */}
         {isActionModalOpen && (
           <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
             <div className="bg-white rounded-lg p-6 max-w-md w-full mx-4">

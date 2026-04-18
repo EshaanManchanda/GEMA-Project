@@ -1,8 +1,8 @@
 import React, { useState } from 'react';
 import { useSelector, useDispatch } from 'react-redux';
-import { RootState } from '../../store';
+import { RootState } from '../../store/legacyStore';
 import { X, Upload, CheckCircle, AlertCircle, ChevronDown, ChevronUp } from 'lucide-react';
-import { removeUpload, clearAllUploads } from '../../store/slices/mediaSlice';
+import { removeUpload, clearAllUploads } from '../../store/legacySlices/mediaSlice';
 import { formatBytes, formatUploadSpeed, formatDuration } from '../../utils/uploadHelpers';
 
 /**

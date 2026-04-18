@@ -1,12 +1,7 @@
 import mongoose from "mongoose";
 import dotenv from "dotenv";
 import path from "path";
-import User, { UserRole } from "../models/User";
-import Vendor, {
-  PaymentMode,
-  VendorSubscriptionStatus,
-  VerificationStatus,
-} from "../models/Vendor";
+import { User, UserRole, Vendor, PaymentMode, VendorSubscriptionStatus, VerificationStatus } from "../models/index";
 
 // Load environment variables
 dotenv.config({ path: path.resolve(__dirname, "../../.env") });

@@ -15,7 +15,7 @@ const TipTapEditorFallback = () => (
     </div>
   </div>
 );
-import { MediaAsset } from '../../store/slices/mediaSlice';
+import { MediaAsset } from '../../store/legacySlices/mediaSlice';
 import SEOEditor from '../seo/SEOEditor';
 import { config } from '../../config';
 import logger from '../../utils/logger';
@@ -36,10 +36,23 @@ interface DateSchedule {
   price: number;
 }
 
+interface SyllabusLesson {
+  title: string;
+  duration?: string;
+}
+
+interface SyllabusModule {
+  title: string;
+  description: string;
+  duration?: string;
+  lessons?: SyllabusLesson[];
+}
+
 interface EventData {
   id: string;
   title: string;
   description: string;
+  shortDescription?: string;
   category: string;
   type: 'Olympiad' | 'Championship' | 'Competition' | 'Event' | 'Course' | 'Venue' | 'Workshop' | 'Class' | 'Bootcamp' | 'Masterclass';
   venueType: 'Indoor' | 'Outdoor' | 'Online' | 'Offline';
@@ -78,7 +91,7 @@ interface EventData {
   createdAt?: string;
   updatedAt?: string;
   // Educational fields
-  syllabus?: Array<{ title: string; description: string; duration?: string }>;
+  syllabus?: SyllabusModule[];
   subject?: string;
   topic?: string;
   introVideo?: string;
@@ -276,6 +289,7 @@ const EventEditModal: React.FC<EventEditModalProps> = ({ event, isOpen, onClose,
       const updateData: any = {
         title: formData.title,
         description: formData.description,
+        shortDescription: formData.shortDescription?.trim() || undefined,
         category: formData.category,
         type: formData.type,
         venueType: formData.venueType,
@@ -409,6 +423,21 @@ const EventEditModal: React.FC<EventEditModalProps> = ({ event, isOpen, onClose,
                 </Suspense>
               </div>
 
+              <div>
+                <label htmlFor="edit-event-short-description" className="block text-sm font-medium text-gray-700 mb-2">Short Description <span className="text-gray-400 font-normal">(plain text, max 500 chars)</span></label>
+                <textarea
+                  id="edit-event-short-description"
+                  name="shortDescription"
+                  value={formData.shortDescription || ''}
+                  onChange={(e) => handleInputChange('shortDescription', e.target.value)}
+                  rows={2}
+                  maxLength={500}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 resize-none"
+                  placeholder="Brief summary shown in event cards and search results..."
+                />
+                <p className="text-xs text-gray-400 mt-1">{(formData.shortDescription || '').length}/500</p>
+              </div>
+
               <div className="grid grid-cols-2 gap-4">
                 <div>
                   <label htmlFor="edit-event-category" className="block text-sm font-medium text-gray-700 mb-2">Category *</label>
@@ -516,52 +545,121 @@ const EventEditModal: React.FC<EventEditModalProps> = ({ event, isOpen, onClose,
                       </div>
                     </div>
 
-                    {/* Simple Syllabus Management */}
+                    {/* Syllabus Management — modules with nested lessons */}
                     <div>
                       <label className="block text-sm font-medium text-gray-700 mb-2">Syllabus</label>
-                      <div className="space-y-2">
-                        {(formData.syllabus || []).map((item, idx) => (
-                          <div key={idx} className="flex gap-2 p-2 bg-gray-50 rounded border">
-                            <div className="flex-1 space-y-2">
-                              <input
-                                value={item.title}
-                                onChange={e => {
-                                  const ns = [...(formData.syllabus || [])];
-                                  ns[idx] = { ...ns[idx], title: e.target.value };
+                      <div className="space-y-3">
+                        {(formData.syllabus || []).map((module, mIdx) => (
+                          <div key={mIdx} className="border border-gray-200 rounded-lg p-3 bg-gray-50 space-y-2">
+                            <div className="flex gap-2 items-start">
+                              <div className="flex-1 space-y-2">
+                                <input
+                                  value={module.title}
+                                  onChange={e => {
+                                    const ns = [...(formData.syllabus || [])] as SyllabusModule[];
+                                    ns[mIdx] = { ...ns[mIdx], title: e.target.value };
+                                    setFormData({ ...formData, syllabus: ns });
+                                  }}
+                                  placeholder="Module Title"
+                                  className="w-full px-2 py-1 border rounded text-sm font-medium"
+                                />
+                                <textarea
+                                  value={module.description}
+                                  onChange={e => {
+                                    const ns = [...(formData.syllabus || [])] as SyllabusModule[];
+                                    ns[mIdx] = { ...ns[mIdx], description: e.target.value };
+                                    setFormData({ ...formData, syllabus: ns });
+                                  }}
+                                  placeholder="Module description"
+                                  rows={2}
+                                  className="w-full px-2 py-1 border rounded text-sm resize-none"
+                                />
+                                <input
+                                  value={module.duration || ''}
+                                  onChange={e => {
+                                    const ns = [...(formData.syllabus || [])] as SyllabusModule[];
+                                    ns[mIdx] = { ...ns[mIdx], duration: e.target.value };
+                                    setFormData({ ...formData, syllabus: ns });
+                                  }}
+                                  placeholder="Module duration (e.g. 2 hours)"
+                                  className="w-full px-2 py-1 border rounded text-sm"
+                                />
+                              </div>
+                              <button
+                                type="button"
+                                onClick={() => {
+                                  const ns = [...(formData.syllabus || [])] as SyllabusModule[];
+                                  ns.splice(mIdx, 1);
                                   setFormData({ ...formData, syllabus: ns });
                                 }}
-                                placeholder="Module Title"
-                                className="w-full px-2 py-1 border rounded text-sm"
-                              />
-                              <textarea
-                                value={item.description}
-                                onChange={e => {
-                                  const ns = [...(formData.syllabus || [])];
-                                  ns[idx] = { ...ns[idx], description: e.target.value };
-                                  setFormData({ ...formData, syllabus: ns });
-                                }}
-                                placeholder="Description"
-                                className="w-full px-2 py-1 border rounded text-sm"
-                              />
+                                className="text-red-500 p-1 mt-1 shrink-0"
+                              >
+                                <FaTrash />
+                              </button>
                             </div>
-                            <button
-                              type="button"
-                              onClick={() => {
-                                const ns = [...(formData.syllabus || [])];
-                                ns.splice(idx, 1);
-                                setFormData({ ...formData, syllabus: ns });
-                              }}
-                              className="text-red-500 p-1"
-                            >
-                              <FaTrash />
-                            </button>
+
+                            {/* Lessons */}
+                            <div className="pl-3 border-l-2 border-blue-200 space-y-1 mt-2">
+                              <p className="text-xs font-medium text-gray-500 uppercase tracking-wide">Lessons</p>
+                              {(module.lessons || []).map((lesson, lIdx) => (
+                                <div key={lIdx} className="flex gap-2 items-center">
+                                  <input
+                                    value={lesson.title}
+                                    onChange={e => {
+                                      const ns = [...(formData.syllabus || [])] as SyllabusModule[];
+                                      const lessons = [...(ns[mIdx].lessons || [])];
+                                      lessons[lIdx] = { ...lessons[lIdx], title: e.target.value };
+                                      ns[mIdx] = { ...ns[mIdx], lessons };
+                                      setFormData({ ...formData, syllabus: ns });
+                                    }}
+                                    placeholder="Lesson title"
+                                    className="flex-1 px-2 py-1 border rounded text-sm"
+                                  />
+                                  <input
+                                    value={lesson.duration || ''}
+                                    onChange={e => {
+                                      const ns = [...(formData.syllabus || [])] as SyllabusModule[];
+                                      const lessons = [...(ns[mIdx].lessons || [])];
+                                      lessons[lIdx] = { ...lessons[lIdx], duration: e.target.value };
+                                      ns[mIdx] = { ...ns[mIdx], lessons };
+                                      setFormData({ ...formData, syllabus: ns });
+                                    }}
+                                    placeholder="Duration"
+                                    className="w-24 px-2 py-1 border rounded text-sm"
+                                  />
+                                  <button
+                                    type="button"
+                                    onClick={() => {
+                                      const ns = [...(formData.syllabus || [])] as SyllabusModule[];
+                                      const lessons = (ns[mIdx].lessons || []).filter((_, i) => i !== lIdx);
+                                      ns[mIdx] = { ...ns[mIdx], lessons };
+                                      setFormData({ ...formData, syllabus: ns });
+                                    }}
+                                    className="text-red-400 shrink-0"
+                                  >
+                                    <FaTrash className="w-3 h-3" />
+                                  </button>
+                                </div>
+                              ))}
+                              <button
+                                type="button"
+                                onClick={() => {
+                                  const ns = [...(formData.syllabus || [])] as SyllabusModule[];
+                                  ns[mIdx] = { ...ns[mIdx], lessons: [...(ns[mIdx].lessons || []), { title: '' }] };
+                                  setFormData({ ...formData, syllabus: ns });
+                                }}
+                                className="text-xs text-blue-500 hover:underline flex items-center mt-1"
+                              >
+                                <FaPlus className="mr-1 w-3 h-3" /> Add Lesson
+                              </button>
+                            </div>
                           </div>
                         ))}
                         <button
                           type="button"
                           onClick={() => {
-                            const ns = [...(formData.syllabus || [])];
-                            ns.push({ title: '', description: '' });
+                            const ns = [...(formData.syllabus || [])] as SyllabusModule[];
+                            ns.push({ title: '', description: '', lessons: [] });
                             setFormData({ ...formData, syllabus: ns });
                           }}
                           className="text-sm text-blue-600 hover:underline flex items-center"
@@ -655,18 +753,6 @@ const EventEditModal: React.FC<EventEditModalProps> = ({ event, isOpen, onClose,
             <div className="space-y-4">
               <div className="grid grid-cols-2 gap-4">
                 <div>
-                  <label htmlFor="edit-event-city" className="block text-sm font-medium text-gray-700 mb-2">City *</label>
-                  <input
-                    type="text"
-                    id="edit-event-city"
-                    name="city"
-                    value={formData.location.city}
-                    onChange={(e) => handleLocationChange('city', e.target.value)}
-                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-                  />
-                </div>
-
-                <div>
                   <label htmlFor="edit-event-currency" className="block text-sm font-medium text-gray-700 mb-2">Currency *</label>
                   <select
                     id="edit-event-currency"
@@ -683,49 +769,90 @@ const EventEditModal: React.FC<EventEditModalProps> = ({ event, isOpen, onClose,
                 </div>
               </div>
 
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">Address *</label>
-                <input
-                  type="text"
-                  value={formData.location.address}
-                  onChange={(e) => handleLocationChange('address', e.target.value)}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-                />
-              </div>
-
-              <div className="grid grid-cols-2 gap-4">
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">
-                    <FaMapMarkerAlt className="inline mr-1" />
-                    Latitude *
-                  </label>
-                  <input
-                    type="number"
-                    step="any"
-                    value={formData.location.coordinates.lat}
-                    onChange={(e) => handleLocationChange('lat', e.target.value)}
-                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-                    min="-90"
-                    max="90"
-                  />
+              {formData.venueType === 'Online' ? (
+                <div className="p-4 bg-blue-50 rounded-lg border border-blue-200 space-y-3">
+                  <p className="text-sm font-medium text-blue-800">Online Meeting Details</p>
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">Meeting Link</label>
+                    <input
+                      type="url"
+                      value={(formData as any).meetingLink || ''}
+                      onChange={(e) => handleInputChange('meetingLink', e.target.value)}
+                      placeholder="https://zoom.us/j/..."
+                      className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">Meeting Password</label>
+                    <input
+                      type="text"
+                      value={(formData as any).meetingPassword || ''}
+                      onChange={(e) => handleInputChange('meetingPassword', e.target.value)}
+                      className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
+                    />
+                  </div>
                 </div>
+              ) : (
+                <>
+                  <div className="grid grid-cols-2 gap-4">
+                    <div>
+                      <label htmlFor="edit-event-city" className="block text-sm font-medium text-gray-700 mb-2">City *</label>
+                      <input
+                        type="text"
+                        id="edit-event-city"
+                        name="city"
+                        value={formData.location.city}
+                        onChange={(e) => handleLocationChange('city', e.target.value)}
+                        className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                      />
+                    </div>
+                  </div>
 
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">
-                    <FaMapMarkerAlt className="inline mr-1" />
-                    Longitude *
-                  </label>
-                  <input
-                    type="number"
-                    step="any"
-                    value={formData.location.coordinates.lng}
-                    onChange={(e) => handleLocationChange('lng', e.target.value)}
-                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-                    min="-180"
-                    max="180"
-                  />
-                </div>
-              </div>
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-2">Address *</label>
+                    <input
+                      type="text"
+                      value={formData.location.address}
+                      onChange={(e) => handleLocationChange('address', e.target.value)}
+                      className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                    />
+                  </div>
+
+                  <div className="grid grid-cols-2 gap-4">
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-2">
+                        <FaMapMarkerAlt className="inline mr-1" />
+                        Latitude
+                      </label>
+                      <input
+                        type="number"
+                        step="any"
+                        value={formData.location.coordinates.lat}
+                        onChange={(e) => handleLocationChange('lat', e.target.value)}
+                        className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                        min="-90"
+                        max="90"
+                      />
+                    </div>
+
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-2">
+                        <FaMapMarkerAlt className="inline mr-1" />
+                        Longitude
+                      </label>
+                      <input
+                        type="number"
+                        step="any"
+                        value={formData.location.coordinates.lng}
+                        onChange={(e) => handleLocationChange('lng', e.target.value)}
+                        className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                        min="-180"
+                        max="180"
+                      />
+                    </div>
+                  </div>
+                </>
+              )}
             </div>
           )}
 

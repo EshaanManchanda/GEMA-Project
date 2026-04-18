@@ -1,9 +1,9 @@
 import React, { useEffect, useState } from 'react';
 import { useDispatch, useSelector } from 'react-redux';
 import { X, Upload, Search, Image as ImageIcon, Check } from 'lucide-react';
-import { AppDispatch, RootState } from '../../../store';
-import { fetchMedia, clearFilters } from '../../../store/slices/mediaSlice';
-import { MediaAsset } from '../../../store/slices/mediaSlice';
+import { AppDispatch, RootState } from '../../../store/legacyStore';
+import { fetchMedia, clearFilters } from '../../../store/legacySlices/mediaSlice';
+import { MediaAsset } from '../../../store/legacySlices/mediaSlice';
 import Button from '../../ui/Button';
 import Modal from '../../ui/Modal';
 import LoadingSpinner from '../../common/LoadingSpinner';

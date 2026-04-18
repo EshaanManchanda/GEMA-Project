@@ -13,8 +13,8 @@
  */
 
 import mongoose from "mongoose";
-import MediaAsset from "../models/MediaAsset";
-import { CloudinaryProvider } from "../services/storage/CloudinaryProvider";
+import { MediaAsset } from "../models/index";
+import { CloudinaryProvider } from "../modules/media/storage/CloudinaryProvider";
 import { config } from "../config/env";
 
 // Parse command line arguments

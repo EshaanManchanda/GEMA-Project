@@ -11,14 +11,14 @@ import { EventDetailSkeleton } from '@/components/common/SkeletonLoaders';
 import affiliateEventAPI from '../services/api/affiliateEventAPI';
 import eventsAPI from '../services/api/eventsAPI';
 import { EventSEO } from '@/components/common/SEO';
-import { AppDispatch } from '../store';
+import { AppDispatch } from '../store/legacyStore';
 import {
   setBookingEvent,
   resetBookingFlow,
   setBookingParticipants
-} from '../store/slices/bookingsSlice';
-import { toggleFavorite } from '../store/slices/favoritesSlice';
-import { RootState } from '../store';
+} from '../store/legacySlices/bookingsSlice';
+import { toggleFavorite } from '../store/legacySlices/favoritesSlice';
+import { RootState } from '../store/legacyStore';
 import EventDatePicker from '../components/ui/EventDatePicker';
 import Badge from '../components/ui/Badge';
 import { Card, CardContent, CardHeader, CardTitle } from '../components/ui/Card';
@@ -527,7 +527,7 @@ const EventDetailPage: React.FC = () => {
       try {
         await navigator.share({
           title: event.title,
-          text: event.description,
+          text: (event as any).shortDescription || event.title,
           url: window.location.href,
         });
         toast.success('Shared successfully!');
@@ -743,16 +743,11 @@ const EventDetailPage: React.FC = () => {
             </div>
 
 
-            <div
-              className="event-content"
-              dangerouslySetInnerHTML={{
-                __html: DOMPurify.sanitize(event.description || '', {
-                  ADD_ATTR: ['style', 'class', 'id', 'data-*', 'width', 'height', 'colspan', 'rowspan', 'align', 'valign'],
-                  ADD_TAGS: ['div', 'span', 'section', 'article', 'main', 'aside', 'header', 'footer', 'blockquote', 'iframe', 'svg', 'path', 'circle', 'rect', 'g', 'defs', 'clipPath', 'polygon', 'polyline', 'line', 'ellipse'],
-                  ALLOWED_ATTR: ['style', 'class', 'href', 'src', 'alt', 'title', 'target', 'rel', 'width', 'height', 'id', 'frameborder', 'allow', 'allowfullscreen', 'data-*', 'colspan', 'rowspan', 'align', 'valign', 'viewBox', 'fill', 'stroke', 'stroke-width', 'd', 'cx', 'cy', 'r', 'x', 'y', 'x1', 'y1', 'x2', 'y2', 'points']
-                })
-              }}
-            />
+            {(event as any).shortDescription && (
+              <p className="text-gray-600 text-base leading-relaxed mb-4">
+                {(event as any).shortDescription}
+              </p>
+            )}
 
             {/* Event Meta Information */}
             <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-4 mb-6">

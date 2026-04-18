@@ -4,7 +4,7 @@ import { useNavigate } from 'react-router-dom';
 import { FileText, Send, Save, Loader2, XCircle, AlertCircle, Calendar, CreditCard, Clock } from 'lucide-react';
 import toast from 'react-hot-toast';
 
-import { AppDispatch } from '@/store';
+import { AppDispatch } from '@/store/legacyStore';
 import {
   fetchRegistrationConfig,
   submitRegistration,
@@ -15,7 +15,7 @@ import {
   selectIsSubmittingRegistration,
   selectRegistrationSubmitError,
   selectRegistrationPayment,
-} from '@/store/slices/registrationsSlice';
+} from '@/store/legacySlices/registrationsSlice';
 import { RegistrationData } from '@/types/registration';
 import { Event } from '@/types/event';
 import logger from '@/utils/logger';

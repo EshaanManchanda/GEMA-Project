@@ -2,7 +2,7 @@ import React, { useState, useRef, useEffect } from 'react';
 import { useSelector, useDispatch } from 'react-redux';
 import { Link } from 'react-router-dom';
 import { FaBell, FaTimes, FaUser, FaTicketAlt, FaDollarSign, FaExclamationTriangle } from 'react-icons/fa';
-import { RootState, AppDispatch } from '@/store';
+import { RootState, AppDispatch } from '@/store/legacyStore';
 import {
   fetchUserNotifications,
   markAsRead,
@@ -10,7 +10,7 @@ import {
   selectNotifications,
   selectUnreadCount,
   selectNotificationsLoading
-} from '@/store/slices/notificationsSlice';
+} from '@/store/legacySlices/notificationsSlice';
 import { formatDistanceToNow } from 'date-fns';
 
 interface NotificationDropdownProps {

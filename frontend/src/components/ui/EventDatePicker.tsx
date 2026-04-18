@@ -47,14 +47,18 @@ const EventDatePicker: React.FC<EventDatePickerProps> = ({
       // or from starting date of event to ending date if event hasn't started
       const minDate = isAfter(today, startDate) ? today : startDate;
       const maxDate = endDate;
-      
+
+      // Sold out only when availableSeats is explicitly 0 AND totalSeats > 0.
+      // availableSeats=0 with totalSeats=0 means "not configured" (admin default) — show dates.
+      const isSoldOut = !schedule.unlimitedSeats
+        && schedule.availableSeats === 0
+        && (schedule.totalSeats ?? 0) > 0;
+      if (isSoldOut) return;
+
       // Generate all dates in the range
       let currentDate = new Date(minDate);
       while (!isAfter(currentDate, maxDate)) {
-        // Only add if seats are available
-        if (schedule.availableSeats > 0) {
-          dates.push(new Date(currentDate));
-        }
+        dates.push(new Date(currentDate));
         currentDate.setDate(currentDate.getDate() + 1);
       }
     });

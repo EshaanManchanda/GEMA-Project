@@ -19,8 +19,8 @@ import toast from 'react-hot-toast';
 import Button from '../ui/Button';
 import { Card, CardContent, CardHeader } from '../ui/Card';
 import Badge from '../ui/Badge';
-import { fetchActiveCoupons, validateCoupon } from '../../store/slices/couponsSlice';
-import { RootState, AppDispatch } from '../../store';
+import { fetchActiveCoupons, validateCoupon } from '../../store/legacySlices/couponsSlice';
+import { RootState, AppDispatch } from '../../store/legacyStore';
 
 interface CouponDiscoveryProps {
   orderAmount?: number;

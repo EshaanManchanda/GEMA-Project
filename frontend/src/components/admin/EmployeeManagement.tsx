@@ -19,7 +19,7 @@ import {
 } from 'react-icons/fa';
 import { format } from 'date-fns';
 import { logger } from '../../utils/logger';
-// import { AppDispatch } from '../../store';
+// import { AppDispatch } from '../../store/legacyStore';
 import Modal from '../interactive/Modal';
 import DataTable from '../interactive/DataTable';
 

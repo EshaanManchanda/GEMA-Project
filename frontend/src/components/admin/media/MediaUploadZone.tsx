@@ -1,9 +1,9 @@
 import React, { useCallback, useState } from 'react';
 import { Upload, X, CheckCircle, AlertCircle } from 'lucide-react';
 import { useDispatch } from 'react-redux';
-import { AppDispatch } from '../../../store';
-import { MediaAsset } from '../../../store/slices/mediaSlice';
-import { uploadMedia, uploadMultipleMedia, initUpload, completeUpload } from '../../../store/slices/mediaSlice';
+import { AppDispatch } from '../../../store/legacyStore';
+import { MediaAsset } from '../../../store/legacySlices/mediaSlice';
+import { uploadMedia, uploadMultipleMedia, initUpload, completeUpload } from '../../../store/legacySlices/mediaSlice';
 import Button from '../../ui/Button';
 import toast from 'react-hot-toast';
 import { formatBytes, formatUploadSpeed, formatDuration } from '../../../utils/uploadHelpers';

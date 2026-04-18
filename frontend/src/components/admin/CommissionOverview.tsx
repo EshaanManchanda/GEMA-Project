@@ -8,8 +8,8 @@ import {
   selectCommissionSummary,
   selectIsCommissionLoading,
   selectActiveCommissionConfig
-} from '../../store/slices/adminSlice';
-import type { AppDispatch } from '../../store';
+} from '../../store/legacySlices/adminSlice';
+import type { AppDispatch } from '../../store/legacyStore';
 
 interface CommissionOverviewProps {
   className?: string;

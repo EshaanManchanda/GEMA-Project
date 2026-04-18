@@ -1,9 +1,4 @@
-import Vendor, {
-  PaymentMode,
-  VendorSubscriptionStatus,
-  VerificationStatus,
-} from "../models/Vendor";
-import User from "../models/User";
+import { Vendor, PaymentMode, VendorSubscriptionStatus, VerificationStatus, User } from "../models/index";
 import { Types } from "mongoose";
 
 /**

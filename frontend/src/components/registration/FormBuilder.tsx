@@ -16,7 +16,7 @@ import {
 import toast from 'react-hot-toast';
 import { v4 as uuidv4 } from 'uuid';
 
-import { AppDispatch } from '@/store';
+import { AppDispatch } from '@/store/legacyStore';
 import {
   fetchRegistrationConfig,
   saveRegistrationConfig,
@@ -27,7 +27,7 @@ import {
   updateFormBuilderSettings,
   selectFormBuilder,
   selectIsFormBuilderDirty,
-} from '@/store/slices/registrationsSlice';
+} from '@/store/legacySlices/registrationsSlice';
 import { FormField, FieldType } from '@/types/registration';
 
 import FormBuilderFieldEditor from './FormBuilderFieldEditor';

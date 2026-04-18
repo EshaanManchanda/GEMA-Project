@@ -1,7 +1,7 @@
 import { useEffect, useRef, useCallback, useState } from 'react';
 import { useDispatch, useSelector } from 'react-redux';
-import { RootState, AppDispatch } from '@/store';
-import { fetchUserNotifications } from '@/store/slices/notificationsSlice';
+import { RootState, AppDispatch } from '@/store/legacyStore';
+import { fetchUserNotifications } from '@/store/legacySlices/notificationsSlice';
 import logger from '@/utils/logger';
 
 interface UseRealTimeDataOptions {

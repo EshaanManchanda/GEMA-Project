@@ -1,25 +1,13 @@
 import React, { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
-import { useDispatch, useSelector } from 'react-redux';
 import { toast } from 'react-hot-toast';
 import {
-  fetchCommissionConfigs,
-  fetchCommissionTransactions,
-  fetchCommissionStats,
-  createCommissionConfig,
-  updateCommissionConfig,
-  deleteCommissionConfig,
-  approveCommissions,
-  selectCommissionConfigs,
-  selectCommissionTransactions,
-  selectCommissionStats,
-  selectPendingCommissions,
-  selectIsCommissionLoading,
-  selectCommissionError,
-  selectCommissionSummary
-} from '../../store/slices/adminSlice';
-import type { AppDispatch } from '../../store';
-import type { CommissionConfig, CommissionRule } from '../../store/slices/adminSlice';
+  useAdminCommissionConfigs,
+  useAdminCommissionTransactions,
+  useCreateCommissionConfig,
+  useApproveCommissions,
+} from '@/features/admin/hooks/useAdminApis';
+import { adminCommissionsAPI } from '@/features/admin/services/adminApis';
 import PrivatePageSEO from '@/components/common/PrivatePageSEO';
 import logger from '@/utils/logger';
 
@@ -31,17 +19,65 @@ interface CommissionFilters {
   maxAmount: string;
 }
 
+interface CommissionRule {
+  id: string;
+  _id?: string;
+  name: string;
+  type: 'percentage' | 'fixed' | 'tiered';
+  recipient: 'vendor' | 'affiliate' | 'referrer' | 'platform';
+  percentage?: number;
+  fixedAmount?: number;
+  status: string;
+  priority: number;
+}
+
+interface CommissionConfig {
+  _id?: string;
+  id: string;
+  name: string;
+  description?: string;
+  platformCommission: {
+    defaultPercentage: number;
+    minAmount: number;
+    maxAmount?: number;
+    currency: string;
+  };
+  rules: CommissionRule[];
+  multiLevelEnabled: boolean;
+  maxLevels: number;
+  isDefault?: boolean;
+  status: string;
+}
+
+interface CommissionTransaction {
+  id: string;
+  transactionId: string;
+  orderNumber: string;
+  vendorName: string;
+  customerName: string;
+  originalAmount: number;
+  totalCommissionAmount: number;
+  platformCommission: number;
+  vendorCommission: number;
+  commissionConfigId: string;
+  status: string;
+  calculatedAt: string;
+}
+
+interface CommissionStats {
+  pendingCommissions?: number;
+  approvedCommissions?: number;
+  paidCommissions?: number;
+  pendingAmount?: number;
+  approvedAmount?: number;
+  paidAmount?: number;
+  totalAmount?: number;
+  totalCommissions?: number;
+  currency?: string;
+  topVendors?: Array<{ vendorId: string; vendorName: string; totalAmount: number; totalCommissions: number }>;
+}
+
 const AdminCommissionsPage: React.FC = () => {
-  const dispatch = useDispatch<AppDispatch>();
-
-  const commissionConfigs = useSelector(selectCommissionConfigs);
-  const commissionTransactions = useSelector(selectCommissionTransactions);
-  const commissionStats = useSelector(selectCommissionStats);
-  useSelector(selectPendingCommissions);
-  const isLoading = useSelector(selectIsCommissionLoading);
-  useSelector(selectCommissionError);
-  const commissionSummary = useSelector(selectCommissionSummary);
-
   const [activeTab, setActiveTab] = useState<'configs' | 'transactions' | 'analytics'>('configs');
   const [exporting, setExporting] = useState(false);
   const [selectedTransactions, setSelectedTransactions] = useState<string[]>([]);
@@ -53,14 +89,11 @@ const AdminCommissionsPage: React.FC = () => {
     maxAmount: ''
   });
 
-  // Modal states
   const [showConfigModal, setShowConfigModal] = useState(false);
   const [showDeleteModal, setShowDeleteModal] = useState(false);
   const [editingConfig, setEditingConfig] = useState<CommissionConfig | null>(null);
   const [configToDelete, setConfigToDelete] = useState<CommissionConfig | null>(null);
 
-  // Form state for commission config
-  // Form state for commission config
   const [configForm, setConfigForm] = useState<{
     name: string;
     description: string;
@@ -87,21 +120,48 @@ const AdminCommissionsPage: React.FC = () => {
     maxLevels: 3
   });
 
-  useEffect(() => {
-    loadCommissionData();
-  }, [dispatch]);
+  const { data: configsResponse, isLoading: configsLoading } = useAdminCommissionConfigs({});
+  const { data: transactionsResponse, isLoading: transactionsLoading } = useAdminCommissionTransactions({});
+  const createConfig = useCreateCommissionConfig();
+  const approveCommissions = useApproveCommissions();
 
-  const loadCommissionData = async () => {
-    try {
-      await Promise.all([
-        dispatch(fetchCommissionConfigs({})).unwrap(),
-        dispatch(fetchCommissionTransactions({})).unwrap(),
-        dispatch(fetchCommissionStats({})).unwrap()
-      ]);
-    } catch (error) {
-      logger.error('Failed to load commission data:', error);
-    }
-  };
+  const commissionConfigs: CommissionConfig[] = configsResponse?.data?.configs || configsResponse?.configs || [];
+  const commissionTransactions: CommissionTransaction[] = transactionsResponse?.data?.transactions || transactionsResponse?.transactions || [];
+
+  const [commissionStats, setCommissionStats] = useState<CommissionStats | null>(null);
+  const [commissionSummary, setCommissionSummary] = useState({
+    totalCommissions: 0,
+    totalAmount: 0,
+    pendingCommissions: 0,
+    pendingAmount: 0,
+    approvedAmount: 0,
+    averageRate: 0,
+  });
+
+  useEffect(() => {
+    const fetchStats = async () => {
+      try {
+        const response = await adminCommissionsAPI.getStats();
+        const stats = response.data?.stats || response.data;
+        setCommissionStats(stats);
+        if (stats) {
+          setCommissionSummary({
+            totalCommissions: stats.totalCommissions || commissionTransactions.length,
+            totalAmount: stats.totalAmount || 0,
+            pendingCommissions: stats.pendingCommissions || 0,
+            pendingAmount: stats.pendingAmount || 0,
+            approvedAmount: stats.approvedAmount || 0,
+            averageRate: stats.averageRate || 5,
+          });
+        }
+      } catch (error) {
+        logger.error('Failed to fetch commission stats:', error);
+      }
+    };
+    fetchStats();
+  }, []);
+
+  const isLoading = configsLoading || transactionsLoading;
 
   const handleSelectTransaction = (transactionId: string) => {
     setSelectedTransactions(prev =>
@@ -125,13 +185,13 @@ const AdminCommissionsPage: React.FC = () => {
 
   const handleApproveSelected = async () => {
     if (selectedTransactions.length === 0) return;
-
     try {
-      await dispatch(approveCommissions(selectedTransactions)).unwrap();
+      await approveCommissions.mutateAsync({ ids: selectedTransactions });
       setSelectedTransactions([]);
       toast.success(`${selectedTransactions.length} commission(s) approved successfully!`);
     } catch (error) {
       logger.error('Failed to approve commissions:', error);
+      toast.error('Failed to approve commissions');
     }
   };
 
@@ -169,31 +229,29 @@ const AdminCommissionsPage: React.FC = () => {
   const handleSaveConfig = async () => {
     try {
       if (editingConfig) {
-        await dispatch(updateCommissionConfig({
-          id: editingConfig.id,
-          configData: configForm
-        })).unwrap();
+        await adminCommissionsAPI.updateConfig(editingConfig.id, configForm);
         toast.success('Commission configuration updated successfully!');
       } else {
-        await dispatch(createCommissionConfig(configForm)).unwrap();
+        await createConfig.mutateAsync(configForm);
         toast.success('Commission configuration created successfully!');
       }
       setShowConfigModal(false);
     } catch (error) {
       logger.error('Failed to save commission config:', error);
+      toast.error('Failed to save commission configuration');
     }
   };
 
   const handleDeleteConfig = async () => {
     if (!configToDelete) return;
-
     try {
-      await dispatch(deleteCommissionConfig(configToDelete.id)).unwrap();
+      await adminCommissionsAPI.deleteConfig(configToDelete.id);
       toast.success('Commission configuration deleted successfully!');
       setShowDeleteModal(false);
       setConfigToDelete(null);
     } catch (error) {
       logger.error('Failed to delete commission config:', error);
+      toast.error('Failed to delete commission configuration');
     }
   };
 
@@ -707,7 +765,7 @@ const AdminCommissionsPage: React.FC = () => {
                                 <button
                                   onClick={async () => {
                                     try {
-                                      await dispatch(approveCommissions([transaction.id])).unwrap();
+                                      await approveCommissions.mutateAsync({ ids: [transaction.id] });
                                       toast.success('Commission approved');
                                     } catch {
                                       toast.error('Approval failed');
@@ -864,7 +922,7 @@ const AdminCommissionsPage: React.FC = () => {
                     <h3 className="text-lg font-medium text-gray-900 mb-4">Export Reports</h3>
                     <div className="space-y-3">
                       <button
-                        onClick={() => toast.info('Only CSV export is available')}
+                        onClick={() => toast('Only CSV export is available')}
                         className="w-full px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
                       >
                         Export Commission Summary (PDF)
@@ -877,7 +935,7 @@ const AdminCommissionsPage: React.FC = () => {
                         Export Transaction Log (CSV)
                       </button>
                       <button
-                        onClick={() => toast.info('Only CSV export is available')}
+                        onClick={() => toast('Only CSV export is available')}
                         className="w-full px-4 py-2 bg-purple-600 text-white rounded-lg hover:bg-purple-700 transition-colors"
                       >
                         Export Vendor Performance (Excel)

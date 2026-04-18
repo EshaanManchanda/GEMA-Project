@@ -15,7 +15,8 @@ import {
   Legend,
 } from 'chart.js';
 import { Line, Bar, Pie, Doughnut } from 'react-chartjs-2';
-import adminAPI from '../../services/api/adminAPI';
+import { useAdminDashboard, useAdminStats } from '@/features/admin/hooks/useAdminApis';
+import { adminAnalyticsAPI } from '@/features/admin/services/adminApis';
 import { ApiService } from '../../services/api';
 import {
   FaUsers,
@@ -151,6 +152,9 @@ const AdminAnalyticsPage: React.FC = () => {
   const [orderData, setOrderData] = useState<OrderAnalytics | null>(null);
   const [userData, setUserData] = useState<UserAnalytics | null>(null);
 
+  const { data: dashboardData } = useAdminDashboard();
+  useAdminStats();
+
   const fetchData = useCallback(async () => {
     setIsLoading(true);
     setError(null);
@@ -161,38 +165,33 @@ const AdminAnalyticsPage: React.FC = () => {
         endDate: dateRange.endDate,
       };
 
-      const [dashRes, eventRes, orderRes, userRes] = await Promise.allSettled([
-        adminAPI.getDashboardStats(),
-        adminAPI.getEventAnalytics(params),
+      const [eventRes, orderRes, userRes] = await Promise.allSettled([
+        adminAnalyticsAPI.getStats(params),
         ApiService.get('/analytics/orders', { params }),
-        adminAPI.getUserAnalytics(params),
+        adminAnalyticsAPI.getStats({ ...params, type: 'users' }),
       ]);
 
-      // Dashboard summary
-      // getDashboardStats returns full API response { success, data }
-      if (dashRes.status === 'fulfilled') {
-        const d = dashRes.value?.data || dashRes.value;
+      // Dashboard summary from React Query hook
+      if (dashboardData) {
+        const d = dashboardData?.data || dashboardData;
         setDashboard(d);
       }
 
       // Event analytics
-      // getEventAnalytics returns response.data (EventAnalytics directly)
       if (eventRes.status === 'fulfilled') {
-        const d = eventRes.value?.data || eventRes.value;
+        const d = eventRes.value?.data?.data || eventRes.value?.data || eventRes.value;
         setEventData(d);
       }
 
       // Order analytics from /analytics/orders
-      // ApiService.get returns { success, data: OrderAnalytics }
       if (orderRes.status === 'fulfilled') {
         const d = orderRes.value?.data || orderRes.value;
         setOrderData(d);
       }
 
       // User analytics
-      // getUserAnalytics returns response.data (UserAnalytics directly)
       if (userRes.status === 'fulfilled') {
-        const d = userRes.value?.data || userRes.value;
+        const d = userRes.value?.data?.data || userRes.value?.data || userRes.value;
         setUserData(d);
       }
     } catch (err: any) {
@@ -201,7 +200,7 @@ const AdminAnalyticsPage: React.FC = () => {
     } finally {
       setIsLoading(false);
     }
-  }, [timeRange]);
+  }, [timeRange, dashboardData]);
 
   useEffect(() => {
     fetchData();
@@ -210,12 +209,11 @@ const AdminAnalyticsPage: React.FC = () => {
   const handleExport = async () => {
     try {
       const dateRange = getDateRange(timeRange);
-      const data = await adminAPI.exportAnalytics({
-        type: 'orders',
+      const data = await adminAnalyticsAPI.exportData('orders', {
         ...dateRange,
         format: 'json',
       });
-      const blob = new Blob([JSON.stringify(data, null, 2)], {
+      const blob = new Blob([JSON.stringify(data.data || data, null, 2)], {
         type: 'application/json',
       });
       const url = URL.createObjectURL(blob);

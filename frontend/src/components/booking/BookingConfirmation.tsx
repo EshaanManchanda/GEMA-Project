@@ -23,7 +23,7 @@ import {
   selectBookingParticipants,
   selectCurrentBooking,
   selectCheckout,
-} from '../../store/slices/bookingsSlice';
+} from '../../store/legacySlices/bookingsSlice';
 import { Event } from '../../types/event';
 
 import Button from '../ui/Button';

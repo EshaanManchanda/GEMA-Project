@@ -18,7 +18,7 @@ import {
   selectUser,
   selectIsLoading,
   selectError
-} from '../store/slices/authSlice';
+} from '../store/legacySlices/authSlice';
 import { User, LoginCredentials, RegisterData } from '@/types/auth';
 import { AuthContext } from './authContextDef';
 

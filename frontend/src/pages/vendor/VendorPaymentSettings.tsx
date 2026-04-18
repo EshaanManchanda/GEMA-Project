@@ -8,8 +8,8 @@ import {
   selectPaymentSettings,
   selectIsSettingsLoading,
   selectPayoutError
-} from '../../store/slices/vendorPayoutSlice';
-import type { AppDispatch } from '../../store';
+} from '../../store/legacySlices/vendorPayoutSlice';
+import type { AppDispatch } from '../../store/legacyStore';
 
 
 const VendorPaymentSettings: React.FC = () => {

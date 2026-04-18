@@ -1,8 +1,8 @@
 import mongoose from "mongoose";
-import User from "../models/User";
-import Category from "../models/Category";
-import Event from "../models/Event";
-import { Blog } from "../models/Blog";
+import { User } from "../models/index";
+import { Category } from "../models/index";
+import { Event } from "../models/index";
+import { Blog } from "../models/index";
 import { AppError } from "../middleware/error";
 import { RelationshipResolution } from "../types/bulk-import.types";
 

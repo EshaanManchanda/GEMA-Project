@@ -4,8 +4,8 @@ import { format, parseISO, isValid } from 'date-fns';
 import { Calendar, Clock, MapPin, Users, Plus, Minus, Tag, Loader2, Sparkles, Gift, TrendingUp, X, Star, Check, ChevronRight, Ticket, DollarSign } from 'lucide-react';
 import toast from 'react-hot-toast';
 
-import { AppDispatch } from '../../store';
-import { setBookingParticipants, setCouponCode, setBookingSchedule, selectBookingFlow } from '../../store/slices/bookingsSlice';
+import { AppDispatch } from '../../store/legacyStore';
+import { setBookingParticipants, setCouponCode, setBookingSchedule, selectBookingFlow } from '../../store/legacySlices/bookingsSlice';
 import { Event, EventDateSchedule } from '../../types/event';
 import couponAPI, { CouponValidation } from '../../services/api/couponAPI';
 import logger from '../../utils/logger';

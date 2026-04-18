@@ -7,7 +7,7 @@ import { Navigate, useLocation } from 'react-router-dom';
 import { motion } from 'framer-motion';
 import { FaPhone, FaExclamationTriangle, FaLock } from 'react-icons/fa';
 import { useSelector } from 'react-redux';
-import { selectUser } from '@/store/slices/authSlice';
+import { selectUser } from '@/store/legacySlices/authSlice';
 
 interface PhoneVerificationGateProps {
   children: React.ReactNode;

@@ -1,11 +1,11 @@
 import mongoose from "mongoose";
-import CommissionConfig from "../models/CommissionConfig";
+import { CommissionConfig } from "../models/index";
 import {
   ConfigStatus,
   CommissionRuleType,
   RecipientType,
   RuleStatus,
-} from "../models/CommissionConfig";
+} from "../models/index";
 
 /**
  * Seed default commission configurations

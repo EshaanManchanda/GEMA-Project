@@ -6,7 +6,7 @@ import { useQueryClient } from '@tanstack/react-query';
 
 import TeacherEventEditModal from '../../components/admin/TeacherEventEditModal';
 import adminAPI from '../../services/api/adminAPI';
-import { MediaAsset } from '../../store/slices/mediaSlice';
+import { MediaAsset } from '../../store/legacySlices/mediaSlice';
 import { useAdminTeachingEventsQuery } from '@/hooks/queries/useAdminQuery';
 import {
   useApproveTeachingEventMutation,

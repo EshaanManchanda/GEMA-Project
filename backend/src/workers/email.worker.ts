@@ -6,7 +6,7 @@ import {
   areQueuesEnabled,
 } from "../config/queue";
 import logger from "../config/logger";
-import { emailService } from "../services/email.service";
+import { emailService } from "../modules/notifications/email.service";
 import { emailRateLimiter } from "../utils/email-rate-limiter";
 
 // Re-export the email queue for use by other modules

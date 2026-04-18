@@ -1,4 +1,4 @@
-import { cacheGroupService } from "../services/cache-groups.service";
+import { cacheGroupService } from "../shared/services/cache-groups.service";
 
 /**
  * Cache Group Utilities

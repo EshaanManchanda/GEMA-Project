@@ -1,5 +1,5 @@
-import { AppDispatch } from '@/store';
-import { generateQRCodesForBooking } from '@/store/slices/bookingsSlice';
+import { AppDispatch } from '@/store/legacyStore';
+import { generateQRCodesForBooking } from '@/store/legacySlices/bookingsSlice';
 import { generateBookingQRWithEventData, generateOrderQRWithEventData } from './qrcode.utils';
 import logger from '@/utils/logger';
 

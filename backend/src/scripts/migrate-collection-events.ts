@@ -1,6 +1,6 @@
 import mongoose from "mongoose";
-import Collection from "../models/Collection";
-import { collectionSyncService } from "../services/collection-sync.service";
+import { Collection } from "../models/index";
+import { collectionSyncService } from "../modules/collections/collection-sync.service";
 import logger from "../config/logger";
 
 /**

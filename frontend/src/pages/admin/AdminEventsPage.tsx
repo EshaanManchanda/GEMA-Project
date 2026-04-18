@@ -20,7 +20,7 @@ import {
 } from '@/hooks/mutations/useEventMutations';
 import { eventsKeys, adminKeys } from '@/hooks/queries/queryKeys';
 import logger from '@/utils/logger';
-import { MediaAsset } from '../../store/slices/mediaSlice';
+import { MediaAsset } from '../../store/legacySlices/mediaSlice';
 
 interface Event {
   id: string;

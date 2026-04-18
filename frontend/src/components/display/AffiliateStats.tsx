@@ -27,7 +27,7 @@ import {
   Pie,
   Cell
 } from 'recharts';
-import { AppDispatch } from '../../store';
+import { AppDispatch } from '../../store/legacyStore';
 import {
   fetchAllAffiliates,
   fetchAffiliateAnalytics,
@@ -38,7 +38,7 @@ import {
   selectTopPerformers,
   selectDashboardStats,
   selectAffiliatesLoading
-} from '../../store/slices/affiliatesSlice';
+} from '../../store/legacySlices/affiliatesSlice';
 import type { Affiliate } from '../../services/api/index';
 import LoadingSpinner from '../common/LoadingSpinner';
 import Modal from '../interactive/Modal';

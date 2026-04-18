@@ -2,7 +2,7 @@ import React, { Suspense, lazy } from 'react';
 import TagInput from '../common/TagInput';
 
 import MediaPickerModal from '../admin/media/MediaPickerModal';
-import { MediaAsset } from '../../store/slices/mediaSlice';
+import { MediaAsset } from '../../store/legacySlices/mediaSlice';
 import { Image as ImageIcon, Trash2 } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle } from '../ui/Card';
 

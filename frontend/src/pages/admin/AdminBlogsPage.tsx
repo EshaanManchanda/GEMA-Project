@@ -5,7 +5,7 @@ import PrivatePageSEO from '@/components/common/PrivatePageSEO';
 const AdminBlogsPage: React.FC = () => {
   return (
     <>
-      <PrivatePageSEO title="Admin - Blogs | Kidrove" description="Manage blog posts" />
+      <PrivatePageSEO title="Admin - Blogs | Gema" description="Manage blog posts" />
       <BlogList />
     </>
   );

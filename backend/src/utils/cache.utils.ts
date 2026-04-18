@@ -1,4 +1,4 @@
-import { cacheService } from "../services/cache.service";
+import { cacheService } from "../shared/services/cache.service";
 import logger from "../config/logger";
 
 /**

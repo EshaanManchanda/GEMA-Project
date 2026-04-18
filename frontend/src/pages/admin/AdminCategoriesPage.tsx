@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import categoriesAPI, { Category } from '../../services/api/categoriesAPI';
-import { MediaAsset } from '../../store/slices/mediaSlice';
+import { MediaAsset } from '../../store/legacySlices/mediaSlice';
 import MediaPickerModal from '../../components/admin/media/MediaPickerModal';
 import SEOEditor from '../../components/seo/SEOEditor';
 import toast from 'react-hot-toast';

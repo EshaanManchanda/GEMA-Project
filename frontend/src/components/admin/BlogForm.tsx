@@ -33,7 +33,7 @@ const TipTapEditorFallback = () => (
   </div>
 );
 import TagInput from '../common/TagInput';
-import { MediaAsset } from '../../store/slices/mediaSlice';
+import { MediaAsset } from '../../store/legacySlices/mediaSlice';
 import { config } from '../../config';
 import logger from '../../utils/logger';
 

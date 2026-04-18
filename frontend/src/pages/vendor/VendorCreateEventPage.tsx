@@ -3,7 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import { v4 as uuidv4 } from 'uuid';
 import vendorAPI from '../../services/api/vendorAPI';
 import categoriesAPI from '../../services/api/categoriesAPI';
-import { MediaAsset } from '../../store/slices/mediaSlice';
+import { MediaAsset } from '../../store/legacySlices/mediaSlice';
 import PrivatePageSEO from '@/components/common/PrivatePageSEO';
 import BasicInfoTab from '../../components/vendor/BasicInfoTab';
 import SchedulePricingTab from '../../components/vendor/SchedulePricingTab';

@@ -12,7 +12,7 @@ import {
   FaInfoCircle
 } from 'react-icons/fa';
 import { formatDistanceToNow } from 'date-fns';
-import { AppDispatch } from '../../store';
+import { AppDispatch } from '../../store/legacyStore';
 import {
   fetchUserNotifications,
   markAsRead as markNotificationAsRead,
@@ -23,7 +23,7 @@ import {
   selectNotifications,
   selectUnreadCount,
   selectNotificationsLoading
-} from '../../store/slices/notificationsSlice';
+} from '../../store/legacySlices/notificationsSlice';
 import type { Notification, NotificationPriority, NotificationType } from '../../services/api/notificationAPI';
 import LoadingSpinner from '../common/LoadingSpinner';
 import Modal from '../interactive/Modal';

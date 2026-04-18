@@ -1,7 +1,7 @@
 import { useCallback, useState } from 'react';
 import { useDispatch } from 'react-redux';
-import { AppDispatch } from '@/store';
-import { generateQRCodesForBooking } from '@/store/slices/bookingsSlice';
+import { AppDispatch } from '@/store/legacyStore';
+import { generateQRCodesForBooking } from '@/store/legacySlices/bookingsSlice';
 import { generateBookingQRData, generateOrderQRData, generateTicketQRData } from '@/utils/qrcode.utils';
 import logger from '@/utils/logger';
 import toast from 'react-hot-toast';

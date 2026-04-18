@@ -18,19 +18,19 @@ import ChartSkeleton from '../charts/ChartSkeleton';
 
 // Lazy load chart components to reduce initial bundle size (~250KB saved)
 const RevenueChart = lazy(() => import('../charts/RevenueChart'));
-import { AppDispatch } from '../../store';
+import { AppDispatch } from '../../store/legacyStore';
 import { 
   fetchPaymentAnalytics,
   selectPaymentAnalytics
-} from '../../store/slices/paymentsSlice';
+} from '../../store/legacySlices/paymentsSlice';
 import {
   fetchMyAffiliate,
   selectAffiliates,
   selectTotalEarnings
-} from '../../store/slices/affiliatesSlice';
+} from '../../store/legacySlices/affiliatesSlice';
 import {
   fetchNotifications
-} from '../../store/slices/notificationsSlice';
+} from '../../store/legacySlices/notificationsSlice';
 import LoadingSpinner from '../common/LoadingSpinner';
 import Modal from '../interactive/Modal';
 
