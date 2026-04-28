@@ -99,7 +99,7 @@ export const Template = mongoose.model<ITemplate>("CertTemplate", templateSchema
 
 export interface ITemplateVersion extends Document {
   templateId: mongoose.Types.ObjectId;
-  html: string;
+  html?: string;
   css?: string;
   version: number;
   createdAt: Date;
@@ -109,7 +109,7 @@ export interface ITemplateVersion extends Document {
 const templateVersionSchema = new Schema<ITemplateVersion>(
   {
     templateId: { type: Schema.Types.ObjectId, ref: "CertTemplate", required: true, index: true },
-    html: { type: String, required: true },
+    html: { type: String },
     css: String,
     version: { type: Number, required: true },
     createdBy: { type: Schema.Types.ObjectId, ref: "User" },

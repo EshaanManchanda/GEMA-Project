@@ -5,6 +5,7 @@ import {
   listTemplates,
   getTemplate,
   updateTemplate,
+  deleteTemplate,
   previewTemplate,
   listTemplateVersions,
   rollbackTemplate,
@@ -57,9 +58,15 @@ router.post(
   [
     body("name").notEmpty().withMessage("Template name required"),
     body("slug").notEmpty().withMessage("Template slug required"),
-    body("html").notEmpty().withMessage("Template HTML required"),
   ],
   createTemplate,
+);
+
+router.delete(
+  "/templates/:id",
+  authorize(["admin"]),
+  [param("id").isMongoId().withMessage("Invalid template ID")],
+  deleteTemplate,
 );
 
 router.get(

@@ -102,4 +102,7 @@ export const certificateAPI = {
 
   rollbackTemplate: (templateId: string, versionNumber: number) =>
     api.post(`/certificates/templates/${templateId}/rollback/${versionNumber}`),
+
+  deleteTemplate: (id: string) =>
+    api.delete(`/certificates/templates/${id}`),
 };

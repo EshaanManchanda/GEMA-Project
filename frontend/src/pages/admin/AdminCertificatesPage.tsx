@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useCallback, useRef } from 'react';
-import { Award, Search, XCircle, CheckCircle, RefreshCw, ExternalLink, Plus, Mail, Eye, Layout } from 'lucide-react';
+import { Award, Search, XCircle, CheckCircle, RefreshCw, ExternalLink, Mail, Eye, Layout, Trash2, Pencil } from 'lucide-react';
 import { certificateAPI, type CertVerifyResult } from '../../services/api/reviewLinkAPI';
 import adminAPI from '../../services/api/adminAPI';
 import api from '../../services/api';
@@ -9,7 +9,7 @@ import VisualTemplateBuilder from '../../components/admin/VisualTemplateBuilder'
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
-interface Template { _id: string; name: string; slug: string; active: boolean; createdAt: string; mode?: 'html' | 'visual'; html?: string; css?: string; description?: string }
+interface Template { _id: string; name: string; slug: string; active: boolean; createdAt: string; mode?: 'html' | 'visual'; html?: string; css?: string; description?: string; backgroundImageUrl?: string; canvasWidth?: number; canvasHeight?: number; fields?: any[] }
 interface EventOption { _id: string; title: string }
 
 type TabKey = 'list' | 'create' | 'templates' | 'audit';
@@ -467,35 +467,16 @@ const CreateCertTab: React.FC = () => {
 const TemplatesTab: React.FC = () => {
   const [templates, setTemplates] = useState<Template[]>([]);
   const [loading, setLoading] = useState(true);
-  const [showForm, setShowForm] = useState(false);
   const [showVisualBuilder, setShowVisualBuilder] = useState(false);
-  const [name, setName] = useState('');
-  const [slug, setSlug] = useState('');
-  const [description, setDescription] = useState('');
-  const [html, setHtml] = useState('');
-  const [saving, setSaving] = useState(false);
+  const [editingTemplate, setEditingTemplate] = useState<Template | null>(null);
   const [previewing, setPreviewing] = useState<string | null>(null);
+  const [deleting, setDeleting] = useState<string | null>(null);
   const [expandedVersions, setExpandedVersions] = useState<string | null>(null);
   const [versions, setVersions] = useState<Record<string, Array<{ _id: string; version: number; createdAt: string; createdBy?: { firstName: string; lastName: string } }>>>({});
   const [loadingVersions, setLoadingVersions] = useState<string | null>(null);
   const [rollingBack, setRollingBack] = useState<string | null>(null);
-  const [editingTemplate, setEditingTemplate] = useState<Template | null>(null);
-  const [editName, setEditName] = useState('');
-  const [editSlug, setEditSlug] = useState('');
-  const [editDescription, setEditDescription] = useState('');
-  const [editHtml, setEditHtml] = useState('');
-  const [editSaving, setEditSaving] = useState(false);
 
-  const DEFAULT_HTML = `<html><body style="font-family:sans-serif;text-align:center;padding:60px">
-  <h1 style="color:#4f46e5">Certificate of {{certificateType}}</h1>
-  <p>This is to certify that</p>
-  <h2>{{recipientName}}</h2>
-  <p>has successfully participated in <strong>{{eventTitle}}</strong></p>
-  <p>{{rank}}</p>
-  <p style="margin-top:40px;font-size:12px;color:#6b7280">Serial: {{serialNumber}} | Issued: {{issuedDate}}</p>
-</body></html>`;
-
-  const fetch = async () => {
+  const fetchTemplates = async () => {
     setLoading(true);
     try {
       const res = await certificateAPI.listTemplates();
@@ -503,62 +484,14 @@ const TemplatesTab: React.FC = () => {
     } catch { } finally { setLoading(false); }
   };
 
-  useEffect(() => { fetch(); }, []);
+  useEffect(() => { fetchTemplates(); }, []);
 
   const openEdit = async (t: Template) => {
     try {
-      const res = await api.get(`/certificates/templates/${t._id}/full`).catch(() =>
-        api.get(`/certificates/templates?id=${t._id}`)
-      );
-      const full: Template = res.data?.data?.template || t;
-      setEditingTemplate(full);
-      setEditName(full.name);
-      setEditSlug(full.slug);
-      setEditDescription(full.description || '');
-      setEditHtml(full.html || '');
+      const res = await api.get(`/certificates/templates/${t._id}/full`);
+      setEditingTemplate(res.data?.data?.template || t);
     } catch {
       setEditingTemplate(t);
-      setEditName(t.name);
-      setEditSlug(t.slug);
-      setEditDescription(t.description || '');
-      setEditHtml(t.html || '');
-    }
-  };
-
-  const handleUpdate = async (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!editingTemplate) return;
-    setEditSaving(true);
-    try {
-      await api.put(`/certificates/templates/${editingTemplate._id}`, {
-        name: editName,
-        slug: editSlug,
-        description: editDescription,
-        html: editHtml,
-      });
-      toast.success('Template updated');
-      setEditingTemplate(null);
-      fetch();
-    } catch (err: any) {
-      toast.error(err?.response?.data?.message || 'Failed to update template');
-    } finally {
-      setEditSaving(false);
-    }
-  };
-
-  const handleCreate = async (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!name || !slug || !html) return;
-    setSaving(true);
-    try {
-      await api.post('/certificates/templates', { name, slug, description, html });
-      toast.success('Template created');
-      setName(''); setSlug(''); setDescription(''); setHtml(''); setShowForm(false);
-      fetch();
-    } catch (err: any) {
-      toast.error(err?.response?.data?.message || 'Failed to create template');
-    } finally {
-      setSaving(false);
     }
   };
 
@@ -573,6 +506,20 @@ const TemplatesTab: React.FC = () => {
       toast.error(err?.response?.data?.message || 'Failed to generate preview');
     } finally {
       setPreviewing(null);
+    }
+  };
+
+  const handleDelete = async (t: Template) => {
+    if (!confirm(`Delete template "${t.name}"? This cannot be undone.`)) return;
+    setDeleting(t._id);
+    try {
+      await certificateAPI.deleteTemplate(t._id);
+      toast.success('Template deleted');
+      fetchTemplates();
+    } catch (err: any) {
+      toast.error(err?.response?.data?.message || 'Failed to delete template');
+    } finally {
+      setDeleting(null);
     }
   };
 
@@ -596,7 +543,7 @@ const TemplatesTab: React.FC = () => {
       await certificateAPI.rollbackTemplate(templateId, versionNumber);
       toast.success(`Rolled back to version ${versionNumber}`);
       setVersions(v => { const n = { ...v }; delete n[templateId]; return n; });
-      fetch();
+      fetchTemplates();
     } catch (err: any) {
       toast.error(err?.response?.data?.message || 'Rollback failed');
     } finally {
@@ -612,90 +559,20 @@ const TemplatesTab: React.FC = () => {
     <div className="space-y-5 max-w-3xl">
       <div className="flex items-center justify-between flex-wrap gap-3">
         <p className="text-sm text-gray-500">Templates define the layout of a certificate.</p>
-        <div className="flex gap-2">
-          <button
-            onClick={() => setShowVisualBuilder(true)}
-            className="flex items-center gap-1.5 px-4 py-2 text-sm bg-indigo-600 text-white rounded-lg hover:bg-indigo-700"
-          >
-            <Layout className="w-4 h-4" /> Visual Builder
-          </button>
-          <button onClick={() => { setShowForm(v => !v); if (!html) setHtml(DEFAULT_HTML); }} className="flex items-center gap-1.5 px-4 py-2 text-sm border border-indigo-300 text-indigo-600 rounded-lg hover:bg-indigo-50">
-            <Plus className="w-4 h-4" /> HTML Template
-          </button>
-        </div>
+        <button
+          onClick={() => { setEditingTemplate(null); setShowVisualBuilder(true); }}
+          className="flex items-center gap-1.5 px-4 py-2 text-sm bg-indigo-600 text-white rounded-lg hover:bg-indigo-700"
+        >
+          <Layout className="w-4 h-4" /> New Template
+        </button>
       </div>
 
       {showVisualBuilder && (
         <VisualTemplateBuilder
           onClose={() => setShowVisualBuilder(false)}
-          onSaved={() => { setShowVisualBuilder(false); fetch(); }}
+          onSaved={() => { setShowVisualBuilder(false); setEditingTemplate(null); fetchTemplates(); }}
+          editTemplate={editingTemplate ?? undefined}
         />
-      )}
-
-      {showForm && (
-        <form onSubmit={handleCreate} className="bg-white rounded-xl border border-gray-200 p-5 space-y-4">
-          <h3 className="font-semibold text-gray-800">Create Template</h3>
-          <div className="grid grid-cols-2 gap-4">
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">Name *</label>
-              <input value={name} onChange={e => { setName(e.target.value); if (!slug) setSlug(e.target.value.toLowerCase().replace(/\s+/g, '-')); }} className="w-full text-sm px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500" placeholder="Participation Certificate" required />
-            </div>
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">Slug * <span className="text-gray-400 font-normal">(unique)</span></label>
-              <input value={slug} onChange={e => setSlug(e.target.value)} className="w-full text-sm font-mono px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500" placeholder="participation-cert" required />
-            </div>
-          </div>
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">Description</label>
-            <input value={description} onChange={e => setDescription(e.target.value)} className="w-full text-sm px-3 py-2 border border-gray-300 rounded-lg" placeholder="Certificate issued to all participants" />
-          </div>
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">HTML Template *</label>
-            <p className="text-xs text-gray-400 mb-1.5">Available placeholders: {'{{recipientName}}, {{eventTitle}}, {{serialNumber}}, {{issuedDate}}'} + any custom key=value you pass.</p>
-            <textarea value={html} onChange={e => setHtml(e.target.value)} rows={12} className="w-full text-xs font-mono px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 resize-y" required />
-          </div>
-          <div className="flex gap-3">
-            <button type="submit" disabled={saving} className="px-5 py-2 bg-indigo-600 text-white text-sm rounded-lg hover:bg-indigo-700 disabled:opacity-50">{saving ? 'Saving…' : 'Create Template'}</button>
-            <button type="button" onClick={() => setShowForm(false)} className="px-5 py-2 text-sm text-gray-600 border border-gray-300 rounded-lg hover:bg-gray-50">Cancel</button>
-          </div>
-        </form>
-      )}
-
-      {/* Edit Template Modal */}
-      {editingTemplate && editingTemplate.mode !== 'visual' && (
-        <div className="fixed inset-0 z-50 bg-black/50 flex items-center justify-center p-4">
-          <div className="bg-white rounded-2xl w-full max-w-2xl shadow-2xl overflow-hidden">
-            <div className="flex items-center justify-between px-6 py-4 border-b border-gray-200">
-              <h2 className="font-semibold text-gray-900">Edit Template: {editingTemplate.name}</h2>
-              <button onClick={() => setEditingTemplate(null)} className="p-1.5 text-gray-400 hover:text-gray-700 rounded-lg hover:bg-gray-100">✕</button>
-            </div>
-            <form onSubmit={handleUpdate} className="p-6 space-y-4 max-h-[80vh] overflow-y-auto">
-              <div className="grid grid-cols-2 gap-4">
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">Name *</label>
-                  <input value={editName} onChange={e => setEditName(e.target.value)} className="w-full text-sm px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500" required />
-                </div>
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">Slug *</label>
-                  <input value={editSlug} onChange={e => setEditSlug(e.target.value)} className="w-full text-sm font-mono px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500" required />
-                </div>
-              </div>
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">Description</label>
-                <input value={editDescription} onChange={e => setEditDescription(e.target.value)} className="w-full text-sm px-3 py-2 border border-gray-300 rounded-lg" />
-              </div>
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">HTML Template *</label>
-                <p className="text-xs text-gray-400 mb-1.5">Placeholders: {'{{recipientName}}, {{studentName}}, {{schoolName}}, {{serialNumber}}, {{issuedDate}}, {{eventTitle}}'}</p>
-                <textarea value={editHtml} onChange={e => setEditHtml(e.target.value)} rows={14} className="w-full text-xs font-mono px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 resize-y" required />
-              </div>
-              <div className="flex gap-3 pt-2">
-                <button type="submit" disabled={editSaving} className="px-5 py-2 bg-indigo-600 text-white text-sm rounded-lg hover:bg-indigo-700 disabled:opacity-50">{editSaving ? 'Saving…' : 'Update Template'}</button>
-                <button type="button" onClick={() => setEditingTemplate(null)} className="px-5 py-2 text-sm text-gray-600 border border-gray-300 rounded-lg hover:bg-gray-50">Cancel</button>
-              </div>
-            </form>
-          </div>
-        </div>
       )}
 
       {loading ? (
@@ -706,78 +583,81 @@ const TemplatesTab: React.FC = () => {
         <div className="space-y-2">
           {templates.map(t => (
             <div key={t._id} className="bg-white rounded-xl border border-gray-200 overflow-hidden">
-            <div className="p-4 flex items-center justify-between">
-              <div>
-                <p className="font-medium text-gray-900">{t.name}</p>
-                <p className="text-xs text-gray-400 font-mono mt-0.5">{t.slug}</p>
-                {t.mode === 'html' && !t.html && (
-                  <p className="text-xs text-red-500 mt-0.5">⚠ No HTML — click Edit to add content</p>
-                )}
-              </div>
-              <div className="flex items-center gap-2 flex-wrap justify-end">
-                <span className={`px-2 py-0.5 text-xs rounded-full font-medium ${t.mode === 'visual' ? 'bg-purple-100 text-purple-700' : 'bg-blue-100 text-blue-700'}`}>{t.mode === 'visual' ? 'Visual' : 'HTML'}</span>
-                <span className={`px-2 py-0.5 text-xs rounded-full ${t.active ? 'bg-green-100 text-green-700' : 'bg-gray-100 text-gray-500'}`}>{t.active ? 'Active' : 'Inactive'}</span>
-                <span className="text-xs text-gray-400">{new Date(t.createdAt).toLocaleDateString()}</span>
-                {t.mode !== 'visual' && (
+              <div className="p-4 flex items-center justify-between">
+                <div>
+                  <p className="font-medium text-gray-900">{t.name}</p>
+                  <p className="text-xs text-gray-400 font-mono mt-0.5">{t.slug}</p>
+                  {t.description && <p className="text-xs text-gray-500 mt-0.5">{t.description}</p>}
+                </div>
+                <div className="flex items-center gap-2 flex-wrap justify-end">
+                  <span className="px-2 py-0.5 text-xs rounded-full font-medium bg-purple-100 text-purple-700">Visual</span>
+                  <span className={`px-2 py-0.5 text-xs rounded-full ${t.active ? 'bg-green-100 text-green-700' : 'bg-gray-100 text-gray-500'}`}>{t.active ? 'Active' : 'Inactive'}</span>
+                  <span className="text-xs text-gray-400">{new Date(t.createdAt).toLocaleDateString()}</span>
                   <button
                     type="button"
-                    onClick={() => openEdit(t)}
+                    onClick={async () => { await openEdit(t); setShowVisualBuilder(true); }}
                     className="flex items-center gap-1 px-3 py-1.5 text-xs text-gray-700 border border-gray-300 rounded-lg hover:bg-gray-50"
-                    title="Edit template HTML"
                   >
-                    Edit
+                    <Pencil className="w-3 h-3" /> Edit
                   </button>
-                )}
-                <button
-                  type="button"
-                  onClick={() => handlePreview(t._id)}
-                  disabled={previewing === t._id}
-                  className="flex items-center gap-1 px-3 py-1.5 text-xs text-indigo-600 border border-indigo-300 rounded-lg hover:bg-indigo-50 disabled:opacity-50"
-                  title="Preview with sample data"
-                >
-                  {previewing === t._id ? <RefreshCw className="w-3 h-3 animate-spin" /> : <Eye className="w-3 h-3" />}
-                  Preview
-                </button>
-                <button
-                  type="button"
-                  onClick={() => setExpandedVersions(v => v === t._id ? null : t._id)}
-                  className="flex items-center gap-1 px-3 py-1.5 text-xs text-gray-600 border border-gray-300 rounded-lg hover:bg-gray-50"
-                >
-                  History
-                </button>
+                  <button
+                    type="button"
+                    onClick={() => handlePreview(t._id)}
+                    disabled={previewing === t._id}
+                    className="flex items-center gap-1 px-3 py-1.5 text-xs text-indigo-600 border border-indigo-300 rounded-lg hover:bg-indigo-50 disabled:opacity-50"
+                  >
+                    {previewing === t._id ? <RefreshCw className="w-3 h-3 animate-spin" /> : <Eye className="w-3 h-3" />}
+                    Preview
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setExpandedVersions(v => v === t._id ? null : t._id)}
+                    className="flex items-center gap-1 px-3 py-1.5 text-xs text-gray-600 border border-gray-300 rounded-lg hover:bg-gray-50"
+                  >
+                    History
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => handleDelete(t)}
+                    disabled={deleting === t._id}
+                    className="flex items-center gap-1 px-3 py-1.5 text-xs text-red-600 border border-red-300 rounded-lg hover:bg-red-50 disabled:opacity-50"
+                  >
+                    {deleting === t._id ? <RefreshCw className="w-3 h-3 animate-spin" /> : <Trash2 className="w-3 h-3" />}
+                    Delete
+                  </button>
+                </div>
               </div>
-            </div>
-            {expandedVersions === t._id && (
-              <div className="border-t border-gray-100 bg-gray-50 p-4">
-                <p className="text-xs font-medium text-gray-500 uppercase tracking-wide mb-3">Version History</p>
-                {loadingVersions === t._id ? (
-                  <p className="text-xs text-gray-400">Loading…</p>
-                ) : !versions[t._id]?.length ? (
-                  <p className="text-xs text-gray-400">No previous versions saved yet.</p>
-                ) : (
-                  <div className="space-y-1.5">
-                    {versions[t._id].map(v => (
-                      <div key={v._id} className="flex items-center justify-between bg-white rounded-lg border border-gray-200 px-3 py-2">
-                        <div>
-                          <span className="text-xs font-mono text-gray-700">v{v.version}</span>
-                          <span className="text-xs text-gray-400 ml-2">{new Date(v.createdAt).toLocaleString()}</span>
-                          {v.createdBy && <span className="text-xs text-gray-400 ml-2">by {v.createdBy.firstName} {v.createdBy.lastName}</span>}
+              {expandedVersions === t._id && (
+                <div className="border-t border-gray-100 bg-gray-50 p-4">
+                  <p className="text-xs font-medium text-gray-500 uppercase tracking-wide mb-3">Version History</p>
+                  {loadingVersions === t._id ? (
+                    <p className="text-xs text-gray-400">Loading…</p>
+                  ) : !versions[t._id]?.length ? (
+                    <p className="text-xs text-gray-400">No previous versions saved yet.</p>
+                  ) : (
+                    <div className="space-y-1.5">
+                      {versions[t._id].map(v => (
+                        <div key={v._id} className="flex items-center justify-between bg-white rounded-lg border border-gray-200 px-3 py-2">
+                          <div>
+                            <span className="text-xs font-mono text-gray-700">v{v.version}</span>
+                            <span className="text-xs text-gray-400 ml-2">{new Date(v.createdAt).toLocaleString()}</span>
+                            {v.createdBy && <span className="text-xs text-gray-400 ml-2">by {v.createdBy.firstName} {v.createdBy.lastName}</span>}
+                          </div>
+                          <button
+                            type="button"
+                            onClick={() => handleRollback(t._id, v.version)}
+                            disabled={rollingBack === `${t._id}-${v.version}`}
+                            className="text-xs px-2.5 py-1 text-orange-600 border border-orange-300 rounded hover:bg-orange-50 disabled:opacity-50"
+                          >
+                            {rollingBack === `${t._id}-${v.version}` ? 'Rolling back…' : 'Restore'}
+                          </button>
                         </div>
-                        <button
-                          type="button"
-                          onClick={() => handleRollback(t._id, v.version)}
-                          disabled={rollingBack === `${t._id}-${v.version}`}
-                          className="text-xs px-2.5 py-1 text-orange-600 border border-orange-300 rounded hover:bg-orange-50 disabled:opacity-50"
-                        >
-                          {rollingBack === `${t._id}-${v.version}` ? 'Rolling back…' : 'Restore'}
-                        </button>
-                      </div>
-                    ))}
-                  </div>
-                )}
-              </div>
-            )}
-          </div>
+                      ))}
+                    </div>
+                  )}
+                </div>
+              )}
+            </div>
           ))}
         </div>
       )}

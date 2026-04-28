@@ -21,9 +21,21 @@ interface TemplateField {
   type?: 'text' | 'qr' | 'image';
 }
 
+interface EditableTemplate {
+  _id: string;
+  name: string;
+  slug: string;
+  description?: string;
+  backgroundImageUrl?: string;
+  canvasWidth?: number;
+  canvasHeight?: number;
+  fields?: TemplateField[];
+}
+
 interface Props {
   onClose: () => void;
   onSaved: () => void;
+  editTemplate?: EditableTemplate;
 }
 
 // ─── Predefined field palette ─────────────────────────────────────────────────
@@ -44,14 +56,17 @@ function uid() {
 
 // ─── Component ────────────────────────────────────────────────────────────────
 
-const VisualTemplateBuilder: React.FC<Props> = ({ onClose, onSaved }) => {
-  const [name, setName] = useState('');
-  const [slug, setSlug] = useState('');
-  const [description, setDescription] = useState('');
-  const [bgUrl, setBgUrl] = useState('');
-  const [canvasW, setCanvasW] = useState(1240);
-  const [canvasH, setCanvasH] = useState(877);
-  const [fields, setFields] = useState<TemplateField[]>([]);
+const VisualTemplateBuilder: React.FC<Props> = ({ onClose, onSaved, editTemplate }) => {
+  const isEdit = !!editTemplate;
+  const [name, setName] = useState(editTemplate?.name ?? '');
+  const [slug, setSlug] = useState(editTemplate?.slug ?? '');
+  const [description, setDescription] = useState(editTemplate?.description ?? '');
+  const [bgUrl, setBgUrl] = useState(editTemplate?.backgroundImageUrl ?? '');
+  const [canvasW, setCanvasW] = useState(editTemplate?.canvasWidth ?? 1240);
+  const [canvasH, setCanvasH] = useState(editTemplate?.canvasHeight ?? 877);
+  const [fields, setFields] = useState<TemplateField[]>(
+    (editTemplate?.fields ?? []).map(f => ({ ...f, id: (f as any).id || uid() }))
+  );
   const [selected, setSelected] = useState<string | null>(null);
   const [showMediaPicker, setShowMediaPicker] = useState(false);
   const [saving, setSaving] = useState(false);
@@ -154,8 +169,13 @@ const VisualTemplateBuilder: React.FC<Props> = ({ onClose, onSaved }) => {
         canvasHeight: canvasH,
         fields: fields.map(({ id: _id, ...f }) => f),
       };
-      await api.post('/certificates/templates', payload);
-      toast.success('Visual template created');
+      if (isEdit) {
+        await api.put(`/certificates/templates/${editTemplate!._id}`, payload);
+        toast.success('Template updated');
+      } else {
+        await api.post('/certificates/templates', payload);
+        toast.success('Visual template created');
+      }
       onSaved();
     } catch (err: any) {
       toast.error(err?.response?.data?.message || 'Failed to save template');
@@ -174,7 +194,7 @@ const VisualTemplateBuilder: React.FC<Props> = ({ onClose, onSaved }) => {
         <div className="flex items-center justify-between px-6 py-4 border-b border-gray-200 shrink-0">
           <div className="flex items-center gap-3">
             <ImageIcon className="w-5 h-5 text-indigo-600" />
-            <h2 className="text-lg font-semibold text-gray-900">Visual Template Builder</h2>
+            <h2 className="text-lg font-semibold text-gray-900">{isEdit ? `Edit Template: ${editTemplate!.name}` : 'Visual Template Builder'}</h2>
           </div>
           <button onClick={onClose} className="p-1.5 text-gray-400 hover:text-gray-700 rounded-lg hover:bg-gray-100">
             <X className="w-5 h-5" />
@@ -555,7 +575,7 @@ const VisualTemplateBuilder: React.FC<Props> = ({ onClose, onSaved }) => {
               disabled={saving || !name || !slug || !bgUrl || fields.length === 0}
               className="px-5 py-2 text-sm bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 disabled:opacity-50"
             >
-              {saving ? 'Saving…' : 'Save Template'}
+              {saving ? 'Saving…' : isEdit ? 'Update Template' : 'Save Template'}
             </button>
           </div>
         </div>

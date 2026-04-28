@@ -12,7 +12,7 @@ import logger from "../config/logger";
 
 export const createTemplate = async (req: AuthRequest, res: Response, next: NextFunction) => {
   try {
-    const { name, slug, description, html, css, defaultOptions } = req.body;
+    const { name, slug, description, html, css, defaultOptions, mode, backgroundImageUrl, canvasWidth, canvasHeight, fields } = req.body;
     const userId = req.user?._id || req.user?.id;
 
     const template = await Template.create({
@@ -22,10 +22,27 @@ export const createTemplate = async (req: AuthRequest, res: Response, next: Next
       html,
       css,
       defaultOptions,
+      mode: mode || "html",
+      backgroundImageUrl,
+      canvasWidth,
+      canvasHeight,
+      fields,
       createdBy: userId,
     });
 
     res.status(201).json({ success: true, data: { template } });
+  } catch (error) {
+    next(error);
+  }
+};
+
+export const deleteTemplate = async (req: AuthRequest, res: Response, next: NextFunction) => {
+  try {
+    const { id } = req.params;
+    const template = await Template.findById(id);
+    if (!template) return next(new AppError("Template not found", 404));
+    await Template.findByIdAndDelete(id);
+    res.status(200).json({ success: true, data: { message: "Template deleted" } });
   } catch (error) {
     next(error);
   }
@@ -53,14 +70,13 @@ export const getTemplate = async (req: Request, res: Response, next: NextFunctio
 export const updateTemplate = async (req: AuthRequest, res: Response, next: NextFunction) => {
   try {
     const { id } = req.params;
-    const { html, css, ...rest } = req.body;
+    const { html, css, backgroundImageUrl, canvasWidth, canvasHeight, fields, ...rest } = req.body;
     const userId = req.user?._id || req.user?.id;
 
     const existing = await Template.findById(id);
     if (!existing) return next(new AppError("Template not found", 404));
 
-    // Snapshot existing version before update
-    if (html || css) {
+    if (existing.mode !== "visual" && (html || css)) {
       await TemplateVersion.create({
         templateId: id,
         html: existing.html,
@@ -73,6 +89,10 @@ export const updateTemplate = async (req: AuthRequest, res: Response, next: Next
     const updates: Record<string, any> = { ...rest };
     if (html) { updates.html = html; updates.$inc = { version: 1 }; }
     if (css !== undefined) updates.css = css;
+    if (backgroundImageUrl !== undefined) updates.backgroundImageUrl = backgroundImageUrl;
+    if (canvasWidth !== undefined) updates.canvasWidth = canvasWidth;
+    if (canvasHeight !== undefined) updates.canvasHeight = canvasHeight;
+    if (fields !== undefined) updates.fields = fields;
 
     const template = await Template.findByIdAndUpdate(id, updates, { new: true, runValidators: true });
     res.status(200).json({ success: true, data: { template } });
