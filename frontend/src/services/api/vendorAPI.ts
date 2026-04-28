@@ -1,0 +1,599 @@
+import { ApiService } from '../api';
+import { extractApiData, logApiResponse } from '../../utils/apiResponseHandler';
+
+export interface VendorPaymentInfo {
+  hasCustomStripeAccount: boolean;
+  usesVendorStripe: boolean;
+  commissionRate: number;
+  acceptsPlatformPayments: boolean;
+}
+
+const vendorAPI = {
+  getAllVendors: async (params?: any) => {
+    try {
+      const response = await ApiService.get('/vendors', { params });
+      return response.data;
+    } catch (error) {
+      throw error;
+    }
+  },
+
+  getVendorById: async (id: string) => {
+    try {
+      const response = await ApiService.get(`/vendors/${id}`);
+      return response.data;
+    } catch (error) {
+      throw error;
+    }
+  },
+
+  // Get public vendor profile (no authentication required)
+  getPublicVendorProfile: async (id: string) => {
+    try {
+      const response = await ApiService.get(`/vendors/public/${id}`);
+      logApiResponse(`GET /vendors/public/${id}`, response);
+      return extractApiData(response);
+    } catch (error) {
+      logApiResponse(`GET /vendors/public/${id}`, null, error);
+      throw error;
+    }
+  },
+
+  getFeaturedVendors: async () => {
+    try {
+      const response = await ApiService.get('/vendors/featured');
+      return response.data;
+    } catch (error) {
+      throw error;
+    }
+  },
+
+  // For vendor dashboard
+  getVendorEvents: async () => {
+    try {
+      const response = await ApiService.get('/vendors/events');
+      return response.data?.data?.events || response.data?.events || [];
+    } catch (error) {
+      throw error;
+    }
+  },
+
+  getVendorBookings: async (params?: any) => {
+    try {
+      const response = await ApiService.get('/vendors/bookings', { params });
+      logApiResponse('GET /vendors/bookings', response);
+      return extractApiData(response);
+    } catch (error) {
+      logApiResponse('GET /vendors/bookings', null, error);
+      throw error;
+    }
+  },
+
+  getVendorBookingById: async (id: string) => {
+    try {
+      const response = await ApiService.get(`/vendors/bookings/${id}`);
+      logApiResponse(`GET /vendors/bookings/${id}`, response);
+      return extractApiData(response);
+    } catch (error) {
+      logApiResponse(`GET /vendors/bookings/${id}`, null, error);
+      throw error;
+    }
+  },
+
+  updateVendorBooking: async (id: string, data: { vendorNotes?: string; vendorStatus?: string; isFulfilled?: boolean }) => {
+    try {
+      const response = await ApiService.put(`/vendors/bookings/${id}`, data);
+      logApiResponse(`PUT /vendors/bookings/${id}`, response);
+      return extractApiData(response);
+    } catch (error) {
+      logApiResponse(`PUT /vendors/bookings/${id}`, null, error);
+      throw error;
+    }
+  },
+
+  exportVendorBookings: async (format: 'csv' | 'json' = 'csv', filters?: any) => {
+    try {
+      const params = { format, ...filters };
+      const response = await ApiService.get('/vendors/bookings/export', {
+        params,
+        responseType: format === 'csv' ? 'blob' : 'json'
+      });
+
+      if (format === 'csv') {
+        // Create download link for CSV
+        // Note: ApiService.get returns response.data directly, so response IS the Blob
+        const url = window.URL.createObjectURL(new Blob([response as any]));
+        const link = document.createElement('a');
+        link.href = url;
+        link.setAttribute('download', `bookings-${Date.now()}.csv`);
+        document.body.appendChild(link);
+        link.click();
+        link.remove();
+        window.URL.revokeObjectURL(url);
+        return { success: true, message: 'CSV exported successfully' };
+      } else {
+        // For JSON, trigger download
+        const dataStr = JSON.stringify(response, null, 2);
+        const dataBlob = new Blob([dataStr], { type: 'application/json' });
+        const url = window.URL.createObjectURL(dataBlob);
+        const link = document.createElement('a');
+        link.href = url;
+        link.setAttribute('download', `bookings-${Date.now()}.json`);
+        document.body.appendChild(link);
+        link.click();
+        link.remove();
+        window.URL.revokeObjectURL(url);
+        return { success: true, message: 'JSON exported successfully' };
+      }
+    } catch (error) {
+      logApiResponse('GET /vendors/bookings/export', null, error);
+      throw error;
+    }
+  },
+
+  exportEventParticipants: async (eventId: string, format: 'csv' | 'json' = 'csv') => {
+    try {
+      const response = await ApiService.get(
+        `/vendors/events/${eventId}/participants/export`,
+        { params: { format }, responseType: format === 'csv' ? 'blob' : 'json' }
+      );
+      if (format === 'csv') {
+        const url = window.URL.createObjectURL(new Blob([response as any]));
+        const link = document.createElement('a');
+        link.href = url;
+        link.setAttribute('download', `participants-${eventId}-${Date.now()}.csv`);
+        document.body.appendChild(link);
+        link.click();
+        link.remove();
+        window.URL.revokeObjectURL(url);
+        return { success: true };
+      }
+      return response;
+    } catch (error) {
+      logApiResponse(`GET /vendors/events/${eventId}/participants/export`, null, error);
+      throw error;
+    }
+  },
+
+  importVendorBookings: async (csvData: any[]) => {
+    try {
+      const response = await ApiService.post('/vendors/bookings/import', { csvData });
+      logApiResponse('POST /vendors/bookings/import', response);
+      return extractApiData(response);
+    } catch (error) {
+      logApiResponse('POST /vendors/bookings/import', null, error);
+      throw error;
+    }
+  },
+
+  getVendorStats: async () => {
+    try {
+      const response = await ApiService.get('/vendors/stats');
+      return response.data;
+    } catch (error) {
+      throw error;
+    }
+  },
+
+  // Get current vendor's profile
+  getVendorProfile: async () => {
+    try {
+      const response = await ApiService.get('/vendors/profile');
+      return response.data?.data || response.data;
+    } catch (error) {
+      throw error;
+    }
+  },
+
+  updateVendorProfile: async (profileData: any) => {
+    try {
+      const response = await ApiService.put('/vendors/profile', profileData);
+      return response.data;
+    } catch (error) {
+      throw error;
+    }
+  },
+
+  // Upload vendor images (logo or cover image)
+  uploadVendorImage: async (imageFile: File, imageType: 'logo' | 'coverImage' = 'logo') => {
+    try {
+      const formData = new FormData();
+      formData.append('image', imageFile);
+      formData.append('imageType', imageType);
+
+      const response = await ApiService.post('/vendors/upload-image', formData);
+      return response.data;
+    } catch (error) {
+      throw error;
+    }
+  },
+
+  // Update vendor business hours
+  updateBusinessHours: async (businessHours: Record<string, string>) => {
+    try {
+      const response = await ApiService.put('/vendors/business-hours', { businessHours });
+      return response.data;
+    } catch (error) {
+      throw error;
+    }
+  },
+
+  // Update vendor social media links
+  updateSocialMedia: async (socialMedia: Record<string, string>) => {
+    try {
+      const response = await ApiService.put('/vendors/social-media', { socialMedia });
+      return response.data;
+    } catch (error) {
+      throw error;
+    }
+  },
+
+  // For becoming a vendor
+  applyForVendor: async (applicationData: any) => {
+    try {
+      const response = await ApiService.post('/vendors/apply', applicationData);
+      return response.data;
+    } catch (error) {
+      throw error;
+    }
+  },
+
+  // Get vendor payment information for fee calculation
+  getVendorPaymentInfo: async (vendorId: string) => {
+    try {
+      const response = await ApiService.get(`/vendors/${vendorId}/payment-info`);
+      logApiResponse(`GET /vendors/${vendorId}/payment-info`, response);
+      return extractApiData(response);
+    } catch (error) {
+      logApiResponse(`GET /vendors/${vendorId}/payment-info`, null, error);
+      throw error;
+    }
+  },
+
+  // Check if service fee applies for this vendor
+  checkServiceFee: async (vendorId: string, amount: number) => {
+    try {
+      const response = await ApiService.post('/vendors/check-service-fee', {
+        vendorId,
+        amount
+      });
+      logApiResponse('POST /vendors/check-service-fee', response);
+      return extractApiData(response);
+    } catch (error) {
+      logApiResponse('POST /vendors/check-service-fee', null, error);
+      throw error;
+    }
+  },
+
+  // Vendor Event CRUD operations
+  getVendorEventById: async (id: string) => {
+    try {
+      const response = await ApiService.get(`/vendors/events/${id}`);
+      return response.data;
+    } catch (error) {
+      throw error;
+    }
+  },
+
+  createVendorEvent: async (eventData: any) => {
+    try {
+      const response = await ApiService.post('/vendors/events', eventData);
+      return response.data;
+    } catch (error) {
+      throw error;
+    }
+  },
+
+  updateVendorEvent: async (id: string, eventData: any) => {
+    try {
+      const response = await ApiService.put(`/vendors/events/${id}`, eventData);
+      return response.data;
+    } catch (error) {
+      throw error;
+    }
+  },
+
+  deleteVendorEvent: async (id: string, permanent?: boolean) => {
+    try {
+      const response = await ApiService.delete(`/vendors/events/${id}${permanent ? '?permanent=true' : ''}`);
+      return response.data;
+    } catch (error) {
+      throw error;
+    }
+  },
+
+  restoreVendorEvent: async (id: string) => {
+    try {
+      const response = await ApiService.put(`/vendors/events/${id}/restore`);
+      return response.data;
+    } catch (error) {
+      throw error;
+    }
+  },
+
+  getClaimedEvents: async () => {
+    try {
+      const response = await ApiService.get('/vendor/claimed-events');
+      return response;
+    } catch (error) {
+      throw error;
+    }
+  },
+
+  getClaimedVenues: async () => {
+    try {
+      const response = await ApiService.get('/vendor/claimed-venues');
+      return response;
+    } catch (error) {
+      throw error;
+    }
+  },
+
+  // ===================== EMPLOYEE MANAGEMENT API =====================
+
+  // Get all employees for the authenticated vendor
+  getVendorEmployees: async (params?: any) => {
+    try {
+      const response = await ApiService.get('/vendors/employees', { params });
+      logApiResponse('GET /vendors/employees', response);
+      return extractApiData(response);
+    } catch (error) {
+      logApiResponse('GET /vendors/employees', null, error);
+      throw error;
+    }
+  },
+
+  // Get single employee by ID
+  getVendorEmployeeById: async (id: string) => {
+    try {
+      const response = await ApiService.get(`/vendors/employees/${id}`);
+      logApiResponse(`GET /vendors/employees/${id}`, response);
+      return extractApiData(response);
+    } catch (error) {
+      logApiResponse(`GET /vendors/employees/${id}`, null, error);
+      throw error;
+    }
+  },
+
+  // Create a new employee
+  createVendorEmployee: async (employeeData: any) => {
+    try {
+      const response = await ApiService.post('/vendors/employees', employeeData);
+      logApiResponse('POST /vendors/employees', response);
+      return extractApiData(response);
+    } catch (error) {
+      logApiResponse('POST /vendors/employees', null, error);
+      throw error;
+    }
+  },
+
+  // Update an employee
+  updateVendorEmployee: async (id: string, employeeData: any) => {
+    try {
+      const response = await ApiService.put(`/vendors/employees/${id}`, employeeData);
+      logApiResponse(`PUT /vendors/employees/${id}`, response);
+      return extractApiData(response);
+    } catch (error) {
+      logApiResponse(`PUT /vendors/employees/${id}`, null, error);
+      throw error;
+    }
+  },
+
+  // Delete/deactivate an employee
+  deleteVendorEmployee: async (id: string, permanent?: boolean) => {
+    try {
+      const response = await ApiService.delete(`/vendors/employees/${id}${permanent ? '?permanent=true' : ''}`);
+      logApiResponse(`DELETE /vendors/employees/${id}`, response);
+      return extractApiData(response);
+    } catch (error) {
+      logApiResponse(`DELETE /vendors/employees/${id}`, null, error);
+      throw error;
+    }
+  },
+
+  // Assign employee to one or more events
+  assignEmployeeToEvent: async (employeeId: string, eventIds: string | string[]) => {
+    try {
+      // Ensure eventIds is always an array
+      const eventIdsArray = Array.isArray(eventIds) ? eventIds : [eventIds];
+      const response = await ApiService.post(`/vendors/employees/${employeeId}/assign-event`, { eventIds: eventIdsArray });
+      logApiResponse(`POST /vendors/employees/${employeeId}/assign-event`, response);
+      return extractApiData(response);
+    } catch (error) {
+      logApiResponse(`POST /vendors/employees/${employeeId}/assign-event`, null, error);
+      throw error;
+    }
+  },
+
+  // Remove employee from an event
+  removeEmployeeFromEvent: async (employeeId: string, eventId: string) => {
+    try {
+      const response = await ApiService.post(`/vendors/employees/${employeeId}/remove-event`, { eventId });
+      logApiResponse(`POST /vendors/employees/${employeeId}/remove-event`, response);
+      return extractApiData(response);
+    } catch (error) {
+      logApiResponse(`POST /vendors/employees/${employeeId}/remove-event`, null, error);
+      throw error;
+    }
+  },
+
+  // Export employees to CSV or JSON
+  exportVendorEmployees: async (format: 'csv' | 'json' = 'csv', filters?: any) => {
+    try {
+      const response = await ApiService.post('/vendors/employees/export',
+        { format, filters },
+        { responseType: format === 'csv' ? 'blob' : 'json' }
+      );
+
+      if (format === 'csv') {
+        // Create download link for CSV
+        const url = window.URL.createObjectURL(new Blob([response.data]));
+        const link = document.createElement('a');
+        link.href = url;
+        link.setAttribute('download', `employees-${Date.now()}.csv`);
+        document.body.appendChild(link);
+        link.click();
+        link.remove();
+        window.URL.revokeObjectURL(url);
+        logApiResponse('POST /vendors/employees/export', response);
+        return { success: true, message: 'CSV exported successfully' };
+      } else {
+        // For JSON, trigger download
+        const dataStr = JSON.stringify(response.data, null, 2);
+        const dataBlob = new Blob([dataStr], { type: 'application/json' });
+        const url = window.URL.createObjectURL(dataBlob);
+        const link = document.createElement('a');
+        link.href = url;
+        link.setAttribute('download', `employees-${Date.now()}.json`);
+        document.body.appendChild(link);
+        link.click();
+        link.remove();
+        window.URL.revokeObjectURL(url);
+        logApiResponse('POST /vendors/employees/export', response);
+        return { success: true, message: 'JSON exported successfully' };
+      }
+    } catch (error) {
+      logApiResponse('POST /vendors/employees/export', null, error);
+      throw error;
+    }
+  },
+
+  // ==================== NEW VENDOR PROFILE APIS ====================
+
+  // Send phone verification OTP
+  sendPhoneVerificationOTP: async (phone: string) => {
+    try {
+      const response = await ApiService.post('/vendors/verify-phone/send', { phone });
+      logApiResponse('POST /vendors/verify-phone/send', response);
+      return extractApiData(response);
+    } catch (error) {
+      logApiResponse('POST /vendors/verify-phone/send', null, error);
+      throw error;
+    }
+  },
+
+  // Verify phone OTP
+  verifyPhoneOTP: async (otp: string) => {
+    try {
+      const response = await ApiService.post('/vendors/verify-phone/confirm', { otp });
+      logApiResponse('POST /vendors/verify-phone/confirm', response);
+      return extractApiData(response);
+    } catch (error) {
+      logApiResponse('POST /vendors/verify-phone/confirm', null, error);
+      throw error;
+    }
+  },
+
+  // Update bank details
+  updateBankDetails: async (bankDetails: any) => {
+    try {
+      const response = await ApiService.put('/vendors/bank-details', bankDetails);
+      logApiResponse('PUT /vendors/bank-details', response);
+      return extractApiData(response);
+    } catch (error) {
+      logApiResponse('PUT /vendors/bank-details', null, error);
+      throw error;
+    }
+  },
+
+  // Get vendor documents
+  getVendorDocuments: async () => {
+    try {
+      const response = await ApiService.get('/vendors/documents');
+      logApiResponse('GET /vendors/documents', response);
+      return extractApiData(response);
+    } catch (error) {
+      logApiResponse('GET /vendors/documents', null, error);
+      throw error;
+    }
+  },
+
+  // Upload verification document
+  uploadDocument: async (type: string, file: File) => {
+    try {
+      const formData = new FormData();
+      formData.append('document', file);
+      formData.append('type', type);
+
+      const response = await ApiService.post('/vendors/documents/upload', formData, {
+        headers: {
+          'Content-Type': 'multipart/form-data',
+        },
+      });
+      logApiResponse('POST /vendors/documents/upload', response);
+      return extractApiData(response);
+    } catch (error) {
+      logApiResponse('POST /vendors/documents/upload', null, error);
+      throw error;
+    }
+  },
+
+  // Delete verification document
+  deleteDocument: async (type: string) => {
+    try {
+      const response = await ApiService.delete(`/vendors/documents/${type}`);
+      logApiResponse(`DELETE /vendors/documents/${type}`, response);
+      return extractApiData(response);
+    } catch (error) {
+      logApiResponse(`DELETE /vendors/documents/${type}`, null, error);
+      throw error;
+    }
+  },
+
+  // Initialize Stripe Connect onboarding
+  initializeStripeOnboarding: async () => {
+    try {
+      const response = await ApiService.post('/vendors/stripe-connect/onboard');
+      logApiResponse('POST /vendors/stripe-connect/onboard', response);
+      return extractApiData(response);
+    } catch (error) {
+      logApiResponse('POST /vendors/stripe-connect/onboard', null, error);
+      throw error;
+    }
+  },
+
+  // Get Stripe Connect status
+  getStripeConnectStatus: async () => {
+    try {
+      const response = await ApiService.get('/vendors/stripe-connect/status');
+      logApiResponse('GET /vendors/stripe-connect/status', response);
+      return extractApiData(response);
+    } catch (error) {
+      logApiResponse('GET /vendors/stripe-connect/status', null, error);
+      throw error;
+    }
+  },
+
+  // Save Stripe API keys
+  saveStripeApiKeys: async (publishableKey: string, secretKey: string, testMode: boolean) => {
+    try {
+      const response = await ApiService.post('/vendors/stripe-keys', {
+        publishableKey,
+        secretKey,
+        testMode
+      });
+      logApiResponse('POST /vendors/stripe-keys', response);
+      return extractApiData(response);
+    } catch (error) {
+      logApiResponse('POST /vendors/stripe-keys', null, error);
+      throw error;
+    }
+  },
+
+  // Validate Stripe API keys
+  validateStripeApiKeys: async (publishableKey: string, secretKey: string) => {
+    try {
+      const response = await ApiService.post('/vendors/stripe-keys/validate', {
+        publishableKey,
+        secretKey
+      });
+      logApiResponse('POST /vendors/stripe-keys/validate', response);
+      return extractApiData(response);
+    } catch (error) {
+      logApiResponse('POST /vendors/stripe-keys/validate', null, error);
+      throw error;
+    }
+  },
+};
+
+export default vendorAPI;

@@ -1,0 +1,470 @@
+/**
+ * SEO Utilities for validation, optimization, and content generation
+ */
+
+import { getBrandConfig } from './brandConfig';
+
+export interface SEOValidationResult {
+  isValid: boolean;
+  warnings: string[];
+  suggestions: string[];
+  score: number; // 0-100
+}
+
+export interface SEOAnalysis {
+  titleLength: number;
+  descriptionLength: number;
+  keywordCount: number;
+  titleScore: number;
+  descriptionScore: number;
+  keywordScore: number;
+  overallScore: number;
+}
+
+export interface SEOSuggestion {
+  type: 'title' | 'description' | 'keywords';
+  priority: 'high' | 'medium' | 'low';
+  message: string;
+  suggestion?: string;
+}
+
+// SEO Limits and best practices
+export const SEO_LIMITS = {
+  TITLE: {
+    MIN: 30,
+    MAX: 60,
+    OPTIMAL_MIN: 50,
+    OPTIMAL_MAX: 60
+  },
+  DESCRIPTION: {
+    MIN: 120,
+    MAX: 160,
+    OPTIMAL_MIN: 150,
+    OPTIMAL_MAX: 160
+  },
+  KEYWORDS: {
+    MIN: 3,
+    MAX: 10,
+    OPTIMAL: 5
+  }
+};
+
+/**
+ * Get site name from centralized brand configuration
+ */
+const getSiteName = (): string => {
+  return getBrandConfig().appName;
+};
+
+/**
+ * Strip HTML tags and decode entities to get plain text
+ */
+export const stripHtmlTags = (html: string): string => {
+  if (!html || typeof html !== 'string') return '';
+
+  // Create a temporary div element to leverage browser's HTML parsing
+  const tmp = document.createElement('div');
+  tmp.innerHTML = html;
+
+  // Get text content (automatically strips all tags)
+  let text = tmp.textContent || tmp.innerText || '';
+
+  // Normalize whitespace
+  text = text.replace(/\s+/g, ' ').trim();
+
+  return text;
+};
+
+/**
+ * Alternative implementation without DOM (for SSR/Node environments)
+ */
+export const stripHtmlTagsRegex = (html: string): string => {
+  if (!html || typeof html !== 'string') return '';
+
+  return html
+    .replace(/<style[^>]*>.*?<\/style>/gi, '')  // Remove style tags and content
+    .replace(/<script[^>]*>.*?<\/script>/gi, '') // Remove script tags and content
+    .replace(/<[^>]+>/g, '')                     // Remove all HTML tags
+    .replace(/&nbsp;/g, ' ')                     // Replace &nbsp; with space
+    .replace(/&amp;/g, '&')                      // Decode &amp;
+    .replace(/&lt;/g, '<')                       // Decode &lt;
+    .replace(/&gt;/g, '>')                       // Decode &gt;
+    .replace(/&quot;/g, '"')                     // Decode &quot;
+    .replace(/&#39;/g, "'")                      // Decode &#39;
+    .replace(/\s+/g, ' ')                        // Normalize whitespace
+    .trim();
+};
+
+/**
+ * Validate SEO fields and provide optimization suggestions
+ */
+export const validateSEO = (seoData: {
+  title?: string;
+  description?: string;
+  keywords?: string[];
+}): SEOValidationResult => {
+  const warnings: string[] = [];
+  const suggestions: string[] = [];
+  let score = 0;
+
+  const { title = '', description = '', keywords = [] } = seoData;
+
+  // Title validation
+  let titleScore = 0;
+  if (!title.trim()) {
+    warnings.push('Title is required');
+  } else {
+    const titleLength = title.length;
+    if (titleLength < SEO_LIMITS.TITLE.MIN) {
+      warnings.push(`Title is too short (${titleLength} chars). Aim for ${SEO_LIMITS.TITLE.MIN}-${SEO_LIMITS.TITLE.MAX} characters.`);
+      titleScore = 30;
+    } else if (titleLength > SEO_LIMITS.TITLE.MAX) {
+      warnings.push(`Title is too long (${titleLength} chars). It may be truncated in search results.`);
+      titleScore = 60;
+    } else if (titleLength >= SEO_LIMITS.TITLE.OPTIMAL_MIN && titleLength <= SEO_LIMITS.TITLE.OPTIMAL_MAX) {
+      titleScore = 100;
+      suggestions.push('Title length is optimal for search engines.');
+    } else {
+      titleScore = 80;
+    }
+
+    // Check for brand mention
+    const siteName = getBrandConfig().appName;
+    if (!title.toLowerCase().includes(siteName.toLowerCase().split(' ')[0].toLowerCase())) {
+      suggestions.push(`Consider including "${siteName}" in your title for brand recognition.`);
+    }
+
+    // Check for location
+    if (!title.toLowerCase().includes('uae') && !title.toLowerCase().includes('dubai')) {
+      suggestions.push('Consider including location (UAE, Dubai) in your title for local SEO.');
+    }
+  }
+
+  // Description validation
+  let descriptionScore = 0;
+  if (!description.trim()) {
+    warnings.push('Meta description is required');
+  } else {
+    const descLength = description.length;
+    if (descLength < SEO_LIMITS.DESCRIPTION.MIN) {
+      warnings.push(`Description is too short (${descLength} chars). Aim for ${SEO_LIMITS.DESCRIPTION.MIN}-${SEO_LIMITS.DESCRIPTION.MAX} characters.`);
+      descriptionScore = 30;
+    } else if (descLength > SEO_LIMITS.DESCRIPTION.MAX) {
+      warnings.push(`Description is too long (${descLength} chars). It may be truncated in search results.`);
+      descriptionScore = 60;
+    } else if (descLength >= SEO_LIMITS.DESCRIPTION.OPTIMAL_MIN && descLength <= SEO_LIMITS.DESCRIPTION.OPTIMAL_MAX) {
+      descriptionScore = 100;
+      suggestions.push('Description length is optimal for search engines.');
+    } else {
+      descriptionScore = 80;
+    }
+
+    // Check for call-to-action
+    const hasCallToAction = /\b(book|register|join|discover|find|explore|learn)\b/i.test(description);
+    if (!hasCallToAction) {
+      suggestions.push('Consider adding a call-to-action (book, register, join, etc.) in your description.');
+    }
+  }
+
+  // Keywords validation
+  let keywordScore = 0;
+  if (keywords.length === 0) {
+    warnings.push('Keywords are recommended for better SEO');
+    keywordScore = 0;
+  } else if (keywords.length < SEO_LIMITS.KEYWORDS.MIN) {
+    suggestions.push(`Consider adding more keywords. Current: ${keywords.length}, Recommended: ${SEO_LIMITS.KEYWORDS.MIN}-${SEO_LIMITS.KEYWORDS.MAX}`);
+    keywordScore = 50;
+  } else if (keywords.length > SEO_LIMITS.KEYWORDS.MAX) {
+    warnings.push(`Too many keywords (${keywords.length}). Focus on ${SEO_LIMITS.KEYWORDS.MAX} most relevant keywords.`);
+    keywordScore = 60;
+  } else {
+    keywordScore = 100;
+    if (keywords.length === SEO_LIMITS.KEYWORDS.OPTIMAL) {
+      suggestions.push('Keyword count is optimal.');
+    }
+  }
+
+  // Calculate overall score
+  score = Math.round((titleScore + descriptionScore + keywordScore) / 3);
+
+  return {
+    isValid: warnings.length === 0,
+    warnings,
+    suggestions,
+    score
+  };
+};
+
+/**
+ * Analyze SEO content and provide detailed metrics
+ */
+export const analyzeSEO = (seoData: {
+  title?: string;
+  description?: string;
+  keywords?: string[];
+}): SEOAnalysis => {
+  const { title = '', description = '', keywords = [] } = seoData;
+
+  const titleLength = title.length;
+  const descriptionLength = description.length;
+  const keywordCount = keywords.length;
+
+  // Calculate individual scores
+  const titleScore = calculateTitleScore(titleLength);
+  const descriptionScore = calculateDescriptionScore(descriptionLength);
+  const keywordScore = calculateKeywordScore(keywordCount);
+
+  const overallScore = Math.round((titleScore + descriptionScore + keywordScore) / 3);
+
+  return {
+    titleLength,
+    descriptionLength,
+    keywordCount,
+    titleScore,
+    descriptionScore,
+    keywordScore,
+    overallScore
+  };
+};
+
+/**
+ * Generate SEO suggestions based on content analysis
+ */
+export const generateSEOSuggestions = (
+  content: {
+    title?: string;
+    description?: string;
+    keywords?: string[];
+    category?: string;
+    location?: string;
+    type?: 'event' | 'blog';
+  }
+): SEOSuggestion[] => {
+  const suggestions: SEOSuggestion[] = [];
+  const { title = '', description = '', keywords = [], category, location, type } = content;
+
+  // Title suggestions
+  if (!title) {
+    suggestions.push({
+      type: 'title',
+      priority: 'high',
+      message: 'Add a compelling title that includes your main keywords'
+    });
+  } else if (title.length < SEO_LIMITS.TITLE.MIN) {
+    const siteName = getSiteName();
+    const suggestion = type === 'event'
+      ? `${title} | Kids ${category} in ${location || 'UAE'} | ${siteName}`
+      : `${title} | Kids Activities Guide | ${siteName}`;
+
+    suggestions.push({
+      type: 'title',
+      priority: 'high',
+      message: 'Title is too short. Consider expanding it.',
+      suggestion
+    });
+  }
+
+  // Description suggestions
+  if (!description) {
+    suggestions.push({
+      type: 'description',
+      priority: 'high',
+      message: 'Add a meta description to improve click-through rates'
+    });
+  } else if (description.length < SEO_LIMITS.DESCRIPTION.MIN) {
+    suggestions.push({
+      type: 'description',
+      priority: 'medium',
+      message: 'Expand your description to provide more context for search engines'
+    });
+  }
+
+  // Keyword suggestions
+  if (keywords.length === 0) {
+    const defaultKeywords = type === 'event'
+      ? ['kids activities', 'events', location || 'UAE', category || 'entertainment']
+      : ['kids activities', 'parenting tips', 'family fun', 'UAE'];
+
+    suggestions.push({
+      type: 'keywords',
+      priority: 'medium',
+      message: 'Add relevant keywords to improve discoverability',
+      suggestion: defaultKeywords.join(', ')
+    });
+  }
+
+  return suggestions;
+};
+
+/**
+ * Generate auto-complete SEO based on content
+ */
+export const generateAutoSEO = (content: {
+  title: string;
+  description: string;
+  category?: string;
+  location?: string;
+  tags?: string[];
+  type: 'event' | 'blog' | 'category' | 'collection';
+}): { title: string; description: string; keywords: string[] } => {
+  const { title = '', description = '', category, location, tags = [], type } = content;
+
+  // Generate SEO title
+  const siteName = getSiteName();
+  const siteNameLower = siteName.toLowerCase();
+  let seoTitle = title || '';
+
+  if (seoTitle && !seoTitle.toLowerCase().includes(siteNameLower)) {
+    if (type === 'event') {
+      seoTitle = `${title} | Kids ${category || 'Activities'} in ${location || 'UAE'} | ${siteName}`;
+    } else if (type === 'blog') {
+      seoTitle = `${title} | Kids Activities Guide | ${siteName}`;
+    } else if (type === 'category') {
+      seoTitle = `${title} Events for Kids | ${siteName}`;
+    } else if (type === 'collection') {
+      seoTitle = `${title} Collection | ${siteName}`;
+    }
+  }
+
+  // Ensure title is within limits — keep location if possible
+  if (seoTitle && seoTitle.length > SEO_LIMITS.TITLE.MAX) {
+    const loc = location || 'UAE';
+    const withLoc = `${title} in ${loc} | ${siteName}`;
+    seoTitle = withLoc.length <= SEO_LIMITS.TITLE.MAX ? withLoc : (title ? `${title} | ${siteName}` : siteName);
+  }
+
+  // Generate SEO description
+  let seoDescription = stripHtmlTags(description) || '';
+  if (seoDescription && seoDescription.length > SEO_LIMITS.DESCRIPTION.MAX) {
+    seoDescription = `${seoDescription.substring(0, 157)}...`;
+  } else if (seoDescription && seoDescription.length < SEO_LIMITS.DESCRIPTION.MIN) {
+    // Try suffixes from longest to shortest until one fits within MAX
+    const loc = location || 'UAE';
+    const suffixes =
+      type === 'event'
+        ? [
+            ` Book now for an unforgettable experience with ${siteName} in ${loc}.`,
+            ` Join us for this amazing experience in ${loc}.`,
+            ` Perfect for families in ${loc}.`,
+          ]
+        : type === 'blog'
+        ? [
+            ` Discover expert tips and guides for family activities with ${siteName}.`,
+            ` Explore family fun ideas on ${siteName}.`,
+          ]
+        : type === 'category'
+        ? [
+            ` Explore amazing ${title.toLowerCase()} activities for kids with ${siteName}.`,
+            ` Find the best activities for your family.`,
+          ]
+        : [
+            ` Curated by ${siteName} for amazing family experiences in the UAE.`,
+            ` Great for families across the UAE.`,
+          ];
+
+    for (const suffix of suffixes) {
+      const combined = seoDescription + suffix;
+      if (combined.length <= SEO_LIMITS.DESCRIPTION.MAX) {
+        seoDescription = combined;
+        break;
+      } else if (combined.length > SEO_LIMITS.DESCRIPTION.MAX) {
+        // Truncate to fit — always better than leaving it too short
+        seoDescription = combined.substring(0, 157) + '...';
+        break;
+      }
+    }
+  }
+
+  // Generate keywords
+  let baseKeywords: string[];
+  if (type === 'event') {
+    baseKeywords = ['kids activities', 'events', 'family fun', siteName.toLowerCase()];
+  } else if (type === 'blog') {
+    baseKeywords = ['kids activities', 'parenting tips', 'family guide', siteName.toLowerCase()];
+  } else if (type === 'category') {
+    baseKeywords = ['kids activities', title.toLowerCase(), 'UAE events', siteName.toLowerCase()];
+  } else if (type === 'collection') {
+    baseKeywords = ['kids activities', 'curated events', 'family fun', siteName.toLowerCase()];
+  } else {
+    baseKeywords = ['kids activities', siteName.toLowerCase()];
+  }
+
+  const contextKeywords = [
+    location || 'UAE',
+    category,
+    ...tags.slice(0, 3)
+  ].filter((k): k is string => Boolean(k));
+
+  const keywords = [...baseKeywords, ...contextKeywords].slice(0, SEO_LIMITS.KEYWORDS.MAX);
+
+  return {
+    title: seoTitle,
+    description: seoDescription,
+    keywords
+  };
+};
+
+// Helper functions
+function calculateTitleScore(length: number): number {
+  if (length === 0) return 0;
+  if (length < SEO_LIMITS.TITLE.MIN) return 30;
+  if (length > SEO_LIMITS.TITLE.MAX) return 60;
+  if (length >= SEO_LIMITS.TITLE.OPTIMAL_MIN && length <= SEO_LIMITS.TITLE.OPTIMAL_MAX) return 100;
+  return 80;
+}
+
+function calculateDescriptionScore(length: number): number {
+  if (length === 0) return 0;
+  if (length < SEO_LIMITS.DESCRIPTION.MIN) return 30;
+  if (length > SEO_LIMITS.DESCRIPTION.MAX) return 60;
+  if (length >= SEO_LIMITS.DESCRIPTION.OPTIMAL_MIN && length <= SEO_LIMITS.DESCRIPTION.OPTIMAL_MAX) return 100;
+  return 80;
+}
+
+function calculateKeywordScore(count: number): number {
+  if (count === 0) return 0;
+  if (count < SEO_LIMITS.KEYWORDS.MIN) return 50;
+  if (count > SEO_LIMITS.KEYWORDS.MAX) return 60;
+  if (count === SEO_LIMITS.KEYWORDS.OPTIMAL) return 100;
+  return 85;
+}
+
+/**
+ * Format SEO score for display
+ */
+export const formatSEOScore = (score: number): { color: string; label: string } => {
+  if (score >= 85) return { color: 'green', label: 'Excellent' };
+  if (score >= 70) return { color: 'yellow', label: 'Good' };
+  if (score >= 50) return { color: 'orange', label: 'Needs Improvement' };
+  return { color: 'red', label: 'Poor' };
+};
+
+/**
+ * Extract keywords from content text
+ */
+export const extractKeywords = (text: string, maxKeywords: number = 5): string[] => {
+  // Remove common stop words
+  const stopWords = new Set([
+    'the', 'a', 'an', 'and', 'or', 'but', 'in', 'on', 'at', 'to', 'for', 'of', 'with', 'by',
+    'this', 'that', 'these', 'those', 'is', 'are', 'was', 'were', 'be', 'been', 'being',
+    'have', 'has', 'had', 'will', 'would', 'should', 'could', 'can', 'may', 'might'
+  ]);
+
+  const words = text
+    .toLowerCase()
+    .replace(/[^\w\s]/g, ' ')
+    .split(/\s+/)
+    .filter(word => word.length > 2 && !stopWords.has(word));
+
+  // Count word frequency
+  const wordCount = words.reduce((acc, word) => {
+    acc[word] = (acc[word] || 0) + 1;
+    return acc;
+  }, {} as Record<string, number>);
+
+  // Sort by frequency and return top keywords
+  return Object.entries(wordCount)
+    .sort(([, a], [, b]) => b - a)
+    .slice(0, maxKeywords)
+    .map(([word]) => word);
+};

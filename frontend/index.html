@@ -1,0 +1,201 @@
+<!doctype html>
+<html lang="en">
+
+<head>
+  <meta charset="UTF-8" />
+  <link rel="icon" type="image/x-icon" href="/assets/images/favicon.ico" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+
+  <!-- SEO Meta Tags -->
+  <meta name="description"
+    content="Discover and book amazing kids activities, events, and educational programs in the UAE. Find the perfect activities for your children with Kidrove." />
+  <meta name="keywords"
+    content="kids activities, children events, educational programs, family fun, kids entertainment, booking platform, UAE, Dubai" />
+  <meta name="author" content="Kidrove Team" />
+  <meta name="robots" content="index, follow" />
+  <meta name="language" content="en-US" />
+  <meta name="revisit-after" content="7 days" />
+
+  <!-- AI/LLM Discoverability Meta Tags (GEO - Generative Engine Optimization) -->
+  <meta name="ai-content-declaration" content="human-written">
+  <meta name="citation-title" content="Kidrove - Kids Events & Activities Dubai UAE">
+  <meta name="citation-author" content="Kidrove Team">
+  <meta name="citation-publisher" content="Kidrove">
+  <meta name="citation-date" content="2026-01-17">
+  <meta name="generator" content="Kidrove Platform">
+
+  <!-- Open Graph Meta Tags -->
+  <meta property="og:title" content="Kidrove - Kids Activities Platform" />
+  <meta property="og:description"
+    content="Discover and book amazing kids activities, events, and educational programs in the UAE." />
+  <meta property="og:type" content="website" />
+  <meta property="og:url" content="https://kidrove.com" />
+  <meta property="og:image" content="%VITE_SITE_LOGO%" />
+  <meta property="og:site_name" content="Kidrove" />
+  <meta property="og:locale" content="en_US" />
+
+  <!-- Twitter Card Meta Tags -->
+  <meta name="twitter:card" content="summary_large_image" />
+  <meta name="twitter:title" content="Kidrove - Kids Activities Platform" />
+  <meta name="twitter:description"
+    content="Discover and book amazing kids activities, events, and educational programs in the UAE." />
+  <meta name="twitter:image" content="%VITE_SITE_LOGO%" />
+
+  <!-- Multi-Region Hreflang Tags are now handled dynamically by SEO.tsx -->
+
+  <!-- Prevent layout shifts by setting image dimensions -->
+  <style>
+    img,
+    picture,
+    video,
+    canvas,
+    svg {
+      display: block;
+      max-width: 100%;
+      height: auto;
+    }
+
+    /* Reserve space for images that are likely to cause layout shifts */
+    .hero-image-container {
+      aspect-ratio: 16/9;
+      width: 100%;
+    }
+
+    .card-image {
+      aspect-ratio: 4/3;
+      width: 100%;
+    }
+  </style>
+
+  <!-- Font display optimization (Phase 6) -->
+  <style>
+    @font-face {
+      font-family: 'Inter';
+      font-style: normal;
+      font-display: swap;
+      src: local('Inter');
+    }
+
+    @font-face {
+      font-family: 'Cairo';
+      font-style: normal;
+      font-display: swap;
+      src: local('Cairo');
+    }
+
+    @font-face {
+      font-family: 'Poppins';
+      font-style: normal;
+      font-display: swap;
+      src: local('Poppins');
+    }
+  </style>
+  <meta name="twitter:site" content="@kidrove" />
+
+  <!-- PWA Meta Tags -->
+  <meta name="theme-color" content="#3B82F6" />
+  <meta name="mobile-web-app-capable" content="yes" />
+  <meta name="apple-mobile-web-app-capable" content="yes" />
+  <meta name="apple-mobile-web-app-status-bar-style" content="default" />
+  <meta name="apple-mobile-web-app-title" content="Kidrove" />
+  <meta name="application-name" content="Kidrove" />
+  <meta name="msapplication-TileColor" content="#3B82F6" />
+  <meta name="msapplication-config" content="/browserconfig.xml" />
+
+  <!-- PWA Manifest -->
+  <link rel="manifest" href="/manifest.json" />
+
+  <!-- Apple Touch Icons -->
+  <link rel="apple-touch-icon" href="/assets/images/favicon.ico" />
+
+
+  <!-- Preconnect to external domains (Phase 6 optimization) -->
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+
+  <!-- Backend API preconnect (Phase 4 + Phase 6 optimization) -->
+  <link rel="preconnect" href="https://gema-project.onrender.com" crossorigin />
+  <link rel="dns-prefetch" href="https://gema-project.onrender.com" />
+
+  <!-- Cloudinary CDN preconnect (Phase 4 optimization) -->
+  <link rel="preconnect" href="https://res.cloudinary.com" />
+  <link rel="dns-prefetch" href="https://res.cloudinary.com" />
+
+  <!-- Stripe API for checkout (Phase 4 optimization) -->
+  <link rel="dns-prefetch" href="https://js.stripe.com" />
+  <link rel="dns-prefetch" href="https://m.stripe.com" />
+
+  <!-- Google Fonts - optimized with reduced weights and subset (Phase 4) -->
+  <!-- Reduced from 18 font files to 9 for faster loading -->
+  <link
+    href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Cairo:wght@400;600;700&family=Poppins:wght@400;600&display=swap&subset=latin"
+    rel="preload" as="style" onload="this.onload=null;this.rel='stylesheet'" />
+  <noscript>
+    <link
+      href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Cairo:wght@400;600;700&family=Poppins:wght@400;600&display=swap&subset=latin"
+      rel="stylesheet" />
+  </noscript>
+
+  <!-- Preload critical assets -->
+  <link rel="preload" fetchpriority="high" as="image" href="%VITE_SITE_LOGO%" type="image/png" />
+
+  <!-- Add native lazy loading and fetchpriority attributes -->
+
+
+  <title>Kidrove - Discover Amazing Kids Activities & Events in UAE</title>
+
+  <!-- Organization Structured Data (Phase 5 SEO Optimization) -->
+  <script type="application/ld+json">
+  {
+    "@context": "https://schema.org",
+    "@type": "Organization",
+    "name": "Kidrove",
+    "url": "https://kidrove.com",
+    "logo": "%VITE_APP_URL%%VITE_SITE_LOGO%",
+    "description": "Discover and book amazing kids activities, events, and educational programs in the UAE.",
+    "address": {
+      "@type": "PostalAddress",
+      "addressCountry": "AE",
+      "addressRegion": "Dubai"
+    },
+    "sameAs": [
+      "https://www.facebook.com/kidrove",
+      "https://twitter.com/kidrove",
+      "https://www.instagram.com/kidrove"
+    ],
+    "contactPoint": {
+      "@type": "ContactPoint",
+      "contactType": "Customer Service",
+      "availableLanguage": ["English", "Arabic"]
+    }
+  }
+  </script>
+
+  <!-- WebSite Structured Data with Sitelinks Search (Phase 5 SEO Optimization) -->
+  <script type="application/ld+json">
+  {
+    "@context": "https://schema.org",
+    "@type": "WebSite",
+    "name": "Kidrove",
+    "url": "https://kidrove.com",
+    "potentialAction": {
+      "@type": "SearchAction",
+      "target": {
+        "@type": "EntryPoint",
+        "urlTemplate": "https://kidrove.com/search?q={search_term_string}"
+      },
+      "query-input": "required name=search_term_string"
+    }
+  }
+  </script>
+
+  <!-- SEO: Dynamic Meta Tag Updater for fresh content delivery -->
+  <script defer src="/update-meta.js"></script>
+</head>
+
+<body>
+  <div id="root"></div>
+  <script type="module" src="/src/main.tsx"></script>
+</body>
+
+</html>

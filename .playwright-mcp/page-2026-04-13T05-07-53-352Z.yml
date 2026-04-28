@@ -1,0 +1,133 @@
+- generic [ref=e10]:
+  - banner [ref=e11]:
+    - generic [ref=e14]:
+      - link "Visit our Facebook page" [ref=e15] [cursor=pointer]:
+        - /url: https://www.facebook.com/profile.php?id=61585051405021
+        - img [ref=e16]
+      - link "Visit our Twitter page" [ref=e18] [cursor=pointer]:
+        - /url: https://x.com/KidroveUAE
+        - img [ref=e19]
+      - link "Visit our Instagram page" [ref=e21] [cursor=pointer]:
+        - /url: https://www.instagram.com/kidroveuae/
+        - img [ref=e22]
+      - link "Visit our YouTube channel" [ref=e24] [cursor=pointer]:
+        - /url: https://www.youtube.com/channel/UCtADUAmbQzj-wYNzf9S_UxQ
+        - img [ref=e25]
+      - link "Visit our LinkedIn page" [ref=e27] [cursor=pointer]:
+        - /url: https://www.linkedin.com/company/kidrove/
+        - img [ref=e28]
+    - generic [ref=e31]:
+      - link "kidrove Logo" [ref=e33] [cursor=pointer]:
+        - /url: /
+        - img "kidrove Logo" [ref=e34]
+      - navigation [ref=e35]:
+        - link "Find Activities" [ref=e36] [cursor=pointer]:
+          - /url: /search
+        - link "Blog" [ref=e37] [cursor=pointer]:
+          - /url: /blog
+        - link "Kidrove Go" [ref=e38] [cursor=pointer]:
+          - /url: /about
+        - link "FAQ" [ref=e39] [cursor=pointer]:
+          - /url: /faq
+        - link "Get In Touch" [ref=e40] [cursor=pointer]:
+          - /url: /contact
+      - generic [ref=e41]:
+        - link "Search activities" [ref=e42] [cursor=pointer]:
+          - /url: /search
+          - img [ref=e43]
+        - link "View favorites" [ref=e45] [cursor=pointer]:
+          - /url: /favorites
+          - img [ref=e46]
+        - button [ref=e49] [cursor=pointer]:
+          - img [ref=e50]
+          - img [ref=e52]
+  - main [ref=e54]:
+    - generic [ref=e156]:
+      - heading "Loading Event Details..." [level=2] [ref=e158]
+      - paragraph [ref=e159]: Please wait while we prepare your booking
+      - paragraph [ref=e160]: "Event ID: test-couse"
+      - paragraph [ref=e161]: "Render #4"
+  - contentinfo [ref=e79]:
+    - generic [ref=e80]:
+      - generic [ref=e81]:
+        - generic [ref=e82]:
+          - img "Kidrove Logo" [ref=e84]
+          - paragraph [ref=e85]: Discover and book the best activities for your kids in the UAE.
+          - generic [ref=e86]:
+            - link "Visit our Facebook page" [ref=e87] [cursor=pointer]:
+              - /url: https://www.facebook.com/profile.php?id=61585051405021
+              - img [ref=e88]
+            - link "Visit our Twitter page" [ref=e90] [cursor=pointer]:
+              - /url: https://x.com/KidroveUAE
+              - img [ref=e91]
+            - link "Visit our Instagram page" [ref=e93] [cursor=pointer]:
+              - /url: https://www.instagram.com/kidroveuae/
+              - img [ref=e94]
+            - link "Visit our YouTube channel" [ref=e96] [cursor=pointer]:
+              - /url: https://www.youtube.com/channel/UCtADUAmbQzj-wYNzf9S_UxQ
+              - img [ref=e97]
+            - link "Visit our LinkedIn page" [ref=e99] [cursor=pointer]:
+              - /url: https://www.linkedin.com/company/kidrove/
+              - img [ref=e100]
+        - generic [ref=e102]:
+          - heading "Quick Links" [level=3] [ref=e103]
+          - list [ref=e104]:
+            - listitem [ref=e105]:
+              - link "About Us" [ref=e106] [cursor=pointer]:
+                - /url: /about
+            - listitem [ref=e107]:
+              - link "Blog" [ref=e108] [cursor=pointer]:
+                - /url: /blog
+            - listitem [ref=e109]:
+              - link "Contact Us" [ref=e110] [cursor=pointer]:
+                - /url: /contact
+            - listitem [ref=e111]:
+              - link "FAQs" [ref=e112] [cursor=pointer]:
+                - /url: /faq
+            - listitem [ref=e113]:
+              - link "Partner with Us" [ref=e114] [cursor=pointer]:
+                - /url: /partner-with-us
+          - heading "Teach" [level=3] [ref=e115]
+          - list [ref=e116]:
+            - listitem [ref=e117]:
+              - link "Teach as Organization" [ref=e118] [cursor=pointer]:
+                - /url: /for-organizations
+            - listitem [ref=e119]:
+              - link "Teach as Individual" [ref=e120] [cursor=pointer]:
+                - /url: /teach/register
+        - generic [ref=e121]:
+          - heading "Categories" [level=3] [ref=e122]
+          - list [ref=e123]:
+            - listitem [ref=e124]:
+              - link "Afterschool Activities" [ref=e125] [cursor=pointer]:
+                - /url: /categories/afterschool-activities
+            - listitem [ref=e126]:
+              - link "Arts and Crafts" [ref=e127] [cursor=pointer]:
+                - /url: /categories/arts-and-crafts
+            - listitem [ref=e128]:
+              - link "Baby & Toddler" [ref=e129] [cursor=pointer]:
+                - /url: /categories/baby-toddler
+            - listitem [ref=e130]:
+              - link "Birthday Deals" [ref=e131] [cursor=pointer]:
+                - /url: /categories/birthday-deals
+        - generic [ref=e132]:
+          - heading "Newsletter" [level=3] [ref=e133]
+          - paragraph [ref=e134]: Subscribe to our newsletter for updates on new activities and promotions.
+          - generic [ref=e135]:
+            - generic [ref=e136]:
+              - generic [ref=e137]:
+                - textbox "Enter your email" [ref=e138]
+                - img [ref=e139]
+              - textbox "Your name" [ref=e142]
+              - textbox "City (optional)" [ref=e144]
+              - textbox "Age of children (optional)" [ref=e146]
+              - button "Subscribe" [disabled] [ref=e147]:
+                - generic [ref=e148]: Subscribe
+            - paragraph [ref=e149]: By subscribing, you agree to receive marketing emails from us. You can unsubscribe at any time.
+      - generic [ref=e150]:
+        - paragraph [ref=e151]: © 2026 Kidrove. All rights reserved.
+        - generic [ref=e152]:
+          - link "Privacy Policy" [ref=e153] [cursor=pointer]:
+            - /url: /privacy
+          - link "Terms of Service" [ref=e154] [cursor=pointer]:
+            - /url: /terms

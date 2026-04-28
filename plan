@@ -1,0 +1,506 @@
+│ Gema Platform — Future Roadmap Plan                                                      │
+│                                                                                          │
+│ Generated: 2026-03-15                                                                    │
+│ Scope: Full-stack audit of backend/, frontend/, ai-doc-chatbot/                          │
+│ Goal: Surface all incomplete features, stubs, TODOs, and meaningful next improvements    │
+│                                                                                          │
+│ ---                                                                                      │
+│ Context                                                                                  │
+│                                                                                          │
+│ This plan is the result of a deep codebase audit across all three sub-projects. The      │
+│ platform is functional and production-aware, but has numerous stub implementations,      │
+│ unfinished flows, and architectural gaps identified below. Items are prioritized by      │
+│ business impact.                                                                         │
+│                                                                                          │
+│ ---                                                                                      │
+│ Priority 1 — Critical Business Logic Gaps                                                │
+│                                                                                          │
+│ P1.1 Stripe Recurring Subscriptions                                                      │
+│                                                                                          │
+│ Problem: VendorSubscription and TeacherSubscription models exist, but billing uses       │
+│ one-time payments. No Stripe recurring billing.                                          │
+│ Files:                                                                                   │
+│ - backend/src/services/subscription.service.ts (lines 192, 557)                          │
+│ - backend/src/services/teacher.subscription.service.ts (line 525)                        │
+│ - frontend/src/pages/vendor/VendorPaymentSettings.tsx                                    │
+│                                                                                          │
+│ Work:                                                                                    │
+│ - Wire Stripe.subscriptions.create() in subscription.service.ts                          │
+│ - Add customer.subscription.* webhook handlers in payment.service.ts                     │
+│ - Generate invoice PDF on subscription payment (line 192 stub)                           │
+│ - Send vendor/teacher email on subscription change (lines 557, 525 stubs)                │
+│                                                                                          │
+│ ---                                                                                      │
+│ P1.2 Affiliate Payout Integration                                                        │
+│                                                                                          │
+│ Problem: Affiliate conversion is tracked, but affiliate payouts are not wired into       │
+│ PayoutService.                                                                           │
+│ Files:                                                                                   │
+│ - backend/src/services/payout.service.ts                                                 │
+│ - backend/src/controllers/affiliate.controller.ts                                        │
+│ - backend/src/models/Affiliate.ts                                                        │
+│                                                                                          │
+│ Work:                                                                                    │
+│ - Add processAffiliatePayouts() to payout.service.ts                                     │
+│ - Integrate into payout worker (backend/src/workers/payout.worker.ts)                    │
+│ - Wire frontend AffiliateStats component to show pending payout balance                  │
+│                                                                                          │
+│ ---                                                                                      │
+│ P1.3 Payment Failure & Dispute Notifications                                             │
+│                                                                                          │
+│ Problem: payment.service.ts stubs 4 critical notification calls.                         │
+│ Files:                                                                                   │
+│ - backend/src/services/payment.service.ts (lines 651–652, 706–707)                       │
+│                                                                                          │
+│ Work:                                                                                    │
+│ - Line 651: call NotificationService.sendPaymentFailure(userId, amount)                  │
+│ - Line 652: write payment attempt to audit log (new PaymentAuditLog collection or        │
+│ existing RevenueTransaction)                                                             │
+│ - Line 706: send admin notification for Stripe dispute received                          │
+│ - Line 707: log dispute entry for manual review queue                                    │
+│                                                                                          │
+│ ---                                                                                      │
+│ P1.4 Admin Stats — Real Data                                                             │
+│                                                                                          │
+│ Problem: Payout and commission stats endpoints return TODOs.                             │
+│ Files:                                                                                   │
+│ - backend/src/routes/admin.stats.routes.ts (lines 23, 61)                                │
+│ - backend/src/controllers/admin.commission.controller.ts (line 978 — export stub)        │
+│                                                                                          │
+│ Work:                                                                                    │
+│ - Implement payout stats: sum by status, date range, vendor vs teacher breakdown         │
+│ - Implement commission stats: total earned, pending, paid, per-vendor breakdown          │
+│ - Wire AdminCommissionsPage.tsx frontend to display this real data (currently shows      │
+│ nothing)                                                                                 │
+│ - Implement commission export as CSV/XLSX (line 978 stub)                                │
+│                                                                                          │
+│ ---                                                                                      │
+│ Priority 2 — Incomplete Feature Flows                                                    │
+│                                                                                          │
+│ P2.1 SMS Ticket Resend                                                                   │
+│                                                                                          │
+│ Problem: ticket.controller.ts line 323 returns 501 Not Implemented for SMS resend.       │
+│ Files:                                                                                   │
+│ - backend/src/controllers/ticket.controller.ts (lines 323–329)                           │
+│ - backend/src/services/sms.service.ts (multi-provider: Twilio, AWS SNS, Firebase)        │
+│                                                                                          │
+│ Work:                                                                                    │
+│ - Implement sendTicketViaSMS() in sms.service.ts                                         │
+│ - Call from ticket controller resend endpoint                                            │
+│ - Add .env vars: SMS_PROVIDER, TWILIO_*, AWS_SNS_* (already in .env.example)             │
+│                                                                                          │
+│ ---                                                                                      │
+│ P2.2 Teacher Payment Verification Flow                                                   │
+│                                                                                          │
+│ Problem: teacher.payment.controller.ts line 90 has isVerified: false — verification flow │
+│  is a stub.                                                                              │
+│ Files:                                                                                   │
+│ - backend/src/controllers/teacher.payment.controller.ts (line 90)                        │
+│ - backend/src/models/Teacher.ts                                                          │
+│                                                                                          │
+│ Work:                                                                                    │
+│ - Implement admin approval step for teacher payment method                               │
+│ - Add verifyTeacherPayment admin endpoint                                                │
+│ - Add teacher notification on verification approval/rejection                            │
+│                                                                                          │
+│ ---                                                                                      │
+│ P2.3 Moderation — User Notifications                                                     │
+│                                                                                          │
+│ Problem: Admin moderation actions (ban, warn, etc.) don't notify the user.               │
+│ Files:                                                                                   │
+│ - backend/src/controllers/admin.moderation.controller.ts (line 101)                      │
+│                                                                                          │
+│ Work:                                                                                    │
+│ - Call notificationService.createNotification() after moderation action                  │
+│ - Send email via emailService when notifyUser: true in request body                      │
+│                                                                                          │
+│ ---                                                                                      │
+│ P2.4 Blog Comment Reports                                                                │
+│                                                                                          │
+│ Problem: Flagging a blog comment logs nothing — no reports collection.                   │
+│ Files:                                                                                   │
+│ - backend/src/controllers/blog.comments.controller.ts (line 393)                         │
+│                                                                                          │
+│ Work:                                                                                    │
+│ - Create ContentReport model (or reuse existing moderation queue)                        │
+│ - On flag: create report record + alert admin if threshold exceeded                      │
+│                                                                                          │
+│ ---                                                                                      │
+│ P2.5 Newsletter Email Service Integration                                                │
+│                                                                                          │
+│ Problem: Newsletter subscribe flow stores email but never sends a confirmation email.    │
+│ Files:                                                                                   │
+│ - backend/src/controllers/newsletter.controller.ts (line 330)                            │
+│ - backend/src/services/email.service.ts (templates exist)                                │
+│                                                                                          │
+│ Work:                                                                                    │
+│ - Call emailService.sendNewsletterConfirmation() after subscribe                         │
+│ - Add double opt-in flow (confirmation link)                                             │
+│ - Frontend: wire BlogPage.tsx newsletter section (currently TODO comment)                │
+│                                                                                          │
+│ ---                                                                                      │
+│ Priority 3 — Frontend Gaps                                                               │
+│                                                                                          │
+│ P3.1 i18n — Add Translation Files                                                        │
+│                                                                                          │
+│ Problem: i18next is configured with Arabic support, but no .json translation files exist │
+│  in the repo. All UI strings are hardcoded English.                                      │
+│ Files:                                                                                   │
+│ - frontend/src/i18n/config.ts                                                            │
+│ - frontend/src/contexts/LanguageContext.tsx                                              │
+│ - Missing: frontend/public/locales/en/*.json, frontend/public/locales/ar/*.json          │
+│                                                                                          │
+│ Work:                                                                                    │
+│ - Create locale files for: common, auth, events, booking, vendor, admin                  │
+│ - Replace hardcoded strings in high-traffic pages first (HomePage, EventsPage,           │
+│ BookingPage)                                                                             │
+│ - Add RTL layout support (Tailwind dir="rtl" with rtl: variants) properly                │
+│ - Email templates: add Arabic variants                                                   │
+│                                                                                          │
+│ ---                                                                                      │
+│ P3.2 Admin Commissions UI — Wire Real Data                                               │
+│                                                                                          │
+│ Problem: AdminCommissionsPage UI exists but shows no real backend data.                  │
+│ Files:                                                                                   │
+│ - frontend/src/pages/admin/AdminCommissionsPage.tsx                                      │
+│ - frontend/src/services/api/adminAPI.ts                                                  │
+│                                                                                          │
+│ Work:                                                                                    │
+│ - Add API calls to commission stats endpoint (after P1.4 is done)                        │
+│ - Display: total platform commission earned, per-vendor breakdown, pending vs paid       │
+│ - Add commission export button (CSV download)                                            │
+│                                                                                          │
+│ ---                                                                                      │
+│ P3.3 Fix ~60 TypeScript Errors                                                           │
+│                                                                                          │
+│ Problem: ~60 known TS errors (unused imports, form type mismatches, Badge variant        │
+│ issues).                                                                                 │
+│ Files: Scattered across frontend/src/components/admin/, forms (BlogForm, CouponForm)     │
+│                                                                                          │
+│ Work:                                                                                    │
+│ - Run npm run type-check and fix errors in batches                                       │
+│ - Priority: BlogForm.tsx, CouponForm.tsx, Badge component variants                       │
+│ - Do NOT enable strict mode on backend without discussion                                │
+│                                                                                          │
+│ ---                                                                                      │
+│ P3.4 Push Notifications — UI Wiring                                                      │
+│                                                                                          │
+│ Problem: PWA push notification subscription logic is implemented in pwaService.ts but    │
+│ not connected to any UI.                                                                 │
+│ Files:                                                                                   │
+│ - frontend/src/utils/pwaService.ts                                                       │
+│ - frontend/src/components/common/NotificationCenter.tsx                                  │
+│                                                                                          │
+│ Work:                                                                                    │
+│ - Add "Enable notifications" toggle in user settings/dashboard                           │
+│ - Call subscribeToPush() on user opt-in                                                  │
+│ - Backend: add push notification endpoint to notification.routes.ts                      │
+│                                                                                          │
+│ ---                                                                                      │
+│ P3.5 Employee Pages — Complete Implementation                                            │
+│                                                                                          │
+│ Problem: EmployeeTasksPage.tsx and EmployeeReportsPage.tsx were recently created but may │
+│  be stubs.                                                                               │
+│ Files:                                                                                   │
+│ - frontend/src/pages/employee/EmployeeTasksPage.tsx                                      │
+│ - frontend/src/pages/employee/EmployeeReportsPage.tsx                                    │
+│                                                                                          │
+│ Work:                                                                                    │
+│ - Verify real API integration (not placeholder data)                                     │
+│ - Add proper task CRUD actions for employees                                             │
+│ - Reports page: show assigned event stats, check-in counts                               │
+│                                                                                          │
+│ ---                                                                                      │
+│ P3.6 Accessibility (a11y)                                                                │
+│                                                                                          │
+│ Problem: No accessibility tests found in entire frontend test suite.                     │
+│ Files:                                                                                   │
+│ - frontend/src/tests/ (missing a11y suite)                                               │
+│                                                                                          │
+│ Work:                                                                                    │
+│ - Add @testing-library/jest-dom a11y matchers                                            │
+│ - Audit key pages: EventDetailPage, BookingPage, CheckoutPage                            │
+│ - Fix: missing aria-label on icon buttons, color contrast in dark mode                   │
+│                                                                                          │
+│ ---                                                                                      │
+│ Priority 4 — AI Chatbot: Fix Accuracy Gap (FastAPI vs Streamlit)                         │
+│                                                                                          │
+│ Root cause: server.py (uvicorn/FastAPI) is less accurate than app.py (Streamlit) due to  │
+│ 6 specific gaps found in the codebase. The fix is to bring server.py up to parity with   │
+│ app.py logic.                                                                            │
+│                                                                                          │
+│ P4.1 Add 401 Error Detection in FastAPI                                                  │
+│                                                                                          │
+│ Problem: app.py line 933–940 checks for {"error": "unauthorized"} before passing live    │
+│ data to the LLM. server.py has no such check — expired tokens cause error JSON to be fed │
+│  directly into the prompt.                                                               │
+│ Files:                                                                                   │
+│ - ai-doc-chatbot/server.py                                                               │
+│ - ai-doc-chatbot/chatbot_engine.py (stream_response())                                   │
+│                                                                                          │
+│ Work:                                                                                    │
+│ - In chatbot_engine.stream_response(): parse live_data_str, check for error ==           │
+│ "unauthorized" or _status == 401                                                         │
+│ - Yield a {"type": "error", "code": 401} event instead of continuing                     │
+│ - Frontend handles this by prompting re-login                                            │
+│                                                                                          │
+│ ---                                                                                      │
+│ P4.2 Add Role-Based System Prompts to FastAPI                                            │
+│                                                                                          │
+│ Problem: app.py has 5 role-specific system prompts (admin, vendor, teacher, employee,    │
+│ client). chatbot_engine.py has only one hardcoded admin prompt (ADMIN_SYSTEM_PROMPT line │
+│  650). FastAPI always uses the admin prompt regardless of who is asking.                 │
+│ Files:                                                                                   │
+│ - ai-doc-chatbot/chatbot_engine.py (lines 650–674, build_prompt())                       │
+│ - ai-doc-chatbot/app.py (lines 556–581, ROLE_BASE_PROMPTS)                               │
+│                                                                                          │
+│ Work:                                                                                    │
+│ - Move ROLE_BASE_PROMPTS dict from app.py into chatbot_engine.py                         │
+│ - Add role parameter to build_prompt() and stream_response()                             │
+│ - Role is already detected by detect_role() in chatbot_engine.py — wire it in            │
+│ - FastAPI request schema: add role: str = "admin" field                                  │
+│                                                                                          │
+│ ---                                                                                      │
+│ P4.3 Add History Filtering & Configurable Length to FastAPI                              │
+│                                                                                          │
+│ Problem: app.py line 892–895 filters history to clean user/assistant messages only and   │
+│ respects MEMORY_TURNS. chatbot_engine.py line 666 hardcodes 6 turns and uses raw client  │
+│ history.                                                                                 │
+│ Files:                                                                                   │
+│ - ai-doc-chatbot/chatbot_engine.py (build_prompt() line 666)                             │
+│                                                                                          │
+│ Work:                                                                                    │
+│ - Filter incoming history to role in ("user", "assistant") before slicing                │
+│ - Replace hardcoded history[-6:] with configurable memory_turns parameter (default: 6)   │
+│ - Validate message format (must have role and content keys)                              │
+│                                                                                          │
+│ ---                                                                                      │
+│ P4.4 Add Model Validation in FastAPI                                                     │
+│                                                                                          │
+│ Problem: server.py accepts any model name per-request with no validation. Invalid model  │
+│ causes silent hang.                                                                      │
+│ Files:                                                                                   │
+│ - ai-doc-chatbot/server.py                                                               │
+│                                                                                          │
+│ Work:                                                                                    │
+│ - On startup: call ollama.list() to get available models                                 │
+│ - On request: validate req.model against available models; fall back to kidrove-coder:7b │
+│  if not found                                                                            │
+│ - Return warning in response metadata if fallback used                                   │
+│                                                                                          │
+│ ---                                                                                      │
+│ P4.5 Persistent Conversation History (Session State)                                     │
+│                                                                                          │
+│ Problem: FastAPI is stateless — each request has no memory of previous turns unless      │
+│ client sends full history. Refreshing loses context.                                     │
+│ Files:                                                                                   │
+│ - ai-doc-chatbot/server.py                                                               │
+│                                                                                          │
+│ Work:                                                                                    │
+│ - Add session_id to ChatRequest (UUID, generated client-side)                            │
+│ - Store history in Redis (reuse backend/.env REDIS_HOST)                                 │
+│ - On each request: load history from Redis → append new turn → save back (TTL: 24h)      │
+│ - Client no longer needs to send full history each request                               │
+│                                                                                          │
+│ ---                                                                                      │
+│ P4.6 Error Recovery Fallback for API Calls                                               │
+│                                                                                          │
+│ Problem: If backend API returns error, raw error JSON enters the LLM prompt with no      │
+│ fallback.                                                                                │
+│ Files:                                                                                   │
+│ - ai-doc-chatbot/chatbot_engine.py (API registry calls)                                  │
+│                                                                                          │
+│ Work:                                                                                    │
+│ - Wrap all requests.get() calls in try/except with 5s timeout                            │
+│ - On API failure: set live_data_str = "" and add note "live data temporarily             │
+│ unavailable"                                                                             │
+│ - Fallback to RAG-only response, still useful                                            │
+│                                                                                          │
+│ ---                                                                                      │
+│ P4.7 Auto Re-ingestion on Code Changes                                                   │
+│                                                                                          │
+│ Problem: ChromaDB must be manually re-run. .processed_hashes.json already tracks changes │
+│  — just needs a watcher.                                                                 │
+│ Files:                                                                                   │
+│ - ai-doc-chatbot/scripts/ingest.py                                                       │
+│ - ai-doc-chatbot/.processed_hashes.json                                                  │
+│                                                                                          │
+│ Work:                                                                                    │
+│ - Create scripts/watch_and_ingest.py using watchdog library                              │
+│ - Monitor backend/src/ and frontend/src/ for .ts/.tsx changes                            │
+│ - On change: run incremental ingest for modified files only (hash check already in       │
+│ ingest.py)                                                                               │
+│                                                                                          │
+│ ---                                                                                      │
+│ Priority 5 — Customer-Facing Chatbot                                                     │
+│                                                                                          │
+│ Problem: Current chatbot is admin-only (requires JWT + admin role). Customers have no AI │
+│  help on the public site.                                                                │
+│                                                                                          │
+│ P5.1 Public Mode — Customer Chatbot                                                      │
+│                                                                                          │
+│ Files:                                                                                   │
+│ - ai-doc-chatbot/server.py                                                               │
+│ - ai-doc-chatbot/chatbot_engine.py                                                       │
+│ - frontend/src/components/ (new CustomerChatWidget.tsx)                                  │
+│                                                                                          │
+│ Architecture:                                                                            │
+│ Customer query                                                                           │
+│     │                                                                                    │
+│     ├── No JWT required (or lightweight public token)                                    │
+│     ├── Restricted to: qna ChromaDB collection + platform_knowledge.json                 │
+│     ├── NO MongoDB direct queries (no live data)                                         │
+│     ├── NO backend admin API calls                                                       │
+│     └── Uses "client" role system prompt from ROLE_BASE_PROMPTS                          │
+│                                                                                          │
+│ Work — Backend (server.py):                                                              │
+│ - Add POST /api/chat/public endpoint with no JWT auth                                    │
+│ - Rate limit: 10 req/min per IP (prevent abuse)                                          │
+│ - Only call hybrid_retrieve() on qna collection — no pre_route() to Mongo/API            │
+│ - Use ROLE_BASE_PROMPTS["client"] system prompt                                          │
+│                                                                                          │
+│ Work — Knowledge Base:                                                                   │
+│ - Expand data/platform_knowledge.json with customer Q&A:                                 │
+│   - How do I book an event?                                                              │
+│   - How do I get a refund?                                                               │
+│   - How do I use a coupon?                                                               │
+│   - How do I transfer/resend my ticket?                                                  │
+│   - What payment methods are accepted?                                                   │
+│   - How do I contact the event organizer?                                                │
+│   - How do I cancel my booking?                                                          │
+│   - What happens if an event is cancelled?                                               │
+│ - Re-run ingest_platform_knowledge.py after adding                                       │
+│                                                                                          │
+│ Work — Frontend (CustomerChatWidget.tsx):                                                │
+│ - Floating chat bubble (bottom-right corner)                                             │
+│ - Uses /api/chat/public endpoint (chatbot server at port 8000)                           │
+│ - Show on: HomePage, EventDetailPage, BookingPage, FAQPage                               │
+│ - No login required                                                                      │
+│ - Suggested quick-reply chips: "How to book?", "Refund policy", "My tickets"             │
+│                                                                                          │
+│ ---                                                                                      │
+│ P5.2 Expand Customer Knowledge Base                                                      │
+│                                                                                          │
+│ Files:                                                                                   │
+│ - ai-doc-chatbot/data/platform_knowledge.json                                            │
+│ - ai-doc-chatbot/scripts/ingest_platform_knowledge.py                                    │
+│                                                                                          │
+│ Work:                                                                                    │
+│ - Add 50+ customer-facing Q&A pairs (see P5.1 list)                                      │
+│ - Add vendor onboarding guide (for VendorRegisterPage)                                   │
+│ - Add teacher subscription tiers explanation                                             │
+│ - Add coupon/discount Q&A                                                                │
+│ - Re-run ingest_platform_knowledge.py (non-destructive, incremental)                     │
+│                                                                                          │
+│ ---                                                                                      │
+│ Priority 6 — Backend Code Quality                                                        │
+│                                                                                          │
+│ P6.1 Missing Validators (18 models)                                                      │
+│                                                                                          │
+│ Problem: 18 models lack dedicated validators. Routes may rely on no validation.          │
+│ High-priority missing:                                                                   │
+│ - ticket.validator.ts — Ticket operations are complex                                    │
+│ - notification.validator.ts — Notification creation                                      │
+│ - commissionConfig.validator.ts — Financial config needs validation                      │
+│ - blogCategory.validator.ts                                                              │
+│ - mediaAsset.validator.ts                                                                │
+│                                                                                          │
+│ Work: Generate validators using existing patterns from event.validator.ts as template.   │
+│                                                                                          │
+│ ---                                                                                      │
+│ P6.2 Admin Dashboard — Fix Placeholders                                                  │
+│                                                                                          │
+│ Problem: Two dashboard sections return stub data.                                        │
+│ Files:                                                                                   │
+│ - backend/src/controllers/admin.dashboard.controller.ts (line 152 — top venues)          │
+│ - backend/src/controllers/admin.dashboard.controller.ts (line 1500 — recent errors)      │
+│                                                                                          │
+│ Work:                                                                                    │
+│ - Line 152: fix venue aggregation query (relationship changed from User → Venue model    │
+│ ref)                                                                                     │
+│ - Line 1500: integrate with Winston error logs or add error log model                    │
+│                                                                                          │
+│ ---                                                                                      │
+│ P6.3 Order Payment Flow — Remove Mock                                                    │
+│                                                                                          │
+│ Problem: order.controller.ts line 382 has paymentSuccessful = true (mock).               │
+│ Files:                                                                                   │
+│ - backend/src/controllers/order.controller.ts (lines 378–440)                            │
+│                                                                                          │
+│ Work:                                                                                    │
+│ - Wire real Stripe PaymentIntent confirm at line 378                                     │
+│ - Send tickets email with QR codes after confirmed payment (line 440 TODO)               │
+│                                                                                          │
+│ ---                                                                                      │
+│ Summary Table                                                                            │
+│                                                                                          │
+│ ┌──────┬───────────────────────────────────────┬──────────┬────────┬────────────┐        │
+│ │  ID  │                Feature                │ Priority │ Effort │    Area    │        │
+│ ├──────┼───────────────────────────────────────┼──────────┼────────┼────────────┤        │
+│ │ P1.1 │ Stripe recurring subscriptions        │ Critical │ Large  │ Backend    │        │
+│ ├──────┼───────────────────────────────────────┼──────────┼────────┼────────────┤        │
+│ │ P1.2 │ Affiliate payout integration          │ Critical │ Medium │ Backend    │        │
+│ ├──────┼───────────────────────────────────────┼──────────┼────────┼────────────┤        │
+│ │ P1.3 │ Payment failure/dispute notifications │ Critical │ Small  │ Backend    │        │
+│ ├──────┼───────────────────────────────────────┼──────────┼────────┼────────────┤        │
+│ │ P1.4 │ Admin stats real data + UI            │ Critical │ Medium │ Full-stack │        │
+│ ├──────┼───────────────────────────────────────┼──────────┼────────┼────────────┤        │
+│ │ P2.1 │ SMS ticket resend                     │ High     │ Small  │ Backend    │        │
+│ ├──────┼───────────────────────────────────────┼──────────┼────────┼────────────┤        │
+│ │ P2.2 │ Teacher payment verification          │ High     │ Medium │ Backend    │        │
+│ ├──────┼───────────────────────────────────────┼──────────┼────────┼────────────┤        │
+│ │ P2.3 │ Moderation user notifications         │ High     │ Small  │ Backend    │        │
+│ ├──────┼───────────────────────────────────────┼──────────┼────────┼────────────┤        │
+│ │ P2.4 │ Blog comment reports                  │ Medium   │ Small  │ Backend    │        │
+│ ├──────┼───────────────────────────────────────┼──────────┼────────┼────────────┤        │
+│ │ P2.5 │ Newsletter email integration          │ Medium   │ Small  │ Backend    │        │
+│ ├──────┼───────────────────────────────────────┼──────────┼────────┼────────────┤        │
+│ │ P3.1 │ i18n translation files                │ High     │ Large  │ Frontend   │        │
+│ ├──────┼───────────────────────────────────────┼──────────┼────────┼────────────┤        │
+│ │ P3.2 │ Admin commissions UI                  │ High     │ Medium │ Frontend   │        │
+│ ├──────┼───────────────────────────────────────┼──────────┼────────┼────────────┤        │
+│ │ P3.3 │ Fix TypeScript errors                 │ Medium   │ Medium │ Frontend   │        │
+│ ├──────┼───────────────────────────────────────┼──────────┼────────┼────────────┤        │
+│ │ P3.4 │ Push notifications UI                 │ Medium   │ Small  │ Frontend   │        │
+│ ├──────┼───────────────────────────────────────┼──────────┼────────┼────────────┤        │
+│ │ P3.5 │ Employee pages completion             │ Medium   │ Small  │ Frontend   │        │
+│ ├──────┼───────────────────────────────────────┼──────────┼────────┼────────────┤        │
+│ │ P3.6 │ Accessibility audit                   │ Low      │ Medium │ Frontend   │        │
+│ ├──────┼───────────────────────────────────────┼──────────┼────────┼────────────┤        │
+│ │ P4.1 │ FastAPI: add 401 detection            │ High     │ Small  │ Chatbot    │        │
+│ ├──────┼───────────────────────────────────────┼──────────┼────────┼────────────┤        │
+│ │ P4.2 │ FastAPI: role-based prompts           │ High     │ Small  │ Chatbot    │        │
+│ ├──────┼───────────────────────────────────────┼──────────┼────────┼────────────┤        │
+│ │ P4.3 │ FastAPI: history filtering            │ High     │ Small  │ Chatbot    │        │
+│ ├──────┼───────────────────────────────────────┼──────────┼────────┼────────────┤        │
+│ │ P4.4 │ FastAPI: model validation             │ Medium   │ Small  │ Chatbot    │        │
+│ ├──────┼───────────────────────────────────────┼──────────┼────────┼────────────┤        │
+│ │ P4.5 │ FastAPI: persistent sessions (Redis)  │ Medium   │ Small  │ Chatbot    │        │
+│ ├──────┼───────────────────────────────────────┼──────────┼────────┼────────────┤        │
+│ │ P4.6 │ FastAPI: error recovery fallback      │ Medium   │ Small  │ Chatbot    │        │
+│ ├──────┼───────────────────────────────────────┼──────────┼────────┼────────────┤        │
+│ │ P4.7 │ Auto re-ingestion watcher             │ Low      │ Small  │ Chatbot    │        │
+│ ├──────┼───────────────────────────────────────┼──────────┼────────┼────────────┤        │
+│ │ P5.1 │ Customer chatbot public mode          │ High     │ Medium │ Chatbot    │        │
+│ ├──────┼───────────────────────────────────────┼──────────┼────────┼────────────┤        │
+│ │ P5.2 │ Expand customer knowledge base        │ High     │ Medium │ Chatbot    │        │
+│ ├──────┼───────────────────────────────────────┼──────────┼────────┼────────────┤        │
+│ │ P6.1 │ Missing validators (18)               │ Medium   │ Medium │ Backend    │        │
+│ ├──────┼───────────────────────────────────────┼──────────┼────────┼────────────┤        │
+│ │ P6.2 │ Admin dashboard placeholders          │ Low      │ Small  │ Backend    │        │
+│ ├──────┼───────────────────────────────────────┼──────────┼────────┼────────────┤        │
+│ │ P6.3 │ Remove mock payment                   │ High     │ Small  │ Backend    │        │
+│ └──────┴───────────────────────────────────────┴──────────┴────────┴────────────┘        │
+│                                                                                          │
+│ ---                                                                                      │
+│ Suggested Implementation Order                                                           │
+│                                                                                          │
+│ Week 1:   P4.1 → P4.2 → P4.3 → P4.4 → P4.6   (fix FastAPI accuracy — all small)          │
+│ Week 2:   P1.3 → P6.3 → P2.3 → P2.1            (backend quick wins)                      │
+│ Week 3:   P5.2 → P5.1                            (customer chatbot KB + public endpoint) │
+│ Week 4:   P1.4 → P3.2                            (admin commission full-stack)           │
+│ Week 5-6: P1.1                                   (Stripe recurring — large)              │
+│ Week 7-8: P1.2 → P2.2                            (affiliate payout + teacher verify)     │
+│ Week 9+:  P3.1 (i18n)                            (large, ongoing)                        │
+│ Parallel: P4.5                                   (Redis session history)                 │
+│ Ongoing:  P3.3, P6.1                             (code quality)   

@@ -1,0 +1,34 @@
+# Toxic backlinks disavow file for kidrove.com
+# Submit at: https://search.google.com/search-console/disavow-links
+# Last updated: 2026-01-17
+#
+# These domains have been identified as spam/toxic backlink sources
+# with low domain authority scores (0-25) that may negatively impact SEO.
+
+# Spam link building networks
+domain:8coint.com
+domain:toplikevideo.com
+domain:backlinkmasters.online
+domain:backlinksolutions.info
+
+# RankVance spam network (multiple domains)
+domain:rankvance.info
+domain:rankvanceagency.info
+domain:rankvanceauthority.info
+domain:rankvanceboost.info
+domain:rankvancelinks.info
+domain:rankvancelinks.online
+domain:rankvanceseo.info
+
+# Low quality/spam domains
+domain:dailymusings.top
+domain:drjack.world
+domain:metamagic.top
+domain:optimizeflow.top
+domain:newlyregddomains.com
+
+# Free hosting/subdomain spam
+domain:websites.freemyip.com
+
+# Additional toxic domains (add as discovered)
+# domain:example-spam-site.com

@@ -1,0 +1,351 @@
+- generic [ref=e10]:
+  - banner [ref=e11]:
+    - generic [ref=e14]:
+      - link "Visit our Facebook page" [ref=e15] [cursor=pointer]:
+        - /url: https://www.facebook.com/profile.php?id=61585051405021
+        - img [ref=e16]
+      - link "Visit our Twitter page" [ref=e18] [cursor=pointer]:
+        - /url: https://x.com/KidroveUAE
+        - img [ref=e19]
+      - link "Visit our Instagram page" [ref=e21] [cursor=pointer]:
+        - /url: https://www.instagram.com/kidroveuae/
+        - img [ref=e22]
+      - link "Visit our YouTube channel" [ref=e24] [cursor=pointer]:
+        - /url: https://www.youtube.com/channel/UCtADUAmbQzj-wYNzf9S_UxQ
+        - img [ref=e25]
+      - link "Visit our LinkedIn page" [ref=e27] [cursor=pointer]:
+        - /url: https://www.linkedin.com/company/kidrove/
+        - img [ref=e28]
+    - generic [ref=e31]:
+      - link "kidrove Logo" [ref=e33] [cursor=pointer]:
+        - /url: /
+        - img "kidrove Logo" [ref=e34]
+      - navigation [ref=e35]:
+        - link "Find Activities" [ref=e36] [cursor=pointer]:
+          - /url: /search
+        - link "Blog" [ref=e37] [cursor=pointer]:
+          - /url: /blog
+        - link "Kidrove Go" [ref=e38] [cursor=pointer]:
+          - /url: /about
+        - link "FAQ" [ref=e39] [cursor=pointer]:
+          - /url: /faq
+        - link "Get In Touch" [ref=e40] [cursor=pointer]:
+          - /url: /contact
+      - generic [ref=e41]:
+        - link "Search activities" [ref=e42] [cursor=pointer]:
+          - /url: /search
+          - img [ref=e43]
+        - link "View favorites" [ref=e45] [cursor=pointer]:
+          - /url: /favorites
+          - img [ref=e46]
+        - button [ref=e49] [cursor=pointer]:
+          - img [ref=e50]
+          - img [ref=e52]
+  - main [ref=e54]:
+    - generic [ref=e168]:
+      - generic [ref=e171]:
+        - generic [ref=e172]:
+          - button "Back to Event" [ref=e173] [cursor=pointer]:
+            - img [ref=e174]
+            - text: Back to Event
+          - heading "Complete Your Registration" [level=1] [ref=e176]
+          - paragraph [ref=e177]: test couse
+          - paragraph [ref=e178]: "Render #6 | Step: details"
+        - generic [ref=e180]:
+          - img [ref=e181]
+          - text: Session expires in 15 minutes
+      - generic [ref=e186]:
+        - generic [ref=e187]:
+          - button "1" [ref=e188] [cursor=pointer]:
+            - generic [ref=e189]: "1"
+          - paragraph [ref=e192]: Event Details
+        - generic [ref=e193]:
+          - button "2" [disabled] [ref=e194]:
+            - generic [ref=e195]: "2"
+          - paragraph [ref=e197]: Participants
+        - generic [ref=e198]:
+          - button [disabled] [ref=e199]:
+            - img [ref=e200]
+          - paragraph [ref=e203]: Confirmation
+      - generic [ref=e205]:
+        - generic [ref=e207]:
+          - generic [ref=e208]:
+            - generic [ref=e209]:
+              - img "test couse" [ref=e210]
+              - generic [ref=e212]:
+                - heading "test couse" [level=3] [ref=e213]
+                - generic [ref=e214]:
+                  - generic [ref=e215]: courses-camps-workshops
+                  - generic [ref=e216]: Workshop
+                  - generic [ref=e217]: Online
+            - generic [ref=e219]:
+              - generic [ref=e220]:
+                - img [ref=e222]
+                - generic [ref=e225]:
+                  - generic [ref=e226]: Location
+                  - generic [ref=e227]: Dubai
+                  - generic [ref=e228]: See event details
+              - generic [ref=e229]:
+                - img [ref=e231]
+                - generic [ref=e236]:
+                  - generic [ref=e237]: Age Range
+                  - generic [ref=e238]: 3 - 12 years old
+                  - generic [ref=e239]: All ages welcome
+          - generic [ref=e240]:
+            - heading "Select Your Date Choose when you'd like to attend" [level=3] [ref=e242]:
+              - img [ref=e244]
+              - generic [ref=e246]:
+                - generic [ref=e247]: Select Your Date
+                - generic [ref=e248]: Choose when you'd like to attend
+            - generic [ref=e250]:
+              - generic [ref=e251]:
+                - generic [ref=e252]: Select Event Date
+                - generic [ref=e253]: "Event runs: Apr 12 – Apr 30, 2026"
+              - generic [ref=e254]:
+                - generic [ref=e257]:
+                  - alert [ref=e258]
+                  - button "Next Month" [ref=e259] [cursor=pointer]:
+                    - generic: Next Month
+                  - generic [ref=e260]:
+                    - generic [ref=e261]:
+                      - generic [ref=e262]: April 2026
+                      - generic [ref=e263]:
+                        - generic [ref=e264]: Su
+                        - generic [ref=e265]: Mo
+                        - generic [ref=e266]: Tu
+                        - generic [ref=e267]: We
+                        - generic [ref=e268]: Th
+                        - generic [ref=e269]: Fr
+                        - generic [ref=e270]: Sa
+                    - listbox "month 2026-04" [ref=e271]:
+                      - generic [ref=e272]:
+                        - option "Not available Sunday, March 29th, 2026" [disabled] [ref=e273]: "29"
+                        - option "Not available Monday, March 30th, 2026" [disabled] [ref=e274]: "30"
+                        - option "Not available Tuesday, March 31st, 2026" [disabled] [ref=e275]: "31"
+                        - option "Not available Wednesday, April 1st, 2026" [disabled] [ref=e276]: "1"
+                        - option "Not available Thursday, April 2nd, 2026" [disabled] [ref=e277]: "2"
+                        - option "Not available Friday, April 3rd, 2026" [disabled] [ref=e278]: "3"
+                        - option "Not available Saturday, April 4th, 2026" [disabled] [ref=e279]: "4"
+                      - generic [ref=e280]:
+                        - option "Not available Sunday, April 5th, 2026" [disabled] [ref=e281]: "5"
+                        - option "Not available Monday, April 6th, 2026" [disabled] [ref=e282]: "6"
+                        - option "Not available Tuesday, April 7th, 2026" [disabled] [ref=e283]: "7"
+                        - option "Not available Wednesday, April 8th, 2026" [disabled] [ref=e284]: "8"
+                        - option "Not available Thursday, April 9th, 2026" [disabled] [ref=e285]: "9"
+                        - option "Not available Friday, April 10th, 2026" [disabled] [ref=e286]: "10"
+                        - option "Not available Saturday, April 11th, 2026" [disabled] [ref=e287]: "11"
+                      - generic [ref=e288]:
+                        - option "Not available Sunday, April 12th, 2026" [disabled] [ref=e289]: "12"
+                        - option "Choose Monday, April 13th, 2026" [selected] [ref=e290] [cursor=pointer]: "13"
+                        - option "Choose Tuesday, April 14th, 2026" [ref=e291] [cursor=pointer]: "14"
+                        - option "Choose Wednesday, April 15th, 2026" [ref=e292] [cursor=pointer]: "15"
+                        - option "Choose Thursday, April 16th, 2026" [ref=e293] [cursor=pointer]: "16"
+                        - option "Choose Friday, April 17th, 2026" [ref=e294] [cursor=pointer]: "17"
+                        - option "Choose Saturday, April 18th, 2026" [ref=e295] [cursor=pointer]: "18"
+                      - generic [ref=e296]:
+                        - option "Choose Sunday, April 19th, 2026" [ref=e297] [cursor=pointer]: "19"
+                        - option "Choose Monday, April 20th, 2026" [ref=e298] [cursor=pointer]: "20"
+                        - option "Choose Tuesday, April 21st, 2026" [ref=e299] [cursor=pointer]: "21"
+                        - option "Choose Wednesday, April 22nd, 2026" [ref=e300] [cursor=pointer]: "22"
+                        - option "Choose Thursday, April 23rd, 2026" [ref=e301] [cursor=pointer]: "23"
+                        - option "Choose Friday, April 24th, 2026" [ref=e302] [cursor=pointer]: "24"
+                        - option "Choose Saturday, April 25th, 2026" [ref=e303] [cursor=pointer]: "25"
+                      - generic [ref=e304]:
+                        - option "Choose Sunday, April 26th, 2026" [ref=e305] [cursor=pointer]: "26"
+                        - option "Choose Monday, April 27th, 2026" [ref=e306] [cursor=pointer]: "27"
+                        - option "Choose Tuesday, April 28th, 2026" [ref=e307] [cursor=pointer]: "28"
+                        - option "Choose Wednesday, April 29th, 2026" [ref=e308] [cursor=pointer]: "29"
+                        - option "Choose Thursday, April 30th, 2026" [ref=e309] [cursor=pointer]: "30"
+                        - option "Not available Friday, May 1st, 2026" [disabled] [ref=e310]: "1"
+                        - option "Not available Saturday, May 2nd, 2026" [disabled] [ref=e311]: "2"
+                - generic [ref=e313]:
+                  - generic [ref=e316]: Event dates
+                  - generic [ref=e319]: Available dates
+                  - generic [ref=e322]: Today
+                  - generic [ref=e325]: Unavailable
+              - generic [ref=e483]:
+                - generic [ref=e484]:
+                  - generic [ref=e485]: 📅 Monday, April 13, 2026
+                  - generic [ref=e486]:
+                    - generic [ref=e488]: 🕐 5:30 AM – 5:30 AM
+                    - generic [ref=e489]:
+                      - generic [ref=e490]: ✅ Unlimited seats
+                      - generic [ref=e491]: 💰 Free
+                - generic [ref=e492]: ✨
+          - generic [ref=e348]:
+            - heading "Number of Participants How many people are attending?" [level=3] [ref=e350]:
+              - generic [ref=e351]:
+                - img [ref=e353]
+                - generic [ref=e358]:
+                  - generic [ref=e359]: Number of Participants
+                  - generic [ref=e360]: How many people are attending?
+              - img [ref=e361]
+            - generic [ref=e364]:
+              - generic [ref=e365]:
+                - button [disabled] [ref=e366]:
+                  - img [ref=e367]
+                - generic [ref=e370]:
+                  - generic [ref=e371]: "1"
+                  - generic [ref=e372]: Ticket
+                - button [ref=e373] [cursor=pointer]:
+                  - img [ref=e374]
+              - generic [ref=e376]:
+                - generic [ref=e377]:
+                  - img [ref=e379]
+                  - generic [ref=e381]: "Maximum capacity:"
+                - generic [ref=e382]: 10 seats
+          - generic [ref=e384]:
+            - generic [ref=e386]:
+              - generic [ref=e387]:
+                - img [ref=e389]
+                - generic [ref=e391]:
+                  - generic [ref=e392]: Booking Summary
+                  - generic [ref=e393]: Review your order details
+              - img [ref=e394]
+            - generic [ref=e396]:
+              - generic [ref=e397]:
+                - generic [ref=e398]:
+                  - generic [ref=e399]: Subtotal
+                  - generic [ref=e400]: 1 × AED 0
+                - generic [ref=e401]: AED 0.00
+              - generic [ref=e406]:
+                - generic [ref=e407]:
+                  - generic [ref=e408]:
+                    - generic [ref=e409]: Total Amount
+                    - generic [ref=e410]: AED 0.00
+                  - img [ref=e412]
+                - generic [ref=e415]:
+                  - generic [ref=e416]: Payment due now
+                  - generic [ref=e417]: AED 0.00
+              - generic [ref=e418]:
+                - generic [ref=e419]:
+                  - img [ref=e420]
+                  - generic [ref=e422]: Secure Payment
+                - generic [ref=e423]:
+                  - img [ref=e424]
+                  - generic [ref=e426]: Instant Confirmation
+          - generic [ref=e428]:
+            - generic [ref=e429]:
+              - generic [ref=e430]:
+                - generic [ref=e431]:
+                  - img [ref=e432]
+                  - generic [ref=e434]: 1 Ticket
+                - generic [ref=e435]:
+                  - img [ref=e436]
+                  - generic [ref=e438]: AED 0.00
+              - button "Continue to Participants" [disabled] [ref=e439]:
+                - generic [ref=e441]:
+                  - generic [ref=e442]: Continue to Participants
+                  - img [ref=e443]
+            - generic [ref=e445]:
+              - img [ref=e446]
+              - generic [ref=e448]: Please select a date and number of participants to continue
+        - generic [ref=e450]:
+          - heading "Order Summary" [level=3] [ref=e452]:
+            - img [ref=e453]
+            - text: Order Summary
+          - generic [ref=e458]:
+            - generic [ref=e459]:
+              - img "test couse" [ref=e460]
+              - generic [ref=e461]:
+                - heading "test couse" [level=3] [ref=e462]
+                - paragraph [ref=e463]: courses-camps-workshops
+            - generic [ref=e464]:
+              - generic [ref=e465]:
+                - generic [ref=e466]: "Participants:"
+                - generic [ref=e467]: "1"
+              - generic [ref=e468]:
+                - generic [ref=e469]: "Total:"
+                - generic [ref=e470]: FREE
+            - generic [ref=e471]:
+              - generic [ref=e472]:
+                - img [ref=e473]
+                - generic [ref=e476]: Free Registration
+              - paragraph [ref=e477]: No payment required — complete your registration to secure your spot
+            - generic [ref=e478]:
+              - img [ref=e479]
+              - generic [ref=e481]: Visa, Mastercard, PayPal accepted
+  - contentinfo [ref=e79]:
+    - generic [ref=e80]:
+      - generic [ref=e81]:
+        - generic [ref=e82]:
+          - img "Kidrove Logo" [ref=e84]
+          - paragraph [ref=e85]: Discover and book the best activities for your kids in the UAE.
+          - generic [ref=e86]:
+            - link "Visit our Facebook page" [ref=e87] [cursor=pointer]:
+              - /url: https://www.facebook.com/profile.php?id=61585051405021
+              - img [ref=e88]
+            - link "Visit our Twitter page" [ref=e90] [cursor=pointer]:
+              - /url: https://x.com/KidroveUAE
+              - img [ref=e91]
+            - link "Visit our Instagram page" [ref=e93] [cursor=pointer]:
+              - /url: https://www.instagram.com/kidroveuae/
+              - img [ref=e94]
+            - link "Visit our YouTube channel" [ref=e96] [cursor=pointer]:
+              - /url: https://www.youtube.com/channel/UCtADUAmbQzj-wYNzf9S_UxQ
+              - img [ref=e97]
+            - link "Visit our LinkedIn page" [ref=e99] [cursor=pointer]:
+              - /url: https://www.linkedin.com/company/kidrove/
+              - img [ref=e100]
+        - generic [ref=e102]:
+          - heading "Quick Links" [level=3] [ref=e103]
+          - list [ref=e104]:
+            - listitem [ref=e105]:
+              - link "About Us" [ref=e106] [cursor=pointer]:
+                - /url: /about
+            - listitem [ref=e107]:
+              - link "Blog" [ref=e108] [cursor=pointer]:
+                - /url: /blog
+            - listitem [ref=e109]:
+              - link "Contact Us" [ref=e110] [cursor=pointer]:
+                - /url: /contact
+            - listitem [ref=e111]:
+              - link "FAQs" [ref=e112] [cursor=pointer]:
+                - /url: /faq
+            - listitem [ref=e113]:
+              - link "Partner with Us" [ref=e114] [cursor=pointer]:
+                - /url: /partner-with-us
+          - heading "Teach" [level=3] [ref=e115]
+          - list [ref=e116]:
+            - listitem [ref=e117]:
+              - link "Teach as Organization" [ref=e118] [cursor=pointer]:
+                - /url: /for-organizations
+            - listitem [ref=e119]:
+              - link "Teach as Individual" [ref=e120] [cursor=pointer]:
+                - /url: /teach/register
+        - generic [ref=e121]:
+          - heading "Categories" [level=3] [ref=e122]
+          - list [ref=e123]:
+            - listitem [ref=e124]:
+              - link "Afterschool Activities" [ref=e125] [cursor=pointer]:
+                - /url: /categories/afterschool-activities
+            - listitem [ref=e126]:
+              - link "Arts and Crafts" [ref=e127] [cursor=pointer]:
+                - /url: /categories/arts-and-crafts
+            - listitem [ref=e128]:
+              - link "Baby & Toddler" [ref=e129] [cursor=pointer]:
+                - /url: /categories/baby-toddler
+            - listitem [ref=e130]:
+              - link "Birthday Deals" [ref=e131] [cursor=pointer]:
+                - /url: /categories/birthday-deals
+        - generic [ref=e132]:
+          - heading "Newsletter" [level=3] [ref=e133]
+          - paragraph [ref=e134]: Subscribe to our newsletter for updates on new activities and promotions.
+          - generic [ref=e135]:
+            - generic [ref=e136]:
+              - generic [ref=e137]:
+                - textbox "Enter your email" [ref=e138]
+                - img [ref=e139]
+              - textbox "Your name" [ref=e142]
+              - textbox "City (optional)" [ref=e144]
+              - textbox "Age of children (optional)" [ref=e146]
+              - button "Subscribe" [disabled] [ref=e147]:
+                - generic [ref=e148]: Subscribe
+            - paragraph [ref=e149]: By subscribing, you agree to receive marketing emails from us. You can unsubscribe at any time.
+      - generic [ref=e150]:
+        - paragraph [ref=e151]: © 2026 Kidrove. All rights reserved.
+        - generic [ref=e152]:
+          - link "Privacy Policy" [ref=e153] [cursor=pointer]:
+            - /url: /privacy
+          - link "Terms of Service" [ref=e154] [cursor=pointer]:
+            - /url: /terms

@@ -1,0 +1,56 @@
+<svg width="1000" height="100" viewBox="0 0 1000 100" fill="none" xmlns="http://www.w3.org/2000/svg">
+  <!-- Background -->
+  <rect width="1000" height="100" fill="#f0f8ff"/>
+  
+  <!-- Character 1 -->
+  <circle cx="150" cy="40" r="15" fill="#ff6b6b"/>
+  <rect x="135" y="55" width="30" height="20" rx="5" fill="#4ecdc4"/>
+  <rect x="140" y="75" width="8" height="15" fill="#45b7d1"/>
+  <rect x="152" y="75" width="8" height="15" fill="#45b7d1"/>
+  <circle cx="145" cy="37" r="2" fill="white"/>
+  <circle cx="155" cy="37" r="2" fill="white"/>
+  <path d="M145 45 Q150 48 155 45" stroke="#333" stroke-width="2" fill="none"/>
+  
+  <!-- Character 2 -->
+  <circle cx="350" cy="40" r="15" fill="#feca57"/>
+  <rect x="335" y="55" width="30" height="20" rx="5" fill="#ff9ff3"/>
+  <rect x="340" y="75" width="8" height="15" fill="#54a0ff"/>
+  <rect x="352" y="75" width="8" height="15" fill="#54a0ff"/>
+  <circle cx="345" cy="37" r="2" fill="white"/>
+  <circle cx="355" cy="37" r="2" fill="white"/>
+  <path d="M345 45 Q350 48 355 45" stroke="#333" stroke-width="2" fill="none"/>
+  
+  <!-- Character 3 -->
+  <circle cx="550" cy="40" r="15" fill="#ff9ff3"/>
+  <rect x="535" y="55" width="30" height="20" rx="5" fill="#3742fa"/>
+  <rect x="540" y="75" width="8" height="15" fill="#2f3542"/>
+  <rect x="552" y="75" width="8" height="15" fill="#2f3542"/>
+  <circle cx="545" cy="37" r="2" fill="white"/>
+  <circle cx="555" cy="37" r="2" fill="white"/>
+  <path d="M545 45 Q550 48 555 45" stroke="#333" stroke-width="2" fill="none"/>
+  
+  <!-- Character 4 -->
+  <circle cx="750" cy="40" r="15" fill="#5f27cd"/>
+  <rect x="735" y="55" width="30" height="20" rx="5" fill="#00d2d3"/>
+  <rect x="740" y="75" width="8" height="15" fill="#ff6348"/>
+  <rect x="752" y="75" width="8" height="15" fill="#ff6348"/>
+  <circle cx="745" cy="37" r="2" fill="white"/>
+  <circle cx="755" cy="37" r="2" fill="white"/>
+  <path d="M745 45 Q750 48 755 45" stroke="#333" stroke-width="2" fill="none"/>
+  
+  <!-- Fun elements -->
+  <circle cx="100" cy="20" r="3" fill="#feca57"/>
+  <circle cx="200" cy="15" r="2" fill="#ff6b6b"/>
+  <circle cx="400" cy="25" r="2.5" fill="#4ecdc4"/>
+  <circle cx="600" cy="10" r="3" fill="#ff9ff3"/>
+  <circle cx="800" cy="20" r="2" fill="#5f27cd"/>
+  <circle cx="900" cy="15" r="2.5" fill="#00d2d3"/>
+  
+  <!-- Ground line -->
+  <line x1="0" y1="90" x2="1000" y2="90" stroke="#e0e0e0" stroke-width="2"/>
+  
+  <!-- Title -->
+  <text x="500" y="25" text-anchor="middle" font-family="Arial, sans-serif" font-size="12" fill="#333">
+    Fun Characters
+  </text>
+</svg>
