@@ -166,30 +166,54 @@ export async function renderCertificate(
   template: ITemplate,
   data: Record<string, any>,
 ): Promise<string | undefined> {
-  const inlined =
+  const html =
     template.mode === "visual"
       ? buildVisualHtml(template, data)
       : buildHtmlTemplate(template.html || "", template.css, data);
 
-  if (!inlined) throw new Error("Certificate rendering produced empty content");
+  if (!html) throw new Error("Certificate rendering produced empty content");
+
+  const pdfBuf = await htmlToPdf(html, template.canvasWidth ?? 1240, template.canvasHeight ?? 877);
 
   try {
     const { v2: cloudinary } = await import("cloudinary");
-    const buf = Buffer.from(inlined, "utf-8");
 
     return await new Promise<string>((resolve, reject) => {
       const stream = cloudinary.uploader.upload_stream(
-        { resource_type: "raw", folder: "certificates", format: "html" },
+        { resource_type: "raw", folder: "certificates", format: "pdf" },
         (error, result) => {
           if (error || !result) reject(error ?? new Error("No result from Cloudinary"));
           else resolve(result.secure_url);
         },
       );
-      stream.end(buf);
+      stream.end(pdfBuf);
     });
   } catch (err) {
     logger.warn("Cloudinary upload failed for certificate:", err);
     throw err;
+  }
+}
+
+async function htmlToPdf(html: string, widthPx: number, heightPx: number): Promise<Buffer> {
+  const puppeteer = await import("puppeteer-core");
+  const browser = await puppeteer.default.launch({
+    executablePath: process.env.CHROME_PATH || "/usr/bin/google-chrome",
+    args: ["--no-sandbox", "--disable-setuid-sandbox", "--disable-dev-shm-usage"],
+    headless: true,
+  });
+  try {
+    const page = await browser.newPage();
+    await page.setViewport({ width: widthPx, height: heightPx });
+    await page.setContent(html, { waitUntil: "networkidle0", timeout: 30000 });
+    const pdf = await page.pdf({
+      width: `${widthPx}px`,
+      height: `${heightPx}px`,
+      printBackground: true,
+      margin: { top: "0", right: "0", bottom: "0", left: "0" },
+    });
+    return Buffer.from(pdf);
+  } finally {
+    await browser.close();
   }
 }
 
@@ -207,25 +231,36 @@ function buildVisualHtml(template: ITemplate, data: Record<string, any>): string
   const fieldHtml = fields
     .map((f: ITemplateField) => {
       const value = resolveFieldValue(f, data);
+      const qrSize = f.width || 80;
+
+      if (f.type === "qr") {
+        const styles = [
+          `position:absolute`,
+          `left:${f.x}%`,
+          `top:${f.y}%`,
+          `transform:translate(-50%,-50%)`,
+          `width:${qrSize}px`,
+          `height:${qrSize}px`,
+        ].join(";");
+        return `<img src="${value}" style="${styles}" alt="QR Code" />`;
+      }
+
       const styles = [
         `position:absolute`,
         `left:${f.x}%`,
         `top:${f.y}%`,
-        f.width ? `width:${f.width}%` : "",
-        f.fontSize ? `font-size:${f.fontSize}px` : "font-size:16px",
-        f.fontWeight ? `font-weight:${f.fontWeight}` : "",
-        f.color ? `color:${f.color}` : "color:#000",
+        `transform:translate(-50%,-50%)`,
+        `font-size:${f.fontSize ?? 24}px`,
+        `font-weight:${f.fontWeight ?? "normal"}`,
+        `color:${f.color ?? "#000000"}`,
         f.fontFamily ? `font-family:${f.fontFamily}` : "",
-        f.textAlign ? `text-align:${f.textAlign}` : "",
+        `text-align:${f.textAlign ?? "center"}`,
+        `white-space:nowrap`,
         `line-height:1.2`,
       ]
         .filter(Boolean)
         .join(";");
 
-      if (f.type === "qr") {
-        const qrSize = f.width ? `${f.width}%` : "80px";
-        return `<img src="${value}" style="${styles};width:${qrSize};height:auto" alt="QR Code" />`;
-      }
       return `<div style="${styles}">${escapeHtml(String(value ?? ""))}</div>`;
     })
     .join("\n");
@@ -236,14 +271,14 @@ function buildVisualHtml(template: ITemplate, data: Record<string, any>): string
 <meta charset="UTF-8">
 <style>
   *{margin:0;padding:0;box-sizing:border-box}
-  body{width:${canvasWidth}px;height:${canvasHeight}px;overflow:hidden}
+  body{width:${canvasWidth}px;height:${canvasHeight}px;overflow:hidden;background:#fff}
   .canvas{position:relative;width:${canvasWidth}px;height:${canvasHeight}px;overflow:hidden}
-  .bg{position:absolute;top:0;left:0;width:100%;height:100%;object-fit:cover}
+  .bg{position:absolute;top:0;left:0;width:100%;height:100%;object-fit:cover;display:block}
 </style>
 </head>
 <body>
 <div class="canvas">
-  ${backgroundImageUrl ? `<img class="bg" src="${backgroundImageUrl}" alt="" />` : ""}
+  ${backgroundImageUrl ? `<img class="bg" src="${backgroundImageUrl}" alt="" crossorigin="anonymous" />` : ""}
   ${fieldHtml}
 </div>
 </body>
