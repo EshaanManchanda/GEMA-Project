@@ -156,9 +156,36 @@ const certificateWorker = areQueuesEnabled
           throw err;
         }
       },
-      { connection: bullMQConnection!, concurrency: 3 },
+      { connection: bullMQConnection!, concurrency: 1 },
     )
   : null;
+
+// ─── Singleton Puppeteer browser (reuse across requests) ─────────────────────
+
+let _browserPromise: Promise<import("puppeteer-core").Browser> | null = null;
+
+async function getBrowser(): Promise<import("puppeteer-core").Browser> {
+  if (!_browserPromise) {
+    const puppeteer = await import("puppeteer-core");
+    _browserPromise = puppeteer.default.launch({
+      executablePath: process.env.CHROME_PATH || "/usr/bin/google-chrome",
+      args: [
+        "--no-sandbox",
+        "--disable-setuid-sandbox",
+        "--disable-dev-shm-usage",
+        "--disable-gpu",
+        "--single-process",
+      ],
+      headless: true,
+    });
+    _browserPromise.then((b) =>
+      b.on("disconnected", () => {
+        _browserPromise = null;
+      }),
+    );
+  }
+  return _browserPromise;
+}
 
 // ─── Render ───────────────────────────────────────────────────────────────────
 
@@ -195,16 +222,25 @@ export async function renderCertificate(
 }
 
 async function htmlToPdf(html: string, widthPx: number, heightPx: number): Promise<Buffer> {
-  const puppeteer = await import("puppeteer-core");
-  const browser = await puppeteer.default.launch({
-    executablePath: process.env.CHROME_PATH || "/usr/bin/google-chrome",
-    args: ["--no-sandbox", "--disable-setuid-sandbox", "--disable-dev-shm-usage"],
-    headless: true,
-  });
+  const browser = await getBrowser();
+  const page = await browser.newPage();
   try {
-    const page = await browser.newPage();
     await page.setViewport({ width: widthPx, height: heightPx });
-    await page.setContent(html, { waitUntil: "networkidle0", timeout: 30000 });
+    // domcontentloaded avoids hanging on slow/external image loads
+    await page.setContent(html, { waitUntil: "domcontentloaded", timeout: 30000 });
+    // Wait for all <img> elements to settle before capturing
+    await page.evaluate(() =>
+      Promise.all(
+        Array.from(document.images)
+          .filter((img) => !img.complete)
+          .map(
+            (img) =>
+              new Promise<void>((resolve) => {
+                img.onload = img.onerror = () => resolve();
+              }),
+          ),
+      ),
+    );
     const pdf = await page.pdf({
       width: `${widthPx}px`,
       height: `${heightPx}px`,
@@ -213,7 +249,7 @@ async function htmlToPdf(html: string, widthPx: number, heightPx: number): Promi
     });
     return Buffer.from(pdf);
   } finally {
-    await browser.close();
+    await page.close();
   }
 }
 
