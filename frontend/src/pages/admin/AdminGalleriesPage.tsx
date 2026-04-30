@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useCallback } from 'react';
-import { FaImages, FaSearch, FaTrash, FaPlus, FaFolderOpen } from 'react-icons/fa';
+import { Image, Search, Trash2, Plus, FolderOpen } from 'lucide-react';
 import { galleryAPI, type Gallery, type GalleryImage } from '../../services/api/reviewLinkAPI';
 import adminAPI from '../../services/api/adminAPI';
 import MediaPickerModal from '../../components/admin/media/MediaPickerModal';
@@ -22,26 +22,26 @@ const AdminGalleriesPage: React.FC = () => {
   const [selected, setSelected] = useState<EventOption | null>(null);
   const [gallery, setGallery] = useState<Gallery | null>(null);
   const [layout, setLayout] = useState<'grid' | 'messy'>('grid');
-  const [images, setImages] = useState<GalleryImage[]>([]);
+  const [images, setImage] = useState<GalleryImage[]>([]);
   const [saving, setSaving] = useState(false);
   const [urlInput, setUrlInput] = useState('');
   const [showMediaPicker, setShowMediaPicker] = useState(false);
 
   const handleMediaSelect = (assets: MediaAsset[]) => {
-    const newImages: GalleryImage[] = assets.map((a, i) => ({
+    const newImage: GalleryImage[] = assets.map((a, i) => ({
       url: a.url,
       caption: a.originalName,
       order: images.length + i,
       size: 'medium' as const,
     }));
-    setImages(prev => [...prev, ...newImages]);
+    setImage(prev => [...prev, ...newImage]);
     setShowMediaPicker(false);
   };
 
   const fetchEvents = useCallback(async () => {
     setLoadingEvents(true);
     try {
-      const res = await adminAPI.getEvents({ limit: 200 });
+      const res = await adminAPI.getEvents({ limit: 200, status: 'active' });
       const list: EventOption[] = (res?.events || res?.data?.events || []).map((e: any) => ({
         _id: e._id || e.id,
         title: e.title,
@@ -60,35 +60,35 @@ const AdminGalleriesPage: React.FC = () => {
   const openEditor = async (event: EventOption) => {
     setSelected(event);
     setGallery(null);
-    setImages([]);
+    setImage([]);
     try {
       const res = await galleryAPI.getByEvent(event._id);
       const g = res.data?.data?.gallery;
       if (g) {
         setGallery(g);
         setLayout(g.type);
-        setImages(g.images || []);
+        setImage(g.images || []);
       } else {
         setLayout('grid');
-        setImages([]);
+        setImage([]);
       }
     } catch {
       setLayout('grid');
-      setImages([]);
+      setImage([]);
     }
   };
 
   const addImage = () => {
     const url = urlInput.trim();
     if (!url) return;
-    setImages(prev => [...prev, { url, order: prev.length, size: 'medium' }]);
+    setImage(prev => [...prev, { url, order: prev.length, size: 'medium' }]);
     setUrlInput('');
   };
 
-  const removeImage = (idx: number) => setImages(prev => prev.filter((_, i) => i !== idx));
+  const removeImage = (idx: number) => setImage(prev => prev.filter((_, i) => i !== idx));
 
   const updateImage = (idx: number, patch: Partial<GalleryImage>) => {
-    setImages(prev => {
+    setImage(prev => {
       const next = [...prev];
       next[idx] = { ...next[idx], ...patch };
       return next;
@@ -119,7 +119,7 @@ const AdminGalleriesPage: React.FC = () => {
     try {
       await galleryAPI.update(gallery._id, { images: [] });
       setGallery(null);
-      setImages([]);
+      setImage([]);
       toast.success('Gallery cleared');
     } catch {
       toast.error('Failed to delete gallery');
@@ -133,7 +133,7 @@ const AdminGalleriesPage: React.FC = () => {
   return (
     <div className="p-6">
       <div className="flex items-center gap-3 mb-6">
-        <FaImages className="text-indigo-600 text-2xl" />
+        <Image className="text-indigo-600 w-7 h-7" />
         <div>
           <h1 className="text-2xl font-bold text-gray-900">Event Galleries</h1>
           <p className="text-sm text-gray-500">Manage photo galleries for events</p>
@@ -145,7 +145,7 @@ const AdminGalleriesPage: React.FC = () => {
         <div className="lg:col-span-1 bg-white rounded-xl border border-gray-200 overflow-hidden">
           <div className="p-4 border-b border-gray-100">
             <div className="relative">
-              <FaSearch className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 text-sm" />
+              <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 w-4 h-4" />
               <input
                 type="text"
                 value={search}
@@ -179,7 +179,7 @@ const AdminGalleriesPage: React.FC = () => {
         <div className="lg:col-span-2 bg-white rounded-xl border border-gray-200 p-6">
           {!selected ? (
             <div className="flex flex-col items-center justify-center h-64 text-gray-400">
-              <FaImages className="text-5xl mb-3 opacity-30" />
+              <Image className="w-12 h-12 mb-3 opacity-30" />
               <p className="text-sm">Select an event to manage its gallery</p>
             </div>
           ) : (
@@ -249,14 +249,14 @@ const AdminGalleriesPage: React.FC = () => {
 
               {/* Add images */}
               <div className="space-y-2">
-                <p className="text-xs font-medium text-gray-500 uppercase tracking-wide">Add Images</p>
+                <p className="text-xs font-medium text-gray-500 uppercase tracking-wide">Add Image</p>
                 {/* Media Library button */}
                 <button
                   type="button"
                   onClick={() => setShowMediaPicker(true)}
                   className="w-full flex items-center justify-center gap-2 px-4 py-3 border-2 border-dashed border-indigo-300 text-indigo-600 rounded-lg hover:bg-indigo-50 transition-colors text-sm font-medium"
                 >
-                  <FaFolderOpen size={16} /> Pick from Media Library
+                  <FolderOpen className="w-4 h-4" /> Pick from Media Library
                 </button>
                 {/* Or paste URL */}
                 <div className="flex gap-2">
@@ -273,7 +273,7 @@ const AdminGalleriesPage: React.FC = () => {
                     onClick={addImage}
                     className="px-4 py-2 text-sm bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 flex items-center gap-1"
                   >
-                    <FaPlus size={12} /> Add
+                    <Plus className="w-3 h-3" /> Add
                   </button>
                 </div>
               </div>
@@ -286,7 +286,7 @@ const AdminGalleriesPage: React.FC = () => {
                     onClick={handleDelete}
                     className="px-4 py-2 text-sm text-red-600 border border-red-300 rounded-lg hover:bg-red-50 flex items-center gap-1"
                   >
-                    <FaTrash size={12} /> Clear Gallery
+                    <Trash2 className="w-3 h-3" /> Clear Gallery
                   </button>
                 )}
                 <button
@@ -310,7 +310,7 @@ const AdminGalleriesPage: React.FC = () => {
         category="event"
         folder="events"
         multiple={true}
-        title="Select Gallery Images"
+        title="Select Gallery Image"
       />
     </div>
   );

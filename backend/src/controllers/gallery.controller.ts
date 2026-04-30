@@ -49,6 +49,11 @@ export const getGalleryByEvent = async (req: Request, res: Response, next: NextF
       return next(new AppError("Invalid event ID", 400));
     }
 
+    const event = await Event.findById(eventId).select("isDeleted").lean();
+    if (!event || (event as any).isDeleted) {
+      return next(new AppError("Event not found", 404));
+    }
+
     const gallery = await Gallery.findOne({ eventId });
     if (!gallery) return next(new AppError("Gallery not found", 404));
 

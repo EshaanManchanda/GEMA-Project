@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useCallback, useRef } from 'react';
-import { Award, Search, XCircle, CheckCircle, RefreshCw, ExternalLink, Mail, Eye, Layout, Trash2, Pencil } from 'lucide-react';
+import { Award, Search, XCircle, CheckCircle, RefreshCw, ExternalLink, Mail, Eye, Layout, Trash2, Pencil, RotateCcw } from 'lucide-react';
 import { certificateAPI, type CertVerifyResult } from '../../services/api/reviewLinkAPI';
 import adminAPI from '../../services/api/adminAPI';
 import api from '../../services/api';
@@ -38,6 +38,7 @@ const CertListTab: React.FC = () => {
   const [totalPages, setTotalPages] = useState(1);
   const [revoking, setRevoking] = useState<string | null>(null);
   const [resending, setResending] = useState<string | null>(null);
+  const [retrying, setRetrying] = useState<string | null>(null);
   const [events, setEvents] = useState<EventOption[]>([]);
 
   const LIMIT = 20;
@@ -67,6 +68,20 @@ const CertListTab: React.FC = () => {
   }, [page, statusFilter, eventFilter]);
 
   useEffect(() => { fetchCerts(); }, [fetchCerts]);
+
+  const handleRetry = async (cert: CertVerifyResult) => {
+    if (!cert._id) return;
+    setRetrying(cert._id);
+    try {
+      await certificateAPI.retryGenerate(cert._id);
+      toast.success('Certificate queued for regeneration');
+      fetchCerts();
+    } catch (err: any) {
+      toast.error(err?.response?.data?.message || 'Failed to retry');
+    } finally {
+      setRetrying(null);
+    }
+  };
 
   const handleRevoke = async (cert: CertVerifyResult) => {
     if (!cert._id) return;
@@ -196,6 +211,11 @@ const CertListTab: React.FC = () => {
                         <a href={`/certificates/verify/${cert.serialNumber}`} target="_blank" rel="noreferrer" className="p-1.5 text-green-600 hover:bg-green-50 rounded" title="Verify">
                           <CheckCircle className="w-4 h-4" />
                         </a>
+                      )}
+                      {cert._id && (cert.status === 'pending' || cert.status === 'failed') && (
+                        <button type="button" onClick={() => handleRetry(cert)} disabled={retrying === cert._id} className="p-1.5 text-amber-500 hover:bg-amber-50 rounded disabled:opacity-50" title="Retry Generation">
+                          {retrying === cert._id ? <RefreshCw className="w-4 h-4 animate-spin" /> : <RotateCcw className="w-4 h-4" />}
+                        </button>
                       )}
                       {cert._id && (cert.status === 'generated' || cert.status === 'emailed') && (
                         <button type="button" onClick={() => handleResendEmail(cert)} disabled={resending === cert._id} className="p-1.5 text-blue-500 hover:bg-blue-50 rounded disabled:opacity-50" title="Resend Email">

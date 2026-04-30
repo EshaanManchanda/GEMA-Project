@@ -127,7 +127,14 @@ export const previewTemplate = async (req: AuthRequest, res: Response, next: Nex
 
     const url = await renderCertificate(template, sampleData);
     res.status(200).json({ success: true, data: { previewUrl: url } });
-  } catch (error) {
+  } catch (error: any) {
+    const msg = error?.message || "";
+    if (msg.includes("executablePath") || msg.includes("CHROME") || msg.includes("chrome") || msg.includes("chromium")) {
+      return next(new AppError(`Chrome not found. Set CHROME_PATH env var (current: ${process.env.CHROME_PATH || "unset"}). ${msg}`, 500));
+    }
+    if (msg.includes("net::ERR") || msg.includes("CORS") || msg.includes("cross-origin")) {
+      return next(new AppError(`Preview failed — image asset blocked by CORS or unreachable URL. Use public Cloudinary URLs in your template. ${msg}`, 500));
+    }
     next(error);
   }
 };
@@ -285,6 +292,75 @@ export const revokeCertificate = async (req: AuthRequest, res: Response, next: N
     });
 
     res.status(200).json({ success: true, data: { certificate } });
+  } catch (error) {
+    next(error);
+  }
+};
+
+export const retryCertificate = async (req: AuthRequest, res: Response, next: NextFunction) => {
+  try {
+    const { id } = req.params;
+
+    const certificate = await Certificate.findById(id);
+    if (!certificate) return next(new AppError("Certificate not found", 404));
+
+    if (!["pending", "failed"].includes(certificate.status)) {
+      return next(new AppError(`Cannot retry certificate with status '${certificate.status}'`, 400));
+    }
+
+    await Certificate.findByIdAndUpdate(id, {
+      status: "pending",
+      failureReason: undefined,
+      $push: { history: { event: "retry_requested", at: new Date() } },
+    });
+
+    if (certificateQueue) {
+      await certificateQueue.add(
+        "generate-certificate",
+        {
+          certificateId: id,
+          templateId: certificate.templateId?.toString(),
+          recipient: certificate.recipient,
+          data: certificate.data || {},
+          options: {},
+        },
+        { attempts: 3, backoff: { type: "exponential", delay: 3000 } },
+      );
+    } else {
+      logger.warn("Certificate queue unavailable — attempting synchronous generation");
+      try {
+        const { renderCertificate } = await import("../workers/certificate.worker");
+        const template = await (await import("../models/Certificate")).Template.findById(certificate.templateId);
+        if (!template) return next(new AppError("Template not found for this certificate", 404));
+
+        const pdfUrl = await renderCertificate(template, {
+          recipientName: certificate.recipient.name,
+          recipientEmail: certificate.recipient.email,
+          ...(certificate.data || {}),
+          issuedDate: new Date().toLocaleDateString("en-GB", { day: "numeric", month: "long", year: "numeric" }),
+        });
+
+        await Certificate.findByIdAndUpdate(id, {
+          status: "generated",
+          pdfUrl,
+          issuedAt: new Date(),
+          $push: { history: { event: "generation_complete", at: new Date() } },
+        });
+
+        const updated = await Certificate.findById(id);
+        return res.status(200).json({ success: true, data: { certificate: updated } });
+      } catch (syncErr: any) {
+        await Certificate.findByIdAndUpdate(id, {
+          status: "failed",
+          failureReason: syncErr.message,
+          $push: { history: { event: "generation_failed", meta: { error: syncErr.message }, at: new Date() } },
+        });
+        return next(new AppError(`Generation failed: ${syncErr.message}`, 500));
+      }
+    }
+
+    const updated = await Certificate.findById(id);
+    res.status(200).json({ success: true, data: { certificate: updated } });
   } catch (error) {
     next(error);
   }

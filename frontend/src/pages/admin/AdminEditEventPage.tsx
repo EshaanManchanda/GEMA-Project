@@ -974,9 +974,12 @@ const AdminEditEventPage: React.FC = () => {
           availableSeats: schedule.unlimitedSeats
             ? 999999
             : parseInt(schedule.availableSeats) || 0,
-          totalSeats: schedule.totalSeats
-            ? parseInt(schedule.totalSeats)
-            : undefined,
+          // Use user-typed availableSeats as the new totalSeats so the backend
+          // recalculates correctly. Sending stale totalSeats from initial fetch
+          // caused the backend to ignore the user's new capacity value.
+          totalSeats: schedule.unlimitedSeats
+            ? undefined
+            : parseInt(schedule.availableSeats) || undefined,
           price: parseFloat(schedule.price) || 0,
           unlimitedSeats: schedule.unlimitedSeats || false,
           isSpecialDate: schedule.isSpecialDate || false,

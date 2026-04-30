@@ -16,6 +16,7 @@ import {
   listCertificates,
   verifyCertificate,
   revokeCertificate,
+  retryCertificate,
   downloadCertificate,
   resendCertificateEmail,
   listAuditLogs,
@@ -174,6 +175,13 @@ router.post(
   authorize(["admin"]),
   [param("id").isMongoId().withMessage("Invalid certificate ID")],
   revokeCertificate,
+);
+
+router.post(
+  "/:id/retry",
+  authorize(["admin"]),
+  [param("id").isMongoId().withMessage("Invalid certificate ID")],
+  retryCertificate,
 );
 
 // Audit log

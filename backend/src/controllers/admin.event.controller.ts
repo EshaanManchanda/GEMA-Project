@@ -244,6 +244,9 @@ const formatAdminEventResponse = (event: any) => {
       transformedEvent.claimStatus ||
       (transformedEvent.isAffiliateEvent ? "unclaimed" : "not_claimable"),
 
+    // Pricing flags
+    isFreeEvent: transformedEvent.isFreeEvent === true,
+
     // Additional fields
     customCSS: transformedEvent.customCSS || null,
     meetingLink: transformedEvent.meetingLink || null,
@@ -730,6 +733,7 @@ export const updateEvent = async (
     if (normalizedEventType) {
       event.venueType = normalizedEventType;
     }
+    event.markModified("dateSchedule");
     await event.save();
 
     // Populate vendor information
