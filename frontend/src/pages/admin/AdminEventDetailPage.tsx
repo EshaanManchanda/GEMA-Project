@@ -172,7 +172,7 @@ const AdminEventDetailPage: React.FC = () => {
       setActionLoading(true);
       await adminAPI.approveEvent(id);
       toast.success('Event approved');
-      setEvent((e: any) => ({ ...e, isApproved: true, status: 'active' }));
+      setEvent((e: any) => ({ ...e, isApproved: true, status: 'published' }));
     } catch (err: any) {
       toast.error(err?.response?.data?.message || 'Failed to approve event');
     } finally {

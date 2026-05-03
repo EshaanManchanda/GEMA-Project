@@ -30,6 +30,11 @@ interface EditableTemplate {
   canvasWidth?: number;
   canvasHeight?: number;
   fields?: TemplateField[];
+  defaultOptions?: {
+    pageSize?: string;
+    orientation?: 'portrait' | 'landscape';
+    margins?: { top?: number; right?: number; bottom?: number; left?: number };
+  };
 }
 
 interface Props {
@@ -64,6 +69,8 @@ const VisualTemplateBuilder: React.FC<Props> = ({ onClose, onSaved, editTemplate
   const [bgUrl, setBgUrl] = useState(editTemplate?.backgroundImageUrl ?? '');
   const [canvasW, setCanvasW] = useState(editTemplate?.canvasWidth ?? 1240);
   const [canvasH, setCanvasH] = useState(editTemplate?.canvasHeight ?? 877);
+  const [orientation, setOrientation] = useState<'portrait' | 'landscape'>(editTemplate?.defaultOptions?.orientation ?? 'landscape');
+  const [pageSize, setPageSize] = useState(editTemplate?.defaultOptions?.pageSize ?? 'A4');
   const [fields, setFields] = useState<TemplateField[]>(
     (editTemplate?.fields ?? []).map(f => ({ ...f, id: (f as any).id || uid() }))
   );
@@ -80,7 +87,8 @@ const VisualTemplateBuilder: React.FC<Props> = ({ onClose, onSaved, editTemplate
 
   const handleImageSelect = useCallback((assets: any[]) => {
     if (!assets[0]) return;
-    const url = assets[0].url;
+    // Use directUrl if available (Cloudinary CDN), otherwise fall back to url
+    const url = assets[0].directUrl || assets[0].url;
     setBgUrl(url);
     setShowMediaPicker(false);
 
@@ -168,6 +176,10 @@ const VisualTemplateBuilder: React.FC<Props> = ({ onClose, onSaved, editTemplate
         canvasWidth: canvasW,
         canvasHeight: canvasH,
         fields: fields.map(({ id: _id, ...f }) => f),
+        defaultOptions: {
+          pageSize,
+          orientation,
+        },
       };
       if (isEdit) {
         await api.put(`/certificates/templates/${editTemplate!._id}`, payload);
@@ -234,6 +246,61 @@ const VisualTemplateBuilder: React.FC<Props> = ({ onClose, onSaved, editTemplate
                   className="w-full text-sm px-2.5 py-1.5 border border-gray-300 rounded-lg"
                   placeholder="Optional description"
                 />
+              </div>
+            </div>
+
+            {/* Page Settings */}
+            <div>
+              <label className="block text-xs font-medium text-gray-700 mb-1.5">Page Settings</label>
+              <div className="space-y-2">
+                <div className="flex items-center justify-between">
+                  <span className="text-xs text-gray-600">Page Size</span>
+                  <select
+                    value={pageSize}
+                    onChange={e => setPageSize(e.target.value)}
+                    className="text-xs px-2 py-1 border border-gray-300 rounded"
+                  >
+                    <option value="A4">A4</option>
+                    <option value="A3">A3</option>
+                    <option value="Letter">Letter</option>
+                  </select>
+                </div>
+                <div className="flex items-center justify-between">
+                  <span className="text-xs text-gray-600">Orientation</span>
+                  <div className="flex gap-1">
+                    <button
+                      type="button"
+                      onClick={() => setOrientation('portrait')}
+                      className={`px-2 py-1 text-xs rounded border ${
+                        orientation === 'portrait'
+                          ? 'bg-indigo-100 border-indigo-400 text-indigo-700'
+                          : 'border-gray-300 text-gray-600 hover:bg-gray-50'
+                      }`}
+                    >
+                      <svg className="w-3.5 h-4" viewBox="0 0 24 32" fill="currentColor">
+                        <rect x="4" y="2" width="16" height="28" rx="1" stroke="currentColor" strokeWidth="1.5" fill="none"/>
+                      </svg>
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setOrientation('landscape')}
+                      className={`px-2 py-1 text-xs rounded border ${
+                        orientation === 'landscape'
+                          ? 'bg-indigo-100 border-indigo-400 text-indigo-700'
+                          : 'border-gray-300 text-gray-600 hover:bg-gray-50'
+                      }`}
+                    >
+                      <svg className="w-4 h-3.5" viewBox="0 0 32 24" fill="currentColor">
+                        <rect x="2" y="4" width="28" height="16" rx="1" stroke="currentColor" strokeWidth="1.5" fill="none"/>
+                      </svg>
+                    </button>
+                  </div>
+                </div>
+                {orientation && (
+                  <p className="text-xs text-gray-400">
+                    Current: {pageSize} ({orientation})
+                  </p>
+                )}
               </div>
             </div>
 
@@ -361,6 +428,12 @@ const VisualTemplateBuilder: React.FC<Props> = ({ onClose, onSaved, editTemplate
                       cursor: 'grab',
                       userSelect: 'none',
                       zIndex: selected === f.id ? 10 : 5,
+                      fontSize: f.fontSize ? `${f.fontSize}px` : '24px',
+                      fontWeight: f.fontWeight === 'bold' ? 'bold' : 'normal',
+                      color: f.color || '#000000',
+                      fontFamily: f.fontFamily || 'inherit',
+                      textAlign: f.textAlign || 'center',
+                      whiteSpace: 'nowrap',
                     }}
                     onMouseDown={e => onMouseDownField(e, f.id, f.x, f.y)}
                     onClick={() => setSelected(f.id)}
@@ -491,13 +564,18 @@ const VisualTemplateBuilder: React.FC<Props> = ({ onClose, onSaved, editTemplate
                         onChange={e => updateField(selectedField.id, { fontFamily: e.target.value })}
                         className="w-full text-xs px-2.5 py-1.5 border border-gray-300 rounded-lg"
                       >
-                        <option value="">Default</option>
-                        <option value="serif">Serif</option>
-                        <option value="sans-serif">Sans-serif</option>
-                        <option value="monospace">Monospace</option>
+                        <option value="">Default (System)</option>
+                        <option value="serif">Serif (Georgia)</option>
+                        <option value="sans-serif">Sans-serif (Arial)</option>
+                        <option value="monospace">Monospace (Courier)</option>
                         <option value="Georgia, serif">Georgia</option>
                         <option value="'Times New Roman', serif">Times New Roman</option>
                         <option value="Arial, sans-serif">Arial</option>
+                        <option value="Verdana, sans-serif">Verdana</option>
+                        <option value="Tahoma, sans-serif">Tahoma</option>
+                        <option value="'Trebuchet MS', sans-serif">Trebuchet MS</option>
+                        <option value="Impact, sans-serif">Impact</option>
+                        <option value="'Comic Sans MS', cursive">Comic Sans</option>
                       </select>
                     </div>
                   </>

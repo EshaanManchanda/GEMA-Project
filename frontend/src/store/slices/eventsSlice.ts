@@ -43,7 +43,7 @@ const initialState: EventsState = {
     priceRange: { min: 0, max: 1000 },
     ageGroup: '',
     features: [],
-    status: 'active',
+    status: 'published',
     vendor: '',
   },
   searchQuery: '',
@@ -172,10 +172,10 @@ export const deleteEvent = createAsyncThunk(
 
 export const toggleEventStatus = createAsyncThunk(
   'events/toggleEventStatus',
-  async ({ id, status }: { id: string; status: 'active' | 'inactive' | 'draft' }, { rejectWithValue }) => {
+  async ({ id, status }: { id: string; status: 'published' | 'archived' | 'draft' }, { rejectWithValue }) => {
     try {
       const response = await eventsAPI.updateEventStatus(id, status);
-      toast.success(`Event ${status === 'active' ? 'activated' : status === 'inactive' ? 'deactivated' : 'saved as draft'}!`);
+      toast.success(`Event ${status === 'published' ? 'published' : status === 'archived' ? 'archived' : 'saved as draft'}!`);
       return response;
     } catch (error: any) {
       const message = error.response?.data?.message || 'Failed to update event status';

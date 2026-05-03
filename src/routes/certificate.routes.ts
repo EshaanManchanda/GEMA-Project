@@ -1,5 +1,7 @@
 import { Router } from "express";
 import { param, body, query } from "express-validator";
+import { uploadCSV } from "../middleware/upload";
+import mongoose from "mongoose";
 import {
   createTemplate,
   listTemplates,
@@ -18,6 +20,8 @@ import {
   downloadCertificate,
   resendCertificateEmail,
   listAuditLogs,
+  bulkImportCSV,
+  getSampleCSV,
 } from "../controllers/certificate.controller";
 import { authenticate, authorize } from "../middleware/auth";
 import { createCustomLimiter } from "../middleware/rateLimiter";
@@ -180,6 +184,30 @@ router.get(
     query("limit").optional().isInt({ min: 1, max: 200 }),
   ],
   listAuditLogs,
+);
+
+// ─────────────────────────────────────────────────────────────────────
+// Bulk Import CSV
+// ─────────────────────────────────────────────────────────────────────
+
+router.post(
+  "/import/csv",
+  authorize(["admin", "vendor"]),
+  certBulkLimiter,
+  uploadCSV,
+  [
+    body("eventId").isMongoId().withMessage("Valid event ID required"),
+    body("certificateTypeSlug").optional().trim(),
+  ],
+  bulkImportCSV,
+);
+
+// Get sample CSV with event's certificate types
+router.get(
+  "/import/sample-csv/:eventId",
+  authorize(["admin", "vendor"]),
+  [param("eventId").isMongoId().withMessage("Valid event ID required")],
+  getSampleCSV,
 );
 
 export default router;

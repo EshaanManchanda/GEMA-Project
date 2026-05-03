@@ -135,7 +135,11 @@ app.use(
         }) ||
         (origin && /\.vercel\.app$/.test(origin));
 
-      if (isAllowed) {
+      // Allow null origin (server-side requests like Puppeteer)
+      if (!origin || origin === 'null') {
+        logger.tagged("CORS", "Allowing null origin (server-side request)");
+        callback(null, true);
+      } else if (isAllowed) {
         logger.tagged("CORS", "Origin allowed:", origin);
         callback(null, true);
       } else {

@@ -71,3 +71,4 @@ bun.lock
 doc/api/postman/
 skills-lock.json
 skills/
+bulk_entry.csv

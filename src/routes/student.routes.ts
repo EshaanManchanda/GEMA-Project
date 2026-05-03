@@ -8,12 +8,16 @@ import {
   getStudent,
   updateStudent,
   deleteStudent,
+  bulkImportStudents,
 } from "../controllers/student.controller";
 import { authenticate, authorize } from "../middleware/auth";
+import { uploadCSV } from "../middleware/upload";
 
 const router = Router();
 
 router.use(authenticate);
+
+router.post("/bulk-import", authorize(["admin"]), uploadCSV.single("csv"), bulkImportStudents);
 
 router.get("/me/children", getMyChildren);
 

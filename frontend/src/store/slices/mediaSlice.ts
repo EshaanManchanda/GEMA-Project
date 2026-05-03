@@ -13,6 +13,7 @@ export interface MediaAsset {
   filename: string;
   originalName: string;
   url: string; // Now UUID-based URL
+  directUrl?: string; // Direct Cloudinary CDN URL (no CORS issues)
   mimeType: string;
   fileExtension: string; // File extension (e.g., .jpg, .png, .mp4)
   size: number;

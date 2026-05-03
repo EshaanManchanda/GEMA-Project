@@ -48,6 +48,7 @@ import {
   FaCalendarPlus,
   FaChartBar,
   FaFileAlt,
+  FaAward,
   // FaHome
 } from 'react-icons/fa';
 
@@ -498,6 +499,11 @@ const Layout: React.FC<{ children?: React.ReactNode }> = ({ children }) => {
                           <Link to="/favorites" className="flex items-center px-4 py-2 text-sm text-gray-700 hover:bg-gray-100" onClick={() => setProfileDropdownOpen(false)}>
                             <FaHeart className="mr-3 text-gray-400" /> Favorites
                           </Link>
+                          {user.role === 'customer' && (
+                            <Link to="/certificates/lookup" className="flex items-center px-4 py-2 text-sm text-gray-700 hover:bg-gray-100" onClick={() => setProfileDropdownOpen(false)}>
+                              <FaAward className="mr-3 text-gray-400" /> My Certificates
+                            </Link>
+                          )}
                         </>
                       )}
 
@@ -682,6 +688,9 @@ const Layout: React.FC<{ children?: React.ReactNode }> = ({ children }) => {
                             <p className="text-xs font-semibold text-gray-400 uppercase tracking-wider px-3 pt-4 pb-1">My Account</p>
                             <Link to="/bookings" className="flex items-center gap-3 px-3 py-3 rounded-lg text-sm font-medium min-h-[48px] text-gray-700 hover:bg-gray-50" onClick={() => setMobileMenuOpen(false)}><FaTicketAlt size={14} className="text-gray-400 flex-shrink-0" /> My Bookings</Link>
                             <Link to="/favorites" className="flex items-center gap-3 px-3 py-3 rounded-lg text-sm font-medium min-h-[48px] text-gray-700 hover:bg-gray-50" onClick={() => setMobileMenuOpen(false)}><FaHeart size={14} className="text-gray-400 flex-shrink-0" /> Favorites</Link>
+                            {user.role === 'customer' && (
+                              <Link to="/certificates/lookup" className="flex items-center gap-3 px-3 py-3 rounded-lg text-sm font-medium min-h-[48px] text-gray-700 hover:bg-gray-50" onClick={() => setMobileMenuOpen(false)}><FaAward size={14} className="text-gray-400 flex-shrink-0" /> My Certificates</Link>
+                            )}
                           </>
                         )}
                       </>

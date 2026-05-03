@@ -155,6 +155,7 @@ export interface ICertificateHistory {
 export interface ICertificate extends Document {
   serialNumber: string;
   templateId?: mongoose.Types.ObjectId;
+  certificateTypeSlug?: string;
   eventId: mongoose.Types.ObjectId;
   userId: mongoose.Types.ObjectId;
   reviewId?: mongoose.Types.ObjectId;
@@ -179,6 +180,7 @@ const certificateSchema = new Schema<ICertificate>(
   {
     serialNumber: { type: String, unique: true, sparse: true },
     templateId: { type: Schema.Types.ObjectId, ref: "CertTemplate" },
+    certificateTypeSlug: { type: String },
     eventId: { type: Schema.Types.ObjectId, ref: "Event", required: true },
     userId: { type: Schema.Types.ObjectId, ref: "User", required: true },
     reviewId: { type: Schema.Types.ObjectId, ref: "Review" },
@@ -225,6 +227,8 @@ certificateSchema.index({ status: 1 });
 certificateSchema.index({ "recipient.email": 1 });
 certificateSchema.index({ serialNumber: 1 });
 certificateSchema.index({ issuedAt: -1 });
+certificateSchema.index({ "context.studentId": 1 });
+certificateSchema.index({ userId: 1, eventId: 1 });
 
 const Certificate = mongoose.model<ICertificate>("Certificate", certificateSchema);
 export default Certificate;

@@ -1,6 +1,7 @@
 import { Request, Response, NextFunction } from "express";
 import mongoose from "mongoose";
 import Certificate, { Template, TemplateVersion, SerialCounter, CertificateRequest, AuditLog } from "../models/Certificate";
+import Event from "../models/Event";
 import { AppError } from "../middleware/index";
 import { AuthRequest } from "../types/index";
 import { certificateQueue } from "../config/queue";
@@ -411,6 +412,126 @@ export const getBulkRequestStatus = async (req: Request, res: Response, next: Ne
   }
 };
 
+// ─── Bulk Import CSV ───────────────────────────────────────────────────────────────
+
+export const bulkImportCSV = async (req: AuthRequest, res: Response, next: NextFunction) => {
+  try {
+    const { eventId, certificateTypeSlug } = req.body;
+    const actorId = req.user?._id || req.user?.id;
+
+    if (!req.file) {
+      return next(new AppError("CSV file is required", 400));
+    }
+
+    const csvContent = req.file.buffer.toString("utf-8");
+    const lines = csvContent.split("\n").filter((line) => line.trim());
+
+    if (lines.length < 2) {
+      return next(new AppError("CSV must have header row and at least one data row", 400));
+    }
+
+    const header = lines[0].split(",").map((h) => h.trim().toLowerCase());
+    const nameIdx = header.indexOf("name");
+    const emailIdx = header.indexOf("email");
+    const typeIdx = header.indexOf("certificatetype");
+
+    if (nameIdx === -1 || emailIdx === -1) {
+      return next(new AppError("CSV must have 'name' and 'email' columns", 400));
+    }
+
+    const event = await mongoose.model("Event").findById(eventId).select("certificateTypes");
+    if (!event) {
+      return next(new AppError("Event not found", 404));
+    }
+
+    const certTypes = event.certificateTypes || [];
+    const defaultType = certTypes.find((ct) => ct.isDefault) || certTypes[0];
+
+    const inputs: Array<{ recipientName: string; recipientEmail: string; certificateTypeSlug?: string; data?: Record<string, any> }> = [];
+
+    for (let i = 1; i < lines.length; i++) {
+      const cols = lines[i].split(",").map((c) => c.trim());
+      if (cols.length < 2 || !cols[nameIdx] || !cols[emailIdx]) continue;
+
+      const rowType = typeIdx !== -1 ? cols[typeIdx]?.trim() : "";
+      const resolvedType = rowType || certificateTypeSlug || defaultType?.slug || "";
+
+      inputs.push({
+        recipientName: cols[nameIdx],
+        recipientEmail: cols[emailIdx],
+        certificateTypeSlug: resolvedType,
+        data: { importedAt: new Date().toISOString() },
+      });
+    }
+
+    if (inputs.length === 0) {
+      return next(new AppError("No valid rows found in CSV", 400));
+    }
+
+    if (inputs.length > 500) {
+      return next(new AppError("Maximum 500 certificates per import", 400));
+    }
+
+    const certRequest = await CertificateRequest.create({
+      type: "bulk",
+      eventId,
+      templateId: defaultType?.templateId,
+      inputs,
+      options: { sendEmail: false },
+      status: "queued",
+      progress: { total: inputs.length, processed: 0, failed: 0 },
+      createdBy: actorId,
+    });
+
+    for (const input of inputs) {
+      const certType = certTypes.find((ct) => ct.slug === input.certificateTypeSlug);
+      const templateId = certType?.templateId || defaultType?.templateId;
+
+      const serialNumber = await allocateSerial();
+      const userId = new mongoose.Types.ObjectId();
+
+      const cert = await Certificate.create({
+        serialNumber,
+        templateId,
+        certificateTypeSlug: input.certificateTypeSlug,
+        eventId,
+        userId,
+        recipient: { name: input.recipientName, email: input.recipientEmail },
+        data: input.data || {},
+        status: "pending",
+        history: [{ event: "imported", at: new Date(), actor: actorId }],
+      });
+
+      if (certificateQueue) {
+        await certificateQueue.add(
+          "generate-certificate",
+          {
+            certificateId: cert._id.toString(),
+            requestId: certRequest._id.toString(),
+            templateId,
+            recipient: { name: input.recipientName, email: input.recipientEmail },
+            data: input.data || {},
+          },
+          { attempts: 3, backoff: { type: "exponential", delay: 3000 } },
+        );
+      }
+    }
+
+    await CertificateRequest.findByIdAndUpdate(certRequest._id, { status: "in_progress" });
+
+    res.status(202).json({
+      success: true,
+      data: {
+        requestId: certRequest._id,
+        total: inputs.length,
+        message: `${inputs.length} certificate(s) queued for generation from CSV`,
+      },
+    });
+  } catch (error) {
+    next(error);
+  }
+};
+
 // ─── Audit Log ───────────────────────────────────────────────────────────────
 
 export const listAuditLogs = async (req: AuthRequest, res: Response, next: NextFunction) => {
@@ -484,6 +605,51 @@ export const rollbackTemplate = async (req: AuthRequest, res: Response, next: Ne
     );
 
     res.status(200).json({ success: true, data: { template } });
+  } catch (error) {
+    next(error);
+  }
+};
+
+// ─── Sample CSV ───────────────────────────────────────────────────────────────
+
+export const getSampleCSV = async (req: AuthRequest, res: Response, next: NextFunction) => {
+  try {
+    const { eventId } = req.params;
+
+    const event = await Event.findById(eventId).select("certificateTypes");
+    if (!event) {
+      return next(new AppError("Event not found", 404));
+    }
+
+    const certTypes = event.certificateTypes || [];
+    const firstType = certTypes.find((ct) => ct.isDefault) || certTypes[0];
+    const defaultSlug = firstType?.slug || "participation";
+
+    const csvRows = ["name,email,certificateType"];
+
+    const sampleNames = ["John Doe", "Jane Smith", "Michael Johnson", "Emily Brown", "David Wilson"];
+    const sampleEmails = [
+      "john@example.com",
+      "jane@example.com",
+      "michael@example.com",
+      "emily@example.com",
+      "david@example.com",
+    ];
+
+    certTypes.forEach((type, idx) => {
+      csvRows.push(`${sampleNames[idx % sampleNames.length]},${sampleEmails[idx % sampleEmails.length]},${type.slug}`);
+    });
+
+    if (certTypes.length === 0) {
+      csvRows.push(`John Doe,john@example.com,${defaultSlug}`);
+      csvRows.push(`Jane Smith,jane@example.com,${defaultSlug}`);
+    }
+
+    const csv = csvRows.join("\n");
+
+    res.setHeader("Content-Type", "text/csv");
+    res.setHeader("Content-Disposition", "attachment; filename=certificate-import-sample.csv");
+    res.send(csv);
   } catch (error) {
     next(error);
   }

@@ -1,6 +1,7 @@
 import { Request, Response, NextFunction } from "express";
 import mongoose from "mongoose";
 import Certificate, { Template, TemplateVersion, SerialCounter, CertificateRequest, AuditLog } from "../models/Certificate";
+import Student from "../models/Student";
 import { AppError } from "../middleware/index";
 import { AuthRequest } from "../types/index";
 import { certificateQueue } from "../config/queue";
@@ -50,7 +51,7 @@ export const deleteTemplate = async (req: AuthRequest, res: Response, next: Next
 
 export const listTemplates = async (req: Request, res: Response, next: NextFunction) => {
   try {
-    const templates = await Template.find({ active: true }).select("name slug description mode html css defaultOptions createdAt");
+    const templates = await Template.find({ active: true }).select("name slug description mode html css defaultOptions canvasWidth canvasHeight fields createdAt");
     res.status(200).json({ success: true, data: { templates } });
   } catch (error) {
     next(error);
@@ -70,7 +71,7 @@ export const getTemplate = async (req: Request, res: Response, next: NextFunctio
 export const updateTemplate = async (req: AuthRequest, res: Response, next: NextFunction) => {
   try {
     const { id } = req.params;
-    const { html, css, backgroundImageUrl, canvasWidth, canvasHeight, fields, ...rest } = req.body;
+    const { html, css, backgroundImageUrl, canvasWidth, canvasHeight, fields, defaultOptions, ...rest } = req.body;
     const userId = req.user?._id || req.user?.id;
 
     const existing = await Template.findById(id);
@@ -93,6 +94,7 @@ export const updateTemplate = async (req: AuthRequest, res: Response, next: Next
     if (canvasWidth !== undefined) updates.canvasWidth = canvasWidth;
     if (canvasHeight !== undefined) updates.canvasHeight = canvasHeight;
     if (fields !== undefined) updates.fields = fields;
+    if (defaultOptions !== undefined) updates.defaultOptions = defaultOptions;
 
     const template = await Template.findByIdAndUpdate(id, updates, { new: true, runValidators: true });
     res.status(200).json({ success: true, data: { template } });
@@ -143,7 +145,7 @@ export const previewTemplate = async (req: AuthRequest, res: Response, next: Nex
 
 export const triggerGeneration = async (req: AuthRequest, res: Response, next: NextFunction) => {
   try {
-    const { templateId, recipient, data, eventId, userId, reviewId, options } = req.body;
+    const { templateId, recipient, data, eventId, userId, reviewId, options, certificateTypeSlug } = req.body;
 
     if (!recipient?.name || !recipient?.email) {
       return next(new AppError("recipient.name and recipient.email are required", 400));
@@ -154,6 +156,7 @@ export const triggerGeneration = async (req: AuthRequest, res: Response, next: N
     const certificate = await Certificate.create({
       serialNumber,
       templateId,
+      certificateTypeSlug: certificateTypeSlug || undefined,
       eventId,
       userId,
       reviewId,
@@ -204,11 +207,13 @@ export const getCertificate = async (req: Request, res: Response, next: NextFunc
 
 export const listCertificates = async (req: AuthRequest, res: Response, next: NextFunction) => {
   try {
-    const { eventId, userId, status, page = 1, limit = 20 } = req.query;
+    const { eventId, userId, studentId, recipientEmail, status, page = 1, limit = 20 } = req.query;
 
     const filter: Record<string, any> = {};
     if (eventId) filter.eventId = eventId;
     if (userId) filter.userId = userId;
+    if (studentId) filter["context.studentId"] = studentId as string;
+    if (recipientEmail) filter["recipient.email"] = (recipientEmail as string).toLowerCase();
     if (status) filter.status = status;
 
     const pageNum = parseInt(page as string);
@@ -218,16 +223,30 @@ export const listCertificates = async (req: AuthRequest, res: Response, next: Ne
       Certificate.find(filter)
         .populate("eventId", "title")
         .populate("userId", "firstName lastName email")
+        .populate("templateId", "name slug")
         .sort({ createdAt: -1 })
         .skip((pageNum - 1) * limitNum)
         .limit(limitNum),
       Certificate.countDocuments(filter),
     ]);
 
+    const studentIds = certificates.map(c => c.context?.studentId).filter(Boolean) as string[];
+    let studentMap: Record<string, { firstName: string; lastName: string; grade?: string }> = {};
+    if (studentIds.length > 0) {
+      const students = await Student.find({ _id: { $in: studentIds } }).select("firstName lastName grade").lean();
+      studentMap = Object.fromEntries(students.map(s => [(s._id as mongoose.Types.ObjectId).toString(), s]));
+    }
+
+    const enriched = certificates.map(cert => {
+      const raw = cert.toObject();
+      const sid = raw.context?.studentId;
+      return sid && studentMap[sid] ? { ...raw, studentInfo: studentMap[sid] } : raw;
+    });
+
     res.status(200).json({
       success: true,
       data: {
-        certificates,
+        certificates: enriched,
         pagination: {
           currentPage: pageNum,
           totalPages: Math.ceil(total / limitNum),
@@ -496,6 +515,109 @@ export const bulkGenerate = async (req: AuthRequest, res: Response, next: NextFu
   }
 };
 
+export const bulkImportCSV = async (req: AuthRequest, res: Response, next: NextFunction) => {
+  try {
+    const { eventId, certificateTypeSlug, templateId, sendEmail = false, csv } = req.body;
+    const actorId = req.user?._id || req.user?.id;
+
+    if (!csv?.trim()) return next(new AppError("csv is required", 400));
+
+    const rawLines = (csv as string).trim().split("\n").map((l: string) => l.trimEnd()).filter(Boolean);
+    if (rawLines.length < 2) return next(new AppError("CSV must have a header row and at least one data row", 400));
+
+    const headers = parseCSVRow(rawLines[0]).map(h => h.toLowerCase().trim().replace(/\s+/g, "_"));
+    const dataLines = rawLines.slice(1);
+
+    if (dataLines.length > 500) return next(new AppError("Maximum 500 rows per import", 400));
+
+    const SKIP_FIELDS = new Set([
+      "student_name", "name", "first_name", "firstname", "last_name", "lastname",
+      "email", "issue_date", "certificate_type", "consent",
+      "pay_receipt", "paste_url_of_robotics_project_code_if_you_have_used_coding_in_your_project",
+      "upload_zip_file_of_robotics_project_code_if_you_have_used_coding_in_your_project",
+    ]);
+
+    const results: Array<{ serial: string; recipientName: string; email: string; studentLinked: boolean }> = [];
+    const failedRows: Array<{ row: number; email?: string; error: string }> = [];
+
+    for (let i = 0; i < dataLines.length; i++) {
+      try {
+        const cols = parseCSVRow(dataLines[i]);
+        const row: Record<string, string> = {};
+        headers.forEach((h, idx) => { row[h] = (cols[idx] || "").trim(); });
+
+        const recipientName = (
+          row["student_name"] || row["name"] ||
+          `${row["first_name"] || row["firstname"] || ""} ${row["last_name"] || row["lastname"] || ""}`.trim()
+        );
+        const email = row["email"] || "";
+        const schoolName = row["school_name"] || row["school"] || "";
+        const issueDate = row["issue_date"] || "";
+        const rowCertType = row["certificate_type"] || "";
+
+        if (!recipientName || !email || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
+          failedRows.push({ row: i + 1, email, error: "Missing student_name or invalid email" });
+          continue;
+        }
+
+        const student = await Student.findOne({ email: email.toLowerCase() }).select("_id grade rollNumber").lean();
+
+        const certData: Record<string, any> = {};
+        headers.forEach(h => {
+          if (!SKIP_FIELDS.has(h) && row[h]) certData[h] = row[h];
+        });
+        if (schoolName) certData.school = schoolName;
+        if (issueDate) certData.issueDate = issueDate;
+        if (student?.grade && !certData.grade) certData.grade = student.grade;
+
+        const effectiveCertTypeSlug = rowCertType || certificateTypeSlug || undefined;
+        const serialNumber = await allocateSerial();
+
+        const cert = await Certificate.create({
+          serialNumber,
+          templateId: templateId || undefined,
+          certificateTypeSlug: effectiveCertTypeSlug,
+          eventId,
+          userId: actorId,
+          recipient: { name: recipientName, email: email.toLowerCase() },
+          context: student ? { studentId: (student._id as mongoose.Types.ObjectId).toString() } : undefined,
+          data: certData,
+          status: "pending",
+          issuedBy: actorId,
+          history: [{ event: "created", at: new Date() }],
+        });
+
+        if (certificateQueue && templateId) {
+          await certificateQueue.add(
+            "generate-certificate",
+            {
+              certificateId: cert._id.toString(),
+              templateId,
+              recipient: { name: recipientName, email: email.toLowerCase() },
+              data: certData,
+              options: { sendEmail },
+            },
+            { attempts: 3, backoff: { type: "exponential", delay: 3000 } },
+          );
+        } else if (!templateId) {
+          logger.warn(`Bulk import row ${i + 1}: no templateId — cert created pending without PDF job`);
+        }
+
+        results.push({ serial: serialNumber, recipientName, email: email.toLowerCase(), studentLinked: !!student });
+      } catch (err: any) {
+        failedRows.push({ row: i + 1, error: err.message || "Failed to issue certificate" });
+      }
+    }
+
+    res.status(201).json({
+      success: true,
+      data: { processed: results.length, failed: failedRows.length, results, failedRows },
+    });
+  } catch (error) {
+    next(error);
+  }
+};
+
 export const getBulkRequestStatus = async (req: Request, res: Response, next: NextFunction) => {
   try {
     const { requestId } = req.params;
@@ -585,7 +707,134 @@ export const rollbackTemplate = async (req: AuthRequest, res: Response, next: Ne
   }
 };
 
+// ─── Public: Student Certificate Lookup ──────────────────────────────────────
+
+export const listCertificatesByEmail = async (req: Request, res: Response, next: NextFunction) => {
+  try {
+    const { email } = req.query;
+    if (!email || typeof email !== "string" || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
+      return next(new AppError("Valid email required", 400));
+    }
+
+    const certificates = await Certificate.find({
+      "recipient.email": email.toLowerCase(),
+      status: { $ne: "revoked" },
+    })
+      .populate("eventId", "title")
+      .select("serialNumber recipient status issuedAt pdfUrl certificateTypeSlug eventId createdAt")
+      .sort({ createdAt: -1 })
+      .limit(100);
+
+    res.status(200).json({
+      success: true,
+      data: {
+        certificates: certificates.map(c => ({
+          _id: c._id,
+          serialNumber: c.serialNumber,
+          recipientName: c.recipient.name,
+          eventTitle: (c.eventId as any)?.title,
+          status: c.status,
+          issuedAt: c.issuedAt,
+          pdfUrl: c.pdfUrl,
+          certificateTypeSlug: c.certificateTypeSlug,
+        })),
+      },
+    });
+  } catch (error) {
+    next(error);
+  }
+};
+
+// ─── Admin: Update / Delete Certificate ──────────────────────────────────────
+
+export const updateCertificate = async (req: AuthRequest, res: Response, next: NextFunction) => {
+  try {
+    const { id } = req.params;
+    const { recipient, data, status, certificateTypeSlug } = req.body;
+    const actorId = req.user?._id || req.user?.id;
+
+    const cert = await Certificate.findById(id);
+    if (!cert) return next(new AppError("Certificate not found", 404));
+
+    const $set: Record<string, any> = {};
+    if (recipient?.name) $set["recipient.name"] = recipient.name;
+    if (recipient?.email) $set["recipient.email"] = recipient.email.toLowerCase();
+    if (data !== undefined) $set.data = data;
+    if (status) $set.status = status;
+    if (certificateTypeSlug !== undefined) $set.certificateTypeSlug = certificateTypeSlug || null;
+
+    const updated = await Certificate.findByIdAndUpdate(
+      id,
+      { $set, $push: { history: { event: "updated", actor: actorId, at: new Date() } } },
+      { new: true, runValidators: true },
+    )
+      .populate("eventId", "title")
+      .populate("userId", "firstName lastName email");
+
+    await AuditLog.create({
+      action: "certificate.updated",
+      entityType: "Certificate",
+      entityId: id,
+      actor: actorId,
+      meta: { fields: Object.keys($set) },
+    });
+
+    res.status(200).json({ success: true, data: { certificate: updated } });
+  } catch (error) {
+    next(error);
+  }
+};
+
+export const deleteCertificate = async (req: AuthRequest, res: Response, next: NextFunction) => {
+  try {
+    const { id } = req.params;
+    const actorId = req.user?._id || req.user?.id;
+
+    const cert = await Certificate.findByIdAndDelete(id);
+    if (!cert) return next(new AppError("Certificate not found", 404));
+
+    await AuditLog.create({
+      action: "certificate.deleted",
+      entityType: "Certificate",
+      entityId: id,
+      actor: actorId,
+    });
+
+    res.status(200).json({ success: true, data: { message: "Certificate deleted" } });
+  } catch (error) {
+    next(error);
+  }
+};
+
 // ─── Helper ───────────────────────────────────────────────────────────────────
+
+function parseCSVRow(line: string): string[] {
+  const result: string[] = [];
+  let i = 0;
+  while (i <= line.length) {
+    if (i === line.length) break;
+    if (line[i] === '"') {
+      i++;
+      let field = "";
+      while (i < line.length) {
+        if (line[i] === '"') {
+          if (line[i + 1] === '"') { field += '"'; i += 2; }
+          else { i++; break; }
+        } else {
+          field += line[i++];
+        }
+      }
+      result.push(field.trim());
+      if (i < line.length && line[i] === ",") i++;
+    } else {
+      const end = line.indexOf(",", i);
+      if (end === -1) { result.push(line.slice(i).trim()); break; }
+      result.push(line.slice(i, end).trim());
+      i = end + 1;
+    }
+  }
+  return result;
+}
 
 async function allocateSerial(): Promise<string> {
   const counter = await SerialCounter.findOneAndUpdate(

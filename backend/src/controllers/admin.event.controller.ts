@@ -349,9 +349,10 @@ export const getAllEvents = async (
     }
     // If status is 'all' or undefined, show both
 
-    // Pagination
+    // Pagination - cap limit to prevent performance issues
     const pageNum = parseInt(page);
-    const limitNum = parseInt(limit);
+    let limitNum = parseInt(limit);
+    limitNum = Math.min(limitNum, 50); // Cap at 50 max
     const skip = (pageNum - 1) * limitNum;
 
     // Sort

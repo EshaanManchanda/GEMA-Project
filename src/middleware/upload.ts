@@ -345,4 +345,29 @@ export const getFileInfo = (file: Express.Multer.File) => {
   }
 };
 
+// CSV file filter
+const csvFilter = (req: any, file: any, cb: any) => {
+  const allowedMimeTypes = [
+    "text/csv",
+    "application/vnd.ms-excel",
+    "text/plain",
+  ];
+  const ext = file.originalname.toLowerCase().split(".").pop();
+
+  if (allowedMimeTypes.includes(file.mimetype) || ext === "csv") {
+    cb(null, true);
+  } else {
+    cb(new Error("Only CSV files are allowed"), false);
+  }
+};
+
+// CSV upload middleware - stores in memory for processing
+export const uploadCSV = multer({
+  storage: multer.memoryStorage(),
+  fileFilter: csvFilter,
+  limits: {
+    fileSize: 2 * 1024 * 1024, // 2MB max
+  },
+}).single("file");
+
 export default upload;

@@ -139,10 +139,20 @@ export class MediaService {
       .sort({ createdAt: -1 })
       .skip((page - 1) * limit)
       .limit(limit)
-      .populate("uploadedBy", "firstName lastName email avatar");
+      .populate("uploadedBy", "firstName lastName email avatar")
+      .lean({ virtuals: true });
+
+    // Add directUrl to each asset (for Cloudinary assets, this is the public CDN URL)
+    const cloudName = process.env.CLOUDINARY_CLOUD_NAME;
+    const enhancedAssets = assets.map((asset: any) => {
+      if (asset.provider === 'cloudinary' && asset.publicId && cloudName) {
+        asset.directUrl = `https://res.cloudinary.com/${cloudName}/image/upload/${asset.publicId}`;
+      }
+      return asset;
+    });
 
     return {
-      assets,
+      assets: enhancedAssets,
       total,
       pages: Math.ceil(total / limit),
       page,

@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useCallback } from 'react';
-import { Image, Search, Trash2, Plus, FolderOpen } from 'lucide-react';
+import { Image, Search, Trash2, Plus, FolderOpen, RefreshCw } from 'lucide-react';
 import { galleryAPI, type Gallery, type GalleryImage } from '../../services/api/reviewLinkAPI';
+import api from '../../services/api';
 import adminAPI from '../../services/api/adminAPI';
 import MediaPickerModal from '../../components/admin/media/MediaPickerModal';
 import { MediaAsset } from '../../store/slices/mediaSlice';
@@ -41,7 +42,7 @@ const AdminGalleriesPage: React.FC = () => {
   const fetchEvents = useCallback(async () => {
     setLoadingEvents(true);
     try {
-      const res = await adminAPI.getEvents({ limit: 200, status: 'active' });
+      const res = await adminAPI.getEvents({ limit: 200, status: 'published' });
       const list: EventOption[] = (res?.events || res?.data?.events || []).map((e: any) => ({
         _id: e._id || e.id,
         title: e.title,
@@ -78,9 +79,28 @@ const AdminGalleriesPage: React.FC = () => {
     }
   };
 
-  const addImage = () => {
+  const addImage = async () => {
     const url = urlInput.trim();
     if (!url) return;
+
+    // Extract UUID from URL if it's a media file URL
+    const match = url.match(/\/media\/file\/([a-f0-9-]+)$/i);
+    const uuid = match ? match[1] : null;
+
+    // Validate if it's a media file URL
+    if (uuid) {
+      try {
+        const res = await api.get(`/media/validate/${uuid}`);
+        if (!res.data?.exists) {
+          toast.error('Image not found in media library. Please upload through Media tab first.');
+          return;
+        }
+      } catch (err) {
+        toast.error('Invalid image URL. Please upload through Media tab first.');
+        return;
+      }
+    }
+
     setImage(prev => [...prev, { url, order: prev.length, size: 'medium' }]);
     setUrlInput('');
   };
@@ -108,6 +128,23 @@ const AdminGalleriesPage: React.FC = () => {
       toast.success('Gallery saved');
     } catch (err: any) {
       toast.error(err?.response?.data?.message || 'Failed to save gallery');
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  const handleRepair = async () => {
+    if (!gallery) return;
+    setSaving(true);
+    try {
+      const res = await api.post(`/galleries/repair/${gallery._id}`);
+      toast.success(res.data?.message || 'Gallery repaired');
+      // Refresh gallery
+      const fresh = await galleryAPI.getByEvent(selected!._id);
+      setGallery(fresh.data?.data?.gallery);
+      setImage(fresh.data?.data?.gallery?.images || []);
+    } catch (err: any) {
+      toast.error(err?.response?.data?.message || 'Failed to repair gallery');
     } finally {
       setSaving(false);
     }
@@ -281,13 +318,23 @@ const AdminGalleriesPage: React.FC = () => {
               {/* Actions */}
               <div className="flex justify-between pt-2 border-t border-gray-100">
                 {gallery && (
-                  <button
-                    type="button"
-                    onClick={handleDelete}
-                    className="px-4 py-2 text-sm text-red-600 border border-red-300 rounded-lg hover:bg-red-50 flex items-center gap-1"
-                  >
-                    <Trash2 className="w-3 h-3" /> Clear Gallery
-                  </button>
+                  <div className="flex gap-2">
+                    <button
+                      type="button"
+                      onClick={handleRepair}
+                      disabled={saving}
+                      className="px-4 py-2 text-sm text-orange-600 border border-orange-300 rounded-lg hover:bg-orange-50 flex items-center gap-1"
+                    >
+                      <RefreshCw className="w-3 h-3" /> Repair
+                    </button>
+                    <button
+                      type="button"
+                      onClick={handleDelete}
+                      className="px-4 py-2 text-sm text-red-600 border border-red-300 rounded-lg hover:bg-red-50 flex items-center gap-1"
+                    >
+                      <Trash2 className="w-3 h-3" /> Clear Gallery
+                    </button>
+                  </div>
                 )}
                 <button
                   type="button"

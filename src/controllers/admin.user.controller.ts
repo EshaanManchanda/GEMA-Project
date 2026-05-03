@@ -1023,3 +1023,44 @@ export const adminConfirmPasswordReset = async (
     next(error);
   }
 };
+
+/**
+ * Search users by name or email (for autocomplete)
+ */
+export const searchUsers = async (
+  req: Request,
+  res: Response,
+  next: NextFunction,
+): Promise<void> => {
+  try {
+    const { q, limit = 10 } = req.query;
+    const searchQuery = q as string;
+
+    if (!searchQuery || searchQuery.length < 2) {
+      res.status(200).json({
+        success: true,
+        data: { users: [] },
+      });
+      return;
+    }
+
+    const users = await User.find({
+      $or: [
+        { firstName: { $regex: searchQuery, $options: "i" } },
+        { lastName: { $regex: searchQuery, $options: "i" } },
+        { email: { $regex: searchQuery, $options: "i" } },
+      ],
+      status: UserStatus.ACTIVE,
+    })
+      .select("firstName lastName email")
+      .limit(Number(limit))
+      .lean();
+
+    res.status(200).json({
+      success: true,
+      data: { users },
+    });
+  } catch (error) {
+    next(error);
+  }
+};

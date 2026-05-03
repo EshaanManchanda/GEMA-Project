@@ -49,7 +49,22 @@ interface PaginatedStudents {
   pagination: { currentPage: number; totalPages: number; total: number };
 }
 
+export interface BulkImportResult {
+  created: number;
+  skipped: number;
+  newAccounts: number;
+  errors: string[];
+}
+
 export const studentAPI = {
+  bulkImport: (file: File) => {
+    const form = new FormData();
+    form.append('csv', file);
+    return api.post<{ success: boolean; data: BulkImportResult }>('/students/bulk-import', form, {
+      headers: { 'Content-Type': 'multipart/form-data' },
+    });
+  },
+
   list: (params?: ListStudentsParams) =>
     api.get<{ success: boolean; data: PaginatedStudents }>('/students', { params }),
 

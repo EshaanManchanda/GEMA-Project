@@ -345,4 +345,17 @@ export const getFileInfo = (file: Express.Multer.File) => {
   }
 };
 
+const csvFilter = (_req: any, file: Express.Multer.File, cb: any) => {
+  const ext = file.originalname.split(".").pop()?.toLowerCase();
+  const allowed = ["text/csv", "application/csv", "application/vnd.ms-excel", "text/plain"];
+  if (allowed.includes(file.mimetype) || ext === "csv") cb(null, true);
+  else cb(new Error("Only CSV files are allowed"), false);
+};
+
+export const uploadCSV = multer({
+  storage: multer.memoryStorage(),
+  fileFilter: csvFilter,
+  limits: { fileSize: 10 * 1024 * 1024 },
+});
+
 export default upload;

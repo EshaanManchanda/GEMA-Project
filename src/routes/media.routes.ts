@@ -38,6 +38,25 @@ const generatePlaceholder = (
   `.trim();
 };
 
+// Validate media asset exists (for gallery validation)
+router.get(
+  "/validate/:uuid",
+  async (req: Request, res: Response, next: NextFunction) => {
+    try {
+      const { uuid } = req.params;
+      const asset = await MediaAsset.findOne({ uuid }).select("uuid filename provider publicId");
+
+      if (!asset) {
+        return res.status(404).json({ exists: false });
+      }
+
+      res.status(200).json({ exists: true, asset });
+    } catch (error) {
+      next(error);
+    }
+  }
+);
+
 // Serve files by UUID (public access)
 router.get(
   "/file/:uuid",

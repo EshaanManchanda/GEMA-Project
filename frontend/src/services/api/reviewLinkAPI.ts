@@ -23,14 +23,20 @@ export interface Gallery {
 
 export interface CertVerifyResult {
   _id?: string;
-  valid: boolean;
+  valid?: boolean;
   serialNumber?: string;
   recipientName?: string;
   eventTitle?: string;
+  eventId?: { _id: string; title: string } | string;
   issuedAt?: string;
   status?: string;
   pdfUrl?: string;
   recipient?: { name: string; email: string };
+  templateId?: { _id: string; name: string; slug: string } | string;
+  certificateTypeSlug?: string;
+  data?: Record<string, any>;
+  context?: { studentId?: string; courseId?: string; customRef?: string };
+  studentInfo?: { firstName: string; lastName: string; grade?: string };
 }
 
 export const reviewLinkAPI = {
@@ -70,7 +76,7 @@ export const certificateAPI = {
   verify: (serialNumber: string) =>
     api.get<{ success: boolean; data: CertVerifyResult }>(`/certificates/verify/${serialNumber}`),
 
-  list: (params?: { eventId?: string; status?: string; page?: number; limit?: number }) =>
+  list: (params?: { eventId?: string; status?: string; studentId?: string; recipientEmail?: string; page?: number; limit?: number }) =>
     api.get<{ success: boolean; data: { certificates: CertVerifyResult[]; pagination: any } }>('/certificates', { params }),
 
   revoke: (id: string) =>

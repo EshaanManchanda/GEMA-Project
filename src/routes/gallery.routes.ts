@@ -6,7 +6,8 @@ import {
   getGalleryByEvent,
   deleteGallery,
 } from "../controllers/gallery.controller";
-import { authenticate, authorize } from "../middleware/auth";
+import { authenticate, authorize, validate } from "../middleware/auth";
+import MediaAsset from "../models/MediaAsset";
 
 const router = Router();
 
@@ -47,6 +48,54 @@ router.delete(
   authorize(["admin", "vendor"]),
   [param("id").isMongoId().withMessage("Invalid gallery ID")],
   deleteGallery,
+);
+
+// Repair broken gallery images - validate and remove invalid URLs
+router.post(
+  "/repair/:id",
+  authorize(["admin"]),
+  [param("id").isMongoId().withMessage("Invalid gallery ID")],
+  validate,
+  async (req, res, next) => {
+    try {
+      const gallery = await Gallery.findById(req.params.id);
+      if (!gallery) {
+        return res.status(404).json({ success: false, message: "Gallery not found" });
+      }
+
+      const validImages = [];
+      let removedCount = 0;
+
+      for (const img of gallery.images) {
+        // Extract UUID from URL if it's a media file URL
+        const match = img.url.match(/\/media\/file\/([a-f0-9-]+)$/i);
+        const uuid = match ? match[1] : null;
+
+        if (uuid) {
+          const asset = await MediaAsset.findOne({ uuid });
+          if (asset) {
+            validImages.push(img);
+          } else {
+            removedCount++;
+          }
+        } else {
+          // Keep non-media URLs (external URLs)
+          validImages.push(img);
+        }
+      }
+
+      gallery.images = validImages;
+      await gallery.save();
+
+      res.status(200).json({
+        success: true,
+        message: `Removed ${removedCount} invalid images`,
+        remaining: validImages.length,
+      });
+    } catch (error) {
+      next(error);
+    }
+  },
 );
 
 export default router;

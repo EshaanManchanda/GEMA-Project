@@ -1179,3 +1179,180 @@ export const promoteEvent = async (
     next(error);
   }
 };
+
+// ─────────────────────────────────────────────────────────────────────
+// Certificate Types Management
+// ─────────────────────────────────────────────────────────────────────
+
+// @desc    List certificate types for an event
+// @route   GET /api/events/:id/certificate-types
+// @access  Vendor, Admin, Teacher
+export const listCertificateTypes = async (
+  req: AuthRequest,
+  res: Response,
+  next: NextFunction,
+) => {
+  try {
+    const { id } = req.params;
+    const event = await Event.findById(id).select("certificateTypes vendorId teacherId");
+
+    if (!event) {
+      return next(new AppError("Event not found", 404));
+    }
+
+    const certTypes = event.certificateTypes || [];
+
+    res.status(200).json({
+      success: true,
+      data: certTypes,
+    });
+  } catch (error) {
+    next(error);
+  }
+};
+
+// @desc    Add certificate type to event
+// @route   POST /api/events/:id/certificate-types
+// @access  Vendor, Admin
+export const addCertificateType = async (
+  req: AuthRequest,
+  res: Response,
+  next: NextFunction,
+) => {
+  try {
+    const { id } = req.params;
+    const { name, slug, templateId, description, criteria, isDefault, sortOrder } = req.body;
+
+    const event = await Event.findById(id);
+
+    if (!event) {
+      return next(new AppError("Event not found", 404));
+    }
+
+    const certTypes = event.certificateTypes || [];
+
+    const existingSlug = certTypes.find((ct) => ct.slug === slug);
+    if (existingSlug) {
+      return next(new AppError("Certificate type with this slug already exists", 400));
+    }
+
+    if (isDefault) {
+      certTypes.forEach((ct) => (ct.isDefault = false));
+    }
+
+    certTypes.push({
+      name,
+      slug: slug.toLowerCase(),
+      templateId: templateId || undefined,
+      description: description || "",
+      criteria: criteria || "",
+      isDefault: isDefault || false,
+      sortOrder: sortOrder || certTypes.length,
+    });
+
+    event.certificateTypes = certTypes;
+    await event.save();
+
+    res.status(201).json({
+      success: true,
+      message: "Certificate type added successfully",
+      data: certTypes,
+    });
+  } catch (error) {
+    next(error);
+  }
+};
+
+// @desc    Update certificate type
+// @route   PUT /api/events/:id/certificate-types/:typeSlug
+// @access  Vendor, Admin
+export const updateCertificateType = async (
+  req: AuthRequest,
+  res: Response,
+  next: NextFunction,
+) => {
+  try {
+    const { id, typeSlug } = req.params;
+    const { name, templateId, description, criteria, isDefault, sortOrder } = req.body;
+
+    const event = await Event.findById(id);
+
+    if (!event) {
+      return next(new AppError("Event not found", 404));
+    }
+
+    const certTypes = event.certificateTypes || [];
+    const typeIndex = certTypes.findIndex((ct) => ct.slug === typeSlug);
+
+    if (typeIndex === -1) {
+      return next(new AppError("Certificate type not found", 404));
+    }
+
+    if (name) certTypes[typeIndex].name = name;
+    if (templateId !== undefined) certTypes[typeIndex].templateId = templateId;
+    if (description !== undefined) certTypes[typeIndex].description = description;
+    if (criteria !== undefined) certTypes[typeIndex].criteria = criteria;
+    if (sortOrder !== undefined) certTypes[typeIndex].sortOrder = sortOrder;
+
+    if (isDefault === true) {
+      certTypes.forEach((ct, idx) => {
+        ct.isDefault = idx === typeIndex;
+      });
+    }
+
+    event.certificateTypes = certTypes;
+    await event.save();
+
+    res.status(200).json({
+      success: true,
+      message: "Certificate type updated successfully",
+      data: certTypes,
+    });
+  } catch (error) {
+    next(error);
+  }
+};
+
+// @desc    Delete certificate type
+// @route   DELETE /api/events/:id/certificate-types/:typeSlug
+// @access  Vendor, Admin
+export const deleteCertificateType = async (
+  req: AuthRequest,
+  res: Response,
+  next: NextFunction,
+) => {
+  try {
+    const { id, typeSlug } = req.params;
+
+    const event = await Event.findById(id);
+
+    if (!event) {
+      return next(new AppError("Event not found", 404));
+    }
+
+    const certTypes = event.certificateTypes || [];
+    const typeIndex = certTypes.findIndex((ct) => ct.slug === typeSlug);
+
+    if (typeIndex === -1) {
+      return next(new AppError("Certificate type not found", 404));
+    }
+
+    const wasDefault = certTypes[typeIndex].isDefault;
+    certTypes.splice(typeIndex, 1);
+
+    if (wasDefault && certTypes.length > 0) {
+      certTypes[0].isDefault = true;
+    }
+
+    event.certificateTypes = certTypes;
+    await event.save();
+
+    res.status(200).json({
+      success: true,
+      message: "Certificate type deleted successfully",
+      data: certTypes,
+    });
+  } catch (error) {
+    next(error);
+  }
+};

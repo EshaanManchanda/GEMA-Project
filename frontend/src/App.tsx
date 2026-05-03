@@ -169,6 +169,7 @@ const OrganizationsPage = React.lazy(() => import(/* webpackChunkName: "static" 
 const TeachRegisterPage = React.lazy(() => import(/* webpackChunkName: "static" */ './pages/static/TeachRegisterPage'));
 const ReviewLinkPage = React.lazy(() => import('./pages/ReviewLinkPage'));
 const CertificateVerifyPage = React.lazy(() => import('./pages/CertificateVerifyPage'));
+const StudentCertificatesPage = React.lazy(() => import('./pages/StudentCertificatesPage'));
 
 // Error Pages
 const NotFoundPage = React.lazy(() => import(/* webpackChunkName: "error" */ './pages/error/NotFoundPage'));
@@ -610,6 +611,13 @@ function AppContent() {
               </Suspense>
             } />
           )}
+
+          {/* Certificate Lookup — rendered inside Layout (nav + footer) */}
+          <Route path="certificates/lookup" element={
+            <Suspense fallback={<GenericPageSkeleton />}>
+              <StudentCertificatesPage />
+            </Suspense>
+          } />
 
           <Route path="*" element={
             <Suspense fallback={<GenericPageSkeleton />}>
@@ -1325,7 +1333,6 @@ function AppContent() {
             <CertificateVerifyPage />
           </Suspense>
         } />
-
         {/* Auth Routes (without layout) */}
         <Route path="forgot-password" element={
           <Suspense fallback={<GenericPageSkeleton />}>

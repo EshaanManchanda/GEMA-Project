@@ -866,6 +866,58 @@ export const validateSystemSettings = [
 ];
 
 /**
+ * Validate update event certificate types
+ */
+export const validateUpdateCertificateTypes = [
+  body("certificateTypes")
+    .isArray({ min: 0 })
+    .withMessage("Certificate types must be an array"),
+
+  body("certificateTypes.*.templateId")
+    .optional()
+    .isMongoId()
+    .withMessage("Template ID must be a valid MongoDB ObjectId"),
+
+  body("certificateTypes.*.name")
+    .optional()
+    .trim()
+    .isLength({ min: 1, max: 100 })
+    .withMessage("Certificate type name cannot exceed 100 characters"),
+
+  body("certificateTypes.*.slug")
+    .optional()
+    .trim()
+    .isLength({ min: 1, max: 50 })
+    .withMessage("Certificate type slug cannot exceed 50 characters")
+    .matches(/^[a-z0-9-]+$/)
+    .withMessage("Certificate type slug can only contain lowercase letters, numbers, and hyphens"),
+
+  body("certificateTypes.*.isDefault")
+    .optional()
+    .isBoolean()
+    .withMessage("isDefault must be a boolean")
+    .toBoolean(),
+
+  body("certificateTypes.*.description")
+    .optional()
+    .trim()
+    .isLength({ max: 500 })
+    .withMessage("Description cannot exceed 500 characters"),
+
+  body("certificateTypes.*.criteria")
+    .optional()
+    .trim()
+    .isLength({ max: 1000 })
+    .withMessage("Criteria cannot exceed 1000 characters"),
+
+  body("certificateTypes.*.sortOrder")
+    .optional()
+    .isInt({ min: 0 })
+    .withMessage("Sort order must be a non-negative integer")
+    .toInt(),
+];
+
+/**
  * Export all admin validators
  */
 export default {
@@ -893,4 +945,7 @@ export default {
 
   // System settings
   validateSystemSettings,
+
+  // Event certificate types
+  validateUpdateCertificateTypes,
 };

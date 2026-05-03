@@ -1298,3 +1298,137 @@ export const promoteEvent = async (
     next(error);
   }
 };
+
+// ─────────────────────────────────────────────────────────────────────
+// Certificate Types Management
+// ─────────────────────────────────────────────────────────────────────
+
+export const getEventsForCertificates = async (
+  req: AuthRequest,
+  res: Response,
+  next: NextFunction,
+) => {
+  try {
+    const events = await Event.find({ isApproved: true, isDeleted: false })
+      .select("_id title slug certificateTypes")
+      .sort({ createdAt: -1 })
+      .limit(500)
+      .lean();
+    res.status(200).json({ success: true, data: { events } });
+  } catch (error) {
+    next(error);
+  }
+};
+
+export const listCertificateTypes = async (
+  req: AuthRequest,
+  res: Response,
+  next: NextFunction,
+) => {
+  try {
+    const { id } = req.params;
+    const event = await Event.findById(id).select("certificateTypes vendorId teacherId");
+    if (!event) return next(new AppError("Event not found", 404));
+    res.status(200).json({ success: true, data: event.certificateTypes || [] });
+  } catch (error) {
+    next(error);
+  }
+};
+
+export const addCertificateType = async (
+  req: AuthRequest,
+  res: Response,
+  next: NextFunction,
+) => {
+  try {
+    const { id } = req.params;
+    const { name, slug, templateId, description, criteria, isDefault, sortOrder } = req.body;
+
+    const event = await Event.findById(id);
+    if (!event) return next(new AppError("Event not found", 404));
+
+    const certTypes = event.certificateTypes || [];
+    if (certTypes.find((ct) => ct.slug === slug)) {
+      return next(new AppError("Certificate type with this slug already exists", 400));
+    }
+
+    if (isDefault) certTypes.forEach((ct) => (ct.isDefault = false));
+
+    certTypes.push({
+      name,
+      slug: slug.toLowerCase(),
+      templateId: templateId || undefined,
+      description: description || "",
+      criteria: criteria || "",
+      isDefault: isDefault || false,
+      sortOrder: sortOrder ?? certTypes.length,
+    });
+
+    event.certificateTypes = certTypes;
+    await event.save();
+
+    res.status(201).json({ success: true, data: certTypes });
+  } catch (error) {
+    next(error);
+  }
+};
+
+export const updateCertificateType = async (
+  req: AuthRequest,
+  res: Response,
+  next: NextFunction,
+) => {
+  try {
+    const { id, typeSlug } = req.params;
+    const { name, templateId, description, criteria, isDefault, sortOrder } = req.body;
+
+    const event = await Event.findById(id);
+    if (!event) return next(new AppError("Event not found", 404));
+
+    const certTypes = event.certificateTypes || [];
+    const idx = certTypes.findIndex((ct) => ct.slug === typeSlug);
+    if (idx === -1) return next(new AppError("Certificate type not found", 404));
+
+    if (name) certTypes[idx].name = name;
+    if (templateId !== undefined) certTypes[idx].templateId = templateId;
+    if (description !== undefined) certTypes[idx].description = description;
+    if (criteria !== undefined) certTypes[idx].criteria = criteria;
+    if (sortOrder !== undefined) certTypes[idx].sortOrder = sortOrder;
+    if (isDefault === true) certTypes.forEach((ct, i) => { ct.isDefault = i === idx; });
+
+    event.certificateTypes = certTypes;
+    await event.save();
+
+    res.status(200).json({ success: true, data: certTypes });
+  } catch (error) {
+    next(error);
+  }
+};
+
+export const deleteCertificateType = async (
+  req: AuthRequest,
+  res: Response,
+  next: NextFunction,
+) => {
+  try {
+    const { id, typeSlug } = req.params;
+
+    const event = await Event.findById(id);
+    if (!event) return next(new AppError("Event not found", 404));
+
+    const certTypes = event.certificateTypes || [];
+    const idx = certTypes.findIndex((ct) => ct.slug === typeSlug);
+    if (idx === -1) return next(new AppError("Certificate type not found", 404));
+
+    const wasDefault = certTypes[idx].isDefault;
+    certTypes.splice(idx, 1);
+    if (wasDefault && certTypes.length > 0) certTypes[0].isDefault = true;
+
+    event.certificateTypes = certTypes;
+    await event.save();
+
+    res.status(200).json({ success: true, data: certTypes });
+  } catch (error) {
+    next(error);
+  }
+};

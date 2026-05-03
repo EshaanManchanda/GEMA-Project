@@ -11,6 +11,7 @@ import {
   rollbackTemplate,
   triggerGeneration,
   bulkGenerate,
+  bulkImportCSV,
   getBulkRequestStatus,
   getCertificate,
   listCertificates,
@@ -20,6 +21,9 @@ import {
   downloadCertificate,
   resendCertificateEmail,
   listAuditLogs,
+  listCertificatesByEmail,
+  updateCertificate,
+  deleteCertificate,
 } from "../controllers/certificate.controller";
 import { authenticate, authorize } from "../middleware/auth";
 import { createCustomLimiter } from "../middleware/rateLimiter";
@@ -45,6 +49,13 @@ router.get(
   "/verify/:serialNumber",
   [param("serialNumber").notEmpty().withMessage("Serial number required")],
   verifyCertificate,
+);
+
+// Public: student certificate lookup by email
+router.get(
+  "/public/by-email",
+  [query("email").isEmail().withMessage("Valid email required")],
+  listCertificatesByEmail,
 );
 
 // Auth required for everything below
@@ -137,6 +148,21 @@ router.get(
   getBulkRequestStatus,
 );
 
+// Bulk CSV import (must be before wildcard /:id routes)
+router.post(
+  "/bulk-import",
+  authorize(["admin"]),
+  certBulkLimiter,
+  [
+    body("eventId").isMongoId().withMessage("Valid event ID required"),
+    body("csv").notEmpty().withMessage("csv is required"),
+    body("templateId").optional().isMongoId().withMessage("Invalid template ID"),
+    body("certificateTypeSlug").optional().isString(),
+    body("sendEmail").optional().isBoolean(),
+  ],
+  bulkImportCSV,
+);
+
 // Certificate queries
 router.get(
   "/",
@@ -144,6 +170,8 @@ router.get(
   [
     query("eventId").optional().isMongoId(),
     query("userId").optional().isMongoId(),
+    query("studentId").optional().isString(),
+    query("recipientEmail").optional().isEmail(),
     query("status").optional().isIn(["pending", "generating", "generated", "emailed", "failed", "revoked"]),
     query("page").optional().isInt({ min: 1 }),
     query("limit").optional().isInt({ min: 1, max: 100 }),
@@ -182,6 +210,24 @@ router.post(
   authorize(["admin"]),
   [param("id").isMongoId().withMessage("Invalid certificate ID")],
   retryCertificate,
+);
+
+router.put(
+  "/:id",
+  authorize(["admin"]),
+  [
+    param("id").isMongoId().withMessage("Invalid certificate ID"),
+    body("status").optional().isIn(["pending", "generating", "generated", "emailed", "failed", "revoked"]),
+    body("recipient.email").optional().isEmail(),
+  ],
+  updateCertificate,
+);
+
+router.delete(
+  "/:id",
+  authorize(["admin"]),
+  [param("id").isMongoId().withMessage("Invalid certificate ID")],
+  deleteCertificate,
 );
 
 // Audit log

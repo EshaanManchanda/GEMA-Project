@@ -53,7 +53,7 @@ export function useVendorStatsQuery(options?: Omit<UseQueryOptions<any>, 'queryK
  * Query hook for vendor's events list
  * @param params - Filter parameters
  * @example
- * const { data, isLoading } = useVendorEventsQuery({ status: 'active' });
+ * const { data, isLoading } = useVendorEventsQuery({ status: 'published' });
  */
 export function useVendorEventsQuery(params?: any, options?: Omit<UseQueryOptions<any>, 'queryKey' | 'queryFn'>) {
   return useQuery({

@@ -18,6 +18,7 @@ import {
   getUserStats,
   adminInitiatePasswordReset,
   adminConfirmPasswordReset,
+  searchUsers,
 } from "../controllers/admin.user.controller";
 import {
   validateGetAllUsers,
@@ -28,6 +29,7 @@ import {
   validateBulkUpdateUsers,
 } from "../validators/admin.validator";
 import { validateMongoId } from "../validators/common.validator";
+import { query } from "express-validator";
 
 const router = Router();
 
@@ -50,6 +52,21 @@ router.get("/stats", getUserStats);
  * @query   page, limit, search, role, status, sortBy, sortOrder
  */
 router.get("/", validateGetAllUsers, validate, getAllUsers);
+
+/**
+ * @route   GET /api/admin/users/search
+ * @desc    Search users by name or email (for autocomplete/dropdown)
+ * @access  Admin only
+ */
+router.get(
+  "/search",
+  [
+    query("q").trim().notEmpty().withMessage("Search query is required"),
+    query("limit").optional().isInt({ min: 1, max: 50 }).toInt(),
+  ],
+  validate,
+  searchUsers,
+);
 
 /**
  * @route   GET /api/admin/users/:id

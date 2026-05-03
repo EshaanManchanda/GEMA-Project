@@ -200,7 +200,8 @@ export async function renderCertificate(
 
   if (!html) throw new Error("Certificate rendering produced empty content");
 
-  const pdfBuf = await htmlToPdf(html, template.canvasWidth ?? 1240, template.canvasHeight ?? 877);
+  const orientation = template.defaultOptions?.orientation ?? 'landscape';
+  const pdfBuf = await htmlToPdf(html, template.canvasWidth ?? 1240, template.canvasHeight ?? 877, orientation);
 
   try {
     const { v2: cloudinary } = await import("cloudinary");
@@ -221,7 +222,7 @@ export async function renderCertificate(
   }
 }
 
-async function htmlToPdf(html: string, widthPx: number, heightPx: number): Promise<Buffer> {
+async function htmlToPdf(html: string, widthPx: number, heightPx: number, orientation?: 'portrait' | 'landscape'): Promise<Buffer> {
   const browser = await getBrowser();
   const page = await browser.newPage();
   try {
@@ -241,12 +242,25 @@ async function htmlToPdf(html: string, widthPx: number, heightPx: number): Promi
           ),
       ),
     );
-    const pdf = await page.pdf({
+
+    const pdfOptions: any = {
       width: `${widthPx}px`,
       height: `${heightPx}px`,
       printBackground: true,
       margin: { top: "0", right: "0", bottom: "0", left: "0" },
-    });
+    };
+
+    // Handle orientation
+    if (orientation === 'portrait') {
+      // Swap dimensions for portrait - PDF output dimensions are swapped
+      pdfOptions.width = `${heightPx}px`;
+      pdfOptions.height = `${widthPx}px`;
+      pdfOptions.pageOrientation = 'portrait';
+    } else {
+      pdfOptions.pageOrientation = 'landscape';
+    }
+
+    const pdf = await page.pdf(pdfOptions);
     return Buffer.from(pdf);
   } finally {
     await page.close();
@@ -262,7 +276,22 @@ function buildHtmlTemplate(html: string, css: string | undefined, data: Record<s
 }
 
 function buildVisualHtml(template: ITemplate, data: Record<string, any>): string {
-  const { backgroundImageUrl, canvasWidth = 1240, canvasHeight = 877, fields = [] } = template;
+  const { backgroundImageUrl, canvasWidth = 1240, canvasHeight = 877, fields = [], defaultOptions } = template;
+  const orientation = defaultOptions?.orientation ?? 'landscape';
+
+  // Swap dimensions for portrait orientation
+  const effectiveWidth = orientation === 'portrait' ? canvasHeight : canvasWidth;
+  const effectiveHeight = orientation === 'portrait' ? canvasWidth : canvasHeight;
+
+  // Define font family mappings for web-safe fonts
+  const fontFamilyMap: Record<string, string> = {
+    'serif': 'Georgia, "Times New Roman", Times, serif',
+    'sans-serif': 'Arial, Helvetica, sans-serif',
+    'monospace': '"Courier New", Courier, monospace',
+    'Georgia, serif': 'Georgia, serif',
+    "'Times New Roman', serif": '"Times New Roman", Times, serif',
+    'Arial, sans-serif': 'Arial, sans-serif',
+  };
 
   const fieldHtml = fields
     .map((f: ITemplateField) => {
@@ -281,21 +310,38 @@ function buildVisualHtml(template: ITemplate, data: Record<string, any>): string
         return `<img src="${value}" style="${styles}" alt="QR Code" />`;
       }
 
+      // Get font family with proper fallback
+      const fontFamily = f.fontFamily ? (fontFamilyMap[f.fontFamily] || f.fontFamily) : '';
+
+      // Get text alignment - ensure it's valid CSS
+      const textAlign = f.textAlign || 'center';
+
+      // Get font weight - ensure it's valid CSS
+      const fontWeight = f.fontWeight === 'bold' ? 'bold' : 'normal';
+
+      // Get color with fallback
+      const color = f.color || '#000000';
+
+      // Get font size with fallback
+      const fontSize = f.fontSize || 24;
+
       const styles = [
         `position:absolute`,
         `left:${f.x}%`,
         `top:${f.y}%`,
         `transform:translate(-50%,-50%)`,
-        `font-size:${f.fontSize ?? 24}px`,
-        `font-weight:${f.fontWeight ?? "normal"}`,
-        `color:${f.color ?? "#000000"}`,
-        f.fontFamily ? `font-family:${f.fontFamily}` : "",
-        `text-align:${f.textAlign ?? "center"}`,
+        `font-size:${fontSize}px`,
+        `font-weight:${fontWeight}`,
+        `color:${color}`,
+        fontFamily ? `font-family:${fontFamily}` : '',
+        `text-align:${textAlign}`,
         `white-space:nowrap`,
         `line-height:1.2`,
+        `width:auto`,
+        `max-width:300px`,
       ]
         .filter(Boolean)
-        .join(";");
+        .join("; ");
 
       return `<div style="${styles}">${escapeHtml(String(value ?? ""))}</div>`;
     })
@@ -307,9 +353,10 @@ function buildVisualHtml(template: ITemplate, data: Record<string, any>): string
 <meta charset="UTF-8">
 <style>
   *{margin:0;padding:0;box-sizing:border-box}
-  body{width:${canvasWidth}px;height:${canvasHeight}px;overflow:hidden;background:#fff}
-  .canvas{position:relative;width:${canvasWidth}px;height:${canvasHeight}px;overflow:hidden}
+  body{width:${effectiveWidth}px;height:${effectiveHeight}px;overflow:hidden;background:#fff;margin:0;padding:0}
+  .canvas{position:relative;width:${effectiveWidth}px;height:${effectiveHeight}px;overflow:hidden;margin:0;padding:0}
   .bg{position:absolute;top:0;left:0;width:100%;height:100%;object-fit:cover;display:block}
+  .field{transform:translate(-50%,-50%)}
 </style>
 </head>
 <body>

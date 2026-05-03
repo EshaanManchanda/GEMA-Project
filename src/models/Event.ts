@@ -234,6 +234,17 @@ export interface IEvent extends Document {
   // SEO-friendly URL slug
   slug: string;
 
+  // Certificate types - multiple templates per event (Participation, Winner, Merit, etc.)
+  certificateTypes?: Array<{
+    name: string; // e.g., "Participation", "Winner", "Merit"
+    slug: string; // e.g., "participation", "winner", "merit"
+    templateId?: mongoose.Types.ObjectId;
+    isDefault?: boolean;
+    description?: string;
+    criteria?: string; // Criteria to earn this certificate type
+    sortOrder?: number;
+  }>;
+
   // Review link system
   reviewLink?: string;
   reviewToken?: string;
@@ -938,6 +949,46 @@ const eventSchema = new Schema<IEvent>(
       maxlength: [250, "Slug cannot exceed 250 characters"],
     },
 
+    // Certificate types - multiple templates per event
+    certificateTypes: [
+      {
+        name: {
+          type: String,
+          required: [true, "Certificate type name is required"],
+          trim: true,
+          maxlength: [100, "Certificate type name cannot exceed 100 characters"],
+        },
+        slug: {
+          type: String,
+          required: [true, "Certificate type slug is required"],
+          lowercase: true,
+          trim: true,
+        },
+        templateId: {
+          type: Schema.Types.ObjectId,
+          ref: "CertTemplate",
+        },
+        isDefault: {
+          type: Boolean,
+          default: false,
+        },
+        description: {
+          type: String,
+          trim: true,
+          maxlength: [500, "Description cannot exceed 500 characters"],
+        },
+        criteria: {
+          type: String,
+          trim: true,
+          maxlength: [1000, "Criteria cannot exceed 1000 characters"],
+        },
+        sortOrder: {
+          type: Number,
+          default: 0,
+        },
+      },
+    ],
+
     // Venue-specific fields
     operatingHours: [
       {
@@ -1281,6 +1332,10 @@ eventSchema.index({ googlePlaceId: 1 }); // For fetching events by Google Place 
 
 // Promotion index
 eventSchema.index({ featuredUntil: 1, isApproved: 1, isDeleted: 1 });
+
+// Certificate types index
+eventSchema.index({ "certificateTypes.templateId": 1 });
+eventSchema.index({ "certificateTypes.isDefault": 1 });
 
 // Text search index
 eventSchema.index({

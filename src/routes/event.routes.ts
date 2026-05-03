@@ -15,6 +15,10 @@ import {
   getUniqueCities,
   claimEvent,
   promoteEvent,
+  addCertificateType,
+  updateCertificateType,
+  deleteCertificateType,
+  listCertificateTypes,
 } from "../controllers/event.controller";
 import { authenticate, authorize } from "../middleware/auth";
 import { validateEventSEO } from "../validators/event.validator";
@@ -262,6 +266,49 @@ router.put(
   authorize(["admin"]),
   [param("id").isMongoId().withMessage("Invalid event ID")],
   toggleEventFeatured,
+);
+
+// ─────────────────────────────────────────────────────────────────────
+// Certificate Types Management (Vendor/Admin)
+// ─────────────────────────────────────────────────────────────────────
+
+router.get(
+  "/:id/certificate-types",
+  authorize(["vendor", "admin", "teacher"]),
+  [param("id").isMongoId().withMessage("Invalid event ID")],
+  listCertificateTypes,
+);
+
+router.post(
+  "/:id/certificate-types",
+  authorize(["vendor", "admin"]),
+  [
+    param("id").isMongoId().withMessage("Invalid event ID"),
+    body("name").trim().notEmpty().withMessage("Certificate type name is required"),
+    body("slug").trim().notEmpty().withMessage("Certificate type slug is required"),
+    body("templateId").optional().isMongoId(),
+  ],
+  addCertificateType,
+);
+
+router.put(
+  "/:id/certificate-types/:typeSlug",
+  authorize(["vendor", "admin"]),
+  [
+    param("id").isMongoId().withMessage("Invalid event ID"),
+    param("typeSlug").trim().notEmpty(),
+  ],
+  updateCertificateType,
+);
+
+router.delete(
+  "/:id/certificate-types/:typeSlug",
+  authorize(["vendor", "admin"]),
+  [
+    param("id").isMongoId().withMessage("Invalid event ID"),
+    param("typeSlug").trim().notEmpty(),
+  ],
+  deleteCertificateType,
 );
 
 export default router;
