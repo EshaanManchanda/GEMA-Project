@@ -1,0 +1,165 @@
+# ======================================================================
+# ROBOTS.TXT CONFIGURATION
+# ======================================================================
+# This file handles crawling permissions.
+# In production, this file is served unless overridden by backend/Nginx rules.
+#
+# If you are seeing crawl errors, check the Allow/Disallow rules below.
+# ======================================================================
+
+User-agent: *
+Allow: /
+Allow: /api/media/
+Disallow: /admin
+Disallow: /vendor
+Disallow: /employee
+Disallow: /api/admin
+Disallow: /api/auth/login
+Disallow: /api/auth/register
+Disallow: /api/auth/forgot
+Disallow: /api/auth/reset
+Disallow: /api/orders
+Disallow: /api/payments
+Disallow: /api/users
+Disallow: /login
+Disallow: /register
+Disallow: /dashboard
+Disallow: /profile
+Disallow: /bookings
+Disallow: /cart
+Disallow: /checkout
+Disallow: /payment
+
+# Allow specific static assets
+Allow: /assets/
+Allow: /images/
+Allow: /*.css
+Allow: /*.js
+Allow: /*.png
+Allow: /*.jpg
+Allow: /*.jpeg
+Allow: /*.gif
+Allow: /*.svg
+Allow: /*.ico
+
+# Sitemap location
+Sitemap: https://kidrove.com/sitemap.xml
+
+# Crawl-delay for being respectful to servers
+Crawl-delay: 1
+
+# Googlebot - allow public API routes for JavaScript rendering
+User-agent: Googlebot
+Allow: /
+Allow: /api/homepage
+Allow: /api/categories
+Allow: /api/collections
+Allow: /api/events
+Allow: /api/blog
+Allow: /api/public/
+Allow: /api/currency/
+Allow: /api/announcements/
+Allow: /api/popups/
+Allow: /api/auth/me
+Allow: /api/media/
+Disallow: /admin
+Disallow: /vendor
+Disallow: /employee
+Disallow: /api/admin
+Disallow: /api/auth/login
+Disallow: /api/auth/register
+Disallow: /api/auth/forgot
+Disallow: /api/auth/reset
+Disallow: /api/orders
+Disallow: /api/payments
+Disallow: /api/users
+
+# Slow down aggressive bots (Phase 5 SEO Optimization)
+User-agent: AhrefsBot
+Crawl-delay: 5
+
+User-agent: SemrushBot
+Crawl-delay: 5
+
+User-agent: DotBot
+Crawl-delay: 10
+
+# ======================================================================
+# AI CRAWLERS (GEO - Generative Engine Optimization)
+# ======================================================================
+# Allow AI systems to crawl public content for training and retrieval
+
+# OpenAI GPT crawlers
+User-agent: GPTBot
+Allow: /
+Disallow: /admin
+Disallow: /vendor
+Disallow: /employee
+Disallow: /api/admin
+Disallow: /api/auth
+Disallow: /api/orders
+Disallow: /api/payments
+Disallow: /api/users
+Disallow: /login
+Disallow: /register
+Disallow: /dashboard
+Disallow: /profile
+Disallow: /bookings
+Disallow: /cart
+Disallow: /checkout
+Disallow: /payment
+
+User-agent: ChatGPT-User
+Allow: /
+Disallow: /admin
+Disallow: /vendor
+Disallow: /employee
+
+# Google AI (Gemini/Bard)
+User-agent: Google-Extended
+Allow: /
+Disallow: /admin
+Disallow: /vendor
+Disallow: /employee
+
+# Anthropic Claude
+User-agent: anthropic-ai
+Allow: /
+Disallow: /admin
+Disallow: /vendor
+Disallow: /employee
+
+User-agent: Claude-Web
+Allow: /
+Disallow: /admin
+Disallow: /vendor
+Disallow: /employee
+
+# Meta AI
+User-agent: FacebookBot
+Allow: /
+Disallow: /admin
+Disallow: /vendor
+Disallow: /employee
+
+# Perplexity AI
+User-agent: PerplexityBot
+Allow: /
+Disallow: /admin
+Disallow: /vendor
+Disallow: /employee
+
+# Cohere AI
+User-agent: cohere-ai
+Allow: /
+Disallow: /admin
+Disallow: /vendor
+Disallow: /employee
+
+# Common Crawl (used by many AI systems)
+User-agent: CCBot
+Allow: /
+Disallow: /admin
+Disallow: /vendor
+Disallow: /employee
+Crawl-delay: 5

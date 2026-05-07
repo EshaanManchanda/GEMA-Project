@@ -1,0 +1,342 @@
+import React, { useState, useEffect } from 'react';
+import { useParams, Link } from 'react-router-dom';
+import categoriesAPI from '../services/api/categoriesAPI';
+import eventsAPI from '../services/api/eventsAPI';
+import { CategorySEO } from '@/components/common/SEO';
+import { getPlaceholderUrl } from '../utils/placeholderImage';
+import EventCard from '../components/client/EventCard';
+import logger from '@/utils/logger';
+
+// Mock categories data
+const mockCategories = [
+  {
+    id: '1',
+    name: 'Entertainment',
+    slug: 'entertainment',
+    icon: '🎭',
+    description: 'Fun activities and entertainment for kids of all ages.',
+    image: 'https://via.placeholder.com/800x400?text=Entertainment'
+  },
+  {
+    id: '2',
+    name: 'Education',
+    slug: 'education',
+    icon: '📚',
+    description: 'Learning experiences and educational activities for children.',
+    image: 'https://via.placeholder.com/800x400?text=Education'
+  },
+  {
+    id: '3',
+    name: 'Arts',
+    slug: 'arts',
+    icon: '🎨',
+    description: 'Creative arts and crafts activities to inspire young artists.',
+    image: 'https://via.placeholder.com/800x400?text=Arts'
+  }
+];
+
+// Mock events data
+const mockEvents = {
+  'entertainment': [
+    {
+      id: '1',
+      title: 'Kids Fun Day',
+      description: 'A day full of fun activities for kids of all ages.',
+      image: 'https://via.placeholder.com/400x300?text=Kids+Fun+Day',
+      price: 25,
+      date: '2023-12-15',
+      location: 'Central Park',
+      category: 'Entertainment'
+    },
+    {
+      id: '4',
+      title: 'Magic Show for Kids',
+      description: 'An amazing magic show that will leave kids in awe.',
+      image: 'https://via.placeholder.com/400x300?text=Magic+Show',
+      price: 15,
+      date: '2023-12-18',
+      location: 'City Theater',
+      category: 'Entertainment'
+    },
+    {
+      id: '7',
+      title: 'Puppet Show',
+      description: 'A delightful puppet show for children of all ages.',
+      image: 'https://via.placeholder.com/400x300?text=Puppet+Show',
+      price: 10,
+      date: '2023-12-22',
+      location: 'Community Center',
+      category: 'Entertainment'
+    }
+  ],
+  'education': [
+    {
+      id: '2',
+      title: 'Science Workshop',
+      description: 'Interactive science experiments for curious minds.',
+      image: 'https://via.placeholder.com/400x300?text=Science+Workshop',
+      price: 30,
+      date: '2023-12-20',
+      location: 'Science Museum',
+      category: 'Education'
+    },
+    {
+      id: '5',
+      title: 'Coding for Kids',
+      description: 'Introduction to programming concepts for children aged 8-12.',
+      image: 'https://via.placeholder.com/400x300?text=Coding+Kids',
+      price: 40,
+      date: '2023-12-27',
+      location: 'Tech Hub',
+      category: 'Education'
+    },
+    {
+      id: '8',
+      title: 'History Adventure',
+      description: 'An interactive journey through history for young explorers.',
+      image: 'https://via.placeholder.com/400x300?text=History+Adventure',
+      price: 20,
+      date: '2023-12-29',
+      location: 'History Museum',
+      category: 'Education'
+    }
+  ],
+  'arts': [
+    {
+      id: '3',
+      title: 'Art & Craft Session',
+      description: 'Creative art and craft activities for children.',
+      image: 'https://via.placeholder.com/400x300?text=Art+Craft',
+      price: 20,
+      date: '2023-12-18',
+      location: 'Community Center',
+      category: 'Arts'
+    },
+    {
+      id: '6',
+      title: 'Kids Painting Class',
+      description: 'A fun painting class for children to express their creativity.',
+      image: 'https://via.placeholder.com/400x300?text=Painting+Class',
+      price: 25,
+      date: '2023-12-23',
+      location: 'Art Studio',
+      category: 'Arts'
+    },
+    {
+      id: '9',
+      title: 'Clay Modeling Workshop',
+      description: 'Learn to create amazing sculptures with clay.',
+      image: 'https://via.placeholder.com/400x300?text=Clay+Modeling',
+      price: 30,
+      date: '2023-12-26',
+      location: 'Craft Center',
+      category: 'Arts'
+    }
+  ]
+};
+
+// Helper functions for event data extraction
+const getEventImage = (images?: string[], title?: string): string => {
+  if (images && images.length > 0) return images[0];
+  return getPlaceholderUrl('eventCard', title || 'Event');
+};
+
+const getEventDate = (dateSchedule?: any[]): string => {
+  if (!dateSchedule || dateSchedule.length === 0) return '';
+  const firstSchedule = dateSchedule[0];
+  return firstSchedule.date || firstSchedule.startDate || '';
+};
+
+const CategoryPage: React.FC = () => {
+  const { slug } = useParams<{ slug: string }>();
+  const [isLoading, setIsLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+  const [category, setCategory] = useState<any>(null);
+  const [events, setEvents] = useState<any[]>([]);
+  const [usingMockData, setUsingMockData] = useState(false);
+
+  // Simulate fetching data from backend
+  useEffect(() => {
+    const fetchCategoryData = async () => {
+      try {
+        setIsLoading(true);
+
+        logger.debug(`[CategoryPage] Fetching category: "${slug}"`);
+
+        // Attempt to fetch real data from backend
+        const [categoryData, eventsData] = await Promise.all([
+          categoriesAPI.getCategoryById(slug ?? ''),
+          eventsAPI.getEventsByCategory(slug ?? '')
+        ]);
+
+        // Extract data from API response
+        const category = categoryData;
+        logger.debug('category', category);
+        const events = eventsData || [];
+
+        logger.debug(`[CategoryPage] Found category: "${category?.name}" (slug: "${category?.slug}")`);
+        logger.debug(`[CategoryPage] Found ${Array.isArray(events) ? events.length : 0} events`);
+
+        setCategory(category);
+        setEvents(Array.isArray(events) ? events : []);
+        setUsingMockData(false);
+
+      } catch (err) {
+        logger.error('[CategoryPage] Error fetching category data:', err);
+        // Use mock data if backend is unavailable
+        const mockCategory = mockCategories.find(c => c.slug === slug);
+        const mockCategoryEvents = slug ? mockEvents[slug as keyof typeof mockEvents] || [] : [];
+
+        if (mockCategory) {
+          setCategory(mockCategory);
+          setEvents(mockCategoryEvents);
+          setUsingMockData(true);
+          setError('Unable to connect to the server. Showing default category data.');
+        } else {
+          setError('Category not found. Please try another category.');
+        }
+      } finally {
+        setIsLoading(false);
+      }
+    };
+
+    fetchCategoryData();
+  }, [slug]);
+
+  if (isLoading) {
+    return (
+      <div className="min-h-screen flex items-center justify-center">
+        <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-primary"></div>
+      </div>
+    );
+  }
+
+  if (error && !category) {
+    return (
+      <div className="container mx-auto px-4 py-8">
+        <div className="bg-red-100 border-l-4 border-red-500 text-red-700 p-4 mb-6" role="alert">
+          <p className="font-bold">Error</p>
+          <p>{error}</p>
+          <Link to="/categories" className="mt-4 inline-block text-primary hover:underline">Browse all categories</Link>
+        </div>
+      </div>
+    );
+  }
+
+  if (!category) {
+    return (
+      <div className="container mx-auto px-4 py-8">
+        <div className="text-center py-12">
+          <h2 className="text-2xl font-bold mb-4">Category Not Found</h2>
+          <p className="mb-6">The category you're looking for doesn't exist or has been removed.</p>
+          <Link to="/categories" className="bg-primary text-white px-6 py-2 rounded-md hover:bg-primary-dark transition-colors">
+            Browse Categories
+          </Link>
+        </div>
+      </div>
+    );
+  }
+
+  const breadcrumbs = [
+    { name: 'Home', url: '/' },
+    { name: 'Categories', url: '/categories' },
+    { name: category?.name || 'Category', url: `/categories/${slug}` }
+  ];
+
+  return (
+    <>
+      {category && <CategorySEO category={category} breadcrumbs={breadcrumbs} />}
+      <div className="container mx-auto px-4 py-8">
+        {usingMockData && (
+          <div className="bg-yellow-100 border-l-4 border-yellow-500 text-yellow-700 p-4 mb-6" role="alert">
+            <p className="font-bold">Note</p>
+            <p>{error}</p>
+          </div>
+        )}
+
+        {/* Category Header */}
+        <div className="relative h-80 rounded-lg overflow-hidden mb-8" style={{ backgroundColor: category.color || '#3b82f6' }}>
+          <img
+            src="/assets/images/category-page.png"
+            alt={category.name}
+            className="w-full h-full object-cover"
+          />
+          <div className="absolute inset-0 flex items-center justify-center">
+            <div className="flex items-center gap-4 bg-white rounded-full px-8 py-4 shadow-lg">
+              <div className="w-16 h-16 rounded-full flex items-center justify-center text-4xl"
+                style={{ backgroundColor: category.color || '#3b82f6' }}>
+                {category.icon || '📂'}
+              </div>
+              <h1 className="text-3xl font-bold text-gray-900">{category.name}</h1>
+            </div>
+          </div>
+        </div>
+
+        <div className="mb-8">
+          <p className="text-lg text-center max-w-3xl mx-auto">{category.description}</p>
+        </div>
+
+        <div className="flex justify-between items-center mb-6">
+          <h2 className="text-2xl font-bold">Events in {category.name}</h2>
+          <span className="text-gray-600">
+            {events.length} {events.length === 1 ? 'event' : 'events'} found
+          </span>
+        </div>
+
+        {events.length > 0 ? (
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+            {events.map((event: any) => (
+              <EventCard
+                key={event._id || event.id}
+                id={event._id || event.id}
+                _id={event._id}
+                title={event.title}
+                description={event.description}
+                images={event.images}
+                image={getEventImage(event.images, event.title)}
+                price={event.price}
+                currency={event.currency}
+                location={event.location}
+                category={event.category}
+                ageRange={event.ageRange}
+                ageGroup={event.ageGroup}
+                dateSchedule={event.dateSchedule}
+                date={getEventDate(event.dateSchedule)}
+                viewsCount={event.viewsCount}
+                rating={event.averageRating}
+                reviewsCount={event.reviewCount}
+                vendorId={event.vendorId}
+                showStats={true}
+              />
+            ))}
+          </div>
+        ) : (
+          <div className="text-center py-12 bg-white rounded-lg shadow-md">
+            <div className="text-6xl mb-4">📅</div>
+            <h3 className="text-xl font-medium mb-2">No events found in "{category.name}"</h3>
+            <p className="text-gray-600 mb-6">
+              There are currently no active events in this category.
+              {!usingMockData && ' Check back soon or explore other categories!'}
+            </p>
+            <div className="flex gap-4 justify-center">
+              <Link
+                to="/search"
+                className="px-6 py-2 bg-primary text-white rounded-md hover:bg-primary-dark transition-colors"
+              >
+                Browse All Events
+              </Link>
+              <Link
+                to="/categories"
+                className="px-6 py-2 border border-gray-300 text-gray-700 rounded-md hover:bg-gray-50 transition-colors"
+              >
+                View All Categories
+              </Link>
+            </div>
+          </div>
+        )}
+      </div>
+    </>
+  );
+};
+
+export default CategoryPage;
