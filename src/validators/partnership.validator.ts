@@ -22,13 +22,13 @@ export const submitPartnershipValidation = [
     .normalizeEmail(),
 
   body("phone")
-    .optional()
+    .optional({ checkFalsy: true })
     .trim()
     .matches(/^[\d\s+()-]+$/)
     .withMessage("Please provide a valid phone number"),
 
   body("organization")
-    .optional()
+    .optional({ checkFalsy: true })
     .trim()
     .isLength({ max: 200 })
     .withMessage("Organization name cannot exceed 200 characters"),
@@ -37,11 +37,11 @@ export const submitPartnershipValidation = [
     .trim()
     .notEmpty()
     .withMessage("Partnership type is required")
-    .isIn(["vendor", "influencer", "school", "affiliate", "other"])
+    .isIn(["vendor", "influencer", "school", "affiliate", "summer_camp", "play_zone", "workshop", "activity_centre", "other"])
     .withMessage("Invalid partnership type"),
 
   body("website")
-    .optional()
+    .optional({ checkFalsy: true })
     .trim()
     .isURL({ require_protocol: true, protocols: ["http", "https"] })
     .withMessage(
@@ -66,6 +66,40 @@ export const submitPartnershipValidation = [
       }
       return true;
     }),
+
+  // Summer 2026 optional fields
+  body("campaignType")
+    .optional()
+    .isIn(["general", "summer_2026"])
+    .withMessage("Campaign type must be general or summer_2026"),
+
+  body("selectedPackage")
+    .optional()
+    .isIn(["starter", "growth", "premium", "category_sponsor"])
+    .withMessage("Invalid package selection"),
+
+  body("campDetails")
+    .optional({ checkFalsy: true })
+    .trim()
+    .isLength({ max: 2000 })
+    .withMessage("Camp details cannot exceed 2000 characters"),
+
+  body("ageGroups")
+    .optional()
+    .isArray()
+    .withMessage("Age groups must be an array"),
+
+  body("emirate")
+    .optional()
+    .trim()
+    .isIn(["", "Abu Dhabi", "Dubai", "Sharjah", "Ajman", "Umm Al Quwain", "Ras Al Khaimah", "Fujairah"])
+    .withMessage("Invalid emirate"),
+
+  body("numberOfKids")
+    .optional({ checkFalsy: true })
+    .trim()
+    .isLength({ max: 50 })
+    .withMessage("Number of kids field is too long"),
 ];
 
 // Validation rules for getting all partnerships (admin)
@@ -91,14 +125,19 @@ export const getAllPartnershipsValidation = [
 
   query("partnershipType")
     .optional()
-    .isIn(["vendor", "influencer", "school", "affiliate", "other"])
+    .isIn(["vendor", "influencer", "school", "affiliate", "summer_camp", "play_zone", "workshop", "activity_centre", "other"])
     .withMessage(
-      "Partnership type must be one of: vendor, influencer, school, affiliate, other",
+      "Partnership type must be one of: vendor, influencer, school, affiliate, summer_camp, play_zone, workshop, activity_centre, other",
     ),
+
+  query("campaignType")
+    .optional()
+    .isIn(["general", "summer_2026"])
+    .withMessage("Campaign type must be general or summer_2026"),
 
   query("sortBy")
     .optional()
-    .isIn(["createdAt", "name", "email", "partnershipType", "status"])
+    .isIn(["createdAt", "name", "email", "partnershipType", "status", "selectedPackage", "campaignType"])
     .withMessage("Invalid sort field"),
 
   query("sortOrder")

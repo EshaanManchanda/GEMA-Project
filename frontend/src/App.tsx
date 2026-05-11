@@ -45,6 +45,7 @@ const PaymentCancelPage = React.lazy(() => import(/* webpackChunkName: "payment"
 const StudentProgramPage = React.lazy(() => import(/* webpackChunkName: "student-program" */ './pages/StudentProgramPage'));
 const PartnershipsPage = React.lazy(() => import(/* webpackChunkName: "partnerships" */ './pages/PartnershipsPage'));
 const SummerPartnershipPage = React.lazy(() => import(/* webpackChunkName: "summer" */ './pages/SummerPartnershipPage'));
+const PartnershipSuccessPage = React.lazy(() => import(/* webpackChunkName: "summer" */ './pages/PartnershipSuccessPage'));
 
 // Auth Pages
 const LoginPage = React.lazy(() => import(/* webpackChunkName: "auth" */ './pages/auth/LoginPage'));
@@ -423,6 +424,11 @@ function AppContent() {
           <Route path="summer-2026" element={
             <Suspense fallback={<GenericPageSkeleton />}>
               <SummerPartnershipPage />
+            </Suspense>
+          } />
+          <Route path="partnership-success" element={
+            <Suspense fallback={<GenericPageSkeleton />}>
+              <PartnershipSuccessPage />
             </Suspense>
           } />
           <Route path="blog" element={

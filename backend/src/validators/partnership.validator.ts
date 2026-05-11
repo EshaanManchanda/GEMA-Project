@@ -22,13 +22,13 @@ export const submitPartnershipValidation = [
     .normalizeEmail(),
 
   body("phone")
-    .optional()
+    .optional({ checkFalsy: true })
     .trim()
     .matches(/^[\d\s+()-]+$/)
     .withMessage("Please provide a valid phone number"),
 
   body("organization")
-    .optional()
+    .optional({ checkFalsy: true })
     .trim()
     .isLength({ max: 200 })
     .withMessage("Organization name cannot exceed 200 characters"),
@@ -41,7 +41,7 @@ export const submitPartnershipValidation = [
     .withMessage("Invalid partnership type"),
 
   body("website")
-    .optional()
+    .optional({ checkFalsy: true })
     .trim()
     .isURL({ require_protocol: true, protocols: ["http", "https"] })
     .withMessage(
@@ -79,7 +79,7 @@ export const submitPartnershipValidation = [
     .withMessage("Invalid package selection"),
 
   body("campDetails")
-    .optional()
+    .optional({ checkFalsy: true })
     .trim()
     .isLength({ max: 2000 })
     .withMessage("Camp details cannot exceed 2000 characters"),
@@ -96,7 +96,7 @@ export const submitPartnershipValidation = [
     .withMessage("Invalid emirate"),
 
   body("numberOfKids")
-    .optional()
+    .optional({ checkFalsy: true })
     .trim()
     .isLength({ max: 50 })
     .withMessage("Number of kids field is too long"),

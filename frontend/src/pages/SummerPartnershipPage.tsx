@@ -2,9 +2,7 @@ import React, { useState } from 'react';
 import { Link } from 'react-router-dom';
 import { FaCheckCircle, FaArrowRight, FaSun, FaStar, FaEnvelope, FaInstagram, FaFacebook, FaCrown, FaBolt, FaRocket, FaMedal } from 'react-icons/fa';
 import { toast } from 'react-hot-toast';
-import axios from 'axios';
-
-const API_BASE = import.meta.env.VITE_API_URL || '';
+import api from '../services/api';
 
 const PACKAGES = [
   {
@@ -148,17 +146,34 @@ const SummerPartnershipPage: React.FC = () => {
     if (!form.agreeToTerms) { toast.error('Please agree to the terms.'); return; }
     setSubmitting(true);
     try {
-      await axios.post(`${API_BASE}/api/partnerships`, {
+      const payload = {
         ...form,
+        website: form.website.trim() || undefined,
+        emirate: form.emirate || undefined,
+        numberOfKids: form.numberOfKids.trim() || undefined,
+        campDetails: form.campDetails.trim(),
         campaignType: 'summer_2026',
         selectedPackage,
         message: form.message || `Interested in ${selectedPackage} package for ${form.organization || 'our activity'}.`,
-      });
-      toast.success('🌞 Application submitted! Our team will contact you within 24 hours.');
-      setForm({ name: '', email: '', phone: '', organization: '', website: '', partnershipType: 'summer_camp', emirate: '', ageGroups: [], numberOfKids: '', campDetails: '', message: '', agreeToTerms: false });
-      setSelectedPackage('growth');
+      };
+
+      const res = await api.post('/partnerships', payload);
+      
+      if (res.data.paymentUrl) {
+        window.location.href = res.data.paymentUrl;
+      } else {
+        toast.success('🌞 Application submitted! Our team will contact you within 24 hours.');
+        setForm({ name: '', email: '', phone: '', organization: '', website: '', partnershipType: 'summer_camp', emirate: '', ageGroups: [], numberOfKids: '', campDetails: '', message: '', agreeToTerms: false });
+        setSelectedPackage('growth');
+      }
     } catch (err: any) {
-      toast.error(err?.response?.data?.message || 'Something went wrong. Please try again.');
+      const fieldErrors = err?.response?.data?.errors;
+      if (fieldErrors && typeof fieldErrors === 'object') {
+        const firstFieldError = Object.values(fieldErrors)[0] as string | undefined;
+        toast.error(firstFieldError || err?.response?.data?.message || 'Validation failed. Please check your inputs.');
+      } else {
+        toast.error(err?.response?.data?.message || 'Something went wrong. Please try again.');
+      }
     } finally {
       setSubmitting(false);
     }

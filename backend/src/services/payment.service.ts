@@ -10,6 +10,7 @@ import logger from "../config/logger";
 import redisClient from "../config/redis";
 import { emailService } from "./email.service";
 import Affiliate from "../models/Affiliate";
+import Partnership from "../models/Partnership";
 
 export interface CreatePaymentIntentParams {
   amount: number;
@@ -496,12 +497,42 @@ export class PaymentService {
           );
           break;
 
+        case "checkout.session.completed":
+          await this.handleCheckoutSessionCompleted(
+            event.data.object as Stripe.Checkout.Session,
+          );
+          break;
+
         default:
           logger.info(`Unhandled webhook event type: ${event.type}`);
       }
     } catch (error) {
       logger.error("Error processing webhook:", error);
       throw new Error("Failed to process webhook event");
+    }
+  }
+
+  /**
+   * Handle successful checkout session
+   */
+  private static async handleCheckoutSessionCompleted(
+    session: Stripe.Checkout.Session,
+  ): Promise<void> {
+    try {
+      const partnershipId = session.client_reference_id;
+      if (partnershipId) {
+        const partnership = await Partnership.findById(partnershipId);
+        if (partnership) {
+          partnership.paymentStatus = "paid";
+          await partnership.save();
+          logger.info(`Partnership ${partnershipId} marked as paid`);
+          return;
+        }
+      }
+      
+      logger.info(`Checkout session completed: ${session.id}`);
+    } catch (error) {
+      logger.error("Error handling checkout session completed:", error);
     }
   }
 

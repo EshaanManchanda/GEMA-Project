@@ -21,6 +21,8 @@ export interface IPartnership extends Document {
   ageGroups?: string[];
   emirate?: string;
   numberOfKids?: string;
+  paymentStatus: "pending" | "paid" | "failed";
+  paymentSessionId?: string;
   createdAt: Date;
   updatedAt: Date;
 }
@@ -151,6 +153,15 @@ const partnershipSchema: Schema = new Schema(
       type: String,
       trim: true,
       maxlength: [1000, "Notes cannot exceed 1000 characters"],
+    },
+    paymentStatus: {
+      type: String,
+      enum: ["pending", "paid", "failed"],
+      default: "pending",
+    },
+    paymentSessionId: {
+      type: String,
+      trim: true,
     },
   },
   {

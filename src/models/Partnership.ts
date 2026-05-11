@@ -5,7 +5,7 @@ export interface IPartnership extends Document {
   email: string;
   phone?: string;
   organization?: string;
-  partnershipType: "vendor" | "influencer" | "school" | "affiliate" | "other";
+  partnershipType: "vendor" | "influencer" | "school" | "affiliate" | "summer_camp" | "play_zone" | "workshop" | "activity_centre" | "other";
   website?: string;
   message: string;
   agreeToTerms: boolean;
@@ -14,6 +14,15 @@ export interface IPartnership extends Document {
   approvedAt?: Date;
   rejectedAt?: Date;
   notes?: string;
+  // Summer 2026 Campaign fields
+  campaignType?: "general" | "summer_2026";
+  selectedPackage?: "starter" | "growth" | "premium" | "category_sponsor";
+  campDetails?: string;
+  ageGroups?: string[];
+  emirate?: string;
+  numberOfKids?: string;
+  paymentStatus: "pending" | "paid" | "failed";
+  paymentSessionId?: string;
   createdAt: Date;
   updatedAt: Date;
 }
@@ -63,9 +72,40 @@ const partnershipSchema: Schema = new Schema(
       type: String,
       required: [true, "Partnership type is required"],
       enum: {
-        values: ["vendor", "influencer", "school", "affiliate", "other"],
+        values: ["vendor", "influencer", "school", "affiliate", "summer_camp", "play_zone", "workshop", "activity_centre", "other"],
         message: "Invalid partnership type",
       },
+    },
+    // Summer 2026 Campaign Fields
+    campaignType: {
+      type: String,
+      enum: ["general", "summer_2026"],
+      default: "general",
+    },
+    selectedPackage: {
+      type: String,
+      enum: {
+        values: ["starter", "growth", "premium", "category_sponsor"],
+        message: "Invalid package selection",
+      },
+    },
+    campDetails: {
+      type: String,
+      trim: true,
+      maxlength: [2000, "Camp details cannot exceed 2000 characters"],
+    },
+    ageGroups: {
+      type: [String],
+      default: undefined,
+    },
+    emirate: {
+      type: String,
+      trim: true,
+      enum: ["", "Abu Dhabi", "Dubai", "Sharjah", "Ajman", "Umm Al Quwain", "Ras Al Khaimah", "Fujairah"],
+    },
+    numberOfKids: {
+      type: String,
+      trim: true,
     },
     website: {
       type: String,
@@ -114,6 +154,15 @@ const partnershipSchema: Schema = new Schema(
       trim: true,
       maxlength: [1000, "Notes cannot exceed 1000 characters"],
     },
+    paymentStatus: {
+      type: String,
+      enum: ["pending", "paid", "failed"],
+      default: "pending",
+    },
+    paymentSessionId: {
+      type: String,
+      trim: true,
+    },
   },
   {
     timestamps: true,
@@ -127,6 +176,8 @@ partnershipSchema.index({ email: 1 });
 partnershipSchema.index({ partnershipType: 1 });
 partnershipSchema.index({ status: 1 });
 partnershipSchema.index({ createdAt: -1 });
+partnershipSchema.index({ campaignType: 1 });
+partnershipSchema.index({ selectedPackage: 1 });
 
 // Static method to get partnership statistics
 partnershipSchema.statics.getPartnershipStats =

@@ -4,6 +4,7 @@ import Partnership from "../models/Partnership";
 import { emailService } from "../services/email.service";
 import { AppError } from "../middleware/error";
 import logger from "../config/logger";
+import { stripe } from "../config/stripe";
 
 /**
  * Submit partnership form (public endpoint)
@@ -87,10 +88,53 @@ export const submitPartnership = async (
       // Continue anyway as the partnership was saved to database
     }
 
+    // Create Stripe Checkout Session if it's a Summer 2026 paid package
+    let paymentUrl = undefined;
+    if (campaignType === "summer_2026" && selectedPackage) {
+      const packagePrices: Record<string, number> = {
+        starter: 299,
+        growth: 699,
+        premium: 1299,
+        category_sponsor: 2500,
+      };
+
+      const price = packagePrices[selectedPackage];
+      if (price) {
+        const session = await stripe.checkout.sessions.create({
+          payment_method_types: ["card"],
+          line_items: [
+            {
+              price_data: {
+                currency: "aed",
+                product_data: {
+                  name: `Summer 2026 Campaign - ${selectedPackage.charAt(0).toUpperCase() + selectedPackage.slice(1)} Package`,
+                  description: `Kidrove Summer 2026 Partnership for ${organization || name}`,
+                },
+                unit_amount: price * 100, // Stripe expects amount in fils
+              },
+              quantity: 1,
+            },
+          ],
+          mode: "payment",
+          success_url: `${process.env.FRONTEND_URL || "http://localhost:3000"}/partnership-success?session_id={CHECKOUT_SESSION_ID}`,
+          cancel_url: `${process.env.FRONTEND_URL || "http://localhost:3000"}/summer-2026`,
+          client_reference_id: partnership._id.toString(),
+          customer_email: email,
+        });
+
+        partnership.paymentSessionId = session.id;
+        partnership.paymentStatus = "pending";
+        await partnership.save();
+        
+        paymentUrl = session.url;
+      }
+    }
+
     res.status(201).json({
       success: true,
       message:
         "Thank you for your partnership inquiry! We will review your submission and get back to you soon.",
+      paymentUrl,
       data: {
         partnership: {
           id: partnership._id,
@@ -99,6 +143,7 @@ export const submitPartnership = async (
           partnershipType: partnership.partnershipType,
           campaignType: partnership.campaignType,
           selectedPackage: partnership.selectedPackage,
+          paymentStatus: partnership.paymentStatus,
           submittedAt: partnership.createdAt,
         },
       },
