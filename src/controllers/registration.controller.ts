@@ -10,6 +10,7 @@ import {
 import { AppError } from "../middleware/index";
 import { AuthRequest } from "../types/index";
 import { PaymentService } from "../services/payment.service";
+import { emailService } from "../services/email.service";
 import { logger } from "../config/index";
 import cloudinary from "../config/cloudinary";
 import { getFileInfo } from "../middleware/upload";
@@ -181,6 +182,39 @@ export const submitRegistration = async (
       registration.payment.stripePaymentIntentId =
         paymentSession.paymentIntentId;
       await registration.save();
+    }
+
+    // Send registration confirmation email
+    try {
+      const user = await User.findById(userId).select(
+        "firstName lastName email",
+      );
+      if (user) {
+        await emailService.sendRegistrationConfirmationEmail({
+          to: user.email,
+          firstName: user.firstName,
+          confirmationNumber: (registration as any).confirmationNumber,
+          eventTitle: event.title,
+          eventDate: event.dateSchedule?.[0]?.date || new Date(),
+          status: initialStatus === RegistrationStatus.APPROVED ? "approved" :
+                  initialStatus === RegistrationStatus.UNDER_REVIEW ? "under_review" :
+                  "pending",
+          requiresPayment: amount > 0,
+          amount: amount > 0 ? amount : undefined,
+          currency: event.currency || "AED",
+          requiresApproval: event.registrationConfig?.requiresApproval || false,
+          meetingLink: event.meetingLink,
+          meetingPassword: event.meetingPassword,
+          venueType: event.venueType,
+        });
+        logger.info("Registration confirmation email sent", {
+          registrationId: registration._id,
+          email: user.email,
+        });
+      }
+    } catch (emailErr: any) {
+      logger.error("Failed to send registration confirmation email:", emailErr);
+      // Non-blocking: don't fail the registration if email fails
     }
 
     logger.info("Registration submitted successfully", {
@@ -637,6 +671,35 @@ export const reviewRegistration = async (
     };
 
     await registration.save();
+
+    // Send approval/rejection email
+    try {
+      const user = await User.findById(registration.userId).select(
+        "firstName lastName email",
+      );
+      if (user) {
+        await emailService.sendRegistrationApprovalEmail({
+          to: user.email,
+          firstName: user.firstName,
+          confirmationNumber: (registration as any).confirmationNumber,
+          eventTitle: event.title,
+          eventDate: event.dateSchedule?.[0]?.date || new Date(),
+          status: status as "approved" | "rejected",
+          remarks: remarks,
+          meetingLink: event.meetingLink,
+          meetingPassword: event.meetingPassword,
+          venueType: event.venueType,
+        });
+        logger.info("Registration approval email sent", {
+          registrationId: registration._id,
+          status,
+          email: user.email,
+        });
+      }
+    } catch (emailErr: any) {
+      logger.error("Failed to send registration approval email:", emailErr);
+      // Non-blocking: don't fail the review if email fails
+    }
 
     logger.info("Registration reviewed", {
       registrationId: registration._id,

@@ -369,6 +369,10 @@ const DataTable = <T extends Record<string, any>>({
                         'px-6 py-4 whitespace-nowrap text-sm text-gray-900',
                         column.className
                       )}
+                      style={{
+                        width: column.width,
+                        minWidth: column.minWidth,
+                      }}
                     >
                       {column.render
                         ? column.render(row[column.key], row, index)

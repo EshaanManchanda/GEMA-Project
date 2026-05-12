@@ -258,6 +258,7 @@ const PartnershipList: React.FC = () => {
     {
       key: '_id',
       label: 'Actions',
+      minWidth: '180px',
       render: (_: any, partnership: Partnership) => (
         <div className="flex items-center gap-2">
           <Button

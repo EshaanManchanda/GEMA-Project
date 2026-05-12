@@ -185,6 +185,35 @@ export interface RefundFailedEmailOptions {
   currency: string;
 }
 
+export interface RegistrationConfirmationEmailOptions {
+  to: string;
+  firstName: string;
+  confirmationNumber: string;
+  eventTitle: string;
+  eventDate: Date;
+  status: string; // "pending", "approved", "under_review"
+  requiresPayment: boolean;
+  amount?: number;
+  currency?: string;
+  requiresApproval: boolean;
+  meetingLink?: string;
+  meetingPassword?: string;
+  venueType?: string;
+}
+
+export interface RegistrationApprovalEmailOptions {
+  to: string;
+  firstName: string;
+  confirmationNumber: string;
+  eventTitle: string;
+  eventDate: Date;
+  status: "approved" | "rejected";
+  remarks?: string;
+  meetingLink?: string;
+  meetingPassword?: string;
+  venueType?: string;
+}
+
 class EmailService {
   private transporter: nodemailer.Transporter;
 
@@ -1834,6 +1863,257 @@ class EmailService {
     await this.sendEmail({
       to: options.to,
       subject: `Refund Processing Issue - ${options.orderNumber}`,
+      html,
+    });
+  }
+
+  /**
+   * Send event registration confirmation email
+   */
+  async sendRegistrationConfirmationEmail(
+    options: RegistrationConfirmationEmailOptions,
+  ): Promise<void> {
+    const brand = this.getBrand();
+
+    const statusLabel = options.status === "pending" ? "Pending" : 
+                        options.status === "approved" ? "Approved" :
+                        "Under Review";
+    
+    const statusColor = options.status === "pending" ? "#f59e0b" : 
+                        options.status === "approved" ? "#10b981" :
+                        "#3b82f6";
+
+    const nextStepsHtml = options.status === "pending" 
+      ? `<div style="background: #fef3c7; border-left: 4px solid #f59e0b; padding: 15px; border-radius: 5px; margin: 15px 0;">
+           <p style="margin: 0; color: #92400e; font-weight: 600;">📋 Next Steps:</p>
+           <ul style="margin: 8px 0; padding-left: 20px; color: #92400e;">
+             <li>Payment link will be sent once registration is processed</li>
+             <li>Your registration will be reviewed by the event organizer</li>
+           </ul>
+         </div>`
+      : options.status === "approved"
+      ? `<div style="background: #dcfce7; border-left: 4px solid #10b981; padding: 15px; border-radius: 5px; margin: 15px 0;">
+           <p style="margin: 0; color: #166534; font-weight: 600;">✅ You're All Set!</p>
+           <ul style="margin: 8px 0; padding-left: 20px; color: #166534;">
+             <li>Your registration has been approved</li>
+             <li>Check your email for event details and meeting links</li>
+             <li>Add the event date to your calendar</li>
+           </ul>
+         </div>`
+      : `<div style="background: #dbeafe; border-left: 4px solid #3b82f6; padding: 15px; border-radius: 5px; margin: 15px 0;">
+           <p style="margin: 0; color: #1e40af; font-weight: 600;">⏳ Under Review</p>
+           <ul style="margin: 8px 0; padding-left: 20px; color: #1e40af;">
+             <li>Your registration is being reviewed by the event organizer</li>
+             <li>You'll receive an email once it's approved or needs more information</li>
+           </ul>
+         </div>`;
+
+    const onlineDetailsHtml = options.venueType === "Online" && options.meetingLink
+      ? `<div style="background: #eff6ff; border-left: 4px solid #3b82f6; padding: 15px; border-radius: 5px; margin: 15px 0;">
+           <h4 style="margin: 0 0 10px; color: #1d4ed8; font-size: 14px;">🎥 Online Event Details</h4>
+           <table style="width: 100%; font-size: 13px; border-collapse: collapse;">
+             <tr>
+               <td style="padding: 5px 0; color: #1e40af; font-weight: 500; width: 100px;">Meeting Link:</td>
+               <td><a href="${options.meetingLink}" style="color: #3b82f6; word-break: break-all;">${options.meetingLink}</a></td>
+             </tr>
+             ${options.meetingPassword 
+               ? `<tr>
+                   <td style="padding: 5px 0; color: #1e40af; font-weight: 500;">Password:</td>
+                   <td><code style="background: #dbeafe; padding: 2px 6px; border-radius: 3px; font-weight: bold;">${options.meetingPassword}</code></td>
+                 </tr>`
+               : ''}
+           </table>
+         </div>`
+      : '';
+
+    const html = `
+      <!DOCTYPE html>
+      <html>
+      <head>
+        <meta charset="utf-8">
+        <meta name="viewport" content="width=device-width, initial-scale=1.0">
+        <title>Registration Confirmation - ${brand.appName}</title>
+        <style>
+          body { font-family: Arial, sans-serif; line-height: 1.6; color: #333; }
+          .container { max-width: 600px; margin: 0 auto; padding: 20px; }
+          .header { background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white; padding: 25px; text-align: center; border-radius: 8px 8px 0 0; }
+          .content { background: #f8f9fa; padding: 30px; border-radius: 0 0 8px 8px; }
+          .status-box { background: white; border-left: 4px solid ${statusColor}; padding: 15px; border-radius: 5px; margin: 15px 0; }
+          .status-badge { display: inline-block; background: ${statusColor}; color: white; padding: 5px 12px; border-radius: 20px; font-size: 12px; font-weight: bold; }
+          .info-box { background: white; border: 1px solid #e5e7eb; padding: 15px; border-radius: 5px; margin: 15px 0; }
+          .footer { text-align: center; margin-top: 20px; color: #666; font-size: 14px; }
+        </style>
+      </head>
+      <body>
+        <div class="container">
+          <div class="header">
+            <h1>✅ Registration Confirmed!</h1>
+          </div>
+          <div class="content">
+            <h2>Hi ${options.firstName}!</h2>
+            <p>Thank you for registering for <strong>${options.eventTitle}</strong>. Your registration has been received.</p>
+
+            <div class="status-box">
+              <p style="margin: 0 0 10px;"><strong>Registration Status:</strong></p>
+              <p style="margin: 0;"><span class="status-badge">${statusLabel}</span></p>
+              <p style="margin: 10px 0 0; font-size: 13px; color: #666;">Confirmation #${options.confirmationNumber}</p>
+            </div>
+
+            <div class="info-box">
+              <h4 style="margin: 0 0 10px; color: #374151;">Event Details</h4>
+              <table style="width: 100%; font-size: 13px;">
+                <tr>
+                  <td style="padding: 5px 0; color: #6b7280; font-weight: 500; width: 100px;">Event:</td>
+                  <td style="color: #1f2937;">${options.eventTitle}</td>
+                </tr>
+                <tr>
+                  <td style="padding: 5px 0; color: #6b7280; font-weight: 500;">Date:</td>
+                  <td style="color: #1f2937;">${options.eventDate.toLocaleDateString("en-GB", { day: "numeric", month: "short", year: "numeric" })} at ${options.eventDate.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}</td>
+                </tr>
+                ${options.requiresPayment ? `<tr>
+                  <td style="padding: 5px 0; color: #6b7280; font-weight: 500;">Amount:</td>
+                  <td style="color: #1f2937; font-weight: bold;">${options.currency} ${options.amount?.toFixed(2)}</td>
+                </tr>` : ''}
+              </table>
+            </div>
+
+            ${onlineDetailsHtml}
+
+            ${nextStepsHtml}
+
+            <p style="font-size: 13px; color: #6b7280; margin-top: 20px;">
+              If you have any questions or need to modify your registration, please contact the event organizer.
+            </p>
+          </div>
+          <div class="footer">
+            <p>Best regards,<br>${getTeamSignature()}</p>
+            <p><small>Registration #${options.confirmationNumber}</small></p>
+          </div>
+        </div>
+      </body>
+      </html>
+    `;
+
+    await this.sendEmail({
+      to: options.to,
+      subject: `Registration Confirmed - ${options.eventTitle}`,
+      html,
+    });
+  }
+
+  /**
+   * Send event registration approval/rejection email
+   */
+  async sendRegistrationApprovalEmail(
+    options: RegistrationApprovalEmailOptions,
+  ): Promise<void> {
+    const brand = this.getBrand();
+
+    const isApproved = options.status === "approved";
+    const headerColor = isApproved ? "#10b981" : "#ef4444";
+    const headerGradient = isApproved 
+      ? "linear-gradient(135deg, #10b981 0%, #059669 100%)"
+      : "linear-gradient(135deg, #ef4444 0%, #dc2626 100%)";
+    const headerIcon = isApproved ? "✅" : "❌";
+
+    const onlineDetailsHtml = isApproved && options.venueType === "Online" && options.meetingLink
+      ? `<div style="background: #eff6ff; border-left: 4px solid #3b82f6; padding: 15px; border-radius: 5px; margin: 15px 0;">
+           <h4 style="margin: 0 0 10px; color: #1d4ed8; font-size: 14px;">🎥 Online Event Details</h4>
+           <table style="width: 100%; font-size: 13px; border-collapse: collapse;">
+             <tr>
+               <td style="padding: 5px 0; color: #1e40af; font-weight: 500; width: 100px;">Meeting Link:</td>
+               <td><a href="${options.meetingLink}" style="color: #3b82f6; word-break: break-all;">${options.meetingLink}</a></td>
+             </tr>
+             ${options.meetingPassword 
+               ? `<tr>
+                   <td style="padding: 5px 0; color: #1e40af; font-weight: 500;">Password:</td>
+                   <td><code style="background: #dbeafe; padding: 2px 6px; border-radius: 3px; font-weight: bold;">${options.meetingPassword}</code></td>
+                 </tr>`
+               : ''}
+           </table>
+         </div>`
+      : '';
+
+    const messageHtml = isApproved
+      ? `<p style="color: #059669; margin: 0; font-weight: 600; font-size: 16px;">Your registration has been approved!</p>
+         <p style="color: #666; margin: 8px 0 0;">You're all set to attend the event. See you there!</p>`
+      : `<p style="color: #dc2626; margin: 0; font-weight: 600; font-size: 16px;">Your registration has been rejected</p>
+         ${options.remarks 
+           ? `<p style="color: #666; margin: 8px 0 0;"><strong>Reason:</strong> ${options.remarks}</p>`
+           : ''}`;
+
+    const html = `
+      <!DOCTYPE html>
+      <html>
+      <head>
+        <meta charset="utf-8">
+        <meta name="viewport" content="width=device-width, initial-scale=1.0">
+        <title>Registration ${isApproved ? "Approved" : "Rejected"} - ${brand.appName}</title>
+        <style>
+          body { font-family: Arial, sans-serif; line-height: 1.6; color: #333; }
+          .container { max-width: 600px; margin: 0 auto; padding: 20px; }
+          .header { background: ${headerGradient}; color: white; padding: 25px; text-align: center; border-radius: 8px 8px 0 0; }
+          .content { background: #f8f9fa; padding: 30px; border-radius: 0 0 8px 8px; }
+          .status-message { background: white; border-left: 4px solid ${headerColor}; padding: 15px; border-radius: 5px; margin: 15px 0; }
+          .info-box { background: white; border: 1px solid #e5e7eb; padding: 15px; border-radius: 5px; margin: 15px 0; }
+          .footer { text-align: center; margin-top: 20px; color: #666; font-size: 14px; }
+        </style>
+      </head>
+      <body>
+        <div class="container">
+          <div class="header">
+            <h1>${headerIcon} Registration ${isApproved ? "Approved" : "Rejected"}</h1>
+          </div>
+          <div class="content">
+            <h2>Hi ${options.firstName}!</h2>
+
+            <div class="status-message">
+              ${messageHtml}
+            </div>
+
+            <div class="info-box">
+              <h4 style="margin: 0 0 10px; color: #374151;">Event Details</h4>
+              <table style="width: 100%; font-size: 13px;">
+                <tr>
+                  <td style="padding: 5px 0; color: #6b7280; font-weight: 500; width: 100px;">Event:</td>
+                  <td style="color: #1f2937;">${options.eventTitle}</td>
+                </tr>
+                <tr>
+                  <td style="padding: 5px 0; color: #6b7280; font-weight: 500;">Date:</td>
+                  <td style="color: #1f2937;">${options.eventDate.toLocaleDateString("en-GB", { day: "numeric", month: "short", year: "numeric" })} at ${options.eventDate.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}</td>
+                </tr>
+                <tr>
+                  <td style="padding: 5px 0; color: #6b7280; font-weight: 500;">Ref #:</td>
+                  <td style="color: #1f2937;">${options.confirmationNumber}</td>
+                </tr>
+              </table>
+            </div>
+
+            ${onlineDetailsHtml}
+
+            ${isApproved
+              ? `<div style="background: #dcfce7; border-left: 4px solid #10b981; padding: 15px; border-radius: 5px; margin: 15px 0;">
+                   <p style="margin: 0; color: #166534;"><strong>📅 Add to Calendar:</strong> Save the event date to ensure you don't miss it!</p>
+                 </div>`
+              : `<p style="font-size: 13px; color: #6b7280; margin: 15px 0;">If you have questions about this decision, please contact the event organizer.</p>`
+            }
+
+            <p style="font-size: 13px; color: #6b7280; margin-top: 20px;">
+              Thank you for your interest in our events!
+            </p>
+          </div>
+          <div class="footer">
+            <p>Best regards,<br>${getTeamSignature()}</p>
+            <p><small>${isApproved ? "See you at the event!" : "Better luck next time!"}</small></p>
+          </div>
+        </div>
+      </body>
+      </html>
+    `;
+
+    await this.sendEmail({
+      to: options.to,
+      subject: `Registration ${isApproved ? "Approved" : "Rejected"} - ${options.eventTitle}`,
       html,
     });
   }
