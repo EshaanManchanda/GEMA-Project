@@ -249,17 +249,9 @@ const RegisterPage: React.FC = () => {
     setOtpError('');
 
     try {
-      await dispatch(verifyEmailWithOTP(otpData.otp)).unwrap();
+      await dispatch(verifyEmailWithOTP({ email: formData.email, otp: otpData.otp })).unwrap();
 
-      // Determine redirect path based on role
-      const roleBasedPath = formData.role === 'teacher'
-        ? '/teacher'
-        : formData.role === 'vendor'
-          ? '/vendor'
-          : '/';
-      const destination = redirectPath || roleBasedPath;
-
-      navigate(destination, {
+      navigate('/', {
         state: {
           message: 'Registration completed successfully! Your email has been verified.',
           type: 'success'
@@ -272,15 +264,7 @@ const RegisterPage: React.FC = () => {
   };
 
   const handleSkipVerification = () => {
-    // Determine redirect path based on role
-    const roleBasedPath = formData.role === 'teacher'
-      ? '/teacher'
-      : formData.role === 'vendor'
-        ? '/vendor'
-        : '/';
-    const destination = redirectPath || roleBasedPath;
-
-    navigate(destination, {
+    navigate('/', {
       state: {
         message: 'Registration completed successfully! You can verify your email later.',
         type: 'info'

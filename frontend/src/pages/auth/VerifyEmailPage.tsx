@@ -5,46 +5,27 @@ import PrivatePageSEO from '@/components/common/PrivatePageSEO';
 const VerifyEmailPage: React.FC = () => {
   const navigate = useNavigate();
   const location = useLocation();
-  const [, setToken] = useState<string | null>(null);
+  const locationState = location.state as { email?: string } | null;
+  const [email, setEmail] = useState<string>(locationState?.email || '');
   const [otp, setOtp] = useState<string>('');
   const [isLoading, setIsLoading] = useState<boolean>(true);
   const [verificationStatus, setVerificationStatus] = useState<'success' | 'error' | 'pending' | 'otp-required'>('pending');
   const [errorMessage, setErrorMessage] = useState<string>('');
-  const [verificationMode, setVerificationMode] = useState<'token' | 'otp'>('token');
+  const [verificationMode, setVerificationMode] = useState<'otp'>('otp');
 
   useEffect(() => {
-    // Extract token from URL query parameters
     const queryParams = new URLSearchParams(location.search);
-    const verificationToken = queryParams.get('token');
+    setVerificationMode('otp');
+    setVerificationStatus('otp-required');
 
-    if (!verificationToken) {
-      // No token provided, switch to OTP mode
-      setVerificationMode('otp');
-      setVerificationStatus('otp-required');
-      setIsLoading(false);
-      return;
+    if (!email) {
+      const emailFromQuery = queryParams.get('email');
+      if (emailFromQuery) {
+        setEmail(emailFromQuery);
+      }
     }
 
-    setToken(verificationToken);
-    setVerificationMode('token');
-
-    // Auto-verify with token
-    const verifyWithToken = async () => {
-      try {
-        setIsLoading(true);
-        const { authAPI } = await import('@/services/api/authAPI');
-        await authAPI.verifyEmail(verificationToken);
-        setVerificationStatus('success');
-      } catch (error) {
-        console.error('Email verification error:', error);
-        setVerificationStatus('error');
-        setErrorMessage(error instanceof Error ? error.message : 'Email verification failed');
-      } finally {
-        setIsLoading(false);
-      }
-    };
-
-    verifyWithToken();
+    setIsLoading(false);
   }, [location]);
 
   const handleOtpChange = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -66,7 +47,13 @@ const VerifyEmailPage: React.FC = () => {
 
     try {
       const { authAPI } = await import('@/services/api/authAPI');
-      await authAPI.verifyEmailWithOTP(otp);
+      if (!email.trim()) {
+        setErrorMessage('Please enter your email address.');
+        setIsLoading(false);
+        return;
+      }
+
+      await authAPI.verifyEmailWithOTP(email.trim(), otp);
       setVerificationStatus('success');
     } catch (error: any) {
       console.error('OTP verification error:', error);
@@ -77,9 +64,9 @@ const VerifyEmailPage: React.FC = () => {
   };
 
   const handleRedirectToLogin = () => {
-    navigate('/login', {
+    navigate('/', {
       state: {
-        message: 'Your email has been verified. You can now log in.',
+        message: 'Your email has been verified.',
         type: 'success'
       }
     });
@@ -159,6 +146,20 @@ const VerifyEmailPage: React.FC = () => {
             )}
 
             <form className="mt-6 space-y-6" onSubmit={handleOtpSubmit}>
+              <div className="form-group">
+                <label htmlFor="email" className="form-label">Email Address</label>
+                <input
+                  id="email"
+                  name="email"
+                  type="email"
+                  required
+                  className="input"
+                  placeholder="Enter your email address"
+                  value={email}
+                  onChange={(e) => setEmail(e.target.value)}
+                />
+              </div>
+
               <div className="form-group">
                 <label htmlFor="otp" className="form-label">Verification Code</label>
                 <div className="relative">

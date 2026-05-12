@@ -1290,7 +1290,7 @@ const ProfilePage: React.FC = () => {
   }, [dispatch, userProfile]);
 
   const handleVerifyEmail = useCallback(async (otp: string) => {
-    await dispatch(verifyEmailWithOTP(otp) as any).unwrap();
+    await dispatch(verifyEmailWithOTP({ email: userProfile?.email || '', otp }) as any).unwrap();
     // Refresh profile after verification
     dispatch(getFullProfile() as any);
   }, [dispatch]);

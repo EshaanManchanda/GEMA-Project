@@ -170,9 +170,9 @@ export const verifyEmail = createAsyncThunk(
 
 export const verifyEmailWithOTP = createAsyncThunk(
   'auth/verifyEmailWithOTP',
-  async (otp: string, { rejectWithValue }) => {
+  async ({ email, otp }: { email: string; otp: string }, { rejectWithValue }) => {
     try {
-      const response = await authAPI.verifyEmailWithOTP(otp);
+      const response = await authAPI.verifyEmailWithOTP(email, otp);
       toast.success('Email verified successfully!');
       return response;
     } catch (error: any) {

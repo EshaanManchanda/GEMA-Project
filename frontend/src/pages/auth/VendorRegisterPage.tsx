@@ -201,7 +201,7 @@ const VendorRegisterPage: React.FC = () => {
         setOtpError('');
 
         try {
-            await dispatch(verifyEmailWithOTP(otpData.otp)).unwrap();
+            await dispatch(verifyEmailWithOTP({ email: formData.email, otp: otpData.otp })).unwrap();
 
             navigate('/vendor', {
                 state: {
