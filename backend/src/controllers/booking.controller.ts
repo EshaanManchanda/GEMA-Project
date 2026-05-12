@@ -21,6 +21,7 @@ import { generateQRCode, generateSecureQRData } from "../utils/qrcode";
 import { TicketGenerationService } from "../services/ticketGeneration.service";
 import { CouponService } from "../services/coupon.service";
 import { emailService } from "../services/email.service";
+import { BookingSummaryPdfService } from "../services/bookingSummaryPdf.service";
 import { v4 as uuidv4 } from "uuid";
 
 // Helper function to generate a unique ticket number
@@ -486,7 +487,15 @@ export const confirmBooking = async (
       );
     }
 
-    const order = await Order.findById(orderId).populate("items.eventId");
+    const order = await Order.findById(orderId).populate({
+      path: "items.eventId",
+      select:
+        "title description shortDescription type eventType venueType meetingLink meetingPassword location images imageAssets pastEventMemories",
+      populate: {
+        path: "imageAssets",
+        select: "url thumbnailUrl secureUrl",
+      },
+    });
     if (!order) {
       logger.error("Order not found for confirmation", { orderId });
       return next(new AppError("Order not found", 404));
@@ -885,6 +894,57 @@ export const confirmBooking = async (
             }
           }
 
+          let bookingSummaryAttachment:
+            | {
+                filename: string;
+                content: Buffer;
+                contentType: string;
+              }
+            | undefined;
+
+          try {
+            const bookingPdf = await BookingSummaryPdfService.generate({
+              orderNumber: order.orderNumber,
+              customerName: `${customer.firstName} ${customer.lastName}`.trim(),
+              customerEmail: customer.email,
+              bookingDate: order.confirmedAt || new Date(),
+              orderTotal: order.total,
+              currency: order.currency,
+              event: {
+                title: event.title,
+                description: event.description,
+                shortDescription: event.shortDescription,
+                type: event.type,
+                eventType: (event as any).eventType,
+                venueType: event.venueType,
+                meetingLink: event.meetingLink,
+                meetingPassword: (event as any).meetingPassword,
+                location: event.location,
+                images: event.images,
+                imageAssets: event.imageAssets,
+                pastEventMemories: event.pastEventMemories,
+              },
+              items: order.items.map((item: any) => ({
+                eventTitle: item.eventTitle || event.title,
+                quantity: item.quantity,
+                price: item.unitPrice,
+                date: item.scheduleDate,
+              })),
+            });
+
+            bookingSummaryAttachment = {
+              filename: `booking-summary-${order.orderNumber}.pdf`,
+              content: bookingPdf,
+              contentType: "application/pdf",
+            };
+          } catch (pdfError: any) {
+            logger.warn("Failed to generate booking summary PDF (non-blocking)", {
+              orderId: order._id,
+              orderNumber: order.orderNumber,
+              error: pdfError?.message,
+            });
+          }
+
           // Send customer order confirmation email
           await emailService.sendOrderConfirmationEmail({
             to: customer.email,
@@ -893,6 +953,9 @@ export const confirmBooking = async (
             orderTotal: order.total,
             currency: order.currency,
             isFreeEvent: !!(event as any).isFreeEvent,
+            attachments: bookingSummaryAttachment
+              ? [bookingSummaryAttachment]
+              : undefined,
             items: order.items.map((item: any) => ({
               eventTitle: item.eventTitle || event.title,
               quantity: item.quantity,

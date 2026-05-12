@@ -38,6 +38,7 @@ export interface OrderConfirmationEmailOptions {
   orderTotal: number;
   currency: string;
   isFreeEvent?: boolean;
+  attachments?: EmailOptions["attachments"];
   items: Array<{
     eventTitle: string;
     quantity: number;
@@ -610,6 +611,7 @@ class EmailService {
       to: options.to,
       subject: `${options.isFreeEvent ? "Registration" : "Booking"} Confirmed — ${options.orderNumber}`,
       html,
+      attachments: options.attachments,
     });
   }
 

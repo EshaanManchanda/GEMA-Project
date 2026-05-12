@@ -38,11 +38,11 @@ const GridLayout: React.FC<{ images: GalleryImage[]; onOpen: (img: GalleryImage)
   onOpen,
 }) => (
   <div
-    className="grid gap-3"
-    style={{ gridTemplateColumns: 'repeat(auto-fill, minmax(200px, 1fr))' }}
+    className="grid gap-4"
+    style={{ gridTemplateColumns: 'repeat(auto-fit, minmax(260px, 1fr))' }}
   >
     {images.map((img, i) => (
-      <GalleryTile key={i} image={img} onClick={() => onOpen(img)} />
+      <GalleryTile key={i} image={img} onClick={() => onOpen(img)} forcedAspect="aspect-[5/4]" />
     ))}
   </div>
 );
@@ -53,18 +53,33 @@ const MessyLayout: React.FC<{ images: GalleryImage[]; onOpen: (img: GalleryImage
   images,
   onOpen,
 }) => (
-  <div
-    style={{
-      columnCount: 4,
-      columnGap: '12px',
-    }}
-    className="[&>*]:break-inside-avoid [&>*]:mb-3 sm:[column-count:3] xs:[column-count:2]"
-  >
+  <div className="grid grid-cols-2 lg:grid-cols-4 auto-rows-[110px] md:auto-rows-[130px] gap-3 md:gap-4">
     {images.map((img, i) => (
-      <GalleryTile key={i} image={img} onClick={() => onOpen(img)} />
+      <GalleryTile
+        key={i}
+        image={img}
+        onClick={() => onOpen(img)}
+        tileClassName={getMasonrySpanClass(i)}
+        forcedAspect="aspect-auto"
+      />
     ))}
   </div>
 );
+
+const getMasonrySpanClass = (index: number): string => {
+  const pattern = [
+    'col-span-2 row-span-2 md:col-span-2',
+    'row-span-1 md:col-span-1',
+    'row-span-1 md:col-span-1',
+    'row-span-1 md:col-span-1',
+    'row-span-1 md:col-span-1',
+    'col-span-2 row-span-1 md:col-span-2',
+    'row-span-1 md:col-span-1',
+    'row-span-1 md:col-span-1',
+  ];
+
+  return pattern[index % pattern.length];
+};
 
 // ─── Tile ─────────────────────────────────────────────────────────────────────
 
@@ -74,9 +89,14 @@ const sizeClass: Record<GalleryImage['size'], string> = {
   large: 'aspect-[16/9]',
 };
 
-const GalleryTile: React.FC<{ image: GalleryImage; onClick: () => void }> = ({ image, onClick }) => (
+const GalleryTile: React.FC<{
+  image: GalleryImage;
+  onClick: () => void;
+  tileClassName?: string;
+  forcedAspect?: string;
+}> = ({ image, onClick, tileClassName = '', forcedAspect }) => (
   <div
-    className={`relative overflow-hidden rounded-lg cursor-pointer group ${sizeClass[image.size]}`}
+    className={`relative overflow-hidden rounded-xl cursor-pointer group ${forcedAspect || sizeClass[image.size]} ${tileClassName}`}
     onClick={onClick}
   >
     <img

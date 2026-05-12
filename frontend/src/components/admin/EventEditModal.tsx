@@ -108,6 +108,21 @@ interface EventEditModalProps {
   onSave: () => void;
 }
 
+const getMasonryCardClass = (idx: number): string => {
+  const pattern = [
+    'col-span-2 row-span-2 md:col-span-2',
+    'row-span-1 md:col-span-1',
+    'row-span-1 md:col-span-1',
+    'row-span-1 md:col-span-1',
+    'row-span-1 md:col-span-1',
+    'col-span-2 row-span-1 md:col-span-2',
+    'row-span-1 md:col-span-1',
+    'row-span-1 md:col-span-1',
+  ];
+
+  return pattern[idx % pattern.length];
+};
+
 const EventEditModal: React.FC<EventEditModalProps> = ({ event, isOpen, onClose, onSave }) => {
   const [formData, setFormData] = useState<EventData>(event);
   const [vendors, setVendors] = useState<Vendor[]>([]);
@@ -1339,13 +1354,22 @@ const EventEditModal: React.FC<EventEditModalProps> = ({ event, isOpen, onClose,
               </div>
 
               {galleryImages.length > 0 && (
-                <div className="grid grid-cols-3 gap-3">
+                <div
+                  className={
+                    galleryLayout === 'messy'
+                      ? 'grid grid-cols-2 md:grid-cols-4 auto-rows-[110px] md:auto-rows-[128px] gap-3'
+                      : 'grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4'
+                  }
+                >
                   {galleryImages.map((img, idx) => (
-                    <div key={idx} className="relative group border rounded-lg overflow-hidden">
+                    <div
+                      key={idx}
+                      className={`relative group border rounded-lg overflow-hidden ${galleryLayout === 'messy' ? getMasonryCardClass(idx) : ''}`}
+                    >
                       <img
                         src={img.url}
                         alt={img.caption || `Image ${idx + 1}`}
-                        className="w-full h-24 object-cover"
+                        className={`w-full object-cover ${galleryLayout === 'messy' ? 'h-full min-h-[110px]' : 'h-44'}`}
                         onError={e => { (e.target as HTMLImageElement).src = 'https://placehold.co/200x150?text=Image'; }}
                       />
                       <button

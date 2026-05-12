@@ -10,6 +10,21 @@ interface EventGalleryEditorProps {
   eventId?: string;
 }
 
+const getMasonryCardClass = (idx: number): string => {
+  const pattern = [
+    'col-span-2 row-span-2 md:col-span-2',
+    'row-span-1 md:col-span-1',
+    'row-span-1 md:col-span-1',
+    'row-span-1 md:col-span-1',
+    'row-span-1 md:col-span-1',
+    'col-span-2 row-span-1 md:col-span-2',
+    'row-span-1 md:col-span-1',
+    'row-span-1 md:col-span-1',
+  ];
+
+  return pattern[idx % pattern.length];
+};
+
 const EventGalleryEditor: React.FC<EventGalleryEditorProps> = ({ eventId }) => {
   const [gallery, setGallery] = useState<Gallery | null>(null);
   const [layout, setLayout] = useState<'grid' | 'messy'>('grid');
@@ -185,13 +200,22 @@ const EventGalleryEditor: React.FC<EventGalleryEditorProps> = ({ eventId }) => {
 
       {/* Image list */}
       {images.length > 0 ? (
-        <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-4">
+        <div
+          className={
+            layout === 'messy'
+              ? 'grid grid-cols-2 md:grid-cols-4 auto-rows-[120px] md:auto-rows-[132px] gap-4'
+              : 'grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-5'
+          }
+        >
           {images.map((img, idx) => (
-            <div key={idx} className="relative border border-gray-200 rounded-xl overflow-hidden group shadow-sm bg-white">
+            <div
+              key={idx}
+              className={`relative border border-gray-200 rounded-xl overflow-hidden group shadow-sm bg-white ${layout === 'messy' ? getMasonryCardClass(idx) : ''}`}
+            >
               <img
                 src={img.url}
                 alt={img.caption || `Image ${idx + 1}`}
-                className="w-full h-32 object-cover"
+                className={`w-full object-cover ${layout === 'messy' ? 'h-full min-h-[120px]' : 'h-48'}`}
                 onError={e => { (e.target as HTMLImageElement).src = 'https://placehold.co/300x200?text=Image+Not+Found'; }}
               />
               <button

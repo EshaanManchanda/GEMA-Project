@@ -11,6 +11,7 @@ import {
   ChevronRight,
   Star,
   Info,
+  Image as ImageIcon,
   Shield,
   BookOpen,
   Award,
@@ -181,6 +182,7 @@ const EventDetailPage: React.FC = () => {
   const [isDescriptionExpanded, setIsDescriptionExpanded] = useState(false);
   const [selectedMemoryIndex, setSelectedMemoryIndex] = useState<number | null>(null);
   const [isAllMemoriesModalOpen, setIsAllMemoriesModalOpen] = useState(false);
+  const [showAllEventGallery, setShowAllEventGallery] = useState(false);
   const { isAuthenticated } = useSelector((state: RootState) => state.auth);
   const { user: authUser } = useSelector((state: RootState) => state.auth);
   const hasValidUser = authUser && (authUser.email || authUser._id);
@@ -326,6 +328,16 @@ const EventDetailPage: React.FC = () => {
     enabled: !!event?._id,
     staleTime: 5 * 60 * 1000,
   });
+
+  useEffect(() => {
+    setShowAllEventGallery(false);
+  }, [galleryData?._id]);
+
+  const totalGalleryImages = galleryData?.images?.length || 0;
+  const shouldCollapseGallery = totalGalleryImages > 7;
+  const visibleGalleryImages = shouldCollapseGallery && !showAllEventGallery
+    ? galleryData?.images?.slice(0, 7)
+    : galleryData?.images;
 
   const usingMockData = !eventData && !isLoading;
   const error = queryError ? (queryError as any)?.response?.status === 404 ?
@@ -1746,7 +1758,67 @@ const EventDetailPage: React.FC = () => {
           <div className="bg-white rounded-2xl shadow-xl overflow-hidden mb-12 border border-gray-100">
             <div className="p-8 md:p-10">
               <h2 className="text-2xl md:text-3xl font-bold text-gray-900 mb-6">Event Gallery</h2>
-              <GalleryComponent layout={galleryData.type} images={galleryData.images} />
+              <GalleryComponent layout={galleryData.type} images={visibleGalleryImages || []} />
+
+              {shouldCollapseGallery && !showAllEventGallery && (
+                <div className="mt-8 flex flex-col items-center">
+                  <button
+                    type="button"
+                    onClick={() => setShowAllEventGallery(true)}
+                    className="inline-flex items-center gap-3 rounded-2xl bg-[#0b1630] px-8 py-3.5 text-white font-bold text-base hover:bg-[#0f1d3f] transition-colors shadow-lg hover:shadow-xl"
+                  >
+                    <ImageIcon className="w-6 h-6 text-green-400" />
+                    <span>View all {totalGalleryImages} photos</span>
+                  </button>
+                  <p className="mt-4 text-gray-500 text-base text-center">
+                    Click to open full gallery
+                  </p>
+                </div>
+              )}
+            </div>
+          </div>
+        )}
+
+        {/* Full Gallery Modal */}
+        {showAllEventGallery && (
+          <div className="fixed inset-0 z-[150] flex items-center justify-center bg-black/60 backdrop-blur-md animate-in fade-in duration-300 p-4">
+            {/* Modal Container */}
+            <div className="relative w-full max-w-5xl flex flex-col bg-white rounded-3xl shadow-2xl overflow-hidden max-h-[90vh]">
+              {/* Close button */}
+              <button
+                onClick={() => setShowAllEventGallery(false)}
+                className="absolute top-6 right-6 text-gray-600 hover:text-gray-900 transition-colors z-[160] hover:bg-gray-100 p-2 rounded-full"
+              >
+                <X className="w-7 h-7" />
+              </button>
+
+              {/* Modal Header */}
+              <div className="px-8 md:px-12 pt-8 pb-2">
+                <h3 className="text-3xl md:text-4xl font-bold text-gray-900">
+                  Event Gallery
+                </h3>
+                <p className="text-gray-500 text-lg mt-1">
+                  {totalGalleryImages} Photos Captured
+                </p>
+              </div>
+
+              {/* Modal Gallery Content */}
+              <div className="overflow-y-auto flex-1 px-8 md:px-12 py-8">
+                <GalleryComponent 
+                  layout={galleryData?.type || 'grid'} 
+                  images={galleryData?.images || []} 
+                />
+              </div>
+
+              {/* Modal Footer */}
+              <div className="bg-gray-50 px-8 md:px-12 py-6 border-t border-gray-200 flex justify-center">
+                <button
+                  onClick={() => setShowAllEventGallery(false)}
+                  className="px-8 py-3 bg-[#0b1630] hover:bg-[#0f1d3f] text-white font-bold rounded-full transition-colors text-base shadow-md hover:shadow-lg"
+                >
+                  Close Gallery
+                </button>
+              </div>
             </div>
           </div>
         )}
