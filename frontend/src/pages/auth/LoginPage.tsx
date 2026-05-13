@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { Link, useLocation, useNavigate } from 'react-router-dom';
 import { useDispatch } from 'react-redux';
-
+import { toast } from 'react-hot-toast';
 
 import { loginUser } from '@/store/slices/authSlice';
 import { AppDispatch } from '@/store';
@@ -163,6 +163,13 @@ const LoginPage: React.FC = () => {
 
         if (formData.rememberMe) {
           localStorage.setItem('rememberMe', 'true');
+        }
+
+        // Block unverified users and redirect them to verify their email
+        if (!response.user?.isEmailVerified) {
+          toast.error('Please verify your email before logging in.');
+          navigate(`/verify-email?email=${encodeURIComponent(formData.email)}`, { replace: true });
+          return;
         }
 
         if (redirectPath) {
