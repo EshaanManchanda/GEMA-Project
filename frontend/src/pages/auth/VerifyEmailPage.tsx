@@ -13,10 +13,12 @@ const VerifyEmailPage: React.FC = () => {
   const dispatch = useAppDispatch();
   const { isLoading } = useAppSelector((state) => state.auth);
 
-  // Email can come from navigation state (RegisterPage redirect) or query param (direct link)
+  // Email priority: router state → query param → sessionStorage (set by RegisterPage before navigating)
   const locationState = location.state as { email?: string } | null;
   const queryEmail = new URLSearchParams(location.search).get('email') || '';
-  const [email, setEmail] = useState<string>(locationState?.email || queryEmail);
+  const [email, setEmail] = useState<string>(
+    locationState?.email || queryEmail || sessionStorage.getItem('pendingVerifyEmail') || ''
+  );
 
   const [otp, setOtp] = useState<string>('');
   const [errorMessage, setErrorMessage] = useState<string>('');
@@ -67,6 +69,7 @@ const VerifyEmailPage: React.FC = () => {
 
     try {
       await dispatch(verifyEmailWithOTP({ email: email.trim(), otp })).unwrap();
+      sessionStorage.removeItem('pendingVerifyEmail');
       setVerificationStatus('success');
 
       // Auto-redirect to home after 2.5s

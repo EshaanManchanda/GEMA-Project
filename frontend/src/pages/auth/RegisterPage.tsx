@@ -1,9 +1,10 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { Link, useLocation, useNavigate } from 'react-router-dom';
 import { useAppDispatch, useAppSelector } from '@/store/hooks';
-import { registerUser, clearError } from '@/store/slices/authSlice';
+import { registerUser, verifyEmailWithOTP, resendVerificationEmail, clearError } from '@/store/slices/authSlice';
 import PhoneInput from '@/components/forms/PhoneInput';
 import PrivatePageSEO from '@/components/common/PrivatePageSEO';
+import OTPInput from '@/components/common/OTPInput';
 
 interface RegisterFormData {
   firstName: string;
@@ -57,20 +58,39 @@ const RegisterPage: React.FC = () => {
   const loginLink = redirectPath
     ? `/login?redirect=${encodeURIComponent(redirectPath)}`
     : '/login';
+  const [currentStep, setCurrentStep] = useState<1 | 2>(1);
   const [formData, setFormData] = useState<RegisterFormData>({
     firstName: '',
     lastName: '',
     email: '',
     password: '',
     confirmPassword: '',
-    countryCode: '+971', // Default to UAE
+    countryCode: '+971',
     phoneNumber: '',
     role: initialRole,
     agreeToTerms: false
   });
+  const [otp, setOtp] = useState<string>('');
+  const [otpError, setOtpError] = useState<string>('');
+  const [cooldown, setCooldown] = useState<number>(0);
+  const cooldownRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const [errors, setErrors] = useState<Partial<RegisterFormData>>({});
   const [showPassword, setShowPassword] = useState<boolean>(false);
   const [showConfirmPassword, setShowConfirmPassword] = useState<boolean>(false);
+
+  useEffect(() => {
+    return () => { if (cooldownRef.current) clearInterval(cooldownRef.current); };
+  }, []);
+
+  const startCooldown = () => {
+    setCooldown(60);
+    cooldownRef.current = setInterval(() => {
+      setCooldown(prev => {
+        if (prev <= 1) { clearInterval(cooldownRef.current!); return 0; }
+        return prev - 1;
+      });
+    }, 1000);
+  };
 
   // Clear any existing errors when component mounts
   useEffect(() => {
@@ -196,13 +216,8 @@ const RegisterPage: React.FC = () => {
 
   const handleStep1Submit = async (e: React.FormEvent) => {
     e.preventDefault();
-
-    if (!validateStep1Form()) {
-      return;
-    }
-
+    if (!validateStep1Form()) return;
     try {
-      // Use Redux registerUser thunk
       await dispatch(registerUser({
         firstName: formData.firstName,
         lastName: formData.lastName,
@@ -214,15 +229,13 @@ const RegisterPage: React.FC = () => {
         acceptTerms: formData.agreeToTerms
       })).unwrap();
 
-      // Redirect to email verification page, passing the email via router state
-      navigate('/verify-email', { state: { email: formData.email } });
+      // Persist email so VerifyEmailPage survives any loading-spinner remount
+      sessionStorage.setItem('pendingVerifyEmail', formData.email);
+      navigate('/verify-email', { state: { email: formData.email }, replace: true });
     } catch (error: any) {
       console.error('Registration error:', error);
-      // Error handling is done by Redux thunk with toast notifications
     }
   };
-
-
   return (
     <>
       <PrivatePageSEO title="Register | Kidrove" description="Create your Kidrove account" />
