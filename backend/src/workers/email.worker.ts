@@ -90,6 +90,8 @@ const emailWorker = areQueuesEnabled
                 orderNumber: data.templateData.orderNumber,
                 orderTotal: data.templateData.orderTotal,
                 currency: data.templateData.currency,
+                isFreeEvent: data.templateData.isFreeEvent,
+                attachments: data.attachments,
                 items: data.templateData.items,
               });
               break;

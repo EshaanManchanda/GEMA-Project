@@ -16,7 +16,7 @@ export interface IPartnership extends Document {
   notes?: string;
   // Summer 2026 Campaign fields
   campaignType?: "general" | "summer_2026";
-  selectedPackage?: "starter" | "growth" | "premium" | "category_sponsor";
+  selectedPackage?: "basic" | "starter" | "growth" | "premium" | "category_sponsor";
   campDetails?: string;
   ageGroups?: string[];
   emirate?: string;
@@ -85,7 +85,7 @@ const partnershipSchema: Schema = new Schema(
     selectedPackage: {
       type: String,
       enum: {
-        values: ["starter", "growth", "premium", "category_sponsor"],
+        values: ["basic", "starter", "growth", "premium", "category_sponsor"],
         message: "Invalid package selection",
       },
     },

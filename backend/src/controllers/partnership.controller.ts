@@ -92,6 +92,7 @@ export const submitPartnership = async (
     let paymentUrl = undefined;
     if (campaignType === "summer_2026" && selectedPackage) {
       const packagePrices: Record<string, number> = {
+        basic: 0,
         starter: 299,
         growth: 699,
         premium: 1299,
@@ -99,7 +100,8 @@ export const submitPartnership = async (
       };
 
       const price = packagePrices[selectedPackage];
-      if (price) {
+      // Only create Stripe session if price is greater than 0
+      if (price && price > 0) {
         const session = await stripe.checkout.sessions.create({
           payment_method_types: ["card"],
           line_items: [

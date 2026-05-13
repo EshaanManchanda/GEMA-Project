@@ -92,6 +92,8 @@ export class QueueService {
           orderNumber: d.orderNumber,
           orderTotal: d.orderTotal,
           currency: d.currency,
+          isFreeEvent: d.isFreeEvent,
+          attachments: data.attachments,
           items: d.items,
         });
       case "ticket":

@@ -6,6 +6,19 @@ import api from '../services/api';
 
 const PACKAGES = [
   {
+    id: 'basic',
+    name: 'Basic Listing',
+    emoji: '🟢',
+    price: 'AED 0',
+    tag: null,
+    icon: <FaBolt className="text-2xl text-green-500" />,
+    color: 'border-green-400',
+    headerBg: 'from-green-400 to-emerald-500',
+    includes: [
+      'Listing on Summer Camps Pages',
+    ],
+  },
+  {
     id: 'starter',
     name: 'Starter Listing',
     emoji: '🟢',
@@ -269,7 +282,7 @@ const SummerPartnershipPage: React.FC = () => {
             <h2 className="text-4xl md:text-5xl font-extrabold text-white mb-3">Choose Your Package</h2>
             <p className="text-slate-400 text-lg max-w-xl mx-auto">All packages run May–August 2026. Early partners get better placement.</p>
           </div>
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-6">
             {PACKAGES.map((pkg) => (
               <div
                 key={pkg.id}

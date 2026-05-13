@@ -75,7 +75,7 @@ export const submitPartnershipValidation = [
 
   body("selectedPackage")
     .optional()
-    .isIn(["starter", "growth", "premium", "category_sponsor"])
+    .isIn(["basic", "starter", "growth", "premium", "category_sponsor"])
     .withMessage("Invalid package selection"),
 
   body("campDetails")

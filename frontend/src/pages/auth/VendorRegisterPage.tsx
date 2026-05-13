@@ -4,6 +4,7 @@ import { useAppDispatch, useAppSelector } from '@/store/hooks';
 import { registerUser, verifyEmailWithOTP, resendVerificationEmail, clearError } from '@/store/slices/authSlice';
 import PhoneInput from '@/components/forms/PhoneInput';
 import PrivatePageSEO from '@/components/common/PrivatePageSEO';
+import OTPInput from '@/components/common/OTPInput';
 
 interface RegisterFormData {
     firstName: string;
@@ -157,12 +158,6 @@ const VendorRegisterPage: React.FC = () => {
         }
     };
 
-    const handleOtpChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-        const value = e.target.value.replace(/\D/g, '').slice(0, 4); // Only digits, max 4
-        setOtpData({ otp: value });
-        setOtpError('');
-    };
-
     const handleStep1Submit = async (e: React.FormEvent) => {
         e.preventDefault();
 
@@ -242,10 +237,12 @@ const VendorRegisterPage: React.FC = () => {
                     <div className="max-w-md w-full space-y-6 animate-fade-in-up">
                         <div className="bg-white p-8 rounded-xl shadow-medium border border-neutral-200">
                             <div className="text-center">
-                                <img src="/assets/animations/loading.svg" alt="Logo" className="h-12 w-12 mx-auto mb-4" />
-                                <h2 className="text-center text-2xl font-bold text-neutral-800">Verify Your Vendor Email</h2>
+                                <div className="mx-auto mb-4 flex h-12 w-12 items-center justify-center rounded-full bg-orange-100 text-orange-600 font-bold">
+                                    OTP
+                                </div>
+                                <h2 className="text-center text-2xl font-bold text-neutral-800">Enter OTP</h2>
                                 <p className="mt-2 text-center text-sm text-neutral-600">
-                                    We've sent a 4-digit verification code to{' '}
+                                    Check your email for the 4-digit OTP sent to{' '}
                                     <span className="font-medium text-orange-600">{formData.email}</span>
                                 </p>
                             </div>
@@ -261,22 +258,13 @@ const VendorRegisterPage: React.FC = () => {
 
                             <form className="mt-6 space-y-6" onSubmit={handleOtpSubmit}>
                                 <div className="form-group">
-                                    <label htmlFor="otp" className="form-label">Verification Code</label>
-                                    <div className="relative">
-                                        <input
-                                            id="otp"
-                                            name="otp"
-                                            type="text"
-                                            inputMode="numeric"
-                                            pattern="[0-9]*"
-                                            maxLength={4}
-                                            required
-                                            className="input text-center text-2xl tracking-widest focus:ring-orange-500 focus:border-orange-500"
-                                            placeholder="••••"
-                                            value={otpData.otp}
-                                            onChange={handleOtpChange}
-                                        />
-                                    </div>
+                                    <label htmlFor="otp" className="form-label text-center block">Enter OTP</label>
+                                    <OTPInput
+                                        value={otpData.otp}
+                                        onChange={(value) => setOtpData({ otp: value })}
+                                        error={!!otpError}
+                                        disabled={isLoading}
+                                    />
                                 </div>
 
                                 <div className="space-y-4">

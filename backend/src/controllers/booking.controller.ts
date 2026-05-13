@@ -946,27 +946,40 @@ export const confirmBooking = async (
           }
 
           // Send customer order confirmation email
-          await emailService.sendOrderConfirmationEmail({
-            to: customer.email,
-            firstName: customer.firstName,
-            orderNumber: order.orderNumber,
-            orderTotal: order.total,
-            currency: order.currency,
-            isFreeEvent: !!(event as any).isFreeEvent,
-            attachments: bookingSummaryAttachment
-              ? [bookingSummaryAttachment]
-              : undefined,
-            items: order.items.map((item: any) => ({
-              eventTitle: item.eventTitle || event.title,
-              quantity: item.quantity,
-              price: item.unitPrice,
-              date: item.scheduleDate,
-              venueType: event.venueType,
-              eventType: (event as any).eventType || event.type,
-              meetingLink: event.meetingLink,
-              meetingPassword: (event as any).meetingPassword,
-            })),
-          });
+          try {
+            await emailService.sendOrderConfirmationEmail({
+              to: customer.email,
+              firstName: customer.firstName,
+              orderNumber: order.orderNumber,
+              orderTotal: order.total,
+              currency: order.currency,
+              isFreeEvent: !!(event as any).isFreeEvent,
+              attachments: bookingSummaryAttachment
+                ? [bookingSummaryAttachment]
+                : undefined,
+              items: order.items.map((item: any) => ({
+                eventTitle: item.eventTitle || event.title,
+                quantity: item.quantity,
+                price: item.unitPrice,
+                date: item.scheduleDate,
+                venueType: event.venueType,
+                eventType: (event as any).eventType || event.type,
+                meetingLink: event.meetingLink,
+                meetingPassword: (event as any).meetingPassword,
+              })),
+            });
+          } catch (emailError: any) {
+            logger.error(
+              "Failed to send order confirmation email (booking continues)",
+              {
+                orderId: order._id,
+                orderNumber: order.orderNumber,
+                customerEmail: customer.email,
+                error: emailError?.message,
+              },
+            );
+            // Continue - email failure should not block booking confirmation
+          }
 
           await emailService.sendVendorBookingNotificationEmail({
             to: vendorEmail,
