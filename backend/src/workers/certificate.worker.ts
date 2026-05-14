@@ -4,6 +4,7 @@ import QRCode from "qrcode";
 import { QUEUE_NAMES, bullMQConnection, areQueuesEnabled } from "../config/queue";
 import Certificate, { Template, AuditLog, CertificateRequest, ITemplate, ITemplateField } from "../models/Certificate";
 import { QueueService } from "../services/queue.service";
+import { MediaService } from "../services/media.service";
 import logger from "../config/logger";
 
 export interface CertificateJobData {
@@ -203,23 +204,27 @@ export async function renderCertificate(
   const orientation = template.defaultOptions?.orientation ?? 'landscape';
   const pdfBuf = await htmlToPdf(html, template.canvasWidth ?? 1240, template.canvasHeight ?? 877, orientation);
 
-  try {
-    const { v2: cloudinary } = await import("cloudinary");
+  const mockFile: Express.Multer.File = {
+    fieldname: 'file',
+    originalname: 'certificate.pdf',
+    encoding: '7bit',
+    mimetype: 'application/pdf',
+    size: pdfBuf.length,
+    buffer: pdfBuf,
+    destination: '',
+    filename: '',
+    path: '',
+    stream: null as any,
+  };
 
-    return await new Promise<string>((resolve, reject) => {
-      const stream = cloudinary.uploader.upload_stream(
-        { resource_type: "raw", folder: "certificates", format: "pdf" },
-        (error, result) => {
-          if (error || !result) reject(error ?? new Error("No result from Cloudinary"));
-          else resolve(result.secure_url);
-        },
-      );
-      stream.end(pdfBuf);
-    });
-  } catch (err) {
-    logger.warn("Cloudinary upload failed for certificate:", err);
-    throw err;
-  }
+  const mediaAsset = await new MediaService().uploadMedia(mockFile, {
+    category: 'document',
+    folder: 'certificates',
+    uploadedBy: 'system',
+    tags: ['certificate'],
+  });
+
+  return mediaAsset.url;
 }
 
 async function htmlToPdf(html: string, widthPx: number, heightPx: number, orientation?: 'portrait' | 'landscape'): Promise<Buffer> {

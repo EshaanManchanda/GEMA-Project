@@ -1485,6 +1485,69 @@ const adminAPI = {
       throw error;
     }
   },
+  // =============================================
+  // CERTIFICATE TEMPLATES & EVENT CERT TYPES
+  // =============================================
+
+  getCertTemplates: async () => {
+    try {
+      const response = await ApiService.get('/certificates/templates');
+      return response.data?.data?.templates ?? [];
+    } catch (error) {
+      throw error;
+    }
+  },
+
+  getEventCertTypes: async (eventId: string) => {
+    try {
+      const response = await ApiService.get(`/events/${eventId}/certificate-types`);
+      return response.data?.data ?? [];
+    } catch (error) {
+      throw error;
+    }
+  },
+
+  addEventCertType: async (eventId: string, data: {
+    name: string;
+    slug: string;
+    templateId?: string;
+    isDefault?: boolean;
+    description?: string;
+    criteria?: string;
+    sortOrder?: number;
+  }) => {
+    try {
+      const response = await ApiService.post(`/events/${eventId}/certificate-types`, data);
+      return response.data;
+    } catch (error) {
+      throw error;
+    }
+  },
+
+  updateEventCertType: async (eventId: string, slug: string, data: {
+    name?: string;
+    templateId?: string;
+    isDefault?: boolean;
+    description?: string;
+    criteria?: string;
+    sortOrder?: number;
+  }) => {
+    try {
+      const response = await ApiService.put(`/events/${eventId}/certificate-types/${slug}`, data);
+      return response.data;
+    } catch (error) {
+      throw error;
+    }
+  },
+
+  deleteEventCertType: async (eventId: string, slug: string) => {
+    try {
+      const response = await ApiService.delete(`/events/${eventId}/certificate-types/${slug}`);
+      return response.data;
+    } catch (error) {
+      throw error;
+    }
+  },
 };
 
 export default adminAPI;

@@ -112,6 +112,9 @@ export const certificateAPI = {
   deleteTemplate: (id: string) =>
     api.delete(`/certificates/templates/${id}`),
 
+  updateTemplate: (id: string, data: { active?: boolean; name?: string; description?: string; html?: string; css?: string; backgroundImageUrl?: string; fields?: any[] }) =>
+    api.put<{ success: boolean; data: { template: any } }>(`/certificates/templates/${id}`, data),
+
   retryGenerate: (id: string) =>
     api.post<{ success: boolean; data: { certificate: CertVerifyResult } }>(`/certificates/${id}/retry`),
 };

@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useCallback } from 'react';
-import { Award, Search, XCircle, CheckCircle, RefreshCw, ExternalLink, Mail, Eye, Layout, Trash2, Pencil, RotateCcw, Upload, Users } from 'lucide-react';
+import { Award, Search, XCircle, CheckCircle, RefreshCw, ExternalLink, Mail, Eye, Layout, Trash2, Pencil, RotateCcw, Upload, Users, ToggleLeft, ToggleRight, FileUp } from 'lucide-react';
 import { certificateAPI, type CertVerifyResult } from '../../services/api/reviewLinkAPI';
 import adminAPI from '../../services/api/adminAPI';
 import api from '../../services/api';
@@ -808,6 +808,7 @@ const BulkImportTab: React.FC = () => {
   const [selectedFallbackTemplateId, setSelectedFallbackTemplateId] = useState('');
 
   const [csv, setCsv] = useState('');
+  const [csvFile, setCsvFile] = useState<File | null>(null);
   const [sendEmail, setSendEmail] = useState(false);
   const [submitting, setSubmitting] = useState(false);
   const [results, setResults] = useState<BulkImportResult[] | null>(null);
@@ -878,6 +879,31 @@ const BulkImportTab: React.FC = () => {
   const csvLines = csv.trim().split('\n').filter(l => l.trim());
   const dataLineCount = csvLines.length > 1 ? csvLines.length - 1 : 0;
   const canSubmit = !!selectedEventId && (isFallback ? !!selectedFallbackTemplateId : !!selectedCertTypeSlug) && dataLineCount > 0;
+
+  const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (file) {
+      if (!file.name.endsWith('.csv')) {
+        toast.error('Please select a CSV file');
+        return;
+      }
+      setCsvFile(file);
+      const reader = new FileReader();
+      reader.onload = (event) => {
+        setCsv(event.target?.result as string);
+        toast.success(`Loaded ${file.name}`);
+      };
+      reader.onerror = () => {
+        toast.error('Failed to read file');
+      };
+      reader.readAsText(file);
+    }
+  };
+
+  const clearCsvFile = () => {
+    setCsvFile(null);
+    setCsv('');
+  };
 
   const handleImport = async () => {
     if (!canSubmit) return;
@@ -953,7 +979,27 @@ const BulkImportTab: React.FC = () => {
 
       {/* Step 2: CSV */}
       <div className="bg-white rounded-xl border border-gray-200 p-5 space-y-4">
-        <h3 className="font-semibold text-gray-800">2. Paste CSV Data</h3>
+        <div className="flex items-center justify-between">
+          <h3 className="font-semibold text-gray-800">2. CSV Data</h3>
+          <div className="flex items-center gap-2">
+            <label className="flex items-center gap-2 px-3 py-1.5 text-sm border border-gray-300 rounded-lg cursor-pointer hover:bg-gray-50 text-gray-700">
+              <FileUp className="w-4 h-4" />
+              Upload CSV
+              <input type="file" accept=".csv" onChange={handleFileChange} className="hidden" />
+            </label>
+            {csvFile && (
+              <button type="button" onClick={clearCsvFile} className="text-xs text-red-500 hover:text-red-700">
+                Clear
+              </button>
+            )}
+          </div>
+        </div>
+        {csvFile && (
+          <div className="flex items-center gap-2 px-3 py-2 bg-indigo-50 border border-indigo-200 rounded-lg text-sm text-indigo-700">
+            <FileUp className="w-4 h-4" />
+            {csvFile.name} ({csvLines.length} rows)
+          </div>
+        )}
         <div className="bg-gray-50 border border-gray-200 rounded-lg p-3 font-mono text-xs text-gray-500 leading-relaxed">
           student_name,email,school_name,issue_date,certificate_type,team_name,grade,category,total<br />
           Alice Smith,alice@school.edu,Example School,23-03-2026,Participation,Team Alpha,Grade 5,Grades 3-5,64<br />
@@ -1047,6 +1093,7 @@ const TemplatesTab: React.FC = () => {
   const [versions, setVersions] = useState<Record<string, Array<{ _id: string; version: number; createdAt: string; createdBy?: { firstName: string; lastName: string } }>>>({});
   const [loadingVersions, setLoadingVersions] = useState<string | null>(null);
   const [rollingBack, setRollingBack] = useState<string | null>(null);
+  const [toggling, setToggling] = useState<string | null>(null);
 
   const fetchTemplates = async () => {
     setLoading(true);
@@ -1092,6 +1139,19 @@ const TemplatesTab: React.FC = () => {
       toast.error(err?.response?.data?.message || 'Failed to delete template');
     } finally {
       setDeleting(null);
+    }
+  };
+
+  const handleToggleActive = async (t: Template) => {
+    setToggling(t._id);
+    try {
+      await certificateAPI.updateTemplate(t._id, { active: !t.active });
+      toast.success(`Template ${!t.active ? 'activated' : 'deactivated'}`);
+      setTemplates(prev => prev.map(tpl => tpl._id === t._id ? { ...tpl, active: !tpl.active } : tpl));
+    } catch (err: any) {
+      toast.error(err?.response?.data?.message || 'Failed to update template');
+    } finally {
+      setToggling(null);
     }
   };
 
@@ -1171,6 +1231,15 @@ const TemplatesTab: React.FC = () => {
                     className="flex items-center gap-1 px-3 py-1.5 text-xs text-gray-700 border border-gray-300 rounded-lg hover:bg-gray-50"
                   >
                     <Pencil className="w-3 h-3" /> Edit
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => handleToggleActive(t)}
+                    disabled={toggling === t._id}
+                    className={`flex items-center gap-1 px-3 py-1.5 text-xs border rounded-lg disabled:opacity-50 transition ${t.active ? 'text-green-700 border-green-300 hover:bg-green-50' : 'text-gray-500 border-gray-300 hover:bg-gray-50'}`}
+                  >
+                    {toggling === t._id ? <RefreshCw className="w-3 h-3 animate-spin" /> : t.active ? <ToggleRight className="w-3 h-3" /> : <ToggleLeft className="w-3 h-3" />}
+                    {t.active ? 'Active' : 'Inactive'}
                   </button>
                   <button
                     type="button"

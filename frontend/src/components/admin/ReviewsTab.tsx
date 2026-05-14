@@ -7,11 +7,11 @@ import logger from '@/utils/logger';
 
 interface Review {
   _id: string;
-  user: {
-    firstName: string;
-    lastName: string;
+  user?: {
+    firstName?: string;
+    lastName?: string;
     avatar?: string;
-  };
+  } | null;
   rating: number;
   title?: string;
   comment?: string;
@@ -322,7 +322,9 @@ const ReviewsTab: React.FC<ReviewsTabProps> = ({
                   <div className="flex-1">
                     <div className="flex items-center gap-2">
                       <div className="font-medium text-gray-900">
-                        {review.user.firstName} {review.user.lastName}
+                        {review.user
+                          ? `${review.user.firstName ?? ''} ${review.user.lastName ?? ''}`.trim() || 'Unknown User'
+                          : 'Unknown User'}
                       </div>
                       {review.verified && (
                         <span className="text-xs bg-blue-100 text-blue-600 px-2 py-0.5 rounded-full font-medium">

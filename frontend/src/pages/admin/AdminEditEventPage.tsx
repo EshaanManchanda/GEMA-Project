@@ -7,6 +7,7 @@ import BasicInfoTab from "../../components/admin/BasicInfoTab";
 import SchedulePricingTab from "../../components/admin/SchedulePricingTab";
 import AdvancedTab from "../../components/admin/AdvancedTab";
 import ReviewsTab from "../../components/admin/ReviewsTab";
+import CertificateTypesTab from "../../components/admin/CertificateTypesTab";
 import {
   Calendar,
   MapPin,
@@ -15,6 +16,7 @@ import {
   ArrowLeft,
   Save,
   CheckCircle2,
+  Award,
 } from "lucide-react";
 import Badge from "../../components/ui/Badge";
 import { MediaAsset } from "@/store/slices/mediaSlice";
@@ -157,7 +159,7 @@ interface Vendor {
   email: string;
 }
 
-type TabType = "basic" | "schedule" | "advanced" | "reviews" | "registration";
+type TabType = "basic" | "schedule" | "advanced" | "reviews" | "registration" | "certificates";
 
 const AdminEditEventPage: React.FC = () => {
   const { id } = useParams<{ id: string }>();
@@ -1153,6 +1155,7 @@ const AdminEditEventPage: React.FC = () => {
       label: "Registration Form",
       icon: CheckCircle2,
     },
+    { id: "certificates" as TabType, label: "Certificates", icon: Award },
   ];
 
   return (
@@ -1353,6 +1356,33 @@ const AdminEditEventPage: React.FC = () => {
                   setFormData((prev) => ({ ...prev, googlePlaceId: placeId }))
                 }
               />
+            )}
+
+            {activeTab === "certificates" && id && (
+              <CertificateTypesTab eventId={id} />
+            )}
+
+            {activeTab === "certificates" && !id && (
+              <div className="p-6">
+                <div className="max-w-2xl mx-auto">
+                  <div className="bg-purple-50 border border-purple-200 rounded-lg p-8 text-center">
+                    <Award className="w-10 h-10 text-purple-400 mx-auto mb-3" />
+                    <h3 className="text-lg font-medium text-gray-900 mb-2">
+                      Save the event first
+                    </h3>
+                    <p className="text-gray-600 mb-6">
+                      Certificate types can be configured after the event has been created.
+                    </p>
+                    <button
+                      type="button"
+                      onClick={() => setActiveTab("basic")}
+                      className="inline-flex items-center px-6 py-3 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-purple-600 hover:bg-purple-700"
+                    >
+                      Go to Basic Info
+                    </button>
+                  </div>
+                </div>
+              </div>
             )}
 
             {activeTab === "reviews" && !id && (

@@ -15,10 +15,9 @@ import {
   ReviewStatus,
   FlagReason,
 } from "../models/index";
-import Certificate, { SerialCounter } from "../models/Certificate";
 import { AppError } from "../middleware/index";
 import { AuthRequest } from "../types/index";
-import { certificateQueue } from "../config/queue";
+import { certificateService } from "../modules/certificates/services/certificate.service";
 import logger from "../config/logger";
 
 const hasConfirmedEventBooking = async (
@@ -869,8 +868,21 @@ export const moderateReview = async (
       return next(new AppError("Review not found", 404));
     }
 
+    const wasNotApproved = review.status !== ReviewStatus.APPROVED;
     review.moderate(moderatorId, status, notes);
     await review.save();
+
+    // Trigger certificate for event reviews approved by admin (catches pending link-reviews)
+    if (
+      status === ReviewStatus.APPROVED &&
+      wasNotApproved &&
+      (review.type === ReviewType.EVENT || review.type === ReviewType.TEACHING_EVENT) &&
+      review.event
+    ) {
+      triggerCertificateForReview(review, review.user).catch((err) =>
+        logger.error("Certificate trigger on moderation failed:", err),
+      );
+    }
 
     res.status(200).json({
       success: true,
@@ -1104,9 +1116,13 @@ export const submitReviewViaLink = async (req: Request, res: Response, next: Nex
       $addToSet: { hasReviewedEvents: eventId },
     });
 
-    triggerCertificateForReview(review, user._id).catch((err) =>
-      logger.error("Certificate trigger failed:", err),
-    );
+    // Only issue certificate for immediately-approved reviews.
+    // PENDING reviews (those with descriptions) get their certificate when admin approves.
+    if (review.status === ReviewStatus.APPROVED) {
+      triggerCertificateForReview(review, user._id).catch((err) =>
+        logger.error("Certificate trigger failed:", err),
+      );
+    }
 
     res.status(201).json({
       success: true,
@@ -1137,45 +1153,19 @@ export const generateReviewLink = async (req: AuthRequest, res: Response, next: 
 // ─── Private helpers ──────────────────────────────────────────────────────────
 
 async function triggerCertificateForReview(review: any, userId: any): Promise<void> {
-  const [event, user] = await Promise.all([
-    Event.findById(review.event).select("title"),
-    User.findById(userId).select("firstName lastName email"),
-  ]);
+  const user = await User.findById(userId).select("firstName lastName email");
+  if (!user || !user.email) return;
 
-  if (!event || !user) return;
-
-  const counter = await SerialCounter.findOneAndUpdate(
-    { key: "global" },
-    { $inc: { next: 1 } },
-    { upsert: true, new: true },
-  );
-  const seq = String(counter.next).padStart(6, "0");
-  const serialNumber = `CERT-${new Date().getFullYear()}-${seq}`;
-
-  const certificate = await Certificate.create({
-    serialNumber,
-    eventId: review.event,
-    userId,
-    reviewId: review._id,
+  // issueForEvent: resolves template from event.certificateTypes, allocates serial, queues PDF + email
+  await certificateService.issueForEvent({
+    eventId: review.event.toString(),
+    userId: userId.toString(),
+    reviewId: review._id.toString(),
     recipient: {
       name: `${user.firstName} ${user.lastName}`.trim(),
       email: user.email,
     },
-    data: { eventName: event.title, rating: review.rating, date: review.createdAt },
-    status: "pending",
-    history: [{ event: "created_from_review", at: new Date() }],
+    data: { rating: review.rating, date: review.createdAt },
+    sendEmail: true,
   });
-
-  if (certificateQueue) {
-    await certificateQueue.add(
-      "generate-certificate",
-      {
-        certificateId: certificate._id.toString(),
-        recipient: certificate.recipient,
-        data: certificate.data,
-        options: { sendEmail: true },
-      },
-      { attempts: 3, backoff: { type: "exponential", delay: 3000 } },
-    );
-  }
 }

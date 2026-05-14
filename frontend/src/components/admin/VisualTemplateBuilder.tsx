@@ -1,10 +1,8 @@
-import React, { useState, useRef, useCallback } from 'react';
+import React, { useState, useRef, useCallback, useEffect } from 'react';
 import { X, Plus, Trash2, Move, Image as ImageIcon } from 'lucide-react';
 import MediaPickerModal from './media/MediaPickerModal';
 import api from '../../services/api';
 import toast from 'react-hot-toast';
-
-// ─── Types ────────────────────────────────────────────────────────────────────
 
 interface TemplateField {
   id: string;
@@ -43,8 +41,6 @@ interface Props {
   editTemplate?: EditableTemplate;
 }
 
-// ─── Predefined field palette ─────────────────────────────────────────────────
-
 const PALETTE: { key: string; label: string; type: 'text' | 'qr' }[] = [
   { key: 'recipientName', label: 'Recipient Name', type: 'text' },
   { key: 'studentName', label: 'Student Name', type: 'text' },
@@ -58,8 +54,6 @@ const PALETTE: { key: string; label: string; type: 'text' | 'qr' }[] = [
 function uid() {
   return Math.random().toString(36).slice(2, 10);
 }
-
-// ─── Component ────────────────────────────────────────────────────────────────
 
 const VisualTemplateBuilder: React.FC<Props> = ({ onClose, onSaved, editTemplate }) => {
   const isEdit = !!editTemplate;
@@ -81,17 +75,25 @@ const VisualTemplateBuilder: React.FC<Props> = ({ onClose, onSaved, editTemplate
   const [customKey, setCustomKey] = useState('');
 
   const canvasRef = useRef<HTMLDivElement>(null);
+  const containerRef = useRef<HTMLDivElement>(null);
   const dragRef = useRef<{ id: string; startX: number; startY: number; fieldX: number; fieldY: number } | null>(null);
+  const [scale, setScale] = useState(1);
 
-  // ─── Background image picker ────────────────────────────────────────────────
+  useEffect(() => {
+    const el = containerRef.current;
+    if (!el) return;
+    const update = () => setScale(el.offsetWidth / canvasW);
+    update();
+    const ro = new ResizeObserver(update);
+    ro.observe(el);
+    return () => ro.disconnect();
+  }, [canvasW]);
 
   const handleImageSelect = useCallback((assets: any[]) => {
     if (!assets[0]) return;
-    // Use directUrl if available (Cloudinary CDN), otherwise fall back to url
     const url = assets[0].directUrl || assets[0].url;
     setBgUrl(url);
     setShowMediaPicker(false);
-
     const img = new Image();
     img.onload = () => {
       setCanvasW(img.naturalWidth || 1240);
@@ -99,8 +101,6 @@ const VisualTemplateBuilder: React.FC<Props> = ({ onClose, onSaved, editTemplate
     };
     img.src = url;
   }, []);
-
-  // ─── Add field from palette ─────────────────────────────────────────────────
 
   const addField = useCallback((key: string, label: string, type: 'text' | 'qr' = 'text') => {
     const id = uid();
@@ -119,8 +119,6 @@ const VisualTemplateBuilder: React.FC<Props> = ({ onClose, onSaved, editTemplate
     setCustomKey('');
   };
 
-  // ─── Drag handlers ──────────────────────────────────────────────────────────
-
   const onMouseDownField = useCallback((e: React.MouseEvent, id: string, fieldX: number, fieldY: number) => {
     e.preventDefault();
     e.stopPropagation();
@@ -135,17 +133,14 @@ const VisualTemplateBuilder: React.FC<Props> = ({ onClose, onSaved, editTemplate
     const dy = ((e.clientY - dragRef.current.startY) / rect.height) * 100;
     const newX = Math.min(100, Math.max(0, dragRef.current.fieldX + dx));
     const newY = Math.min(100, Math.max(0, dragRef.current.fieldY + dy));
-
     setFields(prev =>
-      prev.map(f => f.id === dragRef.current!.id ? { ...f, x: newX, y: newY } : f),
+      prev.map(f => f.id === dragRef.current!.id ? { ...f, x: newX, y: newY } : f)
     );
   }, []);
 
   const onMouseUp = useCallback(() => {
     dragRef.current = null;
   }, []);
-
-  // ─── Inspector ──────────────────────────────────────────────────────────────
 
   const updateField = (id: string, patch: Partial<TemplateField>) => {
     setFields(prev => prev.map(f => f.id === id ? { ...f, ...patch } : f));
@@ -157,8 +152,6 @@ const VisualTemplateBuilder: React.FC<Props> = ({ onClose, onSaved, editTemplate
   };
 
   const selectedField = fields.find(f => f.id === selected);
-
-  // ─── Save ───────────────────────────────────────────────────────────────────
 
   const handleSave = async () => {
     if (!name.trim() || !slug.trim()) { toast.error('Name and slug are required'); return; }
@@ -176,10 +169,7 @@ const VisualTemplateBuilder: React.FC<Props> = ({ onClose, onSaved, editTemplate
         canvasWidth: canvasW,
         canvasHeight: canvasH,
         fields: fields.map(({ id: _id, ...f }) => f),
-        defaultOptions: {
-          pageSize,
-          orientation,
-        },
+        defaultOptions: { pageSize, orientation },
       };
       if (isEdit) {
         await api.put(`/certificates/templates/${editTemplate!._id}`, payload);
@@ -196,13 +186,9 @@ const VisualTemplateBuilder: React.FC<Props> = ({ onClose, onSaved, editTemplate
     }
   };
 
-  // ─── Render ─────────────────────────────────────────────────────────────────
-
   return (
     <div className="fixed inset-0 z-50 bg-black/60 flex items-center justify-center p-4">
       <div className="bg-white rounded-2xl w-full max-w-7xl max-h-[95vh] flex flex-col overflow-hidden shadow-2xl">
-
-        {/* Header */}
         <div className="flex items-center justify-between px-6 py-4 border-b border-gray-200 shrink-0">
           <div className="flex items-center gap-3">
             <ImageIcon className="w-5 h-5 text-indigo-600" />
@@ -214,11 +200,7 @@ const VisualTemplateBuilder: React.FC<Props> = ({ onClose, onSaved, editTemplate
         </div>
 
         <div className="flex flex-1 overflow-hidden">
-
-          {/* Left panel — meta + palette */}
           <div className="w-64 shrink-0 border-r border-gray-200 overflow-y-auto flex flex-col gap-4 p-4">
-
-            {/* Meta */}
             <div className="space-y-3">
               <div>
                 <label className="block text-xs font-medium text-gray-700 mb-1">Template Name *</label>
@@ -249,7 +231,6 @@ const VisualTemplateBuilder: React.FC<Props> = ({ onClose, onSaved, editTemplate
               </div>
             </div>
 
-            {/* Page Settings */}
             <div>
               <label className="block text-xs font-medium text-gray-700 mb-1.5">Page Settings</label>
               <div className="space-y-2">
@@ -271,11 +252,7 @@ const VisualTemplateBuilder: React.FC<Props> = ({ onClose, onSaved, editTemplate
                     <button
                       type="button"
                       onClick={() => setOrientation('portrait')}
-                      className={`px-2 py-1 text-xs rounded border ${
-                        orientation === 'portrait'
-                          ? 'bg-indigo-100 border-indigo-400 text-indigo-700'
-                          : 'border-gray-300 text-gray-600 hover:bg-gray-50'
-                      }`}
+                      className={`px-2 py-1 text-xs rounded border ${orientation === 'portrait' ? 'bg-indigo-100 border-indigo-400 text-indigo-700' : 'border-gray-300 text-gray-600 hover:bg-gray-50'}`}
                     >
                       <svg className="w-3.5 h-4" viewBox="0 0 24 32" fill="currentColor">
                         <rect x="4" y="2" width="16" height="28" rx="1" stroke="currentColor" strokeWidth="1.5" fill="none"/>
@@ -284,11 +261,7 @@ const VisualTemplateBuilder: React.FC<Props> = ({ onClose, onSaved, editTemplate
                     <button
                       type="button"
                       onClick={() => setOrientation('landscape')}
-                      className={`px-2 py-1 text-xs rounded border ${
-                        orientation === 'landscape'
-                          ? 'bg-indigo-100 border-indigo-400 text-indigo-700'
-                          : 'border-gray-300 text-gray-600 hover:bg-gray-50'
-                      }`}
+                      className={`px-2 py-1 text-xs rounded border ${orientation === 'landscape' ? 'bg-indigo-100 border-indigo-400 text-indigo-700' : 'border-gray-300 text-gray-600 hover:bg-gray-50'}`}
                     >
                       <svg className="w-4 h-3.5" viewBox="0 0 32 24" fill="currentColor">
                         <rect x="2" y="4" width="28" height="16" rx="1" stroke="currentColor" strokeWidth="1.5" fill="none"/>
@@ -297,14 +270,11 @@ const VisualTemplateBuilder: React.FC<Props> = ({ onClose, onSaved, editTemplate
                   </div>
                 </div>
                 {orientation && (
-                  <p className="text-xs text-gray-400">
-                    Current: {pageSize} ({orientation})
-                  </p>
+                  <p className="text-xs text-gray-400">Current: {pageSize} ({orientation})</p>
                 )}
               </div>
             </div>
 
-            {/* Background image */}
             <div>
               <label className="block text-xs font-medium text-gray-700 mb-1.5">Background Image *</label>
               <button
@@ -320,7 +290,6 @@ const VisualTemplateBuilder: React.FC<Props> = ({ onClose, onSaved, editTemplate
               )}
             </div>
 
-            {/* Field palette */}
             <div>
               <p className="text-xs font-medium text-gray-700 mb-2">Add Field</p>
               <div className="space-y-1">
@@ -337,8 +306,6 @@ const VisualTemplateBuilder: React.FC<Props> = ({ onClose, onSaved, editTemplate
                   </button>
                 ))}
               </div>
-
-              {/* Custom field */}
               <div className="mt-3 space-y-1.5">
                 <p className="text-xs text-gray-500">Custom field:</p>
                 <input
@@ -364,7 +331,6 @@ const VisualTemplateBuilder: React.FC<Props> = ({ onClose, onSaved, editTemplate
               </div>
             </div>
 
-            {/* Fields list */}
             {fields.length > 0 && (
               <div>
                 <p className="text-xs font-medium text-gray-700 mb-2">Canvas Fields ({fields.length})</p>
@@ -390,7 +356,6 @@ const VisualTemplateBuilder: React.FC<Props> = ({ onClose, onSaved, editTemplate
             )}
           </div>
 
-          {/* Canvas area */}
           <div className="flex-1 overflow-auto bg-gray-100 flex items-center justify-center p-6">
             {!bgUrl ? (
               <div className="text-center text-gray-400">
@@ -399,8 +364,8 @@ const VisualTemplateBuilder: React.FC<Props> = ({ onClose, onSaved, editTemplate
               </div>
             ) : (
               <div
-                ref={canvasRef}
-                className="relative select-none shadow-xl"
+                ref={containerRef}
+                className="relative select-none shadow-xl overflow-hidden"
                 style={{
                   width: '100%',
                   maxWidth: `${canvasW}px`,
@@ -411,80 +376,92 @@ const VisualTemplateBuilder: React.FC<Props> = ({ onClose, onSaved, editTemplate
                 onMouseUp={onMouseUp}
                 onMouseLeave={onMouseUp}
               >
-                <img
-                  src={bgUrl}
-                  alt="certificate background"
-                  className="w-full h-full object-cover pointer-events-none"
-                  draggable={false}
-                />
-                {fields.map(f => (
-                  <div
-                    key={f.id}
-                    style={{
-                      position: 'absolute',
-                      left: `${f.x}%`,
-                      top: `${f.y}%`,
-                      transform: 'translate(-50%, -50%)',
-                      cursor: 'grab',
-                      userSelect: 'none',
-                      zIndex: selected === f.id ? 10 : 5,
-                      fontSize: f.fontSize ? `${f.fontSize}px` : '24px',
-                      fontWeight: f.fontWeight === 'bold' ? 'bold' : 'normal',
-                      color: f.color || '#000000',
-                      fontFamily: f.fontFamily || 'inherit',
-                      textAlign: f.textAlign || 'center',
-                      whiteSpace: 'nowrap',
-                    }}
-                    onMouseDown={e => onMouseDownField(e, f.id, f.x, f.y)}
-                    onClick={() => setSelected(f.id)}
-                  >
-                    {f.type === 'qr' ? (
-                      <div
-                        style={{
-                          width: `${f.width || 80}px`,
-                          height: `${f.width || 80}px`,
-                          border: selected === f.id ? '2px dashed #6366f1' : '2px dashed #9ca3af',
-                          borderRadius: '4px',
-                          background: 'rgba(255,255,255,0.5)',
-                          display: 'flex',
-                          alignItems: 'center',
-                          justifyContent: 'center',
-                          fontSize: '10px',
-                          color: '#6b7280',
-                        }}
-                      >
-                        QR
-                      </div>
-                    ) : (
-                      <div
-                        style={{
-                          fontSize: `${f.fontSize || 24}px`,
-                          fontWeight: f.fontWeight || 'normal',
-                          color: f.color || '#000',
-                          fontFamily: f.fontFamily || 'inherit',
-                          textAlign: f.textAlign || 'center',
-                          whiteSpace: 'nowrap',
-                          outline: selected === f.id ? '2px dashed #6366f1' : '2px dashed transparent',
-                          outlineOffset: '4px',
-                          padding: '2px',
-                          cursor: 'grab',
-                        }}
-                      >
-                        {f.label}
-                      </div>
-                    )}
-                    {selected === f.id && (
-                      <div className="absolute -top-5 left-1/2 -translate-x-1/2">
-                        <Move className="w-3 h-3 text-indigo-500" />
-                      </div>
-                    )}
-                  </div>
-                ))}
+                <div
+                  ref={canvasRef}
+                  style={{
+                    position: 'absolute',
+                    top: 0,
+                    left: 0,
+                    width: canvasW,
+                    height: canvasH,
+                    transform: `scale(${scale})`,
+                    transformOrigin: 'top left',
+                  }}
+                >
+                  <img
+                    src={bgUrl}
+                    alt="certificate background"
+                    style={{ width: '100%', height: '100%', objectFit: 'cover', display: 'block', pointerEvents: 'none' }}
+                    draggable={false}
+                  />
+                  {fields.map(f => (
+                    <div
+                      key={f.id}
+                      style={{
+                        position: 'absolute',
+                        left: `${f.x}%`,
+                        top: `${f.y}%`,
+                        transform: 'translate(-50%, -50%)',
+                        cursor: 'grab',
+                        userSelect: 'none',
+                        zIndex: selected === f.id ? 10 : 5,
+                        fontSize: `${f.fontSize || 24}px`,
+                        fontWeight: f.fontWeight === 'bold' ? 'bold' : 'normal',
+                        color: f.color || '#000000',
+                        fontFamily: f.fontFamily || 'inherit',
+                        textAlign: f.textAlign || 'center',
+                        whiteSpace: 'nowrap',
+                      }}
+                      onMouseDown={e => onMouseDownField(e, f.id, f.x, f.y)}
+                      onClick={() => setSelected(f.id)}
+                    >
+                      {f.type === 'qr' ? (
+                        <div
+                          style={{
+                            width: `${f.width || 80}px`,
+                            height: `${f.width || 80}px`,
+                            border: selected === f.id ? '2px dashed #6366f1' : '2px dashed #9ca3af',
+                            borderRadius: '4px',
+                            background: 'rgba(255,255,255,0.5)',
+                            display: 'flex',
+                            alignItems: 'center',
+                            justifyContent: 'center',
+                            fontSize: '10px',
+                            color: '#6b7280',
+                          }}
+                        >
+                          QR
+                        </div>
+                      ) : (
+                        <div
+                          style={{
+                            fontSize: `${f.fontSize || 24}px`,
+                            fontWeight: f.fontWeight || 'normal',
+                            color: f.color || '#000',
+                            fontFamily: f.fontFamily || 'inherit',
+                            textAlign: f.textAlign || 'center',
+                            whiteSpace: 'nowrap',
+                            outline: selected === f.id ? '2px dashed #6366f1' : '2px dashed transparent',
+                            outlineOffset: '4px',
+                            padding: '2px',
+                            cursor: 'grab',
+                          }}
+                        >
+                          {f.label}
+                        </div>
+                      )}
+                      {selected === f.id && (
+                        <div className="absolute -top-5 left-1/2 -translate-x-1/2">
+                          <Move className="w-3 h-3 text-indigo-500" />
+                        </div>
+                      )}
+                    </div>
+                  ))}
+                </div>
               </div>
             )}
           </div>
 
-          {/* Right panel — inspector */}
           <div className="w-56 shrink-0 border-l border-gray-200 overflow-y-auto p-4">
             {selectedField ? (
               <div className="space-y-3">
@@ -568,14 +545,6 @@ const VisualTemplateBuilder: React.FC<Props> = ({ onClose, onSaved, editTemplate
                         <option value="serif">Serif (Georgia)</option>
                         <option value="sans-serif">Sans-serif (Arial)</option>
                         <option value="monospace">Monospace (Courier)</option>
-                        <option value="Georgia, serif">Georgia</option>
-                        <option value="'Times New Roman', serif">Times New Roman</option>
-                        <option value="Arial, sans-serif">Arial</option>
-                        <option value="Verdana, sans-serif">Verdana</option>
-                        <option value="Tahoma, sans-serif">Tahoma</option>
-                        <option value="'Trebuchet MS', sans-serif">Trebuchet MS</option>
-                        <option value="Impact, sans-serif">Impact</option>
-                        <option value="'Comic Sans MS', cursive">Comic Sans</option>
                       </select>
                     </div>
                   </>
@@ -640,7 +609,6 @@ const VisualTemplateBuilder: React.FC<Props> = ({ onClose, onSaved, editTemplate
           </div>
         </div>
 
-        {/* Footer */}
         <div className="px-6 py-4 border-t border-gray-200 flex items-center justify-between shrink-0 bg-gray-50">
           <p className="text-xs text-gray-400">Drag fields on the canvas to position them. Use inspector (right panel) to adjust style.</p>
           <div className="flex gap-2">
@@ -653,7 +621,7 @@ const VisualTemplateBuilder: React.FC<Props> = ({ onClose, onSaved, editTemplate
               disabled={saving || !name || !slug || !bgUrl || fields.length === 0}
               className="px-5 py-2 text-sm bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 disabled:opacity-50"
             >
-              {saving ? 'Saving…' : isEdit ? 'Update Template' : 'Save Template'}
+              {saving ? 'Saving...' : isEdit ? 'Update Template' : 'Save Template'}
             </button>
           </div>
         </div>

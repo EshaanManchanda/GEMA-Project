@@ -10,6 +10,8 @@ import {
   Check,
   X,
   MessageSquare,
+  Download,
+  FileSpreadsheet,
 } from 'lucide-react';
 import toast from 'react-hot-toast';
 import Button from '../ui/Button';
@@ -76,6 +78,78 @@ const PartnershipList: React.FC = () => {
     partnershipType: '',
     campaignType: ''
   });
+
+  const [exporting, setExporting] = useState(false);
+
+  const handleExport = async (filtered: boolean = false) => {
+    setExporting(true);
+    try {
+      const params: any = { export: 'true' };
+      
+      if (filtered) {
+        if (filters.status) params.status = filters.status;
+        if (filters.partnershipType) params.partnershipType = filters.partnershipType;
+        if (filters.campaignType) params.campaignType = filters.campaignType;
+      }
+      
+      const response = await api.get('/partnerships', { params });
+      const partnerships = response.data?.data?.partnerships;
+      
+      if (!partnerships || !Array.isArray(partnerships) || partnerships.length === 0) {
+        toast.error('No partnerships to export');
+        setExporting(false);
+        return;
+      }
+      
+      if (!partnerships || partnerships.length === 0) {
+        toast.error('No partnerships to export');
+        return;
+      }
+      
+      const headers = ['Name', 'Email', 'Phone', 'Organization', 'Type', 'Campaign', 'Status', 'Created At'];
+      
+      // Helper to format phone as text (prevents Excel scientific notation)
+      const formatPhone = (phone: string | undefined) => {
+        if (!phone) return '';
+        // Remove any non-digit characters but keep plus sign
+        const cleaned = phone.replace(/[^\d+]/g, '');
+        // Add tab character to force Excel to treat as text
+        return `\t"${cleaned}"`;
+      };
+
+      const csvRows = [
+        headers.join(','),
+        ...partnerships.map((p: Partnership) => [
+          `"${(p.name || '').replace(/"/g, '""')}"`,
+          `"${(p.email || '').replace(/"/g, '""')}"`,
+          formatPhone(p.phone),
+          `"${(p.organization || '').replace(/"/g, '""')}"`,
+          `"${p.partnershipType || ''}"`,
+          `"${p.campaignType || ''}"`,
+          `"${p.status || ''}"`,
+          `"${p.createdAt ? new Date(p.createdAt).toISOString() : ''}"`
+        ].join(','))
+      ];
+      
+      const csvContent = csvRows.join('\n');
+      const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+      const url = URL.createObjectURL(blob);
+      const link = document.createElement('a');
+      link.href = url;
+      link.download = `partnerships-${filtered ? 'filtered-' : 'all-'}${new Date().toISOString().split('T')[0]}.csv`;
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+      URL.revokeObjectURL(url);
+      
+      toast.success(`Exported ${partnerships.length} partnerships`);
+    } catch (error: any) {
+      logger.error('Failed to export partnerships:', error);
+      toast.error('Failed to export partnerships');
+    } finally {
+      setExporting(false);
+    }
+  };
 
   useEffect(() => {
     fetchPartnerships();
@@ -293,10 +367,20 @@ const PartnershipList: React.FC = () => {
           <h1 className="text-3xl font-bold text-gray-900">Partnership Inquiries</h1>
           <p className="text-gray-600 mt-1">Manage and review partnership applications</p>
         </div>
-        <Button onClick={fetchPartnerships} variant="outline">
-          <RefreshCw className="w-4 h-4 mr-2" />
-          Refresh
-        </Button>
+        <div className="flex items-center gap-2">
+          <Button onClick={() => handleExport(false)} variant="outline" disabled={exporting}>
+            <Download className="w-4 h-4 mr-2" />
+            {exporting ? 'Exporting...' : 'Export All'}
+          </Button>
+          <Button onClick={() => handleExport(true)} variant="outline" disabled={exporting}>
+            <FileSpreadsheet className="w-4 h-4 mr-2" />
+            Export Filtered
+          </Button>
+          <Button onClick={fetchPartnerships} variant="outline">
+            <RefreshCw className="w-4 h-4 mr-2" />
+            Refresh
+          </Button>
+        </div>
       </div>
 
       {/* Filters */}

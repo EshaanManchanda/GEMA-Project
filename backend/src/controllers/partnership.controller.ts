@@ -179,6 +179,7 @@ export const getAllPartnerships = async (
       campaignType,
       sortBy = "createdAt",
       sortOrder = "desc",
+      export: isExport,
     } = req.query;
 
     // Build query
@@ -202,11 +203,21 @@ export const getAllPartnerships = async (
     const sort: any = {};
     sort[sortBy as string] = sortOrder === "asc" ? 1 : -1;
 
-    // Execute query
-    const [partnerships, totalCount] = await Promise.all([
-      Partnership.find(query).sort(sort).skip(skip).limit(limitNum).lean(),
-      Partnership.countDocuments(query),
-    ]);
+    let partnerships: any[];
+    let totalCount: number;
+
+    // Check if export mode - return all without pagination
+    if (isExport === 'true') {
+      partnerships = await Partnership.find(query).sort(sort).lean();
+      totalCount = partnerships.length;
+    } else {
+      const results = await Promise.all([
+        Partnership.find(query).sort(sort).skip(skip).limit(limitNum).lean(),
+        Partnership.countDocuments(query),
+      ]);
+      partnerships = results[0];
+      totalCount = results[1];
+    }
 
     // Get statistics
     const stats = await Partnership.getPartnershipStats();
