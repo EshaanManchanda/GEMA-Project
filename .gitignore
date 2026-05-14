@@ -71,4 +71,6 @@ bun.lock
 doc/api/postman/
 skills-lock.json
 skills/
+.playwright-mcp/
+graphify-out/
 bulk_entry.csv
