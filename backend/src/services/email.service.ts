@@ -54,6 +54,11 @@ export interface OrderConfirmationEmailOptions {
 export interface TicketEmailOptions {
   to: string;
   firstName: string;
+  attachments?: Array<{
+    filename: string;
+    content: Buffer | string;
+    contentType?: string;
+  }>;
   tickets: Array<{
     eventTitle: string;
     qrCode: string;
@@ -755,6 +760,7 @@ class EmailService {
       to: options.to,
       subject: `Your Tickets — ${brand.appName}`,
       html,
+      attachments: options.attachments,
     });
   }
 

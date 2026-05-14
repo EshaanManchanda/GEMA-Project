@@ -21,6 +21,11 @@ export interface TicketEmailData {
   eventType?: string;
   meetingLink?: string;
   meetingPassword?: string;
+  pdfAttachment?: {
+    filename: string;
+    content: Buffer;
+    contentType: string;
+  };
 }
 
 const sendEmail = async (options: EmailOptions): Promise<void> => {
@@ -57,6 +62,7 @@ export const sendTicketByEmail = async (
           meetingPassword: ticketData.meetingPassword,
         },
       ],
+      attachments: ticketData.pdfAttachment ? [ticketData.pdfAttachment] : undefined,
     });
   } catch (error) {
     logger.error("Error sending ticket by email:", error);

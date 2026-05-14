@@ -290,8 +290,6 @@ const Layout: React.FC<{ children?: React.ReactNode }> = ({ children }) => {
             <nav className="hidden md:flex space-x-8">
               {[
                 { path: '/search', label: 'Find Activities' },
-                { path: '/student-program', label: 'Student Program' },
-                { path: '/partnerships', label: 'Partnerships' },
                 { path: '/blog', label: 'Blog' },
                 { path: '/about', label: 'Kidrove Go' },
                 { path: '/faq', label: 'FAQ' },
@@ -595,8 +593,6 @@ const Layout: React.FC<{ children?: React.ReactNode }> = ({ children }) => {
                   <nav className="px-2 py-3 border-b border-gray-100">
                     {[
                       { path: '/search', label: 'Find Activities', icon: <FaSearch size={14} /> },
-                      { path: '/student-program', label: 'Student Program', icon: <FaFileAlt size={14} /> },
-                      { path: '/partnerships', label: 'Partnerships', icon: <FaFileAlt size={14} /> },
                       { path: '/blog', label: 'Blog', icon: <FaFileAlt size={14} /> },
                       { path: '/about', label: 'Kidrove Go', icon: <FaUser size={14} /> },
                       { path: '/faq', label: 'FAQ', icon: <FaChartBar size={14} /> },
@@ -795,6 +791,20 @@ const Layout: React.FC<{ children?: React.ReactNode }> = ({ children }) => {
                 <li><Link to="/contact" className="text-gray-700 hover:text-gray-900 text-sm">Contact Us</Link></li>
                 <li><Link to="/faq" className="text-gray-700 hover:text-gray-900 text-sm">FAQs</Link></li>
                 <li><Link to="/partner-with-us" className="text-gray-700 hover:text-gray-900 text-sm">Partner with Us</Link></li>
+              </ul>
+
+              <h3 className="font-semibold mt-10 mb-4 text-gray-900">Programs</h3>
+              <ul className="space-y-2">
+                <li>
+                  <Link to="/student-program" className="text-gray-700 hover:text-gray-900 text-sm">
+                    Student Program
+                  </Link>
+                </li>
+                <li>
+                  <Link to="/partnerships" className="text-gray-700 hover:text-gray-900 text-sm">
+                    Partnerships
+                  </Link>
+                </li>
               </ul>
 
               <h3 className="font-semibold mt-10 mb-4 text-gray-900">Teach</h3>

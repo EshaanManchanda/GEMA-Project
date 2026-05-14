@@ -1,6 +1,7 @@
 import React, { useState, useRef } from 'react';
 import { Link } from 'react-router-dom';
 import api from '../services/api';
+import { getCompanyAddress, getContactEmail, getContactPhone } from '../utils/brandConfig';
 import {
   FaArrowRight,
   FaCheckCircle,
@@ -870,21 +871,21 @@ const ContactFormSection: React.FC = () => {
                 <FaPhone className="text-blue-600 text-xl flex-shrink-0 mt-1" />
                 <div>
                   <p className="font-bold text-gray-900">Phone</p>
-                  <p className="text-gray-600">+971 XX XXX XXXX</p>
+                  <p className="text-gray-600">{getContactPhone()}</p>
                 </div>
               </div>
               <div className="flex items-start gap-4">
                 <FaEnvelope className="text-blue-600 text-xl flex-shrink-0 mt-1" />
                 <div>
                   <p className="font-bold text-gray-900">Email</p>
-                  <p className="text-gray-600">partnerships@kidrove.com</p>
+                  <p className="text-gray-600">{getContactEmail()}</p>
                 </div>
               </div>
               <div className="flex items-start gap-4">
                 <FaMapMarkerAlt className="text-blue-600 text-xl flex-shrink-0 mt-1" />
                 <div>
                   <p className="font-bold text-gray-900">Office</p>
-                  <p className="text-gray-600">Dubai, UAE</p>
+                  <p className="text-gray-600">{getCompanyAddress()}</p>
                 </div>
               </div>
 

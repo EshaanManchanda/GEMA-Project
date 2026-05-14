@@ -2,6 +2,7 @@ import { Types } from "mongoose";
 import { Ticket, Event, User, Order } from "../models/index";
 import { generateQRCode, generateSecureQRData } from "../utils/qrcode";
 import { sendTicketByEmail } from "../utils/mailer";
+import { BookingSummaryPdfService } from "./bookingSummaryPdf.service";
 import { v4 as uuidv4 } from "uuid";
 import { logger } from "../config/index";
 
@@ -283,41 +284,82 @@ export class TicketGenerationService {
                 },
               );
 
-              // Send email if requested (non-blocking)
+              // Send email with PDF attachment if requested (non-blocking)
               if (sendEmail) {
-                // Send email asynchronously without blocking ticket generation
-                sendTicketByEmail({
-                  to: user.email,
-                  firstName: user.firstName,
-                  eventTitle: event.title,
-                  ticketNumber,
-                  qrCode: qrCodeImage,
-                  eventDate: orderItem.scheduleDate,
-                  venue: `${event.location.address}, ${event.location.city}`,
-                  venueType: event.venueType,
-                  eventType: (event as any).eventType,
-                  meetingLink: event.meetingLink,
-                  meetingPassword: (event as any).meetingPassword,
-                })
-                  .then(() => {
-                    logger.info("Ticket email sent successfully", {
+                // Generate PDF asynchronously alongside email send
+                (async () => {
+                  try {
+                    // Build PDF input from ticket + order + event data
+                    const pdfInput = {
+                      orderNumber: order.orderNumber,
+                      customerName: `${user.firstName} ${user.lastName}`,
+                      customerEmail: user.email,
+                      bookingDate: order.createdAt || new Date(),
+                      orderTotal: orderItem.unitPrice * orderItem.quantity,
+                      currency: orderItem.currency || "AED",
+                      paymentStatus: order.paymentStatus || "paid",
+                      paymentMethod: order.paymentMethod || "",
+                      qrCodeDataUri: qrCodeImage,   // already a data:image/png;base64,... URI
+                      ticketNumber,
+                      organizer: (event as any).organizerName || (event as any).vendorName || "",
+                      event: {
+                        title: event.title,
+                        category: (event as any).category || (event as any).type || "",
+                        eventType: (event as any).eventType,
+                        venueType: event.venueType,
+                        startDate: orderItem.scheduleDate,
+                        timezone: (event as any).timezone || "",
+                        meetingLink: event.meetingLink,
+                        meetingPassword: (event as any).meetingPassword,
+                        location: event.location,
+                        imageAssets: (event as any).imageAssets || [],
+                        images: (event as any).images || [],
+                      },
+                      items: [{
+                        eventTitle: event.title,
+                        quantity: orderItem.quantity,
+                        price: orderItem.unitPrice,
+                        date: orderItem.scheduleDate,
+                      }],
+                    };
+
+                    const pdfBuffer = await BookingSummaryPdfService.generate(pdfInput);
+
+                    await sendTicketByEmail({
+                      to: user.email,
+                      firstName: user.firstName,
+                      eventTitle: event.title,
+                      ticketNumber,
+                      qrCode: qrCodeImage,
+                      eventDate: orderItem.scheduleDate,
+                      venue: `${event.location.address}, ${event.location.city}`,
+                      venueType: event.venueType,
+                      eventType: (event as any).eventType,
+                      meetingLink: event.meetingLink,
+                      meetingPassword: (event as any).meetingPassword,
+                      pdfAttachment: {
+                        filename: `ticket-${ticketNumber}.pdf`,
+                        content: pdfBuffer,
+                        contentType: "application/pdf",
+                      },
+                    });
+
+                    logger.info("Ticket email with PDF sent successfully", {
                       ticketNumber,
                       email: user.email,
                       orderId,
                       eventId: event._id,
                     });
-                  })
-                  .catch((emailError) => {
-                    logger.warn("Failed to send ticket email (non-blocking)", {
+                  } catch (emailError: any) {
+                    logger.warn("Failed to send ticket email with PDF (non-blocking)", {
                       ticketNumber,
                       email: user.email,
                       orderId,
                       eventId: event._id,
                       error: emailError.message,
-                      stack: emailError.stack,
                     });
-                    // Email failure doesn't affect ticket generation success
-                  });
+                  }
+                })();
               }
             } catch (ticketError) {
               const error = `Failed to create ticket ${i + 1} for event ${orderItem.eventId}: ${ticketError.message}`;
