@@ -13,6 +13,7 @@ interface Event {
   _id: string;
   slug?: string;
   title: string;
+  shortDescription?: string;
   description?: string;
   images?: string[];
   price?: number;
@@ -115,7 +116,7 @@ const CollectionDetailPage: React.FC = () => {
       }
       setError(null);
 
-      const response = await collectionsAPI.getCollectionById(id);
+      const response = await collectionsAPI.getCollectionById(id, { _t: Date.now() });
       const collectionData = response.collection as CollectionWithEvents;
 
       if (import.meta.env.DEV && import.meta.env.VITE_DEBUG_API === 'true') {
@@ -249,8 +250,8 @@ const CollectionDetailPage: React.FC = () => {
   ] : [];
 
   const activitiesCount =
-    collection.events?.length ||
     collection.eventsCount ||
+    collection.events?.length ||
     parseCountString(collection.count);
 
   return (
@@ -360,16 +361,18 @@ const CollectionDetailPage: React.FC = () => {
                       {event.title}
                     </h3>
 
-                    {event.description && (<div
-                      className="text-gray-700 text-sm mb-4 line-clamp-2"
-                      dangerouslySetInnerHTML={{
-                        __html: DOMPurify.sanitize(event.description, {
-                          ADD_ATTR: ['style', 'class'],
-                          ADD_TAGS: ['iframe'],
-                          ALLOWED_ATTR: ['style', 'class', 'href', 'src', 'alt', 'title', 'target', 'rel', 'width', 'height', 'id']
-                        })
-                      }}
-                    />)}
+                    {(event.shortDescription || event.description) && (
+                      <div
+                        className="text-gray-700 text-sm mb-4 line-clamp-2"
+                        dangerouslySetInnerHTML={{
+                          __html: DOMPurify.sanitize(event.shortDescription || event.description || '', {
+                            ADD_ATTR: ['style', 'class'],
+                            ADD_TAGS: ['iframe'],
+                            ALLOWED_ATTR: ['style', 'class', 'href', 'src', 'alt', 'title', 'target', 'rel', 'width', 'height', 'id']
+                          })
+                        }}
+                      />
+                    )}
 
                     <div className="flex flex-col gap-3 mb-4">
                       {event.price !== undefined && (

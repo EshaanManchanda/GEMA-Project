@@ -81,9 +81,9 @@ const collectionsAPI = {
     }
   },
 
-  getCollectionById: async (id: string): Promise<{ collection: Collection }> => {
+  getCollectionById: async (id: string, params?: any): Promise<{ collection: Collection }> => {
     try {
-      const response = await ApiService.get(`/collections/${id}`);
+      const response = await ApiService.get(`/collections/${id}`, { params });
       logApiResponse(`GET /collections/${id}`, response);
       return extractApiData(response);
     } catch (error) {
@@ -124,7 +124,6 @@ const collectionsAPI = {
       const payload = {
         title: formData.title,
         description: formData.description,
-        count: formData.count,
         category: formData.category,
         sortOrder: formData.sortOrder,
         isActive: formData.isActive,
@@ -152,7 +151,6 @@ const collectionsAPI = {
       // Only add fields that are provided
       if (formData.title !== undefined) payload.title = formData.title;
       if (formData.description !== undefined) payload.description = formData.description;
-      if (formData.count !== undefined) payload.count = formData.count;
       if (formData.category !== undefined) payload.category = formData.category;
       if (formData.sortOrder !== undefined) payload.sortOrder = formData.sortOrder;
       if (formData.isActive !== undefined) payload.isActive = formData.isActive;

@@ -407,8 +407,8 @@ export const CollectionSEO: React.FC<{ collection: any; breadcrumbs?: SEOProps['
     ? metaTitle
     : `${collection.title} - Kids Activities Collection | ${getAppNameFull()}`;
   const activitiesCount =
-    collection.events?.length ||
     collection.eventsCount ||
+    collection.events?.length ||
     (collection.count ? parseInt(String(collection.count).replace(/[^\d]/g, ''), 10) : 0) ||
     0;
 

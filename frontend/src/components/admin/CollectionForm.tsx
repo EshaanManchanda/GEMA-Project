@@ -29,8 +29,6 @@ const collectionSchema = yup.object().shape({
   description: yup.string()
     .required('Description is required')
     .max(500, 'Description cannot exceed 500 characters'),
-  count: yup.string()
-    .max(50, 'Count text cannot exceed 50 characters'),
   category: yup.string()
     .max(50, 'Category cannot exceed 50 characters'),
   sortOrder: yup.number()
@@ -66,6 +64,27 @@ interface CollectionFormProps {
   onSubmit: (data: CollectionFormData) => Promise<void>;
   loading?: boolean;
 }
+
+const toEventIdString = (value: any): string => {
+  if (!value) return '';
+
+  if (typeof value === 'string') {
+    return value.trim();
+  }
+
+  if (typeof value === 'object') {
+    const candidate = value._id || value.id || value;
+    if (candidate && typeof candidate.toString === 'function') {
+      return candidate.toString().trim();
+    }
+  }
+
+  if (typeof value.toString === 'function') {
+    return value.toString().trim();
+  }
+
+  return '';
+};
 
 const CollectionForm: React.FC<CollectionFormProps> = ({
   collection,
@@ -106,7 +125,6 @@ const CollectionForm: React.FC<CollectionFormProps> = ({
     defaultValues: {
       title: '',
       description: '',
-      count: '',
       category: '',
       sortOrder: 0,
       isActive: true,
@@ -146,10 +164,13 @@ const CollectionForm: React.FC<CollectionFormProps> = ({
   // Reset form when collection changes
   useEffect(() => {
     if (collection) {
+      const normalizedSelectedEvents = (collection.events || [])
+        .map((e: any) => toEventIdString(e))
+        .filter((id: string) => Boolean(id));
+
       reset({
         title: collection.title || '',
         description: collection.description || '',
-        count: collection.count || '',
         category: collection.category || '',
         sortOrder: collection.sortOrder || 0,
         isActive: collection.isActive !== undefined ? collection.isActive : true,
@@ -158,7 +179,7 @@ const CollectionForm: React.FC<CollectionFormProps> = ({
         metaDescription: collection.seo?.metaDescription || '',
         canonicalUrl: collection.seo?.canonicalUrl || ''
       });
-      setSelectedEvents(collection.events?.map((e: any) => e._id || e) || []);
+      setSelectedEvents(normalizedSelectedEvents);
       setSeoData({
         title: collection.seo?.metaTitle || '',
         description: collection.seo?.metaDescription || '',
@@ -183,7 +204,6 @@ const CollectionForm: React.FC<CollectionFormProps> = ({
       reset({
         title: '',
         description: '',
-        count: '',
         category: '',
         sortOrder: 0,
         isActive: true,
@@ -251,10 +271,13 @@ const CollectionForm: React.FC<CollectionFormProps> = ({
 
   // Handle event toggle
   const handleEventToggle = (eventId: string) => {
+    const normalizedEventId = toEventIdString(eventId);
+    if (!normalizedEventId) return;
+
     setSelectedEvents(prev =>
-      prev.includes(eventId)
-        ? prev.filter(id => id !== eventId)
-        : [...prev, eventId]
+      prev.includes(normalizedEventId)
+        ? prev.filter(id => id !== normalizedEventId)
+        : [...prev, normalizedEventId]
     );
   };
 
@@ -270,7 +293,6 @@ const CollectionForm: React.FC<CollectionFormProps> = ({
       const formData: CollectionFormData = {
         title: data.title,
         description: data.description,
-        count: data.count || `${selectedEvents.length}+ activities`,
         category: data.category,
         sortOrder: data.sortOrder,
         isActive: data.isActive,
@@ -476,27 +498,8 @@ const CollectionForm: React.FC<CollectionFormProps> = ({
               )}
             </div>
 
-            {/* Count, Category, Sort Order in a grid */}
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">
-                  Count Display
-                </label>
-                <Controller
-                  name="count"
-                  control={control}
-                  render={({ field }) => (
-                    <Input
-                      {...field}
-                      placeholder="e.g., 45+ activities"
-                    />
-                  )}
-                />
-                <p className="mt-1 text-xs text-gray-500">
-                  Leave empty to auto-generate from events
-                </p>
-              </div>
-
+            {/* Category and Sort Order */}
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-1">
                   Category
@@ -608,7 +611,9 @@ const CollectionForm: React.FC<CollectionFormProps> = ({
                 ) : (
                   <div className="divide-y divide-gray-100">
                     {filteredEvents.map((event) => {
-                      const eventId = event._id || event.id;
+                      const eventId = toEventIdString(event._id || event.id);
+                      if (!eventId) return null;
+
                       return (
                         <div
                           key={eventId}
@@ -619,6 +624,7 @@ const CollectionForm: React.FC<CollectionFormProps> = ({
                             type="checkbox"
                             checked={selectedEvents.includes(eventId)}
                             onChange={() => handleEventToggle(eventId)}
+                            onClick={(e) => e.stopPropagation()}
                             className="h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300 rounded"
                           />
 

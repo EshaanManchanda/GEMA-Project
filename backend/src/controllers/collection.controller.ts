@@ -138,7 +138,7 @@ export const getCollections = async (
       sort[sortBy as string] = sortOrder === "asc" ? 1 : -1;
     }
 
-    // Use aggregation to filter collections with events and get count
+    // Use aggregation with events ObjectId refs as source of truth (same as detail page)
     const pipeline = [
       { $match: filter },
       // Populate iconAsset (MediaAsset)
@@ -171,19 +171,7 @@ export const getCollections = async (
           },
         },
       },
-      // Prefer eventsData (embedded), fallback to events (ObjectId refs)
-      {
-        $addFields: {
-          events: {
-            $cond: {
-              if: { $gt: [{ $size: { $ifNull: ["$eventsData", []] } }, 0] },
-              then: "$eventsData", // Use embedded data if available
-              else: "$events", // Fallback to ObjectId refs
-            },
-          },
-        },
-      },
-      // If using ObjectId refs, populate them (backward compat)
+      // Populate events from ObjectId refs (authoritative relation)
       {
         $lookup: {
           from: "events",
@@ -195,6 +183,7 @@ export const getCollections = async (
               $match: {
                 isDeleted: false,
                 isApproved: true,
+                isActive: true,
               },
             },
             {
@@ -209,16 +198,19 @@ export const getCollections = async (
           ],
         },
       },
-      // Use populated events only if events were ObjectIds
       {
         $addFields: {
-          events: {
+          events: "$populatedEvents",
+        },
+      },
+      // Calculate event count
+      {
+        $addFields: {
+          eventsCount: {
             $cond: {
-              if: {
-                $eq: [{ $type: { $arrayElemAt: ["$events", 0] } }, "objectId"],
-              },
-              then: "$populatedEvents",
-              else: "$events",
+              if: { $isArray: "$events" },
+              then: { $size: "$events" },
+              else: 0,
             },
           },
         },
@@ -226,7 +218,7 @@ export const getCollections = async (
       // Filter collections with at least one event
       {
         $match: {
-          events: { $ne: [], $exists: true },
+          eventsCount: { $gt: 0 },
         },
       },
       // Cleanup
@@ -235,7 +227,7 @@ export const getCollections = async (
           populatedEvents: 0,
           iconAssetPopulated: 0,
           featuredImageAssetPopulated: 0,
-          eventsData: 0, // Hide internal field from response
+          eventsData: 0, // Hide internal embedded cache field from response
         },
       },
     ];
@@ -342,6 +334,10 @@ export const getCollectionById = async (
         transformEventResponse(event),
       );
     }
+
+    (collection as any).eventsCount = Array.isArray(collection.events)
+      ? collection.events.length
+      : 0;
 
     logger.info(
       `Found collection: ${collection.title} with ${collection.events.length} events`,
@@ -721,7 +717,7 @@ export const getAdminCollections = async (
           path: "events",
           select:
             "title category images type price currency vendorId isApproved",
-          match: { isDeleted: false },
+          match: { isDeleted: false, isApproved: true, isActive: true },
           populate: {
             path: "vendorId",
             select: "firstName lastName businessName",
@@ -789,7 +785,7 @@ export const getCollectionStats = async (
     const topCollections = await Collection.find({ isActive: true })
       .populate({
         path: "events",
-        match: { isDeleted: false, isApproved: true },
+        match: { isDeleted: false, isApproved: true, isActive: true },
       })
       .sort({ sortOrder: 1 })
       .limit(5)

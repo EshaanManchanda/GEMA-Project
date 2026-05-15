@@ -399,7 +399,7 @@ const CollectionsPage: React.FC = () => {
                       </h3>
 
                       <p className="text-sm font-medium text-gray-400 mb-4 bg-gray-50 px-3 py-1 rounded-lg inline-block">
-                        {collection.count || `${collection.events?.length || 0} activities`}
+                        {collection.eventsCount ? `${collection.eventsCount}+ activities` : collection.count || `${collection.events?.length || 0} activities`}
                       </p>
 
                       <p className="text-gray-600 text-sm leading-relaxed mb-6 line-clamp-3 group-hover:text-gray-700 transition-colors flex-1">
