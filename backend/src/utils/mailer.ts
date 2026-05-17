@@ -26,6 +26,11 @@ export interface TicketEmailData {
     content: Buffer;
     contentType: string;
   };
+  eventAttachments?: Array<{
+    filename: string;
+    content: Buffer;
+    contentType?: string;
+  }>;
 }
 
 const sendEmail = async (options: EmailOptions): Promise<void> => {
@@ -46,6 +51,15 @@ export const sendTicketByEmail = async (
   ticketData: TicketEmailData,
 ): Promise<void> => {
   try {
+    // Combine event attachments with PDF ticket
+    const attachments = [];
+    if (ticketData.eventAttachments && ticketData.eventAttachments.length > 0) {
+      attachments.push(...ticketData.eventAttachments);
+    }
+    if (ticketData.pdfAttachment) {
+      attachments.push(ticketData.pdfAttachment);
+    }
+
     await emailService.sendTicketsEmail({
       to: ticketData.to,
       firstName: ticketData.firstName,
@@ -62,7 +76,7 @@ export const sendTicketByEmail = async (
           meetingPassword: ticketData.meetingPassword,
         },
       ],
-      attachments: ticketData.pdfAttachment ? [ticketData.pdfAttachment] : undefined,
+      attachments: attachments.length > 0 ? attachments : undefined,
     });
   } catch (error) {
     logger.error("Error sending ticket by email:", error);

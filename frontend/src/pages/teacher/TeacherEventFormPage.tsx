@@ -285,7 +285,10 @@ const TeacherEventFormPage: React.FC = () => {
       }
     });
 
-    // Validate meeting link for online events removed per user request
+    // Validate meeting link for online events
+    if (eventType === 'Online' && !meetingLink.trim()) {
+      newErrors.meetingLink = 'Meeting link is required for online events';
+    }
 
     // Validate city only for offline events
     if (eventType === 'Offline' && !city.trim()) {
@@ -713,7 +716,7 @@ const TeacherEventFormPage: React.FC = () => {
                     <div className="space-y-4">
                       <div>
                         <label className="block text-sm font-medium text-gray-700 mb-2">
-                          Meeting Link <span className="text-gray-400 font-normal">(optional)</span>
+                          Meeting Link <span className="text-red-500 font-normal">(required)</span>
                         </label>
                         <input
                           type="url"

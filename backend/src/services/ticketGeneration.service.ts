@@ -5,6 +5,9 @@ import { sendTicketByEmail } from "../utils/mailer";
 import { BookingSummaryPdfService } from "./bookingSummaryPdf.service";
 import { v4 as uuidv4 } from "uuid";
 import { logger } from "../config/index";
+import { promises as fs } from "fs";
+import * as path from "path";
+import { config } from "../config/index";
 
 export interface TicketGenerationResult {
   success: boolean;
@@ -19,6 +22,83 @@ export interface GenerateTicketsOptions {
 }
 
 export class TicketGenerationService {
+  /**
+   * Build event booking attachments
+   */
+  private static async buildEventBookingAttachments(
+    attachments?: any[] | null,
+  ): Promise<
+    Array<{
+      filename: string;
+      content: Buffer;
+      contentType?: string;
+    }>
+  > {
+    if (!attachments || attachments.length === 0) {
+      return [];
+    }
+
+    const results: Array<{
+      filename: string;
+      content: Buffer;
+      contentType?: string;
+    }> = [];
+
+    for (const attachment of attachments) {
+      if (!attachment?.url) {
+        continue;
+      }
+
+      try {
+        const filename =
+          attachment.originalName || attachment.filename || "event-attachment";
+        const contentType = attachment.mimetype || undefined;
+
+        if (
+          attachment.provider === "local" ||
+          attachment.url.startsWith("/api/uploads/files/")
+        ) {
+          const relativePath = attachment.url.replace(
+            /^\/api\/uploads\/files\//,
+            "",
+          );
+          const filePath = path.join(
+            process.cwd(),
+            config.upload.path,
+            relativePath,
+          );
+          const content = await fs.readFile(filePath);
+
+          results.push({
+            filename,
+            content,
+            contentType,
+          });
+        } else {
+          const response = await fetch(attachment.url);
+          if (!response.ok) {
+            throw new Error(`Failed to fetch attachment from ${attachment.url}`);
+          }
+
+          results.push({
+            filename,
+            content: Buffer.from(await response.arrayBuffer()),
+            contentType:
+              contentType || response.headers.get("content-type") || undefined,
+          });
+        }
+      } catch (error: any) {
+        logger.warn("Failed to process attachment", {
+          url: attachment?.url,
+          error: error?.message,
+        });
+        // Skip this attachment and continue with others
+      }
+    }
+
+    return results;
+  }
+
   /**
    * Generate unique ticket number
    */
@@ -337,6 +417,27 @@ export class TicketGenerationService {
                         ? "Online Event"
                         : "To be confirmed";
 
+                    // Build event booking attachments (admin-added files)
+                    let eventAttachments: Awaited<
+                      ReturnType<typeof TicketGenerationService.buildEventBookingAttachments>
+                    > = [];
+                    try {
+                      eventAttachments =
+                        await TicketGenerationService.buildEventBookingAttachments(
+                          (event as any).bookingAttachments,
+                        );
+                    } catch (attachmentError: any) {
+                      logger.warn(
+                        "Failed to load event booking attachments for ticket email",
+                        {
+                          ticketNumber,
+                          eventId: event._id.toString(),
+                          error: attachmentError?.message,
+                        },
+                      );
+                      // Continue - missing attachments should not block ticket email
+                    }
+
                     await sendTicketByEmail({
                       to: user.email,
                       firstName: user.firstName,
@@ -354,6 +455,8 @@ export class TicketGenerationService {
                         content: pdfBuffer,
                         contentType: "application/pdf",
                       },
+                      eventAttachments:
+                        eventAttachments.length > 0 ? eventAttachments : undefined,
                     });
 
                     logger.info("Ticket email with PDF sent successfully", {
@@ -361,6 +464,7 @@ export class TicketGenerationService {
                       email: user.email,
                       orderId,
                       eventId: event._id,
+                      attachmentCount: eventAttachments.length,
                     });
                   } catch (emailError: any) {
                     logger.warn("Failed to send ticket email with PDF (non-blocking)", {
