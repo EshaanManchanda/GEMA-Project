@@ -2,7 +2,6 @@ import { qrQueue, emailQueue, ticketQueue } from "../config/queue";
 import { QRJobData } from "../workers/qr.worker";
 import { EmailJobData } from "../workers/email.worker";
 import { emailService } from "./email.service";
-import { BookingSummaryPdfService, BookingSummaryPdfInput } from "./bookingSummaryPdf.service";
 import logger from "../config/logger";
 
 /**
@@ -197,48 +196,10 @@ export class QueueService {
     currency: string;
     isFreeEvent?: boolean;
     items: any[];
-    // Optional — pass these to generate a PDF receipt attachment
-    pdfData?: Omit<BookingSummaryPdfInput, "orderNumber" | "customerName" | "customerEmail" | "bookingDate" | "orderTotal" | "currency" | "items">;
   }) {
-    let pdfAttachment: EmailJobData["attachments"] | undefined;
-
-    if (data.pdfData) {
-      try {
-        const pdfInput: BookingSummaryPdfInput = {
-          orderNumber: data.orderNumber,
-          customerName: data.firstName,
-          customerEmail: data.to,
-          bookingDate: new Date(),
-          orderTotal: data.orderTotal,
-          currency: data.currency,
-          paymentStatus: data.isFreeEvent ? "free" : "paid",
-          event: data.pdfData.event || {},
-          items: data.items.map((item) => ({
-            eventTitle: item.eventTitle || item.title || "Event",
-            quantity: item.quantity || 1,
-            price: item.price || 0,
-            date: item.date || new Date(),
-          })),
-          ...data.pdfData,
-        };
-
-        const pdfBuffer = await BookingSummaryPdfService.generate(pdfInput);
-        pdfAttachment = [{
-          filename: `booking-summary-${data.orderNumber}.pdf`,
-          content: pdfBuffer,
-          contentType: "application/pdf",
-        }];
-
-        logger.info(`PDF receipt generated for order ${data.orderNumber}`);
-      } catch (pdfError: any) {
-        logger.warn(`PDF generation failed for order ${data.orderNumber} (non-blocking):`, pdfError?.message);
-      }
-    }
-
     return this.addEmailJob({
       type: "orderConfirmation",
       to: data.to,
-      attachments: pdfAttachment,
       templateData: {
         firstName: data.firstName,
         orderNumber: data.orderNumber,

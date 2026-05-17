@@ -23,7 +23,6 @@ import { generateQRCode, generateSecureQRData } from "../utils/qrcode";
 import { TicketGenerationService } from "../services/ticketGeneration.service";
 import { CouponService } from "../services/coupon.service";
 import { emailService } from "../services/email.service";
-import { BookingSummaryPdfService } from "../services/bookingSummaryPdf.service";
 import { v4 as uuidv4 } from "uuid";
 
 type EventBookingAttachment = {
@@ -992,78 +991,7 @@ export const confirmBooking = async (
             // Continue - email failure should not block booking confirmation
           }
 
-          // 2. Generate PDF receipt and send as a SEPARATE follow-up email (fully non-blocking)
-          setImmediate(async () => {
-            try {
-              let eventAttachments: Awaited<ReturnType<typeof buildBookingAttachments>> = [];
 
-              try {
-                eventAttachments = await buildBookingAttachments(
-                  (event as any).bookingAttachments ||
-                    ((event as any).bookingAttachment
-                      ? [(event as any).bookingAttachment]
-                      : []),
-                );
-              } catch (attachmentError: any) {
-                logger.warn("Failed to load event booking attachment", {
-                  orderId: order._id,
-                  orderNumber: order.orderNumber,
-                  error: attachmentError?.message,
-                });
-              }
-
-              const pdfBuffer = await BookingSummaryPdfService.generate({
-                orderNumber: order.orderNumber,
-                customerName: `${customer.firstName} ${customer.lastName}`.trim(),
-                customerEmail: customer.email,
-                bookingDate: order.confirmedAt || new Date(),
-                orderTotal: order.total,
-                currency: order.currency,
-                paymentStatus: order.paymentStatus || "paid",
-                event: {
-                  title: event.title,
-                  description: event.description,
-                  shortDescription: event.shortDescription,
-                  type: event.type,
-                  eventType: (event as any).eventType,
-                  venueType: event.venueType,
-                  meetingLink: event.meetingLink,
-                  meetingPassword: (event as any).meetingPassword,
-                  location: event.location,
-                  images: event.images,
-                  imageAssets: event.imageAssets,
-                  pastEventMemories: event.pastEventMemories,
-                },
-                items: order.items.map((item: any) => ({
-                  eventTitle: item.eventTitle || event.title,
-                  quantity: item.quantity,
-                  price: item.unitPrice,
-                  date: item.scheduleDate,
-                })),
-              });
-
-              await emailService.sendEmail({
-                to: customer.email,
-                subject: `Your Booking Receipt — ${order.orderNumber}`,
-                html: `<p>Hi ${customer.firstName},</p><p>Please find your booking receipt attached for <strong>${event.title}</strong> (Order #${order.orderNumber}).</p><p>Thank you for booking with us!</p>`,
-                text: `Hi ${customer.firstName}, your booking receipt for ${event.title} (Order #${order.orderNumber}) is attached.`,
-                attachments: [
-                  ...eventAttachments,
-                  {
-                    filename: `booking-receipt-${order.orderNumber}.pdf`,
-                    content: pdfBuffer,
-                    contentType: "application/pdf",
-                  },
-                ],
-              });
-
-              logger.info("Booking receipt PDF email sent", { orderId: order._id, orderNumber: order.orderNumber });
-            } catch (pdfErr: any) {
-              logger.warn("PDF receipt generation/send failed (non-blocking, email already sent)", {
-                orderId: order._id, orderNumber: order.orderNumber, error: pdfErr?.message,
-              });
-            }
-          });
 
           // 3. Send vendor notification email (only if vendorEmail is found)
           if (vendorEmail) {
