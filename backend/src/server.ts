@@ -389,18 +389,38 @@ async function startServer() {
     startPerformanceMonitoring();
     logger.info("Performance monitoring started");
 
-    // Step 6: Start Express server
+    // Step 6: Start Express server (wrap listen to handle EADDRINUSE gracefully)
     const PORT = config.port;
-    server = app.listen(PORT, () => {
+    try {
+      server = await new Promise<any>((resolve, reject) => {
+        const s = app.listen(PORT, () => resolve(s));
+        s.on("error", (err: any) => reject(err));
+      });
+
       logger.info(`✓ Server running in ${config.nodeEnv} mode on port ${PORT}`);
       logger.info(`✓ Ready to accept connections`);
-    });
 
-    // Configure HTTP keep-alive (optimized for KVM1)
-    // Keeps connections open to reduce handshake overhead
-    server.keepAliveTimeout = 61000; // 61 seconds (slightly > typical load balancer timeout of 60s)
-    server.headersTimeout = 65000; // Must be > keepAliveTimeout (65 seconds)
-    logger.info("HTTP keep-alive configured: 61s timeout");
+      // Configure HTTP keep-alive (optimized for KVM1)
+      // Keeps connections open to reduce handshake overhead
+      server.keepAliveTimeout = 61000; // 61 seconds (slightly > typical load balancer timeout of 60s)
+      server.headersTimeout = 65000; // Must be > keepAliveTimeout (65 seconds)
+      logger.info("HTTP keep-alive configured: 61s timeout");
+    } catch (listenErr: any) {
+      // Handle common listen errors cleanly
+      if (listenErr && listenErr.code === "EADDRINUSE") {
+        logger.error(`Port ${PORT} is already in use. Cannot start server.`, {
+          code: listenErr.code,
+        });
+        logger.error(
+          "Hint: another process is using this port. Use `lsof -i :<port>` (Unix) or `netstat -ano | findstr <port>` (Windows) to locate and stop it, or change PORT in .env",
+        );
+        // Exit without crashing via uncaughtException handler
+        process.exit(1);
+      }
+
+      // Re-throw unexpected errors to be handled by outer catch
+      throw listenErr;
+    }
   } catch (error) {
     logger.error("Failed to start server:", error);
     logger.error("Server initialization failed. Exiting...");

@@ -770,6 +770,15 @@ export const updateEvent = async (
       .populate("vendorId", "businessName email phone")
       .populate("teacherId", "fullName firstName lastName email");
 
+    // Clear event cache after update (including bookingAttachments changes)
+    try {
+      const { invalidateEventCaches } = await import("../utils/cache.utils");
+      await invalidateEventCaches(id);
+      logger.debug(`Cache invalidated for event ${id} after update`);
+    } catch (cacheErr: any) {
+      logger.warn(`Failed to invalidate event cache (non-blocking):`, cacheErr?.message);
+    }
+
     // Trigger combined rating calculation if googlePlaceId changed
     if (googlePlaceIdChanged) {
       try {
