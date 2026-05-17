@@ -1,5 +1,7 @@
 import { Request, Response, NextFunction } from "express";
 import { validationResult } from "express-validator";
+import fs from "fs/promises";
+import path from "path";
 import mongoose from "mongoose";
 import {
   Order,
@@ -15,7 +17,7 @@ import EventModel from "../models/Event";
 import AdminRevenueSettings from "../models/AdminRevenueSettings";
 import { AppError } from "../middleware/index";
 import { PaymentService } from "../services/payment.service";
-import { logger } from "../config/index";
+import { config, logger } from "../config/index";
 import redisClient from "../config/redis";
 import { generateQRCode, generateSecureQRData } from "../utils/qrcode";
 import { TicketGenerationService } from "../services/ticketGeneration.service";
@@ -23,6 +25,65 @@ import { CouponService } from "../services/coupon.service";
 import { emailService } from "../services/email.service";
 import { BookingSummaryPdfService } from "../services/bookingSummaryPdf.service";
 import { v4 as uuidv4 } from "uuid";
+
+type EventBookingAttachment = {
+  originalName?: string;
+  filename?: string;
+  url?: string;
+  mimetype?: string;
+  provider?: "local" | "cloudinary";
+  cloudinaryUrl?: string;
+};
+
+const buildBookingAttachments = async (
+  attachments?: EventBookingAttachment[] | null,
+) => {
+  if (!attachments || attachments.length === 0) {
+    return [];
+  }
+
+  const resolvedAttachments = await Promise.all(
+    attachments
+      .filter((attachment) => Boolean(attachment?.url))
+      .map(async (attachment) => {
+        const filename =
+          attachment.originalName || attachment.filename || "event-attachment";
+        const contentType = attachment.mimetype || undefined;
+
+        if (
+          attachment.provider === "local" ||
+          attachment.url.startsWith("/api/uploads/files/")
+        ) {
+          const relativePath = attachment.url.replace(
+            /^\/api\/uploads\/files\//,
+            "",
+          );
+          const filePath = path.join(process.cwd(), config.upload.path, relativePath);
+          const content = await fs.readFile(filePath);
+
+          return {
+            filename,
+            content,
+            contentType,
+          };
+        }
+
+        const response = await fetch(attachment.url);
+        if (!response.ok) {
+          throw new Error(`Failed to fetch attachment from ${attachment.url}`);
+        }
+
+        return {
+          filename,
+          content: Buffer.from(await response.arrayBuffer()),
+          contentType:
+            contentType || response.headers.get("content-type") || undefined,
+        };
+      }),
+  );
+
+  return resolvedAttachments.filter(Boolean);
+};
 
 // Helper function to generate a unique ticket number
 const generateUniqueTicketNumber = async (): Promise<string> => {
@@ -490,7 +551,7 @@ export const confirmBooking = async (
     const order = await Order.findById(orderId).populate({
       path: "items.eventId",
       select:
-        "title description shortDescription type eventType venueType meetingLink meetingPassword location images imageAssets pastEventMemories",
+        "title description shortDescription type eventType venueType meetingLink meetingPassword location images imageAssets pastEventMemories bookingAttachments",
       populate: {
         path: "imageAssets",
         select: "url thumbnailUrl secureUrl",
@@ -934,6 +995,23 @@ export const confirmBooking = async (
           // 2. Generate PDF receipt and send as a SEPARATE follow-up email (fully non-blocking)
           setImmediate(async () => {
             try {
+              let eventAttachments: Awaited<ReturnType<typeof buildBookingAttachments>> = [];
+
+              try {
+                eventAttachments = await buildBookingAttachments(
+                  (event as any).bookingAttachments ||
+                    ((event as any).bookingAttachment
+                      ? [(event as any).bookingAttachment]
+                      : []),
+                );
+              } catch (attachmentError: any) {
+                logger.warn("Failed to load event booking attachment", {
+                  orderId: order._id,
+                  orderNumber: order.orderNumber,
+                  error: attachmentError?.message,
+                });
+              }
+
               const pdfBuffer = await BookingSummaryPdfService.generate({
                 orderNumber: order.orderNumber,
                 customerName: `${customer.firstName} ${customer.lastName}`.trim(),
@@ -969,11 +1047,14 @@ export const confirmBooking = async (
                 subject: `Your Booking Receipt — ${order.orderNumber}`,
                 html: `<p>Hi ${customer.firstName},</p><p>Please find your booking receipt attached for <strong>${event.title}</strong> (Order #${order.orderNumber}).</p><p>Thank you for booking with us!</p>`,
                 text: `Hi ${customer.firstName}, your booking receipt for ${event.title} (Order #${order.orderNumber}) is attached.`,
-                attachments: [{
-                  filename: `booking-receipt-${order.orderNumber}.pdf`,
-                  content: pdfBuffer,
-                  contentType: "application/pdf",
-                }],
+                attachments: [
+                  ...eventAttachments,
+                  {
+                    filename: `booking-receipt-${order.orderNumber}.pdf`,
+                    content: pdfBuffer,
+                    contentType: "application/pdf",
+                  },
+                ],
               });
 
               logger.info("Booking receipt PDF email sent", { orderId: order._id, orderNumber: order.orderNumber });

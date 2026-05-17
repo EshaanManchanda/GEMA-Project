@@ -110,6 +110,8 @@ const TeacherEventFormPage: React.FC = () => {
   const [eventType, setEventType] = useState<'Online' | 'Offline'>('Online');
   const [ageRangeMin, setAgeRangeMin] = useState('3');
   const [ageRangeMax, setAgeRangeMax] = useState('12');
+  const [grades, setGrades] = useState<string[]>([]);
+  const [gradeInput, setGradeInput] = useState('');
   const [tags, setTags] = useState<string[]>([]);
   const [tagInput, setTagInput] = useState('');
   const [imageAssets, setImageAssets] = useState<string[]>([]);
@@ -190,6 +192,7 @@ const TeacherEventFormPage: React.FC = () => {
       setEventType(getEventMode(event));
       setAgeRangeMin(event.ageRange?.[0]?.toString() || '3');
       setAgeRangeMax(event.ageRange?.[1]?.toString() || '12');
+      setGrades(event.grades || []);
       setTags(event.tags || []);
       // Load imageAssets (IDs) and preview URLs — prefer populated imageAssets, fall back to images[]
       const isHttpUrl = (s: any) => typeof s === 'string' && s.startsWith('http');
@@ -320,6 +323,7 @@ const TeacherEventFormPage: React.FC = () => {
         meetingPassword: eventType === 'Online' && meetingPassword.trim() ? meetingPassword : undefined,
         timezone,
         ageRange: [parseInt(ageRangeMin), parseInt(ageRangeMax)],
+        grades,
         location: eventType === 'Offline' ? {
           country,
           city,
@@ -425,6 +429,19 @@ const TeacherEventFormPage: React.FC = () => {
 
   const removeTag = (tag: string) => {
     setTags(tags.filter((t) => t !== tag));
+  };
+
+  // Grade handlers
+  const addGrade = () => {
+    const grade = gradeInput.trim();
+    if (grade && !grades.includes(grade)) {
+      setGrades([...grades, grade]);
+      setGradeInput('');
+    }
+  };
+
+  const removeGrade = (grade: string) => {
+    setGrades(grades.filter((g) => g !== grade));
   };
 
   // FAQ handlers
@@ -749,6 +766,45 @@ const TeacherEventFormPage: React.FC = () => {
                     <span className="text-gray-500">years old</span>
                   </div>
                   {errors.ageRange && <p className="text-red-500 text-sm mt-1">{errors.ageRange}</p>}
+                </div>
+
+                {/* Grades */}
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">Grades <span className="text-gray-400 font-normal">(optional)</span></label>
+                  <div className="flex flex-wrap gap-2 mb-2">
+                    {grades.map((grade) => (
+                      <span
+                        key={grade}
+                        className="inline-flex items-center gap-1 px-3 py-1 bg-indigo-100 text-indigo-700 rounded-full text-sm font-medium"
+                      >
+                        {grade}
+                        <button
+                          type="button"
+                          onClick={() => removeGrade(grade)}
+                          className="hover:text-indigo-900 focus:outline-none"
+                        >
+                          &times;
+                        </button>
+                      </span>
+                    ))}
+                  </div>
+                  <div className="flex gap-2">
+                    <input
+                      type="text"
+                      value={gradeInput}
+                      onChange={(e) => setGradeInput(e.target.value)}
+                      onKeyDown={(e) => e.key === 'Enter' && (e.preventDefault(), addGrade())}
+                      placeholder="e.g. Grade 1, Kindergarten..."
+                      className="flex-1 px-4 py-3 border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                    />
+                    <button
+                      type="button"
+                      onClick={addGrade}
+                      className="px-4 py-3 bg-gray-100 text-gray-700 rounded-xl hover:bg-gray-200 transition-colors"
+                    >
+                      Add Grade
+                    </button>
+                  </div>
                 </div>
 
 

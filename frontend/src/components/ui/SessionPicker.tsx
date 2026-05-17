@@ -119,7 +119,7 @@ const TableView: React.FC<{
       <tbody className="divide-y divide-gray-100">
         {sessions.map(session => {
           const isSelected = selectedSession?.id === session.id;
-          const isSoldOut  = !session.isUnlimited && session.availableSeats <= 0;
+          const isSoldOut = !session.isUnlimited && session.availableSeats <= 0;
 
           return (
             <tr
@@ -127,8 +127,8 @@ const TableView: React.FC<{
               onClick={() => !isSoldOut && onSelect(session)}
               className={[
                 'transition-colors',
-                isSelected  ? 'bg-primary-50'  : '',
-                isSoldOut   ? 'opacity-50'      : 'hover:bg-gray-50 cursor-pointer',
+                isSelected ? 'bg-primary-50' : '',
+                isSoldOut ? 'opacity-50' : 'hover:bg-gray-50 cursor-pointer',
               ].join(' ')}
             >
               <td className="px-4 py-3 text-gray-600">
@@ -154,8 +154,8 @@ const TableView: React.FC<{
                     isSelected
                       ? 'bg-primary-600 text-white'
                       : isSoldOut
-                      ? 'bg-gray-100 text-gray-400 cursor-not-allowed'
-                      : 'bg-primary-100 text-primary-700 hover:bg-primary-200',
+                        ? 'bg-gray-100 text-gray-400 cursor-not-allowed'
+                        : 'bg-primary-100 text-primary-700 hover:bg-primary-200',
                   ].join(' ')}
                 >
                   {isSelected ? 'Selected' : isSoldOut ? 'Full' : 'Select'}
@@ -243,7 +243,7 @@ export const SessionPicker: React.FC<SessionPickerProps> = ({
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
             {sessionsForDate.map(session => {
               const isSelected = selectedSession?.id === session.id;
-              const isSoldOut  = !session.isUnlimited && session.availableSeats <= 0;
+              const isSoldOut = !session.isUnlimited && session.availableSeats <= 0;
 
               return (
                 <button
@@ -256,8 +256,8 @@ export const SessionPicker: React.FC<SessionPickerProps> = ({
                     isSelected
                       ? 'bg-primary-600 border-primary-600 text-white shadow-md ring-2 ring-primary-300'
                       : isSoldOut
-                      ? 'bg-gray-50 border-gray-200 text-gray-300 cursor-not-allowed opacity-60'
-                      : 'bg-white border-gray-200 hover:border-primary-400 hover:bg-primary-50 hover:shadow-sm cursor-pointer',
+                        ? 'bg-gray-50 border-gray-200 text-gray-300 cursor-not-allowed opacity-60'
+                        : 'bg-white border-gray-200 hover:border-primary-400 hover:bg-primary-50 hover:shadow-sm cursor-pointer',
                   ].join(' ')}
                 >
                   <div className="space-y-0.5">

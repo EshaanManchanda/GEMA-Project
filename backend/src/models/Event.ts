@@ -26,13 +26,13 @@ export interface IAccessRule {
 
 export interface IOperatingHours {
   day:
-    | "monday"
-    | "tuesday"
-    | "wednesday"
-    | "thursday"
-    | "friday"
-    | "saturday"
-    | "sunday";
+  | "monday"
+  | "tuesday"
+  | "wednesday"
+  | "thursday"
+  | "friday"
+  | "saturday"
+  | "sunday";
   openTime: string;
   closeTime: string;
   isClosed: boolean;
@@ -45,16 +45,16 @@ export interface IEvent extends Document {
   shortDescription?: string;
   category: string;
   type:
-    | "Olympiad"
-    | "Championship"
-    | "Competition"
-    | "Event"
-    | "Course"
-    | "Venue"
-    | "Workshop"
-    | "Class"
-    | "Bootcamp"
-    | "Masterclass";
+  | "Olympiad"
+  | "Championship"
+  | "Competition"
+  | "Event"
+  | "Course"
+  | "Venue"
+  | "Workshop"
+  | "Class"
+  | "Bootcamp"
+  | "Masterclass";
   venueType: "Indoor" | "Outdoor" | "Online" | "Offline";
   customCSS?: string;
 
@@ -83,6 +83,7 @@ export interface IEvent extends Document {
   skillLevel?: "All Levels" | "Beginner" | "Intermediate" | "Advanced";
   prerequisites?: string;
   ageRange: [number, number];
+  grades?: string[];
   location: {
     country?: string; // ISO 3166-1 alpha-2 code (e.g., 'AE', 'US')
     state?: string; // Added for Venue compatibility
@@ -146,6 +147,17 @@ export interface IEvent extends Document {
   promotionPaidAt?: Date;
   images: string[]; // OLD - deprecated, keep for backward compatibility
   imageAssets?: mongoose.Types.ObjectId[]; // NEW - shadow field for migration
+  bookingAttachments?: Array<{
+    originalName?: string;
+    filename?: string;
+    url: string;
+    size?: number;
+    mimetype?: string;
+    provider?: "local" | "cloudinary";
+    publicId?: string;
+    cloudinaryUrl?: string;
+    uploadedAt?: Date;
+  }>;
   isDeleted: boolean;
   deletedAt?: Date;
   reviewCount: number;
@@ -163,16 +175,16 @@ export interface IEvent extends Document {
       id: string;
       label: string;
       type:
-        | "text"
-        | "email"
-        | "number"
-        | "tel"
-        | "textarea"
-        | "dropdown"
-        | "checkbox"
-        | "radio"
-        | "file"
-        | "date";
+      | "text"
+      | "email"
+      | "number"
+      | "tel"
+      | "textarea"
+      | "dropdown"
+      | "checkbox"
+      | "radio"
+      | "file"
+      | "date";
       placeholder?: string;
       required: boolean;
       validation?: {
@@ -421,6 +433,10 @@ const eventSchema = new Schema<IEvent>(
         message: "Age range must be [min, max] where 0 <= min <= max <= 100",
       },
       required: [true, "Age range is required"],
+    },
+    grades: {
+      type: [String],
+      default: [],
     },
     location: {
       country: {
@@ -678,6 +694,45 @@ const eventSchema = new Schema<IEvent>(
       {
         type: Schema.Types.ObjectId,
         ref: "MediaAsset",
+      },
+    ],
+    bookingAttachments: [
+      {
+        originalName: {
+          type: String,
+          trim: true,
+        },
+        filename: {
+          type: String,
+          trim: true,
+        },
+        url: {
+          type: String,
+          trim: true,
+        },
+        size: {
+          type: Number,
+          min: [0, "Attachment size cannot be negative"],
+        },
+        mimetype: {
+          type: String,
+          trim: true,
+        },
+        provider: {
+          type: String,
+          enum: ["local", "cloudinary"],
+        },
+        publicId: {
+          type: String,
+          trim: true,
+        },
+        cloudinaryUrl: {
+          type: String,
+          trim: true,
+        },
+        uploadedAt: {
+          type: Date,
+        },
       },
     ],
     isDeleted: {

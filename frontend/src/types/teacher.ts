@@ -187,6 +187,7 @@ export interface ITeachingEvent {
   meetingLink?: string;
   isFreeEvent?: boolean;
   ageRange: [number, number];
+  grades?: string[];
   location: {
     country?: string;
     city: string;
@@ -338,6 +339,7 @@ export interface TeachingEventCreateInput {
     keywords: string[];
   };
   ageRange: [number, number];
+  grades?: string[];
   location: {
     country?: string;
     city: string;

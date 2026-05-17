@@ -13,7 +13,9 @@ export async function invalidateEventCaches(eventId?: string): Promise<void> {
     // Invalidate specific event cache if ID provided
     if (eventId) {
       await cacheService.delete(`event:${eventId}`);
-      logger.info(`Invalidated cache for event ${eventId}`);
+      // Clear all single events to prevent stale data for slug-based queries
+      const singleEventsCount = await cacheService.deletePattern("event:*");
+      logger.info(`Invalidated cache for event ${eventId} and all other single event caches (${singleEventsCount} entries) to prevent stale data`);
     }
 
     // Invalidate featured events cache

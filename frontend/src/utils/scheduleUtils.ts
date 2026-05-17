@@ -151,8 +151,8 @@ export function getAllSessions(
     const rangeStart = schedule.startDate
       ? dayOf(schedule.startDate)
       : schedule.date
-      ? dayOf(schedule.date)
-      : null;
+        ? dayOf(schedule.date)
+        : null;
 
     const rangeEnd = schedule.endDate
       ? dayOf(schedule.endDate)

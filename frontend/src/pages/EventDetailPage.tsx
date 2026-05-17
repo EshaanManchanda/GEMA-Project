@@ -241,6 +241,7 @@ const EventDetailPage: React.FC = () => {
       time: getScheduleTime(firstSchedule),
       location: eventData.location || { city: 'Location TBD', address: 'Address TBD', coordinates: {} },
       ageRange: eventData.ageRange,
+      grades: eventData.grades,
       capacity: totalSeats,
       availableSpots: firstSchedule?.availableSeats || totalSeats,
       dateSchedule: (eventData.dateSchedule || []).map((schedule: any) => ({
@@ -881,13 +882,28 @@ const EventDetailPage: React.FC = () => {
                   </div>
                   <div>
                     <div className="font-medium text-sm">
-                      {Array.isArray(event.ageRange) && event.ageRange.length >= 2 
+                      {Array.isArray(event.ageRange) && event.ageRange.length >= 2
                         ? `${Math.min(event.ageRange[0], event.ageRange[1])}-${Math.max(event.ageRange[0], event.ageRange[1])} years`
                         : (event.ageRange || 'All ages')}
                     </div>
                     <div className="text-xs text-gray-500 font-medium uppercase tracking-wider">Age Group</div>
                   </div>
                 </div>
+
+                {/* Grades */}
+                {event.grades && event.grades.length > 0 && (
+                  <div className="flex items-center text-gray-700 bg-gray-50 rounded-lg p-4 transition-colors hover:bg-primary-50/50">
+                    <div className="w-10 h-10 bg-primary-100 rounded-lg flex items-center justify-center mr-3">
+                      <BookOpen className="h-5 w-5 text-primary-600" />
+                    </div>
+                    <div>
+                      <div className="font-medium text-sm truncate max-w-[120px]" title={event.grades.join(', ')}>
+                        {event.grades.join(', ')}
+                      </div>
+                      <div className="text-xs text-gray-500 font-medium uppercase tracking-wider">Grades</div>
+                    </div>
+                  </div>
+                )}
 
                 {/* Subject */}
                 <div className="flex items-center text-gray-700 bg-gray-50 rounded-lg p-4 transition-colors hover:bg-primary-50/50">
@@ -1126,11 +1142,19 @@ const EventDetailPage: React.FC = () => {
                           <div>
                             <div className="text-sm text-gray-500 mb-1">Age Range</div>
                             <div className="font-medium text-gray-900">
-                              {Array.isArray(event.ageRange) && event.ageRange.length >= 2 
+                              {Array.isArray(event.ageRange) && event.ageRange.length >= 2
                                 ? `${Math.min(event.ageRange[0], event.ageRange[1])}-${Math.max(event.ageRange[0], event.ageRange[1])} years`
                                 : (event.ageRange || 'All ages')}
                             </div>
                           </div>
+                          {event.grades && event.grades.length > 0 && (
+                            <div>
+                              <div className="text-sm text-gray-500 mb-1">Grades</div>
+                              <div className="font-medium text-gray-900">
+                                {event.grades.join(', ')}
+                              </div>
+                            </div>
+                          )}
                           <div>
                             <div className="text-sm text-gray-500 mb-1">Capacity</div>
                             <div className="font-medium text-gray-900">
@@ -1812,9 +1836,9 @@ const EventDetailPage: React.FC = () => {
 
               {/* Modal Gallery Content */}
               <div className="overflow-y-auto flex-1 px-8 md:px-12 py-8">
-                <GalleryComponent 
-                  layout={galleryData?.type || 'grid'} 
-                  images={galleryData?.images || []} 
+                <GalleryComponent
+                  layout={galleryData?.type || 'grid'}
+                  images={galleryData?.images || []}
                 />
               </div>
 

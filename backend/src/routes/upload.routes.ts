@@ -62,6 +62,7 @@ router.use("/files", (req: Request, res: Response, next: NextFunction) => {
     ".doc": "application/msword",
     ".docx":
       "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+    ".csv": "text/csv",
   };
 
   const mimeType = mimeTypes[ext] || "application/octet-stream";

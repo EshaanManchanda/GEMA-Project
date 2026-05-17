@@ -29,6 +29,7 @@ interface TeachingBasicInfoTabProps {
     teachingMode: 'Online' | 'Offline' | 'Hybrid';
     ageRangeMin: string;
     ageRangeMax: string;
+    grades: string[];
     tags: string[];
     images: string[];  // MediaAsset IDs
     imagePreviewUrls: string[];
@@ -57,6 +58,7 @@ interface TeachingBasicInfoTabProps {
   onImagesChange: (assets: MediaAsset[]) => void;
   onRemoveImage: (index: number) => void;
   onTagsChange: (tags: string[]) => void;
+  onGradesChange: (grades: string[]) => void;
   onCustomCSSChange: (css: string) => void;
   showMediaPicker: boolean;
   onOpenMediaPicker: () => void;
@@ -74,12 +76,26 @@ const TeachingBasicInfoTab: React.FC<TeachingBasicInfoTabProps> = ({
   onImagesChange,
   onRemoveImage,
   onTagsChange,
+  onGradesChange,
   //   onCustomCSSChange,
   showMediaPicker,
   onOpenMediaPicker,
   onCloseMediaPicker,
   selectedImageAssets: _selectedImageAssets,
 }) => {
+  const [gradeInput, setGradeInput] = React.useState('');
+
+  const addGrade = () => {
+    const grade = gradeInput.trim();
+    if (grade && !formData.grades?.includes(grade)) {
+      onGradesChange([...(formData.grades || []), grade]);
+      setGradeInput('');
+    }
+  };
+
+  const removeGrade = (grade: string) => {
+    onGradesChange((formData.grades || []).filter((g) => g !== grade));
+  };
 
   return (
     <div className="space-y-8">
@@ -507,6 +523,44 @@ const TeachingBasicInfoTab: React.FC<TeachingBasicInfoTabProps> = ({
                 placeholder="60"
               />
               {errors.ageRangeMax && <p className="mt-1 text-sm text-red-500">{errors.ageRangeMax}</p>}
+            </div>
+          </div>
+
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-2">Grades <span className="text-gray-400 font-normal">(optional)</span></label>
+            <div className="flex flex-wrap gap-2 mb-2">
+              {(formData.grades || []).map((grade) => (
+                <span
+                  key={grade}
+                  className="inline-flex items-center gap-1 px-3 py-1 bg-indigo-100 text-indigo-700 rounded-full text-sm font-medium"
+                >
+                  {grade}
+                  <button
+                    type="button"
+                    onClick={() => removeGrade(grade)}
+                    className="hover:text-indigo-900 focus:outline-none"
+                  >
+                    &times;
+                  </button>
+                </span>
+              ))}
+            </div>
+            <div className="flex gap-2">
+              <input
+                type="text"
+                value={gradeInput}
+                onChange={(e) => setGradeInput(e.target.value)}
+                onKeyDown={(e) => e.key === 'Enter' && (e.preventDefault(), addGrade())}
+                placeholder="e.g. Grade 1, Kindergarten..."
+                className="flex-1 px-4 py-3 border border-gray-300 rounded-lg shadow-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
+              />
+              <button
+                type="button"
+                onClick={addGrade}
+                className="px-4 py-3 bg-gray-100 text-gray-700 rounded-lg hover:bg-gray-200 transition-colors font-medium border border-gray-300 shadow-sm"
+              >
+                Add Grade
+              </button>
             </div>
           </div>
 

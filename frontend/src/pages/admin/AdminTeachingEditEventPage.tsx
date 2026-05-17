@@ -73,6 +73,7 @@ interface TeachingEventFormData {
   teachingMode: 'Online' | 'Offline' | 'Hybrid';
   ageRangeMin: string;
   ageRangeMax: string;
+  grades: string[];
   tags: string[];
   images: string[];
   imagePreviewUrls: string[];
@@ -158,6 +159,7 @@ const AdminTeachingEditEventPage: React.FC = () => {
     teachingMode: 'Online',
     ageRangeMin: '',
     ageRangeMax: '',
+    grades: [],
     tags: [],
     images: [],
     imagePreviewUrls: [],
@@ -267,6 +269,7 @@ const AdminTeachingEditEventPage: React.FC = () => {
             teachingMode: mappedTeachingMode,
             ageRangeMin: eventData.ageRange?.[0]?.toString() || '',
             ageRangeMax: eventData.ageRange?.[1]?.toString() || '',
+            grades: eventData.grades || [],
             tags: eventData.tags || [],
             images: eventData.imageAssets?.map((a: MediaAsset) => a._id) || [],
             imagePreviewUrls: eventData.imageAssets?.map((a: MediaAsset) => a.url) || eventData.images || [],
@@ -427,6 +430,10 @@ const AdminTeachingEditEventPage: React.FC = () => {
         return rest;
       });
     }
+  };
+
+  const handleGradesChange = (grades: string[]) => {
+    setFormData(prev => ({ ...prev, grades }));
   };
 
   const handleCountryChange = (country: string) => {
@@ -770,6 +777,7 @@ const AdminTeachingEditEventPage: React.FC = () => {
         type: formData.type,
         eventType: eventType, // Backend expects 'eventType', not 'teachingMode'
         ageRange: [parseInt(formData.ageRangeMin), parseInt(formData.ageRangeMax)],
+        grades: formData.grades,
         teacherId: formData.teacherId.trim(),
         skillLevel: formData.skillLevel,
         prerequisites: formData.prerequisites || undefined,
@@ -1045,6 +1053,7 @@ const AdminTeachingEditEventPage: React.FC = () => {
                 onImagesChange={handleImagesChange}
                 onRemoveImage={removeImage}
                 onTagsChange={handleTagsChange}
+                onGradesChange={handleGradesChange}
                 onCustomCSSChange={handleCustomCSSChange}
                 showMediaPicker={showMediaPicker}
                 onOpenMediaPicker={() => setShowMediaPicker(true)}
@@ -1356,4 +1365,5 @@ const AdminTeachingEditEventPage: React.FC = () => {
   );
 };
 
+export default AdminTeachingEditEventPage;
 export default AdminTeachingEditEventPage;

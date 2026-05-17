@@ -17,6 +17,18 @@ import { MediaAsset } from '@/store/slices/mediaSlice';
 import { Card, CardHeader, CardTitle, CardContent } from '../ui/Card';
 import { Shield, FileText, Hash, Image as ImageIcon, X, ExternalLink } from 'lucide-react';
 
+interface BookingAttachment {
+  originalName: string;
+  filename: string;
+  url: string;
+  size: number;
+  mimetype: string;
+  provider?: 'local' | 'cloudinary';
+  publicId?: string;
+  cloudinaryUrl?: string;
+  uploadedAt?: string;
+}
+
 interface Category {
   id: string;
   name: string;
@@ -45,6 +57,7 @@ interface BasicInfoTabProps {
     tags: string[];
     images: string[];  // MediaAsset IDs
     imagePreviewUrls: string[];
+    bookingAttachments: BookingAttachment[];
     // Admin-specific fields
     isApproved: boolean;
     isFeatured: boolean;
@@ -71,6 +84,8 @@ interface BasicInfoTabProps {
   onCheckboxChange: (e: React.ChangeEvent<HTMLInputElement>) => void;
   onImagesChange: (assets: MediaAsset[]) => void;
   onRemoveImage: (index: number) => void;
+  onBookingAttachmentUpload: (files: File | File[] | null) => void;
+  onBookingAttachmentsChange: (attachments: BookingAttachment[]) => void;
   onTagsChange: (tags: string[]) => void;
   onCustomCSSChange: (css: string) => void;
   onSyllabusChange: (syllabus: any[]) => void;
@@ -91,6 +106,8 @@ const BasicInfoTab: React.FC<BasicInfoTabProps> = ({
   onCheckboxChange,
   onImagesChange,
   onRemoveImage,
+  onBookingAttachmentUpload,
+  onBookingAttachmentsChange,
   onTagsChange,
   onCustomCSSChange,
   onSyllabusChange,
@@ -98,6 +115,9 @@ const BasicInfoTab: React.FC<BasicInfoTabProps> = ({
   onOpenMediaPicker,
   onCloseMediaPicker,
 }) => {
+  const [attachmentError, setAttachmentError] = React.useState('');
+  const [isAttachmentUploading, setIsAttachmentUploading] = React.useState(false);
+
   // Educational types check
   const isEducational = ['Class', 'Bootcamp', 'Masterclass', 'Course', 'Workshop'].includes(formData.type);
 
@@ -146,6 +166,29 @@ const BasicInfoTab: React.FC<BasicInfoTabProps> = ({
       }
     } as React.ChangeEvent<HTMLTextAreaElement>;
     onInputChange(syntheticEvent);
+  };
+
+  const handleBookingAttachmentChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const files = e.target.files ? Array.from(e.target.files) : [];
+    if (files.length === 0) return;
+
+    setAttachmentError('');
+    setIsAttachmentUploading(true);
+
+    try {
+      await onBookingAttachmentUpload(files);
+    } catch {
+      setAttachmentError('Failed to upload booking attachment.');
+    } finally {
+      setIsAttachmentUploading(false);
+      e.target.value = '';
+    }
+  };
+
+  const removeBookingAttachmentAt = (index: number) => {
+    setAttachmentError('');
+    const nextAttachments = (formData.bookingAttachments || []).filter((_, attachmentIndex) => attachmentIndex !== index);
+    onBookingAttachmentsChange(nextAttachments);
   };
 
   return (
@@ -835,6 +878,79 @@ const BasicInfoTab: React.FC<BasicInfoTabProps> = ({
             <p className="mt-3 text-xs text-gray-500">
               Upload high-quality images to showcase your event. First image will be the featured image.
             </p>
+          </div>
+        </CardContent>
+      </Card>
+
+      {/* Booking Attachment Section */}
+      <Card variant="elevated" className="shadow-xl">
+        <CardHeader>
+          <CardTitle className="text-2xl flex items-center text-gray-900">
+            <FileText className="w-6 h-6 mr-3 text-primary-600" />
+            Booking Attachment
+          </CardTitle>
+        </CardHeader>
+        <CardContent>
+          <div className="space-y-4">
+            <div>
+              <label htmlFor="bookingAttachment" className="block text-sm font-medium text-gray-700 mb-2">
+                Upload a file to send with booking confirmation emails
+              </label>
+              <input
+                id="bookingAttachment"
+                type="file"
+                multiple
+                accept="image/*,.pdf,.doc,.docx,.csv,application/pdf,application/msword,application/vnd.openxmlformats-officedocument.wordprocessingml.document,text/csv,application/csv,application/vnd.ms-excel"
+                onChange={handleBookingAttachmentChange}
+                disabled={isAttachmentUploading}
+                className="block w-full text-sm text-gray-700 file:mr-4 file:rounded-lg file:border-0 file:bg-primary-600 file:px-4 file:py-2 file:text-sm file:font-semibold file:text-white hover:file:bg-primary-700 disabled:opacity-60"
+              />
+              <p className="mt-2 text-xs text-gray-500">
+                Supported file types: image, PDF, DOC, DOCX, CSV. You can add multiple files, and all will be emailed to users when they book this event.
+              </p>
+            </div>
+
+            {(formData.bookingAttachments || []).length > 0 ? (
+              <div className="space-y-3">
+                {formData.bookingAttachments.map((attachment, index) => (
+                  <div key={`${attachment.filename}-${index}`} className="rounded-xl border border-gray-200 bg-gray-50 p-4">
+                    <div className="flex items-start justify-between gap-4">
+                      <div>
+                        <p className="font-medium text-gray-900">{attachment.originalName}</p>
+                        <p className="text-sm text-gray-500">{attachment.mimetype}</p>
+                        <a
+                          href={attachment.url}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="mt-2 inline-flex items-center gap-1 text-sm text-primary-600 hover:text-primary-700"
+                        >
+                          View uploaded file
+                          <ExternalLink className="h-4 w-4" />
+                        </a>
+                      </div>
+                      <button
+                        type="button"
+                        onClick={() => removeBookingAttachmentAt(index)}
+                        className="inline-flex items-center rounded-lg border border-red-200 bg-white px-3 py-2 text-sm font-medium text-red-600 hover:bg-red-50"
+                      >
+                        <X className="mr-2 h-4 w-4" />
+                        Remove
+                      </button>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            ) : (
+              <div className="rounded-xl border border-dashed border-gray-300 bg-gray-50 p-4 text-sm text-gray-500">
+                No booking attachment uploaded yet.
+              </div>
+            )}
+
+            {isAttachmentUploading && (
+              <p className="text-sm text-primary-600">Uploading attachment...</p>
+            )}
+
+            {attachmentError && <p className="text-sm text-red-500">{attachmentError}</p>}
           </div>
         </CardContent>
       </Card>

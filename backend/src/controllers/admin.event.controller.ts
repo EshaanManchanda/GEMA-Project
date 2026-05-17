@@ -89,6 +89,18 @@ interface UpdateEventRequest {
     caption?: string;
     participantName?: string;
   }>;
+  imageAssets?: string[];
+  bookingAttachments?: Array<{
+    originalName: string;
+    filename: string;
+    url: string;
+    size: number;
+    mimetype: string;
+    provider: "local" | "cloudinary";
+    publicId?: string;
+    cloudinaryUrl?: string;
+    uploadedAt?: Date;
+  }>;
 }
 
 interface CreateEventRequest {
@@ -133,6 +145,7 @@ interface CreateEventRequest {
     answer: string;
   }>;
   images?: string[];
+  imageAssets?: string[];
   customCSS?: string;
   meetingLink?: string;
   googlePlaceId?: string;
@@ -150,6 +163,17 @@ interface CreateEventRequest {
     url: string;
     caption?: string;
     participantName?: string;
+  }>;
+  bookingAttachments?: Array<{
+    originalName: string;
+    filename: string;
+    url: string;
+    size: number;
+    mimetype: string;
+    provider: "local" | "cloudinary";
+    publicId?: string;
+    cloudinaryUrl?: string;
+    uploadedAt?: Date;
   }>;
 }
 
@@ -271,6 +295,7 @@ const formatAdminEventResponse = (event: any) => {
     introVideo: transformedEvent.introVideo || "",
     syllabus: transformedEvent.syllabus || [],
     pastEventMemories: transformedEvent.pastEventMemories || [],
+    bookingAttachments: transformedEvent.bookingAttachments || [],
   };
 };
 
@@ -735,6 +760,9 @@ export const updateEvent = async (
       event.venueType = normalizedEventType;
     }
     event.markModified("dateSchedule");
+    if (updateData.bookingAttachments) {
+      event.markModified("bookingAttachments");
+    }
     await event.save();
 
     // Populate vendor information

@@ -2,6 +2,7 @@ import React, { useState, useEffect, useCallback } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import adminAPI from "../../services/api/adminAPI";
 import categoriesAPI from "../../services/api/categoriesAPI";
+import { UploadAPI } from "../../services/api/uploadAPI";
 import FormBuilder from "@/components/registration/FormBuilder";
 import BasicInfoTab from "../../components/admin/BasicInfoTab";
 import SchedulePricingTab from "../../components/admin/SchedulePricingTab";
@@ -61,6 +62,18 @@ interface FAQ {
   answer: string;
 }
 
+interface UploadedBookingAttachment {
+  originalName: string;
+  filename: string;
+  url: string;
+  size: number;
+  mimetype: string;
+  provider?: 'local' | 'cloudinary';
+  publicId?: string;
+  cloudinaryUrl?: string;
+  uploadedAt?: string;
+}
+
 interface EventFormData {
   // Basic Info
   title: string;
@@ -85,6 +98,7 @@ interface EventFormData {
   tags: string[];
   images: string[]; // MediaAsset IDs
   imagePreviewUrls: string[];
+  bookingAttachments: UploadedBookingAttachment[];
 
   // Admin-specific fields
   isApproved: boolean;
@@ -187,6 +201,7 @@ const AdminEditEventPage: React.FC = () => {
     tags: [],
     images: [],
     imagePreviewUrls: [],
+    bookingAttachments: [],
     isApproved: false,
     isFeatured: false,
     requirePhoneVerification: false,
@@ -321,6 +336,9 @@ const AdminEditEventPage: React.FC = () => {
               (event.images || []).filter(
                 (s: any) => typeof s === "string" && s.startsWith("http"),
               ),
+            bookingAttachments:
+              event.bookingAttachments ||
+              (event.bookingAttachment ? [event.bookingAttachment] : []),
             isApproved: event.isApproved || false,
             isFeatured: event.isFeatured || false,
             requirePhoneVerification: event.requirePhoneVerification || false,
@@ -607,6 +625,62 @@ const AdminEditEventPage: React.FC = () => {
         imagePreviewUrls: newImagePreviewUrls,
       };
     });
+  };
+
+  const handleBookingAttachmentUpload = async (files: File | File[] | null) => {
+    if (!files) {
+      setFormData((prev) => ({ ...prev, bookingAttachments: [] }));
+      return;
+    }
+
+    try {
+      const fileList = Array.isArray(files) ? files : [files];
+      const uploadResults = await Promise.allSettled(
+        fileList.map(async (file) => {
+          const uploadResponse = await UploadAPI.uploadSingle(file, "event");
+          return uploadResponse.data;
+        }),
+      );
+
+      const uploadedFiles = uploadResults
+        .filter((result): result is PromiseFulfilledResult<any> => result.status === "fulfilled")
+        .map((result) => result.value);
+
+      const failedCount = uploadResults.filter((result) => result.status === "rejected").length;
+
+      setFormData((prev) => ({
+        ...prev,
+        bookingAttachments: [
+          ...prev.bookingAttachments,
+          ...uploadedFiles.map((uploadedFile) => ({
+            originalName: uploadedFile.originalName,
+            filename: uploadedFile.filename,
+            url: uploadedFile.url,
+            size: uploadedFile.size,
+            mimetype: uploadedFile.mimetype,
+            provider: uploadedFile.provider,
+            publicId: uploadedFile.publicId,
+            cloudinaryUrl: uploadedFile.cloudinaryUrl,
+            uploadedAt: uploadedFile.uploadedAt,
+          })),
+        ],
+      }));
+
+      if (failedCount > 0) {
+        setSaveStatus({
+          type: "error",
+          message: `${failedCount} attachment${failedCount > 1 ? "s" : ""} failed to upload. The successful files were added.`,
+        });
+      }
+    } catch (error: any) {
+      setSaveStatus({
+        type: "error",
+        message:
+          error.response?.data?.message ||
+          "Failed to upload event attachment. Please try again.",
+      });
+      throw error;
+    }
   };
 
   // Schedule management
@@ -995,6 +1069,7 @@ const AdminEditEventPage: React.FC = () => {
         })),
 
         imageAssets: formData.images, // Send MediaAsset IDs
+        bookingAttachments: formData.bookingAttachments,
 
         seoMeta: {
           title: formData.seoMeta.title || formData.title,
@@ -1277,6 +1352,11 @@ const AdminEditEventPage: React.FC = () => {
                 onCheckboxChange={handleCheckboxChange}
                 onImagesChange={handleImagesChange}
                 onRemoveImage={removeImage}
+                bookingAttachments={formData.bookingAttachments}
+                onBookingAttachmentUpload={handleBookingAttachmentUpload}
+                onBookingAttachmentsChange={(bookingAttachments) =>
+                  setFormData((prev) => ({ ...prev, bookingAttachments }))
+                }
                 onTagsChange={handleTagsChange}
                 onCustomCSSChange={handleCustomCSSChange}
                 showMediaPicker={showMediaPicker}
