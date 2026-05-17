@@ -483,8 +483,8 @@ export class BookingSummaryPdfService {
     try {
       await page.setViewport({ width: 794, height: 1123 });
       await page.setContent(html, {
-        waitUntil: "networkidle0",   // Wait for Google Fonts
-        timeout: 30000,
+        waitUntil: "domcontentloaded",   // Don't wait for Google Fonts — server may not have outbound DNS
+        timeout: 15000,
       });
 
       // Wait for all images (banner + QR) to load

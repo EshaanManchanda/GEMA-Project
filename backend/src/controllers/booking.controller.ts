@@ -894,58 +894,7 @@ export const confirmBooking = async (
             }
           }
 
-          let bookingSummaryAttachment:
-            | {
-                filename: string;
-                content: Buffer;
-                contentType: string;
-              }
-            | undefined;
 
-          try {
-            const bookingPdf = await BookingSummaryPdfService.generate({
-              orderNumber: order.orderNumber,
-              customerName: `${customer.firstName} ${customer.lastName}`.trim(),
-              customerEmail: customer.email,
-              bookingDate: order.confirmedAt || new Date(),
-              orderTotal: order.total,
-              currency: order.currency,
-              event: {
-                title: event.title,
-                description: event.description,
-                shortDescription: event.shortDescription,
-                type: event.type,
-                eventType: (event as any).eventType,
-                venueType: event.venueType,
-                meetingLink: event.meetingLink,
-                meetingPassword: (event as any).meetingPassword,
-                location: event.location,
-                images: event.images,
-                imageAssets: event.imageAssets,
-                pastEventMemories: event.pastEventMemories,
-              },
-              items: order.items.map((item: any) => ({
-                eventTitle: item.eventTitle || event.title,
-                quantity: item.quantity,
-                price: item.unitPrice,
-                date: item.scheduleDate,
-              })),
-            });
-
-            bookingSummaryAttachment = {
-              filename: `booking-summary-${order.orderNumber}.pdf`,
-              content: bookingPdf,
-              contentType: "application/pdf",
-            };
-          } catch (pdfError: any) {
-            logger.warn("Failed to generate booking summary PDF (non-blocking)", {
-              orderId: order._id,
-              orderNumber: order.orderNumber,
-              error: pdfError?.message,
-            });
-          }
-
-          // Send customer order confirmation email
           try {
             await emailService.sendOrderConfirmationEmail({
               to: customer.email,
@@ -954,9 +903,7 @@ export const confirmBooking = async (
               orderTotal: order.total,
               currency: order.currency,
               isFreeEvent: !!(event as any).isFreeEvent,
-              attachments: bookingSummaryAttachment
-                ? [bookingSummaryAttachment]
-                : undefined,
+              attachments: undefined, // PDF attached separately below
               items: order.items.map((item: any) => ({
                 eventTitle: item.eventTitle || event.title,
                 quantity: item.quantity,
@@ -968,6 +915,7 @@ export const confirmBooking = async (
                 meetingPassword: (event as any).meetingPassword,
               })),
             });
+            logger.info("Order confirmation email sent", { orderId: order._id, to: customer.email });
           } catch (emailError: any) {
             logger.error(
               "Failed to send order confirmation email (booking continues)",
@@ -980,6 +928,59 @@ export const confirmBooking = async (
             );
             // Continue - email failure should not block booking confirmation
           }
+
+          // Generate PDF receipt and send as a SEPARATE follow-up email (fully non-blocking)
+          setImmediate(async () => {
+            try {
+              const pdfBuffer = await BookingSummaryPdfService.generate({
+                orderNumber: order.orderNumber,
+                customerName: `${customer.firstName} ${customer.lastName}`.trim(),
+                customerEmail: customer.email,
+                bookingDate: order.confirmedAt || new Date(),
+                orderTotal: order.total,
+                currency: order.currency,
+                paymentStatus: order.paymentStatus || "paid",
+                event: {
+                  title: event.title,
+                  description: event.description,
+                  shortDescription: event.shortDescription,
+                  type: event.type,
+                  eventType: (event as any).eventType,
+                  venueType: event.venueType,
+                  meetingLink: event.meetingLink,
+                  meetingPassword: (event as any).meetingPassword,
+                  location: event.location,
+                  images: event.images,
+                  imageAssets: event.imageAssets,
+                  pastEventMemories: event.pastEventMemories,
+                },
+                items: order.items.map((item: any) => ({
+                  eventTitle: item.eventTitle || event.title,
+                  quantity: item.quantity,
+                  price: item.unitPrice,
+                  date: item.scheduleDate,
+                })),
+              });
+
+              await emailService.sendEmail({
+                to: customer.email,
+                subject: `Your Booking Receipt — ${order.orderNumber}`,
+                html: `<p>Hi ${customer.firstName},</p><p>Please find your booking receipt attached for <strong>${event.title}</strong> (Order #${order.orderNumber}).</p><p>Thank you for booking with us!</p>`,
+                text: `Hi ${customer.firstName}, your booking receipt for ${event.title} (Order #${order.orderNumber}) is attached.`,
+                attachments: [{
+                  filename: `booking-receipt-${order.orderNumber}.pdf`,
+                  content: pdfBuffer,
+                  contentType: "application/pdf",
+                }],
+              });
+
+              logger.info("Booking receipt PDF email sent", { orderId: order._id, orderNumber: order.orderNumber });
+            } catch (pdfErr: any) {
+              logger.warn("PDF receipt generation/send failed (non-blocking, email already sent)", {
+                orderId: order._id, orderNumber: order.orderNumber, error: pdfErr?.message,
+              });
+            }
+          });
 
           await emailService.sendVendorBookingNotificationEmail({
             to: vendorEmail,
