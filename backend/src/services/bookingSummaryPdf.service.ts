@@ -53,30 +53,12 @@ export interface BookingSummaryPdfInput {
 }
 
 // ─── Puppeteer browser singleton ──────────────────────────────────────────────
-let browserPromise: Promise<import("puppeteer-core").Browser> | null = null;
+let browserPromise: Promise<import("puppeteer").Browser> | null = null;
 
-const getChromeExecutablePath = () => {
-  if (process.env.CHROME_PATH) return process.env.CHROME_PATH;
-  if (process.env.PUPPETEER_EXECUTABLE_PATH) return process.env.PUPPETEER_EXECUTABLE_PATH;
-  
-  switch (process.platform) {
-    case "win32":
-      return fs.existsSync("C:\\Program Files\\Google\\Chrome\\Application\\chrome.exe") 
-        ? "C:\\Program Files\\Google\\Chrome\\Application\\chrome.exe"
-        : "C:\\Program Files (x86)\\Google\\Chrome\\Application\\chrome.exe";
-    case "darwin":
-      return "/Applications/Google Chrome.app/Contents/MacOS/Google Chrome";
-    case "linux":
-    default:
-      return "/usr/bin/google-chrome";
-  }
-};
-
-async function getBrowser(): Promise<import("puppeteer-core").Browser> {
+async function getBrowser(): Promise<import("puppeteer").Browser> {
   if (!browserPromise) {
-    const puppeteer = await import("puppeteer-core");
+    const puppeteer = await import("puppeteer");
     browserPromise = puppeteer.default.launch({
-      executablePath: getChromeExecutablePath(),
       args: [
         "--no-sandbox",
         "--disable-setuid-sandbox",

@@ -85,7 +85,7 @@
     "multer-storage-cloudinary": "^4.0.0",
     "node-cron": "^4.2.1",
     "nodemailer": "^7.0.11",
-    "puppeteer-core": "^24.42.0",
+    "puppeteer": "^25.0.2",
     "qrcode": "^1.5.4",
     "stripe": "^18.4.0",
     "typescript": "^5.3.3",

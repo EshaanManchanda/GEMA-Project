@@ -163,13 +163,12 @@ const certificateWorker = areQueuesEnabled
 
 // ─── Singleton Puppeteer browser (reuse across requests) ─────────────────────
 
-let _browserPromise: Promise<import("puppeteer-core").Browser> | null = null;
+let _browserPromise: Promise<import("puppeteer").Browser> | null = null;
 
-async function getBrowser(): Promise<import("puppeteer-core").Browser> {
+async function getBrowser(): Promise<import("puppeteer").Browser> {
   if (!_browserPromise) {
-    const puppeteer = await import("puppeteer-core");
+    const puppeteer = await import("puppeteer");
     _browserPromise = puppeteer.default.launch({
-      executablePath: process.env.CHROME_PATH || "/usr/bin/google-chrome",
       args: [
         "--no-sandbox",
         "--disable-setuid-sandbox",
