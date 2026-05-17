@@ -39,8 +39,7 @@
     "migrate:brand": "ts-node src/scripts/migrateBrandConfig.ts",
     "migrate:event-slugs": "ts-node src/scripts/generate-event-slugs.ts",
     "script:cleanup-media": "ts-node src/scripts/cleanup-orphaned-media.ts",
-    "script:fix-banners": "ts-node src/scripts/fix-banner-assets.ts",
-    "migrate:booking-attachments": "ts-node src/scripts/migrate-booking-attachments.ts"
+    "script:fix-banners": "ts-node src/scripts/fix-banner-assets.ts"
   },
   "dependencies": {
     "@types/bcryptjs": "^2.4.6",
