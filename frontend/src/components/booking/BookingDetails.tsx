@@ -635,10 +635,24 @@ const BookingDetails: React.FC<BookingDetailsProps> = ({
                 <div className="text-xs font-semibold text-purple-600 uppercase tracking-wide mb-1">
                   Age Range
                 </div>
-                {event.ageRange?.length >= 2 ? (
+                {Array.isArray(event.ageRange) && 
+                 event.ageRange.length >= 2 && 
+                 !isNaN(Number(event.ageRange[0])) && 
+                 !isNaN(Number(event.ageRange[1])) && 
+                 event.ageRange[0] !== null && 
+                 event.ageRange[1] !== null ? (
                   <>
                     <div className="text-sm font-medium text-gray-900">
-                      {event.ageRange[0]} - {event.ageRange[1]} years old
+                      {Math.min(Number(event.ageRange[0]), Number(event.ageRange[1]))} - {Math.max(Number(event.ageRange[0]), Number(event.ageRange[1]))} years old
+                    </div>
+                    <div className="text-xs text-gray-600">
+                      All ages welcome
+                    </div>
+                  </>
+                ) : typeof event.ageRange === 'string' ? (
+                  <>
+                    <div className="text-sm font-medium text-gray-900">
+                      {event.ageRange}
                     </div>
                     <div className="text-xs text-gray-600">
                       All ages welcome

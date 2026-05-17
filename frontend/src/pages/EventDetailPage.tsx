@@ -240,7 +240,7 @@ const EventDetailPage: React.FC = () => {
       date: getScheduleDate(firstSchedule),
       time: getScheduleTime(firstSchedule),
       location: eventData.location || { city: 'Location TBD', address: 'Address TBD', coordinates: {} },
-      ageRange: eventData.ageRange ? `${eventData.ageRange[0]}-${eventData.ageRange[1]} years` : 'All ages',
+      ageRange: eventData.ageRange,
       capacity: totalSeats,
       availableSpots: firstSchedule?.availableSeats || totalSeats,
       dateSchedule: (eventData.dateSchedule || []).map((schedule: any) => ({
@@ -880,7 +880,11 @@ const EventDetailPage: React.FC = () => {
                     </svg>
                   </div>
                   <div>
-                    <div className="font-medium text-sm">{event.ageRange}</div>
+                    <div className="font-medium text-sm">
+                      {Array.isArray(event.ageRange) && event.ageRange.length >= 2 
+                        ? `${Math.min(event.ageRange[0], event.ageRange[1])}-${Math.max(event.ageRange[0], event.ageRange[1])} years`
+                        : (event.ageRange || 'All ages')}
+                    </div>
                     <div className="text-xs text-gray-500 font-medium uppercase tracking-wider">Age Group</div>
                   </div>
                 </div>
@@ -1121,7 +1125,11 @@ const EventDetailPage: React.FC = () => {
                         <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                           <div>
                             <div className="text-sm text-gray-500 mb-1">Age Range</div>
-                            <div className="font-medium text-gray-900">{event.ageRange}</div>
+                            <div className="font-medium text-gray-900">
+                              {Array.isArray(event.ageRange) && event.ageRange.length >= 2 
+                                ? `${Math.min(event.ageRange[0], event.ageRange[1])}-${Math.max(event.ageRange[0], event.ageRange[1])} years`
+                                : (event.ageRange || 'All ages')}
+                            </div>
                           </div>
                           <div>
                             <div className="text-sm text-gray-500 mb-1">Capacity</div>

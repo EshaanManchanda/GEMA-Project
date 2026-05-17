@@ -119,13 +119,18 @@ const ParticipantForm: React.FC<ParticipantFormProps> = ({
     }
 
     // Age validation - only validate if ageRange is properly defined
-    const minAge = event.ageRange?.[0];
-    const maxAge = event.ageRange?.[1];
+    const rawMin = Number(event.ageRange?.[0]);
+    const rawMax = Number(event.ageRange?.[1]);
+    const isValidMin = !isNaN(rawMin) && event.ageRange?.[0] !== null && event.ageRange?.[0] !== undefined;
+    const isValidMax = !isNaN(rawMax) && event.ageRange?.[1] !== null && event.ageRange?.[1] !== undefined;
+    
+    const minAge = isValidMin && isValidMax ? Math.min(rawMin, rawMax) : (isValidMin ? rawMin : undefined);
+    const maxAge = isValidMin && isValidMax ? Math.max(rawMin, rawMax) : (isValidMax ? rawMax : undefined);
+    
     const hasValidAgeRange =
       typeof minAge === "number" &&
       typeof maxAge === "number" &&
-      minAge >= 0 &&
-      maxAge > minAge;
+      maxAge >= minAge;
 
     if (!participant.age) {
       if (hasValidAgeRange) {
@@ -467,45 +472,62 @@ const ParticipantForm: React.FC<ParticipantFormProps> = ({
               </div>
 
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">
-                  Age{" "}
-                  {event.ageRange?.[0] !== undefined &&
-                  event.ageRange?.[1] !== undefined
-                    ? `(${event.ageRange[0]}-${event.ageRange[1]} years)`
-                    : ""}{" "}
-                  *
-                </label>
-                <div className="relative">
-                  <Calendar className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-4 h-4" />
-                  <input
-                    type="number"
-                    placeholder={
-                      event.ageRange?.[0] !== undefined
-                        ? `${event.ageRange[0]}-${event.ageRange[1]} years`
-                        : "Enter age"
-                    }
-                    value={participant.age || ""}
-                    onChange={(e) =>
-                      handleInputChange(
-                        index,
-                        "age",
-                        parseInt(e.target.value) || 0,
-                      )
-                    }
-                    min={event.ageRange?.[0] ?? 0}
-                    max={event.ageRange?.[1] ?? 150}
-                    className={`w-full pl-10 pr-4 py-2 border rounded-lg focus:outline-none focus:ring-2 ${
-                      errors[index]?.age
-                        ? "border-red-300 focus:ring-red-500"
-                        : "border-gray-300 focus:ring-primary"
-                    }`}
-                  />
-                </div>
-                {errors[index]?.age && (
-                  <p className="mt-1 text-sm text-red-600">
-                    {errors[index].age}
-                  </p>
-                )}
+                {/* Compute sorted age range once */}
+                {(() => {
+                  const rawMin = Number(event.ageRange?.[0]);
+                  const rawMax = Number(event.ageRange?.[1]);
+                  const isValidMin = !isNaN(rawMin) && event.ageRange?.[0] !== null && event.ageRange?.[0] !== undefined;
+                  const isValidMax = !isNaN(rawMax) && event.ageRange?.[1] !== null && event.ageRange?.[1] !== undefined;
+                  
+                  const ageMin = isValidMin && isValidMax ? Math.min(rawMin, rawMax) : (isValidMin ? rawMin : undefined);
+                  const ageMax = isValidMin && isValidMax ? Math.max(rawMin, rawMax) : (isValidMax ? rawMax : undefined);
+                  
+                  const hasAgeRange =
+                    ageMin !== undefined && ageMax !== undefined && ageMax >= ageMin;
+
+                  return (
+                    <>
+                      <label className="block text-sm font-medium text-gray-700 mb-2">
+                        Age{" "}
+                        {hasAgeRange
+                          ? `(${ageMin}–${ageMax} years)`
+                          : ""}{" "}
+                        *
+                      </label>
+                      <div className="relative">
+                        <Calendar className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-4 h-4" />
+                        <input
+                          type="number"
+                          placeholder={
+                            hasAgeRange
+                              ? `${ageMin}–${ageMax} years`
+                              : "Enter age"
+                          }
+                          value={participant.age || ""}
+                          onChange={(e) =>
+                            handleInputChange(
+                              index,
+                              "age",
+                              parseInt(e.target.value) || 0,
+                            )
+                          }
+                          min={ageMin ?? 0}
+                          max={ageMax ?? 150}
+                          className={`w-full pl-10 pr-4 py-2 border rounded-lg focus:outline-none focus:ring-2 ${
+                            errors[index]?.age
+                              ? "border-red-300 focus:ring-red-500"
+                              : "border-gray-300 focus:ring-primary"
+                          }`}
+                        />
+                      </div>
+                      {errors[index]?.age && (
+                        <p className="mt-1 text-sm text-red-600">
+                          {errors[index].age}
+                        </p>
+                      )}
+                    </>
+                  );
+                })()}
               </div>
             </div>
 

@@ -858,7 +858,9 @@ export const confirmBooking = async (
             "Vendor";
         }
 
-        if (vendorEmail && customer) {
+        // ── Customer emails ─────────────────────────────────────────────
+        // Send customer emails regardless of whether vendor email was found
+        if (customer) {
           // Format participants data for email
           const participants = [];
           for (const item of order.items) {
@@ -894,7 +896,7 @@ export const confirmBooking = async (
             }
           }
 
-
+          // 1. Send order confirmation email to customer
           try {
             await emailService.sendOrderConfirmationEmail({
               to: customer.email,
@@ -929,7 +931,7 @@ export const confirmBooking = async (
             // Continue - email failure should not block booking confirmation
           }
 
-          // Generate PDF receipt and send as a SEPARATE follow-up email (fully non-blocking)
+          // 2. Generate PDF receipt and send as a SEPARATE follow-up email (fully non-blocking)
           setImmediate(async () => {
             try {
               const pdfBuffer = await BookingSummaryPdfService.generate({
@@ -982,26 +984,42 @@ export const confirmBooking = async (
             }
           });
 
-          await emailService.sendVendorBookingNotificationEmail({
-            to: vendorEmail,
-            vendorName: vendorName,
-            orderNumber: order.orderNumber,
-            eventTitle: event.title,
-            eventDate: firstItem.scheduleDate,
-            participantCount: participants.length,
-            orderTotal: order.total,
-            currency: order.currency,
-            isFreeEvent: !!(event as any).isFreeEvent,
-            participants,
-            customerName: `${customer.firstName} ${customer.lastName}`,
-            customerEmail: customer.email,
-            customerPhone: customer.phone,
-            venueType: event.venueType,
-            eventType: (event as any).eventType || event.type,
-            meetingLink: event.meetingLink,
-            meetingPassword: (event as any).meetingPassword,
-            role: role,
-          });
+          // 3. Send vendor notification email (only if vendorEmail is found)
+          if (vendorEmail) {
+            try {
+              await emailService.sendVendorBookingNotificationEmail({
+                to: vendorEmail,
+                vendorName: vendorName,
+                orderNumber: order.orderNumber,
+                eventTitle: event.title,
+                eventDate: firstItem.scheduleDate,
+                participantCount: participants.length,
+                orderTotal: order.total,
+                currency: order.currency,
+                isFreeEvent: !!(event as any).isFreeEvent,
+                participants,
+                customerName: `${customer.firstName} ${customer.lastName}`,
+                customerEmail: customer.email,
+                customerPhone: customer.phone,
+                venueType: event.venueType,
+                eventType: (event as any).eventType || event.type,
+                meetingLink: event.meetingLink,
+                meetingPassword: (event as any).meetingPassword,
+                role: role,
+              });
+              logger.info("Vendor notification email sent", { orderId: order._id, vendorEmail });
+            } catch (vendorEmailErr: any) {
+              logger.warn("Failed to send vendor notification email (non-blocking)", {
+                orderId: order._id, vendorEmail, error: vendorEmailErr?.message,
+              });
+            }
+          } else {
+            logger.warn("No vendor email found — skipping vendor notification", {
+              orderId: order._id,
+              eventVendorId: event.vendorId,
+              eventTeacherId: event.teacherId,
+            });
+          }
 
           // Log communications
           order.addCommunication(
@@ -1009,23 +1027,24 @@ export const confirmBooking = async (
             `Order confirmation sent to customer ${customer.email}`,
             "Customer Order Confirmation",
           );
-          order.addCommunication(
-            "email",
-            `Booking notification sent to vendor ${vendorEmail}`,
-            "Vendor Booking Notification",
-          );
+          if (vendorEmail) {
+            order.addCommunication(
+              "email",
+              `Booking notification sent to vendor ${vendorEmail}`,
+              "Vendor Booking Notification",
+            );
+          }
           await order.save();
-
-          logger.info("Vendor notification email sent successfully", {
+        } else {
+          logger.warn("Customer not found — skipping all emails", {
             orderId: order._id,
-            vendorEmail: vendorEmail,
-            orderNumber: order.orderNumber,
+            userId: order.userId,
           });
         }
       }
     } catch (emailError) {
       // Log error but don't fail the booking
-      logger.warn("Failed to send vendor notification email (non-blocking)", {
+      logger.warn("Failed to send booking notification emails (non-blocking)", {
         orderId: order._id,
         orderNumber: order.orderNumber,
         error: emailError.message,

@@ -325,6 +325,18 @@ export class TicketGenerationService {
 
                     const pdfBuffer = await BookingSummaryPdfService.generate(pdfInput);
 
+                    // Build venue string safely — location may be missing for online events
+                    const venueParts = [
+                      event.location?.address,
+                      event.location?.city,
+                    ].filter(Boolean);
+                    const venueStr =
+                      venueParts.length > 0
+                        ? venueParts.join(", ")
+                        : event.venueType === "Online"
+                        ? "Online Event"
+                        : "To be confirmed";
+
                     await sendTicketByEmail({
                       to: user.email,
                       firstName: user.firstName,
@@ -332,7 +344,7 @@ export class TicketGenerationService {
                       ticketNumber,
                       qrCode: qrCodeImage,
                       eventDate: orderItem.scheduleDate,
-                      venue: `${event.location.address}, ${event.location.city}`,
+                      venue: venueStr,
                       venueType: event.venueType,
                       eventType: (event as any).eventType,
                       meetingLink: event.meetingLink,

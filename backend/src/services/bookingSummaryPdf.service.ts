@@ -1,5 +1,6 @@
 import { logger } from "../config/index";
 import { getBrandConfig } from "../utils/brandConfig";
+import fs from "fs";
 
 type GalleryItem = {
   image?: string;
@@ -54,14 +55,28 @@ export interface BookingSummaryPdfInput {
 // ─── Puppeteer browser singleton ──────────────────────────────────────────────
 let browserPromise: Promise<import("puppeteer-core").Browser> | null = null;
 
+const getChromeExecutablePath = () => {
+  if (process.env.CHROME_PATH) return process.env.CHROME_PATH;
+  if (process.env.PUPPETEER_EXECUTABLE_PATH) return process.env.PUPPETEER_EXECUTABLE_PATH;
+  
+  switch (process.platform) {
+    case "win32":
+      return fs.existsSync("C:\\Program Files\\Google\\Chrome\\Application\\chrome.exe") 
+        ? "C:\\Program Files\\Google\\Chrome\\Application\\chrome.exe"
+        : "C:\\Program Files (x86)\\Google\\Chrome\\Application\\chrome.exe";
+    case "darwin":
+      return "/Applications/Google Chrome.app/Contents/MacOS/Google Chrome";
+    case "linux":
+    default:
+      return "/usr/bin/google-chrome";
+  }
+};
+
 async function getBrowser(): Promise<import("puppeteer-core").Browser> {
   if (!browserPromise) {
     const puppeteer = await import("puppeteer-core");
     browserPromise = puppeteer.default.launch({
-      executablePath:
-        process.env.CHROME_PATH ||
-        process.env.PUPPETEER_EXECUTABLE_PATH ||
-        "/usr/bin/google-chrome",
+      executablePath: getChromeExecutablePath(),
       args: [
         "--no-sandbox",
         "--disable-setuid-sandbox",
