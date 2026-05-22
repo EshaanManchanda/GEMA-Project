@@ -15,6 +15,7 @@ interface CertTemplate {
 }
 
 interface CertificateType {
+  _localId: string;
   name: string;
   slug: string;
   templateId?: string;
@@ -159,7 +160,7 @@ const CertificateTypesTab: React.FC<CertificateTypesTabProps> = ({ eventId }) =>
 
   useEffect(() => {
     if (serverTypes) {
-      setTypes(serverTypes.map(t => ({ ...t, _isNew: false, _dirty: false })));
+      setTypes(serverTypes.map(t => ({ ...t, _localId: t.slug, _isNew: false, _dirty: false })));
     }
   }, [serverTypes]);
 
@@ -173,6 +174,7 @@ const CertificateTypesTab: React.FC<CertificateTypesTabProps> = ({ eventId }) =>
 
   const addType = () => {
     const newType: CertificateType = {
+      _localId: `new-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`,
       name: '',
       slug: `type-${Date.now()}`,
       templateId: '',
@@ -345,7 +347,7 @@ const CertificateTypesTab: React.FC<CertificateTypesTabProps> = ({ eventId }) =>
         <div className="space-y-4">
           {types.map((type) => (
             <div
-              key={type.slug}
+              key={type._localId}
               className="relative bg-white rounded-xl shadow-sm border border-gray-100 p-5 hover:border-purple-200 transition"
             >
               {/* Delete confirm overlay */}

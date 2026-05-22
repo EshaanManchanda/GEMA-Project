@@ -10,6 +10,8 @@ import { getOrCreateVendorProfile } from "../utils/vendorHelpers";
 import Vendor from "../models/Vendor";
 import Teacher from "../models/Teacher";
 import Employee from "../models/Employee";
+import { cacheService } from "../services/cache.service";
+import { getAuth, logger } from "../config/index";
 
 /**
  * Temporary storage for admin password reset OTPs
@@ -604,6 +606,53 @@ export const updateUser = async (
       await Employee.findOneAndUpdate({ userId: id }, { $set: employeeProfileData });
     }
 
+    // In addition to role-specific updates, always synchronize core profile changes (email, phone, name)
+    // to corresponding Teacher, Vendor, or Employee documents
+    const coreUpdate: any = {};
+    if (userFields.email !== undefined) coreUpdate.email = user.email;
+    if (userFields.phone !== undefined) coreUpdate.phone = user.phone;
+
+    if (user.role === "vendor") {
+      if (Object.keys(coreUpdate).length > 0) {
+        await Vendor.findOneAndUpdate({ userId: id }, { $set: coreUpdate });
+      }
+    } else if (user.role === "teacher") {
+      if (userFields.firstName !== undefined || userFields.lastName !== undefined) {
+        coreUpdate.fullName = `${user.firstName} ${user.lastName}`;
+      }
+      if (Object.keys(coreUpdate).length > 0) {
+        await Teacher.findOneAndUpdate({ userId: id }, { $set: coreUpdate });
+      }
+    } else if (user.role === "employee") {
+      if (userFields.firstName !== undefined) coreUpdate.firstName = user.firstName;
+      if (userFields.lastName !== undefined) coreUpdate.lastName = user.lastName;
+      if (Object.keys(coreUpdate).length > 0) {
+        await Employee.findOneAndUpdate({ userId: id }, { $set: coreUpdate });
+      }
+    }
+
+    // Invalidate Redis user cache key immediately to ensure propagation
+    try {
+      const cacheKey = `user:${id}`;
+      await cacheService.delete(cacheKey);
+      logger.info(`Invalidated user cache for ID: ${id}`);
+    } catch (cacheError: any) {
+      logger.warn(`Failed to invalidate user cache for ID ${id}: ${cacheError.message}`);
+    }
+
+    // Sync new email and name to Firebase Auth if firebaseUid is present
+    if (user.firebaseUid) {
+      try {
+        await getAuth().updateUser(user.firebaseUid, {
+          email: user.email,
+          displayName: `${user.firstName} ${user.lastName}`,
+        });
+        logger.info(`Successfully synchronized user ${id} details to Firebase Auth`);
+      } catch (fbError: any) {
+        logger.warn(`Failed to synchronize user ${id} details to Firebase Auth: ${fbError.message}`);
+      }
+    }
+
     // Re-fetch related for response
     let vendor, teacher, employee;
     if (user.role === "vendor") vendor = await Vendor.findOne({ userId: id });
@@ -728,6 +777,63 @@ export const updateUserStatus = async (
       return next(new AppError("User not found", 404));
     }
 
+    // Cascade status updates to Teacher, Vendor, or Employee models
+    try {
+      if (user.role === "vendor") {
+        await Vendor.findOneAndUpdate(
+          { userId: id },
+          {
+            $set: {
+              isActive: status === "active",
+              isSuspended: status === "suspended",
+              ...(status === "suspended" ? { suspensionReason: "Suspended by Administrator" } : {}),
+            },
+          }
+        );
+      } else if (user.role === "teacher") {
+        await Teacher.findOneAndUpdate(
+          { userId: id },
+          {
+            $set: {
+              isActive: status === "active",
+              isSuspended: status === "suspended",
+            },
+          }
+        );
+      } else if (user.role === "employee") {
+        const empStatus = status === "active" ? "active" : status === "suspended" ? "suspended" : "inactive";
+        await Employee.findOneAndUpdate(
+          { userId: id },
+          { $set: { status: empStatus } }
+        );
+      }
+      logger.info(`Cascaded status '${status}' to ${user.role} profile for user: ${id}`);
+    } catch (syncError: any) {
+      logger.error(`Failed to cascade status update for user ${id}: ${syncError.message}`);
+    }
+
+    // Invalidate Redis user cache key immediately
+    try {
+      const cacheKey = `user:${id}`;
+      await cacheService.delete(cacheKey);
+      logger.info(`Invalidated user cache for ID: ${id}`);
+    } catch (cacheError: any) {
+      logger.warn(`Failed to invalidate user cache for ID ${id}: ${cacheError.message}`);
+    }
+
+    // Disable or Enable the user in Firebase Auth if firebaseUid is present
+    if (user.firebaseUid) {
+      try {
+        const isDisabled = status === "suspended" || status === "inactive";
+        await getAuth().updateUser(user.firebaseUid, {
+          disabled: isDisabled,
+        });
+        logger.info(`Synchronized Firebase Auth enabled status for user ${id} (disabled: ${isDisabled})`);
+      } catch (fbError: any) {
+        logger.warn(`Failed to sync Firebase Auth enabled status for user ${id}: ${fbError.message}`);
+      }
+    }
+
     const response: ApiResponse = {
       success: true,
       message: "User status updated successfully",
@@ -773,6 +879,15 @@ export const updateUserRole = async (
 
     if (!user) {
       return next(new AppError("User not found", 404));
+    }
+
+    // Invalidate Redis user cache key immediately
+    try {
+      const cacheKey = `user:${id}`;
+      await cacheService.delete(cacheKey);
+      logger.info(`Invalidated user cache for ID: ${id}`);
+    } catch (cacheError: any) {
+      logger.warn(`Failed to invalidate user cache for ID ${id}: ${cacheError.message}`);
     }
 
     const response: ApiResponse = {

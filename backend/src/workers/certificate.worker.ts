@@ -3,7 +3,7 @@ import Handlebars from "handlebars";
 import QRCode from "qrcode";
 import { QUEUE_NAMES, bullMQConnection, areQueuesEnabled } from "../config/queue";
 import Certificate, { Template, AuditLog, CertificateRequest, ITemplate, ITemplateField } from "../models/Certificate";
-import { QueueService } from "../services/queue.service";
+import { emailService } from "../services/email.service";
 import { MediaService } from "../services/media.service";
 import logger from "../config/logger";
 
@@ -111,24 +111,55 @@ const certificateWorker = areQueuesEnabled
             const certDoc = await Certificate.findById(certificateId).populate("eventId", "title");
             const eventTitle = (certDoc?.eventId as any)?.title || "Event";
 
-            await QueueService.addEmailJob({
-              type: "generic",
-              to: recipient.email,
-              subject: `Your Certificate — ${eventTitle}`,
-              html: buildCertEmailHtml(recipient.name, eventTitle, cert?.serialNumber, pdfUrl, qrData),
-            });
+            try {
+              const messageId = await emailService.sendEmail({
+                to: recipient.email,
+                subject: `Your Certificate — ${eventTitle}`,
+                html: buildCertEmailHtml(recipient.name, eventTitle, cert?.serialNumber, pdfUrl, qrData),
+              });
 
-            await Certificate.findByIdAndUpdate(certificateId, {
-              status: "emailed",
-              $push: { history: { event: "email_sent", at: new Date() } },
-            });
+              if (typeof messageId === "string" && messageId.startsWith("dev-email-")) {
+                throw new Error(
+                  "SMTP delivery failed (dev fallback active). Check email host/user/password and from address.",
+                );
+              }
 
-            await AuditLog.create({
-              action: "certificate.emailed",
-              entityType: "Certificate",
-              entityId: certificateId,
-              meta: { to: recipient.email },
-            });
+              await Certificate.findByIdAndUpdate(certificateId, {
+                status: "emailed",
+                $push: { history: { event: "email_sent", at: new Date() } },
+              });
+
+              await AuditLog.create({
+                action: "certificate.emailed",
+                entityType: "Certificate",
+                entityId: certificateId,
+                meta: { to: recipient.email, messageId },
+              });
+            } catch (emailErr: any) {
+              // Keep certificate as generated if PDF succeeded; record email failure separately.
+              logger.error("Certificate email send failed", {
+                certificateId,
+                to: recipient.email,
+                error: emailErr?.message || String(emailErr),
+              });
+
+              await Certificate.findByIdAndUpdate(certificateId, {
+                $push: {
+                  history: {
+                    event: "email_failed",
+                    meta: { error: emailErr?.message || String(emailErr) },
+                    at: new Date(),
+                  },
+                },
+              });
+
+              await AuditLog.create({
+                action: "certificate.email_failed",
+                entityType: "Certificate",
+                entityId: certificateId,
+                meta: { to: recipient.email, error: emailErr?.message || String(emailErr) },
+              });
+            }
           }
 
           logger.info(`Certificate job ${job.id} complete`, { certificateId });
@@ -161,30 +192,19 @@ const certificateWorker = areQueuesEnabled
     )
   : null;
 
-// ─── Singleton Puppeteer browser (reuse across requests) ─────────────────────
+// ─── Puppeteer browser lifecycle ─────────────────────────────────────────────
 
-let _browserPromise: Promise<import("puppeteer").Browser> | null = null;
-
-async function getBrowser(): Promise<import("puppeteer").Browser> {
-  if (!_browserPromise) {
-    const puppeteer = await import("puppeteer");
-    _browserPromise = puppeteer.default.launch({
-      args: [
-        "--no-sandbox",
-        "--disable-setuid-sandbox",
-        "--disable-dev-shm-usage",
-        "--disable-gpu",
-        "--single-process",
-      ],
-      headless: true,
-    });
-    _browserPromise.then((b) =>
-      b.on("disconnected", () => {
-        _browserPromise = null;
-      }),
-    );
-  }
-  return _browserPromise;
+async function launchBrowser(): Promise<import("puppeteer").Browser> {
+  const puppeteer = await import("puppeteer");
+  return puppeteer.default.launch({
+    args: [
+      "--no-sandbox",
+      "--disable-setuid-sandbox",
+      "--disable-dev-shm-usage",
+      "--disable-gpu",
+    ],
+    headless: true,
+  });
 }
 
 // ─── Render ───────────────────────────────────────────────────────────────────
@@ -219,7 +239,6 @@ export async function renderCertificate(
   const mediaAsset = await new MediaService().uploadMedia(mockFile, {
     category: 'document',
     folder: 'certificates',
-    uploadedBy: 'system',
     tags: ['certificate'],
   });
 
@@ -227,47 +246,61 @@ export async function renderCertificate(
 }
 
 async function htmlToPdf(html: string, widthPx: number, heightPx: number, orientation?: 'portrait' | 'landscape'): Promise<Buffer> {
-  const browser = await getBrowser();
-  const page = await browser.newPage();
+  const renderOnce = async (): Promise<Buffer> => {
+    const browser = await launchBrowser();
+    const page = await browser.newPage();
+    try {
+      await page.setViewport({ width: widthPx, height: heightPx });
+      // domcontentloaded avoids hanging on slow/external image loads
+      await page.setContent(html, { waitUntil: "domcontentloaded", timeout: 30000 });
+      // Wait for all <img> elements to settle before capturing
+      await page.evaluate(() =>
+        Promise.all(
+          Array.from(document.images)
+            .filter((img) => !img.complete)
+            .map(
+              (img) =>
+                new Promise<void>((resolve) => {
+                  img.onload = img.onerror = () => resolve();
+                }),
+            ),
+        ),
+      );
+
+      const pdfOptions: any = {
+        width: `${widthPx}px`,
+        height: `${heightPx}px`,
+        printBackground: true,
+        margin: { top: "0", right: "0", bottom: "0", left: "0" },
+      };
+
+      // Handle orientation
+      if (orientation === 'portrait') {
+        // Swap dimensions for portrait - PDF output dimensions are swapped
+        pdfOptions.width = `${heightPx}px`;
+        pdfOptions.height = `${widthPx}px`;
+        pdfOptions.pageOrientation = 'portrait';
+      } else {
+        pdfOptions.pageOrientation = 'landscape';
+      }
+
+      const pdf = await page.pdf(pdfOptions);
+      return Buffer.from(pdf);
+    } finally {
+      await page.close().catch(() => {});
+      await browser.close().catch(() => {});
+    }
+  };
+
   try {
-    await page.setViewport({ width: widthPx, height: heightPx });
-    // domcontentloaded avoids hanging on slow/external image loads
-    await page.setContent(html, { waitUntil: "domcontentloaded", timeout: 30000 });
-    // Wait for all <img> elements to settle before capturing
-    await page.evaluate(() =>
-      Promise.all(
-        Array.from(document.images)
-          .filter((img) => !img.complete)
-          .map(
-            (img) =>
-              new Promise<void>((resolve) => {
-                img.onload = img.onerror = () => resolve();
-              }),
-          ),
-      ),
-    );
-
-    const pdfOptions: any = {
-      width: `${widthPx}px`,
-      height: `${heightPx}px`,
-      printBackground: true,
-      margin: { top: "0", right: "0", bottom: "0", left: "0" },
-    };
-
-    // Handle orientation
-    if (orientation === 'portrait') {
-      // Swap dimensions for portrait - PDF output dimensions are swapped
-      pdfOptions.width = `${heightPx}px`;
-      pdfOptions.height = `${widthPx}px`;
-      pdfOptions.pageOrientation = 'portrait';
-    } else {
-      pdfOptions.pageOrientation = 'landscape';
+    return await renderOnce();
+  } catch (error: any) {
+    const message = error?.message || String(error || "");
+    if (/connection closed|page has been closed|target closed|protocol error/i.test(message)) {
+      return await renderOnce();
     }
 
-    const pdf = await page.pdf(pdfOptions);
-    return Buffer.from(pdf);
-  } finally {
-    await page.close();
+    throw error;
   }
 }
 

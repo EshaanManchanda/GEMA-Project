@@ -195,7 +195,7 @@ const mediaAssetSchema = new Schema<IMediaAsset>(
     uploadedBy: {
       type: Schema.Types.ObjectId,
       ref: "User",
-      required: [true, "Uploader is required"],
+      required: false,
     },
     isPublic: {
       type: Boolean,

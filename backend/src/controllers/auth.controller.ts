@@ -12,6 +12,9 @@ import {
 } from "../models/index";
 import MediaAsset from "../models/MediaAsset";
 import { AppError } from "../middleware/index";
+import Teacher from "../models/Teacher";
+import Vendor from "../models/Vendor";
+import Employee from "../models/Employee";
 import { emailService } from "../services/email.service";
 import smsService from "../services/sms.service";
 import { cacheService } from "../services/cache.service";
@@ -841,9 +844,49 @@ export const updateProfile = async (
 
     await user.save();
 
+    // Synchronize core profile changes (name, phone) to corresponding Teacher, Vendor, or Employee documents
+    try {
+      const coreUpdate: any = {};
+      if (phone !== undefined) coreUpdate.phone = user.phone;
+
+      if (user.role === "vendor") {
+        if (Object.keys(coreUpdate).length > 0) {
+          await Vendor.findOneAndUpdate({ userId: userId }, { $set: coreUpdate });
+        }
+      } else if (user.role === "teacher") {
+        if (firstName !== undefined || lastName !== undefined) {
+          coreUpdate.fullName = `${user.firstName} ${user.lastName}`;
+        }
+        if (Object.keys(coreUpdate).length > 0) {
+          await Teacher.findOneAndUpdate({ userId: userId }, { $set: coreUpdate });
+        }
+      } else if (user.role === "employee") {
+        if (firstName !== undefined) coreUpdate.firstName = user.firstName;
+        if (lastName !== undefined) coreUpdate.lastName = user.lastName;
+        if (Object.keys(coreUpdate).length > 0) {
+          await Employee.findOneAndUpdate({ userId: userId }, { $set: coreUpdate });
+        }
+      }
+      logger.info(`Successfully synchronized profile changes for user: ${userId}`);
+    } catch (syncError: any) {
+      logger.error(`Failed to cascade profile changes for user ${userId}: ${syncError.message}`);
+    }
+
     // Invalidate user cache to ensure fresh data on next request
     const cacheKey = `user:${userId}`;
     await cacheService.delete(cacheKey);
+
+    // Sync new display name to Firebase Auth if firebaseUid is present
+    if (user.firebaseUid) {
+      try {
+        await getAuth().updateUser(user.firebaseUid, {
+          displayName: `${user.firstName} ${user.lastName}`,
+        });
+        logger.info(`Successfully synchronized user ${userId} display name to Firebase Auth`);
+      } catch (fbError: any) {
+        logger.warn(`Failed to synchronize user ${userId} name to Firebase Auth: ${fbError.message}`);
+      }
+    }
 
     // Calculate profile completion
     const calculateProfileCompletion = (user: IUser): number => {

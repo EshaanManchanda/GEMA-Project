@@ -9,8 +9,8 @@ import Certificate, {
 } from "../../../models/Certificate";
 import Student from "../../../models/Student";
 import { certificateQueue } from "../../../config/queue";
-import { QueueService } from "../../../services/queue.service";
-import { buildCertEmailHtml } from "../../../workers/certificate.worker";
+import { emailService } from "../../../services/email.service";
+import { buildCertEmailHtml, renderCertificate } from "../../../workers/certificate.worker";
 import { AppError } from "../../../middleware/index";
 import logger from "../../../config/logger";
 
@@ -167,10 +167,10 @@ class CertificateService {
 
   // ─── Queue ───────────────────────────────────────────────────────────────
 
-  async queuePDFGeneration(certificateId: string, opts: QueueGenerationOpts): Promise<void> {
+  async queuePDFGeneration(certificateId: string, opts: QueueGenerationOpts): Promise<boolean> {
     if (!certificateQueue) {
       logger.warn(`Certificate queue unavailable — cert ${certificateId} stays pending`);
-      return;
+      return false;
     }
 
     await certificateQueue.add(
@@ -185,6 +185,8 @@ class CertificateService {
       },
       { attempts: 3, backoff: { type: "exponential", delay: 3000 } },
     );
+
+    return true;
   }
 
   // ─── Email ───────────────────────────────────────────────────────────────
@@ -196,8 +198,7 @@ class CertificateService {
 
     const eventTitle = (certificate.eventId as any)?.title || "Event";
 
-    await QueueService.addEmailJob({
-      type: "generic",
+    const messageId = await emailService.sendEmail({
       to: certificate.recipient.email,
       subject: `Your Certificate — ${eventTitle}`,
       html: buildCertEmailHtml(
@@ -209,6 +210,13 @@ class CertificateService {
       ),
     });
 
+    if (typeof messageId === "string" && messageId.startsWith("dev-email-")) {
+      throw new AppError(
+        "SMTP delivery failed. Check email settings (host/user/password/from) in Admin > App Settings > Email.",
+        500,
+      );
+    }
+
     await Certificate.findByIdAndUpdate(certificateId, {
       $push: { history: { event: "email_resent", actor: actorId, at: new Date() } },
     });
@@ -218,7 +226,77 @@ class CertificateService {
       entityType: "Certificate",
       entityId: certificateId,
       actor: actorId,
-      meta: { to: certificate.recipient.email },
+      meta: { to: certificate.recipient.email, messageId },
+    });
+  }
+
+  private async generateCertificateSynchronously(
+    certificateId: string,
+    opts: {
+      templateId?: string;
+      recipient: { name: string; email: string };
+      data: Record<string, any>;
+      sendEmail?: boolean;
+    },
+  ): Promise<void> {
+    const certificate = await Certificate.findById(certificateId).populate("eventId", "title");
+    if (!certificate) throw new AppError("Certificate not found", 404);
+
+    const eventTitle = (certificate.eventId as any)?.title || "Event";
+    let pdfUrl: string | undefined;
+
+    await Certificate.findByIdAndUpdate(certificateId, {
+      status: "generating",
+      $push: { history: { event: "generation_started", at: new Date() } },
+    });
+
+    if (opts.templateId) {
+      const template = await Template.findById(opts.templateId);
+      if (!template) throw new AppError("Template not found for this certificate", 404);
+
+      pdfUrl = await renderCertificate(template, {
+        ...opts.data,
+        recipientName: opts.recipient.name,
+        recipientEmail: opts.recipient.email,
+        issuedDate: new Date().toLocaleDateString("en-GB", {
+          day: "numeric",
+          month: "long",
+          year: "numeric",
+        }),
+      });
+    }
+
+    await Certificate.findByIdAndUpdate(certificateId, {
+      status: "generated",
+      ...(pdfUrl ? { pdfUrl } : {}),
+      issuedAt: new Date(),
+      $push: { history: { event: "generation_complete", at: new Date() } },
+    });
+
+    if (!opts.sendEmail) return;
+
+    const messageId = await emailService.sendEmail({
+      to: opts.recipient.email,
+      subject: `Your Certificate — ${eventTitle}`,
+      html: buildCertEmailHtml(
+        opts.recipient.name,
+        eventTitle,
+        certificate.serialNumber,
+        pdfUrl,
+        certificate.qrData,
+      ),
+    });
+
+    if (typeof messageId === "string" && messageId.startsWith("dev-email-")) {
+      throw new AppError(
+        "SMTP delivery failed. Check email settings (host/user/password/from) in Admin > App Settings > Email.",
+        500,
+      );
+    }
+
+    await Certificate.findByIdAndUpdate(certificateId, {
+      status: "emailed",
+      $push: { history: { event: "email_sent", at: new Date() } },
     });
   }
 
@@ -257,12 +335,34 @@ class CertificateService {
       issuedBy: opts.issuedBy,
     });
 
-    await this.queuePDFGeneration(certificate._id.toString(), {
-      templateId: resolvedTemplateId,
-      recipient: opts.recipient,
-      data: enrichedData,
-      options: { sendEmail: opts.sendEmail },
-    });
+    const certificateId = certificate._id.toString();
+
+    try {
+      const queued = await this.queuePDFGeneration(certificateId, {
+        templateId: resolvedTemplateId,
+        recipient: opts.recipient,
+        data: enrichedData,
+        options: { sendEmail: opts.sendEmail },
+      });
+
+      if (!queued) {
+        await this.generateCertificateSynchronously(certificateId, {
+          templateId: resolvedTemplateId,
+          recipient: opts.recipient,
+          data: enrichedData,
+          sendEmail: opts.sendEmail,
+        });
+      }
+    } catch (error) {
+      logger.warn(`Certificate queue failed for ${certificateId} — falling back to synchronous generation`, error);
+
+      await this.generateCertificateSynchronously(certificateId, {
+        templateId: resolvedTemplateId,
+        recipient: opts.recipient,
+        data: enrichedData,
+        sendEmail: opts.sendEmail,
+      });
+    }
 
     return certificate;
   }

@@ -1492,7 +1492,7 @@ const adminAPI = {
   getCertTemplates: async () => {
     try {
       const response = await ApiService.get('/certificates/templates');
-      return response.data?.data?.templates ?? [];
+      return response?.data?.templates ?? response?.data ?? [];
     } catch (error) {
       throw error;
     }
@@ -1501,7 +1501,7 @@ const adminAPI = {
   getEventCertTypes: async (eventId: string) => {
     try {
       const response = await ApiService.get(`/events/${eventId}/certificate-types`);
-      return response.data?.data ?? [];
+      return response?.data ?? [];
     } catch (error) {
       throw error;
     }

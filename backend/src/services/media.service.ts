@@ -23,7 +23,7 @@ export class MediaService {
     options: {
       category: "blog" | "profile" | "event" | "document" | "misc";
       folder: string;
-      uploadedBy: string;
+      uploadedBy?: string;
       tags?: string[];
     },
   ): Promise<IMediaAsset> {
