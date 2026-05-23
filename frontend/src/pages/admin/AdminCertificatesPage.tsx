@@ -115,7 +115,8 @@ const CertListTab: React.FC = () => {
     setResending(cert._id);
     try {
       await certificateAPI.resendEmail(cert._id);
-      toast.success('Email queued for resend');
+      toast.success('Email sent successfully');
+      fetchCerts();
     } catch (err: any) {
       toast.error(err?.response?.data?.message || 'Failed to resend email');
     } finally {
