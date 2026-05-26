@@ -11,6 +11,7 @@ import {
   setBookingSchedule,
   setBookingStep,
   setCurrentBooking,
+  setBookingParticipants,
   resetBookingFlow,
   selectBookingFlow,
   selectBookingStep,
@@ -201,6 +202,19 @@ const BookingPage: React.FC = () => {
     isTeachingEvent?: boolean;
   } | null;
 
+  const readBookingDraft = (key: string) => {
+    try {
+      const storedDraft = sessionStorage.getItem(`kidrove.bookingDraft:${key}`);
+      return storedDraft ? JSON.parse(storedDraft) : null;
+    } catch (storageError) {
+      logger.warn('Failed to read booking draft from session storage', {
+        key,
+        error: storageError,
+      });
+      return null;
+    }
+  };
+
   useEffect(() => {
     // Prevent duplicate initialization (especially in React StrictMode)
     const initKey = `${actualEventId}-${location.pathname}`;
@@ -263,6 +277,48 @@ const BookingPage: React.FC = () => {
 
         // Initialize booking flow first
         dispatch(resetBookingFlow());
+
+        const storedBookingDraft = readBookingDraft(actualEventId);
+        if (storedBookingDraft?.event) {
+          logger.info('Restoring booking draft from session storage', {
+            sessionId,
+            actualEventId,
+            hasScheduleId: !!storedBookingDraft.scheduleId,
+            quantity: storedBookingDraft.quantity,
+          });
+
+          const draftEvent = storedBookingDraft.event;
+          const bookingEventId = draftEvent._id || draftEvent.id || actualEventId;
+          dispatch(setBookingEvent(bookingEventId));
+
+          if (storedBookingDraft.scheduleId) {
+            dispatch(setBookingSchedule(storedBookingDraft.scheduleId));
+          }
+
+          if (storedBookingDraft.quantity && storedBookingDraft.quantity > 0) {
+            const draftParticipants = Array.from(
+              { length: storedBookingDraft.quantity },
+              (_, index) => ({
+                id: `participant-${index + 1}`,
+                name: '',
+                email: '',
+                phone: '',
+                age: undefined,
+                gender: undefined,
+                emergencyContact: undefined,
+                specialRequirements: '',
+                dietaryRestrictions: [],
+              }),
+            );
+            dispatch(setBookingParticipants(draftParticipants));
+          }
+
+          setEvent(draftEvent);
+          setError(null);
+          setLoading(false);
+          return;
+        }
+
         // Prefer the actual _id from route state over URL slug
         const bookingEventId = routeState?.event?._id || actualEventId;
         dispatch(setBookingEvent(bookingEventId));
@@ -314,14 +370,31 @@ const BookingPage: React.FC = () => {
             });
             setEvent(eventData);
           } catch (regularEventError: any) {
-            // If regular event not found, try teaching event
-            logger.info('Regular event not found, trying teaching event', {
+            // If regular event not found, try slug lookup before falling back to teaching events.
+            logger.info('Regular event lookup failed, trying slug lookup', {
               sessionId,
               actualEventId,
               error: regularEventError.response?.status
             });
 
             try {
+              const slugEventData = await eventsAPI.getEventBySlug(actualEventId);
+              logger.info('Event successfully fetched by slug', {
+                sessionId,
+                eventId: slugEventData._id,
+                eventTitle: slugEventData.title,
+                eventSlug: slugEventData.slug
+              });
+              setEvent(slugEventData);
+            } catch (slugEventError: any) {
+              // If slug lookup also fails, try teaching event
+              logger.info('Slug event not found, trying teaching event', {
+                sessionId,
+                actualEventId,
+                error: slugEventError.response?.status
+              });
+
+              try {
               const teachingEventAPI = (await import('../services/api/teachingEventAPI')).default;
               const response = await teachingEventAPI.getById(actualEventId);
               const te = response.teachingEvent;
@@ -331,15 +404,61 @@ const BookingPage: React.FC = () => {
                 eventTitle: te.title
               });
               setEvent({ ...te, _id: te._id, id: te._id } as any);
-            } catch (teachingEventError: any) {
-              // Neither worked, throw the original error
-              logger.error('Failed to fetch both regular and teaching event', {
-                sessionId,
-                actualEventId,
-                regularError: regularEventError.response?.status,
-                teachingError: teachingEventError.response?.status
-              });
-              throw regularEventError; // Throw original error for outer catch
+              } catch (teachingEventError: any) {
+                // Last fallback: search by the route text and try to match an event by slug or title.
+                try {
+                  const fallbackQuery = actualEventId.replace(/-/g, ' ');
+                  const searchResponse = await eventsAPI.getAllEvents({
+                    search: fallbackQuery,
+                    limit: 20,
+                  });
+                  const fallbackEvents = Array.isArray((searchResponse as any)?.events)
+                    ? (searchResponse as any).events
+                    : Array.isArray((searchResponse as any)?.data?.events)
+                      ? (searchResponse as any).data.events
+                      : [];
+
+                  const normalizedTarget = actualEventId.toLowerCase();
+                  const matchedEvent = fallbackEvents.find((candidate: any) => {
+                    const candidateSlug = String(candidate?.slug || '').toLowerCase();
+                    const candidateId = String(candidate?._id || candidate?.id || '').toLowerCase();
+                    const candidateTitle = String(candidate?.title || '').toLowerCase();
+                    return (
+                      candidateSlug === normalizedTarget ||
+                      candidateId === normalizedTarget ||
+                      candidateTitle === normalizedTarget ||
+                      candidateTitle.replace(/\s+/g, '-') === normalizedTarget
+                    );
+                  });
+
+                  if (matchedEvent) {
+                    logger.info('Event resolved from search fallback', {
+                      sessionId,
+                      eventId: matchedEvent._id,
+                      eventTitle: matchedEvent.title,
+                      eventSlug: matchedEvent.slug
+                    });
+                    setEvent(matchedEvent);
+                  } else {
+                    // Neither worked, throw the original error
+                    logger.error('Failed to fetch regular, slug, teaching, and search fallback event', {
+                      sessionId,
+                      actualEventId,
+                      regularError: regularEventError.response?.status,
+                      slugError: slugEventError.response?.status,
+                      teachingError: teachingEventError.response?.status
+                    });
+                    throw regularEventError; // Throw original error for outer catch
+                  }
+                } catch (searchFallbackError) {
+                  logger.error('Search fallback failed for booking event lookup', {
+                    sessionId,
+                    actualEventId,
+                    error: searchFallbackError
+                  });
+                  throw regularEventError;
+                }
+              }
             }
           }
         }

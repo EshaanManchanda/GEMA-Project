@@ -303,7 +303,12 @@ export const fetchRegistrationConfig = createAsyncThunk(
   async (eventId: string, { rejectWithValue }) => {
     try {
       const response = await registrationAPI.getConfig(eventId);
-      return (response as any).registrationConfig ?? response;
+      return (
+        (response as any)?.registrationConfig ??
+        (response as any)?.data?.registrationConfig ??
+        (response as any)?.data ??
+        response
+      );
     } catch (error: any) {
       const message = error.response?.data?.message || 'Failed to fetch registration config';
       return rejectWithValue(message);
@@ -323,7 +328,12 @@ export const saveRegistrationConfig = createAsyncThunk(
         ...params.config,
       });
       // Note: Don't show toast here - let component handle user notifications
-      return (response as any).registrationConfig ?? response;
+      return (
+        (response as any)?.registrationConfig ??
+        (response as any)?.data?.registrationConfig ??
+        (response as any)?.data ??
+        response
+      );
     } catch (error: any) {
       const message = error.response?.data?.message || 'Failed to save configuration';
       toast.error(message);
@@ -356,7 +366,12 @@ export const duplicateRegistrationConfig = createAsyncThunk(
         sourceEventId: params.sourceEventId,
       });
       toast.success('Configuration duplicated successfully');
-      return response.data.registrationConfig;
+      return (
+        (response as any)?.data?.registrationConfig ??
+        (response as any)?.registrationConfig ??
+        (response as any)?.data ??
+        response
+      );
     } catch (error: any) {
       const message = error.response?.data?.message || 'Failed to duplicate configuration';
       toast.error(message);

@@ -501,7 +501,7 @@ const EventDetailPage: React.FC = () => {
 
     // Reset booking flow and initialize with current event
     dispatch(resetBookingFlow());
-    dispatch(setBookingEvent(event._id)); // Must be ObjectId
+    dispatch(setBookingEvent(event._id)); // Preserve canonical event id in booking state
 
     // Create initial participants based on quantity with validation
     if (quantity < 1 || (!selectedSession.isUnlimited && quantity > selectedSession.availableSeats)) {
@@ -523,20 +523,36 @@ const EventDetailPage: React.FC = () => {
 
     dispatch(setBookingParticipants(initialParticipants));
 
-    // Navigate to booking page with the flat session data the backend expects
-    navigate(`/booking/${event.slug}`, {
+    const bookingDraft = {
+      event: { ...event, _id: event._id, id: event._id },
+      quantity,
+      selectedDate: selectedSession.date.toISOString(),
+      schedule: selectedSession,
+      scheduleId: selectedSession.scheduleId,
+      ...(selectedSession.timeSlotIndex !== undefined
+        ? { timeSlotIndex: selectedSession.timeSlotIndex }
+        : {}),
+      sessionPrice: selectedSession.price,
+      totalPrice: (selectedSession.price * quantity).toFixed(2),
+      currency: event.currency || 'AED',
+    };
+
+    try {
+      sessionStorage.setItem(`kidrove.bookingDraft:${event._id}`, JSON.stringify(bookingDraft));
+      if (event.slug) {
+        sessionStorage.setItem(`kidrove.bookingDraft:${event.slug}`, JSON.stringify(bookingDraft));
+      }
+    } catch (storageError) {
+      console.warn('Unable to persist booking draft', storageError);
+    }
+
+    const bookingRouteId = event.slug || event._id;
+
+    // Navigate to booking page using the human-readable slug when available
+    navigate(`/booking/${bookingRouteId}`, {
       state: {
-        event,
-        quantity,
-        selectedDate: selectedSession.date.toISOString(),
-        scheduleId: selectedSession.scheduleId,
-        // timeSlotIndex is present when the session came from a timeSlots[] entry
-        ...(selectedSession.timeSlotIndex !== undefined
-          ? { timeSlotIndex: selectedSession.timeSlotIndex }
-          : {}),
-        sessionPrice: selectedSession.price,
-        totalPrice: (selectedSession.price * quantity).toFixed(2),
-        currency: event.currency || 'AED'
+        ...bookingDraft,
+        event
       }
     });
 
@@ -690,7 +706,24 @@ const EventDetailPage: React.FC = () => {
     : (event.dateSchedule || []).reduce((sum: number, s: any) => sum + (s.totalSeats ?? s.availableSeats ?? 0), 0);
   const soldSeats = (event.dateSchedule || []).reduce((sum: number, s: any) => sum + (s.soldSeats ?? 0), 0);
   const firstDate = event.dateSchedule?.[0]?.date || event.dateSchedule?.[0]?.startDate;
-  const totalAvailableEventSeats = Math.max(0, totalSeats - soldSeats);
+  const totalAvailableEventSeats = hasUnlimited
+    ? 0
+    : (event.dateSchedule || []).reduce((sum: number, s: any) => sum + (s.availableSeats ?? 0), 0);
+
+  const selectedScheduleForCapacity = selectedSession
+    ? (event.dateSchedule || []).find((s: any) => String(s?._id) === String(selectedSession.scheduleId))
+    : null;
+
+  const bookingPanelTotalSeats = isUnlimited
+    ? 999999
+    : (selectedSession
+      ? (selectedScheduleForCapacity?.totalSeats
+        ?? (selectedSession.availableSeats + (selectedScheduleForCapacity?.soldSeats || 0) + (selectedScheduleForCapacity?.reservedSeats || 0)))
+      : totalSeats);
+
+  const bookingPanelAvailableSeats = isUnlimited
+    ? 999999
+    : (selectedSession ? selectedSession.availableSeats : totalAvailableEventSeats);
 
   const breadcrumbs = event ? [
     { name: 'Home', url: '/' },
@@ -1366,15 +1399,17 @@ const EventDetailPage: React.FC = () => {
                         <div
                           className="bg-gradient-to-r from-green-400 to-green-600 h-3 rounded-full transition-all duration-500 ease-out shadow-sm"
                           style={{
-                            width: isUnlimited ? '100%' : `${((getCurrentAvailableSeats() / (event.dateSchedule?.[0]?.totalSeats || 1)) * 100)}%`
+                            width: isUnlimited
+                              ? '100%'
+                              : `${Math.min(100, Math.max(0, (bookingPanelAvailableSeats / Math.max(1, bookingPanelTotalSeats)) * 100))}%`
                           }}
                         >
                           <div className="absolute inset-0 bg-white bg-opacity-25 animate-pulse"></div>
                         </div>
                       </div>
                       <div className="flex justify-between text-sm text-gray-600">
-                        <span className="font-medium">{isUnlimited ? 'Unlimited' : `${getCurrentAvailableSeats()} available`}</span>
-                        <span>{isUnlimited ? 'No seat limit' : `${event.dateSchedule?.[0]?.totalSeats || 0} total`}</span>
+                        <span className="font-medium">{isUnlimited ? 'Unlimited' : `${bookingPanelAvailableSeats} available`}</span>
+                        <span>{isUnlimited ? 'No seat limit' : `${bookingPanelTotalSeats} total`}</span>
                       </div>
                     </div>
                   </>

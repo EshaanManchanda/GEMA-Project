@@ -94,6 +94,27 @@ export const generateSecureQRData = (data: QRCodeData): string => {
  */
 export const validateQRData = (qrDataString: string): { isValid: boolean; data?: SecureQRData; error?: string } => {
   try {
+    if (qrDataString.startsWith('http://') || qrDataString.startsWith('https://')) {
+      const url = new URL(qrDataString);
+      const ticketNumber = url.pathname.match(/\/verify-ticket\/([^/?#]+)/)?.[1];
+
+      if (!ticketNumber) {
+        return { isValid: false, error: 'Invalid QR code URL format' };
+      }
+
+      return {
+        isValid: true,
+        data: {
+          ticketNumber,
+          type: 'ticket',
+          generatedAt: new Date().toISOString(),
+          expiresAt: new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString(),
+          version: '1.0',
+          checksum: 'url-code',
+        },
+      };
+    }
+
     const data = JSON.parse(qrDataString) as SecureQRData;
 
     // Check required fields based on type

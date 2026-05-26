@@ -153,6 +153,14 @@ export const getRegistrationConfig = async (
 ) => {
   try {
     const { eventId } = req.params;
+    const defaultConfig = {
+      enabled: true,
+      fields: [],
+      maxRegistrations: undefined,
+      registrationDeadline: undefined,
+      requiresApproval: false,
+      emailNotifications: { toVendor: true, toParticipant: true },
+    };
 
     const event = await Event.findById(eventId).select(
       "title registrationConfig vendorId teacherId",
@@ -186,7 +194,7 @@ export const getRegistrationConfig = async (
     // Only block public/non-owner requests when registration is not enabled.
     // Vendor owners and admins must always be able to view/edit the config
     // so the form builder works even before registration is toggled on.
-    if (!event.registrationConfig || !event.registrationConfig.enabled) {
+    if (event.registrationConfig && !event.registrationConfig.enabled) {
       if (!isOwner && !isAdmin) {
         return next(
           new AppError("Registration is not enabled for this event", 404),
@@ -194,13 +202,8 @@ export const getRegistrationConfig = async (
       }
     }
 
-    // For events with no config yet, return an empty default so the builder can initialise
-    const regConfig = event.registrationConfig || {
-      enabled: false,
-      fields: [],
-      requiresApproval: false,
-      emailNotifications: { toVendor: true, toParticipant: true },
-    };
+    // For events with no config yet, return a visible default form instead of a 404.
+    const regConfig = event.registrationConfig || defaultConfig;
 
     const responseData: any = {
       enabled: regConfig.enabled,

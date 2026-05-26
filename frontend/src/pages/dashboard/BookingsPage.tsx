@@ -23,6 +23,62 @@ interface Booking {
   status: 'confirmed' | 'pending' | 'cancelled' | 'completed';
 }
 
+const parseDate = (value?: string | Date | null): Date | null => {
+  if (!value) return null;
+  const date = new Date(value);
+  return Number.isNaN(date.getTime()) ? null : date;
+};
+
+const getBookingSchedule = (booking: any) => {
+  const firstItem = booking?.items?.[0];
+  const event = firstItem?.eventId || {};
+  const schedules = Array.isArray(event.dateSchedule) ? event.dateSchedule : [];
+  const scheduleId = firstItem?.scheduleId || booking?.scheduleId;
+
+  if (scheduleId) {
+    const matchedSchedule = schedules.find((schedule: any) => String(schedule?._id) === String(scheduleId));
+    if (matchedSchedule) {
+      return matchedSchedule;
+    }
+  }
+
+  return schedules[0] || null;
+};
+
+const getBookingTiming = (booking: any) => {
+  const firstItem = booking?.items?.[0];
+  const schedule = getBookingSchedule(booking);
+  const rawStart = schedule?.startDate || schedule?.date || firstItem?.scheduleDate;
+  const hasExplicitTime = typeof rawStart === 'string' && /T\d{2}:\d{2}/.test(rawStart);
+
+  const eventStart = parseDate(rawStart);
+  const eventEnd = schedule?.endDate || schedule?.endDateTime
+    ? parseDate(schedule.endDate || schedule.endDateTime)
+    : eventStart
+      ? new Date(eventStart.getTime() + (hasExplicitTime ? 0 : 24 * 60 * 60 * 1000) - 1000)
+      : null;
+
+  return { eventStart, eventEnd };
+};
+
+const isSameOrAfterToday = (value: Date | null) => {
+  if (!value) return false;
+  const today = new Date();
+  today.setHours(0, 0, 0, 0);
+  const comparison = new Date(value);
+  comparison.setHours(0, 0, 0, 0);
+  return comparison >= today;
+};
+
+  const formatDisplayDate = (value: Date | null) => {
+    if (!value) return 'Date TBD';
+    return value.toLocaleDateString(undefined, {
+      year: 'numeric',
+      month: 'long',
+      day: 'numeric',
+    });
+  };
+
 const BookingsPage: React.FC = () => {
   const dispatch = useDispatch<AppDispatch>();
   const { bookings, isLoading, error } = useSelector((state: RootState) => state.bookings);
@@ -62,16 +118,12 @@ const BookingsPage: React.FC = () => {
   };
 
   const filteredBookings = bookings.filter((booking: any) => {
-    const today = new Date();
-    today.setHours(0, 0, 0, 0);
-
-    const scheduleDateStr = booking.items?.[0]?.scheduleDate;
-    const scheduleDate = scheduleDateStr ? new Date(scheduleDateStr) : null;
-    if (scheduleDate) {
-      scheduleDate.setHours(0, 0, 0, 0);
-    }
-
     const isCancelled = booking.status === 'cancelled' || booking.status === 'refunded';
+    const { eventStart } = getBookingTiming(booking);
+    const isPast = booking.status === 'completed'
+      || booking.status === 'refunded'
+      || (eventStart ? !isSameOrAfterToday(eventStart) : false);
+    const isUpcoming = !isCancelled && !isPast;
 
     if (activeTab === 'cancelled') {
       return isCancelled;
@@ -81,10 +133,8 @@ const BookingsPage: React.FC = () => {
       return false;
     }
 
-    const isPast = booking.status === 'completed' || (scheduleDate && scheduleDate < today);
-
     if (activeTab === 'upcoming') {
-      return !isPast && (booking.status === 'confirmed' || booking.status === 'pending');
+      return isUpcoming && (booking.status === 'confirmed' || booking.status === 'pending');
     } else if (activeTab === 'past') {
       return isPast;
     }
@@ -167,6 +217,12 @@ const BookingsPage: React.FC = () => {
                     // All event types now use eventId (TeachingEvent model was consolidated into Event)
                     const firstItem = booking.items?.[0];
                     const event = firstItem?.eventId || {};
+                    const { eventStart } = getBookingTiming(booking);
+                    const isCancelled = booking.status === 'cancelled' || booking.status === 'refunded';
+                    const isPast = booking.status === 'completed'
+                      || booking.status === 'refunded'
+                      || (eventStart ? !isSameOrAfterToday(eventStart) : false);
+                    const isUpcoming = !isCancelled && !isPast;
                     const eventTitle = event.title || 'Unknown Event';
                     const eventImage =
                       event.coverImage ||
@@ -221,9 +277,7 @@ const BookingsPage: React.FC = () => {
                                       : `${(booking.currency || 'AED').toUpperCase()} ${(booking.total || 0).toFixed(2)}`
                                   }</p>
                                   <p><span className="font-medium">Booked on:</span> {formatDate(booking.createdAt || booking.bookingDate)}</p>
-                                  {booking.updatedAt && booking.updatedAt !== booking.createdAt && (
-                                    <p><span className="font-medium">Last updated:</span> {formatDate(booking.updatedAt)}</p>
-                                  )}
+                                  <p><span className="font-medium">Event Date:</span> {formatDisplayDate(eventStart)}</p>
                                 </div>
                               </div>
                               <div className="mt-4 sm:mt-0 flex flex-col space-y-2">
@@ -234,7 +288,7 @@ const BookingsPage: React.FC = () => {
                                   View Details
                                 </Link>
 
-                                {booking.items?.[0]?.eventId?.venueType === 'Online' &&
+                                {isUpcoming && booking.items?.[0]?.eventId?.venueType === 'Online' &&
                                   booking.items?.[0]?.eventId?.meetingLink && (
                                     <a
                                       href={booking.items[0].eventId.meetingLink}
@@ -247,7 +301,7 @@ const BookingsPage: React.FC = () => {
                                     </a>
                                   )}
 
-                                {(booking.status === 'confirmed' || booking.status === 'completed') && (
+                                {!isCancelled && (booking.status === 'confirmed' || booking.status === 'completed') && (
                                   <button
                                     onClick={() => handleShowBookingQR(booking)}
                                     className="inline-flex items-center justify-center gap-2 px-4 py-2 bg-gradient-to-r from-green-600 to-emerald-600 text-white text-sm font-medium rounded-md hover:from-green-700 hover:to-emerald-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-green-500 transition-colors shadow-sm"
@@ -257,7 +311,7 @@ const BookingsPage: React.FC = () => {
                                   </button>
                                 )}
 
-                                {(booking.status === 'confirmed' || booking.status === 'pending') && (
+                                {isUpcoming && (booking.status === 'confirmed' || booking.status === 'pending') && (
                                   <button
                                     className="inline-flex items-center justify-center px-4 py-2 border border-red-300 text-sm font-medium rounded-md text-red-700 bg-white hover:bg-red-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-red-500"
                                     onClick={() => {
@@ -327,7 +381,13 @@ const BookingsPage: React.FC = () => {
               orderId={selectedBookingForCancel._id || selectedBookingForCancel.id}
               orderNumber={selectedBookingForCancel.orderNumber || selectedBookingForCancel._id}
               eventTitle={selectedBookingForCancel.items?.[0]?.eventId?.title || 'Event'}
-              eventDate={selectedBookingForCancel.items?.[0]?.scheduleDate || new Date()}
+              eventDate={(() => {
+                const booking = selectedBookingForCancel;
+                const firstItem = booking?.items?.[0];
+                const schedule = getBookingSchedule(booking);
+                const start = schedule?.startDate || schedule?.date || firstItem?.scheduleDate;
+                return start || new Date();
+              })()}
               totalAmount={selectedBookingForCancel.total || 0}
               subtotal={selectedBookingForCancel.subtotal || 0}
               serviceFee={selectedBookingForCancel.serviceFee || 0}

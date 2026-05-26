@@ -48,27 +48,37 @@ export const submitRegistration = async (
       return next(new AppError("Event not found or not available", 404));
     }
 
-    if (!event.registrationConfig?.enabled) {
+    if (event.registrationConfig && !event.registrationConfig.enabled) {
       return next(
         new AppError("Registration is not enabled for this event", 400),
       );
     }
 
+    const registrationConfig = event.registrationConfig || {
+      enabled: true,
+      fields: [],
+      requiresApproval: false,
+      emailNotifications: {
+        toVendor: true,
+        toParticipant: true,
+      },
+    };
+
     // Check registration deadline
-    if (event.registrationConfig.registrationDeadline) {
+    if (registrationConfig.registrationDeadline) {
       const now = new Date();
-      if (now > event.registrationConfig.registrationDeadline) {
+      if (now > registrationConfig.registrationDeadline) {
         return next(new AppError("Registration deadline has passed", 400));
       }
     }
 
     // Check max registrations limit
-    if (event.registrationConfig.maxRegistrations) {
+    if (registrationConfig.maxRegistrations) {
       const currentCount = await Registration.countByEvent(
         eventId,
         RegistrationStatus.APPROVED,
       );
-      if (currentCount >= event.registrationConfig.maxRegistrations) {
+      if (currentCount >= registrationConfig.maxRegistrations) {
         return next(
           new AppError("Maximum number of registrations reached", 400),
         );
@@ -130,7 +140,7 @@ export const submitRegistration = async (
     let initialStatus: RegistrationStatus;
     if (saveAsDraft) {
       initialStatus = RegistrationStatus.DRAFT;
-    } else if (event.registrationConfig.requiresApproval) {
+    } else if (registrationConfig.requiresApproval) {
       initialStatus = RegistrationStatus.UNDER_REVIEW;
     } else if (amount === 0) {
       initialStatus = RegistrationStatus.APPROVED; // Free + no approval = auto-approve
@@ -202,7 +212,7 @@ export const submitRegistration = async (
           requiresPayment: amount > 0,
           amount: amount > 0 ? amount : undefined,
           currency: event.currency || "AED",
-          requiresApproval: event.registrationConfig?.requiresApproval || false,
+          requiresApproval: registrationConfig?.requiresApproval || false,
           meetingLink: event.meetingLink,
           meetingPassword: event.meetingPassword,
           venueType: event.venueType,

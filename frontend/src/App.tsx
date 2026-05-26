@@ -63,6 +63,7 @@ const FavoritesPage = React.lazy(() => import(/* webpackChunkName: "dashboard" *
 const ReviewsPage = React.lazy(() => import(/* webpackChunkName: "dashboard" */ './pages/dashboard/ReviewsPage'));
 const MyTicketsPage = React.lazy(() => import(/* webpackChunkName: "dashboard" */ './pages/dashboard/MyTicketsPage'));
 const ChangePasswordPage = React.lazy(() => import(/* webpackChunkName: "dashboard" */ './pages/dashboard/ChangePasswordPage'));
+const VerifyTicketPage = React.lazy(() => import(/* webpackChunkName: "verify-ticket" */ './pages/VerifyTicketPage'));
 
 // Registration Pages
 const UserRegistrationsPage = React.lazy(() => import(/* webpackChunkName: "registration" */ './pages/UserRegistrationsPage'));
@@ -550,6 +551,11 @@ function AppContent() {
                 <BookingDetailPage />
               </Suspense>
             </ProtectedRoute>
+          } />
+          <Route path="verify-ticket/:ticketNumber" element={
+            <Suspense fallback={<GenericPageSkeleton />}>
+              <VerifyTicketPage />
+            </Suspense>
           } />
           <Route path="favorites" element={
             <ProtectedRoute>

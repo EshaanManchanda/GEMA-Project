@@ -565,12 +565,20 @@ export const updateUser = async (
       ...userFields
     } = updateData;
 
-    // Update user
-    Object.assign(user, userFields);
-    await user.save();
+    // Update only the submitted fields so legacy nested data does not get
+    // revalidated when admins change a small subset of user properties.
+    const updatedUser = await User.findByIdAndUpdate(
+      id,
+      { $set: userFields },
+      { new: true, runValidators: true },
+    );
+
+    if (!updatedUser) {
+      return next(new AppError("User not found", 404));
+    }
 
     // Update Vendor profile if provided
-    if (vendorProfileData && user.role === "vendor") {
+    if (vendorProfileData && updatedUser.role === "vendor") {
       const {
         paymentMode, commissionRate, customCommissionRate, payoutSchedule,
         minimumPayout, acceptsPlatformPayments, subscriptionStatus, ...vendorFields
@@ -587,7 +595,7 @@ export const updateUser = async (
     }
 
     // Update Teacher profile if provided
-    if (teacherProfileData && user.role === "teacher") {
+    if (teacherProfileData && updatedUser.role === "teacher") {
       const {
         paymentMode, commissionRate, payoutSchedule, minimumPayout,
         acceptsPlatformPayments, ...teacherFields
@@ -602,30 +610,30 @@ export const updateUser = async (
     }
 
     // Update Employee profile if provided
-    if (employeeProfileData && user.role === "employee") {
+    if (employeeProfileData && updatedUser.role === "employee") {
       await Employee.findOneAndUpdate({ userId: id }, { $set: employeeProfileData });
     }
 
     // In addition to role-specific updates, always synchronize core profile changes (email, phone, name)
     // to corresponding Teacher, Vendor, or Employee documents
     const coreUpdate: any = {};
-    if (userFields.email !== undefined) coreUpdate.email = user.email;
-    if (userFields.phone !== undefined) coreUpdate.phone = user.phone;
+    if (userFields.email !== undefined) coreUpdate.email = updatedUser.email;
+    if (userFields.phone !== undefined) coreUpdate.phone = updatedUser.phone;
 
-    if (user.role === "vendor") {
+    if (updatedUser.role === "vendor") {
       if (Object.keys(coreUpdate).length > 0) {
         await Vendor.findOneAndUpdate({ userId: id }, { $set: coreUpdate });
       }
-    } else if (user.role === "teacher") {
+    } else if (updatedUser.role === "teacher") {
       if (userFields.firstName !== undefined || userFields.lastName !== undefined) {
-        coreUpdate.fullName = `${user.firstName} ${user.lastName}`;
+        coreUpdate.fullName = `${updatedUser.firstName} ${updatedUser.lastName}`;
       }
       if (Object.keys(coreUpdate).length > 0) {
         await Teacher.findOneAndUpdate({ userId: id }, { $set: coreUpdate });
       }
-    } else if (user.role === "employee") {
-      if (userFields.firstName !== undefined) coreUpdate.firstName = user.firstName;
-      if (userFields.lastName !== undefined) coreUpdate.lastName = user.lastName;
+    } else if (updatedUser.role === "employee") {
+      if (userFields.firstName !== undefined) coreUpdate.firstName = updatedUser.firstName;
+      if (userFields.lastName !== undefined) coreUpdate.lastName = updatedUser.lastName;
       if (Object.keys(coreUpdate).length > 0) {
         await Employee.findOneAndUpdate({ userId: id }, { $set: coreUpdate });
       }
@@ -641,11 +649,11 @@ export const updateUser = async (
     }
 
     // Sync new email and name to Firebase Auth if firebaseUid is present
-    if (user.firebaseUid) {
+    if (updatedUser.firebaseUid) {
       try {
-        await getAuth().updateUser(user.firebaseUid, {
-          email: user.email,
-          displayName: `${user.firstName} ${user.lastName}`,
+        await getAuth().updateUser(updatedUser.firebaseUid, {
+          email: updatedUser.email,
+          displayName: `${updatedUser.firstName} ${updatedUser.lastName}`,
         });
         logger.info(`Successfully synchronized user ${id} details to Firebase Auth`);
       } catch (fbError: any) {
@@ -655,15 +663,15 @@ export const updateUser = async (
 
     // Re-fetch related for response
     let vendor, teacher, employee;
-    if (user.role === "vendor") vendor = await Vendor.findOne({ userId: id });
-    else if (user.role === "teacher") teacher = await Teacher.findOne({ userId: id });
-    else if (user.role === "employee") employee = await Employee.findOne({ userId: id });
+    if (updatedUser.role === "vendor") vendor = await Vendor.findOne({ userId: id });
+    else if (updatedUser.role === "teacher") teacher = await Teacher.findOne({ userId: id });
+    else if (updatedUser.role === "employee") employee = await Employee.findOne({ userId: id });
 
     const response: ApiResponse = {
       success: true,
       message: "User updated successfully",
       data: {
-        user: formatAdminUserResponse(user, { vendor, teacher, employee }),
+        user: formatAdminUserResponse(updatedUser, { vendor, teacher, employee }),
       },
     };
 

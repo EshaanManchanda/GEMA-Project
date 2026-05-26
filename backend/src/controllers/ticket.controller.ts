@@ -27,6 +27,24 @@ const generateUniqueTicketNumber = async (): Promise<string> => {
   return ticketNumber;
 };
 
+const normalizeTicketStatus = (ticket: any) => {
+  const plainTicket =
+    typeof ticket?.toObject === "function"
+      ? ticket.toObject({ virtuals: true })
+      : { ...ticket };
+
+  if (!plainTicket || plainTicket.status !== "active") {
+    return plainTicket;
+  }
+
+  const validUntil = plainTicket.validUntil ? new Date(plainTicket.validUntil) : null;
+  if (validUntil && !Number.isNaN(validUntil.getTime()) && new Date() > validUntil) {
+    plainTicket.status = "expired";
+  }
+
+  return plainTicket;
+};
+
 export const generateTickets = async (
   req: Request,
   res: Response,
@@ -694,12 +712,14 @@ export const getEventTickets = async (
       .skip((Number(page) - 1) * Number(limit))
       .limit(Number(limit));
 
+    const normalizedTickets = tickets.map((ticket) => normalizeTicketStatus(ticket));
+
     const total = await Ticket.countDocuments(query);
 
     res.status(200).json({
       success: true,
       message: "Event tickets retrieved successfully",
-      data: tickets,
+      data: normalizedTickets,
       pagination: {
         page: Number(page),
         limit: Number(limit),
@@ -747,10 +767,12 @@ export const getUserTickets = async (
       });
     }
 
+    const normalizedTickets = tickets.map((ticket) => normalizeTicketStatus(ticket));
+
     res.status(200).json({
       success: true,
       message: "User tickets retrieved successfully",
-      data: tickets,
+      data: normalizedTickets,
     });
   } catch (error) {
     logger.error("Error retrieving user tickets:", error);
@@ -821,9 +843,11 @@ export const getTicketsByOrder = async (
       });
     }
 
+    const normalizedTickets = tickets.map((ticket) => normalizeTicketStatus(ticket));
+
     // Verify that the requesting user owns at least one ticket in this order
     // or has admin/vendor privileges
-    const userOwnsTickets = tickets.some(
+    const userOwnsTickets = normalizedTickets.some(
       (ticket) => ticket.userId._id.toString() === req.user!._id?.toString(),
     );
 
@@ -836,7 +860,7 @@ export const getTicketsByOrder = async (
     res.status(200).json({
       success: true,
       message: "Order tickets retrieved successfully",
-      tickets: tickets,
+      tickets: normalizedTickets,
     });
   } catch (error) {
     logger.error("Error retrieving order tickets:", error);
@@ -884,7 +908,7 @@ export const downloadTicketPDF = async (
           eventLocation: `${(ticket.eventId as any).location.address}, ${(ticket.eventId as any).location.city}`,
           price: ticket.price,
           currency: ticket.currency,
-          status: ticket.status,
+          status: normalizeTicketStatus(ticket).status,
           seatNumber: ticket.seatNumber,
         },
       },

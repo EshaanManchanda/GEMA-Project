@@ -37,6 +37,22 @@ interface TicketProps {
 
 const TicketCard: React.FC<TicketProps> = ({ ticket, onViewTicket, onDownloadTicket, onShowQRCode }) => {
   const [qrImageError, setQrImageError] = useState(false);
+  const getDisplayStatus = (status: string, validUntil?: string) => {
+    if (status && status !== 'active') {
+      return status;
+    }
+
+    if (validUntil) {
+      const expiry = new Date(validUntil);
+      if (!Number.isNaN(expiry.getTime()) && new Date() > expiry) {
+        return 'expired';
+      }
+    }
+
+    return status || 'active';
+  };
+
+  const displayStatus = getDisplayStatus(ticket.status, ticket.validUntil);
   const getStatusBadgeClass = (status: string) => {
     switch (status) {
       case 'active':
@@ -90,8 +106,8 @@ const TicketCard: React.FC<TicketProps> = ({ ticket, onViewTicket, onDownloadTic
             <h3 className="text-lg font-semibold mb-1">{ticket.eventId.title}</h3>
             <p className="text-sm opacity-90">Ticket #{ticket.ticketNumber.slice(-8)}</p>
           </div>
-          <span className={`px-2 py-1 rounded-full text-xs font-medium ${getStatusBadgeClass(ticket.status)}`}>
-            {ticket.status.charAt(0).toUpperCase() + ticket.status.slice(1)}
+          <span className={`px-2 py-1 rounded-full text-xs font-medium ${getStatusBadgeClass(displayStatus)}`}>
+            {displayStatus.charAt(0).toUpperCase() + displayStatus.slice(1)}
           </span>
         </div>
       </div>

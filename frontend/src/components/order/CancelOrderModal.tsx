@@ -83,6 +83,7 @@ const CancelOrderModal: React.FC<CancelOrderModalProps> = ({
       if (onSuccess) {
         onSuccess();
       }
+      handleClose();
     } catch (err: any) {
       setError(err.response?.data?.message || 'Failed to cancel order');
     } finally {

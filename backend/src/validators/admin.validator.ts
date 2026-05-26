@@ -103,8 +103,18 @@ export const validateCreateUser = [
   body("avatar")
     .optional()
     .trim()
-    .isURL({ require_tld: false })
-    .withMessage("Avatar must be a valid URL")
+    .custom((value) => {
+      if (!value) return true;
+
+      const isExternalUrl = /^https?:\/\//i.test(value);
+      const isInternalUploadPath = /^(\/api)?\/uploads\//i.test(value);
+
+      if (!isExternalUrl && !isInternalUploadPath) {
+        throw new Error("Avatar must be a valid URL or upload path");
+      }
+
+      return true;
+    })
     .isLength({ max: 500 })
     .withMessage("Avatar URL cannot exceed 500 characters"),
 
@@ -308,8 +318,18 @@ export const validateUpdateUser = [
   body("avatar")
     .optional()
     .trim()
-    .isURL({ require_tld: false })
-    .withMessage("Avatar must be a valid URL")
+    .custom((value) => {
+      if (!value) return true;
+
+      const isExternalUrl = /^https?:\/\//i.test(value);
+      const isInternalUploadPath = /^(\/api)?\/uploads\//i.test(value);
+
+      if (!isExternalUrl && !isInternalUploadPath) {
+        throw new Error("Avatar must be a valid URL or upload path");
+      }
+
+      return true;
+    })
     .isLength({ max: 500 })
     .withMessage("Avatar URL cannot exceed 500 characters"),
 

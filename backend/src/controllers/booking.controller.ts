@@ -129,9 +129,13 @@ export const initiateBooking = async (
 
     const IDEMPOTENCY_WINDOW_MS = 30 * 60 * 1000; // 30 minutes
 
+    const eventLookup = mongoose.isValidObjectId(eventId)
+      ? { _id: eventId }
+      : { $or: [{ slug: eventId }, { slug: String(eventId).toLowerCase() }] };
+
     // Parallel: fetch event + user + adminSettings + duplicate checks
     const [event, user, adminSettings, confirmedOrder, pendingOrder] = await Promise.all([
-      EventModel.findOne({ _id: eventId, status: 'published', isDeleted: false }),
+      EventModel.findOne({ ...eventLookup, status: 'published', isDeleted: false }),
       User.findById(userId)
         .select("firstName lastName email phone addresses")
         .lean(),
@@ -154,6 +158,8 @@ export const initiateBooking = async (
     if (!event) {
       return next(new AppError("Event not found or not available", 404));
     }
+
+    const resolvedEventId = event._id.toString();
 
     // Hard block: user already has a confirmed booking for this event
     if (confirmedOrder) {
@@ -210,12 +216,61 @@ export const initiateBooking = async (
       return next(new AppError("User not found", 404));
     }
 
+    const normalizedScheduleId = String(dateScheduleId || '').trim();
+    const scheduleTokenParts = normalizedScheduleId.split('-');
+    const baseScheduleId = scheduleTokenParts.length > 0 ? scheduleTokenParts[0] : normalizedScheduleId;
+    const parsedRequestedDate = normalizedScheduleId ? new Date(normalizedScheduleId) : null;
+    const hasRequestedDate = !!parsedRequestedDate && !isNaN(parsedRequestedDate.getTime());
+
     // Find the specific date schedule
-    const schedule = event.dateSchedule.find(
-      (s: any) => s._id.toString() === dateScheduleId,
-    );
+    const schedule = event.dateSchedule.find((s: any) => {
+      if (
+        String(s._id) === normalizedScheduleId ||
+        String(s.id) === normalizedScheduleId ||
+        String(s._id) === baseScheduleId ||
+        String(s.id) === baseScheduleId
+      ) {
+        return true;
+      }
+
+      if (!hasRequestedDate) {
+        return false;
+      }
+
+      const scheduleStart = s.startDate || s.date;
+      const scheduleEnd = s.endDate || s.startDate || s.date;
+      if (!scheduleStart || !scheduleEnd) {
+        return false;
+      }
+
+      const start = new Date(scheduleStart);
+      const end = new Date(scheduleEnd);
+      if (isNaN(start.getTime()) || isNaN(end.getTime())) {
+        return false;
+      }
+
+      const requestedDay = new Date(parsedRequestedDate!.getFullYear(), parsedRequestedDate!.getMonth(), parsedRequestedDate!.getDate());
+      const startDay = new Date(start.getFullYear(), start.getMonth(), start.getDate());
+      const endDay = new Date(end.getFullYear(), end.getMonth(), end.getDate());
+
+      return requestedDay.getTime() >= startDay.getTime() && requestedDay.getTime() <= endDay.getTime();
+    });
 
     if (!schedule) {
+      logger.error("Event schedule not found", {
+        eventId,
+        dateScheduleId,
+        normalizedScheduleId,
+        hasRequestedDate,
+        scheduleCount: event.dateSchedule?.length || 0,
+        availableScheduleIds: (event.dateSchedule || []).slice(0, 10).map((item: any) => ({
+          _id: item._id,
+          id: item.id,
+          startDate: item.startDate,
+          endDate: item.endDate,
+          date: item.date,
+        })),
+      });
       return next(new AppError("Event schedule not found", 404));
     }
 
@@ -256,7 +311,7 @@ export const initiateBooking = async (
     if (!schedule.unlimitedSeats) {
       const seatResult = await EventModel.findOneAndUpdate(
         {
-          _id: eventId,
+          _id: resolvedEventId,
           "dateSchedule._id": dateScheduleId,
           "dateSchedule.availableSeats": { $gte: seats },
         },
@@ -332,7 +387,7 @@ export const initiateBooking = async (
           couponCode,
           userId,
           subtotal,
-          [eventId],
+          [resolvedEventId],
         );
         couponDiscount = couponResult.discountAmount;
         validatedCouponCode = couponResult.coupon.code;
@@ -340,7 +395,7 @@ export const initiateBooking = async (
         // Restore seats if coupon validation fails
         if (!schedule.unlimitedSeats) {
           await EventModel.findOneAndUpdate(
-            { _id: eventId, "dateSchedule._id": dateScheduleId },
+            { _id: resolvedEventId, "dateSchedule._id": dateScheduleId },
             { $inc: { "dateSchedule.$.availableSeats": seats } },
           );
         }
@@ -373,7 +428,7 @@ export const initiateBooking = async (
         userId,
         items: [
           {
-            eventId,
+            eventId: resolvedEventId,
             eventTitle: event.title,
             scheduleDate: parsedScheduleDate,
             quantity: seats,
@@ -445,7 +500,7 @@ export const initiateBooking = async (
           vendorId: vendorOrTeacherId.toString(),
           metadata: {
             orderId: tempOrder._id.toString(),
-            eventId,
+            eventId: resolvedEventId,
             scheduleId: dateScheduleId,
             seats: seats.toString(),
             userId,
@@ -465,7 +520,7 @@ export const initiateBooking = async (
         const SEAT_HOLD_TTL = 900; // 15 minutes
         await redisClient.set(
           `seat-hold:${tempOrder._id}`,
-          JSON.stringify({ eventId, dateScheduleId, seats }),
+          JSON.stringify({ eventId: resolvedEventId, dateScheduleId, seats }),
           "EX",
           SEAT_HOLD_TTL,
         );
@@ -473,7 +528,7 @@ export const initiateBooking = async (
 
       logger.info("Booking initiated successfully", {
         orderId: tempOrder._id,
-        eventId,
+          eventId: resolvedEventId,
         userId,
         amount: total,
       });
@@ -504,7 +559,7 @@ export const initiateBooking = async (
       // Restore seats on failure
       if (!schedule.unlimitedSeats) {
         await EventModel.findOneAndUpdate(
-          { _id: eventId, "dateSchedule._id": dateScheduleId },
+          { _id: resolvedEventId, "dateSchedule._id": dateScheduleId },
           { $inc: { "dateSchedule.$.availableSeats": seats } },
         );
       }
@@ -1197,8 +1252,34 @@ export const cancelBooking = async (
     // Calculate refund amount based on cancellation policy
     const refundAmount = order.calculateRefundAmount();
 
-    // Cancel the booking
-    await order.cancel(reason);
+    const cancelledAt = new Date();
+
+    // Cancel the booking without saving the hydrated order document.
+    // Some historic orders contain embedded participant data that no longer
+    // passes schema validation, so a direct update keeps cancellation working.
+    await Order.collection.updateOne(
+      { _id: order._id },
+      {
+        $set: {
+          status: "cancelled",
+          cancelledAt,
+          notes: reason || order.notes,
+        },
+      },
+    );
+
+    order.status = "cancelled";
+    order.cancelledAt = cancelledAt;
+    if (reason) {
+      order.notes = reason;
+    }
+
+    // Propagate cancellation to generated tickets so stale active tickets do
+    // not continue to look usable in the customer portal or downloads.
+    await Ticket.updateMany(
+      { orderId: order._id, status: { $ne: "cancelled" } },
+      { $set: { status: "cancelled" } },
+    );
 
     // Process refund if applicable
     if (refundAmount > 0 && order.paymentIntentId) {
@@ -1211,7 +1292,16 @@ export const cancelBooking = async (
 
         order.refundAmount = refundAmount;
         order.refundReason = reason || "Customer request";
-        await order.save();
+        await Order.collection.updateOne(
+          { _id: order._id },
+          {
+            $set: {
+              refundAmount,
+              refundReason: reason || "Customer request",
+              refundedAt: new Date(),
+            },
+          },
+        );
       } catch (refundError) {
         logger.error("Refund processing failed:", refundError);
         // Continue with cancellation even if refund fails

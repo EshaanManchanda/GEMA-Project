@@ -24,6 +24,98 @@ import {
 } from "../config/promotionPricing";
 import logger from "../config/logger";
 
+const getScheduleCapacity = (schedule: any): number => {
+  if (schedule?.unlimitedSeats) return 999999;
+  if (typeof schedule?.totalSeats === "number") return schedule.totalSeats;
+
+  const available = Number(schedule?.availableSeats || 0);
+  const sold = Number(schedule?.soldSeats || 0);
+  const reserved = Number(schedule?.reservedSeats || 0);
+  return Math.max(0, available + sold + reserved);
+};
+
+const applyOrderSeatStatsToEvents = async (events: any[]) => {
+  if (!events.length) return;
+
+  const eventIds = events
+    .map((event) => event?._id)
+    .filter(Boolean);
+
+  if (!eventIds.length) return;
+
+  const soldAgg = await Order.aggregate([
+    {
+      $match: {
+        "items.eventId": { $in: eventIds },
+        status: "confirmed",
+      },
+    },
+    { $unwind: "$items" },
+    {
+      $match: {
+        "items.eventId": { $in: eventIds },
+      },
+    },
+    {
+      $group: {
+        _id: {
+          eventId: "$items.eventId",
+          scheduleId: "$items.scheduleId",
+        },
+        soldSeats: { $sum: "$items.quantity" },
+      },
+    },
+  ]);
+
+  const soldByEventAndSchedule = new Map<string, number>();
+  soldAgg.forEach((row: any) => {
+    const eventId = row?._id?.eventId?.toString?.();
+    const scheduleId = row?._id?.scheduleId?.toString?.() || "none";
+    if (!eventId) return;
+    soldByEventAndSchedule.set(`${eventId}:${scheduleId}`, Number(row?.soldSeats || 0));
+  });
+
+  for (const event of events) {
+    const eventId = event?._id?.toString?.();
+    if (!eventId || !Array.isArray(event.dateSchedule)) continue;
+
+    const unscheduledSold = soldByEventAndSchedule.get(`${eventId}:none`) || 0;
+    const hasScheduleSpecificSales = soldAgg.some(
+      (row: any) =>
+        row?._id?.eventId?.toString?.() === eventId &&
+        !!row?._id?.scheduleId,
+    );
+
+    let totalSoldForEvent = 0;
+
+    event.dateSchedule.forEach((schedule: any) => {
+      const scheduleId = schedule?._id?.toString?.();
+      let soldSeats = scheduleId
+        ? soldByEventAndSchedule.get(`${eventId}:${scheduleId}`) || 0
+        : 0;
+
+      if (!hasScheduleSpecificSales && event.dateSchedule.length === 1 && unscheduledSold > 0) {
+        soldSeats = unscheduledSold;
+      }
+
+      const reservedSeats = Number(schedule?.reservedSeats || 0);
+      const totalSeats = getScheduleCapacity(schedule);
+
+      schedule.soldSeats = soldSeats;
+      schedule.totalSeats = totalSeats;
+      schedule.availableSeats = schedule?.unlimitedSeats
+        ? 999999
+        : Math.max(0, totalSeats - soldSeats - reservedSeats);
+
+      totalSoldForEvent += soldSeats;
+    });
+
+    event._soldSeats =
+      totalSoldForEvent +
+      (!hasScheduleSpecificSales && event.dateSchedule.length > 1 ? unscheduledSold : 0);
+  }
+};
+
 /**
  * Wrapper to add timeout to database operations
  */
@@ -242,44 +334,7 @@ export const getEvents = async (
       Event.countDocuments(filter),
     ]);
 
-    // Inject accurate soldSeats from confirmed Orders
-    const eventIds = events.map((e) => e._id);
-    if (eventIds.length > 0) {
-      const soldAgg = await Order.aggregate([
-        {
-          $match: {
-            "items.eventId": { $in: eventIds },
-            status: "confirmed",
-          },
-        },
-        { $unwind: "$items" },
-        {
-          $match: {
-            "items.eventId": { $in: eventIds },
-          },
-        },
-        {
-          $group: {
-            _id: "$items.eventId",
-            soldSeats: { $sum: "$items.quantity" },
-          },
-        },
-      ]);
-      const soldMap: Record<string, number> = {};
-      soldAgg.forEach((r: any) => {
-        soldMap[r._id.toString()] = r.soldSeats;
-      });
-
-      events.forEach((ev: any) => {
-        const sold = soldMap[ev._id?.toString()] || 0;
-        if (Array.isArray(ev.dateSchedule)) {
-          ev.dateSchedule.forEach((s: any) => {
-            s.soldSeats = sold;
-          });
-        }
-        ev._soldSeats = sold;
-      });
-    }
+    await applyOrderSeatStatsToEvents(events as any[]);
 
     logger.info("Query results:");
     logger.info("- Total events matching filter:", total);
@@ -406,34 +461,7 @@ export const getEvent = async (
     );
 
     if (event) {
-      // Inject accurate soldSeats from confirmed Orders
-      const soldAgg = await Order.aggregate([
-        {
-          $match: {
-            "items.eventId": event._id,
-            status: "confirmed",
-          },
-        },
-        { $unwind: "$items" },
-        {
-          $match: {
-            "items.eventId": event._id,
-          },
-        },
-        {
-          $group: {
-            _id: "$items.eventId",
-            soldSeats: { $sum: "$items.quantity" },
-          },
-        },
-      ]);
-      const sold = soldAgg[0]?.soldSeats || 0;
-      if (Array.isArray(event.dateSchedule)) {
-        event.dateSchedule.forEach((s: any) => {
-          s.soldSeats = sold;
-        });
-      }
-      (event as any)._soldSeats = sold;
+      await applyOrderSeatStatsToEvents([event] as any[]);
     }
 
     if (!event) {

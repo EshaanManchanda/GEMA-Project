@@ -102,16 +102,32 @@ const TeachingEventDetailPage: React.FC = () => {
         );
         dispatch(setBookingParticipants(participants));
 
-        navigate(`/booking/${event.slug || event._id}`, {
+        const bookingDraft = {
+            event: { ...event, _id: event._id, id: event._id },
+            quantity,
+            selectedDate: selectedDate.toISOString(),
+            schedule: currentSchedule,
+            scheduleId: currentSchedule?._id,
+            totalPrice: (currentPrice * quantity).toFixed(2),
+            currency: event.currency || 'AED',
+            isTeachingEvent: true,
+        };
+
+        try {
+            sessionStorage.setItem(`kidrove.bookingDraft:${event._id}`, JSON.stringify(bookingDraft));
+            if (event.slug) {
+                sessionStorage.setItem(`kidrove.bookingDraft:${event.slug}`, JSON.stringify(bookingDraft));
+            }
+        } catch (storageError) {
+            console.warn('Unable to persist booking draft', storageError);
+        }
+
+        const bookingRouteId = event.slug || event._id;
+
+        navigate(`/booking/${bookingRouteId}`, {
             state: {
+                ...bookingDraft,
                 event: { ...event, _id: event._id, id: event._id },
-                quantity,
-                selectedDate: selectedDate.toISOString(),
-                schedule: currentSchedule,
-                scheduleId: currentSchedule?._id,
-                totalPrice: (currentPrice * quantity).toFixed(2),
-                currency: event.currency || 'AED',
-                isTeachingEvent: true,
             },
         });
     };

@@ -1,4 +1,4 @@
-import { Event, Category } from "../models/index";
+import { Event, Category, Order } from "../models/index";
 import { AppError, catchAsync } from "../middleware/index";
 import { AuthRequest } from "../types/index";
 import { NextFunction, Response } from "express";
@@ -301,6 +301,39 @@ export const updateTeacherEvent = catchAsync(
     if (status) event.status = status;
     if (tags !== undefined) event.tags = tags;
     if (dateSchedule !== undefined) {
+      const soldAgg = await Order.aggregate([
+        {
+          $match: {
+            "items.eventId": event._id,
+            status: "confirmed",
+          },
+        },
+        { $unwind: "$items" },
+        {
+          $match: {
+            "items.eventId": event._id,
+          },
+        },
+        {
+          $group: {
+            _id: "$items.scheduleId",
+            soldSeats: { $sum: "$items.quantity" },
+          },
+        },
+      ]);
+
+      const soldBySchedule = new Map<string, number>();
+      let unscheduledSold = 0;
+      soldAgg.forEach((row: any) => {
+        const scheduleId = row?._id?.toString?.();
+        const soldSeats = Number(row?.soldSeats || 0);
+        if (scheduleId) {
+          soldBySchedule.set(scheduleId, soldSeats);
+        } else {
+          unscheduledSold = soldSeats;
+        }
+      });
+
       event.dateSchedule = dateSchedule.map((schedule: any) => {
         // Find existing schedule to preserve booking counts
         const existingSchedule = event.dateSchedule.find(
@@ -308,7 +341,14 @@ export const updateTeacherEvent = catchAsync(
         );
 
         const totalSeats = schedule.unlimitedSeats ? 999999 : (schedule.totalSeats || schedule.availableSeats || 0);
-        const soldSeats = existingSchedule?.soldSeats || 0;
+        let soldSeats = existingSchedule?._id
+          ? soldBySchedule.get(existingSchedule._id.toString()) || 0
+          : 0;
+
+        if (!schedule._id && dateSchedule.length === 1 && unscheduledSold > 0) {
+          soldSeats = unscheduledSold;
+        }
+
         const reservedSeats = existingSchedule?.reservedSeats || 0;
 
         return {
@@ -321,7 +361,9 @@ export const updateTeacherEvent = catchAsync(
           soldSeats,
           reservedSeats,
           // Recalculate based on total seats and current bookings
-          availableSeats: schedule.unlimitedSeats ? 999999 : Math.max(0, totalSeats - soldSeats),
+          availableSeats: schedule.unlimitedSeats
+            ? 999999
+            : Math.max(0, totalSeats - soldSeats - reservedSeats),
           price: (isFreeEvent ?? (event as any).isFreeEvent) ? 0 : (schedule.price || price || event.price || 0),
           unlimitedSeats: schedule.unlimitedSeats || false,
           isOverride: schedule.isOverride || false,

@@ -72,6 +72,23 @@ const TicketModal: React.FC<TicketModalProps> = ({ ticket, isOpen, onClose, onDo
     }
   };
 
+  const getDisplayStatus = (status: string, validUntil?: string) => {
+    if (status && status !== 'active') {
+      return status;
+    }
+
+    if (validUntil) {
+      const expiry = new Date(validUntil);
+      if (!Number.isNaN(expiry.getTime()) && new Date() > expiry) {
+        return 'expired';
+      }
+    }
+
+    return status || 'active';
+  };
+
+  const displayStatus = getDisplayStatus(ticket.status, ticket.validUntil);
+
   const eventDate = ticket.eventId.dateSchedule[0];
 
   // Generate secure QR code data with event-based expiration
@@ -142,8 +159,8 @@ const TicketModal: React.FC<TicketModalProps> = ({ ticket, isOpen, onClose, onDo
                   <div>
                     <p className="font-medium">Ticket #{ticket.ticketNumber.slice(-8)}</p>
                     <p className="text-sm text-gray-500">
-                      Status: <span className={`font-medium ${getStatusColor(ticket.status)}`}>
-                        {ticket.status.charAt(0).toUpperCase() + ticket.status.slice(1)}
+                      Status: <span className={`font-medium ${getStatusColor(displayStatus)}`}>
+                        {displayStatus.charAt(0).toUpperCase() + displayStatus.slice(1)}
                       </span>
                     </p>
                   </div>
@@ -173,7 +190,7 @@ const TicketModal: React.FC<TicketModalProps> = ({ ticket, isOpen, onClose, onDo
                 Present this QR code at the venue entrance
               </p>
 
-              {ticket.status === 'active' && (
+              {displayStatus === 'active' && (
                 <div className="mt-4 text-center">
                   <p className="text-xs text-gray-400">Valid From</p>
                   <p className="text-sm font-medium text-gray-600">

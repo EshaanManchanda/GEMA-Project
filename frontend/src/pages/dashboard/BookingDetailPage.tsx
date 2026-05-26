@@ -196,6 +196,7 @@ const BookingDetailPage: React.FC = () => {
       price: ticket.price ?? 0,
       currency: ticket.currency ?? 'AED',
       status: ticket.status,
+      validUntil: ticket.validUntil,
       eventTitle: eventRef?.title ?? 'Event',
       eventDate: dateStr ? new Date(dateStr).toLocaleDateString('en-US', {
         weekday: 'short', year: 'numeric', month: 'short', day: 'numeric',
@@ -766,6 +767,7 @@ const BookingDetailPage: React.FC = () => {
               currency={booking.currency?.toUpperCase() || 'AED'}
               onSuccess={() => {
                 fetchBookingDetails(); // Refresh booking details after cancellation
+                dispatch(fetchTicketsByOrder(id)); // Refresh ticket statuses after cancellation
               }}
             />
           )}

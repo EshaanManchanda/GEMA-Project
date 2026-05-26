@@ -17,8 +17,8 @@ const router = Router();
 
 // Validation middleware
 const initiateBookingValidation = [
-  body("eventId").isMongoId().withMessage("Invalid event ID"),
-  body("dateScheduleId").isMongoId().withMessage("Invalid schedule ID"),
+  body("eventId").notEmpty().withMessage("Event ID is required"),
+  body("dateScheduleId").notEmpty().withMessage("Schedule ID is required"),
   body("seats")
     .isInt({ min: 1, max: 50 })
     .withMessage("Seats must be between 1 and 50"),

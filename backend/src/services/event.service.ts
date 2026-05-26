@@ -1,6 +1,7 @@
 import mongoose from "mongoose";
 import Event, { IEvent } from "../models/Event";
 import MediaAsset from "../models/MediaAsset";
+import { Order } from "../models";
 import { mediaService } from "./media.service";
 import logger from "../config/logger";
 
@@ -92,8 +93,88 @@ export class EventService {
         );
       }
 
+      // Preserve sold/reserved consistency when date schedules are updated.
+      const mutableData: any = { ...data };
+      if (Array.isArray(mutableData.dateSchedule)) {
+        const soldAgg = await Order.aggregate([
+          {
+            $match: {
+              "items.eventId": oldEvent._id,
+              status: "confirmed",
+            },
+          },
+          { $unwind: "$items" },
+          {
+            $match: {
+              "items.eventId": oldEvent._id,
+            },
+          },
+          {
+            $group: {
+              _id: "$items.scheduleId",
+              soldSeats: { $sum: "$items.quantity" },
+            },
+          },
+        ]).session(session);
+
+        const soldBySchedule = new Map<string, number>();
+        let unscheduledSold = 0;
+
+        soldAgg.forEach((row: any) => {
+          const scheduleId = row?._id?.toString?.();
+          const soldSeats = Number(row?.soldSeats || 0);
+          if (scheduleId) {
+            soldBySchedule.set(scheduleId, soldSeats);
+          } else {
+            unscheduledSold = soldSeats;
+          }
+        });
+
+        const existingSchedules: any[] = Array.isArray((oldEvent as any).dateSchedule)
+          ? ((oldEvent as any).dateSchedule as any[])
+          : [];
+
+        mutableData.dateSchedule = mutableData.dateSchedule.map((schedule: any) => {
+          const existingSchedule = existingSchedules.find(
+            (s: any) => s?._id?.toString() === schedule?._id?.toString(),
+          );
+
+          const unlimitedSeats = Boolean(schedule?.unlimitedSeats);
+          const totalSeats = unlimitedSeats
+            ? 999999
+            : Number(
+                schedule?.totalSeats ||
+                  schedule?.availableSeats ||
+                  existingSchedule?.totalSeats ||
+                  existingSchedule?.availableSeats ||
+                  0,
+              );
+
+          let soldSeats = existingSchedule?._id
+            ? soldBySchedule.get(existingSchedule._id.toString()) || 0
+            : 0;
+
+          if (!schedule?._id && mutableData.dateSchedule.length === 1 && unscheduledSold > 0) {
+            soldSeats = unscheduledSold;
+          }
+
+          const reservedSeats = Number(existingSchedule?.reservedSeats || 0);
+
+          return {
+            ...schedule,
+            _id: schedule?._id || existingSchedule?._id,
+            totalSeats,
+            soldSeats,
+            reservedSeats,
+            availableSeats: unlimitedSeats
+              ? 999999
+              : Math.max(0, totalSeats - soldSeats - reservedSeats),
+          };
+        });
+      }
+
       // 3. Update event
-      Object.assign(oldEvent, data);
+      Object.assign(oldEvent, mutableData);
       await oldEvent.save({ session });
 
       // 4. Update media tracking

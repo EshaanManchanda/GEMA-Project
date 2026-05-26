@@ -11,6 +11,7 @@ export interface TicketDownloadData {
   price: number;
   currency: string;
   status: string;
+  validUntil?: string;
   eventTitle: string;
   eventDate?: string;     // pre-formatted date string
   eventLocation?: string; // pre-formatted location string
@@ -40,6 +41,21 @@ function roundRect(
   ctx.lineTo(x, y + r);
   ctx.quadraticCurveTo(x, y, x + r, y);
   ctx.closePath();
+}
+
+function getDisplayStatus(status: string, validUntil?: string): string {
+  if (status && status !== 'active') {
+    return status;
+  }
+
+  if (validUntil) {
+    const expiry = new Date(validUntil);
+    if (!Number.isNaN(expiry.getTime()) && new Date() > expiry) {
+      return 'expired';
+    }
+  }
+
+  return status || 'active';
 }
 
 function drawBase(ctx: CanvasRenderingContext2D, data: TicketDownloadData): void {
@@ -112,9 +128,10 @@ function drawBase(ctx: CanvasRenderingContext2D, data: TicketDownloadData): void
   ctx.fillText(priceText, left, CANVAS_H - 46);
 
   // Status badge
-  const isActive = data.status === 'active';
+  const displayStatus = getDisplayStatus(data.status, data.validUntil);
+  const isActive = displayStatus === 'active';
   ctx.fillStyle = isActive ? '#dcfce7' : '#f3f4f6';
-  const statusLabel = data.status.toUpperCase();
+  const statusLabel = displayStatus.toUpperCase();
   ctx.font = 'bold 11px -apple-system, BlinkMacSystemFont, Arial, sans-serif';
   const badgeW = ctx.measureText(statusLabel).width + 20;
   roundRect(ctx, left, CANVAS_H - 32, badgeW, 22, 4);

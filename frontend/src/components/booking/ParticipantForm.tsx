@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback } from "react";
+import React, { useState, useEffect, useCallback, useContext } from "react";
 import { useDispatch, useSelector } from "react-redux";
 import {
   User,
@@ -9,6 +9,7 @@ import {
   AlertTriangle,
   ChevronLeft,
   ChevronRight,
+  Users,
 } from "lucide-react";
 import toast from "react-hot-toast";
 
@@ -21,7 +22,7 @@ import {
 import { Event } from "../../types/event";
 import { BookingParticipant } from "../../services/api/bookingAPI";
 import logger from "../../utils/logger";
-import { useAuthContext } from "../../hooks/useAuthContext";
+import { AuthContext } from "../../contexts/authContextDef";
 
 import Button from "../ui/Button";
 import { Card, CardContent, CardHeader, CardTitle } from "../ui/Card";
@@ -40,7 +41,8 @@ const ParticipantForm: React.FC<ParticipantFormProps> = ({
 }) => {
   const dispatch = useDispatch<AppDispatch>();
   const participants = useSelector(selectBookingParticipants);
-  const { user } = useAuthContext();
+  const authContext = useContext(AuthContext);
+  const user = authContext?.user ?? null;
 
   const [errors, setErrors] = useState<Record<number, Record<string, string>>>(
     {},
@@ -103,18 +105,29 @@ const ParticipantForm: React.FC<ParticipantFormProps> = ({
     index: number,
   ): boolean => {
     const participantErrors: Record<string, string> = {};
+    const participantName = participant.name?.trim?.() || "";
+    const participantEmail = participant.email?.trim?.() || "";
+    const participantPhone = participant.phone || "";
+    const emergencyContact = participant.emergencyContact || {
+      name: "",
+      phone: "",
+      relationship: "",
+    };
+    const registrationData = Array.isArray(participant.registrationData)
+      ? participant.registrationData
+      : [];
 
-    if (!participant.name.trim()) {
+    if (!participantName) {
       participantErrors.name = "Name is required";
     }
 
-    if (!participant.email.trim()) {
+    if (!participantEmail) {
       participantErrors.email = "Email is required";
-    } else if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(participant.email)) {
+    } else if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(participantEmail)) {
       participantErrors.email = "Please enter a valid email address";
     }
 
-    if (participant.phone && participant.phone.length < 10) {
+    if (participantPhone && participantPhone.length < 10) {
       participantErrors.phone = "Please enter a valid phone number";
     }
 
@@ -143,11 +156,60 @@ const ParticipantForm: React.FC<ParticipantFormProps> = ({
       participantErrors.age = `Age must be between ${minAge} and ${maxAge} years`;
     }
 
-    if (
-      participant.emergencyContact?.name &&
-      !participant.emergencyContact.phone
-    ) {
-      participantErrors.emergencyPhone = "Emergency contact phone is required";
+    if (!isOnlineEvent) {
+      if (
+        emergencyContact.name &&
+        !emergencyContact.phone
+      ) {
+        participantErrors.emergencyPhone = "Emergency contact phone is required";
+      }
+    } else {
+      const rawSelectedDevices = registrationData
+        .find((item) => item.fieldId === "deviceAccess")?.value;
+      const selectedDevices = Array.isArray(rawSelectedDevices)
+        ? rawSelectedDevices
+        : [];
+      const internetConfirmed = Boolean(
+        registrationData.find(
+          (item) => item.fieldId === "internetConfirmation",
+        )?.value,
+      );
+
+      if (!selectedDevices || selectedDevices.length === 0) {
+        participantErrors.deviceAccess = "Please select at least one device";
+      }
+
+      if (!internetConfirmed) {
+        participantErrors.internetConfirmation = "Please confirm your internet connection";
+      }
+
+      if (isKidsEvent) {
+        const guardianName = registrationData.find(
+          (item) => item.fieldId === "guardianName",
+        )?.value;
+        const guardianEmail = registrationData.find(
+          (item) => item.fieldId === "guardianEmail",
+        )?.value;
+        const guardianPhone = registrationData.find(
+          (item) => item.fieldId === "guardianPhone",
+        )?.value;
+        const guardianRelationship = registrationData.find(
+          (item) => item.fieldId === "guardianRelationship",
+        )?.value;
+
+        if (!guardianName) {
+          participantErrors.guardianName = "Parent / Guardian name is required";
+        }
+        if (!guardianEmail) {
+          participantErrors.guardianEmail = "Parent / Guardian email is required";
+        }
+        if (!guardianPhone) {
+          participantErrors.guardianPhone = "Parent / Guardian phone is required";
+        }
+        if (!guardianRelationship) {
+          participantErrors.guardianRelationship = "Relationship is required";
+        }
+      }
     }
 
     setErrors((prev) => ({
@@ -327,6 +389,56 @@ const ParticipantForm: React.FC<ParticipantFormProps> = ({
     [dispatch, event.registrationConfig],
   );
 
+  const isOnlineEvent = event.venueType === "Online";
+
+  const sortedAgeRange = (() => {
+    const rawMin = Number(event.ageRange?.[0]);
+    const rawMax = Number(event.ageRange?.[1]);
+    const isValidMin = !isNaN(rawMin) && event.ageRange?.[0] !== null && event.ageRange?.[0] !== undefined;
+    const isValidMax = !isNaN(rawMax) && event.ageRange?.[1] !== null && event.ageRange?.[1] !== undefined;
+
+    const minAge = isValidMin && isValidMax ? Math.min(rawMin, rawMax) : (isValidMin ? rawMin : undefined);
+    const maxAge = isValidMin && isValidMax ? Math.max(rawMin, rawMax) : (isValidMax ? rawMax : undefined);
+
+    return { minAge, maxAge };
+  })();
+
+  const isKidsEvent =
+    isOnlineEvent &&
+    typeof sortedAgeRange.maxAge === "number" &&
+    sortedAgeRange.maxAge <= 14;
+
+  const updateOnlineRegistrationData = (
+    index: number,
+    fieldId: string,
+    fieldLabel: string,
+    fieldType: string,
+    value: any,
+  ) => {
+    const participant = participants[index];
+    const existing = participant.registrationData || [];
+    const nextRegistrationData = [
+      ...existing.filter((item) => item.fieldId !== fieldId),
+      { fieldId, fieldLabel, fieldType, value },
+    ];
+
+    dispatch(
+      updateParticipantRegistrationData({
+        index,
+        registrationData: nextRegistrationData,
+      }),
+    );
+  };
+
+  const getRegistrationFieldValue = (index: number, fieldId: string) => {
+    return (Array.isArray(participants[index]?.registrationData)
+      ? participants[index]?.registrationData
+      : []
+    ).find(
+      (item) => item.fieldId === fieldId,
+    )?.value;
+  };
+
   const handleNext = () => {
     if (!validateAllParticipants()) {
       toast.error("Please fill in all required fields correctly");
@@ -350,10 +462,12 @@ const ParticipantForm: React.FC<ParticipantFormProps> = ({
     <div className="space-y-6">
       <div className="text-center mb-6">
         <h2 className="text-2xl font-bold text-gray-900 mb-2">
-          Participant Information
+          {isOnlineEvent ? "Online Event Registration" : "Participant Information"}
         </h2>
         <p className="text-gray-600">
-          Please provide details for all participants attending this event
+          {isOnlineEvent
+            ? "Please provide the details needed for the live online session"
+            : "Please provide details for all participants attending this event"}
         </p>
       </div>
 
@@ -446,7 +560,7 @@ const ParticipantForm: React.FC<ParticipantFormProps> = ({
 
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-2">
-                  Phone Number
+                  Phone Number{isOnlineEvent ? " (Optional)" : ""}
                 </label>
                 <div className="relative">
                   <Phone className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-4 h-4" />
@@ -472,72 +586,59 @@ const ParticipantForm: React.FC<ParticipantFormProps> = ({
               </div>
 
               <div>
-                {/* Compute sorted age range once */}
-                {(() => {
-                  const rawMin = Number(event.ageRange?.[0]);
-                  const rawMax = Number(event.ageRange?.[1]);
-                  const isValidMin = !isNaN(rawMin) && event.ageRange?.[0] !== null && event.ageRange?.[0] !== undefined;
-                  const isValidMax = !isNaN(rawMax) && event.ageRange?.[1] !== null && event.ageRange?.[1] !== undefined;
-                  
-                  const ageMin = isValidMin && isValidMax ? Math.min(rawMin, rawMax) : (isValidMin ? rawMin : undefined);
-                  const ageMax = isValidMin && isValidMax ? Math.max(rawMin, rawMax) : (isValidMax ? rawMax : undefined);
-                  
-                  const hasAgeRange =
-                    ageMin !== undefined && ageMax !== undefined && ageMax >= ageMin;
-
-                  return (
-                    <>
-                      <label className="block text-sm font-medium text-gray-700 mb-2">
-                        Age{" "}
-                        {hasAgeRange
-                          ? `(${ageMin}–${ageMax} years)`
-                          : ""}{" "}
-                        *
-                      </label>
-                      <div className="relative">
-                        <Calendar className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-4 h-4" />
-                        <input
-                          type="number"
-                          placeholder={
-                            hasAgeRange
-                              ? `${ageMin}–${ageMax} years`
-                              : "Enter age"
-                          }
-                          value={participant.age || ""}
-                          onChange={(e) =>
-                            handleInputChange(
-                              index,
-                              "age",
-                              parseInt(e.target.value) || 0,
-                            )
-                          }
-                          min={ageMin ?? 0}
-                          max={ageMax ?? 150}
-                          className={`w-full pl-10 pr-4 py-2 border rounded-lg focus:outline-none focus:ring-2 ${
-                            errors[index]?.age
-                              ? "border-red-300 focus:ring-red-500"
-                              : "border-gray-300 focus:ring-primary"
-                          }`}
-                        />
-                      </div>
-                      {errors[index]?.age && (
-                        <p className="mt-1 text-sm text-red-600">
-                          {errors[index].age}
-                        </p>
-                      )}
-                    </>
-                  );
-                })()}
+                <label className="block text-sm font-medium text-gray-700 mb-2">
+                  {isOnlineEvent ? "Age Group" : "Age"}{" "}
+                  {sortedAgeRange.minAge !== undefined && sortedAgeRange.maxAge !== undefined
+                    ? `(${sortedAgeRange.minAge}–${sortedAgeRange.maxAge} years)`
+                    : ""}{" "}
+                  *
+                </label>
+                <div className="relative">
+                  <Calendar className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-4 h-4" />
+                  <input
+                    type="number"
+                    placeholder={
+                      sortedAgeRange.minAge !== undefined && sortedAgeRange.maxAge !== undefined
+                        ? `${sortedAgeRange.minAge}–${sortedAgeRange.maxAge} years`
+                        : "Enter age"
+                    }
+                    value={participant.age || ""}
+                    onChange={(e) =>
+                      handleInputChange(
+                        index,
+                        "age",
+                        parseInt(e.target.value) || 0,
+                      )
+                    }
+                    min={sortedAgeRange.minAge ?? 0}
+                    max={sortedAgeRange.maxAge ?? 150}
+                    className={`w-full pl-10 pr-4 py-2 border rounded-lg focus:outline-none focus:ring-2 ${
+                      errors[index]?.age
+                        ? "border-red-300 focus:ring-red-500"
+                        : "border-gray-300 focus:ring-primary"
+                    }`}
+                  />
+                </div>
+                {errors[index]?.age && (
+                  <p className="mt-1 text-sm text-red-600">
+                    {errors[index].age}
+                  </p>
+                )}
               </div>
             </div>
 
             {/* Gender Selection */}
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-2">
-                Gender
+                Gender{isOnlineEvent ? " (Optional)" : ""}
               </label>
               <div className="flex space-x-4">
-                {["male", "female", "other"].map((gender) => (
+                {[
+                  "male",
+                  "female",
+                  "other",
+                  ...(isOnlineEvent ? ["prefer not to say"] : []),
+                ].map((gender) => (
                   <label key={gender} className="flex items-center">
                     <input
                       type="radio"
@@ -557,115 +658,325 @@ const ParticipantForm: React.FC<ParticipantFormProps> = ({
               </div>
             </div>
 
-            {/* Emergency Contact */}
-            <div className="border-t pt-4">
-              <h4 className="text-sm font-semibold text-gray-900 mb-3 flex items-center">
-                <Heart className="w-4 h-4 mr-2 text-red-500" />
-                Emergency Contact (Recommended)
-              </h4>
-              <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                <input
-                  type="text"
-                  placeholder="Contact name"
-                  value={participant.emergencyContact?.name || ""}
-                  onChange={(e) =>
-                    handleEmergencyContactChange(index, "name", e.target.value)
-                  }
-                  className="px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary"
-                />
-                <input
-                  type="tel"
-                  placeholder="Contact phone"
-                  value={participant.emergencyContact?.phone || ""}
-                  onChange={(e) =>
-                    handleEmergencyContactChange(index, "phone", e.target.value)
-                  }
-                  className={`px-4 py-2 border rounded-lg focus:outline-none focus:ring-2 ${
-                    errors[index]?.emergencyPhone
-                      ? "border-red-300 focus:ring-red-500"
-                      : "border-gray-300 focus:ring-primary"
-                  }`}
-                />
-                <select
-                  value={participant.emergencyContact?.relationship || ""}
-                  onChange={(e) =>
-                    handleEmergencyContactChange(
-                      index,
-                      "relationship",
-                      e.target.value,
-                    )
-                  }
-                  className="px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary"
-                >
-                  <option value="">Relationship</option>
-                  <option value="parent">Parent</option>
-                  <option value="guardian">Guardian</option>
-                  <option value="sibling">Sibling</option>
-                  <option value="spouse">Spouse</option>
-                  <option value="friend">Friend</option>
-                  <option value="other">Other</option>
-                </select>
-              </div>
-              {errors[index]?.emergencyPhone && (
-                <p className="mt-1 text-sm text-red-600">
-                  {errors[index].emergencyPhone}
-                </p>
-              )}
-            </div>
+            {isOnlineEvent ? (
+              <>
+                <div className="border-t pt-4">
+                  <h4 className="text-sm font-semibold text-gray-900 mb-3 flex items-center">
+                    <Heart className="w-4 h-4 mr-2 text-blue-500" />
+                    Online Access Information
+                  </h4>
+                  <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
+                    {["Laptop / Desktop", "Tablet", "Mobile Phone"].map((device) => {
+                      const rawSelectedDevices = getRegistrationFieldValue(index, "deviceAccess");
+                      const selectedDevices = Array.isArray(rawSelectedDevices)
+                        ? rawSelectedDevices
+                        : [];
+                      const checked = selectedDevices.includes(device);
 
-            {/* Dietary Restrictions */}
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">
-                Dietary Restrictions & Allergies
-              </label>
-              <div className="grid grid-cols-2 md:grid-cols-4 gap-2">
-                {commonDietaryRestrictions.map((restriction) => (
-                  <label key={restriction} className="flex items-center">
+                      return (
+                        <label key={device} className="flex items-center gap-2 rounded-lg border border-gray-200 px-3 py-2">
+                          <input
+                            type="checkbox"
+                            checked={checked}
+                            onChange={(e) => {
+                              const nextDevices = e.target.checked
+                                ? [...selectedDevices, device]
+                                : selectedDevices.filter((item) => item !== device);
+                              updateOnlineRegistrationData(
+                                index,
+                                "deviceAccess",
+                                "Device Access",
+                                "checkbox",
+                                nextDevices,
+                              );
+                            }}
+                            className="h-4 w-4 text-primary border-gray-300 rounded"
+                          />
+                          <span className="text-sm text-gray-700">{device}</span>
+                        </label>
+                      );
+                    })}
+                  </div>
+                  {errors[index]?.deviceAccess && (
+                    <p className="mt-2 text-sm text-red-600">
+                      {errors[index].deviceAccess}
+                    </p>
+                  )}
+                  <div className="mt-3 rounded-lg border border-blue-200 bg-blue-50 px-4 py-3">
+                    <label className="flex items-start gap-3">
+                      <input
+                        type="checkbox"
+                        checked={Boolean(getRegistrationFieldValue(index, "internetConfirmation"))}
+                        onChange={(e) =>
+                          updateOnlineRegistrationData(
+                            index,
+                            "internetConfirmation",
+                            "Internet Confirmation",
+                            "checkbox",
+                            e.target.checked,
+                          )
+                        }
+                        className="mt-1 h-4 w-4 text-primary border-gray-300 rounded"
+                      />
+                      <span className="text-sm text-blue-900">
+                        I have a stable internet connection for attending the live session.
+                      </span>
+                    </label>
+                  </div>
+                  {errors[index]?.internetConfirmation && (
+                    <p className="mt-2 text-sm text-red-600">
+                      {errors[index].internetConfirmation}
+                    </p>
+                  )}
+                </div>
+
+                {isKidsEvent && (
+                  <div className="border-t pt-4">
+                    <h4 className="text-sm font-semibold text-gray-900 mb-3 flex items-center">
+                      <Users className="w-4 h-4 mr-2 text-green-500" />
+                      Parent / Guardian Details
+                    </h4>
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                      <input
+                        type="text"
+                        placeholder="Parent / Guardian name"
+                        value={(getRegistrationFieldValue(index, "guardianName") as string) || ""}
+                        onChange={(e) =>
+                          updateOnlineRegistrationData(
+                            index,
+                            "guardianName",
+                            "Parent / Guardian Name",
+                            "text",
+                            e.target.value,
+                          )
+                        }
+                        className="px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary"
+                      />
+                      {errors[index]?.guardianName && (
+                        <p className="-mt-2 text-sm text-red-600 md:col-span-2">
+                          {errors[index].guardianName}
+                        </p>
+                      )}
+                      <input
+                        type="email"
+                        placeholder="Parent / Guardian email"
+                        value={(getRegistrationFieldValue(index, "guardianEmail") as string) || ""}
+                        onChange={(e) =>
+                          updateOnlineRegistrationData(
+                            index,
+                            "guardianEmail",
+                            "Parent / Guardian Email",
+                            "email",
+                            e.target.value,
+                          )
+                        }
+                        className="px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary"
+                      />
+                      {errors[index]?.guardianEmail && (
+                        <p className="-mt-2 text-sm text-red-600 md:col-span-2">
+                          {errors[index].guardianEmail}
+                        </p>
+                      )}
+                      <input
+                        type="tel"
+                        placeholder="Parent / Guardian phone"
+                        value={(getRegistrationFieldValue(index, "guardianPhone") as string) || ""}
+                        onChange={(e) =>
+                          updateOnlineRegistrationData(
+                            index,
+                            "guardianPhone",
+                            "Parent / Guardian Phone",
+                            "tel",
+                            e.target.value,
+                          )
+                        }
+                        className="px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary"
+                      />
+                      {errors[index]?.guardianPhone && (
+                        <p className="-mt-2 text-sm text-red-600 md:col-span-2">
+                          {errors[index].guardianPhone}
+                        </p>
+                      )}
+                      <input
+                        type="text"
+                        placeholder="Relationship"
+                        value={(getRegistrationFieldValue(index, "guardianRelationship") as string) || ""}
+                        onChange={(e) =>
+                          updateOnlineRegistrationData(
+                            index,
+                            "guardianRelationship",
+                            "Parent / Guardian Relationship",
+                            "text",
+                            e.target.value,
+                          )
+                        }
+                        className="px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary"
+                      />
+                      {errors[index]?.guardianRelationship && (
+                        <p className="-mt-2 text-sm text-red-600 md:col-span-2">
+                          {errors[index].guardianRelationship}
+                        </p>
+                      )}
+                    </div>
+                  </div>
+                )}
+
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                    Experience Level
+                  </label>
+                  <select
+                    value={(getRegistrationFieldValue(index, "experienceLevel") as string) || ""}
+                    onChange={(e) =>
+                      updateOnlineRegistrationData(
+                        index,
+                        "experienceLevel",
+                        "Experience Level",
+                        "dropdown",
+                        e.target.value,
+                      )
+                    }
+                    className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary"
+                  >
+                    <option value="">Select your experience level</option>
+                    <option value="beginner">Beginner</option>
+                    <option value="intermediate">Intermediate</option>
+                    <option value="advanced">Advanced</option>
+                  </select>
+                </div>
+
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                    Questions for Instructor
+                  </label>
+                  <textarea
+                    placeholder="Anything you'd like the instructor to know?"
+                    value={participant.specialRequirements || ""}
+                    onChange={(e) =>
+                      handleInputChange(
+                        index,
+                        "specialRequirements",
+                        e.target.value,
+                      )
+                    }
+                    rows={3}
+                    className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary"
+                  />
+                </div>
+              </>
+            ) : (
+              <>
+                {/* Emergency Contact */}
+                <div className="border-t pt-4">
+                  <h4 className="text-sm font-semibold text-gray-900 mb-3 flex items-center">
+                    <Heart className="w-4 h-4 mr-2 text-red-500" />
+                    Emergency Contact (Recommended)
+                  </h4>
+                  <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                     <input
-                      type="checkbox"
-                      checked={
-                        participant.dietaryRestrictions?.includes(
-                          restriction,
-                        ) || false
-                      }
+                      type="text"
+                      placeholder="Contact name"
+                      value={participant.emergencyContact?.name || ""}
                       onChange={(e) =>
-                        handleDietaryRestrictionChange(
+                        handleEmergencyContactChange(index, "name", e.target.value)
+                      }
+                      className="px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary"
+                    />
+                    <input
+                      type="tel"
+                      placeholder="Contact phone"
+                      value={participant.emergencyContact?.phone || ""}
+                      onChange={(e) =>
+                        handleEmergencyContactChange(index, "phone", e.target.value)
+                      }
+                      className={`px-4 py-2 border rounded-lg focus:outline-none focus:ring-2 ${
+                        errors[index]?.emergencyPhone
+                          ? "border-red-300 focus:ring-red-500"
+                          : "border-gray-300 focus:ring-primary"
+                      }`}
+                    />
+                    <select
+                      value={participant.emergencyContact?.relationship || ""}
+                      onChange={(e) =>
+                        handleEmergencyContactChange(
                           index,
-                          restriction,
-                          e.target.checked,
+                          "relationship",
+                          e.target.value,
                         )
                       }
-                      className="mr-2"
-                    />
-                    <span className="text-sm text-gray-700">{restriction}</span>
-                  </label>
-                ))}
-              </div>
-            </div>
+                      className="px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary"
+                    >
+                      <option value="">Relationship</option>
+                      <option value="parent">Parent</option>
+                      <option value="guardian">Guardian</option>
+                      <option value="sibling">Sibling</option>
+                      <option value="spouse">Spouse</option>
+                      <option value="friend">Friend</option>
+                      <option value="other">Other</option>
+                    </select>
+                  </div>
+                  {errors[index]?.emergencyPhone && (
+                    <p className="mt-1 text-sm text-red-600">
+                      {errors[index].emergencyPhone}
+                    </p>
+                  )}
+                </div>
 
-            {/* Special Requirements */}
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">
-                Special Requirements
-              </label>
-              <textarea
-                placeholder="Any special accommodations, medical conditions, or other requirements we should know about?"
-                value={participant.specialRequirements || ""}
-                onChange={(e) =>
-                  handleInputChange(
-                    index,
-                    "specialRequirements",
-                    e.target.value,
-                  )
-                }
-                rows={3}
-                className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary"
-              />
-            </div>
+                {/* Dietary Restrictions */}
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                    Dietary Restrictions & Allergies
+                  </label>
+                  <div className="grid grid-cols-2 md:grid-cols-4 gap-2">
+                    {commonDietaryRestrictions.map((restriction) => (
+                      <label key={restriction} className="flex items-center">
+                        <input
+                          type="checkbox"
+                          checked={
+                            participant.dietaryRestrictions?.includes(
+                              restriction,
+                            ) || false
+                          }
+                          onChange={(e) =>
+                            handleDietaryRestrictionChange(
+                              index,
+                              restriction,
+                              e.target.checked,
+                            )
+                          }
+                          className="mr-2"
+                        />
+                        <span className="text-sm text-gray-700">{restriction}</span>
+                      </label>
+                    ))}
+                  </div>
+                </div>
+
+                {/* Special Requirements */}
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                    Special Requirements
+                  </label>
+                  <textarea
+                    placeholder="Any special accommodations, medical conditions, or other requirements we should know about?"
+                    value={participant.specialRequirements || ""}
+                    onChange={(e) =>
+                      handleInputChange(
+                        index,
+                        "specialRequirements",
+                        e.target.value,
+                      )
+                    }
+                    rows={3}
+                    className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary"
+                  />
+                </div>
+              </>
+            )}
 
             {/* Dynamic Registration Form - Custom fields defined by vendor */}
             {event.registrationConfig?.enabled &&
-              event.registrationConfig.fields.length > 0 && (
+              event.registrationConfig.fields?.length > 0 && (
                 <div className="border-t pt-4 mt-4">
                   <DynamicRegistrationForm
                     config={event.registrationConfig}
@@ -685,13 +996,12 @@ const ParticipantForm: React.FC<ParticipantFormProps> = ({
           <AlertTriangle className="w-5 h-5 text-yellow-600 mr-3 mt-0.5" />
           <div>
             <h4 className="text-sm font-semibold text-yellow-800 mb-1">
-              Important Notice
+              {isOnlineEvent ? "Online Session Notice" : "Important Notice"}
             </h4>
             <p className="text-sm text-yellow-700">
-              Please ensure all information is accurate as it will be used for
-              registration, safety purposes, and emergency contact if needed.
-              You can update participant information up to 24 hours before the
-              event starts.
+              {isOnlineEvent
+                ? "Please ensure your device access and internet details are accurate so we can support your live session registration."
+                : "Please ensure all information is accurate as it will be used for registration, safety purposes, and emergency contact if needed. You can update participant information up to 24 hours before the event starts."}
             </p>
           </div>
         </div>
