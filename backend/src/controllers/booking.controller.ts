@@ -274,8 +274,29 @@ export const initiateBooking = async (
       return next(new AppError("Event schedule not found", 404));
     }
 
+    // Use the resolved schedule ObjectId for all subsequent Mongoose queries.
+    // The raw dateScheduleId may be a composite string (e.g. "objectId-2026-05-27")
+    // which will fail MongoDB ObjectId casting in queries like "dateSchedule._id".
+    const resolvedScheduleId = String(schedule._id);
+
     // Get schedule date (handle both legacy 'date' field and new 'startDate' field)
-    const scheduleDate = schedule.startDate || schedule.date;
+    let scheduleDate = schedule.startDate || schedule.date;
+
+    // If the dateScheduleId is composite (e.g. "scheduleId-YYYY-MM-DD" or "scheduleId-YYYY-MM-DD-slotX")
+    // extract the date part to show the specific date selected by the user, rather than the schedule's start/creation date.
+    if (scheduleTokenParts.length >= 4) {
+      const year = scheduleTokenParts[1];
+      const month = scheduleTokenParts[2];
+      const day = scheduleTokenParts[3];
+      if (/^\d{4}$/.test(year) && /^\d{2}$/.test(month) && /^\d{2}$/.test(day)) {
+        const dateStr = `${year}-${month}-${day}`;
+        const tempDate = new Date(dateStr);
+        if (!isNaN(tempDate.getTime())) {
+          scheduleDate = tempDate;
+        }
+      }
+    }
+
     if (!scheduleDate) {
       logger.error("Schedule date is missing from schedule object", {
         scheduleId: dateScheduleId,
@@ -312,7 +333,7 @@ export const initiateBooking = async (
       const seatResult = await EventModel.findOneAndUpdate(
         {
           _id: resolvedEventId,
-          "dateSchedule._id": dateScheduleId,
+          "dateSchedule._id": resolvedScheduleId,
           "dateSchedule.availableSeats": { $gte: seats },
         },
         { 
@@ -394,8 +415,8 @@ export const initiateBooking = async (
       } catch (couponError: any) {
         // Restore seats if coupon validation fails
         if (!schedule.unlimitedSeats) {
-          await EventModel.findOneAndUpdate(
-            { _id: resolvedEventId, "dateSchedule._id": dateScheduleId },
+           await EventModel.findOneAndUpdate(
+            { _id: resolvedEventId, "dateSchedule._id": resolvedScheduleId },
             { $inc: { "dateSchedule.$.availableSeats": seats } },
           );
         }
@@ -436,7 +457,7 @@ export const initiateBooking = async (
             totalPrice: subtotal,
             currency: "AED",
             participants: participants || [],
-            scheduleId: dateScheduleId,
+            scheduleId: resolvedScheduleId,
           },
         ],
         subtotal,
@@ -501,7 +522,7 @@ export const initiateBooking = async (
           metadata: {
             orderId: tempOrder._id.toString(),
             eventId: resolvedEventId,
-            scheduleId: dateScheduleId,
+            scheduleId: resolvedScheduleId,
             seats: seats.toString(),
             userId,
           },
@@ -520,7 +541,7 @@ export const initiateBooking = async (
         const SEAT_HOLD_TTL = 900; // 15 minutes
         await redisClient.set(
           `seat-hold:${tempOrder._id}`,
-          JSON.stringify({ eventId: resolvedEventId, dateScheduleId, seats }),
+          JSON.stringify({ eventId: resolvedEventId, dateScheduleId: resolvedScheduleId, seats }),
           "EX",
           SEAT_HOLD_TTL,
         );
@@ -559,7 +580,7 @@ export const initiateBooking = async (
       // Restore seats on failure
       if (!schedule.unlimitedSeats) {
         await EventModel.findOneAndUpdate(
-          { _id: resolvedEventId, "dateSchedule._id": dateScheduleId },
+          { _id: resolvedEventId, "dateSchedule._id": resolvedScheduleId },
           { $inc: { "dateSchedule.$.availableSeats": seats } },
         );
       }

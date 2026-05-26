@@ -266,29 +266,34 @@ export class TicketGenerationService {
                 },
               );
 
+              // Calculate validUntil using the latest end date from the event's
+              // dateSchedule array + 24h grace period. This prevents tickets from
+              // being marked as expired while the event is still active.
+              const latestEndDate = (event.dateSchedule || []).reduce((latest: Date, sched: any) => {
+                const end = sched.endDate ? new Date(sched.endDate) : null;
+                const start = sched.startDate || sched.date ? new Date(sched.startDate || sched.date) : null;
+                const candidate = end || start;
+                if (candidate && !isNaN(candidate.getTime()) && candidate > latest) {
+                  return candidate;
+                }
+                return latest;
+              }, orderItem.scheduleDate);
+
+              const ticketValidUntil = new Date(
+                latestEndDate.getTime() + 24 * 60 * 60 * 1000,
+              );
+
               const qrDataPayload = {
                 ticketNumber,
                 eventId: orderItem.eventId.toString(),
                 userId: order.userId.toString(),
                 vendorId: event.vendorId?.toString() || event.teacherId?.toString() || '',
                 orderNumber: order.orderNumber,
-                validUntil: new Date(
-                  orderItem.scheduleDate.getTime() + 24 * 60 * 60 * 1000,
-                ),
+                validUntil: ticketValidUntil,
                 seatsAllocated: orderItem.quantity,
               };
 
-              // logger.info('🔧 TICKET GENERATION: Generating secure QR data', {
-              //   ticketNumber,
-              //   qrDataPayload
-              // });
-
               const qrCodeData = generateSecureQRData(qrDataPayload);
-              // logger.info('✅ TICKET GENERATION: QR data generated', {
-              //   ticketNumber,
-              //   qrCodeDataLength: qrCodeData.length,
-              //   qrCodePreview: qrCodeData.substring(0, 100) + '...'
-              // });
 
               logger.info("🖼️ TICKET GENERATION: Generating QR code image", {
                 ticketNumber,
@@ -300,13 +305,6 @@ export class TicketGenerationService {
                 errorCorrectionLevel: "medium", // Medium is sufficient for URL format
                 width: 300, // Slightly larger for better scanning
               });
-
-              // logger.info('✅ TICKET GENERATION: QR code image generated', {
-              //   ticketNumber,
-              //   qrCodeImageLength: qrCodeImage?.length || 0,
-              //   qrCodeImageType: qrCodeImage?.startsWith('data:') ? 'data-uri' : 'unknown',
-              //   qrCodeImagePreview: qrCodeImage?.substring(0, 50) + '...'
-              // });
 
               const ticketData = {
                 ticketNumber,
@@ -329,9 +327,7 @@ export class TicketGenerationService {
                   scanCount: 0,
                 },
                 validFrom: orderItem.scheduleDate,
-                validUntil: new Date(
-                  orderItem.scheduleDate.getTime() + 24 * 60 * 60 * 1000,
-                ),
+                validUntil: ticketValidUntil,
                 metadata: {
                   generatedBy: order.userId,
                   generatedAt: new Date(),

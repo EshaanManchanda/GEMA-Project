@@ -29,6 +29,7 @@ interface JourneyStep {
   number: number;
   title: string;
   description: string;
+  rightDescription?: string;
 }
 
 interface Benefit {
@@ -41,6 +42,16 @@ interface UpcomingEvent {
   title: string;
   date: string;
   description: string;
+  status: 'coming_soon' | 'open';
+  link?: string;
+  category?: string;
+}
+
+interface UniversityEvent {
+  title: string;
+  date: string;
+  time: string;
+  team: string;
   status: 'coming_soon' | 'open';
 }
 
@@ -86,31 +97,37 @@ const JOURNEY_STEPS: JourneyStep[] = [
     number: 1,
     title: 'Register Online',
     description: 'Sign up with your details and select your area of interest',
+    rightDescription: 'Join 500+ Schools Empowering Future Innovators',
   },
   {
     number: 2,
     title: 'Participate in Challenges',
     description: 'Compete with students from across the Middle East',
+    rightDescription: 'Students compete with peers from top schools and gain global exposure.',
   },
   {
     number: 3,
     title: 'Learn through Workshops',
     description: 'Get mentorship from university experts and industry leaders',
+    rightDescription: '50+ Workshops Conducted Every Year',
   },
   {
     number: 4,
     title: 'Get Selected for Finals',
     description: 'Top performers advance to the final round',
+    rightDescription: 'National & Regional Recognition',
   },
   {
     number: 5,
     title: 'Showcase at University Campus',
     description: 'Present your work to professors and judges',
+    rightDescription: 'University Exposure Experience',
   },
   {
     number: 6,
     title: 'Win Recognition',
     description: 'Earn certificates, awards, and global recognition',
+    rightDescription: 'Helping students build confidence, leadership, and achievement',
   },
 ];
 
@@ -149,21 +166,49 @@ const BENEFITS: Benefit[] = [
 
 const UPCOMING_EVENTS: UpcomingEvent[] = [
   {
-    title: 'Future Innovators Challenge',
+    title: 'Scratch Game Creation',
     date: 'Starts May 15, 2026',
-    description: 'AI, machine learning, and cutting-edge tech projects',
+    description: 'Learn coding in a fun and creative way!',
     status: 'coming_soon',
+
+    link: 'https://kidrove.com/events/scratch-game-creation-workshop-for-students-',
   },
   {
     title: 'Global Communication Contest',
     date: 'Starts June 1, 2026',
     description: 'Public speaking, debate, and storytelling',
     status: 'open',
+    link: 'https://worldstorytellingcompetition.com/',
   },
   {
     title: 'Startup Challenge',
     date: 'Starts June 15, 2026',
     description: 'Pitch your business ideas and win mentorship',
+    status: 'coming_soon',
+    link: 'https://youngstartupclub.com/',
+  },
+];
+
+const UNIVERSITY_EVENTS: UniversityEvent[] = [
+  {
+    title: 'Harvard Week: Summer College Programs',
+    date: 'June 5, 2026',
+    time: '2:00 PM UTC',
+    team: 'Team Overland Summers',
+    status: 'coming_soon',
+  },
+  {
+    title: 'Immersive Film Making & Virtual Reality',
+    date: 'June 15, 2026',
+    time: '4:00 PM UTC',
+    team: 'Team UCA Canterbury',
+    status: 'coming_soon',
+  },
+  {
+    title: 'Inside Cybersecurity & Computer Science at Sharda University',
+    date: 'June 25, 2026',
+    time: '6:00 PM UTC',
+    team: 'Team Sharda University, India',
     status: 'coming_soon',
   },
 ];
@@ -264,21 +309,29 @@ const WhatIsSection: React.FC = () => (
             icon: '🎯',
             title: 'Participate in Global Competitions',
             desc: 'Compete with thousands of students across the Middle East and beyond',
+            link: null,
+            linkText: null,
           },
           {
             icon: '📚',
             title: 'Learn from University Experts',
             desc: 'Get mentorship from professors and industry leaders',
+            link: null,
+            linkText: 'through engaging workshops and seminars.',
           },
           {
             icon: '💡',
             title: 'Build Real-World Skills',
             desc: 'Develop practical abilities that matter in the real world',
+            link: null,
+            linkText: 'through GEMA Clubs and Activities.',
           },
           {
             icon: '🏫',
             title: 'Visit University Campuses',
             desc: 'Get exclusive access to university visits and networking',
+            link: null,
+            linkText: null,
           },
         ].map((item, i) => (
           <div key={i} className="flex gap-4 p-6 rounded-2xl bg-gradient-to-br from-blue-50 to-purple-50 border border-blue-100 hover:shadow-lg transition-shadow">
@@ -286,6 +339,9 @@ const WhatIsSection: React.FC = () => (
             <div>
               <h3 className="font-bold text-gray-900 mb-2">{item.title}</h3>
               <p className="text-gray-600 text-sm">{item.desc}</p>
+              {item.linkText && (
+                <p className="text-purple-600 text-sm font-medium mt-1">{item.linkText}</p>
+              )}
             </div>
           </div>
         ))}
@@ -308,7 +364,7 @@ const OpportunitiesSection: React.FC = () => (
         <h2 className="text-4xl sm:text-5xl font-bold text-gray-900 mb-4">
           Explore Exciting Opportunities
         </h2>
-        <p className="text-lg text-gray-600">Choose your path and start your journey</p>
+        <p className="text-lg text-purple-600 font-medium">Collab with Kidkove and start your Future ready student journey with us</p>
       </div>
 
       <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
@@ -360,8 +416,15 @@ const JourneySection: React.FC = () => (
                 <span className="text-blue-600 font-bold text-lg">{step.number}</span>
               </div>
 
-              {/* Right content (empty on desktop) */}
-              <div className="hidden md:flex-1" />
+              {/* Right content (showing the suggested right-side description) */}
+              <div className="flex-1">
+                {step.rightDescription && (
+                  <div className={`p-6 rounded-2xl ${i % 2 !== 0 ? 'bg-gradient-to-br from-blue-50 to-cyan-50 border border-blue-200' : 'bg-gradient-to-br from-purple-50 to-pink-50 border border-purple-200'} text-left md:text-right`}>
+                    <h3 className="text-2xl font-bold text-transparent mb-2 select-none select-none">{step.title}</h3>
+                    <p className="text-gray-600">{step.rightDescription}</p>
+                  </div>
+                )}
+              </div>
             </div>
           ))}
         </div>
@@ -440,11 +503,13 @@ const SchoolPartnershipSection: React.FC = () => (
       <div className="bg-white rounded-3xl p-12 border-2 border-gray-200">
         <div className="grid grid-cols-1 md:grid-cols-2 gap-12 items-center">
           <div>
-            <h2 className="text-4xl font-bold text-gray-900 mb-6">
+            <h2 className="text-4xl font-bold text-gray-900 mb-4">
               Partner With Us as a School
             </h2>
+
             <ul className="space-y-4 mb-8">
               {[
+                'Get Free of cost Engaging Workshop for students on various topics.',
                 'Enroll students in global competitions',
                 'Provide exposure beyond classroom learning',
                 'Receive recognition & participation certificates',
@@ -483,20 +548,40 @@ const UpcomingEventsSection: React.FC = () => (
 
       <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
         {UPCOMING_EVENTS.map((event, i) => (
-          <div key={i} className="rounded-2xl border-2 border-gray-200 overflow-hidden hover:shadow-xl transition-shadow bg-white">
+          <div key={i} className="rounded-2xl border-2 border-gray-200 overflow-hidden hover:shadow-xl transition-shadow bg-white flex flex-col">
             <div className={`h-2 bg-gradient-to-r ${i % 2 === 0 ? 'from-blue-500 to-cyan-500' : 'from-purple-500 to-pink-500'}`} />
-            <div className="p-8">
+            <div className="p-8 flex flex-col flex-1">
+              {event.category && (
+                <span className="text-xs font-bold text-blue-500 uppercase tracking-wide mb-2">{event.category}</span>
+              )}
               <div className="flex items-start justify-between mb-4">
                 <h3 className="text-xl font-bold text-gray-900 flex-1">{event.title}</h3>
-                <span className={`px-3 py-1 rounded-full text-xs font-bold whitespace-nowrap ml-2 ${event.status === 'open' ? 'bg-green-100 text-green-700' : 'bg-gray-100 text-gray-700'}`}>
-                  {event.status === 'open' ? '🎉 Open Now' : '⏰ Coming Soon'}
-                </span>
+                {event.title === 'Scratch Game Creation' ? (
+                  <span className="px-3 py-1 rounded-full text-xs font-bold whitespace-nowrap ml-2 bg-green-100 text-green-700">
+                    🎉 Open Now
+                  </span>
+                ) : (
+                  <span className="px-3 py-1 rounded-full text-xs font-bold whitespace-nowrap ml-2 bg-blue-100 text-blue-700">
+                    ⏰ Upcoming
+                  </span>
+                )}
               </div>
               <p className="text-gray-600 text-sm mb-4">{event.date}</p>
-              <p className="text-gray-700 mb-6">{event.description}</p>
-              <button onClick={() => toast.success('Registration feature coming soon!')} className="w-full px-4 py-2 bg-gradient-to-r from-blue-500 to-purple-500 text-white font-bold rounded-lg hover:shadow-lg transition-shadow flex items-center justify-center gap-2">
-                Register Now <FaArrowRight className="text-sm" />
-              </button>
+              <p className="text-gray-700 mb-6 flex-1">{event.description}</p>
+              {event.link ? (
+                <a
+                  href={event.link}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="w-full px-4 py-2 bg-gradient-to-r from-blue-500 to-purple-500 text-white font-bold rounded-lg hover:shadow-lg transition-shadow flex items-center justify-center gap-2 text-center"
+                >
+                  Register Now <FaArrowRight className="text-sm" />
+                </a>
+              ) : (
+                <button onClick={() => toast.success('Registration feature coming soon!')} className="w-full px-4 py-2 bg-gradient-to-r from-blue-500 to-purple-500 text-white font-bold rounded-lg hover:shadow-lg transition-shadow flex items-center justify-center gap-2">
+                  Register Now <FaArrowRight className="text-sm" />
+                </button>
+              )}
             </div>
           </div>
         ))}

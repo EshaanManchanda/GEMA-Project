@@ -693,10 +693,15 @@ const BookingPage: React.FC = () => {
       setIsProcessingBooking(true);
       toast.loading(initMsg);
 
+      const selectedDate = bookingFlow.selectedDate || routeState?.selectedDate;
+      const compositeScheduleId = (scheduleId && selectedDate)
+        ? `${scheduleId}-${selectedDate.includes('T') ? selectedDate.split('T')[0] : selectedDate}`
+        : scheduleId;
+
       // Initiate booking
       const initiateResponse = await bookingAPI.initiateBooking({
         eventId: event._id,
-        dateScheduleId: scheduleId,
+        dateScheduleId: compositeScheduleId,
         seats: bookingFlow.participants.length || 1,
         paymentMethod: effectivePaymentMethod
       });

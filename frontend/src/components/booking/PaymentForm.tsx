@@ -160,22 +160,26 @@ const PaymentForm: React.FC<PaymentFormProps> = ({
   // Create payment intent when Stripe is selected and we don't have one yet
   useEffect(() => {
     if (selectedPaymentMethod === 'stripe' && !checkout?.clientSecret && participants.length > 0) {
-      // Get schedule ID from bookingFlow (set during booking initialization)
+      // Get schedule ID and selected date from bookingFlow (set during booking initialization)
       const dateScheduleId = bookingFlow.scheduleId;
+      const selectedDate = bookingFlow.selectedDate;
+      const compositeScheduleId = (dateScheduleId && selectedDate)
+        ? `${dateScheduleId}-${selectedDate.includes('T') ? selectedDate.split('T')[0] : selectedDate}`
+        : dateScheduleId;
 
-      if (dateScheduleId) {
-        logger.debug('Creating payment intent for Stripe');
+      if (compositeScheduleId) {
+        logger.debug('Creating payment intent for Stripe', { compositeScheduleId });
         dispatch(createPaymentIntent({
           eventId: event._id,
           participants: participants.length,
-          dateScheduleId: dateScheduleId,
+          dateScheduleId: compositeScheduleId,
           currency: currencyInfo.code, // Pass the active currency code
         }));
       } else {
         logger.warn('No schedule ID found in booking flow. User must select a schedule.');
       }
     }
-  }, [selectedPaymentMethod, checkout?.clientSecret, participants.length, event._id, bookingFlow.scheduleId, dispatch]);
+  }, [selectedPaymentMethod, checkout?.clientSecret, participants.length, event._id, bookingFlow.scheduleId, bookingFlow.selectedDate, dispatch]);
 
   // Calculate total amount
   const calculateTotal = () => {
@@ -334,14 +338,19 @@ const PaymentForm: React.FC<PaymentFormProps> = ({
       if (selectedPaymentMethod === 'free') {
         // Free event — initiate with paymentMethod 'free' then confirm immediately
         const dateScheduleId = bookingFlow.scheduleId;
-        if (!dateScheduleId) {
+        const selectedDate = bookingFlow.selectedDate;
+        const compositeScheduleId = (dateScheduleId && selectedDate)
+          ? `${dateScheduleId}-${selectedDate.includes('T') ? selectedDate.split('T')[0] : selectedDate}`
+          : dateScheduleId;
+
+        if (!compositeScheduleId) {
           setPaymentError('No schedule selected. Please try again.');
           return;
         }
 
         const initiateResponse = await bookingAPI.initiateBooking({
           eventId: event._id,
-          dateScheduleId,
+          dateScheduleId: compositeScheduleId,
           seats: participants.length || 1,
           paymentMethod: 'free',
           participants,
@@ -372,8 +381,12 @@ const PaymentForm: React.FC<PaymentFormProps> = ({
         if (!orderId) {
           logger.debug('Initiating test payment booking');
           const dateScheduleId = bookingFlow.scheduleId;
+          const selectedDate = bookingFlow.selectedDate;
+          const compositeScheduleId = (dateScheduleId && selectedDate)
+            ? `${dateScheduleId}-${selectedDate.includes('T') ? selectedDate.split('T')[0] : selectedDate}`
+            : dateScheduleId;
 
-          if (!dateScheduleId) {
+          if (!compositeScheduleId) {
             setPaymentError('No schedule selected. Please try again.');
             return;
           }
@@ -381,7 +394,7 @@ const PaymentForm: React.FC<PaymentFormProps> = ({
           // Initiate booking with test payment method
           const initiateResponse = await bookingAPI.initiateBooking({
             eventId: event._id,
-            dateScheduleId,
+            dateScheduleId: compositeScheduleId,
             seats: participants.length,
             paymentMethod: 'test',
             participants: participants

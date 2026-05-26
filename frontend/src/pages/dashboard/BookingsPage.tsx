@@ -48,7 +48,7 @@ const getBookingSchedule = (booking: any) => {
 const getBookingTiming = (booking: any) => {
   const firstItem = booking?.items?.[0];
   const schedule = getBookingSchedule(booking);
-  const rawStart = schedule?.startDate || schedule?.date || firstItem?.scheduleDate;
+  const rawStart = firstItem?.scheduleDate || schedule?.startDate || schedule?.date;
   const hasExplicitTime = typeof rawStart === 'string' && /T\d{2}:\d{2}/.test(rawStart);
 
   const eventStart = parseDate(rawStart);

@@ -8,6 +8,7 @@ import { emailService } from "../services/email.service";
 import { CouponService } from "../services/coupon.service";
 import { stripe } from "../config/stripe";
 import logger from "../config/logger";
+import { v4 as uuidv4 } from "uuid";
 
 // @desc    Create new order
 // @route   POST /api/orders
@@ -296,6 +297,19 @@ export const cancelOrder = async (
       const event = await Event.findById(item.eventId);
       if (event) {
         const schedule = event.dateSchedule.find((s: any) => {
+          if (item.scheduleId && String(s._id) === String(item.scheduleId)) {
+            return true;
+          }
+          // Fallback to range or exact match
+          if (s.startDate && s.endDate && item.scheduleDate) {
+            const start = new Date(s.startDate);
+            const end = new Date(s.endDate);
+            const target = new Date(item.scheduleDate);
+            start.setHours(0, 0, 0, 0);
+            end.setHours(23, 59, 59, 999);
+            target.setHours(12, 0, 0, 0);
+            if (target >= start && target <= end) return true;
+          }
           const scheduleDate = s.startDate || s.date;
           if (!scheduleDate || !item.scheduleDate) return false;
           return (
@@ -416,16 +430,34 @@ export const processPayment = async (
       // Generate tickets for the order
       const tickets = [];
       for (const item of order.items) {
+        const event = await Event.findById(item.eventId);
+        const endDate = event?.dateSchedule?.[event.dateSchedule.length - 1]?.endDate || 
+                        event?.dateSchedule?.[event.dateSchedule.length - 1]?.date || 
+                        item.scheduleDate;
+        const ticketValidUntil = new Date(new Date(endDate).getTime() + 24 * 60 * 60 * 1000);
+
         for (let i = 0; i < item.quantity; i++) {
+          const ticketNumber = uuidv4();
+          const qrCodeData = JSON.stringify({
+            ticketNumber,
+            eventId: item.eventId.toString(),
+            userId: userId.toString(),
+          });
+          const qrCodeImage = `https://api.qrserver.com/v1/create-qr-code/?size=150x150&data=${encodeURIComponent(qrCodeData)}`;
+
           const ticket = await Ticket.create({
+            ticketNumber,
             eventId: item.eventId,
             userId,
             orderId: order._id,
-            eventDate: item.scheduleDate,
+            qrCode: qrCodeData,
+            qrCodeImage,
             ticketType: "standard",
             status: "active",
             price: item.unitPrice,
             currency: item.currency,
+            validFrom: item.scheduleDate,
+            validUntil: ticketValidUntil,
           });
           tickets.push(ticket);
         }

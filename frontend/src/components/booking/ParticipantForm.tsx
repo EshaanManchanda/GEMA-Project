@@ -136,10 +136,10 @@ const ParticipantForm: React.FC<ParticipantFormProps> = ({
     const rawMax = Number(event.ageRange?.[1]);
     const isValidMin = !isNaN(rawMin) && event.ageRange?.[0] !== null && event.ageRange?.[0] !== undefined;
     const isValidMax = !isNaN(rawMax) && event.ageRange?.[1] !== null && event.ageRange?.[1] !== undefined;
-    
+
     const minAge = isValidMin && isValidMax ? Math.min(rawMin, rawMax) : (isValidMin ? rawMin : undefined);
     const maxAge = isValidMin && isValidMax ? Math.max(rawMin, rawMax) : (isValidMax ? rawMax : undefined);
-    
+
     const hasValidAgeRange =
       typeof minAge === "number" &&
       typeof maxAge === "number" &&
@@ -184,31 +184,7 @@ const ParticipantForm: React.FC<ParticipantFormProps> = ({
       }
 
       if (isKidsEvent) {
-        const guardianName = registrationData.find(
-          (item) => item.fieldId === "guardianName",
-        )?.value;
-        const guardianEmail = registrationData.find(
-          (item) => item.fieldId === "guardianEmail",
-        )?.value;
-        const guardianPhone = registrationData.find(
-          (item) => item.fieldId === "guardianPhone",
-        )?.value;
-        const guardianRelationship = registrationData.find(
-          (item) => item.fieldId === "guardianRelationship",
-        )?.value;
-
-        if (!guardianName) {
-          participantErrors.guardianName = "Parent / Guardian name is required";
-        }
-        if (!guardianEmail) {
-          participantErrors.guardianEmail = "Parent / Guardian email is required";
-        }
-        if (!guardianPhone) {
-          participantErrors.guardianPhone = "Parent / Guardian phone is required";
-        }
-        if (!guardianRelationship) {
-          participantErrors.guardianRelationship = "Relationship is required";
-        }
+        // Parent / Guardian details are optional. Removing validation blocks to make registration possible without them.
       }
     }
 
@@ -517,11 +493,10 @@ const ParticipantForm: React.FC<ParticipantFormProps> = ({
                     onChange={(e) =>
                       handleInputChange(index, "name", e.target.value)
                     }
-                    className={`w-full pl-10 pr-4 py-2 border rounded-lg focus:outline-none focus:ring-2 ${
-                      errors[index]?.name
-                        ? "border-red-300 focus:ring-red-500"
-                        : "border-gray-300 focus:ring-primary"
-                    }`}
+                    className={`w-full pl-10 pr-4 py-2 border rounded-lg focus:outline-none focus:ring-2 ${errors[index]?.name
+                      ? "border-red-300 focus:ring-red-500"
+                      : "border-gray-300 focus:ring-primary"
+                      }`}
                   />
                 </div>
                 {errors[index]?.name && (
@@ -544,11 +519,10 @@ const ParticipantForm: React.FC<ParticipantFormProps> = ({
                     onChange={(e) =>
                       handleInputChange(index, "email", e.target.value)
                     }
-                    className={`w-full pl-10 pr-4 py-2 border rounded-lg focus:outline-none focus:ring-2 ${
-                      errors[index]?.email
-                        ? "border-red-300 focus:ring-red-500"
-                        : "border-gray-300 focus:ring-primary"
-                    }`}
+                    className={`w-full pl-10 pr-4 py-2 border rounded-lg focus:outline-none focus:ring-2 ${errors[index]?.email
+                      ? "border-red-300 focus:ring-red-500"
+                      : "border-gray-300 focus:ring-primary"
+                      }`}
                   />
                 </div>
                 {errors[index]?.email && (
@@ -571,11 +545,10 @@ const ParticipantForm: React.FC<ParticipantFormProps> = ({
                     onChange={(e) =>
                       handleInputChange(index, "phone", e.target.value)
                     }
-                    className={`w-full pl-10 pr-4 py-2 border rounded-lg focus:outline-none focus:ring-2 ${
-                      errors[index]?.phone
-                        ? "border-red-300 focus:ring-red-500"
-                        : "border-gray-300 focus:ring-primary"
-                    }`}
+                    className={`w-full pl-10 pr-4 py-2 border rounded-lg focus:outline-none focus:ring-2 ${errors[index]?.phone
+                      ? "border-red-300 focus:ring-red-500"
+                      : "border-gray-300 focus:ring-primary"
+                      }`}
                   />
                 </div>
                 {errors[index]?.phone && (
@@ -612,11 +585,10 @@ const ParticipantForm: React.FC<ParticipantFormProps> = ({
                     }
                     min={sortedAgeRange.minAge ?? 0}
                     max={sortedAgeRange.maxAge ?? 150}
-                    className={`w-full pl-10 pr-4 py-2 border rounded-lg focus:outline-none focus:ring-2 ${
-                      errors[index]?.age
-                        ? "border-red-300 focus:ring-red-500"
-                        : "border-gray-300 focus:ring-primary"
-                    }`}
+                    className={`w-full pl-10 pr-4 py-2 border rounded-lg focus:outline-none focus:ring-2 ${errors[index]?.age
+                      ? "border-red-300 focus:ring-red-500"
+                      : "border-gray-300 focus:ring-primary"
+                      }`}
                   />
                 </div>
                 {errors[index]?.age && (
@@ -734,7 +706,7 @@ const ParticipantForm: React.FC<ParticipantFormProps> = ({
                   <div className="border-t pt-4">
                     <h4 className="text-sm font-semibold text-gray-900 mb-3 flex items-center">
                       <Users className="w-4 h-4 mr-2 text-green-500" />
-                      Parent / Guardian Details
+                      Parent / Guardian Details (Optional)
                     </h4>
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                       <input
@@ -823,7 +795,7 @@ const ParticipantForm: React.FC<ParticipantFormProps> = ({
 
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-2">
-                    Experience Level
+                    Experience Level (Optional)
                   </label>
                   <select
                     value={(getRegistrationFieldValue(index, "experienceLevel") as string) || ""}
@@ -838,7 +810,7 @@ const ParticipantForm: React.FC<ParticipantFormProps> = ({
                     }
                     className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary"
                   >
-                    <option value="">Select your experience level</option>
+                    <option value="">Select your experience level (Optional)</option>
                     <option value="beginner">Beginner</option>
                     <option value="intermediate">Intermediate</option>
                     <option value="advanced">Advanced</option>
@@ -847,7 +819,7 @@ const ParticipantForm: React.FC<ParticipantFormProps> = ({
 
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-2">
-                    Questions for Instructor
+                    Questions for Instructor (Optional)
                   </label>
                   <textarea
                     placeholder="Anything you'd like the instructor to know?"
@@ -889,11 +861,10 @@ const ParticipantForm: React.FC<ParticipantFormProps> = ({
                       onChange={(e) =>
                         handleEmergencyContactChange(index, "phone", e.target.value)
                       }
-                      className={`px-4 py-2 border rounded-lg focus:outline-none focus:ring-2 ${
-                        errors[index]?.emergencyPhone
-                          ? "border-red-300 focus:ring-red-500"
-                          : "border-gray-300 focus:ring-primary"
-                      }`}
+                      className={`px-4 py-2 border rounded-lg focus:outline-none focus:ring-2 ${errors[index]?.emergencyPhone
+                        ? "border-red-300 focus:ring-red-500"
+                        : "border-gray-300 focus:ring-primary"
+                        }`}
                     />
                     <select
                       value={participant.emergencyContact?.relationship || ""}

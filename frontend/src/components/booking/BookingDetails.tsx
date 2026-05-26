@@ -142,6 +142,33 @@ const BookingDetails: React.FC<BookingDetailsProps> = ({
     }
   }, [initialData?.schedule, initialData?.scheduleId, dispatch]);
 
+  // Sync initial date selection to Redux store on mount or when selectedSchedule/selectedDate changes
+  useEffect(() => {
+    if (selectedSchedule && selectedDate) {
+      const scheduleId = selectedSchedule._id || selectedSchedule.id;
+      if (scheduleId) {
+        const unitPrice = selectedSchedule.price ?? event.price ?? 0;
+        dispatch(
+          setBookingDateSelection({
+            scheduleId,
+            selectedDate: format(selectedDate, "yyyy-MM-dd"),
+            scheduleSnapshot: {
+              _id: scheduleId,
+              startDate: (selectedSchedule as any).startDate,
+              endDate: (selectedSchedule as any).endDate,
+              startTime: (selectedSchedule as any).startTime,
+              endTime: (selectedSchedule as any).endTime,
+              price: selectedSchedule.price,
+              unlimitedSeats: selectedSchedule.unlimitedSeats,
+            },
+            unitPrice,
+          })
+        );
+      }
+    }
+  }, [selectedSchedule, selectedDate, event.price, dispatch]);
+
+
   // Auto-select first schedule if only one exists and none is selected
   useEffect(() => {
     // Only auto-select if:

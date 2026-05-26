@@ -761,9 +761,27 @@ export const getUserTickets = async (
       const now = new Date();
       tickets = tickets.filter((ticket) => {
         const event = ticket.eventId as any;
-        return event.dateSchedule.some(
-          (schedule: any) => new Date(schedule.date) > now,
-        );
+        if (!event) return false;
+
+        // Prioritize ticket's own validity/booked date
+        const ticketDate = ticket.validFrom || ticket.validUntil;
+        if (ticketDate) {
+          const tDate = new Date(ticketDate);
+          // Allow tickets to be seen up to 24 hours after the event date (grace period)
+          return tDate.getTime() + 24 * 60 * 60 * 1000 > now.getTime();
+        }
+
+        // Fallback to event dateSchedule dates
+        if (Array.isArray(event.dateSchedule)) {
+          return event.dateSchedule.some((schedule: any) => {
+            const schedDate = schedule.startDate || schedule.date;
+            if (!schedDate) return false;
+            const sDate = new Date(schedDate);
+            return sDate > now;
+          });
+        }
+
+        return false;
       });
     }
 

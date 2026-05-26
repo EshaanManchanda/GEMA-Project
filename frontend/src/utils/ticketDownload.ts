@@ -43,14 +43,35 @@ function roundRect(
   ctx.closePath();
 }
 
-function getDisplayStatus(status: string, validUntil?: string): string {
+function getDisplayStatus(
+  status: string,
+  validUntil?: string,
+  eventDate?: string,
+): string {
   if (status && status !== 'active') {
     return status;
   }
 
+  const now = new Date();
+
+  // If we have an event date, use it as the primary expiry reference.
+  // The ticket is only expired if the event date + 24h grace has passed.
+  if (eventDate) {
+    const evtDate = new Date(eventDate);
+    if (!Number.isNaN(evtDate.getTime())) {
+      const graceExpiry = new Date(evtDate.getTime() + 24 * 60 * 60 * 1000);
+      if (now > graceExpiry) {
+        return 'expired';
+      }
+      // Event hasn't ended yet — ticket is active regardless of validUntil
+      return status || 'active';
+    }
+  }
+
+  // Fallback: use validUntil
   if (validUntil) {
     const expiry = new Date(validUntil);
-    if (!Number.isNaN(expiry.getTime()) && new Date() > expiry) {
+    if (!Number.isNaN(expiry.getTime()) && now > expiry) {
       return 'expired';
     }
   }

@@ -574,80 +574,79 @@ const GeographicReachSection: React.FC = () => (
   </section>
 );
 
-// Webinar Series Section
-const WebinarSeriesSection: React.FC = () => {
-  const [scrollPosition, setScrollPosition] = useState(0);
-  const scrollContainerRef = useRef<HTMLDivElement>(null);
+interface UniversityEvent {
+  title: string;
+  date: string;
+  time: string;
+  team: string;
+  status: 'coming_soon' | 'open';
+}
 
-  const scroll = (direction: 'left' | 'right') => {
-    if (scrollContainerRef.current) {
-      const scrollAmount = 320;
-      const newPosition = direction === 'left' ? scrollPosition - scrollAmount : scrollPosition + scrollAmount;
-      scrollContainerRef.current.scrollLeft = newPosition;
-      setScrollPosition(newPosition);
-    }
-  };
+const UNIVERSITY_EVENTS: UniversityEvent[] = [
+  {
+    title: 'Harvard Week: Summer College Programs',
+    date: 'June 5, 2026',
+    time: '2:00 PM UTC',
+    team: 'Team Overland Summers',
+    status: 'coming_soon',
+  },
+  {
+    title: 'Immersive Film Making & Virtual Reality',
+    date: 'June 15, 2026',
+    time: '4:00 PM UTC',
+    team: 'Team UCA Canterbury',
+    status: 'coming_soon',
+  },
+  {
+    title: 'Inside Cybersecurity & Computer Science at Sharda University',
+    date: 'June 25, 2026',
+    time: '6:00 PM UTC',
+    team: 'Team Sharda University, India',
+    status: 'coming_soon',
+  },
+];
 
+// University Partner Sessions Section
+const UniversityPartnerSessionsSection: React.FC = () => {
   return (
     <section className="py-20 bg-white">
       <div className="max-w-6xl mx-auto px-4 sm:px-6">
         <div className="text-center mb-16">
-          <h2 className="text-4xl md:text-5xl font-bold text-gray-900 mb-4">Pre-Engagement Webinar Series</h2>
+          <h2 className="text-4xl md:text-5xl font-bold text-gray-900 mb-4">University Partner Sessions</h2>
           <p className="text-lg text-gray-600 max-w-2xl mx-auto">
-            Learn how successful partnerships are built. Join our expert-led webinars.
+            Exclusive sessions with leading universities — register your interest now
           </p>
         </div>
 
-        <div className="relative">
           <div
-            ref={scrollContainerRef}
-            className="flex overflow-x-auto gap-6 pb-4 scroll-smooth"
-            style={{ scrollBehavior: 'smooth' }}
+            className="flex flex-wrap md:justify-center gap-6 pb-4"
           >
-            {WEBINARS.map((webinar, i) => (
-              <div key={i} className="flex-shrink-0 w-80 p-6 bg-gradient-to-br from-blue-50 to-purple-50 rounded-2xl border border-blue-200 hover:shadow-lg transition-shadow">
+            {UNIVERSITY_EVENTS.map((ev, i) => (
+              <div key={i} className="flex-shrink-0 w-80 p-6 bg-gradient-to-br from-indigo-50 to-purple-50 rounded-2xl border-2 border-indigo-200 hover:shadow-lg transition-shadow">
                 <div className="flex items-center justify-between mb-4">
-                  <span className={`px-3 py-1 rounded-full text-xs font-bold ${webinar.status === 'live'
-                      ? 'bg-red-100 text-red-700'
-                      : 'bg-blue-100 text-blue-700'
-                    }`}>
-                    {webinar.status === 'live' ? '🔴 Live Online' : '⏰ Upcoming'}
+                  <span className="px-3 py-1 rounded-full text-xs font-bold bg-indigo-100 text-indigo-700">
+                    ⏰ Upcoming
                   </span>
                 </div>
-                <h3 className="font-bold text-gray-900 mb-3 text-lg">{webinar.title}</h3>
+                <h3 className="font-bold text-gray-900 mb-3 text-lg leading-snug">{ev.title}</h3>
                 <div className="space-y-2 text-sm text-gray-600 mb-6">
-                  <p>📅 {webinar.date}</p>
-                  <p>⏰ {webinar.time}</p>
-                  <p>👤 {webinar.host}</p>
+                  <p>📅 {ev.date}</p>
+                  <p>⏰ {ev.time}</p>
+                  <p>👥 {ev.team}</p>
                 </div>
                 <button
-                  onClick={() => toast.success('Registration feature coming soon!')}
-                  className="w-full px-4 py-2 bg-blue-600 text-white font-bold rounded-lg hover:bg-blue-700 transition text-sm"
+                  onClick={() => toast.success('University session registration coming soon!')}
+                  className="w-full px-4 py-2 bg-gradient-to-r from-indigo-500 to-purple-600 text-white font-bold rounded-lg hover:shadow-lg transition-shadow text-sm"
                 >
                   Register Now
                 </button>
               </div>
             ))}
           </div>
-
-          {/* Scroll buttons */}
-          <button
-            onClick={() => scroll('left')}
-            className="hidden md:flex absolute left-0 top-1/2 -translate-y-1/2 -translate-x-4 w-10 h-10 rounded-full bg-blue-600 text-white items-center justify-center hover:bg-blue-700 transition z-10"
-          >
-            ←
-          </button>
-          <button
-            onClick={() => scroll('right')}
-            className="hidden md:flex absolute right-0 top-1/2 -translate-y-1/2 translate-x-4 w-10 h-10 rounded-full bg-blue-600 text-white items-center justify-center hover:bg-blue-700 transition z-10"
-          >
-            →
-          </button>
         </div>
-      </div>
-    </section>
-  );
-};
+      </section>
+    );
+  };
 
 // Execution Model Section
 const ExecutionModelSection: React.FC = () => (
@@ -751,15 +750,15 @@ const TestimonialSection: React.FC = () => (
       <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
         {[
           {
-            name: 'Dr. Ahmed Al Mansouri',
-            title: 'Director of Admissions',
-            university: 'Leading UAE University',
+            name: 'Giovanni Ciserani',
+            title: 'Head of Strategy',
+            university: 'Sustainability Management Business School,Switzerland',
             quote: 'KidRove transformed how we engage with prospective students. We saw a 35% increase in qualified leads within the first year.',
           },
           {
-            name: 'Prof. Fatima Al-Khaleej',
-            title: 'Dean of Student Affairs',
-            university: 'Premier Saudi Institution',
+            name: 'Mclenney, Professor James',
+            title: 'HOD Evolution, Ecology & Behaviour',
+            university: 'University of Liverpool, UK',
             quote: 'The structured approach and dedicated support made partnership execution seamless. Highly recommended.',
           },
         ].map((testimonial, i) => (
@@ -1002,7 +1001,7 @@ const PartnershipsPage: React.FC = () => {
       <StudentExperienceSection />
       <UniversityBenefitsSection />
       <GeographicReachSection />
-      <WebinarSeriesSection />
+      <UniversityPartnerSessionsSection />
       <ExecutionModelSection />
       <ImpactMetricsSection />
       <TestimonialSection />

@@ -186,8 +186,7 @@ const BookingDetailPage: React.FC = () => {
 
   const handleDownloadTicket = (ticket: Ticket) => {
     const eventRef = ticket.eventId as any;
-    const schedule = eventRef?.dateSchedule?.[0];
-    const dateStr = schedule?.startDate || schedule?.date;
+    const dateStr = ticket.validFrom || eventRef?.dateSchedule?.[0]?.startDate || eventRef?.dateSchedule?.[0]?.date;
     downloadTicketAsPNG({
       ticketNumber: ticket.ticketNumber,
       attendeeName: ticket.attendeeName,
@@ -767,7 +766,9 @@ const BookingDetailPage: React.FC = () => {
               currency={booking.currency?.toUpperCase() || 'AED'}
               onSuccess={() => {
                 fetchBookingDetails(); // Refresh booking details after cancellation
-                dispatch(fetchTicketsByOrder(id)); // Refresh ticket statuses after cancellation
+                if (id) {
+                  dispatch(fetchTicketsByOrder(id)); // Refresh ticket statuses after cancellation
+                }
               }}
             />
           )}

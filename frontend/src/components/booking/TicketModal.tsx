@@ -131,7 +131,7 @@ const TicketModal: React.FC<TicketModalProps> = ({ ticket, isOpen, onClose, onDo
                 <div className="flex items-center text-gray-700">
                   <Calendar className="w-5 h-5 mr-3 text-primary" />
                   <div>
-                    <p className="font-medium">{formatDate(eventDate.startDate)}</p>
+                    <p className="font-medium">{formatDate(ticket.validFrom || eventDate.startDate)}</p>
                     <p className="text-sm text-gray-500">
                       {formatTime(eventDate.startDate)} - {formatTime(eventDate.endDate)}
                     </p>

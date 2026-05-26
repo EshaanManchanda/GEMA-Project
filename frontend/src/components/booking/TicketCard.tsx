@@ -118,7 +118,7 @@ const TicketCard: React.FC<TicketProps> = ({ ticket, onViewTicket, onDownloadTic
           <div className="flex-1 space-y-3">
             <div className="flex items-center text-sm text-gray-600">
               <Calendar className="w-4 h-4 mr-2" />
-              <span>{formatDate(eventDate.startDate)}</span>
+              <span>{formatDate(ticket.validFrom || eventDate.startDate)}</span>
             </div>
 
             <div className="flex items-center text-sm text-gray-600">

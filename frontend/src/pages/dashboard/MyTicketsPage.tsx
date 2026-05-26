@@ -37,6 +37,7 @@ interface TicketData {
     images: string[];
     description: string;
   };
+  validFrom?: string;
   validUntil?: string;
   createdAt: string;
 }
@@ -103,7 +104,7 @@ const MyTicketsPage: React.FC = () => {
 
   // Filter tickets
   const filteredTickets = tickets.filter(ticket => {
-    const eventDate = new Date(ticket.eventId.dateSchedule[0]?.date);
+    const eventDate = new Date(ticket.validFrom || ticket.eventId.dateSchedule[0]?.date);
     const now = new Date();
 
     switch (filter) {
@@ -123,7 +124,7 @@ const MyTicketsPage: React.FC = () => {
   // Download ticket as PNG
   const handleDownloadTicket = (ticket: TicketData) => {
     const schedule = ticket.eventId.dateSchedule[0];
-    const dateStr = schedule?.date;
+    const dateStr = ticket.validFrom || schedule?.date;
     downloadTicketAsPNG({
       ticketNumber: ticket.ticketNumber,
       attendeeName: ticket.attendeeName,
@@ -265,7 +266,7 @@ const MyTicketsPage: React.FC = () => {
                 <div className="space-y-2 mb-4">
                   <div className="flex items-center text-sm text-gray-600">
                     <Calendar className="h-4 w-4 mr-2" />
-                    {formatDate(ticket.eventId.dateSchedule[0]?.date)}
+                    {formatDate(ticket.validFrom || ticket.eventId.dateSchedule[0]?.date)}
                   </div>
                   
                   <div className="flex items-center text-sm text-gray-600">
