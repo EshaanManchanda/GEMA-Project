@@ -763,22 +763,38 @@ export const confirmBooking = async (
         const scheduleId = firstItem.scheduleId;
         
         if (scheduleId) {
+          const currentEvent = await EventModel.findOne({
+            _id: firstItem.eventId,
+            "dateSchedule._id": scheduleId,
+          }).select("dateSchedule");
+
+          const currentSchedule = currentEvent?.dateSchedule?.find(
+            (schedule: any) => schedule._id?.toString() === scheduleId.toString(),
+          );
+
+          const currentReservedSeats = Number(currentSchedule?.reservedSeats || 0);
+          const currentSoldSeats = Number(currentSchedule?.soldSeats || 0);
+          const nextReservedSeats = Math.max(0, currentReservedSeats - firstItem.quantity);
+          const nextSoldSeats = currentSoldSeats + firstItem.quantity;
+
           await EventModel.findOneAndUpdate(
             { 
               _id: firstItem.eventId,
               "dateSchedule._id": scheduleId 
             },
             { 
-              $inc: { 
-                "dateSchedule.$.reservedSeats": -firstItem.quantity,
-                "dateSchedule.$.soldSeats": firstItem.quantity 
-              } 
+              $set: {
+                "dateSchedule.$.reservedSeats": nextReservedSeats,
+                "dateSchedule.$.soldSeats": nextSoldSeats,
+              },
             }
           );
           logger.info("Event seats updated: reserved -> sold", { 
             eventId: firstItem.eventId, 
             scheduleId, 
-            quantity: firstItem.quantity 
+            quantity: firstItem.quantity,
+            previousReservedSeats: currentReservedSeats,
+            nextReservedSeats,
           });
         }
       }

@@ -158,7 +158,7 @@ export class EventService {
             soldSeats = unscheduledSold;
           }
 
-          const reservedSeats = Number(existingSchedule?.reservedSeats || 0);
+          const reservedSeats = Math.max(0, Number(existingSchedule?.reservedSeats || 0));
 
           return {
             ...schedule,

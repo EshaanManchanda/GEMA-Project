@@ -728,7 +728,7 @@ export const updateEvent = async (
           ? 999999
           : schedule.totalSeats || schedule.availableSeats || 0;
         const soldSeats = existingSchedule?.soldSeats || 0;
-        const reservedSeats = existingSchedule?.reservedSeats || 0;
+        const reservedSeats = Math.max(0, existingSchedule?.reservedSeats || 0);
 
         return {
           ...schedule,
@@ -738,7 +738,7 @@ export const updateEvent = async (
           // Sync availability: Capacity - Already Sold
           availableSeats: schedule.unlimitedSeats
             ? 999999
-            : Math.max(0, totalSeats - soldSeats),
+            : Math.max(0, totalSeats - soldSeats - reservedSeats),
         };
       });
     }

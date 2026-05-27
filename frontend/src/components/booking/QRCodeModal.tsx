@@ -10,6 +10,7 @@ interface QRCodeModalProps {
   isOpen: boolean;
   onClose: () => void;
   qrData: QRCodeData;
+  qrValue?: string;
   size?: number;
   title?: string;
   subtitle?: string;
@@ -19,15 +20,18 @@ const QRCodeModal: React.FC<QRCodeModalProps> = ({
   isOpen,
   onClose,
   qrData,
+  qrValue,
   size = 250,
   title,
   subtitle
 }) => {
   // Generate secure QR code data
-  const qrCodeString = generateSecureQRData(qrData);
+  const qrCodeString = qrValue || generateSecureQRData(qrData);
 
   // Get display information
-  const displayInfo = getQRDisplayInfo(validateQRData(qrCodeString).data!);
+  const displayInfo = qrValue
+    ? getQRDisplayInfo(qrData as any)
+    : getQRDisplayInfo(validateQRData(qrCodeString).data!);
 
   // Use provided title/subtitle or fallback to generated ones
   const finalTitle = title || displayInfo.title;

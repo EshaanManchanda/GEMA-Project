@@ -247,9 +247,11 @@ export async function renderCertificate(
 
 async function htmlToPdf(html: string, widthPx: number, heightPx: number, orientation?: 'portrait' | 'landscape'): Promise<Buffer> {
   const renderOnce = async (): Promise<Buffer> => {
-    const browser = await launchBrowser();
-    const page = await browser.newPage();
+    let browser: any = null;
+    let page: any = null;
     try {
+      browser = await launchBrowser();
+      page = await browser.newPage();
       await page.setViewport({ width: widthPx, height: heightPx });
       // domcontentloaded avoids hanging on slow/external image loads
       await page.setContent(html, { waitUntil: "domcontentloaded", timeout: 30000 });
@@ -287,8 +289,12 @@ async function htmlToPdf(html: string, widthPx: number, heightPx: number, orient
       const pdf = await page.pdf(pdfOptions);
       return Buffer.from(pdf);
     } finally {
-      await page.close().catch(() => {});
-      await browser.close().catch(() => {});
+      if (page) {
+        await page.close().catch(() => {});
+      }
+      if (browser) {
+        await browser.close().catch(() => {});
+      }
     }
   };
 

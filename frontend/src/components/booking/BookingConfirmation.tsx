@@ -31,7 +31,7 @@ import Button from '../ui/Button';
 import { Card, CardContent, CardHeader, CardTitle } from '../ui/Card';
 import Badge from '../ui/Badge';
 import QRCodeModal from './QRCodeModal';
-import ticketAPI from '../../services/api/ticketAPI';
+import ticketAPI, { type Ticket } from '../../services/api/ticketAPI';
 import { downloadMultipleTickets, TicketDownloadData } from '../../utils/ticketDownload';
 
 interface BookingConfirmationProps {
@@ -69,6 +69,8 @@ const BookingConfirmation: React.FC<BookingConfirmationProps> = ({
 
   // QR Code modal state
   const [showQRModal, setShowQRModal] = useState(false);
+  const [selectedQRTicket, setSelectedQRTicket] = useState<Ticket | null>(null);
+  const [isQRLoading, setIsQRLoading] = useState(false);
   const [imgFailed, setImgFailed] = useState(false);
   const [isDownloading, setIsDownloading] = useState(false);
 
@@ -152,6 +154,35 @@ const BookingConfirmation: React.FC<BookingConfirmationProps> = ({
     }
   };
 
+  const handleViewQRDetails = async () => {
+    if (isQRLoading) return;
+
+    const orderId = checkout?.orderId || currentBooking?.id;
+    if (!orderId) {
+      toast.error('Booking ID not found. Visit My Bookings to view QR details.');
+      return;
+    }
+
+    setIsQRLoading(true);
+    try {
+      const res = await ticketAPI.getTicketsByOrder(orderId);
+      const tickets = res.tickets ?? [];
+
+      if (tickets.length === 0) {
+        toast.error('No tickets found for this booking.');
+        return;
+      }
+
+      const ticketForQR = tickets.find((ticket) => ticket.qrCode) || tickets[0];
+      setSelectedQRTicket(ticketForQR);
+      setShowQRModal(true);
+    } catch {
+      toast.error('Failed to load QR details. Try again from My Bookings.');
+    } finally {
+      setIsQRLoading(false);
+    }
+  };
+
   // Handle email resend
   const handleResendEmail = () => {
     toast.success('Confirmation email sent to all participants');
@@ -202,12 +233,14 @@ const BookingConfirmation: React.FC<BookingConfirmationProps> = ({
 
         <Button
           variant="outline"
-          onClick={() => setShowQRModal(true)}
+          onClick={handleViewQRDetails}
           leftIcon={<QrCode className="w-4 h-4" />}
           fullWidth
-          disabled={bookingData.status !== 'confirmed'}
+          disabled={bookingData.status !== 'confirmed' || isQRLoading}
         >
-          {bookingData.status === 'confirmed' ? 'View QR Details' : 'QR Code (Pending Confirmation)'}
+          {bookingData.status === 'confirmed'
+            ? (isQRLoading ? 'Loading QR…' : 'View QR Details')
+            : 'QR Code (Pending Confirmation)'}
         </Button>
         <Button
           variant="outline"
@@ -221,21 +254,29 @@ const BookingConfirmation: React.FC<BookingConfirmationProps> = ({
 
 
       {/* QR Code Modal */}
-      <QRCodeModal
-        isOpen={showQRModal}
-        onClose={() => setShowQRModal(false)}
-        qrData={{
-          bookingId: bookingData.bookingId,
-          eventId: event._id,
-          userId: currentBooking?.userId,
-          type: 'booking',
-          eventStartDate: event.dateSchedule?.[0]?.startDateTime ? new Date(event.dateSchedule[0].startDateTime) : undefined,
-          eventEndDate: event.dateSchedule?.[0]?.endDateTime ? new Date(event.dateSchedule[0].endDateTime) : undefined,
-          gracePeriodHours: 2
-        }}
-        size={300}
-        title={`Booking Confirmed - ${bookingData.bookingId}`}
-      />
+      {showQRModal && selectedQRTicket && (
+        <QRCodeModal
+          isOpen={showQRModal}
+          onClose={() => {
+            setShowQRModal(false);
+            setSelectedQRTicket(null);
+          }}
+          qrValue={selectedQRTicket.qrCode}
+          qrData={{
+            ticketNumber: selectedQRTicket.ticketNumber,
+            eventId: selectedQRTicket.eventId._id,
+            userId: currentBooking?.userId,
+            orderId: selectedQRTicket.orderId,
+            seatsAllocated: 1,
+            type: 'ticket',
+            eventStartDate: selectedQRTicket.eventId.dateSchedule?.[0]?.startDate ? new Date(selectedQRTicket.eventId.dateSchedule[0].startDate) : undefined,
+            eventEndDate: selectedQRTicket.eventId.dateSchedule?.[0]?.endDate ? new Date(selectedQRTicket.eventId.dateSchedule[0].endDate) : undefined,
+            gracePeriodHours: 2
+          }}
+          size={300}
+          title={`Ticket QR Code - #${selectedQRTicket.ticketNumber.slice(-8)}`}
+        />
+      )}
 
       {/* Booking Summary */}
       <Card>
