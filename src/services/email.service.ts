@@ -125,12 +125,17 @@ export interface PartnershipNotificationOptions {
   website?: string;
   message: string;
   submittedAt: Date;
+  campaignType?: string;
+  selectedPackage?: string;
+  emirate?: string;
 }
 
 export interface PartnershipConfirmationOptions {
   name: string;
   email: string;
   partnershipType: string;
+  campaignType?: string;
+  selectedPackage?: string;
 }
 
 // Cancellation email interfaces

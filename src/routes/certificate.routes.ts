@@ -194,7 +194,7 @@ router.post(
   "/import/csv",
   authorize(["admin", "vendor"]),
   certBulkLimiter,
-  uploadCSV,
+  uploadCSV.single("csv"),
   [
     body("eventId").isMongoId().withMessage("Valid event ID required"),
     body("certificateTypeSlug").optional().trim(),

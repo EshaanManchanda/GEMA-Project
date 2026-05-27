@@ -6,8 +6,9 @@ import {
   getGalleryByEvent,
   deleteGallery,
 } from "../controllers/gallery.controller";
-import { authenticate, authorize, validate } from "../middleware/auth";
+import { authenticate, authorize, validate } from "../middleware";
 import MediaAsset from "../models/MediaAsset";
+import Gallery from "../models/Gallery";
 
 const router = Router();
 
