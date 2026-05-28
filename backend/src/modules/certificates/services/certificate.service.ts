@@ -218,6 +218,7 @@ class CertificateService {
     }
 
     await Certificate.findByIdAndUpdate(certificateId, {
+      status: "emailed",
       $push: { history: { event: "email_resent", actor: actorId, at: new Date() } },
     });
 
@@ -275,29 +276,45 @@ class CertificateService {
 
     if (!opts.sendEmail) return;
 
-    const messageId = await emailService.sendEmail({
-      to: opts.recipient.email,
-      subject: `Your Certificate — ${eventTitle}`,
-      html: buildCertEmailHtml(
-        opts.recipient.name,
-        eventTitle,
-        certificate.serialNumber,
-        pdfUrl,
-        certificate.qrData,
-      ),
-    });
+    try {
+      const messageId = await emailService.sendEmail({
+        to: opts.recipient.email,
+        subject: `Your Certificate — ${eventTitle}`,
+        html: buildCertEmailHtml(
+          opts.recipient.name,
+          eventTitle,
+          certificate.serialNumber,
+          pdfUrl,
+          certificate.qrData,
+        ),
+      });
 
-    if (typeof messageId === "string" && messageId.startsWith("dev-email-")) {
-      throw new AppError(
-        "SMTP delivery failed. Check email settings (host/user/password/from) in Admin > App Settings > Email.",
-        500,
-      );
+      if (typeof messageId === "string" && messageId.startsWith("dev-email-")) {
+        throw new AppError(
+          "SMTP delivery failed. Check email settings (host/user/password/from) in Admin > App Settings > Email.",
+          500,
+        );
+      }
+
+      await Certificate.findByIdAndUpdate(certificateId, {
+        status: "emailed",
+        $push: { history: { event: "email_sent", at: new Date() } },
+      });
+    } catch (emailErr: any) {
+      logger.error(`Certificate email failed for ${certificateId}`, {
+        error: emailErr?.message || String(emailErr),
+      });
+
+      await Certificate.findByIdAndUpdate(certificateId, {
+        $push: {
+          history: {
+            event: "email_failed",
+            meta: { error: emailErr?.message || String(emailErr) },
+            at: new Date(),
+          },
+        },
+      });
     }
-
-    await Certificate.findByIdAndUpdate(certificateId, {
-      status: "emailed",
-      $push: { history: { event: "email_sent", at: new Date() } },
-    });
   }
 
   // ─── Composite: single issue ─────────────────────────────────────────────
@@ -337,32 +354,17 @@ class CertificateService {
 
     const certificateId = certificate._id.toString();
 
-    try {
-      const queued = await this.queuePDFGeneration(certificateId, {
-        templateId: resolvedTemplateId,
-        recipient: opts.recipient,
-        data: enrichedData,
-        options: { sendEmail: opts.sendEmail },
-      });
+    await Certificate.findByIdAndUpdate(certificateId, {
+      status: "generating",
+      $push: { history: { event: "generation_started", at: new Date() } },
+    });
 
-      if (!queued) {
-        await this.generateCertificateSynchronously(certificateId, {
-          templateId: resolvedTemplateId,
-          recipient: opts.recipient,
-          data: enrichedData,
-          sendEmail: opts.sendEmail,
-        });
-      }
-    } catch (error) {
-      logger.warn(`Certificate queue failed for ${certificateId} — falling back to synchronous generation`, error);
-
-      await this.generateCertificateSynchronously(certificateId, {
-        templateId: resolvedTemplateId,
-        recipient: opts.recipient,
-        data: enrichedData,
-        sendEmail: opts.sendEmail,
-      });
-    }
+    await this.generateCertificateSynchronously(certificateId, {
+      templateId: resolvedTemplateId,
+      recipient: opts.recipient,
+      data: enrichedData,
+      sendEmail: opts.sendEmail,
+    });
 
     return certificate;
   }
@@ -394,13 +396,12 @@ class CertificateService {
             data: input.data,
           });
 
-          await this.queuePDFGeneration(certificate._id.toString(), {
-            templateId: opts.templateId,
-            recipient: { name: input.recipientName, email: input.recipientEmail },
-            data: input.data ?? {},
-            requestId: certRequest._id.toString(),
-            options: opts.options,
-          });
+            await this.generateCertificateSynchronously(certificate._id.toString(), {
+              templateId: opts.templateId,
+              recipient: { name: input.recipientName, email: input.recipientEmail },
+              data: input.data ?? {},
+              sendEmail: opts.options?.sendEmail,
+            });
         }),
       );
     }
@@ -477,16 +478,12 @@ class CertificateService {
           issuedBy: opts.issuedBy,
         });
 
-        if (opts.templateId) {
-          await this.queuePDFGeneration(certificate._id.toString(), {
-            templateId: opts.templateId,
-            recipient: { name: recipientName, email: email.toLowerCase() },
-            data: certData,
-            options: { sendEmail: opts.sendEmail },
-          });
-        } else {
-          logger.warn(`CSV import row ${i + 1}: no templateId — cert created pending without PDF job`);
-        }
+        await this.generateCertificateSynchronously(certificate._id.toString(), {
+          templateId: opts.templateId,
+          recipient: { name: recipientName, email: email.toLowerCase() },
+          data: certData,
+          sendEmail: opts.sendEmail,
+        });
 
         results.push({
           serial: certificate.serialNumber,

@@ -329,7 +329,7 @@ export const retryCertificate = async (req: AuthRequest, res: Response, next: Ne
     }
 
     await Certificate.findByIdAndUpdate(id, {
-      status: "pending",
+      status: "generating",
       failureReason: undefined,
       $push: { history: { event: "retry_requested", at: new Date() } },
     });

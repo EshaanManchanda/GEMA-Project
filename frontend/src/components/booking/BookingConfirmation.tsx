@@ -43,6 +43,14 @@ const BookingConfirmation: React.FC<BookingConfirmationProps> = ({
   event,
   onComplete
 }) => {
+  const getTicketVerifyUrl = (ticketNumber: string) => {
+    const baseUrl = window.location.hostname === 'localhost'
+      ? window.location.origin
+      : 'https://kidrove.com';
+
+    return `${baseUrl}/verify-ticket/${ticketNumber}`;
+  };
+
   const bookingFlow = useSelector(selectBookingFlow);
   const participants = useSelector(selectBookingParticipants);
   const currentBooking = useSelector(selectCurrentBooking);
@@ -261,7 +269,7 @@ const BookingConfirmation: React.FC<BookingConfirmationProps> = ({
             setShowQRModal(false);
             setSelectedQRTicket(null);
           }}
-          qrValue={selectedQRTicket.qrCode}
+          qrValue={getTicketVerifyUrl(selectedQRTicket.ticketNumber)}
           qrData={{
             ticketNumber: selectedQRTicket.ticketNumber,
             eventId: selectedQRTicket.eventId._id,
@@ -274,7 +282,7 @@ const BookingConfirmation: React.FC<BookingConfirmationProps> = ({
             gracePeriodHours: 2
           }}
           size={300}
-          title={`Ticket QR Code - #${selectedQRTicket.ticketNumber.slice(-8)}`}
+          title="Ticket QR Code"
         />
       )}
 

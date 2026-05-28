@@ -2,26 +2,14 @@ import React, { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import { useDispatch, useSelector } from 'react-redux';
 import { QrCode, Video } from 'lucide-react';
+import toast from 'react-hot-toast';
 import { AppDispatch, RootState } from '@/store';
 import { fetchBookings } from '@/store/slices/bookingsSlice';
 import QRCodeModal from '@/components/booking/QRCodeModal';
 import CancelOrderModal from '@/components/order/CancelOrderModal';
 import RefundStatusTracker from '@/components/order/RefundStatusTracker';
 import PrivatePageSEO from '@/components/common/PrivatePageSEO';
-
-interface Booking {
-  id: string;
-  eventId: string;
-  eventTitle: string;
-  eventImage: string;
-  eventDate: string;
-  eventTime: string;
-  eventLocation: string;
-  ticketCount: number;
-  totalAmount: number;
-  bookingDate: string;
-  status: 'confirmed' | 'pending' | 'cancelled' | 'completed';
-}
+import ticketAPI, { type Ticket } from '@/services/api/ticketAPI';
 
 const parseDate = (value?: string | Date | null): Date | null => {
   if (!value) return null;
@@ -70,21 +58,31 @@ const isSameOrAfterToday = (value: Date | null) => {
   return comparison >= today;
 };
 
-  const formatDisplayDate = (value: Date | null) => {
-    if (!value) return 'Date TBD';
-    return value.toLocaleDateString(undefined, {
-      year: 'numeric',
-      month: 'long',
-      day: 'numeric',
-    });
-  };
+const formatDisplayDate = (value: Date | null) => {
+  if (!value) return 'Date TBD';
+  return value.toLocaleDateString(undefined, {
+    year: 'numeric',
+    month: 'long',
+    day: 'numeric',
+  });
+};
+
+const getTicketVerifyUrl = (ticketNumber: string) => {
+  const baseUrl = window.location.hostname === 'localhost'
+    ? window.location.origin
+    : 'https://kidrove.com';
+
+  return `${baseUrl}/verify-ticket/${ticketNumber}`;
+};
 
 const BookingsPage: React.FC = () => {
   const dispatch = useDispatch<AppDispatch>();
   const { bookings, isLoading, error } = useSelector((state: RootState) => state.bookings);
   const [activeTab, setActiveTab] = useState<'upcoming' | 'past' | 'cancelled'>('upcoming');
-  const [selectedBookingForQR, setSelectedBookingForQR] = useState<Booking | null>(null);
+  const [selectedBookingForQR, setSelectedBookingForQR] = useState<any | null>(null);
+  const [selectedBookingTicket, setSelectedBookingTicket] = useState<Ticket | null>(null);
   const [isQRModalOpen, setIsQRModalOpen] = useState(false);
+  const [isQRLoading, setIsQRLoading] = useState(false);
   const [selectedBookingForCancel, setSelectedBookingForCancel] = useState<any | null>(null);
   const [isCancelModalOpen, setIsCancelModalOpen] = useState(false);
 
@@ -112,9 +110,34 @@ const BookingsPage: React.FC = () => {
     }
   };
 
-  const handleShowBookingQR = (booking: Booking) => {
-    setSelectedBookingForQR(booking);
-    setIsQRModalOpen(true);
+  const handleShowBookingQR = async (booking: any) => {
+    if (isQRLoading) return;
+
+    const orderId = booking?._id || booking?.id || booking?.orderNumber;
+    if (!orderId) {
+      toast.error('Booking ID not found. Unable to load ticket QR code.');
+      return;
+    }
+
+    setIsQRLoading(true);
+    try {
+      const response = await ticketAPI.getTicketsByOrder(orderId);
+      const tickets = response.tickets || [];
+
+      if (tickets.length === 0) {
+        toast.error('No tickets found for this booking.');
+        return;
+      }
+
+      const ticketWithQRImage = tickets.find((ticket) => ticket.qrCodeImage) || tickets[0];
+      setSelectedBookingForQR(booking);
+      setSelectedBookingTicket(ticketWithQRImage);
+      setIsQRModalOpen(true);
+    } catch {
+      toast.error('Failed to load ticket QR code.');
+    } finally {
+      setIsQRLoading(false);
+    }
   };
 
   const filteredBookings = bookings.filter((booking: any) => {
@@ -233,9 +256,12 @@ const BookingsPage: React.FC = () => {
                     // Handle location object properly - extract string representation
                     const getLocationString = (location: any): string => {
                       if (!location) return 'Location TBD';
-                      if (typeof location === 'string') return location;
+                      if (typeof location === 'string') {
+                        return location.replace(/^\s*,\s*/, '').trim() || 'Location TBD';
+                      }
                       if (typeof location === 'object') {
-                        const { address, city } = location;
+                        const address = typeof location.address === 'string' ? location.address.trim() : '';
+                        const city = typeof location.city === 'string' ? location.city.trim() : '';
                         if (address && city) return `${address}, ${city}`;
                         if (city) return city;
                         if (address) return address;
@@ -304,10 +330,11 @@ const BookingsPage: React.FC = () => {
                                 {!isCancelled && (booking.status === 'confirmed' || booking.status === 'completed') && (
                                   <button
                                     onClick={() => handleShowBookingQR(booking)}
+                                    disabled={isQRLoading}
                                     className="inline-flex items-center justify-center gap-2 px-4 py-2 bg-gradient-to-r from-green-600 to-emerald-600 text-white text-sm font-medium rounded-md hover:from-green-700 hover:to-emerald-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-green-500 transition-colors shadow-sm"
                                   >
                                     <QrCode className="w-4 h-4" />
-                                    View Booking QR Code
+                                    {isQRLoading ? 'Loading QR Code...' : 'View Booking QR Code'}
                                   </button>
                                 )}
 
@@ -357,16 +384,23 @@ const BookingsPage: React.FC = () => {
               onClose={() => {
                 setIsQRModalOpen(false);
                 setSelectedBookingForQR(null);
+                setSelectedBookingTicket(null);
               }}
+              qrValue={selectedBookingTicket?.ticketNumber ? getTicketVerifyUrl(selectedBookingTicket.ticketNumber) : undefined}
               qrData={{
-                bookingId: (selectedBookingForQR as any)._id || (selectedBookingForQR as any).id,
-                eventId: (selectedBookingForQR as any).items?.[0]?.eventId?._id || (selectedBookingForQR as any).eventId,
+                ticketNumber: selectedBookingTicket?.ticketNumber || (selectedBookingForQR as any).orderNumber || (selectedBookingForQR as any)._id || (selectedBookingForQR as any).id,
+                eventId: selectedBookingTicket?.eventId?._id || (selectedBookingForQR as any).items?.[0]?.eventId?._id || (selectedBookingForQR as any).eventId,
                 userId: undefined,
-                type: 'booking',
+                orderId: selectedBookingTicket?.orderId || (selectedBookingForQR as any)._id || (selectedBookingForQR as any).id,
+                seatsAllocated: 1,
+                type: 'ticket',
+                eventStartDate: selectedBookingTicket?.eventId?.dateSchedule?.[0]?.startDate ? new Date(selectedBookingTicket.eventId.dateSchedule[0].startDate) : undefined,
+                eventEndDate: selectedBookingTicket?.eventId?.dateSchedule?.[0]?.endDate ? new Date(selectedBookingTicket.eventId.dateSchedule[0].endDate) : undefined,
                 gracePeriodHours: 2
               }}
               size={300}
-              title={`Booking QR Code - ${(selectedBookingForQR as any).items?.[0]?.eventId?.title || (selectedBookingForQR as any).eventTitle || 'Event'}`}
+              title={`Ticket QR Code - ${(selectedBookingTicket as any)?.ticketNumber ? `#${(selectedBookingTicket as any).ticketNumber.slice(-8)}` : ''}`.trim()}
+              subtitle="Scan at venue"
             />
           )}
 

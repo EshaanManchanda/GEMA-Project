@@ -328,58 +328,39 @@ export const retryCertificate = async (req: AuthRequest, res: Response, next: Ne
     }
 
     await Certificate.findByIdAndUpdate(id, {
-      status: "pending",
+      status: "generating",
       failureReason: undefined,
       $push: { history: { event: "retry_requested", at: new Date() } },
     });
 
-    if (certificateQueue) {
-      await certificateQueue.add(
-        "generate-certificate",
-        {
-          certificateId: id,
-          templateId: certificate.templateId?.toString(),
-          recipient: certificate.recipient,
-          data: certificate.data || {},
-          options: {},
-        },
-        { attempts: 3, backoff: { type: "exponential", delay: 3000 } },
-      );
-    } else {
-      logger.warn("Certificate queue unavailable — attempting synchronous generation");
-      try {
-        const { renderCertificate } = await import("../workers/certificate.worker");
-        const template = await (await import("../models/Certificate")).Template.findById(certificate.templateId);
-        if (!template) return next(new AppError("Template not found for this certificate", 404));
+    try {
+      const template = await Template.findById(certificate.templateId);
+      if (!template) return next(new AppError("Template not found for this certificate", 404));
 
-        const pdfUrl = await renderCertificate(template, {
-          recipientName: certificate.recipient.name,
-          recipientEmail: certificate.recipient.email,
-          ...(certificate.data || {}),
-          issuedDate: new Date().toLocaleDateString("en-GB", { day: "numeric", month: "long", year: "numeric" }),
-        });
+      const pdfUrl = await renderCertificate(template, {
+        recipientName: certificate.recipient.name,
+        recipientEmail: certificate.recipient.email,
+        ...(certificate.data || {}),
+        issuedDate: new Date().toLocaleDateString("en-GB", { day: "numeric", month: "long", year: "numeric" }),
+      });
 
-        await Certificate.findByIdAndUpdate(id, {
-          status: "generated",
-          pdfUrl,
-          issuedAt: new Date(),
-          $push: { history: { event: "generation_complete", at: new Date() } },
-        });
+      await Certificate.findByIdAndUpdate(id, {
+        status: "generated",
+        pdfUrl,
+        issuedAt: new Date(),
+        $push: { history: { event: "generation_complete", at: new Date() } },
+      });
 
-        const updated = await Certificate.findById(id);
-        return res.status(200).json({ success: true, data: { certificate: updated } });
-      } catch (syncErr: any) {
-        await Certificate.findByIdAndUpdate(id, {
-          status: "failed",
-          failureReason: syncErr.message,
-          $push: { history: { event: "generation_failed", meta: { error: syncErr.message }, at: new Date() } },
-        });
-        return next(new AppError(`Generation failed: ${syncErr.message}`, 500));
-      }
+      const updated = await Certificate.findById(id);
+      return res.status(200).json({ success: true, data: { certificate: updated } });
+    } catch (syncErr: any) {
+      await Certificate.findByIdAndUpdate(id, {
+        status: "failed",
+        failureReason: syncErr.message,
+        $push: { history: { event: "generation_failed", meta: { error: syncErr.message }, at: new Date() } },
+      });
+      return next(new AppError(`Generation failed: ${syncErr.message}`, 500));
     }
-
-    const updated = await Certificate.findById(id);
-    res.status(200).json({ success: true, data: { certificate: updated } });
   } catch (error) {
     next(error);
   }

@@ -11,6 +11,7 @@ interface QRCodeModalProps {
   onClose: () => void;
   qrData: QRCodeData;
   qrValue?: string;
+  qrImage?: string;
   size?: number;
   title?: string;
   subtitle?: string;
@@ -21,6 +22,7 @@ const QRCodeModal: React.FC<QRCodeModalProps> = ({
   onClose,
   qrData,
   qrValue,
+  qrImage,
   size = 250,
   title,
   subtitle
@@ -35,10 +37,12 @@ const QRCodeModal: React.FC<QRCodeModalProps> = ({
 
   // Use provided title/subtitle or fallback to generated ones
   const finalTitle = title || displayInfo.title;
-  const finalSubtitle = subtitle || `${displayInfo.subtitle} - ID: ${displayInfo.id}`;
+  const finalSubtitle = subtitle || (qrValue ? displayInfo.subtitle : `${displayInfo.subtitle} - ID: ${displayInfo.id}`);
 
   // Generate filename based on type and ID
-  const filename = `${qrData.type}-${displayInfo.id.replace(/[^a-zA-Z0-9]/g, '-')}`;
+  const filename = qrValue
+    ? `${qrData.type}-qr`
+    : `${qrData.type}-${displayInfo.id.replace(/[^a-zA-Z0-9]/g, '-')}`;
 
   return (
     <Modal
@@ -49,59 +53,90 @@ const QRCodeModal: React.FC<QRCodeModalProps> = ({
       className="text-center"
     >
       <div className="py-4">
-        {/* QR Code Generator */}
-        <QRCodeGenerator
-          value={qrCodeString}
-          size={size}
-          title="" // Don't show title in generator since modal has title
-          subtitle={finalSubtitle}
-          showDownload={true}
-          showCopy={true}
-          showShare={true}
-          filename={filename}
-          className="border-0 shadow-none"
-        />
+        {qrImage ? (
+          <div className="flex flex-col items-center">
+            <div className="flex justify-center mb-6 p-4 bg-white rounded-lg border">
+              <img
+                src={qrImage}
+                alt={finalTitle}
+                className="block max-w-full h-auto"
+                style={{ width: size, height: size, objectFit: 'contain' }}
+              />
+            </div>
+
+            {finalSubtitle && (
+              <p className="text-sm text-gray-600 mb-4">
+                {finalSubtitle}
+              </p>
+            )}
+
+            <div className="flex flex-wrap gap-2 justify-center">
+              <a
+                href={qrImage}
+                download={`${filename}.png`}
+                className="inline-flex items-center justify-center rounded-md border border-gray-300 px-4 py-2 text-sm font-medium text-gray-700 transition-colors hover:bg-gray-50"
+              >
+                Download
+              </a>
+            </div>
+          </div>
+        ) : (
+          <QRCodeGenerator
+            value={qrCodeString}
+            size={size}
+            title="" // Don't show title in generator since modal has title
+            subtitle={finalSubtitle}
+            showDownload={true}
+            showCopy={true}
+            showShare={true}
+            showTechnicalInfo={!qrValue}
+            filename={filename}
+            className="border-0 shadow-none"
+          />
+        )}
 
         {/* Additional Information */}
-        <div className="mt-6 p-4 bg-gray-50 rounded-lg text-left">
-          <h4 className="font-medium text-gray-900 mb-2">QR Code Information</h4>
-          <div className="space-y-1 text-sm text-gray-600">
-            <div className="flex justify-between">
-              <span>Type:</span>
-              <span className="font-medium capitalize">{qrData.type}</span>
+        {!qrValue && !qrImage && (
+          <div className="mt-6 p-4 bg-gray-50 rounded-lg text-left">
+            <h4 className="font-medium text-gray-900 mb-2">QR Code Information</h4>
+            <div className="space-y-1 text-sm text-gray-600">
+              <div className="flex justify-between">
+                <span>Type:</span>
+                <span className="font-medium capitalize">{qrData.type}</span>
+              </div>
+              <div className="flex justify-between">
+                <span>ID:</span>
+                <span className="font-medium">{displayInfo.id}</span>
+              </div>
+              {qrData.eventId && (
+                <div className="flex justify-between">
+                  <span>Event ID:</span>
+                  <span className="font-medium">{qrData.eventId}</span>
+                </div>
+              )}
+              {qrData.userId && (
+                <div className="flex justify-between">
+                  <span>User ID:</span>
+                  <span className="font-medium">{qrData.userId}</span>
+                </div>
+              )}
+              {qrData.seatsAllocated && (
+                <div className="flex justify-between">
+                  <span>Seats:</span>
+                  <span className="font-medium">{qrData.seatsAllocated}</span>
+                </div>
+              )}
+              {qrData.validUntil && (
+                <div className="flex justify-between">
+                  <span>Valid Until:</span>
+                  <span className="font-medium">
+                    {new Date(qrData.validUntil).toLocaleDateString()}
+                  </span>
+                </div>
+              )}
             </div>
-            <div className="flex justify-between">
-              <span>ID:</span>
-              <span className="font-medium">{displayInfo.id}</span>
-            </div>
-            {qrData.eventId && (
-              <div className="flex justify-between">
-                <span>Event ID:</span>
-                <span className="font-medium">{qrData.eventId}</span>
-              </div>
-            )}
-            {qrData.userId && (
-              <div className="flex justify-between">
-                <span>User ID:</span>
-                <span className="font-medium">{qrData.userId}</span>
-              </div>
-            )}
-            {qrData.seatsAllocated && (
-              <div className="flex justify-between">
-                <span>Seats:</span>
-                <span className="font-medium">{qrData.seatsAllocated}</span>
-              </div>
-            )}
-            {qrData.validUntil && (
-              <div className="flex justify-between">
-                <span>Valid Until:</span>
-                <span className="font-medium">
-                  {new Date(qrData.validUntil).toLocaleDateString()}
-                </span>
-              </div>
-            )}
           </div>
-        </div>
+        )}
 
         {/* Usage Instructions */}
         <div className="mt-4 p-4 bg-blue-50 rounded-lg text-left">

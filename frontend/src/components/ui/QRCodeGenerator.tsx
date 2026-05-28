@@ -21,6 +21,7 @@ export interface QRCodeGeneratorProps {
   showDownload?: boolean;
   showCopy?: boolean;
   showShare?: boolean;
+  showTechnicalInfo?: boolean;
   filename?: string;
 }
 
@@ -36,6 +37,7 @@ const QRCodeGenerator: React.FC<QRCodeGeneratorProps> = ({
   showDownload = true,
   showCopy = true,
   showShare = true,
+  showTechnicalInfo = true,
   filename = 'qr-code'
 }) => {
   const [copied, setCopied] = useState(false);
@@ -210,10 +212,12 @@ const QRCodeGenerator: React.FC<QRCodeGeneratorProps> = ({
         )}
 
         {/* Technical Info */}
-        <div className="mt-4 text-xs text-gray-500">
-          <p>Size: {size}×{size}px • Level: {level}</p>
-          <p className="truncate mt-1">Data: {value.length > 50 ? `${value.substring(0, 50)}...` : value}</p>
-        </div>
+        {showTechnicalInfo && (
+          <div className="mt-4 text-xs text-gray-500">
+            <p>Size: {size}×{size}px • Level: {level}</p>
+            <p className="truncate mt-1">Data: {value.length > 50 ? `${value.substring(0, 50)}...` : value}</p>
+          </div>
+        )}
       </CardContent>
     </Card>
   );
