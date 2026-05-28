@@ -7,6 +7,7 @@ import {
 import { uploadPresets, getOptimizedImageUrl } from "../../config/cloudinary";
 import path from "path";
 import fs from "fs";
+import { Readable } from "stream";
 import logger from "../../config/logger";
 
 /**
@@ -139,8 +140,7 @@ export class CloudinaryProvider implements IStorageProvider {
           );
 
           // Create a readable stream from the buffer
-          const streamifier = require("streamifier");
-          streamifier.createReadStream(file.buffer).pipe(uploadStream);
+          Readable.from(file.buffer).pipe(uploadStream);
         });
       } else {
         // Log diagnostic info before throwing error
