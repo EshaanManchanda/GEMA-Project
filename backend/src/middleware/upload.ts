@@ -63,8 +63,10 @@ const cloudinaryStorage = new CloudinaryStorage({
   params: (req: Request, file) => {
     const category = getCategoryFromRequest(req);
     const isVideo = file.mimetype.startsWith("video/");
+    // PDFs can be delivered as images by Cloudinary (resource_type: "image")
+    // which preserves the correct MIME type and enables inline browser viewing.
+    const isPdf = file.mimetype === "application/pdf";
     const isDocument = [
-      "application/pdf",
       "application/msword",
       "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
       "text/csv",
@@ -85,9 +87,24 @@ const cloudinaryStorage = new CloudinaryStorage({
         ? require("../utils/uploadHelpers").getTimeoutForFileSize(contentLength)
         : 120000; // Default 120s if size unknown
 
+    // Determine resource_type:
+    // - Videos: "video"
+    // - PDFs: "image" — Cloudinary can store/serve PDFs as images, preserving
+    //   the application/pdf MIME type and allowing inline browser viewing.
+    // - Other documents (DOC, XLS, ZIP, etc.): "raw" — binary files that
+    //   Cloudinary cannot render; they will download as-is.
+    // - Everything else (images): "auto"
+    const resourceType = isVideo
+      ? "video"
+      : isPdf
+        ? "image"
+        : isDocument
+          ? "raw"
+          : "auto";
+
     return {
       folder: `gema/${category}`,
-      allowed_formats: isDocument
+      allowed_formats: isPdf || isDocument
         ? undefined
         : category === "blogContent"
           ? [
@@ -120,10 +137,12 @@ const cloudinaryStorage = new CloudinaryStorage({
               "doc",
               "docx",
             ],
-      resource_type: isVideo ? "video" : isDocument ? "raw" : "auto",
+      resource_type: resourceType,
       transformation: isVideo || isDocument
         ? []
-        : [{ quality: "auto", fetch_format: "auto" }],
+        : isPdf
+          ? [] // No image transformations for PDFs
+          : [{ quality: "auto", fetch_format: "auto" }],
       public_id: `${category}-${Date.now()}-${Math.round(Math.random() * 1e9)}`,
       timeout: timeoutMs, // Dynamic timeout based on file size
     };
