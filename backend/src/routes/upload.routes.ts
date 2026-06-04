@@ -63,15 +63,27 @@ router.use("/files", (req: Request, res: Response, next: NextFunction) => {
     ".docx":
       "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
     ".csv": "text/csv",
+    ".xls": "application/vnd.ms-excel",
+    ".xlsx": "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+    ".ppt": "application/vnd.ms-powerpoint",
+    ".pptx": "application/vnd.openxmlformats-officedocument.presentationml.presentation",
+    ".txt": "text/plain",
+    ".zip": "application/zip",
   };
 
   const mimeType = mimeTypes[ext] || "application/octet-stream";
   res.setHeader("Content-Type", mimeType);
 
   // Cache and CORS headers
-  res.setHeader("Cache-Control", "public, max-age=31536000"); // 1 year
+  res.setHeader("Cache-Control", "no-cache, no-store, must-revalidate");
   res.setHeader("Access-Control-Allow-Origin", "*"); // Allow all origins for public media
   res.setHeader("Cross-Origin-Resource-Policy", "cross-origin"); // Allow cross-origin access
+
+  // Disable Content-Security-Policy and other Helmet security headers for static files so PDFs can render in-browser
+  res.removeHeader("Content-Security-Policy");
+  res.removeHeader("X-Download-Options");
+  res.removeHeader("X-Frame-Options");
+  res.removeHeader("Cross-Origin-Opener-Policy");
 
   res.sendFile(normalizedPath);
 });
