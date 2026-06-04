@@ -205,6 +205,12 @@ export interface RegistrationConfirmationEmailOptions {
   meetingLink?: string;
   meetingPassword?: string;
   venueType?: string;
+  /** Booking attachments (e.g. PDF brochures) to forward to the registrant */
+  attachments?: Array<{
+    filename: string;
+    content: Buffer;
+    contentType?: string;
+  }>;
 }
 
 export interface RegistrationApprovalEmailOptions {
@@ -2006,6 +2012,7 @@ class EmailService {
       to: options.to,
       subject: `Registration Confirmed - ${options.eventTitle}`,
       html,
+      attachments: options.attachments,
     });
   }
 

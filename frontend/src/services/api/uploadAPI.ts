@@ -256,6 +256,39 @@ export class UploadAPI {
   }
 
   /**
+   * Upload a booking attachment (image or PDF only).
+   * Uses a dedicated endpoint that selects the correct Cloudinary resource_type
+   * per file — PDFs → /raw/upload/ (downloadable + embeddable),
+   * images → /image/upload/ (optimised delivery).
+   */
+  static async uploadBookingAttachment(
+    file: File,
+    onProgress?: UploadProgressCallback,
+  ): Promise<UploadResponse> {
+    const formData = new FormData();
+    formData.append('file', file);
+
+    const timeout = getTimeoutForFileSize(file.size);
+
+    const response = await api.post('/uploads/booking-attachment', formData, {
+      headers: {
+        'Content-Type': 'multipart/form-data',
+      },
+      timeout,
+      onUploadProgress: onProgress
+        ? (progressEvent) => {
+            const percent = progressEvent.total
+              ? Math.round((progressEvent.loaded * 100) / progressEvent.total)
+              : 0;
+            onProgress(percent, progressEvent.loaded, progressEvent.total || 0);
+          }
+        : undefined,
+    });
+
+    return response.data;
+  }
+
+  /**
    * Batch upload files
    */
   static async batchUpload(

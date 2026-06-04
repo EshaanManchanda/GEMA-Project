@@ -12,6 +12,7 @@ import { AuthRequest } from "../types/index";
 import { PaymentService } from "../services/payment.service";
 import { emailService } from "../services/email.service";
 import { logger } from "../config/index";
+import { config } from "../config/env";
 import cloudinary from "../config/cloudinary";
 import { getFileInfo } from "../middleware/upload";
 
@@ -194,12 +195,52 @@ export const submitRegistration = async (
       await registration.save();
     }
 
-    // Send registration confirmation email
+    // Send registration confirmation email (with event booking attachments)
     try {
       const user = await User.findById(userId).select(
         "firstName lastName email",
       );
       if (user) {
+        // Download booking attachments so they can be forwarded to the registrant
+        const emailAttachments: Array<{ filename: string; content: Buffer; contentType?: string }> = [];
+        const rawAttachments = (event as any).bookingAttachments as Array<{
+          url?: string;
+          originalName?: string;
+          filename?: string;
+          mimetype?: string;
+          provider?: string;
+        }> | undefined;
+
+        if (rawAttachments && rawAttachments.length > 0) {
+          for (const att of rawAttachments) {
+            if (!att?.url) continue;
+            try {
+              let content: Buffer;
+              if (att.provider === "local" || att.url.startsWith("/api/uploads/files/")) {
+                const { promises: fsPromises } = await import("fs");
+                const pathLib = await import("path");
+                const relativePath = att.url.replace(/^\/api\/uploads\/files\//, "");
+                const filePath = pathLib.join(process.cwd(), config.upload.path, relativePath);
+                content = await fsPromises.readFile(filePath);
+              } else {
+                const resp = await fetch(att.url);
+                if (!resp.ok) throw new Error(`Fetch failed: ${resp.status}`);
+                content = Buffer.from(await resp.arrayBuffer());
+              }
+              emailAttachments.push({
+                filename: att.originalName || att.filename || "attachment",
+                content,
+                contentType: att.mimetype,
+              });
+            } catch (attErr: any) {
+              logger.warn("Could not download booking attachment for registration email", {
+                url: att.url,
+                error: attErr?.message,
+              });
+            }
+          }
+        }
+
         await emailService.sendRegistrationConfirmationEmail({
           to: user.email,
           firstName: user.firstName,
@@ -216,10 +257,12 @@ export const submitRegistration = async (
           meetingLink: event.meetingLink,
           meetingPassword: event.meetingPassword,
           venueType: event.venueType,
+          attachments: emailAttachments.length > 0 ? emailAttachments : undefined,
         });
         logger.info("Registration confirmation email sent", {
           registrationId: registration._id,
           email: user.email,
+          attachmentCount: emailAttachments.length,
         });
       }
     } catch (emailErr: any) {

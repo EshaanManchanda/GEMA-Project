@@ -640,7 +640,10 @@ const AdminEditEventPage: React.FC = () => {
       const fileList = Array.isArray(files) ? files : [files];
       const uploadResults = await Promise.allSettled(
         fileList.map(async (file) => {
-          const uploadResponse = await UploadAPI.uploadSingle(file, "event");
+          // Use the dedicated booking-attachment endpoint so that PDFs are
+          // stored with resource_type="raw" on Cloudinary (giving a /raw/upload/
+          // URL) and images use resource_type="image".
+          const uploadResponse = await UploadAPI.uploadBookingAttachment(file);
           return uploadResponse.data;
         }),
       );

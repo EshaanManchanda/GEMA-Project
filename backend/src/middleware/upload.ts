@@ -63,8 +63,6 @@ const cloudinaryStorage = new CloudinaryStorage({
   params: (req: Request, file) => {
     const category = getCategoryFromRequest(req);
     const isVideo = file.mimetype.startsWith("video/");
-    // PDFs can be delivered as images by Cloudinary (resource_type: "image")
-    // which preserves the correct MIME type and enables inline browser viewing.
     const isPdf = file.mimetype === "application/pdf";
     const isDocument = [
       "application/msword",
@@ -80,73 +78,54 @@ const cloudinaryStorage = new CloudinaryStorage({
       "application/x-zip-compressed",
     ].includes(file.mimetype);
 
-    // Calculate timeout based on content-length header (file size)
     const contentLength = parseInt(req.headers["content-length"] || "0", 10);
     const timeoutMs =
       contentLength > 0
         ? require("../utils/uploadHelpers").getTimeoutForFileSize(contentLength)
-        : 120000; // Default 120s if size unknown
+        : 120000;
 
-    // Determine resource_type:
-    // - Videos: "video"
-    // - PDFs: "image" — Cloudinary can store/serve PDFs as images, preserving
-    //   the application/pdf MIME type and allowing inline browser viewing.
-    // - Other documents (DOC, XLS, ZIP, etc.): "raw" — binary files that
-    //   Cloudinary cannot render; they will download as-is.
-    // - Everything else (images): "auto"
-    const resourceType = isVideo
-      ? "video"
-      : isPdf
-        ? "image"
-        : isDocument
-          ? "raw"
-          : "auto";
+    const resourceType = isVideo ? "video" : isPdf || isDocument ? "raw" : "auto";
+    const uniqueSuffix = `${category}-${Date.now()}-${Math.round(Math.random() * 1e9)}`;
+    const publicId = isPdf ? `${uniqueSuffix}.pdf` : uniqueSuffix;
 
     return {
       folder: `gema/${category}`,
       allowed_formats: isPdf || isDocument
         ? undefined
         : category === "blogContent"
-          ? [
-              "jpg",
-              "jpeg",
-              "png",
-              "gif",
-              "webp",
-              "bmp",
-              "tiff",
-              "svg",
-              "heic",
-              "heif",
-              "mp4",
-              "webm",
-              "mov",
-            ]
-          : [
-              "jpg",
-              "jpeg",
-              "png",
-              "gif",
-              "webp",
-              "bmp",
-              "tiff",
-              "svg",
-              "heic",
-              "heif",
-              "pdf",
-              "doc",
-              "docx",
-            ],
+          ? ["jpg", "jpeg", "png", "gif", "webp", "bmp", "tiff", "svg", "heic", "heif", "mp4", "webm", "mov"]
+          : ["jpg", "jpeg", "png", "gif", "webp", "bmp", "tiff", "svg", "heic", "heif", "pdf", "doc", "docx"],
       resource_type: resourceType,
-      transformation: isVideo || isDocument
-        ? []
-        : isPdf
-          ? [] // No image transformations for PDFs
-          : [{ quality: "auto", fetch_format: "auto" }],
-      public_id: `${category}-${Date.now()}-${Math.round(Math.random() * 1e9)}`,
-      timeout: timeoutMs, // Dynamic timeout based on file size
+      transformation: isVideo || isPdf || isDocument ? [] : [{ quality: "auto", fetch_format: "auto" }],
+      public_id: publicId,
+      timeout: timeoutMs,
     };
   },
+});
+
+// ──────────────────────────────────────────────────────────────────────────────
+// Dedicated storage for booking attachments (image OR pdf only).
+// We split image vs pdf into two separate CloudinaryStorage instances so that
+// multer-storage-cloudinary always picks the correct resource_type at upload
+// time rather than relying on runtime detection inside a shared params fn.
+// ──────────────────────────────────────────────────────────────────────────────
+const bookingAttachmentImageStorage = new CloudinaryStorage({
+  cloudinary,
+  params: (_req: Request, _file) => ({
+    folder: "gema/booking-attachments",
+    resource_type: "image",
+    transformation: [{ quality: "auto", fetch_format: "auto" }],
+    public_id: `booking-${Date.now()}-${Math.round(Math.random() * 1e9)}`,
+  }),
+});
+
+const bookingAttachmentPdfStorage = new CloudinaryStorage({
+  cloudinary,
+  params: (_req: Request, _file) => ({
+    folder: "gema/booking-attachments",
+    resource_type: "raw",
+    public_id: `booking-${Date.now()}-${Math.round(Math.random() * 1e9)}.pdf`,
+  }),
 });
 
 // Local storage configuration (fallback)
@@ -256,6 +235,87 @@ export const uploadQRCode = upload.single("qrCode");
 
 // Registration files upload middleware (supports multiple dynamic fields)
 export const uploadRegistrationFiles = upload.any();
+
+// ──────────────────────────────────────────────────────────────────────────────
+// Booking attachment upload middleware.
+// Only image/* and application/pdf are accepted.
+// Uses per-mimetype Cloudinary storage instances so resource_type is always
+// correct (image → /image/upload/, pdf → /raw/upload/).
+// ──────────────────────────────────────────────────────────────────────────────
+const bookingAttachmentFilter = (
+  _req: Request,
+  file: Express.Multer.File,
+  cb: multer.FileFilterCallback,
+) => {
+  const allowed = [
+    "image/jpeg",
+    "image/png",
+    "image/gif",
+    "image/webp",
+    "image/bmp",
+    "image/tiff",
+    "image/heic",
+    "image/heif",
+    "image/svg+xml",
+    "application/pdf",
+  ];
+  if (allowed.includes(file.mimetype)) {
+    cb(null, true);
+  } else {
+    cb(new AppError("Only image files and PDFs are allowed for booking attachments", 400));
+  }
+};
+
+/**
+ * Upload a single booking attachment.
+ * Internally routes to the correct Cloudinary storage based on mimetype.
+ * Falls back to the generic local storage when the provider is not cloudinary.
+ */
+export const uploadBookingAttachment = (
+  req: Request,
+  res: any,
+  next: any,
+) => {
+  const isPdf = (req.headers["x-file-mimetype"] === "application/pdf") ||
+    (req as any)._bookingAttachmentIsPdf;
+
+  // We need to choose the right Cloudinary storage BEFORE multer runs.
+  // Since we don't have the file's mimetype before parsing, we use a
+  // "routing" multer that applies the correct storage per file.
+  const routingStorage =
+    config.upload.provider === "cloudinary"
+      ? new CloudinaryStorage({
+          cloudinary,
+          params: (_r: Request, file: Express.Multer.File) => {
+            const fileIsPdf = file.mimetype === "application/pdf";
+            return {
+              folder: "gema/booking-attachments",
+              resource_type: fileIsPdf ? "raw" : "image",
+              transformation: fileIsPdf ? [] : [{ quality: "auto", fetch_format: "auto" }],
+              public_id: `booking-${Date.now()}-${Math.round(Math.random() * 1e9)}${fileIsPdf ? ".pdf" : ""}`,
+            };
+          },
+        })
+      : multer.diskStorage({
+          destination: (_r, _f, cb) => {
+            const dest = path.join(uploadDir, "booking-attachments");
+            if (!fs.existsSync(dest)) fs.mkdirSync(dest, { recursive: true });
+            cb(null, dest);
+          },
+          filename: (_r, file, cb) => {
+            const ext = path.extname(file.originalname);
+            cb(null, `booking-${Date.now()}-${Math.round(Math.random() * 1e9)}${ext}`);
+          },
+        });
+
+  const m = multer({
+    storage: routingStorage,
+    fileFilter: bookingAttachmentFilter,
+    limits: { fileSize: config.upload.maxImageSize, files: 1 },
+  }).single("file");
+
+  return m(req, res, next);
+};
 
 // Blog-specific upload middleware with proper size limits
 export const uploadBlogFeaturedImage = uploadBlog.single("featuredImage");

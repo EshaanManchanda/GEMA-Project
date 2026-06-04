@@ -901,13 +901,13 @@ const BasicInfoTab: React.FC<BasicInfoTabProps> = ({
                 id="bookingAttachment"
                 type="file"
                 multiple
-                accept="image/*,.pdf,.doc,.docx,.csv,.xls,.xlsx,.ppt,.pptx,.txt,.zip,application/pdf,application/msword,application/vnd.openxmlformats-officedocument.wordprocessingml.document,text/csv,application/csv,application/vnd.ms-excel,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet,application/vnd.ms-powerpoint,application/vnd.openxmlformats-officedocument.presentationml.presentation,text/plain,application/zip,application/x-zip-compressed"
+                accept="image/jpeg,image/png,image/gif,image/webp,image/bmp,image/tiff,image/heic,image/heif,image/svg+xml,application/pdf,.pdf,.jpg,.jpeg,.png,.gif,.webp,.bmp,.tiff,.heic,.heif,.svg"
                 onChange={handleBookingAttachmentChange}
                 disabled={isAttachmentUploading}
                 className="block w-full text-sm text-gray-700 file:mr-4 file:rounded-lg file:border-0 file:bg-primary-600 file:px-4 file:py-2 file:text-sm file:font-semibold file:text-white hover:file:bg-primary-700 disabled:opacity-60"
               />
               <p className="mt-2 text-xs text-gray-500">
-                Supported file types: image, PDF, DOC, DOCX, CSV, Excel, PowerPoint, TXT, ZIP. You can add multiple files, and all will be emailed to users when they book this event.
+                Supported file types: <strong>Images</strong> (JPG, PNG, GIF, WebP) and <strong>PDF</strong>. All uploaded files will be emailed to users when they register for this event.
               </p>
             </div>
 

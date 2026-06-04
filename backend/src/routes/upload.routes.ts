@@ -14,6 +14,7 @@ import {
   uploadDocument,
   uploadBlogFeaturedImage,
   uploadBlogContentMedia,
+  uploadBookingAttachment,
   handleUploadError,
   getFileInfo,
   deleteFile,
@@ -303,6 +304,35 @@ router.post(
       res.status(200).json({
         success: true,
         message: "Document uploaded successfully",
+        data: fileInfo,
+      });
+    } catch (error) {
+      next(error);
+    }
+  },
+);
+
+// Booking attachment upload (image or PDF only)
+// This endpoint uses a dedicated storage that always assigns the correct
+// Cloudinary resource_type so PDFs get /raw/upload/ URLs and images get
+// /image/upload/ URLs.  A wrong resource_type is what was causing the
+// "Failed to load PDF document" error in the browser.
+router.post(
+  "/booking-attachment",
+  authenticate,
+  uploadBookingAttachment,
+  handleUploadError,
+  (req: AuthRequest, res: Response, next: NextFunction) => {
+    try {
+      if (!req.file) {
+        return next(new AppError("No file uploaded", 400));
+      }
+
+      const fileInfo = getFileInfo(req.file);
+
+      res.status(200).json({
+        success: true,
+        message: "Booking attachment uploaded successfully",
         data: fileInfo,
       });
     } catch (error) {
