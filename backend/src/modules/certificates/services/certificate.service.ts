@@ -208,6 +208,7 @@ class CertificateService {
         certificate.pdfUrl,
         certificate.qrData,
       ),
+      attachments: certificate.pdfUrl ? [{ filename: `${certificate.serialNumber || 'Certificate'}.pdf`, path: certificate.pdfUrl }] : undefined,
     });
 
     if (typeof messageId === "string" && messageId.startsWith("dev-email-")) {
@@ -287,6 +288,7 @@ class CertificateService {
           pdfUrl,
           certificate.qrData,
         ),
+        attachments: pdfUrl ? [{ filename: `${certificate.serialNumber || 'Certificate'}.pdf`, path: pdfUrl }] : undefined,
       });
 
       if (typeof messageId === "string" && messageId.startsWith("dev-email-")) {

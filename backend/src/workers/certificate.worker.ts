@@ -116,6 +116,7 @@ const certificateWorker = areQueuesEnabled
                 to: recipient.email,
                 subject: `Your Certificate — ${eventTitle}`,
                 html: buildCertEmailHtml(recipient.name, eventTitle, cert?.serialNumber, pdfUrl, qrData),
+                attachments: pdfUrl ? [{ filename: `${cert?.serialNumber || 'Certificate'}.pdf`, path: pdfUrl }] : undefined,
               });
 
               if (typeof messageId === "string" && messageId.startsWith("dev-email-")) {
@@ -439,14 +440,54 @@ export function buildCertEmailHtml(
   verifyUrl?: string,
 ): string {
   return `
-    <div style="font-family:sans-serif;max-width:600px;margin:0 auto;padding:24px">
-      <h2 style="color:#4f46e5">Congratulations, ${name}!</h2>
-      <p>Thank you for participating in <strong>${eventTitle}</strong> and for leaving a review.</p>
-      ${serial ? `<p><strong>Certificate Serial:</strong> <code>${serial}</code></p>` : ""}
-      ${url ? `<p><a href="${url}" style="background:#4f46e5;color:#fff;padding:12px 24px;border-radius:8px;text-decoration:none;display:inline-block">View Your Certificate</a></p>` : ""}
-      ${verifyUrl ? `<p style="font-size:13px;color:#6b7280">Verify authenticity: <a href="${verifyUrl}">${verifyUrl}</a></p>` : ""}
-      <p style="color:#9ca3af;font-size:12px;margin-top:24px">This certificate was issued automatically by the GEMA platform.</p>
-    </div>
+    <!DOCTYPE html>
+    <html>
+    <head>
+      <meta charset="utf-8">
+      <meta name="viewport" content="width=device-width,initial-scale=1.0">
+      <title>Your Certificate</title>
+    </head>
+    <body style="font-family:Arial,sans-serif;line-height:1.6;color:#1e293b;background:#f8fafc;margin:0;padding:0;">
+      <div style="max-width:600px;margin:0 auto;padding:24px;">
+        <div style="background:linear-gradient(135deg,#4f46e5 0%,#7c3aed 100%);color:white;padding:28px 24px;text-align:center;border-radius:12px 12px 0 0;">
+          <h1 style="margin:0;font-size:26px;">🏆 Congratulations!</h1>
+          <p style="margin:8px 0 0;opacity:0.9;font-size:15px;">You've earned a new certificate</p>
+        </div>
+        <div style="background:white;padding:28px 24px;border-radius:0 0 12px 12px;box-shadow:0 2px 8px rgba(0,0,0,0.06);">
+          <p style="font-size:17px;">Hi <strong>${name}</strong>!</p>
+          <p>We are absolutely thrilled to present you with this certificate for your participation in <strong>${eventTitle}</strong>.</p>
+          <p>Your dedication, effort, and enthusiasm are truly appreciated. Thank you for being a wonderful part of this event, and for taking the time to share your review!</p>
+          
+          <div style="background:#f8fafc;border-radius:8px;padding:20px;margin:24px 0;border:1px solid #e2e8f0;">
+            <p style="margin:0 0 8px;font-weight:700;font-size:15px;color:#4f46e5;">Certificate Details</p>
+            <table style="width:100%;font-size:14px;color:#475569;">
+              <tr><td style="padding:4px 0;font-weight:600;width:120px;">Event:</td><td>${eventTitle}</td></tr>
+              ${serial ? `<tr><td style="padding:4px 0;font-weight:600;">Serial #:</td><td style="font-family:monospace;">${serial}</td></tr>` : ""}
+            </table>
+          </div>
+
+          <div style="background:#f0fdf4;border-radius:8px;padding:16px;margin:20px 0;border-left:4px solid #16a34a;">
+            <p style="margin:0;font-size:15px;color:#166534;font-weight:600;">
+              📎 Your official certificate has been attached to this email as a PDF document.
+            </p>
+          </div>
+
+          ${url ? `<div style="text-align:center;margin:24px 0;">
+            <a href="${url}" style="display:inline-block;padding:12px 28px;background:#4f46e5;color:white;text-decoration:none;border-radius:8px;font-weight:600;font-size:15px;box-shadow:0 4px 6px -1px rgba(79, 70, 229, 0.2);">Download Backup Copy</a>
+          </div>` : ""}
+          
+          ${verifyUrl ? `<div style="margin-top:24px;padding-top:16px;border-top:1px dashed #e2e8f0;font-size:13px;color:#64748b;">
+            <p style="margin:0 0 4px;font-weight:600;">Verify authenticity:</p>
+            <a href="${verifyUrl}" style="color:#4f46e5;word-break:break-all;">${verifyUrl}</a>
+          </div>` : ""}
+        </div>
+        <div style="text-align:center;margin-top:20px;color:#94a3b8;font-size:13px;">
+          <p>The GEMA Platform Team</p>
+          <p>This certificate was issued automatically.</p>
+        </div>
+      </div>
+    </body>
+    </html>
   `;
 }
 
