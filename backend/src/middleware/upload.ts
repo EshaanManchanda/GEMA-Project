@@ -63,6 +63,14 @@ const cloudinaryStorage = new CloudinaryStorage({
   params: (req: Request, file) => {
     const category = getCategoryFromRequest(req);
     const isVideo = file.mimetype.startsWith("video/");
+    const isDocument = [
+      "application/pdf",
+      "application/msword",
+      "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+      "text/csv",
+      "application/csv",
+      "application/vnd.ms-excel",
+    ].includes(file.mimetype);
 
     // Calculate timeout based on content-length header (file size)
     const contentLength = parseInt(req.headers["content-length"] || "0", 10);
@@ -105,8 +113,8 @@ const cloudinaryStorage = new CloudinaryStorage({
               "doc",
               "docx",
             ],
-      resource_type: isVideo ? "video" : "auto",
-      transformation: isVideo
+      resource_type: isVideo ? "video" : isDocument ? "raw" : "auto",
+      transformation: isVideo || isDocument
         ? []
         : [{ quality: "auto", fetch_format: "auto" }],
       public_id: `${category}-${Date.now()}-${Math.round(Math.random() * 1e9)}`,

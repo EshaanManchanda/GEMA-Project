@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useCallback } from "react";
 import { useParams, useNavigate } from "react-router-dom";
+import { useQueryClient } from "@tanstack/react-query";
 import adminAPI from "../../services/api/adminAPI";
 import categoriesAPI from "../../services/api/categoriesAPI";
 import { UploadAPI } from "../../services/api/uploadAPI";
@@ -24,6 +25,7 @@ import { MediaAsset } from "@/store/slices/mediaSlice";
 import PrivatePageSEO from "@/components/common/PrivatePageSEO";
 import PastEventMemoriesEditor from "@/components/common/PastEventMemoriesEditor";
 import { PastEventMemory } from "@/types/event";
+import { eventsKeys, adminKeys } from "@/hooks/queries/queryKeys";
 import logger from "@/utils/logger";
 
 interface TimeSlot {
@@ -178,6 +180,7 @@ type TabType = "basic" | "schedule" | "advanced" | "reviews" | "registration" | 
 const AdminEditEventPage: React.FC = () => {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
+  const queryClient = useQueryClient();
 
   const [activeTab, setActiveTab] = useState<TabType>("basic");
   const [schedules, setSchedules] = useState<Schedule[]>([]);
@@ -1102,6 +1105,11 @@ const AdminEditEventPage: React.FC = () => {
         const response = await adminAPI.createEvent(eventData);
         const newEventId = response?.data?.event?.id || response?.event?.id;
 
+        await Promise.all([
+          queryClient.invalidateQueries({ queryKey: eventsKeys.all }),
+          queryClient.invalidateQueries({ queryKey: adminKeys.events.all() }),
+        ]);
+
         setErrors({});
         setSaveStatus({
           type: "success",
@@ -1114,9 +1122,14 @@ const AdminEditEventPage: React.FC = () => {
           } else {
             navigate("/admin/events");
           }
-        }, 2000);
+        }, 300);
       } else {
         await adminAPI.updateEvent(id!, eventData);
+
+        await Promise.all([
+          queryClient.invalidateQueries({ queryKey: eventsKeys.all }),
+          queryClient.invalidateQueries({ queryKey: adminKeys.events.all() }),
+        ]);
 
         setErrors({});
         setSaveStatus({
@@ -1126,7 +1139,7 @@ const AdminEditEventPage: React.FC = () => {
 
         setTimeout(() => {
           navigate("/admin/events");
-        }, 2000);
+        }, 300);
       }
     } catch (error: any) {
       logger.error("Error saving event:", error);
