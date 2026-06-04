@@ -539,9 +539,6 @@ const SearchPage: React.FC = () => {
   const [searchInput, setSearchInput] = useState<string>(query);
   const [showFilters, setShowFilters] = useState<boolean>(false);
 
-  // Debounced search query state (for TanStack Query)
-  const [debouncedQuery, setDebouncedQuery] = useState<string>(query);
-
   const [filterOptions, setFilterOptions] = useState<FilterOptions>({
     categories: [{ label: 'All Categories', value: '', count: 0 }],
     cities: [{ label: 'All Cities', value: '', count: 0 }],
@@ -595,32 +592,6 @@ const SearchPage: React.FC = () => {
     limit: 12
   }));
 
-  // Debounced search query update (300ms delay) - reacts to URL param changes
-  useEffect(() => {
-    const handler = setTimeout(() => {
-      setDebouncedQuery(query);
-    }, 300);
-
-    return () => clearTimeout(handler);
-  }, [query]);
-
-  // Live search: update URL when user types (debounced 500ms)
-  useEffect(() => {
-    const handler = setTimeout(() => {
-      const params = new URLSearchParams(searchParamsRef.current);
-      if (searchInput.trim()) {
-        params.set('q', searchInput.trim());
-      } else {
-        params.delete('q');
-      }
-      // Guard: skip if URL hasn't actually changed (prevents spurious re-renders)
-      if (params.toString() === searchParamsRef.current.toString()) return;
-      setSearchParams(params, { replace: true });
-    }, 500);
-
-    return () => clearTimeout(handler);
-  }, [searchInput]); // eslint-disable-line react-hooks/exhaustive-deps
-
   // Sync input box when URL q param changes externally (browser back/forward, link click)
   // Guard: only update if value actually differs (prevents retriggering live-search debounce)
   useEffect(() => {
@@ -657,7 +628,7 @@ const SearchPage: React.FC = () => {
 
   // TanStack Query replaces manual fetch + debounce logic
   const { data: searchData, isLoading: loading, error: queryError } = useEventsSearchQuery(
-    debouncedQuery,
+    query,
     searchParams_API
   );
 
