@@ -780,6 +780,7 @@ const SearchPage: React.FC = () => {
     } else {
       params.delete('q');
     }
+    params.set('page', '1');
     setSearchParams(params, { replace: false });
   };
 

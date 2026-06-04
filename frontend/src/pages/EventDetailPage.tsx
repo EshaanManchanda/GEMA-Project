@@ -700,7 +700,9 @@ const EventDetailPage: React.FC = () => {
   };
 
   // Aggregate seat metrics across all schedules for "Class Insights"
-  const hasUnlimited = (event.dateSchedule || []).some((s: any) => s.unlimitedSeats);
+  const hasUnlimited = (event.dateSchedule || []).some((s: any) =>
+    s.unlimitedSeats || s.isUnlimited || s.availableSeats >= 999999 || s.totalSeats >= 999999
+  );
   const totalSeats = hasUnlimited
     ? 0
     : (event.dateSchedule || []).reduce((sum: number, s: any) => sum + (s.totalSeats ?? s.availableSeats ?? 0), 0);
@@ -724,6 +726,7 @@ const EventDetailPage: React.FC = () => {
   const bookingPanelAvailableSeats = isUnlimited
     ? 999999
     : (selectedSession ? selectedSession.availableSeats : totalAvailableEventSeats);
+  const bookingIsUnlimited = isUnlimited || hasUnlimited || bookingPanelTotalSeats >= 999999;
 
   const breadcrumbs = event ? [
     { name: 'Home', url: '/' },
@@ -1399,7 +1402,7 @@ const EventDetailPage: React.FC = () => {
                         <div
                           className="bg-gradient-to-r from-green-400 to-green-600 h-3 rounded-full transition-all duration-500 ease-out shadow-sm"
                           style={{
-                            width: isUnlimited
+                            width: bookingIsUnlimited
                               ? '100%'
                               : `${Math.min(100, Math.max(0, (bookingPanelAvailableSeats / Math.max(1, bookingPanelTotalSeats)) * 100))}%`
                           }}
@@ -1408,8 +1411,8 @@ const EventDetailPage: React.FC = () => {
                         </div>
                       </div>
                       <div className="flex justify-between text-sm text-gray-600">
-                        <span className="font-medium">{isUnlimited ? 'Unlimited' : `${bookingPanelAvailableSeats} available`}</span>
-                        <span>{isUnlimited ? 'No seat limit' : `${bookingPanelTotalSeats} total`}</span>
+                        <span className="font-medium">{bookingIsUnlimited ? 'Unlimited' : `${bookingPanelAvailableSeats} available`}</span>
+                        <span>{bookingIsUnlimited ? 'No seat limit' : `${bookingPanelTotalSeats} total`}</span>
                       </div>
                     </div>
                   </>
