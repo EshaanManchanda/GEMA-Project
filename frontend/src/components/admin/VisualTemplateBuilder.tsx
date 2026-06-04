@@ -298,8 +298,7 @@ const VisualTemplateBuilder: React.FC<Props> = ({ onClose, onSaved, editTemplate
                     key={p.key}
                     type="button"
                     onClick={() => addField(p.key, p.label, p.type)}
-                    disabled={!!fields.find(f => f.key === p.key)}
-                    className="w-full text-left px-3 py-1.5 text-xs rounded-lg border border-gray-200 hover:bg-indigo-50 hover:border-indigo-300 disabled:opacity-40 disabled:cursor-not-allowed flex items-center justify-between"
+                    className="w-full text-left px-3 py-1.5 text-xs rounded-lg border border-gray-200 hover:bg-indigo-50 hover:border-indigo-300 flex items-center justify-between"
                   >
                     <span>{p.label}</span>
                     {p.type === 'qr' && <span className="text-indigo-500 font-medium">QR</span>}
