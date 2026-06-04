@@ -16,6 +16,7 @@ import MediaPickerModal from '@/components/admin/media/MediaPickerModal';
 import { MediaAsset } from '@/store/slices/mediaSlice';
 import { Card, CardHeader, CardTitle, CardContent } from '../ui/Card';
 import { Shield, FileText, Hash, Image as ImageIcon, X, ExternalLink } from 'lucide-react';
+import { getAbsoluteUploadUrl } from '@/utils/uploadHelpers';
 
 interface BookingAttachment {
   originalName: string;
@@ -919,7 +920,7 @@ const BasicInfoTab: React.FC<BasicInfoTabProps> = ({
                         <p className="font-medium text-gray-900">{attachment.originalName}</p>
                         <p className="text-sm text-gray-500">{attachment.mimetype}</p>
                         <a
-                          href={attachment.url}
+                          href={getAbsoluteUploadUrl(attachment.url)}
                           target="_blank"
                           rel="noopener noreferrer"
                           className="mt-2 inline-flex items-center gap-1 text-sm text-primary-600 hover:text-primary-700"

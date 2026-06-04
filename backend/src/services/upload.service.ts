@@ -87,8 +87,8 @@ export class UploadService {
         uploadOptions.transformation = (preset as any).transformation;
       }
 
-      // Add allowed formats if specified
-      if ((preset as any).allowed_formats) {
+      // Add allowed formats if specified (bypass for raw resources as Cloudinary does not support it)
+      if ((preset as any).allowed_formats && uploadOptions.resource_type !== "raw") {
         uploadOptions.allowed_formats = (preset as any).allowed_formats;
       }
 

@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import logger from '../../utils/logger';
 import UploadAPI from '../../services/api/uploadAPI';
+import { getAbsoluteUploadUrl } from '../../utils/uploadHelpers';
 
 import { RegistrationConfig, FormField as RegistrationField } from '../../types/registration';
 
@@ -219,7 +220,8 @@ const DynamicRegistrationForm: React.FC<DynamicRegistrationFormProps> = ({
       case 'file': {
         const isUploading = uploadingFields[field.id] || false;
         const uploadError = uploadErrors[field.id];
-        const uploadedUrl = typeof value === 'string' && value.startsWith('http') ? value : null;
+        const isUploadedUrl = typeof value === 'string' && (value.startsWith('http') || value.startsWith('/api/'));
+        const uploadedUrl = isUploadedUrl ? getAbsoluteUploadUrl(value) : null;
 
         const handleFileSelect = async (e: React.ChangeEvent<HTMLInputElement>) => {
           const file = e.target.files?.[0];

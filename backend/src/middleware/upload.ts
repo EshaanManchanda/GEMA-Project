@@ -87,8 +87,9 @@ const cloudinaryStorage = new CloudinaryStorage({
 
     return {
       folder: `gema/${category}`,
-      allowed_formats:
-        category === "blogContent"
+      allowed_formats: isDocument
+        ? undefined
+        : category === "blogContent"
           ? [
               "jpg",
               "jpeg",

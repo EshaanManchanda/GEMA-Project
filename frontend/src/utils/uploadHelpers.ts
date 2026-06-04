@@ -1,3 +1,5 @@
+import { API_BASE_URL } from '../config/api';
+
 /**
  * Upload utility functions for frontend
  */
@@ -93,3 +95,24 @@ export function calculateETA(
   const remainingBytes = totalBytes - uploadedBytes;
   return (remainingBytes / bytesPerSecond) * 1000; // Convert to milliseconds
 }
+
+/**
+ * Convert relative upload URLs to absolute URLs using the API_BASE_URL origin.
+ * Leaves absolute URLs (e.g. Cloudinary) as they are.
+ * 
+ * @param url The file URL (relative or absolute)
+ * @returns Absolute file URL
+ */
+export function getAbsoluteUploadUrl(url: string | null | undefined): string {
+  if (!url) return '';
+  if (url.startsWith('http://') || url.startsWith('https://')) {
+    return url;
+  }
+  try {
+    const apiOrigin = new URL(API_BASE_URL).origin;
+    return `${apiOrigin}${url.startsWith('/') ? '' : '/'}${url}`;
+  } catch (e) {
+    return url;
+  }
+}
+

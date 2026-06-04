@@ -4,6 +4,7 @@ import { FileUp, Calendar, Clock, Globe, MapPin, ChevronDown, CheckCircle, Loade
 import { sanitizeHtml } from '@/utils/sanitize';
 import UploadAPI from '@/services/api/uploadAPI';
 import logger from '@/utils/logger';
+import { getAbsoluteUploadUrl } from '@/utils/uploadHelpers';
 
 interface RegistrationFormFieldProps {
   field: FormField;
@@ -361,7 +362,8 @@ const RegistrationFormField: React.FC<RegistrationFormFieldProps> = ({
         );
 
       case 'file': {
-        const uploadedUrl = typeof value === 'string' && value.startsWith('http') ? value : null;
+        const isUploadedUrl = typeof value === 'string' && (value.startsWith('http') || value.startsWith('/api/'));
+        const uploadedUrl = isUploadedUrl ? getAbsoluteUploadUrl(value) : null;
         const hasFile = !!uploadedUrl;
 
         return (
