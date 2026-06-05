@@ -15,7 +15,7 @@ const TipTapEditorFallback = () => (
 import MediaPickerModal from '@/components/admin/media/MediaPickerModal';
 import { MediaAsset } from '@/store/slices/mediaSlice';
 import { Card, CardHeader, CardTitle, CardContent } from '../ui/Card';
-import { Shield, FileText, Hash, Image as ImageIcon, X, ExternalLink } from 'lucide-react';
+import { Shield, FileText, Hash, Image as ImageIcon, X, ExternalLink, Library } from 'lucide-react';
 import { getAbsoluteUploadUrl } from '@/utils/uploadHelpers';
 
 interface BookingAttachment {
@@ -118,6 +118,7 @@ const BasicInfoTab: React.FC<BasicInfoTabProps> = ({
 }) => {
   const [attachmentError, setAttachmentError] = React.useState('');
   const [isAttachmentUploading, setIsAttachmentUploading] = React.useState(false);
+  const [showAttachmentMediaPicker, setShowAttachmentMediaPicker] = React.useState(false);
 
   // Educational types check
   const isEducational = ['Class', 'Bootcamp', 'Masterclass', 'Course', 'Workshop'].includes(formData.type);
@@ -190,6 +191,22 @@ const BasicInfoTab: React.FC<BasicInfoTabProps> = ({
     setAttachmentError('');
     const nextAttachments = (formData.bookingAttachments || []).filter((_, attachmentIndex) => attachmentIndex !== index);
     onBookingAttachmentsChange(nextAttachments);
+  };
+
+  const handleAttachmentMediaLibrarySelect = (assets: MediaAsset[]) => {
+    const newAttachments = assets.map((asset) => ({
+      originalName: asset.originalName,
+      filename: asset.filename,
+      url: asset.directUrl || asset.url,
+      size: asset.size,
+      mimetype: asset.mimeType,
+      provider: 'cloudinary' as const,
+      publicId: asset.publicId,
+      cloudinaryUrl: asset.directUrl || asset.url,
+      uploadedAt: asset.createdAt,
+    }));
+    onBookingAttachmentsChange([...(formData.bookingAttachments || []), ...newAttachments]);
+    setShowAttachmentMediaPicker(false);
   };
 
   return (
@@ -897,17 +914,28 @@ const BasicInfoTab: React.FC<BasicInfoTabProps> = ({
               <label htmlFor="bookingAttachment" className="block text-sm font-medium text-gray-700 mb-2">
                 Upload a file to send with booking confirmation emails
               </label>
-              <input
-                id="bookingAttachment"
-                type="file"
-                multiple
-                accept="image/jpeg,image/png,image/gif,image/webp,image/bmp,image/tiff,image/heic,image/heif,image/svg+xml,application/pdf,.pdf,.jpg,.jpeg,.png,.gif,.webp,.bmp,.tiff,.heic,.heif,.svg"
-                onChange={handleBookingAttachmentChange}
-                disabled={isAttachmentUploading}
-                className="block w-full text-sm text-gray-700 file:mr-4 file:rounded-lg file:border-0 file:bg-primary-600 file:px-4 file:py-2 file:text-sm file:font-semibold file:text-white hover:file:bg-primary-700 disabled:opacity-60"
-              />
+              <div className="flex items-center gap-3 flex-wrap">
+                <input
+                  id="bookingAttachment"
+                  type="file"
+                  multiple
+                  accept="image/jpeg,image/png,image/gif,image/webp,image/bmp,image/tiff,image/heic,image/heif,image/svg+xml,application/pdf,application/vnd.ms-excel,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet,.pdf,.jpg,.jpeg,.png,.gif,.webp,.bmp,.tiff,.heic,.heif,.svg,.xls,.xlsx"
+                  onChange={handleBookingAttachmentChange}
+                  disabled={isAttachmentUploading}
+                  className="block text-sm text-gray-700 file:mr-4 file:rounded-lg file:border-0 file:bg-primary-600 file:px-4 file:py-2 file:text-sm file:font-semibold file:text-white hover:file:bg-primary-700 disabled:opacity-60"
+                />
+                <button
+                  type="button"
+                  onClick={() => setShowAttachmentMediaPicker(true)}
+                  disabled={isAttachmentUploading}
+                  className="inline-flex items-center gap-2 rounded-lg border border-gray-300 bg-white px-4 py-2 text-sm font-medium text-gray-700 hover:bg-gray-50 disabled:opacity-60"
+                >
+                  <Library className="h-4 w-4" />
+                  Media Library
+                </button>
+              </div>
               <p className="mt-2 text-xs text-gray-500">
-                Supported file types: <strong>Images</strong> (JPG, PNG, GIF, WebP) and <strong>PDF</strong>. All uploaded files will be emailed to users when they register for this event.
+                Supported file types: <strong>Images</strong> (JPG, PNG, GIF, WebP), <strong>PDF</strong>, and <strong>Excel</strong> (XLS, XLSX). All uploaded files will be emailed to users when they register for this event.
               </p>
             </div>
 
@@ -956,7 +984,7 @@ const BasicInfoTab: React.FC<BasicInfoTabProps> = ({
         </CardContent>
       </Card>
 
-      {/* Media Picker Modal */}
+      {/* Media Picker Modal — event images */}
       <MediaPickerModal
         isOpen={showMediaPicker}
         onClose={onCloseMediaPicker}
@@ -968,6 +996,16 @@ const BasicInfoTab: React.FC<BasicInfoTabProps> = ({
         folder="events"
         multiple={true}
         title="Select Event Images"
+      />
+
+      {/* Media Picker Modal — booking attachments */}
+      <MediaPickerModal
+        isOpen={showAttachmentMediaPicker}
+        onClose={() => setShowAttachmentMediaPicker(false)}
+        onSelect={handleAttachmentMediaLibrarySelect}
+        category="document"
+        multiple={true}
+        title="Select Booking Attachments"
       />
     </div >
   );

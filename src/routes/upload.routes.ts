@@ -14,6 +14,7 @@ import {
   uploadDocument,
   uploadBlogFeaturedImage,
   uploadBlogContentMedia,
+  uploadBookingAttachment,
   handleUploadError,
   getFileInfo,
   deleteFile,
@@ -290,6 +291,31 @@ router.post(
       res.status(200).json({
         success: true,
         message: "Document uploaded successfully",
+        data: fileInfo,
+      });
+    } catch (error) {
+      next(error);
+    }
+  },
+);
+
+// Booking attachment upload (image or PDF)
+router.post(
+  "/booking-attachment",
+  authenticate,
+  uploadBookingAttachment,
+  handleUploadError,
+  (req: AuthRequest, res: Response, next: NextFunction) => {
+    try {
+      if (!req.file) {
+        return next(new AppError("No file uploaded", 400));
+      }
+
+      const fileInfo = getFileInfo(req.file);
+
+      res.status(200).json({
+        success: true,
+        message: "Booking attachment uploaded successfully",
         data: fileInfo,
       });
     } catch (error) {

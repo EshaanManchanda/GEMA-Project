@@ -6,6 +6,7 @@ import {
   getContactEmail,
 } from "../utils/brandConfig";
 import { fetchFileAsBuffer } from "../utils/fetchAttachment";
+import { logger } from "../config/index";
 
 export interface EmailOptions {
   to: string | string[];
@@ -47,6 +48,13 @@ export interface OrderConfirmationEmailOptions {
     eventType?: string;
     meetingLink?: string;
     meetingPassword?: string;
+  }>;
+  /** Files set by admin on the event — fetched and attached to the confirmation email */
+  attachmentFiles?: Array<{
+    originalName: string;
+    url: string;
+    mimetype: string;
+    size: number;
   }>;
 }
 
@@ -270,7 +278,7 @@ class EmailService {
         username: smtpSettings.smtpUser,
         password: smtpSettings.smtpPassword,
       });
-      console.log("[EmailService] Transporter reloaded from DB settings");
+      logger.info("[EmailService] Transporter reloaded from DB settings");
     }
   }
 
@@ -297,20 +305,19 @@ class EmailService {
       };
 
       const info = await this.transporter.sendMail(mailOptions);
-      console.log(
+      logger.info(
         `[EmailService] Sent to ${mailOptions.to} | messageId: ${info.messageId}`,
       );
       return info.messageId || "";
     } catch (error: any) {
-      console.error(
-        "[EmailService] Failed to send email:",
-        error?.message || error,
+      logger.error(
+        `[EmailService] Failed to send email: ${error?.message || error}`,
       );
 
       // In non-production, don't block app flow on SMTP auth/config issues.
       if (config.nodeEnv !== "production") {
         const devMessageId = `dev-email-${Date.now()}`;
-        console.warn(
+        logger.warn(
           `[EmailService] DEV fallback active. Email not delivered, returning mock messageId: ${devMessageId}`,
         );
         return devMessageId;
@@ -329,7 +336,6 @@ class EmailService {
     options: VerificationEmailOptions,
   ): Promise<void> {
     const brand = this.getBrand();
-    console.log(brand);
 
     const html = `
       <!DOCTYPE html>
@@ -611,10 +617,48 @@ class EmailService {
       </body></html>
     `;
 
+    // Fetch event booking attachments and embed them, same pipeline as registration emails
+    const escHtml = (s: string): string =>
+      String(s).replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;").replace(/'/g, "&#39;");
+    const safeHref = (url: string): string =>
+      /^https:\/\/res\.cloudinary\.com\//i.test(url) ? url : "#";
+
+    const emailAttachments: Array<{ filename: string; content: Buffer; contentType: string }> = [];
+    let attachedDocsHtml = "";
+
+    if (options.attachmentFiles && options.attachmentFiles.length > 0) {
+      const MAX_TOTAL_BYTES = 25 * 1024 * 1024;
+      let totalBytes = 0;
+      const skippedLinks: Array<{ name: string; url: string }> = [];
+
+      try {
+        for (const file of options.attachmentFiles) {
+          const remaining = MAX_TOTAL_BYTES - totalBytes;
+          if (remaining <= 0) { skippedLinks.push({ name: file.originalName, url: file.url }); continue; }
+          const buffer = await fetchFileAsBuffer(file.url, Math.min(config.upload.maxDocumentSize, remaining));
+          if (buffer) {
+            totalBytes += buffer.length;
+            emailAttachments.push({ filename: file.originalName, content: buffer, contentType: file.mimetype });
+          } else {
+            skippedLinks.push({ name: file.originalName, url: file.url });
+          }
+        }
+        if (skippedLinks.length > 0) {
+          const linkItems = skippedLinks.map((f) => `<li><a href="${safeHref(f.url)}" style="color:#3b82f6;">${escHtml(f.name)}</a></li>`).join("");
+          attachedDocsHtml = `<div style="background:#f1f5f9;border:1px solid #e2e8f0;padding:15px;border-radius:5px;margin:15px 0;"><p style="margin:0 0 8px;font-weight:600;color:#374151;">📎 Event Documents</p><ul style="margin:0;padding-left:20px;font-size:13px;">${linkItems}</ul></div>`;
+        }
+      } catch {
+        // Non-blocking — never prevent the confirmation email
+      }
+    }
+
+    const finalHtml = attachedDocsHtml ? html.replace("</body>", `${attachedDocsHtml}</body>`) : html;
+
     await this.sendEmail({
       to: options.to,
       subject: `${options.isFreeEvent ? "Registration" : "Booking"} Confirmed — ${options.orderNumber}`,
-      html,
+      html: finalHtml,
+      attachments: emailAttachments.length > 0 ? emailAttachments : undefined,
     });
   }
 

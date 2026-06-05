@@ -258,11 +258,13 @@ const bookingAttachmentFilter = (
     "image/heif",
     "image/svg+xml",
     "application/pdf",
+    "application/vnd.ms-excel",
+    "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
   ];
   if (allowed.includes(file.mimetype)) {
     cb(null, true);
   } else {
-    cb(new AppError("Only image files and PDFs are allowed for booking attachments", 400));
+    cb(new AppError("Only images, PDFs and Excel files are allowed for booking attachments", 400));
   }
 };
 
@@ -287,12 +289,13 @@ export const uploadBookingAttachment = (
       ? new CloudinaryStorage({
           cloudinary,
           params: (_r: Request, file: Express.Multer.File) => {
-            const fileIsPdf = file.mimetype === "application/pdf";
+            const isImage = file.mimetype.startsWith("image/");
+            const ext = path.extname(file.originalname).toLowerCase() || "";
             return {
               folder: "gema/booking-attachments",
-              resource_type: fileIsPdf ? "raw" : "image",
-              transformation: fileIsPdf ? [] : [{ quality: "auto", fetch_format: "auto" }],
-              public_id: `booking-${Date.now()}-${Math.round(Math.random() * 1e9)}${fileIsPdf ? ".pdf" : ""}`,
+              resource_type: isImage ? "image" : "raw",
+              transformation: isImage ? [{ quality: "auto", fetch_format: "auto" }] : [],
+              public_id: `booking-${Date.now()}-${Math.round(Math.random() * 1e9)}${isImage ? "" : ext}`,
             };
           },
         })

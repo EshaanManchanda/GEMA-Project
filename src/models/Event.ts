@@ -145,6 +145,17 @@ export interface IEvent extends Document {
   promotionPaidAt?: Date;
   images: string[]; // OLD - deprecated, keep for backward compatibility
   imageAssets?: mongoose.Types.ObjectId[]; // NEW - shadow field for migration
+  bookingAttachments?: Array<{
+    originalName: string;
+    filename: string;
+    url: string;
+    size: number;
+    mimetype: string;
+    provider: "local" | "cloudinary";
+    publicId?: string;
+    cloudinaryUrl?: string;
+    uploadedAt?: Date;
+  }>;
   isDeleted: boolean;
   deletedAt?: Date;
   reviewCount: number;
@@ -671,6 +682,22 @@ const eventSchema = new Schema<IEvent>(
         ref: "MediaAsset",
       },
     ],
+    bookingAttachments: {
+      type: [
+        {
+          originalName: { type: String, required: true },
+          filename: { type: String, required: true },
+          url: { type: String, required: true },
+          size: { type: Number, required: true },
+          mimetype: { type: String, required: true },
+          provider: { type: String, enum: ["local", "cloudinary"], default: "cloudinary" },
+          publicId: { type: String },
+          cloudinaryUrl: { type: String },
+          uploadedAt: { type: Date, default: Date.now },
+        },
+      ],
+      default: [],
+    },
     isDeleted: {
       type: Boolean,
       default: false,

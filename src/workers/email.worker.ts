@@ -91,6 +91,7 @@ const emailWorker = areQueuesEnabled
                 orderTotal: data.templateData.orderTotal,
                 currency: data.templateData.currency,
                 items: data.templateData.items,
+                attachmentFiles: data.templateData.attachmentFiles,
               });
               break;
 

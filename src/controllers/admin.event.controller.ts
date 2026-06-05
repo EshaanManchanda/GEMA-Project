@@ -71,6 +71,18 @@ interface UpdateEventRequest {
   customCSS?: string;
   meetingLink?: string;
   registrationConfig?: any;
+  imageAssets?: string[];
+  bookingAttachments?: Array<{
+    originalName: string;
+    filename: string;
+    url: string;
+    size: number;
+    mimetype: string;
+    provider: "local" | "cloudinary";
+    publicId?: string;
+    cloudinaryUrl?: string;
+    uploadedAt?: Date;
+  }>;
 }
 
 interface CreateEventRequest {
@@ -114,10 +126,22 @@ interface CreateEventRequest {
     answer: string;
   }>;
   images?: string[];
+  imageAssets?: string[];
   customCSS?: string;
   meetingLink?: string;
   googlePlaceId?: string;
   registrationConfig?: any;
+  bookingAttachments?: Array<{
+    originalName: string;
+    filename: string;
+    url: string;
+    size: number;
+    mimetype: string;
+    provider: "local" | "cloudinary";
+    publicId?: string;
+    cloudinaryUrl?: string;
+    uploadedAt?: Date;
+  }>;
 }
 
 /**
@@ -161,6 +185,7 @@ const formatAdminEventResponse = (event: any) => {
     viewsCount: transformedEvent.viewsCount,
     images: transformedEvent.images || [],
     imageAssets: transformedEvent.imageAssets || [],
+    bookingAttachments: transformedEvent.bookingAttachments || [],
     isDeleted: transformedEvent.isDeleted,
     createdAt:
       typeof transformedEvent.createdAt === "string"
@@ -578,6 +603,9 @@ export const updateEvent = async (
     Object.assign(event, updateData);
     if (normalizedEventType) {
       event.venueType = normalizedEventType;
+    }
+    if (updateData.bookingAttachments) {
+      event.markModified("bookingAttachments");
     }
     await event.save();
 

@@ -833,6 +833,14 @@ export const confirmBooking = async (
               meetingLink: event.meetingLink,
               meetingPassword: (event as any).meetingPassword,
             })),
+            attachmentFiles: (event as any).bookingAttachments?.length
+              ? (event as any).bookingAttachments.map((a: any) => ({
+                  originalName: a.originalName,
+                  url: a.cloudinaryUrl || a.url,
+                  mimetype: a.mimetype,
+                  size: a.size,
+                }))
+              : undefined,
           });
 
           await emailService.sendVendorBookingNotificationEmail({

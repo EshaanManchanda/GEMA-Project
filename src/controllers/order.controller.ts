@@ -435,8 +435,9 @@ export const processPayment = async (
       const user = await User.findById(userId);
       if (user) {
         // Populate order with event details for email
-        await order.populate("items.eventId", "venueType meetingLink location");
+        await order.populate("items.eventId", "venueType meetingLink location bookingAttachments");
 
+        const firstEventId = (order.items[0]?.eventId as any);
         await emailService.sendOrderConfirmationEmail({
           to: user.email,
           firstName: user.firstName,
@@ -451,6 +452,14 @@ export const processPayment = async (
             venueType: (item.eventId as any)?.venueType,
             meetingLink: (item.eventId as any)?.meetingLink,
           })),
+          attachmentFiles: firstEventId?.bookingAttachments?.length
+            ? firstEventId.bookingAttachments.map((a: any) => ({
+                originalName: a.originalName,
+                url: a.cloudinaryUrl || a.url,
+                mimetype: a.mimetype,
+                size: a.size,
+              }))
+            : undefined,
         });
 
         // Send tickets email with QR codes

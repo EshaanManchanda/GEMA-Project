@@ -1368,7 +1368,6 @@ const AdminEditEventPage: React.FC = () => {
                 onCheckboxChange={handleCheckboxChange}
                 onImagesChange={handleImagesChange}
                 onRemoveImage={removeImage}
-                bookingAttachments={formData.bookingAttachments}
                 onBookingAttachmentUpload={handleBookingAttachmentUpload}
                 onBookingAttachmentsChange={(bookingAttachments) =>
                   setFormData((prev) => ({ ...prev, bookingAttachments }))

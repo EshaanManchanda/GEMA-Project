@@ -93,6 +93,7 @@ export class QueueService {
           orderTotal: d.orderTotal,
           currency: d.currency,
           items: d.items,
+          attachmentFiles: d.attachmentFiles,
         });
       case "ticket":
         return emailService.sendTicketsEmail({
@@ -193,6 +194,7 @@ export class QueueService {
     orderTotal: number;
     currency: string;
     items: any[];
+    attachmentFiles?: Array<{ originalName: string; url: string; mimetype: string; size: number }>;
   }) {
     return this.addEmailJob({
       type: "orderConfirmation",

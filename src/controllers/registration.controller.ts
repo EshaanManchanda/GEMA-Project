@@ -206,15 +206,23 @@ export const submitRegistration = async (
           meetingLink: event.meetingLink,
           meetingPassword: event.meetingPassword,
           venueType: event.venueType,
-          // Attach any files the user uploaded during registration
-          attachmentFiles: registration.files?.length
-            ? registration.files.map((f: any) => ({
-                originalName: f.originalName,
-                url: f.url,
-                mimetype: f.mimetype,
-                size: f.size,
-              }))
-            : undefined,
+          // Merge event booking attachments (admin-set) + user-uploaded registration files
+          attachmentFiles: (() => {
+            const eventFiles = (event as any).bookingAttachments?.map((a: any) => ({
+              originalName: a.originalName,
+              url: a.cloudinaryUrl || a.url,
+              mimetype: a.mimetype,
+              size: a.size,
+            })) || [];
+            const userFiles = registration.files?.map((f: any) => ({
+              originalName: f.originalName,
+              url: f.url,
+              mimetype: f.mimetype,
+              size: f.size,
+            })) || [];
+            const merged = [...eventFiles, ...userFiles];
+            return merged.length > 0 ? merged : undefined;
+          })(),
         });
         logger.info("Registration confirmation email sent", {
           registrationId: registration._id,

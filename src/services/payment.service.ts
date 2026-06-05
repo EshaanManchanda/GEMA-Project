@@ -595,9 +595,10 @@ export class PaymentService {
           // Populate event details for email
           await order.populate(
             "items.eventId",
-            "title venueType meetingLink meetingPassword type",
+            "title venueType meetingLink meetingPassword type bookingAttachments",
           );
 
+          const firstEventForEmail = (order.items[0]?.eventId as any);
           // 1. Order confirmation email
           await emailService.sendOrderConfirmationEmail({
             to: u.email,
@@ -615,6 +616,14 @@ export class PaymentService {
               meetingLink: item.eventId?.meetingLink,
               meetingPassword: item.eventId?.meetingPassword,
             })),
+            attachmentFiles: firstEventForEmail?.bookingAttachments?.length
+              ? firstEventForEmail.bookingAttachments.map((a: any) => ({
+                  originalName: a.originalName,
+                  url: a.cloudinaryUrl || a.url,
+                  mimetype: a.mimetype,
+                  size: a.size,
+                }))
+              : undefined,
           });
 
           // 2. Tickets email with QR codes

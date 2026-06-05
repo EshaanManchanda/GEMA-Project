@@ -351,6 +351,77 @@ export const getFileInfo = (file: Express.Multer.File) => {
   }
 };
 
+const BOOKING_ATTACHMENT_ALLOWED = [
+  "image/jpeg",
+  "image/png",
+  "image/gif",
+  "image/webp",
+  "image/bmp",
+  "image/tiff",
+  "image/heic",
+  "image/heif",
+  "image/svg+xml",
+  "application/pdf",
+  "application/vnd.ms-excel",
+  "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+];
+
+// Booking attachment filter — images, PDF, Excel
+const bookingAttachmentFilter = (
+  _req: Request,
+  file: Express.Multer.File,
+  cb: multer.FileFilterCallback,
+) => {
+  if (BOOKING_ATTACHMENT_ALLOWED.includes(file.mimetype)) {
+    cb(null, true);
+  } else {
+    cb(new AppError("Only images, PDFs and Excel files are allowed for booking attachments", 400));
+  }
+};
+
+// Booking attachment upload: routes to correct Cloudinary resource_type per mimetype
+// Images → /image/upload/, everything else (PDF, Excel) → /raw/upload/.
+export const uploadBookingAttachment = (
+  req: Request,
+  res: any,
+  next: any,
+) => {
+  const routingStorage =
+    config.upload.provider === "cloudinary"
+      ? new CloudinaryStorage({
+          cloudinary: cloudinary,
+          params: (_r: Request, file: Express.Multer.File) => {
+            const isImage = file.mimetype.startsWith("image/");
+            const ext = path.extname(file.originalname).toLowerCase() || "";
+            return {
+              folder: "gema/booking-attachments",
+              resource_type: isImage ? "image" : "raw",
+              transformation: isImage ? [{ quality: "auto", fetch_format: "auto" }] : [],
+              public_id: `booking-${Date.now()}-${Math.round(Math.random() * 1e9)}${isImage ? "" : ext}`,
+            };
+          },
+        })
+      : multer.diskStorage({
+          destination: (_r, _f, cb) => {
+            const dest = path.join(uploadDir, "booking-attachments");
+            if (!fs.existsSync(dest)) fs.mkdirSync(dest, { recursive: true });
+            cb(null, dest);
+          },
+          filename: (_r, file, cb) => {
+            const ext = path.extname(file.originalname);
+            cb(null, `booking-${Date.now()}-${Math.round(Math.random() * 1e9)}${ext}`);
+          },
+        });
+
+  const m = multer({
+    storage: routingStorage,
+    fileFilter: bookingAttachmentFilter,
+    limits: { fileSize: config.upload.maxImageSize, files: 1 },
+  }).single("file");
+
+  return m(req, res, next);
+};
+
 // CSV file filter
 const csvFilter = (req: any, file: any, cb: any) => {
   const allowedMimeTypes = [
