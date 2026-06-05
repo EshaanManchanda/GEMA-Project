@@ -71,6 +71,10 @@ const cloudinaryStorage = new CloudinaryStorage({
         ? require("../utils/uploadHelpers").getTimeoutForFileSize(contentLength)
         : 120000; // Default 120s if size unknown
 
+    const isImage = file.mimetype.startsWith("image/");
+    // PDFs/docs must NOT get fetch_format:auto — it converts PDF to webp/jpeg on access
+    const applyImageTransformation = isImage && !isVideo;
+
     return {
       folder: `gema/${category}`,
       allowed_formats:
@@ -104,11 +108,13 @@ const cloudinaryStorage = new CloudinaryStorage({
               "pdf",
               "doc",
               "docx",
+              "xls",
+              "xlsx",
             ],
       resource_type: isVideo ? "video" : "auto",
-      transformation: isVideo
-        ? []
-        : [{ quality: "auto", fetch_format: "auto" }],
+      transformation: applyImageTransformation
+        ? [{ quality: "auto", fetch_format: "auto" }]
+        : [],
       public_id: `${category}-${Date.now()}-${Math.round(Math.random() * 1e9)}`,
       timeout: timeoutMs, // Dynamic timeout based on file size
     };

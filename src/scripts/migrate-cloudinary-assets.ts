@@ -27,6 +27,60 @@ const FOLDER_MAPPING: Record<string, { category: string; folder: string }> = {
 // System user ID placeholder (will be used for uploadedBy field)
 const SYSTEM_USER_ID = new mongoose.Types.ObjectId("000000000000000000000000");
 
+/**
+ * Resolve a real MIME type from Cloudinary's resource_type + format fields.
+ * Cloudinary returns e.g. resource_type="image", format="pdf" or
+ * resource_type="raw", format="xlsx" — these are NOT valid MIME types.
+ * Downstream code (directUrl virtual, CloudinaryProvider.getUrl) branches on
+ * mimeType to choose image/raw URL patterns, so incorrect values break PDFs/docs.
+ */
+function resolveCloudinaryMimeType(
+  resourceType: string,
+  format: string,
+): string {
+  const fmt = (format || "").toLowerCase();
+  const lookup: Record<string, string> = {
+    // Images
+    jpg: "image/jpeg",
+    jpeg: "image/jpeg",
+    png: "image/png",
+    gif: "image/gif",
+    webp: "image/webp",
+    avif: "image/avif",
+    bmp: "image/bmp",
+    tiff: "image/tiff",
+    tif: "image/tiff",
+    svg: "image/svg+xml",
+    heic: "image/heic",
+    heif: "image/heif",
+    // Documents
+    pdf: "application/pdf",
+    doc: "application/msword",
+    docx: "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+    xls: "application/vnd.ms-excel",
+    xlsx: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+    txt: "text/plain",
+    csv: "text/csv",
+    zip: "application/zip",
+    // Video
+    mp4: "video/mp4",
+    webm: "video/webm",
+    mov: "video/quicktime",
+    avi: "video/x-msvideo",
+  };
+
+  if (lookup[fmt]) return lookup[fmt];
+
+  // Fallback: at least produce a structurally valid MIME using Cloudinary's resource_type
+  const typeMap: Record<string, string> = {
+    image: "image",
+    video: "video",
+    raw: "application",
+  };
+  const mimeType = typeMap[resourceType] || "application";
+  return `${mimeType}/${fmt || "octet-stream"}`;
+}
+
 async function connectDB() {
   try {
     await mongoose.connect(config.mongodbUri);
@@ -82,7 +136,7 @@ async function migrateFolder(
             uuid,
             filename: resource.public_id.split("/").pop() || "unknown",
             originalName: resource.public_id.split("/").pop() || "unknown",
-            mimeType: `${resource.resource_type}/${resource.format}`,
+            mimeType: resolveCloudinaryMimeType(resource.resource_type, resource.format),
             fileExtension: extension,
             provider: "cloudinary",
             url: `${config.upload.baseUrl}/api/media/file/${uuid}`,

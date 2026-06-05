@@ -202,16 +202,39 @@ export class CloudinaryProvider implements IStorageProvider {
   }
 
   /**
-   * Get URL for a Cloudinary asset with optional transformations
+   * Get URL for a Cloudinary asset with optional transformations.
+   * Pass mimeType so documents (PDF, doc, xlsx) get correct resource_type and no image transforms.
    */
-  getUrl(publicId: string, transformation?: any): string {
+  getUrl(publicId: string, transformation?: any, mimeType?: string): string {
     if (!publicId) return "";
 
     if (transformation) {
       return cloudinary.url(publicId, transformation);
     }
 
-    // Use optimized URL helper
+    const isDocument =
+      mimeType &&
+      !mimeType.startsWith("image/") &&
+      !mimeType.startsWith("video/");
+
+    if (isDocument) {
+      const isPdf = mimeType === "application/pdf";
+      // PDFs: Cloudinary stores as image type but must NOT apply fetch_format
+      // Word/Excel/etc: stored as raw type — use raw/upload path
+      if (isPdf) {
+        return cloudinary.url(publicId, {
+          secure: true,
+          resource_type: "image",
+          flags: "attachment",
+        });
+      }
+      return cloudinary.url(publicId, {
+        secure: true,
+        resource_type: "raw",
+      });
+    }
+
+    // Images: use optimized URL helper
     return getOptimizedImageUrl(publicId);
   }
 

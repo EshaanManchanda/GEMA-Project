@@ -94,7 +94,7 @@ router.get(
           // Instantiate Cloudinary provider directly for this asset
           // (not using StorageFactory which uses env config)
           const cloudinaryProvider = new CloudinaryProvider();
-          const cloudinaryUrl = cloudinaryProvider.getUrl(asset.publicId);
+          const cloudinaryUrl = cloudinaryProvider.getUrl(asset.publicId, undefined, asset.mimeType);
 
           // Validate URL was generated successfully
           if (!cloudinaryUrl || cloudinaryUrl.trim() === "") {

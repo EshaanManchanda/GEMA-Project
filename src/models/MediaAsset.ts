@@ -241,11 +241,23 @@ mediaAssetSchema.index({
 // Virtual field for direct access URL (optimized for Cloudinary)
 // Returns Cloudinary CDN URL directly for Cloudinary assets, bypassing backend proxy
 mediaAssetSchema.virtual("directUrl").get(function (this: IMediaAsset) {
-  // For Cloudinary assets, return direct CDN URL for better performance
   if (this.provider === "cloudinary" && this.publicId) {
     const cloudName = process.env.CLOUDINARY_CLOUD_NAME;
     if (cloudName) {
-      // Use Cloudinary's CDN URL directly (no backend proxy needed)
+      const mime = this.mimeType || "";
+      const isImage = mime.startsWith("image/");
+      const isVideo = mime.startsWith("video/");
+      const isPdf = mime === "application/pdf";
+
+      if (!isImage && !isVideo) {
+        // PDFs are stored as image type in Cloudinary but need fl_attachment to download
+        // Word/Excel/etc are stored as raw type — use raw/upload path
+        if (isPdf) {
+          return `https://res.cloudinary.com/${cloudName}/image/upload/fl_attachment/${this.publicId}`;
+        }
+        return `https://res.cloudinary.com/${cloudName}/raw/upload/${this.publicId}`;
+      }
+
       return `https://res.cloudinary.com/${cloudName}/image/upload/${this.publicId}`;
     }
   }

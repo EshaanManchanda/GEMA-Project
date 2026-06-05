@@ -266,6 +266,11 @@ export const config: Config = {
       "image/heic",
       "image/heif",
       "application/pdf",
+      // Office documents
+      "application/msword",                                                                    // .doc
+      "application/vnd.openxmlformats-officedocument.wordprocessingml.document",              // .docx
+      "application/vnd.ms-excel",                                                              // .xls
+      "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",                    // .xlsx
       "video/mp4",
       "video/webm",
     ],

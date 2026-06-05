@@ -206,6 +206,15 @@ export const submitRegistration = async (
           meetingLink: event.meetingLink,
           meetingPassword: event.meetingPassword,
           venueType: event.venueType,
+          // Attach any files the user uploaded during registration
+          attachmentFiles: registration.files?.length
+            ? registration.files.map((f: any) => ({
+                originalName: f.originalName,
+                url: f.url,
+                mimetype: f.mimetype,
+                size: f.size,
+              }))
+            : undefined,
         });
         logger.info("Registration confirmation email sent", {
           registrationId: registration._id,

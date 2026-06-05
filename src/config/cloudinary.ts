@@ -108,13 +108,13 @@ export const uploadPresets = {
   documents: {
     folder: "gema/documents",
     resource_type: "raw",
-    allowed_formats: ["pdf", "doc", "docx", "txt"],
+    allowed_formats: ["pdf", "doc", "docx", "xls", "xlsx", "txt"],
     timeout: 60000, // 60s timeout for 10MB uploads
   },
   registrations: {
     folder: "gema/registrations",
     resource_type: "auto", // Supports images and documents
-    transformation: [{ quality: "auto", fetch_format: "auto" }],
+    // No transformation — mixed types (PDF, doc, xlsx) must not get fetch_format:auto
     allowed_formats: [
       "jpg",
       "jpeg",
@@ -128,6 +128,8 @@ export const uploadPresets = {
       "zip",
       "doc",
       "docx",
+      "xls",
+      "xlsx",
     ],
     timeout: 120000, // 2min timeout for 50MB uploads
   },
@@ -244,14 +246,46 @@ export const getOptimizedImageUrl = (
   return cloudinary.url(publicId, transformOptions);
 };
 
-// Utility function to extract public ID from Cloudinary URL
+/**
+ * Extract the Cloudinary public_id from a Cloudinary CDN URL.
+ *
+ * Rules:
+ * - Strips the optional version segment (e.g. /v1234567890/).
+ * - For IMAGE resources the public_id does NOT include the file extension
+ *   (Cloudinary strips it internally), but the URL may still have it — we
+ *   preserve it so callers can pass it to cloudinary.url() with resource_type
+ *   "raw" if needed (raw resources INCLUDE the extension in their public_id).
+ * - Does NOT strip the folder prefix, because Cloudinary public_ids are
+ *   folder-qualified (e.g. "gema/documents/report.pdf").
+ *
+ * Example inputs:
+ *   https://res.cloudinary.com/demo/image/upload/v1234/gema/events/abc.jpg  → gema/events/abc
+ *   https://res.cloudinary.com/demo/raw/upload/gema/documents/report.pdf    → gema/documents/report.pdf
+ *   https://res.cloudinary.com/demo/image/upload/q_auto,f_auto/gema/abc.jpg → gema/abc
+ */
 export const extractPublicId = (cloudinaryUrl: string): string => {
   if (!cloudinaryUrl) return "";
 
   try {
-    const urlParts = cloudinaryUrl.split("/");
-    const fileName = urlParts[urlParts.length - 1];
-    return fileName.split(".")[0];
+    // Match the portion after /upload/ (skipping optional transformations and version)
+    const match = cloudinaryUrl.match(
+      /\/upload\/(?:[^/]+\/)*?(v\d+\/)?(.+)$/,
+    );
+    if (!match) return "";
+
+    // match[2] is the path after an optional version segment
+    let publicIdWithExt = match[2];
+
+    // Determine resource_type from the URL to decide whether to strip the extension
+    const isRaw = /\/raw\/upload\//.test(cloudinaryUrl);
+
+    if (!isRaw) {
+      // For image/video resources: strip the last extension only
+      publicIdWithExt = publicIdWithExt.replace(/\.[^./]+$/, "");
+    }
+    // For raw resources: keep the extension (it is part of the public_id)
+
+    return publicIdWithExt;
   } catch (error) {
     console.error("Error extracting public ID from Cloudinary URL:", error);
     return "";

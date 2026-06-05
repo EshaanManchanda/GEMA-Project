@@ -48,9 +48,10 @@ export interface IStorageProvider {
    * Get the URL for a stored file
    * @param identifier - The file identifier
    * @param transformation - Optional transformation options
+   * @param mimeType - Optional MIME type to select the correct Cloudinary resource path (image vs raw)
    * @returns string - The file URL
    */
-  getUrl(identifier: string, transformation?: any): string;
+  getUrl(identifier: string, transformation?: any, mimeType?: string): string;
 
   /**
    * Check if a file exists

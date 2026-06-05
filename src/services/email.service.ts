@@ -5,6 +5,7 @@ import {
   getTeamSignature,
   getContactEmail,
 } from "../utils/brandConfig";
+import { fetchFileAsBuffer } from "../utils/fetchAttachment";
 
 export interface EmailOptions {
   to: string | string[];
@@ -196,6 +197,13 @@ export interface RegistrationConfirmationEmailOptions {
   meetingLink?: string;
   meetingPassword?: string;
   venueType?: string;
+  /** Files uploaded by the user during registration — will be fetched and attached to the email */
+  attachmentFiles?: Array<{
+    originalName: string;
+    url: string;
+    mimetype: string;
+    size: number;
+  }>;
 }
 
 export interface RegistrationApprovalEmailOptions {
@@ -1975,10 +1983,95 @@ class EmailService {
       </html>
     `;
 
+    // --- Fetch uploaded files as email attachments (non-blocking) ---
+
+    // Escape a value for safe insertion into HTML text content or attribute values
+    const escHtml = (s: string): string =>
+      String(s)
+        .replace(/&/g, "&amp;")
+        .replace(/</g, "&lt;")
+        .replace(/>/g, "&gt;")
+        .replace(/"/g, "&quot;")
+        .replace(/'/g, "&#39;");
+
+    // Only allow https:// Cloudinary URLs in link hrefs — blocks javascript: and data: schemes
+    const safeHref = (url: string): string =>
+      /^https:\/\/res\.cloudinary\.com\//i.test(url) ? url : "#";
+
+    const emailAttachments: Array<{
+      filename: string;
+      content: Buffer;
+      contentType: string;
+    }> = [];
+    let attachedDocsHtml = "";
+
+    if (options.attachmentFiles && options.attachmentFiles.length > 0) {
+      const MAX_TOTAL_BYTES = 25 * 1024 * 1024; // 25MB total cap across all attachments
+      let totalBytes = 0;
+      const skippedLinks: Array<{ name: string; url: string }> = [];
+
+      try {
+        for (const file of options.attachmentFiles) {
+          const remaining = MAX_TOTAL_BYTES - totalBytes;
+          if (remaining <= 0) {
+            skippedLinks.push({ name: file.originalName, url: file.url });
+            continue;
+          }
+
+          const buffer = await fetchFileAsBuffer(
+            file.url,
+            Math.min(config.upload.maxDocumentSize, remaining),
+          );
+
+          if (buffer) {
+            totalBytes += buffer.length;
+            emailAttachments.push({
+              filename: file.originalName,
+              content: buffer,
+              contentType: file.mimetype,
+            });
+          } else {
+            // Fetch failed or oversize — add as a plain download link instead
+            skippedLinks.push({ name: file.originalName, url: file.url });
+          }
+        }
+
+        // Build fallback "download links" section for any skipped files
+        if (skippedLinks.length > 0) {
+          const linkItems = skippedLinks
+            .map(
+              (f) =>
+                `<li><a href="${safeHref(f.url)}" style="color:#3b82f6;">${escHtml(f.name)}</a></li>`,
+            )
+            .join("");
+          attachedDocsHtml = `
+            <div style="background:#f1f5f9; border:1px solid #e2e8f0; padding:15px; border-radius:5px; margin:15px 0;">
+              <p style="margin:0 0 8px; font-weight:600; color:#374151;">📎 Your Uploaded Documents</p>
+              <p style="margin:0 0 8px; font-size:12px; color:#6b7280;">
+                Some files were too large to attach directly. Download them here:
+              </p>
+              <ul style="margin:0; padding-left:20px; font-size:13px;">${linkItems}</ul>
+            </div>`;
+        }
+      } catch {
+        // Attachment errors must never block the confirmation email
+      }
+    }
+
+    // Inject fallback links section above the footer (before closing </div> of content)
+    const finalHtml = attachedDocsHtml
+      ? html.replace(
+          '<div class="footer">',
+          `${attachedDocsHtml}<div class="footer">`,
+        )
+      : html;
+
     await this.sendEmail({
       to: options.to,
       subject: `Registration Confirmed - ${options.eventTitle}`,
-      html,
+      html: finalHtml,
+      attachments:
+        emailAttachments.length > 0 ? emailAttachments : undefined,
     });
   }
 
