@@ -314,7 +314,7 @@ export const uploadBookingAttachment = (
   const m = multer({
     storage: routingStorage,
     fileFilter: bookingAttachmentFilter,
-    limits: { fileSize: config.upload.maxImageSize, files: 1 },
+    limits: { fileSize: config.upload.maxFileSize, files: 1 },
   }).single("file");
 
   return m(req, res, next);
