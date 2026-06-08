@@ -2,9 +2,9 @@ import React, { useState, useEffect, useMemo } from 'react';
 import { useParams, useNavigate, Link } from 'react-router-dom';
 import {
   ArrowLeft, Edit, CheckCircle, XCircle, Star, Users, Calendar,
-  MapPin, Tag, Download, Search, Filter, Eye, BarChart2,
+  MapPin, Tag, Search, Filter, Eye, BarChart2, Download,
   List, Clock, DollarSign, Award, Link2, Phone, Globe,
-  ChevronDown, ChevronUp, AlertTriangle, Info, Mail
+  ChevronDown, ChevronUp, AlertTriangle, Info, Mail, X
 } from 'lucide-react';
 import { toast } from 'react-hot-toast';
 import adminAPI from '../../services/api/adminAPI';
@@ -30,17 +30,37 @@ const DetailRow: React.FC<{ icon: React.ReactNode; label: string; value: React.R
   </div>
 );
 
+interface StudentRow {
+  key: string;
+  studentName: string;
+  age?: string | number;
+  gender?: string;
+  ticket: string;
+  scheduleDate?: string;
+  ticketPrice?: number;
+  currency?: string;
+  status: string;
+  orderNumber: string;
+  orderId: string;
+  buyer: string;
+  buyerEmail: string;
+  date: string;
+  registrationData: Array<{ fieldId: string; fieldLabel: string; fieldType: string; value: any }>;
+  isFallback?: boolean;
+}
+
 const AdminEventDetailPage: React.FC = () => {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
 
   const [event, setEvent] = useState<any>(null);
-  const [registrations, setRegistrations] = useState<any[]>([]);
   const [regStats, setRegStats] = useState<any>(null);
-  const [regPagination, setRegPagination] = useState<any>(null);
+  const [orders, setOrders] = useState<any[]>([]);
+  const [orderPagination, setOrderPagination] = useState<any>(null);
+  const [orderLoading, setOrderLoading] = useState(false);
+  const [orderPage, setOrderPage] = useState(1);
   const [performance, setPerformance] = useState<any>(null);
   const [loading, setLoading] = useState(true);
-  const [regLoading, setRegLoading] = useState(false);
   const [perfLoading, setPerfLoading] = useState(false);
   const [activeTab, setActiveTab] = useState<'overview' | 'analytics' | 'registrations'>('overview');
   const [actionLoading, setActionLoading] = useState(false);
@@ -52,8 +72,9 @@ const AdminEventDetailPage: React.FC = () => {
   // Registrations tab
   const [statusFilter, setStatusFilter] = useState('');
   const [search, setSearch] = useState('');
-  const [regPage, setRegPage] = useState(1);
-  const [inlineActionId, setInlineActionId] = useState<string | null>(null);
+  const [exportLoading, setExportLoading] = useState(false);
+  const [showExportMenu, setShowExportMenu] = useState(false);
+  const [drawerRow, setDrawerRow] = useState<StudentRow | null>(null);
 
   useEffect(() => {
     if (!id) return;
@@ -91,32 +112,62 @@ const AdminEventDetailPage: React.FC = () => {
   }, [id]);
 
   useEffect(() => {
-    if (activeTab !== 'registrations' && activeTab !== 'analytics') return;
+    if (activeTab !== 'analytics') return;
     if (!id) return;
     const load = async () => {
       try {
-        setRegLoading(true);
-        const params: any = { page: regPage, limit: 20 };
-        if (statusFilter) params.status = statusFilter;
-        if (search) params.search = search;
-        const res = await adminAPI.getEventRegistrations(id, params);
+        const res = await adminAPI.getEventRegistrations(id, { page: 1, limit: 20 });
         const inner = res?.data?.data || res?.data || res;
-        setRegistrations(inner?.registrations || inner?.data || []);
         setRegStats(inner?.stats || null);
-        setRegPagination(inner?.pagination || null);
       } catch (err: any) {
         logger.error('Failed to load registrations', err);
-      } finally {
-        setRegLoading(false);
       }
     };
     load();
-  }, [id, activeTab, statusFilter, search, regPage]);
+  }, [id, activeTab]);
+
+  useEffect(() => {
+    if (activeTab !== 'registrations') return;
+    if (!id) return;
+    const load = async () => {
+      try {
+        setOrderLoading(true);
+        const params: any = { page: orderPage, limit: 20 };
+        if (statusFilter) params.status = statusFilter;
+        if (search) params.search = search;
+        const res = await adminAPI.getEventOrders(id, params);
+        const inner = res?.data || res;
+        setOrders(inner?.orders || []);
+        setOrderPagination(inner?.pagination || null);
+      } catch (err: any) {
+        logger.error('Failed to load orders', err);
+      } finally {
+        setOrderLoading(false);
+      }
+    };
+    load();
+  }, [id, activeTab, statusFilter, search, orderPage]);
 
   // Reset to page 1 when filters change
   useEffect(() => {
-    setRegPage(1);
+    setOrderPage(1);
   }, [statusFilter, search]);
+
+  // Close export menu on outside click
+  useEffect(() => {
+    if (!showExportMenu) return;
+    const handler = () => setShowExportMenu(false);
+    document.addEventListener('mousedown', handler);
+    return () => document.removeEventListener('mousedown', handler);
+  }, [showExportMenu]);
+
+  // Close student drawer on Esc
+  useEffect(() => {
+    if (!drawerRow) return;
+    const handler = (e: KeyboardEvent) => { if (e.key === 'Escape') setDrawerRow(null); };
+    document.addEventListener('keydown', handler);
+    return () => document.removeEventListener('keydown', handler);
+  }, [drawerRow]);
 
   useEffect(() => {
     if (activeTab !== 'analytics') return;
@@ -151,6 +202,60 @@ const AdminEventDetailPage: React.FC = () => {
     return event.dateSchedule.reduce((sum: number, s: any) => sum + (s.soldSeats || 0), 0);
   }, [event]);
 
+  // Flatten orders → one row per student/participant for the Registrations tab
+  const studentRows = useMemo<StudentRow[]>(() => {
+    const rows: StudentRow[] = [];
+    (orders as any[]).forEach((order) => {
+      const billing = order.billingAddress || {};
+      const buyerName = `${billing.firstName || ''} ${billing.lastName || ''}`.trim() || 'Unknown';
+      const buyerEmail = billing.email || '';
+      const currency = order.currency || 'AED';
+      let hasParticipants = false;
+      (order.items || []).forEach((item: any, iIdx: number) => {
+        (item.participants || []).forEach((p: any, pIdx: number) => {
+          hasParticipants = true;
+          rows.push({
+            key: `${order._id}-${iIdx}-${pIdx}`,
+            studentName: p.name || buyerName,
+            age: p.age,
+            gender: p.gender,
+            ticket: item.eventTitle || event?.title || '',
+            scheduleDate: item.scheduleDate,
+            ticketPrice: item.unitPrice,
+            currency,
+            status: order.status,
+            orderNumber: order.orderNumber || '',
+            orderId: order._id,
+            buyer: buyerName,
+            buyerEmail,
+            date: order.createdAt,
+            registrationData: p.registrationData || [],
+          });
+        });
+      });
+      if (!hasParticipants) {
+        const item = (order.items || [])[0] || {};
+        rows.push({
+          key: `${order._id}-fallback`,
+          studentName: buyerName,
+          ticket: item.eventTitle || event?.title || '',
+          scheduleDate: item.scheduleDate,
+          ticketPrice: item.unitPrice,
+          currency,
+          status: order.status,
+          orderNumber: order.orderNumber || '',
+          orderId: order._id,
+          buyer: buyerName,
+          buyerEmail,
+          date: order.createdAt,
+          registrationData: [],
+          isFallback: true,
+        });
+      }
+    });
+    return rows;
+  }, [orders, event?.title]);
+
   // Safely extract plain text from HTML description (e.g. from rich text editor)
   const descriptionText = useMemo(() => {
     const desc = event?.description;
@@ -165,6 +270,183 @@ const AdminEventDetailPage: React.FC = () => {
     }
     return desc;
   }, [event?.description]);
+
+  const handleExportOrders = async (useFilters: boolean) => {
+    if (!id) return;
+    try {
+      setExportLoading(true);
+      setShowExportMenu(false);
+      const params: any = { limit: 10000, page: 1 };
+      if (useFilters) {
+        if (statusFilter) params.status = statusFilter;
+        if (search) params.search = search;
+      }
+      const res = await adminAPI.getEventOrders(id, params);
+      const inner = res?.data || res;
+      const allOrders: any[] = inner?.orders || [];
+
+      if (allOrders.length === 0) {
+        toast.error('No orders to export');
+        return;
+      }
+
+      // Collect all dynamic registrationData fieldLabels across all participants
+      const dynFieldLabels = new Set<string>();
+      allOrders.forEach((order: any) => {
+        (order.items || []).forEach((item: any) => {
+          (item.participants || []).forEach((p: any) => {
+            (p.registrationData || []).forEach((rd: any) => {
+              if (rd.fieldLabel) dynFieldLabels.add(rd.fieldLabel);
+            });
+          });
+        });
+      });
+      const dynFields = Array.from(dynFieldLabels);
+
+      const staticHeaders = [
+        // Order info
+        'Order Number', 'Order Status', 'Payment Status', 'Payment Method',
+        'Subtotal', 'Discount', 'Coupon Code', 'Coupon Discount',
+        'Service Fee', 'Tax', 'Total', 'Currency',
+        'Coupon Code Used', 'Affiliate Code',
+        'Special Requests', 'Dietary Restrictions', 'Accessibility Needs',
+        'Check-In Status', 'Check-In Time',
+        'Order Date', 'Confirmed At', 'Source',
+        // Buyer (billing address)
+        'Buyer First Name', 'Buyer Last Name', 'Buyer Email', 'Buyer Phone',
+        'Buyer Address', 'Buyer City', 'Buyer State', 'Buyer Zip', 'Buyer Country',
+        // Item info
+        'Event Title', 'Schedule Date', 'Quantity', 'Unit Price', 'Item Total',
+        // Participant info (one row per participant)
+        'Participant Number', 'Participant Name', 'Participant Age', 'Participant Gender',
+        'Allergies', 'Medical Conditions',
+        'Emergency Contact Name', 'Emergency Contact Relationship', 'Emergency Contact Phone',
+        'Special Requirements',
+        // Dynamic form questions
+        ...dynFields,
+      ];
+
+      const rows: string[][] = [];
+
+      allOrders.forEach((order: any) => {
+        const billing = order.billingAddress || {};
+        const baseOrderCols = [
+          order.orderNumber || '',
+          order.status || '',
+          order.paymentStatus || '',
+          order.paymentMethod || '',
+          String(order.subtotal ?? ''),
+          String(order.discount ?? ''),
+          order.couponCode || '',
+          String(order.couponDiscount ?? ''),
+          String(order.serviceFee ?? ''),
+          String(order.tax ?? ''),
+          String(order.total ?? ''),
+          order.currency || '',
+          order.couponCode || '',
+          order.affiliateCode || '',
+          order.specialRequests || '',
+          (order.dietaryRestrictions || []).join('; '),
+          (order.accessibilityNeeds || []).join('; '),
+          order.checkIn?.checkedInAt ? 'Yes' : 'No',
+          order.checkIn?.checkedInAt ? new Date(order.checkIn.checkedInAt).toISOString() : '',
+          order.createdAt ? new Date(order.createdAt).toISOString() : '',
+          order.confirmedAt ? new Date(order.confirmedAt).toISOString() : '',
+          order.source || '',
+          billing.firstName || '',
+          billing.lastName || '',
+          billing.email || '',
+          billing.phone || '',
+          billing.address || '',
+          billing.city || '',
+          billing.state || '',
+          billing.zipCode || '',
+          billing.country || '',
+        ];
+
+        const items: any[] = order.items || [];
+        if (items.length === 0) {
+          // No items — still emit one row with empty item/participant cols
+          rows.push([
+            ...baseOrderCols,
+            '', '', '', '', '',
+            '', '', '', '', '',
+            '', '', '', '', '',
+            '', '', '', '', '',
+            ...dynFields.map(() => ''),
+          ]);
+          return;
+        }
+
+        items.forEach((item: any) => {
+          const itemCols = [
+            item.eventTitle || '',
+            item.scheduleDate ? new Date(item.scheduleDate).toLocaleDateString() : '',
+            String(item.quantity ?? ''),
+            String(item.unitPrice ?? ''),
+            String(item.totalPrice ?? ''),
+          ];
+
+          const participants: any[] = item.participants || [];
+          if (participants.length === 0) {
+            rows.push([
+              ...baseOrderCols,
+              ...itemCols,
+              '', '', '', '', '',
+              '', '', '', '', '',
+              '', '', '', '',
+              ...dynFields.map(() => ''),
+            ]);
+            return;
+          }
+
+          participants.forEach((p: any, pIdx: number) => {
+            const ec = p.emergencyContact || {};
+            const rdMap: Record<string, string> = {};
+            (p.registrationData || []).forEach((rd: any) => {
+              if (rd.fieldLabel) {
+                const val = Array.isArray(rd.value) ? rd.value.join('; ') : String(rd.value ?? '');
+                rdMap[rd.fieldLabel] = val;
+              }
+            });
+            rows.push([
+              ...baseOrderCols,
+              ...itemCols,
+              String(pIdx + 1),
+              p.name || '',
+              String(p.age ?? ''),
+              p.gender || '',
+              (p.allergies || []).join('; '),
+              (p.medicalConditions || []).join('; '),
+              ec.name || '',
+              ec.relationship || '',
+              ec.phone || '',
+              p.specialRequirements || '',
+              ...dynFields.map(f => rdMap[f] || ''),
+            ]);
+          });
+        });
+      });
+
+      const csvContent = [staticHeaders, ...rows]
+        .map(row => row.map(v => `"${String(v).replace(/"/g, '""')}"`).join(','))
+        .join('\n');
+
+      const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = `event-${id}-registrations${useFilters && (statusFilter || search) ? '-filtered' : ''}.csv`;
+      a.click();
+      URL.revokeObjectURL(url);
+      toast.success(`Exported ${allOrders.length} order${allOrders.length !== 1 ? 's' : ''}`);
+    } catch (err: any) {
+      logger.error('Export failed', err);
+      toast.error('Export failed');
+    } finally {
+      setExportLoading(false);
+    }
+  };
 
   const handleApprove = async () => {
     if (!id) return;
@@ -212,81 +494,6 @@ const AdminEventDetailPage: React.FC = () => {
     }
   };
 
-  const handleInlineReview = async (regId: string, status: 'approved' | 'rejected') => {
-    try {
-      setInlineActionId(regId);
-      await adminAPI.reviewRegistration(regId, { status });
-      toast.success(`Registration ${status}`);
-      setRegistrations(prev =>
-        prev.map(r => r._id === regId ? { ...r, status } : r)
-      );
-      // Update byStatus counts
-      setRegStats((prev: any) => {
-        if (!prev?.byStatus) return prev;
-        const bs = { ...prev.byStatus };
-        const oldStatus = registrations.find(r => r._id === regId)?.status;
-        if (oldStatus) bs[oldStatus] = Math.max(0, (bs[oldStatus] || 0) - 1);
-        bs[status] = (bs[status] || 0) + 1;
-        return { ...prev, byStatus: bs };
-      });
-    } catch (err: any) {
-      toast.error(err?.response?.data?.message || 'Action failed');
-    } finally {
-      setInlineActionId(null);
-    }
-  };
-
-  const handleExportCSV = async () => {
-    if (!id) return;
-    try {
-      const res = await adminAPI.getEventRegistrations(id, { limit: 10000 });
-      const inner = res?.data?.data || res?.data || res;
-      const allRegs: any[] = inner?.registrations || inner?.data || [];
-
-      if (allRegs.length === 0) {
-        toast.error('No registrations to export');
-        return;
-      }
-
-      const fieldLabels = new Set<string>();
-      allRegs.forEach((reg: any) => {
-        (reg.registrationData || []).forEach((d: any) => {
-          if (d.fieldLabel) fieldLabels.add(d.fieldLabel);
-        });
-      });
-      const dynamicFields = Array.from(fieldLabels);
-
-      const headers = ['Name', 'Email', 'Status', 'SubmittedAt', ...dynamicFields];
-      const rows = allRegs.map((reg: any) => {
-        const user = reg.userId || {};
-        const name = `${user.firstName || ''} ${user.lastName || ''}`.trim();
-        const email = user.email || '';
-        const status = reg.status || '';
-        const submitted = reg.submittedAt ? new Date(reg.submittedAt).toISOString() : '';
-        const fieldMap: Record<string, string> = {};
-        (reg.registrationData || []).forEach((d: any) => {
-          if (d.fieldLabel) fieldMap[d.fieldLabel] = String(d.value ?? '');
-        });
-        return [name, email, status, submitted, ...dynamicFields.map(f => fieldMap[f] || '')];
-      });
-
-      const csvContent = [headers, ...rows]
-        .map(row => row.map(v => `"${String(v).replace(/"/g, '""')}"`).join(','))
-        .join('\n');
-
-      const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
-      const url = URL.createObjectURL(blob);
-      const a = document.createElement('a');
-      a.href = url;
-      a.download = `registrations-${id}.csv`;
-      a.click();
-      URL.revokeObjectURL(url);
-      toast.success('CSV exported');
-    } catch (err: any) {
-      logger.error('Export failed', err);
-      toast.error('Export failed');
-    }
-  };
 
   if (loading) {
     return (
@@ -922,25 +1129,23 @@ const AdminEventDetailPage: React.FC = () => {
           </div>
         )}
 
-        {/* ── Registrations Tab ── */}
+        {/* ── Registrations Tab (per-student with custom-field drawer) ── */}
         {activeTab === 'registrations' && (
           <div className="space-y-4">
             {/* Stats bar */}
-            {(regStats?.byStatus || regPagination) && (
-              <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
-                {[
-                  { label: 'Total', value: regPagination?.total ?? 0, color: 'bg-gray-50 text-gray-700' },
-                  { label: 'Submitted', value: regStats?.byStatus?.submitted ?? 0, color: 'bg-blue-50 text-blue-700' },
-                  { label: 'Approved', value: regStats?.byStatus?.approved ?? 0, color: 'bg-green-50 text-green-700' },
-                  { label: 'Rejected', value: regStats?.byStatus?.rejected ?? 0, color: 'bg-red-50 text-red-700' },
-                ].map(s => (
-                  <div key={s.label} className={`rounded-xl px-4 py-3 ${s.color}`}>
-                    <div className="text-xs font-medium uppercase tracking-wide opacity-70">{s.label}</div>
-                    <div className="text-2xl font-bold mt-0.5">{s.value}</div>
-                  </div>
-                ))}
-              </div>
-            )}
+            <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+              {[
+                { label: 'Total Students', value: studentRows.length, color: 'bg-indigo-50 text-indigo-700' },
+                { label: 'Confirmed', value: studentRows.filter(r => r.status === 'confirmed').length, color: 'bg-green-50 text-green-700' },
+                { label: 'Pending', value: studentRows.filter(r => r.status === 'pending').length, color: 'bg-yellow-50 text-yellow-700' },
+                { label: 'Cancelled', value: studentRows.filter(r => r.status === 'cancelled').length, color: 'bg-red-50 text-red-700' },
+              ].map(s => (
+                <div key={s.label} className={`rounded-xl px-4 py-3 ${s.color}`}>
+                  <div className="text-xs font-medium uppercase tracking-wide opacity-70">{s.label}</div>
+                  <div className="text-2xl font-bold mt-0.5">{s.value}</div>
+                </div>
+              ))}
+            </div>
 
             {/* Toolbar */}
             <div className="flex flex-wrap items-center gap-3">
@@ -948,7 +1153,7 @@ const AdminEventDetailPage: React.FC = () => {
                 <Search className="w-4 h-4 text-gray-400 shrink-0" />
                 <input
                   type="text"
-                  placeholder="Search by name or email..."
+                  placeholder="Search by name, email or order number..."
                   value={search}
                   onChange={e => setSearch(e.target.value)}
                   className="text-sm outline-none w-full"
@@ -962,29 +1167,59 @@ const AdminEventDetailPage: React.FC = () => {
                   className="text-sm outline-none"
                 >
                   <option value="">All statuses</option>
-                  <option value="submitted">Submitted</option>
-                  <option value="approved">Approved</option>
-                  <option value="rejected">Rejected</option>
-                  <option value="withdrawn">Withdrawn</option>
+                  <option value="confirmed">Confirmed</option>
+                  <option value="pending">Pending</option>
+                  <option value="cancelled">Cancelled</option>
+                  <option value="refunded">Refunded</option>
                 </select>
               </div>
-              <button
-                onClick={handleExportCSV}
-                className="flex items-center gap-2 px-4 py-2 bg-white border border-gray-300 rounded-lg hover:bg-gray-50 text-sm font-medium"
-              >
-                <Download className="w-4 h-4" />
-                Export CSV
-              </button>
+
+              {/* Export dropdown */}
+              <div className="relative">
+                <button
+                  onClick={() => setShowExportMenu(v => !v)}
+                  disabled={exportLoading}
+                  className="flex items-center gap-2 px-4 py-2 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 text-sm font-medium disabled:opacity-50"
+                >
+                  {exportLoading ? (
+                    <div className="w-4 h-4 border-b-2 border-white rounded-full animate-spin" />
+                  ) : (
+                    <Download className="w-4 h-4" />
+                  )}
+                  Export CSV
+                  <ChevronDown className="w-3 h-3 ml-0.5" />
+                </button>
+                {showExportMenu && (
+                  <div className="absolute right-0 mt-1 w-52 bg-white border border-gray-200 rounded-lg shadow-lg z-10 overflow-hidden">
+                    <button
+                      onClick={() => handleExportOrders(false)}
+                      className="w-full text-left px-4 py-2.5 text-sm text-gray-700 hover:bg-gray-50 border-b border-gray-100"
+                    >
+                      <div className="font-medium">Export All</div>
+                      <div className="text-xs text-gray-400">All orders for this event</div>
+                    </button>
+                    <button
+                      onClick={() => handleExportOrders(true)}
+                      className="w-full text-left px-4 py-2.5 text-sm text-gray-700 hover:bg-gray-50"
+                    >
+                      <div className="font-medium">Export Filtered</div>
+                      <div className="text-xs text-gray-400">
+                        {statusFilter || search ? 'Current filter applied' : 'No filters active — same as All'}
+                      </div>
+                    </button>
+                  </div>
+                )}
+              </div>
             </div>
 
-            {regLoading ? (
+            {orderLoading ? (
               <div className="flex justify-center py-12">
                 <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-indigo-600" />
               </div>
-            ) : registrations.length === 0 ? (
+            ) : studentRows.length === 0 ? (
               <div className="bg-white rounded-xl border border-gray-100 py-16 text-center">
                 <Users className="w-10 h-10 text-gray-300 mx-auto mb-3" />
-                <p className="text-sm text-gray-500">No registrations found</p>
+                <p className="text-sm text-gray-500">No registrations found for this event</p>
                 {(search || statusFilter) && (
                   <button
                     onClick={() => { setSearch(''); setStatusFilter(''); }}
@@ -999,99 +1234,81 @@ const AdminEventDetailPage: React.FC = () => {
                 <table className="min-w-full divide-y divide-gray-100">
                   <thead className="bg-gray-50">
                     <tr>
-                      <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">User</th>
+                      <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Student</th>
+                      <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase hidden sm:table-cell">Ticket / Occurrence</th>
                       <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Status</th>
-                      <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase hidden sm:table-cell">
-                        Form Data
-                      </th>
-                      <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase hidden md:table-cell">
-                        Submitted
-                      </th>
+                      <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase hidden md:table-cell">Buyer</th>
+                      <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase hidden lg:table-cell">Date</th>
                       <th className="px-4 py-3 text-right text-xs font-medium text-gray-500 uppercase">Actions</th>
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-gray-50">
-                    {registrations.map((reg: any) => {
-                      const user = reg.userId || {};
-                      const firstName = user.firstName || '';
-                      const lastName = user.lastName || '';
-                      const name = `${firstName} ${lastName}`.trim() || 'Unknown';
-                      const initials = `${firstName.charAt(0)}${lastName.charAt(0)}`.toUpperCase() || '?';
-                      const fieldCount = (reg.registrationData || []).length;
-                      const fieldSummary = (reg.registrationData || [])
+                    {studentRows.map((row) => {
+                      const initials = row.studentName
+                        .split(' ')
                         .slice(0, 2)
-                        .map((d: any) => `${d.fieldLabel}: ${String(d.value ?? '').slice(0, 30)}`)
-                        .join(' · ');
-                      const isActing = inlineActionId === reg._id;
+                        .map((w: string) => w.charAt(0))
+                        .join('')
+                        .toUpperCase() || '?';
+                      const statusColors: Record<string, string> = {
+                        confirmed: 'bg-green-100 text-green-800',
+                        pending: 'bg-yellow-100 text-yellow-800',
+                        cancelled: 'bg-red-100 text-red-800',
+                        refunded: 'bg-gray-100 text-gray-700',
+                      };
+                      const schedText = row.scheduleDate
+                        ? new Date(row.scheduleDate).toLocaleDateString(undefined, { day: 'numeric', month: 'short', year: 'numeric' })
+                        : null;
                       return (
-                        <tr key={reg._id} className="hover:bg-gray-50 transition-colors">
+                        <tr key={row.key} className="hover:bg-gray-50 transition-colors">
                           <td className="px-4 py-3">
                             <div className="flex items-center gap-3">
                               <div className="w-8 h-8 rounded-full bg-indigo-100 text-indigo-700 flex items-center justify-center text-xs font-semibold shrink-0">
                                 {initials}
                               </div>
                               <div>
-                                <div className="text-sm font-medium text-gray-900">{name}</div>
-                                <div className="text-xs text-gray-500">{user.email || '—'}</div>
+                                <div className="text-sm font-medium text-gray-900">{row.studentName}</div>
+                                {row.age != null && (
+                                  <div className="text-xs text-gray-400">
+                                    Age: {row.age}{row.gender ? ` · ${row.gender}` : ''}
+                                  </div>
+                                )}
                               </div>
                             </div>
                           </td>
+                          <td className="px-4 py-3 hidden sm:table-cell">
+                            <div className="text-sm text-gray-700">{row.ticket || '—'}</div>
+                            {schedText && <div className="text-xs text-gray-400">{schedText}</div>}
+                          </td>
                           <td className="px-4 py-3">
-                            <span className={`px-2 py-1 text-xs rounded-full font-medium ${STATUS_COLORS[reg.status] || 'bg-gray-100 text-gray-700'}`}>
-                              {reg.status}
+                            <span className={`px-2 py-1 text-xs rounded-full font-medium ${statusColors[row.status] || 'bg-gray-100 text-gray-700'}`}>
+                              {row.status}
                             </span>
                           </td>
-                          <td className="px-4 py-3 hidden sm:table-cell">
-                            <div className="text-xs text-gray-500 max-w-xs truncate">
-                              {fieldSummary || <span className="text-gray-300">—</span>}
-                            </div>
-                            {fieldCount > 2 && (
-                              <div className="text-xs text-gray-400">+{fieldCount - 2} more fields</div>
-                            )}
+                          <td className="px-4 py-3 hidden md:table-cell">
+                            <div className="text-sm text-gray-700">{row.buyer}</div>
+                            <div className="text-xs text-gray-400">{row.buyerEmail || '—'}</div>
                           </td>
-                          <td className="px-4 py-3 text-xs text-gray-500 hidden md:table-cell">
-                            {reg.submittedAt
-                              ? new Date(reg.submittedAt).toLocaleDateString(undefined, { day: 'numeric', month: 'short', year: 'numeric' })
+                          <td className="px-4 py-3 text-xs text-gray-500 hidden lg:table-cell">
+                            {row.date
+                              ? new Date(row.date).toLocaleDateString(undefined, { day: 'numeric', month: 'short', year: 'numeric' })
                               : '—'}
                           </td>
                           <td className="px-4 py-3">
                             <div className="flex items-center justify-end gap-1">
-                              {reg.status === 'submitted' && (
-                                <>
-                                  <button
-                                    onClick={() => handleInlineReview(reg._id, 'approved')}
-                                    disabled={isActing}
-                                    className="flex items-center gap-1 px-2 py-1 text-xs bg-green-50 text-green-700 border border-green-200 rounded-md hover:bg-green-100 disabled:opacity-50"
-                                    title="Approve"
-                                  >
-                                    {isActing ? (
-                                      <div className="w-3 h-3 border-b border-green-700 rounded-full animate-spin" />
-                                    ) : (
-                                      <CheckCircle className="w-3 h-3" />
-                                    )}
-                                    <span className="hidden sm:inline">Approve</span>
-                                  </button>
-                                  <button
-                                    onClick={() => handleInlineReview(reg._id, 'rejected')}
-                                    disabled={isActing}
-                                    className="flex items-center gap-1 px-2 py-1 text-xs bg-red-50 text-red-700 border border-red-200 rounded-md hover:bg-red-100 disabled:opacity-50"
-                                    title="Reject"
-                                  >
-                                    {isActing ? (
-                                      <div className="w-3 h-3 border-b border-red-700 rounded-full animate-spin" />
-                                    ) : (
-                                      <XCircle className="w-3 h-3" />
-                                    )}
-                                    <span className="hidden sm:inline">Reject</span>
-                                  </button>
-                                </>
-                              )}
                               <button
-                                onClick={() => navigate(`/admin/registrations/${reg._id}`)}
+                                onClick={() => setDrawerRow(row)}
                                 className="p-1.5 text-indigo-600 hover:bg-indigo-50 rounded-md"
-                                title="View details"
+                                title="View student details"
                               >
                                 <Eye className="w-4 h-4" />
+                              </button>
+                              <button
+                                onClick={() => navigate(`/admin/orders/${row.orderId}`)}
+                                className="p-1.5 text-gray-500 hover:bg-gray-100 rounded-md"
+                                title="View order"
+                              >
+                                <Link2 className="w-4 h-4" />
                               </button>
                             </div>
                           </td>
@@ -1102,23 +1319,23 @@ const AdminEventDetailPage: React.FC = () => {
                 </table>
 
                 {/* Pagination */}
-                {regPagination && regPagination.totalPages > 1 && (
+                {orderPagination && orderPagination.totalPages > 1 && (
                   <div className="flex items-center justify-between px-4 py-3 border-t border-gray-100 bg-gray-50">
                     <span className="text-xs text-gray-500">
-                      Page {regPagination.currentPage} of {regPagination.totalPages}
-                      {' '}· {regPagination.total} total
+                      Page {orderPagination.currentPage} of {orderPagination.totalPages}
+                      {' '}· {studentRows.length} students shown · {orderPagination.totalOrders} orders total
                     </span>
                     <div className="flex items-center gap-2">
                       <button
-                        onClick={() => setRegPage(p => Math.max(1, p - 1))}
-                        disabled={regPagination.currentPage <= 1}
+                        onClick={() => setOrderPage(p => Math.max(1, p - 1))}
+                        disabled={orderPagination.currentPage <= 1}
                         className="px-3 py-1 text-xs border border-gray-300 rounded-md bg-white hover:bg-gray-50 disabled:opacity-40 disabled:cursor-not-allowed"
                       >
                         Previous
                       </button>
                       <button
-                        onClick={() => setRegPage(p => Math.min(regPagination.totalPages, p + 1))}
-                        disabled={regPagination.currentPage >= regPagination.totalPages}
+                        onClick={() => setOrderPage(p => Math.min(orderPagination.totalPages, p + 1))}
+                        disabled={orderPagination.currentPage >= orderPagination.totalPages}
                         className="px-3 py-1 text-xs border border-gray-300 rounded-md bg-white hover:bg-gray-50 disabled:opacity-40 disabled:cursor-not-allowed"
                       >
                         Next
@@ -1131,6 +1348,159 @@ const AdminEventDetailPage: React.FC = () => {
           </div>
         )}
       </div>
+
+      {/* Student Detail Drawer */}
+      {drawerRow && (
+        <div className="fixed inset-0 z-50 flex" role="dialog" aria-modal="true">
+          {/* Overlay */}
+          <div className="flex-1 bg-black/40" onClick={() => setDrawerRow(null)} />
+          {/* Panel */}
+          <div className="relative w-full max-w-md bg-white shadow-2xl flex flex-col overflow-hidden">
+            {/* Header */}
+            <div className="flex items-center justify-between px-5 py-4 border-b border-gray-100 bg-gray-50 shrink-0">
+              <div>
+                <h2 className="text-base font-semibold text-gray-900">{drawerRow.studentName}</h2>
+                <p className="text-xs text-gray-500 mt-0.5">
+                  Order <span className="font-mono">{drawerRow.orderNumber || drawerRow.orderId}</span>
+                </p>
+              </div>
+              <div className="flex items-center gap-2">
+                <span className={`px-2 py-1 text-xs rounded-full font-medium ${
+                  drawerRow.status === 'confirmed' ? 'bg-green-100 text-green-800' :
+                  drawerRow.status === 'pending' ? 'bg-yellow-100 text-yellow-800' :
+                  drawerRow.status === 'cancelled' ? 'bg-red-100 text-red-800' :
+                  'bg-gray-100 text-gray-700'
+                }`}>
+                  {drawerRow.status}
+                </span>
+                <button
+                  onClick={() => setDrawerRow(null)}
+                  className="p-1.5 text-gray-400 hover:text-gray-700 hover:bg-gray-100 rounded-md"
+                >
+                  <X className="w-4 h-4" />
+                </button>
+              </div>
+            </div>
+
+            {/* Scrollable body */}
+            <div className="flex-1 overflow-y-auto px-5 py-4 space-y-5">
+              {/* Ticket / Occurrence */}
+              <section>
+                <h3 className="text-xs font-semibold text-gray-400 uppercase tracking-wide mb-2">Ticket</h3>
+                <div className="bg-indigo-50 rounded-lg px-4 py-3 text-sm">
+                  <div className="font-medium text-indigo-900">{drawerRow.ticket || '—'}</div>
+                  {drawerRow.scheduleDate && (
+                    <div className="text-indigo-600 text-xs mt-0.5">
+                      {new Date(drawerRow.scheduleDate).toLocaleDateString(undefined, { weekday: 'short', day: 'numeric', month: 'long', year: 'numeric' })}
+                    </div>
+                  )}
+                  {drawerRow.ticketPrice != null && (
+                    <div className="text-indigo-700 text-xs mt-1 font-medium">
+                      {drawerRow.currency || 'AED'} {drawerRow.ticketPrice.toLocaleString()}
+                    </div>
+                  )}
+                </div>
+              </section>
+
+              {/* Student info */}
+              {(drawerRow.age != null || drawerRow.gender) && (
+                <section>
+                  <h3 className="text-xs font-semibold text-gray-400 uppercase tracking-wide mb-2">Student Info</h3>
+                  <div className="space-y-1.5 text-sm">
+                    {drawerRow.age != null && (
+                      <div className="flex gap-3">
+                        <span className="text-gray-400 w-20 shrink-0">Age</span>
+                        <span className="text-gray-900">{drawerRow.age}</span>
+                      </div>
+                    )}
+                    {drawerRow.gender && (
+                      <div className="flex gap-3">
+                        <span className="text-gray-400 w-20 shrink-0">Gender</span>
+                        <span className="text-gray-900 capitalize">{drawerRow.gender}</span>
+                      </div>
+                    )}
+                  </div>
+                </section>
+              )}
+
+              {/* Custom form fields */}
+              {drawerRow.registrationData.length > 0 && (
+                <section>
+                  <h3 className="text-xs font-semibold text-gray-400 uppercase tracking-wide mb-2">Registration Form</h3>
+                  <div className="space-y-2">
+                    {drawerRow.registrationData.map((rd, idx) => {
+                      const isFile = rd.fieldType === 'file';
+                      const isDateType = rd.fieldType === 'date' || rd.fieldType === 'datetime';
+                      let displayValue: React.ReactNode = '—';
+                      if (rd.value != null && rd.value !== '') {
+                        if (isFile) {
+                          const url = typeof rd.value === 'string' ? rd.value : String(rd.value);
+                          displayValue = (
+                            <a href={url} target="_blank" rel="noopener noreferrer"
+                              className="text-indigo-600 underline hover:text-indigo-800 text-xs break-all">
+                              View file
+                            </a>
+                          );
+                        } else if (Array.isArray(rd.value)) {
+                          displayValue = (rd.value as any[]).join(', ') || '—';
+                        } else if (isDateType) {
+                          try { displayValue = new Date(rd.value).toLocaleDateString(undefined, { day: 'numeric', month: 'short', year: 'numeric' }); }
+                          catch { displayValue = String(rd.value); }
+                        } else {
+                          displayValue = String(rd.value);
+                        }
+                      }
+                      return (
+                        <div key={rd.fieldId || idx} className="bg-gray-50 rounded-lg px-3 py-2">
+                          <div className="text-xs text-gray-400 mb-0.5">{rd.fieldLabel}</div>
+                          <div className="text-sm text-gray-900 break-words">{displayValue}</div>
+                        </div>
+                      );
+                    })}
+                  </div>
+                </section>
+              )}
+
+              {/* No custom fields note */}
+              {drawerRow.registrationData.length === 0 && (
+                <p className="text-xs text-gray-400 text-center py-4">
+                  {drawerRow.isFallback
+                    ? 'No participant details recorded — showing buyer as registrant.'
+                    : 'No custom form fields for this registration.'}
+                </p>
+              )}
+
+              {/* Buyer / Contact */}
+              <section>
+                <h3 className="text-xs font-semibold text-gray-400 uppercase tracking-wide mb-2">Buyer / Contact</h3>
+                <div className="space-y-1.5 text-sm">
+                  <div className="flex gap-3">
+                    <span className="text-gray-400 w-20 shrink-0">Name</span>
+                    <span className="text-gray-900">{drawerRow.buyer || '—'}</span>
+                  </div>
+                  {drawerRow.buyerEmail && (
+                    <div className="flex gap-3">
+                      <span className="text-gray-400 w-20 shrink-0">Email</span>
+                      <span className="text-gray-900 break-all">{drawerRow.buyerEmail}</span>
+                    </div>
+                  )}
+                </div>
+              </section>
+            </div>
+
+            {/* Footer */}
+            <div className="shrink-0 px-5 py-3 border-t border-gray-100 bg-gray-50">
+              <button
+                onClick={() => navigate(`/admin/orders/${drawerRow.orderId}`)}
+                className="w-full flex items-center justify-center gap-2 px-4 py-2 text-sm font-medium text-indigo-600 border border-indigo-200 rounded-lg hover:bg-indigo-50"
+              >
+                <Link2 className="w-4 h-4" />
+                View Full Order
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* Reject Modal */}
       {showRejectModal && (

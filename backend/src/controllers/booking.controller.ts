@@ -133,19 +133,13 @@ export const initiateBooking = async (
       ? { _id: eventId }
       : { $or: [{ slug: eventId }, { slug: String(eventId).toLowerCase() }] };
 
-    // Parallel: fetch event + user + adminSettings + duplicate checks
-    const [event, user, adminSettings, confirmedOrder, pendingOrder] = await Promise.all([
+    // Parallel: fetch event + user + adminSettings + idempotency check
+    const [event, user, adminSettings, pendingOrder] = await Promise.all([
       EventModel.findOne({ ...eventLookup, status: 'published', isDeleted: false }),
       User.findById(userId)
         .select("firstName lastName email phone addresses")
         .lean(),
       AdminRevenueSettings.findOne({}).lean(),
-      // Block re-booking permanently for confirmed orders (no time window)
-      Order.findOne({
-        userId,
-        "items.eventId": eventId,
-        status: "confirmed",
-      }).lean(),
       // Idempotency: reuse pending order within 30-min window
       Order.findOne({
         userId,
@@ -160,27 +154,6 @@ export const initiateBooking = async (
     }
 
     const resolvedEventId = event._id.toString();
-
-    // Hard block: user already has a confirmed booking for this event
-    if (confirmedOrder) {
-      const orderAny = confirmedOrder as any;
-      logger.info("Blocking duplicate booking — confirmed order exists", {
-        existingOrderId: orderAny._id,
-        userId,
-        eventId,
-      });
-      return res.status(409).json({
-        success: false,
-        message: "You already have a confirmed booking for this event.",
-        data: {
-          bookingId: orderAny.orderNumber,
-          orderId: orderAny._id,
-          amount: orderAny.total,
-          currency: orderAny.currency || "AED",
-          alreadyConfirmed: true,
-        },
-      });
-    }
 
     // Idempotency: return existing pending order within window
     if (pendingOrder) {

@@ -735,6 +735,15 @@ orderSchema.pre("save", async function (next) {
 orderSchema.methods.confirm = function () {
   this.status = "confirmed";
   this.confirmedAt = new Date();
+  // Free orders: also mark paymentStatus so it doesn't stay "pending"
+  if (
+    this.paymentStatus === "pending" &&
+    (this.total === 0 ||
+      this.paymentMethod === "free" ||
+      (this.paymentIntentId as string)?.startsWith("free_pi_"))
+  ) {
+    this.paymentStatus = "free";
+  }
   return this.save();
 };
 

@@ -436,6 +436,15 @@ const adminAPI = {
     }
   },
 
+  getEventOrders: async (eventId: string, params?: any) => {
+    try {
+      const response = await ApiService.get('/orders/admin/all', { params: { ...params, eventId } });
+      return response.data;
+    } catch (error) {
+      throw error;
+    }
+  },
+
   getOrderById: async (id: string) => {
     try {
       const response = await ApiService.get(`/orders/admin/${id}`);

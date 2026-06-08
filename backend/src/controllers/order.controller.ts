@@ -538,6 +538,7 @@ export const getAdminOrders = async (
       search,
       startDate,
       endDate,
+      eventId,
     } = req.query;
 
     const pageNum = parseInt(page as string);
@@ -546,6 +547,9 @@ export const getAdminOrders = async (
 
     // Build filter query
     const filter: any = {};
+
+    // Filter by event (for event detail page)
+    if (eventId) filter["items.eventId"] = eventId;
 
     // Status filters
     if (status) filter.status = status;
