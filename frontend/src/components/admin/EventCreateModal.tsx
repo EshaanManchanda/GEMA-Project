@@ -244,6 +244,10 @@ const EventCreateModal: React.FC<EventCreateModalProps> = ({ isOpen, onClose, on
         setError('Description is required');
         return;
       }
+      if (!shortDescription.trim()) {
+        setError('Short description is required');
+        return;
+      }
       if (!category.trim()) {
         setError('Category is required');
         return;
@@ -425,7 +429,7 @@ const EventCreateModal: React.FC<EventCreateModalProps> = ({ isOpen, onClose, on
 
               <div>
                 <label htmlFor="event-short-description" className="block text-sm font-medium text-gray-700 mb-2">
-                  Short Description <span className="text-gray-400 font-normal">(max 500 chars)</span>
+                  Short Description <span className="text-red-500">*</span> <span className="text-gray-400 font-normal">(max 500 chars)</span>
                 </label>
                 <textarea
                   id="event-short-description"
@@ -434,6 +438,7 @@ const EventCreateModal: React.FC<EventCreateModalProps> = ({ isOpen, onClose, on
                   placeholder="Brief summary shown on event cards and above the full description…"
                   rows={2}
                   maxLength={500}
+                  required
                   className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 resize-none text-sm"
                 />
                 <p className="mt-1 text-xs text-gray-400 text-right">{shortDescription.length}/500</p>

@@ -102,13 +102,12 @@ const AdminTeachingEventsPage: React.FC = () => {
   const filteredTeachingEvents = useMemo(() => {
     let filtered = [...teachingEvents];
 
-    // Search filter (title, description, location, teacher)
     if (searchTerm) {
       const search = searchTerm.toLowerCase();
       filtered = filtered.filter(event =>
-        event.title.toLowerCase().includes(search) ||
-        event.description.toLowerCase().includes(search) ||
-        event.location.city.toLowerCase().includes(search) ||
+        event.title?.toLowerCase().includes(search) ||
+        event.description?.toLowerCase().includes(search) ||
+        event.location?.city?.toLowerCase().includes(search) ||
         event.teacher?.fullName?.toLowerCase().includes(search) ||
         event.teacher?.email?.toLowerCase().includes(search) ||
         event.category?.toLowerCase().includes(search)

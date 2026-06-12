@@ -143,7 +143,9 @@ export const validateCreateEvent = [
   sanitizeHtml("description"),
 
   body("shortDescription")
-    .optional()
+    .trim()
+    .notEmpty()
+    .withMessage("Short description is required")
     .trim()
     .isLength({ max: 500 })
     .withMessage("Short description cannot exceed 500 characters")
@@ -456,7 +458,9 @@ export const validateUpdateEvent = [
   sanitizeHtml("description"),
 
   body("shortDescription")
-    .optional()
+    .trim()
+    .notEmpty()
+    .withMessage("Short description is required")
     .trim()
     .isLength({ max: 500 })
     .withMessage("Short description cannot exceed 500 characters")
@@ -981,7 +985,9 @@ export const validateCreateTeacherEvent = [
   sanitizeHtml("description"),
 
   body("shortDescription")
-    .optional()
+    .trim()
+    .notEmpty()
+    .withMessage("Short description is required")
     .trim()
     .isLength({ max: 500 })
     .withMessage("Short description cannot exceed 500 characters")
@@ -1166,7 +1172,9 @@ export const validateUpdateTeacherEvent = [
   sanitizeHtml("description"),
 
   body("shortDescription")
-    .optional()
+    .trim()
+    .notEmpty()
+    .withMessage("Short description is required")
     .trim()
     .isLength({ max: 500 })
     .withMessage("Short description cannot exceed 500 characters")

@@ -229,7 +229,7 @@ const CollectionsPage: React.FC = () => {
                 <span>Curated Experiences</span>
               </div>
               <h1 className="text-4xl md:text-5xl font-extrabold text-gray-900 mb-6 tracking-tight">
-                Kidzapproved <span className="text-transparent bg-clip-text bg-gradient-to-r from-blue-600 to-cyan-500">Collections</span>
+                Kidrove Activity <span className="text-transparent bg-clip-text bg-gradient-to-r from-blue-600 to-cyan-500">Collections</span>
               </h1>
               <p className="text-lg md:text-xl text-gray-600 max-w-2xl mx-auto leading-relaxed">
                 Discover our handpicked selections of the best kid-friendly activities, venues, and memorable experiences tailored for your family.

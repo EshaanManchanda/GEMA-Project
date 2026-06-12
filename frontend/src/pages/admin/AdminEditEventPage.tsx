@@ -834,6 +834,8 @@ const AdminEditEventPage: React.FC = () => {
       if (!formData.title?.trim()) newErrors.title = "Title is required";
       if (!formData.description?.trim())
         newErrors.description = "Description is required";
+      if (!formData.shortDescription?.trim())
+        newErrors.shortDescription = "Short description is required";
       if (!formData.category) newErrors.category = "Category is required";
       if (
         !formData.isAffiliateEvent &&

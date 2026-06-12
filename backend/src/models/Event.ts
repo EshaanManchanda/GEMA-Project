@@ -326,10 +326,9 @@ const eventSchema = new Schema<IEvent>(
     },
     shortDescription: {
       type: String,
-      required: false,
+      required: [true, "Short description is required"],
       trim: true,
       maxlength: [500, "Short description cannot exceed 500 characters"],
-      default: null,
     },
     customCSS: {
       type: String,

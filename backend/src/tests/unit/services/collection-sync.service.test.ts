@@ -293,4 +293,76 @@ describe("CollectionSyncService", () => {
       expect(result).toBe(1);
     });
   });
+
+  describe("syncEventToCollections", () => {
+    it("should auto-link matching active collections by category or type", async () => {
+      const eventId = new mongoose.Types.ObjectId("507f1f77bcf86cd799439011");
+      const autoLinkedCollection = {
+        _id: new mongoose.Types.ObjectId("507f1f77bcf86cd799439099"),
+        title: "Kidrove Activity Collections",
+        category: "Activities",
+        slug: "kidrove-activity-collections",
+        events: [],
+        eventsData: [],
+        lastSyncedAt: new Date(),
+        dataVersion: 1,
+        save: jest.fn().mockResolvedValue(true),
+      };
+
+      const manualCollection = {
+        _id: new mongoose.Types.ObjectId("507f1f77bcf86cd799439088"),
+        title: "Manual Picks",
+        category: "Featured",
+        slug: "manual-picks",
+        events: [eventId],
+        eventsData: [
+          {
+            _id: eventId,
+            title: "Existing Event",
+          },
+        ],
+        lastSyncedAt: new Date(),
+        dataVersion: 1,
+        save: jest.fn().mockResolvedValue(true),
+      };
+
+      (Collection.find as jest.Mock).mockImplementation((query) => {
+        if (query?.events) {
+          return Promise.resolve([manualCollection]);
+        }
+
+        if (query?.isActive) {
+          return {
+            select: jest
+              .fn()
+              .mockResolvedValue([manualCollection, autoLinkedCollection]),
+          };
+        }
+
+        return Promise.resolve([]);
+      });
+
+      (Event.findById as jest.Mock).mockReturnValue({
+        select: jest.fn().mockReturnThis(),
+        lean: jest.fn().mockResolvedValue({
+          _id: eventId,
+          title: "Summer Workshop",
+          category: "Workshop",
+          type: "Workshop",
+          isApproved: true,
+          isActive: true,
+          isDeleted: false,
+        }),
+      });
+
+      const result = await collectionSyncService.syncEventToCollections(
+        eventId.toString(),
+      );
+
+      expect(result.updated).toBe(2);
+      expect(manualCollection.save).toHaveBeenCalled();
+      expect(autoLinkedCollection.events.some((id: any) => id.toString() === eventId.toString())).toBe(true);
+      expect(autoLinkedCollection.save).toHaveBeenCalled();
+    });
+  });
 });

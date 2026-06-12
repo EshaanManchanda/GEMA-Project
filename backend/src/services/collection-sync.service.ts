@@ -5,6 +5,83 @@ import { cacheService } from "./cache.service";
 import logger from "../config/logger";
 
 export class CollectionSyncService {
+  private normalizeTokens(...values: Array<string | undefined | null>) {
+    const tokens = new Set<string>();
+
+    for (const value of values) {
+      if (!value) continue;
+
+      const normalized = value
+        .toLowerCase()
+        .trim()
+        .replace(/[^a-z0-9]+/g, " ");
+
+      for (const token of normalized.split(/\s+/)) {
+        if (!token) continue;
+        tokens.add(token);
+      }
+    }
+
+    return tokens;
+  }
+
+  private getEventMatchTokens(eventData: {
+    title?: string;
+    category?: string;
+    type?: string;
+  }) {
+    const tokens = this.normalizeTokens(
+      eventData.title,
+      eventData.category,
+      eventData.type,
+    );
+
+    const eventType = eventData.type?.toLowerCase().trim();
+    const eventCategory = eventData.category?.toLowerCase().trim();
+
+    const educationTokenMap: Record<string, string[]> = {
+      course: ["course", "courses", "activity", "activities", "education", "learning"],
+      class: ["class", "classes", "activity", "activities", "education", "learning"],
+      workshop: ["workshop", "workshops", "activity", "activities", "education", "learning"],
+      bootcamp: ["bootcamp", "bootcamps", "activity", "activities", "education", "learning"],
+      masterclass: ["masterclass", "masterclasses", "activity", "activities", "education", "learning"],
+    };
+
+    if (eventType && educationTokenMap[eventType]) {
+      for (const token of educationTokenMap[eventType]) {
+        tokens.add(token);
+      }
+    }
+
+    if (eventCategory && educationTokenMap[eventCategory]) {
+      for (const token of educationTokenMap[eventCategory]) {
+        tokens.add(token);
+      }
+    }
+
+    return tokens;
+  }
+
+  private collectionMatchesEvent(
+    collection: { title?: string; category?: string; slug?: string },
+    eventData: { title?: string; category?: string; type?: string },
+  ) {
+    const collectionTokens = this.normalizeTokens(
+      collection.title,
+      collection.category,
+      collection.slug,
+    );
+    const eventTokens = this.getEventMatchTokens(eventData);
+
+    for (const token of collectionTokens) {
+      if (eventTokens.has(token)) {
+        return true;
+      }
+    }
+
+    return false;
+  }
+
   /**
    * Get event subset for embedding
    * Optimized field selection (~1 KB per event)
@@ -89,13 +166,30 @@ export class CollectionSyncService {
         return this.removeEventFromCollections(objId);
       }
 
-      // Find collections containing this event
-      const collections = await Collection.find({
-        events: objId,
-      });
+      // Find collections containing this event plus any active collections
+      // that match by title/category/type so new events are auto-linked.
+      const [manualCollections, activeCollections] = await Promise.all([
+        Collection.find({ events: objId }),
+        Collection.find({ isActive: true }).select(
+          "_id title category slug events eventsData lastSyncedAt dataVersion",
+        ),
+      ]);
+
+      const collectionsById = new Map<string, any>();
+      for (const collection of manualCollections) {
+        collectionsById.set(collection._id.toString(), collection);
+      }
+
+      for (const collection of activeCollections) {
+        if (this.collectionMatchesEvent(collection, eventData)) {
+          collectionsById.set(collection._id.toString(), collection);
+        }
+      }
+
+      const collections = Array.from(collectionsById.values());
 
       if (collections.length === 0) {
-        logger.info(`No collections contain event ${objId}`);
+        logger.info(`No collections matched event ${objId}`);
         return { updated: 0, removed: 0 };
       }
 
@@ -110,6 +204,18 @@ export class CollectionSyncService {
 
           if (!collection.eventsData) {
             collection.eventsData = [];
+          }
+
+          if (!Array.isArray(collection.events)) {
+            collection.events = [];
+          }
+
+          if (
+            !collection.events.some(
+              (eventId) => eventId.toString() === objId.toString(),
+            )
+          ) {
+            collection.events.push(objId);
           }
 
           if (eventIndex >= 0) {

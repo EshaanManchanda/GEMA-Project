@@ -69,6 +69,27 @@ const slugifyCollectionTitle = (title: string): string =>
     .replace(/[^a-z0-9]+/g, "-")
     .replace(/^-|-$/g, "");
 
+const getLatestEventDate = (event: any): number => {
+  const schedules = Array.isArray(event?.dateSchedule) ? event.dateSchedule : [];
+
+  const dateCandidates = schedules.flatMap((schedule) => [
+    schedule?.endDate,
+    schedule?.startDate,
+    schedule?.date,
+  ]);
+
+  const validTimestamps = dateCandidates
+    .map((date) => (date ? new Date(date).getTime() : Number.NaN))
+    .filter((timestamp) => !Number.isNaN(timestamp));
+
+  if (validTimestamps.length === 0) {
+    const fallback = event?.updatedAt || event?.createdAt;
+    return fallback ? new Date(fallback).getTime() : 0;
+  }
+
+  return Math.max(...validTimestamps);
+};
+
 const queueOrSyncCollection = async (collectionId: string) => {
   try {
     const { collectionSyncQueue, areQueuesEnabled } = await import(
@@ -332,6 +353,9 @@ export const getCollectionById = async (
     if (collection?.events && Array.isArray(collection.events)) {
       collection.events = collection.events.map((event) =>
         transformEventResponse(event),
+      );
+      collection.events.sort(
+        (a, b) => getLatestEventDate(b) - getLatestEventDate(a),
       );
     }
 

@@ -453,18 +453,20 @@ const BasicInfoTab: React.FC<BasicInfoTabProps> = ({
           {/* Short Description */}
           <div>
             <label htmlFor="shortDescription" className="block text-sm font-medium text-gray-700 mb-1">
-              Short Description <span className="text-gray-400 font-normal">(max 500 chars)</span>
+              Short Description <span className="text-red-500">*</span> <span className="text-gray-400 font-normal">(max 500 chars)</span>
             </label>
             <textarea
               id="shortDescription"
               name="shortDescription"
               value={formData.shortDescription || ''}
               onChange={onInputChange}
+              required
               placeholder="Brief summary shown on event cards and above the full description…"
               rows={2}
               maxLength={500}
-              className="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-primary focus:border-primary resize-none text-sm"
+              className={`w-full px-3 py-2 border ${errors.shortDescription ? 'border-red-500' : 'border-gray-300'} rounded-md shadow-sm focus:outline-none focus:ring-primary focus:border-primary resize-none text-sm`}
             />
+            {errors.shortDescription && <p className="mt-1 text-sm text-red-500">{errors.shortDescription}</p>}
             <p className="mt-1 text-xs text-gray-400 text-right">{(formData.shortDescription || '').length}/500</p>
           </div>
 

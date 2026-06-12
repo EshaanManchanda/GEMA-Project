@@ -377,7 +377,7 @@ export const getAllEvents = async (
     // Pagination - cap limit to prevent performance issues
     const pageNum = parseInt(page);
     let limitNum = parseInt(limit);
-    limitNum = Math.min(limitNum, 50); // Cap at 50 max
+    limitNum = Math.min(limitNum, 1000); // Cap at 1000 to support admin client-side filtering
     const skip = (pageNum - 1) * limitNum;
 
     // Sort

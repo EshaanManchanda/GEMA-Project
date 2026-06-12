@@ -217,7 +217,7 @@ const CollectionsCarousel: React.FC<CollectionsCarouselProps> = ({ collections: 
               style={{ backgroundColor: 'rgba(0,0,0,0.3)', color: 'white' }}>
               COLLECTIONS
             </div>
-            <h2 className="text-white text-3xl font-bold">Kidzapproved Collections</h2>
+            <h2 className="text-white text-3xl font-bold">Kidrove Activity Collections</h2>
             <p className="text-white/80 mt-2 max-w-md">
               Curated lists of the best kid-friendly activities and venues
               {collections.length > 0 && (

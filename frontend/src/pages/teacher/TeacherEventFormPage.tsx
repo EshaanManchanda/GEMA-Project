@@ -268,6 +268,7 @@ const TeacherEventFormPage: React.FC = () => {
 
     if (!title.trim()) newErrors.title = 'Title is required';
     if (!description.trim()) newErrors.description = 'Description is required';
+    if (!shortDescription.trim()) newErrors.shortDescription = 'Short description is required';
     if (!category) newErrors.category = 'Category is required';
     if (!isFreeEvent && !basePrice.trim()) newErrors.basePrice = 'Base price is required';
 
@@ -639,7 +640,7 @@ const TeacherEventFormPage: React.FC = () => {
                 {/* Short Description */}
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-2">
-                    Short Description <span className="text-gray-400 text-xs font-normal">(optional — shown in event cards)</span>
+                    Short Description <span className="text-red-500">*</span> <span className="text-gray-400 text-xs font-normal">(shown in event cards)</span>
                   </label>
                   <textarea
                     rows={3}
@@ -647,8 +648,10 @@ const TeacherEventFormPage: React.FC = () => {
                     value={shortDescription}
                     onChange={(e) => setShortDescription(e.target.value)}
                     placeholder="A brief summary of your class (max 500 characters)..."
-                    className="w-full px-4 py-3 border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-purple-500 resize-none"
+                    required
+                    className={`w-full px-4 py-3 border ${errors.shortDescription ? 'border-red-500' : 'border-gray-200'} rounded-xl focus:outline-none focus:ring-2 focus:ring-purple-500 resize-none`}
                   />
+                  {errors.shortDescription && <p className="text-red-500 text-sm mt-1">{errors.shortDescription}</p>}
                   <p className="mt-1 text-xs text-gray-400 text-right">{shortDescription.length}/500</p>
                 </div>
 

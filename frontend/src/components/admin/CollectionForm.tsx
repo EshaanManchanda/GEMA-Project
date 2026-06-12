@@ -98,6 +98,8 @@ const CollectionForm: React.FC<CollectionFormProps> = ({
   const [events, setEvents] = useState<any[]>([]);
   const [eventsLoading, setEventsLoading] = useState(false);
   const [eventSearch, setEventSearch] = useState('');
+  const [currentPage, setCurrentPage] = useState(1);
+  const eventsPerPage = 20;
 
   // MediaAsset states
   const [showIconPicker, setShowIconPicker] = useState(false);
@@ -143,7 +145,7 @@ const CollectionForm: React.FC<CollectionFormProps> = ({
     const fetchEvents = async () => {
       try {
         setEventsLoading(true);
-        const response = await adminAPI.getEvents({ limit: 100, status: 'published' });
+        const response = await adminAPI.getEvents({ limit: 1000, status: 'published' });
         setEvents(response.events || []);
         if (import.meta.env.VITE_DEBUG === 'true') {
           logger.debug('Events loaded', { count: response.events?.length });
@@ -268,6 +270,14 @@ const CollectionForm: React.FC<CollectionFormProps> = ({
   const filteredEvents = events.filter(event =>
     event.title?.toLowerCase().includes(eventSearch.toLowerCase())
   );
+
+  // Reset to first page when search changes
+  useEffect(() => {
+    setCurrentPage(1);
+  }, [eventSearch]);
+
+  const totalPages = Math.ceil(filteredEvents.length / eventsPerPage);
+  const paginatedEvents = filteredEvents.slice((currentPage - 1) * eventsPerPage, currentPage * eventsPerPage);
 
   // Handle event toggle
   const handleEventToggle = (eventId: string) => {
@@ -606,11 +616,11 @@ const CollectionForm: React.FC<CollectionFormProps> = ({
               <div className="border border-gray-200 rounded-md max-h-96 overflow-y-auto">
                 {eventsLoading ? (
                   <div className="p-4 text-center text-gray-500">Loading events...</div>
-                ) : filteredEvents.length === 0 ? (
+                ) : paginatedEvents.length === 0 ? (
                   <div className="p-4 text-center text-gray-500">No events found</div>
                 ) : (
                   <div className="divide-y divide-gray-100">
-                    {filteredEvents.map((event) => {
+                    {paginatedEvents.map((event) => {
                       const eventId = toEventIdString(event._id || event.id);
                       if (!eventId) return null;
 
@@ -682,6 +692,36 @@ const CollectionForm: React.FC<CollectionFormProps> = ({
                   </div>
                 )}
               </div>
+              
+              {/* Pagination Controls */}
+              {totalPages > 1 && (
+                <div className="flex items-center justify-between mt-3 px-2">
+                  <div className="text-xs text-gray-500">
+                    Showing {(currentPage - 1) * eventsPerPage + 1} to {Math.min(currentPage * eventsPerPage, filteredEvents.length)} of {filteredEvents.length} events
+                  </div>
+                  <div className="flex items-center gap-1">
+                    <button
+                      type="button"
+                      onClick={() => setCurrentPage(p => Math.max(1, p - 1))}
+                      disabled={currentPage === 1}
+                      className="px-2 py-1 text-xs border border-gray-300 rounded hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed"
+                    >
+                      Prev
+                    </button>
+                    <span className="text-xs text-gray-700 px-2">
+                      Page {currentPage} of {totalPages}
+                    </span>
+                    <button
+                      type="button"
+                      onClick={() => setCurrentPage(p => Math.min(totalPages, p + 1))}
+                      disabled={currentPage === totalPages}
+                      className="px-2 py-1 text-xs border border-gray-300 rounded hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed"
+                    >
+                      Next
+                    </button>
+                  </div>
+                </div>
+              )}
             </div>
           </div>
         )}

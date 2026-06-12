@@ -271,13 +271,14 @@ const TeachingBasicInfoTab: React.FC<TeachingBasicInfoTabProps> = ({
           {/* Short Description */}
           <div>
             <label htmlFor="shortDescription" className="block text-sm font-medium text-gray-700 mb-2">
-              Short Description <span className="text-gray-500 font-normal">(max 500 characters)</span>
+              Short Description <span className="text-red-500">*</span> <span className="text-gray-500 font-normal">(max 500 characters)</span>
             </label>
             <textarea
               id="shortDescription"
               name="shortDescription"
               value={formData.shortDescription || ""}
               onChange={onInputChange}
+              required
               rows={3}
               maxLength={500}
               className={`w-full px-4 py-3 border ${errors.shortDescription ? 'border-red-500' : 'border-gray-300'} rounded-lg shadow-sm focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-primary-500`}
