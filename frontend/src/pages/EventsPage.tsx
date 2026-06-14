@@ -55,7 +55,7 @@ const EventCard: React.FC<EventCardProps> = ({ event, formattedDate }) => {
         </div>
         <div className="absolute bottom-0 left-0 m-3">
           <span className="bg-black bg-opacity-70 text-white px-3 py-1 rounded-full text-xs">
-            {event.category}
+            {event.category.replace(/&amp;/g, '&')}
           </span>
         </div>
       </div>

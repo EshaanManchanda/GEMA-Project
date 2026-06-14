@@ -82,7 +82,7 @@ for (const { worker, name } of workersForDLQ) {
           error: err.message,
           failedAt: new Date().toISOString(),
         })
-        .catch(() => {}); // DLQ write should never crash the worker
+        .catch(() => { }); // DLQ write should never crash the worker
     }
   });
 }

@@ -114,7 +114,7 @@ const CollectionSectionHeader: React.FC<CollectionSectionHeaderProps> = ({
               className="font-semibold"
               style={{ color: accentColor || 'var(--primary-color)' }}
             >
-              {badge}
+              {typeof badge === 'string' ? badge.replace(/&amp;/g, '&') : badge}
             </span>
           </div>
         )}

@@ -536,24 +536,24 @@ const AdminCollectionsPage: React.FC = () => {
                                 <Link
                                   to={`/collections/${collection.slug || collection._id}`}
                                   target="_blank"
-                                  className="p-1 text-blue-600 hover:text-blue-800 transition-colors"
+                                  className="p-2 text-blue-600 hover:text-blue-800 transition-colors"
                                   title="View"
                                 >
-                                  <Eye size={16} />
+                                  <Eye size={20} />
                                 </Link>
                                 <button
                                   onClick={() => handleEdit(collection)}
-                                  className="p-1 text-gray-600 hover:text-gray-800 transition-colors"
+                                  className="p-2 text-gray-600 hover:text-gray-800 transition-colors"
                                   title="Edit"
                                 >
-                                  <Edit size={16} />
+                                  <Edit size={20} />
                                 </button>
                                 <button
                                   onClick={() => handleDeleteClick(collection._id)}
-                                  className="p-1 text-red-600 hover:text-red-800 transition-colors"
+                                  className="p-2 text-red-600 hover:text-red-800 transition-colors"
                                   title="Delete"
                                 >
-                                  <Trash2 size={16} />
+                                  <Trash2 size={20} />
                                 </button>
                               </div>
                             </td>

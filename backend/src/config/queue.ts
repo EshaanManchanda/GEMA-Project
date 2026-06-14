@@ -19,63 +19,63 @@ if (areQueuesDisabled) {
 export const bullMQClient = areQueuesDisabled
   ? null
   : new Redis({
-      host: process.env.REDIS_HOST || "localhost",
-      port: parseInt(process.env.REDIS_PORT || "6379", 10),
-      username: process.env.REDIS_USERNAME || undefined,
-      password: process.env.REDIS_PASSWORD || undefined,
-      db: parseInt(process.env.REDIS_DB || "0", 10),
+    host: process.env.REDIS_HOST || "localhost",
+    port: parseInt(process.env.REDIS_PORT || "6379", 10),
+    username: process.env.REDIS_USERNAME || undefined,
+    password: process.env.REDIS_PASSWORD || undefined,
+    db: parseInt(process.env.REDIS_DB || "0", 10),
 
-      // BullMQ requirements
-      maxRetriesPerRequest: null, // REQUIRED by BullMQ - cannot use redisClient which has maxRetriesPerRequest: 3
-      enableReadyCheck: false,
-      enableOfflineQueue: false,
+    // BullMQ requirements
+    maxRetriesPerRequest: null, // REQUIRED by BullMQ - cannot use redisClient which has maxRetriesPerRequest: 3
+    enableReadyCheck: false,
+    enableOfflineQueue: false,
 
-      // Connection optimization
-      lazyConnect: false,
-      enableAutoPipelining: true, // Better performance with shared connection
+    // Connection optimization
+    lazyConnect: false,
+    enableAutoPipelining: true, // Better performance with shared connection
 
-      // Reconnection strategy - never give up, use exponential backoff
-      retryStrategy(times: number) {
-        const maxDelay = 30000; // 30 seconds max delay
-        const baseDelay = 1000; // Start at 1 second
-        const jitter = Math.random() * 500; // Add randomness to prevent thundering herd
+    // Reconnection strategy - never give up, use exponential backoff
+    retryStrategy(times: number) {
+      const maxDelay = 30000; // 30 seconds max delay
+      const baseDelay = 1000; // Start at 1 second
+      const jitter = Math.random() * 500; // Add randomness to prevent thundering herd
 
-        // Exponential backoff: delay = baseDelay * 2^times, capped at maxDelay
-        const delay = Math.min(
-          baseDelay * Math.pow(2, Math.min(times, 5)) + jitter,
-          maxDelay,
+      // Exponential backoff: delay = baseDelay * 2^times, capped at maxDelay
+      const delay = Math.min(
+        baseDelay * Math.pow(2, Math.min(times, 5)) + jitter,
+        maxDelay,
+      );
+
+      if (times > 50) {
+        logger.error(
+          `BullMQ Redis: Still reconnecting after ${times} attempts. Check Redis server status.`,
         );
+      } else if (times > 10) {
+        logger.warn(
+          `BullMQ Redis reconnecting... Attempt ${times}, delay: ${Math.round(delay)}ms`,
+        );
+      } else {
+        logger.info(
+          `BullMQ Redis reconnecting... Attempt ${times}, delay: ${Math.round(delay)}ms`,
+        );
+      }
 
-        if (times > 50) {
-          logger.error(
-            `BullMQ Redis: Still reconnecting after ${times} attempts. Check Redis server status.`,
-          );
-        } else if (times > 10) {
-          logger.warn(
-            `BullMQ Redis reconnecting... Attempt ${times}, delay: ${Math.round(delay)}ms`,
-          );
-        } else {
-          logger.info(
-            `BullMQ Redis reconnecting... Attempt ${times}, delay: ${Math.round(delay)}ms`,
-          );
+      return delay; // Keep trying indefinitely
+    },
+
+    // Connection timeout
+    connectTimeout: 5000,
+    keepAlive: 30000,
+
+    // TLS for production
+    tls:
+      process.env.REDIS_TLS === "true"
+        ? {
+          rejectUnauthorized:
+            process.env.REDIS_TLS_REJECT_UNAUTHORIZED !== "false",
         }
-
-        return delay; // Keep trying indefinitely
-      },
-
-      // Connection timeout
-      connectTimeout: 5000,
-      keepAlive: 30000,
-
-      // TLS for production
-      tls:
-        process.env.REDIS_TLS === "true"
-          ? {
-              rejectUnauthorized:
-                process.env.REDIS_TLS_REJECT_UNAUTHORIZED !== "false",
-            }
-          : undefined,
-    });
+        : undefined,
+  });
 
 // Event handlers for BullMQ client
 if (bullMQClient) {
@@ -108,9 +108,9 @@ if (bullMQClient) {
       if (policy !== "noeviction") {
         logger.error(
           `CRITICAL: Redis eviction policy is "${policy}" but MUST be "noeviction" for BullMQ!\n` +
-            `This can cause job data corruption and worker failures.\n` +
-            `Fix: redis-cli CONFIG SET maxmemory-policy noeviction\n` +
-            `See backend/REDIS_CONFIG.md for detailed instructions.`,
+          `This can cause job data corruption and worker failures.\n` +
+          `Fix: redis-cli CONFIG SET maxmemory-policy noeviction\n` +
+          `See backend/REDIS_CONFIG.md for detailed instructions.`,
         );
       } else {
         logger.info("Redis eviction policy check: OK (noeviction)");

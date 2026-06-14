@@ -246,7 +246,7 @@ const CollectionDetailPage: React.FC = () => {
   const breadcrumbs = collection ? [
     { name: 'Home', url: '/' },
     { name: 'Collections', url: '/collections' },
-    { name: collection.title, url: `/collections/${collection.slug || collection._id}` }
+    { name: collection.title.replace(/&amp;/g, '&'), url: `/collections/${collection.slug || collection._id}` }
   ] : [];
 
   const activitiesCount =
@@ -269,7 +269,7 @@ const CollectionDetailPage: React.FC = () => {
                 Collections
               </button>
               <FaChevronRight size={10} />
-              <span className="text-gray-900 font-medium">{collection.title}</span>
+              <span className="text-gray-900 font-medium">{collection.title.replace(/&amp;/g, '&')}</span>
             </nav>
 
             {/* Collection Header */}
@@ -301,7 +301,7 @@ const CollectionDetailPage: React.FC = () => {
               {/* Collection Info */}
               <div className="flex-1">
                 <h1 className="text-3xl font-bold mb-2 text-primary">
-                  {collection.title}
+                  {collection.title.replace(/&amp;/g, '&')}
                 </h1>
 
                 <div className="flex items-center space-x-4 mb-4">
@@ -350,7 +350,7 @@ const CollectionDetailPage: React.FC = () => {
                     />
                     {event.category && (
                       <div className="absolute top-4 left-4 bg-white/90 backdrop-blur-sm rounded-full px-3 py-1 text-sm font-semibold text-gray-900 shadow-sm">
-                        {event.category}
+                        {event.category.replace(/&amp;/g, '&')}
                       </div>
                     )}
                   </div>

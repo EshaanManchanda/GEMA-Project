@@ -447,7 +447,7 @@ const EventCardBadges: React.FC<EventCardBadgesProps> = ({
       {category && showCategory && (
         <div className={`absolute bottom-3 left-3 ${categoryConfig.color} text-xs font-semibold px-2 py-1 rounded-full shadow-sm z-10`}>
           <span className="mr-1">{categoryConfig.icon}</span>
-          {category}
+          {category.replace(/&amp;/g, '&')}
         </div>
       )}
     </>
