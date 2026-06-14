@@ -571,22 +571,31 @@ export const deleteCollection = async (
 ) => {
   try {
     const { id } = req.params;
+    const { permanent } = req.query;
 
-    const collection = await Collection.findByIdAndUpdate(
-      id,
-      { isActive: false },
-      { new: true },
-    );
+    let collection;
 
-    if (!collection) {
-      return next(new AppError("Collection not found", 404));
+    if (permanent === 'true') {
+      collection = await Collection.findByIdAndDelete(id);
+      if (!collection) {
+        return next(new AppError("Collection not found", 404));
+      }
+      logger.info(`Permanently deleted collection: ${collection.title}`);
+    } else {
+      collection = await Collection.findByIdAndUpdate(
+        id,
+        { isActive: false },
+        { new: true },
+      );
+      if (!collection) {
+        return next(new AppError("Collection not found", 404));
+      }
+      logger.info(`Deactivated collection: ${collection.title}`);
     }
-
-    logger.info(`Deactivated collection: ${collection.title}`);
 
     res.status(200).json({
       success: true,
-      message: "Collection deleted successfully",
+      message: permanent === 'true' ? "Collection permanently deleted" : "Collection deleted successfully",
     });
   } catch (error) {
     logger.error("Error deleting collection:", error);

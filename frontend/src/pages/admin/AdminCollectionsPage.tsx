@@ -168,12 +168,12 @@ const AdminCollectionsPage: React.FC = () => {
   };
 
   // Handle delete confirm
-  const handleDeleteConfirm = async () => {
+  const handleDeleteConfirm = async (permanent: boolean = false) => {
     if (!deletingCollectionId) return;
 
     try {
-      await collectionsAPI.deleteCollection(deletingCollectionId);
-      toast.success('Collection deleted successfully');
+      await collectionsAPI.deleteCollection(deletingCollectionId, permanent);
+      toast.success(`Collection ${permanent ? 'permanently deleted' : 'soft deleted'} successfully`);
       fetchCollections(true);
       fetchStats();
       setDeleteConfirmOpen(false);
@@ -459,7 +459,7 @@ const AdminCollectionsPage: React.FC = () => {
                               className="h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300 rounded"
                             />
                           </th>
-                          <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                          <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider w-16">
                             Icon
                           </th>
                           <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
@@ -493,8 +493,8 @@ const AdminCollectionsPage: React.FC = () => {
                                 className="h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300 rounded"
                               />
                             </td>
-                            <td className="px-4 py-4">
-                              <div className="w-10 h-10 rounded-full overflow-hidden bg-gray-100">
+                            <td className="px-4 py-4 w-16">
+                              <div className="w-10 h-10 min-w-[40px] rounded-full overflow-hidden bg-gray-100 flex-shrink-0">
                                 <img
                                   src={collection.icon}
                                   alt={collection.title}
@@ -505,9 +505,9 @@ const AdminCollectionsPage: React.FC = () => {
                                 />
                               </div>
                             </td>
-                            <td className="px-4 py-4">
+                            <td className="px-4 py-4 max-w-[250px] lg:max-w-md xl:max-w-lg">
                               <div>
-                                <p className="text-sm font-medium text-gray-900">{collection.title}</p>
+                                <p className="text-sm font-medium text-gray-900 truncate">{collection.title}</p>
                                 <p className="text-xs text-gray-500 line-clamp-1">{collection.description}</p>
                               </div>
                             </td>
@@ -631,18 +631,40 @@ const AdminCollectionsPage: React.FC = () => {
           onSubmit={handleFormSubmit}
         />
 
-        {/* Delete Confirmation Dialog */}
-        <ConfirmDialog
-          isOpen={deleteConfirmOpen}
-          onClose={() => {
-            setDeleteConfirmOpen(false);
-            setDeletingCollectionId(null);
-          }}
-          onConfirm={handleDeleteConfirm}
-          title="Delete Collection"
-          message="Are you sure you want to delete this collection? This action will deactivate the collection."
-          type="danger"
-        />
+        {/* Delete Confirmation Modal */}
+        {deleteConfirmOpen && (
+          <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+            <div className="bg-white rounded-lg p-6 w-full max-w-md">
+              <h3 className="text-lg font-medium mb-4">Confirm Delete</h3>
+              <p className="text-gray-600 mb-6">
+                Are you sure you want to delete this collection? You can choose to soft delete (deactivate) or permanently delete.
+              </p>
+              <div className="flex justify-end gap-2">
+                <button
+                  onClick={() => {
+                    setDeleteConfirmOpen(false);
+                    setDeletingCollectionId(null);
+                  }}
+                  className="px-4 py-2 text-gray-600 border border-gray-300 rounded-lg hover:bg-gray-50"
+                >
+                  Cancel
+                </button>
+                <button
+                  onClick={() => handleDeleteConfirm(false)}
+                  className="px-4 py-2 bg-yellow-600 text-white rounded-lg hover:bg-yellow-700"
+                >
+                  Soft Delete
+                </button>
+                <button
+                  onClick={() => handleDeleteConfirm(true)}
+                  className="px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700"
+                >
+                  Permanent Delete
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
 
         {/* Bulk Action Confirmation Dialog */}
         <ConfirmDialog

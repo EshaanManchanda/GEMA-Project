@@ -586,7 +586,7 @@ const AdminEventsPage: React.FC = () => {
                     <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                       Views
                     </th>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider min-w-[240px] sticky right-0 bg-gray-50 z-20">
+                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider min-w-[240px] xl:sticky xl:right-0 bg-gray-50 z-20">
                       Actions
                     </th>
                   </tr>
@@ -676,7 +676,7 @@ const AdminEventsPage: React.FC = () => {
                         <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
                           {event.viewsCount.toLocaleString()}
                         </td>
-                        <td className="px-6 py-4 whitespace-nowrap text-sm font-medium min-w-[240px] sticky right-0 bg-white z-10">
+                        <td className="px-6 py-4 whitespace-nowrap text-sm font-medium min-w-[240px] xl:sticky xl:right-0 bg-white z-10">
                           <div className="flex items-center gap-2">
                             <button
                               onClick={() => navigate(`/admin/events/${event.id}`)}

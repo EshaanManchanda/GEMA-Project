@@ -169,10 +169,10 @@ const collectionsAPI = {
     }
   },
 
-  // Delete collection (soft delete)
-  deleteCollection: async (id: string): Promise<void> => {
+  // Delete collection (soft or permanent)
+  deleteCollection: async (id: string, permanent: boolean = false): Promise<void> => {
     try {
-      const response = await ApiService.delete(`/admin/collections/${id}`);
+      const response = await ApiService.delete(`/admin/collections/${id}${permanent ? '?permanent=true' : ''}`);
       logApiResponse(`DELETE /admin/collections/${id}`, response);
       return extractApiData(response);
     } catch (error) {
