@@ -399,7 +399,7 @@ export const createCollection = async (
       return next(new AppError("Validation errors", 400, errors.array()));
     }
 
-    const { title, description, icon, category, events, sortOrder } = req.body;
+    const { title, description, icon, iconAsset, featuredImageAsset, seo, slug, isActive, category, events, sortOrder } = req.body;
 
     // Verify events exist
       const normalizedEventIds = normalizeEventIds(events);
@@ -423,6 +423,11 @@ export const createCollection = async (
       title,
       description,
       icon,
+      iconAsset,
+      featuredImageAsset,
+      seo: seo || {},
+      slug,
+      isActive: isActive !== undefined ? isActive : true,
       category,
       events: normalizedEventIds,
       sortOrder,
@@ -468,7 +473,7 @@ export const updateCollection = async (
     }
 
     const { id } = req.params;
-    const { title, description, icon, category, events, isActive, sortOrder } =
+    const { title, description, icon, iconAsset, featuredImageAsset, seo, slug, category, events, isActive, sortOrder } =
       req.body;
 
     const normalizedEventIds = normalizeEventIds(events);
@@ -492,12 +497,12 @@ export const updateCollection = async (
       id,
       {
         title,
-        slug:
-          title !== undefined
-            ? slugifyCollectionTitle(title)
-            : undefined,
+        slug: slug || (title !== undefined ? slugifyCollectionTitle(title) : undefined),
         description,
         icon,
+        iconAsset,
+        featuredImageAsset,
+        seo,
         category,
         events: events !== undefined ? normalizedEventIds : undefined,
         eventsData: events !== undefined ? [] : undefined,

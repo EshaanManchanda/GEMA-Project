@@ -233,8 +233,8 @@ CollectionSchema.methods.getEventCount = async function (): Promise<number> {
   });
 };
 
-// Pre-save middleware to update count display and generate slug
-CollectionSchema.pre("save", async function (next) {
+// Pre-validate middleware to update count display and generate slug
+CollectionSchema.pre("validate", async function (next) {
   // Generate slug from title if not provided
   if (this.isModified("title") && !this.slug) {
     this.slug = this.title
@@ -244,6 +244,10 @@ CollectionSchema.pre("save", async function (next) {
   }
 
   // Auto-generate SEO fields if not provided
+  if (!this.seo) {
+    this.seo = {};
+  }
+
   if (!this.seo.metaTitle) {
     this.seo.metaTitle =
       this.title.length > 70 ? `${this.title.substring(0, 67)}...` : this.title;
