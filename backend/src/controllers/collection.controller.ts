@@ -493,28 +493,44 @@ export const updateCollection = async (
       }
     }
 
-    const collection = await Collection.findByIdAndUpdate(
-      id,
-      {
-        title,
-        slug: slug || (title !== undefined ? slugifyCollectionTitle(title) : undefined),
-        description,
-        icon,
-        iconAsset,
-        featuredImageAsset,
-        seo,
-        category,
-        events: events !== undefined ? normalizedEventIds : undefined,
-        eventsData: events !== undefined ? [] : undefined,
-        isActive,
-        sortOrder,
-      },
-      { new: true, runValidators: true },
-    );
+    const collection = await Collection.findById(id);
 
     if (!collection) {
       return next(new AppError("Collection not found", 404));
     }
+
+    if (title !== undefined) collection.title = title;
+    if (description !== undefined) collection.description = description;
+    if (icon !== undefined) collection.icon = icon;
+    if (iconAsset !== undefined) collection.iconAsset = iconAsset;
+    if (featuredImageAsset !== undefined) collection.featuredImageAsset = featuredImageAsset;
+    if (seo !== undefined) collection.seo = seo;
+    if (category !== undefined) collection.category = category;
+    if (isActive !== undefined) collection.isActive = isActive;
+    if (sortOrder !== undefined) collection.sortOrder = sortOrder;
+
+    if (title !== undefined) {
+      const generatedSlug = slugifyCollectionTitle(title);
+      if (
+        slug === undefined ||
+        slug === null ||
+        slug === "" ||
+        slug === collection.slug
+      ) {
+        collection.slug = generatedSlug;
+      } else {
+        collection.slug = slug;
+      }
+    } else if (slug !== undefined) {
+      collection.slug = slug;
+    }
+
+    if (events !== undefined) {
+      collection.events = normalizedEventIds.map(id => new mongoose.Types.ObjectId(id));
+      collection.eventsData = [];
+    }
+
+    await collection.save();
 
     // Trigger sync if events changed
     if (events !== undefined && collection.events) {
@@ -1119,14 +1135,14 @@ export const updateCollectionWithFiles = async (
       updateData.eventsData = [];
     }
 
-    const collection = await Collection.findByIdAndUpdate(id, updateData, {
-      new: true,
-      runValidators: true,
-    });
+    const collection = await Collection.findById(id);
 
     if (!collection) {
       return next(new AppError("Collection not found", 404));
     }
+
+    Object.assign(collection, updateData);
+    await collection.save();
 
     if (events !== undefined) {
       try {
