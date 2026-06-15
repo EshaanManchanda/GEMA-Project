@@ -496,7 +496,7 @@ const AdminCollectionsPage: React.FC = () => {
                             <td className="px-4 py-4 w-16">
                               <div className="w-10 h-10 min-w-[40px] rounded-full overflow-hidden bg-gray-100 flex-shrink-0">
                                 <img
-                                  src={collection.icon}
+                                  src={collection.iconAsset?.url || collection.icon}
                                   alt={collection.title}
                                   className="w-full h-full object-cover"
                                   onError={(e) => {
