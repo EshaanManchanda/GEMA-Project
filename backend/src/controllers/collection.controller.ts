@@ -355,7 +355,7 @@ export const getCollectionById = async (
         transformEventResponse(event),
       );
       collection.events.sort(
-        (a, b) => getLatestEventDate(b) - getLatestEventDate(a),
+        (a: any, b: any) => (b.viewsCount || 0) - (a.viewsCount || 0),
       );
     }
 

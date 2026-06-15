@@ -219,7 +219,7 @@ const HomePage: React.FC = () => {
           eventCardVariant="default"
           maxItems={8}
           enablePagination={true}
-          viewAllLink="/search?collection=handpicked"
+          viewAllLink="/collections/handpicked-experience"
           showPrice={true}
           showLocation={true}
           showAgeGroup={true}

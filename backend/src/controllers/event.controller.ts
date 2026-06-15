@@ -293,7 +293,14 @@ export const getEvents = async (
 
     // Text search
     if (search) {
-      filter.$text = { $search: search as string };
+      const searchRegex = new RegExp((search as string).trim(), 'i');
+      filter.$or = [
+        { title: searchRegex },
+        { description: searchRegex },
+        { tags: { $in: [searchRegex] } },
+        { "location.city": searchRegex },
+        { "location.address": searchRegex }
+      ];
     }
 
     // Date range filtering
@@ -311,7 +318,7 @@ export const getEvents = async (
     const sort: any = {};
     sort.featuredUntil = -1; // nulls sort last in desc; active promotions bubble up
     if (search && !sortBy) {
-      sort.score = { $meta: "textScore" };
+      sort.createdAt = -1;
     } else {
       sort[sortBy as string] = sortOrder === "asc" ? 1 : -1;
     }
