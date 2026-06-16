@@ -77,6 +77,7 @@ export interface HomepageVenue {
 
 export interface HomepageData {
   events: Event[];
+  bestPriceEvents: Event[];
   featuredEvents: Event[];
   banners: Banner[];
   categories: Category[];

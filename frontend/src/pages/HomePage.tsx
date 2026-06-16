@@ -73,12 +73,18 @@ const HomePage: React.FC = () => {
 
   // Prepare different event collections for various layouts
   const handpickedEvents = useMemo(
-    () => events.filter(e => e.isFeatured || (e.rating && e.rating >= 4.5)).slice(0, 8),
+    () => events
+      .filter(e => e.isFeatured || (e.rating && e.rating >= 4.5))
+      .sort((a, b) => (b.viewsCount || 0) - (a.viewsCount || 0))
+      .slice(0, 8),
     [events]
   );
+  const apiBestPriceEvents = (homepageData?.bestPriceEvents || (homepageError ? mockEvents : [])) as unknown as ApiEvent[];
+  const bestPriceEventsRaw = apiBestPriceEvents.map(mapToUIEvent);
+
   const bestPriceEvents = useMemo(
-    () => [...events].sort((a, b) => (a.price || 0) - (b.price || 0)).slice(0, 12),
-    [events]
+    () => bestPriceEventsRaw.slice(0, 12),
+    [bestPriceEventsRaw]
   );
   const trendingEvents = useMemo(
     () => [...events].sort((a, b) => (b.viewsCount || 0) - (a.viewsCount || 0)).slice(0, 12),
@@ -156,7 +162,7 @@ const HomePage: React.FC = () => {
           autoplayInterval={5000}
           showNavigation={true}
           showDots={true}
-          viewAllLink="/search?sort=price"
+          viewAllLink="/search?sortBy=price&sortOrder=asc"
           showPrice={true}
           showLocation={true}
           showWishlist={false}

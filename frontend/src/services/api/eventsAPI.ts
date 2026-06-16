@@ -94,6 +94,17 @@ const eventsAPI = {
     }
   },
 
+  getUniqueCities: async (country?: string) => {
+    try {
+      const response = await ApiService.get('/events/cities', { params: { country } });
+      logApiResponse('GET /events/cities', response);
+      return extractApiData(response);
+    } catch (error) {
+      logApiResponse('GET /events/cities', null, error);
+      throw error;
+    }
+  },
+
   createEvent: async (eventData: any) => {
     try {
       const response = await ApiService.post('/events', eventData);

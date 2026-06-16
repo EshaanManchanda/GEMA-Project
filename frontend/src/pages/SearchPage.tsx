@@ -4,6 +4,9 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { FaSearch, FaFilter, FaTimes, FaChevronDown, FaChevronUp, FaMapMarkerAlt, FaCalendarAlt, FaTag, FaDollarSign, FaUsers, FaBuilding, FaStar } from 'react-icons/fa';
 import { SearchEvent, SearchFilters, FilterOptions } from '../types/search';
 import { useEventsSearchQuery } from '@/hooks/queries/useEventsQuery';
+import { useCategoriesQuery } from '@/hooks/queries/useCategoriesQuery';
+import { useQuery } from '@tanstack/react-query';
+import eventsAPI from '@/services/api/eventsAPI';
 import SEO from '@/components/common/SEO';
 import EventCard from '@/components/client/EventCard';
 import { useSelector, useDispatch } from 'react-redux';
@@ -255,11 +258,11 @@ const FilterContent: React.FC<FilterContentProps> = ({
   };
 
   // Filter valid options
-  const validCategories = filterOptions.categories.filter(c => c.count > 0 && c.value);
-  const validEventTypes = filterOptions.eventTypes.filter(t => t.count > 0 && t.value);
-  const validVenueTypes = filterOptions.venueTypes.filter(v => v.count > 0 && v.value);
-  const validCities = filterOptions.cities.filter(c => c.count > 0 && c.value);
-  const validCurrencies = filterOptions.currencies.filter(c => c.count > 0 && c.value);
+  const validCategories = filterOptions.categories.filter(c => c.value);
+  const validEventTypes = filterOptions.eventTypes.filter(t => t.value);
+  const validVenueTypes = filterOptions.venueTypes.filter(v => v.value);
+  const validCities = filterOptions.cities.filter(c => c.value);
+  const validCurrencies = filterOptions.currencies.filter(c => c.value);
 
   return (
     <>
@@ -288,9 +291,6 @@ const FilterContent: React.FC<FilterContentProps> = ({
                   />
                   <span className="capitalize text-gray-700 group-hover:text-gray-900">{category.label}</span>
                 </div>
-                <span className="text-xs bg-gray-100 group-hover:bg-blue-100 text-gray-600 group-hover:text-blue-700 px-2.5 py-1 rounded-full font-medium transition-colors">
-                  {category.count}
-                </span>
               </label>
             ))}
           </div>
@@ -314,9 +314,6 @@ const FilterContent: React.FC<FilterContentProps> = ({
                   />
                   <span className="text-gray-700 group-hover:text-gray-900">{eventType.label}</span>
                 </div>
-                <span className="text-xs bg-gray-100 group-hover:bg-blue-100 text-gray-600 group-hover:text-blue-700 px-2.5 py-1 rounded-full font-medium transition-colors">
-                  {eventType.count}
-                </span>
               </label>
             ))}
           </div>
@@ -340,9 +337,6 @@ const FilterContent: React.FC<FilterContentProps> = ({
                   />
                   <span className="text-gray-700 group-hover:text-gray-900">{venueType.label}</span>
                 </div>
-                <span className="text-xs bg-gray-100 group-hover:bg-blue-100 text-gray-600 group-hover:text-blue-700 px-2.5 py-1 rounded-full font-medium transition-colors">
-                  {venueType.count}
-                </span>
               </label>
             ))}
           </div>
@@ -366,9 +360,6 @@ const FilterContent: React.FC<FilterContentProps> = ({
                   />
                   <span className="text-gray-700 group-hover:text-gray-900">{city.label}</span>
                 </div>
-                <span className="text-xs bg-gray-100 group-hover:bg-blue-100 text-gray-600 group-hover:text-blue-700 px-2.5 py-1 rounded-full font-medium transition-colors">
-                  {city.count}
-                </span>
               </label>
             ))}
           </div>
@@ -389,7 +380,7 @@ const FilterContent: React.FC<FilterContentProps> = ({
               <option value="">All Currencies</option>
               {validCurrencies.map((currency) => (
                 <option key={currency.value} value={currency.value}>
-                  {currency.label} ({currency.count})
+                  {currency.label}
                 </option>
               ))}
             </select>
@@ -406,6 +397,7 @@ const FilterContent: React.FC<FilterContentProps> = ({
             suffix={` ${pendingFilters.currency || 'AED'}`}
             disabled={loading}
           />
+
         </div>
       </CollapsibleSection>
 
@@ -542,12 +534,80 @@ const SearchPage: React.FC = () => {
   const [filterOptions, setFilterOptions] = useState<FilterOptions>({
     categories: [{ label: 'All Categories', value: '', count: 0 }],
     cities: [{ label: 'All Cities', value: '', count: 0 }],
-    eventTypes: [{ label: 'All Types', value: '', count: 0 }],
-    venueTypes: [{ label: 'All Venues', value: '', count: 0 }],
-    currencies: [{ label: 'All Currencies', value: '', count: 0 }],
-    priceRange: { min: 0, max: 1000 },
-    ageRange: { min: 0, max: 100 }
+    eventTypes: [
+      { label: 'All Types', value: '', count: 0 },
+      { label: 'Olympiad', value: 'Olympiad', count: 0 },
+      { label: 'Championship', value: 'Championship', count: 0 },
+      { label: 'Competition', value: 'Competition', count: 0 },
+      { label: 'Event', value: 'Event', count: 0 },
+      { label: 'Course', value: 'Course', count: 0 },
+      { label: 'Venue', value: 'Venue', count: 0 },
+      { label: 'Workshop', value: 'Workshop', count: 0 },
+      { label: 'Class', value: 'Class', count: 0 },
+      { label: 'Bootcamp', value: 'Bootcamp', count: 0 },
+      { label: 'Masterclass', value: 'Masterclass', count: 0 }
+    ],
+    venueTypes: [
+      { label: 'All Venues', value: '', count: 0 },
+      { label: 'Indoor', value: 'Indoor', count: 0 },
+      { label: 'Outdoor', value: 'Outdoor', count: 0 },
+      { label: 'Online', value: 'Online', count: 0 },
+      { label: 'Offline', value: 'Offline', count: 0 }
+    ],
+    currencies: [
+      { label: 'All Currencies', value: '', count: 0 },
+      { label: 'AED', value: 'AED', count: 0 },
+      { label: 'EGP', value: 'EGP', count: 0 },
+      { label: 'CAD', value: 'CAD', count: 0 },
+      { label: 'USD', value: 'USD', count: 0 }
+    ],
+    priceRange: { min: 0, max: 3000 },
+    ageRange: { min: 0, max: 18 }
   });
+
+  // Fetch categories from backend using categories slice/queries
+  const { data: categoriesData } = useCategoriesQuery({ tree: false });
+
+  // Fetch unique cities from backend
+  const { data: citiesData } = useQuery({
+    queryKey: ['cities'],
+    queryFn: () => eventsAPI.getUniqueCities(),
+    staleTime: 30 * 60 * 1000 // 30 minutes
+  });
+
+  // Update categories options when categoriesData changes
+  useEffect(() => {
+    if (categoriesData) {
+      setFilterOptions(prev => ({
+        ...prev,
+        categories: [
+          { label: 'All Categories', value: '', count: 0 },
+          ...(categoriesData || []).map((cat: any) => ({
+            label: cat.name,
+            value: cat.slug,
+            count: cat.eventCount || 0
+          }))
+        ]
+      }));
+    }
+  }, [categoriesData]);
+
+  // Update cities options when citiesData changes
+  useEffect(() => {
+    if (citiesData?.cities) {
+      setFilterOptions(prev => ({
+        ...prev,
+        cities: [
+          { label: 'All Cities', value: '', count: 0 },
+          ...(citiesData.cities || []).map((city: string) => ({
+            label: city,
+            value: city,
+            count: 0
+          }))
+        ]
+      }));
+    }
+  }, [citiesData]);
 
   // Initialize filters from URL params
   const [filters, setFilters] = useState<SearchFilters>(() => {
@@ -636,108 +696,6 @@ const SearchPage: React.FC = () => {
   const events = useMemo(() => searchData?.events || [], [searchData]);
   const pagination = searchData?.pagination || null;
   const error = queryError ? 'Failed to load search results. Please try again.' : null;
-
-  // Function to update filter options based on current events
-  const updateFilterOptions = useCallback((eventList: SearchEvent[]) => {
-    const categories = new Map<string, number>();
-    const cities = new Map<string, number>();
-    const eventTypes = new Map<string, number>();
-    const venueTypes = new Map<string, number>();
-    const currencies = new Map<string, number>();
-    let minPrice = Infinity;
-    let maxPrice = 0;
-    let minAge = Infinity;
-    let maxAge = 0;
-
-    // Add "All" options
-    categories.set('', eventList.length);
-    cities.set('', eventList.length);
-    eventTypes.set('', eventList.length);
-    venueTypes.set('', eventList.length);
-    currencies.set('', eventList.length);
-
-    eventList.forEach(event => {
-      // Categories
-      if (event.category) {
-        categories.set(event.category, (categories.get(event.category) || 0) + 1);
-      }
-
-      // Cities
-      if (event.location?.city) {
-        cities.set(event.location.city, (cities.get(event.location.city) || 0) + 1);
-      }
-
-      // Event types
-      if (event.type) {
-        eventTypes.set(event.type, (eventTypes.get(event.type) || 0) + 1);
-      }
-
-      // Venue types
-      if (event.venueType) {
-        venueTypes.set(event.venueType, (venueTypes.get(event.venueType) || 0) + 1);
-      }
-
-      // Currencies
-      if (event.currency) {
-        currencies.set(event.currency, (currencies.get(event.currency) || 0) + 1);
-      }
-
-      // Price range
-      if (event.price) {
-        minPrice = Math.min(minPrice, event.price);
-        maxPrice = Math.max(maxPrice, event.price);
-      }
-
-      // Age range
-      if (event.ageRange && event.ageRange.length >= 2) {
-        minAge = Math.min(minAge, event.ageRange[0]);
-        maxAge = Math.max(maxAge, event.ageRange[1]);
-      }
-    });
-
-    setFilterOptions({
-      categories: Array.from(categories.entries()).map(([value, count]) => ({
-        label: value === '' ? 'All Categories' : decodeHTMLEntities(value),
-        value,
-        count
-      })),
-      cities: Array.from(cities.entries()).map(([value, count]) => ({
-        label: value === '' ? 'All Cities' : decodeHTMLEntities(value),
-        value,
-        count
-      })),
-      eventTypes: Array.from(eventTypes.entries()).map(([value, count]) => ({
-        label: value === '' ? 'All Types' : decodeHTMLEntities(value),
-        value,
-        count
-      })),
-      venueTypes: Array.from(venueTypes.entries()).map(([value, count]) => ({
-        label: value === '' ? 'All Venues' : decodeHTMLEntities(value),
-        value,
-        count
-      })),
-      currencies: Array.from(currencies.entries()).map(([value, count]) => ({
-        label: value === '' ? 'All Currencies' : decodeHTMLEntities(value),
-        value,
-        count
-      })),
-      priceRange: {
-        min: minPrice === Infinity ? 0 : Math.floor(minPrice / 10) * 10,
-        max: maxPrice === 0 ? 1000 : Math.ceil(maxPrice / 10) * 10
-      },
-      ageRange: {
-        min: minAge === Infinity ? 0 : minAge,
-        max: maxAge === 0 ? 100 : maxAge
-      }
-    });
-  }, []);
-
-  // Update filter options when events change
-  useEffect(() => {
-    if (events.length > 0) {
-      updateFilterOptions(events);
-    }
-  }, [events, updateFilterOptions]);
 
   // Update URL params when filters change
   // searchParams ref prevents the effect from depending on searchParams (would cause a loop:

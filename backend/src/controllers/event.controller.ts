@@ -283,12 +283,14 @@ export const getEvents = async (
       if (maxPrice) filter.price.$lte = parseFloat(maxPrice as string);
     }
 
-    // Age range filtering
+    // Age range filtering (overlap check: eventMin <= userMax and eventMax >= userMin)
     if (ageMin || ageMax) {
-      const ageConditions: any = {};
-      if (ageMin) ageConditions.$gte = parseInt(ageMin as string);
-      if (ageMax) ageConditions.$lte = parseInt(ageMax as string);
-      filter.ageRange = { $elemMatch: ageConditions };
+      if (ageMin) {
+        filter["ageRange.1"] = { $gte: parseInt(ageMin as string) };
+      }
+      if (ageMax) {
+        filter["ageRange.0"] = { $lte: parseInt(ageMax as string) };
+      }
     }
 
     // Text search
@@ -303,15 +305,16 @@ export const getEvents = async (
       ];
     }
 
-    // Date range filtering
+    // Date range filtering (ensure both conditions apply to the same schedule slot using $elemMatch)
     if (dateFrom || dateTo) {
-      filter["dateSchedule.startDate"] = {};
+      const dateConditions: any = {};
       if (dateFrom) {
-        filter["dateSchedule.startDate"].$gte = new Date(dateFrom as string);
+        dateConditions.$gte = new Date(dateFrom as string);
       }
       if (dateTo) {
-        filter["dateSchedule.startDate"].$lte = new Date(dateTo as string);
+        dateConditions.$lte = new Date(dateTo as string);
       }
+      filter.dateSchedule = { $elemMatch: { startDate: dateConditions } };
     }
 
     // Build sort query — always pin active promoted events first

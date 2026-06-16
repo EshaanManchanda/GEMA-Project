@@ -43,6 +43,7 @@ export interface HomepageVenue {
 
 export interface HomepageData {
   events: IEvent[];
+  bestPriceEvents: IEvent[];
   featuredEvents: IEvent[];
   banners: IBanner[];
   categories: ICategory[];
@@ -80,6 +81,7 @@ class HomepageService {
     // Parallel queries for all homepage data
     const [
       events,
+      bestPriceEvents,
       featuredEvents,
       banners,
       categories,
@@ -107,6 +109,25 @@ class HomepageService {
           "url filename width height thumbnailUrl variations",
         )
         .sort({ createdAt: -1 })
+        .limit(12)
+        .lean(),
+
+      // Best price events (limit 12, published only)
+      Event.find({
+        isDeleted: false,
+        isApproved: true,
+        status: "published",
+      })
+        .select(
+          "title slug description images imageAssets price location dateSchedule category rating reviewCount viewsCount isFeatured vendorId ageGroup",
+        )
+        .populate("category", "name slug")
+        .populate("vendorId", "businessName")
+        .populate(
+          "imageAssets",
+          "url filename width height thumbnailUrl variations",
+        )
+        .sort({ price: 1, createdAt: -1 })
         .limit(12)
         .lean(),
 
@@ -382,6 +403,7 @@ class HomepageService {
 
     // Transform events to extract image URLs from populated imageAssets
     const transformedEvents = transformEventsResponse(events);
+    const transformedBestPriceEvents = transformEventsResponse(bestPriceEvents);
     const transformedFeaturedEvents = transformEventsResponse(featuredEvents);
 
     // Transform blogs to ensure consistent data structure
@@ -392,6 +414,7 @@ class HomepageService {
 
     const data: HomepageData = {
       events: transformedEvents,
+      bestPriceEvents: transformedBestPriceEvents,
       featuredEvents: transformedFeaturedEvents,
       banners: validBanners as unknown as IBanner[],
       categories: categories as unknown as ICategory[],
