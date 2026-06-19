@@ -13,6 +13,8 @@ import {
 } from "../controllers/admin.revenue.controller";
 import { authenticate, authorize } from "../middleware/auth";
 import { UserRole } from "../models/User";
+import { param } from "express-validator";
+import { validateRequest } from "../middleware/validation";
 
 const router = express.Router();
 
@@ -34,7 +36,12 @@ router.get("/transactions", getRevenueTransactions);
 router.post("/transactions", createRevenueTransaction);
 
 // PUT /api/admin/revenue/transactions/:id - Update revenue transaction
-router.put("/transactions/:id", updateRevenueTransaction);
+router.put(
+  "/transactions/:id",
+  [param("id").isMongoId().withMessage("Invalid transaction ID")],
+  validateRequest,
+  updateRevenueTransaction,
+);
 
 /**
  * Payout Management Routes

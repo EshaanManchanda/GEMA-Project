@@ -14,6 +14,8 @@ import {
 } from "../utils/event.utils";
 import { cacheService } from "../services/cache.service";
 import { invalidateEventCaches } from "../utils/cache.utils";
+import { escapeRegex } from "../utils/regexHelpers";
+import { escapeHtml } from "../utils/htmlHelpers";
 import { eventService } from "../services/event.service";
 import { CacheTTL } from "../config/cache-tiers"; // ✅ Phase 2.3: Tiered cache strategy
 import { emailService } from "../services/email.service";
@@ -236,22 +238,21 @@ export const getEvents = async (
 
     // Case-insensitive category matching (events store category as slugs)
     if (category) {
-      // Escape regex special characters to prevent injection
-      const escapedCategory = (category as string).replace(
-        /[.*+?^${}()|[\]\\]/g,
-        "\\$&",
+      additionalFilters.category = new RegExp(
+        `^${escapeRegex(category as string)}$`,
+        "i",
       );
-      additionalFilters.category = new RegExp(`^${escapedCategory}$`, "i");
     }
-    if (type) additionalFilters.type = type;
-    if (venueType) additionalFilters.venueType = venueType;
+    // String() coercion on these prevents NoSQL operator injection (e.g. ?type[$ne]=x)
+    if (type) additionalFilters.type = String(type);
+    if (venueType) additionalFilters.venueType = String(venueType);
     if (city)
-      additionalFilters["location.city"] = new RegExp(city as string, "i");
-    if (currency) additionalFilters.currency = currency;
+      additionalFilters["location.city"] = new RegExp(escapeRegex(city as string), "i");
+    if (currency) additionalFilters.currency = String(currency);
     if (featured !== undefined) {
       additionalFilters.isFeatured = featured === "true";
     }
-    if (teacherId) additionalFilters.teacherId = teacherId;
+    if (teacherId) additionalFilters.teacherId = String(teacherId);
     if (subject) {
       const escapedSubject = (subject as string).replace(
         /[.*+?^${}()|[\]\\]/g,
@@ -293,15 +294,15 @@ export const getEvents = async (
       }
     }
 
-    // Text search
+    // Text search — escape input to prevent malformed-regex errors on chars like ( * [
     if (search) {
-      const searchRegex = new RegExp((search as string).trim(), 'i');
+      const searchRegex = new RegExp(escapeRegex((search as string).trim()), "i");
       filter.$or = [
         { title: searchRegex },
         { description: searchRegex },
         { tags: { $in: [searchRegex] } },
         { "location.city": searchRegex },
-        { "location.address": searchRegex }
+        { "location.address": searchRegex },
       ];
     }
 
@@ -317,14 +318,14 @@ export const getEvents = async (
       filter.dateSchedule = { $elemMatch: { startDate: dateConditions } };
     }
 
-    // Build sort query — always pin active promoted events first
+    // Build sort query — honor the requested sort as the primary key.
+    // Promoted (featuredUntil) and createdAt are secondary tiebreakers only.
+    // Previously featuredUntil was pinned first unconditionally, making user-chosen
+    // sorts (price, viewsCount, etc.) act as tiebreakers instead of the primary order.
     const sort: any = {};
-    sort.featuredUntil = -1; // nulls sort last in desc; active promotions bubble up
-    if (search && !sortBy) {
-      sort.createdAt = -1;
-    } else {
-      sort[sortBy as string] = sortOrder === "asc" ? 1 : -1;
-    }
+    sort[sortBy as string] = sortOrder === "asc" ? 1 : -1;
+    if (sortBy !== "featuredUntil") sort.featuredUntil = -1; // active promotions break ties
+    if (sortBy !== "createdAt") sort.createdAt = -1;          // deterministic final tiebreaker
 
     // Execute query
     const [events, total] = await Promise.all([
@@ -1042,15 +1043,16 @@ export const updateEventApproval = async (
       if (owner) {
         const ownerAny = owner as any;
         const statusText = isApproved ? "approved" : "rejected";
+        const safeTitle = escapeHtml(String(event.title || ""));
         const reasonHtml = reason
-          ? `<p><strong>Reason:</strong> ${reason}</p>`
+          ? `<p><strong>Reason:</strong> ${escapeHtml(reason)}</p>`
           : "";
         emailService
           .sendEmail({
             to: ownerAny.email,
-            subject: `Your event "${event.title}" has been ${statusText}`,
+            subject: `Your event "${safeTitle}" has been ${statusText}`,
             html: `<p>Hi ${ownerAny.firstName},</p>
-<p>Your event <strong>${event.title}</strong> has been <strong>${statusText}</strong> by the admin.</p>
+<p>Your event <strong>${safeTitle}</strong> has been <strong>${statusText}</strong> by the admin.</p>
 ${reasonHtml}
 <p>Log in to your dashboard to view the event.</p>`,
           })
@@ -1466,6 +1468,185 @@ export const deleteCertificateType = async (
     await event.save();
 
     res.status(200).json({ success: true, data: certTypes });
+  } catch (error) {
+    next(error);
+  }
+};
+
+// ---------------------------------------------------------------------------
+// Discovery: Similar Events (weighted scoring + fallback chain)
+// ---------------------------------------------------------------------------
+const SIMILAR_SELECT =
+  "_id slug title images category location price tags isFeatured viewsCount averageRating reviewCount currency dateSchedule ageRange vendorId teacherId";
+
+export const getSimilarEvents = async (
+  req: Request,
+  res: Response,
+  next: NextFunction,
+) => {
+  try {
+    const { id } = req.params;
+    const limit = Math.min(parseInt(req.query.limit as string) || 5, 12);
+
+    const isMongoId = /^[0-9a-fA-F]{24}$/.test(id);
+    const source = (await Event.findOne(
+      isMongoId ? { _id: id } : { slug: id },
+    ).lean()) as any;
+
+    if (!source) return next(new AppError("Event not found", 404));
+
+    const sourceId = source._id;
+    const sourceCity: string | undefined = source.location?.city;
+    const sourcePrice: number = source.price || 0;
+    const sourceTags: string[] = Array.isArray(source.tags) ? source.tags : [];
+
+    // Candidate pool: same-category published events, most-viewed first, cap 50
+    const baseFilter = buildPublicEventFilter({ _id: { $ne: sourceId } });
+    const candidates = (await Event.find({
+      ...baseFilter,
+      ...(source.category ? { category: source.category } : {}),
+    })
+      .select(SIMILAR_SELECT)
+      .sort({ viewsCount: -1 })
+      .limit(50)
+      .lean()) as any[];
+
+    // Score each candidate
+    const scored = candidates.map((ev) => {
+      let score = 0;
+
+      if (ev.category === source.category) score += 5;
+      if (sourceCity && ev.location?.city === sourceCity) score += 3;
+
+      // Age range overlap
+      if (source.ageRange && ev.ageRange) {
+        const [srcMin, srcMax] = source.ageRange as [number, number];
+        const [evMin, evMax] = ev.ageRange as [number, number];
+        if (srcMin <= evMax && evMin <= srcMax) score += 3;
+      }
+
+      // Same organizer
+      const sameVendor =
+        source.vendorId &&
+        ev.vendorId &&
+        ev.vendorId.toString() === source.vendorId.toString();
+      const sameTeacher =
+        source.teacherId &&
+        ev.teacherId &&
+        ev.teacherId.toString() === source.teacherId.toString();
+      if (sameVendor || sameTeacher) score += 2;
+
+      // Similar price ±25%
+      if (sourcePrice > 0 && ev.price > 0) {
+        const ratio = ev.price / sourcePrice;
+        if (ratio >= 0.75 && ratio <= 1.25) score += 2;
+      }
+
+      // Tag overlap (≥1 shared tag)
+      if (sourceTags.length > 0 && Array.isArray(ev.tags)) {
+        if (sourceTags.some((t: string) => (ev.tags as string[]).includes(t)))
+          score += 2;
+      }
+
+      if (ev.isFeatured) score += 1;
+
+      return { ev, score };
+    });
+
+    scored.sort(
+      (a, b) =>
+        b.score - a.score ||
+        (b.ev.viewsCount || 0) - (a.ev.viewsCount || 0),
+    );
+
+    let results: any[] = scored.filter((s) => s.score > 0).map((s) => s.ev);
+
+    // Fallback 1: remainder of same-category candidates (score = 0 but same cat)
+    if (results.length < limit) {
+      const seen = new Set(results.map((e) => e._id.toString()));
+      results = [
+        ...results,
+        ...candidates.filter((e) => !seen.has(e._id.toString())),
+      ];
+    }
+
+    // Fallback 2: trending events (cross-category)
+    if (results.length < limit) {
+      const seen = new Set(results.map((e) => e._id.toString()));
+      const trending = (await Event.find({
+        ...buildPublicEventFilter(),
+        _id: { $nin: [...seen, sourceId] },
+      })
+        .select(SIMILAR_SELECT)
+        .sort({ viewsCount: -1 })
+        .limit(limit - results.length)
+        .lean()) as any[];
+      results = [...results, ...trending];
+    }
+
+    // Fallback 3: featured events
+    if (results.length < limit) {
+      const seen = new Set(results.map((e) => e._id.toString()));
+      const featuredFallback = (await Event.find({
+        ...buildPublicEventFilter(),
+        isFeatured: true,
+        _id: { $nin: [...seen, sourceId] },
+      })
+        .select(SIMILAR_SELECT)
+        .limit(limit - results.length)
+        .lean()) as any[];
+      results = [...results, ...featuredFallback];
+    }
+
+    res.status(200).json({
+      success: true,
+      data: sanitizeEventsOutput(results.slice(0, limit)),
+    });
+  } catch (error) {
+    next(error);
+  }
+};
+
+// ---------------------------------------------------------------------------
+// Discovery: More from this organizer
+// ---------------------------------------------------------------------------
+export const getOrganizerEvents = async (
+  req: Request,
+  res: Response,
+  next: NextFunction,
+) => {
+  try {
+    const { id } = req.params;
+    const limit = Math.min(parseInt(req.query.limit as string) || 4, 8);
+
+    const isMongoId = /^[0-9a-fA-F]{24}$/.test(id);
+    const source = (await Event.findOne(
+      isMongoId ? { _id: id } : { slug: id },
+    ).lean()) as any;
+
+    if (!source) return next(new AppError("Event not found", 404));
+
+    const { vendorId, teacherId } = source;
+    if (!vendorId && !teacherId) {
+      return res.status(200).json({ success: true, data: [] });
+    }
+
+    const organizerFilter: any = vendorId ? { vendorId } : { teacherId };
+
+    const events = (await Event.find({
+      ...buildPublicEventFilter(),
+      ...organizerFilter,
+      _id: { $ne: source._id },
+    })
+      .select(SIMILAR_SELECT)
+      .sort({ viewsCount: -1 })
+      .limit(limit)
+      .lean()) as any[];
+
+    res.status(200).json({
+      success: true,
+      data: sanitizeEventsOutput(events),
+    });
   } catch (error) {
     next(error);
   }

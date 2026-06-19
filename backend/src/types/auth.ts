@@ -95,4 +95,6 @@ export interface VerifyEmailRequest {
 // Firebase auth request type
 export interface FirebaseAuthRequest {
   idToken: string;
+  /** Optional role for NEW users only — "customer" | "vendor" | "teacher". Ignored for existing/linked accounts. */
+  role?: string;
 }

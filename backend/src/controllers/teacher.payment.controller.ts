@@ -14,7 +14,28 @@ import Notification, {
 } from "../models/Notification";
 
 import User from "../models/User";
+import { config } from "../config/index";
 import logger from "../config/logger";
+
+/** Validate that a Stripe Connect return/refresh URL belongs to our frontend only. */
+function assertAllowedStripeRedirectUrl(url: string, field: string): void {
+  let parsed: URL;
+  try {
+    parsed = new URL(url);
+  } catch {
+    throw new Error(`${field} is not a valid URL`);
+  }
+  const allowed = [
+    new URL(config.frontendUrl).origin,
+    ...(process.env.ADDITIONAL_ALLOWED_ORIGINS || "")
+      .split(",")
+      .map((o) => o.trim())
+      .filter(Boolean),
+  ];
+  if (!allowed.some((origin) => parsed.origin === origin)) {
+    throw new Error(`${field} must point to an allowed origin`);
+  }
+}
 
 /**
  * Teacher Payment Settings Controller
@@ -141,6 +162,13 @@ export const initiateTeacherStripeConnect = async (
         .json({ message: "returnUrl and refreshUrl are required" });
     }
 
+    try {
+      assertAllowedStripeRedirectUrl(returnUrl, "returnUrl");
+      assertAllowedStripeRedirectUrl(refreshUrl, "refreshUrl");
+    } catch (urlErr: any) {
+      return res.status(400).json({ message: urlErr.message });
+    }
+
     const user = await User.findById(userId);
     if (!user) {
       return res.status(404).json({ message: "User not found" });
@@ -231,6 +259,13 @@ export const refreshTeacherStripeConnectLink = async (
       return res
         .status(400)
         .json({ message: "returnUrl and refreshUrl are required" });
+    }
+
+    try {
+      assertAllowedStripeRedirectUrl(returnUrl, "returnUrl");
+      assertAllowedStripeRedirectUrl(refreshUrl, "refreshUrl");
+    } catch (urlErr: any) {
+      return res.status(400).json({ message: urlErr.message });
     }
 
     const user = await User.findById(userId);

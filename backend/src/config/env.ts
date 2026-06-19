@@ -377,6 +377,21 @@ const validateEnv = (): void => {
     );
   }
 
+  // JWT secrets must be long enough to resist brute-force under HS256 in production
+  if (isProduction) {
+    const jwtSecret = process.env.JWT_SECRET ?? "";
+    const jwtRefreshSecret = process.env.JWT_REFRESH_SECRET ?? "";
+    if (jwtSecret.length < 32) {
+      throw new Error("JWT_SECRET must be at least 32 characters in production.");
+    }
+    if (jwtRefreshSecret.length < 32) {
+      throw new Error("JWT_REFRESH_SECRET must be at least 32 characters in production.");
+    }
+    if (jwtSecret === jwtRefreshSecret) {
+      throw new Error("JWT_SECRET and JWT_REFRESH_SECRET must be different values.");
+    }
+  }
+
   // Firebase validation only in production
   if (isProduction) {
     const firebaseVars = [

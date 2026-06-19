@@ -1287,6 +1287,7 @@ eventSchema.index({
 }); // Optimized for category filtering
 
 // Additional compound indexes for KVM1 optimization - faster admin dashboard queries
+eventSchema.index({ viewsCount: -1, createdAt: -1 }); // Trending sort (homepage + search "Most Popular")
 eventSchema.index({ isApproved: 1, status: 1, createdAt: -1 }); // Dashboard event stats by approval and status
 eventSchema.index({ vendorId: 1, isApproved: 1, createdAt: -1 }); // Vendor-specific event queries
 eventSchema.index({ teacherId: 1, isApproved: 1, createdAt: -1 }); // Teacher-specific event queries

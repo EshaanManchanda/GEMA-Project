@@ -20,6 +20,8 @@ import {
   addCertificateType,
   updateCertificateType,
   deleteCertificateType,
+  getSimilarEvents,
+  getOrganizerEvents,
 } from "../controllers/event.controller";
 import { authenticate, authorize } from "../middleware/auth";
 import { validateEventSEO } from "../validators/event.validator";
@@ -30,6 +32,9 @@ const router = Router();
 router.get("/", getEvents);
 router.get("/categories", getEventCategories);
 router.get("/cities", getUniqueCities); // Must be before /:slug route
+// Discovery routes — two-segment paths, no conflict with /:slug
+router.get("/:id/similar", getSimilarEvents);
+router.get("/:id/organizer-events", getOrganizerEvents);
 router.get(
   "/:slug",
   [param("slug").notEmpty().withMessage("Event slug is required")],

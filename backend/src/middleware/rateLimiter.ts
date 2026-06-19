@@ -112,6 +112,31 @@ export const emailVerificationLimiter: RateLimitRequestHandler = rateLimit({
 });
 
 /**
+ * Change-password rate limiter (authenticated)
+ * Limit: 5 requests per hour per user — prevents brute-forcing currentPassword
+ */
+export const changePasswordLimiter: RateLimitRequestHandler = rateLimit({
+  windowMs: 60 * 60 * 1000, // 1 hour
+  max: 5,
+  message: createErrorMessage(60 * 60),
+  standardHeaders: true,
+  legacyHeaders: false,
+  keyGenerator: (req: Request) => {
+    return `chpwd-${req.ip}-${req.user?.id || req.user?._id || ""}`;
+  },
+  handler: (req: Request, res: Response) => {
+    logger.warn(`Change-password rate limit exceeded`, {
+      ip: req.ip,
+      userId: req.user?.id || req.user?._id,
+    });
+    res.status(429).json({
+      ...createErrorMessage(60 * 60),
+      message: "Too many password change attempts. Please try again later.",
+    });
+  },
+});
+
+/**
  * File upload rate limiter
  * Limit: 20 uploads per hour per user
  */

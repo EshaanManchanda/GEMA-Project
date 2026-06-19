@@ -15,6 +15,7 @@ import { getFileInfo } from "../middleware/upload";
 import emailService from "./email.service";
 import smsService from "./sms.service";
 import { generateOTP } from "../utils/otp";
+import { escapeRegex } from "../utils/regexHelpers";
 import logger from "../config/logger";
 
 // ==================== INTERFACES ====================
@@ -187,7 +188,7 @@ class VendorService {
     }
 
     if (params.search) {
-      const searchRegex = new RegExp(params.search, "i");
+      const searchRegex = new RegExp(escapeRegex(params.search), "i");
       filter.$or = [
         { orderNumber: searchRegex },
         { "billingAddress.firstName": searchRegex },
@@ -367,7 +368,7 @@ class VendorService {
       if (filters.maxAmount) filter.total.$lte = parseFloat(filters.maxAmount);
     }
     if (filters.search) {
-      const searchRegex = new RegExp(filters.search, "i");
+      const searchRegex = new RegExp(escapeRegex(filters.search), "i");
       filter.$or = [
         { orderNumber: searchRegex },
         { "billingAddress.firstName": searchRegex },
@@ -593,7 +594,7 @@ class VendorService {
 
         const event = await Event.findOne({
           vendorId,
-          title: new RegExp(`^${row.eventTitle}$`, "i"),
+          title: new RegExp(`^${escapeRegex(row.eventTitle)}$`, "i"),
           isDeleted: false,
         });
 
@@ -1078,7 +1079,7 @@ class VendorService {
     if (params.assignedEvent) filter.assignedEvents = params.assignedEvent;
 
     if (params.search) {
-      const searchRegex = new RegExp(params.search, "i");
+      const searchRegex = new RegExp(escapeRegex(params.search), "i");
       filter.$or = [
         { firstName: searchRegex },
         { lastName: searchRegex },
@@ -1508,7 +1509,7 @@ class VendorService {
     if (filters.status) filter.status = filters.status;
     if (filters.assignedEvent) filter.assignedEvents = filters.assignedEvent;
     if (filters.search) {
-      const searchRegex = new RegExp(filters.search, "i");
+      const searchRegex = new RegExp(escapeRegex(filters.search), "i");
       filter.$or = [
         { firstName: searchRegex },
         { lastName: searchRegex },

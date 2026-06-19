@@ -223,6 +223,11 @@ export const validateFirebaseAuth = [
     .isLength({ min: 1, max: 50 })
     .withMessage("Last name must be between 1 and 50 characters")
     .escape(),
+
+  body("role")
+    .optional()
+    .isIn(["customer", "vendor", "teacher"])
+    .withMessage("Role must be one of: customer, vendor, teacher"),
 ];
 
 /**

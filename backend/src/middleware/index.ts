@@ -38,6 +38,7 @@ export {
   authLimiter,
   passwordResetLimiter,
   emailVerificationLimiter,
+  changePasswordLimiter,
   uploadLimiter,
   createResourceLimiter,
   adminLimiter,

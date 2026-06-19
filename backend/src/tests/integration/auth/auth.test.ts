@@ -82,6 +82,13 @@ const customerPayload = () => ({
 const registerUser = (app: Application, payload = customerPayload()) =>
   request(app).post("/api/auth/register").send(payload);
 
+/** Extract a named cookie's value from a Set-Cookie header array */
+const extractCookie = (cookies: string[], name: string): string => {
+  const c = cookies.find((h) => h.startsWith(`${name}=`));
+  if (!c) return "";
+  return c.split(";")[0].replace(`${name}=`, "");
+};
+
 /** Register a user, then login and return { accessToken, refreshToken, cookies } */
 const registerAndLogin = async (app: Application, payload = customerPayload()) => {
   await registerUser(app, payload);
@@ -96,11 +103,9 @@ const registerAndLogin = async (app: Application, payload = customerPayload()) =
     .post("/api/auth/login")
     .send({ email: payload.email, password: payload.password });
 
-  const accessToken: string =
-    loginRes.body.data?.tokens?.accessToken || "";
-  const refreshToken: string =
-    loginRes.body.data?.tokens?.refreshToken || "";
   const cookies: string[] = ((loginRes.headers["set-cookie"] as unknown) as string[]) || [];
+  const accessToken = extractCookie(cookies, "accessToken");
+  const refreshToken = extractCookie(cookies, "refreshToken");
 
   return { accessToken, refreshToken, cookies, user: loginRes.body.data?.user };
 };
@@ -142,8 +147,10 @@ describe("POST /api/auth/register", () => {
       email: payload.email,
       role: UserRole.CUSTOMER,
     });
-    expect(res.body.data.tokens.accessToken).toBeTruthy();
-    expect(res.body.data.tokens.refreshToken).toBeTruthy();
+    // Tokens are in httpOnly cookies, not in the response body
+    const cookies: string[] = ((res.headers["set-cookie"] as unknown) as string[]) || [];
+    expect(cookies.some((c) => c.startsWith("accessToken="))).toBe(true);
+    expect(cookies.some((c) => c.startsWith("refreshToken="))).toBe(true);
   });
 
   it("sets isEmailVerified: false and status: pending on registration", async () => {
@@ -211,12 +218,16 @@ describe("POST /api/auth/register", () => {
     expect(res.status).toBe(400);
   });
 
-  it("returns 4xx when email is already registered", async () => {
+  it("returns 200 with neutral message when email is already registered (anti-enumeration)", async () => {
     const payload = customerPayload();
     await registerUser(app, payload);
     const res = await registerUser(app, payload);
-    expect([400, 409]).toContain(res.status);
-    expect(res.body.success).toBe(false);
+    // S7: returns neutral 200 instead of a distinguishable 400 to prevent email enumeration
+    expect(res.status).toBe(200);
+    expect(res.body.success).toBe(true);
+    // Exactly one user in DB — no duplicate created
+    const count = await User.countDocuments({ email: payload.email });
+    expect(count).toBe(1);
   });
 
   it("stores password as bcrypt hash, never plaintext", async () => {
@@ -292,8 +303,10 @@ describe("POST /api/auth/login", () => {
 
     expect(res.status).toBe(200);
     expect(res.body.success).toBe(true);
-    expect(res.body.data.tokens.accessToken).toBeTruthy();
-    expect(res.body.data.tokens.refreshToken).toBeTruthy();
+    // Tokens are in httpOnly cookies, not in the response body
+    const cookies: string[] = ((res.headers["set-cookie"] as unknown) as string[]) || [];
+    expect(cookies.some((c) => c.startsWith("accessToken="))).toBe(true);
+    expect(cookies.some((c) => c.startsWith("refreshToken="))).toBe(true);
   });
 
   it("returns user profile data on login", async () => {
@@ -484,8 +497,10 @@ describe("POST /api/auth/refresh-token", () => {
       .send({ refreshToken });
 
     expect(res.status).toBe(200);
-    expect(res.body.data.tokens.accessToken).toBeTruthy();
-    expect(res.body.data.tokens.refreshToken).toBeTruthy();
+    // Tokens are in httpOnly cookies, not in the response body
+    const cookies: string[] = ((res.headers["set-cookie"] as unknown) as string[]) || [];
+    expect(cookies.some((c) => c.startsWith("accessToken="))).toBe(true);
+    expect(cookies.some((c) => c.startsWith("refreshToken="))).toBe(true);
   });
 
   it("returns 401 for a tampered refresh token", async () => {

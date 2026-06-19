@@ -7,6 +7,7 @@ import {
   authLimiter,
   passwordResetLimiter,
   emailVerificationLimiter,
+  changePasswordLimiter,
 } from "../middleware/index";
 import {
   validateRegistration,
@@ -84,6 +85,7 @@ router.post("/logout", authController.logout);
  */
 router.post(
   "/refresh-token",
+  authLimiter,
   validateRefreshToken,
   validate,
   authController.refreshToken,
@@ -124,6 +126,7 @@ router.put(
 router.put(
   "/change-password",
   authenticate,
+  changePasswordLimiter,
   validateChangePassword,
   validate,
   authController.changePassword,

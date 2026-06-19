@@ -24,6 +24,7 @@ import { TicketGenerationService } from "../services/ticketGeneration.service";
 import { CouponService } from "../services/coupon.service";
 import { emailService } from "../services/email.service";
 import { v4 as uuidv4 } from "uuid";
+import { audit, AuditAction } from "../utils/auditLog";
 
 type EventBookingAttachment = {
   originalName?: string;
@@ -610,6 +611,18 @@ export const confirmBooking = async (
       return next(new AppError("Order not found", 404));
     }
 
+    // Ownership check — caller must own this order
+    const requestUserId = req.user?._id?.toString() || req.user?.id;
+    if (!order.userId || order.userId.toString() !== requestUserId) {
+      logger.warn("confirmBooking: ownership check failed", {
+        orderId: order._id,
+        orderOwner: order.userId?.toString(),
+        requestUser: requestUserId,
+        ip: req.ip,
+      });
+      return next(new AppError("Access denied", 403));
+    }
+
     logger.info("Order found for confirmation", {
       orderId: order._id,
       orderNumber: order.orderNumber,
@@ -648,7 +661,17 @@ export const confirmBooking = async (
     let paymentIntent: any;
 
     if (paymentIntentId.startsWith("free_pi_")) {
-      // Free event: auto-confirm without payment
+      // Free event: auto-confirm only when the order total is genuinely zero
+      if (order.total !== 0) {
+        logger.warn("free_pi_ used on a non-zero order — rejecting", {
+          orderId: order._id,
+          total: order.total,
+          ip: req.ip,
+        });
+        return next(
+          new AppError("Free payment not allowed for paid events", 400),
+        );
+      }
       logger.info("Processing free event booking confirmation", {
         paymentIntentId: paymentIntentId.substring(0, 30) + "...",
         orderId: order._id,
@@ -657,17 +680,6 @@ export const confirmBooking = async (
         id: paymentIntentId,
         status: "succeeded",
         payment_method: "free",
-      };
-    } else if (paymentIntentId.startsWith("test_pi_")) {
-      // For test payments, create a mock successful payment intent
-      logger.info("Processing test payment confirmation", {
-        paymentIntentId: paymentIntentId.substring(0, 30) + "...",
-        orderId: order._id,
-      });
-      paymentIntent = {
-        id: paymentIntentId,
-        status: "succeeded",
-        payment_method: "test",
       };
     } else {
       // Verify payment with Stripe for real payments
@@ -709,15 +721,42 @@ export const confirmBooking = async (
           ),
         );
       }
+
+      // Verify the amount and currency match the order to prevent short-pay
+      const expectedAmountMinorUnits = Math.round(order.total * 100);
+      const piCurrency = (paymentIntent.currency || "").toLowerCase();
+      const orderCurrency = (order.currency || "").toLowerCase();
+      if (
+        paymentIntent.amount !== expectedAmountMinorUnits ||
+        piCurrency !== orderCurrency
+      ) {
+        logger.warn("Payment intent amount/currency mismatch", {
+          orderId: order._id,
+          orderTotal: order.total,
+          orderCurrency,
+          piAmount: paymentIntent.amount,
+          piCurrency,
+          ip: req.ip,
+        });
+        return next(
+          new AppError(
+            "Payment amount or currency does not match the order. Please contact support.",
+            400,
+          ),
+        );
+      }
     }
 
     // Update order status via updateOne to bypass schema validation
-    // (participants[].age required constraint would fail on old orders)
+    // (participants[].age required constraint would fail on old orders).
+    // Condition on status='pending' makes this atomic — a second concurrent
+    // request won't match and will fall through to the idempotency block above
+    // on its retry, preventing double-confirmation.
     const newPaymentStatus =
       paymentIntent.payment_method === "free" ? "free" : "paid";
 
-    await Order.updateOne(
-      { _id: order._id },
+    const updateResult = await Order.updateOne(
+      { _id: order._id, status: "pending" },
       {
         $set: {
           status: "confirmed",
@@ -727,6 +766,28 @@ export const confirmBooking = async (
         },
       },
     );
+
+    if (updateResult.matchedCount === 0) {
+      // Another concurrent request already confirmed this order
+      logger.info("Order already confirmed by concurrent request — returning idempotent success", {
+        orderId: order._id,
+      });
+      return res.status(200).json({
+        success: true,
+        message: "Booking already confirmed",
+        data: {
+          bookingId: order.orderNumber,
+          eventTitle: order.items[0]?.eventTitle,
+          date: order.items[0]?.scheduleDate,
+          seats: order.items.reduce((sum, item) => sum + item.quantity, 0),
+          amountPaid: order.total,
+          currency: order.currency,
+          status: "confirmed",
+          paymentStatus: newPaymentStatus,
+          tickets: [],
+        },
+      });
+    }
 
     // Update Event soldSeats and reservedSeats
     try {
@@ -872,6 +933,14 @@ export const confirmBooking = async (
       });
     }
 
+    audit({
+      action: AuditAction.BOOKING_CONFIRMED,
+      userId: requestUserId,
+      targetId: order._id,
+      req,
+      metadata: { orderNumber: order.orderNumber, total: order.total, paymentMethod: paymentIntent.payment_method },
+    });
+
     // Verify order was saved with correct payment status
     logger.info("Order saved successfully with payment status", {
       orderId: order._id,
@@ -896,7 +965,7 @@ export const confirmBooking = async (
         order._id.toString(),
         {
           sendEmail: true,
-          skipExisting: false,
+          skipExisting: true, // idempotency: never issue duplicate tickets for the same order
         },
       );
     } catch (ticketErr: any) {

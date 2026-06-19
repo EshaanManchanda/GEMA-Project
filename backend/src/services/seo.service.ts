@@ -62,35 +62,44 @@ export class SEOService {
   async generateSitemap(domain?: string): Promise<string> {
     const baseUrl = domain ? `https://${domain}` : this.baseUrl;
     try {
+      // Cap each collection to sitemap standard (50k total, split across types)
+      const SITEMAP_CAP = 10000;
       const [events, blogs, categories, collections, teachers] = await Promise.all([
         Event.find({
           status: "published",
           isActive: true,
           isApproved: true,
         })
-          .select("_id title slug updatedAt location.city")
+          .select("_id title slug updatedAt location.city images")
+          .sort({ updatedAt: -1 })
+          .limit(SITEMAP_CAP)
           .lean(),
 
         Blog.find({
           status: "published",
         })
           .select("slug title updatedAt")
+          .sort({ updatedAt: -1 })
+          .limit(SITEMAP_CAP)
           .lean(),
 
         Category.find({
           isActive: true,
         })
           .select("_id name slug updatedAt")
+          .limit(SITEMAP_CAP)
           .lean(),
 
         Collection.find({
           isActive: true,
         })
           .select("_id name slug updatedAt")
+          .limit(SITEMAP_CAP)
           .lean(),
 
         Teacher.find({ isActive: true, isDeleted: false, slug: { $exists: true, $ne: null } })
           .select("slug updatedAt")
+          .limit(SITEMAP_CAP)
           .lean(),
       ]);
 
@@ -122,11 +131,17 @@ export class SEOService {
         );
       });
 
-      // Events
+      // Events (with image entries for AI/image surfaces)
       events.forEach((event) => {
         const url = `${baseUrl}/events/${event.slug || event._id}`;
         const lastmod = event.updatedAt || new Date();
-        urls.push(this.generateSitemapUrl(url, lastmod, "weekly", 0.8));
+        const images = ((event as any).images as string[])?.slice(0, 3) || [];
+        urls.push(
+          this.generateSitemapUrl(url, lastmod, "weekly", 0.8, images.map((img) => ({
+            loc: img,
+            title: (event as any).title || "",
+          }))),
+        );
       });
 
       // Blogs
@@ -175,30 +190,23 @@ ${urls.join("\n")}
    * Generate robots.txt content
    * @param domain - The domain to generate robots.txt for (e.g., 'kidrove.com', 'kidrove.in', 'kidrove.ae')
    */
-  generateRobotsTxt(domain?: string, forceProduction = false): string {
-    const baseUrl = domain ? `https://${domain}` : this.baseUrl;
-    const isProduction =
-      forceProduction || process.env.NODE_ENV === "production";
+  generateRobotsTxt(domain?: string): string {
+    // Always build sitemap URLs from the env-configured base URL, not from the
+    // request host — prevents cache-poisoning via spoofed Host headers.
+    const baseUrl = this.baseUrl;
+    const isProduction = process.env.NODE_ENV === "production";
 
-    // Debug logging (TEMPORARY: Remove after issue is resolved)
-    logger.info(
-      "[robots.txt] NODE_ENV:",
-      process.env.NODE_ENV,
-      "isProduction:",
-      isProduction,
-      "domain:",
-      domain,
-      "forceProduction:",
-      forceProduction,
-    );
-
-    // Check if domain is a production domain
-    const isProductionDomain =
-      domain &&
-      (domain.includes("kidrove.com") ||
-        domain.includes("kidrove.in") ||
-        domain.includes("kidrove.ae") ||
-        domain.includes("gema-project.onrender.com"));
+    // Exact host allowlist — no substring matching
+    const PRODUCTION_HOSTS = new Set([
+      "kidrove.com",
+      "www.kidrove.com",
+      "kidrove.in",
+      "www.kidrove.in",
+      "kidrove.ae",
+      "www.kidrove.ae",
+      "gema-project.onrender.com",
+    ]);
+    const isProductionDomain = domain ? PRODUCTION_HOSTS.has(domain) : false;
 
     if (!isProduction && !isProductionDomain) {
       // Block all crawlers in non-production environments
@@ -215,23 +223,7 @@ Disallow: /
       "[robots.txt] Allowing crawlers - production environment or production domain",
     );
 
-    return `# Kidrove robots.txt
-# Allow Googlebot to access public API for JS rendering
-
-# Googlebot - allow public API routes for JavaScript rendering
-User-agent: Googlebot
-Allow: /api/homepage
-Allow: /api/categories
-Allow: /api/collections
-Allow: /api/events
-Allow: /api/blog
-Allow: /api/public/
-Allow: /api/currency/
-Allow: /api/announcements/
-Allow: /api/popups/
-Allow: /api/auth/me
-Allow: /api/media/
-Disallow: /api/admin
+    const SENSITIVE_DISALLOW = `Disallow: /api/admin
 Disallow: /api/auth/login
 Disallow: /api/auth/register
 Disallow: /api/auth/forgot
@@ -250,80 +242,131 @@ Disallow: /profile
 Disallow: /bookings
 Disallow: /cart
 Disallow: /checkout
-Disallow: /payment
+Disallow: /payment`;
 
-# All other bots - allow site, block sensitive API routes
+    const PUBLIC_API_ALLOW = `Allow: /
+Allow: /api/homepage
+Allow: /api/categories
+Allow: /api/collections
+Allow: /api/events
+Allow: /api/blog
+Allow: /api/public/
+Allow: /api/currency/
+Allow: /api/announcements/
+Allow: /api/popups/
+Allow: /api/media/`;
+
+    const AI_BOTS = [
+      "GPTBot",
+      "OAI-SearchBot",
+      "ChatGPT-User",
+      "ClaudeBot",
+      "anthropic-ai",
+      "Claude-Web",
+      "PerplexityBot",
+      "Perplexity-User",
+      "Google-Extended",
+      "Bingbot",
+      "Applebot",
+      "Applebot-Extended",
+      "CCBot",
+      "FacebookBot",
+      "cohere-ai",
+      "Bytespider",
+    ];
+
+    const aiSections = AI_BOTS.map(
+      (bot) => `User-agent: ${bot}\n${PUBLIC_API_ALLOW}\n${SENSITIVE_DISALLOW}`,
+    ).join("\n\n");
+
+    return `# Kidrove robots.txt — Generative Engine Optimized
+# Last updated: ${new Date().toISOString().split("T")[0]}
+
+# Googlebot
+User-agent: Googlebot
+${PUBLIC_API_ALLOW}
+Allow: /api/auth/me
+${SENSITIVE_DISALLOW}
+
+# AI & Generative Engine Crawlers
+${aiSections}
+
+# All other bots
 User-agent: *
 Allow: /
 Allow: /api/media/
-Disallow: /admin
-Disallow: /vendor
-Disallow: /employee
-Disallow: /api/admin
-Disallow: /api/auth/login
-Disallow: /api/auth/register
-Disallow: /api/auth/forgot
-Disallow: /api/auth/reset
-Disallow: /api/orders
-Disallow: /api/payments
-Disallow: /api/users
-Disallow: /login
-Disallow: /register
-Disallow: /dashboard
-Disallow: /profile
-Disallow: /bookings
-Disallow: /cart
-Disallow: /checkout
-Disallow: /payment
+${SENSITIVE_DISALLOW}
 
 # Static assets
 Allow: /assets/
 Allow: /images/
 
 # Sitemap
-Sitemap: ${baseUrl}/sitemap.xml`;
+Sitemap: ${baseUrl}/sitemap.xml
+Sitemap: ${baseUrl}/sitemap-com.xml`;
   }
 
   /**
    * Generate structured data for events
    */
   generateEventStructuredData(event: any): StructuredData {
+    const eventSlug = event.slug || event._id;
+    const eventUrl = `${this.baseUrl}/events/${eventSlug}`;
+    const price = event.price || event.dateSchedule?.[0]?.price || 0;
+    const currency = event.currency || "AED";
+    const country = event.location?.country || "AE";
+
+    const lastSchedule = event.dateSchedule?.[event.dateSchedule.length - 1];
+    const priceValidUntil = lastSchedule?.endDate || lastSchedule?.date;
+
     const baseData: StructuredData = {
       "@context": "https://schema.org",
       "@type": "Event",
       name: event.title,
       description: event.description,
+      url: eventUrl,
       startDate:
         event.dateSchedule?.[0]?.startDate || event.dateSchedule?.[0]?.date,
       endDate: event.dateSchedule?.[0]?.endDate,
       eventStatus: "https://schema.org/EventScheduled",
-      eventAttendanceMode: "https://schema.org/OfflineEventAttendanceMode",
-      location: {
-        "@type": "Place",
-        name: event.location?.address || "Event Location",
-        address: {
-          "@type": "PostalAddress",
-          streetAddress: event.location?.address,
-          addressLocality: event.location?.city,
-          addressCountry: "AE",
-        },
-      },
+      eventAttendanceMode: event.location?.isOnline
+        ? "https://schema.org/OnlineEventAttendanceMode"
+        : "https://schema.org/OfflineEventAttendanceMode",
+      location: event.location?.isOnline
+        ? {
+            "@type": "VirtualLocation",
+            url: eventUrl,
+          }
+        : {
+            "@type": "Place",
+            name: event.location?.address || event.location?.venueName || "Event Location",
+            address: {
+              "@type": "PostalAddress",
+              streetAddress: event.location?.address,
+              addressLocality: event.location?.city,
+              addressCountry: country,
+            },
+          },
       offers: {
         "@type": "Offer",
-        price: event.price || event.dateSchedule?.[0]?.price || 0,
-        priceCurrency: event.currency || "AED",
+        price,
+        priceCurrency: currency,
         availability: "https://schema.org/InStock",
-        url: `${this.baseUrl}/events/${event._id}`,
+        url: eventUrl,
+        validFrom: event.createdAt,
+        ...(priceValidUntil && { priceValidUntil }),
       },
       organizer: {
         "@type": "Organization",
-        name: SEO_CONFIG.siteName,
+        name: (event.vendorId as any)?.businessName || SEO_CONFIG.siteName,
         url: this.baseUrl,
       },
     };
 
-    if (event.images && event.images.length > 0) {
+    if (event.images?.length) {
       baseData.image = event.images;
+    } else if (event.imageAssets?.length) {
+      baseData.image = event.imageAssets.map((a: any) => a.url).filter(Boolean);
     }
 
     if (event.ageRange) {
@@ -334,7 +377,147 @@ Sitemap: ${baseUrl}/sitemap.xml`;
       };
     }
 
+    if (event.reviewCount > 0 && (event.averageRating || event.combinedRating)) {
+      baseData.aggregateRating = {
+        "@type": "AggregateRating",
+        ratingValue: event.averageRating || event.combinedRating,
+        reviewCount: event.reviewCount,
+        bestRating: 5,
+        worstRating: 1,
+      };
+    }
+
     return baseData;
+  }
+
+  generateEventFAQStructuredData(event: any): StructuredData | null {
+    const faqs: Array<{ question: string; answer: string }> = [];
+    const city = event.location?.city || "the UAE";
+    const ageMin = event.ageRange?.[0];
+    const ageMax = event.ageRange?.[1];
+
+    if (ageMin != null && ageMax != null) {
+      faqs.push({
+        question: `What age group is ${event.title} suitable for?`,
+        answer: `This activity is recommended for children aged ${ageMin} to ${ageMax} years.`,
+      });
+    }
+    faqs.push({
+      question: `Where is ${event.title} located?`,
+      answer: `This event takes place in ${city}${event.location?.address ? ` at ${event.location.address}` : ""}.`,
+    });
+    const price = event.price || event.dateSchedule?.[0]?.price;
+    if (price != null) {
+      const currency = event.currency || "AED";
+      faqs.push({
+        question: `How much does ${event.title} cost?`,
+        answer: price === 0
+          ? "This is a free event."
+          : `Tickets start from ${currency} ${price}. Book online at kidrove.com.`,
+      });
+    }
+    faqs.push({
+      question: "How do I book?",
+      answer: `Visit kidrove.com/events/${event.slug || event._id} and click "Book Now" to reserve your spot.`,
+    });
+
+    if (faqs.length === 0) return null;
+    return this.generateHomepageFAQStructuredData(faqs);
+  }
+
+  generateReviewStructuredData(reviews: any[]): StructuredData[] {
+    return reviews.slice(0, 5).map((r) => ({
+      "@context": "https://schema.org",
+      "@type": "Review",
+      author: {
+        "@type": "Person",
+        name: r.userName || r.user?.name || "Kidrove User",
+      },
+      datePublished: r.createdAt,
+      reviewRating: {
+        "@type": "Rating",
+        ratingValue: r.rating,
+        bestRating: 5,
+        worstRating: 1,
+      },
+      reviewBody: r.comment || r.text || "",
+    }));
+  }
+
+  generateCollectionItemListStructuredData(
+    collection: any,
+    events: any[],
+  ): StructuredData {
+    return {
+      "@context": "https://schema.org",
+      "@type": "ItemList",
+      name: collection.title || collection.name,
+      description: collection.description,
+      numberOfItems: events.length,
+      itemListElement: events.map((event, i) => ({
+        "@type": "ListItem",
+        position: i + 1,
+        name: event.title,
+        url: `${this.baseUrl}/events/${event.slug || event._id}`,
+        ...(event.images?.[0] && { image: event.images[0] }),
+      })),
+    };
+  }
+
+  generateCategoryItemListStructuredData(
+    category: any,
+    events: any[],
+  ): StructuredData {
+    return {
+      "@context": "https://schema.org",
+      "@type": "ItemList",
+      name: `${category.name} Events for Kids`,
+      description: category.description || `Browse ${category.name} kids activities and events`,
+      numberOfItems: events.length,
+      itemListElement: events.map((event, i) => ({
+        "@type": "ListItem",
+        position: i + 1,
+        name: event.title,
+        url: `${this.baseUrl}/events/${event.slug || event._id}`,
+      })),
+    };
+  }
+
+  generateSpeakableStructuredData(
+    url: string,
+    cssSelectors: string[] = ["h1", ".article-body", ".blog-excerpt"],
+  ): StructuredData {
+    return {
+      "@context": "https://schema.org",
+      "@type": "WebPage",
+      url,
+      speakable: {
+        "@type": "SpeakableSpecification",
+        cssSelector: cssSelectors,
+      },
+    };
+  }
+
+  generateVideoObjectStructuredData(video: {
+    name: string;
+    description: string;
+    thumbnailUrl: string;
+    uploadDate: string;
+    contentUrl?: string;
+    embedUrl?: string;
+    duration?: string;
+  }): StructuredData {
+    return {
+      "@context": "https://schema.org",
+      "@type": "VideoObject",
+      name: video.name,
+      description: video.description,
+      thumbnailUrl: video.thumbnailUrl,
+      uploadDate: video.uploadDate,
+      ...(video.contentUrl && { contentUrl: video.contentUrl }),
+      ...(video.embedUrl && { embedUrl: video.embedUrl }),
+      ...(video.duration && { duration: video.duration }),
+    };
   }
 
   /**
@@ -533,14 +716,13 @@ Sitemap: ${baseUrl}/sitemap.xml`;
     lastmod: Date,
     changefreq: string = "weekly",
     priority: number = 0.5,
+    images?: Array<{ loc: string; title?: string }>,
   ): string {
     const formattedDate = lastmod.toISOString().split("T")[0];
 
-    // Extract path from URL
     const urlObj = new URL(url);
     const path = urlObj.pathname;
 
-    // Generate hreflang alternates for multi-region
     const hreflangLinks = [
       `    <xhtml:link rel="alternate" hreflang="en" href="https://kidrove.com${path}" />`,
       `    <xhtml:link rel="alternate" hreflang="en-IN" href="https://kidrove.in${path}" />`,
@@ -548,13 +730,29 @@ Sitemap: ${baseUrl}/sitemap.xml`;
       `    <xhtml:link rel="alternate" hreflang="x-default" href="https://kidrove.com${path}" />`,
     ].join("\n");
 
+    const imageEntries = (images || [])
+      .map(
+        (img) =>
+          `    <image:image>\n      <image:loc>${this.escapeXml(img.loc)}</image:loc>${img.title ? `\n      <image:title>${this.escapeXml(img.title)}</image:title>` : ""}\n    </image:image>`,
+      )
+      .join("\n");
+
     return `  <url>
     <loc>${url}</loc>
     <lastmod>${formattedDate}</lastmod>
     <changefreq>${changefreq}</changefreq>
     <priority>${priority}</priority>
-${hreflangLinks}
+${hreflangLinks}${imageEntries ? "\n" + imageEntries : ""}
   </url>`;
+  }
+
+  private escapeXml(str: string): string {
+    return str
+      .replace(/&/g, "&amp;")
+      .replace(/</g, "&lt;")
+      .replace(/>/g, "&gt;")
+      .replace(/"/g, "&quot;")
+      .replace(/'/g, "&apos;");
   }
 
   /**

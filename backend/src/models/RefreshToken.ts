@@ -2,6 +2,7 @@ import mongoose, { Document, Schema } from "mongoose";
 
 // RefreshToken Document Interface
 export interface IRefreshToken extends Document {
+  /** SHA-256 hash of the raw token — never store the raw JWT. */
   token: string;
   user: mongoose.Types.ObjectId;
   expiresAt: Date;
@@ -15,6 +16,7 @@ export interface IRefreshToken extends Document {
 // RefreshToken Schema
 const RefreshTokenSchema = new Schema<IRefreshToken>(
   {
+    // Stores SHA-256(rawToken) — raw token is only ever held in the httpOnly cookie
     token: {
       type: String,
       required: true,
@@ -47,7 +49,7 @@ const RefreshTokenSchema = new Schema<IRefreshToken>(
 // Indexes
 RefreshTokenSchema.index({ token: 1 }, { unique: true });
 RefreshTokenSchema.index({ user: 1 });
-RefreshTokenSchema.index({ expiresAt: 1 });
+RefreshTokenSchema.index({ expiresAt: 1 }, { expireAfterSeconds: 0 });
 
 // Create and export the RefreshToken model
 const RefreshToken = mongoose.model<IRefreshToken>(

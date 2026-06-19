@@ -45,6 +45,7 @@ export interface HomepageData {
   events: IEvent[];
   bestPriceEvents: IEvent[];
   featuredEvents: IEvent[];
+  trendingEvents: IEvent[];
   banners: IBanner[];
   categories: ICategory[];
   featuredBlogs: IBlog[];
@@ -83,6 +84,7 @@ class HomepageService {
       events,
       bestPriceEvents,
       featuredEvents,
+      trendingEvents,
       banners,
       categories,
       rawFeaturedBlogs,
@@ -112,11 +114,12 @@ class HomepageService {
         .limit(12)
         .lean(),
 
-      // Best price events (limit 12, published only)
+      // Best price events (limit 12, published only; excludes null/undefined prices)
       Event.find({
         isDeleted: false,
         isApproved: true,
         status: "published",
+        price: { $type: "number" }, // exclude docs where price is null/undefined
       })
         .select(
           "title slug description images imageAssets price location dateSchedule category rating reviewCount viewsCount isFeatured vendorId ageGroup",
@@ -127,7 +130,7 @@ class HomepageService {
           "imageAssets",
           "url filename width height thumbnailUrl variations",
         )
-        .sort({ price: 1, createdAt: -1 })
+        .sort({ price: 1, createdAt: -1 }) // free (0) first, then cheapest
         .limit(12)
         .lean(),
 
@@ -149,6 +152,25 @@ class HomepageService {
         )
         .sort({ featuredOrder: 1, createdAt: -1 })
         .limit(6)
+        .lean(),
+
+      // Trending events — ordered by viewsCount desc (limit 12, published only)
+      Event.find({
+        isDeleted: false,
+        isApproved: true,
+        status: "published",
+      })
+        .select(
+          "title slug description images imageAssets price location dateSchedule category rating reviewCount viewsCount isFeatured vendorId ageGroup",
+        )
+        .populate("category", "name slug")
+        .populate("vendorId", "businessName")
+        .populate(
+          "imageAssets",
+          "url filename width height thumbnailUrl variations",
+        )
+        .sort({ viewsCount: -1, createdAt: -1 }) // most-viewed first; createdAt as tiebreaker
+        .limit(12)
         .lean(),
 
       // Active banners
@@ -405,6 +427,7 @@ class HomepageService {
     const transformedEvents = transformEventsResponse(events);
     const transformedBestPriceEvents = transformEventsResponse(bestPriceEvents);
     const transformedFeaturedEvents = transformEventsResponse(featuredEvents);
+    const transformedTrendingEvents = transformEventsResponse(trendingEvents);
 
     // Transform blogs to ensure consistent data structure
     const featuredBlogs = rawFeaturedBlogs.map(transformBlogResponse);
@@ -416,6 +439,7 @@ class HomepageService {
       events: transformedEvents,
       bestPriceEvents: transformedBestPriceEvents,
       featuredEvents: transformedFeaturedEvents,
+      trendingEvents: transformedTrendingEvents,
       banners: validBanners as unknown as IBanner[],
       categories: categories as unknown as ICategory[],
       featuredBlogs,

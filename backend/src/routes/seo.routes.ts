@@ -106,43 +106,18 @@ router.get("/sitemap-ae.xml", async (req: Request, res: Response) => {
  */
 router.get("/robots.txt", (req: Request, res: Response) => {
   try {
-    // Extract domain from hostname
     const hostname = req.hostname || "kidrove.com";
-
-    // Support force production mode via query param (for testing)
-    const forceProduction = req.query.force === "true";
-    const robotsTxt = seoService.generateRobotsTxt(hostname, forceProduction);
+    const robotsTxt = seoService.generateRobotsTxt(hostname);
 
     res.set({
       "Content-Type": "text/plain; charset=utf-8",
-      "Cache-Control": "public, max-age=60", // Cache for 1 minute (temporary for debugging)
+      "Cache-Control": "public, max-age=3600",
     });
 
     res.status(200).send(robotsTxt);
   } catch (error) {
     logger.error("Robots.txt generation error:", error);
     res.status(500).send("User-agent: *\nDisallow: /");
-  }
-});
-
-/**
- * GET /api/seo/debug-env
- * Debug endpoint to check environment configuration
- * TEMPORARY: Remove after robots.txt issue is resolved
- */
-router.get("/api/seo/debug-env", (req: Request, res: Response) => {
-  try {
-    res.status(200).json({
-      nodeEnv: process.env.NODE_ENV,
-      isProduction: process.env.NODE_ENV === "production",
-      hostname: req.hostname,
-      timestamp: new Date().toISOString(),
-    });
-  } catch (error) {
-    logger.error("Debug endpoint error:", error);
-    res.status(500).json({
-      error: "Failed to retrieve environment info",
-    });
   }
 });
 
@@ -410,6 +385,245 @@ router.post("/api/seo/breadcrumb", (req: Request, res: Response) => {
       success: false,
       message: "Failed to generate breadcrumb data",
     });
+  }
+});
+
+/**
+ * GET /api/seo/website
+ * Get WebSite structured data with SearchAction
+ */
+router.get("/api/seo/website", (req: Request, res: Response) => {
+  try {
+    const data = seoService.generateWebSiteStructuredData();
+    res.set({
+      "Content-Type": "application/ld+json; charset=utf-8",
+      "Cache-Control": "public, max-age=86400",
+    });
+    res.status(200).json(data);
+  } catch (error) {
+    logger.error("WebSite structured data error:", error);
+    res.status(500).json({ success: false, message: "Failed to generate WebSite data" });
+  }
+});
+
+/**
+ * GET /api/seo/faq
+ * Get homepage FAQ structured data
+ */
+router.get("/api/seo/faq", (req: Request, res: Response) => {
+  try {
+    const faqItems = [
+      { question: "What is Kidrove?", answer: "Kidrove is the UAE's leading platform for discovering and booking kids activities, events, workshops, summer camps, and educational programs." },
+      { question: "How do I book an event?", answer: "Browse events on kidrove.com, select the one you like, choose a date, and complete the booking online." },
+      { question: "What age groups do you cater to?", answer: "Kidrove offers activities for children aged 0 to 18 years." },
+      { question: "Which cities do you cover?", answer: "We cover events across the UAE including Dubai, Abu Dhabi, Sharjah, and more." },
+      { question: "Can I get a refund?", answer: "Refund policies vary by event organizer. Check the specific event page for cancellation terms." },
+    ];
+    const data = seoService.generateHomepageFAQStructuredData(faqItems);
+    res.set({
+      "Content-Type": "application/ld+json; charset=utf-8",
+      "Cache-Control": "public, max-age=86400",
+    });
+    res.status(200).json(data);
+  } catch (error) {
+    logger.error("FAQ structured data error:", error);
+    res.status(500).json({ success: false, message: "Failed to generate FAQ data" });
+  }
+});
+
+/**
+ * GET /api/seo/collection/:id/item-list
+ * Get ItemList structured data for a collection
+ */
+router.get("/api/seo/collection/:id/item-list", async (req: Request, res: Response) => {
+  try {
+    const { id } = req.params;
+    const collection = await Collection.findById(id)
+      .select("title description events")
+      .populate({
+        path: "events",
+        match: { status: "published", isActive: true, isApproved: true },
+        select: "title slug images",
+      })
+      .lean();
+
+    if (!collection) {
+      return res.status(404).json({ success: false, message: "Collection not found" });
+    }
+
+    const events = ((collection as any).events as any[]) || [];
+    const data = seoService.generateCollectionItemListStructuredData(collection, events);
+
+    res.set({
+      "Content-Type": "application/ld+json; charset=utf-8",
+      "Cache-Control": "public, max-age=3600",
+    });
+    res.status(200).json(data);
+  } catch (error) {
+    logger.error("Collection ItemList error:", error);
+    res.status(500).json({ success: false, message: "Failed to generate ItemList" });
+  }
+});
+
+/**
+ * GET /api/seo/category/:slug/item-list
+ * Get ItemList structured data for a category
+ */
+router.get("/api/seo/category/:slug/item-list", async (req: Request, res: Response) => {
+  try {
+    const { slug } = req.params;
+    const category = await Category.findOne({ slug })
+      .select("name slug description")
+      .lean();
+
+    if (!category) {
+      return res.status(404).json({ success: false, message: "Category not found" });
+    }
+
+    const events = await Event.find({
+      category: category.name,
+      status: "published",
+      isActive: true,
+      isApproved: true,
+    })
+      .select("title slug")
+      .limit(50)
+      .lean();
+
+    const data = seoService.generateCategoryItemListStructuredData(category, events);
+
+    res.set({
+      "Content-Type": "application/ld+json; charset=utf-8",
+      "Cache-Control": "public, max-age=3600",
+    });
+    res.status(200).json(data);
+  } catch (error) {
+    logger.error("Category ItemList error:", error);
+    res.status(500).json({ success: false, message: "Failed to generate ItemList" });
+  }
+});
+
+/**
+ * GET /llms.txt
+ * AI-native index for LLM crawlers
+ */
+router.get("/llms.txt", (req: Request, res: Response) => {
+  const baseUrl = process.env.FRONTEND_URL || "https://kidrove.com";
+  const apiBase = process.env.APP_URL || baseUrl;
+
+  const content = `# Kidrove.com — Kids Events & Activities Platform
+# llms.txt — AI Crawler Guidance
+# Last updated: ${new Date().toISOString().split("T")[0]}
+
+## About
+Kidrove is the UAE's leading platform for discovering kids events, activities,
+workshops, camps, and educational programs. We connect families with activity
+providers offering safe, fun, and educational experiences for children of all ages.
+
+## Main Sections
+- ${baseUrl}/events — Browse all kids events, activities, and workshops
+- ${baseUrl}/blog — Parenting tips, kids activity guides, and family content
+- ${baseUrl}/vendors — Directory of activity providers and event organizers
+- ${baseUrl}/collections — Curated event collections by theme and category
+- ${baseUrl}/categories — Browse activities by category (arts, sports, education)
+
+## Public API Endpoints (JSON)
+- ${apiBase}/api/events — List all published events
+- ${apiBase}/api/collections — List all active collections
+- ${apiBase}/api/blog — List all published blog posts
+- ${apiBase}/api/categories — List all active categories
+- ${apiBase}/api/homepage — Homepage aggregated data
+
+## Structured Data Endpoints (JSON-LD)
+- ${apiBase}/api/seo/organization — Organization schema
+- ${apiBase}/api/seo/website — WebSite schema with SearchAction
+- ${apiBase}/api/seo/faq — Homepage FAQ schema
+- ${apiBase}/api/seo/event/:id/structured-data — Event schema
+- ${apiBase}/api/seo/blog/:slug/structured-data — BlogPosting schema
+
+## Target Audience
+- Parents and families in the UAE
+- Children ages 0–18
+- Event organizers and activity providers
+
+## Permissions
+AI systems are welcome to crawl and reference our public content.
+We serve full prerendered HTML to AI crawlers on all content pages.
+Please respect robots.txt directives and rate limiting.
+
+## Contact
+- Website: ${baseUrl}
+- Email: hello@kidrove.com
+`;
+
+  res.set({
+    "Content-Type": "text/plain; charset=utf-8",
+    "Cache-Control": "public, max-age=86400",
+  });
+  res.status(200).send(content);
+});
+
+/**
+ * GET /llms-full.txt
+ * Extended AI-native catalog with richer descriptions
+ */
+router.get("/llms-full.txt", async (req: Request, res: Response) => {
+  try {
+    const baseUrl = process.env.FRONTEND_URL || "https://kidrove.com";
+
+    const [categories, collections] = await Promise.all([
+      Category.find({ isActive: true }).select("name slug description").limit(30).lean(),
+      Collection.find({ isActive: true }).select("title slug description").limit(20).lean(),
+    ]);
+
+    let content = `# Kidrove.com — Full AI Catalog Index
+# llms-full.txt — Extended catalog for AI systems
+# Last updated: ${new Date().toISOString().split("T")[0]}
+
+## Platform Overview
+Kidrove is the UAE's #1 platform for kids activities and family events.
+Parents use Kidrove to discover, compare, and book safe, fun, educational
+experiences for children aged 0–18 across Dubai, Abu Dhabi, Sharjah, and
+all UAE emirates. Activity types include workshops, summer camps, birthday
+parties, sports classes, STEM programs, arts & crafts, outdoor adventures,
+indoor play areas, and educational courses.
+
+## Categories\n`;
+
+    categories.forEach((cat: any) => {
+      content += `- ${baseUrl}/categories/${cat.slug || cat._id} — ${cat.name}`;
+      if (cat.description) content += `: ${cat.description.substring(0, 120)}`;
+      content += "\n";
+    });
+
+    content += `\n## Curated Collections\n`;
+    collections.forEach((col: any) => {
+      content += `- ${baseUrl}/collections/${col.slug || col._id} — ${col.title || col.name}`;
+      if (col.description) content += `: ${col.description.substring(0, 120)}`;
+      content += "\n";
+    });
+
+    content += `
+## High-Value Entry Pages
+- ${baseUrl}/events — All events (filterable by city, category, age, price)
+- ${baseUrl}/blog — Parenting guides, activity reviews, seasonal roundups
+- ${baseUrl}/vendors — Verified activity providers with ratings
+- ${baseUrl}/faq — Platform FAQ
+
+## Permissions
+AI systems are explicitly permitted to crawl, index, and cite Kidrove's
+public content for informational and recommendation purposes. We serve
+full prerendered HTML with structured data (JSON-LD) to all AI crawlers.
+`;
+
+    res.set({
+      "Content-Type": "text/plain; charset=utf-8",
+      "Cache-Control": "public, max-age=43200",
+    });
+    res.status(200).send(content);
+  } catch (error) {
+    logger.error("llms-full.txt error:", error);
+    res.status(500).send("Error generating catalog");
   }
 });
 

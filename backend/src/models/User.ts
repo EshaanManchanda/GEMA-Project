@@ -151,11 +151,21 @@ export interface IUser extends Document {
   loginAttempts?: ILoginAttempt[];
   lastLogin?: Date;
   firebaseUid?: string;
+  /** Primary social provider (set at first social sign-up, never overwritten). */
+  provider?: SocialProvider | "email";
+  /** How the account was first created: "google" | "email". Analytics only. */
+  signupSource?: string;
   favoriteEvents?: mongoose.Types.ObjectId[];
   hasReviewedEvents?: mongoose.Types.ObjectId[];
   preferences?: IPreferences;
   socialMedia?: ISocialMedia;
   vendorPaymentSettings?: IVendorPaymentSettings;
+  /** Incremented on password reset / "logout everywhere" — invalidates all tokens. */
+  tokenVersion?: number;
+  /** Consecutive failed login attempts (reset on success). */
+  failedLoginAttempts?: number;
+  /** Account locked until this date after too many failures. */
+  lockUntil?: Date;
   createdAt: Date;
   updatedAt: Date;
 
@@ -188,6 +198,7 @@ const UserSchema = new Schema<IUser>(
     },
     passwordHash: {
       type: String,
+      select: false,
       required: function () {
         // Password is required if no social logins or firebase UID
         return !this.socialLogins?.length && !this.firebaseUid;
@@ -365,6 +376,15 @@ const UserSchema = new Schema<IUser>(
       type: String,
       sparse: true,
     },
+    /** Primary social provider (set at first social sign-up, never overwritten). */
+    provider: {
+      type: String,
+      enum: [...Object.values(SocialProvider), "email"],
+    },
+    /** How the account was first created: "google" | "email". Analytics only. */
+    signupSource: {
+      type: String,
+    },
     favoriteEvents: [
       {
         type: mongoose.Schema.Types.ObjectId,
@@ -412,6 +432,20 @@ const UserSchema = new Schema<IUser>(
       linkedin: String,
       website: String,
     },
+    /** Bumped on password reset / "logout everywhere" to invalidate all JWTs + refresh tokens. */
+    tokenVersion: {
+      type: Number,
+      default: 0,
+    },
+    /** Consecutive failed login attempts (reset on success). */
+    failedLoginAttempts: {
+      type: Number,
+      default: 0,
+    },
+    /** Account locked until this date after too many failed logins. */
+    lockUntil: {
+      type: Date,
+    },
     vendorPaymentSettings: {
       hasCustomStripeAccount: Boolean,
       stripeAccountId: String,
@@ -444,8 +478,9 @@ const UserSchema = new Schema<IUser>(
 );
 
 // Indexes
-UserSchema.index({ email: 1 });
+UserSchema.index({ email: 1 }, { unique: true });
 UserSchema.index({ "socialLogins.provider": 1, "socialLogins.providerId": 1 });
+UserSchema.index({ firebaseUid: 1 }, { unique: true, sparse: true }); // H2: prevent duplicate Google accounts
 
 // Additional indexes for KVM1 optimization - faster admin dashboard queries
 UserSchema.index({ role: 1, status: 1 }); // Admin user filtering by role and status

@@ -75,72 +75,91 @@ const app: Application = express();
 app.set("trust proxy", 1); // Trust first proxy only
 
 // Security middleware
-app.use(helmet());
+app.use(
+  helmet({
+    // Enforce HTTPS for 1 year; preload-ready
+    hsts: { maxAge: 31536000, includeSubDomains: true, preload: true },
+    // Prevent MIME sniffing
+    noSniff: true,
+    // Block clickjacking
+    frameguard: { action: "deny" },
+    // Referrer-Policy: only send origin on same-origin requests
+    referrerPolicy: { policy: "strict-origin-when-cross-origin" },
+    // Disable X-Powered-By
+    hidePoweredBy: true,
+    // CSP is left to app-level route middleware for prerender/OG routes
+    contentSecurityPolicy: false,
+  }),
+);
+
+// In production, block state-changing requests that arrive with no Origin header.
+// Safe methods (GET/HEAD/OPTIONS) are allowed for health checks, curl, monitoring.
+// State-changing no-origin requests have no legitimate browser use-case.
+const SAFE_METHODS = new Set(["GET", "HEAD", "OPTIONS"]);
+app.use((req, res, next) => {
+  if (config.nodeEnv === "production" && !req.headers.origin && !SAFE_METHODS.has(req.method)) {
+    logger.warn("[CORS] Blocked no-origin state-changing request in production", {
+      method: req.method,
+      path: req.path,
+      ip: req.ip,
+    });
+    res.status(403).json({ success: false, message: "Forbidden" });
+    return;
+  }
+  next();
+});
+
 app.use(
   cors({
     origin: function (origin, callback) {
-      // Build allowed origins from environment variables only — no domains hardcoded in source
-      // Set ALLOWED_ORIGINS in .env as a comma-separated list, e.g.:
-      //   ALLOWED_ORIGINS=https://kidrove.com,https://kidrove.in,https://kidrove.ae,https://www.kidrove.com,https://www.kidrove.in,https://www.kidrove.ae
+      // Allowed origins built entirely from env — no domains hardcoded in source
       const allowedOrigins = [
         config.frontendUrl,
-        ...(process.env.ALLOWED_ORIGINS?.split(",").map((url) => url.trim()) || []),
-        ...(process.env.ADDITIONAL_ALLOWED_ORIGINS?.split(",").map((url) =>
-          url.trim(),
-        ) || []),
+        ...(process.env.ALLOWED_ORIGINS?.split(",").map((u) => u.trim()) || []),
+        ...(process.env.ADDITIONAL_ALLOWED_ORIGINS?.split(",").map((u) => u.trim()) || []),
       ].filter(Boolean);
 
-      // Debug logging for CORS issues (only if DEBUG_CORS is enabled)
-      if (process.env.DEBUG_CORS === "true") {
-        logger.debug(
-          "CORS Check - Origin:",
-          origin,
-          "| Allowed:",
-          allowedOrigins,
-        );
-      }
-
-      // In development, allow localhost origins
-      if (process.env.NODE_ENV === "development") {
+      // Development: allow common localhost ports
+      if (config.nodeEnv === "development") {
         allowedOrigins.push(
           "http://localhost:3000",
           "http://localhost:3001",
-          "http://localhost:5173", // Vite default port
+          "http://localhost:5173",
           "http://127.0.0.1:3000",
           "http://127.0.0.1:3001",
           "http://127.0.0.1:5173",
         );
       }
 
-      // Allow requests with no origin (direct browser navigation, favicon, health checks)
-      // These requests don't have CORS implications as they don't access response data
+      if (process.env.DEBUG_CORS === "true") {
+        logger.debug("CORS Check - Origin:", origin, "| Allowed:", allowedOrigins);
+      }
+
+      // No-origin: unsafe methods already blocked above; safe methods pass through
       if (!origin) {
-        // In development, allow all no-origin requests
-        if (process.env.NODE_ENV === "development") {
-          logger.tagged("CORS", "Request with no origin - allowing (dev mode)");
-          return callback(null, true);
-        }
-        // In production, allow no-origin for safe methods (GET, HEAD, OPTIONS)
-        // This allows favicon, direct navigation, monitoring while maintaining security
         return callback(null, true);
       }
 
-      // Check if origin is allowed (check strings and regex separately)
-      const isAllowed =
-        allowedOrigins.some((allowedOrigin) => {
-          return (
-            origin === allowedOrigin ||
-            origin === allowedOrigin.replace(/\/$/, "")
-          );
-        }) ||
-        (origin && /\.vercel\.app$/.test(origin));
+      // Reject Origin: "null" — sent by sandboxed iframes, file://, some redirects
+      if (origin === "null") {
+        logger.warn("[CORS] Rejected null origin");
+        return callback(new Error("Not allowed by CORS"));
+      }
 
-      // Allow null origin (server-side requests like Puppeteer)
-      if (!origin || origin === 'null') {
-        logger.tagged("CORS", "Allowing null origin (server-side request)");
-        callback(null, true);
-      } else if (isAllowed) {
-        logger.tagged("CORS", "Origin allowed:", origin);
+      // Preview deployments: only allowed outside production, scoped to this project
+      if (
+        config.nodeEnv !== "production" &&
+        /^https:\/\/kidrove-frontend-[a-z0-9-]+\.vercel\.app$/.test(origin)
+      ) {
+        return callback(null, true);
+      }
+
+      // Strict allowlist — trailing slash normalised
+      const isAllowed = allowedOrigins.some(
+        (allowed) => origin === allowed || origin === allowed.replace(/\/$/, ""),
+      );
+
+      if (isAllowed) {
         callback(null, true);
       } else {
         logger.warn("[CORS] Origin rejected:", origin);
@@ -149,12 +168,7 @@ app.use(
     },
     credentials: true,
     methods: ["GET", "POST", "PUT", "DELETE", "PATCH", "OPTIONS"],
-    allowedHeaders: [
-      "Content-Type",
-      "Authorization",
-      "X-Requested-With",
-      "Cookie",
-    ],
+    allowedHeaders: ["Content-Type", "Authorization", "X-Requested-With", "Cookie"],
     exposedHeaders: ["Set-Cookie"],
     preflightContinue: false,
     optionsSuccessStatus: 200,
@@ -275,8 +289,12 @@ app.use("/api/health", healthRoutes);
 
 import seoRoutes from "./routes/seo.routes";
 import ogRoutes from "./routes/og.routes";
+import { prerenderMiddleware } from "./middleware/crawlerPrerender";
 
-// SEO Routes (sitemap.xml, robots.txt) - Mount at root
+// Crawler prerender — intercepts bot requests on canonical URLs BEFORE SPA/OG
+app.use(prerenderMiddleware);
+
+// SEO Routes (sitemap.xml, robots.txt, llms.txt) - Mount at root
 app.use("/", seoRoutes);
 
 // OG HTML Routes for social bot link previews

@@ -1,6 +1,7 @@
 import { Request, Response, NextFunction, CookieOptions } from "express";
 import mongoose from "mongoose";
 import { getAuth } from "../config/firebase";
+import type { DecodedIdToken } from "firebase-admin/auth";
 import { generateToken, generateRefreshToken } from "../config/jwt";
 import {
   User,
@@ -21,6 +22,7 @@ import { cacheService } from "../services/cache.service";
 import mediaService from "../services/media.service";
 import { getOrCreateVendorProfile } from "../utils/vendorHelpers";
 import { getOrCreateTeacherProfile } from "../utils/teacherHelpers";
+import { GOOGLE_ALLOWED_ROLES, GoogleAllowedRole } from "../constants/roles";
 import {
   AuthResponse,
   LoginRequest,
@@ -46,6 +48,11 @@ import {
 import { toISOStringSafe, toDateStringSafe } from "../utils/dateHelpers";
 import { config } from "../config/index";
 import logger from "../config/logger";
+import { audit, AuditAction } from "../utils/auditLog";
+
+/** One-way hash of a refresh token for safe DB storage (raw token only lives in cookie). */
+const hashToken = (raw: string): string =>
+  crypto.createHash("sha256").update(raw).digest("hex");
 
 /**
  * Cookie configuration for auth tokens
@@ -56,26 +63,21 @@ const getCookieOptions = (): CookieOptions => {
   const isLocalhost =
     frontendUrl.includes("localhost") || frontendUrl.includes("127.0.0.1");
 
-  // Use secure cookies only if in production AND not localhost
-  // This allows testing production mode locally without HTTPS
   const useSecureCookies = isProduction && !isLocalhost;
-
-  logger.debug("[COOKIE_CONFIG] Environment:", {
-    env: config.nodeEnv,
-    isProduction,
-    frontendUrl,
-    isLocalhost,
-    secure: useSecureCookies,
-    sameSite: useSecureCookies ? "none" : "lax",
-  });
+  // COOKIE_SAMESITE env var lets ops choose at deploy time:
+  //   same-registrable-domain deploy → "lax" (no CSRF plumbing needed)
+  //   cross-site deploy → "none" (must pair with CORS allowlist hardening)
+  const sameSite = (process.env.COOKIE_SAMESITE as "lax" | "none" | "strict") ||
+    (useSecureCookies ? "lax" : "lax");
 
   return {
-    httpOnly: true, // Prevents JavaScript access (XSS protection)
-    secure: useSecureCookies, // true only for production with HTTPS (not localhost)
-    sameSite: useSecureCookies ? "none" : "lax", // 'lax' for localhost, 'none' for cross-domain HTTPS
-    domain: undefined, // Don't set domain - let browser handle it for localhost
+    httpOnly: true,
+    secure: useSecureCookies,
+    sameSite,
+    domain: undefined,
     path: "/",
-    maxAge: 7 * 24 * 60 * 60 * 1000, // 7 days in milliseconds
+    priority: "high",
+    maxAge: 7 * 24 * 60 * 60 * 1000,
   };
 };
 
@@ -85,16 +87,19 @@ const getRefreshCookieOptions = (): CookieOptions => {
   const isLocalhost =
     frontendUrl.includes("localhost") || frontendUrl.includes("127.0.0.1");
 
-  // Use secure cookies only if in production AND not localhost
   const useSecureCookies = isProduction && !isLocalhost;
+  const sameSite = (process.env.COOKIE_SAMESITE as "lax" | "none" | "strict") ||
+    (useSecureCookies ? "lax" : "lax");
 
   return {
     httpOnly: true,
-    secure: useSecureCookies, // true only for production with HTTPS (not localhost)
-    sameSite: useSecureCookies ? "none" : "lax", // 'lax' for localhost, 'none' for cross-domain HTTPS
-    domain: undefined, // Don't set domain - let browser handle it for localhost
-    path: "/",
-    maxAge: 30 * 24 * 60 * 60 * 1000, // 30 days in milliseconds
+    secure: useSecureCookies,
+    sameSite,
+    domain: undefined,
+    // Scoped to auth routes only — refresh token should not ride on every request
+    path: "/api/auth",
+    priority: "high",
+    maxAge: 30 * 24 * 60 * 60 * 1000,
   };
 };
 
@@ -186,38 +191,70 @@ const formatUserResponse = (user: IUser): UserResponse => {
 };
 
 /**
+ * Blocks any account whose status forbids authentication.
+ * Shared by all login paths (password, Google/Firebase, future Apple/Facebook).
+ */
+const assertUserCanLogin = (user: IUser): void => {
+  switch (user.status) {
+    case UserStatus.SUSPENDED:
+      logger.warn("[AUTH] Blocked login attempt — suspended account", {
+        userId: user._id,
+        email: user.email,
+        status: user.status,
+      });
+      throw new AppError(
+        "Your account has been suspended. Please contact support.",
+        403,
+      );
+    case UserStatus.INACTIVE:
+      logger.warn("[AUTH] Blocked login attempt — inactive account", {
+        userId: user._id,
+        email: user.email,
+        status: user.status,
+      });
+      throw new AppError(
+        "Your account is inactive. Please contact support.",
+        403,
+      );
+  }
+};
+
+/**
  * Generate authentication tokens
  */
 const generateAuthTokens = async (
   userId: string,
   req: Request,
 ): Promise<{ accessToken: string; refreshToken: string }> => {
-  // Generate access token
-  const accessToken = generateToken({ id: userId });
+  // Fetch current tokenVersion so it can be embedded in the access token claim
+  const userDoc = await User.findById(userId).select("tokenVersion").lean();
+  const tokenVersion = (userDoc as any)?.tokenVersion ?? 0;
+
+  // Generate access token with tokenVersion claim (tv) for logout-all invalidation
+  const accessToken = generateToken({ id: userId, tv: tokenVersion });
 
   // Generate refresh token
   const refreshToken = generateRefreshToken({ id: userId });
 
-  // Calculate expiry date (from JWT config)
+  // Calculate expiry date
   const expiresAt = new Date();
-  expiresAt.setDate(expiresAt.getDate() + 30); // 30 days from now
+  expiresAt.setDate(expiresAt.getDate() + 30);
 
-  // Save refresh token to database with duplicate handling for race conditions
+  // Store only the SHA-256 hash of the refresh token — raw token stays in the cookie only
+  const tokenHash = hashToken(refreshToken);
+
   try {
     await RefreshToken.create({
-      token: refreshToken,
+      token: tokenHash,
       user: userId,
       expiresAt,
       ipAddress: req.ip,
       userAgent: req.headers["user-agent"],
     });
   } catch (error: any) {
-    // Handle duplicate key errors from race conditions (multiple simultaneous requests)
     if (error.code === 11000) {
-      logger.info("[Auth] Refresh token already exists (race condition), continuing...");
-      // Token already exists in DB, which is fine - the operation succeeded in another request
+      logger.info("[Auth] Refresh token hash collision (race condition), continuing...");
     } else {
-      // Re-throw other errors
       throw error;
     }
   }
@@ -258,12 +295,26 @@ export const register = async (
       throw new AppError("Email and password are required", 400);
     }
 
-    // Check if user already exists
+    // Check if user already exists — neutral response to prevent email enumeration
     logger.debug("[REGISTER] Checking for existing user...");
     const existingUser = await User.findOne({ email });
     logger.debug("[REGISTER] Existing user check complete. User found: " + !!existingUser);
     if (existingUser) {
-      throw new AppError("User with this email already exists", 400);
+      // Send "you already have an account" email instead of a distinguishable 400
+      try {
+        await emailService.sendEmail({
+          to: email,
+          subject: "Someone tried to register with your email",
+          html: `<p>Hi,</p><p>Someone tried to create a new account using your email address (<strong>${email}</strong>). If that was you, you already have an account — <a href="${config.frontendUrl}/login">sign in here</a>.</p><p>If it wasn't you, you can safely ignore this email.</p>`,
+        });
+      } catch {
+        // Silently ignore email errors — never let them affect the response timing
+      }
+      res.status(200).json({
+        success: true,
+        message: "If this email is not yet registered, you will receive a verification email.",
+      } as ApiResponse);
+      return;
     }
 
     // Generate verification OTP
@@ -333,14 +384,14 @@ export const register = async (
       });
     }
 
-    // Return response
+    // Return response — tokens are in httpOnly cookies; body carries user only
     logger.info("Registration successful");
+    audit({ action: AuditAction.REGISTER, userId: user._id, req });
     res.status(201).json({
       success: true,
       message: "User registered successfully. Auth cookies have been set.",
       data: {
         user: formatUserResponse(user),
-        tokens,
       },
     });
   } catch (error) {
@@ -372,7 +423,13 @@ export const registerAdmin = async (
       );
     }
 
-    if (adminSecretKey !== ADMIN_SECRET_KEY) {
+    // Constant-time comparison to prevent timing-based secret enumeration
+    const suppliedBuf = Buffer.from(adminSecretKey || "");
+    const expectedBuf = Buffer.from(ADMIN_SECRET_KEY);
+    const secretsMatch =
+      suppliedBuf.length === expectedBuf.length &&
+      crypto.timingSafeEqual(suppliedBuf, expectedBuf);
+    if (!secretsMatch) {
       throw new AppError("Invalid admin secret key", 403);
     }
 
@@ -420,14 +477,13 @@ export const registerAdmin = async (
       // Don't fail registration if email fails
     }
 
-    // Return response
+    // Return response — tokens are in httpOnly cookies; body carries user only
     res.status(201).json({
       success: true,
       message:
         "Admin user registered successfully. Auth cookies have been set.",
       data: {
         user: formatUserResponse(user),
-        tokens,
       },
     });
   } catch (error) {
@@ -494,29 +550,37 @@ export const login = async (
   res: Response,
   next: NextFunction,
 ): Promise<void> => {
+  const LOCKOUT_THRESHOLD = config.security.maxLoginAttempts;
+  const LOCKOUT_DURATION_MS = config.security.lockoutDuration;
+
   try {
     const { email, password }: LoginRequest = req.body;
 
     logger.auth("Attempting login for:", { email });
 
-    // Find user by email
-    const user = await User.findOne({ email });
+    // Find user by email — include passwordHash (select:false) for comparison
+    const user = await User.findOne({ email }).select("+passwordHash");
     if (!user) {
-      logger.auth("User not found:", { email });
+      // Run a dummy bcrypt compare so response time is uniform regardless of
+      // whether the email exists — prevents timing-based user enumeration.
+      await bcrypt.compare(password, "$2a$12$000000000000000000000uGlBeWMeDM9iqQW5RGmcXGPGl9B0r7q");
+      logger.warn("[AUTH] Login failed — email not found", { email, ip: req.ip });
       throw new AppError("Invalid credentials", 401);
     }
 
-    logger.auth("User found:", {
-      id: user._id,
-      email: user.email,
-      role: user.role,
-      hasPassword: !!user.passwordHash,
-      passwordHashLength: user.passwordHash?.length,
-    });
+    // Account lockout check (S5)
+    if (user.lockUntil && user.lockUntil > new Date()) {
+      const remainingMs = user.lockUntil.getTime() - Date.now();
+      const remainingMin = Math.ceil(remainingMs / 60000);
+      logger.warn("[AUTH] Login blocked — account locked", { userId: user._id, email, ip: req.ip });
+      throw new AppError(
+        `Account temporarily locked due to too many failed attempts. Try again in ${remainingMin} minute${remainingMin === 1 ? "" : "s"}.`,
+        429,
+      );
+    }
 
     // Check if user has a password (might be social login only)
     if (!user.passwordHash) {
-      logger.auth("No password hash found for user");
       throw new AppError(
         "This account does not have a password. Please use social login.",
         400,
@@ -526,20 +590,18 @@ export const login = async (
     // Verify password
     if (process.env.DEBUG_AUTH === "true" && process.env.NODE_ENV !== "production") {
       logger.debug("[LOGIN] Comparing passwords...");
-      logger.debug("[LOGIN] Password provided (first 3 chars):", {
-        partial: password.substring(0, 3) + "***",
-      });
-      logger.debug("[LOGIN] Stored hash (first 10 chars):", {
-        partial: user.passwordHash.substring(0, 10) + "***",
-      });
     }
     const isMatch = await user.comparePassword(password);
-    if (process.env.DEBUG_AUTH === "true" && process.env.NODE_ENV !== "production") {
-      logger.debug("[LOGIN] Password match result:", { isMatch });
-    }
 
     if (!isMatch) {
-      // Record failed login attempt
+      // Increment failure counter and lock if threshold hit
+      const failures = (user.failedLoginAttempts ?? 0) + 1;
+      user.failedLoginAttempts = failures;
+      if (failures >= LOCKOUT_THRESHOLD) {
+        user.lockUntil = new Date(Date.now() + LOCKOUT_DURATION_MS);
+        logger.warn("[AUTH] Account locked after repeated failures", { userId: user._id, email, ip: req.ip });
+        audit({ action: AuditAction.ACCOUNT_LOCKED, userId: user._id, req, metadata: { failures } });
+      }
       user.loginAttempts = user.loginAttempts || [];
       user.loginAttempts.push({
         timestamp: new Date(),
@@ -549,19 +611,17 @@ export const login = async (
       });
       await user.save();
 
-      logger.auth("Password mismatch for user:", { email });
+      logger.warn("[AUTH] Login failed — wrong password", { userId: user._id, email, ip: req.ip });
+      audit({ action: AuditAction.LOGIN_FAILED, userId: user._id, req, metadata: { email } });
       throw new AppError("Invalid credentials", 401);
     }
 
-    // Check if user is active
-    if (user.status === UserStatus.SUSPENDED) {
-      throw new AppError(
-        "Your account has been suspended. Please contact support.",
-        403,
-      );
-    }
+    // Check if user is allowed to login (blocks SUSPENDED + INACTIVE)
+    assertUserCanLogin(user);
 
-    // Record successful login
+    // Reset lockout counters and record success
+    user.failedLoginAttempts = 0;
+    user.lockUntil = undefined;
     user.loginAttempts = user.loginAttempts || [];
     user.loginAttempts.push({
       timestamp: new Date(),
@@ -572,19 +632,21 @@ export const login = async (
     user.lastLogin = new Date();
     await user.save();
 
+    logger.info("[AUTH] Login success", { userId: user._id, email: user.email, ip: req.ip, provider: "password" });
+    audit({ action: AuditAction.LOGIN, userId: user._id, req });
+
     // Generate tokens
     const tokens = await generateAuthTokens(user._id.toString(), req);
 
     // Set httpOnly cookies
     setAuthCookies(res, tokens.accessToken, tokens.refreshToken);
 
-    // Return response
+    // Return response — tokens are in httpOnly cookies; body carries user only
     res.status(200).json({
       success: true,
       message: "Login successful. Auth cookies have been set.",
       data: {
         user: formatUserResponse(user),
-        tokens,
       },
     });
   } catch (error) {
@@ -607,15 +669,16 @@ export const logout = async (
     const refreshToken = req.cookies.refreshToken || req.body.refreshToken;
 
     if (refreshToken) {
-      // Revoke the refresh token
+      // Revoke the refresh token — match by hash, not raw token
       await RefreshToken.findOneAndUpdate(
-        { token: refreshToken },
+        { token: hashToken(refreshToken) },
         { isRevoked: true },
       );
     }
 
     // Clear auth cookies
     clearAuthCookies(res);
+    audit({ action: AuditAction.LOGOUT, userId: req.user?._id || req.user?.id, req });
 
     res.status(200).json({
       success: true,
@@ -638,32 +701,40 @@ export const refreshToken = async (
 ): Promise<void> => {
   try {
     // Get refresh token from cookie or body (for backward compatibility)
-    const token = req.cookies.refreshToken || req.body.refreshToken;
+    const rawToken = req.cookies.refreshToken || req.body.refreshToken;
 
-    if (!token) {
+    if (!rawToken) {
       throw new AppError("No refresh token provided", 401);
     }
 
-    // Find the refresh token in the database
-    const refreshTokenDoc = await RefreshToken.findOne({
-      token,
-      isRevoked: false,
-    });
+    const tokenHash = hashToken(rawToken);
+
+    // Check if a revoked token is being replayed — sign of theft; nuke the whole family
+    const revokedDoc = await RefreshToken.findOne({ token: tokenHash, isRevoked: true });
+    if (revokedDoc) {
+      logger.warn("[SECURITY] Refresh token reuse detected — revoking all sessions", {
+        userId: revokedDoc.user,
+        ip: req.ip,
+        ua: req.headers["user-agent"],
+      });
+      await RefreshToken.updateMany({ user: revokedDoc.user }, { isRevoked: true });
+      clearAuthCookies(res);
+      audit({ action: AuditAction.SESSION_REVOKED, userId: revokedDoc.user, req, metadata: { reason: "refresh_token_reuse" } });
+      throw new AppError("Session compromised. Please login again.", 401);
+    }
+
+    // Find the active token by hash
+    const refreshTokenDoc = await RefreshToken.findOne({ token: tokenHash, isRevoked: false });
     if (!refreshTokenDoc) {
-      // Clear invalid cookies
       clearAuthCookies(res);
       throw new AppError("Invalid or expired refresh token", 401);
     }
 
     // Check if token is expired
     if (refreshTokenDoc.expiresAt < new Date()) {
-      // Mark as revoked
       refreshTokenDoc.isRevoked = true;
       await refreshTokenDoc.save();
-
-      // Clear expired cookies
       clearAuthCookies(res);
-
       throw new AppError("Refresh token expired", 401);
     }
 
@@ -673,23 +744,22 @@ export const refreshToken = async (
       throw new AppError("User not found", 404);
     }
 
+    // Revoke old refresh token before issuing new one (rotation)
+    refreshTokenDoc.isRevoked = true;
+    await refreshTokenDoc.save();
+
     // Generate new tokens
     const tokens = await generateAuthTokens(user._id.toString(), req);
 
     // Set new httpOnly cookies
     setAuthCookies(res, tokens.accessToken, tokens.refreshToken);
 
-    // Revoke old refresh token
-    refreshTokenDoc.isRevoked = true;
-    await refreshTokenDoc.save();
-
-    // Return response
+    // Return response — tokens are in httpOnly cookies; body carries user only
     res.status(200).json({
       success: true,
       message: "Token refreshed successfully. New auth cookies have been set.",
       data: {
         user: formatUserResponse(user),
-        tokens,
       },
     });
   } catch (error) {
@@ -1005,13 +1075,24 @@ export const changePassword = async (
       throw new AppError("Current password is incorrect", 400);
     }
 
-    // Update password
+    // Update password and invalidate all existing sessions
     user.passwordHash = newPassword; // Will be hashed by pre-save hook
+    user.tokenVersion = (user.tokenVersion ?? 0) + 1;
     await user.save();
+
+    // Revoke all refresh tokens for this user
+    await RefreshToken.updateMany({ user: user._id }, { isRevoked: true });
+
+    logger.info("[AUTH] Password changed — all sessions invalidated", { userId: user._id });
+    audit({ action: AuditAction.PASSWORD_CHANGE, userId: user._id, req });
+
+    // Issue fresh tokens so the current session stays alive
+    const tokens = await generateAuthTokens(user._id.toString(), req);
+    setAuthCookies(res, tokens.accessToken, tokens.refreshToken);
 
     res.status(200).json({
       success: true,
-      message: "Password changed successfully",
+      message: "Password changed successfully. All other sessions have been logged out.",
     } as ApiResponse);
   } catch (error) {
     next(error);
@@ -1031,10 +1112,20 @@ export const forgotPassword = async (
   try {
     const { email }: ForgotPasswordRequest = req.body;
 
-    // Find user by email
-    const user = await User.findOne({ email });
+    // Find user by email — include passwordHash to check social-login-only accounts
+    const user = await User.findOne({ email }).select("+passwordHash");
     if (!user) {
       // Don't reveal that the user doesn't exist
+      res.status(200).json({
+        success: true,
+        message:
+          "If your email is registered, you will receive a password reset code",
+      } as ApiResponse);
+      return;
+    }
+
+    // Pure social-login accounts have no password — silently decline without leaking account existence
+    if (user.firebaseUid && !user.passwordHash) {
       res.status(200).json({
         success: true,
         message:
@@ -1104,14 +1195,21 @@ export const resetPassword = async (
       throw new AppError("Invalid or expired OTP code", 400);
     }
 
-    // Update password
+    // Update password and invalidate all existing sessions
     user.passwordHash = newPassword; // Will be hashed by pre-save hook
-    user.passwordResetOTP = undefined; // Clear OTP
+    user.passwordResetOTP = undefined;
+    user.tokenVersion = (user.tokenVersion ?? 0) + 1;
     await user.save();
+
+    // Revoke all refresh tokens for this user
+    await RefreshToken.updateMany({ user: user._id }, { isRevoked: true });
+
+    logger.info("[AUTH] Password reset — all sessions invalidated", { userId: user._id });
+    audit({ action: AuditAction.PASSWORD_RESET, userId: user._id, req });
 
     res.status(200).json({
       success: true,
-      message: "Password reset successful",
+      message: "Password reset successful. All other sessions have been logged out.",
     } as ApiResponse);
   } catch (error) {
     next(error);
@@ -1173,64 +1271,131 @@ export const firebaseAuth = async (
   next: NextFunction,
 ): Promise<void> => {
   try {
-    const { idToken }: FirebaseAuthRequest = req.body;
+    const { idToken, role: requestedRole }: FirebaseAuthRequest = req.body;
 
-    // Verify Firebase ID token
-    const decodedToken = await getAuth().verifyIdToken(idToken);
-    if (!decodedToken) {
-      throw new AppError("Invalid Firebase token", 401);
+    // Verify Firebase ID token — wrap so any rejection becomes a clean 401, not a 500
+    let decodedToken: DecodedIdToken;
+    try {
+      decodedToken = await getAuth().verifyIdToken(idToken);
+    } catch {
+      throw new AppError("Invalid or expired Firebase token", 401);
     }
 
-    // Get Firebase user
-    const firebaseUser = await getAuth().getUser(decodedToken.uid);
+    // Reject unverified Google email addresses
+    if (!decodedToken.email_verified) {
+      logger.warn("[FIREBASE_AUTH] Blocked login — unverified Google email", {
+        firebaseUid: decodedToken.uid,
+        email: decodedToken.email,
+      });
+      throw new AppError("Google account email is not verified", 403);
+    }
 
-    // Check if user exists in our database
-    let user = await User.findOne({ firebaseUid: firebaseUser.uid });
+    // Use decoded token claims directly — avoids a second Admin SDK round-trip
+    // decodedToken carries: uid, email, email_verified, name, picture
+    const firebaseUid = decodedToken.uid;
+    const firebaseEmail = decodedToken.email ?? "";
+    const firebaseName = decodedToken.name ?? "";
+    const firebasePhoto = (decodedToken as any).picture ?? "";
 
-    // If user doesn't exist, check by email
-    if (!user && firebaseUser.email) {
-      user = await User.findOne({ email: firebaseUser.email });
+    // Resolve role for new-user creation — caller may pass a role; validate against allowlist
+    const newUserRole: GoogleAllowedRole =
+      requestedRole && (GOOGLE_ALLOWED_ROLES as readonly string[]).includes(requestedRole)
+        ? (requestedRole as GoogleAllowedRole)
+        : "customer";
 
-      // If user exists by email, link Firebase UID
+    // Resolve user — do NOT persist any changes until after the status check (M1)
+    let user = await User.findOne({ firebaseUid });
+    let authBranch: "new" | "linked" | "returning" = "returning";
+    let pendingLink = false;
+
+    if (!user && firebaseEmail) {
+      user = await User.findOne({ email: firebaseEmail });
       if (user) {
-        user.firebaseUid = firebaseUser.uid;
-        await user.save();
+        authBranch = "linked";
+        pendingLink = true; // save deferred until after assertUserCanLogin
       }
+    }
+
+    // Block suspended / inactive accounts BEFORE any DB mutation or token issuance (M1)
+    if (user) {
+      assertUserCanLogin(user);
+    }
+
+    // Safe to persist the link now that the account is confirmed active
+    if (user && pendingLink) {
+      user.firebaseUid = firebaseUid;
+      if (!user.provider) {
+        (user as any).provider = "google";
+      }
+      await user.save();
+      logger.info("[FIREBASE_AUTH] Existing account linked to Google", {
+        userId: user._id,
+        email: firebaseEmail,
+      });
     }
 
     // If user still doesn't exist, create a new one
     if (!user) {
-      // Extract name from Firebase user
-      const firstName = firebaseUser.displayName
-        ? firebaseUser.displayName.split(" ")[0]
-        : "User";
+      authBranch = "new";
 
-      const lastName = firebaseUser.displayName
-        ? firebaseUser.displayName.split(" ").slice(1).join(" ")
+      const firstName = firebaseName ? firebaseName.split(" ")[0] : "User";
+      const lastName = firebaseName
+        ? firebaseName.split(" ").slice(1).join(" ")
         : String(Date.now());
 
       user = await User.create({
         firstName,
         lastName,
-        email: firebaseUser.email,
-        firebaseUid: firebaseUser.uid,
-        avatar: firebaseUser.photoURL,
-        role: "customer",
+        email: firebaseEmail,
+        firebaseUid,
+        avatar: firebasePhoto,
+        role: newUserRole,
         status: UserStatus.ACTIVE,
-        isEmailVerified: firebaseUser.emailVerified,
+        isEmailVerified: decodedToken.email_verified,
+        provider: "google",
+        signupSource: "google",
+      });
+
+      logger.info("[FIREBASE_AUTH] New Google user created", {
+        userId: user._id,
+        email: firebaseEmail,
+        role: newUserRole,
       });
     }
 
-    // Auto-create Vendor profile if user is a vendor
+    if (authBranch === "returning") {
+      assertUserCanLogin(user); // guard returning users (new/linked already checked above)
+      logger.info("[FIREBASE_AUTH] Firebase UID login", {
+        userId: user._id,
+        role: user.role,
+        ip: req.ip,
+      });
+    }
+
+    logger.info("[AUTH] Firebase login success", {
+      userId: user._id,
+      email: firebaseEmail,
+      ip: req.ip,
+      branch: authBranch,
+    });
+
+    // Auto-create Vendor profile for vendor accounts
     if (user.role === "vendor") {
       try {
         await getOrCreateVendorProfile(user._id);
-        logger.info("[FIREBASE_AUTH] Vendor profile auto-created for user:", { userId: user._id });
+        logger.info("[FIREBASE_AUTH] Vendor profile auto-created", { userId: user._id });
       } catch (vendorError) {
-        logger.error(
-          "[FIREBASE_AUTH] Failed to create vendor profile:",
-          vendorError,
-        );
+        logger.error("[FIREBASE_AUTH] Failed to create vendor profile:", vendorError);
+      }
+    }
+
+    // Auto-create Teacher profile for teacher accounts
+    if (user.role === "teacher") {
+      try {
+        await getOrCreateTeacherProfile(user._id);
+        logger.info("[FIREBASE_AUTH] Teacher profile auto-created", { userId: user._id });
+      } catch (teacherError) {
+        logger.error("[FIREBASE_AUTH] Failed to create teacher profile:", teacherError);
       }
     }
 
@@ -1243,8 +1408,7 @@ export const firebaseAuth = async (
     // Return response
     res.status(200).json({
       success: true,
-      message:
-        "Firebase authentication successful. Auth cookies have been set.",
+      message: "Firebase authentication successful. Auth cookies have been set.",
       data: {
         user: formatUserResponse(user),
       },

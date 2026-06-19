@@ -661,7 +661,7 @@ orderSchema.index({ status: 1 });
 orderSchema.index({ paymentStatus: 1 });
 orderSchema.index({ createdAt: -1 });
 orderSchema.index({ paymentIntentId: 1 }, { sparse: true });
-orderSchema.index({ transactionId: 1 }, { sparse: true });
+orderSchema.index({ transactionId: 1 }, { sparse: true, unique: true }); // prevent double-confirm on same paymentIntent
 orderSchema.index({ affiliateCode: 1 }, { sparse: true });
 orderSchema.index({ couponCode: 1 }, { sparse: true });
 

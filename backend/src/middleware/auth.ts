@@ -8,6 +8,8 @@ import { cacheService } from "../services/cache.service";
 
 interface JwtPayload {
   id: string;
+  /** Embedded on issue; compared against User.tokenVersion on every request. */
+  tv?: number;
 }
 
 declare global {
@@ -92,6 +94,7 @@ export const authenticate = async (
     // Add clock tolerance to handle time synchronization issues
     // Keep at 60s to handle NTP drift on KVM1 VPS (see CLAUDE.md)
     const decoded = jwt.verify(token, config.jwtSecret, {
+      algorithms: ["HS256"],
       clockTolerance: 60, // Allow 60 seconds clock skew
     }) as JwtPayload;
 
@@ -120,7 +123,21 @@ export const authenticate = async (
       }
     }
 
-    req.user = user as IUser; // Cast to IUser
+    // Reject tokens issued before a tokenVersion bump (password reset / logout-all).
+    // Tokens without a tv claim are pre-feature and must re-authenticate.
+    const expectedTv = user.tokenVersion ?? 0;
+    if (decoded.tv === undefined || decoded.tv !== expectedTv) {
+      return next(new AppError("Session invalidated. Please login again.", 401));
+    }
+
+    // Re-check account status on every request — cache staleness (120s) is
+    // tolerable for role changes but not for suspension/deactivation.
+    const status = (user as any).status;
+    if (status === "suspended" || status === "inactive") {
+      return next(new AppError("Account is suspended or deactivated.", 403));
+    }
+
+    req.user = user as IUser;
     next();
   } catch (error) {
     // Enhanced debugging for token expiration issues
@@ -202,7 +219,8 @@ export const authenticateOptional = async (
 
   try {
     const decoded = jwt.verify(token, config.jwtSecret, {
-      clockTolerance: 10, // Consistent with authenticate middleware
+      algorithms: ["HS256"],
+      clockTolerance: 60, // Consistent with authenticate middleware
     }) as JwtPayload;
 
     // Try to get user from cache first

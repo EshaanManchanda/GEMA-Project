@@ -3,6 +3,7 @@ import { query } from "express-validator";
 import { Event, Category, User } from "../models/index";
 import { AppError } from "../middleware/index";
 import { sanitizeEventsOutput } from "../utils/event.utils";
+import { escapeRegex } from "../utils/regexHelpers";
 import logger from "../config/logger";
 
 const router = Router();
@@ -49,8 +50,8 @@ router.get(
       const searchQuery = q.trim();
       const searchLimit = parseInt(limit as string);
 
-      // Build regex for case-insensitive search
-      const searchRegex = new RegExp(searchQuery, "i");
+      // Build regex for case-insensitive search — escape user input to prevent ReDoS
+      const searchRegex = new RegExp(escapeRegex(searchQuery), "i");
 
       const results: any = {
         events: [],
@@ -191,7 +192,7 @@ router.get(
 
       // Text search
       if (q && typeof q === "string" && q.trim()) {
-        const searchRegex = new RegExp(q.trim(), "i");
+        const searchRegex = new RegExp(escapeRegex(q.trim()), "i");
         filters.$or = [
           { title: searchRegex },
           { description: searchRegex },
@@ -207,7 +208,7 @@ router.get(
 
       // City filter
       if (city) {
-        filters.location = new RegExp(city as string, "i");
+        filters.location = new RegExp(escapeRegex(city as string), "i");
       }
 
       // Price filter
@@ -284,7 +285,7 @@ router.get(
     try {
       const { q, limit = 5 } = req.query;
       const searchLimit = parseInt(limit as string);
-      const searchRegex = new RegExp(`^${q}`, "i"); // Start with query
+      const searchRegex = new RegExp(`^${escapeRegex(q as string)}`, "i"); // Start with query
 
       const suggestions = [];
 
