@@ -77,8 +77,7 @@ const migrateRefreshTokens = async (): Promise<void> => {
         // Update the document
         await RefreshToken.updateOne(
           { _id: doc._id },
-          { token: hashedToken },
-          { new: true }
+          { $set: { token: hashedToken } }
         );
 
         hashCount++;
