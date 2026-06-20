@@ -32,6 +32,7 @@ const hashToken = (raw: string): string =>
  */
 const migrateRefreshTokens = async (): Promise<void> => {
   try {
+    console.log("[MIGRATION] Starting refresh token hashing migration...");
     logger.info("[MIGRATION] Starting refresh token hashing migration...");
 
     // Connect to MongoDB
@@ -40,11 +41,13 @@ const migrateRefreshTokens = async (): Promise<void> => {
         maxPoolSize: 10,
         minPoolSize: 2,
       });
+      console.log("[MIGRATION] Connected to MongoDB");
       logger.info("[MIGRATION] Connected to MongoDB");
     }
 
     // Find all refresh tokens
     const allTokens = await RefreshToken.find({}).lean();
+    console.log(`[MIGRATION] Found ${allTokens.length} refresh token(s) to process`);
     logger.info(`[MIGRATION] Found ${allTokens.length} refresh token(s) to process`);
 
     let hashCount = 0;
@@ -57,6 +60,7 @@ const migrateRefreshTokens = async (): Promise<void> => {
         const token = (doc as any).token;
 
         if (!token) {
+          console.warn(`[MIGRATION] Skipping doc ${doc._id} - empty token field`);
           logger.warn(`[MIGRATION] Skipping doc ${doc._id} - empty token field`);
           skipCount++;
           continue;
@@ -64,6 +68,9 @@ const migrateRefreshTokens = async (): Promise<void> => {
 
         // Check if already hashed
         if (isSHA256Hash(token)) {
+          console.debug(
+            `[MIGRATION] Token for user ${doc.user} already hashed, skipping`
+          );
           logger.debug(
             `[MIGRATION] Token for user ${doc.user} already hashed, skipping`
           );
@@ -81,11 +88,15 @@ const migrateRefreshTokens = async (): Promise<void> => {
         );
 
         hashCount++;
+        console.log(
+          `[MIGRATION] Hashed token for user ${doc.user} (doc: ${doc._id})`
+        );
         logger.debug(
           `[MIGRATION] Hashed token for user ${doc.user} (doc: ${doc._id})`
         );
       } catch (error: any) {
         const errorMsg = error?.message || String(error);
+        console.error(`[MIGRATION] Error processing doc ${doc._id}: ${errorMsg}`);
         logger.error(`[MIGRATION] Error processing doc ${doc._id}: ${errorMsg}`);
         errors.push({
           docId: String(doc._id),
@@ -95,18 +106,24 @@ const migrateRefreshTokens = async (): Promise<void> => {
     }
 
     // Summary
+    console.log(
+      `[MIGRATION] Migration complete: ${hashCount} hashed, ${skipCount} skipped`
+    );
     logger.info(
       `[MIGRATION] Migration complete: ${hashCount} hashed, ${skipCount} skipped`
     );
 
     if (errors.length > 0) {
+      console.error(`[MIGRATION] ${errors.length} errors occurred:`, errors);
       logger.error(`[MIGRATION] ${errors.length} errors occurred:`, errors);
       process.exit(1);
     }
 
+    console.log("[MIGRATION] ✓ All refresh tokens successfully migrated to hashed format");
     logger.info("[MIGRATION] ✓ All refresh tokens successfully migrated to hashed format");
     process.exit(0);
   } catch (error: any) {
+    console.error("[MIGRATION] Fatal error:", error);
     logger.error("[MIGRATION] Fatal error:", error);
     process.exit(1);
   }
