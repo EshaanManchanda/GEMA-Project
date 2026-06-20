@@ -14,6 +14,8 @@ import cookieParser from "cookie-parser";
 import mongoSanitize from "express-mongo-sanitize";
 import hpp from "hpp";
 import authRoutes from "../../../routes/auth.routes";
+import eventRoutes from "../../../routes/event.routes";
+import adminEventRoutes from "../../../routes/admin.event.routes";
 import { errorHandler, notFound } from "../../../middleware/index";
 
 // Ensure required env vars exist before middleware imports try to read them
@@ -48,8 +50,10 @@ export const createTestApp = (): Application => {
   app.use(express.urlencoded({ extended: true }));
   app.use(cookieParser());
 
-  // Mount only auth routes (the scope of these tests)
+  // Mount routes
   app.use("/api/auth", authRoutes);
+  app.use("/api/events", eventRoutes);
+  app.use("/api/admin/events", adminEventRoutes);
 
   // Health check
   app.get("/api/health", (_req: Request, res: Response) => {

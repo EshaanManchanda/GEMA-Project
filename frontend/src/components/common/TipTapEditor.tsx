@@ -526,7 +526,32 @@ const TipTapEditor: React.FC<TipTapEditorProps> = ({
   // Ref mirrors editorMode so the content-sync effect can read it synchronously
   // without adding editorMode as a dependency (which would cause unwanted re-runs)
   const editorModeRef = useRef<'visual' | 'html'>('visual');
-  const htmlContent = content ?? '';
+
+  // Local buffer for HTML-mode textarea — synced to parent only on blur/mode-switch
+  const [htmlBuffer, setHtmlBuffer] = useState(content ?? '');
+
+  // Guards to prevent content-sync feedback loops:
+  // isInternalUpdateRef: true while a programmatic setContent is in flight
+  // lastEmittedRef: last HTML the editor emitted via onUpdate (content equality backstop)
+  const isInternalUpdateRef = useRef(false);
+  const lastEmittedRef = useRef(content ?? '');
+
+  // Debounced parent onChange for Visual mode (reduces re-renders on large descriptions)
+  const debouncedOnChangeRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const flushDebouncedOnChange = useCallback(() => {
+    if (debouncedOnChangeRef.current) {
+      clearTimeout(debouncedOnChangeRef.current);
+      debouncedOnChangeRef.current = null;
+    }
+  }, []);
+  const debouncedOnChange = useCallback((html: string) => {
+    flushDebouncedOnChange();
+    debouncedOnChangeRef.current = setTimeout(() => {
+      lastEmittedRef.current = html;
+      onChange(html);
+      debouncedOnChangeRef.current = null;
+    }, 300);
+  }, [onChange, flushDebouncedOnChange]);
 
   // Find & Replace state
   const [showFindReplace, setShowFindReplace] = useState(false);
@@ -594,15 +619,12 @@ const TipTapEditor: React.FC<TipTapEditorProps> = ({
     return () => document.removeEventListener('mousedown', handleClickOutside);
   }, []);
 
-  // No longer maintaining local htmlContentRef or lastOnChangeValue
-  // We use parent 'content' as the single source of truth
-
+  // Flush debounced onChange on unmount so the last edit is never lost
   useEffect(() => {
-    console.log('TipTapEditor mounted');
     return () => {
-      console.log('TipTapEditor unmounted');
+      flushDebouncedOnChange();
     };
-  }, []);
+  }, [flushDebouncedOnChange]);
 
   const editor = useEditor({
     immediatelyRender: false,
@@ -685,9 +707,9 @@ const TipTapEditor: React.FC<TipTapEditorProps> = ({
     content: content ?? '',
     editable,
     onUpdate: ({ editor }) => {
+      if (isInternalUpdateRef.current) return;
       const html = editor.getHTML();
-      console.log('TipTap onUpdate:', html);
-      onChange(html);
+      debouncedOnChange(html);
     },
     editorProps: {
       attributes: {
@@ -698,28 +720,35 @@ const TipTapEditor: React.FC<TipTapEditorProps> = ({
 
   const htmlTextareaRef = useRef<HTMLTextAreaElement>(null);
 
-  // Sync external content prop changes into the editor (e.g. form reset)
+  // Sync external content prop changes into the editor (e.g. form reset, initial load)
+  // Skips when: in HTML mode, during an internal update, or when content matches what
+  // we last emitted (prevents the normalize→re-set feedback loop).
   useEffect(() => {
     if (!editor || editor.isDestroyed) return;
-
     if (editorModeRef.current !== 'visual') return;
+    if (isInternalUpdateRef.current) return;
+
+    // If content matches what the editor last emitted, it's our own output — skip
+    if (content === lastEmittedRef.current) return;
 
     const current = editor.getHTML();
-    console.log('TipTap sync effect - Parent content:', content);
-    console.log('TipTap sync effect - Editor content:', current);
-
     if (current !== content) {
       const safeContent = content ?? '';
+      isInternalUpdateRef.current = true;
       try {
         editor.commands.setContent(safeContent, false);
+        lastEmittedRef.current = editor.getHTML();
       } catch (err) {
         logger.error('TipTap setContent failed in content sync, falling back to stripped text', err);
         try {
           const stripped = safeContent.replace(/<[^>]*>/g, ' ').replace(/\s+/g, ' ').trim();
           editor.commands.setContent(stripped ? `<p>${stripped}</p>` : '', false);
+          lastEmittedRef.current = editor.getHTML();
         } catch {
           try { editor.commands.clearContent(); } catch { /* ignore */ }
         }
+      } finally {
+        isInternalUpdateRef.current = false;
       }
     }
   }, [content, editor]);
@@ -733,48 +762,62 @@ const TipTapEditor: React.FC<TipTapEditorProps> = ({
     editorModeRef.current = mode;
 
     if (mode === 'html') {
-      // Visual → HTML: Nothing needed, parent state is the single source of truth
+      // Visual → HTML: flush any pending debounced change, seed the HTML buffer
+      flushDebouncedOnChange();
+      const currentHtml = editor.getHTML();
+      lastEmittedRef.current = currentHtml;
+      onChange(currentHtml);
+      setHtmlBuffer(currentHtml);
     } else {
-      // HTML → Visual: apply the stored textarea HTML into the editor
-      // Do this BEFORE setEditorMode so the editor is still "hidden" by CSS,
-      // avoiding React/DOM reconciliation conflicts when setContent runs.
-      const liveHtml = htmlTextareaRef.current?.value ?? '';
+      // HTML → Visual: apply the textarea buffer into the editor
+      const liveHtml = htmlBuffer;
 
+      isInternalUpdateRef.current = true;
       try {
         // Strip <script> and <style> tags that TipTap can't parse
         const sanitized = liveHtml
           .replace(/<script\b[^<]*(?:(?!<\/script>)<[^<]*)*<\/script>/gi, '')
           .replace(/<style\b[^<]*(?:(?!<\/style>)<[^<]*)*<\/style>/gi, '');
 
-        logger.debug('📝 TipTap HTML→Visual: Calling setContent, length =', sanitized.length);
-        // Always apply when switching modes so manual HTML edits are never skipped.
         editor.commands.setContent(sanitized, false);
         const resultHtml = editor.getHTML();
-        logger.debug('📝 TipTap HTML→Visual: Result HTML length =', resultHtml.length);
 
         if (resultHtml === '<p></p>' && sanitized.length > 20) {
-          logger.warn('⚠️ TipTap resulted in empty document. Falling back to stripped text.');
+          logger.warn('TipTap resulted in empty document. Falling back to stripped text.');
           throw new Error('TipTap silent empty document');
         }
+
+        lastEmittedRef.current = resultHtml;
+        onChange(resultHtml);
       } catch (err) {
         logger.error('TipTap setContent failed, falling back to stripped text', err);
         try {
           const stripped = liveHtml.replace(/<[^>]*>/g, ' ').replace(/\s+/g, ' ').trim();
           const fallbackHtml = stripped ? `<p>${stripped}</p>` : '';
           editor.commands.setContent(fallbackHtml, false);
+          lastEmittedRef.current = editor.getHTML();
+          onChange(editor.getHTML());
         } catch {
           try { editor.commands.clearContent(); } catch { /* ignore */ }
         }
+      } finally {
+        isInternalUpdateRef.current = false;
       }
     }
 
     setEditorMode(mode);
-  }, [editor]);
+  }, [editor, htmlBuffer, onChange, flushDebouncedOnChange]);
 
-  // HTML textarea change — update parent state directly
+  // HTML textarea change — update local buffer only; parent gets notified on blur/mode-switch
   const handleHtmlChange = useCallback((e: React.ChangeEvent<HTMLTextAreaElement>) => {
-    onChange(e.target.value);
-  }, [onChange]);
+    setHtmlBuffer(e.target.value);
+  }, []);
+
+  // Push HTML buffer to parent on blur (so edits are saved if user clicks away)
+  const handleHtmlBlur = useCallback(() => {
+    lastEmittedRef.current = htmlBuffer;
+    onChange(htmlBuffer);
+  }, [htmlBuffer, onChange]);
 
   // Find & Replace functionality
   const performFind = useCallback(() => {
@@ -1119,10 +1162,7 @@ const TipTapEditor: React.FC<TipTapEditorProps> = ({
           {!hideModeSwitcher && (
             <div className="flex border-b border-gray-300 bg-gray-100">
               <button
-                onClick={(e) => {
-                  e.preventDefault();
-                  handleModeSwitch('visual');
-                }}
+                onClick={() => handleModeSwitch('visual')}
                 className={`px-4 py-2 text-sm font-medium border-b-2 transition-colors ${editorMode === 'visual'
                   ? 'border-blue-500 text-blue-600 bg-white'
                   : 'border-transparent text-gray-600 hover:text-gray-800'
@@ -1132,10 +1172,7 @@ const TipTapEditor: React.FC<TipTapEditorProps> = ({
                 Visual
               </button>
               <button
-                onClick={(e) => {
-                  e.preventDefault();
-                  handleModeSwitch('html');
-                }}
+                onClick={() => handleModeSwitch('html')}
                 className={`px-4 py-2 text-sm font-medium border-b-2 transition-colors flex items-center gap-1 ${editorMode === 'html'
                   ? 'border-blue-500 text-blue-600 bg-white'
                   : 'border-transparent text-gray-600 hover:text-gray-800'
@@ -1927,8 +1964,9 @@ const TipTapEditor: React.FC<TipTapEditorProps> = ({
         <div className="relative">
           <textarea
             ref={htmlTextareaRef}
-            value={htmlContent}
+            value={htmlBuffer}
             onChange={handleHtmlChange}
+            onBlur={handleHtmlBlur}
             className="w-full min-h-[300px] p-4 font-mono text-sm bg-gray-900 text-gray-100 focus:outline-none resize-y"
             placeholder="<p>Write your HTML here...</p>"
             spellCheck={false}
