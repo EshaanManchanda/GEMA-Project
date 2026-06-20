@@ -391,3 +391,43 @@ export const getPartnershipStats = async (
     next(error);
   }
 };
+
+/**
+ * Get public approved partnerships directory
+ */
+export const getPublicDirectory = async (
+  req: Request,
+  res: Response,
+  next: NextFunction,
+) => {
+  try {
+    const {
+      limit = 100,
+      partnershipType,
+      campaignType,
+    } = req.query;
+
+    const query: any = { status: "approved" };
+    if (partnershipType) {
+      query.partnershipType = partnershipType;
+    }
+    if (campaignType) {
+      query.campaignType = campaignType;
+    }
+
+    const limitNum = parseInt(limit as string, 10);
+
+    const partnerships = await Partnership.find(query)
+      .sort({ createdAt: -1 })
+      .limit(limitNum)
+      .lean();
+
+    res.status(200).json({
+      success: true,
+      message: "Public partnerships retrieved successfully",
+      data: { partnerships },
+    });
+  } catch (error) {
+    next(error);
+  }
+};

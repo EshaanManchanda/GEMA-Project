@@ -63,6 +63,12 @@ const partnershipAPI = {
         return response.data;
     },
 
+    // Public - get directory
+    getPublicDirectory: async (params?: GetPartnershipsParams): Promise<GetPartnershipsResponse> => {
+        const response = await api.get('/partnerships/directory', { params });
+        return response.data;
+    },
+
     // Admin - get stats
     getStats: async () => {
         const response = await api.get('/partnerships/stats');

@@ -71,6 +71,11 @@ const EventCreateModal: React.FC<EventCreateModalProps> = ({ isOpen, onClose, on
   // Form data
   const [title, setTitle] = useState('');
   const [description, setDescription] = useState('');
+
+  const handleDescriptionChange = useCallback((html: string) => {
+    console.log('EventCreateModal received description:', html);
+    setDescription(html);
+  }, []);
   const [shortDescription, setShortDescription] = useState('');
   const [category, setCategory] = useState('');
   const [type, setType] = useState<'Olympiad' | 'Championship' | 'Competition' | 'Event' | 'Course' | 'Venue' | 'Workshop' | 'Class' | 'Bootcamp' | 'Masterclass'>('Event');
@@ -318,6 +323,8 @@ const EventCreateModal: React.FC<EventCreateModalProps> = ({ isOpen, onClose, on
         }
       };
 
+      console.log('EventCreateModal Submitting eventData:', eventData);
+
       // Create event using admin API
       await adminAPI.createEvent(eventData);
       onSave();
@@ -455,7 +462,7 @@ const EventCreateModal: React.FC<EventCreateModalProps> = ({ isOpen, onClose, on
                   <Suspense fallback={<TipTapEditorFallback />}>
                     <TipTapEditor
                       content={description}
-                      onChange={setDescription}
+                      onChange={handleDescriptionChange}
                       placeholder="Describe your event in detail... Use the toolbar to format text, add images from media library, embed videos, and create engaging content."
                       editable={true}
                       mediaCategory="event"

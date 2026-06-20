@@ -156,13 +156,12 @@ export const PageTransition: React.FC<{
 };
 
 // Hover Card with scale and shadow animation
-export const HoverCard: React.FC<{
-  children: ReactNode;
-  className?: string;
-}> = ({ children, className = '' }) => {
+export const HoverCard: React.FC<
+  React.HTMLAttributes<HTMLDivElement> & { children: ReactNode }
+> = ({ children, className = '', ...rest }) => {
   const animationsEnabled = useAnimationsEnabled();
 
-  if (!animationsEnabled) return <div className={className}>{children}</div>;
+  if (!animationsEnabled) return <div className={className} {...rest}>{children}</div>;
 
   return (
     <motion.div
@@ -172,6 +171,7 @@ export const HoverCard: React.FC<{
         boxShadow: '0 10px 20px rgba(0, 0, 0, 0.15)'
       }}
       transition={{ duration: 0.3, ease: 'easeOut' }}
+      {...(rest as any)}
     >
       {children}
     </motion.div>

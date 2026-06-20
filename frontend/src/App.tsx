@@ -47,6 +47,8 @@ const PartnershipsPage = React.lazy(() => import(/* webpackChunkName: "partnersh
 const SummerPartnershipPage = React.lazy(() => import(/* webpackChunkName: "summer" */ './pages/SummerPartnershipPage'));
 const PartnershipSuccessPage = React.lazy(() => import(/* webpackChunkName: "summer" */ './pages/PartnershipSuccessPage'));
 const StudentSummerRegPage = React.lazy(() => import(/* webpackChunkName: "student-summer-reg" */ './pages/StudentSummerRegPage'));
+const SummerPartnersDirectoryPage = React.lazy(() => import(/* webpackChunkName: "summer" */ './pages/SummerPartnersDirectoryPage'));
+const ComingJuly26Page = React.lazy(() => import(/* webpackChunkName: "summer" */ './pages/ComingJuly26Page'));
 
 // Auth Pages
 const LoginPage = React.lazy(() => import(/* webpackChunkName: "auth" */ './pages/auth/LoginPage'));
@@ -426,6 +428,16 @@ function AppContent() {
           <Route path="summer-2026" element={
             <Suspense fallback={<GenericPageSkeleton />}>
               <SummerPartnershipPage />
+            </Suspense>
+          } />
+          <Route path="summer-partners" element={
+            <Suspense fallback={<GenericPageSkeleton />}>
+              <SummerPartnersDirectoryPage />
+            </Suspense>
+          } />
+          <Route path="coming-july26" element={
+            <Suspense fallback={<GenericPageSkeleton />}>
+              <ComingJuly26Page />
             </Suspense>
           } />
           <Route path="student-summer-reg" element={

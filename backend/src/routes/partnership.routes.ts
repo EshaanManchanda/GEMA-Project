@@ -8,6 +8,7 @@ import {
   updatePartnershipStatus,
   deletePartnership,
   getPartnershipStats,
+  getPublicDirectory,
 } from "../controllers/partnership.controller";
 import {
   submitPartnershipValidation,
@@ -26,6 +27,9 @@ router.post(
   validateRequest,
   submitPartnership,
 );
+
+// Public route - Get approved partnerships directory
+router.get("/directory", getPublicDirectory);
 
 // Protected admin routes
 router.use(authenticate); // All routes below require authentication

@@ -338,7 +338,7 @@ const CollectionDetailPage: React.FC = () => {
                 <HoverCard
                   key={event._id}
                   className="bg-white rounded-2xl shadow-lg hover:shadow-2xl overflow-hidden group transition-all duration-500 border border-gray-100 hover:border-gray-200 transform hover:-translate-y-2 cursor-pointer"
-                  {...({ onClick: () => handleEventClick(event) } as any)}
+                  onClick={() => handleEventClick(event)}
                 >
                   {/* Event Image */}
                   <div className="relative overflow-hidden">
