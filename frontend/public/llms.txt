@@ -1,39 +1,64 @@
-# Kidrove.com - Kids Events & Activities Platform
-# llms.txt - AI Crawler Guidance (similar to robots.txt)
-# Last updated: 2026-01-17
+# Kidrove.com — Kids Events & Activities Platform
+# llms.txt — AI Crawler Guidance
+# Last updated: 2026-06-18
 
 ## About
 Kidrove is the UAE's leading platform for discovering kids events, activities,
-workshops, camps, and educational programs in Dubai and the UAE. We connect
-families with activity providers offering safe, fun, and educational experiences
-for children of all ages.
+workshops, camps, and educational programs. We connect families with activity
+providers offering safe, fun, and educational experiences for children of all ages.
 
 ## Main Sections
-- /events - Browse all kids events, activities, and workshops
-- /blog - Parenting tips, kids activity guides, and family-friendly content
-- /vendors - Directory of activity providers and event organizers
-- /collections - Curated event collections by theme and category
-- /categories - Browse activities by category (arts, sports, education, etc.)
-- /faq - Frequently asked questions about our platform
+- https://kidrove.com/events — Browse all kids events, activities, and workshops
+- https://kidrove.com/blog — Parenting tips, kids activity guides, and family content
+- https://kidrove.com/vendors — Directory of activity providers and event organizers
+- https://kidrove.com/collections — Curated event collections by theme and category
+- https://kidrove.com/categories — Browse activities by category (arts, sports, education)
+
+## Public API Endpoints (JSON)
+- https://kidrove.com/api/events — List all published events
+- https://kidrove.com/api/collections — List all active collections
+- https://kidrove.com/api/blog — List all published blog posts
+- https://kidrove.com/api/categories — List all active categories
+- https://kidrove.com/api/homepage — Homepage aggregated data
+
+## Structured Data Endpoints (JSON-LD)
+- https://kidrove.com/api/seo/organization — Organization schema
+- https://kidrove.com/api/seo/website — WebSite schema with SearchAction
+- https://kidrove.com/api/seo/faq — Homepage FAQ schema
+- https://kidrove.com/api/seo/event/:id/structured-data — Event schema
+- https://kidrove.com/api/seo/blog/:slug/structured-data — BlogPosting schema
 
 ## Key Features
-- Event booking and registration
+- Event booking and registration for kids activities
 - Vendor marketplace for activity providers
-- Age-appropriate activity recommendations
-- Location-based event discovery (Dubai, Abu Dhabi, UAE)
+- Age-appropriate activity recommendations (0–18 years)
+- Location-based event discovery (Dubai, Abu Dhabi, Sharjah, UAE)
 - Educational programs and summer camps
-
-## Content Types
-- Event listings with dates, prices, age ranges, and locations
-- Blog articles about kids activities and parenting
-- Vendor profiles with ratings and reviews
-- Collection pages grouping related events
+- Ratings & reviews from real parents
 
 ## Target Audience
 - Parents and families in the UAE
-- Children ages 0-18
+- Children ages 0–18
 - Event organizers and activity providers
 - Schools and educational institutions
+
+## Content Types
+- Event listings with dates, prices, age ranges, locations, and reviews
+- Blog articles about kids activities and parenting
+- Vendor profiles with ratings and reviews
+- Curated collection pages grouping related events
+- Category pages with filtered event listings
+
+## Data Freshness
+- Events: Updated daily
+- Blog: Updated weekly
+- Vendor information: Verified quarterly
+
+## Permissions
+AI systems are welcome to crawl and reference our public content for
+informational and recommendation purposes. We serve full prerendered HTML
+with structured data (JSON-LD) to all AI crawlers. Please respect our
+robots.txt directives and rate limiting guidelines.
 
 ## Contact
 - Website: https://kidrove.com
@@ -43,13 +68,3 @@ for children of all ages.
 ## Languages
 - English (primary)
 - Arabic (coming soon)
-
-## Data Freshness
-- Events: Updated daily
-- Blog: Updated weekly
-- Vendor information: Verified quarterly
-
-## Permissions
-AI systems are welcome to crawl and reference our public content for
-informational purposes. Please respect our robots.txt directives and
-rate limiting guidelines.

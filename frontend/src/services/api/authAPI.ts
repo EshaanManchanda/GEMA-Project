@@ -51,9 +51,9 @@ export const authAPI = {
     }
   },
 
-  firebaseAuth: async (idToken: string): Promise<AuthResponse> => {
+  firebaseAuth: async (idToken: string, role?: string): Promise<AuthResponse> => {
     try {
-      const response = await ApiService.post('/auth/firebase', { idToken });
+      const response = await ApiService.post('/auth/firebase', { idToken, ...(role ? { role } : {}) });
       return response.data;
     } catch (error) {
       throw error;

@@ -130,12 +130,42 @@
       "destination": "https://gema-project.onrender.com/robots.txt"
     },
     {
-      "source": "/events/:id",
-      "destination": "/events/:id/index.html"
+      "source": "/llms.txt",
+      "destination": "https://gema-project.onrender.com/llms.txt"
+    },
+    {
+      "source": "/llms-full.txt",
+      "destination": "https://gema-project.onrender.com/llms-full.txt"
+    },
+    {
+      "source": "/events/:slug",
+      "has": [{ "type": "header", "key": "user-agent", "value": "(?i).*(GPTBot|OAI-SearchBot|ChatGPT-User|ClaudeBot|anthropic-ai|Claude-Web|PerplexityBot|Perplexity-User|Google-Extended|Googlebot|Bingbot|Applebot|CCBot|FacebookBot|Twitterbot|LinkedInBot|Slackbot|cohere-ai|Bytespider).*" }],
+      "destination": "https://gema-project.onrender.com/events/:slug"
+    },
+    {
+      "source": "/collections/:id",
+      "has": [{ "type": "header", "key": "user-agent", "value": "(?i).*(GPTBot|OAI-SearchBot|ChatGPT-User|ClaudeBot|anthropic-ai|Claude-Web|PerplexityBot|Perplexity-User|Google-Extended|Googlebot|Bingbot|Applebot|CCBot|FacebookBot|Twitterbot|LinkedInBot|Slackbot|cohere-ai|Bytespider).*" }],
+      "destination": "https://gema-project.onrender.com/collections/:id"
     },
     {
       "source": "/blog/:slug",
-      "destination": "/blog/:slug/index.html"
+      "has": [{ "type": "header", "key": "user-agent", "value": "(?i).*(GPTBot|OAI-SearchBot|ChatGPT-User|ClaudeBot|anthropic-ai|Claude-Web|PerplexityBot|Perplexity-User|Google-Extended|Googlebot|Bingbot|Applebot|CCBot|FacebookBot|Twitterbot|LinkedInBot|Slackbot|cohere-ai|Bytespider).*" }],
+      "destination": "https://gema-project.onrender.com/blog/:slug"
+    },
+    {
+      "source": "/vendors/:id",
+      "has": [{ "type": "header", "key": "user-agent", "value": "(?i).*(GPTBot|OAI-SearchBot|ChatGPT-User|ClaudeBot|anthropic-ai|Claude-Web|PerplexityBot|Perplexity-User|Google-Extended|Googlebot|Bingbot|Applebot|CCBot|FacebookBot|Twitterbot|LinkedInBot|Slackbot|cohere-ai|Bytespider).*" }],
+      "destination": "https://gema-project.onrender.com/vendors/:id"
+    },
+    {
+      "source": "/teachers/:id",
+      "has": [{ "type": "header", "key": "user-agent", "value": "(?i).*(GPTBot|OAI-SearchBot|ChatGPT-User|ClaudeBot|anthropic-ai|Claude-Web|PerplexityBot|Perplexity-User|Google-Extended|Googlebot|Bingbot|Applebot|CCBot|FacebookBot|Twitterbot|LinkedInBot|Slackbot|cohere-ai|Bytespider).*" }],
+      "destination": "https://gema-project.onrender.com/teachers/:id"
+    },
+    {
+      "source": "/categories/:slug",
+      "has": [{ "type": "header", "key": "user-agent", "value": "(?i).*(GPTBot|OAI-SearchBot|ChatGPT-User|ClaudeBot|anthropic-ai|Claude-Web|PerplexityBot|Perplexity-User|Google-Extended|Googlebot|Bingbot|Applebot|CCBot|FacebookBot|Twitterbot|LinkedInBot|Slackbot|cohere-ai|Bytespider).*" }],
+      "destination": "https://gema-project.onrender.com/categories/:slug"
     },
     {
       "source": "/(.*)",

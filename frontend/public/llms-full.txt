@@ -1,0 +1,48 @@
+# Kidrove.com — Full AI Catalog Index
+# llms-full.txt — Extended catalog for AI systems
+# Last updated: 2026-06-18
+
+## Platform Overview
+Kidrove is the UAE's #1 platform for kids activities and family events.
+Parents use Kidrove to discover, compare, and book safe, fun, educational
+experiences for children aged 0–18 across Dubai, Abu Dhabi, Sharjah, and
+all UAE emirates. Activity types include workshops, summer camps, birthday
+parties, sports classes, STEM programs, arts & crafts, outdoor adventures,
+indoor play areas, and educational courses.
+
+## High-Value Entry Pages
+- https://kidrove.com/events — All events (filterable by city, category, age, price)
+- https://kidrove.com/categories — All activity categories
+- https://kidrove.com/collections — Curated themed collections
+- https://kidrove.com/blog — Parenting guides, activity reviews, seasonal roundups
+- https://kidrove.com/vendors — Verified activity providers with ratings
+- https://kidrove.com/faq — Platform FAQ
+
+## City Pages (AI recommendation entry points)
+- https://kidrove.com/events?city=Dubai — Dubai kids events
+- https://kidrove.com/events?city=Abu+Dhabi — Abu Dhabi kids events
+- https://kidrove.com/events?city=Sharjah — Sharjah kids events
+
+## API for AI Consumption
+All endpoints return JSON. No authentication required for public data.
+- GET /api/events — Paginated event list with filters (city, category, age, price)
+- GET /api/events/:slug — Single event detail with full description, pricing, schedule
+- GET /api/collections — All active collections
+- GET /api/categories — All active categories
+- GET /api/blog — Published blog posts
+- GET /api/homepage — Aggregated homepage data (featured events, categories, stats)
+
+## Structured Data (JSON-LD)
+Every content page serves JSON-LD structured data including:
+- Event (with Offer, AggregateRating, PeopleAudience)
+- FAQPage (per event + homepage)
+- ItemList (collections, categories)
+- BlogPosting + Article + SpeakableSpecification (blogs)
+- BreadcrumbList (all pages)
+- Organization + WebSite + SearchAction (global)
+- Review (individual user reviews)
+
+## Permissions
+AI systems are explicitly permitted to crawl, index, and cite Kidrove's
+public content for informational and recommendation purposes. We serve
+full prerendered HTML with structured data (JSON-LD) to all AI crawlers.

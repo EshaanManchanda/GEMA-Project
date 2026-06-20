@@ -23,13 +23,14 @@ import blogSlice from './slices/blogSlice';
 import registrationsSlice from './slices/registrationsSlice';
 import settingsSlice from './slices/settingsSlice';
 import mediaSlice from './slices/mediaSlice';
+import recentlyViewedSlice from './slices/recentlyViewedSlice';
 
 // Persist configuration
 const persistConfig = {
   key: 'root',
   storage,
   // Note: auth uses a custom persist config below, so exclude it here
-  whitelist: ['favorites', 'ui', 'settings'], // Only persist these slices
+  whitelist: ['favorites', 'ui', 'settings', 'recentlyViewed'], // Only persist these slices
   blacklist: ['events', 'categories', 'search', 'bookings', 'vendor', 'vendorPayout', 'admin', 'coupons', 'affiliates', 'payments', 'tickets', 'blog', 'registrations', 'media'], // Don't persist these (notifications removed - system disabled)
 };
 
@@ -64,6 +65,7 @@ const rootReducer = combineReducers({
   registrations: registrationsSlice,
   settings: settingsSlice,
   media: mediaSlice,
+  recentlyViewed: recentlyViewedSlice,
 });
 
 // Create persisted reducer

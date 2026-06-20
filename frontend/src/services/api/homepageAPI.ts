@@ -79,6 +79,7 @@ export interface HomepageData {
   events: Event[];
   bestPriceEvents: Event[];
   featuredEvents: Event[];
+  trendingEvents?: Event[];
   banners: Banner[];
   categories: Category[];
   featuredBlogs: Blog[];

@@ -86,9 +86,11 @@ const HomePage: React.FC = () => {
     () => bestPriceEventsRaw.slice(0, 12),
     [bestPriceEventsRaw]
   );
+  // Trending: use backend-sorted trendingEvents (viewsCount desc) — no client re-sort
+  const trendingEventsRaw = (homepageData?.trendingEvents || []) as unknown as ApiEvent[];
   const trendingEvents = useMemo(
-    () => [...events].sort((a, b) => (b.viewsCount || 0) - (a.viewsCount || 0)).slice(0, 12),
-    [events]
+    () => trendingEventsRaw.map(mapToUIEvent),
+    [trendingEventsRaw]
   );
   // Fetch Teaching Events from Homepage Data
   const teachingEventsData = homepageData?.teachingEvents || [];

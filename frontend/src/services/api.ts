@@ -97,7 +97,8 @@ api.interceptors.response.use(
         originalRequest.url?.includes('/auth/login') ||
         originalRequest.url?.includes('/auth/register') ||
         originalRequest.url?.includes('/auth/refresh-token') ||
-        originalRequest.url?.includes('/auth/me') // Skip for getCurrentUser to avoid "No refresh token" error after logout
+        originalRequest.url?.includes('/auth/me') || // Skip for getCurrentUser to avoid "No refresh token" error after logout
+        originalRequest.url?.includes('/auth/firebase') // Skip for Firebase/Google auth — these are fresh sessions
       ) {
         return Promise.reject(error);
       }

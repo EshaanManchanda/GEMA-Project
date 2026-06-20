@@ -33,21 +33,6 @@ const uaeCities: City[] = [
     image: 'https://images.unsplash.com/photo-1566073771259-6a8506099945?w=400&h=400&fit=crop',
     description: 'Explore Ras Al Khaimah activities'
   },
-  {
-    name: 'Fujairah',
-    image: 'https://images.unsplash.com/photo-1582672060674-bc2bd808a8b5?w=400&h=400&fit=crop',
-    description: 'Find fun in Fujairah'
-  },
-  {
-    name: 'Umm Al Quwain',
-    image: 'https://images.unsplash.com/photo-1578895101408-1a36b834405b?w=400&h=400&fit=crop',
-    description: 'Discover Umm Al Quwain'
-  },
-  {
-    name: 'Al Ain',
-    image: 'https://images.unsplash.com/photo-1587974928442-77dc3e0dba72?w=400&h=400&fit=crop',
-    description: 'Explore Al Ain activities'
-  }
 ];
 
 const CitiesSection: React.FC = () => {

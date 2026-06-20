@@ -404,9 +404,9 @@ export const getCurrentUser = createAsyncThunk(
 
 export const loginWithGoogleThunk = createAsyncThunk(
   'auth/loginWithGoogle',
-  async ({ navigate }: { navigate?: any }, { rejectWithValue }) => {
+  async ({ navigate, role }: { navigate?: any; role?: string }, { rejectWithValue }) => {
     try {
-      const response = await loginWithGoogle();
+      const response = await loginWithGoogle(role);
       toast.success('Signed in with Google successfully!');
 
       // Handle role-based redirect if navigate function is provided
@@ -416,6 +416,10 @@ export const loginWithGoogleThunk = createAsyncThunk(
 
       return response;
     } catch (error: any) {
+      // User cancelled the popup — do nothing, no toast
+      if (error?.silent) {
+        return rejectWithValue('popup-cancelled');
+      }
       const message = error.message || 'Google sign-in failed';
       toast.error(message);
       return rejectWithValue(message);

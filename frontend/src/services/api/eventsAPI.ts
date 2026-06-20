@@ -190,6 +190,24 @@ const eventsAPI = {
     }
   },
 
+  getSimilarEvents: async (eventId: string, limit: number = 5) => {
+    try {
+      const response = await ApiService.get(`/events/${eventId}/similar`, { params: { limit } });
+      return extractEventsData(response);
+    } catch (error) {
+      throw error;
+    }
+  },
+
+  getOrganizerEvents: async (eventId: string, limit: number = 4) => {
+    try {
+      const response = await ApiService.get(`/events/${eventId}/organizer-events`, { params: { limit } });
+      return extractEventsData(response);
+    } catch (error) {
+      throw error;
+    }
+  },
+
   updateEventStatus: async (id: string, status: string) => {
     try {
       const response = await ApiService.patch(`/events/${id}`, { status });
