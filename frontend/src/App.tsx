@@ -435,7 +435,7 @@ function AppContent() {
               <SummerPartnersDirectoryPage />
             </Suspense>
           } />
-          <Route path="coming-july26" element={
+          <Route path="workshops" element={
             <Suspense fallback={<GenericPageSkeleton />}>
               <ComingJuly26Page />
             </Suspense>

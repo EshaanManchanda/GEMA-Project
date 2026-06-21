@@ -23,6 +23,7 @@ import {
 import { toast } from 'react-hot-toast';
 import partnershipAPI, { Partnership } from '../services/api/partnershipAPI';
 import collectionsAPI from '../services/api/collectionsAPI';
+import eventsAPI from '../services/api/eventsAPI';
 import LoadingSpinner from '../components/common/LoadingSpinner';
 import CollectionSection from '../components/client/CollectionSection';
 import { mapToUIEvent } from '../utils/homePageUtils';
@@ -61,7 +62,7 @@ const SummerPartnersDirectoryPage: React.FC = () => {
           }),
           collectionsAPI.getCollectionById('summer-camp-collections').catch(err => {
             console.error('Error fetching summer camp collection:', err);
-            return { collection: null };
+            return { collection: { events: [] } } as any;
           })
         ]);
 
@@ -69,8 +70,9 @@ const SummerPartnersDirectoryPage: React.FC = () => {
         const approvedPartners = partnershipsList.filter((p: any) => p.status === 'approved');
         setPartners(approvedPartners);
 
-        const events = collRes.collection?.events || [];
-        const mappedEvents = events.map(mapToUIEvent);
+        const collection = (collRes as any).collection || (collRes as any).data?.collection;
+        const eventsList = collection?.events || [];
+        const mappedEvents = eventsList.slice(0, 6).map(mapToUIEvent);
         setTrendingEvents(mappedEvents);
       } finally {
         setLoading(false);
@@ -311,8 +313,8 @@ const SummerPartnersDirectoryPage: React.FC = () => {
                   key={cat}
                   onClick={() => setSelectedCategory(cat)}
                   className={`px-4 py-2 rounded-xl text-xs sm:text-sm font-semibold border transition-all duration-200 ${selectedCategory === cat
-                      ? 'bg-neutral-900 border-neutral-900 text-white shadow-md'
-                      : 'bg-white border-neutral-200 text-neutral-600 hover:border-neutral-300 hover:bg-neutral-50'
+                    ? 'bg-neutral-900 border-neutral-900 text-white shadow-md'
+                    : 'bg-white border-neutral-200 text-neutral-600 hover:border-neutral-300 hover:bg-neutral-50'
                     }`}
                 >
                   {cat}
@@ -434,29 +436,76 @@ const SummerPartnersDirectoryPage: React.FC = () => {
 
       {/* ── TRENDING COLLECTIONS ── */}
       {!loading && trendingEvents.length > 0 && (
-        <section className="py-16 bg-white border-y border-neutral-100">
-          <div className="max-w-6xl mx-auto">
-            <CollectionSection
-              badge="Trending"
-              badgeColor="rgba(var(--color-primary-500), 0.1)"
-              title="Trending summer camps"
-              subtitle="Discover the most popular summer camps and activities for kids"
-              events={trendingEvents}
-              layout="grid"
-              eventCardVariant="featured"
-              cardBorderRadius="xl"
-              cardHoverEffect="lift"
-              maxItems={8}
-              enablePagination={true}
-              viewAllLink="/collections/summer-camp-collections"
-              showPrice={true}
-              showLocation={true}
-              showAgeGroup={true}
-              showWishlist={false}
-              showVendor={true}
-              showStats={true}
-              showDescription={true}
-            />
+        <section className="py-16 bg-white border-y border-neutral-100 px-4 sm:px-6">
+          <div className="max-w-7xl mx-auto">
+            <div className="flex flex-col md:flex-row justify-between text-left items-start md:items-center mb-8">
+              <div>
+                <div className="inline-block mb-4 px-4 py-2 rounded-full bg-indigo-50 border border-indigo-100">
+                  <span className="font-bold text-indigo-600 text-xs tracking-widest uppercase">
+                    Trending
+                  </span>
+                </div>
+                <h2 className="text-3xl sm:text-4xl font-black mb-2 text-slate-900 tracking-tight">
+                  Trending summer camps
+                </h2>
+                <p className="text-sm sm:text-base text-slate-500">
+                  Discover the most popular summer camps and activities for kids
+                </p>
+              </div>
+              <a href="/collections/summer-camp-collections" className="mt-4 md:mt-0 flex items-center gap-2 font-bold hover:underline text-indigo-600 transition-colors">
+                View All <FaChevronRight size={14} />
+              </a>
+            </div>
+
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
+              {[...trendingEvents].sort((a, b) => (b.viewsCount || 0) - (a.viewsCount || 0)).slice(0, 6).map((event, i) => (
+                <div
+                  key={event.id || i}
+                  onClick={() => window.location.href = `/events/${event.slug || event.id}`}
+                  className="group relative bg-white rounded-3xl overflow-hidden shadow-soft hover:shadow-medium border border-slate-100/80 cursor-pointer transform hover:-translate-y-1.5 transition-all duration-300 flex flex-col h-[380px]"
+                >
+                  {/* Card Image Area */}
+                  <div className="h-56 w-full relative overflow-hidden bg-slate-50 flex items-center justify-center p-4">
+                    <div
+                      className="absolute inset-0 bg-cover bg-no-repeat bg-center transition-transform duration-500 group-hover:scale-105"
+                      style={{ backgroundImage: `url('${event.image || '/assets/images/placeholder.jpg'}')` }}
+                    />
+                    <div className="absolute inset-0 bg-gradient-to-t from-slate-950/80 via-slate-950/20 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300 flex items-end justify-center pb-6">
+                      <div className="px-4 py-2 rounded-xl bg-white/20 backdrop-blur-md text-white text-xs font-bold border border-white/25 shadow-sm transform translate-y-2 group-hover:translate-y-0 transition-all duration-350">
+                        View Details
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Card Info Area */}
+                  <div className="p-6 flex-grow flex flex-col justify-between">
+                    <div>
+                      <span className="text-[10px] font-bold tracking-wider uppercase px-2.5 py-1 rounded-md border bg-indigo-50 text-indigo-700 border-indigo-200">
+                        {event.category || 'Event'}
+                      </span>
+                      <h3 className="font-extrabold text-slate-800 text-lg mt-3 group-hover:text-indigo-650 transition-colors leading-snug line-clamp-2">
+                        {event.title}
+                      </h3>
+                      {event.description && (
+                        <p className="text-sm text-slate-500 mt-2 line-clamp-2">
+                          {event.description}
+                        </p>
+                      )}
+                    </div>
+
+                    <div className="flex items-center justify-between border-t border-slate-50 pt-4 mt-2">
+                      <div className="flex items-center gap-1.5 text-xs text-slate-500 font-medium">
+                        <span className="w-1.5 h-1.5 rounded-full bg-indigo-400"></span>
+                        <span>{event.ageGroup ? `${event.ageGroup} age` : 'All Ages'}</span>
+                      </div>
+                      <div className="flex items-center gap-1.5 font-bold bg-slate-150 px-3 py-1.5 rounded-full">
+                        <span className="text-base text-slate-900">{event.price ? `AED ${event.price}` : 'Free'}</span>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              ))}
+            </div>
           </div>
         </section>
       )}
@@ -506,6 +555,39 @@ const SummerPartnersDirectoryPage: React.FC = () => {
               </div>
             );
           })}
+        </div>
+      </section>
+
+      {/* ── SUMMER 2026 PROMO SECTION ── */}
+      <section className="relative z-30 py-16 px-4 max-w-6xl mx-auto">
+        <div className="relative rounded-[2.5rem] overflow-hidden bg-gradient-to-br from-orange-500 via-amber-500 to-yellow-400 shadow-2xl">
+          {/* Animated abstract shapes */}
+          <div className="absolute top-[-20%] left-[-10%] w-[50%] h-[50%] bg-white/20 rounded-full blur-[80px] pointer-events-none animate-pulse-soft" />
+          <div className="absolute bottom-[-20%] right-[-10%] w-[60%] h-[60%] bg-orange-300/30 rounded-full blur-[100px] pointer-events-none animate-float" />
+
+          <div className="relative p-10 sm:p-16 flex flex-col md:flex-row items-center justify-between gap-10">
+            <div className="text-center md:text-left flex-1 space-y-6">
+              <h2 className="text-4xl sm:text-5xl lg:text-6xl font-display font-black text-white leading-[1.1] tracking-tight drop-shadow-md">
+                Get Ready for the <br className="hidden sm:block" />
+                <span className="text-transparent bg-clip-text bg-gradient-to-r from-red-600 to-rose-600 drop-shadow-sm">Biggest Summer</span> Ever!
+              </h2>
+              <p className="text-lg text-black max-w-xl font-medium leading-relaxed md:mx-0 drop-shadow-sm">
+                Join Kidrove for the spectacular Summer 2026 Mega-Event. Exclusive programs, massive early-bird discounts, and unforgettable memories await your kids.
+              </p>
+            </div>
+
+            <div className="flex-shrink-0 relative group">
+              {/* Outer glow for button */}
+              <div className="absolute -inset-1 bg-gradient-to-r from-amber-400 to-orange-500 rounded-2xl blur opacity-70 group-hover:opacity-100 transition duration-1000 group-hover:duration-200 animate-pulse-soft" />
+              <button
+                onClick={() => window.location.href = '/summer-2026'}
+                className="relative flex items-center gap-3 px-8 py-5 bg-black hover:bg-neutral-50 text-orange-600 font-bold text-lg rounded-2xl shadow-xl hover:-translate-y-1 hover:shadow-2xl transition-all duration-300 overflow-hidden"
+              >
+                <span className="relative z-10">Discover Summer 2026</span>
+                <FaChevronRight className="relative z-10 text-orange-500 group-hover:translate-x-1 transition-transform" />
+              </button>
+            </div>
+          </div>
         </div>
       </section>
 
