@@ -1121,13 +1121,8 @@ const AdminEditEventPage: React.FC = () => {
           message: "Event created successfully!",
         });
 
-        setTimeout(() => {
-          if (newEventId) {
-            navigate(`/admin/events/${newEventId}/edit`);
-          } else {
-            navigate("/admin/events");
-          }
-        }, 300);
+        // After creating a new event, navigate to the events list
+        navigate("/admin/events");
       } else {
         await adminAPI.updateEvent(id!, eventData);
 

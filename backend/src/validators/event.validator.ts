@@ -202,11 +202,19 @@ export const validateCreateEvent = [
     .toUpperCase(),
 
   body("location.city")
+    .if(body("venueType").not().equals("Online"))
     .trim()
     .notEmpty()
-    .withMessage("City is required")
+    .withMessage("City is required for non-online events")
     .isLength({ min: 2, max: 100 })
     .withMessage("City must be between 2 and 100 characters")
+    .escape(),
+
+  body("location.city")
+    .if(body("venueType").equals("Online"))
+    .optional()
+    .trim()
+    .isLength({ min: 0, max: 100 })
     .escape(),
 
   body("location.address")
