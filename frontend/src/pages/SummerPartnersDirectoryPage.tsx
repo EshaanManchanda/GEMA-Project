@@ -1,4 +1,5 @@
 import React, { useEffect, useState } from 'react';
+import { Link } from 'react-router-dom';
 import {
   FaSun,
   FaGlobe,
@@ -404,12 +405,12 @@ const SummerPartnersDirectoryPage: React.FC = () => {
 
                     {/* Buttons CTA */}
                     <div className="grid grid-cols-2 gap-2 mt-auto">
-                      <button
-                        onClick={() => setSelectedPartner(partner)}
-                        className="py-3 bg-neutral-900 hover:bg-neutral-800 text-white text-xs font-bold rounded-xl text-center shadow-md hover:shadow-lg transition-all"
+                      <Link
+                        to={`/summer-partners/${partner._id}`}
+                        className="py-3 bg-neutral-900 hover:bg-neutral-800 text-white text-xs font-bold rounded-xl text-center shadow-md hover:shadow-lg transition-all flex items-center justify-center"
                       >
-                        Inquire Now
-                      </button>
+                        Explore Now
+                      </Link>
 
                       {partner.website ? (
                         <a
@@ -581,7 +582,7 @@ const SummerPartnersDirectoryPage: React.FC = () => {
               <div className="absolute -inset-1 bg-gradient-to-r from-amber-400 to-orange-500 rounded-2xl blur opacity-70 group-hover:opacity-100 transition duration-1000 group-hover:duration-200 animate-pulse-soft" />
               <button
                 onClick={() => window.location.href = '/summer-2026'}
-                className="relative flex items-center gap-3 px-8 py-5 bg-black hover:bg-neutral-50 text-orange-600 font-bold text-lg rounded-2xl shadow-xl hover:-translate-y-1 hover:shadow-2xl transition-all duration-300 overflow-hidden"
+                className="relative flex items-center gap-3 px-8 py-5 bg-neutral-50 text-orange-600 font-bold text-lg rounded-2xl shadow-xl hover:-translate-y-1 hover:shadow-2xl transition-all duration-300 overflow-hidden"
               >
                 <span className="relative z-10">Discover Summer 2026</span>
                 <FaChevronRight className="relative z-10 text-orange-500 group-hover:translate-x-1 transition-transform" />

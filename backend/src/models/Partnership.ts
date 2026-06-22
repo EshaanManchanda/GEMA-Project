@@ -23,6 +23,26 @@ export interface IPartnership extends Document {
   numberOfKids?: string;
   paymentStatus: "pending" | "paid" | "failed";
   paymentSessionId?: string;
+  socialMedia?: {
+    facebook?: string;
+    instagram?: string;
+    twitter?: string;
+    linkedin?: string;
+    youtube?: string;
+  };
+  videoAttachments?: Array<{
+    originalName?: string;
+    filename?: string;
+    url: string;
+    size?: number;
+    mimetype?: string;
+    provider?: "local" | "cloudinary";
+    publicId?: string;
+    cloudinaryUrl?: string;
+    uploadedAt?: Date;
+  }>;
+  plans?: string;
+  contents?: string;
   createdAt: Date;
   updatedAt: Date;
 }
@@ -160,6 +180,34 @@ const partnershipSchema: Schema = new Schema(
       default: "pending",
     },
     paymentSessionId: {
+      type: String,
+      trim: true,
+    },
+    socialMedia: {
+      facebook: { type: String, trim: true },
+      instagram: { type: String, trim: true },
+      twitter: { type: String, trim: true },
+      linkedin: { type: String, trim: true },
+      youtube: { type: String, trim: true },
+    },
+    videoAttachments: [
+      {
+        originalName: { type: String, trim: true },
+        filename: { type: String, trim: true },
+        url: { type: String, trim: true },
+        size: { type: Number, min: [0, "Attachment size cannot be negative"] },
+        mimetype: { type: String, trim: true },
+        provider: { type: String, enum: ["local", "cloudinary"] },
+        publicId: { type: String, trim: true },
+        cloudinaryUrl: { type: String, trim: true },
+        uploadedAt: { type: Date },
+      },
+    ],
+    plans: {
+      type: String,
+      trim: true,
+    },
+    contents: {
       type: String,
       trim: true,
     },

@@ -1,4 +1,6 @@
 import React, { useState, useEffect } from 'react';
+import EditPartnershipModal from './EditPartnershipModal';
+
 import {
   Eye,
   Trash2,
@@ -9,6 +11,7 @@ import {
   Building2,
   Check,
   X,
+  Edit,
   MessageSquare,
   Download,
   FileSpreadsheet,
@@ -62,6 +65,8 @@ const PartnershipList: React.FC = () => {
   const [selectedPartnership, setSelectedPartnership] = useState<Partnership | null>(null);
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
   const [partnershipToDelete, setPartnershipToDelete] = useState<string | null>(null);
+  const [showEditModal, setShowEditModal] = useState(false);
+  const [editingPartnership, setEditingPartnership] = useState<Partnership | null>(null);
   const [showDetailsModal, setShowDetailsModal] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [pagination, setPagination] = useState({
@@ -345,6 +350,16 @@ const PartnershipList: React.FC = () => {
           >
             <Eye className="w-4 h-4" />
           </Button>
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={() => {
+                setEditingPartnership(partnership);
+                setShowEditModal(true);
+              }}
+            >
+              <Edit className="w-4 h-4" />
+            </Button>
           <Button
             variant="ghost"
             size="sm"
@@ -688,6 +703,16 @@ const PartnershipList: React.FC = () => {
         message="Are you sure you want to delete this partnership inquiry? This action cannot be undone."
         confirmText="Delete"
         cancelText="Cancel"
+      />
+      {/* Edit Partnership Modal */}
+      <EditPartnershipModal
+        partnership={editingPartnership}
+        isOpen={showEditModal}
+        onClose={() => {
+          setShowEditModal(false);
+          setEditingPartnership(null);
+        }}
+        onSaved={fetchPartnerships}
       />
     </div>
   );

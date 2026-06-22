@@ -15,6 +15,26 @@ export interface Partnership {
     approvedAt?: string;
     rejectedAt?: string;
     notes?: string;
+    plans?: string;
+    contents?: string;
+    socialMedia?: {
+        facebook?: string;
+        instagram?: string;
+        twitter?: string;
+        linkedin?: string;
+        youtube?: string;
+    };
+    videoAttachments?: Array<{
+        originalName?: string;
+        filename?: string;
+        url: string;
+        size?: number;
+        mimetype?: string;
+        provider?: "local" | "cloudinary";
+        publicId?: string;
+        cloudinaryUrl?: string;
+        uploadedAt?: string;
+    }>;
     createdAt: string;
     updatedAt: string;
 }
@@ -69,6 +89,12 @@ const partnershipAPI = {
         return response.data;
     },
 
+    // Public - get public partner by ID
+    getPublicById: async (id: string) => {
+        const response = await api.get(`/partnerships/directory/${id}`);
+        return response.data;
+    },
+
     // Admin - get stats
     getStats: async () => {
         const response = await api.get('/partnerships/stats');
@@ -78,6 +104,12 @@ const partnershipAPI = {
     // Admin - update status
     updateStatus: async (id: string, updates: { status?: string; notes?: string }) => {
         const response = await api.patch(`/partnerships/${id}`, updates);
+        return response.data;
+    },
+
+    // Admin - update partnership full details
+    update: async (id: string, updates: any) => {
+        const response = await api.put(`/partnerships/${id}`, updates);
         return response.data;
     },
 

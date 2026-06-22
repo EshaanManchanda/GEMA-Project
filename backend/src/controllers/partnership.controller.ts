@@ -332,6 +332,68 @@ export const updatePartnershipStatus = async (
 };
 
 /**
+ * Update full partnership details (admin only)
+ */
+export const updatePartnership = async (
+  req: AuthRequest,
+  res: Response,
+  next: NextFunction,
+) => {
+  try {
+    // Check if user is admin
+    if (req.user!.role !== "admin") {
+      return next(
+        new AppError("Access denied. Admin privileges required.", 403),
+      );
+    }
+
+    const { id } = req.params;
+    const updateData = req.body;
+
+    // Remove immutable fields from updateData if they exist
+    delete updateData._id;
+    delete updateData.createdAt;
+
+    const partnership = await Partnership.findById(id);
+
+    if (!partnership) {
+      return next(new AppError("Partnership submission not found", 404));
+    }
+
+    // Apply updates
+    Object.assign(partnership, updateData);
+
+    // If status is being updated, handle timestamps
+    if (updateData.status) {
+      const oldStatus = partnership.status;
+      const newStatus = updateData.status;
+
+      if (newStatus === "contacted" && oldStatus !== "contacted") {
+        partnership.contactedAt = new Date();
+      } else if (newStatus === "approved" && oldStatus !== "approved") {
+        partnership.approvedAt = new Date();
+      } else if (newStatus === "rejected" && oldStatus !== "rejected") {
+        partnership.rejectedAt = new Date();
+      }
+    }
+
+    if (updateData.videoAttachments) {
+      partnership.markModified("videoAttachments");
+    }
+
+    await partnership.save();
+
+    res.status(200).json({
+      success: true,
+      message: "Partnership updated successfully",
+      data: { partnership },
+    });
+  } catch (error) {
+    next(error);
+  }
+};
+
+/**
  * Delete partnership submission (admin only)
  */
 export const deletePartnership = async (
@@ -426,6 +488,33 @@ export const getPublicDirectory = async (
       success: true,
       message: "Public partnerships retrieved successfully",
       data: { partnerships },
+    });
+  } catch (error) {
+    next(error);
+  }
+};
+
+/**
+ * Get single public approved partnership by ID
+ */
+export const getPublicPartnershipById = async (
+  req: Request,
+  res: Response,
+  next: NextFunction,
+) => {
+  try {
+    const { id } = req.params;
+
+    const partnership = await Partnership.findOne({ _id: id, status: "approved" }).lean();
+
+    if (!partnership) {
+      return next(new AppError("Partnership not found", 404));
+    }
+
+    res.status(200).json({
+      success: true,
+      message: "Partnership retrieved successfully",
+      data: { partnership },
     });
   } catch (error) {
     next(error);

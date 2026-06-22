@@ -397,9 +397,12 @@ const SummerPartnershipPage: React.FC = () => {
               </div>
               <div>
                 <label className="block text-sm font-bold text-gray-700 mb-1.5">Activity Type *</label>
-                <select name="partnershipType" value={form.partnershipType} onChange={handleChange} className="w-full px-4 py-3 border border-gray-200 rounded-xl focus:ring-2 focus:ring-orange-400 focus:border-transparent outline-none transition bg-white">
-                  {PARTNER_TYPES.map(t => <option key={t.value} value={t.value}>{t.label}</option>)}
-                </select>
+                <input 
+                  type="text" 
+                  value="Summer Camp" 
+                  readOnly 
+                  className="w-full px-4 py-3 border border-gray-200 rounded-xl bg-gray-50 text-gray-500 cursor-not-allowed outline-none" 
+                />
               </div>
               <div>
                 <label className="block text-sm font-bold text-gray-700 mb-1.5">Emirate</label>

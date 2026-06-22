@@ -6,15 +6,18 @@ import {
   getAllPartnerships,
   getPartnershipById,
   updatePartnershipStatus,
+  updatePartnership,
   deletePartnership,
   getPartnershipStats,
   getPublicDirectory,
+  getPublicPartnershipById,
 } from "../controllers/partnership.controller";
 import {
   submitPartnershipValidation,
   getAllPartnershipsValidation,
   getPartnershipByIdValidation,
   updatePartnershipStatusValidation,
+  updatePartnershipValidation,
   deletePartnershipValidation,
 } from "../validators/partnership.validator";
 
@@ -30,6 +33,9 @@ router.post(
 
 // Public route - Get approved partnerships directory
 router.get("/directory", getPublicDirectory);
+
+// Public route - Get single approved partnership
+router.get("/directory/:id", getPublicPartnershipById);
 
 // Protected admin routes
 router.use(authenticate); // All routes below require authentication
@@ -59,6 +65,14 @@ router.patch(
   updatePartnershipStatusValidation,
   validateRequest,
   updatePartnershipStatus,
+);
+
+// Update full partnership details (admin only)
+router.put(
+  "/:id",
+  updatePartnershipValidation,
+  validateRequest,
+  updatePartnership,
 );
 
 // Delete partnership submission (admin only)

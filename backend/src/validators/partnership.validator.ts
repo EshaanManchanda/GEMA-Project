@@ -175,3 +175,15 @@ export const updatePartnershipStatusValidation = [
 export const deletePartnershipValidation = [
   param("id").isMongoId().withMessage("Invalid partnership ID"),
 ];
+
+// Validation rules for full update of partnership
+export const updatePartnershipValidation = [
+  param("id").isMongoId().withMessage("Invalid partnership ID"),
+  body("name").optional().trim().notEmpty().withMessage("Name cannot be empty"),
+  body("email").optional().isEmail().withMessage("Valid email required").normalizeEmail(),
+  body("partnershipType").optional().isIn(["vendor", "influencer", "school", "affiliate", "summer_camp", "play_zone", "workshop", "activity_centre", "other"]),
+  body("plans").optional().trim(),
+  body("contents").optional().trim(),
+  body("socialMedia").optional().isObject(),
+  body("videoAttachments").optional().isArray(),
+];

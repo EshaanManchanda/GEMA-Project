@@ -49,6 +49,7 @@ const SummerPartnershipPage = React.lazy(() => import(/* webpackChunkName: "summ
 const PartnershipSuccessPage = React.lazy(() => import(/* webpackChunkName: "summer" */ './pages/PartnershipSuccessPage'));
 const StudentSummerRegPage = React.lazy(() => import(/* webpackChunkName: "student-summer-reg" */ './pages/StudentSummerRegPage'));
 const SummerPartnersDirectoryPage = React.lazy(() => import(/* webpackChunkName: "summer" */ './pages/SummerPartnersDirectoryPage'));
+const SummerPartnerDetailPage = React.lazy(() => import(/* webpackChunkName: "summer" */ './pages/SummerPartnerDetailPage'));
 const ComingJuly26Page = React.lazy(() => import(/* webpackChunkName: "summer" */ './pages/ComingJuly26Page'));
 
 // Auth Pages
@@ -252,6 +253,7 @@ function AppContent() {
       <ScrollToTop />
       <Toaster
         position="top-right"
+        containerStyle={{ top: '70px' }}
         toastOptions={{
           duration: 4000,
           // Success toast - Glassmorphism with green tint
@@ -444,6 +446,11 @@ function AppContent() {
           <Route path="summer-partners" element={
             <Suspense fallback={<GenericPageSkeleton />}>
               <SummerPartnersDirectoryPage />
+            </Suspense>
+          } />
+          <Route path="summer-partners/:id" element={
+            <Suspense fallback={<GenericPageSkeleton />}>
+              <SummerPartnerDetailPage />
             </Suspense>
           } />
           <Route path="workshops" element={
