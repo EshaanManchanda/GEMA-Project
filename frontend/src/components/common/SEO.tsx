@@ -176,7 +176,6 @@ const SEO: React.FC<SEOProps> = ({
 export const EventSEO: React.FC<{ event: any; breadcrumbs?: SEOProps['breadcrumbs'] }> = ({ event, breadcrumbs }) => {
   const baseUrl = import.meta.env.VITE_APP_URL || 'https://gema-events.com';
 
-  // Use custom SEO meta if available, otherwise generate from event data
   const generateTitle = () => {
     if (event.seoMeta?.title) {
       return event.seoMeta.title;
@@ -200,54 +199,100 @@ export const EventSEO: React.FC<{ event: any; breadcrumbs?: SEOProps['breadcrumb
     return ['kids activities', 'events', 'UAE', event.location?.city, event.category, ...event.tags].filter(Boolean);
   };
 
-  const seoData: SEOProps = {
-    title: generateTitle(),
-    description: generateDescription(),
-    keywords: generateKeywords(),
-    canonicalUrl: `${baseUrl}/events/${event.slug || event._id}`,
-    ogImage: event.images?.[0],
-    ogType: 'article',
-    breadcrumbs,
-    structuredData: {
+  const EDUCATIONAL_TYPES = new Set(['course', 'workshop', 'class', 'camp', 'training', 'tutorial', 'lesson']);
+  const isEducational = EDUCATIONAL_TYPES.has(event.eventType?.toLowerCase?.()) ||
+    EDUCATIONAL_TYPES.has(event.category?.toLowerCase?.()) ||
+    /workshop|class|course|coding|stem|programming|scratch|robotics|learn/i.test(event.title || '');
+
+  const eventUrl = `${baseUrl}/events/${event.slug || event._id}`;
+
+  const eventSchema: any = {
+    '@context': 'https://schema.org',
+    '@type': 'Event',
+    name: event.title,
+    description: event.description,
+    startDate: event.dateSchedule?.[0]?.startDate || event.dateSchedule?.[0]?.date,
+    endDate: event.dateSchedule?.[0]?.endDate,
+    eventStatus: 'https://schema.org/EventScheduled',
+    eventAttendanceMode: 'https://schema.org/OfflineEventAttendanceMode',
+    location: {
+      '@type': 'Place',
+      name: event.location?.address || 'Event Location',
+      address: {
+        '@type': 'PostalAddress',
+        streetAddress: event.location?.address,
+        addressLocality: event.location?.city,
+        addressCountry: 'AE'
+      }
+    },
+    offers: {
+      '@type': 'Offer',
+      price: event.price || event.dateSchedule?.[0]?.price || 0,
+      priceCurrency: event.currency || 'AED',
+      availability: 'https://schema.org/InStock',
+      url: eventUrl
+    },
+    organizer: {
+      '@type': ['Organization', 'EducationalOrganization'],
+      name: `${getAppNameFull()}`,
+      url: baseUrl
+    },
+    ...(event.images && event.images.length > 0 && { image: event.images }),
+    ...(event.ageRange && {
+      audience: {
+        '@type': 'PeopleAudience',
+        suggestedMinAge: event.ageRange[0],
+        suggestedMaxAge: event.ageRange[1]
+      }
+    })
+  };
+
+  const structuredDataArray: any[] = [eventSchema];
+
+  if (isEducational) {
+    structuredDataArray.push({
       '@context': 'https://schema.org',
-      '@type': 'Event',
+      '@type': 'Course',
       name: event.title,
       description: event.description,
-      startDate: event.dateSchedule?.[0]?.startDate || event.dateSchedule?.[0]?.date,
-      endDate: event.dateSchedule?.[0]?.endDate,
-      eventStatus: 'https://schema.org/EventScheduled',
-      eventAttendanceMode: 'https://schema.org/OfflineEventAttendanceMode',
-      location: {
-        '@type': 'Place',
-        name: event.location?.address || 'Event Location',
-        address: {
-          '@type': 'PostalAddress',
-          streetAddress: event.location?.address,
-          addressLocality: event.location?.city,
-          addressCountry: 'AE'
-        }
-      },
-      offers: {
-        '@type': 'Offer',
-        price: event.price || event.dateSchedule?.[0]?.price || 0,
-        priceCurrency: event.currency || 'AED',
-        availability: 'https://schema.org/InStock',
-        url: `${baseUrl}/events/${event.slug || event._id}`
-      },
-      organizer: {
-        '@type': 'Organization',
+      url: eventUrl,
+      provider: {
+        '@type': ['Organization', 'EducationalOrganization'],
         name: `${getAppNameFull()}`,
         url: baseUrl
       },
-      ...(event.images && event.images.length > 0 && { image: event.images }),
       ...(event.ageRange && {
         audience: {
           '@type': 'PeopleAudience',
           suggestedMinAge: event.ageRange[0],
           suggestedMaxAge: event.ageRange[1]
         }
-      })
-    }
+      }),
+      ...(event.images?.[0] && { image: event.images[0] }),
+      inLanguage: 'en',
+      isAccessibleForFree: (event.price || event.dateSchedule?.[0]?.price || 0) === 0,
+    });
+
+    structuredDataArray.push({
+      '@context': 'https://schema.org',
+      '@type': 'HowTo',
+      name: event.title,
+      description: event.description,
+      ...(event.images?.[0] && { image: event.images[0] }),
+      totalTime: event.duration ? `PT${event.duration}M` : undefined,
+      tool: [{ '@type': 'HowToTool', name: 'Computer or tablet' }],
+    });
+  }
+
+  const seoData: SEOProps = {
+    title: generateTitle(),
+    description: generateDescription(),
+    keywords: generateKeywords(),
+    canonicalUrl: eventUrl,
+    ogImage: event.images?.[0],
+    ogType: 'article',
+    breadcrumbs,
+    structuredData: structuredDataArray.length === 1 ? structuredDataArray[0] : structuredDataArray,
   };
 
   return <SEO {...seoData} />;
@@ -267,35 +312,47 @@ export const BlogSEO: React.FC<{ blog: any; breadcrumbs?: SEOProps['breadcrumbs'
     publishedTime: blog.publishedAt || blog.createdAt,
     modifiedTime: blog.updatedAt,
     breadcrumbs,
-    structuredData: {
-      '@context': 'https://schema.org',
-      '@type': 'BlogPosting',
-      headline: blog.title,
-      description: blog.excerpt,
-      image: blog.featuredImage,
-      datePublished: blog.publishedAt || blog.createdAt,
-      dateModified: blog.updatedAt,
-      author: {
-        '@type': 'Person',
-        name: blog.author?.name || `${getAppNameFull()} Team`,
-        ...(blog.author?.avatar && { image: blog.author.avatar })
-      },
-      publisher: {
-        '@type': 'Organization',
-        name: `${getAppNameFull()}`,
-        logo: {
-          '@type': 'ImageObject',
-          url: `${baseUrl}/assets/images/logo.png`
-        }
-      },
-      mainEntityOfPage: {
-        '@type': 'WebPage',
-        '@id': `${baseUrl}/blog/${blog.slug}`
-      },
-      wordCount: blog.content ? blog.content.split(' ').length : undefined,
-      timeRequired: `PT${blog.readTime || 5}M`,
-      keywords: blog.tags?.join(', ') || blog.seo?.metaKeywords?.join(', ')
-    }
+    structuredData: (() => {
+      const isTutorial = /how to|tutorial|guide|step.by.step|learn|build|create|make/i.test(blog.title || '');
+      const blogSchema = {
+        '@context': 'https://schema.org',
+        '@type': 'BlogPosting',
+        headline: blog.title,
+        description: blog.excerpt,
+        image: blog.featuredImage,
+        datePublished: blog.publishedAt || blog.createdAt,
+        dateModified: blog.updatedAt,
+        author: {
+          '@type': 'Person',
+          name: blog.author?.name || `${getAppNameFull()} Team`,
+          ...(blog.author?.avatar && { image: blog.author.avatar })
+        },
+        publisher: {
+          '@type': ['Organization', 'EducationalOrganization'],
+          name: `${getAppNameFull()}`,
+          logo: {
+            '@type': 'ImageObject',
+            url: `${baseUrl}/assets/images/logo.png`
+          }
+        },
+        mainEntityOfPage: {
+          '@type': 'WebPage',
+          '@id': `${baseUrl}/blog/${blog.slug}`
+        },
+        wordCount: blog.content ? blog.content.split(' ').length : undefined,
+        timeRequired: `PT${blog.readTime || 5}M`,
+        keywords: blog.tags?.join(', ') || blog.seo?.metaKeywords?.join(', ')
+      };
+      if (!isTutorial) return blogSchema;
+      return [blogSchema, {
+        '@context': 'https://schema.org',
+        '@type': 'HowTo',
+        name: blog.title,
+        description: blog.excerpt,
+        ...(blog.featuredImage && { image: blog.featuredImage }),
+        totalTime: `PT${blog.readTime || 5}M`,
+      }];
+    })()
   };
 
   return <SEO {...seoData} />;
@@ -500,10 +557,10 @@ export const HomeSEO: React.FC<{
   // 2. Enhanced Organization Schema
   const organizationStructuredData: any = {
     '@context': 'https://schema.org',
-    '@type': 'Organization',
+    '@type': ['Organization', 'EducationalOrganization'],
     name: `${getAppNameFull()}`,
     alternateName: getAppNameFull(),
-    description: 'UAE\'s leading platform for kids activities and family events',
+    description: 'Educational platform for children\'s activities, STEM workshops, coding classes, and family events in the UAE',
     url: baseUrl,
     logo: `${baseUrl}/assets/images/logo.png`,
     foundingDate: '2017-01-01',
@@ -663,6 +720,42 @@ export const FAQPageSEO: React.FC<{
     breadcrumbs,
     structuredData: faqStructuredData,
     speakableSelectors: ['.faq-question', '.faq-answer', 'h1', 'h2']
+  };
+
+  return <SEO {...seoData} />;
+};
+
+export const ReelSEO: React.FC<{ reel: any }> = ({ reel }) => {
+  const baseUrl = import.meta.env.VITE_APP_URL || 'https://kidrove.com';
+
+  const thumbnailUrl = reel.thumbnailAsset?.url || reel.videoAsset?.thumbnailUrl || '';
+  const videoUrl = reel.videoAsset?.url || reel.externalVideoUrl || '';
+
+  const seoData: SEOProps = {
+    title: `${reel.title} | ${getAppNameFull()}`,
+    description: reel.description || reel.title,
+    canonicalUrl: `${baseUrl}/reels/${reel.slug || reel._id}`,
+    ogImage: thumbnailUrl,
+    structuredData: {
+      '@context': 'https://schema.org',
+      '@type': 'VideoObject',
+      name: reel.title,
+      description: reel.description || reel.title,
+      thumbnailUrl,
+      contentUrl: videoUrl,
+      uploadDate: reel.createdAt,
+      ...(reel.duration && { duration: `PT${Math.round(reel.duration)}S` }),
+      publisher: {
+        '@type': ['Organization', 'EducationalOrganization'],
+        name: `${getAppNameFull()}`,
+        url: baseUrl,
+      },
+      ...(reel.views != null && { interactionStatistic: {
+        '@type': 'InteractionCounter',
+        interactionType: 'https://schema.org/WatchAction',
+        userInteractionCount: reel.views,
+      }}),
+    },
   };
 
   return <SEO {...seoData} />;

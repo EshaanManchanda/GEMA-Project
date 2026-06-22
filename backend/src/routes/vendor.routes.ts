@@ -35,8 +35,6 @@ import {
   uploadVendorDocument,
   deleteVendorDocument,
   getVendorDocuments,
-  initializeStripeConnectOnboarding,
-  getStripeConnectStatus,
   exportEventParticipants,
 } from "../controllers/vendor.controller";
 import {
@@ -64,6 +62,7 @@ import {
   validatePhoneVerificationSend,
   validatePhoneVerificationConfirm,
   validateDocumentType,
+  validateUpdateBooking,
 } from "../validators/vendor.validator";
 
 const router = Router();
@@ -148,7 +147,7 @@ router.put("/events/:id/restore", restoreVendorEvent);
  * @desc    Export participant-level rows for a specific event
  * @access  Vendor only
  */
-router.get("/events/:eventId/participants/export", authenticate, exportEventParticipants);
+router.get("/events/:eventId/participants/export", exportEventParticipants);
 
 /**
  * @route   GET /api/vendors/bookings/export
@@ -176,7 +175,7 @@ router.get("/bookings/:id", getVendorBookingById);
  * @desc    Update booking (limited edit - status, notes, fulfillment)
  * @access  Vendor only
  */
-router.put("/bookings/:id", updateVendorBooking);
+router.put("/bookings/:id", validateUpdateBooking, validate, updateVendorBooking);
 
 /**
  * @route   GET /api/vendors/bookings
@@ -398,19 +397,5 @@ router.delete(
   validate,
   deleteVendorDocument,
 );
-
-/**
- * @route   POST /api/vendors/stripe-connect/onboard
- * @desc    Initialize Stripe Connect onboarding
- * @access  Vendor only
- */
-router.post("/stripe-connect/onboard", initializeStripeConnectOnboarding);
-
-/**
- * @route   GET /api/vendors/stripe-connect/status
- * @desc    Get Stripe Connect account status
- * @access  Vendor only
- */
-router.get("/stripe-connect/status", getStripeConnectStatus);
 
 export default router;

@@ -74,6 +74,8 @@ interface Config {
     webhookSecret: string;
     testSecretKey: string;
     testPublishableKey: string;
+    vendorSubscriptionPriceId: string;
+    vendorPortalNoCancelConfigId: string;
   };
   email: {
     service: string;
@@ -150,6 +152,9 @@ interface Config {
     siteName: string;
     siteDescription: string;
     contactEmail: string;
+  };
+  commission: {
+    chargeOnActiveSubscription: boolean;
   };
   google: {
     placesApiKey: string;
@@ -230,6 +235,12 @@ export const config: Config = {
     webhookSecret: process.env.STRIPE_WEBHOOK_SECRET || "",
     testSecretKey: process.env.STRIPE_TEST_SECRET_KEY || "",
     testPublishableKey: process.env.STRIPE_TEST_PUBLISHABLE_KEY || "",
+    // Recurring price for the 150 AED/month vendor subscription.
+    // Run: npx ts-node src/scripts/utilities/createVendorSubscriptionPrice.ts
+    vendorSubscriptionPriceId: process.env.STRIPE_VENDOR_SUBSCRIPTION_PRICE_ID || "",
+    // Portal configuration with subscription_cancel disabled (auto-created lazily if blank).
+    // Set after first server start: STRIPE_PORTAL_NO_CANCEL_CONFIG_ID=bpc_xxx
+    vendorPortalNoCancelConfigId: process.env.STRIPE_PORTAL_NO_CANCEL_CONFIG_ID || "",
   },
   email: {
     service: process.env.EMAIL_SERVICE || "mailtrap",
@@ -350,6 +361,9 @@ export const config: Config = {
       process.env.CONTACT_EMAIL ||
       process.env.EMAIL_FROM ||
       "contact@kidrove.com",
+  },
+  commission: {
+    chargeOnActiveSubscription: process.env.COMMISSION_CHARGE_ON_ACTIVE_SUBSCRIPTION === "true",
   },
   google: {
     placesApiKey: process.env.GOOGLE_PLACES_API_KEY || "",

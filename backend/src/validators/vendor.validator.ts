@@ -128,20 +128,23 @@ export const validateUpdateProfile = [
  */
 export const validateBankDetails = [
   body("accountHolderName")
-    .optional()
     .trim()
+    .notEmpty()
+    .withMessage("Account holder name is required")
     .isLength({ min: 1, max: 200 })
     .withMessage("Account holder name must be 1-200 characters"),
 
   body("bankName")
-    .optional()
     .trim()
+    .notEmpty()
+    .withMessage("Bank name is required")
     .isLength({ min: 1, max: 200 })
     .withMessage("Bank name must be 1-200 characters"),
 
   body("accountNumber")
-    .optional()
     .trim()
+    .notEmpty()
+    .withMessage("Account number is required")
     .matches(/^[A-Za-z0-9\-\s]+$/)
     .withMessage("Account number contains invalid characters")
     .isLength({ max: 34 })
@@ -205,41 +208,67 @@ export const validateBusinessHours = [
  * Validate social media links update
  */
 export const validateSocialMedia = [
-  body("facebook")
+  body("socialMedia").isObject().withMessage("socialMedia must be an object"),
+
+  body("socialMedia.facebook")
     .optional({ values: "falsy" })
     .trim()
     .isURL()
     .withMessage("Facebook must be a valid URL"),
 
-  body("instagram")
+  body("socialMedia.instagram")
     .optional({ values: "falsy" })
     .trim()
     .isURL()
     .withMessage("Instagram must be a valid URL"),
 
-  body("twitter")
+  body("socialMedia.twitter")
     .optional({ values: "falsy" })
     .trim()
     .isURL()
     .withMessage("Twitter must be a valid URL"),
 
-  body("linkedin")
+  body("socialMedia.linkedin")
     .optional({ values: "falsy" })
     .trim()
     .isURL()
     .withMessage("LinkedIn must be a valid URL"),
 
-  body("youtube")
+  body("socialMedia.youtube")
     .optional({ values: "falsy" })
     .trim()
     .isURL()
     .withMessage("YouTube must be a valid URL"),
 
-  body("website")
+  body("socialMedia.website")
     .optional({ values: "falsy" })
     .trim()
     .isURL()
     .withMessage("Website must be a valid URL"),
+];
+
+/**
+ * Validate vendor booking update (limited fields only)
+ */
+export const validateUpdateBooking = [
+  body("vendorNotes")
+    .optional()
+    .trim()
+    .isLength({ max: 2000 })
+    .withMessage("Vendor notes cannot exceed 2000 characters"),
+
+  body("vendorStatus")
+    .optional()
+    .trim()
+    .isIn(["confirmed", "cancelled", "pending", "no-show", "completed"])
+    .withMessage(
+      "vendorStatus must be one of: confirmed, cancelled, pending, no-show, completed",
+    ),
+
+  body("isFulfilled")
+    .optional()
+    .isBoolean()
+    .withMessage("isFulfilled must be a boolean"),
 ];
 
 /**

@@ -39,6 +39,7 @@ const CollectionDetailPage = React.lazy(() => import(/* webpackChunkName: "colle
 const VendorsPage = React.lazy(() => import(/* webpackChunkName: "vendors" */ './pages/VendorsPage'));
 const VendorPage = React.lazy(() => import(/* webpackChunkName: "vendors" */ './pages/VendorPage'));
 const SearchPage = React.lazy(() => import(/* webpackChunkName: "search" */ './pages/SearchPage'));
+const ReelsPage = React.lazy(() => import(/* webpackChunkName: "reels" */ './pages/ReelsPage'));
 const BookingPage = React.lazy(() => import(/* webpackChunkName: "booking" */ './pages/BookingPage'));
 const PaymentSuccessPage = React.lazy(() => import(/* webpackChunkName: "payment" */ './pages/PaymentSuccessPage'));
 const PaymentCancelPage = React.lazy(() => import(/* webpackChunkName: "payment" */ './pages/PaymentCancelPage'));
@@ -172,6 +173,10 @@ const PartnerWithUsPage = React.lazy(() => import(/* webpackChunkName: "static" 
 const ForOrganizationsPage = React.lazy(() => import(/* webpackChunkName: "static" */ './pages/static/ForOrganizationsPage'));
 const OrganizationsPage = React.lazy(() => import(/* webpackChunkName: "static" */ '@/pages/static/OrganizationsPage'));
 const TeachRegisterPage = React.lazy(() => import(/* webpackChunkName: "static" */ './pages/static/TeachRegisterPage'));
+const LearnScratchPage = React.lazy(() => import(/* webpackChunkName: "static" */ './pages/static/learn/LearnScratchPage'));
+const LearnRoboticsPage = React.lazy(() => import(/* webpackChunkName: "static" */ './pages/static/learn/LearnRoboticsPage'));
+const LearnPythonPage = React.lazy(() => import(/* webpackChunkName: "static" */ './pages/static/learn/LearnPythonPage'));
+const LearnAIForKidsPage = React.lazy(() => import(/* webpackChunkName: "static" */ './pages/static/learn/LearnAIForKidsPage'));
 const ReviewLinkPage = React.lazy(() => import('./pages/ReviewLinkPage'));
 const CertificateVerifyPage = React.lazy(() => import('./pages/CertificateVerifyPage'));
 const StudentCertificatesPage = React.lazy(() => import('./pages/StudentCertificatesPage'));
@@ -387,6 +392,13 @@ function AppContent() {
             </Suspense>
           } />
 
+          {/* Reels Feed */}
+          <Route path="reels" element={
+            <Suspense fallback={<GenericPageSkeleton />}>
+              <ReelsPage />
+            </Suspense>
+          } />
+
           {/* Vendor Discovery Routes */}
           <Route path="vendors" element={
             <Suspense fallback={<GenericPageSkeleton />}>
@@ -507,6 +519,26 @@ function AppContent() {
           <Route path="teach/register" element={
             <Suspense fallback={<GenericPageSkeleton />}>
               <TeachRegisterPage />
+            </Suspense>
+          } />
+          <Route path="learn/scratch" element={
+            <Suspense fallback={<GenericPageSkeleton />}>
+              <LearnScratchPage />
+            </Suspense>
+          } />
+          <Route path="learn/robotics" element={
+            <Suspense fallback={<GenericPageSkeleton />}>
+              <LearnRoboticsPage />
+            </Suspense>
+          } />
+          <Route path="learn/python" element={
+            <Suspense fallback={<GenericPageSkeleton />}>
+              <LearnPythonPage />
+            </Suspense>
+          } />
+          <Route path="learn/ai-for-kids" element={
+            <Suspense fallback={<GenericPageSkeleton />}>
+              <LearnAIForKidsPage />
             </Suspense>
           } />
 

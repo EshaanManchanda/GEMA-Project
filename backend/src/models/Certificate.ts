@@ -143,7 +143,7 @@ export const SerialCounter = mongoose.model<ISerialCounter>("SerialCounter", ser
 
 // ─── Certificate ─────────────────────────────────────────────────────────────
 
-export type CertificateStatus = "pending" | "generating" | "generated" | "emailed" | "failed" | "revoked";
+export type CertificateStatus = "pending" | "generating" | "generated" | "email_queued" | "emailed" | "failed" | "revoked";
 
 export interface ICertificateHistory {
   event: string;
@@ -197,7 +197,7 @@ const certificateSchema = new Schema<ICertificate>(
     data: { type: Schema.Types.Mixed, default: {} },
     status: {
       type: String,
-      enum: ["pending", "generating", "generated", "emailed", "failed", "revoked"],
+      enum: ["pending", "generating", "generated", "email_queued", "emailed", "failed", "revoked"],
       default: "pending",
     },
     pdfUrl: String,
@@ -225,7 +225,6 @@ certificateSchema.index({ userId: 1 });
 certificateSchema.index({ reviewId: 1 });
 certificateSchema.index({ status: 1 });
 certificateSchema.index({ "recipient.email": 1 });
-certificateSchema.index({ serialNumber: 1 });
 certificateSchema.index({ issuedAt: -1 });
 certificateSchema.index({ "context.studentId": 1 });
 certificateSchema.index({ userId: 1, eventId: 1 });

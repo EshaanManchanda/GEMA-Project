@@ -1,6 +1,9 @@
 # Dependencies
 node_modules/
 
+# Reputation monitoring history (local only)
+reputation-history.json
+
 # Build output
 dist/
 build/

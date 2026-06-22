@@ -45,8 +45,17 @@ export enum TeacherPaymentMode {
   CUSTOM_STRIPE = "custom_stripe",
 }
 
-import { TeacherSubscriptionStatus } from "./TeacherSubscription";
-export { TeacherSubscriptionStatus };
+export enum TeacherSubscriptionStatus {
+  ACTIVE = "active",
+  INACTIVE = "inactive",
+  CANCELLED = "cancelled",
+  PAST_DUE = "past_due",
+  TRIALING = "trialing",
+  EXPIRED = "expired",
+  PENDING = "pending",
+  SUSPENDED = "suspended",
+  GRACE_PERIOD = "grace_period",
+}
 
 /* ============================
    INTERFACES
@@ -365,13 +374,6 @@ const TeacherSchema = new Schema<ITeacher>(
 
 // Compound index for public teacher listing filter
 TeacherSchema.index({ verificationStatus: 1, isActive: 1, isSuspended: 1 });
-
-TeacherSchema.virtual("subscription", {
-  ref: "TeacherSubscription",
-  localField: "_id",
-  foreignField: "teacherId",
-  justOne: true,
-});
 
 TeacherSchema.virtual("commissionTransactions", {
   ref: "CommissionTransaction",

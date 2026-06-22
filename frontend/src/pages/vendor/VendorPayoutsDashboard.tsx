@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import { toast } from 'react-hot-toast';
 import {
@@ -12,6 +12,7 @@ import {
 } from '../../hooks/mutations/useVendorPayoutMutations';
 
 import PrivatePageSEO from '@/components/common/PrivatePageSEO';
+import vendorPayoutAPI from '../../services/api/vendorPayoutAPI';
 
 const VendorPayoutsDashboard: React.FC = () => {
   const { data: dashboardData, isLoading: isDashboardLoading, error: dashboardErrorRaw } = useVendorPayoutDashboardQuery();
@@ -24,12 +25,26 @@ const VendorPayoutsDashboard: React.FC = () => {
 
   const [showRequestModal, setShowRequestModal] = useState(false);
   const [requestAmount, setRequestAmount] = useState('');
+  const [isSubscriptionLoading, setIsSubscriptionLoading] = useState(false);
+  const [isPortalLoading, setIsPortalLoading] = useState(false);
 
   const isSubscriptionModel = paymentSettings?.paymentMode === 'custom_stripe';
 
   const { data: subscriptionData, isLoading: isLoadingSub } = useVendorSubscriptionStatusQuery({
     enabled: isSubscriptionModel,
   });
+
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search);
+    const subResult = params.get('subscription');
+    if (subResult === 'success') {
+      toast.success('Subscription activated! Welcome to the Subscription Model.');
+      window.history.replaceState({}, '', window.location.pathname);
+    } else if (subResult === 'cancelled') {
+      toast('Subscription checkout was cancelled. You can subscribe anytime.', { icon: 'ℹ️' });
+      window.history.replaceState({}, '', window.location.pathname);
+    }
+  }, []);
 
   const { data: commissionData, isLoading: isLoadingComm } = useVendorCommissionHistoryQuery(
     { page: 1, limit: 10 },
@@ -60,6 +75,35 @@ const VendorPayoutsDashboard: React.FC = () => {
       } catch (error: any) {
         // Toast handled in mutation
       }
+    }
+  };
+
+  /**
+   * Redirect to Stripe Checkout to subscribe (150 AED/month platform subscription).
+   */
+  const handleSubscribe = async () => {
+    setIsSubscriptionLoading(true);
+    try {
+      const { url } = await vendorPayoutAPI.createSubscriptionCheckout();
+      window.location.href = url;
+    } catch (error: any) {
+      toast.error(error?.response?.data?.message || 'Failed to start subscription checkout');
+      setIsSubscriptionLoading(false);
+    }
+  };
+
+  /**
+   * Redirect to Stripe Billing Portal to manage subscription
+   * (cancel, update card, view invoices, reactivate).
+   */
+  const handleManageSubscription = async () => {
+    setIsPortalLoading(true);
+    try {
+      const { url } = await vendorPayoutAPI.createBillingPortalSession();
+      window.location.href = url;
+    } catch (error: any) {
+      toast.error(error?.response?.data?.message || 'Failed to open billing portal');
+      setIsPortalLoading(false);
     }
   };
 
@@ -115,6 +159,30 @@ const VendorPayoutsDashboard: React.FC = () => {
         </div>
         <div className="p-6">
           {/* Status Banner */}
+          {/* Cancel-at-period-end banner */}
+          {sub.cancelAtPeriodEnd && !sub.isExpired && (
+            <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-4 mb-6">
+              <div className="flex items-center justify-between">
+                <div className="flex items-center">
+                  <svg className="w-5 h-5 text-yellow-600 mr-3 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
+                  </svg>
+                  <div>
+                    <p className="font-medium text-yellow-800">Subscription cancels on {sub.currentPeriodEnd ? new Date(sub.currentPeriodEnd).toLocaleDateString() : (sub.paidUntil ? new Date(sub.paidUntil).toLocaleDateString() : 'period end')}</p>
+                    <p className="text-sm text-yellow-700">You retain access until then. To keep your subscription, click "Manage Subscription" and resume.</p>
+                  </div>
+                </div>
+                <button
+                  onClick={handleManageSubscription}
+                  disabled={isPortalLoading}
+                  className="ml-4 bg-yellow-600 text-white px-4 py-1.5 rounded-lg hover:bg-yellow-700 transition-colors text-sm font-medium disabled:opacity-50"
+                >
+                  {isPortalLoading ? 'Opening…' : 'Manage Subscription'}
+                </button>
+              </div>
+            </div>
+          )}
+
           {sub.isExpired && (
             <div className="bg-red-50 border border-red-200 rounded-lg p-4 mb-6">
               <div className="flex items-center">
@@ -126,26 +194,40 @@ const VendorPayoutsDashboard: React.FC = () => {
                   <p className="text-sm text-red-700">Your subscription has expired. Your events are hidden from the portal. Please renew to restore visibility.</p>
                 </div>
               </div>
-              <button className="mt-4 bg-red-600 text-white px-6 py-2 rounded-lg hover:bg-red-700 transition-colors font-medium">
-                Renew Subscription
+              <button
+                onClick={handleSubscribe}
+                disabled={isSubscriptionLoading}
+                className="mt-4 bg-red-600 text-white px-6 py-2 rounded-lg hover:bg-red-700 transition-colors font-medium disabled:opacity-50"
+              >
+                {isSubscriptionLoading ? 'Redirecting to checkout…' : 'Renew Subscription'}
               </button>
             </div>
           )}
 
           {sub.status === 'grace_period' && (
             <div className="bg-orange-50 border border-orange-200 rounded-lg p-4 mb-6">
-              <div className="flex items-center">
-                <svg className="w-6 h-6 text-orange-600 mr-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
-                </svg>
-                <div>
-                  <h3 className="font-semibold text-orange-800">Grace Period</h3>
-                  <p className="text-sm text-orange-700">Your subscription is in grace period. Please renew within {Math.abs(sub.daysUntilRenewal || 0)} days to avoid suspension.</p>
+              <div className="flex items-center justify-between">
+                <div className="flex items-center">
+                  <svg className="w-6 h-6 text-orange-600 mr-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
+                  </svg>
+                  <div>
+                    <h3 className="font-semibold text-orange-800">Grace Period — Action Required</h3>
+                    <p className="text-sm text-orange-700">Your subscription payment failed. Please update your payment method within {Math.abs(sub.daysUntilRenewal || 0)} days to avoid suspension.</p>
+                  </div>
                 </div>
+                <button
+                  onClick={handleManageSubscription}
+                  disabled={isPortalLoading}
+                  className="ml-4 bg-orange-600 text-white px-4 py-1.5 rounded-lg hover:bg-orange-700 transition-colors text-sm font-medium disabled:opacity-50"
+                >
+                  {isPortalLoading ? 'Opening…' : 'Update Payment'}
+                </button>
               </div>
             </div>
           )}
 
+          {/* Status grid */}
           <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
             <div>
               <p className="text-sm font-medium text-gray-600">Status</p>
@@ -168,6 +250,45 @@ const VendorPayoutsDashboard: React.FC = () => {
             </div>
           </div>
 
+          {/* Subscribe / Manage actions */}
+          <div className="mt-6 flex flex-wrap gap-3">
+            {/* Vendor not yet subscribed or needs to re-subscribe */}
+            {!sub.hasStripeSubscription || sub.isExpired || sub.status === 'inactive' ? (
+              <button
+                onClick={handleSubscribe}
+                disabled={isSubscriptionLoading}
+                className="bg-orange-600 text-white px-6 py-2 rounded-lg hover:bg-orange-700 transition-colors font-medium disabled:opacity-50 flex items-center gap-2"
+              >
+                {isSubscriptionLoading && (
+                  <span className="animate-spin rounded-full h-4 w-4 border-b-2 border-white" />
+                )}
+                {isSubscriptionLoading ? 'Redirecting to checkout…' : '✦ Subscribe — 150 AED/month'}
+              </button>
+            ) : (
+              /* Vendor has an active Stripe subscription — show Manage button */
+              <button
+                onClick={handleManageSubscription}
+                disabled={isPortalLoading}
+                className="bg-gray-800 text-white px-6 py-2 rounded-lg hover:bg-gray-900 transition-colors font-medium disabled:opacity-50 flex items-center gap-2"
+              >
+                {isPortalLoading && (
+                  <span className="animate-spin rounded-full h-4 w-4 border-b-2 border-white" />
+                )}
+                {isPortalLoading ? 'Opening…' : '⚙ Manage Subscription'}
+              </button>
+            )}
+          </div>
+
+          {/* Active-period cancellation notice */}
+          {sub.isActive && !sub.isExpired && !sub.cancelAtPeriodEnd && sub.paidUntil && (
+            <p className="mt-3 text-sm text-gray-500">
+              Cancellation is available after your current billing period ends on{' '}
+              <span className="font-medium text-gray-700">
+                {new Date(sub.paidUntil).toLocaleDateString()}
+              </span>.
+            </p>
+          )}
+
           {/* Payment History */}
           {sub.paymentHistory && sub.paymentHistory.length > 0 && (
             <div className="mt-6">
@@ -180,10 +301,11 @@ const VendorPayoutsDashboard: React.FC = () => {
                       <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Amount</th>
                       <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Period</th>
                       <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Status</th>
+                      <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Invoice</th>
                     </tr>
                   </thead>
                   <tbody className="bg-white divide-y divide-gray-200">
-                    {sub.paymentHistory.map((payment, index) => (
+                    {sub.paymentHistory.map((payment: any, index: number) => (
                       <tr key={index}>
                         <td className="px-4 py-3 whitespace-nowrap text-sm text-gray-900">
                           {new Date(payment.paymentDate).toLocaleDateString()}
@@ -201,6 +323,15 @@ const VendorPayoutsDashboard: React.FC = () => {
                             }`}>
                             {payment.status}
                           </span>
+                        </td>
+                        <td className="px-4 py-3 whitespace-nowrap text-sm">
+                          {payment.invoicePdf ? (
+                            <a href={payment.invoicePdf} target="_blank" rel="noopener noreferrer" className="text-orange-600 hover:text-orange-800 font-medium">PDF</a>
+                          ) : payment.invoiceUrl ? (
+                            <a href={payment.invoiceUrl} target="_blank" rel="noopener noreferrer" className="text-orange-600 hover:text-orange-800 font-medium">View</a>
+                          ) : (
+                            <span className="text-gray-400">—</span>
+                          )}
                         </td>
                       </tr>
                     ))}
@@ -264,7 +395,7 @@ const VendorPayoutsDashboard: React.FC = () => {
                   </tr>
                 </thead>
                 <tbody className="bg-white divide-y divide-gray-200">
-                  {commissionData.transactions.map((tx) => (
+                  {commissionData.transactions.map((tx: any) => (
                     <tr key={tx.id}>
                       <td className="px-4 py-3 whitespace-nowrap text-sm font-medium text-gray-900">
                         {tx.orderNumber}

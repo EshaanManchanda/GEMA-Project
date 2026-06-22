@@ -71,14 +71,22 @@ const HomePage: React.FC = () => {
     averageRating: Number(import.meta.env.VITE_STATS_AVERAGE_RATING) || 4.8
   };
 
-  // Prepare different event collections for various layouts
-  const handpickedEvents = useMemo(
-    () => events
-      .filter(e => e.isFeatured || (e.rating && e.rating >= 4.5))
+  // Load Handpicked Experiences from collection data, fallback to top events by views
+  const handpickedEvents = useMemo(() => {
+    const handpickedCollection = collectionsData.find(
+      (c: any) => c.slug === 'handpicked-experience' || c.slug === 'handpicked-experiences'
+    );
+    if (handpickedCollection?.events?.length) {
+      return handpickedCollection.events.map(mapToUIEvent).slice(0, 16);
+    }
+    const featured = events.filter(e => e.isFeatured || (e.rating && e.rating >= 4.5));
+    if (featured.length >= 8) {
+      return featured.sort((a, b) => (b.viewsCount || 0) - (a.viewsCount || 0)).slice(0, 16);
+    }
+    return [...events]
       .sort((a, b) => (b.viewsCount || 0) - (a.viewsCount || 0))
-      .slice(0, 8),
-    [events]
-  );
+      .slice(0, 16);
+  }, [collectionsData, events]);
   const apiBestPriceEvents = (homepageData?.bestPriceEvents || (homepageError ? mockEvents : [])) as unknown as ApiEvent[];
   const bestPriceEventsRaw = apiBestPriceEvents.map(mapToUIEvent);
 
@@ -218,21 +226,23 @@ const HomePage: React.FC = () => {
         <FeaturedInstructors />
 
         {/* Grid Layout - Handpicked Experiences */}
-        <CollectionSection
-          badge="Handpicked"
-          title="Handpicked Experiences"
-          subtitle="Curated by our team of experts - only the best activities for your family"
-          events={handpickedEvents}
-          layout="grid"
-          eventCardVariant="default"
-          maxItems={8}
-          enablePagination={true}
-          viewAllLink="/collections/handpicked-experience"
-          showPrice={true}
-          showLocation={true}
-          showAgeGroup={true}
-          showWishlist={false}
-        />
+        {handpickedEvents.length > 0 && (
+          <CollectionSection
+            badge="Handpicked"
+            title="Handpicked Experiences"
+            subtitle="Curated by our team of experts - only the best activities for your family"
+            events={handpickedEvents}
+            layout="grid"
+            eventCardVariant="default"
+            maxItems={16}
+            enablePagination={true}
+            viewAllLink="/collections/handpicked-experience"
+            showPrice={true}
+            showLocation={true}
+            showAgeGroup={true}
+            showWishlist={false}
+          />
+        )}
 
         {/* Why Choose Us */}
         <ScrollReveal>

@@ -41,7 +41,7 @@ const vendorAPI = {
 
   getFeaturedVendors: async () => {
     try {
-      const response = await ApiService.get('/vendors/featured');
+      const response = await ApiService.get('/vendors', { params: { featured: true, limit: 10 } });
       return response.data;
     } catch (error) {
       throw error;
@@ -52,8 +52,11 @@ const vendorAPI = {
   getVendorEvents: async () => {
     try {
       const response = await ApiService.get('/vendors/events');
-      return response.data?.data?.events || response.data?.events || [];
+      logApiResponse('GET /vendors/events', response);
+      const data = extractApiData(response);
+      return data?.events || data || [];
     } catch (error) {
+      logApiResponse('GET /vendors/events', null, error);
       throw error;
     }
   },
@@ -249,7 +252,10 @@ const vendorAPI = {
   // For becoming a vendor
   applyForVendor: async (applicationData: any) => {
     try {
-      const response = await ApiService.post('/vendors/apply', applicationData);
+      const response = await ApiService.post('/auth/register', {
+        ...applicationData,
+        role: 'vendor',
+      });
       return response.data;
     } catch (error) {
       throw error;
@@ -271,14 +277,16 @@ const vendorAPI = {
   // Check if service fee applies for this vendor
   checkServiceFee: async (vendorId: string, amount: number) => {
     try {
-      const response = await ApiService.post('/vendors/check-service-fee', {
-        vendorId,
-        amount
-      });
-      logApiResponse('POST /vendors/check-service-fee', response);
-      return extractApiData(response);
+      const paymentInfo = await ApiService.get(`/vendors/${vendorId}/payment-info`);
+      const info = paymentInfo.data?.data || paymentInfo.data;
+      const commissionRate = info?.commissionRate ?? 0.05;
+      return {
+        serviceFee: amount * commissionRate,
+        commissionRate,
+        usesVendorStripe: info?.usesVendorStripe ?? false,
+      };
     } catch (error) {
-      logApiResponse('POST /vendors/check-service-fee', null, error);
+      logApiResponse('GET /vendors/:id/payment-info (fee check)', null, error);
       throw error;
     }
   },
@@ -331,7 +339,7 @@ const vendorAPI = {
 
   getClaimedEvents: async () => {
     try {
-      const response = await ApiService.get('/vendor/claimed-events');
+      const response = await ApiService.get('/vendors/claimed-events');
       return response;
     } catch (error) {
       throw error;
@@ -340,7 +348,7 @@ const vendorAPI = {
 
   getClaimedVenues: async () => {
     try {
-      const response = await ApiService.get('/vendor/claimed-venues');
+      const response = await ApiService.get('/vendors/claimed-venues');
       return response;
     } catch (error) {
       throw error;
@@ -585,15 +593,15 @@ const vendorAPI = {
   // Save Stripe API keys
   saveStripeApiKeys: async (publishableKey: string, secretKey: string, testMode: boolean) => {
     try {
-      const response = await ApiService.post('/vendors/stripe-keys', {
+      const response = await ApiService.put('/vendors/payment-settings/stripe/keys', {
         publishableKey,
         secretKey,
         testMode
       });
-      logApiResponse('POST /vendors/stripe-keys', response);
+      logApiResponse('PUT /vendors/payment-settings/stripe/keys', response);
       return extractApiData(response);
     } catch (error) {
-      logApiResponse('POST /vendors/stripe-keys', null, error);
+      logApiResponse('PUT /vendors/payment-settings/stripe/keys', null, error);
       throw error;
     }
   },
@@ -601,14 +609,15 @@ const vendorAPI = {
   // Validate Stripe API keys
   validateStripeApiKeys: async (publishableKey: string, secretKey: string) => {
     try {
-      const response = await ApiService.post('/vendors/stripe-keys/validate', {
+      const response = await ApiService.put('/vendors/payment-settings/stripe/keys', {
         publishableKey,
-        secretKey
+        secretKey,
+        testMode: publishableKey.startsWith('pk_test_'),
       });
-      logApiResponse('POST /vendors/stripe-keys/validate', response);
+      logApiResponse('PUT /vendors/payment-settings/stripe/keys (validate)', response);
       return extractApiData(response);
     } catch (error) {
-      logApiResponse('POST /vendors/stripe-keys/validate', null, error);
+      logApiResponse('PUT /vendors/payment-settings/stripe/keys (validate)', null, error);
       throw error;
     }
   },

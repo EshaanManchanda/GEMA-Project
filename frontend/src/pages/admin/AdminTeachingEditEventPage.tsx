@@ -14,6 +14,7 @@ import ReviewsTab from '../../components/admin/ReviewsTab';
 import { MediaAsset } from '@/store/slices/mediaSlice';
 import { Plus, Trash2, GripVertical } from 'lucide-react';
 import logger from '@/utils/logger';
+import { PastEventMemory } from '@/types/event';
 
 interface SyllabusLesson {
   title: string;
@@ -1365,5 +1366,4 @@ const AdminTeachingEditEventPage: React.FC = () => {
   );
 };
 
-export default AdminTeachingEditEventPage;
 export default AdminTeachingEditEventPage;

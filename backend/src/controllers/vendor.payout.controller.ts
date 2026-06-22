@@ -580,6 +580,8 @@ export const getSubscriptionStatus = async (
               status:
                 paymentSettings?.subscriptionStatus ||
                 VendorSubscriptionStatus.INACTIVE,
+              stripeSubscriptionStatus:
+                paymentSettings?.stripeSettings?.stripeSubscriptionStatus,
               amount: paymentSettings?.subscriptionAmount || 150,
               currency: "AED",
               startDate: paymentSettings?.subscriptionStartDate,
@@ -588,6 +590,12 @@ export const getSubscriptionStatus = async (
               daysUntilRenewal,
               isExpired,
               isActive: vendorDoc.isSubscriptionActive(),
+              cancelAtPeriodEnd:
+                paymentSettings?.subscriptionCancelAtPeriodEnd ?? false,
+              hasStripeSubscription:
+                !!paymentSettings?.stripeSettings?.stripeSubscriptionId,
+              currentPeriodEnd:
+                paymentSettings?.stripeSettings?.stripeCurrentPeriodEnd,
               paymentHistory: (paymentSettings?.subscriptionHistory || [])
                 .slice(-10)
                 .reverse(),

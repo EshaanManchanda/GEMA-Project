@@ -264,9 +264,6 @@ export type {
 export { default as TeacherBooking } from "./TeacherBooking";
 export type { ITeacherBooking } from "./TeacherBooking";
 
-export { default as TeacherSubscription } from "./TeacherSubscription";
-export type { ITeacherSubscription } from "./TeacherSubscription";
-
 export { default as Gallery } from "./Gallery";
 export type { IGallery, IGalleryImage } from "./Gallery";
 

@@ -98,7 +98,8 @@ export interface EventCardProps {
 
 // Utility functions
 const formatPrice = (price?: number, currency: string = 'AED'): string => {
-  if (!price) return '';
+  if (price === undefined || price === null) return '';
+  if (price === 0) return 'Free';
   return new Intl.NumberFormat('en-AE', {
     style: 'currency',
     currency: currency,
@@ -549,12 +550,18 @@ const EventCardActions: React.FC<EventCardActionsProps> = ({
 }) => {
   return (
     <div className="flex justify-between items-center pt-3 border-t border-gray-100">
-      {showPrice && price ? (
+      {showPrice && price !== undefined && price !== null ? (
         <div>
-          <span className="text-xs text-gray-700">Starting from</span>
-          <div className="font-bold text-lg" style={{ color: 'var(--primary-color)' }}>
-            {formatPrice(price, currency)}
-          </div>
+          {price === 0 ? (
+            <div className="font-bold text-lg text-green-600">Free</div>
+          ) : (
+            <>
+              <span className="text-xs text-gray-700">Starting from</span>
+              <div className="font-bold text-lg" style={{ color: 'var(--primary-color)' }}>
+                {formatPrice(price, currency)}
+              </div>
+            </>
+          )}
         </div>
       ) : (
         <div></div>
@@ -844,7 +851,7 @@ const EventCard: React.FC<EventCardProps> = (props) => {
         <div className="mt-3">
           {renderActions ? renderActions(renderProps) : (
             <div className="flex items-center justify-between">
-              {showPrice && event.price && (
+              {showPrice && event.price != null && (
                 <div className="font-bold text-lg" style={{ color: 'var(--primary-color)' }}>
                   {formatPrice(event.price, event.currency)}
                 </div>
@@ -894,7 +901,7 @@ const EventCard: React.FC<EventCardProps> = (props) => {
               </p>
             )}
             <div className="flex items-center justify-between">
-              {showPrice && event.price && (
+              {showPrice && event.price != null && (
                 <div className="text-xl font-bold">{formatPrice(event.price, event.currency)}</div>
               )}
               {showLocation && (
@@ -943,7 +950,7 @@ const EventCard: React.FC<EventCardProps> = (props) => {
         <h3 className="text-sm sm:text-base font-semibold mb-2 line-clamp-1 min-w-0 text-gray-900 group-hover:text-blue-600 transition-colors">
           {event.title}
         </h3>
-        {showPrice && event.price && (
+        {showPrice && event.price != null && (
           <div className="font-bold text-base" style={{ color: 'var(--primary-color)' }}>
             {formatPrice(event.price, event.currency)}
           </div>
@@ -1019,7 +1026,7 @@ const EventCard: React.FC<EventCardProps> = (props) => {
         />
 
         <div className="mt-4 pt-4 border-t border-gray-200 flex items-center justify-between">
-          {showPrice && event.price && (
+          {showPrice && event.price != null && (
             <div>
               <span className="text-xs text-gray-600">From</span>
               <div className="font-bold text-xl" style={{ color: 'var(--primary-color)' }}>
@@ -1072,7 +1079,7 @@ const EventCard: React.FC<EventCardProps> = (props) => {
           )}
         </div>
         <div className="flex items-center gap-3 flex-shrink-0">
-          {showPrice && event.price && (
+          {showPrice && event.price != null && (
             <div className="text-sm font-bold" style={{ color: 'var(--primary-color)' }}>
               {formatPrice(event.price, event.currency)}
             </div>

@@ -12,6 +12,7 @@ import {
   getCommissionHistory,
 } from "../controllers/vendor.payout.controller";
 import { authenticate, authorize } from "../middleware/auth";
+import { UserRole } from "../models/index";
 import { validateRequest } from "../middleware/validation";
 import { query, param, body } from "express-validator";
 
@@ -126,7 +127,7 @@ const updatePaymentSettingsValidation = [
 
 // All vendor payout routes require authentication and vendor role
 router.use(authenticate);
-router.use(authorize(["vendor"]));
+router.use(authorize([UserRole.VENDOR]));
 
 // Dashboard routes
 router.get("/dashboard", validateRequest, getVendorPayoutsDashboard);

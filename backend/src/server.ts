@@ -44,6 +44,7 @@ import {
   startScheduledPayoutCron,
   startPromotionExpiryCron,
   startCommissionBackfillCron,
+  startSubscriptionExpiryCron,
 } from "./utils/cron";
 import { redisClient, redisPool } from "./config/redis";
 import {
@@ -87,10 +88,51 @@ app.use(
     referrerPolicy: { policy: "strict-origin-when-cross-origin" },
     // Disable X-Powered-By
     hidePoweredBy: true,
-    // CSP is left to app-level route middleware for prerender/OG routes
+    // CSP in Report-Only mode — collect violations before enforcing.
+    // Backend serves API + bot-prerendered HTML; Stripe/GA4/GTM may trigger violations.
+    // Monitor report-uri for ~1 week, then flip to enforcing CSP.
     contentSecurityPolicy: false,
+    // Allow cross-origin resource loading (Stripe, Cloudinary, fonts)
+    crossOriginResourcePolicy: { policy: "cross-origin" as const },
+    // Don't require COEP — Stripe embeds need cross-origin loading
+    crossOriginEmbedderPolicy: false,
+    // Prevent window.opener attacks
+    crossOriginOpenerPolicy: { policy: "same-origin" as const },
   }),
 );
+
+// CSP Report-Only: collect violations without breaking anything.
+// Once violations are clean, move directives into helmet's contentSecurityPolicy (enforcing).
+app.use((_req, res, next) => {
+  res.setHeader(
+    "Content-Security-Policy-Report-Only",
+    [
+      "default-src 'self'",
+      "script-src 'self' 'unsafe-inline' https://js.stripe.com https://www.googletagmanager.com https://www.google-analytics.com",
+      "style-src 'self' 'unsafe-inline' https://fonts.googleapis.com",
+      "font-src 'self' https://fonts.gstatic.com",
+      "img-src 'self' data: https: blob:",
+      "connect-src 'self' https://api.kidrove.com https://api.kidrove.in https://api.kidrove.ae https://api.stripe.com https://*.cloudinary.com https://*.google-analytics.com https://*.googleapis.com",
+      "frame-src 'self' https://js.stripe.com",
+      "object-src 'none'",
+      "base-uri 'self'",
+      "form-action 'self'",
+      "frame-ancestors 'none'",
+      "upgrade-insecure-requests",
+    ].join("; "),
+  );
+  next();
+});
+
+// Permissions-Policy: restrict sensitive APIs. Camera/microphone allowed for self (WebRTC proctoring).
+app.use((_req, res, next) => {
+  res.setHeader(
+    "Permissions-Policy",
+    "camera=(self), microphone=(self), geolocation=(), payment=(self), usb=()",
+  );
+  res.setHeader("X-Permitted-Cross-Domain-Policies", "none");
+  next();
+});
 
 // In production, block state-changing requests that arrive with no Origin header.
 // Safe methods (GET/HEAD/OPTIONS) are allowed for health checks, curl, monitoring.
@@ -400,6 +442,7 @@ async function startServer() {
     startScheduledPayoutCron();
     startPromotionExpiryCron();
     startCommissionBackfillCron();
+    startSubscriptionExpiryCron();
     logger.info("Scheduled jobs initialized successfully");
 
     // Step 5: Start performance monitoring

@@ -1,6 +1,9 @@
 import { stripe, convertToStripeAmount } from "../config/stripe";
+import { config } from "../config";
 import { Order } from "../models/index";
-import Vendor, { PaymentMode } from "../models/Vendor";
+import Vendor, { PaymentMode, VendorSubscriptionStatus } from "../models/Vendor";
+import Event from "../models/Event";
+import { findVendorByStripe } from "./subscription.service";
 import Teacher from "../models/Teacher";
 import User from "../models/User";
 import Ticket from "../models/Ticket";
@@ -491,9 +494,26 @@ export class PaymentService {
           );
           break;
 
+        case "customer.subscription.updated":
+          await this.handleSubscriptionUpdated(
+            event.data.object as Stripe.Subscription,
+          );
+          break;
+
         case "customer.subscription.deleted":
           await this.handleSubscriptionDeleted(
             event.data.object as Stripe.Subscription,
+          );
+          break;
+
+        case "invoice.paid":
+        case "invoice.payment_succeeded":
+          await this.handleInvoicePaid(event.data.object as Stripe.Invoice);
+          break;
+
+        case "invoice.payment_failed":
+          await this.handleInvoicePaymentFailed(
+            event.data.object as Stripe.Invoice,
           );
           break;
 
@@ -513,12 +533,23 @@ export class PaymentService {
   }
 
   /**
-   * Handle successful checkout session
+   * Handle successful checkout session.
+   * Routes to the appropriate sub-handler based on mode + metadata.type.
    */
   private static async handleCheckoutSessionCompleted(
     session: Stripe.Checkout.Session,
   ): Promise<void> {
     try {
+      // ── Vendor subscription checkout ─────────────────────────────────────
+      if (
+        session.mode === "subscription" &&
+        session.metadata?.type === "vendor_subscription"
+      ) {
+        await this.activateVendorSubscriptionFromSession(session);
+        return;
+      }
+
+      // ── Partnership one-time payment ─────────────────────────────────────
       const partnershipId = session.client_reference_id;
       if (partnershipId) {
         const partnership = await Partnership.findById(partnershipId);
@@ -529,11 +560,74 @@ export class PaymentService {
           return;
         }
       }
-      
-      logger.info(`Checkout session completed: ${session.id}`);
+
+      logger.info(`Checkout session completed (no specific handler): ${session.id}`);
     } catch (error) {
       logger.error("Error handling checkout session completed:", error);
     }
+  }
+
+  /**
+   * Activate a vendor's platform subscription after Checkout completes.
+   */
+  private static async activateVendorSubscriptionFromSession(
+    session: Stripe.Checkout.Session,
+  ): Promise<void> {
+    const vendorId = session.metadata?.vendorId;
+    if (!vendorId) {
+      logger.warn("vendor_subscription checkout: no vendorId in session metadata", {
+        sessionId: session.id,
+      });
+      return;
+    }
+
+    const vendor = await Vendor.findById(vendorId);
+    if (!vendor) {
+      logger.error(`vendor_subscription checkout: vendor ${vendorId} not found`);
+      return;
+    }
+
+    // Store Stripe ids
+    const subscriptionId =
+      typeof session.subscription === "string"
+        ? session.subscription
+        : session.subscription?.id;
+    const customerId =
+      typeof session.customer === "string"
+        ? session.customer
+        : session.customer?.id;
+
+    if (subscriptionId) {
+      vendor.paymentSettings.stripeSettings.stripeSubscriptionId = subscriptionId;
+    }
+    if (customerId) {
+      vendor.paymentSettings.stripeSettings.stripeCustomerId = customerId;
+    }
+
+    vendor.paymentSettings.subscriptionStatus = VendorSubscriptionStatus.ACTIVE;
+    vendor.paymentSettings.subscriptionStartDate =
+      vendor.paymentSettings.subscriptionStartDate || new Date();
+    vendor.paymentSettings.subscriptionCancelAtPeriodEnd = false;
+    vendor.paymentSettings.stripeSettings.stripeSubscriptionStatus = "active";
+
+    await vendor.save();
+
+    // Send activation email (fire-and-forget)
+    emailService
+      .sendEmail({
+        to: vendor.email,
+        subject: "Your Kidrove Vendor Subscription is Active!",
+        html: `<p>Hi ${vendor.businessName},</p>
+<p>Your subscription is now active. You can use your own Stripe account and keep 100% of your earnings (no platform commission).</p>
+<p>Manage your subscription anytime from your <a href="${config.frontendUrl}/vendor/payouts">payouts dashboard</a>.</p>`,
+      })
+      .catch((err: Error) =>
+        logger.error("Vendor subscription activation email failed:", err),
+      );
+
+    logger.info(
+      `Vendor ${vendorId} subscription activated via checkout. Stripe sub: ${subscriptionId}`,
+    );
   }
 
   /**
@@ -902,21 +996,125 @@ export class PaymentService {
   }
 
   /**
-   * Handle customer.subscription.deleted — mark subscription cancelled
-   * Uses subscription metadata (vendorId/teacherId) to locate the record
+   * Handle customer.subscription.updated — sync Stripe state to vendor.
+   * Covers: cancel_at_period_end changes, card updates, plan changes, resume.
+   *
+   * Note: Stripe basil API removed current_period_end from Subscription.
+   * Period end is tracked via invoice.period_end in handleInvoicePaid instead.
+   */
+  private static async handleSubscriptionUpdated(
+    subscription: Stripe.Subscription,
+  ): Promise<void> {
+    try {
+      const vendorId = subscription.metadata?.vendorId;
+      if (!vendorId) return; // Not a vendor subscription
+
+      const vendor = await Vendor.findById(vendorId);
+      if (!vendor) {
+        logger.warn(`customer.subscription.updated: vendor ${vendorId} not found`);
+        return;
+      }
+
+      // Derive app status from Stripe status
+      const stripeStatus = subscription.status;
+      let appStatus: VendorSubscriptionStatus;
+      switch (stripeStatus) {
+        case "active":
+        case "trialing":
+          appStatus = VendorSubscriptionStatus.ACTIVE;
+          break;
+        case "past_due":
+          appStatus = VendorSubscriptionStatus.GRACE_PERIOD;
+          break;
+        case "unpaid":
+        case "canceled":
+        case "incomplete_expired":
+          appStatus = VendorSubscriptionStatus.INACTIVE;
+          break;
+        case "incomplete":
+          appStatus = VendorSubscriptionStatus.PENDING;
+          break;
+        default:
+          appStatus = VendorSubscriptionStatus.INACTIVE;
+      }
+
+      vendor.paymentSettings.stripeSettings.stripeSubscriptionStatus = stripeStatus;
+      vendor.paymentSettings.stripeSettings.stripePriceId =
+        subscription.items.data[0]?.price?.id;
+      vendor.paymentSettings.subscriptionStatus = appStatus;
+      vendor.paymentSettings.subscriptionCancelAtPeriodEnd =
+        subscription.cancel_at_period_end;
+
+      // Track when subscription will actually end (cancel_at is Unix timestamp when cancel_at_period_end)
+      if (subscription.cancel_at) {
+        vendor.paymentSettings.stripeSettings.stripeCurrentPeriodEnd = new Date(
+          subscription.cancel_at * 1000,
+        );
+      }
+
+      await vendor.save();
+
+      logger.info(
+        `Vendor ${vendorId} subscription updated. Stripe status: ${stripeStatus}, cancelAtPeriodEnd: ${subscription.cancel_at_period_end}`,
+      );
+
+      // Notify vendor if they scheduled a cancellation
+      if (subscription.cancel_at_period_end && subscription.cancel_at) {
+        const cancelDate = new Date(subscription.cancel_at * 1000).toLocaleDateString();
+        emailService
+          .sendEmail({
+            to: vendor.email,
+            subject: "Your Kidrove subscription is scheduled to cancel",
+            html: `<p>Hi ${vendor.businessName},</p>
+<p>Your subscription has been set to cancel on <strong>${cancelDate}</strong>. You'll continue to have access until that date.</p>
+<p>To change your mind, visit the <a href="${config.frontendUrl}/vendor/payouts">payouts dashboard</a> and click "Manage Subscription".</p>`,
+          })
+          .catch(() => {});
+      }
+    } catch (error) {
+      logger.error("Error handling customer.subscription.updated:", error);
+    }
+  }
+
+  /**
+   * Handle customer.subscription.deleted — downgrade vendor to platform_stripe.
+   * This fires when the subscription actually ends (period end reached or immediate cancel).
    */
   private static async handleSubscriptionDeleted(
     subscription: Stripe.Subscription,
   ): Promise<void> {
     try {
-      const { vendorId, teacherId } = subscription.metadata || {};
+      const vendorId = subscription.metadata?.vendorId;
+      const teacherId = subscription.metadata?.teacherId;
 
       if (vendorId) {
-        await Vendor.findByIdAndUpdate(vendorId, {
-          "paymentSettings.subscriptionStatus": "cancelled",
-          "paymentSettings.subscriptionPaidUntil": new Date(),
-        });
-        logger.info(`Vendor ${vendorId} subscription cancelled via webhook`);
+        const vendor = await Vendor.findById(vendorId);
+        if (!vendor) {
+          logger.warn(`customer.subscription.deleted: vendor ${vendorId} not found`);
+          return;
+        }
+
+        // Downgrade to commission model
+        vendor.paymentSettings.subscriptionStatus = VendorSubscriptionStatus.INACTIVE;
+        vendor.paymentSettings.paymentMode = PaymentMode.PLATFORM_STRIPE;
+        vendor.paymentSettings.paymentModeChangedAt = new Date();
+        vendor.paymentSettings.stripeSettings.stripeSubscriptionId = undefined;
+        vendor.paymentSettings.stripeSettings.stripeSubscriptionStatus = "canceled";
+        vendor.paymentSettings.subscriptionCancelAtPeriodEnd = false;
+
+        await vendor.save();
+
+        emailService
+          .sendEmail({
+            to: vendor.email,
+            subject: "Your Kidrove subscription has ended",
+            html: `<p>Hi ${vendor.businessName},</p>
+<p>Your Kidrove Vendor Subscription has ended. You're now on the Platform Stripe model (5% commission on sales).</p>
+<p>To resubscribe, visit your <a href="${config.frontendUrl}/vendor/payouts">payouts dashboard</a>.</p>`,
+          })
+          .catch(() => {});
+
+        logger.info(`Vendor ${vendorId} subscription ended — downgraded to platform_stripe`);
         return;
       }
 
@@ -929,11 +1127,193 @@ export class PaymentService {
         return;
       }
 
-      logger.warn("customer.subscription.deleted: no vendorId/teacherId in metadata", {
-        subscriptionId: subscription.id,
-      });
+      logger.warn(
+        "customer.subscription.deleted: no vendorId/teacherId in metadata",
+        { subscriptionId: subscription.id },
+      );
     } catch (error) {
       logger.error("Error handling customer.subscription.deleted:", error);
+    }
+  }
+
+  /**
+   * Extract subscription id from a Stripe Invoice.
+   * Stripe basil API moved subscription ref into invoice.parent.subscription_details.subscription.
+   */
+  private static getInvoiceSubscriptionId(invoice: Stripe.Invoice): string | null {
+    // Basil API: invoice.parent.subscription_details.subscription
+    const parent = invoice.parent as any;
+    const subRef = parent?.subscription_details?.subscription;
+    if (subRef) {
+      return typeof subRef === "string" ? subRef : subRef.id;
+    }
+    return null;
+  }
+
+  /**
+   * Handle invoice.paid — extend vendor subscription period and push history.
+   * Fires on initial payment and every subsequent renewal.
+   *
+   * Period dates come from invoice.period_start/period_end (basil API).
+   * We do NOT fetch the subscription separately — invoice has all we need.
+   */
+  private static async handleInvoicePaid(
+    invoice: Stripe.Invoice,
+  ): Promise<void> {
+    try {
+      // Only handle subscription invoices
+      const subscriptionId = this.getInvoiceSubscriptionId(invoice);
+      if (!subscriptionId) return;
+
+      const customerId =
+        typeof invoice.customer === "string"
+          ? invoice.customer
+          : (invoice.customer as any)?.id;
+
+      const vendor = await findVendorByStripe({
+        subscriptionId,
+        customerId: customerId || undefined,
+      });
+
+      if (!vendor) {
+        logger.debug(`invoice.paid: no vendor for subscription ${subscriptionId}`);
+        return;
+      }
+
+      // Use invoice period dates (Unix timestamps in seconds → ms)
+      const periodStart = new Date(invoice.period_start * 1000);
+      const periodEnd = new Date(invoice.period_end * 1000);
+
+      vendor.paymentSettings.subscriptionPaidUntil = periodEnd;
+      vendor.paymentSettings.subscriptionStatus = VendorSubscriptionStatus.ACTIVE;
+      vendor.paymentSettings.stripeSettings.stripeSubscriptionStatus = "active";
+      vendor.paymentSettings.stripeSettings.stripeCurrentPeriodEnd = periodEnd;
+      vendor.paymentSettings.stripeSettings.stripeSubscriptionId = subscriptionId;
+
+      const amount = invoice.amount_paid / 100; // fils → AED
+
+      if (!vendor.paymentSettings.subscriptionHistory) {
+        vendor.paymentSettings.subscriptionHistory = [];
+      }
+
+      vendor.paymentSettings.subscriptionHistory.push({
+        paymentDate: new Date(),
+        amount,
+        periodStart,
+        periodEnd,
+        status: "paid",
+        transactionId: invoice.id,
+        invoiceUrl: invoice.hosted_invoice_url || undefined,
+        invoicePdf: invoice.invoice_pdf || undefined,
+      } as any);
+
+      // Restore hidden events (if any were deactivated due to expiry)
+      await Event.updateMany(
+        {
+          vendorId: vendor._id,
+          isActive: false,
+          "metadata.deactivationReason": "Vendor subscription expired",
+        },
+        {
+          $set: { isActive: true },
+          $unset: { "metadata.deactivationReason": "" },
+        },
+      );
+
+      // Reactivate vendor if suspended due to subscription expiry
+      if (vendor.isSuspended && vendor.suspensionReason?.includes("subscription")) {
+        vendor.isActive = true;
+        vendor.isSuspended = false;
+        vendor.suspensionReason = undefined;
+      }
+
+      await vendor.save();
+
+      emailService
+        .sendEmail({
+          to: vendor.email,
+          subject: "Kidrove subscription renewed ✓",
+          html: `<p>Hi ${vendor.businessName},</p>
+<p>Your Kidrove Vendor Subscription has been renewed successfully. Amount charged: <strong>AED ${amount}</strong>.</p>
+<p>Your subscription is active until <strong>${periodEnd.toLocaleDateString()}</strong>.</p>
+${invoice.hosted_invoice_url ? `<p><a href="${invoice.hosted_invoice_url}">View Invoice</a></p>` : ""}`,
+        })
+        .catch(() => {});
+
+      logger.info(
+        `Vendor ${vendor._id} subscription period extended to ${periodEnd.toISOString()} via invoice ${invoice.id}`,
+      );
+    } catch (error) {
+      logger.error("Error handling invoice.paid:", error);
+    }
+  }
+
+  /**
+   * Handle invoice.payment_failed — move vendor to GRACE_PERIOD and notify.
+   * Stripe will retry; actual downgrade happens via customer.subscription.deleted.
+   */
+  private static async handleInvoicePaymentFailed(
+    invoice: Stripe.Invoice,
+  ): Promise<void> {
+    try {
+      const subscriptionId = this.getInvoiceSubscriptionId(invoice);
+      if (!subscriptionId) return;
+
+      const customerId =
+        typeof invoice.customer === "string"
+          ? invoice.customer
+          : (invoice.customer as any)?.id;
+
+      const vendor = await findVendorByStripe({
+        subscriptionId,
+        customerId: customerId || undefined,
+      });
+
+      if (!vendor) {
+        logger.debug(
+          `invoice.payment_failed: no vendor for subscription ${subscriptionId}`,
+        );
+        return;
+      }
+
+      vendor.paymentSettings.subscriptionStatus = VendorSubscriptionStatus.GRACE_PERIOD;
+      vendor.paymentSettings.stripeSettings.stripeSubscriptionStatus = "past_due";
+
+      const amount = invoice.amount_due / 100;
+
+      if (!vendor.paymentSettings.subscriptionHistory) {
+        vendor.paymentSettings.subscriptionHistory = [];
+      }
+
+      const now = new Date();
+      vendor.paymentSettings.subscriptionHistory.push({
+        paymentDate: now,
+        amount,
+        periodStart: now,
+        periodEnd: now,
+        status: "failed",
+        transactionId: invoice.id,
+        invoiceUrl: invoice.hosted_invoice_url || undefined,
+      } as any);
+
+      await vendor.save();
+
+      emailService
+        .sendEmail({
+          to: vendor.email,
+          subject: "Action required: Kidrove subscription payment failed",
+          html: `<p>Hi ${vendor.businessName},</p>
+<p>We were unable to charge <strong>AED ${amount}</strong> for your Kidrove Vendor Subscription.</p>
+<p>Please update your payment method to avoid losing access. Visit the <a href="${config.frontendUrl}/vendor/payouts">payouts dashboard</a> → Manage Subscription.</p>
+<p>We'll retry the payment automatically.</p>`,
+        })
+        .catch(() => {});
+
+      logger.warn(
+        `Vendor ${vendor._id} subscription payment failed — status set to GRACE_PERIOD`,
+      );
+    } catch (error) {
+      logger.error("Error handling invoice.payment_failed:", error);
     }
   }
 

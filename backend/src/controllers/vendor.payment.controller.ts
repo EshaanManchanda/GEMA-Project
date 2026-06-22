@@ -3,6 +3,7 @@ import Vendor, {
   PaymentMode,
   VendorSubscriptionStatus,
 } from "../models/Vendor";
+import Stripe from "stripe";
 import { stripeConnectService } from "../services/stripe-connect.service";
 import { subscriptionService } from "../services/subscription.service";
 import { stripe } from "../config/stripe";
@@ -10,6 +11,7 @@ import User from "../models/User";
 import { getOrCreateVendorProfile } from "../utils/vendorHelpers";
 import { config } from "../config/index";
 import logger from "../config/logger";
+import { AppError } from "../middleware";
 
 /** Validate that a Stripe Connect return/refresh URL belongs to our frontend only. */
 function assertAllowedStripeRedirectUrl(url: string, field: string): void {
@@ -344,7 +346,7 @@ export const updateStripeKeys = async (req: Request, res: Response) => {
 
     // Test the keys by making a test API call
     try {
-      const testStripe = new (require("stripe").default)(secretKey);
+      const testStripe = new Stripe(secretKey, { apiVersion: "2025-08-27.basil" });
       await testStripe.balance.retrieve();
 
       // Keys are valid
@@ -472,43 +474,56 @@ export const getSubscriptionInfo = async (req: Request, res: Response) => {
 };
 
 /**
- * POST /api/vendors/payment-settings/subscription/pay
- * Process subscription payment
+ * POST /api/vendors/payment-settings/subscription/checkout
+ * Create a Stripe Checkout Session for the vendor subscription.
+ * Returns { url } — frontend redirects to it immediately.
  */
-export const paySubscription = async (req: Request, res: Response) => {
+export const checkoutSubscription = async (req: Request, res: Response) => {
   try {
     const userId = req.user?.id;
-
-    const user = await User.findById(userId);
-    if (!user) {
-      return res.status(404).json({ message: "User not found" });
-    }
 
     const vendor = await Vendor.findOne({ userId });
     if (!vendor) {
       return res.status(404).json({ message: "Vendor profile not found" });
     }
 
-    const result = await subscriptionService.processSubscriptionPayment(
+    const { url } = await subscriptionService.createCheckoutSession(vendor._id);
+
+    res.json({ success: true, url });
+  } catch (error: any) {
+    logger.error("Error creating subscription checkout session:", error);
+    res.status(500).json({
+      message: error.message || "Failed to create subscription checkout session",
+    });
+  }
+};
+
+/**
+ * POST /api/vendors/payment-settings/subscription/portal
+ * Create a Stripe Billing Portal session so the vendor can manage their
+ * subscription (cancel, update card, view invoices). Returns { url }.
+ */
+export const createBillingPortalSession = async (
+  req: Request,
+  res: Response,
+) => {
+  try {
+    const userId = req.user?.id;
+
+    const vendor = await Vendor.findOne({ userId });
+    if (!vendor) {
+      return res.status(404).json({ message: "Vendor profile not found" });
+    }
+
+    const { url } = await subscriptionService.createBillingPortalSession(
       vendor._id,
     );
 
-    if (result.success) {
-      res.json({
-        message: "Subscription payment processed successfully",
-        ...result,
-      });
-    } else {
-      res.status(400).json({
-        message: "Subscription payment failed",
-        error: result.error,
-      });
-    }
+    res.json({ success: true, url });
   } catch (error: any) {
-    logger.error("Error processing subscription payment:", error);
+    logger.error("Error creating billing portal session:", error);
     res.status(500).json({
-      message: "Failed to process subscription payment",
-      error: error.message,
+      message: error.message || "Failed to create billing portal session",
     });
   }
 };
@@ -569,9 +584,10 @@ export const cancelSubscription = async (req: Request, res: Response) => {
     res.json({ message: "Subscription cancelled successfully" });
   } catch (error: any) {
     logger.error("Error cancelling subscription:", error);
+    const status = error instanceof AppError ? error.statusCode : 500;
     res
-      .status(500)
-      .json({ message: "Failed to cancel subscription", error: error.message });
+      .status(status)
+      .json({ message: error.message || "Failed to cancel subscription" });
   }
 };
 

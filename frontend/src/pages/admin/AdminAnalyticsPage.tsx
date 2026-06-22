@@ -28,6 +28,10 @@ import {
   FaDownload,
   FaTrophy,
   FaChartLine,
+  FaTicketAlt,
+  FaMapMarkerAlt,
+  FaExchangeAlt,
+  FaPercentage,
 } from 'react-icons/fa';
 
 ChartJS.register(
@@ -44,6 +48,7 @@ ChartJS.register(
 );
 
 type TimeRange = '7days' | '30days' | '90days' | '1year';
+type Granularity = 'daily' | 'monthly';
 
 interface DashboardSummary {
   totalRevenue: number;
@@ -79,7 +84,9 @@ interface OrderAnalytics {
   averageOrderValue: number;
   ordersByStatus: Array<{ status: string; count: number; revenue: number }>;
   ordersByMonth: Array<{ month: string; count: number; revenue: number }>;
+  ordersByDay?: Array<{ day: string; count: number; revenue: number }>;
   topCurrencies: Array<{ currency: string; count: number; revenue: number }>;
+  conversionRate: number;
   refundRate: number;
 }
 
@@ -92,15 +99,35 @@ interface UserAnalytics {
   verificationRate: number;
 }
 
+interface TicketAnalytics {
+  totalTickets: number;
+  checkedInTickets: number;
+  transferredTickets: number;
+  cancelledTickets: number;
+  checkInRate: number;
+  transferRate: number;
+  ticketsByType: Array<{ type: string; count: number }>;
+  scansByHour: Array<{ hour: number; scans: number }>;
+}
+
+interface VenueAnalytics {
+  totalVenues: number;
+  activeVenues: number;
+  venuesByType: Array<{ type: string; count: number }>;
+  venuesByCity: Array<{ city: string; count: number }>;
+  averageCapacity: number;
+  utilizationRate: number;
+}
+
 const CHART_COLORS = [
-  'rgba(59, 130, 246, 0.7)',   // blue
-  'rgba(16, 185, 129, 0.7)',   // green
-  'rgba(245, 158, 11, 0.7)',   // amber
-  'rgba(239, 68, 68, 0.7)',    // red
-  'rgba(139, 92, 246, 0.7)',   // violet
-  'rgba(236, 72, 153, 0.7)',   // pink
-  'rgba(20, 184, 166, 0.7)',   // teal
-  'rgba(249, 115, 22, 0.7)',   // orange
+  'rgba(59, 130, 246, 0.7)',
+  'rgba(16, 185, 129, 0.7)',
+  'rgba(245, 158, 11, 0.7)',
+  'rgba(239, 68, 68, 0.7)',
+  'rgba(139, 92, 246, 0.7)',
+  'rgba(236, 72, 153, 0.7)',
+  'rgba(20, 184, 166, 0.7)',
+  'rgba(249, 115, 22, 0.7)',
 ];
 
 const CHART_BORDERS = CHART_COLORS.map(c => c.replace('0.7', '1'));
@@ -131,6 +158,15 @@ const formatMonth = (monthStr: string) => {
   return `${monthName} '${year}`;
 };
 
+const formatDay = (dayStr: string) => {
+  const parts = dayStr.split('-');
+  if (parts.length < 3) return dayStr;
+  const months = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun',
+    'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+  const monthIdx = parseInt(parts[1]) - 1;
+  return `${months[monthIdx]} ${parseInt(parts[2])}`;
+};
+
 const formatCurrency = (amount: number) =>
   new Intl.NumberFormat('en-AE', {
     style: 'currency',
@@ -141,15 +177,49 @@ const formatCurrency = (amount: number) =>
 
 const formatNumber = (n: number) => n.toLocaleString();
 
+const formatHour = (hour: number) => {
+  if (hour === 0) return '12 AM';
+  if (hour === 12) return '12 PM';
+  return hour < 12 ? `${hour} AM` : `${hour - 12} PM`;
+};
+
+function convertToCSV(data: Record<string, any>[], filename: string) {
+  if (!data.length) return;
+  const headers = Object.keys(data[0]);
+  const csvRows = [
+    headers.join(','),
+    ...data.map(row =>
+      headers.map(h => {
+        const val = row[h];
+        const str = val === null || val === undefined ? '' : String(val);
+        return str.includes(',') || str.includes('"') || str.includes('\n')
+          ? `"${str.replace(/"/g, '""')}"`
+          : str;
+      }).join(',')
+    ),
+  ];
+  const blob = new Blob([csvRows.join('\n')], { type: 'text/csv' });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = `${filename}.csv`;
+  a.click();
+  URL.revokeObjectURL(url);
+}
+
 const AdminAnalyticsPage: React.FC = () => {
   const [timeRange, setTimeRange] = useState<TimeRange>('30days');
+  const [granularity, setGranularity] = useState<Granularity>('monthly');
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [exportFormat, setExportFormat] = useState<'json' | 'csv'>('csv');
 
   const [dashboard, setDashboard] = useState<DashboardSummary | null>(null);
   const [eventData, setEventData] = useState<EventAnalytics | null>(null);
   const [orderData, setOrderData] = useState<OrderAnalytics | null>(null);
   const [userData, setUserData] = useState<UserAnalytics | null>(null);
+  const [ticketData, setTicketData] = useState<TicketAnalytics | null>(null);
+  const [venueData, setVenueData] = useState<VenueAnalytics | null>(null);
 
   const fetchData = useCallback(async () => {
     setIsLoading(true);
@@ -161,39 +231,38 @@ const AdminAnalyticsPage: React.FC = () => {
         endDate: dateRange.endDate,
       };
 
-      const [dashRes, eventRes, orderRes, userRes] = await Promise.allSettled([
+      const [dashRes, eventRes, orderRes, userRes, ticketRes, venueRes] = await Promise.allSettled([
         adminAPI.getDashboardStats(),
         adminAPI.getEventAnalytics(params),
         ApiService.get('/analytics/orders', { params }),
         adminAPI.getUserAnalytics(params),
+        adminAPI.getTicketAnalytics(params),
+        adminAPI.getVenueAnalytics(),
       ]);
 
-      // Dashboard summary
-      // getDashboardStats returns full API response { success, data }
       if (dashRes.status === 'fulfilled') {
         const d = dashRes.value?.data || dashRes.value;
         setDashboard(d);
       }
-
-      // Event analytics
-      // getEventAnalytics returns response.data (EventAnalytics directly)
       if (eventRes.status === 'fulfilled') {
         const d = eventRes.value?.data || eventRes.value;
         setEventData(d);
       }
-
-      // Order analytics from /analytics/orders
-      // ApiService.get returns { success, data: OrderAnalytics }
       if (orderRes.status === 'fulfilled') {
         const d = orderRes.value?.data || orderRes.value;
         setOrderData(d);
       }
-
-      // User analytics
-      // getUserAnalytics returns response.data (UserAnalytics directly)
       if (userRes.status === 'fulfilled') {
         const d = userRes.value?.data || userRes.value;
         setUserData(d);
+      }
+      if (ticketRes.status === 'fulfilled') {
+        const d = ticketRes.value?.data || ticketRes.value;
+        setTicketData(d);
+      }
+      if (venueRes.status === 'fulfilled') {
+        const d = venueRes.value?.data || venueRes.value;
+        setVenueData(d);
       }
     } catch (err: any) {
       logger.error('Analytics fetch error:', err);
@@ -207,17 +276,70 @@ const AdminAnalyticsPage: React.FC = () => {
     fetchData();
   }, [fetchData]);
 
-  const handleExport = async () => {
+  const handleExport = async (type: string = 'orders') => {
     try {
       const dateRange = getDateRange(timeRange);
+
+      if (exportFormat === 'csv') {
+        let csvData: Record<string, any>[] = [];
+        let filename = `${type}-analytics-${dateRange.startDate}-${dateRange.endDate}`;
+
+        switch (type) {
+          case 'orders':
+            csvData = (orderData?.ordersByMonth || []).map(m => ({
+              Month: m.month,
+              Orders: m.count,
+              Revenue: m.revenue,
+            }));
+            break;
+          case 'events':
+            csvData = (eventData?.eventsByMonth || []).map(m => ({
+              Month: m.month,
+              Events: m.count,
+            }));
+            break;
+          case 'tickets':
+            csvData = (ticketData?.ticketsByType || []).map(t => ({
+              Type: t.type,
+              Count: t.count,
+            }));
+            break;
+          case 'users':
+            csvData = (userData?.usersByMonth || []).map(m => ({
+              Month: m.month,
+              Users: m.count,
+            }));
+            break;
+          case 'all': {
+            const months = orderData?.ordersByMonth || [];
+            csvData = months.map(m => {
+              const eventMonth = eventData?.eventsByMonth?.find(e => e.month === m.month);
+              const userMonth = userData?.usersByMonth?.find(u => u.month === m.month);
+              return {
+                Month: m.month,
+                Orders: m.count,
+                Revenue: m.revenue,
+                Events: eventMonth?.count || 0,
+                NewUsers: userMonth?.count || 0,
+              };
+            });
+            filename = `platform-analytics-${dateRange.startDate}-${dateRange.endDate}`;
+            break;
+          }
+        }
+
+        if (csvData.length) {
+          convertToCSV(csvData, filename);
+        }
+        return;
+      }
+
       const data = await adminAPI.exportAnalytics({
-        type: 'orders',
+        type,
         ...dateRange,
         format: 'json',
       });
-      const blob = new Blob([JSON.stringify(data, null, 2)], {
-        type: 'application/json',
-      });
+      const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' });
       const url = URL.createObjectURL(blob);
       const a = document.createElement('a');
       a.href = url;
@@ -229,23 +351,6 @@ const AdminAnalyticsPage: React.FC = () => {
     }
   };
 
-  // --- Growth indicator ---
-  const GrowthBadge: React.FC<{ value: number }> = ({ value }) => {
-    const rounded = Math.round(value * 10) / 10;
-    if (rounded > 0) return (
-      <span className="inline-flex items-center gap-1 text-sm font-medium text-green-600">
-        <FaArrowUp className="w-3 h-3" /> {rounded}%
-      </span>
-    );
-    if (rounded < 0) return (
-      <span className="inline-flex items-center gap-1 text-sm font-medium text-red-600">
-        <FaArrowDown className="w-3 h-3" /> {Math.abs(rounded)}%
-      </span>
-    );
-    return <span className="text-sm text-gray-500">0%</span>;
-  };
-
-  // --- Chart options ---
   const baseChartOptions = {
     responsive: true,
     maintainAspectRatio: false,
@@ -285,14 +390,14 @@ const AdminAnalyticsPage: React.FC = () => {
     },
   };
 
-  const ordersChartOptions = {
+  const countChartOptions = {
     ...baseChartOptions,
     plugins: {
       ...baseChartOptions.plugins,
       tooltip: {
         ...baseChartOptions.plugins.tooltip,
         callbacks: {
-          label: (ctx: any) => `Orders: ${formatNumber(ctx.parsed.y)}`,
+          label: (ctx: any) => `${ctx.dataset.label}: ${formatNumber(ctx.parsed.y)}`,
         },
       },
     },
@@ -303,8 +408,7 @@ const AdminAnalyticsPage: React.FC = () => {
         ticks: {
           ...baseChartOptions.scales.y.ticks,
           stepSize: 1,
-          callback: (val: any) =>
-            Number.isInteger(val) ? val : '',
+          callback: (val: any) => Number.isInteger(val) ? val : '',
         },
       },
     },
@@ -328,8 +432,7 @@ const AdminAnalyticsPage: React.FC = () => {
         ticks: {
           ...baseChartOptions.scales.y.ticks,
           stepSize: 1,
-          callback: (val: any) =>
-            Number.isInteger(val) ? val : '',
+          callback: (val: any) => Number.isInteger(val) ? val : '',
         },
       },
     },
@@ -378,36 +481,43 @@ const AdminAnalyticsPage: React.FC = () => {
     );
   }
 
-  // Prepare chart data
-  const revenueByMonth = orderData?.ordersByMonth || [];
+  // Prepare time-series data based on granularity
+  const revenueTimeSeries = granularity === 'daily' && orderData?.ordersByDay
+    ? orderData.ordersByDay
+    : orderData?.ordersByMonth || [];
+
+  const timeLabels = revenueTimeSeries.map(m =>
+    granularity === 'daily' ? formatDay((m as any).day || (m as any).month) : formatMonth((m as any).month || (m as any).day)
+  );
+
   const eventsByMonth = eventData?.eventsByMonth || [];
   const usersByMonth = userData?.usersByMonth || [];
 
   const revenueChartData = {
-    labels: revenueByMonth.map(m => formatMonth(m.month)),
+    labels: timeLabels,
     datasets: [{
       label: 'Revenue (AED)',
-      data: revenueByMonth.map(m => m.revenue),
+      data: revenueTimeSeries.map(m => m.revenue),
       borderColor: 'rgb(16, 185, 129)',
       backgroundColor: 'rgba(16, 185, 129, 0.1)',
       tension: 0.4,
       fill: true,
       pointBackgroundColor: 'rgb(16, 185, 129)',
-      pointRadius: 4,
+      pointRadius: granularity === 'daily' ? 2 : 4,
     }],
   };
 
   const ordersChartData = {
-    labels: revenueByMonth.map(m => formatMonth(m.month)),
+    labels: timeLabels,
     datasets: [{
       label: 'Orders',
-      data: revenueByMonth.map(m => m.count),
+      data: revenueTimeSeries.map(m => m.count),
       borderColor: 'rgb(139, 92, 246)',
       backgroundColor: 'rgba(139, 92, 246, 0.1)',
       tension: 0.4,
       fill: true,
       pointBackgroundColor: 'rgb(139, 92, 246)',
-      pointRadius: 4,
+      pointRadius: granularity === 'daily' ? 2 : 4,
     }],
   };
 
@@ -482,6 +592,60 @@ const AdminAnalyticsPage: React.FC = () => {
     }],
   };
 
+  // Ticket type chart
+  const ticketTypeData = {
+    labels: (ticketData?.ticketsByType || []).map(t => capitalize(t.type || 'Standard')),
+    datasets: [{
+      data: (ticketData?.ticketsByType || []).map(t => t.count),
+      backgroundColor: CHART_COLORS,
+      borderColor: CHART_BORDERS,
+      borderWidth: 1,
+    }],
+  };
+
+  // Hourly scans chart
+  const scansByHour = ticketData?.scansByHour || [];
+  const peakHours = scansByHour.filter(s => s.scans > 0);
+  const scansChartData = {
+    labels: peakHours.length > 0
+      ? scansByHour.map(s => formatHour(s.hour))
+      : [],
+    datasets: [{
+      label: 'Check-ins',
+      data: peakHours.length > 0 ? scansByHour.map(s => s.scans) : [],
+      backgroundColor: 'rgba(16, 185, 129, 0.7)',
+      borderColor: 'rgb(16, 185, 129)',
+      borderWidth: 1,
+      borderRadius: 4,
+    }],
+  };
+
+  // Venue by city chart
+  const venueCityData = {
+    labels: (venueData?.venuesByCity || []).slice(0, 6).map(v => v.city || 'Unknown'),
+    datasets: [{
+      label: 'Venues',
+      data: (venueData?.venuesByCity || []).slice(0, 6).map(v => v.count),
+      backgroundColor: 'rgba(249, 115, 22, 0.7)',
+      borderColor: 'rgb(249, 115, 22)',
+      borderWidth: 1,
+      borderRadius: 6,
+    }],
+  };
+
+  // Booking funnel data
+  const totalViews = eventData?.totalViews || 0;
+  const totalOrders = orderData?.totalOrders || 0;
+  const totalTickets = ticketData?.totalTickets || 0;
+  const checkedIn = ticketData?.checkedInTickets || 0;
+  const funnelSteps = [
+    { label: 'Event Views', value: totalViews, color: 'bg-blue-500' },
+    { label: 'Orders', value: totalOrders, color: 'bg-purple-500' },
+    { label: 'Tickets Issued', value: totalTickets, color: 'bg-amber-500' },
+    { label: 'Checked In', value: checkedIn, color: 'bg-green-500' },
+  ];
+  const funnelMax = Math.max(...funnelSteps.map(s => s.value), 1);
+
   return (
     <>
       <PrivatePageSEO
@@ -512,6 +676,28 @@ const AdminAnalyticsPage: React.FC = () => {
                 <option value="90days">Last 90 Days</option>
                 <option value="1year">Last 12 Months</option>
               </select>
+              <div className="flex rounded-lg border border-gray-300 overflow-hidden">
+                <button
+                  onClick={() => setGranularity('daily')}
+                  className={`px-3 py-2 text-sm font-medium transition-colors ${
+                    granularity === 'daily'
+                      ? 'bg-blue-600 text-white'
+                      : 'bg-white text-gray-600 hover:bg-gray-50'
+                  }`}
+                >
+                  Daily
+                </button>
+                <button
+                  onClick={() => setGranularity('monthly')}
+                  className={`px-3 py-2 text-sm font-medium transition-colors ${
+                    granularity === 'monthly'
+                      ? 'bg-blue-600 text-white'
+                      : 'bg-white text-gray-600 hover:bg-gray-50'
+                  }`}
+                >
+                  Monthly
+                </button>
+              </div>
               <button
                 onClick={fetchData}
                 className="inline-flex items-center gap-2 px-4 py-2 bg-blue-600
@@ -521,15 +707,25 @@ const AdminAnalyticsPage: React.FC = () => {
                 <FaSyncAlt className="w-3.5 h-3.5" />
                 Refresh
               </button>
-              <button
-                onClick={handleExport}
-                className="inline-flex items-center gap-2 px-4 py-2 border
-                  border-gray-300 rounded-lg text-sm font-medium text-gray-700
-                  bg-white hover:bg-gray-50 transition-colors"
-              >
-                <FaDownload className="w-3.5 h-3.5" />
-                Export
-              </button>
+              <div className="flex rounded-lg border border-gray-300 overflow-hidden">
+                <select
+                  value={exportFormat}
+                  onChange={(e) => setExportFormat(e.target.value as 'json' | 'csv')}
+                  className="px-2 py-2 text-sm bg-white border-r border-gray-300
+                    focus:ring-0 focus:outline-none"
+                >
+                  <option value="csv">CSV</option>
+                  <option value="json">JSON</option>
+                </select>
+                <button
+                  onClick={() => handleExport('all')}
+                  className="inline-flex items-center gap-2 px-3 py-2 text-sm
+                    font-medium text-gray-700 bg-white hover:bg-gray-50 transition-colors"
+                >
+                  <FaDownload className="w-3.5 h-3.5" />
+                  Export
+                </button>
+              </div>
             </div>
           </div>
 
@@ -540,86 +736,107 @@ const AdminAnalyticsPage: React.FC = () => {
             </div>
           )}
 
-          {/* KPI Cards */}
+          {/* KPI Cards — Row 1 */}
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 mb-4">
+            <KPICard
+              icon={<FaUsers className="w-5 h-5 text-blue-600" />}
+              iconBg="bg-blue-50"
+              value={formatNumber(dashboard?.totalUsers || userData?.totalUsers || 0)}
+              label="Total Users"
+              growth={dashboard?.userGrowth}
+              sub={userData ? `${formatNumber(userData.activeUsers)} active · ${(userData.verificationRate ?? 0).toFixed(0)}% verified` : undefined}
+            />
+            <KPICard
+              icon={<FaCalendarAlt className="w-5 h-5 text-orange-600" />}
+              iconBg="bg-orange-50"
+              value={formatNumber(dashboard?.totalEvents || eventData?.totalEvents || 0)}
+              label="Total Events"
+              growth={dashboard?.eventGrowth}
+              sub={eventData ? `${formatNumber(eventData.activeEvents)} active · ${formatNumber(eventData.pendingApproval)} pending` : undefined}
+            />
+            <KPICard
+              icon={<FaShoppingCart className="w-5 h-5 text-purple-600" />}
+              iconBg="bg-purple-50"
+              value={formatNumber(orderData?.totalOrders || 0)}
+              label="Total Orders"
+              sub={orderData && (orderData.averageOrderValue ?? 0) > 0
+                ? `Avg: ${formatCurrency(orderData.averageOrderValue)}${(orderData.refundRate ?? 0) > 0 ? ` · ${(orderData.refundRate ?? 0).toFixed(1)}% refunds` : ''}`
+                : undefined}
+            />
+            <KPICard
+              icon={<FaDollarSign className="w-5 h-5 text-green-600" />}
+              iconBg="bg-green-50"
+              value={formatCurrency(orderData?.totalRevenue || dashboard?.totalRevenue || 0)}
+              label="Total Revenue"
+              growth={dashboard?.revenueGrowth}
+              sub={dashboard ? `${formatNumber(dashboard.totalTicketsSold)} tickets sold` : undefined}
+            />
+          </div>
+
+          {/* KPI Cards — Row 2: Tickets, Conversion, Venues, Check-in */}
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 mb-8">
-            {/* Users */}
-            <div className="bg-white rounded-xl shadow-sm border border-gray-100 p-5">
-              <div className="flex items-center justify-between mb-3">
-                <div className="p-2.5 rounded-lg bg-blue-50">
-                  <FaUsers className="w-5 h-5 text-blue-600" />
-                </div>
-                {dashboard && <GrowthBadge value={dashboard.userGrowth} />}
-              </div>
-              <p className="text-2xl font-bold text-gray-900">
-                {formatNumber(dashboard?.totalUsers || userData?.totalUsers || 0)}
-              </p>
-              <p className="text-sm text-gray-500 mt-1">Total Users</p>
-              {userData && (
-                <p className="text-xs text-gray-400 mt-1">
-                  {formatNumber(userData.activeUsers)} active
-                  &middot; {(userData.verificationRate ?? 0).toFixed(0)}% verified
-                </p>
-              )}
-            </div>
+            <KPICard
+              icon={<FaTicketAlt className="w-5 h-5 text-indigo-600" />}
+              iconBg="bg-indigo-50"
+              value={formatNumber(ticketData?.totalTickets || 0)}
+              label="Total Tickets"
+              sub={ticketData ? `${formatNumber(ticketData.checkedInTickets)} checked in · ${formatNumber(ticketData.cancelledTickets)} cancelled` : undefined}
+            />
+            <KPICard
+              icon={<FaPercentage className="w-5 h-5 text-teal-600" />}
+              iconBg="bg-teal-50"
+              value={`${(orderData?.conversionRate ?? 0).toFixed(2)}%`}
+              label="Conversion Rate"
+              sub="Views → Confirmed orders"
+            />
+            <KPICard
+              icon={<FaMapMarkerAlt className="w-5 h-5 text-rose-600" />}
+              iconBg="bg-rose-50"
+              value={formatNumber(venueData?.totalVenues || 0)}
+              label="Physical Venues"
+              sub={venueData ? `${formatNumber(venueData.activeVenues)} active · ${venueData.utilizationRate.toFixed(0)}% utilized` : undefined}
+            />
+            <KPICard
+              icon={<FaExchangeAlt className="w-5 h-5 text-cyan-600" />}
+              iconBg="bg-cyan-50"
+              value={`${(ticketData?.checkInRate ?? 0).toFixed(1)}%`}
+              label="Check-in Rate"
+              sub={ticketData ? `${(ticketData.transferRate ?? 0).toFixed(1)}% transfer rate` : undefined}
+            />
+          </div>
 
-            {/* Events */}
-            <div className="bg-white rounded-xl shadow-sm border border-gray-100 p-5">
-              <div className="flex items-center justify-between mb-3">
-                <div className="p-2.5 rounded-lg bg-orange-50">
-                  <FaCalendarAlt className="w-5 h-5 text-orange-600" />
-                </div>
-                {dashboard && <GrowthBadge value={dashboard.eventGrowth} />}
-              </div>
-              <p className="text-2xl font-bold text-gray-900">
-                {formatNumber(dashboard?.totalEvents || eventData?.totalEvents || 0)}
-              </p>
-              <p className="text-sm text-gray-500 mt-1">Total Events</p>
-              {eventData && (
-                <p className="text-xs text-gray-400 mt-1">
-                  {formatNumber(eventData.activeEvents)} active
-                  &middot; {formatNumber(eventData.pendingApproval)} pending
-                </p>
-              )}
-            </div>
-
-            {/* Orders */}
-            <div className="bg-white rounded-xl shadow-sm border border-gray-100 p-5">
-              <div className="flex items-center justify-between mb-3">
-                <div className="p-2.5 rounded-lg bg-purple-50">
-                  <FaShoppingCart className="w-5 h-5 text-purple-600" />
-                </div>
-              </div>
-              <p className="text-2xl font-bold text-gray-900">
-                {formatNumber(orderData?.totalOrders || 0)}
-              </p>
-              <p className="text-sm text-gray-500 mt-1">Total Orders</p>
-              {orderData && (orderData.averageOrderValue ?? 0) > 0 && (
-                <p className="text-xs text-gray-400 mt-1">
-                  Avg: {formatCurrency(orderData.averageOrderValue)}
-                  {(orderData.refundRate ?? 0) > 0 && (
-                    <> &middot; {(orderData.refundRate ?? 0).toFixed(1)}% refund rate</>
-                  )}
-                </p>
-              )}
-            </div>
-
-            {/* Revenue */}
-            <div className="bg-white rounded-xl shadow-sm border border-gray-100 p-5">
-              <div className="flex items-center justify-between mb-3">
-                <div className="p-2.5 rounded-lg bg-green-50">
-                  <FaDollarSign className="w-5 h-5 text-green-600" />
-                </div>
-                {dashboard && <GrowthBadge value={dashboard.revenueGrowth} />}
-              </div>
-              <p className="text-2xl font-bold text-gray-900">
-                {formatCurrency(orderData?.totalRevenue || dashboard?.totalRevenue || 0)}
-              </p>
-              <p className="text-sm text-gray-500 mt-1">Total Revenue</p>
-              {dashboard && (
-                <p className="text-xs text-gray-400 mt-1">
-                  {formatNumber(dashboard.totalTicketsSold)} tickets sold
-                </p>
-              )}
+          {/* Booking Funnel */}
+          <div className="bg-white rounded-xl shadow-sm border border-gray-100 p-5 mb-6">
+            <h3 className="font-semibold text-gray-900 mb-4">Booking Funnel</h3>
+            <div className="space-y-3">
+              {funnelSteps.map((step, idx) => {
+                const pct = funnelMax > 0 ? (step.value / funnelMax) * 100 : 0;
+                const prevValue = idx > 0 ? funnelSteps[idx - 1].value : null;
+                const dropOff = prevValue && prevValue > 0
+                  ? ((1 - step.value / prevValue) * 100).toFixed(1)
+                  : null;
+                return (
+                  <div key={step.label}>
+                    <div className="flex items-center justify-between mb-1">
+                      <span className="text-sm font-medium text-gray-700">{step.label}</span>
+                      <div className="flex items-center gap-3">
+                        {dropOff !== null && (
+                          <span className="text-xs text-red-500">-{dropOff}% drop</span>
+                        )}
+                        <span className="text-sm font-semibold text-gray-900">
+                          {formatNumber(step.value)}
+                        </span>
+                      </div>
+                    </div>
+                    <div className="w-full bg-gray-100 rounded-full h-3">
+                      <div
+                        className={`${step.color} h-3 rounded-full transition-all duration-500`}
+                        style={{ width: `${Math.max(pct, 1)}%` }}
+                      />
+                    </div>
+                  </div>
+                );
+              })}
             </div>
           </div>
 
@@ -631,7 +848,7 @@ const AdminAnalyticsPage: React.FC = () => {
                 <FaChartLine className="w-4 h-4 text-green-500" />
               </div>
               <div className="h-72">
-                {revenueByMonth.length > 0 ? (
+                {revenueTimeSeries.length > 0 ? (
                   <Line data={revenueChartData} options={revenueChartOptions} />
                 ) : (
                   <EmptyChart label="No revenue data for this period" />
@@ -645,8 +862,8 @@ const AdminAnalyticsPage: React.FC = () => {
                 <FaShoppingCart className="w-4 h-4 text-purple-500" />
               </div>
               <div className="h-72">
-                {revenueByMonth.length > 0 ? (
-                  <Line data={ordersChartData} options={ordersChartOptions} />
+                {revenueTimeSeries.length > 0 ? (
+                  <Line data={ordersChartData} options={countChartOptions} />
                 ) : (
                   <EmptyChart label="No order data for this period" />
                 )}
@@ -677,13 +894,46 @@ const AdminAnalyticsPage: React.FC = () => {
               </div>
               <div className="h-72">
                 {usersByMonth.length > 0 ? (
-                  <Line data={usersChartData} options={ordersChartOptions} />
+                  <Line data={usersChartData} options={countChartOptions} />
                 ) : (
                   <EmptyChart label="No user data for this period" />
                 )}
               </div>
             </div>
           </div>
+
+          {/* Ticket Analytics Section */}
+          {ticketData && (ticketData.totalTickets > 0 || peakHours.length > 0) && (
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-6">
+              <div className="bg-white rounded-xl shadow-sm border border-gray-100 p-5">
+                <div className="flex items-center justify-between mb-4">
+                  <h3 className="font-semibold text-gray-900">Tickets by Type</h3>
+                  <FaTicketAlt className="w-4 h-4 text-indigo-500" />
+                </div>
+                <div className="h-64">
+                  {(ticketData.ticketsByType || []).length > 0 ? (
+                    <Doughnut data={ticketTypeData} options={pieOptions} />
+                  ) : (
+                    <EmptyChart label="No ticket type data" />
+                  )}
+                </div>
+              </div>
+
+              <div className="bg-white rounded-xl shadow-sm border border-gray-100 p-5">
+                <div className="flex items-center justify-between mb-4">
+                  <h3 className="font-semibold text-gray-900">Check-ins by Hour</h3>
+                  <FaExchangeAlt className="w-4 h-4 text-green-500" />
+                </div>
+                <div className="h-64">
+                  {peakHours.length > 0 ? (
+                    <Bar data={scansChartData} options={barChartOptions} />
+                  ) : (
+                    <EmptyChart label="No check-in scan data" />
+                  )}
+                </div>
+              </div>
+            </div>
+          )}
 
           {/* Distribution Charts */}
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 mb-6">
@@ -721,19 +971,61 @@ const AdminAnalyticsPage: React.FC = () => {
             </div>
           </div>
 
-          {/* Events by Location */}
-          {(eventData?.topLocations || []).length > 0 && (
-            <div className="bg-white rounded-xl shadow-sm border border-gray-100 p-5 mb-6">
-              <h3 className="font-semibold text-gray-900 mb-4">Events by Location</h3>
-              <div className="h-64">
-                <Bar data={locationData} options={barChartOptions} />
+          {/* Events by Location + Venues by City */}
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-6">
+            {(eventData?.topLocations || []).length > 0 && (
+              <div className="bg-white rounded-xl shadow-sm border border-gray-100 p-5">
+                <h3 className="font-semibold text-gray-900 mb-4">Events by Location</h3>
+                <div className="h-64">
+                  <Bar data={locationData} options={barChartOptions} />
+                </div>
               </div>
+            )}
+
+            {(venueData?.venuesByCity || []).length > 0 && (
+              <div className="bg-white rounded-xl shadow-sm border border-gray-100 p-5">
+                <div className="flex items-center justify-between mb-4">
+                  <h3 className="font-semibold text-gray-900">Venues by City</h3>
+                  <FaMapMarkerAlt className="w-4 h-4 text-orange-500" />
+                </div>
+                <div className="h-64">
+                  <Bar data={venueCityData} options={barChartOptions} />
+                </div>
+              </div>
+            )}
+          </div>
+
+          {/* Venue Stats */}
+          {venueData && venueData.totalVenues > 0 && (
+            <div className="bg-white rounded-xl shadow-sm border border-gray-100 p-5 mb-6">
+              <h3 className="font-semibold text-gray-900 mb-4">Venue Overview</h3>
+              <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+                <StatBox label="Total Venues" value={formatNumber(venueData.totalVenues)} color="orange" />
+                <StatBox label="Active Venues" value={formatNumber(venueData.activeVenues)} color="green" />
+                <StatBox label="Avg Capacity" value={formatNumber(venueData.averageCapacity)} color="blue" />
+                <StatBox
+                  label="Seat Utilization"
+                  value={`${venueData.utilizationRate.toFixed(1)}%`}
+                  color={venueData.utilizationRate >= 70 ? 'green' : venueData.utilizationRate >= 40 ? 'yellow' : 'red'}
+                />
+              </div>
+              {(venueData.venuesByType || []).length > 0 && (
+                <div className="mt-4 pt-4 border-t border-gray-100">
+                  <p className="text-xs font-medium text-gray-500 uppercase mb-2">By Type</p>
+                  <div className="flex flex-wrap gap-2">
+                    {venueData.venuesByType.map(v => (
+                      <span key={v.type} className="px-2.5 py-1 bg-gray-100 rounded-full text-xs text-gray-700 font-medium">
+                        {capitalize(v.type || 'Other')} ({v.count})
+                      </span>
+                    ))}
+                  </div>
+                </div>
+              )}
             </div>
           )}
 
           {/* Top Performers */}
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-6">
-            {/* Top Events */}
             <div className="bg-white rounded-xl shadow-sm border border-gray-100 p-5">
               <div className="flex items-center gap-2 mb-4">
                 <FaTrophy className="w-4 h-4 text-yellow-500" />
@@ -756,7 +1048,7 @@ const AdminAnalyticsPage: React.FC = () => {
                         </p>
                         <p className="text-xs text-gray-500">
                           {event.tickets} tickets
-                          {event.rating > 0 && <> &middot; {event.rating.toFixed(1)} rating</>}
+                          {event.rating > 0 && <> · {event.rating.toFixed(1)} rating</>}
                         </p>
                       </div>
                       <span className="text-sm font-semibold text-gray-900 flex-shrink-0">
@@ -776,39 +1068,14 @@ const AdminAnalyticsPage: React.FC = () => {
             <div className="bg-white rounded-xl shadow-sm border border-gray-100 p-5">
               <h3 className="font-semibold text-gray-900 mb-4">Quick Stats</h3>
               <div className="grid grid-cols-2 gap-4">
-                <StatBox
-                  label="Total Views"
-                  value={formatNumber(eventData?.totalViews || 0)}
-                  color="blue"
-                />
-                <StatBox
-                  label="Avg Rating"
-                  value={(eventData?.averageRating || 0).toFixed(1)}
-                  color="yellow"
-                />
-                <StatBox
-                  label="Active Events"
-                  value={formatNumber(eventData?.activeEvents || 0)}
-                  color="green"
-                />
-                <StatBox
-                  label="Pending Approval"
-                  value={formatNumber(eventData?.pendingApproval || 0)}
-                  color="orange"
-                />
-                <StatBox
-                  label="Active Users"
-                  value={formatNumber(userData?.activeUsers || 0)}
-                  color="purple"
-                />
-                <StatBox
-                  label="Verification Rate"
-                  value={`${(userData?.verificationRate ?? 0).toFixed(0)}%`}
-                  color="teal"
-                />
+                <StatBox label="Total Views" value={formatNumber(eventData?.totalViews || 0)} color="blue" />
+                <StatBox label="Avg Rating" value={(eventData?.averageRating || 0).toFixed(1)} color="yellow" />
+                <StatBox label="Active Events" value={formatNumber(eventData?.activeEvents || 0)} color="green" />
+                <StatBox label="Pending Approval" value={formatNumber(eventData?.pendingApproval || 0)} color="orange" />
+                <StatBox label="Active Users" value={formatNumber(userData?.activeUsers || 0)} color="purple" />
+                <StatBox label="Verification Rate" value={`${(userData?.verificationRate ?? 0).toFixed(0)}%`} color="teal" />
               </div>
 
-              {/* Top Countries */}
               {(userData?.topCountries || []).length > 0 && (
                 <div className="mt-5 pt-4 border-t border-gray-100">
                   <p className="text-xs font-medium text-gray-500 uppercase mb-2">
@@ -843,28 +1110,54 @@ const EmptyChart: React.FC<{ label: string }> = ({ label }) => (
   </div>
 );
 
+const KPICard: React.FC<{
+  icon: React.ReactNode;
+  iconBg: string;
+  value: string;
+  label: string;
+  growth?: number;
+  sub?: string;
+}> = ({ icon, iconBg, value, label, growth, sub }) => {
+  const rounded = growth !== undefined ? Math.round(growth * 10) / 10 : null;
+  return (
+    <div className="bg-white rounded-xl shadow-sm border border-gray-100 p-5">
+      <div className="flex items-center justify-between mb-3">
+        <div className={`p-2.5 rounded-lg ${iconBg}`}>{icon}</div>
+        {rounded !== null && (
+          rounded > 0 ? (
+            <span className="inline-flex items-center gap-1 text-sm font-medium text-green-600">
+              <FaArrowUp className="w-3 h-3" /> {rounded}%
+            </span>
+          ) : rounded < 0 ? (
+            <span className="inline-flex items-center gap-1 text-sm font-medium text-red-600">
+              <FaArrowDown className="w-3 h-3" /> {Math.abs(rounded)}%
+            </span>
+          ) : (
+            <span className="text-sm text-gray-500">0%</span>
+          )
+        )}
+      </div>
+      <p className="text-2xl font-bold text-gray-900">{value}</p>
+      <p className="text-sm text-gray-500 mt-1">{label}</p>
+      {sub && <p className="text-xs text-gray-400 mt-1">{sub}</p>}
+    </div>
+  );
+};
+
 const StatBox: React.FC<{
   label: string;
   value: string;
   color: string;
 }> = ({ label, value, color }) => {
   const bgMap: Record<string, string> = {
-    blue: 'bg-blue-50',
-    green: 'bg-green-50',
-    orange: 'bg-orange-50',
-    purple: 'bg-purple-50',
-    yellow: 'bg-yellow-50',
-    teal: 'bg-teal-50',
-    red: 'bg-red-50',
+    blue: 'bg-blue-50', green: 'bg-green-50', orange: 'bg-orange-50',
+    purple: 'bg-purple-50', yellow: 'bg-yellow-50', teal: 'bg-teal-50',
+    red: 'bg-red-50', indigo: 'bg-indigo-50', cyan: 'bg-cyan-50',
   };
   const textMap: Record<string, string> = {
-    blue: 'text-blue-700',
-    green: 'text-green-700',
-    orange: 'text-orange-700',
-    purple: 'text-purple-700',
-    yellow: 'text-yellow-700',
-    teal: 'text-teal-700',
-    red: 'text-red-700',
+    blue: 'text-blue-700', green: 'text-green-700', orange: 'text-orange-700',
+    purple: 'text-purple-700', yellow: 'text-yellow-700', teal: 'text-teal-700',
+    red: 'text-red-700', indigo: 'text-indigo-700', cyan: 'text-cyan-700',
   };
 
   return (

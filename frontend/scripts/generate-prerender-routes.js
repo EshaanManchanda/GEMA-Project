@@ -17,7 +17,11 @@ async function generateRoutes() {
         '/about',
         '/contact',
         '/privacy',
-        '/terms'
+        '/terms',
+        '/learn/scratch',
+        '/learn/robotics',
+        '/learn/python',
+        '/learn/ai-for-kids',
     ];
 
     console.log('Fetching dynamic routes...');

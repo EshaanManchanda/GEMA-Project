@@ -1,5 +1,6 @@
 import express from "express";
-import { authenticate } from "../middleware/auth";
+import { authenticate, authorize } from "../middleware/auth";
+import { UserRole } from "../models/index";
 import * as vendorPaymentController from "../controllers/vendor.payment.controller";
 
 const router = express.Router();
@@ -11,6 +12,9 @@ const router = express.Router();
  * Base path: /api/vendors/payment-settings
  */
 
+router.use(authenticate);
+router.use(authorize([UserRole.VENDOR]));
+
 // ==================== PAYMENT OVERVIEW ====================
 
 /**
@@ -19,7 +23,6 @@ const router = express.Router();
  */
 router.get(
   "/overview",
-  authenticate,
   vendorPaymentController.getPaymentOverview,
 );
 
@@ -32,7 +35,6 @@ router.get(
  */
 router.post(
   "/stripe/connect",
-  authenticate,
   vendorPaymentController.initiateStripeConnect,
 );
 
@@ -42,7 +44,6 @@ router.post(
  */
 router.get(
   "/stripe/connect/status",
-  authenticate,
   vendorPaymentController.getStripeConnectStatus,
 );
 
@@ -53,7 +54,6 @@ router.get(
  */
 router.post(
   "/stripe/connect/refresh",
-  authenticate,
   vendorPaymentController.refreshStripeConnectLink,
 );
 
@@ -63,7 +63,6 @@ router.post(
  */
 router.delete(
   "/stripe/connect",
-  authenticate,
   vendorPaymentController.disconnectStripeConnect,
 );
 
@@ -76,7 +75,6 @@ router.delete(
  */
 router.put(
   "/stripe/keys",
-  authenticate,
   vendorPaymentController.updateStripeKeys,
 );
 
@@ -89,7 +87,6 @@ router.put(
  */
 router.post(
   "/payment-mode",
-  authenticate,
   vendorPaymentController.switchPaymentMode,
 );
 
@@ -101,18 +98,30 @@ router.post(
  */
 router.get(
   "/subscription",
-  authenticate,
   vendorPaymentController.getSubscriptionInfo,
 );
 
 /**
- * POST /api/vendors/payment-settings/subscription/pay
- * Process subscription payment
+ * POST /api/vendors/payment-settings/subscription/checkout
+ * Create a Stripe Checkout Session (mode: subscription).
+ * Returns { url } — frontend redirects to Stripe-hosted checkout.
+ * On return, webhook checkout.session.completed activates the subscription.
  */
 router.post(
-  "/subscription/pay",
-  authenticate,
-  vendorPaymentController.paySubscription,
+  "/subscription/checkout",
+  vendorPaymentController.checkoutSubscription,
+);
+
+/**
+ * POST /api/vendors/payment-settings/subscription/portal
+ * Create a Stripe Billing Portal session.
+ * Returns { url } — frontend redirects to Stripe-hosted portal.
+ * Vendor can cancel, update card, view invoices, and reactivate.
+ * Portal actions flow back via customer.subscription.updated / .deleted webhooks.
+ */
+router.post(
+  "/subscription/portal",
+  vendorPaymentController.createBillingPortalSession,
 );
 
 /**
@@ -121,18 +130,18 @@ router.post(
  */
 router.get(
   "/subscription/history",
-  authenticate,
   vendorPaymentController.getSubscriptionHistory,
 );
 
 /**
  * POST /api/vendors/payment-settings/subscription/cancel
- * Cancel subscription
+ * Cancel subscription (fallback: sets cancel_at_period_end on Stripe sub,
+ * or downgrades immediately if no Stripe subscription exists).
+ * Primary cancel path is the Billing Portal (/subscription/portal).
  * Body: { reason?: string }
  */
 router.post(
   "/subscription/cancel",
-  authenticate,
   vendorPaymentController.cancelSubscription,
 );
 
@@ -145,7 +154,6 @@ router.post(
  */
 router.put(
   "/bank-account",
-  authenticate,
   vendorPaymentController.updateBankAccount,
 );
 
@@ -156,7 +164,6 @@ router.put(
  */
 router.put(
   "/payout-preferences",
-  authenticate,
   vendorPaymentController.updatePayoutPreferences,
 );
 
@@ -169,7 +176,6 @@ router.put(
  */
 router.post(
   "/commission/calculate",
-  authenticate,
   vendorPaymentController.calculateCommissionComparison,
 );
 

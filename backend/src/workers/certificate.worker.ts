@@ -50,38 +50,39 @@ const certificateWorker = areQueuesEnabled
         }
 
         try {
-          let pdfUrl: string | undefined;
-          let qrData: string | undefined;
-          let qrCodeUrl: string | undefined;
+          if (!templateId) {
+            throw new Error("No templateId provided — cannot generate certificate");
+          }
+
+          const template = await Template.findById(templateId);
+          if (!template) throw new Error("Certificate template not found");
 
           // Build QR verification URL and generate QR image
           const baseUrl = process.env.FRONTEND_URL || "http://localhost:3000";
           const cert = await Certificate.findById(certificateId).select("serialNumber");
+          let qrData: string | undefined;
+          let qrCodeUrl: string | undefined;
+
           if (cert?.serialNumber) {
             qrData = `${baseUrl}/certificates/verify/${cert.serialNumber}`;
             qrCodeUrl = await QRCode.toDataURL(qrData, { width: 200, margin: 1 });
           }
 
-          if (templateId) {
-            const template = await Template.findById(templateId);
-            if (!template) throw new Error("Certificate template not found");
+          const pdfUrl = await renderCertificate(template, {
+            ...data,
+            recipientName: recipient.name,
+            recipientEmail: recipient.email,
+            issuedDate: new Date().toLocaleDateString("en-GB", {
+              day: "numeric",
+              month: "long",
+              year: "numeric",
+            }),
+            qrCode: qrCodeUrl || "",
+            qrData: qrData || "",
+            serialNumber: cert?.serialNumber || "",
+          });
 
-            pdfUrl = await renderCertificate(template, {
-              ...data,
-              recipientName: recipient.name,
-              recipientEmail: recipient.email,
-              issuedDate: new Date().toLocaleDateString("en-GB", {
-                day: "numeric",
-                month: "long",
-                year: "numeric",
-              }),
-              qrCode: qrCodeUrl || "",
-              qrData: qrData || "",
-              serialNumber: cert?.serialNumber || "",
-            });
-
-            if (!pdfUrl) throw new Error("Certificate rendering produced no URL");
-          }
+          if (!pdfUrl) throw new Error("Certificate rendering produced no URL");
 
           await Certificate.findByIdAndUpdate(certificateId, {
             status: "generated",
@@ -427,7 +428,7 @@ function resolveFieldValue(field: ITemplateField, data: Record<string, any>): an
 }
 
 function escapeHtml(str: string): string {
-  return str.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;");
+  return str.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;").replace(/'/g, "&#39;");
 }
 
 // ─── Email HTML ───────────────────────────────────────────────────────────────

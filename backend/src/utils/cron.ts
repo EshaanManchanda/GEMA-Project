@@ -3,6 +3,7 @@ import { collectionSyncQueue, areQueuesEnabled } from "../config/queue";
 import logger from "../config/logger";
 import PayoutService from "../services/payout.service";
 import CommissionService from "../services/commission.service";
+import subscriptionService from "../services/subscription.service";
 import Event from "../models/Event";
 
 /**
@@ -120,6 +121,29 @@ export function startCommissionBackfillCron() {
   );
 
   logger.info("Commission backfill cron started (every hour at :30)");
+  return job;
+}
+
+/**
+ * Subscription expiry safety-net cron — runs every hour.
+ * Catches expired vendor subscriptions that Stripe webhooks may have missed.
+ * Stripe webhooks are the primary path; this is the fallback to prevent
+ * subscriptions staying active forever on webhook failure.
+ */
+export function startSubscriptionExpiryCron() {
+  const job = cron.schedule(
+    "0 * * * *",
+    async () => {
+      try {
+        await subscriptionService.processExpiredSubscriptions();
+      } catch (error) {
+        logger.error("Subscription expiry cron failed:", error);
+      }
+    },
+    { timezone: "UTC" },
+  );
+
+  logger.info("Subscription expiry cron started (hourly)");
   return job;
 }
 

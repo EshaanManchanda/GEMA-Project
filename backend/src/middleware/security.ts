@@ -53,7 +53,7 @@ export const securityHeaders = helmet({
         "https://api.kidrove.com",
         "https://api.kidrove.in",
         "https://api.kidrove.ae",
-        "https://gema-project.onrender.com",
+        "https://api.kidrove.com",
       ],
       frameSrc: ["'self'", "https://js.stripe.com"],
     },

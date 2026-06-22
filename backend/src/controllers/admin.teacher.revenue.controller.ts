@@ -7,9 +7,6 @@ import RevenueTransaction, {
   TransactionStatus,
   PayoutStatus,
 } from "../models/RevenueTransaction";
-import TeacherSubscription, {
-  TeacherSubscriptionStatus,
-} from "../models/TeacherSubscription";
 import AdminRevenueSettings from "../models/AdminRevenueSettings";
 import TeacherAdvertisingCampaign, {
   CampaignStatus,
@@ -523,96 +520,6 @@ export const processTeacherPayouts = async (
         successfulPayouts: successfulPayouts.length,
         failedPayouts: failedPayouts.length,
         details: payoutResults,
-      },
-    };
-
-    res.status(200).json(response);
-  } catch (error) {
-    next(error);
-  }
-};
-/**
- * Get teacher subscription analytics
- */
-export const getTeacherSubscriptionAnalytics = async (
-  req: Request,
-  res: Response,
-  next: NextFunction,
-): Promise<void> => {
-  try {
-    const [subscriptionStats, revenueByPlan, churnRate, newSubscriptions] =
-      await Promise.all([
-        // Overall subscription statistics
-        TeacherSubscription.aggregate([
-          {
-            $group: {
-              _id: "$status",
-              count: { $sum: 1 },
-              totalMRR: { $sum: "$currentPricing.monthlyPrice" },
-            },
-          },
-        ]),
-
-        // Revenue by subscription plan
-        TeacherSubscription.aggregate([
-          { $match: { status: TeacherSubscriptionStatus.ACTIVE } },
-          {
-            $group: {
-              _id: "$plan",
-              count: { $sum: 1 },
-              revenue: { $sum: "$currentPricing.monthlyPrice" },
-            },
-          },
-          { $sort: { revenue: -1 } },
-        ]),
-
-        // Churn rate (cancelled in last 30 days)
-        TeacherSubscription.aggregate([
-          {
-            $match: {
-              cancelledAt: {
-                $gte: new Date(Date.now() - 30 * 24 * 60 * 60 * 1000),
-              },
-            },
-          },
-          { $count: "cancelledCount" },
-        ]),
-
-        // New subscriptions in last 30 days
-        TeacherSubscription.aggregate([
-          {
-            $match: {
-              createdAt: {
-                $gte: new Date(Date.now() - 30 * 24 * 60 * 60 * 1000),
-              },
-            },
-          },
-          {
-            $group: {
-              _id: "$plan",
-              count: { $sum: 1 },
-            },
-          },
-        ]),
-      ]);
-
-    const response: ApiResponse = {
-      success: true,
-      message: "Teacher subscription analytics retrieved successfully",
-      data: {
-        subscriptionStats: subscriptionStats.reduce((acc: any, stat: any) => {
-          acc[stat._id] = { count: stat.count, mrr: stat.totalMRR || 0 };
-          return acc;
-        }, {}),
-        revenueByPlan: revenueByPlan.reduce((acc: any, plan: any) => {
-          acc[plan._id] = { count: plan.count, revenue: plan.revenue };
-          return acc;
-        }, {}),
-        churnedThisMonth: churnRate[0]?.cancelledCount || 0,
-        newSubscriptionsThisMonth: newSubscriptions.reduce(
-          (total: number, sub: any) => total + sub.count,
-          0,
-        ),
       },
     };
 

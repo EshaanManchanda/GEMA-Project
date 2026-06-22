@@ -17,6 +17,7 @@ import User from "../models/User";
 import Vendor from "../models/Vendor";
 import Teacher from "../models/Teacher";
 import logger from "../config/logger";
+import { config as envConfig } from "../config";
 
 const REFUND_WINDOW_DAYS = 7;
 
@@ -143,7 +144,8 @@ class CommissionService {
       if (
         profile &&
         profile.paymentSettings?.paymentMode === "custom_stripe" &&
-        profile.isSubscriptionActive()
+        profile.isSubscriptionActive() &&
+        !envConfig.commission.chargeOnActiveSubscription
       ) {
         const transactionId = await this.generateTransactionId();
         const totalAmount = orderData.total || 0;

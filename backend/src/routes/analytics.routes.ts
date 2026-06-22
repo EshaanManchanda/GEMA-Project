@@ -220,7 +220,7 @@ router.get(
         }
       }
 
-      const [eventData, orderData, ticketData, reviewData, registrationData] =
+      const [eventData, orderData, ticketData, reviewData, registrationData, dailySales] =
         await Promise.all([
           Event.findById(eventObjId).select(
             "title viewsCount dateSchedule location price currency registrationConfig",
@@ -269,6 +269,20 @@ router.get(
             { $match: { eventId: eventObjId } },
             { $group: { _id: "$status", count: { $sum: 1 } } },
           ]),
+          Order.aggregate([
+            { $match: { paymentStatus: "paid" } },
+            { $unwind: "$items" },
+            { $match: { "items.eventId": eventObjId } },
+            {
+              $group: {
+                _id: { $dateToString: { format: "%Y-%m-%d", date: "$createdAt" } },
+                orders: { $sum: 1 },
+                revenue: { $sum: "$items.totalPrice" },
+                tickets: { $sum: "$items.quantity" },
+              },
+            },
+            { $sort: { _id: 1 } },
+          ]),
         ]);
 
       if (!eventData) return next(new AppError("Event not found", 404));
@@ -305,6 +319,20 @@ router.get(
         eventData.viewsCount > 0
           ? Math.round(((orderStats.totalOrders || 0) / eventData.viewsCount) * 10000) / 100
           : 0;
+
+      const scheduleBreakdown = schedules.map((s: any, idx: number) => ({
+        index: idx,
+        date: s.date,
+        startTime: s.startTime,
+        endTime: s.endTime,
+        soldSeats: s.soldSeats || 0,
+        availableSeats: s.availableSeats || 0,
+        totalCapacity: s.unlimitedSeats ? null : (s.soldSeats || 0) + (s.availableSeats || 0),
+        unlimitedSeats: s.unlimitedSeats || false,
+        utilizationRate: !s.unlimitedSeats && ((s.soldSeats || 0) + (s.availableSeats || 0)) > 0
+          ? Math.round((s.soldSeats || 0) / ((s.soldSeats || 0) + (s.availableSeats || 0)) * 10000) / 100
+          : null,
+      }));
 
       res.status(200).json({
         success: true,
@@ -356,6 +384,13 @@ router.get(
             total: totalRegistrations,
             byStatus: registrationByStatus,
           },
+          salesByDay: dailySales.map((d: any) => ({
+            date: d._id,
+            orders: d.orders,
+            revenue: Math.round(d.revenue * 100) / 100,
+            tickets: d.tickets,
+          })),
+          scheduleBreakdown,
         },
       });
     } catch (error) {

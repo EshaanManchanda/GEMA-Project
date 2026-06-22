@@ -19,12 +19,12 @@ const reelSchema = yup.object().shape({
   description: yup.string().max(1000, 'Description cannot exceed 1000 characters').optional(),
   videoSourceType: yup.string().oneOf(['uploaded', 'youtube', 'instagram']).required('Video source type is required'),
   videoAsset: yup.string().when('videoSourceType', {
-    is: 'uploaded',
-    then: (schema) => schema.required('Video is required for uploaded videos'),
+    is: (val: string) => val === 'uploaded' || val === 'instagram',
+    then: (schema) => schema.required('Video upload is required'),
     otherwise: (schema) => schema.optional()
   }),
   externalVideoUrl: yup.string().when('videoSourceType', {
-    is: (val: string) => val === 'youtube' || val === 'instagram',
+    is: 'youtube',
     then: (schema) => schema.required('Video URL is required').url('Invalid URL format'),
     otherwise: (schema) => schema.optional()
   }),
@@ -56,6 +56,7 @@ const ReelForm: React.FC<ReelFormProps> = ({ reel, onClose, onSubmit }) => {
   const [eventsLoading, setEventsLoading] = useState(false);
   const [eventSearch, setEventSearch] = useState('');
   const [isEventDropdownOpen, setIsEventDropdownOpen] = useState(false);
+  const [selectedEventTitle, setSelectedEventTitle] = useState('');
 
   const {
     control,
@@ -95,9 +96,6 @@ const ReelForm: React.FC<ReelFormProps> = ({ reel, onClose, onSubmit }) => {
     );
   }, [events, eventSearch]);
 
-  const selectedEvent = useMemo(() => {
-    return events.find(e => e._id === watch('linkedEvent'));
-  }, [events, watch('linkedEvent')]);
 
   useEffect(() => {
     if (reel) {
@@ -125,6 +123,7 @@ const ReelForm: React.FC<ReelFormProps> = ({ reel, onClose, onSubmit }) => {
       if (reel.thumbnailAsset) {
         setSelectedThumbnailAsset(reel.thumbnailAsset as any);
       }
+      setSelectedEventTitle(reel.linkedEvent?.title || '');
     } else {
       reset({
         title: '',
@@ -145,6 +144,7 @@ const ReelForm: React.FC<ReelFormProps> = ({ reel, onClose, onSubmit }) => {
       });
       setSelectedVideoAsset(null);
       setSelectedThumbnailAsset(null);
+      setSelectedEventTitle('');
     }
   }, [reel, reset]);
 
@@ -154,7 +154,7 @@ const ReelForm: React.FC<ReelFormProps> = ({ reel, onClose, onSubmit }) => {
       try {
         setEventsLoading(true);
         const response = await adminAPI.getEvents({ limit: 100 });
-        setEvents(response.data?.events || []);
+        setEvents(response?.events || response?.data?.events || []);
       } catch (error) {
         logger.error('Failed to fetch events:', error);
         toast.error('Failed to load events');
@@ -368,30 +368,71 @@ const ReelForm: React.FC<ReelFormProps> = ({ reel, onClose, onSubmit }) => {
                 </div>
               )}
 
-              {/* Instagram URL Input */}
+              {/* Instagram - Direct Upload */}
               {watchedVideoSourceType === 'instagram' && (
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">
-                    Instagram Reel URL <span className="text-red-500">*</span>
-                  </label>
+                <div className="space-y-4">
+                  <div className="p-3 bg-blue-50 border border-blue-200 rounded-lg">
+                    <p className="text-sm text-blue-800">
+                      Download the reel video from Instagram, then upload it here for the best viewing experience.
+                    </p>
+                  </div>
+
                   <Controller
                     name="externalVideoUrl"
                     control={control}
                     render={({ field }) => (
-                      <input
-                        {...field}
-                        type="url"
-                        placeholder="https://www.instagram.com/reel/..."
-                        className="block w-full px-4 py-2 border border-gray-300 rounded-lg focus:border-blue-500 focus:ring-2 focus:ring-blue-500 focus:ring-opacity-20 focus:outline-none transition-all"
-                      />
+                      <div>
+                        <label className="block text-sm font-medium text-gray-700 mb-1">
+                          Instagram URL (for reference)
+                        </label>
+                        <input
+                          {...field}
+                          type="url"
+                          placeholder="https://www.instagram.com/reel/ABC123/"
+                          className="block w-full px-4 py-2 border border-gray-300 rounded-lg focus:border-blue-500 focus:ring-2 focus:ring-blue-500 focus:ring-opacity-20 focus:outline-none transition-all"
+                        />
+                      </div>
                     )}
                   />
-                  {errors.externalVideoUrl && (
-                    <p className="mt-1 text-sm text-red-500">{errors.externalVideoUrl.message}</p>
-                  )}
-                  <p className="mt-1 text-xs text-gray-500">
-                    Paste the Instagram reel URL (e.g., https://www.instagram.com/reel/ABC123/)
-                  </p>
+
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-2">
+                      Upload Video File <span className="text-red-500">*</span>
+                    </label>
+                    {selectedVideoAsset ? (
+                      <div className="border border-gray-300 rounded-lg p-4 space-y-3">
+                        <video
+                          src={selectedVideoAsset.url}
+                          className="w-full h-64 object-cover rounded"
+                          controls
+                        />
+                        <div className="flex justify-between items-center">
+                          <span className="text-sm text-gray-600">{selectedVideoAsset.filename}</span>
+                          <Button
+                            type="button"
+                            variant="outline"
+                            size="sm"
+                            onClick={() => setShowVideoPicker(true)}
+                          >
+                            Change Video
+                          </Button>
+                        </div>
+                      </div>
+                    ) : (
+                      <Button
+                        type="button"
+                        variant="outline"
+                        onClick={() => setShowVideoPicker(true)}
+                        className="w-full"
+                      >
+                        <Video className="mr-2" size={18} />
+                        Select Video
+                      </Button>
+                    )}
+                    {errors.videoAsset && (
+                      <p className="mt-1 text-sm text-red-500">{errors.videoAsset.message}</p>
+                    )}
+                  </div>
                 </div>
               )}
 
@@ -625,7 +666,8 @@ const ReelForm: React.FC<ReelFormProps> = ({ reel, onClose, onSubmit }) => {
               <Controller
                 name="linkedEvent"
                 control={control}
-                render={({ field }) => (
+                render={({ field }) => {
+                  return (
                   <div>
                     <label className="block text-sm font-medium text-gray-700 mb-2">
                       Link to Event (Optional)
@@ -637,22 +679,30 @@ const ReelForm: React.FC<ReelFormProps> = ({ reel, onClose, onSubmit }) => {
                         <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
                         <input
                           type="text"
-                          value={isEventDropdownOpen ? eventSearch : (selectedEvent?.title || '')}
+                          value={isEventDropdownOpen ? eventSearch : selectedEventTitle}
                           onChange={(e) => {
                             setEventSearch(e.target.value);
                             if (!isEventDropdownOpen) setIsEventDropdownOpen(true);
                           }}
-                          onFocus={() => setIsEventDropdownOpen(true)}
+                          onFocus={() => {
+                            setEventSearch('');
+                            setIsEventDropdownOpen(true);
+                          }}
+                          onBlur={() => {
+                            // Delay so option onMouseDown fires before dropdown closes
+                            setTimeout(() => setIsEventDropdownOpen(false), 150);
+                          }}
                           placeholder={eventsLoading ? 'Loading events...' : 'Search events...'}
                           disabled={eventsLoading}
                           className="w-full pl-9 pr-10 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
                         />
 
                         {/* Clear button */}
-                        {field.value && (
+                        {field.value && !isEventDropdownOpen && (
                           <button
                             type="button"
-                            onClick={() => {
+                            onMouseDown={(e) => {
+                              e.preventDefault();
                               field.onChange('');
                               setEventSearch('');
                               setIsEventDropdownOpen(false);
@@ -664,72 +714,62 @@ const ReelForm: React.FC<ReelFormProps> = ({ reel, onClose, onSubmit }) => {
                         )}
                       </div>
 
-                      {/* Dropdown */}
+                      {/* Dropdown — no backdrop; onBlur+timeout handles close-on-outside-click */}
                       {isEventDropdownOpen && (
-                        <>
-                          {/* Backdrop */}
-                          <div
-                            className="fixed inset-0 z-10"
-                            onClick={() => {
-                              setIsEventDropdownOpen(false);
-                              setEventSearch('');
-                            }}
-                          />
+                        <div className="absolute z-50 w-full mt-1 bg-white border border-gray-300 rounded-lg shadow-lg max-h-60 overflow-y-auto">
+                          {eventsLoading ? (
+                            <div className="p-4 text-center text-gray-500">
+                              <div className="animate-spin w-5 h-5 border-2 border-blue-500 border-t-transparent rounded-full mx-auto mb-2" />
+                              Loading events...
+                            </div>
+                          ) : filteredEvents.length === 0 ? (
+                            <div className="p-4 text-center text-gray-500">
+                              {eventSearch ? 'No events found' : 'No events available'}
+                            </div>
+                          ) : (
+                            <>
+                              {/* "No event linked" option */}
+                              <div
+                                role="option"
+                                aria-selected={!field.value}
+                                onMouseDown={(e) => {
+                                  e.preventDefault();
+                                  field.onChange('');
+                                  setSelectedEventTitle('');
+                                  setIsEventDropdownOpen(false);
+                                  setEventSearch('');
+                                }}
+                                className={`w-full text-left px-4 py-2.5 cursor-pointer hover:bg-gray-50 transition-colors ${!field.value ? 'bg-blue-50 text-blue-700 font-medium' : 'text-gray-700'}`}
+                              >
+                                No event linked
+                              </div>
 
-                          {/* Options List */}
-                          <div className="absolute z-20 w-full mt-1 bg-white border border-gray-300 rounded-lg shadow-lg max-h-60 overflow-y-auto">
-                            {eventsLoading ? (
-                              <div className="p-4 text-center text-gray-500">
-                                <div className="animate-spin w-5 h-5 border-2 border-blue-500 border-t-transparent rounded-full mx-auto mb-2" />
-                                Loading events...
-                              </div>
-                            ) : filteredEvents.length === 0 ? (
-                              <div className="p-4 text-center text-gray-500">
-                                {eventSearch ? 'No events found' : 'No events available'}
-                              </div>
-                            ) : (
-                              <>
-                                {/* "No event linked" option */}
-                                <button
-                                  type="button"
-                                  onClick={() => {
-                                    field.onChange('');
+                              {/* Event options */}
+                              {filteredEvents.map((event) => (
+                                <div
+                                  key={event._id}
+                                  role="option"
+                                  aria-selected={field.value === event._id}
+                                  onMouseDown={(e) => {
+                                    e.preventDefault();
+                                    field.onChange(event._id);
+                                    setSelectedEventTitle(event.title);
                                     setIsEventDropdownOpen(false);
                                     setEventSearch('');
                                   }}
-                                  className={`w-full text-left px-4 py-2.5 hover:bg-gray-50 transition-colors ${!field.value ? 'bg-blue-50 text-blue-700 font-medium' : 'text-gray-700'
-                                    }`}
+                                  className={`w-full text-left px-4 py-2.5 cursor-pointer hover:bg-gray-50 transition-colors border-t border-gray-100 ${field.value === event._id ? 'bg-blue-50 text-blue-700 font-medium' : 'text-gray-700'}`}
                                 >
-                                  No event linked
-                                </button>
-
-                                {/* Event options */}
-                                {filteredEvents.map((event) => (
-                                  <button
-                                    key={event._id}
-                                    type="button"
-                                    onClick={() => {
-                                      field.onChange(event._id);
-                                      setIsEventDropdownOpen(false);
-                                      setEventSearch('');
-                                    }}
-                                    className={`w-full text-left px-4 py-2.5 hover:bg-gray-50 transition-colors border-t border-gray-100 ${field.value === event._id
-                                        ? 'bg-blue-50 text-blue-700 font-medium'
-                                        : 'text-gray-700'
-                                      }`}
-                                  >
-                                    <div className="font-medium">{event.title}</div>
-                                    {event.category && (
-                                      <div className="text-xs text-gray-500 mt-0.5">
-                                        {event.category.name || event.category}
-                                      </div>
-                                    )}
-                                  </button>
-                                ))}
-                              </>
-                            )}
-                          </div>
-                        </>
+                                  <div className="font-medium">{event.title}</div>
+                                  {event.category && (
+                                    <div className="text-xs text-gray-500 mt-0.5">
+                                      {event.category.name || event.category}
+                                    </div>
+                                  )}
+                                </div>
+                              ))}
+                            </>
+                          )}
+                        </div>
                       )}
                     </div>
 
@@ -737,7 +777,8 @@ const ReelForm: React.FC<ReelFormProps> = ({ reel, onClose, onSubmit }) => {
                       Link this reel to an event to show a "Book Event" button
                     </p>
                   </div>
-                )}
+                  );
+                }}
               />
             </CardContent>
           </Card>

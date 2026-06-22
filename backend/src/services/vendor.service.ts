@@ -1,3 +1,4 @@
+import crypto from "crypto";
 import mongoose, { Types } from "mongoose";
 import {
   Event,
@@ -17,6 +18,7 @@ import smsService from "./sms.service";
 import { generateOTP } from "../utils/otp";
 import { escapeRegex } from "../utils/regexHelpers";
 import logger from "../config/logger";
+import { stripeConnectService } from "./stripe-connect.service";
 
 // ==================== INTERFACES ====================
 
@@ -390,6 +392,9 @@ class VendorService {
       return { type: "json", data: bookings };
     }
 
+    const csvEscape = (val: string) =>
+      `"${String(val ?? "").replace(/"/g, '""')}"`;
+
     // CSV
     const csvRows: string[] = [];
     csvRows.push(
@@ -418,19 +423,19 @@ class VendorService {
           : "N/A";
         csvRows.push(
           [
-            booking.orderNumber || booking._id,
-            `"${customerName}"`,
-            booking.billingAddress.email || "N/A",
-            booking.billingAddress.phone || "N/A",
-            `"${item.eventTitle || item.eventId?.title || "N/A"}"`,
-            new Date(item.scheduleDate).toLocaleDateString(),
+            csvEscape(String(booking.orderNumber || booking._id)),
+            csvEscape(customerName),
+            csvEscape(booking.billingAddress.email || "N/A"),
+            csvEscape(booking.billingAddress.phone || "N/A"),
+            csvEscape(item.eventTitle || item.eventId?.title || "N/A"),
+            csvEscape(new Date(item.scheduleDate).toLocaleDateString()),
             item.quantity,
             booking.total,
-            booking.currency,
-            booking.status,
-            booking.paymentStatus,
-            new Date(booking.createdAt).toLocaleDateString(),
-            `"${participantNames}"`,
+            csvEscape(booking.currency),
+            csvEscape(booking.status),
+            csvEscape(booking.paymentStatus),
+            csvEscape(new Date(booking.createdAt).toLocaleDateString()),
+            csvEscape(participantNames),
           ].join(","),
         );
       });
@@ -615,13 +620,16 @@ class VendorService {
           const [firstName, ...lastParts] = (
             row.customerName || "Guest User"
           ).split(" ");
+          const tempPassword = crypto.randomBytes(16).toString("hex");
           user = await User.create({
             email: row.customerEmail,
             firstName: firstName || "Guest",
             lastName: lastParts.join(" ") || "User",
             phone: row.customerPhone || "",
+            passwordHash: tempPassword,
             role: "customer",
             status: "active",
+            requirePasswordReset: true,
           });
         }
 
@@ -1410,9 +1418,16 @@ class VendorService {
 
     if (hard) {
       await Employee.findByIdAndDelete(employeeId);
-      await User.findByIdAndUpdate(employee.userId, {
-        status: "inactive",
+      const otherEmployeeRoles = await Employee.countDocuments({
+        userId: employee.userId,
+        _id: { $ne: employeeId },
+        status: "active",
       });
+      if (otherEmployeeRoles === 0) {
+        await User.findByIdAndUpdate(employee.userId, {
+          status: "inactive",
+        });
+      }
       return null;
     }
 
@@ -1817,13 +1832,15 @@ class VendorService {
 
   // ==================== STRIPE CONNECT ====================
 
-  /**
-   * Initialize Stripe Connect onboarding (placeholder)
-   */
   async initializeStripeConnect(userId: string) {
-    return {
-      url: "https://connect.stripe.com/setup/placeholder",
-    };
+    const vendor = await getOrCreateVendorProfile(userId);
+    const frontendUrl = process.env.FRONTEND_URL || "https://kidrove.com";
+    const url = await stripeConnectService.generateOnboardingLink(
+      vendor._id as Types.ObjectId,
+      `${frontendUrl}/vendor/stripe-connect/refresh`,
+      `${frontendUrl}/vendor/stripe-connect/return`,
+    );
+    return { url };
   }
 
   /**

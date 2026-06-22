@@ -101,7 +101,7 @@ export const generateSecureQRData = (data: {
   // Use compact URL format instead of JSON
   // This dramatically reduces QR code size from 2738 to ~100 characters
   const baseUrl =
-    process.env.FRONTEND_URL || "https://gema-project.onrender.com";
+    process.env.FRONTEND_URL || "https://kidrove.com";
   const verifyUrl = `${baseUrl}/verify-ticket/${data.ticketNumber}`;
 
   logger.info("✅ QR DATA UTILS: Secure QR data generated (URL format)", {

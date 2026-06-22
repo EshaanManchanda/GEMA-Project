@@ -710,7 +710,7 @@ const VendorEventFormPage: React.FC = () => {
                 if (idx < tabOrder.length - 1) {
                   setActiveTab(tabOrder[idx + 1] as 'basic' | 'schedule' | 'advanced');
                 } else {
-                  handleSubmit();
+                  handleSubmit({ preventDefault: () => {} } as React.FormEvent);
                 }
               }}
               className="px-6 py-3 bg-green-600 text-white rounded-xl hover:bg-green-700 transition-colors font-medium shadow-sm hover:shadow"

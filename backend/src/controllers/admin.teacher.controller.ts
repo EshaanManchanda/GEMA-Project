@@ -6,9 +6,6 @@ import Teacher, {
   TeacherPaymentMode,
   TeacherVerificationStatus,
 } from "../models/Teacher";
-import TeacherSubscription, {
-  TeacherSubscriptionStatus,
-} from "../models/TeacherSubscription";
 import User from "../models/User";
 import logger from "../config/logger";
 
@@ -217,10 +214,6 @@ export const getTeacherById = async (
       return next(new AppError("Teacher not found", 404));
     }
 
-    const subscription = await TeacherSubscription.findOne({
-      teacherId: teacher._id,
-    }).lean();
-
     res.json({
       success: true,
       data: {
@@ -240,7 +233,6 @@ export const getTeacherById = async (
           isActive: teacher.isActive,
           isSuspended: teacher.isSuspended,
           stats: teacher.stats,
-          subscription: subscription || null,
           createdAt: teacher.createdAt,
         },
       },
@@ -335,14 +327,6 @@ export const createTeacher = async (
       isSuspended: false,
       isDeleted: false,
       memberSince: new Date(),
-    });
-
-    await TeacherSubscription.create({
-      teacherId: teacher._id,
-      status: "inactive",
-      amount: 150,
-      startDate: null,
-      endDate: null,
     });
 
     res.status(201).json({
@@ -543,40 +527,6 @@ export const updateTeacherPaymentMode = async (
       success: true,
       message: "Payment mode updated",
       data: teacher.paymentSettings,
-    });
-  } catch (err) {
-    next(err);
-  }
-};
-
-/**
- * Update teacher subscription status
- * @route PUT /api/admin/teachers/:id/subscription-status
- */
-
-export const updateTeacherSubscriptionStatus = async (
-  req: AuthRequest,
-  res: Response,
-  next: NextFunction,
-) => {
-  try {
-    const { id } = req.params;
-    const { status, endDate } = req.body;
-
-    const subscription = await TeacherSubscription.findOne({ teacherId: id });
-    if (!subscription) {
-      return next(new AppError("Subscription not found", 404));
-    }
-
-    if (status) subscription.status = status;
-    if (endDate) subscription.endDate = new Date(endDate);
-
-    await subscription.save();
-
-    res.json({
-      success: true,
-      message: "Subscription updated",
-      data: subscription,
     });
   } catch (err) {
     next(err);

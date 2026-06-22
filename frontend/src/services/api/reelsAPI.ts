@@ -70,50 +70,37 @@ export interface SingleReelResponse {
 // PUBLIC API
 // ========================================
 
-/**
- * Get public reels (visibility='public')
- */
+// NOTE: ApiService methods already unwrap axios response.data,
+// so they return the JSON body directly ({ success, message, data }).
+// Do NOT access .data again — that would double-unwrap.
+
 export const getPublicReels = async (params?: {
   page?: number;
   limit?: number;
 }): Promise<ReelsResponse> => {
-  const response = await ApiService.get('/reels', { params });
-  return response.data;
+  return ApiService.get('/reels', { params }) as unknown as Promise<ReelsResponse>;
 };
 
-/**
- * Get single public reel by ID
- */
 export const getReelById = async (id: string): Promise<SingleReelResponse> => {
-  const response = await ApiService.get(`/reels/${id}`);
-  return response.data;
+  return ApiService.get(`/reels/${id}`) as unknown as Promise<SingleReelResponse>;
 };
 
-/**
- * Increment view count
- */
 export const incrementView = async (id: string): Promise<void> => {
   await ApiService.post(`/reels/${id}/view`);
 };
 
-/**
- * Toggle like (add or remove like)
- */
 export const toggleLike = async (
   id: string,
   increment: boolean = true
 ): Promise<{ liked: boolean; likes: number }> => {
   const response = await ApiService.post(`/reels/${id}/like`, { increment });
-  return response.data.data;
+  return response.data;
 };
 
 // ========================================
 // ADMIN API
 // ========================================
 
-/**
- * Get all reels (admin) with filters
- */
 export const getAllReels = async (params?: {
   page?: number;
   limit?: number;
@@ -121,29 +108,21 @@ export const getAllReels = async (params?: {
   visibility?: 'public' | 'draft' | 'archived';
   isFeatured?: boolean;
 }): Promise<ReelsResponse> => {
-  const response = await ApiService.get('/admin/reels', { params });
-  return response.data;
+  return ApiService.get('/admin/reels', { params }) as unknown as Promise<ReelsResponse>;
 };
 
-/**
- * Get single reel by ID (admin)
- */
 export const getAdminReelById = async (id: string): Promise<SingleReelResponse> => {
-  const response = await ApiService.get(`/admin/reels/${id}`);
-  return response.data;
+  return ApiService.get(`/admin/reels/${id}`) as unknown as Promise<SingleReelResponse>;
 };
 
-/**
- * Create new reel
- */
 export const createReel = async (data: {
   title: string;
   description?: string;
   videoSourceType?: 'uploaded' | 'youtube' | 'instagram';
-  videoAsset?: string; // MediaAsset ID (for uploaded videos)
-  externalVideoUrl?: string; // For YouTube/Instagram
-  embedCode?: string; // For Instagram embed
-  thumbnailAsset?: string; // MediaAsset ID
+  videoAsset?: string;
+  externalVideoUrl?: string;
+  embedCode?: string;
+  thumbnailAsset?: string;
   visibility?: 'public' | 'draft' | 'archived';
   isFeatured?: boolean;
   displayOrder?: number;
@@ -152,15 +131,11 @@ export const createReel = async (data: {
   showLikeButton?: boolean;
   showShareButton?: boolean;
   showTitle?: boolean;
-  linkedEvent?: string; // Event ID
+  linkedEvent?: string;
 }): Promise<SingleReelResponse> => {
-  const response = await ApiService.post('/admin/reels', data);
-  return response.data;
+  return ApiService.post('/admin/reels', data) as unknown as Promise<SingleReelResponse>;
 };
 
-/**
- * Update reel
- */
 export const updateReel = async (
   id: string,
   data: Partial<{
@@ -182,33 +157,22 @@ export const updateReel = async (
     linkedEvent: string;
   }>
 ): Promise<SingleReelResponse> => {
-  const response = await ApiService.put(`/admin/reels/${id}`, data);
-  return response.data;
+  return ApiService.put(`/admin/reels/${id}`, data) as unknown as Promise<SingleReelResponse>;
 };
 
-/**
- * Delete reel (hard delete)
- */
 export const deleteReel = async (id: string): Promise<void> => {
   await ApiService.delete(`/admin/reels/${id}`);
 };
 
-/**
- * Update reel visibility
- */
 export const updateVisibility = async (
   id: string,
   visibility: 'public' | 'draft' | 'archived'
 ): Promise<SingleReelResponse> => {
-  const response = await ApiService.patch(`/admin/reels/${id}/visibility`, {
+  return ApiService.patch(`/admin/reels/${id}/visibility`, {
     visibility
-  });
-  return response.data;
+  }) as unknown as Promise<SingleReelResponse>;
 };
 
-/**
- * Bulk update display orders
- */
 export const updateDisplayOrders = async (
   reels: Array<{ id: string; displayOrder: number }>
 ): Promise<void> => {

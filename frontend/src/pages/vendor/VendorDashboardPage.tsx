@@ -50,6 +50,19 @@ const VendorDashboardPage: React.FC = () => {
   const [isLoading, setIsLoading] = useState<boolean>(true);
   const [error, setError] = useState<string | null>(null);
 
+  const handleSubmitForReview = async (eventId: string) => {
+    try {
+      await vendorAPI.updateVendorEvent(eventId, { status: 'pending_review' });
+      setEvents((prev) =>
+        prev.map((e: any) =>
+          e._id === eventId ? { ...e, status: 'pending_review' } : e,
+        ),
+      );
+    } catch (err) {
+      console.error('Error submitting event for review:', err);
+    }
+  };
+
   useEffect(() => {
     const fetchDashboardData = async () => {
       try {
@@ -208,12 +221,12 @@ const VendorDashboardPage: React.FC = () => {
                 </div>
                 <div>
                   <p className="text-sm font-semibold text-gray-700 group-hover:text-gray-800 transition-colors duration-300">Total Revenue</p>
-                  <p className="text-3xl font-bold text-gray-900 group-hover:text-purple-700 transition-colors duration-300">${stats.totalRevenue}</p>
+                  <p className="text-3xl font-bold text-gray-900 group-hover:text-purple-700 transition-colors duration-300">AED {stats.totalRevenue}</p>
                 </div>
               </div>
               <div className="mt-4">
                 <p className="text-sm text-gray-600">
-                  <span className="text-purple-600 font-bold px-2 py-1 rounded-full bg-purple-100">${stats.revenueThisMonth}</span>
+                  <span className="text-purple-600 font-bold px-2 py-1 rounded-full bg-purple-100">AED {stats.revenueThisMonth}</span>
                   <span className="ml-2">this month</span>
                 </p>
               </div>
@@ -241,7 +254,7 @@ const VendorDashboardPage: React.FC = () => {
               </div>
               <div className="mt-4">
                 <p className="text-sm text-gray-600">
-                  <span className="font-semibold">vs ${stats.revenueLastMonth}</span> last month
+                  <span className="font-semibold">vs AED {stats.revenueLastMonth}</span> last month
                 </p>
               </div>
             </div>
@@ -324,9 +337,10 @@ const VendorDashboardPage: React.FC = () => {
                                   </Link>
                                   {event.status === 'draft' && (
                                     <button
+                                      onClick={() => handleSubmitForReview(event._id)}
                                       className="inline-flex items-center px-3 py-1.5 border border-transparent text-xs font-medium rounded text-white bg-green-600 hover:bg-green-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-green-500"
                                     >
-                                      Publish
+                                      Submit for Review
                                     </button>
                                   )}
                                 </div>

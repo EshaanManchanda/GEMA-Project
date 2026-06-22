@@ -4,13 +4,11 @@ import { AuthRequest } from "../types/index";
 import PayoutService from "../services/teacher.payout.service";
 import Payout, { PayoutRequestStatus } from "../models/Payout";
 import User from "../models/User";
-import Teacher, { TeacherPaymentMode } from "../models/Teacher";
-import CommissionTransaction from "../models/CommissionTransaction";
-import {
+import Teacher, {
+  TeacherPaymentMode,
   TeacherSubscriptionStatus,
-  TeacherSubscriptionPlan,
-  TeacherBillingCycle,
-} from "../models/TeacherSubscription";
+} from "../models/Teacher";
+import CommissionTransaction from "../models/CommissionTransaction";
 
 /**
  * Get teacher payouts dashboard data

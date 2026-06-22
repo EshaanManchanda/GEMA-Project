@@ -54,6 +54,7 @@ interface BookingDetailsProps {
     quantity?: number;
     selectedDate?: string;
     schedule?: EventDateSchedule;
+    scheduleId?: string;
     totalPrice?: string;
     currency?: string;
   } | null;

@@ -1,8 +1,10 @@
 import Stripe from "stripe";
-import Teacher, { TeacherPaymentMode } from "../models/Teacher";
+import Teacher, {
+  TeacherPaymentMode,
+  TeacherSubscriptionStatus,
+} from "../models/Teacher";
 import { stripe } from "../config/stripe";
 import { Types } from "mongoose";
-import { TeacherSubscriptionStatus } from "../models/TeacherSubscription";
 import logger from "../config/logger";
 
 /**

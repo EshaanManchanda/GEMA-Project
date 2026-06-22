@@ -204,6 +204,7 @@ const FAQItem: React.FC<{ q: string; a: string; defaultOpen?: boolean; index: nu
       requestAnimationFrame(() => {
         requestAnimationFrame(() => setContentHeight(0));
       });
+      return undefined;
     }
   }, [open]);
 
@@ -703,7 +704,7 @@ const TeacherPublicProfilePage: React.FC = () => {
                   { icon: <FaCalendarAlt />, iconCls: 'bg-indigo-50 text-indigo-600', label: 'Joined', value: formatMemberSince(user.createdAt) },
                   { icon: <FaLanguage />, iconCls: 'bg-cyan-50 text-cyan-600', label: 'Languages', value: teacher.languagesSpoken?.length ? teacher.languagesSpoken.join(', ') : 'Not specified' },
                   { icon: <FaStar />, iconCls: 'bg-amber-50 text-amber-500', label: 'Teaching Style', value: (teacher as any).teachingDescription || 'Interactive, Student-Centered' },
-                  { icon: <FaMapMarkerAlt />, iconCls: 'bg-rose-50 text-rose-500', label: 'Location', value: (teacher as any).location || teacher.city || 'Online / Flexible' },
+                  { icon: <FaMapMarkerAlt />, iconCls: 'bg-rose-50 text-rose-500', label: 'Location', value: (teacher as any).location || (teacher as any).city || 'Online / Flexible' },
                 ].map((item, i) => (
                   <div key={i} className="flex items-start gap-3 bg-white border border-slate-100 rounded-2xl px-4 py-3">
                     <div className={`w-9 h-9 rounded-lg flex items-center justify-center text-sm flex-shrink-0 mt-0.5 ${item.iconCls}`}>{item.icon}</div>

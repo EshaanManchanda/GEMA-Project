@@ -204,7 +204,7 @@ ${urls.join("\n")}
       "www.kidrove.in",
       "kidrove.ae",
       "www.kidrove.ae",
-      "gema-project.onrender.com",
+      "api.kidrove.com",
     ]);
     const isProductionDomain = domain ? PRODUCTION_HOSTS.has(domain) : false;
 

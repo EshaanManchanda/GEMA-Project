@@ -1,5 +1,6 @@
 import type { FirebaseApp } from 'firebase/app';
 import type { Auth, GoogleAuthProvider as GoogleAuthProviderType } from 'firebase/auth';
+import type { Analytics } from 'firebase/analytics';
 
 /**
  * Firebase Lazy Loading Module
@@ -45,6 +46,7 @@ function validateFirebaseEnv(): boolean {
 // Cached instances (lazy initialized)
 let _app: FirebaseApp | null = null;
 let _auth: Auth | null = null;
+let _analytics: Analytics | null = null;
 let _googleProvider: GoogleAuthProviderType | null = null;
 let _initPromise: Promise<void> | null = null;
 
@@ -68,6 +70,19 @@ async function initFirebase(): Promise<void> {
     _auth = getAuth(_app);
     _googleProvider = new GoogleAuthProvider();
     _googleProvider.setCustomParameters({ prompt: 'select_account' });
+
+    if (firebaseConfig.measurementId) {
+      try {
+        const { getAnalytics, isSupported } = await import('firebase/analytics');
+        const supported = await isSupported();
+        if (supported) {
+          _analytics = getAnalytics(_app);
+          console.log('[Firebase] ✅ Analytics initialized');
+        }
+      } catch (err) {
+        console.warn('[Firebase] Analytics not available:', err);
+      }
+    }
 
     console.log('[Firebase] ✅ Initialized successfully (lazy)');
   } catch (error) {
@@ -109,6 +124,17 @@ export async function getFirebaseApp(): Promise<FirebaseApp | null> {
   }
   await _initPromise;
   return _app;
+}
+
+/**
+ * Gets Firebase Analytics instance (lazy loaded)
+ */
+export async function getFirebaseAnalytics(): Promise<Analytics | null> {
+  if (!_initPromise) {
+    _initPromise = initFirebase();
+  }
+  await _initPromise;
+  return _analytics;
 }
 
 // Legacy exports for backward compatibility (null until lazy-loaded)

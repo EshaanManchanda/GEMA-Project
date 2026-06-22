@@ -323,7 +323,16 @@ export const updateVendorEvent = catchAsync(
 
     if (seoMeta) event.seoMeta = seoMeta;
     if (faqs) event.faqs = faqs;
-    if (status) event.status = status;
+    const VENDOR_ALLOWED_STATUSES = ["draft", "pending_review", "cancelled"];
+    if (status) {
+      if (!VENDOR_ALLOWED_STATUSES.includes(status)) {
+        return res.status(403).json({
+          success: false,
+          message: `Vendors can only set status to: ${VENDOR_ALLOWED_STATUSES.join(", ")}`,
+        });
+      }
+      event.status = status;
+    }
 
     // Booking configuration - always update these together
     if (isAffiliateEvent !== undefined) {

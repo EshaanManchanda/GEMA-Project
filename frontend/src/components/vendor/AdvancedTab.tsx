@@ -60,6 +60,7 @@ interface AdvancedTabProps {
   onCountryChange?: (country: string) => void;
   errors: Record<string, string>;
   onInputChange: (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => void;
+  onCheckboxChange?: (e: React.ChangeEvent<HTMLInputElement>) => void;
   eventId?: string;
   onSeoChange?: (seoData: { title: string; description: string; keywords: string[] }) => void;
   eventData?: any;
@@ -329,7 +330,7 @@ const AdvancedTab: React.FC<AdvancedTabProps> = ({
                 description: eventData?.description || formData.seoMeta?.description || '',
                 category: eventData?.category || '',
                 location: formData.city,
-                tags: Array.isArray(eventData?.tags) ? eventData.tags : formData.tags || [],
+                tags: Array.isArray(eventData?.tags) ? eventData.tags : [],
                 type: 'event'
               }}
               onChange={onSeoChange}

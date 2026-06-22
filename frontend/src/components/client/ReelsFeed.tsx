@@ -13,9 +13,11 @@ interface ReelsFeedProps {
   onShare?: (reelId: string) => void;
   variant?: 'feed' | 'slider';
   title?: string;
+  onReachEnd?: () => void;
+  isLoadingMore?: boolean;
 }
 
-const ReelsFeed: React.FC<ReelsFeedProps> = ({ reels, onLike, onShare, variant = 'feed', title = 'Trending Reels' }) => {
+const ReelsFeed: React.FC<ReelsFeedProps> = ({ reels, onLike, onShare, variant = 'feed', title = 'Trending Reels', onReachEnd, isLoadingMore }) => {
   const navigate = useNavigate();
 
   // ==========================================
@@ -23,6 +25,7 @@ const ReelsFeed: React.FC<ReelsFeedProps> = ({ reels, onLike, onShare, variant =
   // ==========================================
   const [likedReels, setLikedReels] = useState<Set<string>>(new Set());
   const [localLikes, setLocalLikes] = useState<Map<string, number>>(new Map());
+  const [openEventReelId, setOpenEventReelId] = useState<string | null>(null);
 
   // Initialize local likes from reels data
   useEffect(() => {
@@ -51,7 +54,6 @@ const ReelsFeed: React.FC<ReelsFeedProps> = ({ reels, onLike, onShare, variant =
   const getThumbnail = (reel: Reel) => {
     if (reel.thumbnailAsset?.url) return reel.thumbnailAsset.url;
     if (reel.videoAsset?.thumbnailUrl) return reel.videoAsset.thumbnailUrl;
-    // Fallback for YouTube
     if (reel.videoSourceType === 'youtube' && reel.externalVideoUrl) {
       const videoId = extractYouTubeId(reel.externalVideoUrl);
       if (videoId) return `https://img.youtube.com/vi/${videoId}/0.jpg`;
@@ -101,22 +103,6 @@ const ReelsFeed: React.FC<ReelsFeedProps> = ({ reels, onLike, onShare, variant =
   const videoRefs = useRef<Map<number, HTMLVideoElement>>(new Map());
   const viewTracked = useRef<Set<string>>(new Set());
 
-  // Load Instagram embed script
-  useEffect(() => {
-    if (variant === 'feed' && reels.some(r => r.videoSourceType === 'instagram')) {
-      const script = document.createElement('script');
-      script.src = '//www.instagram.com/embed.js';
-      script.async = true;
-      document.body.appendChild(script);
-
-      return () => {
-        if (document.body.contains(script)) {
-          document.body.removeChild(script);
-        }
-      };
-    }
-    return;
-  }, [reels, variant]);
 
   // Intersection Observer for autoplay and view tracking
   useEffect(() => {
@@ -246,10 +232,9 @@ const ReelsFeed: React.FC<ReelsFeedProps> = ({ reels, onLike, onShare, variant =
               {sliderReels.map((reel) => (
                 <div
                   key={reel._id}
-                  className="keen-slider__slide relative aspect-[9/16] rounded-2xl overflow-hidden cursor-pointer shadow-lg hover:shadow-2xl transition-all duration-500 hover:-translate-y-2 ring-1 ring-black/5"
+                  className="keen-slider__slide group relative aspect-[9/16] rounded-2xl overflow-hidden cursor-pointer shadow-lg hover:shadow-2xl transition-all duration-500 hover:-translate-y-2 ring-1 ring-black/5"
                   onClick={() => navigate(`/reels`)}
                 >
-                  {/* Thumbnail */}
                   <img
                     src={getThumbnail(reel)}
                     alt={reel.title}
@@ -317,6 +302,20 @@ const ReelsFeed: React.FC<ReelsFeedProps> = ({ reels, onLike, onShare, variant =
     );
   }
 
+  // Infinite scroll sentinel for feed variant
+  const sentinelRef = useRef<HTMLDivElement>(null);
+  useEffect(() => {
+    if (variant !== 'feed' || !onReachEnd) return;
+    const el = sentinelRef.current;
+    if (!el) return;
+    const observer = new IntersectionObserver(
+      ([entry]) => { if (entry.isIntersecting) onReachEnd(); },
+      { threshold: 0.5 }
+    );
+    observer.observe(el);
+    return () => observer.disconnect();
+  }, [variant, onReachEnd]);
+
   // ==========================================
   // RENDER: FEED VARIANT (Original)
   // ==========================================
@@ -371,15 +370,18 @@ const ReelsFeed: React.FC<ReelsFeedProps> = ({ reels, onLike, onShare, variant =
             </div>
           )}
 
-          {reel.videoSourceType === 'instagram' && reel.externalVideoUrl && (
-            <div className="w-full h-full overflow-auto bg-black flex items-center justify-center">
-              <blockquote
-                className="instagram-media"
-                data-instgrm-permalink={reel.externalVideoUrl}
-                data-instgrm-version="14"
-                style={{ minHeight: '100%', minWidth: '100%' }}
-              />
-            </div>
+          {reel.videoSourceType === 'instagram' && reel.videoAsset && (
+            <video
+              ref={(el) => setVideoRef(index, el)}
+              data-reel-id={reel._id}
+              src={reel.videoAsset.url}
+              poster={reel.thumbnailAsset?.url || reel.videoAsset.thumbnailUrl}
+              className="w-full h-full object-cover"
+              loop
+              muted={muted}
+              playsInline
+              preload="metadata"
+            />
           )}
 
           <div className="absolute top-0 left-0 right-0 h-40 bg-gradient-to-b from-black/60 to-transparent pointer-events-none z-20" />
@@ -459,14 +461,14 @@ const ReelsFeed: React.FC<ReelsFeedProps> = ({ reels, onLike, onShare, variant =
 
             {reel.linkedEvent && (
               <button
-                onClick={() => navigate(`/events/${reel.linkedEvent!.slug}`)}
+                onClick={() => setOpenEventReelId(openEventReelId === reel._id ? null : reel._id)}
                 className="flex flex-col items-center group"
               >
-                <div className="w-12 h-12 rounded-full bg-gradient-to-br from-orange-400 to-orange-600 backdrop-blur-md flex items-center justify-center group-active:scale-90 transition-all duration-200 shadow-lg shadow-orange-500/30 group-hover:shadow-orange-500/50">
+                <div className={`w-12 h-12 rounded-full bg-gradient-to-br from-orange-400 to-orange-600 backdrop-blur-md flex items-center justify-center group-active:scale-90 transition-all duration-200 shadow-lg shadow-orange-500/30 group-hover:shadow-orange-500/50 ${openEventReelId === reel._id ? 'ring-2 ring-orange-300 scale-110' : ''}`}>
                   <Calendar className="w-6 h-6 text-white" />
                 </div>
                 <span className="text-white text-xs mt-1.5 font-semibold drop-shadow-lg">
-                  Book
+                  Event
                 </span>
               </button>
             )}
@@ -491,8 +493,101 @@ const ReelsFeed: React.FC<ReelsFeedProps> = ({ reels, onLike, onShare, variant =
               {reel.viewsCount.toLocaleString()} views
             </span>
           </div>
+
+          {/* Event info overlay — slides up when Calendar button tapped */}
+          {reel.linkedEvent && (
+            <div
+              className={`absolute left-0 right-0 bottom-0 z-40 pointer-events-auto transition-transform duration-300 ease-out ${
+                openEventReelId === reel._id ? 'translate-y-0' : 'translate-y-full'
+              }`}
+            >
+              <div className="mx-3 mb-3 rounded-2xl overflow-hidden backdrop-blur-xl bg-black/70 border border-white/10 shadow-2xl">
+                {/* Header strip */}
+                <div className="flex items-center justify-between px-4 py-2.5 bg-white/5 border-b border-white/10">
+                  <div className="flex items-center gap-2">
+                    <div className="w-6 h-6 rounded-full bg-gradient-to-br from-orange-400 to-orange-600 flex items-center justify-center">
+                      <Calendar className="w-3.5 h-3.5 text-white" />
+                    </div>
+                    <span className="text-white/70 text-xs font-medium uppercase tracking-wider">Linked Event</span>
+                  </div>
+                  <button
+                    onClick={() => setOpenEventReelId(null)}
+                    className="text-white/50 hover:text-white transition-colors p-1"
+                  >
+                    <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                    </svg>
+                  </button>
+                </div>
+
+                {/* Event details */}
+                <div className="px-4 py-3">
+                  <h4 className="text-white font-bold text-base leading-tight mb-2.5 line-clamp-2">
+                    {reel.linkedEvent.title}
+                  </h4>
+
+                  <div className="flex flex-wrap gap-x-4 gap-y-1.5 mb-3">
+                    {/* Location */}
+                    {reel.linkedEvent.location?.city && (
+                      <div className="flex items-center gap-1.5 text-white/70">
+                        <svg className="w-3.5 h-3.5 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z" />
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 11a3 3 0 11-6 0 3 3 0 016 0z" />
+                        </svg>
+                        <span className="text-xs font-medium">{reel.linkedEvent.location.city}</span>
+                      </div>
+                    )}
+
+                    {/* Date */}
+                    {reel.linkedEvent.dateSchedule?.[0] && (
+                      <div className="flex items-center gap-1.5 text-white/70">
+                        <svg className="w-3.5 h-3.5 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
+                        </svg>
+                        <span className="text-xs font-medium">
+                          {new Date(reel.linkedEvent.dateSchedule[0].startDate || reel.linkedEvent.dateSchedule[0].date).toLocaleDateString('en-AE', { day: 'numeric', month: 'short', year: 'numeric' })}
+                        </span>
+                      </div>
+                    )}
+
+                    {/* Price */}
+                    {reel.linkedEvent.pricing && (
+                      <div className="flex items-center gap-1.5 text-orange-400">
+                        <svg className="w-3.5 h-3.5 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                        </svg>
+                        <span className="text-xs font-semibold">
+                          {reel.linkedEvent.pricing.isFree
+                            ? 'Free'
+                            : reel.linkedEvent.pricing.basePrice != null
+                              ? `${reel.linkedEvent.pricing.currency || 'AED'} ${reel.linkedEvent.pricing.basePrice}`
+                              : 'See pricing'}
+                        </span>
+                      </div>
+                    )}
+                  </div>
+
+                  {/* CTA button */}
+                  <button
+                    onClick={() => navigate(`/events/${reel.linkedEvent!.slug}`)}
+                    className="w-full py-2.5 rounded-xl bg-gradient-to-r from-orange-500 to-orange-600 text-white font-semibold text-sm hover:from-orange-600 hover:to-orange-700 active:scale-[0.98] transition-all duration-200 shadow-lg shadow-orange-500/30 flex items-center justify-center gap-2"
+                  >
+                    <Calendar className="w-4 h-4" />
+                    Visit Event
+                  </button>
+                </div>
+              </div>
+            </div>
+          )}
         </div>
       ))}
+      {onReachEnd && (
+        <div ref={sentinelRef} className="h-[50vh] snap-start flex items-center justify-center bg-black">
+          {isLoadingMore && (
+            <div className="animate-spin rounded-full h-10 w-10 border-t-2 border-b-2 border-white" />
+          )}
+        </div>
+      )}
     </div>
   );
 };

@@ -209,6 +209,35 @@ const vendorPayoutAPI = {
   },
 
   /**
+   * Create a Stripe Checkout Session for the platform subscription (150 AED/month).
+   * Returns { url } — redirect immediately.
+   * On return, vendor lands on /vendor/payouts?subscription=success|cancelled.
+   */
+  async createSubscriptionCheckout(): Promise<{ url: string }> {
+    const response = await api.post('/vendors/payment-settings/subscription/checkout');
+    return response.data;
+  },
+
+  /**
+   * Create a Stripe Billing Portal session so the vendor can manage their
+   * subscription (cancel, update card, view/download invoices, reactivate).
+   * Returns { url } — redirect immediately.
+   */
+  async createBillingPortalSession(): Promise<{ url: string }> {
+    const response = await api.post('/vendors/payment-settings/subscription/portal');
+    return response.data;
+  },
+
+  /**
+   * Cancel subscription (sets cancel_at_period_end on Stripe).
+   * Primary cancel path is the Billing Portal (createBillingPortalSession).
+   * This is the fallback / programmatic cancel.
+   */
+  async cancelSubscription(reason?: string): Promise<void> {
+    await api.post('/vendors/payment-settings/subscription/cancel', { reason });
+  },
+
+  /**
    * Get commission history (for commission model vendors)
    */
   async getCommissionHistory(params?: {
@@ -228,6 +257,7 @@ export interface SubscriptionStatusData {
   isSubscriptionModel: boolean;
   subscription: {
     status: 'active' | 'inactive' | 'pending' | 'expired' | 'suspended' | 'grace_period';
+    stripeSubscriptionStatus?: string; // raw Stripe status
     amount: number;
     currency: string;
     startDate?: string;
@@ -236,6 +266,9 @@ export interface SubscriptionStatusData {
     daysUntilRenewal?: number;
     isExpired: boolean;
     isActive: boolean;
+    cancelAtPeriodEnd: boolean;        // subscription will cancel at period end
+    hasStripeSubscription: boolean;    // whether a live Stripe sub exists
+    currentPeriodEnd?: string;         // Stripe current_period_end
     paymentHistory: Array<{
       paymentDate: string;
       amount: number;
@@ -244,6 +277,7 @@ export interface SubscriptionStatusData {
       status: 'paid' | 'failed' | 'pending' | 'refunded';
       transactionId?: string;
       invoiceUrl?: string;
+      invoicePdf?: string;             // Stripe invoice_pdf URL
     }>;
   } | null;
   vendorStatus: {

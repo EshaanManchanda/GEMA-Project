@@ -875,11 +875,23 @@ async function validateReviewToken(eventId: string, token?: string): Promise<boo
 }
 
 async function triggerCertificateForReview(review: any, userId: any): Promise<void> {
+  const existing = await Certificate.findOne({ reviewId: review._id });
+  if (existing) return;
+
   const [event, user] = await Promise.all([
-    Event.findById(review.event).select("title"),
+    Event.findById(review.event).select("title certificateTypes"),
     User.findById(userId).select("firstName lastName email"),
   ]);
   if (!event || !user) return;
+
+  const certTypes = (event as any).certificateTypes || [];
+  const defaultType = certTypes.find((ct: any) => ct.isDefault) || certTypes[0];
+  const templateId = defaultType?.templateId?.toString();
+
+  if (!templateId) {
+    logger.warn(`No certificate template configured for event ${review.event} — skipping certificate`);
+    return;
+  }
 
   const counter = await SerialCounter.findOneAndUpdate(
     { key: "global" },
@@ -891,6 +903,8 @@ async function triggerCertificateForReview(review: any, userId: any): Promise<vo
 
   const certificate = await Certificate.create({
     serialNumber,
+    templateId,
+    certificateTypeSlug: defaultType?.slug,
     eventId: review.event,
     userId,
     reviewId: review._id,
@@ -905,6 +919,7 @@ async function triggerCertificateForReview(review: any, userId: any): Promise<vo
       "generate-certificate",
       {
         certificateId: certificate._id.toString(),
+        templateId,
         recipient: certificate.recipient,
         data: certificate.data,
         options: { sendEmail: true },

@@ -340,20 +340,24 @@ export const sendNewsletter = async (
       );
     }
 
-    // TODO: Integrate with email service (SendGrid, Mailgun, etc.)
-    // For now, we'll simulate sending emails
-    // const emailPromises = subscribers.map(async (subscriber) => {
-    //   await emailService.send({
-    //     to: subscriber.email,
-    //     subject,
-    //     html: content,
-    //     unsubscribeUrl: `${process.env.FRONTEND_URL}/newsletter/unsubscribe/${subscriber.unsubscribeToken}`
-    //   });
-    // });
-    // await Promise.all(emailPromises);
+    const frontendUrl = process.env.FRONTEND_URL || "https://kidrove.com";
+    const emailPromises = subscribers.map(async (subscriber: any) => {
+      const unsubscribeUrl = `${frontendUrl}/newsletter/unsubscribe/${subscriber.unsubscribeToken}`;
+      const htmlWithFooter = `${content}
+        <hr style="margin-top:32px;border:none;border-top:1px solid #eee"/>
+        <p style="font-size:12px;color:#999;text-align:center">
+          You received this because you subscribed to Kidrove updates.<br/>
+          <a href="${unsubscribeUrl}" style="color:#999">Unsubscribe</a>
+        </p>`;
+      try {
+        await emailService.sendEmail({ to: subscriber.email, subject, html: htmlWithFooter });
+      } catch (err) {
+        logger.warn(`Newsletter email failed for ${subscriber.email}`, err);
+      }
+    });
+    await Promise.all(emailPromises);
 
-    // Update last email sent date
-    const subscriberIds = subscribers.map((s) => s._id.toString());
+    const subscriberIds = subscribers.map((s: any) => s._id.toString());
     await newsletterService.updateLastEmailSent(subscriberIds);
 
     res.status(200).json({

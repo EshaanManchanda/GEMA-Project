@@ -94,7 +94,7 @@ const reelSchema = new Schema<IReel>(
       type: Schema.Types.ObjectId,
       ref: "MediaAsset",
       required: function (this: IReel) {
-        return this.videoSourceType === "uploaded";
+        return this.videoSourceType === "uploaded" || this.videoSourceType === "instagram";
       },
     },
     thumbnailAsset: {
@@ -117,9 +117,9 @@ const reelSchema = new Schema<IReel>(
             );
           }
 
-          // Validate Instagram URLs
+          // Validate Instagram URLs (supports /reel/, /reels/, and /p/ paths)
           if (this.videoSourceType === "instagram") {
-            return /^https?:\/\/(www\.)?instagram\.com\/reel\/.+$/.test(v);
+            return /^https?:\/\/(www\.)?instagram\.com\/(reel|reels|p)\/.+$/.test(v);
           }
 
           return true;

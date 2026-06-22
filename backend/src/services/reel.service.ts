@@ -49,8 +49,8 @@ export class ReelService {
     try {
       const videoSourceType = data.videoSourceType || "uploaded";
 
-      // 1. Validate MediaAssets exist (only for uploaded videos)
-      if (videoSourceType === "uploaded" && data.videoAsset) {
+      // 1. Validate MediaAssets exist (uploaded + instagram reels need video file)
+      if ((videoSourceType === "uploaded" || videoSourceType === "instagram") && data.videoAsset) {
         await this.validateMediaAsset(data.videoAsset, session);
       }
       if (data.thumbnailAsset) {
@@ -317,6 +317,7 @@ export class ReelService {
         .limit(limit)
         .populate("videoAsset", "url thumbnailUrl duration mimeType")
         .populate("thumbnailAsset", "url thumbnailUrl")
+        .populate("linkedEvent", "title slug pricing location dateSchedule")
         .lean(),
       Reel.countDocuments(query),
     ]);
@@ -366,6 +367,7 @@ export class ReelService {
         .limit(limit)
         .populate("videoAsset", "url thumbnailUrl duration mimeType size")
         .populate("thumbnailAsset", "url thumbnailUrl")
+        .populate("linkedEvent", "title slug pricing location dateSchedule")
         .lean(),
       Reel.countDocuments(query),
     ]);
@@ -393,7 +395,8 @@ export class ReelService {
     if (populateAssets) {
       query = query
         .populate("videoAsset", "url thumbnailUrl duration mimeType size")
-        .populate("thumbnailAsset", "url thumbnailUrl");
+        .populate("thumbnailAsset", "url thumbnailUrl")
+        .populate("linkedEvent", "title slug pricing location dateSchedule");
     }
 
     return query.lean() as unknown as IReel | null;

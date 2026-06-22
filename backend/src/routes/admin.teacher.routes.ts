@@ -9,7 +9,6 @@ import {
   toggleTeacherSuspension,
   toggleTeacherActiveStatus,
   updateTeacherPaymentMode,
-  updateTeacherSubscriptionStatus,
   updateTeacherStatus,
   getTeacherStats,
 } from "../controllers/admin.teacher.controller";
@@ -22,7 +21,6 @@ import {
   TeacherPaymentMode,
   TeacherVerificationStatus,
 } from "../models/Teacher";
-import { TeacherSubscriptionStatus } from "../models/TeacherSubscription";
 
 const router = Router();
 
@@ -168,22 +166,6 @@ router.put(
   ],
   validate,
   updateTeacherPaymentMode,
-);
-
-/**
- * ============================
- * SUBSCRIPTION
- * ============================
- */
-router.put(
-  "/:id/subscription-status",
-  [
-    validateMongoId("id", "param"),
-    body("status").optional().isIn(Object.values(TeacherSubscriptionStatus)),
-    body("endDate").optional().isISO8601(),
-  ],
-  validate,
-  updateTeacherSubscriptionStatus,
 );
 
 /**

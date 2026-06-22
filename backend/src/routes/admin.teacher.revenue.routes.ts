@@ -5,7 +5,6 @@ import {
   createTeacherRevenueTransaction,
   updateRevenueTransaction,
   processTeacherPayouts,
-  getTeacherSubscriptionAnalytics,
   getTeacherAdvertisingAnalytics,
   getRevenueSettings,
   updateRevenueSettings,
@@ -53,9 +52,6 @@ router.post("/payouts/process", processTeacherPayouts);
 /**
  * Analytics Routes
  */
-
-// GET /api/admin/teacher-revenue/analytics/subscriptions
-router.get("/analytics/subscriptions", getTeacherSubscriptionAnalytics);
 
 // GET /api/admin/teacher-revenue/analytics/advertising
 router.get("/analytics/advertising", getTeacherAdvertisingAnalytics);

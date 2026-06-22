@@ -1,10 +1,10 @@
 # Netlify Redirects for Single Page Application (SPA)
 # This file ensures that all routes are handled by React Router
 
-/sitemap.xml  https://gema-project.onrender.com/sitemap.xml  200!
-/sitemap-*.xml  https://gema-project.onrender.com/sitemap-:splat.xml  200!
-/robots.txt  https://gema-project.onrender.com/robots.txt  200!
-/api/*  https://gema-project.onrender.com/api/:splat  200!
+/sitemap.xml  https://api.kidrove.com/sitemap.xml  200!
+/sitemap-*.xml  https://api.kidrove.com/sitemap-:splat.xml  200!
+/robots.txt  https://api.kidrove.com/robots.txt  200!
+/api/*  https://api.kidrove.com/api/:splat  200!
 
 # Handle all other routes with React Router
 # This must be the last rule

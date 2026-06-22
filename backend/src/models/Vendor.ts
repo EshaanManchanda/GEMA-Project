@@ -100,6 +100,13 @@ export interface IStripeSettings {
   // Settings
   stripeKeysLastValidated?: Date;
   stripeKeysValidationError?: string;
+
+  // Stripe Billing — vendor subscription to platform (150 AED/month)
+  stripeCustomerId?: string;         // Stripe Customer id (cus_...)
+  stripeSubscriptionId?: string;     // Stripe Subscription id (sub_...)
+  stripePriceId?: string;            // Stripe Price id used for the subscription
+  stripeSubscriptionStatus?: string; // Raw Stripe status: active|trialing|past_due|unpaid|canceled|incomplete|incomplete_expired
+  stripeCurrentPeriodEnd?: Date;     // End of current billing period (from Stripe)
 }
 
 export interface IPaymentSettings {
@@ -127,6 +134,7 @@ export interface IPaymentSettings {
   subscriptionAmount: number; // Monthly fee (default 150 AED)
   subscriptionStartDate?: Date;
   subscriptionPaidUntil?: Date;
+  subscriptionCancelAtPeriodEnd?: boolean; // Stripe cancel_at_period_end flag
   subscriptionHistory?: Array<{
     paymentDate: Date;
     amount: number;
@@ -135,6 +143,7 @@ export interface IPaymentSettings {
     status: "paid" | "failed" | "pending" | "refunded";
     transactionId?: string;
     invoiceUrl?: string;
+    invoicePdf?: string;
   }>;
 
   // Payout settings
@@ -448,6 +457,13 @@ const VendorSchema = new Schema<IVendor>(
 
         stripeKeysLastValidated: Date,
         stripeKeysValidationError: String,
+
+        // Stripe Billing (vendor subscription to platform)
+        stripeCustomerId: { type: String, sparse: true },
+        stripeSubscriptionId: { type: String, sparse: true },
+        stripePriceId: { type: String },
+        stripeSubscriptionStatus: { type: String },
+        stripeCurrentPeriodEnd: { type: Date },
       },
 
       // Commission
@@ -483,6 +499,7 @@ const VendorSchema = new Schema<IVendor>(
       },
       subscriptionStartDate: Date,
       subscriptionPaidUntil: Date,
+      subscriptionCancelAtPeriodEnd: { type: Boolean, default: false },
       subscriptionHistory: [
         {
           paymentDate: Date,
@@ -495,6 +512,7 @@ const VendorSchema = new Schema<IVendor>(
           },
           transactionId: String,
           invoiceUrl: String,
+          invoicePdf: String,
         },
       ],
 

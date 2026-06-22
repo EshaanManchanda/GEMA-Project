@@ -8,7 +8,7 @@ export const devTools = {
 
   // Test API connectivity
   async testAPIConnectivity() {
-    const apiUrl = import.meta.env.VITE_API_URL || 'https://gema-project.onrender.com/api';
+    const apiUrl = import.meta.env.VITE_API_URL || 'https://api.kidrove.com/api';
 
     logger.group('🔧 API Connectivity Test');
 
@@ -69,9 +69,9 @@ export const devTools = {
 
     logger.group('🔗 Proxy Configuration Status');
     logger.debug('Frontend URL:', window.location.origin);
-    logger.debug('Expected Backend URL:', 'https://gema-project.onrender.com');
+    logger.debug('Expected Backend URL:', 'https://api.kidrove.com');
     logger.debug('API Base URL:', import.meta.env.VITE_API_URL || 'Using proxy (/api)');
-    logger.debug('API should route to:', 'https://gema-project.onrender.com/api/*');
+    logger.debug('API should route to:', 'https://api.kidrove.com/api/*');
     logger.groupEnd();
   },
 
