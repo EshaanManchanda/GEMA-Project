@@ -265,17 +265,9 @@ export const validateCreateEvent = [
   validateNumericRange("price", 0, undefined, true),
   validateEnum("currency", CURRENCIES, false),
 
-  // Meeting link validation (required for Online events)
+  // Meeting link validation (optional for all events)
   body("meetingLink")
-    .if(body("venueType").equals("Online"))
-    .notEmpty()
-    .withMessage("Meeting link is required for online events")
-    .isURL({ protocols: ["http", "https"], require_protocol: true })
-    .withMessage("Meeting link must be a valid URL"),
-
-  body("meetingLink")
-    .if(body("venueType").not().equals("Online"))
-    .optional()
+    .optional({ nullable: true })
     .isURL({ protocols: ["http", "https"], require_protocol: true })
     .withMessage("Meeting link must be a valid URL"),
 
