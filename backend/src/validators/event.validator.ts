@@ -257,16 +257,9 @@ export const validateCreateEvent = [
   validateNumericRange("price", 0, undefined, true),
   validateEnum("currency", CURRENCIES, false),
 
-  // Meeting link validation (required for Online events)
+  // Meeting link validation
   body("meetingLink")
-    .if(body("venueType").equals("Online"))
-    .optional()
-    .isURL({ protocols: ["http", "https"], require_protocol: true })
-    .withMessage("Meeting link must be a valid URL"),
-
-  body("meetingLink")
-    .if(body("venueType").not().equals("Online"))
-    .optional()
+    .optional({ nullable: true, checkFalsy: true })
     .isURL({ protocols: ["http", "https"], require_protocol: true })
     .withMessage("Meeting link must be a valid URL"),
 
@@ -592,14 +585,7 @@ export const validateUpdateEvent = [
 
   // Meeting link validation
   body("meetingLink")
-    .if(body("venueType").equals("Online"))
-    .optional()
-    .isURL({ protocols: ["http", "https"], require_protocol: true })
-    .withMessage("Meeting link must be a valid URL"),
-
-  body("meetingLink")
-    .if(body("venueType").not().equals("Online"))
-    .optional()
+    .optional({ nullable: true, checkFalsy: true })
     .isURL({ protocols: ["http", "https"], require_protocol: true })
     .withMessage("Meeting link must be a valid URL"),
 
@@ -1056,17 +1042,9 @@ export const validateCreateTeacherEvent = [
     })
     .trim(),
 
-  // Meeting link (required for online, optional for offline)
+  // Meeting link (optional)
   body("meetingLink")
-    .if(body("eventType").equals("Online"))
-    .notEmpty()
-    .withMessage("Meeting link is required for online events")
-    .isURL({ protocols: ["http", "https"], require_protocol: true })
-    .withMessage("Meeting link must be a valid URL"),
-
-  body("meetingLink")
-    .if(body("eventType").not().equals("Online"))
-    .optional()
+    .optional({ nullable: true, checkFalsy: true })
     .isURL({ protocols: ["http", "https"], require_protocol: true })
     .withMessage("Meeting link must be a valid URL"),
 
@@ -1229,7 +1207,7 @@ export const validateUpdateTeacherEvent = [
   }),
 
   body("meetingLink")
-    .optional()
+    .optional({ nullable: true, checkFalsy: true })
     .isURL({ protocols: ["http", "https"], require_protocol: true })
     .withMessage("Meeting link must be a valid URL"),
 

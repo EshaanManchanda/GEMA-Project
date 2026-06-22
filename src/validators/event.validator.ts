@@ -267,7 +267,7 @@ export const validateCreateEvent = [
 
   // Meeting link validation (optional for all events)
   body("meetingLink")
-    .optional({ nullable: true })
+    .optional({ nullable: true, checkFalsy: true })
     .isURL({ protocols: ["http", "https"], require_protocol: true })
     .withMessage("Meeting link must be a valid URL"),
 
@@ -507,15 +507,7 @@ export const validateUpdateEvent = [
 
   // Meeting link validation
   body("meetingLink")
-    .if(body("venueType").equals("Online"))
-    .notEmpty()
-    .withMessage("Meeting link is required for online events")
-    .isURL({ protocols: ["http", "https"], require_protocol: true })
-    .withMessage("Meeting link must be a valid URL"),
-
-  body("meetingLink")
-    .if(body("venueType").not().equals("Online"))
-    .optional()
+    .optional({ nullable: true, checkFalsy: true })
     .isURL({ protocols: ["http", "https"], require_protocol: true })
     .withMessage("Meeting link must be a valid URL"),
 
