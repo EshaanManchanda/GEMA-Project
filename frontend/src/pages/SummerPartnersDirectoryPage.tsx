@@ -380,7 +380,7 @@ const SummerPartnersDirectoryPage: React.FC = () => {
 
                     {/* Description/Notes */}
                     <p className="text-sm text-neutral-500 leading-relaxed line-clamp-3 mb-6 flex-grow">
-                      {partner.notes || partner.message || "A premier Kidrove summer partner offering exceptional programs and structured spaces for child safety and enrichment."}
+                      {(partner.notes || partner.message || "A premier Kidrove summer partner offering exceptional programs and structured spaces for child safety and enrichment.").replace(/<[^>]*>?/gm, '')}
                     </p>
 
                     {/* Info Metadata */}
@@ -488,7 +488,7 @@ const SummerPartnersDirectoryPage: React.FC = () => {
                       </h3>
                       {event.description && (
                         <p className="text-sm text-slate-500 mt-2 line-clamp-2">
-                          {event.description}
+                          {event.description.replace(/<[^>]*>?/gm, '')}
                         </p>
                       )}
                     </div>
@@ -628,7 +628,7 @@ const SummerPartnersDirectoryPage: React.FC = () => {
                   <FaInfoCircle /> Partner Statement
                 </p>
                 <p className="text-sm sm:text-base text-neutral-600 leading-relaxed font-medium">
-                  {selectedPartner.notes || selectedPartner.message || "This partner is fully registered and verified under the Kidrove 2026 Summer Directory framework. Programs offered follow certified standards of kid safety, development, and fun."}
+                  {(selectedPartner.notes || selectedPartner.message || "This partner is fully registered and verified under the Kidrove 2026 Summer Directory framework. Programs offered follow certified standards of kid safety, development, and fun.").replace(/<[^>]*>?/gm, '')}
                 </p>
               </div>
 

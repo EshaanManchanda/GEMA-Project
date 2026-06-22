@@ -59,6 +59,9 @@ export interface UpdateProfileInput {
   address?: any;
   location?: any;
   website?: string;
+  profileVideoUrl?: string;
+  videoDescription?: string;
+  languagesSpoken?: string[];
 }
 
 export interface CreateEmployeeInput {
@@ -728,6 +731,9 @@ class VendorService {
     if (data.address !== undefined) vendor.address = data.address;
     if (data.location !== undefined) vendor.location = data.location;
     if (data.website !== undefined) vendor.website = data.website;
+    if (data.profileVideoUrl !== undefined) vendor.profileVideoUrl = data.profileVideoUrl;
+    if (data.videoDescription !== undefined) vendor.videoDescription = data.videoDescription;
+    if (data.languagesSpoken !== undefined) vendor.languagesSpoken = data.languagesSpoken;
 
     await vendor.save();
 
@@ -749,6 +755,7 @@ class VendorService {
       vendorProfile.coverImage = fileInfo.url;
     } else {
       vendorProfile.logo = fileInfo.url;
+      await User.findByIdAndUpdate(userId, { avatar: fileInfo.url });
     }
 
     await vendorProfile.save();
@@ -757,6 +764,27 @@ class VendorService {
       logo: vendorProfile.logo,
       coverImage: vendorProfile.coverImage,
       uploadedFile: fileInfo,
+    };
+  }
+
+  /**
+   * Delete vendor image (logo/cover)
+   */
+  async deleteImage(userId: string, imageType: string) {
+    const vendorProfile = await getOrCreateVendorProfile(userId);
+
+    if (imageType === "coverImage") {
+      vendorProfile.coverImage = undefined as any;
+    } else {
+      vendorProfile.logo = undefined as any;
+      await User.findByIdAndUpdate(userId, { avatar: "" });
+    }
+
+    await vendorProfile.save();
+
+    return {
+      logo: vendorProfile.logo || "",
+      coverImage: vendorProfile.coverImage || "",
     };
   }
 
@@ -852,46 +880,73 @@ class VendorService {
     sortBy?: string;
     sortOrder?: string;
   }) {
-    const query: any = {
-      isActive: true,
-      isSuspended: false,
-      verificationStatus: VerificationStatus.VERIFIED,
-    };
-
-    if (params.search) {
-      query.businessName = { $regex: params.search, $options: "i" };
-    }
-
     const pageNum = params.page || 1;
     const limitNum = params.limit || 12;
     const skip = (pageNum - 1) * limitNum;
 
+    // 1. Build the base User query for active vendors
+    const userQuery: any = { role: "vendor", status: "active" };
+
+    if (params.search) {
+      const searchRegex = new RegExp(escapeRegex(params.search), "i");
+      
+      // Also match Vendor businessName for the search
+      const matchedVendors = await Vendor.find({
+        businessName: searchRegex,
+        isSuspended: false
+      }).select("userId");
+      
+      const matchedVendorUserIds = matchedVendors.map(v => v.userId);
+
+      userQuery.$or = [
+        { firstName: searchRegex },
+        { lastName: searchRegex },
+        { _id: { $in: matchedVendorUserIds } }
+      ];
+    }
+
     const sortObj: any = {};
     sortObj[params.sortBy || "createdAt"] = params.sortOrder === "asc" ? 1 : -1;
 
-    const [vendors, total] = await Promise.all([
-      Vendor.find(query)
-        .populate("userId", "firstName lastName avatar")
-        .select("businessName email phone location socialMedia stats createdAt")
+    // 2. Fetch users and count
+    const [users, total] = await Promise.all([
+      User.find(userQuery)
+        .select("firstName lastName avatar email phone createdAt")
         .sort(sortObj)
         .skip(skip)
         .limit(limitNum)
         .lean(),
-      Vendor.countDocuments(query),
+      User.countDocuments(userQuery),
     ]);
 
-    const transformedVendors = vendors.map((v: any) => ({
-      id: v.userId?._id?.toString() || v._id.toString(),
-      name: v.businessName,
-      description: `Professional event organizer - ${v.businessName}`,
-      location: v.location?.city || "Location TBD",
-      rating: 4.5,
-      reviewCount: v.stats?.totalBookings || 0,
-      eventCount: v.stats?.totalEvents || 0,
-      logo: v.userId?.avatar || "",
-      coverImage: "",
-      categories: [],
-    }));
+    const userIds = users.map((u: any) => u._id);
+
+    // 3. Fetch corresponding Vendor documents (if they exist)
+    const vendors = await Vendor.find({
+      userId: { $in: userIds },
+      isSuspended: false,
+    }).lean();
+
+    const vendorMap = new Map(vendors.map((v: any) => [v.userId.toString(), v]));
+
+    // 4. Map them together
+    const transformedVendors = users.map((u: any) => {
+      const v: any = vendorMap.get(u._id.toString()) || {};
+      const name = v.businessName || `${u.firstName || ''} ${u.lastName || ''}`.trim() || 'Vendor';
+
+      return {
+        id: u._id.toString(),
+        name,
+        description: v.bio || `Professional event organizer - ${name}`,
+        location: v.location?.city || "Location TBD",
+        rating: v.stats?.averageRating || 4.5,
+        reviewCount: v.stats?.totalReviews || v.stats?.totalBookings || 0,
+        eventCount: v.stats?.totalEvents || 0,
+        logo: v.logo || u.avatar || "",
+        coverImage: v.coverImage || "",
+        categories: v.category ? [v.category] : [],
+      };
+    });
 
     return {
       vendors: transformedVendors,
@@ -952,7 +1007,7 @@ class VendorService {
       userId: resolvedUserId,
     }).select(
       "businessName description category address location website " +
-        "socialMedia businessHours stats",
+        "socialMedia businessHours stats coverImage logo",
     );
 
     if (!vendorProfile) throw new AppError("Vendor not found", 404);
@@ -968,9 +1023,10 @@ class VendorService {
       isApproved: true,
     })
       .select(
-        "title slug description category price currency images dateSchedule " +
+        "title slug description category price currency images imageAssets dateSchedule " +
           "location tags viewsCount averageRating reviewCount",
       )
+      .populate("imageAssets", "url secureUrl publicId")
       .sort({ createdAt: -1 })
       .limit(20);
 

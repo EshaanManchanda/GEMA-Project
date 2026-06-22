@@ -1783,6 +1783,20 @@ export const updateAvatar = async (
     user.avatar = avatar;
     await user.save();
 
+    // Sync with Vendor profile if user is a vendor
+    if (user.role === "vendor") {
+      try {
+        const vendorProfile = await Vendor.findOne({ userId });
+        if (vendorProfile) {
+          vendorProfile.logo = avatar;
+          await vendorProfile.save();
+          logger.info(`Synced new avatar to vendor profile logo for user ${userId}`);
+        }
+      } catch (err) {
+        logger.error(`Failed to sync avatar to vendor profile for user ${userId}`, { error: err });
+      }
+    }
+
     // Clean up old avatar if it was a MediaAsset
     if (oldAvatarUrl) {
       const oldUuidMatch = oldAvatarUrl.match(
@@ -1892,6 +1906,20 @@ export const deleteAvatar = async (
     // Remove avatar from user
     user.avatar = undefined;
     await user.save();
+
+    // Sync with Vendor profile if user is a vendor
+    if (user.role === "vendor") {
+      try {
+        const vendorProfile = await Vendor.findOne({ userId });
+        if (vendorProfile) {
+          vendorProfile.logo = undefined as any;
+          await vendorProfile.save();
+          logger.info(`Cleared vendor profile logo in sync with user avatar for user ${userId}`);
+        }
+      } catch (err) {
+        logger.error(`Failed to clear vendor profile logo for user ${userId}`, { error: err });
+      }
+    }
 
     // Invalidate user cache
     const cacheKey = `user:${userId}`;

@@ -1,13 +1,13 @@
 import React from 'react';
 import { Link, useLocation, useNavigate } from 'react-router-dom';
 import {
-  FaTachometerAlt,
+  FaThLarge,
   FaTicketAlt,
   FaCalendarPlus,
-  FaFileAlt,
-  FaMoneyBillWave,
-  FaUsers,
-  FaChartBar,
+  FaListUl,
+  FaWallet,
+  FaUserTie,
+  FaChartLine,
   FaCog,
   FaHome,
   FaHandshake
@@ -27,7 +27,7 @@ const VendorNavigation: React.FC = () => {
     {
       path: '/vendor',
       label: 'Dashboard',
-      icon: <FaTachometerAlt className="w-4 h-4" />
+      icon: <FaThLarge className="w-4 h-4" />
     },
     {
       path: '/vendor/events',
@@ -47,22 +47,22 @@ const VendorNavigation: React.FC = () => {
     {
       path: '/vendor/bookings',
       label: 'Bookings',
-      icon: <FaFileAlt className="w-4 h-4" />
+      icon: <FaListUl className="w-4 h-4" />
     },
     {
       path: '/vendor/payouts',
       label: 'Payouts',
-      icon: <FaMoneyBillWave className="w-4 h-4" />
+      icon: <FaWallet className="w-4 h-4" />
     },
     {
       path: '/vendor/employees',
       label: 'Employees',
-      icon: <FaUsers className="w-4 h-4" />
+      icon: <FaUserTie className="w-4 h-4" />
     },
     {
       path: '/vendor/analytics',
       label: 'Analytics',
-      icon: <FaChartBar className="w-4 h-4" />
+      icon: <FaChartLine className="w-4 h-4" />
     },
     {
       path: '/vendor/profile',
@@ -99,23 +99,41 @@ const VendorNavigation: React.FC = () => {
           </div>
 
           {/* Navigation Links */}
-          <div className="hidden md:flex items-center space-x-2">
+          <div className="hidden lg:flex items-center space-x-1 overflow-x-auto scrollbar-hide py-1">
             {navItems.map((item) => (
               <Link
                 key={item.path}
                 to={item.path}
-                className={`flex items-center space-x-2 px-4 py-2.5 rounded-xl text-sm font-semibold transition-all duration-300 transform hover:scale-105 ${
+                className={`flex items-center space-x-1.5 px-3 py-2 rounded-xl text-sm font-semibold transition-all duration-300 transform hover:scale-105 whitespace-nowrap ${
                   isActive(item.path)
                     ? 'bg-gradient-to-r from-green-600 to-emerald-600 text-white shadow-lg shadow-green-500/25 border border-green-500'
                     : 'text-gray-700 hover:text-green-700 hover:bg-white/60 hover:shadow-md backdrop-blur-sm border border-transparent hover:border-green-200'
                 }`}
               >
-                <div className={`transition-colors duration-300 ${
+                <div className={`transition-colors duration-300 flex-shrink-0 ${
                   isActive(item.path) ? 'text-green-100' : 'text-green-600'
                 }`}>
                   {item.icon}
                 </div>
                 <span>{item.label}</span>
+              </Link>
+            ))}
+          </div>
+
+          {/* Tablet Navigation */}
+          <div className="hidden md:flex lg:hidden items-center space-x-1">
+            {navItems.slice(0, 5).map((item) => (
+              <Link
+                key={item.path}
+                to={item.path}
+                className={`flex items-center justify-center w-10 h-10 rounded-lg text-sm font-medium transition-all duration-300 flex-shrink-0 ${
+                  isActive(item.path)
+                    ? 'bg-gradient-to-r from-green-600 to-emerald-600 text-white shadow-lg'
+                    : 'text-gray-700 hover:text-green-700 hover:bg-white/60'
+                }`}
+                title={item.label}
+              >
+                {item.icon}
               </Link>
             ))}
           </div>

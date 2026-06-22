@@ -49,6 +49,9 @@ import {
   FaChartBar,
   FaFileAlt,
   FaAward,
+  FaHandshake,
+  FaMoneyBillWave,
+  FaUsers,
   // FaHome
 } from 'react-icons/fa';
 
@@ -449,8 +452,17 @@ const Layout: React.FC<{ children?: React.ReactNode }> = ({ children }) => {
                           <Link to="/vendor/events/create" className="flex items-center px-4 py-2 text-sm text-gray-700 hover:bg-gray-100" onClick={() => setProfileDropdownOpen(false)}>
                             <FaCalendarPlus className="mr-3 text-gray-400" /> Create Event
                           </Link>
+                          <Link to="/vendor/claimed-events" className="flex items-center px-4 py-2 text-sm text-gray-700 hover:bg-gray-100" onClick={() => setProfileDropdownOpen(false)}>
+                            <FaHandshake className="mr-3 text-gray-400" /> Claimed Listings
+                          </Link>
                           <Link to="/vendor/bookings" className="flex items-center px-4 py-2 text-sm text-gray-700 hover:bg-gray-100" onClick={() => setProfileDropdownOpen(false)}>
                             <FaFileAlt className="mr-3 text-gray-400" /> Bookings
+                          </Link>
+                          <Link to="/vendor/payouts" className="flex items-center px-4 py-2 text-sm text-gray-700 hover:bg-gray-100" onClick={() => setProfileDropdownOpen(false)}>
+                            <FaMoneyBillWave className="mr-3 text-gray-400" /> Payouts
+                          </Link>
+                          <Link to="/vendor/employees" className="flex items-center px-4 py-2 text-sm text-gray-700 hover:bg-gray-100" onClick={() => setProfileDropdownOpen(false)}>
+                            <FaUsers className="mr-3 text-gray-400" /> Employees
                           </Link>
                           <Link to="/vendor/analytics" className="flex items-center px-4 py-2 text-sm text-gray-700 hover:bg-gray-100" onClick={() => setProfileDropdownOpen(false)}>
                             <FaChartBar className="mr-3 text-gray-400" /> Analytics
@@ -661,7 +673,10 @@ const Layout: React.FC<{ children?: React.ReactNode }> = ({ children }) => {
                             <p className="text-xs font-semibold text-gray-400 uppercase tracking-wider px-3 pt-4 pb-1">Vendor</p>
                             <Link to="/vendor/events" className="flex items-center gap-3 px-3 py-3 rounded-lg text-sm font-medium min-h-[48px] text-gray-700 hover:bg-gray-50" onClick={() => setMobileMenuOpen(false)}><FaTicketAlt size={14} className="text-gray-400 flex-shrink-0" /> My Events</Link>
                             <Link to="/vendor/events/create" className="flex items-center gap-3 px-3 py-3 rounded-lg text-sm font-medium min-h-[48px] text-gray-700 hover:bg-gray-50" onClick={() => setMobileMenuOpen(false)}><FaCalendarPlus size={14} className="text-gray-400 flex-shrink-0" /> Create Event</Link>
+                            <Link to="/vendor/claimed-events" className="flex items-center gap-3 px-3 py-3 rounded-lg text-sm font-medium min-h-[48px] text-gray-700 hover:bg-gray-50" onClick={() => setMobileMenuOpen(false)}><FaHandshake size={14} className="text-gray-400 flex-shrink-0" /> Claimed Listings</Link>
                             <Link to="/vendor/bookings" className="flex items-center gap-3 px-3 py-3 rounded-lg text-sm font-medium min-h-[48px] text-gray-700 hover:bg-gray-50" onClick={() => setMobileMenuOpen(false)}><FaFileAlt size={14} className="text-gray-400 flex-shrink-0" /> Bookings</Link>
+                            <Link to="/vendor/payouts" className="flex items-center gap-3 px-3 py-3 rounded-lg text-sm font-medium min-h-[48px] text-gray-700 hover:bg-gray-50" onClick={() => setMobileMenuOpen(false)}><FaMoneyBillWave size={14} className="text-gray-400 flex-shrink-0" /> Payouts</Link>
+                            <Link to="/vendor/employees" className="flex items-center gap-3 px-3 py-3 rounded-lg text-sm font-medium min-h-[48px] text-gray-700 hover:bg-gray-50" onClick={() => setMobileMenuOpen(false)}><FaUsers size={14} className="text-gray-400 flex-shrink-0" /> Employees</Link>
                             <Link to="/vendor/analytics" className="flex items-center gap-3 px-3 py-3 rounded-lg text-sm font-medium min-h-[48px] text-gray-700 hover:bg-gray-50" onClick={() => setMobileMenuOpen(false)}><FaChartBar size={14} className="text-gray-400 flex-shrink-0" /> Analytics</Link>
                           </>
                         )}

@@ -330,7 +330,7 @@ export const getEvents = async (
     // Execute query
     const [events, total] = await Promise.all([
       Event.find(filter)
-        .populate("vendorId", "firstName lastName email")
+        .populate("vendorId", "firstName lastName businessName email logo bio")
         .populate({
           path: "teacherId",
           select: "fullName bio specialization profileImage coverImage userId",
@@ -459,7 +459,7 @@ export const getEvent = async (
     // Add timeout to the main query - only show active, published, non-expired events
     const event = await withTimeout(
       Event.findOne(filter)
-        .populate("vendorId", "firstName lastName email phone avatar")
+        .populate("vendorId", "firstName lastName businessName email phone avatar logo bio")
         .populate({
           path: "teacherId",
           select: "fullName bio specialization profileImage coverImage userId",
@@ -498,7 +498,7 @@ export const getEvent = async (
           );
 
           const recoveredEvent = await Event.findOne(filter)
-            .populate("vendorId", "firstName lastName email phone avatar")
+            .populate("vendorId", "firstName lastName businessName email phone avatar logo bio")
             .populate({
               path: "teacherId",
               select: "fullName bio specialization profileImage coverImage userId",
@@ -980,7 +980,7 @@ export const getAdminEvents = async (
     // Execute query
     const [events, total] = await Promise.all([
       Event.find(filter)
-        .populate("vendorId", "firstName lastName email")
+        .populate("vendorId", "firstName lastName businessName email logo bio")
         .populate("teacherId", "firstName lastName email") // ✅ Populate teacher details for admin view
         .populate("imageAssets", "url thumbnailUrl variations")
         .sort(sort)

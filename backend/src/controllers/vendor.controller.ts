@@ -265,6 +265,26 @@ export const uploadVendorImage = [
   }),
 ];
 
+// @desc    Delete vendor image (logo, cover image)
+// @route   DELETE /api/vendors/image/:imageType
+export const deleteVendorImage = catchAsync(async (req: AuthRequest, res: Response, next: NextFunction) => {
+  const userId = req.user?._id || req.user?.id;
+  if (!userId) return next(new AppError("User ID not found", 401));
+
+  const { imageType } = req.params;
+  if (imageType !== "logo" && imageType !== "coverImage") {
+    return next(new AppError("Invalid image type", 400));
+  }
+
+  const data = await vendorService.deleteImage(userId.toString(), imageType);
+
+  res.status(200).json({
+    success: true,
+    message: `Vendor ${imageType} deleted successfully`,
+    data,
+  });
+});
+
 // @desc    Update vendor business hours
 // @route   PUT /api/vendors/business-hours
 export const updateVendorBusinessHours = catchAsync(

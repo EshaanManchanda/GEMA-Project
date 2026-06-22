@@ -1484,13 +1484,7 @@ eventSchema.pre("save", async function (this: IEvent, next) {
 
 // Pre-validate middleware for diverse event type logic
 eventSchema.pre("validate", function (next) {
-  // 1. Online Events must have a meeting link
-  if (this.venueType === "Online" && !this.meetingLink) {
-    this.invalidate(
-      "meetingLink",
-      "Meeting link is required for online events",
-    );
-  }
+  // 1. Online Events - No specific requirements
 
   // 2. Offline Events must have at least a city
   if (this.venueType === "Offline" || this.venueType === "Indoor" || this.venueType === "Outdoor") {

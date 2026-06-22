@@ -69,36 +69,44 @@ const AdvancedTab: React.FC<AdvancedTabProps> = ({
           </CardTitle>
         </CardHeader>
         <CardContent className="space-y-6">
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
-            <div>
-              <label htmlFor="country" className="block text-sm font-medium text-gray-700 mb-1">
-                Country {venueType !== 'Online' && <span className="text-red-500">*</span>}
-              </label>
-              <CountrySelect
-                value={formData.country}
-                onChange={onCountryChange}
-                required={venueType !== 'Online'}
-                error={errors.country}
-              />
+          {venueType === 'Online' ? (
+            <div className="bg-gradient-to-r from-blue-50 to-indigo-50 border border-blue-200 rounded-lg p-4">
+              <div className="flex items-start">
+                <Globe className="w-5 h-5 text-blue-600 mt-0.5 mr-2 flex-shrink-0" />
+                <p className="text-sm text-blue-800">
+                  <strong>Note:</strong> Physical location not required for online events.
+                </p>
+              </div>
             </div>
-
-            <div>
-              <label htmlFor="city" className="block text-sm font-medium text-gray-700 mb-1">
-                City <span className="text-red-500">*</span>
-              </label>
-              <CityAutocomplete
-                value={formData.city}
-                country={formData.country}
-                onChange={(city) => onInputChange({ target: { name: 'city', value: city } } as any)}
-                required={true}
-                error={errors.city}
-              />
-            </div>
-          </div>
-
-          {/* Address and Coordinates - Only for non-Online events */}
-          {venueType !== 'Online' && (
+          ) : (
             <>
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
+                <div>
+                  <label htmlFor="country" className="block text-sm font-medium text-gray-700 mb-1">
+                    Country <span className="text-red-500">*</span>
+                  </label>
+                  <CountrySelect
+                    value={formData.country}
+                    onChange={onCountryChange}
+                    required={true}
+                    error={errors.country}
+                  />
+                </div>
+
+                <div>
+                  <label htmlFor="city" className="block text-sm font-medium text-gray-700 mb-1">
+                    City <span className="text-red-500">*</span>
+                  </label>
+                  <CityAutocomplete
+                    value={formData.city}
+                    country={formData.country}
+                    onChange={(city) => onInputChange({ target: { name: 'city', value: city } } as any)}
+                    required={true}
+                    error={errors.city}
+                  />
+                </div>
+              </div>
+
               <div>
                 <label htmlFor="address" className="block text-sm font-medium text-gray-700 mb-1">
                   Address <span className="text-red-500">*</span>
@@ -149,18 +157,6 @@ const AdvancedTab: React.FC<AdvancedTabProps> = ({
                 </div>
               </div>
             </>
-          )}
-
-          {/* Info note for Online events */}
-          {venueType === 'Online' && (
-            <div className="bg-gradient-to-r from-blue-50 to-indigo-50 border border-blue-200 rounded-lg p-4">
-              <div className="flex items-start">
-                <Globe className="w-5 h-5 text-blue-600 mt-0.5 mr-2 flex-shrink-0" />
-                <p className="text-sm text-blue-800">
-                  <strong>Note:</strong> Physical location not required for online events. City and country help with event discoverability and filtering.
-                </p>
-              </div>
-            </div>
           )}
         </CardContent>
       </Card>

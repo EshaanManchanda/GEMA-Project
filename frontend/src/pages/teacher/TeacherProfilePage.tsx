@@ -521,8 +521,8 @@ const TeacherProfilePage: React.FC = () => {
         {/* ── Tab Panel ─────────────────────────────────────────── */}
         <div className="bg-white rounded-2xl shadow-sm border border-gray-200 overflow-hidden">
           {/* Tab bar */}
-          <div className="border-b border-gray-200 overflow-x-auto">
-            <div className="flex min-w-max">
+          <div className="border-b border-gray-200">
+            <div className="flex flex-wrap">
               {TABS.map((tab) => (
                 <button
                   key={tab.key}

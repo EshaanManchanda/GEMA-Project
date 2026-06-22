@@ -1,5 +1,6 @@
 import { useQuery, UseQueryOptions } from '@tanstack/react-query';
 import vendorAPI from '@/services/api/vendorAPI';
+import vendorPayoutAPI from '@/services/api/vendorPayoutAPI';
 import analyticsAPI from '@/services/api/analyticsAPI';
 import { vendorKeys, vendorsKeys } from './queryKeys';
 
@@ -177,6 +178,36 @@ export function useVendorPayoutsQuery(params?: any, options?: Omit<UseQueryOptio
     enabled: !!params?.vendorId,
     staleTime: 2 * 60 * 1000, // 2 minutes
     gcTime: 10 * 60 * 1000, // 10 minutes
+    ...options,
+  });
+}
+
+export function useVendorPayoutDashboardQuery(options?: Omit<UseQueryOptions<any>, 'queryKey' | 'queryFn'>) {
+  return useQuery({
+    queryKey: [...vendorKeys.payouts.all(), 'dashboard'] as const,
+    queryFn: () => vendorPayoutAPI.getDashboard(),
+    staleTime: 2 * 60 * 1000,
+    gcTime: 10 * 60 * 1000,
+    ...options,
+  });
+}
+
+export function useVendorSubscriptionStatusQuery(options?: Omit<UseQueryOptions<any>, 'queryKey' | 'queryFn'>) {
+  return useQuery({
+    queryKey: [...vendorKeys.payouts.all(), 'subscription-status'] as const,
+    queryFn: () => vendorPayoutAPI.getSubscriptionStatus(),
+    staleTime: 2 * 60 * 1000,
+    gcTime: 10 * 60 * 1000,
+    ...options,
+  });
+}
+
+export function useVendorCommissionHistoryQuery(params?: any, options?: Omit<UseQueryOptions<any>, 'queryKey' | 'queryFn'>) {
+  return useQuery({
+    queryKey: [...vendorKeys.payouts.all(), 'commission-history', params] as const,
+    queryFn: () => vendorPayoutAPI.getCommissionHistory(params),
+    staleTime: 2 * 60 * 1000,
+    gcTime: 10 * 60 * 1000,
     ...options,
   });
 }

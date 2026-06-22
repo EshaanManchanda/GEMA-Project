@@ -38,9 +38,14 @@ export interface EventSeoMeta {
 
 export interface EventVendor {
   _id: string;
-  firstName: string;
-  lastName: string;
+  firstName?: string;
+  lastName?: string;
+  businessName?: string;
   email: string;
+  phone?: string;
+  logo?: string;
+  avatar?: string;
+  bio?: string;
 }
 
 export interface EventDateSchedule {

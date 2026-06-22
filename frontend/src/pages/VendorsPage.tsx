@@ -1,97 +1,186 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import { Link } from 'react-router-dom';
-import { motion } from 'framer-motion';
-import { useInView } from 'react-intersection-observer';
-import SEO from '@/components/common/SEO';
+import { motion, AnimatePresence } from 'framer-motion';
+import {
+  FaSearch, FaStar, FaUsers, FaCalendarAlt,
+  FaMapMarkerAlt, FaCheckCircle, FaTimes, FaBuilding
+} from 'react-icons/fa';
+import { MdOutlineSort } from 'react-icons/md';
 import { useVendorsQuery } from '@/hooks/queries/useVendorQuery';
 import { useDebounce } from '@/hooks/useDebounce';
+import SEO from '@/components/common/SEO';
+import { API_BASE_URL } from '@/config/api';
 
 interface Vendor {
   id: string;
   name: string;
-  logo: string;
-  coverImage: string;
   description: string;
+  location: string;
   rating: number;
   reviewCount: number;
   eventCount: number;
-  location: string;
+  logo: string;
+  coverImage: string;
   categories: string[];
 }
 
-// Lazy loaded vendor card with intersection observer
-interface VendorCardProps {
-  vendor: Vendor;
-}
+type SortOption = 'rating' | 'reviews' | 'events' | 'newest';
 
-const VendorCard: React.FC<VendorCardProps> = ({ vendor }) => {
-  const { ref, inView } = useInView({
-    triggerOnce: true,
-    threshold: 0.1,
-    rootMargin: '50px'
-  });
+const SORT_LABELS: Record<SortOption, string> = {
+  rating: 'Top Rated',
+  reviews: 'Most Reviews',
+  events: 'Most Events',
+  newest: 'Newest',
+};
 
+const API_ORIGIN = (() => {
+  try {
+    return new URL(API_BASE_URL).origin;
+  } catch {
+    return '';
+  }
+})();
+
+const normalizeImageUrl = (url?: string) => {
+  if (!url) return '';
+  if (/^(https?:|data:|blob:)/i.test(url)) return url;
+  if (API_ORIGIN && url.startsWith('/')) {
+    return `${API_ORIGIN}${url}`;
+  }
+  return url;
+};
+
+// ── Skeleton card ─────────────────────────────────────────────
+const SkeletonCard: React.FC = () => (
+  <div className="bg-white rounded-2xl shadow-sm overflow-hidden animate-pulse">
+    <div className="h-24 bg-gray-200" />
+    <div className="px-4 pb-5">
+      <div className="flex justify-center -mt-10 mb-3">
+        <div className="w-20 h-20 rounded-full bg-gray-300 border-4 border-white" />
+      </div>
+      <div className="flex flex-col items-center gap-2">
+        <div className="h-4 w-32 bg-gray-200 rounded" />
+        <div className="h-3 w-24 bg-gray-100 rounded" />
+        <div className="flex gap-1 mt-1">
+          <div className="h-5 w-14 bg-gray-100 rounded-full" />
+          <div className="h-5 w-14 bg-gray-100 rounded-full" />
+        </div>
+        <div className="flex gap-4 mt-2">
+          <div className="h-3 w-12 bg-gray-100 rounded" />
+          <div className="h-3 w-12 bg-gray-100 rounded" />
+        </div>
+      </div>
+    </div>
+  </div>
+);
+
+// ── Vendor card ──────────────────────────────────────────────
+const VendorCard: React.FC<{ vendor: Vendor; idx: number }> = ({ vendor, idx }) => {
   return (
     <motion.div
-      ref={ref}
-      key={vendor.id}
-      whileHover={{ y: -5 }}
-      className="bg-white rounded-lg overflow-hidden shadow-lg hover:shadow-xl transition-shadow duration-300"
+      initial={{ opacity: 0, y: 20 }}
+      animate={{ opacity: 1, y: 0 }}
+      transition={{ delay: Math.min(idx * 0.04, 0.4) }}
     >
-      <Link to={`/vendors/${vendor.id}`}>
-        <div className="relative h-48 overflow-hidden">
-          {inView ? (
+      <Link
+        to={`/vendors/${vendor.id}`}
+        className="block bg-white rounded-2xl shadow-sm hover:shadow-lg transition-all
+                   duration-300 overflow-hidden group border border-gray-100
+                   hover:border-emerald-200"
+      >
+        {/* Cover */}
+        <div className="h-24 bg-gradient-to-r from-emerald-500 to-teal-500 relative overflow-hidden">
+          {vendor.coverImage && (
             <img
-              src={vendor.coverImage}
-              alt={`${vendor.name} cover`}
-              className="w-full h-full object-cover"
-              loading="lazy"
+              src={normalizeImageUrl(vendor.coverImage)}
+              alt="cover"
+              className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
             />
-          ) : (
-            <div className="w-full h-full bg-gray-200 animate-pulse" />
           )}
-          <div className="absolute bottom-0 left-0 right-0 bg-gradient-to-t from-black/70 to-transparent p-4">
-            <div className="flex items-center">
-              {inView ? (
-                <img
-                  src={vendor.logo}
-                  alt={vendor.name}
-                  className="w-12 h-12 rounded-full border-2 border-white mr-3 object-cover"
-                  loading="lazy"
-                />
-              ) : (
-                <div className="w-12 h-12 rounded-full border-2 border-white mr-3 bg-gray-300 animate-pulse" />
-              )}
-              <h3 className="text-white font-bold text-lg truncate">{vendor.name}</h3>
-            </div>
-          </div>
         </div>
-        <div className="p-4">
-          <div className="flex justify-between items-center mb-2">
-            <div className="flex items-center">
-              <span className="text-yellow-500">★</span>
-              <span className="ml-1 font-medium">{vendor.rating}</span>
-              <span className="ml-1 text-gray-500">({vendor.reviewCount} reviews)</span>
+
+        <div className="px-4 pb-5">
+          {/* Logo */}
+          <div className="flex justify-center -mt-10 mb-2">
+            <div className="relative">
+              <div className="w-20 h-20 rounded-full border-4 border-white shadow-md overflow-hidden
+                              bg-gradient-to-br from-emerald-400 to-teal-400 flex items-center justify-center">
+                {vendor.logo ? (
+                  <img
+                    src={normalizeImageUrl(vendor.logo)}
+                    alt={vendor.name}
+                    className="w-full h-full object-cover"
+                  />
+                ) : (
+                  <FaBuilding className="text-white text-2xl" />
+                )}
+              </div>
+              <FaCheckCircle
+                className="absolute -bottom-0.5 -right-0.5 w-5 h-5 text-emerald-500
+                           bg-white rounded-full"
+                title="Verified vendor"
+              />
             </div>
-            <span className="text-sm text-gray-500">{vendor.eventCount} events</span>
           </div>
-          <p className="text-gray-600 mb-3 line-clamp-2">{vendor.description}</p>
-          <div className="flex items-center text-gray-500 text-sm">
-            <svg className="w-4 h-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z"></path>
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M15 11a3 3 0 11-6 0 3 3 0 016 0z"></path>
-            </svg>
-            {vendor.location}
+
+          {/* Name + Details */}
+          <div className="text-center">
+            <h3 className="font-bold text-gray-900 group-hover:text-emerald-600
+                           transition-colors leading-tight truncate px-2">
+              {vendor.name}
+            </h3>
+            {vendor.location && (
+              <p className="text-xs text-gray-500 mt-1 flex items-center justify-center gap-1">
+                <FaMapMarkerAlt className="w-3 h-3" />
+                {vendor.location}
+              </p>
+            )}
+            {vendor.description && (
+              <p className="text-xs text-gray-600 mt-2 line-clamp-2 px-2 text-center">
+                {vendor.description}
+              </p>
+            )}
           </div>
-          <div className="mt-3 flex flex-wrap gap-2">
-            {vendor.categories.slice(0, 3).map((category, index) => (
-              <span key={index} className="px-2 py-1 bg-gray-100 text-gray-600 text-xs rounded-full">
-                {category}
+
+          {/* Category chips */}
+          {vendor.categories && vendor.categories.length > 0 && (
+            <div className="flex flex-wrap justify-center gap-1 mt-3">
+              {vendor.categories.slice(0, 3).map((cat) => (
+                <span
+                  key={cat}
+                  className="px-2 py-0.5 bg-emerald-50 text-emerald-600 rounded-full text-xs font-medium"
+                >
+                  {cat}
+                </span>
+              ))}
+              {vendor.categories.length > 3 && (
+                <span className="px-2 py-0.5 bg-gray-50 text-gray-500 rounded-full text-xs">
+                  +{vendor.categories.length - 3}
+                </span>
+              )}
+            </div>
+          )}
+
+          {/* Stats row */}
+          <div className="flex items-center justify-center gap-4 mt-4 pt-4 border-t border-gray-50 text-xs text-gray-500">
+            {vendor.rating != null && (
+              <span className="flex items-center gap-1">
+                <FaStar className="text-yellow-400 w-3 h-3" />
+                <span className="font-medium text-gray-700">
+                  {vendor.rating.toFixed(1)}
+                </span>
               </span>
-            ))}
-            {vendor.categories.length > 3 && (
-              <span className="px-2 py-1 bg-gray-100 text-gray-600 text-xs rounded-full">
-                +{vendor.categories.length - 3} more
+            )}
+            {vendor.reviewCount != null && (
+              <span className="flex items-center gap-1" title="Reviews">
+                <FaUsers className="w-3 h-3 text-emerald-500/70" />
+                {vendor.reviewCount}
+              </span>
+            )}
+            {vendor.eventCount != null && (
+              <span className="flex items-center gap-1" title="Events">
+                <FaCalendarAlt className="w-3 h-3 text-emerald-500/70" />
+                {vendor.eventCount}
               </span>
             )}
           </div>
@@ -101,29 +190,34 @@ const VendorCard: React.FC<VendorCardProps> = ({ vendor }) => {
   );
 };
 
+// ── Main page ─────────────────────────────────────────────────
 const VendorsPage: React.FC = () => {
-  const [searchTerm, setSearchTerm] = useState<string>('');
-  const [selectedCategory, setSelectedCategory] = useState<string>('all');
-  const [page, setPage] = useState<number>(1);
-
-  // Debounce search to prevent excessive API calls
+  const [searchTerm, setSearchTerm] = useState('');
   const debouncedSearch = useDebounce(searchTerm, 500);
+
+  const [activeCategory, setActiveCategory] = useState<string | null>(null);
+  const [sortBy, setSortBy] = useState<SortOption>('newest');
+  const [showSort, setShowSort] = useState(false);
+  const [page, setPage] = useState(1);
+
+  // Reset page on filter changes
+  useEffect(() => {
+    setPage(1);
+  }, [debouncedSearch, activeCategory, sortBy]);
 
   // Build API query parameters
   const queryParams = {
     page,
     limit: 12,
     search: debouncedSearch || undefined,
-    sortBy: 'createdAt',
+    sortBy: sortBy === 'rating' || sortBy === 'reviews' || sortBy === 'events' ? 'stats' : 'createdAt',
     sortOrder: 'desc' as 'desc' | 'asc'
   };
 
-  // Fetch vendors using TanStack Query
   const { data, isLoading, isError, error } = useVendorsQuery(queryParams);
 
-  // Extract data from response
-  const vendors = data?.data?.vendors || [];
-  const pagination = data?.data?.pagination || {
+  const vendors = (data?.vendors || data?.data?.vendors || []) as Vendor[];
+  const pagination = data?.pagination || data?.data?.pagination || {
     currentPage: 1,
     totalPages: 1,
     total: 0,
@@ -131,28 +225,43 @@ const VendorsPage: React.FC = () => {
     hasPrevPage: false
   };
 
-  // Static categories (backend doesn't support filtering yet)
-  const categories = ['all', 'Corporate', 'Wedding', 'Festival', 'Technology', 'Sports', 'Education'];
+  // Pre-defined categories for vendors
+  const allCategories = ['Corporate', 'Wedding', 'Festival', 'Technology', 'Sports', 'Education', 'Entertainment'];
 
-  // Reset to page 1 when search changes
-  useEffect(() => {
-    setPage(1);
-  }, [debouncedSearch, selectedCategory]);
+  // Client-side filtering & sorting (since backend may not support complex filters yet)
+  const filtered = useMemo(() => {
+    let list = vendors.filter((v) => {
+      if (activeCategory && !v.categories?.includes(activeCategory) && v.categories?.[0] !== activeCategory) {
+         // Also match partial strings if categories are comma separated
+         if (!v.categories?.some(c => c.toLowerCase().includes(activeCategory.toLowerCase()))) {
+            return false;
+         }
+      }
+      return true;
+    });
 
-  // Client-side category filter (backend limitation)
-  const filteredVendors = selectedCategory === 'all'
-    ? vendors
-    : vendors.filter((vendor: Vendor) =>
-        vendor.categories.includes(selectedCategory)
-      );
+    list = [...list].sort((a, b) => {
+      switch (sortBy) {
+        case 'rating':
+          return (b.rating ?? 0) - (a.rating ?? 0);
+        case 'reviews':
+          return (b.reviewCount ?? 0) - (a.reviewCount ?? 0);
+        case 'events':
+          return (b.eventCount ?? 0) - (a.eventCount ?? 0);
+        default:
+          return 0; // Newest is default from backend
+      }
+    });
 
-  if (isLoading) {
-    return (
-      <div className="flex justify-center items-center min-h-screen">
-        <div className="animate-spin rounded-full h-16 w-16 border-t-2 border-b-2 border-primary"></div>
-      </div>
-    );
-  }
+    return list;
+  }, [vendors, activeCategory, sortBy]);
+
+  const hasFilters = debouncedSearch || activeCategory;
+
+  const clearFilters = () => {
+    setSearchTerm('');
+    setActiveCategory(null);
+  };
 
   const breadcrumbs = [
     { name: 'Home', url: '/' },
@@ -160,95 +269,222 @@ const VendorsPage: React.FC = () => {
   ];
 
   return (
-    <>
+    <div className="min-h-screen bg-gray-50">
       <SEO
-        title="Event Vendors - Kids Activities Organizers | Gema Events"
-        description="Discover trusted event vendors and organizers for kids activities in the UAE. Find professional service providers for birthday parties, educational programs, and family events."
-        keywords={['event vendors', 'kids activities organizers', 'event planners UAE', 'children event services', 'party organizers']}
+        title="Event Vendors & Organizers | Gema Events"
+        description="Discover top-rated event vendors and organizers. Find professional service providers for birthday parties, corporate events, educational programs, and more."
+        keywords={['event vendors', 'event organizers', 'party planners', 'event services']}
         breadcrumbs={breadcrumbs}
       />
-      <div className="container mx-auto px-4 py-8">
-        {isError && (
-          <div className="bg-red-100 border-l-4 border-red-500 text-red-700 p-4 mb-6" role="alert">
-            <p className="font-bold">Error</p>
-            <p>Failed to load vendors. {(error as any)?.message || 'Please try again later.'}</p>
-          </div>
-        )}
-
-      <h1 className="text-3xl font-bold mb-8 text-center">Event Organizers & Vendors</h1>
       
-      <div className="mb-8">
-        <div className="flex flex-col md:flex-row gap-4 mb-6">
-          <div className="flex-1">
+      {/* Hero */}
+      <div className="bg-gradient-to-r from-emerald-700 to-green-700 text-white py-14">
+        <div className="container mx-auto px-4 text-center">
+          <motion.h1
+            initial={{ opacity: 0, y: -16 }}
+            animate={{ opacity: 1, y: 0 }}
+            className="text-3xl sm:text-4xl md:text-5xl font-bold mb-3"
+          >
+            Find Top Event Organizers
+          </motion.h1>
+          <motion.p
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            transition={{ delay: 0.1 }}
+            className="text-emerald-100 text-base mb-8 max-w-xl mx-auto"
+          >
+            Discover professional vendors to bring your perfect event to life.
+          </motion.p>
+
+          {/* Search */}
+          <motion.div
+            initial={{ opacity: 0, scale: 0.96 }}
+            animate={{ opacity: 1, scale: 1 }}
+            transition={{ delay: 0.15 }}
+            className="max-w-lg mx-auto relative"
+          >
+            <FaSearch className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400 w-4 h-4" />
             <input
               type="text"
-              placeholder="Search vendors..."
-              className="w-full px-4 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-primary"
               value={searchTerm}
               onChange={(e) => setSearchTerm(e.target.value)}
+              placeholder="Search organizers by name..."
+              className="w-full pl-11 pr-4 py-3 rounded-xl text-gray-900 focus:outline-none
+                         focus:ring-2 focus:ring-emerald-500 shadow-lg text-sm"
             />
-          </div>
-          <div className="w-full md:w-64">
-            <select
-              className="w-full px-4 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-primary"
-              value={selectedCategory}
-              onChange={(e) => setSelectedCategory(e.target.value)}
+            {searchTerm && (
+              <button
+                onClick={() => setSearchTerm('')}
+                className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400
+                           hover:text-gray-600"
+              >
+                <FaTimes className="w-3.5 h-3.5" />
+              </button>
+            )}
+          </motion.div>
+        </div>
+      </div>
+
+      {/* Filters bar */}
+      <div className="sticky top-0 z-20 bg-white border-b border-gray-100 shadow-sm">
+        <div className="container mx-auto px-4 py-3 flex flex-wrap items-center gap-3">
+          {/* Category chips */}
+          <div className="flex items-center gap-1.5 flex-wrap flex-1 min-w-0">
+            <button
+              onClick={() => setActiveCategory(null)}
+              className={`px-3 py-1 rounded-full text-xs font-medium transition-colors
+                ${!activeCategory
+                  ? 'bg-emerald-600 text-white'
+                  : 'bg-emerald-50 text-emerald-600 hover:bg-emerald-100'
+                }`}
             >
-              {categories.map((category, index) => (
-                <option key={index} value={category}>
-                  {category.charAt(0).toUpperCase() + category.slice(1)}
-                </option>
-              ))}
-            </select>
+              All Categories
+            </button>
+            {allCategories.map((cat) => (
+              <button
+                key={cat}
+                onClick={() => setActiveCategory(activeCategory === cat ? null : cat)}
+                className={`px-3 py-1 rounded-full text-xs font-medium transition-colors
+                  ${activeCategory === cat
+                    ? 'bg-emerald-600 text-white'
+                    : 'bg-emerald-50 text-emerald-600 hover:bg-emerald-100'
+                  }`}
+              >
+                {cat}
+              </button>
+            ))}
+          </div>
+
+          {/* Sort */}
+          <div className="relative ml-auto">
+            <button
+              onClick={() => setShowSort((v) => !v)}
+              className="flex items-center gap-1.5 px-3 py-1.5 bg-gray-100 hover:bg-gray-200
+                         text-gray-600 rounded-lg text-xs font-medium transition-colors"
+            >
+              <MdOutlineSort className="w-4 h-4" />
+              {SORT_LABELS[sortBy]}
+            </button>
+            <AnimatePresence>
+              {showSort && (
+                <motion.div
+                  initial={{ opacity: 0, y: -4 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  exit={{ opacity: 0, y: -4 }}
+                  className="absolute right-0 top-full mt-1 w-40 bg-white rounded-xl shadow-lg
+                             border border-gray-100 overflow-hidden z-30"
+                >
+                  {(Object.keys(SORT_LABELS) as SortOption[]).map((opt) => (
+                    <button
+                      key={opt}
+                      onClick={() => { setSortBy(opt); setShowSort(false); }}
+                      className={`w-full text-left px-3 py-2 text-xs hover:bg-emerald-50
+                                  transition-colors
+                        ${sortBy === opt ? 'text-emerald-600 font-medium bg-emerald-50' : 'text-gray-600'}`}
+                    >
+                      {SORT_LABELS[opt]}
+                    </button>
+                  ))}
+                </motion.div>
+              )}
+            </AnimatePresence>
           </div>
         </div>
       </div>
 
-      {!isLoading && filteredVendors.length === 0 ? (
-        <div className="text-center py-12">
-          <h3 className="text-xl font-medium text-gray-500">
-            {debouncedSearch || selectedCategory !== 'all'
-              ? 'No vendors found matching your criteria'
-              : 'No vendors available at the moment'}
-          </h3>
-          <p className="mt-2 text-gray-400">
-            {debouncedSearch || selectedCategory !== 'all'
-              ? 'Try adjusting your search or filter options'
-              : 'Please check back later'}
-          </p>
-        </div>
-      ) : (
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6 sm:gap-8">
-          {filteredVendors.map((vendor: any) => (
-            <VendorCard key={vendor.id} vendor={vendor} />
-          ))}
-        </div>
-      )}
+      {/* Content */}
+      <div className="container mx-auto px-4 py-10">
+        {/* Results summary */}
+        {!isLoading && (
+          <div className="flex items-center justify-between mb-6">
+            <p className="text-sm text-gray-500">
+              {filtered.length === 0
+                ? 'No vendors found'
+                : `${filtered.length} vendor${filtered.length !== 1 ? 's' : ''}`}
+              {hasFilters && (
+                <span className="text-gray-400"> (filtered)</span>
+              )}
+            </p>
+            {hasFilters && (
+              <button
+                onClick={clearFilters}
+                className="text-xs text-emerald-600 hover:text-emerald-800 flex items-center gap-1"
+              >
+                <FaTimes className="w-3 h-3" />
+                Clear filters
+              </button>
+            )}
+          </div>
+        )}
 
-      {/* Pagination Controls */}
-      {pagination.totalPages > 1 && (
-        <div className="mt-8 flex justify-center items-center gap-4">
-          <button
-            onClick={() => setPage(p => Math.max(1, p - 1))}
-            disabled={!pagination.hasPrevPage}
-            className="px-4 py-2 border border-gray-300 rounded-lg hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
-          >
-            Previous
-          </button>
-          <span className="text-gray-700">
-            Page {pagination.currentPage} of {pagination.totalPages}
-          </span>
-          <button
-            onClick={() => setPage(p => p + 1)}
-            disabled={!pagination.hasNextPage}
-            className="px-4 py-2 border border-gray-300 rounded-lg hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
-          >
-            Next
-          </button>
-        </div>
-      )}
+        {/* Loading skeletons */}
+        {isLoading && (
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-5">
+            {Array.from({ length: 8 }).map((_, i) => (
+              <SkeletonCard key={i} />
+            ))}
+          </div>
+        )}
+
+        {/* Error */}
+        {isError && !isLoading && (
+          <div className="text-center py-20">
+            <p className="text-red-500 mb-4">{(error as any)?.message || 'Failed to load vendors. Please try again.'}</p>
+            <button
+              onClick={() => window.location.reload()}
+              className="px-6 py-2 bg-emerald-600 text-white rounded-xl hover:bg-emerald-700 text-sm"
+            >
+              Retry
+            </button>
+          </div>
+        )}
+
+        {/* Empty */}
+        {!isLoading && !isError && filtered.length === 0 && (
+          <div className="text-center py-20">
+            <FaBuilding className="w-14 h-14 text-gray-200 mx-auto mb-4" />
+            <p className="text-gray-400 text-lg font-medium mb-1">No organizers found</p>
+            <p className="text-gray-400 text-sm">
+              {hasFilters
+                ? 'Try adjusting your filters or search term.'
+                : 'Check back soon for new event organizers.'}
+            </p>
+          </div>
+        )}
+
+        {/* Grid */}
+        {!isLoading && !isError && filtered.length > 0 && (
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-5">
+            {filtered.map((vendor, idx) => (
+              <VendorCard key={vendor.id} vendor={vendor} idx={idx} />
+            ))}
+          </div>
+        )}
+
+        {/* Pagination Controls */}
+        {!isLoading && !isError && pagination.totalPages > 1 && (
+          <div className="mt-12 flex justify-center items-center gap-4">
+            <button
+              onClick={() => setPage(p => Math.max(1, p - 1))}
+              disabled={!pagination.hasPrevPage}
+              className="px-4 py-2 border border-gray-300 rounded-xl text-sm font-medium hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+            >
+              Previous
+            </button>
+            <span className="text-gray-500 text-sm font-medium">
+              Page {pagination.currentPage} of {pagination.totalPages}
+            </span>
+            <button
+              onClick={() => setPage(p => p + 1)}
+              disabled={!pagination.hasNextPage}
+              className="px-4 py-2 border border-gray-300 rounded-xl text-sm font-medium hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+            >
+              Next
+            </button>
+          </div>
+        )}
+      </div>
     </div>
-    </>
   );
 };
 

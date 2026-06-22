@@ -12,9 +12,22 @@ import {
   FaSpinner,
   FaCheck,
   FaBuilding,
+  FaShieldAlt,
+  FaTrash,
+  FaVideo,
+  FaLanguage,
+  FaLink,
+  FaPlay,
+  FaGlobe,
+  FaLinkedin,
+  FaInstagram,
+  FaYoutube,
+  FaFacebook,
 } from 'react-icons/fa';
 import PrivatePageSEO from '@/components/common/PrivatePageSEO';
 import vendorAPI from '../../services/api/vendorAPI';
+import { useDispatch } from 'react-redux';
+import { updateUser } from '@/store/slices/authSlice';
 
 import StripeConnectSetup from '../../components/vendor/StripeConnectSetup';
 import BankDetailsForm from '../../components/vendor/BankDetailsForm';
@@ -22,6 +35,30 @@ import DocumentUpload from '../../components/vendor/DocumentUpload';
 import BusinessHoursEditor from '../../components/vendor/BusinessHoursEditor';
 import PhoneVerificationSection from '../../components/profile/PhoneVerificationSection';
 import logger from '../../utils/logger';
+
+const SectionCard: React.FC<{ children: React.ReactNode; className?: string }> = ({
+  children,
+  className = '',
+}) => (
+  <div className={`bg-gray-50 border border-gray-200 rounded-2xl p-6 ${className}`}>
+    {children}
+  </div>
+);
+
+const FieldGroup: React.FC<{
+  label: string;
+  hint?: string;
+  children: React.ReactNode;
+}> = ({ label, hint, children }) => (
+  <div>
+    <label className="block text-sm font-semibold text-gray-700 mb-1.5">{label}</label>
+    {children}
+    {hint && <p className="text-xs text-gray-400 mt-1.5">{hint}</p>}
+  </div>
+);
+
+const inputCls =
+  'w-full px-4 py-3 bg-white border border-gray-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-shadow placeholder-gray-400';
 
 // Types
 interface VendorProfile {
@@ -41,6 +78,9 @@ interface VendorProfile {
     country: string;
   };
   website: string;
+  profileVideoUrl?: string;
+  videoDescription?: string;
+  languagesSpoken?: string[];
   socialMedia: {
     facebook: string;
     instagram: string;
@@ -69,6 +109,7 @@ interface VendorProfile {
 }
 
 const VendorProfilePage: React.FC = () => {
+  const dispatch = useDispatch();
   const [profile, setProfile] = useState<VendorProfile | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [activeTab, setActiveTab] = useState('business');
@@ -147,17 +188,41 @@ const VendorProfilePage: React.FC = () => {
     try {
       const imageType = type === 'logo' ? 'logo' : 'coverImage';
       const response = await vendorAPI.uploadVendorImage(file, imageType);
-      if (response?.data?.logo || response?.data?.coverImage) {
+      if (response?.logo || response?.coverImage) {
         setProfile(prev => prev ? {
           ...prev,
-          logo: response.data.logo || prev.logo,
-          coverImage: response.data.coverImage || prev.coverImage
+          logo: response.logo || prev.logo,
+          coverImage: response.coverImage || prev.coverImage
         } : null);
+        if (type === 'logo' && response.logo) {
+          dispatch(updateUser({ avatar: response.logo }));
+        }
         toast.success(`${type === 'logo' ? 'Logo' : 'Cover image'} uploaded successfully`);
       }
     } catch (error: any) {
       logger.error(`Error uploading ${type}:`, error);
       toast.error(`Failed to upload ${type}`);
+    }
+  };
+
+  const handleImageDelete = async (type: 'logo' | 'cover') => {
+    try {
+      const imageType = type === 'logo' ? 'logo' : 'coverImage';
+      await vendorAPI.deleteVendorImage(imageType);
+      
+      setProfile(prev => prev ? {
+        ...prev,
+        [type === 'logo' ? 'logo' : 'coverImage']: ''
+      } : null);
+      
+      if (type === 'logo') {
+        dispatch(updateUser({ avatar: '' }));
+      }
+      
+      toast.success(`${type === 'logo' ? 'Logo' : 'Cover image'} deleted successfully`);
+    } catch (error: any) {
+      logger.error(`Error deleting ${type}:`, error);
+      toast.error(`Failed to delete ${type}`);
     }
   };
 
@@ -236,118 +301,190 @@ const VendorProfilePage: React.FC = () => {
     <>
       <PrivatePageSEO title="Vendor - Profile | Kidrove" description="Manage your vendor profile" />
       <div className="min-h-screen bg-gray-50 pb-12">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          {/* Header Card */}
-          <div className="relative bg-gradient-to-br from-blue-600 via-blue-700 to-indigo-800 rounded-3xl p-8 text-white overflow-hidden mb-8">
-            {/* Background decoration */}
-            <div className="absolute inset-0 opacity-10">
-              <div className="absolute top-0 right-0 w-96 h-96 rounded-full bg-white transform translate-x-32 -translate-y-32"></div>
-              <div className="absolute bottom-0 left-0 w-64 h-64 rounded-full bg-white transform -translate-x-16 translate-y-16"></div>
+        <div className="max-w-4xl mx-auto px-4 py-8 space-y-6">
+
+          {/* ── Hero Card ─────────────────────────────────────────── */}
+          <div className="bg-white rounded-2xl shadow-sm border border-gray-200 overflow-hidden">
+            {/* Cover */}
+            <div className="relative h-36 bg-gradient-to-br from-blue-600 via-indigo-600 to-purple-600 group">
+              {profile.coverImage ? (
+                <img
+                  src={profile.coverImage}
+                  alt="Cover"
+                  className="absolute inset-0 w-full h-full object-cover"
+                />
+              ) : null}
+              <div className="absolute inset-0 bg-black/10 group-hover:bg-black/20 transition-colors" />
+              <div className="absolute top-3 right-3 flex items-center gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
+                {profile.coverImage && (
+                  <button
+                    type="button"
+                    onClick={() => handleImageDelete('cover')}
+                    className="p-1.5 bg-red-500 text-white rounded-lg cursor-pointer hover:bg-red-600 transition-colors shadow-sm"
+                    title="Delete cover image"
+                  >
+                    <FaTrash className="w-3.5 h-3.5" />
+                  </button>
+                )}
+                <label className="flex items-center gap-1.5 px-3 py-1.5 bg-black/50 backdrop-blur-sm text-white rounded-lg cursor-pointer hover:bg-black/70 transition-colors text-xs font-medium shadow-sm">
+                  <FaCamera className="w-3 h-3" />
+                  Change cover
+                  <input type="file" accept="image/*" className="hidden" onChange={(e) => e.target.files?.[0] && handleImageUpload(e.target.files[0], 'cover')} />
+                </label>
+              </div>
             </div>
 
-            <div className="relative z-10">
-              {/* Cover Image */}
-              {profile.coverImage && (
-                <div className="absolute inset-0 rounded-3xl overflow-hidden">
-                  <img src={profile.coverImage} alt="Cover" className="w-full h-full object-cover opacity-20" />
-                </div>
-              )}
-
-              <div className="relative flex flex-col md:flex-row items-center gap-8">
-                {/* Logo */}
-                <div className="relative group">
-                  <div className="w-32 h-32 rounded-full overflow-hidden bg-white/20 backdrop-blur-sm border-4 border-white/30">
+            {/* Avatar + Info */}
+            <div className="px-6 py-5">
+              <div className="flex items-center gap-5">
+                {/* Avatar */}
+                <div className="relative shrink-0 group">
+                  <div className="w-20 h-20 rounded-2xl bg-white shadow-md overflow-hidden border-4 border-white ring-2 ring-blue-100">
                     {profile.logo ? (
-                      <img src={profile.logo} alt="Logo" className="w-full h-full object-cover" />
+                      <img
+                        src={profile.logo}
+                        alt="Logo"
+                        className="w-full h-full object-cover"
+                      />
                     ) : (
-                      <div className="w-full h-full flex items-center justify-center text-white/60">
-                        <FaBuilding size={48} />
+                      <div className="w-full h-full bg-gradient-to-br from-blue-500 to-indigo-500 flex items-center justify-center text-white text-2xl font-bold">
+                        <FaBuilding size={32} />
                       </div>
                     )}
                   </div>
-                  <label className="absolute inset-0 bg-black/50 rounded-full opacity-0 group-hover:opacity-100 transition-opacity duration-300 flex items-center justify-center cursor-pointer">
-                    <FaCamera size={20} />
-                    <input
-                      type="file"
-                      className="hidden"
-                      accept="image/*"
-                      onChange={(e) => e.target.files?.[0] && handleImageUpload(e.target.files[0], 'logo')}
-                    />
-                  </label>
+                  <div className="absolute -bottom-1 -right-1 flex flex-col gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+                    <label className="p-1.5 bg-white rounded-full shadow-md cursor-pointer hover:bg-gray-50 transition-colors border border-gray-200">
+                      <FaCamera className="w-3 h-3 text-gray-600" />
+                      <input type="file" accept="image/*" className="hidden" onChange={(e) => e.target.files?.[0] && handleImageUpload(e.target.files[0], 'logo')} />
+                    </label>
+                    {profile.logo && (
+                      <button
+                        type="button"
+                        onClick={() => handleImageDelete('logo')}
+                        className="p-1.5 bg-red-50 text-red-600 rounded-full shadow-md cursor-pointer hover:bg-red-100 transition-colors border border-red-100"
+                        title="Delete logo"
+                      >
+                        <FaTrash className="w-3 h-3" />
+                      </button>
+                    )}
+                  </div>
                 </div>
 
-                {/* Profile Info */}
-                <div className="flex-1 text-center md:text-left">
-                  <h1 className="text-3xl font-bold mb-2">{profile.businessName || 'Your Business'}</h1>
-                  <p className="text-white/80 mb-4">{profile.email}</p>
-
-                  <div className="flex flex-wrap gap-4 justify-center md:justify-start text-sm">
-                    <div className="flex items-center gap-2 bg-white/10 rounded-full px-3 py-1">
-                      <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${profile.verificationStatus === 'verified'
-                        ? 'bg-green-100 text-green-800'
+                {/* Name & meta */}
+                <div className="min-w-0 flex-1">
+                  <div className="flex flex-wrap items-center gap-2">
+                    <h1 className="text-xl font-bold text-gray-900">
+                      {profile.businessName || 'Your Business'}
+                    </h1>
+                    <span
+                      className={`inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-xs font-semibold ${
+                        profile.verificationStatus === 'verified'
+                          ? 'bg-green-100 text-green-700'
+                          : profile.verificationStatus === 'pending'
+                          ? 'bg-amber-100 text-amber-700'
+                          : 'bg-gray-100 text-gray-500'
+                      }`}
+                    >
+                      <FaShieldAlt className="w-2.5 h-2.5" />
+                      {profile.verificationStatus === 'verified'
+                        ? 'Verified'
                         : profile.verificationStatus === 'pending'
-                          ? 'bg-yellow-100 text-yellow-800'
-                          : 'bg-gray-100 text-gray-800'
-                        }`}>
-                        {profile.verificationStatus === 'verified' && <><FaCheck className="mr-1" /> Verified</>}
-                        {profile.verificationStatus === 'pending' && 'Pending'}
-                        {profile.verificationStatus === 'unverified' && 'Unverified'}
-                        {profile.verificationStatus === 'rejected' && 'Rejected'}
+                        ? 'Pending review'
+                        : 'Unverified'}
+                    </span>
+                  </div>
+                  <div className="flex flex-wrap items-center gap-3 mt-1 text-xs text-gray-500">
+                    <span>Member since {new Date(profile.memberSince).getFullYear()}</span>
+                    <span className="flex items-center gap-1">
+                      {profile.email}
+                    </span>
+                    {profile.phone && (
+                      <span className="flex items-center gap-1">
+                        {profile.phone}
                       </span>
-                    </div>
-                    <div className="flex items-center gap-2 bg-white/10 rounded-full px-3 py-1">
-                      Member since {new Date(profile.memberSince).getFullYear()}
-                    </div>
+                    )}
                   </div>
                 </div>
               </div>
             </div>
           </div>
 
-          {/* Navigation Tabs */}
-          <div className="bg-white rounded-2xl p-6 shadow-lg border border-gray-100 mb-8">
-            <div className="flex flex-wrap gap-4 overflow-x-auto">
-              {tabs.map((tab) => (
-                <TabButton key={tab.id} id={tab.id} label={tab.label} icon={tab.icon} />
-              ))}
+          {/* ── Tab Panel ─────────────────────────────────────────── */}
+          <div className="bg-white rounded-2xl shadow-sm border border-gray-200 overflow-hidden">
+            {/* Tab bar */}
+            <div className="border-b border-gray-200">
+              {/* Mobile View */}
+              <div className="sm:hidden p-4">
+                <select
+                  value={activeTab}
+                  onChange={(e) => setActiveTab(e.target.value)}
+                  className="w-full px-4 py-3 bg-white border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500 font-medium text-gray-700"
+                >
+                  {tabs.map((tab) => (
+                    <option key={tab.id} value={tab.id}>
+                      {tab.label}
+                    </option>
+                  ))}
+                </select>
+              </div>
+              
+              {/* Desktop View */}
+              <div className="hidden sm:flex flex-wrap">
+                {tabs.map((tab) => (
+                  <button
+                    key={tab.id}
+                    type="button"
+                    onClick={() => setActiveTab(tab.id)}
+                    className={`flex items-center gap-2 px-5 py-4 text-sm font-medium border-b-2 transition-colors whitespace-nowrap ${
+                      activeTab === tab.id
+                        ? 'border-blue-600 text-blue-600 bg-blue-50/50'
+                        : 'border-transparent text-gray-500 hover:text-gray-700 hover:bg-gray-50'
+                    }`}
+                  >
+                    <span className="w-3.5 h-3.5">{tab.icon}</span>
+                    {tab.label}
+                  </button>
+                ))}
+              </div>
+            </div>
+
+            <div className="p-6">
+              <AnimatePresence mode="wait">
+                {activeTab === 'business' && (
+                  <BusinessInfoTab
+                    profile={profile}
+                    onUpdate={handleBasicInfoUpdate}
+                    onImageUpload={handleImageUpload}
+                    isLoading={isSaving}
+                  />
+                )}
+                {activeTab === 'contact' && (
+                  <ContactAddressTab
+                    profile={profile}
+                    onUpdate={handleBasicInfoUpdate}
+                    isLoading={isSaving}
+                    onRefresh={fetchVendorProfile}
+                  />
+                )}
+                {activeTab === 'details' && (
+                  <BusinessDetailsTab
+                    profile={profile}
+                    onUpdate={handleBasicInfoUpdate}
+                    isLoading={isSaving}
+                  />
+                )}
+                {activeTab === 'payments' && (
+                  <PaymentSettingsTab profile={profile} isLoading={isSaving} onRefresh={fetchVendorProfile} />
+                )}
+                {activeTab === 'bank' && (
+                  <BankDetailsTab profile={profile} />
+                )}
+                {activeTab === 'documents' && (
+                  <DocumentsTab profile={profile} onRefresh={fetchVendorProfile} />
+                )}
+              </AnimatePresence>
             </div>
           </div>
-
-          {/* Tab Content */}
-          <AnimatePresence mode="wait">
-            {activeTab === 'business' && (
-              <BusinessInfoTab
-                profile={profile}
-                onUpdate={handleBasicInfoUpdate}
-                onImageUpload={handleImageUpload}
-                isLoading={isSaving}
-              />
-            )}
-            {activeTab === 'contact' && (
-              <ContactAddressTab
-                profile={profile}
-                onUpdate={handleBasicInfoUpdate}
-                isLoading={isSaving}
-                onRefresh={fetchVendorProfile}
-              />
-            )}
-            {activeTab === 'details' && (
-              <BusinessDetailsTab
-                profile={profile}
-                onUpdate={handleBasicInfoUpdate}
-                isLoading={isSaving}
-              />
-            )}
-            {activeTab === 'payments' && (
-              <PaymentSettingsTab profile={profile} isLoading={isSaving} onRefresh={fetchVendorProfile} />
-            )}
-            {activeTab === 'bank' && (
-              <BankDetailsTab profile={profile} />
-            )}
-            {activeTab === 'documents' && (
-              <DocumentsTab profile={profile} onRefresh={fetchVendorProfile} />
-            )}
-          </AnimatePresence>
         </div>
       </div>
     </>
@@ -365,7 +502,82 @@ const BusinessInfoTab: React.FC<{
     businessName: profile.businessName,
     description: profile.description,
     website: profile.website,
+    profileVideoUrl: profile.profileVideoUrl || '',
+    videoDescription: profile.videoDescription || '',
+    languagesSpoken: profile.languagesSpoken || [],
   });
+
+  const [videoInputMode, setVideoInputMode] = useState<'upload' | 'link'>('link');
+  const [videoLinkInput, setVideoLinkInput] = useState(profile.profileVideoUrl || '');
+  const [isUploadingVideo, setIsUploadingVideo] = useState(false);
+
+  const AVAILABLE_LANGUAGES = [
+    { value: 'English', label: 'English' },
+    { value: 'Arabic', label: 'Arabic' },
+    { value: 'Hindi', label: 'Hindi' },
+    { value: 'Urdu', label: 'Urdu' },
+    { value: 'Malayalam', label: 'Malayalam' },
+    { value: 'Tamil', label: 'Tamil' },
+    { value: 'Tagalog', label: 'Tagalog' },
+    { value: 'Bengali', label: 'Bengali' },
+    { value: 'Persian', label: 'Persian' },
+    { value: 'French', label: 'French' },
+    { value: 'German', label: 'German' },
+    { value: 'Spanish', label: 'Spanish' },
+    { value: 'Chinese', label: 'Chinese' },
+    { value: 'Japanese', label: 'Japanese' },
+    { value: 'Korean', label: 'Korean' },
+    { value: 'Russian', label: 'Russian' },
+    { value: 'Portuguese', label: 'Portuguese' },
+    { value: 'Italian', label: 'Italian' },
+    { value: 'Dutch', label: 'Dutch' },
+    { value: 'Turkish', label: 'Turkish' },
+    { value: 'Other', label: 'Other' },
+  ];
+
+  const handleVideoLink = () => {
+    if (videoLinkInput) {
+      setFormData(prev => ({ ...prev, profileVideoUrl: videoLinkInput }));
+    }
+  };
+
+  const handleVideoUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    if (file.size > 50 * 1024 * 1024) {
+      toast.error('Video size must be less than 50MB');
+      return;
+    }
+
+    try {
+      setIsUploadingVideo(true);
+      // We will fallback to link mode if vendorAPI doesn't support video upload yet
+      // but ideally use the same backend endpoint. We assume onUpdate will be used later.
+      toast.error('Video file upload is currently not supported for vendors. Please use a YouTube/Vimeo link.');
+    } catch (error) {
+      console.error('Error uploading video:', error);
+      toast.error('Failed to upload video');
+    } finally {
+      setIsUploadingVideo(false);
+    }
+  };
+
+  const clearVideo = () => {
+    setFormData(prev => ({ ...prev, profileVideoUrl: '' }));
+    setVideoLinkInput('');
+  };
+
+  const toggleLanguage = (lang: string) => {
+    setFormData(prev => {
+      const current = prev.languagesSpoken || [];
+      if (current.includes(lang)) {
+        return { ...prev, languagesSpoken: current.filter(l => l !== lang) };
+      } else {
+        return { ...prev, languagesSpoken: [...current, lang] };
+      }
+    });
+  };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -375,45 +587,199 @@ const BusinessInfoTab: React.FC<{
   return (
     <motion.div
       key="business"
-      initial={{ opacity: 0, y: 20 }}
+      initial={{ opacity: 0, y: 8 }}
       animate={{ opacity: 1, y: 0 }}
-      exit={{ opacity: 0, y: -20 }}
-      className="bg-white rounded-2xl p-8 shadow-lg border border-gray-100"
+      className="space-y-5"
     >
-      <h2 className="text-2xl font-bold mb-6">Business Information</h2>
-      <form onSubmit={handleSubmit} className="space-y-6">
-        <div>
-          <label className="block text-sm font-medium text-gray-700 mb-2">Business Name *</label>
-          <input
-            type="text"
-            value={formData.businessName}
-            onChange={(e) => setFormData(prev => ({ ...prev, businessName: e.target.value }))}
-            className="w-full px-4 py-3 border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500"
-            required
-          />
-        </div>
+      <form onSubmit={handleSubmit} className="space-y-5">
+        <SectionCard>
+          <h3 className="text-sm font-semibold text-gray-700 mb-4 flex items-center gap-2">
+            <FaBuilding className="w-3.5 h-3.5 text-blue-500" />
+            Business Information
+          </h3>
+          <div className="space-y-4">
+            <FieldGroup label="Business Name *">
+              <input
+                type="text"
+                value={formData.businessName}
+                onChange={(e) => setFormData(prev => ({ ...prev, businessName: e.target.value }))}
+                className={inputCls}
+                required
+              />
+            </FieldGroup>
 
-        <div>
-          <label className="block text-sm font-medium text-gray-700 mb-2">Description</label>
-          <textarea
-            value={formData.description}
-            onChange={(e) => setFormData(prev => ({ ...prev, description: e.target.value }))}
-            rows={5}
-            className="w-full px-4 py-3 border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500 resize-none"
-            placeholder="Tell us about your business..."
-          />
-        </div>
+            <FieldGroup label="Description" hint="Tell us about your business...">
+              <textarea
+                value={formData.description}
+                onChange={(e) => setFormData(prev => ({ ...prev, description: e.target.value }))}
+                rows={5}
+                className={`${inputCls} resize-none`}
+              />
+            </FieldGroup>
 
-        <div>
-          <label className="block text-sm font-medium text-gray-700 mb-2">Website</label>
-          <input
-            type="url"
-            value={formData.website}
-            onChange={(e) => setFormData(prev => ({ ...prev, website: e.target.value }))}
-            className="w-full px-4 py-3 border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500"
-            placeholder="https://example.com"
-          />
-        </div>
+            <FieldGroup label="Website">
+              <input
+                type="url"
+                value={formData.website}
+                onChange={(e) => setFormData(prev => ({ ...prev, website: e.target.value }))}
+                className={inputCls}
+                placeholder="https://example.com"
+              />
+            </FieldGroup>
+          </div>
+        </SectionCard>
+
+        {/* ── Introduction Video ── */}
+        <SectionCard>
+          <h3 className="text-sm font-semibold text-gray-700 mb-1 flex items-center gap-2">
+            <FaVideo className="w-3.5 h-3.5 text-blue-500" />
+            Introduction Video
+          </h3>
+          <p className="text-xs text-gray-400 mb-4">Add a short video to introduce your business. You can paste a YouTube / Vimeo link.</p>
+
+          {/* Mode toggle */}
+          <div className="flex gap-2 mb-4">
+            <button
+              type="button"
+              onClick={() => setVideoInputMode('link')}
+              className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium transition-all ${videoInputMode === 'link' ? 'bg-blue-600 text-white' : 'bg-gray-100 text-gray-600 hover:bg-gray-200'}`}
+            >
+              <FaLink className="w-3 h-3" /> Paste Link
+            </button>
+            <button
+              type="button"
+              onClick={() => setVideoInputMode('upload')}
+              className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium transition-all ${videoInputMode === 'upload' ? 'bg-blue-600 text-white' : 'bg-gray-100 text-gray-600 hover:bg-gray-200'}`}
+            >
+              <FaVideo className="w-3 h-3" /> Upload File
+            </button>
+          </div>
+
+          {/* Link input */}
+          {videoInputMode === 'link' && (
+            <div className="flex gap-2 mb-4">
+              <input
+                type="url"
+                value={videoLinkInput}
+                onChange={(e) => setVideoLinkInput(e.target.value)}
+                placeholder="https://youtube.com/watch?v=... or https://vimeo.com/..."
+                className={inputCls}
+              />
+              <button
+                type="button"
+                onClick={handleVideoLink}
+                className="px-4 py-3 bg-blue-600 text-white rounded-xl hover:bg-blue-700 transition-colors font-medium text-sm whitespace-nowrap"
+              >
+                Set Link
+              </button>
+            </div>
+          )}
+
+          {/* Upload input */}
+          {videoInputMode === 'upload' && (
+            <div className="mb-4">
+              <label className={`flex items-center justify-center gap-3 w-full py-4 border-2 border-dashed rounded-xl cursor-pointer transition-colors ${isUploadingVideo ? 'border-blue-300 bg-blue-50' : 'border-gray-300 hover:border-blue-400 hover:bg-blue-50'}`}>
+                {isUploadingVideo ? (
+                  <>
+                    <div className="animate-spin w-5 h-5 border-2 border-blue-500 border-t-transparent rounded-full" />
+                    <span className="text-sm text-blue-600 font-medium">Uploading video…</span>
+                  </>
+                ) : (
+                  <>
+                    <FaVideo className="w-5 h-5 text-gray-400" />
+                    <span className="text-sm text-gray-500">Click to upload a video file (MP4, WebM, OGG)</span>
+                  </>
+                )}
+                <input
+                  type="file"
+                  accept="video/*"
+                  className="hidden"
+                  onChange={handleVideoUpload}
+                  disabled={isUploadingVideo}
+                />
+              </label>
+            </div>
+          )}
+
+          {/* Current video preview */}
+          {formData.profileVideoUrl && (
+            <div className="mb-4">
+              <div className="flex items-center justify-between mb-2">
+                <p className="text-xs font-semibold text-gray-600">Current Video</p>
+                <button
+                  type="button"
+                  onClick={clearVideo}
+                  className="flex items-center gap-1 text-xs text-red-500 hover:text-red-700 transition-colors"
+                >
+                  <FaTrash className="w-3 h-3" /> Remove
+                </button>
+              </div>
+              {formData.profileVideoUrl.startsWith('blob:') || formData.profileVideoUrl.match(/\.(mp4|webm|ogg)/i) ? (
+                <video
+                  src={formData.profileVideoUrl}
+                  controls
+                  className="w-full max-h-48 rounded-xl bg-black"
+                />
+              ) : (
+                <div className="flex items-center gap-2 p-3 bg-gray-50 border border-gray-200 rounded-xl">
+                  <div className="w-8 h-8 bg-blue-100 rounded-lg flex items-center justify-center">
+                    <FaPlay className="w-3 h-3 text-blue-600" />
+                  </div>
+                  <a
+                    href={formData.profileVideoUrl}
+                    target="_blank"
+                    rel="noreferrer"
+                    className="text-sm text-blue-600 hover:text-blue-800 underline truncate"
+                  >
+                    {formData.profileVideoUrl}
+                  </a>
+                </div>
+              )}
+            </div>
+          )}
+
+          {/* Get to know me better description */}
+          <FieldGroup
+            label='"About Our Business" description'
+            hint="A short paragraph shown alongside your intro video on your public profile"
+          >
+            <textarea
+              value={formData.videoDescription}
+              onChange={(e) => setFormData(prev => ({ ...prev, videoDescription: e.target.value }))}
+              rows={3}
+              placeholder="e.g. Learn more about what we do..."
+              className={`${inputCls} resize-none`}
+            />
+          </FieldGroup>
+        </SectionCard>
+
+        {/* ── Languages Spoken ── */}
+        <SectionCard>
+          <h3 className="text-sm font-semibold text-gray-700 mb-4 flex items-center gap-2">
+            <FaLanguage className="w-3.5 h-3.5 text-blue-500" />
+            Languages Spoken
+          </h3>
+          <div className="flex flex-wrap gap-2">
+            {AVAILABLE_LANGUAGES.map((lang) => (
+              <button
+                key={lang.value}
+                type="button"
+                onClick={() => toggleLanguage(lang.value)}
+                className={`px-3 py-1.5 rounded-full text-xs font-medium transition-all ${(formData.languagesSpoken || []).includes(lang.value)
+                    ? 'bg-blue-600 text-white shadow-sm'
+                    : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
+                  }`}
+              >
+                {lang.label}
+              </button>
+            ))}
+          </div>
+          {(formData.languagesSpoken || []).length > 0 && (
+            <p className="text-xs text-gray-400 mt-3">
+              {(formData.languagesSpoken || []).length} selected: {(formData.languagesSpoken || []).join(', ')}
+            </p>
+          )}
+        </SectionCard>
 
         <div className="flex justify-end">
           <button
@@ -474,125 +840,144 @@ const ContactAddressTab: React.FC<{
   return (
     <motion.div
       key="contact"
-      initial={{ opacity: 0, y: 20 }}
+      initial={{ opacity: 0, y: 8 }}
       animate={{ opacity: 1, y: 0 }}
-      exit={{ opacity: 0, y: -20 }}
-      className="space-y-6"
+      className="space-y-5"
     >
-      <div className="bg-white rounded-2xl p-8 shadow-lg border border-gray-100">
-        <h2 className="text-2xl font-bold mb-6">Contact Information</h2>
-        <form onSubmit={handleSubmit} className="space-y-6">
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">Email *</label>
+      <form onSubmit={handleSubmit} className="space-y-5">
+        <SectionCard>
+          <h3 className="text-sm font-semibold text-gray-700 mb-4 flex items-center gap-2">
+            <FaShieldAlt className="w-3.5 h-3.5 text-blue-500" />
+            Contact Information
+          </h3>
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <FieldGroup label="Email *">
               <input
                 type="email"
                 value={formData.email}
                 onChange={(e) => setFormData(prev => ({ ...prev, email: e.target.value }))}
-                className="w-full px-4 py-3 border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500"
+                className={inputCls}
                 required
               />
-            </div>
+            </FieldGroup>
 
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">Phone *</label>
+            <FieldGroup label="Phone *">
               <input
                 type="tel"
                 value={formData.phone}
                 onChange={(e) => setFormData(prev => ({ ...prev, phone: e.target.value }))}
-                className="w-full px-4 py-3 border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500"
+                className={inputCls}
                 required
               />
-            </div>
+            </FieldGroup>
           </div>
 
-          <PhoneVerificationSection
-            phone={profile.phone}
-            isPhoneVerified={profile.isPhoneVerified || false}
-            onSendVerification={handleSendPhoneVerification}
-            onVerifyPhone={handleVerifyPhone}
-            onResendVerification={() => handleSendPhoneVerification(profile.phone)}
-          />
+          <div className="mt-6">
+            <PhoneVerificationSection
+              phone={profile.phone}
+              isPhoneVerified={profile.isPhoneVerified || false}
+              onSendVerification={handleSendPhoneVerification}
+              onVerifyPhone={handleVerifyPhone}
+              onResendVerification={() => handleSendPhoneVerification(profile.phone)}
+            />
+          </div>
+        </SectionCard>
 
-          <h3 className="text-lg font-semibold mt-8 mb-4">Business Address</h3>
+        <SectionCard>
+          <h3 className="text-sm font-semibold text-gray-700 mb-4 flex items-center gap-2">
+            <FaBuilding className="w-3.5 h-3.5 text-blue-500" />
+            Business Address
+          </h3>
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <div className="md:col-span-2">
-              <label className="block text-sm font-medium text-gray-700 mb-2">Street Address</label>
-              <input
-                type="text"
-                value={formData.address.street}
-                onChange={(e) => setFormData(prev => ({ ...prev, address: { ...prev.address, street: e.target.value } }))}
-                className="w-full px-4 py-3 border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500"
-              />
+              <FieldGroup label="Street Address">
+                <input
+                  type="text"
+                  value={formData.address.street}
+                  onChange={(e) => setFormData(prev => ({ ...prev, address: { ...prev.address, street: e.target.value } }))}
+                  className={inputCls}
+                />
+              </FieldGroup>
             </div>
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">City</label>
+            <FieldGroup label="City">
               <input
                 type="text"
                 value={formData.address.city}
                 onChange={(e) => setFormData(prev => ({ ...prev, address: { ...prev.address, city: e.target.value } }))}
-                className="w-full px-4 py-3 border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500"
+                className={inputCls}
               />
-            </div>
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">State</label>
+            </FieldGroup>
+            <FieldGroup label="State">
               <input
                 type="text"
                 value={formData.address.state}
                 onChange={(e) => setFormData(prev => ({ ...prev, address: { ...prev.address, state: e.target.value } }))}
-                className="w-full px-4 py-3 border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500"
+                className={inputCls}
               />
-            </div>
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">Zip Code</label>
+            </FieldGroup>
+            <FieldGroup label="Zip Code">
               <input
                 type="text"
                 value={formData.address.zipCode}
                 onChange={(e) => setFormData(prev => ({ ...prev, address: { ...prev.address, zipCode: e.target.value } }))}
-                className="w-full px-4 py-3 border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500"
+                className={inputCls}
               />
-            </div>
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">Country</label>
+            </FieldGroup>
+            <FieldGroup label="Country">
               <input
                 type="text"
                 value={formData.address.country}
                 onChange={(e) => setFormData(prev => ({ ...prev, address: { ...prev.address, country: e.target.value } }))}
-                className="w-full px-4 py-3 border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500"
+                className={inputCls}
               />
-            </div>
+            </FieldGroup>
           </div>
+        </SectionCard>
 
-          <h3 className="text-lg font-semibold mt-8 mb-4">Social Media</h3>
+        <SectionCard>
+          <h3 className="text-sm font-semibold text-gray-700 mb-4 flex items-center gap-2">
+            <FaGlobe className="w-3.5 h-3.5 text-blue-500" />
+            Social Media
+          </h3>
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            {Object.entries(formData.socialMedia).map(([platform, value]) => (
-              <div key={platform}>
-                <label className="block text-sm font-medium text-gray-700 mb-2 capitalize">{platform}</label>
+            {[
+              { key: 'website', label: 'Website', icon: <FaGlobe className="w-4 h-4 text-gray-400" />, placeholder: 'https://yourwebsite.com' },
+              { key: 'linkedin', label: 'LinkedIn', icon: <FaLinkedin className="w-4 h-4 text-blue-600" />, placeholder: 'https://linkedin.com/in/you' },
+              { key: 'instagram', label: 'Instagram', icon: <FaInstagram className="w-4 h-4 text-pink-500" />, placeholder: 'https://instagram.com/you' },
+              { key: 'youtube', label: 'YouTube', icon: <FaYoutube className="w-4 h-4 text-red-600" />, placeholder: 'https://youtube.com/@you' },
+              { key: 'facebook', label: 'Facebook', icon: <FaFacebook className="w-4 h-4 text-blue-700" />, placeholder: 'https://facebook.com/yourpage' },
+              { key: 'twitter', label: 'Twitter', icon: <FaGlobe className="w-4 h-4 text-blue-400" />, placeholder: 'https://twitter.com/you' },
+            ].map((s) => (
+              <div key={s.key}>
+                <label className="flex items-center gap-1.5 text-sm font-semibold text-gray-700 mb-1.5">
+                  {s.icon}
+                  {s.label}
+                </label>
                 <input
                   type="url"
-                  value={value}
+                  value={formData.socialMedia[s.key as keyof typeof formData.socialMedia] as string || ''}
                   onChange={(e) => setFormData(prev => ({
                     ...prev,
-                    socialMedia: { ...prev.socialMedia, [platform]: e.target.value }
+                    socialMedia: { ...prev.socialMedia, [s.key]: e.target.value }
                   }))}
-                  className="w-full px-4 py-3 border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500"
-                  placeholder={`https://${platform}.com/yourpage`}
+                  className={inputCls}
+                  placeholder={s.placeholder}
                 />
               </div>
             ))}
           </div>
+        </SectionCard>
 
-          <div className="flex justify-end">
-            <button
-              type="submit"
-              disabled={isLoading}
-              className="inline-flex items-center gap-2 bg-blue-600 text-white px-8 py-3 rounded-xl font-medium hover:bg-blue-700 transition-colors disabled:opacity-50"
-            >
-              {isLoading ? <><FaSpinner className="animate-spin" /> Saving...</> : <><FaSave /> Save Changes</>}
-            </button>
-          </div>
-        </form>
-      </div>
+        <div className="flex justify-end">
+          <button
+            type="submit"
+            disabled={isLoading}
+            className="inline-flex items-center gap-2 bg-blue-600 text-white px-8 py-3 rounded-xl font-medium hover:bg-blue-700 transition-colors disabled:opacity-50"
+          >
+            {isLoading ? <><FaSpinner className="animate-spin" /> Saving...</> : <><FaSave /> Save Changes</>}
+          </button>
+        </div>
+      </form>
     </motion.div>
   );
 };
@@ -615,37 +1000,37 @@ const BusinessDetailsTab: React.FC<{
   return (
     <motion.div
       key="details"
-      initial={{ opacity: 0, y: 20 }}
+      initial={{ opacity: 0, y: 8 }}
       animate={{ opacity: 1, y: 0 }}
-      exit={{ opacity: 0, y: -20 }}
-      className="space-y-6"
+      className="space-y-5"
     >
-      <div className="bg-white rounded-2xl p-8 shadow-lg border border-gray-100">
+      <SectionCard>
         <BusinessHoursEditor
           currentHours={profile.businessHours}
           onSave={handleBusinessHoursSave}
           isLoading={isLoading}
         />
-      </div>
+      </SectionCard>
 
-      <div className="bg-white rounded-2xl p-8 shadow-lg border border-gray-100">
-        <h3 className="text-lg font-semibold mb-6">Tax Information</h3>
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-2">Tax ID / Business Registration</label>
+      <SectionCard>
+        <h3 className="text-sm font-semibold text-gray-700 mb-4 flex items-center gap-2">
+          <FaBuilding className="w-3.5 h-3.5 text-blue-500" />
+          Tax Information
+        </h3>
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+          <FieldGroup label="Tax ID / Business Registration">
             <input
               type="text"
               value={profile.taxInformation.taxId}
               onChange={(e) => onUpdate({ taxInformation: { ...profile.taxInformation, taxId: e.target.value } })}
-              className="w-full px-4 py-3 border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500"
+              className={inputCls}
             />
-          </div>
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-2">Business Type</label>
+          </FieldGroup>
+          <FieldGroup label="Business Type">
             <select
               value={profile.taxInformation.businessType}
               onChange={(e) => onUpdate({ taxInformation: { ...profile.taxInformation, businessType: e.target.value } })}
-              className="w-full px-4 py-3 border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500"
+              className={inputCls}
             >
               <option value="">Select Type</option>
               <option value="Sole Proprietorship">Sole Proprietorship</option>
@@ -653,9 +1038,9 @@ const BusinessDetailsTab: React.FC<{
               <option value="Corporation">Corporation</option>
               <option value="Partnership">Partnership</option>
             </select>
-          </div>
+          </FieldGroup>
         </div>
-      </div>
+      </SectionCard>
     </motion.div>
   );
 };
@@ -688,24 +1073,25 @@ const PaymentSettingsTab: React.FC<{ profile: VendorProfile; isLoading?: boolean
   return (
     <motion.div
       key="payments"
-      initial={{ opacity: 0, y: 20 }}
+      initial={{ opacity: 0, y: 8 }}
       animate={{ opacity: 1, y: 0 }}
-      exit={{ opacity: 0, y: -20 }}
-      className="bg-white rounded-2xl p-8 shadow-lg border border-gray-100"
+      className="space-y-5"
     >
-      <StripeConnectSetup
-        currentStatus={profile.stripeSettings}
-        onSaveApiKeys={handleSaveApiKeys}
-        onValidateKeys={handleValidateKeys}
-        isLoading={isLoading}
-      />
+      <SectionCard>
+        <StripeConnectSetup
+          currentStatus={profile.stripeSettings}
+          onSaveApiKeys={handleSaveApiKeys}
+          onValidateKeys={handleValidateKeys}
+          isLoading={isLoading}
+        />
+      </SectionCard>
 
       {profile.commissionRate !== undefined && (
-        <div className="mt-8 p-6 bg-blue-50 rounded-xl">
+        <SectionCard className="bg-blue-50/50">
           <h4 className="font-semibold text-gray-900 mb-2">Commission Rate</h4>
           <p className="text-3xl font-bold text-blue-600">{profile.commissionRate}%</p>
           <p className="text-sm text-gray-600 mt-1">Platform commission on each transaction</p>
-        </div>
+        </SectionCard>
       )}
     </motion.div>
   );
@@ -726,15 +1112,16 @@ const BankDetailsTab: React.FC<{ profile: VendorProfile }> = ({ profile }) => {
   return (
     <motion.div
       key="bank"
-      initial={{ opacity: 0, y: 20 }}
+      initial={{ opacity: 0, y: 8 }}
       animate={{ opacity: 1, y: 0 }}
-      exit={{ opacity: 0, y: -20 }}
-      className="bg-white rounded-2xl p-8 shadow-lg border border-gray-100"
+      className="space-y-5"
     >
-      <BankDetailsForm
-        currentDetails={profile.bankAccountDetails}
-        onSave={handleSaveBankDetails}
-      />
+      <SectionCard>
+        <BankDetailsForm
+          currentDetails={profile.bankAccountDetails}
+          onSave={handleSaveBankDetails}
+        />
+      </SectionCard>
     </motion.div>
   );
 };
@@ -768,22 +1155,23 @@ const DocumentsTab: React.FC<{ profile: VendorProfile; onRefresh: () => void }> 
   const rawDocs = profile.verificationDocuments || {};
   const docTypes = ['businessLicense', 'taxCertificate', 'identityDocument'] as const;
   const documents = docTypes
-    .filter(type => rawDocs[type]?.url)
-    .map(type => ({ type, ...rawDocs[type] }));
+    .filter(type => rawDocs[type as keyof typeof rawDocs]?.url)
+    .map(type => ({ type, ...rawDocs[type as keyof typeof rawDocs] }));
 
   return (
     <motion.div
       key="documents"
-      initial={{ opacity: 0, y: 20 }}
+      initial={{ opacity: 0, y: 8 }}
       animate={{ opacity: 1, y: 0 }}
-      exit={{ opacity: 0, y: -20 }}
-      className="bg-white rounded-2xl p-8 shadow-lg border border-gray-100"
+      className="space-y-5"
     >
-      <DocumentUpload
-        documents={documents}
-        onUpload={handleUploadDocument}
-        onDelete={handleDeleteDocument}
-      />
+      <SectionCard>
+        <DocumentUpload
+          documents={documents as any}
+          onUpload={handleUploadDocument}
+          onDelete={handleDeleteDocument}
+        />
+      </SectionCard>
     </motion.div>
   );
 };

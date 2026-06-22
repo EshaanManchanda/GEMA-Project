@@ -179,6 +179,9 @@ export interface IVendor extends Document {
   category?: string;
   logo?: string;
   coverImage?: string;
+  profileVideoUrl?: string;
+  videoDescription?: string;
+  languagesSpoken?: string[];
 
   // Contact Information
   email: string;
@@ -267,6 +270,17 @@ const VendorSchema = new Schema<IVendor>(
     coverImage: {
       type: String,
     },
+    profileVideoUrl: {
+      type: String,
+    },
+    videoDescription: {
+      type: String,
+      trim: true,
+      maxlength: [500, "Video description cannot be more than 500 characters"],
+    },
+    languagesSpoken: [{
+      type: String,
+    }],
 
     // Contact Information
     email: {

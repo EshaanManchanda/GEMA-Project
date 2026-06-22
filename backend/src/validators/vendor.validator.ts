@@ -102,6 +102,25 @@ export const validateUpdateProfile = [
     .withMessage("Zip code cannot be empty"),
 
   validateUrl("website", false),
+
+  validateUrl("profileVideoUrl", false),
+
+  body("videoDescription")
+    .optional()
+    .trim()
+    .isLength({ max: 500 })
+    .withMessage("Video description cannot exceed 500 characters"),
+
+  body("languagesSpoken")
+    .optional()
+    .isArray()
+    .withMessage("Languages must be an array of strings"),
+
+  body("languagesSpoken.*")
+    .optional()
+    .trim()
+    .isString()
+    .withMessage("Each language must be a string"),
 ];
 
 /**

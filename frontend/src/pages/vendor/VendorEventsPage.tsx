@@ -1,12 +1,13 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import { FaSearch, FaEdit, FaTrash, FaEye, FaUndo, FaPlus, FaWpforms, FaClipboardList, FaStar } from 'react-icons/fa';
 import { useNavigate } from 'react-router-dom';
-import vendorAPI from '../../services/api/vendorAPI';
 import categoriesAPI, { Category } from '../../services/api/categoriesAPI';
 import { ApiService } from '../../services/api';
 import PrivatePageSEO from '@/components/common/PrivatePageSEO';
 import logger from '../../utils/logger';
 import { toast } from 'react-hot-toast';
+import { useVendorEventsQuery } from '../../hooks/queries/useVendorQuery';
+import { useDeleteVendorEventMutation, useRestoreVendorEventMutation } from '../../hooks/mutations/useEventMutations';
 
 const PROMOTION_TIERS = [
   { id: 'boost', label: 'Boost', days: 7, priceAED: 49, desc: 'Highlighted for 7 days' },
@@ -81,10 +82,13 @@ interface Event {
 
 const VendorEventsPage: React.FC = () => {
   const navigate = useNavigate();
-  const [events, setEvents] = useState<Event[]>([]);
-  const [filteredEvents, setFilteredEvents] = useState<Event[]>([]);
+  const { data: eventsData, isLoading, error: queryError } = useVendorEventsQuery();
+  const deleteMutation = useDeleteVendorEventMutation();
+  const restoreMutation = useRestoreVendorEventMutation();
+
+  const events = Array.isArray(eventsData) ? eventsData : [];
+
   const [categories, setCategories] = useState<Category[]>([]);
-  const [isLoading, setIsLoading] = useState<boolean>(true);
   const [error, setError] = useState<string>('');
   const [searchTerm, setSearchTerm] = useState<string>('');
   const [statusFilter, setStatusFilter] = useState<string>('all');
@@ -101,39 +105,13 @@ const VendorEventsPage: React.FC = () => {
   const [selectedTier, setSelectedTier] = useState<'boost' | 'featured' | 'premium'>('boost');
   const [isPromoting, setIsPromoting] = useState(false);
 
-
   useEffect(() => {
-    fetchEvents();
     fetchCategories();
   }, []);
-
-  useEffect(() => {
-    filterEvents();
-  }, [events, searchTerm, statusFilter, categoryFilter, typeFilter]);
-
-  const fetchEvents = async () => {
-    try {
-      setIsLoading(true);
-      setError('');
-      const response = await vendorAPI.getVendorEvents();
-      logger.debug('API Response Events:', response);
-      const eventsData = response || [];
-      setEvents(eventsData);
-    } catch (err: any) {
-      logger.error('Error fetching events:', err);
-      setError(err.response?.data?.message || 'Failed to fetch events.');
-      setEvents([]);
-    } finally {
-      setIsLoading(false);
-    }
-  };
 
   const fetchCategories = async () => {
     try {
       const response = await categoriesAPI.getAllCategories({ tree: false, includeInactive: false });
-      // categoriesAPI.getAllCategories returns the array directly or in a structure depending on implementation.
-      // Based on AdminEventsPage usage (which handles array vs .data), and AdminEditEventPage (which handles array check),
-      // we should be robust.
       const categoriesList = Array.isArray(response) ? response : ((response as any).data || []);
       setCategories(categoriesList);
     } catch (err: any) {
@@ -141,7 +119,7 @@ const VendorEventsPage: React.FC = () => {
     }
   };
 
-  const filterEvents = () => {
+  const filteredEvents = useMemo(() => {
     let filtered = [...events];
 
     // Search filter
@@ -174,13 +152,12 @@ const VendorEventsPage: React.FC = () => {
       filtered = filtered.filter(e => e.type === typeFilter);
     }
 
-    setFilteredEvents(filtered);
-  };
+    return filtered;
+  }, [events, searchTerm, statusFilter, categoryFilter, typeFilter]);
 
   const handleDeleteEvent = async (eventId: string, permanent: boolean) => {
     try {
-      await vendorAPI.deleteVendorEvent(eventId, permanent);
-      await fetchEvents();
+      await deleteMutation.mutateAsync({ eventId, permanent });
       setEventToDelete(null);
       setIsDeleteModalOpen(false);
     } catch (err: any) {
@@ -191,8 +168,7 @@ const VendorEventsPage: React.FC = () => {
 
   const handleRestoreEvent = async (eventId: string) => {
     try {
-      await vendorAPI.restoreVendorEvent(eventId);
-      await fetchEvents();
+      await restoreMutation.mutateAsync(eventId);
     } catch (err: any) {
       logger.error('Error restoring event:', err);
       setError(err.response?.data?.message || err.message || 'Failed to restore event');
@@ -212,7 +188,6 @@ const VendorEventsPage: React.FC = () => {
       toast.success('Event promoted successfully!');
       setIsPromoteModalOpen(false);
       setEventToPromote(null);
-      await fetchEvents();
     } catch (err: any) {
       toast.error(err?.response?.data?.message || 'Failed to promote event');
       logger.error('Promote event error:', err);
@@ -258,10 +233,10 @@ const VendorEventsPage: React.FC = () => {
           </div>
 
           {/* Error Banner */}
-          {error && (
+          {(error || queryError) && (
             <div className="mb-6 bg-red-50 border border-red-200 rounded-lg p-4">
               <div className="flex items-center justify-between">
-                <p className="text-red-800">{error}</p>
+                <p className="text-red-800">{error || (queryError as any)?.message || 'An error occurred'}</p>
                 <button
                   onClick={() => setError('')}
                   className="text-red-600 hover:text-red-800"
@@ -432,7 +407,7 @@ const VendorEventsPage: React.FC = () => {
                         <td className="px-6 py-4 whitespace-nowrap text-sm font-medium">
                           <div className="flex space-x-2">
                             <button
-                              onClick={() => navigate(`/vendor/events/${event._id}`)}
+                              onClick={() => navigate(`/events/${event._id}`)}
                               className="text-blue-600 hover:text-blue-900"
                               title="View Details"
                             >

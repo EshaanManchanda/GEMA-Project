@@ -1,89 +1,64 @@
-import React, { useState, useEffect } from 'react';
-import { useDispatch, useSelector } from 'react-redux';
+import React, { useState } from 'react';
 import { Link } from 'react-router-dom';
 import { toast } from 'react-hot-toast';
 import {
-  fetchPayoutDashboard,
-  requestPayout,
-  cancelPayoutRequest,
-  selectEarnings,
-  selectRecentPayouts,
-  selectPendingRequests,
-  selectPaymentSettings,
-  selectIsDashboardLoading,
-  selectDashboardError,
-} from '../../store/slices/vendorPayoutSlice';
-import type { AppDispatch } from '../../store';
+  useVendorPayoutDashboardQuery,
+  useVendorSubscriptionStatusQuery,
+  useVendorCommissionHistoryQuery
+} from '../../hooks/queries/useVendorQuery';
+import {
+  useRequestPayoutMutation,
+  useCancelPayoutMutation
+} from '../../hooks/mutations/useVendorPayoutMutations';
 
-import vendorPayoutAPI, { SubscriptionStatusData, CommissionHistoryData } from '../../services/api/vendorPayoutAPI';
 import PrivatePageSEO from '@/components/common/PrivatePageSEO';
 
 const VendorPayoutsDashboard: React.FC = () => {
-  const dispatch = useDispatch<AppDispatch>();
+  const { data: dashboardData, isLoading: isDashboardLoading, error: dashboardErrorRaw } = useVendorPayoutDashboardQuery();
+  const dashboardError = dashboardErrorRaw ? (dashboardErrorRaw as any).message : null;
 
-  const earnings = useSelector(selectEarnings);
-  const recentPayouts = useSelector(selectRecentPayouts);
-  const pendingRequests = useSelector(selectPendingRequests);
-  const paymentSettings = useSelector(selectPaymentSettings);
-  const isDashboardLoading = useSelector(selectIsDashboardLoading);
-  const dashboardError = useSelector(selectDashboardError);
+  const earnings = dashboardData?.earnings;
+  const recentPayouts = dashboardData?.recentPayouts;
+  const pendingRequests = dashboardData?.pendingRequests;
+  const paymentSettings = dashboardData?.paymentSettings;
 
   const [showRequestModal, setShowRequestModal] = useState(false);
   const [requestAmount, setRequestAmount] = useState('');
 
-  // Subscription/Commission specific state
-  const [subscriptionData, setSubscriptionData] = useState<SubscriptionStatusData | null>(null);
-  const [commissionData, setCommissionData] = useState<CommissionHistoryData | null>(null);
-  const [isLoadingExtra, setIsLoadingExtra] = useState(false);
+  const isSubscriptionModel = paymentSettings?.paymentMode === 'custom_stripe';
 
-  useEffect(() => {
-    dispatch(fetchPayoutDashboard());
-  }, [dispatch]);
+  const { data: subscriptionData, isLoading: isLoadingSub } = useVendorSubscriptionStatusQuery({
+    enabled: isSubscriptionModel,
+  });
 
-  // Fetch subscription or commission data based on payment mode
-  useEffect(() => {
-    const fetchExtraData = async () => {
-      if (!paymentSettings?.paymentMode) return;
+  const { data: commissionData, isLoading: isLoadingComm } = useVendorCommissionHistoryQuery(
+    { page: 1, limit: 10 },
+    { enabled: !!paymentSettings?.paymentMode && !isSubscriptionModel }
+  );
 
-      setIsLoadingExtra(true);
-      try {
-        if (paymentSettings.paymentMode === 'custom_stripe') {
-          const data = await vendorPayoutAPI.getSubscriptionStatus();
-          setSubscriptionData(data);
-        } else {
-          const data = await vendorPayoutAPI.getCommissionHistory({ page: 1, limit: 10 });
-          setCommissionData(data);
-        }
-      } catch (error) {
-        console.error('Failed to fetch extra data:', error);
-      } finally {
-        setIsLoadingExtra(false);
-      }
-    };
+  const isLoadingExtra = isLoadingSub || isLoadingComm;
 
-    fetchExtraData();
-  }, [paymentSettings?.paymentMode]);
+  const requestPayoutMutation = useRequestPayoutMutation();
+  const cancelPayoutMutation = useCancelPayoutMutation();
 
   const handleRequestPayout = async () => {
     const amount = requestAmount ? parseFloat(requestAmount) : undefined;
 
     try {
-      await dispatch(requestPayout(amount)).unwrap();
-      toast.success('Payout request submitted successfully');
+      await requestPayoutMutation.mutateAsync(amount);
       setShowRequestModal(false);
       setRequestAmount('');
     } catch (error: any) {
-      toast.error(error || 'Failed to request payout');
+      // Toast handled in mutation
     }
   };
 
   const handleCancelRequest = async (id: string) => {
     if (window.confirm('Are you sure you want to cancel this payout request?')) {
       try {
-        await dispatch(cancelPayoutRequest(id)).unwrap();
-        toast.success('Payout request cancelled');
+        await cancelPayoutMutation.mutateAsync(id);
       } catch (error: any) {
-        toast.error(error || 'Failed to cancel request');
+        // Toast handled in mutation
       }
     }
   };
@@ -93,8 +68,6 @@ const VendorPayoutsDashboard: React.FC = () => {
 
   const eligibleBalance = (earnings as any)?.eligibleBalance || 0;
   const hasFundsReady = eligibleBalance > 0;
-
-  const isSubscriptionModel = paymentSettings?.paymentMode === 'custom_stripe';
 
   if (isDashboardLoading && !earnings) {
     return (

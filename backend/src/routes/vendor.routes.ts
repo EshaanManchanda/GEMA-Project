@@ -14,6 +14,7 @@ import {
   getVendorProfile,
   updateVendorProfile,
   uploadVendorImage,
+  deleteVendorImage,
   updateVendorBusinessHours,
   updateVendorSocialMedia,
   getPublicVendorProfile,
@@ -204,6 +205,13 @@ router.put("/profile", validateUpdateProfile, validate, updateVendorProfile);
  * @access  Vendor only
  */
 router.post("/upload-image", uploadVendorImage);
+
+/**
+ * @route   DELETE /api/vendors/image/:imageType
+ * @desc    Delete vendor images (logo, cover image)
+ * @access  Vendor only
+ */
+router.delete("/image/:imageType", deleteVendorImage);
 
 /**
  * @route   PUT /api/vendors/business-hours

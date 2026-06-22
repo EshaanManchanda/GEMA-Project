@@ -4,14 +4,18 @@
 
 export interface User {
   id: string;
-  role: 'admin' | 'vendor' | 'employee' | 'user';
+  role: 'admin' | 'vendor' | 'employee' | 'user' | 'teacher';
   permissions?: string[];
   vendorId?: string;
+  teacherId?: string;
 }
 
 export interface Event {
   _id: string;
   vendorId?: {
+    _id: string;
+  } | string;
+  teacherId?: {
     _id: string;
   } | string;
 }
@@ -32,13 +36,22 @@ export const canEditEventSEO = (user: User | null, event?: Event): boolean => {
   // Admin can edit all event SEO
   if (user.role === 'admin') return true;
 
-  // Vendor can only edit SEO for their own events
-  if (user.role === 'vendor' && event) {
+  // Vendor or Teacher can only edit SEO for their own events
+  if (user.role === 'vendor' || user.role === 'teacher') {
+    if (!event) return true;
+
     const eventVendorId = typeof event.vendorId === 'string'
       ? event.vendorId
       : event.vendorId?._id;
+      
+    const eventTeacherId = typeof event.teacherId === 'string'
+      ? event.teacherId
+      : event.teacherId?._id;
 
-    return user.vendorId === eventVendorId;
+    if (!eventVendorId && !eventTeacherId) return true;
+
+    return (user.role === 'vendor' && user.vendorId === eventVendorId) || 
+           (user.role === 'teacher' && user.teacherId === eventTeacherId);
   }
 
   return false;

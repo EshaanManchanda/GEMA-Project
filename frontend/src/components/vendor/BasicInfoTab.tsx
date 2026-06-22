@@ -4,7 +4,25 @@ import TagInput from '../common/TagInput';
 import MediaPickerModal from '../admin/media/MediaPickerModal';
 import { MediaAsset } from '../../store/slices/mediaSlice';
 import { Image as ImageIcon, Trash2 } from 'lucide-react';
-import { Card, CardContent, CardHeader, CardTitle } from '../ui/Card';
+
+const SectionCard: React.FC<{ children: React.ReactNode; className?: string }> = ({ children, className = '' }) => (
+  <div className={`bg-white rounded-2xl shadow-sm border border-gray-200 p-6 ${className}`}>
+    {children}
+  </div>
+);
+
+const FieldGroup: React.FC<{ label: string; hint?: React.ReactNode; required?: boolean; children: React.ReactNode; }> = ({ label, hint, required, children }) => (
+  <div>
+    <label className="block text-sm font-semibold text-gray-700 mb-1.5">
+      {label} {required && <span className="text-red-500">*</span>}
+    </label>
+    {children}
+    {hint && <div className="text-xs text-gray-400 mt-1.5">{hint}</div>}
+  </div>
+);
+
+const inputCls = 'w-full px-4 py-3 bg-white border border-gray-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-shadow placeholder-gray-400';
+
 
 // Lazy load TipTapEditor (~200KB) - only loaded when editing description
 const TipTapEditor = lazy(() => import('../common/TipTapEditor'));
@@ -53,9 +71,9 @@ interface BasicInfoTabProps {
   onImagesChange: (assets: MediaAsset[], previewUrls: string[]) => void;
   onRemoveImage: (index: number) => void;
   onTagsChange: (tags: string[]) => void;
-  showMediaPicker: boolean;
-  onOpenMediaPicker: () => void;
-  onCloseMediaPicker: () => void;
+  isUploadingImage: boolean;
+  onImageUpload: (e: React.ChangeEvent<HTMLInputElement>) => Promise<void>;
+  imageFileRef: React.RefObject<HTMLInputElement>;
   bookingMethod: 'internal' | 'external';
   onBookingMethodChange: (method: 'internal' | 'external') => void;
 }
@@ -69,12 +87,14 @@ const BasicInfoTab: React.FC<BasicInfoTabProps> = ({
   onImagesChange,
   onRemoveImage,
   onTagsChange,
-  showMediaPicker,
-  onOpenMediaPicker,
-  onCloseMediaPicker,
+  isUploadingImage,
+  onImageUpload,
+  imageFileRef,
   bookingMethod,
   onBookingMethodChange
 }) => {
+  const [isMediaPickerOpen, setIsMediaPickerOpen] = React.useState(false);
+
   // Handle description change from TipTapEditor
   const handleDescriptionChange = (content: string) => {
     const syntheticEvent = {
@@ -89,132 +109,112 @@ const BasicInfoTab: React.FC<BasicInfoTabProps> = ({
   return (
     <div className="space-y-6">
       {/* Booking Configuration Card */}
-      <Card>
-        <CardHeader>
-          <CardTitle>Booking Configuration</CardTitle>
-        </CardHeader>
-        <CardContent>
-          <div className="flex flex-col space-y-3">
-            <label className="text-sm font-medium text-gray-700">How would you like to handle bookings?</label>
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              <div
-                className={`relative rounded-lg border p-4 cursor-pointer flex flex-col hover:border-blue-500 transition-colors ${bookingMethod === 'internal' ? 'border-blue-500 bg-blue-50 ring-1 ring-blue-500' : 'border-gray-200'}`}
-                onClick={() => onBookingMethodChange('internal')}
-              >
-                <div className="flex items-center justify-between mb-2">
-                  <span className="font-semibold text-gray-900">Kidrove Internal Booking</span>
-                  {bookingMethod === 'internal' && (
-                    <div className="h-4 w-4 rounded-full bg-blue-600 flex items-center justify-center">
-                      <div className="h-2 w-2 rounded-full bg-white" />
-                    </div>
-                  )}
-                  {bookingMethod !== 'internal' && (
-                    <div className="h-4 w-4 rounded-full border border-gray-300" />
-                  )}
-                </div>
-                <p className="text-sm text-gray-500">
-                  Use Kidrove's secure payment system and attendance tracking.
-                </p>
+      <SectionCard>
+        <h3 className="text-lg font-semibold text-gray-900 mb-4">Booking Configuration</h3>
+        <div className="flex flex-col space-y-4">
+          <label className="text-sm font-medium text-gray-700">How would you like to handle bookings?</label>
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div
+              className={`relative rounded-xl border p-5 cursor-pointer flex flex-col transition-all duration-200 ${bookingMethod === 'internal' ? 'border-blue-500 bg-blue-50/50 ring-1 ring-blue-500' : 'border-gray-200 hover:border-blue-300 hover:bg-gray-50'}`}
+              onClick={() => onBookingMethodChange('internal')}
+            >
+              <div className="flex items-center justify-between mb-2">
+                <span className="font-semibold text-gray-900">Kidrove Internal Booking</span>
+                {bookingMethod === 'internal' ? (
+                  <div className="h-5 w-5 rounded-full bg-blue-600 flex items-center justify-center">
+                    <div className="h-2 w-2 rounded-full bg-white" />
+                  </div>
+                ) : (
+                  <div className="h-5 w-5 rounded-full border-2 border-gray-300" />
+                )}
               </div>
-
-              <div
-                className={`relative rounded-lg border p-4 cursor-pointer flex flex-col hover:border-blue-500 transition-colors ${bookingMethod === 'external' ? 'border-blue-500 bg-blue-50 ring-1 ring-blue-500' : 'border-gray-200'}`}
-                onClick={() => onBookingMethodChange('external')}
-              >
-                <div className="flex items-center justify-between mb-2">
-                  <span className="font-semibold text-gray-900">External Booking Link</span>
-                  {bookingMethod === 'external' && (
-                    <div className="h-4 w-4 rounded-full bg-blue-600 flex items-center justify-center">
-                      <div className="h-2 w-2 rounded-full bg-white" />
-                    </div>
-                  )}
-                  {bookingMethod !== 'external' && (
-                    <div className="h-4 w-4 rounded-full border border-gray-300" />
-                  )}
-                </div>
-                <p className="text-sm text-gray-500">
-                  Redirect users to an external website or ticketing platform.
-                </p>
-              </div>
+              <p className="text-sm text-gray-500">
+                Use Kidrove's secure payment system and attendance tracking.
+              </p>
             </div>
 
-            {bookingMethod === 'external' && (
-              <div className="mt-4 space-y-4 pl-1 border-l-4 border-blue-300 animate-in fade-in slide-in-from-top-2">
-                <div>
-                  <label htmlFor="externalBookingLink" className="block text-sm font-medium text-gray-700 mb-1">
-                    External Booking Link <span className="text-red-500">*</span>
-                  </label>
-                  <input
-                    type="url"
-                    id="externalBookingLink"
-                    name="externalBookingLink"
-                    value={formData.externalBookingLink || ''}
-                    onChange={onInputChange}
-                    className={`w-full px-3 py-2 border ${errors.externalBookingLink ? 'border-red-500' : 'border-gray-300'} rounded-md shadow-sm focus:outline-none focus:ring-primary focus:border-primary`}
-                    placeholder="https://your-website.com/booking/event-123"
-                  />
-                  {errors.externalBookingLink && <p className="mt-1 text-sm text-red-500">{errors.externalBookingLink}</p>}
-                  <p className="text-xs text-gray-500 mt-1">
-                    Note: When using an external link, registrations and payments will be handled outside of Kidrove.
-                  </p>
-                </div>
+            <div
+              className={`relative rounded-xl border p-5 cursor-pointer flex flex-col transition-all duration-200 ${bookingMethod === 'external' ? 'border-blue-500 bg-blue-50/50 ring-1 ring-blue-500' : 'border-gray-200 hover:border-blue-300 hover:bg-gray-50'}`}
+              onClick={() => onBookingMethodChange('external')}
+            >
+              <div className="flex items-center justify-between mb-2">
+                <span className="font-semibold text-gray-900">External Booking Link</span>
+                {bookingMethod === 'external' ? (
+                  <div className="h-5 w-5 rounded-full bg-blue-600 flex items-center justify-center">
+                    <div className="h-2 w-2 rounded-full bg-white" />
+                  </div>
+                ) : (
+                  <div className="h-5 w-5 rounded-full border-2 border-gray-300" />
+                )}
               </div>
-            )}
+              <p className="text-sm text-gray-500">
+                Redirect users to an external website or ticketing platform.
+              </p>
+            </div>
           </div>
-        </CardContent>
-      </Card>
+
+          {bookingMethod === 'external' && (
+            <div className="mt-4 animate-in fade-in slide-in-from-top-2">
+              <FieldGroup label="External Booking Link" required hint="Note: When using an external link, registrations and payments will be handled outside of Kidrove.">
+                <input
+                  type="url"
+                  id="externalBookingLink"
+                  name="externalBookingLink"
+                  value={formData.externalBookingLink || ''}
+                  onChange={onInputChange}
+                  className={`${inputCls} ${errors.externalBookingLink ? 'border-red-500 focus:ring-red-500' : ''}`}
+                  placeholder="https://your-website.com/booking/event-123"
+                />
+                {errors.externalBookingLink && <p className="mt-1 text-sm text-red-500">{errors.externalBookingLink}</p>}
+              </FieldGroup>
+            </div>
+          )}
+        </div>
+      </SectionCard>
 
       {/* Basic Information Card */}
-      <Card>
-        <CardHeader>
-          <CardTitle>Basic Information</CardTitle>
-        </CardHeader>
-        <CardContent className="space-y-6">
+      <SectionCard>
+        <h3 className="text-lg font-semibold text-gray-900 mb-6">Basic Information</h3>
+        <div className="space-y-6">
           {/* Event Title */}
-          <div>
-            <label htmlFor="title" className="block text-sm font-medium text-gray-700 mb-1">
-              Event Title <span className="text-red-500">*</span>
-            </label>
+          <FieldGroup label="Event Title" required>
             <input
               type="text"
               id="title"
               name="title"
               value={formData.title}
               onChange={onInputChange}
-              className={`w-full px-3 py-2 border ${errors.title ? 'border-red-500' : 'border-gray-300'} rounded-md shadow-sm focus:outline-none focus:ring-primary focus:border-primary`}
+              className={`${inputCls} ${errors.title ? 'border-red-500 focus:ring-red-500' : ''}`}
               placeholder="Enter event title"
             />
             {errors.title && <p className="mt-1 text-sm text-red-500">{errors.title}</p>}
-          </div>
+          </FieldGroup>
 
           {/* Description - Rich Text Editor */}
-          <div>
-            <label htmlFor="description" className="block text-sm font-medium text-gray-700 mb-2">
-              Description <span className="text-red-500">*</span>
-            </label>
-
-            <Suspense fallback={<TipTapEditorFallback />}>
-              <TipTapEditor
-                content={formData.description || ''}
-                onChange={handleDescriptionChange}
-                placeholder="Describe your event in detail... Use the toolbar to format text, add images, videos, and links. You can also insert custom HTML for Google Drive embeds."
-              />
-            </Suspense>
-
+          <FieldGroup
+            label="Description"
+            required
+            hint={
+              <>
+                💡 <strong>Tip:</strong> To embed Google Drive files, use the "Insert Custom HTML" button (📄 icon) in the toolbar.
+                Get the embed code from Google Drive by clicking Share → Get embed code.
+              </>
+            }
+          >
+            <div className="border border-gray-200 rounded-xl overflow-hidden focus-within:ring-2 focus-within:ring-blue-500 focus-within:border-transparent">
+              <Suspense fallback={<TipTapEditorFallback />}>
+                <TipTapEditor
+                  content={formData.description || ''}
+                  onChange={handleDescriptionChange}
+                  placeholder="Describe your event in detail... Use the toolbar to format text, add images, videos, and links. You can also insert custom HTML for Google Drive embeds."
+                />
+              </Suspense>
+            </div>
             {errors.description && <p className="mt-2 text-sm text-red-500">{errors.description}</p>}
-
-            {/* Helper text for Google Drive embeds */}
-            <p className="mt-2 text-xs text-gray-500">
-              💡 <strong>Tip:</strong> To embed Google Drive files, use the "Insert Custom HTML" button (📄 icon) in the toolbar.
-              Get the embed code from Google Drive by clicking Share → Get embed code.
-            </p>
-          </div>
+          </FieldGroup>
 
           {/* Short Description */}
-          <div>
-            <label htmlFor="shortDescription" className="block text-sm font-medium text-gray-700 mb-2">
-              Short Description <span className="text-gray-400 text-xs font-normal">(optional — shown in event cards)</span>
-            </label>
+          <FieldGroup label="Short Description" required hint={`(shown in event cards) ${(formData.shortDescription || '').length}/500`}>
             <textarea
               id="shortDescription"
               name="shortDescription"
@@ -223,23 +223,20 @@ const BasicInfoTab: React.FC<BasicInfoTabProps> = ({
               value={formData.shortDescription || ''}
               onChange={onInputChange}
               placeholder="A brief summary of the event (max 500 characters)..."
-              className="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-primary focus:border-primary resize-none"
+              className={`${inputCls} resize-none ${errors.shortDescription ? 'border-red-500 focus:ring-red-500' : ''}`}
             />
-            <p className="mt-1 text-xs text-gray-400 text-right">{(formData.shortDescription || '').length}/500</p>
-          </div>
+            {errors.shortDescription && <p className="mt-1 text-sm text-red-500">{errors.shortDescription}</p>}
+          </FieldGroup>
 
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
             {/* Category */}
-            <div>
-              <label htmlFor="category" className="block text-sm font-medium text-gray-700 mb-1">
-                Category <span className="text-red-500">*</span>
-              </label>
+            <FieldGroup label="Category" required>
               <select
                 id="category"
                 name="category"
                 value={formData.category}
                 onChange={onInputChange}
-                className={`w-full px-3 py-2 border ${errors.category ? 'border-red-500' : 'border-gray-300'} rounded-md shadow-sm focus:outline-none focus:ring-primary focus:border-primary`}
+                className={`${inputCls} ${errors.category ? 'border-red-500 focus:ring-red-500' : ''}`}
               >
                 <option value="">Select a category</option>
                 {categories.map(category => (
@@ -249,19 +246,16 @@ const BasicInfoTab: React.FC<BasicInfoTabProps> = ({
                 ))}
               </select>
               {errors.category && <p className="mt-1 text-sm text-red-500">{errors.category}</p>}
-            </div>
+            </FieldGroup>
 
             {/* Event Type */}
-            <div>
-              <label htmlFor="type" className="block text-sm font-medium text-gray-700 mb-1">
-                Event Type <span className="text-red-500">*</span>
-              </label>
+            <FieldGroup label="Event Type" required>
               <select
                 id="type"
                 name="type"
                 value={formData.type}
                 onChange={onInputChange}
-                className={`w-full px-3 py-2 border ${errors.type ? 'border-red-500' : 'border-gray-300'} rounded-md shadow-sm focus:outline-none focus:ring-primary focus:border-primary`}
+                className={`${inputCls} ${errors.type ? 'border-red-500 focus:ring-red-500' : ''}`}
               >
                 <option value="Olympiad">Olympiad</option>
                 <option value="Championship">Championship</option>
@@ -275,20 +269,17 @@ const BasicInfoTab: React.FC<BasicInfoTabProps> = ({
                 <option value="Venue">Venue</option>
               </select>
               {errors.type && <p className="mt-1 text-sm text-red-500">{errors.type}</p>}
-            </div>
+            </FieldGroup>
           </div>
 
           {/* Venue Type */}
-          <div>
-            <label htmlFor="venueType" className="block text-sm font-medium text-gray-700 mb-1">
-              Venue Type <span className="text-red-500">*</span>
-            </label>
+          <FieldGroup label="Venue Type" required>
             <select
               id="venueType"
               name="venueType"
               value={formData.venueType}
               onChange={onInputChange}
-              className={`w-full px-3 py-2 border ${errors.venueType ? 'border-red-500' : 'border-gray-300'} rounded-md shadow-sm focus:outline-none focus:ring-primary focus:border-primary`}
+              className={`${inputCls} ${errors.venueType ? 'border-red-500 focus:ring-red-500' : ''}`}
             >
               <option value="Indoor">Indoor</option>
               <option value="Outdoor">Outdoor</option>
@@ -296,34 +287,42 @@ const BasicInfoTab: React.FC<BasicInfoTabProps> = ({
               <option value="Offline">Offline</option>
             </select>
             {errors.venueType && <p className="mt-1 text-sm text-red-500">{errors.venueType}</p>}
-          </div>
+          </FieldGroup>
 
-          {/* Meeting Link — shown only for Online events (not for Venue type, which is always physical) */}
+          {/* Meeting Link & Password — shown only for Online events */}
           {formData.venueType === 'Online' && formData.type !== 'Venue' && (
-            <div>
-              <label htmlFor="meetingLink" className="block text-sm font-medium text-gray-700 mb-1">
-                Meeting Link <span className="text-gray-500">(optional)</span>
-              </label>
-              <input
-                type="url"
-                id="meetingLink"
-                name="meetingLink"
-                value={formData.meetingLink || ''}
-                onChange={onInputChange}
-                className={`w-full px-3 py-2 border ${errors.meetingLink ? 'border-red-500' : 'border-gray-300'} rounded-md shadow-sm focus:outline-none focus:ring-primary focus:border-primary`}
-                placeholder="https://zoom.us/j/..."
-              />
-              {errors.meetingLink && <p className="mt-1 text-sm text-red-500">{errors.meetingLink}</p>}
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+              <FieldGroup label="Meeting Link" hint="(optional)">
+                <input
+                  type="url"
+                  id="meetingLink"
+                  name="meetingLink"
+                  value={formData.meetingLink || ''}
+                  onChange={onInputChange}
+                  className={`${inputCls} ${errors.meetingLink ? 'border-red-500 focus:ring-red-500' : ''}`}
+                  placeholder="https://zoom.us/j/..."
+                />
+                {errors.meetingLink && <p className="mt-1 text-sm text-red-500">{errors.meetingLink}</p>}
+              </FieldGroup>
+              
+              <FieldGroup label="Meeting Password" hint="(optional)">
+                <input
+                  type="text"
+                  id="meetingPassword"
+                  name="meetingPassword"
+                  value={formData.meetingPassword || ''}
+                  onChange={onInputChange}
+                  className={inputCls}
+                  placeholder="Enter meeting password if required"
+                />
+              </FieldGroup>
             </div>
           )}
 
-          {/* Age Range — hidden for Venue type (venues don't have age requirements) */}
+          {/* Age Range */}
           {formData.type !== 'Venue' && (
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
-              <div>
-                <label htmlFor="ageRangeMin" className="block text-sm font-medium text-gray-700 mb-1">
-                  Minimum Age <span className="text-red-500">*</span>
-                </label>
+              <FieldGroup label="Minimum Age" required>
                 <input
                   type="number"
                   id="ageRangeMin"
@@ -332,16 +331,13 @@ const BasicInfoTab: React.FC<BasicInfoTabProps> = ({
                   onChange={onInputChange}
                   min="0"
                   max="100"
-                  className={`w-full px-3 py-2 border ${errors.ageRangeMin ? 'border-red-500' : 'border-gray-300'} rounded-md shadow-sm focus:outline-none focus:ring-primary focus:border-primary`}
+                  className={`${inputCls} ${errors.ageRangeMin ? 'border-red-500 focus:ring-red-500' : ''}`}
                   placeholder="e.g. 5"
                 />
                 {errors.ageRangeMin && <p className="mt-1 text-sm text-red-500">{errors.ageRangeMin}</p>}
-              </div>
+              </FieldGroup>
 
-              <div>
-                <label htmlFor="ageRangeMax" className="block text-sm font-medium text-gray-700 mb-1">
-                  Maximum Age <span className="text-red-500">*</span>
-                </label>
+              <FieldGroup label="Maximum Age" required>
                 <input
                   type="number"
                   id="ageRangeMax"
@@ -350,11 +346,11 @@ const BasicInfoTab: React.FC<BasicInfoTabProps> = ({
                   onChange={onInputChange}
                   min="0"
                   max="100"
-                  className={`w-full px-3 py-2 border ${errors.ageRangeMax ? 'border-red-500' : 'border-gray-300'} rounded-md shadow-sm focus:outline-none focus:ring-primary focus:border-primary`}
+                  className={`${inputCls} ${errors.ageRangeMax ? 'border-red-500 focus:ring-red-500' : ''}`}
                   placeholder="e.g. 12"
                 />
                 {errors.ageRangeMax && <p className="mt-1 text-sm text-red-500">{errors.ageRangeMax}</p>}
-              </div>
+              </FieldGroup>
             </div>
           )}
 
@@ -371,40 +367,32 @@ const BasicInfoTab: React.FC<BasicInfoTabProps> = ({
               error={errors.tags}
             />
           </div>
-        </CardContent>
-      </Card>
+        </div>
+      </SectionCard>
 
-      {/* Competition Details — Olympiad, Championship, Competition */}
+      {/* Competition Details */}
       {(COMPETITION_TYPES as readonly string[]).includes(formData.type) && (
-        <Card>
-          <CardHeader>
-            <CardTitle>Competition Details</CardTitle>
-          </CardHeader>
-          <CardContent className="space-y-4">
+        <SectionCard>
+          <h3 className="text-lg font-semibold text-gray-900 mb-4">Competition Details</h3>
+          <div className="space-y-4">
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
-              <div>
-                <label htmlFor="competitionFormat" className="block text-sm font-medium text-gray-700 mb-1">
-                  Competition Format <span className="text-red-500">*</span>
-                </label>
+              <FieldGroup label="Competition Format" required>
                 <select
                   id="competitionFormat"
                   name="competitionFormat"
                   value={formData.competitionFormat || ''}
                   onChange={onInputChange}
-                  className={`w-full px-3 py-2 border ${errors.competitionFormat ? 'border-red-500' : 'border-gray-300'} rounded-md shadow-sm focus:outline-none focus:ring-primary focus:border-primary`}
+                  className={`${inputCls} ${errors.competitionFormat ? 'border-red-500 focus:ring-red-500' : ''}`}
                 >
                   <option value="">Select format</option>
                   <option value="Individual">Individual</option>
                   <option value="Team">Team</option>
                 </select>
                 {errors.competitionFormat && <p className="mt-1 text-sm text-red-500">{errors.competitionFormat}</p>}
-              </div>
+              </FieldGroup>
 
               {formData.competitionFormat === 'Team' && (
-                <div>
-                  <label htmlFor="teamSize" className="block text-sm font-medium text-gray-700 mb-1">
-                    Team Size <span className="text-gray-500">(members per team)</span>
-                  </label>
+                <FieldGroup label="Team Size" hint="(members per team)">
                   <input
                     type="number"
                     id="teamSize"
@@ -412,34 +400,29 @@ const BasicInfoTab: React.FC<BasicInfoTabProps> = ({
                     value={formData.teamSize || ''}
                     onChange={onInputChange}
                     min="1"
-                    className={`w-full px-3 py-2 border ${errors.teamSize ? 'border-red-500' : 'border-gray-300'} rounded-md shadow-sm focus:outline-none focus:ring-primary focus:border-primary`}
+                    className={`${inputCls} ${errors.teamSize ? 'border-red-500 focus:ring-red-500' : ''}`}
                     placeholder="e.g. 4"
                   />
                   {errors.teamSize && <p className="mt-1 text-sm text-red-500">{errors.teamSize}</p>}
-                </div>
+                </FieldGroup>
               )}
             </div>
-          </CardContent>
-        </Card>
+          </div>
+        </SectionCard>
       )}
 
-      {/* Learning Details — Course, Workshop */}
+      {/* Learning Details */}
       {(LEARNING_TYPES as readonly string[]).includes(formData.type) && (
-        <Card>
-          <CardHeader>
-            <CardTitle>{formData.type} Details</CardTitle>
-          </CardHeader>
-          <CardContent className="space-y-4">
-            <div>
-              <label htmlFor="skillLevel" className="block text-sm font-medium text-gray-700 mb-1">
-                Skill Level
-              </label>
+        <SectionCard>
+          <h3 className="text-lg font-semibold text-gray-900 mb-4">{formData.type} Details</h3>
+          <div className="space-y-4">
+            <FieldGroup label="Skill Level">
               <select
                 id="skillLevel"
                 name="skillLevel"
                 value={formData.skillLevel || ''}
                 onChange={onInputChange}
-                className="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-primary focus:border-primary"
+                className={inputCls}
               >
                 <option value="">Select level</option>
                 <option value="All Levels">All Levels</option>
@@ -447,106 +430,123 @@ const BasicInfoTab: React.FC<BasicInfoTabProps> = ({
                 <option value="Intermediate">Intermediate</option>
                 <option value="Advanced">Advanced</option>
               </select>
-            </div>
+            </FieldGroup>
 
-            <div>
-              <label htmlFor="prerequisites" className="block text-sm font-medium text-gray-700 mb-1">
-                Prerequisites <span className="text-gray-500">(optional)</span>
-              </label>
+            <FieldGroup label="Prerequisites" hint="(optional)">
               <textarea
                 id="prerequisites"
                 name="prerequisites"
                 value={formData.prerequisites || ''}
                 onChange={onInputChange}
                 rows={3}
-                className="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-primary focus:border-primary"
+                className={inputCls}
                 placeholder="Any prior knowledge, skills, or materials participants should bring..."
               />
-            </div>
-          </CardContent>
-        </Card>
+            </FieldGroup>
+          </div>
+        </SectionCard>
       )}
 
       {/* Event Images Section */}
-      <Card>
-        <CardHeader>
-          <CardTitle className="flex items-center">
-            <ImageIcon className="w-5 h-5 mr-2" />
-            Event Images ({formData.imagePreviewUrls.length}/20)
-          </CardTitle>
-        </CardHeader>
-        <CardContent>
-          <div>
-            {/* Image Preview Grid */}
-            {formData.imagePreviewUrls.length > 0 && (
-              <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-6 mb-6">
-                {formData.imagePreviewUrls.map((url, index) => (
-                  <div key={index} className="relative group">
-                    <div className="relative rounded-xl overflow-hidden shadow-lg hover:shadow-2xl transform hover:scale-105 transition-all duration-200">
-                      <img
-                        src={url}
-                        alt={`Event image ${index + 1}`}
-                        className="h-40 w-full object-cover"
-                        onError={(e) => {
-                          e.currentTarget.style.display = 'none';
-                          const placeholder = e.currentTarget.nextElementSibling as HTMLElement;
-                          if (placeholder) placeholder.style.display = 'flex';
-                        }}
-                      />
-                      <div
-                        className="h-40 w-full bg-gray-100 items-center justify-center text-gray-400 text-xs text-center p-2"
-                        style={{ display: 'none' }}
-                      >
-                        Image unavailable
-                      </div>
-                      <button
-                        type="button"
-                        onClick={() => onRemoveImage(index)}
-                        className="absolute top-2 right-2 bg-red-500 text-white rounded-full p-1 w-8 h-8 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-all hover:bg-red-600 hover:scale-110"
-                      >
-                        <Trash2 className="w-5 h-5" />
-                      </button>
-                      <div className="absolute bottom-0 left-0 right-0 bg-gradient-to-t from-black/70 to-transparent text-white text-xs p-2 font-medium">
-                        Image {index + 1}
-                      </div>
-                    </div>
+      <SectionCard>
+        <h3 className="text-lg font-semibold text-gray-900 mb-2 flex items-center">
+          <ImageIcon className="w-5 h-5 mr-2 text-green-600" />
+          Event Images ({formData.imagePreviewUrls.length}/20)
+        </h3>
+        <p className="text-sm text-gray-500 mb-4">
+          Select from media library or upload new images. First image is the cover.
+        </p>
+        <div>
+          {/* Image Preview Grid */}
+          {formData.imagePreviewUrls.length > 0 && (
+            <div className="flex flex-wrap gap-3 mb-4">
+              {formData.imagePreviewUrls.map((url, index) => (
+                <div key={index} className="relative w-24 h-24 rounded-xl overflow-hidden shadow-sm border border-gray-200 group">
+                  <img
+                    src={url}
+                    alt={`Event image ${index + 1}`}
+                    className="w-full h-full object-cover"
+                    onError={(e) => {
+                      e.currentTarget.style.display = 'none';
+                      const placeholder = e.currentTarget.nextElementSibling as HTMLElement;
+                      if (placeholder) placeholder.style.display = 'flex';
+                    }}
+                  />
+                  <div
+                    className="h-full w-full bg-gray-50 items-center justify-center text-gray-400 text-[10px] text-center p-1"
+                    style={{ display: 'none' }}
+                  >
+                    Unavailable
                   </div>
-                ))}
-              </div>
-            )}
+                  <button
+                    type="button"
+                    onClick={() => onRemoveImage(index)}
+                    className="absolute top-1 right-1 bg-red-500 text-white rounded-full p-1 w-6 h-6 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-all hover:bg-red-600 shadow-sm"
+                  >
+                    <Trash2 className="w-3 h-3" />
+                  </button>
+                  {index === 0 && (
+                    <div className="absolute bottom-0 left-0 right-0 bg-black/60 text-white text-[10px] py-1 text-center font-medium">
+                      Cover
+                    </div>
+                  )}
+                </div>
+              ))}
+            </div>
+          )}
 
-            <button
-              type="button"
-              onClick={onOpenMediaPicker}
-              className="inline-flex items-center px-6 py-3 bg-gradient-to-r from-primary-500 to-primary-700 text-white font-semibold rounded-xl hover:from-primary-600 hover:to-primary-800 hover:shadow-xl transition-all duration-200"
-            >
-              <ImageIcon className="w-5 h-5 mr-2" />
-              {formData.imagePreviewUrls.length > 0 ? 'Add More Images' : 'Select Images'}
-            </button>
+          <div className="space-y-3">
+            <div className="flex gap-3 flex-wrap">
+              <button
+                type="button"
+                onClick={() => setIsMediaPickerOpen(true)}
+                className="flex items-center gap-2 px-5 py-2.5 bg-green-600 text-white hover:bg-green-700 rounded-xl transition-colors text-sm font-medium shadow-sm"
+              >
+                <ImageIcon className="w-4 h-4" />
+                Media Library
+              </button>
 
-            {errors.images && (
-              <p className="mt-2 text-sm text-red-500">{errors.images}</p>
-            )}
-            <p className="mt-3 text-xs text-gray-500">
-              Upload high-quality images to showcase your event. First image will be the featured image.
-            </p>
+              <input
+                type="file"
+                ref={imageFileRef}
+                onChange={onImageUpload}
+                accept="image/*"
+                className="hidden"
+              />
+              <button
+                type="button"
+                onClick={() => imageFileRef.current?.click()}
+                disabled={isUploadingImage}
+                className="flex items-center gap-2 px-5 py-2.5 bg-gray-100 text-gray-700 hover:bg-gray-200 rounded-xl transition-colors text-sm font-medium disabled:opacity-50"
+              >
+                <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-8l-4-4m0 0L8 8m4-4v12" />
+                </svg>
+                {isUploadingImage ? 'Uploading...' : 'Upload File'}
+              </button>
+            </div>
           </div>
-        </CardContent>
-      </Card>
 
-      <MediaPickerModal
-        isOpen={showMediaPicker}
-        onClose={onCloseMediaPicker}
-        onSelect={(assets) => {
-          onImagesChange(assets, assets.map(a => a.url));
-          onCloseMediaPicker();
-        }}
-        category="event"
-        folder="events"
-        multiple={true}
-        title="Select Event Images"
-      />
-    </div >
+          {errors.images && (
+            <p className="mt-3 text-sm text-red-500">{errors.images}</p>
+          )}
+        </div>
+
+        {/* Media Picker Modal */}
+        <MediaPickerModal
+          isOpen={isMediaPickerOpen}
+          onClose={() => setIsMediaPickerOpen(false)}
+          onSelect={(assets: MediaAsset[]) => {
+            onImagesChange(assets, assets.map(a => a.url));
+            setIsMediaPickerOpen(false);
+          }}
+          category="event"
+          multiple={true}
+          title="Select Event Images"
+        />
+      </SectionCard>
+
+    </div>
   );
 };
 

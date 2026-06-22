@@ -201,9 +201,27 @@ const vendorAPI = {
       formData.append('image', imageFile);
       formData.append('imageType', imageType);
 
-      const response = await ApiService.post('/vendors/upload-image', formData);
-      return response.data;
+      const response = await ApiService.post('/vendors/upload-image', formData, {
+        headers: {
+          'Content-Type': 'multipart/form-data',
+        },
+      });
+      logApiResponse('POST /vendors/upload-image', response);
+      return extractApiData(response);
     } catch (error) {
+      logApiResponse('POST /vendors/upload-image', null, error);
+      throw error;
+    }
+  },
+
+  // Delete vendor image (logo or cover image)
+  deleteVendorImage: async (imageType: 'logo' | 'coverImage' = 'logo') => {
+    try {
+      const response = await ApiService.delete(`/vendors/image/${imageType}`);
+      logApiResponse(`DELETE /vendors/image/${imageType}`, response);
+      return extractApiData(response);
+    } catch (error) {
+      logApiResponse(`DELETE /vendors/image/${imageType}`, null, error);
       throw error;
     }
   },

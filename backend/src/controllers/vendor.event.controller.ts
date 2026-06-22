@@ -53,6 +53,7 @@ export const createVendorEvent = catchAsync(
     const {
       title,
       description,
+      shortDescription,
       category,
       type,
       venueType,
@@ -86,7 +87,13 @@ export const createVendorEvent = catchAsync(
       );
     }
 
-    if (!location || !location.city || !location.address) {
+    if (!shortDescription) {
+      return next(
+        new AppError("Short description is required", 400),
+      );
+    }
+
+    if (venueType !== "Online" && (!location || !location.city || !location.address)) {
       return next(
         new AppError("Location details (city, address) are required", 400),
       );
@@ -120,6 +127,7 @@ export const createVendorEvent = catchAsync(
       vendorId,
       title,
       description,
+      shortDescription,
       category,
       type: type || "Event",
       venueType: venueType || "Indoor",
@@ -218,6 +226,7 @@ export const updateVendorEvent = catchAsync(
     const {
       title,
       description,
+      shortDescription,
       category,
       type,
       venueType,
@@ -248,6 +257,7 @@ export const updateVendorEvent = catchAsync(
     // Update basic fields
     if (title) event.title = title;
     if (description) event.description = description;
+    if (shortDescription) event.shortDescription = shortDescription;
 
     if (category) {
       // Validate category exists (accepts slug or display name)

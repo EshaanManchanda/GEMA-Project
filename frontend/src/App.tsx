@@ -75,8 +75,7 @@ const RegistrationDetailPage = React.lazy(() => import(/* webpackChunkName: "reg
 // Vendor Dashboard Pages
 const VendorDashboardPage = React.lazy(() => import(/* webpackChunkName: "vendor" */ './pages/vendor/VendorDashboardPage'));
 const VendorEventsPage = React.lazy(() => import(/* webpackChunkName: "vendor" */ './pages/vendor/VendorEventsPage'));
-const VendorCreateEventPage = React.lazy(() => import(/* webpackChunkName: "vendor" */ './pages/vendor/VendorCreateEventPage'));
-const VendorEditEventPage = React.lazy(() => import(/* webpackChunkName: "vendor" */ './pages/vendor/VendorEditEventPage'));
+const VendorEventFormPage = React.lazy(() => import(/* webpackChunkName: "vendor" */ './pages/vendor/VendorEventFormPage'));
 const VendorEventDetailPage = React.lazy(() => import(/* webpackChunkName: "vendor" */ './pages/vendor/VendorEventDetailPage'));
 const VendorBookingsPage = React.lazy(() => import(/* webpackChunkName: "vendor" */ './pages/vendor/VendorBookingsPage'));
 const VendorBookingDetailPage = React.lazy(() => import(/* webpackChunkName: "vendor" */ './pages/vendor/VendorBookingDetailPage'));
@@ -706,7 +705,7 @@ function AppContent() {
               } />
               <Route path="events/create" element={
                 <Suspense fallback={<GenericPageSkeleton />}>
-                  <VendorCreateEventPage />
+                  <VendorEventFormPage />
                 </Suspense>
               } />
               <Route path="events/:id" element={
@@ -716,7 +715,7 @@ function AppContent() {
               } />
               <Route path="events/:id/edit" element={
                 <Suspense fallback={<GenericPageSkeleton />}>
-                  <VendorEditEventPage />
+                  <VendorEventFormPage />
                 </Suspense>
               } />
 
