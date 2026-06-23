@@ -8,11 +8,13 @@ import Certificate, {
   AuditLog,
 } from "../../../models/Certificate";
 import Student from "../../../models/Student";
+import MediaAsset from "../../../models/MediaAsset";
 import { AppError } from "../../../middleware/index";
 import { AuthRequest } from "../../../types/index";
 import { certificateService } from "../services/certificate.service";
 import { renderCertificate } from "../../../workers/certificate.worker";
 import { certificateQueue } from "../../../config/queue";
+import { MediaService } from "../../../services/media.service";
 import logger from "../../../config/logger";
 
 // ─── Guards ───────────────────────────────────────────────────────────────────
@@ -493,6 +495,8 @@ export const deleteCertificate = async (req: AuthRequest, res: Response, next: N
     const cert = await Certificate.findByIdAndDelete(req.params.id);
     if (!cert) return next(new AppError("Certificate not found", 404));
 
+    await cleanupCertificateMedia(cert.pdfUrl);
+
     await AuditLog.create({
       action: "certificate.deleted",
       entityType: "Certificate",
@@ -503,6 +507,89 @@ export const deleteCertificate = async (req: AuthRequest, res: Response, next: N
     res.status(200).json({ success: true, data: { message: "Certificate deleted" } });
   } catch (error) { next(error); }
 };
+
+export const purgeAllCertificates = async (req: AuthRequest, res: Response, next: NextFunction) => {
+  try {
+    const actorId = req.user?._id || req.user?.id;
+    const { eventId, mode } = req.query;
+    const storageOnly = mode === "storage-only";
+
+    const filter: Record<string, any> = {};
+    if (eventId) filter.eventId = eventId;
+
+    const certs = await Certificate.find(filter).select("pdfUrl").lean();
+    const pdfUrls = certs.map(c => c.pdfUrl).filter(Boolean) as string[];
+
+    const mediaService = new MediaService();
+    let storageCleanedCount = 0;
+    for (const url of pdfUrls) {
+      try {
+        const uuid = extractUuidFromMediaUrl(url);
+        if (!uuid) continue;
+        const asset = await MediaAsset.findOne({ uuid });
+        if (asset) {
+          await mediaService.deleteMedia(asset._id.toString(), true);
+          storageCleanedCount++;
+        }
+      } catch (err: any) {
+        logger.warn(`Failed to clean up media for cert PDF: ${url}`, { error: err.message });
+      }
+    }
+
+    let deletedCount = 0;
+
+    if (storageOnly) {
+      // Keep certificate records but clear pdfUrl — verification still works, just no download
+      const result = await Certificate.updateMany(
+        { ...filter, pdfUrl: { $exists: true, $ne: null } },
+        { $unset: { pdfUrl: "" }, $push: { history: { event: "storage_purged", at: new Date() } } },
+      );
+      deletedCount = result.modifiedCount;
+    } else {
+      const result = await Certificate.deleteMany(filter);
+      deletedCount = result.deletedCount ?? 0;
+      await CertificateRequest.deleteMany(filter.eventId ? { eventId: filter.eventId } : {});
+    }
+
+    const action = storageOnly ? "certificate.purge_storage" : "certificate.purge_all";
+    await AuditLog.create({
+      action,
+      entityType: "Certificate",
+      actor: actorId,
+      meta: { affectedCertificates: deletedCount, storageCleanedCount, eventId: eventId || "all", mode: storageOnly ? "storage-only" : "full" },
+    });
+
+    const verb = storageOnly ? "Cleared storage for" : "Purged";
+    res.status(200).json({
+      success: true,
+      data: {
+        message: `${verb} ${deletedCount} certificate(s), cleaned ${storageCleanedCount} stored file(s)`,
+        affectedCertificates: deletedCount,
+        storageCleanedCount,
+        mode: storageOnly ? "storage-only" : "full",
+      },
+    });
+  } catch (error) { next(error); }
+};
+
+function extractUuidFromMediaUrl(url: string): string | null {
+  const match = url.match(/\/api\/media\/file\/([a-f0-9-]{36})/i);
+  return match?.[1] ?? null;
+}
+
+async function cleanupCertificateMedia(pdfUrl?: string): Promise<void> {
+  if (!pdfUrl) return;
+  const uuid = extractUuidFromMediaUrl(pdfUrl);
+  if (!uuid) return;
+  try {
+    const asset = await MediaAsset.findOne({ uuid });
+    if (asset) {
+      await new MediaService().deleteMedia(asset._id.toString(), true);
+    }
+  } catch (err: any) {
+    logger.warn(`Failed to clean up certificate media: ${pdfUrl}`, { error: err.message });
+  }
+}
 
 export const listCertificatesByEmail = async (req: Request, res: Response, next: NextFunction) => {
   try {

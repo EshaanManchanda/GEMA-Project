@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useCallback } from 'react';
-import { Award, Search, XCircle, CheckCircle, RefreshCw, ExternalLink, Mail, Eye, Layout, Trash2, Pencil, RotateCcw, Upload, Users, ToggleLeft, ToggleRight, FileUp } from 'lucide-react';
+import { Award, Search, XCircle, CheckCircle, RefreshCw, ExternalLink, Mail, Eye, Layout, Trash2, Pencil, RotateCcw, Upload, Users, ToggleLeft, ToggleRight, FileUp, AlertTriangle } from 'lucide-react';
 import { certificateAPI, type CertVerifyResult } from '../../services/api/reviewLinkAPI';
 import adminAPI from '../../services/api/adminAPI';
 import api from '../../services/api';
@@ -51,6 +51,7 @@ const CertListTab: React.FC = () => {
   const [editForm, setEditForm] = useState({ recipientName: '', recipientEmail: '', status: 'pending', certificateTypeSlug: '', dataText: '' });
   const [saving, setSaving] = useState(false);
   const [hardDeleting, setHardDeleting] = useState<string | null>(null);
+  const [purging, setPurging] = useState(false);
 
   const LIMIT = 20;
 
@@ -207,6 +208,26 @@ const CertListTab: React.FC = () => {
     }
   };
 
+  const handlePurge = async (mode: 'full' | 'storage-only') => {
+    const scope = eventFilter ? 'for this event' : 'across ALL events';
+    const msg = mode === 'storage-only'
+      ? `Clear stored PDF files ${scope}?\n\n• Deletes PDF files from disk/Cloudinary (frees storage)\n• Keeps certificate records (verification QR codes still work)\n• Users can no longer download the PDF`
+      : `PERMANENTLY DELETE all certificates ${scope}?\n\n• Removes all certificate records from database\n• Deletes all generated PDF files from storage\n• Verification QR codes will stop working\n\nThis action CANNOT be undone.`;
+    if (!confirm(msg)) return;
+    if (mode === 'full' && !confirm('Are you absolutely sure? This deletes ALL records permanently.')) return;
+    setPurging(true);
+    try {
+      const res = await certificateAPI.purgeAll({ eventId: eventFilter || undefined, mode });
+      const data = res.data?.data;
+      toast.success(data?.message || 'Done');
+      fetchCerts();
+    } catch (err: any) {
+      toast.error(err?.response?.data?.message || 'Failed to purge');
+    } finally {
+      setPurging(false);
+    }
+  };
+
   const filtered = search
     ? certs.filter(c => {
         const q = search.toLowerCase();
@@ -354,6 +375,24 @@ const CertListTab: React.FC = () => {
         </div>
         <button onClick={fetchCerts} className="flex items-center gap-1 px-3 py-2 text-sm text-gray-600 border border-gray-300 rounded-lg hover:bg-gray-50">
           <RefreshCw className="w-3.5 h-3.5" />
+        </button>
+        <button
+          onClick={() => handlePurge('storage-only')}
+          disabled={purging}
+          className="flex items-center gap-1.5 px-3 py-2 text-sm text-amber-600 border border-amber-300 rounded-lg hover:bg-amber-50 disabled:opacity-50"
+          title="Delete stored PDF files only — certificate records and verification stay intact"
+        >
+          {purging ? <RefreshCw className="w-3.5 h-3.5 animate-spin" /> : <Trash2 className="w-3.5 h-3.5" />}
+          Clear Storage
+        </button>
+        <button
+          onClick={() => handlePurge('full')}
+          disabled={purging}
+          className="flex items-center gap-1.5 px-3 py-2 text-sm text-red-600 border border-red-300 rounded-lg hover:bg-red-50 disabled:opacity-50"
+          title="Delete ALL certificate records + stored PDFs — verification links will break"
+        >
+          {purging ? <RefreshCw className="w-3.5 h-3.5 animate-spin" /> : <AlertTriangle className="w-3.5 h-3.5" />}
+          Delete All
         </button>
       </div>
 

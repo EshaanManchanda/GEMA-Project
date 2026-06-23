@@ -40,8 +40,10 @@ export class CloudinaryProvider implements IStorageProvider {
         `[Cloudinary Upload] Starting upload - File: ${file.originalname}, Size: ${fileSize} bytes, Category: ${category}`,
       );
 
-      // Get upload preset configuration
-      const preset = uploadPresets[category as keyof typeof uploadPresets];
+      // Map MediaAsset category enum to uploadPresets key (e.g. "document" → "documents")
+      const CATEGORY_TO_PRESET: Record<string, string> = { document: "documents" };
+      const presetKey = CATEGORY_TO_PRESET[category] || category;
+      const preset = uploadPresets[presetKey as keyof typeof uploadPresets];
 
       // Prepare upload options
       const uploadOptions: any = {

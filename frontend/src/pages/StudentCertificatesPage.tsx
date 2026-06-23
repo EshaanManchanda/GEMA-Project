@@ -257,6 +257,8 @@ const StudentCertificatesPage: React.FC = () => {
                         </>
                       ) : cert.status === 'pending' || cert.status === 'generating' ? (
                         <span className="text-xs text-gray-400 italic">Generating…</span>
+                      ) : isReady(cert.status) && !cert.pdfUrl ? (
+                        <span className="text-xs text-gray-400 italic">PDF no longer available — check your email</span>
                       ) : null}
                       {cert.serialNumber && (
                         <a

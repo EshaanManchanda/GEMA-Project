@@ -117,4 +117,10 @@ export const certificateAPI = {
 
   retryGenerate: (id: string) =>
     api.post<{ success: boolean; data: { certificate: CertVerifyResult } }>(`/certificates/${id}/retry`),
+
+  purgeAll: (opts?: { eventId?: string; mode?: 'full' | 'storage-only' }) =>
+    api.delete<{ success: boolean; data: { affectedCertificates: number; storageCleanedCount: number; message: string; mode: string } }>(
+      '/certificates/purge-all',
+      { params: { ...opts } },
+    ),
 };

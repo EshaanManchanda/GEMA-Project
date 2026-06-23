@@ -24,6 +24,7 @@ import {
   listCertificatesByEmail,
   updateCertificate,
   deleteCertificate,
+  purgeAllCertificates,
 } from "../controllers/certificate.controller";
 import { authenticate, authorize } from "../../../middleware/auth";
 import { createCustomLimiter } from "../../../middleware/rateLimiter";
@@ -185,6 +186,18 @@ router.get(
     query("limit").optional().isInt({ min: 1, max: 100 }),
   ],
   listCertificates,
+);
+
+// ─── Purge all certificates (admin only) ─────────────────────────────────────
+
+router.delete(
+  "/purge-all",
+  authorize(["admin"]),
+  [
+    query("eventId").optional().isMongoId(),
+    query("mode").optional().isIn(["full", "storage-only"]),
+  ],
+  purgeAllCertificates,
 );
 
 // ─── Certificate actions (must come before /:id catch-all) ───────────────────

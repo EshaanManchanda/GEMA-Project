@@ -70,15 +70,61 @@ router.get(
         return res.send(placeholder);
       }
 
-      // For Cloudinary, redirect to reconstructed URL from publicId
+      // For Cloudinary assets
       if (asset.provider === "cloudinary" && asset.publicId) {
         try {
-          // Instantiate Cloudinary provider directly for this asset
-          // (not using StorageFactory which uses env config)
+          // Non-image files (PDF, documents): proxy through backend so
+          // Cloudinary URLs are never exposed and image transforms (`f_auto`)
+          // don't corrupt non-image content.
+          if (!asset.mimeType.startsWith("image/")) {
+            const cloudName = process.env.CLOUDINARY_CLOUD_NAME;
+            if (!cloudName) throw new Error("Missing CLOUDINARY_CLOUD_NAME");
+
+            const SAFE_PROXY_TYPES = new Set([
+              "application/pdf",
+              "application/msword",
+              "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+              "application/vnd.ms-excel",
+              "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+              "text/csv",
+              "application/csv",
+              "text/plain",
+              "application/zip",
+            ]);
+            const safeType = SAFE_PROXY_TYPES.has(asset.mimeType)
+              ? asset.mimeType
+              : "application/octet-stream";
+
+            // Try image/upload first (existing certs), fall back to raw/upload (new certs)
+            let upstream = await fetch(
+              `https://res.cloudinary.com/${cloudName}/image/upload/v1/${asset.publicId}`,
+            );
+            if (!upstream.ok) {
+              upstream = await fetch(
+                `https://res.cloudinary.com/${cloudName}/raw/upload/v1/${asset.publicId}`,
+              );
+            }
+            if (!upstream.ok) throw new Error(`Cloudinary returned ${upstream.status}`);
+
+            const buffer = Buffer.from(await upstream.arrayBuffer());
+
+            res.setHeader("Content-Type", safeType);
+            res.setHeader("Content-Length", buffer.length.toString());
+            res.setHeader("Content-Disposition",
+              `attachment; filename="${encodeURIComponent(asset.originalName)}"`,
+            );
+            res.setHeader("X-Content-Type-Options", "nosniff");
+            res.setHeader("Cache-Control", "public, max-age=31536000");
+            res.setHeader("Access-Control-Allow-Origin", "*");
+            res.setHeader("Cross-Origin-Resource-Policy", "cross-origin");
+
+            return res.send(buffer);
+          }
+
+          // Images: redirect to optimized Cloudinary CDN URL
           const cloudinaryProvider = new CloudinaryProvider();
           const cloudinaryUrl = cloudinaryProvider.getUrl(asset.publicId);
 
-          // Validate URL was generated successfully
           if (!cloudinaryUrl || cloudinaryUrl.trim() === "") {
             logger.warn(
               `[Media Route] Failed to generate Cloudinary URL for publicId: ${asset.publicId}`,
@@ -86,26 +132,23 @@ router.get(
             throw new Error("Invalid Cloudinary URL");
           }
 
-          // Add CORS headers to redirect response
           res.setHeader("Access-Control-Allow-Origin", "*");
           res.setHeader("Cross-Origin-Resource-Policy", "cross-origin");
-          res.setHeader("Cache-Control", "public, max-age=31536000"); // 1 year cache
+          res.setHeader("Cache-Control", "public, max-age=31536000");
 
           return res.redirect(cloudinaryUrl);
         } catch (error: any) {
-          // Log error and fall through to placeholder
           logger.error(
-            `[Media Route] Cloudinary redirect error for ${asset.uuid}:`,
+            `[Media Route] Cloudinary error for ${asset.uuid}:`,
             error.message,
           );
-          // Return placeholder SVG if Cloudinary redirect fails
           const placeholder = generatePlaceholder(
             "Media Error",
             asset.width || 400,
             asset.height || 300,
           );
           res.setHeader("Content-Type", "image/svg+xml");
-          res.setHeader("Cache-Control", "public, max-age=300"); // 5 min cache for errors
+          res.setHeader("Cache-Control", "public, max-age=300");
           res.setHeader("Access-Control-Allow-Origin", "*");
           res.setHeader("Cross-Origin-Resource-Policy", "cross-origin");
           return res.send(placeholder);
