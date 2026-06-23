@@ -6,6 +6,7 @@ import Certificate, { Template, AuditLog, CertificateRequest, ITemplate, ITempla
 import { emailService } from "../services/email.service";
 import { MediaService } from "../services/media.service";
 import logger from "../config/logger";
+import { downloadFileAsAttachment, safePdfFilename } from "../utils/emailAttachment.util";
 
 export interface CertificateJobData {
   certificateId: string;
@@ -113,11 +114,16 @@ const certificateWorker = areQueuesEnabled
             const eventTitle = (certDoc?.eventId as any)?.title || "Event";
 
             try {
+              const pdfFilename = safePdfFilename(recipient.name, cert?.serialNumber);
+              const attachment = pdfUrl
+                ? await downloadFileAsAttachment(pdfUrl, pdfFilename, { expectedType: "application/pdf" })
+                : null;
+
               const messageId = await emailService.sendEmail({
                 to: recipient.email,
                 subject: `Your Certificate — ${eventTitle}`,
                 html: buildCertEmailHtml(recipient.name, eventTitle, cert?.serialNumber, pdfUrl, qrData),
-                attachments: pdfUrl ? [{ filename: `${cert?.serialNumber || 'Certificate'}.pdf`, path: pdfUrl }] : undefined,
+                attachments: attachment ? [attachment] : undefined,
               });
 
               if (typeof messageId === "string" && messageId.startsWith("dev-email-")) {
@@ -224,6 +230,10 @@ export async function renderCertificate(
 
   const orientation = template.defaultOptions?.orientation ?? 'landscape';
   const pdfBuf = await htmlToPdf(html, template.canvasWidth ?? 1240, template.canvasHeight ?? 877, orientation);
+
+  if (!pdfBuf?.length) {
+    throw new Error("Generated certificate PDF is empty — aborting upload");
+  }
 
   const mockFile: Express.Multer.File = {
     fieldname: 'file',

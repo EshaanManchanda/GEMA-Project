@@ -25,6 +25,7 @@ import { CouponService } from "../services/coupon.service";
 import { emailService } from "../services/email.service";
 import { v4 as uuidv4 } from "uuid";
 import { audit, AuditAction } from "../utils/auditLog";
+import { downloadFileAsAttachment } from "../utils/emailAttachment.util";
 
 type EventBookingAttachment = {
   originalName?: string;
@@ -68,17 +69,8 @@ const buildBookingAttachments = async (
           };
         }
 
-        const response = await fetch(attachment.url);
-        if (!response.ok) {
-          throw new Error(`Failed to fetch attachment from ${attachment.url}`);
-        }
-
-        return {
-          filename,
-          content: Buffer.from(await response.arrayBuffer()),
-          contentType:
-            contentType || response.headers.get("content-type") || undefined,
-        };
+        // Remote URL — use shared helper (validates MIME, size, retries on failure)
+        return downloadFileAsAttachment(attachment.url, filename);
       }),
   );
 

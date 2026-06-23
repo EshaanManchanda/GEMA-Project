@@ -13,6 +13,7 @@ import { emailService } from "../../../services/email.service";
 import { buildCertEmailHtml, renderCertificate } from "../../../workers/certificate.worker";
 import { AppError } from "../../../middleware/index";
 import logger from "../../../config/logger";
+import { downloadFileAsAttachment, safePdfFilename } from "../../../utils/emailAttachment.util";
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -191,12 +192,19 @@ class CertificateService {
 
   // ─── Email ───────────────────────────────────────────────────────────────
 
-  async sendCertificateEmail(certificateId: string, actorId?: string): Promise<void> {
+  async sendCertificateEmail(
+    certificateId: string,
+    opts?: { actorId?: string; historyEvent?: "email_sent" | "email_resent" },
+  ): Promise<void> {
     const certificate = await Certificate.findById(certificateId).populate("eventId", "title");
     if (!certificate) throw new AppError("Certificate not found", 404);
     if (!certificate.pdfUrl) throw new AppError("Certificate PDF not ready", 400);
 
     const eventTitle = (certificate.eventId as any)?.title || "Event";
+    const pdfFilename = safePdfFilename(certificate.recipient.name, certificate.serialNumber);
+    const attachment = await downloadFileAsAttachment(certificate.pdfUrl, pdfFilename, {
+      expectedType: "application/pdf",
+    });
 
     const messageId = await emailService.sendEmail({
       to: certificate.recipient.email,
@@ -208,7 +216,7 @@ class CertificateService {
         certificate.pdfUrl,
         certificate.qrData,
       ),
-      attachments: certificate.pdfUrl ? [{ filename: `${certificate.serialNumber || 'Certificate'}.pdf`, path: certificate.pdfUrl }] : undefined,
+      attachments: attachment ? [attachment] : undefined,
     });
 
     if (typeof messageId === "string" && messageId.startsWith("dev-email-")) {
@@ -218,13 +226,16 @@ class CertificateService {
       );
     }
 
+    const historyEvent = opts?.historyEvent ?? "email_resent";
+    const actorId = opts?.actorId;
+
     await Certificate.findByIdAndUpdate(certificateId, {
       status: "emailed",
-      $push: { history: { event: "email_resent", actor: actorId, at: new Date() } },
+      $push: { history: { event: historyEvent, actor: actorId, at: new Date() } },
     });
 
     await AuditLog.create({
-      action: "certificate.email_resent",
+      action: `certificate.${historyEvent}`,
       entityType: "Certificate",
       entityId: certificateId,
       actor: actorId,
@@ -278,35 +289,11 @@ class CertificateService {
     if (!opts.sendEmail) return;
 
     try {
-      const messageId = await emailService.sendEmail({
-        to: opts.recipient.email,
-        subject: `Your Certificate — ${eventTitle}`,
-        html: buildCertEmailHtml(
-          opts.recipient.name,
-          eventTitle,
-          certificate.serialNumber,
-          pdfUrl,
-          certificate.qrData,
-        ),
-        attachments: pdfUrl ? [{ filename: `${certificate.serialNumber || 'Certificate'}.pdf`, path: pdfUrl }] : undefined,
-      });
-
-      if (typeof messageId === "string" && messageId.startsWith("dev-email-")) {
-        throw new AppError(
-          "SMTP delivery failed. Check email settings (host/user/password/from) in Admin > App Settings > Email.",
-          500,
-        );
-      }
-
-      await Certificate.findByIdAndUpdate(certificateId, {
-        status: "emailed",
-        $push: { history: { event: "email_sent", at: new Date() } },
-      });
+      await this.sendCertificateEmail(certificateId, { historyEvent: "email_sent" });
     } catch (emailErr: any) {
       logger.error(`Certificate email failed for ${certificateId}`, {
         error: emailErr?.message || String(emailErr),
       });
-
       await Certificate.findByIdAndUpdate(certificateId, {
         $push: {
           history: {

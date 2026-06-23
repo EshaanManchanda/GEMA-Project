@@ -7,6 +7,7 @@ import { logger } from "../config/index";
 import { promises as fs } from "fs";
 import * as path from "path";
 import { config } from "../config/index";
+import { downloadFileAsAttachment } from "../utils/emailAttachment.util";
 
 export interface TicketGenerationResult {
   success: boolean;
@@ -74,17 +75,10 @@ export class TicketGenerationService {
             contentType,
           });
         } else {
-          const response = await fetch(attachment.url);
-          if (!response.ok) {
-            throw new Error(`Failed to fetch attachment from ${attachment.url}`);
-          }
-
-          results.push({
-            filename,
-            content: Buffer.from(await response.arrayBuffer()),
-            contentType:
-              contentType || response.headers.get("content-type") || undefined,
-          });
+          // Remote URL — use shared helper (validates MIME, size, retries on failure)
+          const resolved = await downloadFileAsAttachment(attachment.url, filename);
+          if (resolved) results.push(resolved);
+          else throw new Error(`Could not resolve remote attachment: ${attachment.url}`);
         }
       } catch (error: any) {
         logger.warn("Failed to process attachment", {

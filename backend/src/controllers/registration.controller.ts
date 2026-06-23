@@ -15,6 +15,7 @@ import { logger } from "../config/index";
 import { config } from "../config/env";
 import cloudinary from "../config/cloudinary";
 import { getFileInfo } from "../middleware/upload";
+import { downloadFileAsAttachment } from "../utils/emailAttachment.util";
 
 // @desc    Submit event registration with files
 // @route   POST /api/events/:eventId/registrations
@@ -215,23 +216,23 @@ export const submitRegistration = async (
           for (const att of rawAttachments) {
             if (!att?.url) continue;
             try {
-              let content: Buffer;
+              const filename = att.originalName || att.filename || "attachment";
+              let resolved: { filename: string; content: Buffer; contentType?: string } | null = null;
+
               if (att.provider === "local" || att.url.startsWith("/api/uploads/files/")) {
+                // Local storage — read from disk directly
                 const { promises: fsPromises } = await import("fs");
                 const pathLib = await import("path");
                 const relativePath = att.url.replace(/^\/api\/uploads\/files\//, "");
                 const filePath = pathLib.join(process.cwd(), config.upload.path, relativePath);
-                content = await fsPromises.readFile(filePath);
+                const content = await fsPromises.readFile(filePath);
+                resolved = { filename, content, contentType: att.mimetype };
               } else {
-                const resp = await fetch(att.url);
-                if (!resp.ok) throw new Error(`Fetch failed: ${resp.status}`);
-                content = Buffer.from(await resp.arrayBuffer());
+                // Remote URL — use shared helper (validates MIME, size, retries on failure)
+                resolved = await downloadFileAsAttachment(att.url, filename);
               }
-              emailAttachments.push({
-                filename: att.originalName || att.filename || "attachment",
-                content,
-                contentType: att.mimetype,
-              });
+
+              if (resolved) emailAttachments.push(resolved);
             } catch (attErr: any) {
               logger.warn("Could not download booking attachment for registration email", {
                 url: att.url,

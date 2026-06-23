@@ -387,10 +387,10 @@ export const downloadCertificate = async (req: Request, res: Response, next: Nex
 export const resendCertificateEmail = async (req: AuthRequest, res: Response, next: NextFunction) => {
   try {
     if (!validate(req, next)) return;
-    await certificateService.sendCertificateEmail(
-      req.params.id,
-      (req.user?._id || req.user?.id)?.toString(),
-    );
+    await certificateService.sendCertificateEmail(req.params.id, {
+      actorId: (req.user?._id || req.user?.id)?.toString(),
+      historyEvent: "email_resent",
+    });
     res.status(200).json({ success: true, message: "Email queued for resend" });
   } catch (error) { next(error); }
 };
