@@ -77,7 +77,10 @@ const HomePage: React.FC = () => {
       (c: any) => c.slug === 'handpicked-experience' || c.slug === 'handpicked-experiences'
     );
     if (handpickedCollection?.events?.length) {
-      return handpickedCollection.events.map(mapToUIEvent).slice(0, 16);
+      return [...handpickedCollection.events]
+        .map(mapToUIEvent)
+        .sort((a, b) => (b.viewsCount || 0) - (a.viewsCount || 0))
+        .slice(0, 16);
     }
     const featured = events.filter(e => e.isFeatured || (e.rating && e.rating >= 4.5));
     if (featured.length >= 8) {

@@ -354,7 +354,7 @@ class HomepageService {
                   isFeatured: 1,
                 },
               },
-              { $limit: 6 },
+              { $limit: 16 },
             ],
             as: "populatedEvents",
           },
@@ -365,7 +365,7 @@ class HomepageService {
             events: {
               $cond: {
                 if: "$hasEventsData",
-                then: { $slice: ["$eventsData", 6] },
+                then: { $slice: ["$eventsData", 16] },
                 else: "$populatedEvents",
               },
             },
