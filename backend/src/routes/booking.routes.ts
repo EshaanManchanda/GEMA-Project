@@ -26,6 +26,10 @@ const initiateBookingValidation = [
     .optional()
     .isIn(["stripe", "paypal", "test", "free"])
     .withMessage("Invalid payment method"),
+  body("bookingType")
+    .optional()
+    .isIn(["intro", "program"])
+    .withMessage("Invalid booking type"),
 ];
 
 const confirmBookingValidation = [

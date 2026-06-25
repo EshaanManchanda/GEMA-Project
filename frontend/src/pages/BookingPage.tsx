@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useRef, useMemo } from 'react';
 import { useParams, useNavigate, useLocation } from 'react-router-dom';
 import { useDispatch, useSelector } from 'react-redux';
 import toast from 'react-hot-toast';
@@ -197,9 +197,11 @@ const BookingPage: React.FC = () => {
     selectedDate?: string;
     schedule?: any;
     scheduleId?: string;
+    sessionPrice?: number;
     totalPrice?: string;
     currency?: string;
     isTeachingEvent?: boolean;
+    bookingType?: 'intro' | 'program';
   } | null;
 
   const readBookingDraft = (key: string) => {
@@ -527,7 +529,25 @@ const BookingPage: React.FC = () => {
 
   // For free events, skip the payment step.
   // Treat as free if the explicit flag is set OR if event price is 0 (prevents Stripe 0-amount error).
-  const isFreeEvent = !!(event as any)?.isFreeEvent || event?.price === 0;
+  const isFreeEvent = useMemo(() => {
+    if (!event) return true;
+    if (routeState?.bookingType === 'intro') return true;
+    if (routeState?.bookingType === 'program') {
+      // Use the sessionPrice from route state (correctly computed in EventDetailPage)
+      const programPrice = routeState?.sessionPrice ??
+        (event.programConfig?.isProgramBlock && event.programConfig?.totalProgramPrice
+          ? event.programConfig.totalProgramPrice
+          : (() => {
+              // Fallback: price × timeSlots count on the first standard schedule
+              const std = (event.dateSchedule || []).find(
+                (s: any) => s.sessionType !== 'Intro Session' && s.price > 0
+              ) as any;
+              return std ? (std.price * (std.timeSlots?.length || 1)) : 0;
+            })());
+      return programPrice === 0;
+    }
+    return !!(event as any)?.isFreeEvent || event?.price === 0;
+  }, [event, routeState]);
   const bookingSteps = isFreeEvent
     ? (['details', 'participants', 'confirmation'] as const)
     : (['details', 'participants', 'payment', 'confirmation'] as const);
@@ -703,7 +723,8 @@ const BookingPage: React.FC = () => {
         eventId: event._id,
         dateScheduleId: compositeScheduleId,
         seats: bookingFlow.participants.length || 1,
-        paymentMethod: effectivePaymentMethod
+        paymentMethod: effectivePaymentMethod,
+        bookingType: routeState?.bookingType || readBookingDraft(actualEventId || '')?.bookingType,
       });
 
       if (!initiateResponse) {
@@ -878,7 +899,34 @@ const BookingPage: React.FC = () => {
     if (!event) return { subtotal: 0, discount: 0, total: 0, discountPercentage: 0, serviceFee: 0, tax: 0, hasServiceFee: true };
 
     const participantCount = bookingFlow.participants.length || 1;
-    const pricePerTicket = routeState?.schedule?.price || event.price;
+    let defaultPrice: number;
+
+    if (routeState?.bookingType === 'program') {
+      // Priority 1: use the sessionPrice computed in EventDetailPage (most accurate)
+      const sessionPriceFromRoute = routeState?.sessionPrice;
+      if (sessionPriceFromRoute && sessionPriceFromRoute > 0) {
+        defaultPrice = sessionPriceFromRoute;
+      } else if (event.programConfig?.isProgramBlock && event.programConfig?.totalProgramPrice) {
+        // Priority 2: programConfig total
+        defaultPrice = event.programConfig.totalProgramPrice;
+      } else {
+        // Priority 3: price × timeSlots count on the selected schedule
+        const selectedSched = (event.dateSchedule || []).find(
+          (s: any) => (s._id || s.id) === (routeState?.scheduleId || bookingFlow.scheduleId)
+        ) as any;
+        const fallbackSched = selectedSched ||
+          (event.dateSchedule || []).find((s: any) => s.sessionType !== 'Intro Session' && s.price > 0) as any;
+        defaultPrice = fallbackSched
+          ? (fallbackSched.price || 0) * (fallbackSched.timeSlots?.length || 1)
+          : 0;
+      }
+    } else if (routeState?.bookingType === 'intro') {
+      defaultPrice = 0;
+    } else {
+      defaultPrice = routeState?.schedule?.price ?? event.price ?? 0;
+    }
+
+    const pricePerTicket = bookingFlow.lockedUnitPrice ?? defaultPrice;
     const subtotal = pricePerTicket * participantCount;
 
     const hasServiceFee = true;
@@ -978,6 +1026,7 @@ const BookingPage: React.FC = () => {
                   onNext={handleCompleteBooking}
                   onPrev={handlePrevStep}
                   schedulePrice={calculatePricing().pricePerTicket}
+                  bookingType={routeState?.bookingType || readBookingDraft(actualEventId || '')?.bookingType}
                 />
               ) : (
                 <PaymentFormFallback

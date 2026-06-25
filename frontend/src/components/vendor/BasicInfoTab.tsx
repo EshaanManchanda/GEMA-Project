@@ -3,7 +3,7 @@ import TagInput from '../common/TagInput';
 
 import MediaPickerModal from '../admin/media/MediaPickerModal';
 import { MediaAsset } from '../../store/slices/mediaSlice';
-import { Image as ImageIcon, Trash2 } from 'lucide-react';
+import { Image as ImageIcon, Trash2, Plus, ListChecks } from 'lucide-react';
 
 const SectionCard: React.FC<{ children: React.ReactNode; className?: string }> = ({ children, className = '' }) => (
   <div className={`bg-white rounded-2xl shadow-sm border border-gray-200 p-6 ${className}`}>
@@ -63,6 +63,7 @@ interface BasicInfoTabProps {
     skillLevel?: string;
     prerequisites?: string;
     externalBookingLink?: string;
+    syllabus?: Array<{ title: string; description: string; duration?: string }>;
   };
   categories: Category[];
   errors: Record<string, string>;
@@ -76,6 +77,7 @@ interface BasicInfoTabProps {
   imageFileRef: React.RefObject<HTMLInputElement>;
   bookingMethod: 'internal' | 'external';
   onBookingMethodChange: (method: 'internal' | 'external') => void;
+  onSyllabusChange?: (syllabus: Array<{ title: string; description: string; duration?: string }>) => void;
 }
 
 const BasicInfoTab: React.FC<BasicInfoTabProps> = ({
@@ -91,11 +93,11 @@ const BasicInfoTab: React.FC<BasicInfoTabProps> = ({
   onImageUpload,
   imageFileRef,
   bookingMethod,
-  onBookingMethodChange
+  onBookingMethodChange,
+  onSyllabusChange
 }) => {
   const [isMediaPickerOpen, setIsMediaPickerOpen] = React.useState(false);
 
-  // Handle description change from TipTapEditor
   const handleDescriptionChange = (content: string) => {
     const syntheticEvent = {
       target: {
@@ -104,6 +106,29 @@ const BasicInfoTab: React.FC<BasicInfoTabProps> = ({
       }
     } as React.ChangeEvent<HTMLTextAreaElement>;
     onInputChange(syntheticEvent);
+  };
+
+  const handleAddSyllabusItem = () => {
+    if (onSyllabusChange) {
+      const currentSyllabus = formData.syllabus || [];
+      onSyllabusChange([...currentSyllabus, { title: '', description: '', duration: '' }]);
+    }
+  };
+
+  const handleRemoveSyllabusItem = (index: number) => {
+    if (onSyllabusChange && formData.syllabus) {
+      const newSyllabus = [...formData.syllabus];
+      newSyllabus.splice(index, 1);
+      onSyllabusChange(newSyllabus);
+    }
+  };
+
+  const handleSyllabusItemChange = (index: number, field: 'title' | 'description' | 'duration', value: string) => {
+    if (onSyllabusChange && formData.syllabus) {
+      const newSyllabus = [...formData.syllabus];
+      newSyllabus[index] = { ...newSyllabus[index], [field]: value };
+      onSyllabusChange(newSyllabus);
+    }
   };
 
   return (
@@ -444,6 +469,89 @@ const BasicInfoTab: React.FC<BasicInfoTabProps> = ({
               />
             </FieldGroup>
           </div>
+        </SectionCard>
+      )}
+
+      {/* Syllabus / Lessons Section */}
+      {(LEARNING_TYPES as readonly string[]).includes(formData.type) && (
+        <SectionCard>
+          <div className="flex justify-between items-center w-full mb-4">
+            <h3 className="text-lg font-semibold text-gray-900 flex items-center">
+              <ListChecks className="w-5 h-5 mr-2 text-green-600" />
+              Course Syllabus
+            </h3>
+            <button
+              type="button"
+              onClick={handleAddSyllabusItem}
+              className="flex items-center text-sm font-semibold text-green-600 hover:text-green-800 transition-colors bg-green-50 px-3 py-1.5 rounded-lg"
+            >
+              <Plus className="w-4 h-4 mr-1" /> Add Lesson
+            </button>
+          </div>
+          <p className="text-sm text-gray-500 mb-6">Optional: Add a lesson-by-lesson breakdown of this course.</p>
+          
+          {formData.syllabus && formData.syllabus.length > 0 ? (
+            <div className="space-y-4">
+              {formData.syllabus.map((lesson, idx) => (
+                <div key={idx} className="bg-gray-50 p-5 rounded-xl border border-gray-200 space-y-4 relative group shadow-sm">
+                  <button
+                    type="button"
+                    onClick={() => handleRemoveSyllabusItem(idx)}
+                    className="absolute top-4 right-4 text-red-400 hover:text-red-600 transition-colors p-1.5 hover:bg-red-50 rounded-lg"
+                    title="Remove Lesson"
+                  >
+                    <Trash2 className="w-5 h-5" />
+                  </button>
+                  
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4 pr-10">
+                    <div>
+                      <label className="block text-sm font-bold text-gray-700 mb-1">Lesson Title</label>
+                      <input
+                        type="text"
+                        placeholder="e.g., Week 1: Introduction"
+                        value={lesson.title || ''}
+                        onChange={(e) => handleSyllabusItemChange(idx, 'title', e.target.value)}
+                        className="w-full px-3 py-2 bg-white border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 shadow-sm text-sm"
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-sm font-bold text-gray-700 mb-1">Duration <span className="font-normal text-gray-400">(optional)</span></label>
+                      <input
+                        type="text"
+                        placeholder="e.g., 55 mins"
+                        value={lesson.duration || ''}
+                        onChange={(e) => handleSyllabusItemChange(idx, 'duration', e.target.value)}
+                        className="w-full px-3 py-2 bg-white border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 shadow-sm text-sm"
+                      />
+                    </div>
+                  </div>
+                  <div>
+                    <label className="block text-sm font-bold text-gray-700 mb-1">Description <span className="font-normal text-gray-400">(optional)</span></label>
+                    <textarea
+                      placeholder="Brief description of the lesson..."
+                      value={lesson.description || ''}
+                      rows={2}
+                      onChange={(e) => handleSyllabusItemChange(idx, 'description', e.target.value)}
+                      className="w-full px-3 py-2 bg-white border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 shadow-sm text-sm resize-none"
+                    />
+                  </div>
+                </div>
+              ))}
+            </div>
+          ) : (
+            <div className="text-center py-8 bg-gray-50 rounded-xl border border-dashed border-gray-300">
+              <ListChecks className="w-10 h-10 text-gray-400 mx-auto mb-3" />
+              <h3 className="text-sm font-medium text-gray-900 mb-1">No syllabus added</h3>
+              <p className="text-xs text-gray-500 mb-4">You can add an optional syllabus to show what learners will learn each week.</p>
+              <button
+                type="button"
+                onClick={handleAddSyllabusItem}
+                className="inline-flex items-center text-sm font-medium text-white bg-green-600 hover:bg-green-700 transition-colors px-4 py-2 rounded-lg"
+              >
+                <Plus className="w-4 h-4 mr-1" /> Create First Lesson
+              </button>
+            </div>
+          )}
         </SectionCard>
       )}
 

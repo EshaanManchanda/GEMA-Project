@@ -251,6 +251,16 @@ const TeacherEventFormPage: React.FC = () => {
             price: s.price?.toString() || '',
             unlimitedSeats: s.unlimitedSeats || false,
             _id: s._id,
+            sessionType: s.sessionType || 'Standard Session',
+            ratePerClass: s.ratePerClass?.toString() || '',
+            timeSlots: (s.timeSlots || []).map((slot: any, slotIdx: number) => ({
+              id: slot._id || `slot-${idx}-${slotIdx}`,
+              date: slot.date ? new Date(slot.date).toISOString().split('T')[0] : '',
+              startTime: slot.startTime || '',
+              endTime: slot.endTime || '',
+              availableSeats: slot.availableSeats?.toString() || '',
+              price: slot.price?.toString() || ''
+            }))
           }))
         );
       }
@@ -347,6 +357,8 @@ const TeacherEventFormPage: React.FC = () => {
           totalSeats: s.unlimitedSeats ? 999999 : parseInt(s.availableSeats) || 10,
           price: isFreeEvent ? 0 : (s.price ? parseFloat(s.price) : parseFloat(basePrice)),
           unlimitedSeats: s.unlimitedSeats,
+          sessionType: s.sessionType,
+          ratePerClass: s.ratePerClass ? parseFloat(s.ratePerClass) : undefined,
         })),
         images: [],
         imageAssets,
@@ -1058,20 +1070,21 @@ const TeacherEventFormPage: React.FC = () => {
                 className="space-y-6"
               >
                 {/* Free Event Toggle */}
-                <div
-                  className={`flex items-center gap-3 p-4 rounded-lg border-2 cursor-pointer transition-colors ${isFreeEvent ? 'bg-green-50 border-green-400' : 'bg-gray-50 border-gray-200 hover:border-green-300'}`}
-                  onClick={() => setIsFreeEvent(!isFreeEvent)}
-                >
-                  <div className={`w-5 h-5 rounded border-2 flex items-center justify-center flex-shrink-0 transition-colors ${isFreeEvent ? 'bg-green-500 border-green-500' : 'border-gray-400'}`}>
-                    {isFreeEvent && <svg className="w-3 h-3 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={3}><path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" /></svg>}
+                {!['Course', 'Workshop', 'Bootcamp', 'Class', 'Masterclass'].includes(type) && (
+                  <div
+                    className={`flex items-center gap-3 p-4 rounded-lg border-2 cursor-pointer transition-colors ${isFreeEvent ? 'bg-green-50 border-green-400' : 'bg-gray-50 border-gray-200 hover:border-green-300'}`}
+                    onClick={() => setIsFreeEvent(!isFreeEvent)}
+                  >
+                    <div className={`w-5 h-5 rounded border-2 flex items-center justify-center flex-shrink-0 transition-colors ${isFreeEvent ? 'bg-green-500 border-green-500' : 'border-gray-400'}`}>
+                      {isFreeEvent && <svg className="w-3 h-3 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={3}><path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" /></svg>}
+                    </div>
+                    <div>
+                      <p className={`font-semibold text-sm ${isFreeEvent ? 'text-green-700' : 'text-gray-700'}`}>Free Event (No Payment Required)</p>
+                      <p className="text-xs text-gray-500">Attendees register without paying — registration form is still collected</p>
+                    </div>
+                    {isFreeEvent && <span className="ml-auto bg-green-500 text-white text-xs font-bold px-2 py-1 rounded-full">FREE</span>}
                   </div>
-                  <div>
-                    <p className={`font-semibold text-sm ${isFreeEvent ? 'text-green-700' : 'text-gray-700'}`}>Free Event (No Payment Required)</p>
-                    <p className="text-xs text-gray-500">Attendees register without paying — registration form is still collected</p>
-                  </div>
-                  {isFreeEvent && <span className="ml-auto bg-green-500 text-white text-xs font-bold px-2 py-1 rounded-full">FREE</span>}
-                </div>
-
+                )}
 
                 {/* Timezone */}
                 <div>
@@ -1103,6 +1116,7 @@ const TeacherEventFormPage: React.FC = () => {
                   onRemoveSchedule={removeSchedule}
                   onCurrencyChange={(e) => setCurrency(e.target.value)}
                   onBasePriceChange={(e) => setBasePrice(e.target.value)}
+                  isEducational={['Course', 'Workshop', 'Bootcamp', 'Class', 'Masterclass'].includes(type)}
                 />
               </motion.div>
             )}

@@ -403,6 +403,8 @@ export const getTeacherBookings = catchAsync(
       status: order.status,
       paymentStatus: order.paymentStatus === "free" ? "paid" : (order.paymentStatus || "pending"),
       paymentMethod: order.paymentMethod,
+      programStatus: order.programStatus,
+      meetingLink: (order.items && order.items.length > 0) ? order.items[0].meetingLink : undefined,
       createdAt: order.createdAt,
       updatedAt: order.updatedAt,
     }));
@@ -549,6 +551,76 @@ export const updateTeacherBooking = catchAsync(
       success: true,
       message: "Booking updated successfully",
       data: { Booking: updatedBooking },
+    });
+  },
+);
+
+// @desc    Update teacher Booking meeting link (Order-based)
+// @route   PUT /api/teachers/bookings/:id/meeting-link
+// @access  Private (Teacher only)
+export const updateTeacherBookingMeetingLink = catchAsync(
+  async (req: AuthRequest, res: Response, next: NextFunction) => {
+    const userId = req.user?._id || req.user?.id;
+    const { id } = req.params;
+    const { meetingLink } = req.body;
+
+    if (!userId) {
+      return next(new AppError("User not authenticated", 401));
+    }
+
+    const teacherProfile = await getOrCreateTeacherProfile(userId);
+    const teacherId = teacherProfile._id;
+
+    // Get teaching events owned by teacher
+    const teachingEvents = await EventModel.find({
+      teacherId,
+      type: { $in: ["Class", "Course", "Workshop", "Bootcamp", "Masterclass"] },
+    }).select("_id");
+    const teachingEventIds = teachingEvents.map((e) => e._id);
+
+    // Find Order belonging to teacher's events
+    const order = await Order.findOne({
+      _id: id,
+      "items.eventId": { $in: teachingEventIds },
+    }).populate("userId", "firstName lastName email");
+
+    if (!order) {
+      return next(new AppError("Booking not found", 404));
+    }
+
+    // Update the meetingLink on the first item (since 1:1 classes usually have 1 item per order)
+    if (order.items && order.items.length > 0) {
+      order.items[0].meetingLink = meetingLink;
+      await order.save();
+
+      const user = order.userId as any;
+      if (user && user.email) {
+        // Send email
+        await emailService.sendEmail({
+          to: user.email,
+          subject: `Meeting Link Updated for ${order.items[0].eventTitle}`,
+          html: `<p>Hi ${user.firstName},</p>
+          <p>The meeting link for your upcoming class <strong>${order.items[0].eventTitle}</strong> has been updated.</p>
+          <p><strong>New Meeting Link:</strong> <a href="${meetingLink}">${meetingLink}</a></p>
+          <p>Thank you!</p>`,
+        });
+      } else if (order.billingAddress && order.billingAddress.email) {
+        // Fallback to billing email
+        await emailService.sendEmail({
+          to: order.billingAddress.email,
+          subject: `Meeting Link Updated for ${order.items[0].eventTitle}`,
+          html: `<p>Hi ${order.billingAddress.firstName},</p>
+          <p>The meeting link for your upcoming class <strong>${order.items[0].eventTitle}</strong> has been updated.</p>
+          <p><strong>New Meeting Link:</strong> <a href="${meetingLink}">${meetingLink}</a></p>
+          <p>Thank you!</p>`,
+        });
+      }
+    }
+
+    res.status(200).json({
+      success: true,
+      message: "Meeting link updated successfully",
+      data: { meetingLink },
     });
   },
 );

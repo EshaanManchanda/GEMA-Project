@@ -18,6 +18,7 @@ import {
   getPublicTeachersList,
   getTeacherPaymentInfo,
   updateTeacherBankDetails,
+  updateTeacherBookingMeetingLink,
 } from "../controllers/teacher.controller";
 import {
   getMyTeacherApplication,
@@ -218,6 +219,16 @@ router.put(
   ],
   validate,
   updateTeacherBooking,
+);
+
+router.put(
+  "/bookings/:id/meeting-link",
+  [
+    validateMongoId("id", "param"),
+    body("meetingLink").optional().isString(),
+  ],
+  validate,
+  updateTeacherBookingMeetingLink,
 );
 
 /**

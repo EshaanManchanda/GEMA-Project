@@ -292,6 +292,20 @@ const teacherAPI = {
   },
 
   /**
+   * Update meeting link for a booking
+   */
+  updateMeetingLink: async (id: string, meetingLink: string): Promise<{ Booking: ITeacherBooking }> => {
+    try {
+      const response = await ApiService.put(`/teachers/bookings/${id}/meeting-link`, { meetingLink });
+      logApiResponse(`PUT /teachers/bookings/${id}/meeting-link`, response);
+      return extractApiData(response);
+    } catch (error) {
+      logApiResponse(`PUT /teachers/bookings/${id}/meeting-link`, null, error);
+      throw error;
+    }
+  },
+
+  /**
    * Export bookings to CSV or JSON
    */
   exportBookings: async (format: 'csv' | 'json' = 'csv', filters?: TeacherBookingFilters): Promise<{ success: boolean; message: string }> => {

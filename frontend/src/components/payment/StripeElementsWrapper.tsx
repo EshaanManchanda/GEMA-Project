@@ -241,15 +241,56 @@ const StripeElementsWrapper: React.FC<StripeElementsWrapperProps> = ({
       )}
 
       {/* Stripe Elements - using stable ref to prevent prop change errors */}
-      <Elements
-        key={clientSecret}
-        stripe={stripeInstanceRef.current}
-        options={elementsOptions}
-      >
-        {children(isReady)} {/* Pass isReady to children */}
-      </Elements>
+      <StripeErrorBoundary>
+        <Elements
+          key={clientSecret}
+          stripe={stripeInstanceRef.current}
+          options={elementsOptions}
+        >
+          {children(isReady)} {/* Pass isReady to children */}
+        </Elements>
+      </StripeErrorBoundary>
     </div>
   );
 };
+
+// Internal error boundary to catch Stripe Elements crashes (e.g. invalid mock clientSecret)
+class StripeErrorBoundary extends React.Component<{children: React.ReactNode}, {hasError: boolean, error: Error | null}> {
+  constructor(props: {children: React.ReactNode}) {
+    super(props);
+    this.state = { hasError: false, error: null };
+  }
+
+  static getDerivedStateFromError(error: Error) {
+    return { hasError: true, error };
+  }
+
+  componentDidCatch(error: Error, errorInfo: React.ErrorInfo) {
+    logger.error('Stripe Elements crashed:', error, errorInfo);
+  }
+
+  render() {
+    if (this.state.hasError) {
+      return (
+        <div className="bg-red-50 border border-red-200 rounded-lg p-6 text-center">
+          <AlertTriangle className="w-8 h-8 text-red-600 mx-auto mb-3" />
+          <h3 className="text-lg font-semibold text-red-800 mb-2">Payment Integration Error</h3>
+          <p className="text-sm text-red-700 mb-4">
+            The payment component failed to load due to a configuration error.
+            {this.state.error?.message && (
+              <span className="block mt-2 font-mono text-xs p-2 bg-red-100 rounded">
+                {this.state.error.message}
+              </span>
+            )}
+          </p>
+          <p className="text-sm text-red-800 font-medium">
+            Tip: If you are testing locally, please ensure Test Payments are enabled and select the Test Payment method instead.
+          </p>
+        </div>
+      );
+    }
+    return this.props.children;
+  }
+}
 
 export default StripeElementsWrapper;

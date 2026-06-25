@@ -41,6 +41,14 @@ export interface IPartnership extends Document {
     cloudinaryUrl?: string;
     uploadedAt?: Date;
   }>;
+  images?: Array<{
+    url: string;
+    caption?: string;
+  }>;
+  documentAttachments?: Array<{
+    url: string;
+    title?: string;
+  }>;
   plans?: string;
   contents?: string;
   createdAt: Date;
@@ -201,6 +209,18 @@ const partnershipSchema: Schema = new Schema(
         publicId: { type: String, trim: true },
         cloudinaryUrl: { type: String, trim: true },
         uploadedAt: { type: Date },
+      },
+    ],
+    images: [
+      {
+        url: { type: String, trim: true },
+        caption: { type: String, trim: true },
+      },
+    ],
+    documentAttachments: [
+      {
+        url: { type: String, trim: true },
+        title: { type: String, trim: true },
       },
     ],
     plans: {

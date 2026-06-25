@@ -8,6 +8,7 @@ export interface InitiateBookingData {
   seats: number;
   paymentMethod?: 'stripe' | 'paypal' | 'test' | 'free';
   participants?: BookingParticipant[];
+  bookingType?: 'intro' | 'program';
 }
 
 export interface ConfirmBookingData {
@@ -199,13 +200,15 @@ const bookingAPI = {
     dateScheduleId?: string;
     couponCode?: string;
     currency?: string; // Add currency parameter
+    bookingType?: 'intro' | 'program';
   }) => {
     try {
       const bookingParams = {
         eventId: params.eventId,
         dateScheduleId: params.dateScheduleId,
         seats: params.participants,
-        paymentMethod: 'stripe'
+        paymentMethod: 'stripe',
+        bookingType: params.bookingType,
       };
       const response = await ApiService.post('/bookings/initiate', bookingParams);
       logApiResponse('POST /bookings/initiate', response);

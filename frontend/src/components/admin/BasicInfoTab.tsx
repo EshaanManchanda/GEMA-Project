@@ -15,7 +15,7 @@ const TipTapEditorFallback = () => (
 import MediaPickerModal from '@/components/admin/media/MediaPickerModal';
 import { MediaAsset } from '@/store/slices/mediaSlice';
 import { Card, CardHeader, CardTitle, CardContent } from '../ui/Card';
-import { Shield, FileText, Hash, Image as ImageIcon, X, ExternalLink, Library } from 'lucide-react';
+import { Shield, FileText, Hash, Image as ImageIcon, X, ExternalLink, Library, Trash2, Plus, ListChecks } from 'lucide-react';
 import { getAbsoluteUploadUrl } from '@/utils/uploadHelpers';
 
 interface BookingAttachment {
@@ -674,48 +674,6 @@ const BasicInfoTab: React.FC<BasicInfoTabProps> = ({
                 </div>
               </div>
 
-              {/* Syllabus / Curriculum */}
-              <div className="mb-6">
-                <label className="block text-sm font-medium text-gray-700 mb-2">
-                  Syllabus / Curriculum
-                </label>
-                <div className="space-y-3">
-                  {(formData.syllabus || []).map((item, index) => (
-                    <div key={index} className="flex gap-4 items-start bg-gray-50 p-3 rounded-lg border border-gray-200">
-                      <div className="flex-1 space-y-2">
-                        <input
-                          type="text"
-                          value={item.title}
-                          onChange={(e) => handleSyllabusItemChange(index, 'title', e.target.value)}
-                          placeholder="Module Title (e.g. Week 1: Basics)"
-                          className="w-full px-3 py-2 border border-gray-300 rounded-md text-sm"
-                        />
-                        <textarea
-                          value={item.description}
-                          onChange={(e) => handleSyllabusItemChange(index, 'description', e.target.value)}
-                          placeholder="Description of what will be covered..."
-                          rows={2}
-                          className="w-full px-3 py-2 border border-gray-300 rounded-md text-sm"
-                        />
-                      </div>
-                      <button
-                        type="button"
-                        onClick={() => handleRemoveSyllabusItem(index)}
-                        className="text-red-500 hover:text-red-700 p-1"
-                      >
-                        <X className="w-5 h-5" />
-                      </button>
-                    </div>
-                  ))}
-                  <button
-                    type="button"
-                    onClick={handleAddSyllabusItem}
-                    className="text-sm text-blue-600 font-medium hover:text-blue-800 flex items-center"
-                  >
-                    + Add Syllabus Module
-                  </button>
-                </div>
-              </div>
             </div>
           )}
 
@@ -816,6 +774,92 @@ const BasicInfoTab: React.FC<BasicInfoTabProps> = ({
           </div>
         </CardContent>
       </Card>
+
+      {/* Syllabus / Lessons Section */}
+      {isEducational && (
+        <Card variant="elevated" className="shadow-xl">
+          <CardHeader>
+            <div className="flex justify-between items-center w-full">
+              <CardTitle className="text-2xl flex items-center text-gray-900">
+                <ListChecks className="w-6 h-6 mr-3 text-primary-600" />
+                Course Syllabus
+              </CardTitle>
+              <button
+                type="button"
+                onClick={handleAddSyllabusItem}
+                className="flex items-center text-sm font-semibold text-primary-600 hover:text-primary-800 transition-colors bg-primary-50 px-3 py-1.5 rounded-lg"
+              >
+                <Plus className="w-4 h-4 mr-1" /> Add Lesson
+              </button>
+            </div>
+            <p className="text-sm text-gray-500 mt-2">Optional: Add a lesson-by-lesson breakdown of this course.</p>
+          </CardHeader>
+          <CardContent>
+            {formData.syllabus && formData.syllabus.length > 0 ? (
+              <div className="space-y-4">
+                {formData.syllabus.map((lesson, idx) => (
+                  <div key={idx} className="bg-gray-50 p-5 rounded-xl border border-gray-200 space-y-4 relative group shadow-sm">
+                    <button
+                      type="button"
+                      onClick={() => handleRemoveSyllabusItem(idx)}
+                      className="absolute top-4 right-4 text-red-400 hover:text-red-600 transition-colors p-1.5 hover:bg-red-50 rounded-lg"
+                      title="Remove Lesson"
+                    >
+                      <Trash2 className="w-5 h-5" />
+                    </button>
+                    
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4 pr-10">
+                      <div>
+                        <label className="block text-sm font-bold text-gray-700 mb-1">Lesson Title</label>
+                        <input
+                          type="text"
+                          placeholder="e.g., Week 1: Introduction"
+                          value={lesson.title || ''}
+                          onChange={(e) => handleSyllabusItemChange(idx, 'title', e.target.value)}
+                          className="w-full px-3 py-2 bg-white border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500 shadow-sm text-sm"
+                        />
+                      </div>
+                      <div>
+                        <label className="block text-sm font-bold text-gray-700 mb-1">Duration <span className="font-normal text-gray-400">(optional)</span></label>
+                        <input
+                          type="text"
+                          placeholder="e.g., 55 mins"
+                          value={lesson.duration || ''}
+                          onChange={(e) => handleSyllabusItemChange(idx, 'duration', e.target.value)}
+                          className="w-full px-3 py-2 bg-white border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500 shadow-sm text-sm"
+                        />
+                      </div>
+                    </div>
+                    <div>
+                      <label className="block text-sm font-bold text-gray-700 mb-1">Description <span className="font-normal text-gray-400">(optional)</span></label>
+                      <textarea
+                        placeholder="Brief description of the lesson..."
+                        value={lesson.description || ''}
+                        rows={2}
+                        onChange={(e) => handleSyllabusItemChange(idx, 'description', e.target.value)}
+                        className="w-full px-3 py-2 bg-white border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500 shadow-sm text-sm resize-none"
+                      />
+                    </div>
+                  </div>
+                ))}
+              </div>
+            ) : (
+              <div className="text-center py-8 bg-gray-50 rounded-xl border border-dashed border-gray-300">
+                <ListChecks className="w-10 h-10 text-gray-400 mx-auto mb-3" />
+                <h3 className="text-sm font-medium text-gray-900 mb-1">No syllabus added</h3>
+                <p className="text-xs text-gray-500 mb-4">You can add an optional syllabus to show what learners will learn each week.</p>
+                <button
+                  type="button"
+                  onClick={handleAddSyllabusItem}
+                  className="inline-flex items-center text-sm font-medium text-white bg-primary-600 hover:bg-primary-700 transition-colors px-4 py-2 rounded-lg"
+                >
+                  <Plus className="w-4 h-4 mr-1" /> Create First Lesson
+                </button>
+              </div>
+            )}
+          </CardContent>
+        </Card>
+      )}
 
       {/* Tags Section */}
       <Card variant="elevated" className="shadow-xl">

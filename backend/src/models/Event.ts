@@ -80,6 +80,13 @@ export interface IEvent extends Document {
   competitionFormat?: "Individual" | "Team";
   teamSize?: number;
   // Educational event fields (Course / Workshop)
+  programConfig?: {
+    isProgramBlock: boolean;
+    introClasses: number;
+    paidClasses: number;
+    pricePerClass: number;
+    totalProgramPrice: number;
+  };
   skillLevel?: "All Levels" | "Beginner" | "Intermediate" | "Advanced";
   prerequisites?: string;
   ageRange: [number, number];
@@ -115,6 +122,8 @@ export interface IEvent extends Document {
     soldSeats?: number;
     reservedSeats?: number;
     price: number;
+    ratePerClass?: number; // Optional rate per class for breakdown
+    sessionType?: string; // e.g. "Intro", "Full Program"
     unlimitedSeats?: boolean; // For online events with no capacity limit
     isSpecialDate?: boolean; // Flag for special date pricing
     specialDates?: Date[]; // Array of specific dates for special pricing
@@ -414,6 +423,13 @@ const eventSchema = new Schema<IEvent>(
       type: Number,
       min: [1, "Team size must be at least 1"],
     },
+    programConfig: {
+      isProgramBlock: { type: Boolean, default: false },
+      introClasses: { type: Number, default: 0 },
+      paidClasses: { type: Number, default: 0 },
+      pricePerClass: { type: Number, default: 0 },
+      totalProgramPrice: { type: Number, default: 0 },
+    },
     skillLevel: {
       type: String,
       enum: ["All Levels", "Beginner", "Intermediate", "Advanced"],
@@ -576,6 +592,14 @@ const eventSchema = new Schema<IEvent>(
           type: Number,
           required: [true, "Schedule price is required"],
           min: [0, "Price cannot be negative"],
+        },
+        ratePerClass: {
+          type: Number,
+          min: [0, "Rate per class cannot be negative"],
+        },
+        sessionType: {
+          type: String,
+          trim: true,
         },
         // Unlimited capacity flag (for online events)
         unlimitedSeats: {

@@ -686,6 +686,32 @@ const PartnershipList: React.FC = () => {
                   </Button>
                 </div>
               </div>
+
+              {/* Vendor Account Creation */}
+              {selectedPartnership.status === 'approved' && (
+                <div className="border-t border-gray-200 pt-6 mt-6">
+                  <h3 className="font-semibold text-gray-900 mb-3">User Management</h3>
+                  <div className="flex items-center gap-4 bg-blue-50 p-4 rounded-lg border border-blue-100">
+                    <div className="flex-1">
+                      <p className="text-sm text-blue-800 font-medium">Create Vendor Account</p>
+                      <p className="text-xs text-blue-600 mt-1">Generate a Vendor login for this partner using their email address.</p>
+                    </div>
+                    <Button
+                      onClick={async () => {
+                        try {
+                          const res = await api.post(`/partnerships/${selectedPartnership._id}/create-user`);
+                          toast.success('Vendor account created! Temp Password: ' + res.data.data.temporaryPassword, { duration: 10000 });
+                        } catch (err: any) {
+                          toast.error(err.response?.data?.message || 'Failed to create vendor account');
+                        }
+                      }}
+                      variant="primary"
+                    >
+                      Create Account
+                    </Button>
+                  </div>
+                </div>
+              )}
             </div>
           </div>
         </div>

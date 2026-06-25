@@ -220,7 +220,7 @@ const Layout: React.FC<{ children?: React.ReactNode }> = ({ children }) => {
   };
 
   return (
-    <div className="min-h-screen flex flex-col bg-gray-50 overflow-x-hidden">
+    <div className="min-h-screen flex flex-col bg-gray-50">
       <ConnectionStatus />
       <AnnouncementBar />
       <PopupManager />
@@ -758,7 +758,7 @@ const Layout: React.FC<{ children?: React.ReactNode }> = ({ children }) => {
       {/* Footer */}
       <footer className="bg-white shadow-inner border-t border-gray-100">
         <div className="max-w-screen-xl mx-auto px-4 sm:px-6 py-8 sm:py-12">
-          <div className="grid grid-cols-2 md:grid-cols-4 gap-6 sm:gap-8">
+          <div className="grid grid-cols-2 md:grid-cols-5 gap-6 sm:gap-8">
             {/* Logo and About */}
             <div className="col-span-2 md:col-span-1">
               <picture>
@@ -821,8 +821,11 @@ const Layout: React.FC<{ children?: React.ReactNode }> = ({ children }) => {
                   </Link>
                 </li>
               </ul>
+            </div>
 
-              <h3 className="font-semibold mt-10 mb-4 text-gray-900">Teach</h3>
+            {/* Teach Links */}
+            <div className="col-span-1">
+              <h3 className="font-semibold mb-4 text-gray-900">Teach</h3>
               <ul className="space-y-2">
                 <li>
                   <Link to="/for-organizations" className="text-gray-700 hover:text-gray-900 text-sm">

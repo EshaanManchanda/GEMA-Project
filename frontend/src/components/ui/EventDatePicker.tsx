@@ -58,6 +58,7 @@ interface EventDatePickerProps {
   timezone?: string;
   className?: string;
   disabled?: boolean;
+  bookingType?: 'intro' | 'program';
 }
 
 /** Format an HH:mm string to human-readable 12-hour time (e.g. "9:00 AM"). */
@@ -79,6 +80,7 @@ const EventDatePicker: React.FC<EventDatePickerProps> = ({
   timezone,
   className = '',
   disabled = false,
+  bookingType,
 }) => {
   const tzAbbr = timezone ? ` · ${getTimezoneAbbr(timezone)}` : '';
   const today = startOfDay(new Date());
@@ -90,17 +92,37 @@ const EventDatePicker: React.FC<EventDatePickerProps> = ({
     const dates: Date[] = [];
 
     dateSchedules.forEach(schedule => {
-      const startDate = startOfDay(new Date(schedule.startDate));
-      const endDate = startOfDay(new Date(schedule.endDate));
+      const rawStart = (schedule as any).startDate || (schedule as any).startDateTime || (schedule as any).date;
+      const rawEnd = (schedule as any).endDate || (schedule as any).endDateTime || rawStart;
+      if (!rawStart || !rawEnd) return;
 
-      const minDate = isAfter(today, startDate) ? today : startDate;
-
-      let currentDate = new Date(minDate);
-      while (!isAfter(currentDate, endDate)) {
+      if (bookingType === 'program') {
+        const startDate = startOfDay(new Date(rawStart));
+        const minDate = isAfter(today, startDate) ? today : startDate;
         if (schedule.unlimitedSeats || schedule.availableSeats > 0) {
-          dates.push(new Date(currentDate));
+          dates.push(new Date(minDate));
         }
-        currentDate.setDate(currentDate.getDate() + 1);
+      } else {
+        const startDate = startOfDay(new Date(rawStart));
+        const endDate = startOfDay(new Date(rawEnd));
+
+        const minDate = isAfter(today, startDate) ? today : startDate;
+
+        let currentDate = new Date(minDate);
+        while (!isAfter(currentDate, endDate)) {
+          if (schedule.unlimitedSeats || schedule.availableSeats > 0) {
+            if (bookingType === 'intro' && schedule.timeSlots?.length) {
+              const hasSlot = schedule.timeSlots.some(s => {
+                if (!s.date) return true;
+                return isEqual(startOfDay(new Date(s.date)), startOfDay(currentDate));
+              });
+              if (hasSlot) dates.push(new Date(currentDate));
+            } else {
+              dates.push(new Date(currentDate));
+            }
+          }
+          currentDate.setDate(currentDate.getDate() + 1);
+        }
       }
     });
 
@@ -108,7 +130,7 @@ const EventDatePicker: React.FC<EventDatePickerProps> = ({
     return Array.from(new Set(dates.map(d => d.getTime())))
       .map(t => new Date(t))
       .sort((a, b) => a.getTime() - b.getTime());
-  }, [dateSchedules, today]);
+  }, [dateSchedules, today, bookingType]);
 
   /** Return the best matching schedule for a given day (prefers override). */
   const getScheduleForDate = (date: Date): DateSchedule | null => {
@@ -117,14 +139,27 @@ const EventDatePicker: React.FC<EventDatePickerProps> = ({
     const target = startOfDay(date);
 
     const matches = dateSchedules.filter(s => {
-      const start = startOfDay(new Date(s.startDate));
-      const end   = startOfDay(new Date(s.endDate));
+      const rawStart = (s as any).startDate || (s as any).startDateTime || (s as any).date;
+      const rawEnd = (s as any).endDate || (s as any).endDateTime || rawStart;
+      if (!rawStart || !rawEnd) return false;
+      const start = startOfDay(new Date(rawStart));
+      const end   = startOfDay(new Date(rawEnd));
       return !isBefore(target, start) && !isAfter(target, end);
     });
 
     if (!matches.length) return null;
     return matches.find(s => s.isOverride) ?? matches[0];
   };
+
+  const highlightedDates = useMemo(() => {
+    if (bookingType !== 'program' || !selectedDate) return [];
+    const schedule = getScheduleForDate(selectedDate);
+    if (!schedule || !schedule.timeSlots) return [];
+    
+    return schedule.timeSlots
+      .filter(slot => slot.date)
+      .map(slot => startOfDay(new Date(slot.date!)));
+  }, [selectedDate, bookingType, dateSchedules]);
 
   /**
    * Return the time slots for the selected date that still have available seats.
@@ -155,6 +190,7 @@ const EventDatePicker: React.FC<EventDatePickerProps> = ({
 
   const isEventDate = (date: Date) =>
     dateSchedules?.some(s => {
+      if (!s.startDate || !s.endDate) return false;
       const start = startOfDay(new Date(s.startDate));
       const end   = startOfDay(new Date(s.endDate));
       const target = startOfDay(date);
@@ -166,11 +202,14 @@ const EventDatePicker: React.FC<EventDatePickerProps> = ({
     const isSelected  = selectedDate && isEqual(startOfDay(date), startOfDay(selectedDate));
     const isEvent     = isEventDate(date);
     const isToday     = isEqual(startOfDay(date), today);
+    const isHighlighted = highlightedDates.some(d => isEqual(startOfDay(date), startOfDay(d)));
 
     let classes = 'relative ';
 
     if (isSelected) {
       classes += 'bg-primary-600 text-white hover:bg-primary-700 ring-2 ring-primary-200 ring-offset-1';
+    } else if (isHighlighted && !isSelected) {
+      classes += 'bg-primary-100 text-primary-800 font-semibold border border-primary-300 shadow-sm ';
     } else if (isEvent && isAvailable) {
       classes += 'bg-gradient-to-br from-primary-500 to-primary-600 text-white hover:from-primary-600 hover:to-primary-700 cursor-pointer shadow-sm';
     } else if (isAvailable) {
@@ -179,7 +218,7 @@ const EventDatePicker: React.FC<EventDatePickerProps> = ({
       classes += 'text-gray-300 cursor-not-allowed opacity-50';
     }
 
-    if (isToday && !isSelected) classes += ' ring-1 ring-orange-400';
+    if (isToday && !isSelected && !isHighlighted) classes += ' ring-1 ring-orange-400';
 
     return classes;
   };
@@ -196,7 +235,7 @@ const EventDatePicker: React.FC<EventDatePickerProps> = ({
         <label className="block text-gray-700 text-sm font-medium mb-2">
           Select Event Date
         </label>
-        {dateSchedules?.length > 0 && (
+        {dateSchedules?.length > 0 && dateSchedules[0].startDate && dateSchedules[0].endDate && (
           <div className="text-xs text-gray-600">
             Event runs:{' '}
             {format(new Date(dateSchedules[0].startDate), 'MMM d')} –{' '}
@@ -211,6 +250,7 @@ const EventDatePicker: React.FC<EventDatePickerProps> = ({
             selected={selectedDate}
             onChange={handleDateSelect}
             filterDate={filterDate}
+            highlightDates={highlightedDates}
             minDate={today}
             inline
             disabled={disabled}

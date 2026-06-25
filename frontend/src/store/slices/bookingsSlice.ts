@@ -62,6 +62,8 @@ export interface Booking {
   // Payment
   payment: BookingPayment;
 
+  programStatus?: 'intro_booked' | 'program_purchased';
+
   // Additional info
   specialRequests?: string;
 
@@ -382,7 +384,8 @@ export const createPaymentIntent = createAsyncThunk(
       participants: number;
       dateScheduleId?: string;
       couponCode?: string;
-      currency?: string; // Add currency parameter
+      currency?: string;
+      bookingType?: 'intro' | 'program';
     },
     { rejectWithValue }
   ) => {
@@ -394,7 +397,8 @@ export const createPaymentIntent = createAsyncThunk(
         participants: params.participants, // Keep as number (participant count)
         dateScheduleId: params.dateScheduleId,
         couponCode: params.couponCode,
-        currency: params.currency, // Pass currency to the API
+        currency: params.currency,
+        bookingType: params.bookingType,
       });
       return response;
     } catch (error: any) {

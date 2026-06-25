@@ -384,8 +384,8 @@ export const validateCreateEvent = [
 
   body("dateSchedule.*.timeSlots.*.availableSeats")
     .optional()
-    .isInt({ min: 0, max: 10000 })
-    .withMessage("Time slot seats must be between 0 and 10,000")
+    .isInt({ min: 0, max: 999999 })
+    .withMessage("Time slot seats must be between 0 and 999,999")
     .toInt(),
 
   body("dateSchedule.*.timeSlots.*.price")
@@ -647,7 +647,7 @@ export const validateUpdateEvent = [
 
   body("dateSchedule.*.timeSlots.*.availableSeats")
     .optional()
-    .isInt({ min: 0, max: 10000 })
+    .isInt({ min: 0, max: 999999 })
     .toInt(),
 
   body("dateSchedule.*.timeSlots.*.price")

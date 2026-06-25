@@ -36,6 +36,7 @@ interface PaymentFormProps {
   onNext: () => void;
   onPrev: () => void;
   schedulePrice: number;
+  bookingType?: 'intro' | 'program';
 }
 
 const PaymentForm: React.FC<PaymentFormProps> = ({
@@ -43,6 +44,7 @@ const PaymentForm: React.FC<PaymentFormProps> = ({
   onNext,
   onPrev,
   schedulePrice,
+  bookingType,
 }) => {
   const dispatch = useDispatch<AppDispatch>();
   const bookingFlow = useSelector(selectBookingFlow);
@@ -174,12 +176,13 @@ const PaymentForm: React.FC<PaymentFormProps> = ({
           participants: participants.length,
           dateScheduleId: compositeScheduleId,
           currency: currencyInfo.code, // Pass the active currency code
+          bookingType: bookingType,
         }));
       } else {
         logger.warn('No schedule ID found in booking flow. User must select a schedule.');
       }
     }
-  }, [selectedPaymentMethod, checkout?.clientSecret, participants.length, event._id, bookingFlow.scheduleId, bookingFlow.selectedDate, dispatch]);
+  }, [selectedPaymentMethod, checkout?.clientSecret, participants.length, event._id, bookingFlow.scheduleId, bookingFlow.selectedDate, bookingType, dispatch]);
 
   // Calculate total amount
   const calculateTotal = () => {
@@ -354,6 +357,7 @@ const PaymentForm: React.FC<PaymentFormProps> = ({
           seats: participants.length || 1,
           paymentMethod: 'free',
           participants,
+          bookingType: bookingType,
         });
 
         if (!initiateResponse?.paymentIntentId || !initiateResponse?.orderId) {
@@ -397,7 +401,8 @@ const PaymentForm: React.FC<PaymentFormProps> = ({
             dateScheduleId: compositeScheduleId,
             seats: participants.length,
             paymentMethod: 'test',
-            participants: participants
+            participants: participants,
+            bookingType: bookingType,
           });
 
           orderId = initiateResponse.orderId;
@@ -444,6 +449,7 @@ const PaymentForm: React.FC<PaymentFormProps> = ({
             participants: participants.length,
             dateScheduleId: bookingFlow.scheduleId,
             currency: currencyInfo.code,
+            bookingType: bookingType,
           }));
           return;
         }

@@ -34,6 +34,10 @@ export interface IOrderItem {
   currency: string;
   participants?: IParticipant[];
   scheduleId?: mongoose.Types.ObjectId;
+  
+  programStatus?: "intro_booked" | "program_purchased";
+  meetingLink?: string;
+
   _id?: mongoose.Types.ObjectId;
 }
 
@@ -276,6 +280,14 @@ const orderItemSchema = new Schema<IOrderItem>({
     type: Schema.Types.ObjectId,
     ref: "Event.dateSchedule",
     required: false,
+  },
+  programStatus: {
+    type: String,
+    enum: ["intro_booked", "program_purchased"],
+  },
+  meetingLink: {
+    type: String,
+    trim: true,
   },
 });
 

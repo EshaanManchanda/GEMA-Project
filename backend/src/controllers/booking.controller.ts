@@ -118,6 +118,7 @@ export const initiateBooking = async (
       paymentMethod = "stripe",
       participants,
       couponCode,
+      bookingType, // "intro" or "program"
     } = req.body;
 
     const IDEMPOTENCY_WINDOW_MS = 30 * 60 * 1000; // 30 minutes
@@ -147,6 +148,22 @@ export const initiateBooking = async (
     }
 
     const resolvedEventId = event._id.toString();
+
+    if (bookingType === "intro") {
+      const existingIntroBooking = await Order.findOne({
+        userId,
+        "items.eventId": resolvedEventId,
+        $or: [
+          { "items.programStatus": "intro_booked" },
+          { "items.unitPrice": 0, "status": "confirmed" }
+        ],
+        status: { $in: ["confirmed", "pending"] }
+      }).lean();
+
+      if (existingIntroBooking && (!pendingOrder || existingIntroBooking._id.toString() !== pendingOrder._id.toString())) {
+        return next(new AppError("You have already booked a trial class for this event.", 400));
+      }
+    }
 
     // Idempotency: return existing pending order within window
     if (pendingOrder) {
@@ -352,8 +369,28 @@ export const initiateBooking = async (
     const taxRate = adminSettings?.taxSettings?.vatRate || 5;
 
     // Calculate total amount (all in AED)
-    // Use ?? (not ||) so an explicit price of 0 is respected (free events)
-    const unitPrice = schedule.price ?? event.price ?? 0;
+    // Calculate total amount (all in AED)
+    let unitPrice = schedule.price ?? event.price ?? 0;
+    let programStatus: string | undefined = undefined;
+
+    // Override price if this is a program block
+    if (bookingType) {
+      if (bookingType === "intro") {
+        unitPrice = 0; // Free intro
+        programStatus = "intro_booked";
+      } else if (bookingType === "program") {
+        const calculatedTotal = (event.dateSchedule || [])
+          .filter((s: any) => s.sessionType === 'Standard Session' || (!s.sessionType && s.price > 0))
+          .reduce((sum: number, s: any) => sum + (s.price || 0), 0);
+          
+        unitPrice = event.programConfig?.isProgramBlock && event.programConfig?.totalProgramPrice
+          ? event.programConfig.totalProgramPrice
+          : calculatedTotal;
+          
+        programStatus = "program_purchased";
+      }
+    }
+
     const subtotal = unitPrice * seats;
 
     // Free event: skip payment and coupon entirely.
@@ -424,6 +461,7 @@ export const initiateBooking = async (
             currency: "AED",
             participants: participants || [],
             scheduleId: resolvedScheduleId,
+            programStatus,
           },
         ],
         subtotal,

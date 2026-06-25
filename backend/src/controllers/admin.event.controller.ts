@@ -763,6 +763,9 @@ export const updateEvent = async (
     if (updateData.bookingAttachments) {
       event.markModified("bookingAttachments");
     }
+    if (updateData.syllabus) {
+      event.markModified("syllabus");
+    }
     await event.save();
 
     // Populate vendor information

@@ -5,6 +5,8 @@ import { emailService } from "../services/email.service";
 import { AppError } from "../middleware/error";
 import logger from "../config/logger";
 import { stripe } from "../config/stripe";
+import User, { UserRole, UserStatus } from "../models/User";
+import crypto from "crypto";
 
 /**
  * Submit partnership form (public endpoint)
@@ -515,6 +517,76 @@ export const getPublicPartnershipById = async (
       success: true,
       message: "Partnership retrieved successfully",
       data: { partnership },
+    });
+  } catch (error) {
+    next(error);
+  }
+};
+
+/**
+ * Create a User from an approved Partnership
+ */
+export const createUserFromPartnership = async (
+  req: AuthRequest,
+  res: Response,
+  next: NextFunction,
+) => {
+  try {
+    if (req.user!.role !== "admin") {
+      return next(new AppError("Access denied. Admin privileges required.", 403));
+    }
+
+    const { id } = req.params;
+    const partnership = await Partnership.findById(id);
+
+    if (!partnership) {
+      return next(new AppError("Partnership submission not found", 404));
+    }
+
+    if (partnership.status !== "approved") {
+      return next(new AppError("Partnership must be approved before creating a user.", 400));
+    }
+
+    // Check if user already exists
+    const existingUser = await User.findOne({ email: partnership.email });
+    if (existingUser) {
+      return next(new AppError("User with this email already exists.", 400));
+    }
+
+    // Generate random password
+    const tempPassword = crypto.randomBytes(8).toString("hex");
+
+    // Extract first and last name from partnership name
+    const nameParts = partnership.name.split(" ");
+    const firstName = nameParts[0] || "Vendor";
+    const lastName = nameParts.slice(1).join(" ") || "User";
+
+    // Create User
+    const newUser = new User({
+      firstName,
+      lastName,
+      email: partnership.email,
+      phone: partnership.phone,
+      passwordHash: tempPassword, // Will be hashed by pre-save hook
+      role: UserRole.VENDOR,
+      status: UserStatus.ACTIVE,
+      isEmailVerified: true, // We assume true if they paid/were approved
+      provider: "email",
+    });
+
+    await newUser.save();
+
+    // Optionally send email to the new vendor with their temp password.
+    // For now, we will just return it in the response so admin can share it, 
+    // or you can add `emailService.sendVendorWelcomeEmail(email, tempPassword)` here.
+
+    res.status(201).json({
+      success: true,
+      message: "Vendor account created successfully",
+      data: { 
+        user: newUser,
+        temporaryPassword: tempPassword
+      },
     });
   } catch (error) {
     next(error);

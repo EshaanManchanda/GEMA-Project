@@ -15,6 +15,14 @@ interface Schedule {
   specialDates?: string[];
   priority?: number;
   isOverride?: boolean;
+  timeSlots?: Array<{
+    date: string;
+    startTime: string;
+    availableSeats: string;
+  }>;
+  sessionType?: string;
+  ratePerClass?: string;
+  isFreeSession?: boolean;
 }
 
 interface SchedulePricingTabProps {
@@ -90,7 +98,10 @@ const SchedulePricingTab: React.FC<SchedulePricingTabProps> = ({
 
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [editingIndex, setEditingIndex] = useState<number | null>(null);
-  const [modalForm, setModalForm] = useState<Partial<Schedule>>({
+  
+  const isEducational = ['Course', 'Workshop', 'Bootcamp', 'Class', 'Masterclass'].includes(eventType || '');
+
+  const [modalForm, setModalForm] = useState<Partial<Schedule> & { scheduleType?: 'single' | 'cohort', cohortDays?: string[] }>({
     startDate: '',
     endDate: '',
     startTime: '',
@@ -98,12 +109,26 @@ const SchedulePricingTab: React.FC<SchedulePricingTabProps> = ({
     availableSeats: capacity || '10',
     price: _basePrice || '',
     unlimitedSeats: false,
+    scheduleType: 'single',
+    cohortDays: [],
+    sessionType: 'Intro Session',
+    ratePerClass: '',
   });
 
   const openModal = (index: number | null = null) => {
     setEditingIndex(index);
     if (index !== null) {
-      setModalForm({ ...schedules[index] });
+      const schedule = schedules[index];
+      const isCohort = schedule.timeSlots && schedule.timeSlots.length > 0;
+      const cohortDays = isCohort 
+        ? Array.from(new Set(schedule.timeSlots!.map(t => new Date(t.date).toLocaleDateString('en-US', { weekday: 'long', timeZone: 'UTC' }))))
+        : [];
+        
+      setModalForm({ 
+        ...schedule,
+        scheduleType: isCohort ? 'cohort' : 'single',
+        cohortDays: cohortDays
+      });
     } else {
       setModalForm({
         startDate: '',
@@ -113,6 +138,11 @@ const SchedulePricingTab: React.FC<SchedulePricingTabProps> = ({
         availableSeats: capacity || '10',
         price: _basePrice || '',
         unlimitedSeats: false,
+        scheduleType: 'single',
+        cohortDays: [],
+        sessionType: 'Intro Session',
+        ratePerClass: '',
+        isFreeSession: false,
       });
     }
     setIsModalOpen(true);
@@ -124,9 +154,33 @@ const SchedulePricingTab: React.FC<SchedulePricingTabProps> = ({
   };
 
   const handleModalSave = () => {
+    let finalForm = { ...modalForm };
+
+    if (finalForm.scheduleType === 'cohort' && finalForm.startDate && finalForm.endDate && finalForm.cohortDays && finalForm.cohortDays.length > 0) {
+      const start = new Date(finalForm.startDate);
+      const end = new Date(finalForm.endDate);
+      const daysMap: Record<string, number> = { 'Sunday': 0, 'Monday': 1, 'Tuesday': 2, 'Wednesday': 3, 'Thursday': 4, 'Friday': 5, 'Saturday': 6 };
+      const selectedDays = finalForm.cohortDays.map(d => daysMap[d]);
+      
+      const timeSlots = [];
+      let currentDate = new Date(start);
+      while (currentDate <= end) {
+        if (selectedDays.includes(currentDate.getDay())) {
+          timeSlots.push({
+            date: currentDate.toISOString().split('T')[0],
+            startTime: finalForm.startTime || '',
+            endTime: finalForm.endTime || '',
+            availableSeats: finalForm.unlimitedSeats ? 999999 : (parseInt(finalForm.availableSeats || '0') || 0),
+          });
+        }
+        currentDate.setDate(currentDate.getDate() + 1);
+      }
+      finalForm.timeSlots = timeSlots as any;
+    }
+
     if (editingIndex !== null) {
-      Object.entries(modalForm).forEach(([field, value]) => {
-        if (value !== undefined) {
+      Object.entries(finalForm).forEach(([field, value]) => {
+        if (value !== undefined && field !== 'scheduleType' && field !== 'cohortDays') {
           onScheduleChange(editingIndex, field as keyof Schedule, value as any);
         }
       });
@@ -134,8 +188,8 @@ const SchedulePricingTab: React.FC<SchedulePricingTabProps> = ({
       onAddSchedule(false);
       const newIdx = schedules.length;
       setTimeout(() => {
-        Object.entries(modalForm).forEach(([field, value]) => {
-          if (value !== undefined) {
+        Object.entries(finalForm).forEach(([field, value]) => {
+          if (value !== undefined && field !== 'scheduleType' && field !== 'cohortDays') {
             onScheduleChange(newIdx, field as keyof Schedule, value as any);
           }
         });
@@ -200,7 +254,7 @@ const SchedulePricingTab: React.FC<SchedulePricingTabProps> = ({
         <h3 className="text-lg font-semibold text-gray-900 mb-6">General Settings</h3>
         <div className="space-y-6">
           {/* Free Event Toggle */}
-          {onFreeEventChange && (
+          {onFreeEventChange && !isEducational && (
             <div
               className={`flex items-center gap-3 p-4 rounded-xl border-2 cursor-pointer transition-all duration-200 ${isFreeEvent ? 'bg-green-50/50 border-green-400 ring-1 ring-green-400' : 'bg-white border-gray-200 hover:border-green-300 hover:bg-green-50/30'}`}
               onClick={() => onFreeEventChange(!isFreeEvent)}
@@ -217,47 +271,51 @@ const SchedulePricingTab: React.FC<SchedulePricingTabProps> = ({
           )}
 
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
-            <FieldGroup
-              label="Base Price"
-              required={!isFreeEvent}
-            >
-              <div className="relative">
-                <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-                  <span className="text-gray-500 sm:text-sm font-medium">{currency}</span>
+            {!isEducational && (
+              <FieldGroup
+                label="Base Price"
+                required={!isFreeEvent}
+              >
+                <div className="relative">
+                  <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                    <span className="text-gray-500 sm:text-sm font-medium">{currency}</span>
+                  </div>
+                  <input
+                    type="number"
+                    min="0"
+                    step="0.01"
+                    value={isFreeEvent ? '0' : _basePrice}
+                    onChange={_onBasePriceChange}
+                    disabled={isFreeEvent}
+                    placeholder="0.00"
+                    className={`${inputCls} pl-12 ${errors.basePrice ? 'border-red-500 focus:ring-red-500' : ''} ${isFreeEvent ? 'bg-gray-100 text-gray-400 cursor-not-allowed border-gray-200' : ''}`}
+                  />
                 </div>
-                <input
-                  type="number"
-                  min="0"
-                  step="0.01"
-                  value={isFreeEvent ? '0' : _basePrice}
-                  onChange={_onBasePriceChange}
-                  disabled={isFreeEvent}
-                  placeholder="0.00"
-                  className={`${inputCls} pl-12 ${errors.basePrice ? 'border-red-500 focus:ring-red-500' : ''} ${isFreeEvent ? 'bg-gray-100 text-gray-400 cursor-not-allowed border-gray-200' : ''}`}
-                />
-              </div>
-              {errors.basePrice && <p className="mt-1 text-sm text-red-500">{errors.basePrice}</p>}
-            </FieldGroup>
+                {errors.basePrice && <p className="mt-1 text-sm text-red-500">{errors.basePrice}</p>}
+              </FieldGroup>
+            )}
 
-            <FieldGroup label="Currency">
-              <div className="relative">
-                <div className="absolute inset-y-0 left-0 pl-3.5 flex items-center pointer-events-none">
-                  <DollarSign className="h-4 w-4 text-gray-400" />
+            {!isEducational && (
+              <FieldGroup label="Currency">
+                <div className="relative">
+                  <div className="absolute inset-y-0 left-0 pl-3.5 flex items-center pointer-events-none">
+                    <DollarSign className="h-4 w-4 text-gray-400" />
+                  </div>
+                  <select
+                    id="currency"
+                    name="currency"
+                    value={currency}
+                    onChange={onCurrencyChange}
+                    className={`${inputCls} pl-10`}
+                  >
+                    <option value="USD">USD ($)</option>
+                    <option value="AED">AED (د.إ)</option>
+                    <option value="EGP">EGP (£)</option>
+                    <option value="CAD">CAD ($)</option>
+                  </select>
                 </div>
-                <select
-                  id="currency"
-                  name="currency"
-                  value={currency}
-                  onChange={onCurrencyChange}
-                  className={`${inputCls} pl-10`}
-                >
-                  <option value="USD">USD ($)</option>
-                  <option value="AED">AED (د.إ)</option>
-                  <option value="EGP">EGP (£)</option>
-                  <option value="CAD">CAD ($)</option>
-                </select>
-              </div>
-            </FieldGroup>
+              </FieldGroup>
+            )}
           </div>
 
           {/* Timezone */}
@@ -416,8 +474,13 @@ const SchedulePricingTab: React.FC<SchedulePricingTabProps> = ({
                         </span>
                       </div>
                       <div>
-                        <h4 className="font-bold text-gray-900 leading-tight">
+                        <h4 className="font-bold text-gray-900 leading-tight flex items-center gap-2">
                           {schedule.startDate ? new Date(schedule.startDate).toLocaleDateString('en-US', { weekday: 'long' }) : 'No Date Set'}
+                          {schedule.timeSlots && schedule.timeSlots.length > 0 && (
+                            <span className="bg-green-100 text-green-700 text-[10px] px-2 py-0.5 rounded-full font-bold uppercase tracking-wider">
+                              Cohort ({schedule.timeSlots.length} meetings)
+                            </span>
+                          )}
                         </h4>
                         <div className="flex items-center text-sm text-gray-500 mt-1 font-medium">
                           <Clock className="w-3.5 h-3.5 mr-1" />
@@ -431,7 +494,7 @@ const SchedulePricingTab: React.FC<SchedulePricingTabProps> = ({
                     <div>
                       <span className="block text-[10px] font-bold text-gray-400 uppercase tracking-wider mb-1">Price</span>
                       <span className="font-semibold text-gray-800 flex items-center">
-                        {isFreeEvent ? (
+                        {isFreeEvent || schedule.isFreeSession ? (
                           <span className="text-green-600 bg-green-100 px-2 py-0.5 rounded text-xs">FREE</span>
                         ) : (
                           `${currency} ${schedule.price || _basePrice || '0'}`
@@ -498,8 +561,8 @@ const SchedulePricingTab: React.FC<SchedulePricingTabProps> = ({
       {/* ── Add/Edit Session Modal ── */}
       {isModalOpen && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-gray-900/60 backdrop-blur-sm">
-          <div className="bg-white rounded-2xl shadow-2xl w-full max-w-lg overflow-hidden animate-in fade-in zoom-in-95 duration-200">
-            <div className="px-6 py-4 border-b border-gray-100 flex items-center justify-between bg-gray-50/50">
+          <div className="bg-white rounded-2xl shadow-2xl w-full max-w-xl max-h-[90vh] flex flex-col overflow-hidden animate-in fade-in zoom-in-95 duration-200">
+            <div className="px-6 py-4 border-b border-gray-100 flex items-center justify-between bg-gray-50/50 shrink-0">
               <h3 className="text-lg font-bold text-gray-900">
                 {editingIndex !== null ? 'Edit Session' : 'Add New Session'}
               </h3>
@@ -511,19 +574,45 @@ const SchedulePricingTab: React.FC<SchedulePricingTabProps> = ({
               </button>
             </div>
 
-            <div className="p-6 space-y-5">
+            <div className="p-6 space-y-5 overflow-y-auto min-h-0">
+              {/* Schedule Type Selection */}
+              <div className="flex gap-4 p-1 bg-gray-100 rounded-xl shrink-0">
+                <button
+                  type="button"
+                  onClick={() => setModalForm(prev => ({ ...prev, scheduleType: 'single' }))}
+                  className={`flex-1 py-2 text-sm font-bold rounded-lg transition-colors ${
+                    modalForm.scheduleType === 'single' ? 'bg-white text-gray-900 shadow-sm' : 'text-gray-500 hover:text-gray-700'
+                  }`}
+                >
+                  Single Session
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setModalForm(prev => ({ ...prev, scheduleType: 'cohort' }))}
+                  className={`flex-1 py-2 text-sm font-bold rounded-lg transition-colors ${
+                    modalForm.scheduleType === 'cohort' ? 'bg-white text-gray-900 shadow-sm' : 'text-gray-500 hover:text-gray-700'
+                  }`}
+                >
+                  Multi-Date Cohort
+                </button>
+              </div>
+
               <div className="grid grid-cols-2 gap-4">
                 <div className="col-span-2 sm:col-span-1">
-                  <label className="block text-sm font-semibold text-gray-700 mb-1.5">Start Date *</label>
+                  <label className="block text-sm font-semibold text-gray-700 mb-1.5">
+                    {modalForm.scheduleType === 'cohort' ? 'Cohort Start Date *' : 'Start Date *'}
+                  </label>
                   <input
                     type="date"
                     value={modalForm.startDate || ''}
-                    onChange={(e) => setModalForm(prev => ({ ...prev, startDate: e.target.value, endDate: e.target.value }))}
+                    onChange={(e) => setModalForm(prev => ({ ...prev, startDate: e.target.value, ...(modalForm.scheduleType === 'single' ? { endDate: e.target.value } : {}) }))}
                     className="w-full px-3 py-2.5 border border-gray-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-green-500 shadow-sm"
                   />
                 </div>
                 <div className="col-span-2 sm:col-span-1">
-                  <label className="block text-sm font-semibold text-gray-700 mb-1.5">End Date</label>
+                  <label className="block text-sm font-semibold text-gray-700 mb-1.5">
+                    {modalForm.scheduleType === 'cohort' ? 'Cohort End Date *' : 'End Date *'}
+                  </label>
                   <input
                     type="date"
                     value={modalForm.endDate || ''}
@@ -533,9 +622,45 @@ const SchedulePricingTab: React.FC<SchedulePricingTabProps> = ({
                 </div>
               </div>
 
+              {modalForm.scheduleType === 'cohort' && (
+                <div className="col-span-2">
+                  <label className="block text-sm font-bold text-gray-700 mb-2">Select Days of Week *</label>
+                  <div className="flex flex-wrap gap-2">
+                    {['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday'].map(day => {
+                      const isSelected = modalForm.cohortDays?.includes(day);
+                      return (
+                        <button
+                          key={day}
+                          type="button"
+                          onClick={() => {
+                            setModalForm(prev => {
+                              const days = prev.cohortDays || [];
+                              return {
+                                ...prev,
+                                cohortDays: isSelected ? days.filter(d => d !== day) : [...days, day]
+                              };
+                            });
+                          }}
+                          className={`px-3 py-1.5 rounded-lg border text-sm font-medium transition-colors ${
+                            isSelected 
+                              ? 'bg-green-50 border-green-500 text-green-700' 
+                              : 'bg-white border-gray-300 text-gray-600 hover:border-green-300'
+                          }`}
+                        >
+                          {day.substring(0, 3)}
+                        </button>
+                      );
+                    })}
+                  </div>
+                  <p className="text-xs text-gray-500 mt-2">
+                    Select the days this cohort will run. The system will automatically generate sessions for these days between the start and end dates.
+                  </p>
+                </div>
+              )}
+
               <div className="grid grid-cols-2 gap-4">
                 <div>
-                  <label className="block text-sm font-semibold text-gray-700 mb-1.5">Start Time</label>
+                  <label className="block text-sm font-semibold text-gray-700 mb-1.5">Start Time *</label>
                   <input
                     type="time"
                     value={modalForm.startTime || ''}
@@ -544,7 +669,7 @@ const SchedulePricingTab: React.FC<SchedulePricingTabProps> = ({
                   />
                 </div>
                 <div>
-                  <label className="block text-sm font-semibold text-gray-700 mb-1.5">End Time</label>
+                  <label className="block text-sm font-semibold text-gray-700 mb-1.5">End Time *</label>
                   <input
                     type="time"
                     value={modalForm.endTime || ''}
@@ -554,20 +679,87 @@ const SchedulePricingTab: React.FC<SchedulePricingTabProps> = ({
                 </div>
               </div>
 
-              <div className="grid grid-cols-2 gap-4">
+              {isEducational && (
+                <div className="grid grid-cols-2 gap-4">
+                  <div className="col-span-2">
+                    <label className="block text-sm font-semibold text-gray-700 mb-1.5">Session Category / Type</label>
+                    <select
+                      value={modalForm.sessionType || 'Intro Session'}
+                      onChange={(e) => {
+                        const newType = e.target.value;
+                        setModalForm(prev => ({ 
+                          ...prev, 
+                          sessionType: newType,
+                          ...(newType === 'Intro Session' ? { price: '0', isFreeSession: true } : { isFreeSession: false })
+                        }));
+                      }}
+                      className="w-full px-4 py-3 border border-gray-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-green-500 shadow-sm bg-white"
+                    >
+                      <option value="Intro Session">Intro Session (Free)</option>
+                      <option value="Standard Session">Standard Session</option>
+                    </select>
+                  </div>
+                  {modalForm.scheduleType === 'cohort' && modalForm.sessionType === 'Standard Session' && (
+                    <div className="col-span-2">
+                      <label className="block text-sm font-semibold text-gray-700 mb-1.5">Rate Per Class ({currency})</label>
+                      <input
+                        type="number"
+                        min="0"
+                        step="0.01"
+                        value={modalForm.ratePerClass || ''}
+                        onChange={(e) => setModalForm(prev => ({ ...prev, ratePerClass: e.target.value }))}
+                        className="w-full px-3 py-2.5 border border-gray-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-green-500 shadow-sm"
+                        placeholder="e.g. 50"
+                      />
+                      <p className="text-xs text-gray-500 mt-1">Optional breakdown price per individual class in this cohort.</p>
+                    </div>
+                  )}
+                </div>
+              )}
+
+              <div className="grid grid-cols-1 gap-4">
                 <div>
-                  <label className="block text-sm font-semibold text-gray-700 mb-1.5">Price ({currency})</label>
-                  <input
-                    type="number"
-                    min="0"
-                    step="0.01"
-                    value={isFreeEvent ? '0' : (modalForm.price || '')}
-                    onChange={(e) => setModalForm(prev => ({ ...prev, price: e.target.value }))}
-                    disabled={isFreeEvent}
-                    placeholder={_basePrice || '0.00'}
-                    className={`w-full px-3 py-2.5 border rounded-xl shadow-sm focus:outline-none focus:ring-2 focus:ring-green-500 ${isFreeEvent ? 'bg-gray-100 text-gray-400 border-gray-200' : 'border-gray-300'
+                  <label className="block text-sm font-semibold text-gray-700 mb-1.5">Price</label>
+                  <div className="flex rounded-xl shadow-sm border border-gray-300 overflow-hidden">
+                    <select
+                      value={currency}
+                      onChange={onCurrencyChange}
+                      className="px-3 pr-8 py-2.5 bg-gray-50 border-r border-gray-300 text-gray-700 font-medium focus:outline-none min-w-[80px]"
+                    >
+                      {['AED', 'USD', 'EUR', 'GBP', 'SAR', 'QAR', 'KWD', 'BHD', 'OMR'].map(c => <option key={c} value={c}>{c}</option>)}
+                    </select>
+                    <input
+                      type="number"
+                      min="0"
+                      step="0.01"
+                      value={isFreeEvent || (isEducational && modalForm.sessionType === 'Intro Session') ? '0' : (modalForm.price || '')}
+                      onChange={(e) => setModalForm(prev => ({ ...prev, price: e.target.value }))}
+                      disabled={isFreeEvent || (isEducational && modalForm.sessionType === 'Intro Session')}
+                      placeholder="0.00"
+                      className={`flex-1 px-4 py-3 focus:outline-none focus:ring-2 focus:ring-primary-500 font-semibold ${
+                        isFreeEvent || (isEducational && modalForm.sessionType === 'Intro Session') ? 'bg-gray-100 text-gray-400 cursor-not-allowed' : 'bg-white'
                       }`}
-                  />
+                    />
+                  </div>
+                  <div className="mt-2 flex items-center gap-2">
+                    <input
+                      type="checkbox"
+                      id="freeSessionCheck"
+                      checked={isFreeEvent || (isEducational && modalForm.sessionType === 'Intro Session') || modalForm.isFreeSession}
+                      disabled={isFreeEvent || (isEducational && modalForm.sessionType === 'Intro Session')}
+                      onChange={(e) => {
+                        if (e.target.checked) {
+                          setModalForm(prev => ({ ...prev, price: '0', isFreeSession: true }));
+                        } else {
+                          setModalForm(prev => ({ ...prev, price: '', isFreeSession: false }));
+                        }
+                      }}
+                      className="w-4 h-4 text-green-600 focus:ring-green-500 border-gray-300 rounded cursor-pointer"
+                    />
+                    <label htmlFor="freeSessionCheck" className="text-sm text-gray-700 font-medium cursor-pointer">
+                      Free Event
+                    </label>
+                  </div>
                 </div>
                 <div>
                   <label className="block text-sm font-semibold text-gray-700 mb-1.5">Capacity</label>
@@ -578,8 +770,7 @@ const SchedulePricingTab: React.FC<SchedulePricingTabProps> = ({
                     onChange={(e) => setModalForm(prev => ({ ...prev, availableSeats: e.target.value }))}
                     disabled={modalForm.unlimitedSeats}
                     placeholder={modalForm.unlimitedSeats ? 'Unlimited' : '10'}
-                    className={`w-full px-3 py-2.5 border rounded-xl shadow-sm focus:outline-none focus:ring-2 focus:ring-green-500 ${modalForm.unlimitedSeats ? 'bg-gray-100 text-gray-400 border-gray-200' : 'border-gray-300'
-                      }`}
+                    className={`w-full px-3 py-2.5 border rounded-xl shadow-sm focus:outline-none focus:ring-2 focus:ring-green-500 ${modalForm.unlimitedSeats ? 'bg-gray-100 text-gray-400 border-gray-200' : 'border-gray-300'}`}
                   />
                 </div>
               </div>
@@ -599,7 +790,7 @@ const SchedulePricingTab: React.FC<SchedulePricingTabProps> = ({
               </div>
             </div>
 
-            <div className="px-6 py-4 bg-gray-50 border-t border-gray-100 flex justify-end gap-3">
+            <div className="px-6 py-4 bg-gray-50 border-t border-gray-100 flex justify-end gap-3 shrink-0">
               <button
                 type="button"
                 onClick={closeModal}

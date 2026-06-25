@@ -55,6 +55,9 @@ interface Schedule {
   priority?: number;
   isOverride?: boolean;
   timeSlots?: TimeSlot[];
+  sessionType?: string;
+  ratePerClass?: string;
+  isFreeSession?: boolean;
 }
 
 interface FAQ {
@@ -84,16 +87,16 @@ interface EventFormData {
   customCSS: string;
   category: string;
   type:
-    | "Olympiad"
-    | "Championship"
-    | "Competition"
-    | "Event"
-    | "Course"
-    | "Venue"
-    | "Workshop"
-    | "Class"
-    | "Bootcamp"
-    | "Masterclass";
+  | "Olympiad"
+  | "Championship"
+  | "Competition"
+  | "Event"
+  | "Course"
+  | "Venue"
+  | "Workshop"
+  | "Class"
+  | "Bootcamp"
+  | "Masterclass";
   venueType: "Indoor" | "Outdoor" | "Online" | "Offline";
   ageRangeMin: string;
   ageRangeMax: string;
@@ -425,71 +428,88 @@ const AdminEditEventPage: React.FC = () => {
           // Transform schedules
           const transformedSchedules: Schedule[] = (
             event.dateSchedule || []
-          ).map((schedule: any, index: number) => ({
-            id: schedule._id || `schedule-${index}`,
-            _id: schedule._id,
-            startDate: schedule.startDate
-              ? new Date(schedule.startDate).toISOString().split("T")[0]
-              : schedule.date
-                ? new Date(schedule.date).toISOString().split("T")[0]
-                : "",
-            endDate: schedule.endDate
-              ? new Date(schedule.endDate).toISOString().split("T")[0]
-              : schedule.date
-                ? new Date(schedule.date).toISOString().split("T")[0]
-                : "",
-            startTime: schedule.startTime || "",
-            endTime: schedule.endTime || "",
-            availableSeats: schedule.availableSeats?.toString() || "",
-            totalSeats:
-              schedule.totalSeats?.toString() ||
-              schedule.availableSeats?.toString() ||
-              "",
-            soldSeats: schedule.soldSeats?.toString() || "0",
-            reservedSeats: schedule.reservedSeats?.toString() || "0",
-            price: schedule.price?.toString() || "",
-            unlimitedSeats: schedule.unlimitedSeats || false,
-            isSpecialDate: schedule.isSpecialDate || false,
-            specialDates:
-              schedule.specialDates?.map(
-                (d: any) => new Date(d).toISOString().split("T")[0],
-              ) || [],
-            priority: schedule.priority || 0,
-            isOverride: schedule.isOverride || false,
-            timeSlots: (schedule.timeSlots || []).map(
-              (slot: any, slotIdx: number) => ({
-                id: slot._id || `slot-${index}-${slotIdx}`,
-                date: slot.date
-                  ? new Date(slot.date).toISOString().split("T")[0]
+          ).map((schedule: any, index: number) => {
+            // Use price as ground truth to derive sessionType and isFreeSession.
+            // DB flags may be stale/corrupted so we recompute from actual price.
+            const dbPrice = parseFloat(schedule.price?.toString() || '0');
+            // If sessionType is explicitly saved in DB, use it.
+            // Otherwise infer: price > 0 → Standard, price === 0 → Intro.
+            const resolvedSessionType: string = schedule.sessionType
+              ? schedule.sessionType
+              : (dbPrice > 0 ? 'Standard Session' : 'Intro Session');
+            // isFreeSession: true only when sessionType is Intro AND price is 0.
+            // For Standard Sessions it's ALWAYS false regardless of DB flag.
+            const resolvedIsFreeSession: boolean = resolvedSessionType === 'Intro Session' && dbPrice === 0;
+
+            return {
+              id: schedule._id || `schedule-${index}`,
+              _id: schedule._id,
+              startDate: schedule.startDate
+                ? new Date(schedule.startDate).toISOString().split("T")[0]
+                : schedule.date
+                  ? new Date(schedule.date).toISOString().split("T")[0]
                   : "",
-                startTime: slot.startTime || "",
-                endTime: slot.endTime || "",
-                availableSeats: slot.availableSeats?.toString() || "",
-                price: slot.price?.toString() || "",
-              }),
-            ),
-          }));
+              endDate: schedule.endDate
+                ? new Date(schedule.endDate).toISOString().split("T")[0]
+                : schedule.date
+                  ? new Date(schedule.date).toISOString().split("T")[0]
+                  : "",
+              startTime: schedule.startTime || "",
+              endTime: schedule.endTime || "",
+              availableSeats: schedule.availableSeats?.toString() || "",
+              totalSeats:
+                schedule.totalSeats?.toString() ||
+                schedule.availableSeats?.toString() ||
+                "",
+              soldSeats: schedule.soldSeats?.toString() || "0",
+              reservedSeats: schedule.reservedSeats?.toString() || "0",
+              price: schedule.price?.toString() || "",
+              unlimitedSeats: schedule.unlimitedSeats || false,
+              isSpecialDate: schedule.isSpecialDate || false,
+              specialDates:
+                schedule.specialDates?.map(
+                  (d: any) => new Date(d).toISOString().split("T")[0],
+                ) || [],
+              priority: schedule.priority || 0,
+              isOverride: schedule.isOverride || false,
+              sessionType: resolvedSessionType,
+              ratePerClass: schedule.ratePerClass?.toString() || '',
+              isFreeSession: resolvedIsFreeSession,
+              timeSlots: (schedule.timeSlots || []).map(
+                (slot: any, slotIdx: number) => ({
+                  id: slot._id || `slot-${index}-${slotIdx}`,
+                  date: slot.date
+                    ? new Date(slot.date).toISOString().split("T")[0]
+                    : "",
+                  startTime: slot.startTime || "",
+                  endTime: slot.endTime || "",
+                  availableSeats: slot.availableSeats?.toString() || "",
+                  price: slot.price?.toString() || "",
+                }),
+              ),
+            };
+          });
 
           setSchedules(
             transformedSchedules.length > 0
               ? transformedSchedules
               : [
-                  {
-                    id: "schedule-1",
-                    startDate: "",
-                    endDate: "",
-                    startTime: "",
-                    endTime: "",
-                    availableSeats: "",
-                    totalSeats: "",
-                    price: "",
-                    unlimitedSeats: false,
-                    isSpecialDate: false,
-                    specialDates: [],
-                    priority: 0,
-                    isOverride: false,
-                  },
-                ],
+                {
+                  id: "schedule-1",
+                  startDate: "",
+                  endDate: "",
+                  startTime: "",
+                  endTime: "",
+                  availableSeats: "",
+                  totalSeats: "",
+                  price: "",
+                  unlimitedSeats: false,
+                  isSpecialDate: false,
+                  specialDates: [],
+                  priority: 0,
+                  isOverride: false,
+                },
+              ],
           );
 
           // If all schedules have unlimitedSeats, enable global unlimited capacity toggle
@@ -1010,9 +1030,9 @@ const AdminEditEventPage: React.FC = () => {
             address: formData.address,
             coordinates:
               lat !== undefined &&
-              lng !== undefined &&
-              !isNaN(lat) &&
-              !isNaN(lng)
+                lng !== undefined &&
+                !isNaN(lat) &&
+                !isNaN(lng)
                 ? { lat, lng }
                 : undefined,
           };
@@ -1061,12 +1081,15 @@ const AdminEditEventPage: React.FC = () => {
           totalSeats: schedule.unlimitedSeats
             ? undefined
             : parseInt(schedule.availableSeats) || undefined,
-          price: parseFloat(schedule.price) || 0,
+          price: schedule.isFreeSession ? 0 : (schedule.price !== '' && schedule.price !== null && schedule.price !== undefined ? (parseFloat(schedule.price) || 0) : (parseFloat(formData.basePrice) || 0)),
           unlimitedSeats: schedule.unlimitedSeats || false,
           isSpecialDate: schedule.isSpecialDate || false,
           specialDates: schedule.specialDates || [],
           priority: schedule.priority || 0,
           isOverride: schedule.isOverride || false,
+          sessionType: schedule.sessionType,
+          isFreeSession: schedule.isFreeSession || false,
+          ratePerClass: schedule.ratePerClass ? parseFloat(schedule.ratePerClass) : undefined,
           timeSlots: (schedule.timeSlots || []).map((slot) => ({
             date: new Date(slot.date),
             startTime: slot.startTime,
@@ -1338,11 +1361,10 @@ const AdminEditEventPage: React.FC = () => {
                     onClick={() => setActiveTab(tab.id)}
                     className={`
                     flex-1 py-4 px-6 text-center font-medium transition-all duration-200 whitespace-nowrap
-                    ${
-                      activeTab === tab.id
+                    ${activeTab === tab.id
                         ? "text-blue-600 border-b-2 border-blue-600 bg-blue-50"
                         : "text-gray-600 hover:text-blue-600 hover:bg-gray-50"
-                    }
+                      }
                   `}
                   >
                     <Icon className="w-5 h-5 mx-auto mb-1" />
@@ -1400,6 +1422,7 @@ const AdminEditEventPage: React.FC = () => {
                   basePrice={formData.basePrice || ""}
                   isFreeEvent={formData.isFreeEvent}
                   unlimitedCapacity={unlimitedCapacity}
+                  isEducational={['Course', 'Workshop', 'Bootcamp', 'Class', 'Masterclass'].includes(formData.type)}
                   errors={errors}
                   onScheduleChange={handleScheduleChange}
                   onAddSchedule={handleAddSchedule}

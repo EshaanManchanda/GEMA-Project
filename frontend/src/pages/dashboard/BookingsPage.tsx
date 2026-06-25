@@ -303,7 +303,20 @@ const BookingsPage: React.FC = () => {
                                       : `${(booking.currency || 'AED').toUpperCase()} ${(booking.total || 0).toFixed(2)}`
                                   }</p>
                                   <p><span className="font-medium">Booked on:</span> {formatDate(booking.createdAt || booking.bookingDate)}</p>
-                                  <p><span className="font-medium">Event Date:</span> {formatDisplayDate(eventStart)}</p>
+                                  {booking.bookingType === 'program' || (getBookingSchedule(booking)?.timeSlots?.length > 1) ? (
+                                    <div className="mt-2">
+                                      <span className="font-medium">Meeting Dates:</span>
+                                      <ul className="list-disc pl-5 mt-1 text-xs">
+                                        {(getBookingSchedule(booking)?.timeSlots || []).map((slot: any, idx: number) => (
+                                          <li key={idx}>
+                                            {formatDisplayDate(parseDate(slot.date))} ({slot.startTime} - {slot.endTime})
+                                          </li>
+                                        ))}
+                                      </ul>
+                                    </div>
+                                  ) : (
+                                    <p><span className="font-medium">Event Date:</span> {formatDisplayDate(eventStart)}</p>
+                                  )}
                                 </div>
                               </div>
                               <div className="mt-4 sm:mt-0 flex flex-col space-y-2">

@@ -43,6 +43,7 @@ interface EventFormData {
   requirePhoneVerification: boolean;
   imageAssets: string[];
   imagePreviewUrls: string[];
+  syllabus: Array<{ title: string; description: string; duration?: string }>;
   faqs: Array<{ id: string; question: string; answer: string }>;
   seoMeta: {
     title: string;
@@ -66,6 +67,12 @@ interface Schedule {
   priority?: number;
   isOverride?: boolean;
   _id?: string;
+  timeSlots?: Array<{
+    date: string;
+    startTime: string;
+    endTime: string;
+    availableSeats: string;
+  }>;
 }
 
 interface Category {
@@ -206,7 +213,8 @@ const VendorEventFormPage: React.FC = () => {
         imagePreviewUrls: (event.imageAssets || []).map((a: any) => a.url || a.secureUrl).filter(Boolean),
         faqs: event.faqs || [],
         seoMeta: event.seoMeta || { title: '', description: '', keywords: [] },
-        externalBookingLink: event.externalBookingLink || ''
+        externalBookingLink: event.externalBookingLink || '',
+        syllabus: event.syllabus || []
       });
 
       setBookingMethod(event.isAffiliateEvent || event.externalBookingLink ? 'external' : 'internal');
@@ -214,7 +222,7 @@ const VendorEventFormPage: React.FC = () => {
       setTimezone(event.timezone || 'Asia/Dubai');
 
       if (event.dateSchedule?.length > 0) {
-        setSchedules(event.dateSchedule.map((s: any) => ({
+        setSchedules(event.dateSchedule.map((s: any, index: number) => ({
           id: s._id || uuidv4(),
           _id: s._id,
           startDate: s.startDate ? new Date(s.startDate).toISOString().split('T')[0] : '',
@@ -224,7 +232,17 @@ const VendorEventFormPage: React.FC = () => {
           availableSeats: s.unlimitedSeats ? '' : s.availableSeats?.toString() || '',
           price: s.price?.toString() || '',
           unlimitedSeats: s.unlimitedSeats || false,
-          isOverride: s.isOverride || false
+          isOverride: s.isOverride || false,
+          sessionType: s.sessionType || 'Standard Session',
+          ratePerClass: s.ratePerClass?.toString() || '',
+          timeSlots: (s.timeSlots || []).map((slot: any, slotIdx: number) => ({
+            id: slot._id || `slot-${index}-${slotIdx}`,
+            date: slot.date ? new Date(slot.date).toISOString().split('T')[0] : '',
+            startTime: slot.startTime || '',
+            endTime: slot.endTime || '',
+            availableSeats: slot.availableSeats?.toString() || '',
+            price: slot.price?.toString() || ''
+          }))
         })));
       }
 
@@ -517,8 +535,12 @@ const VendorEventFormPage: React.FC = () => {
           availableSeats: schedule.unlimitedSeats ? 999999 : parseInt(schedule.availableSeats),
           price: isFreeEvent ? 0 : parseFloat(schedule.price),
           unlimitedSeats: schedule.unlimitedSeats || false,
-          isOverride: schedule.isOverride || false
+          isOverride: schedule.isOverride || false,
+          sessionType: schedule.sessionType,
+          ratePerClass: schedule.ratePerClass ? parseFloat(schedule.ratePerClass) : undefined,
+          timeSlots: schedule.timeSlots || []
         })),
+        syllabus: formData.syllabus,
         imageAssets: formData.imageAssets,
         seoMeta: {
           title: formData.seoMeta.title || formData.title,
@@ -633,6 +655,7 @@ const VendorEventFormPage: React.FC = () => {
                   imageFileRef={imageFileRef}
                   bookingMethod={bookingMethod}
                   onBookingMethodChange={handleBookingMethodChange}
+                  onSyllabusChange={(syllabus) => setFormData(prev => ({ ...prev, syllabus }))}
                 />
               </div>
             )}

@@ -26,8 +26,10 @@ const TeacherBookingsPage: React.FC = () => {
   const [searchTerm, setSearchTerm] = useState('');
   const [selectedBooking, setSelectedBooking] = useState<ITeacherBooking | null>(null);
   const [isExporting, setIsExporting] = useState(false);
+  const [meetingLink, setMeetingLink] = useState('');
+  const [isSavingLink, setIsSavingLink] = useState(false);
 
-  const { data, isLoading } = useTeacherBookings(filters);
+  const { data, isLoading, refetch } = useTeacherBookings(filters);
 
   const bookings = data?.Bookings || [];
   const stats = data?.stats || {
@@ -74,10 +76,27 @@ const TeacherBookingsPage: React.FC = () => {
 
   const handleViewBooking = (booking: ITeacherBooking) => {
     setSelectedBooking(booking);
+    setMeetingLink(booking.meetingLink || '');
   };
 
   const handleEditBooking = (booking: ITeacherBooking) => {
     setSelectedBooking(booking);
+    setMeetingLink(booking.meetingLink || '');
+  };
+
+  const handleSaveMeetingLink = async () => {
+    if (!selectedBooking) return;
+    setIsSavingLink(true);
+    try {
+      const response = await teacherAPI.updateMeetingLink(selectedBooking._id, meetingLink);
+      toast.success('Meeting link updated successfully and emailed to student!');
+      setSelectedBooking(response.Booking);
+      refetch?.();
+    } catch (error: any) {
+      toast.error(error?.response?.data?.message || 'Failed to update meeting link');
+    } finally {
+      setIsSavingLink(false);
+    }
   };
 
   return (
@@ -350,6 +369,11 @@ const TeacherBookingsPage: React.FC = () => {
                   {/* Payment Info */}
                   <div className="bg-gray-50 rounded-xl p-4">
                     <h4 className="font-semibold text-gray-700 mb-3">Payment Summary</h4>
+                    {selectedBooking.programStatus && (
+                      <div className="mb-4 bg-purple-100 text-purple-800 p-3 rounded-lg text-sm font-medium">
+                        Program Status: {selectedBooking.programStatus === 'intro_booked' ? 'Free Intro Booked' : 'Full Program Purchased'}
+                      </div>
+                    )}
                     <div className="space-y-2">
                       <div className="flex justify-between">
                         <span className="text-gray-500">Subtotal</span>
@@ -397,6 +421,26 @@ const TeacherBookingsPage: React.FC = () => {
                       >
                         {selectedBooking.paymentStatus}
                       </span>
+                    </div>
+                  </div>
+                  {/* Meeting Link Management */}
+                  <div className="bg-gray-50 rounded-xl p-4">
+                    <h4 className="font-semibold text-gray-700 mb-3">Meeting Link</h4>
+                    <div className="flex flex-col gap-2">
+                      <input
+                        type="url"
+                        value={meetingLink}
+                        onChange={(e) => setMeetingLink(e.target.value)}
+                        placeholder="https://zoom.us/j/123456789"
+                        className="px-4 py-2 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-purple-500 bg-white"
+                      />
+                      <button
+                        onClick={handleSaveMeetingLink}
+                        disabled={isSavingLink}
+                        className="self-end px-4 py-2 bg-purple-600 text-white rounded-lg font-medium hover:bg-purple-700 transition-colors disabled:opacity-50"
+                      >
+                        {isSavingLink ? 'Saving...' : 'Save & Notify Student'}
+                      </button>
                     </div>
                   </div>
                 </div>

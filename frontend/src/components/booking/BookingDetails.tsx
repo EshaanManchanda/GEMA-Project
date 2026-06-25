@@ -57,6 +57,7 @@ interface BookingDetailsProps {
     scheduleId?: string;
     totalPrice?: string;
     currency?: string;
+    bookingType?: 'intro' | 'program';
   } | null;
   onNext: () => void;
 }
@@ -86,16 +87,55 @@ const BookingDetails: React.FC<BookingDetailsProps> = ({
   const dispatch = useDispatch<AppDispatch>();
   const bookingFlow = useSelector(selectBookingFlow);
 
+  const getUnitPrice = (schedule?: any) => {
+    if (initialData?.bookingType === 'program') {
+      // Priority 1: use sessionPrice passed from EventDetailPage (most accurate — 8 × 35 = 280)
+      const sessionPriceFromRoute = (initialData as any)?.sessionPrice as number | undefined;
+      if (sessionPriceFromRoute && sessionPriceFromRoute > 0) return sessionPriceFromRoute;
+      // Priority 2: programConfig total
+      if (event.programConfig?.isProgramBlock && event.programConfig?.totalProgramPrice) {
+        return event.programConfig.totalProgramPrice;
+      }
+      // Priority 3: price × timeSlots count on the selected schedule
+      const selectedSched = (schedule || initialData?.schedule) as any;
+      if (selectedSched && selectedSched.price > 0) {
+        return selectedSched.price * (selectedSched.timeSlots?.length || 1);
+      }
+      // Priority 4: first standard schedule price × its timeSlots count
+      const fallbackSched = (event.dateSchedule || []).find(
+        (s: any) => s.sessionType !== 'Intro Session' && s.price > 0
+      ) as any;
+      return fallbackSched ? (fallbackSched.price * (fallbackSched.timeSlots?.length || 1)) : 0;
+    } else if (initialData?.bookingType === 'intro') {
+      return 0;
+    }
+    return schedule?.price ?? event.price ?? 0;
+  };
+
   // Local state with safe date parsing
   const [selectedDate, setSelectedDate] = useState<Date | null>(() => {
-    if (!initialData?.selectedDate) return null;
-    try {
-      const parsedDate = parseISO(initialData.selectedDate);
-      return isValid(parsedDate) ? parsedDate : null;
-    } catch (error) {
-      logger.warn("Error parsing initial selected date", error);
-      return null;
+    // First try the explicit selectedDate from route state
+    if (initialData?.selectedDate) {
+      try {
+        const parsedDate = parseISO(initialData.selectedDate);
+        if (isValid(parsedDate)) return parsedDate;
+      } catch (error) {
+        logger.warn("Error parsing initial selected date", error);
+      }
     }
+    // Fall back to the schedule's start date (for program/educational enroll flow)
+    const scheduleDate = (initialData?.schedule as any)?.startDate ||
+      (initialData?.schedule as any)?.date ||
+      (initialData?.schedule as any)?.startDateTime;
+    if (scheduleDate) {
+      try {
+        const parsedDate = new Date(scheduleDate);
+        if (isValid(parsedDate)) return parsedDate;
+      } catch (error) {
+        logger.warn("Error parsing schedule date for selectedDate fallback", error);
+      }
+    }
+    return null;
   });
   const [selectedSchedule, setSelectedSchedule] =
     useState<EventDateSchedule | null>(() => {
@@ -148,7 +188,7 @@ const BookingDetails: React.FC<BookingDetailsProps> = ({
     if (selectedSchedule && selectedDate) {
       const scheduleId = selectedSchedule._id || selectedSchedule.id;
       if (scheduleId) {
-        const unitPrice = selectedSchedule.price ?? event.price ?? 0;
+        const unitPrice = getUnitPrice(selectedSchedule);
         dispatch(
           setBookingDateSelection({
             scheduleId,
@@ -216,7 +256,7 @@ const BookingDetails: React.FC<BookingDetailsProps> = ({
         }
 
         // Set in Redux with full snapshot for payment processing and confirmation display
-        const unitPrice = firstSchedule.price ?? event.price ?? 0;
+        const unitPrice = getUnitPrice(firstSchedule);
         const rawDate =
           (firstSchedule as any).startDate ||
           firstSchedule.date ||
@@ -303,7 +343,7 @@ const BookingDetails: React.FC<BookingDetailsProps> = ({
     if (schedule) {
       setSelectedSchedule(schedule);
       const scheduleId = schedule._id || schedule.id || "";
-      const unitPrice = schedule.price ?? event.price ?? 0;
+      const unitPrice = getUnitPrice(schedule);
       // Persist full snapshot so BookingConfirmation can display correct date/time
       dispatch(
         setBookingDateSelection({
@@ -359,7 +399,7 @@ const BookingDetails: React.FC<BookingDetailsProps> = ({
     }
 
     // Calculate current order amount (subtotal before service fee and tax)
-    const basePrice = selectedSchedule?.price ?? event.price ?? 0;
+    const basePrice = getUnitPrice(selectedSchedule);
     const orderAmount = basePrice * quantity;
 
     setIsValidatingCoupon(true);
@@ -473,7 +513,7 @@ const BookingDetails: React.FC<BookingDetailsProps> = ({
     setCouponError(null);
 
     // Calculate current order amount (subtotal before service fee and tax)
-    const basePrice = selectedSchedule?.price ?? event.price ?? 0;
+    const basePrice = getUnitPrice(selectedSchedule);
     const orderAmount = basePrice * quantity;
 
     setIsValidatingCoupon(true);
@@ -536,7 +576,7 @@ const BookingDetails: React.FC<BookingDetailsProps> = ({
 
   // Calculate total price with backend-validated discount
   const calculateTotal = () => {
-    const basePrice = selectedSchedule?.price ?? event.price ?? 0;
+    const basePrice = getUnitPrice(selectedSchedule);
     const subtotal = basePrice * quantity;
     // Use discount amount directly from backend validation (not percentage calculation)
     const discountAmount = appliedDiscount || 0;
@@ -547,7 +587,10 @@ const BookingDetails: React.FC<BookingDetailsProps> = ({
   const { subtotal, discountAmount, total } = calculateTotal();
 
   // Check if can proceed to next step
-  const canProceed = selectedDate && selectedSchedule && quantity > 0;
+  // For program/intro bookings a schedule is pre-selected — scheduleId in Redux is enough
+  const isProgramBooking = initialData?.bookingType === 'program' || initialData?.bookingType === 'intro';
+  const canProceed = (isProgramBooking && !!bookingFlow.scheduleId) ||
+    (selectedDate && selectedSchedule && quantity > 0);
 
   const handleNext = () => {
     // Validate schedule selection first
@@ -695,115 +738,272 @@ const BookingDetails: React.FC<BookingDetailsProps> = ({
         </CardContent>
       </Card>
 
-      {/* Date Selection - Enhanced */}
-      <Card className="border-2 border-gray-100 hover:border-blue-200 transition-all duration-300 hover:shadow-lg">
-        <CardHeader className="bg-gradient-to-r from-blue-50 to-indigo-50 border-b border-gray-100">
-          <CardTitle className="flex items-center">
-            <div className="w-10 h-10 bg-gradient-to-br from-blue-500 to-indigo-600 rounded-lg flex items-center justify-center mr-3 shadow-md">
-              <Calendar className="w-5 h-5 text-white" />
-            </div>
-            <div>
-              <div className="text-lg font-bold text-gray-900">
-                Select Your Date
-              </div>
-              <div className="text-xs text-gray-500 font-normal">
-                Choose when you'd like to attend
-              </div>
-            </div>
-          </CardTitle>
-        </CardHeader>
-        <CardContent className="p-6">
-          <EventDatePicker
-            dateSchedules={event.dateSchedule as any}
-            selectedDate={selectedDate}
-            onDateSelect={handleDateSelect}
-            timezone={event.timezone}
-          />
-
-          {selectedSchedule && (
-            <div className="mt-6 relative overflow-hidden rounded-xl border-2 border-blue-300 bg-gradient-to-br from-blue-50 via-indigo-50 to-purple-50 shadow-lg">
-              <div className="absolute top-0 right-0 w-32 h-32 bg-blue-400/10 rounded-full -mr-16 -mt-16"></div>
-              <div className="absolute bottom-0 left-0 w-24 h-24 bg-purple-400/10 rounded-full -ml-12 -mb-12"></div>
-
-              <div className="relative p-5">
-                <div className="flex items-center justify-between mb-4">
-                  <div className="flex items-center space-x-2">
-                    <div className="w-2 h-2 bg-green-500 rounded-full animate-pulse"></div>
-                    <span className="text-xs font-semibold text-green-700 uppercase tracking-wide">
-                      Available
-                    </span>
+      {/* Date / Schedule Section */}
+      {isProgramBooking ? (
+        /* ── Program Schedule Summary (no calendar — all sessions fixed) ── */
+        <Card className="border-2 border-amber-200 bg-gradient-to-br from-amber-50 to-orange-50 shadow-lg">
+          <CardHeader className="bg-gradient-to-r from-amber-100 to-orange-100 border-b border-amber-200">
+            <CardTitle className="flex items-center justify-between">
+              <div className="flex items-center">
+                <div className="w-10 h-10 bg-gradient-to-br from-amber-500 to-orange-600 rounded-lg flex items-center justify-center mr-3 shadow-md">
+                  <Calendar className="w-5 h-5 text-white" />
+                </div>
+                <div>
+                  <div className="text-lg font-bold text-gray-900">
+                    {initialData?.bookingType === 'intro' ? 'Trial Class Schedule' : 'Full Program Schedule'}
                   </div>
-                  <div className="px-3 py-1 bg-blue-500 text-white text-xs font-bold rounded-full shadow-md">
-                    {selectedSchedule.unlimitedSeats
-                      ? "∞ Unlimited"
-                      : `${selectedSchedule.availableSeats} Seats Left`}
+                  <div className="text-xs text-gray-500 font-normal">
+                    {initialData?.bookingType === 'intro'
+                      ? 'Your free trial session details'
+                      : 'All sessions included in your enrollment'}
                   </div>
                 </div>
-
-                <div className="flex items-start justify-between gap-4">
-                  <div className="flex-1">
-                    <div className="flex items-center text-gray-700 mb-2">
-                      <Clock className="w-5 h-5 mr-2 text-blue-600" />
-                      <div>
-                        <div className="font-semibold text-sm">
-                          {formatSafeDate(
-                            selectedSchedule.startDateTime ||
-                              selectedSchedule.startDate,
-                            "PPP",
-                          )}
-                        </div>
-                        <div className="text-xs text-gray-600">
-                          {(() => {
-                            const rawStart = (selectedSchedule as any)
-                              .startTime;
-                            const rawEnd = (selectedSchedule as any).endTime;
-                            const isoStart = selectedSchedule.startDateTime;
-                            const isoEnd = selectedSchedule.endDateTime;
-                            const tzAbbr = event.timezone
-                              ? ` · ${getTimezoneAbbr(event.timezone)}`
-                              : "";
-
-                            // Prefer raw HH:mm strings (teacher events)
-                            if (rawStart && rawEnd) {
-                              return `${formatHHmm(rawStart)} – ${formatHHmm(rawEnd)}${tzAbbr}`;
-                            }
-                            // Fall back to ISO datetime strings (vendor/admin events)
-                            if (isoStart && isoEnd) {
-                              return `${formatSafeDate(isoStart, "p")} – ${formatSafeDate(isoEnd, "p")}${tzAbbr}`;
-                            }
-                            return "All day";
-                          })()}
-                        </div>
+              </div>
+              {/* Session count badge */}
+              {selectedSchedule && (selectedSchedule as any).timeSlots?.length > 0 && (
+                <div className="px-3 py-1.5 bg-amber-500 text-white text-sm font-bold rounded-full shadow-md">
+                  {(selectedSchedule as any).timeSlots.length} Sessions
+                </div>
+              )}
+            </CardTitle>
+          </CardHeader>
+          <CardContent className="p-6 space-y-4">
+            {selectedSchedule ? (
+              <>
+                {/* Time slot header */}
+                {((selectedSchedule as any).startTime || (selectedSchedule as any).endTime) && (
+                  <div className="flex items-center space-x-3 p-3 bg-white rounded-xl border border-amber-200 shadow-sm">
+                    <div className="w-9 h-9 bg-amber-100 rounded-lg flex items-center justify-center flex-shrink-0">
+                      <Clock className="w-5 h-5 text-amber-600" />
+                    </div>
+                    <div>
+                      <div className="text-xs font-semibold text-amber-700 uppercase tracking-wider">Fixed Time Slot</div>
+                      <div className="text-sm font-bold text-gray-900">
+                        {(selectedSchedule as any).startTime && (selectedSchedule as any).endTime
+                          ? `${formatHHmm((selectedSchedule as any).startTime)} – ${formatHHmm((selectedSchedule as any).endTime)}`
+                          : 'Time TBD'}
+                        {event.timezone && (
+                          <span className="ml-2 text-xs font-normal text-gray-500">{getTimezoneAbbr(event.timezone)}</span>
+                        )}
                       </div>
                     </div>
+                  </div>
+                )}
 
-                    {!selectedSchedule.unlimitedSeats &&
-                      selectedSchedule.availableSeats <= 10 && (
-                        <div className="flex items-center space-x-1 text-xs text-orange-600 font-medium">
-                          <Sparkles className="w-3 h-3" />
-                          <span>Filling up fast!</span>
+                {/* Seat availability */}
+                <div className="flex items-center space-x-3 p-3 bg-white rounded-xl border border-amber-200 shadow-sm">
+                  <div className="w-9 h-9 bg-green-100 rounded-lg flex items-center justify-center flex-shrink-0">
+                    <Users className="w-5 h-5 text-green-600" />
+                  </div>
+                  <div>
+                    <div className="text-xs font-semibold text-green-700 uppercase tracking-wider">Availability</div>
+                    <div className="text-sm font-bold text-gray-900">
+                      {(selectedSchedule as any).unlimitedSeats
+                        ? '∞ Unlimited seats'
+                        : `${(selectedSchedule as any).availableSeats ?? 0} seats available`}
+                    </div>
+                  </div>
+                </div>
+
+                {/* All session dates */}
+                {(selectedSchedule as any).timeSlots?.length > 0 ? (
+                  <div className="bg-white rounded-xl border border-amber-200 shadow-sm overflow-hidden">
+                    <div className="px-4 py-3 bg-amber-50 border-b border-amber-100 flex items-center justify-between">
+                      <span className="text-sm font-bold text-gray-800">
+                        📅 All {(selectedSchedule as any).timeSlots.length} Class Dates
+                      </span>
+                      <span className="text-xs text-amber-700 font-medium bg-amber-100 px-2 py-0.5 rounded-full">
+                        {formatSafeDate((selectedSchedule as any).startDate, 'MMM d')} – {formatSafeDate((selectedSchedule as any).endDate, 'MMM d, yyyy')}
+                      </span>
+                    </div>
+                    <div className="divide-y divide-gray-100">
+                      {(selectedSchedule as any).timeSlots.map((slot: any, idx: number) => (
+                        <div key={idx} className="flex items-center justify-between px-4 py-3 hover:bg-amber-50/50 transition-colors">
+                          <div className="flex items-center space-x-3">
+                            <div className="w-7 h-7 bg-amber-100 rounded-full flex items-center justify-center text-xs font-bold text-amber-700 flex-shrink-0">
+                              {idx + 1}
+                            </div>
+                            <div>
+                              <div className="text-sm font-semibold text-gray-900">
+                                {formatSafeDate(slot.date, 'EEEE, MMM d, yyyy')}
+                              </div>
+                              <div className="text-xs text-gray-500">
+                                {slot.startTime && slot.endTime
+                                  ? `${formatHHmm(slot.startTime)} – ${formatHHmm(slot.endTime)}`
+                                  : (selectedSchedule as any).startTime && (selectedSchedule as any).endTime
+                                    ? `${formatHHmm((selectedSchedule as any).startTime)} – ${formatHHmm((selectedSchedule as any).endTime)}`
+                                    : 'Time TBD'}
+                                {event.timezone && <span className="ml-1 text-gray-400">{getTimezoneAbbr(event.timezone)}</span>}
+                              </div>
+                            </div>
+                          </div>
+                          <div className="flex items-center text-green-600">
+                            <Check className="w-4 h-4" />
+                          </div>
                         </div>
+                      ))}
+                    </div>
+                  </div>
+                ) : (
+                  /* Fallback: show date range if no timeSlots */
+                  <div className="p-4 bg-white rounded-xl border border-amber-200 shadow-sm">
+                    <div className="text-sm font-semibold text-gray-900">
+                      {formatSafeDate((selectedSchedule as any).startDate, 'MMM d, yyyy')}
+                      {(selectedSchedule as any).endDate && (selectedSchedule as any).endDate !== (selectedSchedule as any).startDate && (
+                        <> – {formatSafeDate((selectedSchedule as any).endDate, 'MMM d, yyyy')}</>
                       )}
+                    </div>
+                    <div className="text-xs text-gray-500 mt-1">Full program schedule</div>
+                  </div>
+                )}
+
+                {/* Price summary */}
+                <div className="flex items-center justify-between p-4 bg-gradient-to-r from-amber-500 to-orange-500 rounded-xl text-white shadow-lg">
+                  <div>
+                    <div className="text-xs font-semibold uppercase tracking-wider opacity-80">
+                      {initialData?.bookingType === 'intro' ? 'Trial Price' : 'Total Program Price'}
+                    </div>
+                    <div className="text-sm opacity-80 mt-0.5">
+                      {(selectedSchedule as any).timeSlots?.length > 0
+                        ? `${(selectedSchedule as any).timeSlots.length} sessions included`
+                        : 'All sessions included'}
+                    </div>
+                  </div>
+                  <div className="text-right">
+                    <div className="text-3xl font-black">
+                      {getUnitPrice(selectedSchedule) === 0 ? 'FREE' : `${event.currency} ${getUnitPrice(selectedSchedule)}`}
+                    </div>
+                    {getUnitPrice(selectedSchedule) > 0 && (selectedSchedule as any).timeSlots?.length > 0 && (
+                      <div className="text-xs opacity-80">
+                        ≈ {event.currency} {(getUnitPrice(selectedSchedule) / (selectedSchedule as any).timeSlots.length).toFixed(2)} / session
+                      </div>
+                    )}
+                  </div>
+                </div>
+              </>
+            ) : (
+              <div className="text-center py-8 text-gray-500">
+                <Calendar className="w-12 h-12 mx-auto mb-3 text-gray-300" />
+                <p className="text-sm">Schedule details loading...</p>
+              </div>
+            )}
+          </CardContent>
+        </Card>
+      ) : (
+        /* ── Regular Event: Calendar date picker ── */
+        <Card className="border-2 border-gray-100 hover:border-blue-200 transition-all duration-300 hover:shadow-lg">
+          <CardHeader className="bg-gradient-to-r from-blue-50 to-indigo-50 border-b border-gray-100">
+            <CardTitle className="flex items-center">
+              <div className="w-10 h-10 bg-gradient-to-br from-blue-500 to-indigo-600 rounded-lg flex items-center justify-center mr-3 shadow-md">
+                <Calendar className="w-5 h-5 text-white" />
+              </div>
+              <div>
+                <div className="text-lg font-bold text-gray-900">
+                  Select Your Date
+                </div>
+                <div className="text-xs text-gray-500 font-normal">
+                  Choose when you'd like to attend
+                </div>
+              </div>
+            </CardTitle>
+          </CardHeader>
+          <CardContent className="p-6">
+            <EventDatePicker
+              dateSchedules={event.dateSchedule as any}
+              selectedDate={selectedDate}
+              onDateSelect={handleDateSelect}
+              timezone={event.timezone}
+              bookingType={initialData?.bookingType}
+            />
+
+            {selectedSchedule && (
+              <div className="mt-6 relative overflow-hidden rounded-xl border-2 border-blue-300 bg-gradient-to-br from-blue-50 via-indigo-50 to-purple-50 shadow-lg">
+                <div className="absolute top-0 right-0 w-32 h-32 bg-blue-400/10 rounded-full -mr-16 -mt-16"></div>
+                <div className="absolute bottom-0 left-0 w-24 h-24 bg-purple-400/10 rounded-full -ml-12 -mb-12"></div>
+
+                <div className="relative p-5">
+                  <div className="flex items-center justify-between mb-4">
+                    <div className="flex items-center space-x-2">
+                      <div className="w-2 h-2 bg-green-500 rounded-full animate-pulse"></div>
+                      <span className="text-xs font-semibold text-green-700 uppercase tracking-wide">
+                        Available
+                      </span>
+                    </div>
+                    <div className="px-3 py-1 bg-blue-500 text-white text-xs font-bold rounded-full shadow-md">
+                      {selectedSchedule.unlimitedSeats
+                        ? "∞ Unlimited"
+                        : `${selectedSchedule.availableSeats} Seats Left`}
+                    </div>
                   </div>
 
-                  <div className="text-right bg-white/80 backdrop-blur-sm rounded-lg p-3 shadow-md border border-blue-200">
-                    <div className="text-xs text-gray-500 mb-1">
-                      Price per person
+                  <div className="flex items-start justify-between gap-4">
+                    <div className="flex-1">
+                      <div className="flex items-center text-gray-700 mb-2">
+                        <Clock className="w-5 h-5 mr-2 text-blue-600" />
+                        <div>
+                          <div className="font-semibold text-sm">
+                            {formatSafeDate(
+                              selectedSchedule.startDateTime ||
+                                selectedSchedule.startDate,
+                              "PPP",
+                            )}
+                          </div>
+                          <div className="text-xs text-gray-600">
+                            {(() => {
+                              const rawStart = (selectedSchedule as any).startTime;
+                              const rawEnd = (selectedSchedule as any).endTime;
+                              const isoStart = selectedSchedule.startDateTime;
+                              const isoEnd = selectedSchedule.endDateTime;
+                              const tzAbbr = event.timezone ? ` | ${getTimezoneAbbr(event.timezone)}` : "";
+
+                              if (rawStart && rawEnd) return `${formatHHmm(rawStart)} - ${formatHHmm(rawEnd)}${tzAbbr}`;
+                              if (isoStart && isoEnd) return `${formatSafeDate(isoStart, "h:mm a")} - ${formatSafeDate(isoEnd, "h:mm a")}${tzAbbr}`;
+                              return "Time TBD";
+                            })()}
+                          </div>
+                          {((selectedSchedule as any)?.timeSlots && (selectedSchedule as any)?.timeSlots.length > 1) && (
+                            <div className="mt-3 bg-white border border-gray-200 rounded-lg p-3">
+                              <span className="text-xs font-semibold text-gray-700 uppercase tracking-wider mb-2 block">Meeting Dates:</span>
+                              <ul className="space-y-1">
+                                {(selectedSchedule as any).timeSlots.map((slot: any, idx: number) => (
+                                  <li key={idx} className="text-xs text-gray-600 flex items-center before:content-['•'] before:mr-2 before:text-gray-400">
+                                    {formatSafeDate(slot.date, "EEE, MMM d")} <span className="mx-1 text-gray-400">|</span> {formatHHmm(slot.startTime)} - {formatHHmm(slot.endTime)}
+                                  </li>
+                                ))}
+                              </ul>
+                            </div>
+                          )}
+                        </div>
+                      </div>
+
+                      {!selectedSchedule.unlimitedSeats &&
+                        selectedSchedule.availableSeats <= 10 && (
+                          <div className="flex items-center space-x-1 text-xs text-orange-600 font-medium">
+                            <Sparkles className="w-3 h-3" />
+                            <span>Filling up fast!</span>
+                          </div>
+                        )}
                     </div>
-                    <div className="text-2xl font-bold text-blue-700">
-                      {event.isFreeEvent || event.price === 0 ? (
-                        <span className="text-green-600">FREE</span>
-                      ) : (
-                        `${event.currency} ${selectedSchedule.price ?? event.price}`
-                      )}
+
+                    <div className="text-right bg-white/80 backdrop-blur-sm rounded-lg p-3 shadow-md border border-blue-200">
+                      <div className="text-xs text-gray-500 mb-1">
+                        Price per person
+                      </div>
+                      <div className="text-2xl font-bold text-blue-700">
+                        {getUnitPrice(selectedSchedule) === 0 ? (
+                          <span className="text-green-600">FREE</span>
+                        ) : (
+                          `${event.currency} ${getUnitPrice(selectedSchedule)}`
+                        )}
+                      </div>
                     </div>
                   </div>
                 </div>
               </div>
-            </div>
-          )}
-        </CardContent>
-      </Card>
+            )}
+          </CardContent>
+        </Card>
+      )}
 
       {/* Quantity Selection - Enhanced */}
       <Card className="border-2 border-gray-100 hover:border-green-200 transition-all duration-300 hover:shadow-lg">

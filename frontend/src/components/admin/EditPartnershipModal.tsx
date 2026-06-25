@@ -47,6 +47,14 @@ interface Partnership {
     cloudinaryUrl?: string;
     uploadedAt?: string;
   }>;
+  images?: Array<{
+    url: string;
+    caption?: string;
+  }>;
+  documentAttachments?: Array<{
+    url: string;
+    title?: string;
+  }>;
   createdAt: string;
   updatedAt: string;
 }
@@ -97,6 +105,44 @@ const EditPartnershipModal: React.FC<Props> = ({ partnership, isOpen, onClose, o
     const newVideos = [...(form.videoAttachments || [])];
     newVideos.splice(index, 1);
     setForm(prev => ({ ...prev, videoAttachments: newVideos }));
+  };
+
+  const handleAddImage = () => {
+    setForm(prev => ({
+      ...prev,
+      images: [...(prev.images || []), { url: '' }],
+    }));
+  };
+
+  const handleImageUrlChange = (index: number, url: string) => {
+    const newImages = [...(form.images || [])];
+    newImages[index] = { ...newImages[index], url };
+    setForm(prev => ({ ...prev, images: newImages }));
+  };
+
+  const handleRemoveImage = (index: number) => {
+    const newImages = [...(form.images || [])];
+    newImages.splice(index, 1);
+    setForm(prev => ({ ...prev, images: newImages }));
+  };
+
+  const handleAddDocument = () => {
+    setForm(prev => ({
+      ...prev,
+      documentAttachments: [...(prev.documentAttachments || []), { url: '', title: '' }],
+    }));
+  };
+
+  const handleDocumentChange = (index: number, field: 'url' | 'title', value: string) => {
+    const newDocs = [...(form.documentAttachments || [])];
+    newDocs[index] = { ...newDocs[index], [field]: value };
+    setForm(prev => ({ ...prev, documentAttachments: newDocs }));
+  };
+
+  const handleRemoveDocument = (index: number) => {
+    const newDocs = [...(form.documentAttachments || [])];
+    newDocs.splice(index, 1);
+    setForm(prev => ({ ...prev, documentAttachments: newDocs }));
   };
 
   const handleSubmit = async () => {
@@ -159,8 +205,51 @@ const EditPartnershipModal: React.FC<Props> = ({ partnership, isOpen, onClose, o
             </div>
           ))}
           <Button variant="outline" size="sm" onClick={handleAddVideo} className="flex items-center">
-            <Plus className="mr-1 w-4 h-4" /> Add Video
+            <Plus className="mr-1 w-4 h-4" /> Add Video/Reel
           </Button>
+
+          <h3 className="text-lg font-medium mt-4">Images</h3>
+          {(form.images || []).map((img, idx) => (
+            <div key={idx} className="flex items-center space-x-2 mb-2">
+              <Input
+                placeholder="Image URL"
+                value={img.url}
+                onChange={e => handleImageUrlChange(idx, e.target.value)}
+              />
+              <Button variant="ghost" size="sm" onClick={() => handleRemoveImage(idx)}>
+                <Trash2 className="w-4 h-4" />
+              </Button>
+            </div>
+          ))}
+          <Button variant="outline" size="sm" onClick={handleAddImage} className="flex items-center">
+            <Plus className="mr-1 w-4 h-4" /> Add Image
+          </Button>
+
+          <h3 className="text-lg font-medium mt-4">Documents (PDFs)</h3>
+          {(form.documentAttachments || []).map((doc, idx) => (
+            <div key={idx} className="flex flex-col space-y-2 mb-4 p-3 border rounded-md">
+              <div className="flex items-center justify-between">
+                <span className="text-sm font-medium">Document {idx + 1}</span>
+                <Button variant="ghost" size="sm" onClick={() => handleRemoveDocument(idx)}>
+                  <Trash2 className="w-4 h-4 text-red-500" />
+                </Button>
+              </div>
+              <Input
+                placeholder="Document Title (e.g., Summer Brochure)"
+                value={doc.title || ''}
+                onChange={e => handleDocumentChange(idx, 'title', e.target.value)}
+              />
+              <Input
+                placeholder="Document URL (PDF link)"
+                value={doc.url || ''}
+                onChange={e => handleDocumentChange(idx, 'url', e.target.value)}
+              />
+            </div>
+          ))}
+          <Button variant="outline" size="sm" onClick={handleAddDocument} className="flex items-center">
+            <Plus className="mr-1 w-4 h-4" /> Add Document
+          </Button>
+
 {/* Packages Section */}
 <div className="mt-6">
   <h3 className="text-lg font-medium mb-2">Package</h3>

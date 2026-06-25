@@ -8,6 +8,8 @@ export interface IBooking extends Document {
   totalPrice: number;
   status: "pending" | "confirmed" | "cancelled";
   paymentIntentId?: string;
+  programStatus?: "intro_booked" | "program_purchased";
+  meetingLink?: string;
   createdAt: Date;
   updatedAt: Date;
 }
@@ -45,6 +47,13 @@ const BookingSchema = new Schema<IBooking>(
       default: "pending",
     },
     paymentIntentId: {
+      type: String,
+    },
+    programStatus: {
+      type: String,
+      enum: ["intro_booked", "program_purchased"],
+    },
+    meetingLink: {
       type: String,
     },
   },

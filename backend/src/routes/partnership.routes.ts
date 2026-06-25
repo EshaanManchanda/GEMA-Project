@@ -11,6 +11,7 @@ import {
   getPartnershipStats,
   getPublicDirectory,
   getPublicPartnershipById,
+  createUserFromPartnership,
 } from "../controllers/partnership.controller";
 import {
   submitPartnershipValidation,
@@ -65,6 +66,14 @@ router.patch(
   updatePartnershipStatusValidation,
   validateRequest,
   updatePartnershipStatus,
+);
+
+// Create a vendor user from an approved partnership
+router.post(
+  "/:id/create-user",
+  getPartnershipByIdValidation,
+  validateRequest,
+  createUserFromPartnership
 );
 
 // Update full partnership details (admin only)

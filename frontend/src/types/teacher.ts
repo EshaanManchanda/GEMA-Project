@@ -286,6 +286,8 @@ export interface ITeacherBooking {
   teacherNotes?: string;
   teacherStatus?: string;
   attendanceMarked?: boolean;
+  meetingLink?: string;
+  programStatus?: 'intro_booked' | 'program_purchased';
   createdAt: Date;
   updatedAt: Date;
 }
