@@ -96,16 +96,16 @@ const BookingDetails: React.FC<BookingDetailsProps> = ({
       if (event.programConfig?.isProgramBlock && event.programConfig?.totalProgramPrice) {
         return event.programConfig.totalProgramPrice;
       }
-      // Priority 3: price × timeSlots count on the selected schedule
+      // Priority 3: schedule price IS the total package price
       const selectedSched = (schedule || initialData?.schedule) as any;
       if (selectedSched && selectedSched.price > 0) {
-        return selectedSched.price * (selectedSched.timeSlots?.length || 1);
+        return selectedSched.price;
       }
-      // Priority 4: first standard schedule price × its timeSlots count
+      // Priority 4: first standard schedule price (already the total)
       const fallbackSched = (event.dateSchedule || []).find(
         (s: any) => s.sessionType !== 'Intro Session' && s.price > 0
       ) as any;
-      return fallbackSched ? (fallbackSched.price * (fallbackSched.timeSlots?.length || 1)) : 0;
+      return fallbackSched ? fallbackSched.price : 0;
     } else if (initialData?.bookingType === 'intro') {
       return 0;
     }

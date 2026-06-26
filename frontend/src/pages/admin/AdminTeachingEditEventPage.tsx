@@ -607,11 +607,11 @@ const AdminTeachingEditEventPage: React.FC = () => {
   };
 
   // Validation
-  const validateForm = (): { isValid: boolean; errors: Record<string, string> } => {
+  const validateForm = (validateAll: boolean = false): { isValid: boolean; errors: Record<string, string> } => {
     const newErrors: Record<string, string> = {};
 
     // Basic Info validation
-    if (activeTab === 'basic' || activeTab === 'schedule') {
+    if (validateAll || activeTab === 'basic' || activeTab === 'schedule') {
       if (!formData.title?.trim()) newErrors.title = 'Title is required';
       if (!formData.description?.trim()) newErrors.description = 'Description is required';
       if (!formData.category) newErrors.category = 'Category is required';
@@ -638,10 +638,10 @@ const AdminTeachingEditEventPage: React.FC = () => {
     }
 
     // Schedule validation
-    if (activeTab === 'schedule') {
-      if (!formData.basePrice?.trim()) {
+    if (validateAll || activeTab === 'schedule') {
+      if (!formData.basePrice?.trim() && schedules.length === 0) {
         newErrors.basePrice = 'Base price is required';
-      } else if (isNaN(parseFloat(formData.basePrice)) || parseFloat(formData.basePrice) < 0) {
+      } else if (formData.basePrice?.trim() && (isNaN(parseFloat(formData.basePrice)) || parseFloat(formData.basePrice) < 0)) {
         newErrors.basePrice = 'Price must be a valid number greater than or equal to 0';
       }
 
@@ -674,7 +674,7 @@ const AdminTeachingEditEventPage: React.FC = () => {
     }
 
     // Advanced tab validation
-    if (activeTab === 'advanced') {
+    if (validateAll || activeTab === 'advanced') {
       if (!formData.country?.trim()) newErrors.country = 'Country is required';
       if (!formData.city?.trim()) newErrors.city = 'City is required';
 
@@ -758,10 +758,19 @@ const AdminTeachingEditEventPage: React.FC = () => {
   const handleSubmit = async (e?: React.FormEvent) => {
     if (e) e.preventDefault();
 
-    const validation = validateForm();
+    const validation = validateForm(true);
 
     if (!validation.isValid) {
       const firstErrorField = Object.keys(validation.errors)[0];
+      
+      let errorTab = "basic" as any;
+      if (['basePrice', 'capacity'].includes(firstErrorField) || firstErrorField.startsWith('schedule_')) {
+         errorTab = "schedule";
+      } else if (['city', 'country', 'address'].includes(firstErrorField) || firstErrorField.startsWith('faq_')) {
+         errorTab = "advanced";
+      }
+      setActiveTab(errorTab);
+
       setSaveStatus({
         type: 'error',
         message: `Please fix validation errors: ${validation.errors[firstErrorField]}`
@@ -813,7 +822,7 @@ const AdminTeachingEditEventPage: React.FC = () => {
         },
         meetingLink: (formData.teachingMode === 'Online' || formData.teachingMode === 'Hybrid') ? formData.meetingLink : undefined,
         googlePlaceId: formData.googlePlaceId,
-        price: parseFloat(formData.basePrice),
+        price: parseFloat(formData.basePrice || "0"),
         currency: formData.currency,
         tags: formData.tags,
 

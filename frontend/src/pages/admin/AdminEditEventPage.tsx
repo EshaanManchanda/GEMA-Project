@@ -843,14 +843,14 @@ const AdminEditEventPage: React.FC = () => {
   };
 
   // Validation
-  const validateForm = (): {
+  const validateForm = (validateAll: boolean = false): {
     isValid: boolean;
     errors: Record<string, string>;
   } => {
     const newErrors: Record<string, string> = {};
 
     // Basic Info validation
-    if (activeTab === "basic" || activeTab === "schedule") {
+    if (validateAll || activeTab === "basic" || activeTab === "schedule") {
       if (!formData.title?.trim()) newErrors.title = "Title is required";
       if (!formData.description?.trim())
         newErrors.description = "Description is required";
@@ -888,20 +888,21 @@ const AdminEditEventPage: React.FC = () => {
     }
 
     // Schedule validation
-    if (activeTab === "schedule") {
+    if (validateAll || activeTab === "schedule") {
+      const hasSchedules = schedules.length > 0;
       if (!formData.isFreeEvent) {
-        if (!formData.basePrice?.trim()) {
+        if (!formData.basePrice?.trim() && !hasSchedules) {
           newErrors.basePrice = "Base price is required";
         } else if (
-          isNaN(parseFloat(formData.basePrice)) ||
-          parseFloat(formData.basePrice) < 0
+          formData.basePrice?.trim() && (isNaN(parseFloat(formData.basePrice)) ||
+          parseFloat(formData.basePrice) < 0)
         ) {
           newErrors.basePrice =
             "Price must be a valid number greater than or equal to 0";
         }
       }
 
-      if (!unlimitedCapacity && !formData.capacity?.trim()) {
+      if (!unlimitedCapacity && !formData.capacity?.trim() && !hasSchedules) {
         newErrors.capacity = "Event capacity is required";
       }
 
@@ -944,7 +945,7 @@ const AdminEditEventPage: React.FC = () => {
     }
 
     // Advanced tab validation
-    if (activeTab === "advanced") {
+    if (validateAll || activeTab === "advanced") {
       // City is only required for non-online events
       if (formData.venueType !== "Online" && !formData.city?.trim()) {
         newErrors.city = "City is required";
@@ -977,10 +978,19 @@ const AdminEditEventPage: React.FC = () => {
   const handleSubmit = async (e?: React.FormEvent) => {
     if (e) e.preventDefault();
 
-    const validation = validateForm();
+    const validation = validateForm(true);
 
     if (!validation.isValid) {
       const firstErrorField = Object.keys(validation.errors)[0];
+      
+      let errorTab = "basic" as any;
+      if (['basePrice', 'capacity'].includes(firstErrorField) || firstErrorField.startsWith('schedule_')) {
+         errorTab = "schedule";
+      } else if (['city', 'country', 'address'].includes(firstErrorField) || firstErrorField.startsWith('faq_')) {
+         errorTab = "advanced";
+      }
+      setActiveTab(errorTab);
+
       setSaveStatus({
         type: "error",
         message: `Please fix validation errors: ${validation.errors[firstErrorField]}`,
@@ -1045,7 +1055,7 @@ const AdminEditEventPage: React.FC = () => {
             : undefined,
         isFreeEvent: formData.isFreeEvent,
         vendorId: formData.vendorId?.trim() || undefined,
-        price: formData.isFreeEvent ? 0 : parseFloat(formData.basePrice),
+        price: formData.isFreeEvent ? 0 : parseFloat(formData.basePrice || "0"),
         currency: formData.currency,
         tags: formData.tags,
 

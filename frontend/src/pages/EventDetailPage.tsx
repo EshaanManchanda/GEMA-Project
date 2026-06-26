@@ -371,13 +371,15 @@ const EventDetailPage: React.FC = () => {
   const introClassesCount = introSchedules[0]?.timeSlots?.length || 1;
   const paidClassesCount = selectedStandard?.timeSlots?.length || 1;
   
+  // The schedule's `price` field is the TOTAL package price for all classes in the cohort.
+  // e.g. if admin sets price=1499 for a cohort with 6 class dates, total=1499, per-class=1499/6≈249.83
   const totalProgramPrice = event?.programConfig?.isProgramBlock
     ? (event.programConfig.totalProgramPrice || (event.programConfig.paidClasses * event.programConfig.pricePerClass))
-    : ((Number(selectedStandard?.price) || 0) * paidClassesCount);
+    : (Number(selectedStandard?.price) || 0);
     
   const pricePerClass = event?.programConfig?.isProgramBlock 
     ? event.programConfig.pricePerClass
-    : (Number(selectedStandard?.price) || 0);
+    : (paidClassesCount > 0 ? (Number(selectedStandard?.price) || 0) / paidClassesCount : 0);
 
   const hasProgramBlocks = isEducational && (introSchedules.length > 0 || standardSchedules.length > 0);
 
@@ -1411,10 +1413,29 @@ const EventDetailPage: React.FC = () => {
                         <p className="text-gray-600">{event.location?.address}</p>
                       </div>
                     </div>
-                    <div className="bg-gray-200 h-64 rounded-xl mb-6 overflow-hidden">
-                      <div className="h-full flex items-center justify-center text-gray-500 font-medium">
-                        Map view would be displayed here
-                      </div>
+                    <div className="h-64 rounded-xl mb-6 overflow-hidden">
+                      {(() => {
+                        const loc = event.location as any;
+                        const lat = loc?.coordinates?.lat;
+                        const lng = loc?.coordinates?.lng;
+                        const query = lat && lng
+                          ? `${lat},${lng}`
+                          : encodeURIComponent(`${loc?.address || ''} ${loc?.city || ''}`.trim());
+                        const src = `https://maps.google.com/maps?q=${query}&output=embed&z=15`;
+                        return (
+                          <iframe
+                            title="Event Location Map"
+                            src={src}
+                            width="100%"
+                            height="100%"
+                            style={{ border: 0 }}
+                            allowFullScreen
+                            loading="lazy"
+                            referrerPolicy="no-referrer-when-downgrade"
+                            className="rounded-xl"
+                          />
+                        );
+                      })()}
                     </div>
                     <div className="flex flex-col sm:flex-row sm:justify-between gap-4">
                       <button onClick={handleGetDirections} className="px-6 py-3 bg-white border border-gray-300 rounded-xl font-bold text-gray-700 hover:bg-gray-50 transition-colors flex items-center justify-center flex-1">

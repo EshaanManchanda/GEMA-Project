@@ -169,13 +169,9 @@ const SchedulePricingTab: React.FC<SchedulePricingTabProps> = ({
     setEditingIndex(null);
   };
 
-  /** Normalize session flags so no contradictory state reaches the parent. */
   const normalizeSessionFlags = (
     form: typeof modalForm,
   ): typeof modalForm => {
-    if (form.sessionType === 'Standard Session') {
-      return { ...form, isFreeSession: false };
-    }
     if (form.sessionType === 'Intro Session' || form.isFreeSession) {
       return { ...form, price: '0', isFreeSession: true };
     }
@@ -205,6 +201,11 @@ const SchedulePricingTab: React.FC<SchedulePricingTabProps> = ({
         currentDate.setDate(currentDate.getDate() + 1);
       }
       finalForm.timeSlots = timeSlots as any;
+
+      const numSlots = timeSlots.length;
+      if (numSlots > 0 && finalForm.price) {
+         finalForm.ratePerClass = (parseFloat(finalForm.price) / numSlots).toFixed(2);
+      }
     }
 
     if (editingIndex !== null) {
@@ -243,8 +244,7 @@ const SchedulePricingTab: React.FC<SchedulePricingTabProps> = ({
   return (
     <div className="space-y-8">
       {/* ── Pricing Overview ── */}
-      {!isEducational && (
-        <Card variant="elevated" className="shadow-xl">
+      <Card variant="elevated" className="shadow-xl">
           <CardHeader>
             <CardTitle className="text-2xl flex items-center text-gray-900">
               <DollarSign className="w-6 h-6 mr-3 text-green-600" />
@@ -351,9 +351,8 @@ const SchedulePricingTab: React.FC<SchedulePricingTabProps> = ({
             </div>
           </CardContent>
         </Card>
-      )}
 
-      {/* ── Sessions List ── */}
+      {/* ── Schedule Overview ── */}
       <Card variant="elevated" className="shadow-xl">
         <CardHeader>
           <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
@@ -737,7 +736,9 @@ const SchedulePricingTab: React.FC<SchedulePricingTabProps> = ({
 
               <div className="grid grid-cols-1 gap-5">
                 <div>
-                  <label className="block text-sm font-bold text-gray-700 mb-2">Price</label>
+                  <label className="block text-sm font-bold text-gray-700 mb-2">
+                    {modalForm.scheduleType === 'cohort' ? 'Total Price' : 'Price'}
+                  </label>
                   <div className="flex rounded-xl shadow-sm border border-gray-300 overflow-hidden">
                     <select
                       value={currency}
@@ -750,9 +751,9 @@ const SchedulePricingTab: React.FC<SchedulePricingTabProps> = ({
                       type="number"
                       min="0"
                       step="0.01"
-                      value={(isEducational && modalForm.sessionType === 'Intro Session') ? '0' : ((!!modalForm.isFreeSession && modalForm.sessionType !== 'Standard Session') ? '0' : (modalForm.price || ''))}
+                      value={(isEducational && modalForm.sessionType === 'Intro Session') ? '0' : (modalForm.isFreeSession ? '0' : (modalForm.price || ''))}
                       onChange={(e) => setModalForm(prev => ({ ...prev, price: e.target.value, isFreeSession: false }))}
-                      disabled={isFreeEvent || (isEducational && modalForm.sessionType === 'Intro Session') || (!!modalForm.isFreeSession && modalForm.sessionType !== 'Standard Session')}
+                      disabled={isFreeEvent || (isEducational && modalForm.sessionType === 'Intro Session') || !!modalForm.isFreeSession}
                       placeholder="0.00"
                       className={`flex-1 px-4 py-3 focus:outline-none focus:ring-2 focus:ring-primary-500 font-semibold ${isFreeEvent || (isEducational && modalForm.sessionType === 'Intro Session') || modalForm.isFreeSession ? 'bg-gray-100 text-gray-400 cursor-not-allowed' : 'bg-white'
                         }`}
@@ -762,7 +763,7 @@ const SchedulePricingTab: React.FC<SchedulePricingTabProps> = ({
                     <input
                       type="checkbox"
                       id="freeSessionCheck"
-                      checked={isFreeEvent || (isEducational && modalForm.sessionType === 'Intro Session') || (!!modalForm.isFreeSession && modalForm.sessionType !== 'Standard Session')}
+                      checked={isFreeEvent || (isEducational && modalForm.sessionType === 'Intro Session') || !!modalForm.isFreeSession}
                       disabled={isFreeEvent || (isEducational && modalForm.sessionType === 'Intro Session')}
                       onChange={(e) => {
                         if (e.target.checked) {

@@ -398,7 +398,6 @@ export const initiateBooking = async (
     // or the effective unit price is 0 — prevents Stripe rejecting a 0-amount intent.
     const isFreeEvent =
       !!(event as any).isFreeEvent ||
-      event.price === 0 ||
       unitPrice === 0 ||
       paymentMethod === "free";
 
@@ -710,6 +709,19 @@ export const confirmBooking = async (
         id: paymentIntentId,
         status: "succeeded",
         payment_method: "free",
+      };
+    } else if (paymentIntentId.startsWith("test_pi_")) {
+      // Test payment: auto-confirm for testing/development purposes
+      logger.info("Processing test payment booking confirmation", {
+        paymentIntentId: paymentIntentId.substring(0, 30) + "...",
+        orderId: order._id,
+      });
+      paymentIntent = {
+        id: paymentIntentId,
+        status: "succeeded",
+        amount: Math.round(order.total * 100),
+        currency: order.currency?.toLowerCase() || "aed",
+        payment_method: "test",
       };
     } else {
       // Verify payment with Stripe for real payments

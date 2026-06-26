@@ -538,11 +538,11 @@ const BookingPage: React.FC = () => {
         (event.programConfig?.isProgramBlock && event.programConfig?.totalProgramPrice
           ? event.programConfig.totalProgramPrice
           : (() => {
-              // Fallback: price × timeSlots count on the first standard schedule
+              // Fallback: schedule price IS the total package price
               const std = (event.dateSchedule || []).find(
                 (s: any) => s.sessionType !== 'Intro Session' && s.price > 0
               ) as any;
-              return std ? (std.price * (std.timeSlots?.length || 1)) : 0;
+              return std ? std.price : 0;
             })());
       return programPrice === 0;
     }
@@ -910,14 +910,14 @@ const BookingPage: React.FC = () => {
         // Priority 2: programConfig total
         defaultPrice = event.programConfig.totalProgramPrice;
       } else {
-        // Priority 3: price × timeSlots count on the selected schedule
+        // Priority 3: schedule price IS the total package price
         const selectedSched = (event.dateSchedule || []).find(
           (s: any) => (s._id || s.id) === (routeState?.scheduleId || bookingFlow.scheduleId)
         ) as any;
         const fallbackSched = selectedSched ||
           (event.dateSchedule || []).find((s: any) => s.sessionType !== 'Intro Session' && s.price > 0) as any;
         defaultPrice = fallbackSched
-          ? (fallbackSched.price || 0) * (fallbackSched.timeSlots?.length || 1)
+          ? (fallbackSched.price || 0)
           : 0;
       }
     } else if (routeState?.bookingType === 'intro') {

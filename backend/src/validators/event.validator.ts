@@ -149,7 +149,7 @@ export const validateCreateEvent = [
     .trim()
     .isLength({ max: 500 })
     .withMessage("Short description cannot exceed 500 characters")
-    .escape(),
+    ,
 
   body("customCSS")
     .optional()
@@ -168,7 +168,7 @@ export const validateCreateEvent = [
     .withMessage("Category is required")
     .isLength({ min: 2, max: 100 })
     .withMessage("Category must be between 2 and 100 characters")
-    .escape(),
+    ,
 
   validateEnum("type", EVENT_TYPES, true),
   validateEnum("venueType", VENUE_TYPES, true),
@@ -208,14 +208,14 @@ export const validateCreateEvent = [
     .withMessage("City is required for non-online events")
     .isLength({ min: 2, max: 100 })
     .withMessage("City must be between 2 and 100 characters")
-    .escape(),
+    ,
 
   body("location.city")
     .if(body("venueType").equals("Online"))
     .optional()
     .trim()
     .isLength({ min: 0, max: 100 })
-    .escape(),
+    ,
 
   body("location.address")
     .optional()
@@ -405,7 +405,7 @@ export const validateCreateEvent = [
     .trim()
     .isLength({ min: 2, max: 50 })
     .withMessage("Each tag must be between 2 and 50 characters")
-    .escape(),
+    ,
 
   // Images validation
   body("images")
@@ -465,7 +465,7 @@ export const validateUpdateEvent = [
     .trim()
     .isLength({ max: 500 })
     .withMessage("Short description cannot exceed 500 characters")
-    .escape(),
+    ,
 
   body("customCSS")
     .optional()
@@ -483,7 +483,7 @@ export const validateUpdateEvent = [
     .trim()
     .isLength({ min: 2, max: 100 })
     .withMessage("Category must be between 2 and 100 characters")
-    .escape(),
+    ,
 
   validateEnum("type", EVENT_TYPES, false),
   validateEnum("venueType", VENUE_TYPES, false),
@@ -689,7 +689,7 @@ export const validateEventFAQ = [
     .withMessage("FAQ question is required")
     .isLength({ min: 5, max: 200 })
     .withMessage("Question must be between 5 and 200 characters")
-    .escape(),
+    ,
 
   body("faqs.*.answer")
     .trim()
@@ -697,7 +697,7 @@ export const validateEventFAQ = [
     .withMessage("FAQ answer is required")
     .isLength({ min: 10, max: 1000 })
     .withMessage("Answer must be between 10 and 1000 characters")
-    .escape(),
+    ,
 ];
 
 /**
@@ -709,14 +709,14 @@ export const validateEventSEO = [
     .trim()
     .isLength({ max: 60 })
     .withMessage("SEO title cannot exceed 60 characters")
-    .escape(),
+    ,
 
   body("seoMeta.description")
     .optional()
     .trim()
     .isLength({ max: 160 })
     .withMessage("SEO description cannot exceed 160 characters")
-    .escape(),
+    ,
 
   body("seoMeta.keywords")
     .optional()
@@ -728,7 +728,7 @@ export const validateEventSEO = [
     .trim()
     .isLength({ min: 2, max: 50 })
     .withMessage("Each keyword must be between 2 and 50 characters")
-    .escape(),
+    ,
 ];
 
 /**
@@ -753,7 +753,7 @@ export const validateEventSearch = [
     .trim()
     .isLength({ min: 2, max: 100 })
     .withMessage("Category must be between 2 and 100 characters")
-    .escape(),
+    ,
 
   query("type")
     .optional()
@@ -775,7 +775,7 @@ export const validateEventSearch = [
     .trim()
     .isLength({ min: 2, max: 100 })
     .withMessage("City must be between 2 and 100 characters")
-    .escape(),
+    ,
 
   query("minAge")
     .optional()
@@ -825,7 +825,7 @@ export const validateEventApproval = [
     .withMessage("Rejection reason is required when rejecting an event")
     .isLength({ min: 10, max: 500 })
     .withMessage("Rejection reason must be between 10 and 500 characters")
-    .escape(),
+    ,
 ];
 
 /**
@@ -985,7 +985,7 @@ export const validateCreateTeacherEvent = [
     .trim()
     .isLength({ max: 500 })
     .withMessage("Short description cannot exceed 500 characters")
-    .escape(),
+    ,
 
   body("category")
     .trim()
@@ -993,7 +993,7 @@ export const validateCreateTeacherEvent = [
     .withMessage("Category is required")
     .isLength({ min: 2, max: 100 })
     .withMessage("Category must be between 2 and 100 characters")
-    .escape(),
+    ,
 
   validateEnum("type", EVENT_TYPES, true),
 
@@ -1037,7 +1037,7 @@ export const validateCreateTeacherEvent = [
     .withMessage("City is required for offline events")
     .isLength({ min: 2, max: 100 })
     .withMessage("City must be between 2 and 100 characters")
-    .escape(),
+    ,
 
   body("location.address")
     .optional()
@@ -1125,7 +1125,7 @@ export const validateCreateTeacherEvent = [
     .trim()
     .isLength({ min: 2, max: 50 })
     .withMessage("Each tag must be between 2 and 50 characters")
-    .escape(),
+    ,
 
   // Lenient image check — skip empty/falsy array items
   body("images")
@@ -1164,14 +1164,14 @@ export const validateUpdateTeacherEvent = [
     .trim()
     .isLength({ max: 500 })
     .withMessage("Short description cannot exceed 500 characters")
-    .escape(),
+    ,
 
   body("category")
     .optional()
     .trim()
     .isLength({ min: 2, max: 100 })
     .withMessage("Category must be between 2 and 100 characters")
-    .escape(),
+    ,
 
   validateEnum("type", EVENT_TYPES, false),
   validateEnum("currency", CURRENCIES, false),

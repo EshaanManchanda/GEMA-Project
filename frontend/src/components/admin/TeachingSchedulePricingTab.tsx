@@ -158,7 +158,12 @@ const TeachingSchedulePricingTab: React.FC<TeachingSchedulePricingTabProps> = ({
         }
         currentDate.setDate(currentDate.getDate() + 1);
       }
-      finalForm.timeSlots = timeSlots;
+      finalForm.timeSlots = timeSlots as any;
+
+      const numSlots = timeSlots.length;
+      if (numSlots > 0 && finalForm.price) {
+         finalForm.ratePerClass = (parseFloat(finalForm.price) / numSlots).toFixed(2);
+      }
     } else if (finalForm.scheduleType === 'single') {
       finalForm.timeSlots = [];
       finalForm.endDate = finalForm.startDate;
@@ -663,26 +668,14 @@ const TeachingSchedulePricingTab: React.FC<TeachingSchedulePricingTabProps> = ({
                     <option value="Standard Session">Standard Session</option>
                   </select>
                 </div>
-                {modalForm.scheduleType === 'cohort' && modalForm.sessionType === 'Standard Session' && (
-                  <div className="col-span-2">
-                    <label className="block text-sm font-semibold text-gray-700 mb-1.5">Rate Per Class ({currency})</label>
-                    <input
-                      type="number"
-                      min="0"
-                      step="0.01"
-                      value={modalForm.ratePerClass || ''}
-                      onChange={(e) => setModalForm(prev => ({ ...prev, ratePerClass: e.target.value }))}
-                      className="w-full px-3 py-2.5 border border-gray-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-purple-500 shadow-sm"
-                      placeholder="e.g. 50"
-                    />
-                    <p className="text-xs text-gray-500 mt-1">Optional breakdown price per individual class in this cohort.</p>
-                  </div>
-                )}
+
               </div>
 
               <div className="grid grid-cols-1 gap-4">
                 <div>
-                  <label className="block text-sm font-semibold text-gray-700 mb-1.5">Price</label>
+                  <label className="block text-sm font-semibold text-gray-700 mb-1.5">
+                    {modalForm.scheduleType === 'cohort' ? 'Total Price' : 'Price'}
+                  </label>
                   <div className="flex rounded-xl shadow-sm border border-gray-300 overflow-hidden">
                     <select
                       value={currency}

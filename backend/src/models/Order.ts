@@ -235,21 +235,12 @@ const orderItemSchema = new Schema<IOrderItem>({
       emergencyContact: {
         name: {
           type: String,
-          required: function (this: any) {
-            return this.age < 18;
-          },
         },
         relationship: {
           type: String,
-          required: function (this: any) {
-            return this.age < 18;
-          },
         },
         phone: {
           type: String,
-          required: function (this: any) {
-            return this.age < 18;
-          },
         },
       },
       specialRequirements: String,

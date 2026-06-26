@@ -261,8 +261,7 @@ export const validateStringLength = (
     .isLength({ min: minLength, max: maxLength })
     .withMessage(
       `${field} must be between ${minLength} and ${maxLength} characters`,
-    )
-    .escape(); // Prevent XSS
+    );
 };
 
 // Numeric range validation
