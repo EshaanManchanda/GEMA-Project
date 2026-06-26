@@ -807,7 +807,7 @@
   font-family: var(--blog-font-heading);
   font-size: var(--blog-text-3xl);
   line-height: var(--blog-leading-tight);
-  color: var(--blog-color-heading);
+  color: inherit;
 }
 
 .blog-content h2 {
@@ -815,7 +815,7 @@
   font-family: var(--blog-font-heading);
   font-size: var(--blog-text-2xl);
   line-height: var(--blog-leading-tight);
-  color: var(--blog-color-heading);
+  color: inherit;
 }
 
 .blog-content h3 {
@@ -823,7 +823,7 @@
   font-family: var(--blog-font-heading);
   font-size: var(--blog-text-xl);
   line-height: var(--blog-leading-normal);
-  color: var(--blog-color-heading);
+  color: inherit;
 }
 
 .blog-content p {
@@ -884,7 +884,7 @@
 }
 
 .blog-content strong {
-  @apply font-bold text-gray-900;
+  @apply font-bold;
 }
 
 .blog-content em {
@@ -919,7 +919,7 @@
   margin-bottom: 1.5rem;
   margin-top: 2rem;
   line-height: 1.2;
-  color: #111827;
+  color: inherit;
 }
 
 .event-content h2 {
@@ -929,7 +929,7 @@
   margin-bottom: 1rem;
   margin-top: 2rem;
   line-height: 1.3;
-  color: #111827;
+  color: inherit;
 }
 
 .event-content h3 {
@@ -939,7 +939,7 @@
   margin-bottom: 0.75rem;
   margin-top: 1.5rem;
   line-height: 1.4;
-  color: #1f2937;
+  color: inherit;
 }
 
 .event-content h4 {
@@ -948,13 +948,13 @@
   margin-bottom: 0.5rem;
   margin-top: 1rem;
   line-height: 1.5;
-  color: #1f2937;
+  color: inherit;
 }
 
 .event-content p {
   margin-bottom: 1.25rem;
   line-height: 1.75;
-  color: #374151;
+  color: inherit;
 }
 
 .event-content ul,
@@ -977,7 +977,7 @@
 .event-content li {
   margin-bottom: 0.75rem;
   line-height: 1.7;
-  color: #4b5563;
+  color: inherit;
 }
 
 .event-content li:last-child {
@@ -987,7 +987,7 @@
 .event-content strong,
 .event-content b {
   font-weight: 600;
-  color: #1f2937;
+  color: inherit;
 }
 
 .event-content a {
