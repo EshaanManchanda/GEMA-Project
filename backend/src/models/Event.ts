@@ -144,6 +144,11 @@ export interface IEvent extends Document {
     description: string;
     keywords: string[];
   };
+  collectionInfo?: Array<{
+    heading: string;
+    shortDescription?: string;
+    link: string;
+  }>;
   faqs: Array<{
     question: string;
     answer: string;
@@ -664,11 +669,24 @@ const eventSchema = new Schema<IEvent>(
         type: String,
         maxlength: [160, "SEO description cannot exceed 160 characters"],
       },
-      keywords: {
-        type: [String],
-        default: [],
-      },
+      keywords: [String],
     },
+    collectionInfo: [
+      {
+        heading: {
+          type: String,
+          trim: true,
+        },
+        shortDescription: {
+          type: String,
+          trim: true,
+        },
+        link: {
+          type: String,
+          trim: true,
+        },
+      },
+    ],
     faqs: [
       {
         question: {

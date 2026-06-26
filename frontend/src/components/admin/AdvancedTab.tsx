@@ -26,6 +26,11 @@ interface AdvancedTabProps {
       description: string;
       keywords: string[];
     };
+    collectionInfo?: Array<{
+      heading: string;
+      shortDescription: string;
+      link: string;
+    }>;
     faqs: FAQ[];
   };
   eventData?: {
@@ -41,7 +46,8 @@ interface AdvancedTabProps {
   onFaqChange: (index: number, field: 'question' | 'answer', value: string) => void;
   onAddFaq: () => void;
   onRemoveFaq: (index: number) => void;
-  onSeoChange: (seoData: {title: string; description: string; keywords: string[]}) => void;
+  onSeoChange: (seoData: { title: string; description: string; keywords: string[] }) => void;
+  onCollectionChange?: (collections: Array<{ heading: string; shortDescription: string; link: string }>) => void;
   imagePreviewUrl?: string;
 }
 
@@ -56,6 +62,7 @@ const AdvancedTab: React.FC<AdvancedTabProps> = ({
   onAddFaq,
   onRemoveFaq,
   onSeoChange,
+  onCollectionChange,
   imagePreviewUrl,
 }) => {
   return (
@@ -177,24 +184,122 @@ const AdvancedTab: React.FC<AdvancedTabProps> = ({
           </div>
 
           <SEOEditor
-          initialData={{
-            title: formData.seoMeta?.title ?? '',
-            description: formData.seoMeta?.description ?? '',
-            keywords: formData.seoMeta?.keywords ?? []
-          }}
-          contentData={{
-            title: eventData?.title || '',
-            description: eventData?.description || '',
-            category: eventData?.category || '',
-            location: formData.city,
-            tags: Array.isArray(eventData?.tags) ? eventData.tags : [],
-            type: 'event'
-          }}
-          onChange={onSeoChange}
-          baseUrl={import.meta.env.VITE_APP_URL || 'https://gema-events.com'}
-          path={`/events/${eventData?._id || 'new-event'}`}
-          ogImage={imagePreviewUrl}
-        />
+            initialData={{
+              title: formData.seoMeta?.title ?? '',
+              description: formData.seoMeta?.description ?? '',
+              keywords: formData.seoMeta?.keywords ?? []
+            }}
+            contentData={{
+              title: eventData?.title || '',
+              description: eventData?.description || '',
+              category: eventData?.category || '',
+              location: formData.city,
+              tags: Array.isArray(eventData?.tags) ? eventData.tags : [],
+              type: 'event'
+            }}
+            onChange={onSeoChange}
+            baseUrl={import.meta.env.VITE_APP_URL || 'https://gema-events.com'}
+            path={`/events/${eventData?._id || 'new-event'}`}
+            ogImage={imagePreviewUrl}
+          />
+        </CardContent>
+      </Card>
+
+      {/* Collection Section */}
+      <Card variant="elevated" className="shadow-xl">
+        <CardHeader className="flex flex-row items-center justify-between">
+          <CardTitle className="text-2xl flex items-center text-gray-900">
+            <svg xmlns="http://www.w3.org/2000/svg" className="w-6 h-6 mr-3 text-primary-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 002-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10" />
+            </svg>
+            Add a Collection
+          </CardTitle>
+          <button
+            type="button"
+            onClick={() => {
+              const current = formData.collectionInfo || [];
+              onCollectionChange?.([...current, { heading: '', shortDescription: '', link: '' }]);
+            }}
+            className="flex items-center text-sm font-semibold text-primary-600 hover:text-primary-700 bg-primary-50 hover:bg-primary-100 px-3 py-1.5 rounded-lg transition-colors"
+          >
+            <Plus className="w-4 h-4 mr-1" />
+            Add collection
+          </button>
+        </CardHeader>
+        <CardContent>
+          <div className="space-y-6">
+            {(formData.collectionInfo || []).length === 0 && (
+              <div className="text-center py-6 text-gray-500 text-sm border-2 border-dashed border-gray-200 rounded-xl">
+                No collections added yet. Click "Add collection" to start.
+              </div>
+            )}
+
+            {(formData.collectionInfo || []).map((collection, index) => (
+              <div key={index} className="relative p-6 bg-gray-50 border border-gray-200 rounded-xl space-y-4">
+                <button
+                  type="button"
+                  onClick={() => {
+                    const current = [...(formData.collectionInfo || [])];
+                    current.splice(index, 1);
+                    onCollectionChange?.(current);
+                  }}
+                  className="absolute top-4 right-4 text-gray-400 hover:text-red-500 transition-colors p-1"
+                >
+                  <Trash2 className="w-5 h-5" />
+                </button>
+
+                <h4 className="font-semibold text-gray-700 mb-2">Collection #{index + 1}</h4>
+
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">
+                    Display Heading
+                  </label>
+                  <input
+                    type="text"
+                    value={collection.heading || ''}
+                    onChange={(e) => {
+                      const current = [...(formData.collectionInfo || [])];
+                      current[index].heading = e.target.value;
+                      onCollectionChange?.(current);
+                    }}
+                    placeholder="e.g. Summer Camp 2024 Collection"
+                    className="w-full px-4 py-2 rounded-xl border border-gray-300 focus:border-primary-500 focus:ring-2 focus:ring-primary-200 outline-none transition-all bg-white"
+                  />
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">
+                    Short Description
+                  </label>
+                  <textarea
+                    value={collection.shortDescription || ''}
+                    onChange={(e) => {
+                      const current = [...(formData.collectionInfo || [])];
+                      current[index].shortDescription = e.target.value;
+                      onCollectionChange?.(current);
+                    }}
+                    placeholder="Brief description of the collection"
+                    className="w-full px-4 py-2 rounded-xl border border-gray-300 focus:border-primary-500 focus:ring-2 focus:ring-primary-200 outline-none transition-all min-h-[80px] bg-white"
+                  />
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">
+                    Collection Link
+                  </label>
+                  <input
+                    type="text"
+                    value={collection.link || ''}
+                    onChange={(e) => {
+                      const current = [...(formData.collectionInfo || [])];
+                      current[index].link = e.target.value;
+                      onCollectionChange?.(current);
+                    }}
+                    placeholder="https://..."
+                    className="w-full px-4 py-2 rounded-xl border border-gray-300 focus:border-primary-500 focus:ring-2 focus:ring-primary-200 outline-none transition-all bg-white"
+                  />
+                </div>
+              </div>
+            ))}
+          </div>
         </CardContent>
       </Card>
 
@@ -221,87 +326,85 @@ const AdvancedTab: React.FC<AdvancedTabProps> = ({
         </CardHeader>
         <CardContent>
 
-        {(formData.faqs || []).length === 0 ? (
-          <div className="bg-gray-50 border-2 border-dashed border-gray-300 rounded-lg p-8 text-center">
-            <HelpCircle className="w-12 h-12 text-gray-400 mx-auto mb-3" />
-            <h4 className="text-sm font-medium text-gray-900 mb-1">No FAQs added yet</h4>
-            <p className="text-sm text-gray-500 mb-4">
-              Add frequently asked questions to help attendees understand your event better
-            </p>
-            <button
-              type="button"
-              onClick={onAddFaq}
-              className="inline-flex items-center px-4 py-2 border border-gray-300 shadow-sm text-sm font-medium rounded-md text-gray-700 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-primary"
-            >
-              <Plus className="w-4 h-4 mr-2" />
-              Add First FAQ
-            </button>
-          </div>
-        ) : (
-          <div className="space-y-6">
-            {(formData.faqs || []).map((faq, index) => (
-              <div
-                key={faq.id || faq._id || index}
-                className="bg-gradient-to-br from-gray-50 to-white border-2 border-gray-200 rounded-xl p-6 shadow-lg hover:shadow-2xl transition-all duration-200"
+          {(formData.faqs || []).length === 0 ? (
+            <div className="bg-gray-50 border-2 border-dashed border-gray-300 rounded-lg p-8 text-center">
+              <HelpCircle className="w-12 h-12 text-gray-400 mx-auto mb-3" />
+              <h4 className="text-sm font-medium text-gray-900 mb-1">No FAQs added yet</h4>
+              <p className="text-sm text-gray-500 mb-4">
+                Add frequently asked questions to help attendees understand your event better
+              </p>
+              <button
+                type="button"
+                onClick={onAddFaq}
+                className="inline-flex items-center px-4 py-2 border border-gray-300 shadow-sm text-sm font-medium rounded-md text-gray-700 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-primary"
               >
-                <div className="flex items-center justify-between mb-4">
-                  <div className="flex items-center space-x-3">
-                    <div className="w-8 h-8 bg-primary-500 rounded-full flex items-center justify-center text-white font-bold text-sm">
-                      {index + 1}
+                <Plus className="w-4 h-4 mr-2" />
+                Add First FAQ
+              </button>
+            </div>
+          ) : (
+            <div className="space-y-6">
+              {(formData.faqs || []).map((faq, index) => (
+                <div
+                  key={faq.id || faq._id || index}
+                  className="bg-gradient-to-br from-gray-50 to-white border-2 border-gray-200 rounded-xl p-6 shadow-lg hover:shadow-2xl transition-all duration-200"
+                >
+                  <div className="flex items-center justify-between mb-4">
+                    <div className="flex items-center space-x-3">
+                      <div className="w-8 h-8 bg-primary-500 rounded-full flex items-center justify-center text-white font-bold text-sm">
+                        {index + 1}
+                      </div>
+                      <h4 className="text-lg font-semibold text-gray-900">FAQ #{index + 1}</h4>
                     </div>
-                    <h4 className="text-lg font-semibold text-gray-900">FAQ #{index + 1}</h4>
-                  </div>
-                  <button
-                    type="button"
-                    onClick={() => onRemoveFaq(index)}
-                    className="p-2 text-red-600 hover:text-white hover:bg-red-600 rounded-lg transition-all duration-200"
-                    title="Remove FAQ"
-                  >
-                    <Trash2 className="w-5 h-5" />
-                  </button>
-                </div>
-
-                <div className="space-y-3">
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1">
-                      Question <span className="text-red-500">*</span>
-                    </label>
-                    <input
-                      type="text"
-                      value={faq.question}
-                      onChange={(e) => onFaqChange(index, 'question', e.target.value)}
-                      className={`w-full px-3 py-2 border ${
-                        errors[`faq_${index}_question`] ? 'border-red-500' : 'border-gray-300'
-                      } rounded-md shadow-sm focus:outline-none focus:ring-primary focus:border-primary`}
-                      placeholder="e.g. What should I bring to the event?"
-                    />
-                    {errors[`faq_${index}_question`] && (
-                      <p className="mt-1 text-sm text-red-500">{errors[`faq_${index}_question`]}</p>
-                    )}
+                    <button
+                      type="button"
+                      onClick={() => onRemoveFaq(index)}
+                      className="p-2 text-red-600 hover:text-white hover:bg-red-600 rounded-lg transition-all duration-200"
+                      title="Remove FAQ"
+                    >
+                      <Trash2 className="w-5 h-5" />
+                    </button>
                   </div>
 
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1">
-                      Answer <span className="text-red-500">*</span>
-                    </label>
-                    <textarea
-                      value={faq.answer}
-                      onChange={(e) => onFaqChange(index, 'answer', e.target.value)}
-                      rows={3}
-                      className={`w-full px-3 py-2 border ${
-                        errors[`faq_${index}_answer`] ? 'border-red-500' : 'border-gray-300'
-                      } rounded-md shadow-sm focus:outline-none focus:ring-primary focus:border-primary`}
-                      placeholder="Provide a clear and helpful answer..."
-                    />
-                    {errors[`faq_${index}_answer`] && (
-                      <p className="mt-1 text-sm text-red-500">{errors[`faq_${index}_answer`]}</p>
-                    )}
+                  <div className="space-y-3">
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-1">
+                        Question <span className="text-red-500">*</span>
+                      </label>
+                      <input
+                        type="text"
+                        value={faq.question}
+                        onChange={(e) => onFaqChange(index, 'question', e.target.value)}
+                        className={`w-full px-3 py-2 border ${errors[`faq_${index}_question`] ? 'border-red-500' : 'border-gray-300'
+                          } rounded-md shadow-sm focus:outline-none focus:ring-primary focus:border-primary`}
+                        placeholder="e.g. What should I bring to the event?"
+                      />
+                      {errors[`faq_${index}_question`] && (
+                        <p className="mt-1 text-sm text-red-500">{errors[`faq_${index}_question`]}</p>
+                      )}
+                    </div>
+
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-1">
+                        Answer <span className="text-red-500">*</span>
+                      </label>
+                      <textarea
+                        value={faq.answer}
+                        onChange={(e) => onFaqChange(index, 'answer', e.target.value)}
+                        rows={3}
+                        className={`w-full px-3 py-2 border ${errors[`faq_${index}_answer`] ? 'border-red-500' : 'border-gray-300'
+                          } rounded-md shadow-sm focus:outline-none focus:ring-primary focus:border-primary`}
+                        placeholder="Provide a clear and helpful answer..."
+                      />
+                      {errors[`faq_${index}_answer`] && (
+                        <p className="mt-1 text-sm text-red-500">{errors[`faq_${index}_answer`]}</p>
+                      )}
+                    </div>
                   </div>
                 </div>
-              </div>
-            ))}
-          </div>
-        )}
+              ))}
+            </div>
+          )}
         </CardContent>
       </Card>
 

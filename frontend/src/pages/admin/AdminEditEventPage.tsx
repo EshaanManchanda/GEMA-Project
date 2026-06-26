@@ -141,6 +141,11 @@ interface EventFormData {
     description: string;
     keywords: string[];
   };
+  collectionInfo?: Array<{
+    heading: string;
+    shortDescription: string;
+    link: string;
+  }>;
 
   // Educational Fields
   syllabus: Array<{ title: string; description: string; duration?: string }>;
@@ -233,6 +238,7 @@ const AdminEditEventPage: React.FC = () => {
       description: "",
       keywords: [],
     },
+    collectionInfo: [],
     syllabus: [],
     subject: "",
     topic: "",
@@ -372,6 +378,11 @@ const AdminEditEventPage: React.FC = () => {
               description: event.seoMeta?.description || "",
               keywords: event.seoMeta?.keywords || [],
             },
+            collectionInfo: event.collectionInfo?.map(col => ({
+              heading: col.heading || "",
+              shortDescription: col.shortDescription || "",
+              link: col.link || "",
+            })) || [],
             syllabus: event.syllabus || [],
             subject: event.subject || "",
             topic: event.topic || "",
@@ -837,6 +848,13 @@ const AdminEditEventPage: React.FC = () => {
     }));
   }, []);
 
+  const handleCollectionChange = useCallback((collections: any[]) => {
+    setFormData((prev) => ({
+      ...prev,
+      collectionInfo: collections,
+    }));
+  }, []);
+
   // Custom CSS change handler
   const handleCustomCSSChange = (css: string) => {
     setFormData((prev) => ({ ...prev, customCSS: css }));
@@ -1122,6 +1140,9 @@ const AdminEditEventPage: React.FC = () => {
               ? formData.seoMeta.keywords
               : formData.tags,
         },
+        collectionInfo: formData.collectionInfo && formData.collectionInfo.length > 0 
+          ? formData.collectionInfo.filter(c => c.heading || c.link) 
+          : undefined,
 
         faqs: formData.faqs.map((faq) => ({
           ...(faq._id && { _id: faq._id }),
@@ -1469,6 +1490,7 @@ const AdminEditEventPage: React.FC = () => {
                 onAddFaq={handleAddFaq}
                 onRemoveFaq={handleRemoveFaq}
                 onSeoChange={handleSeoChange}
+                onCollectionChange={handleCollectionChange}
                 imagePreviewUrl={formData.imagePreviewUrls[0]}
               />
             )}

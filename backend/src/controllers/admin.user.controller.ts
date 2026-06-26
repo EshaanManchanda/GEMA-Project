@@ -7,6 +7,7 @@ import mongoose from "mongoose";
 import { generateOTP, getOTPExpiry, isOTPExpired } from "../utils/otp";
 import QueueService from "../services/queue.service";
 import { getOrCreateVendorProfile } from "../utils/vendorHelpers";
+import { getOrCreateTeacherProfile } from "../utils/teacherHelpers";
 import Vendor from "../models/Vendor";
 import Teacher from "../models/Teacher";
 import Employee from "../models/Employee";
@@ -887,6 +888,18 @@ export const updateUserRole = async (
 
     if (!user) {
       return next(new AppError("User not found", 404));
+    }
+
+    // Auto-create profiles if changed to vendor or teacher
+    try {
+      if (role === UserRole.VENDOR) {
+        await getOrCreateVendorProfile(user._id);
+      } else if (role === UserRole.TEACHER) {
+        await getOrCreateTeacherProfile(user._id);
+      }
+    } catch (profileError: any) {
+      logger.error(`Error creating profile for role ${role}: ${profileError.message}`);
+      // Continue execution even if profile creation fails, as user role was updated
     }
 
     // Invalidate Redis user cache key immediately

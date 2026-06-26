@@ -240,6 +240,7 @@ const formatAdminEventResponse = (event: any) => {
     tags: transformedEvent.tags,
     dateSchedule: transformedEvent.dateSchedule,
     seoMeta: transformedEvent.seoMeta,
+    collectionInfo: transformedEvent.collectionInfo,
     faqs: transformedEvent.faqs,
     viewsCount: transformedEvent.viewsCount,
     images: transformedEvent.images || [],

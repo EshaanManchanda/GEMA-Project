@@ -54,6 +54,7 @@ import ImageCarousel from '../components/common/ImageCarousel';
 import { API_BASE_URL } from '../config/api';
 import UserReviewStatus from '../components/client/UserReviewStatus';
 import reviewsAPI from '../services/api/reviewsAPI';
+import EventCollectionsList from '../components/client/EventCollectionsList';
 import { galleryAPI } from '../services/api/reviewLinkAPI';
 import GalleryComponent from '../components/common/GalleryComponent';
 import { useSEO } from '@/hooks/useSEO';
@@ -396,6 +397,12 @@ const EventDetailPage: React.FC = () => {
   }, [event?.dateSchedule, bookingType, introSchedules, standardSchedules, isEducational]);
 
   // Auto-select first session when booking type changes
+  useEffect(() => {
+    if (introSchedules.length === 0 && bookingType === 'intro') {
+      setBookingType('program');
+    }
+  }, [introSchedules.length, bookingType]);
+
   useEffect(() => {
     if (filteredSchedules.length > 0) {
       setSelectedSession(filteredSchedules[0] as Session);
@@ -1565,8 +1572,12 @@ const EventDetailPage: React.FC = () => {
                       </label>
                       <div className="grid grid-cols-1 gap-4">
                         <label
-                          className={`cursor-pointer rounded-2xl border-2 p-5 transition-all flex flex-col relative overflow-hidden group ${bookingType === 'intro' ? 'border-primary-500 bg-gradient-to-br from-white to-primary-50 shadow-md' : 'border-gray-200 hover:border-primary-300 bg-white hover:bg-gray-50'}`}
-                          onClick={() => setBookingType('intro')}
+                          className={`rounded-2xl border-2 p-5 transition-all flex flex-col relative overflow-hidden group ${
+                            introSchedules.length > 0 
+                              ? (bookingType === 'intro' ? 'border-primary-500 bg-gradient-to-br from-white to-primary-50 shadow-md cursor-pointer' : 'border-gray-200 hover:border-primary-300 bg-white hover:bg-gray-50 cursor-pointer')
+                              : 'border-gray-200 bg-gray-50 opacity-60 cursor-not-allowed'
+                          }`}
+                          onClick={() => { if (introSchedules.length > 0) setBookingType('intro') }}
                         >
                           <div className="flex items-start justify-between relative z-10">
                             <div className="flex items-start space-x-4">
@@ -1578,15 +1589,23 @@ const EventDetailPage: React.FC = () => {
                               <div>
                                 <div className="flex items-center space-x-2">
                                   <span className="text-lg font-bold text-gray-900">Trial Class</span>
-                                  <span className="px-2.5 py-0.5 rounded-full bg-blue-100 text-blue-700 text-xs font-bold uppercase tracking-wide">First Time</span>
+                                  {introSchedules.length > 0 && (
+                                    <span className="px-2.5 py-0.5 rounded-full bg-blue-100 text-blue-700 text-xs font-bold uppercase tracking-wide">First Time</span>
+                                  )}
                                 </div>
                                 <p className="text-sm text-gray-500 mt-1.5 leading-relaxed">
-                                  Experience our free {introClassesCount}-class trial session.
+                                  {introSchedules.length > 0 ? `Experience our free ${introClassesCount}-class trial session.` : 'No trial sessions available for this program.'}
                                 </p>
                               </div>
                             </div>
                             <div className="text-right flex-shrink-0 ml-4">
-                              <span className="font-black text-2xl text-green-500 tracking-tight">Free</span>
+                              {introSchedules.length > 0 ? (
+                                <span className="font-black text-2xl text-green-500 tracking-tight">Free</span>
+                              ) : (
+                                <span className="font-black text-lg text-gray-400 tracking-tight flex items-center justify-center h-full">
+                                  <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M18.364 18.364A9 9 0 005.636 5.636m12.728 12.728A9 9 0 015.636 5.636m12.728 12.728L5.636 5.636" /></svg>
+                                </span>
+                              )}
                             </div>
                           </div>
                         </label>
@@ -1726,8 +1745,12 @@ const EventDetailPage: React.FC = () => {
                           </label>
                           <div className="grid grid-cols-1 gap-4">
                             <label
-                              className={`cursor-pointer rounded-2xl border-2 p-5 transition-all flex flex-col relative overflow-hidden group ${bookingType === 'intro' ? 'border-primary-500 bg-gradient-to-br from-white to-primary-50 shadow-md' : 'border-gray-200 hover:border-primary-300 bg-white hover:bg-gray-50'}`}
-                              onClick={() => setBookingType('intro')}
+                              className={`rounded-2xl border-2 p-5 transition-all flex flex-col relative overflow-hidden group ${
+                                introSchedules.length > 0 
+                                  ? (bookingType === 'intro' ? 'border-primary-500 bg-gradient-to-br from-white to-primary-50 shadow-md cursor-pointer' : 'border-gray-200 hover:border-primary-300 bg-white hover:bg-gray-50 cursor-pointer')
+                                  : 'border-gray-200 bg-gray-50 opacity-60 cursor-not-allowed'
+                              }`}
+                              onClick={() => { if (introSchedules.length > 0) setBookingType('intro') }}
                             >
                               <div className="flex items-start justify-between relative z-10">
                                 <div className="flex items-start space-x-4">
@@ -1739,15 +1762,23 @@ const EventDetailPage: React.FC = () => {
                                   <div>
                                     <div className="flex items-center space-x-2">
                                       <span className="text-lg font-bold text-gray-900">Trial Class</span>
-                                      <span className="px-2.5 py-0.5 rounded-full bg-blue-100 text-blue-700 text-xs font-bold uppercase tracking-wide">First Time</span>
+                                      {introSchedules.length > 0 && (
+                                        <span className="px-2.5 py-0.5 rounded-full bg-blue-100 text-blue-700 text-xs font-bold uppercase tracking-wide">First Time</span>
+                                      )}
                                     </div>
                                     <p className="text-sm text-gray-500 mt-1.5 leading-relaxed">
-                                      Experience our free {introClassesCount}-class trial session.
+                                      {introSchedules.length > 0 ? `Experience our free ${introClassesCount}-class trial session.` : 'No trial sessions available for this program.'}
                                     </p>
                                   </div>
                                 </div>
                                 <div className="text-right flex-shrink-0 ml-4">
-                                  <span className="font-black text-2xl text-green-500 tracking-tight">Free</span>
+                                  {introSchedules.length > 0 ? (
+                                    <span className="font-black text-2xl text-green-500 tracking-tight">Free</span>
+                                  ) : (
+                                    <span className="font-black text-lg text-gray-400 tracking-tight flex items-center justify-center h-full">
+                                      <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M18.364 18.364A9 9 0 005.636 5.636m12.728 12.728A9 9 0 015.636 5.636m12.728 12.728L5.636 5.636" /></svg>
+                                    </span>
+                                  )}
                                 </div>
                               </div>
                             </label>
@@ -2415,8 +2446,10 @@ const EventDetailPage: React.FC = () => {
           </div>
         </div>
 
-
-
+        {/* Collections Section */}
+        {event?.collectionInfo && event.collectionInfo.length > 0 && (
+          <EventCollectionsList collections={event.collectionInfo} />
+        )}
 
         {/* Sticky bottom CTA bar — mobile only */}
         <div className="fixed bottom-0 left-0 right-0 z-50 bg-white border-t border-gray-200 p-3 flex items-center justify-between lg:hidden shadow-2xl" style={{ paddingBottom: 'calc(0.75rem + env(safe-area-inset-bottom))' }}>
