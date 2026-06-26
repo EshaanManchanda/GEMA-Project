@@ -82,10 +82,13 @@ const BookingConfirmation: React.FC<BookingConfirmationProps> = ({
   const [imgFailed, setImgFailed] = useState(false);
   const [isDownloading, setIsDownloading] = useState(false);
 
-  // Use order data from backend if available, fallback to local calc
-  const subtotal = currentBooking?.unitPrice
-    ? currentBooking.unitPrice * participants.length
-    : event.price * participants.length;
+  // Use order data from backend if available.
+  // Prefer currentBooking.unitPrice (server-authoritative), then lockedUnitPrice
+  // stored at schedule-selection time, then fall back to event base price.
+  const unitPrice = currentBooking?.unitPrice
+    ?? (bookingFlow as any).lockedUnitPrice
+    ?? event.price;
+  const subtotal = unitPrice * participants.length;
   const discount = currentBooking?.discountAmount
     ?? (currentBooking as any)?.couponDiscount
     ?? 0;
@@ -191,11 +194,7 @@ const BookingConfirmation: React.FC<BookingConfirmationProps> = ({
     }
   };
 
-  // Handle email resend
-  const handleResendEmail = () => {
-    toast.success('Confirmation email sent to all participants');
-    // In real app, this would call the resend API
-  };
+  // handleResendEmail: hidden pending real endpoint — do not show fake success toast
 
   return (
     <div className="space-y-6">
@@ -392,7 +391,7 @@ const BookingConfirmation: React.FC<BookingConfirmationProps> = ({
               <h4 className="font-semibold">Payment Details</h4>
               <div className="space-y-2 text-sm">
                 <div className="flex justify-between">
-                  <span>Subtotal ({participants.length} × {event.currency} {event.price})</span>
+                  <span>Subtotal ({participants.length} × {event.currency} {unitPrice.toFixed(2)})</span>
                   <span>{event.currency} {subtotal.toFixed(2)}</span>
                 </div>
                 {discount > 0 && (
@@ -465,14 +464,7 @@ const BookingConfirmation: React.FC<BookingConfirmationProps> = ({
                 <p className="text-sm text-gray-600">
                   Confirmation emails have been sent to all participants with detailed event information and tickets.
                 </p>
-                <Button
-                  variant="ghost"
-                  size="sm"
-                  onClick={handleResendEmail}
-                  className="mt-1 p-0 h-auto font-normal"
-                >
-                  Resend confirmation email
-                </Button>
+                {/* Resend hidden until real endpoint is wired */}
               </div>
             </div>
 

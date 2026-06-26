@@ -111,7 +111,7 @@ const SchedulePricingTab: React.FC<SchedulePricingTabProps> = ({
     unlimitedSeats: false,
     scheduleType: 'single',
     cohortDays: [],
-    sessionType: 'Intro Session',
+    sessionType: 'Standard Session',
     ratePerClass: '',
   });
 
@@ -140,7 +140,7 @@ const SchedulePricingTab: React.FC<SchedulePricingTabProps> = ({
         unlimitedSeats: false,
         scheduleType: 'single',
         cohortDays: [],
-        sessionType: 'Intro Session',
+        sessionType: 'Standard Session',
         ratePerClass: '',
         isFreeSession: false,
       });
@@ -153,8 +153,21 @@ const SchedulePricingTab: React.FC<SchedulePricingTabProps> = ({
     setEditingIndex(null);
   };
 
+  /** Normalize session flags — Standard Session is never free; Intro is always free. */
+  const normalizeSessionFlags = (
+    form: typeof modalForm,
+  ): typeof modalForm => {
+    if (form.sessionType === 'Standard Session') {
+      return { ...form, isFreeSession: false };
+    }
+    if (form.sessionType === 'Intro Session' || form.isFreeSession) {
+      return { ...form, price: '0', isFreeSession: true };
+    }
+    return form;
+  };
+
   const handleModalSave = () => {
-    let finalForm = { ...modalForm };
+    let finalForm = normalizeSessionFlags({ ...modalForm });
 
     if (finalForm.scheduleType === 'cohort' && finalForm.startDate && finalForm.endDate && finalForm.cohortDays && finalForm.cohortDays.length > 0) {
       const start = new Date(finalForm.startDate);
@@ -684,7 +697,7 @@ const SchedulePricingTab: React.FC<SchedulePricingTabProps> = ({
                   <div className="col-span-2">
                     <label className="block text-sm font-semibold text-gray-700 mb-1.5">Session Category / Type</label>
                     <select
-                      value={modalForm.sessionType || 'Intro Session'}
+                      value={modalForm.sessionType || 'Standard Session'}
                       onChange={(e) => {
                         const newType = e.target.value;
                         setModalForm(prev => ({ 
@@ -732,9 +745,9 @@ const SchedulePricingTab: React.FC<SchedulePricingTabProps> = ({
                       type="number"
                       min="0"
                       step="0.01"
-                      value={isFreeEvent || (isEducational && modalForm.sessionType === 'Intro Session') ? '0' : (modalForm.price || '')}
+                      value={(isFreeEvent || (isEducational && modalForm.sessionType === 'Intro Session') || (!!modalForm.isFreeSession && modalForm.sessionType !== 'Standard Session')) ? '0' : (modalForm.price || '')}
                       onChange={(e) => setModalForm(prev => ({ ...prev, price: e.target.value }))}
-                      disabled={isFreeEvent || (isEducational && modalForm.sessionType === 'Intro Session')}
+                      disabled={isFreeEvent || (isEducational && modalForm.sessionType === 'Intro Session') || (!!modalForm.isFreeSession && modalForm.sessionType !== 'Standard Session')}
                       placeholder="0.00"
                       className={`flex-1 px-4 py-3 focus:outline-none focus:ring-2 focus:ring-primary-500 font-semibold ${
                         isFreeEvent || (isEducational && modalForm.sessionType === 'Intro Session') ? 'bg-gray-100 text-gray-400 cursor-not-allowed' : 'bg-white'
@@ -745,7 +758,7 @@ const SchedulePricingTab: React.FC<SchedulePricingTabProps> = ({
                     <input
                       type="checkbox"
                       id="freeSessionCheck"
-                      checked={isFreeEvent || (isEducational && modalForm.sessionType === 'Intro Session') || modalForm.isFreeSession}
+                      checked={isFreeEvent || (isEducational && modalForm.sessionType === 'Intro Session') || (!!modalForm.isFreeSession && modalForm.sessionType !== 'Standard Session')}
                       disabled={isFreeEvent || (isEducational && modalForm.sessionType === 'Intro Session')}
                       onChange={(e) => {
                         if (e.target.checked) {

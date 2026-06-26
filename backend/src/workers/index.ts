@@ -28,6 +28,7 @@ import emailWorker from "./email.worker";
 import collectionSyncWorker from "./collection-sync.worker";
 import payoutWorker from "./payout.worker";
 import certificateWorker from "./certificate.worker";
+import seatExpiryWorker from "./seat-expiry.worker";
 
 logger.info("Starting background workers...");
 
@@ -61,6 +62,12 @@ if (certificateWorker) {
   logger.warn("Certificate Worker: Not initialized");
 }
 
+if (seatExpiryWorker) {
+  logger.info("Seat Expiry Worker: Started (sweeps every 5 min)");
+} else {
+  logger.warn("Seat Expiry Worker: Not initialized");
+}
+
 // Route permanently-failed jobs to Dead Letter Queue for visibility and manual replay
 const workersForDLQ = [
   { worker: qrWorker, name: "qr-generation" },
@@ -68,6 +75,7 @@ const workersForDLQ = [
   { worker: collectionSyncWorker, name: "collection-sync" },
   { worker: payoutWorker, name: "payout" },
   { worker: certificateWorker, name: "certificate-generation" },
+  { worker: seatExpiryWorker, name: "seat-expiry" },
 ];
 
 for (const { worker, name } of workersForDLQ) {
@@ -158,6 +166,7 @@ const gracefulShutdown = async () => {
   if (collectionSyncWorker) promises.push(collectionSyncWorker.close());
   if (payoutWorker) promises.push(payoutWorker.close());
   if (certificateWorker) promises.push(certificateWorker.close());
+  if (seatExpiryWorker) promises.push(seatExpiryWorker.close());
 
   if (promises.length > 0) {
     await Promise.all(promises);

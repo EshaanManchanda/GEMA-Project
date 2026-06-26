@@ -154,6 +154,7 @@ export const QUEUE_NAMES = {
   PAYOUT: "payout",
   FAILED_JOBS: "failed-jobs",
   CERTIFICATE_GENERATION: "certificate-generation",
+  SEAT_EXPIRY: "seat-expiry",
 } as const;
 
 // QR Code Generation Queue
@@ -200,6 +201,11 @@ export const certificateQueue = areQueuesDisabled
 export const failedJobsQueue = areQueuesDisabled
   ? null
   : new Queue(QUEUE_NAMES.FAILED_JOBS, queueConfig);
+
+// Seat Expiry Queue — sweeps abandoned pending orders and releases reserved seats
+export const seatExpiryQueue = areQueuesDisabled
+  ? null
+  : new Queue(QUEUE_NAMES.SEAT_EXPIRY, queueConfig);
 
 // Queue Events DISABLED to reduce Redis connections (each QueueEvents = 1 connection)
 // Workers already handle logging, so these are redundant

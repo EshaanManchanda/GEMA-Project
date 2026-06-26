@@ -2,7 +2,7 @@ import { Request, Response, NextFunction } from "express";
 import { validationResult } from "express-validator";
 import { PaymentService } from "../services/payment.service";
 import CommissionService from "../services/commission.service";
-import { Order, User } from "../models/index";
+import { Order, User, Event } from "../models/index";
 import { AppError } from "../middleware/index";
 import { AuthRequest } from "../types/index";
 import { config } from "../config/index";
@@ -163,7 +163,35 @@ export const confirmPayment = async (
         },
       });
     } else {
-      // Payment failed or pending
+      // Payment failed — release any reserved seats so capacity is restored
+      try {
+        for (const item of order.items) {
+          if (!item.scheduleId || !item.eventId || !item.quantity) continue;
+          await Event.findOneAndUpdate(
+            {
+              _id: item.eventId,
+              "dateSchedule._id": item.scheduleId,
+              "dateSchedule.reservedSeats": { $gte: item.quantity },
+            },
+            {
+              $inc: {
+                "dateSchedule.$.availableSeats": item.quantity,
+                "dateSchedule.$.reservedSeats": -item.quantity,
+              },
+            },
+          );
+        }
+        await Order.updateOne(
+          { _id: order._id },
+          { status: "cancelled", paymentStatus: "failed" },
+        );
+      } catch (releaseErr) {
+        logger.error("Failed to release seats on payment failure", {
+          orderId: order._id,
+          error: releaseErr,
+        });
+      }
+
       res.status(400).json({
         success: false,
         message: "Payment could not be confirmed",

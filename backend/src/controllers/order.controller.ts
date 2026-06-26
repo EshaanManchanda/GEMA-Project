@@ -73,11 +73,35 @@ export const createOrder = async (
         );
       }
 
-      // Find the correct price for the schedule date
-      const schedule = event.dateSchedule.find(
-        (s: any) =>
-          s.date.toDateString() === new Date(item.scheduleDate).toDateString(),
-      );
+      // Find the correct schedule for this item.
+      // Prefer explicit scheduleId match (most reliable), then fall back to
+      // date-range match using startDate/endDate (current schema) before
+      // trying the legacy `date` field — avoiding crashes when `s.date` is
+      // undefined on schedules that only have startDate/endDate.
+      let schedule: any = null;
+
+      if (item.scheduleId) {
+        schedule = event.dateSchedule.find(
+          (s: any) => s._id?.toString() === item.scheduleId?.toString(),
+        );
+      }
+
+      if (!schedule) {
+        const targetDate = new Date(item.scheduleDate);
+        schedule = event.dateSchedule.find((s: any) => {
+          // Modern schema: startDate / endDate range
+          if (s.startDate) {
+            const start = new Date(s.startDate);
+            const end = s.endDate ? new Date(s.endDate) : start;
+            return targetDate >= start && targetDate <= end;
+          }
+          // Legacy schema: single `date` field (guard against undefined)
+          if (s.date) {
+            return new Date(s.date).toDateString() === targetDate.toDateString();
+          }
+          return false;
+        });
+      }
 
       if (!schedule) {
         return next(

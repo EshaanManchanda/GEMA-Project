@@ -67,6 +67,9 @@ interface Schedule {
   priority?: number;
   isOverride?: boolean;
   _id?: string;
+  sessionType?: string;
+  isFreeSession?: boolean;
+  ratePerClass?: string;
   timeSlots?: Array<{
     date: string;
     startTime: string;
@@ -234,6 +237,13 @@ const VendorEventFormPage: React.FC = () => {
           unlimitedSeats: s.unlimitedSeats || false,
           isOverride: s.isOverride || false,
           sessionType: s.sessionType || 'Standard Session',
+          // Recompute isFreeSession from price as ground truth (mirrors admin transform).
+          // Standard Sessions are never free; Intro Sessions are free only when price === 0.
+          isFreeSession: (() => {
+            const resolvedType = s.sessionType || 'Standard Session';
+            if (resolvedType === 'Standard Session') return false;
+            return resolvedType === 'Intro Session' && parseFloat(s.price?.toString() || '0') === 0;
+          })(),
           ratePerClass: s.ratePerClass?.toString() || '',
           timeSlots: (s.timeSlots || []).map((slot: any, slotIdx: number) => ({
             id: slot._id || `slot-${index}-${slotIdx}`,
@@ -533,10 +543,12 @@ const VendorEventFormPage: React.FC = () => {
           startTime: schedule.startTime || '',
           endTime: schedule.endTime || '',
           availableSeats: schedule.unlimitedSeats ? 999999 : parseInt(schedule.availableSeats),
-          price: isFreeEvent ? 0 : parseFloat(schedule.price),
+          // Normalize before sending: Standard is never free; Intro is always free.
+          price: isFreeEvent ? 0 : (schedule.sessionType === 'Intro Session' ? 0 : parseFloat(schedule.price) || 0),
+          isFreeSession: schedule.sessionType === 'Standard Session' ? false : !!(schedule.isFreeSession || schedule.sessionType === 'Intro Session'),
           unlimitedSeats: schedule.unlimitedSeats || false,
           isOverride: schedule.isOverride || false,
-          sessionType: schedule.sessionType,
+          sessionType: schedule.sessionType || 'Standard Session',
           ratePerClass: schedule.ratePerClass ? parseFloat(schedule.ratePerClass) : undefined,
           timeSlots: schedule.timeSlots || []
         })),

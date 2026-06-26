@@ -160,6 +160,17 @@ export class EventService {
 
           const reservedSeats = Math.max(0, Number(existingSchedule?.reservedSeats || 0));
 
+          // Normalize contradictory session flags before persisting.
+          // Standard Session is never free; Intro Session with price 0 is always free.
+          const sessionType: string = schedule?.sessionType || 'Standard Session';
+          const dbPrice = parseFloat(String(schedule?.price ?? 0));
+          const isFreeSession: boolean =
+            sessionType === 'Standard Session'
+              ? false
+              : sessionType === 'Intro Session' && dbPrice === 0;
+          const normalizedPrice: number =
+            sessionType === 'Intro Session' || isFreeSession ? 0 : dbPrice;
+
           return {
             ...schedule,
             _id: schedule?._id || existingSchedule?._id,
@@ -169,6 +180,9 @@ export class EventService {
             availableSeats: unlimitedSeats
               ? 999999
               : Math.max(0, totalSeats - soldSeats - reservedSeats),
+            sessionType,
+            isFreeSession,
+            price: normalizedPrice,
           };
         });
       }
