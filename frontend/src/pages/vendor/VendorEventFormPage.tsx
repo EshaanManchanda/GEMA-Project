@@ -680,11 +680,9 @@ const VendorEventFormPage: React.FC = () => {
                   capacity={formData.capacity}
                   eventType={formData.type}
                   errors={errors}
-                  isFreeEvent={isFreeEvent}
-                  basePrice={basePrice}
+                  isFreeEvent={false}
+                  basePrice={""}
                   timezone={timezone}
-                  onFreeEventChange={setIsFreeEvent}
-                  onBasePriceChange={(e) => setBasePrice(e.target.value)}
                   onTimezoneChange={setTimezone}
                   onScheduleChange={handleScheduleChange}
                   onAddSchedule={handleAddSchedule}

@@ -368,17 +368,17 @@ const EventDetailPage: React.FC = () => {
 
   // Use the selected session if it's standard, otherwise the first standard session
   const selectedStandard = standardSchedules.find((s: any) => selectedSession && (s._id === selectedSession._id || s.id === selectedSession.id)) || standardSchedules[0];
-  
+
   const introClassesCount = introSchedules[0]?.timeSlots?.length || 1;
   const paidClassesCount = selectedStandard?.timeSlots?.length || 1;
-  
+
   // The schedule's `price` field is the TOTAL package price for all classes in the cohort.
   // e.g. if admin sets price=1499 for a cohort with 6 class dates, total=1499, per-class=1499/6≈249.83
   const totalProgramPrice = event?.programConfig?.isProgramBlock
     ? (event.programConfig.totalProgramPrice || (event.programConfig.paidClasses * event.programConfig.pricePerClass))
     : (Number(selectedStandard?.price) || 0);
-    
-  const pricePerClass = event?.programConfig?.isProgramBlock 
+
+  const pricePerClass = event?.programConfig?.isProgramBlock
     ? event.programConfig.pricePerClass
     : (paidClassesCount > 0 ? (Number(selectedStandard?.price) || 0) / paidClassesCount : 0);
 
@@ -512,15 +512,15 @@ const EventDetailPage: React.FC = () => {
         const schedule = selectedStandard || standardSchedules[0] || event.dateSchedule[0];
         const start = new Date(schedule.startDate || schedule.date);
         const end = new Date(schedule.endDate || schedule.startDate || schedule.date);
-        
+
         const totalClasses = event.programConfig?.isProgramBlock && event.programConfig.paidClasses > 0
-          ? event.programConfig.paidClasses 
+          ? event.programConfig.paidClasses
           : (schedule.timeSlots?.length || 1);
-        
+
         if (totalClasses > 0) {
           return { display: `${totalClasses} Premium Session${totalClasses > 1 ? 's' : ''}`, subtitle: 'Full Program' };
         }
-        
+
         if (!isNaN(start.getTime()) && !isNaN(end.getTime())) {
           if (start.getTime() === end.getTime()) {
             return { display: format(start, 'MMM d, yyyy'), subtitle: 'Start Date' };
@@ -536,19 +536,19 @@ const EventDetailPage: React.FC = () => {
         if (schedule) {
           const start = new Date(schedule.startDate || schedule.date);
           const end = new Date(schedule.endDate || schedule.startDate || schedule.date);
-          
+
           if (!isNaN(start.getTime()) && !isNaN(end.getTime())) {
-             if (start.getTime() === end.getTime()) {
-               const timePart = schedule.startTime && schedule.endTime
-                 ? ` • ${formatTimeFn(schedule.startTime)} \u2013 ${formatTimeFn(schedule.endTime)}`
-                 : '';
-               return { display: `${format(start, 'MMM d, yyyy')}${timePart}`, subtitle: 'Trial Class' };
-             }
-             const sameYear = start.getFullYear() === end.getFullYear();
-             const display = sameYear
-               ? `${format(start, 'MMM d')} \u2013 ${format(end, 'MMM d, yyyy')}`
-               : `${format(start, 'MMM d, yyyy')} \u2013 ${format(end, 'MMM d, yyyy')}`;
-             return { display, subtitle: 'Trial Schedule' };
+            if (start.getTime() === end.getTime()) {
+              const timePart = schedule.startTime && schedule.endTime
+                ? ` • ${formatTimeFn(schedule.startTime)} \u2013 ${formatTimeFn(schedule.endTime)}`
+                : '';
+              return { display: `${format(start, 'MMM d, yyyy')}${timePart}`, subtitle: 'Trial Class' };
+            }
+            const sameYear = start.getFullYear() === end.getFullYear();
+            const display = sameYear
+              ? `${format(start, 'MMM d')} \u2013 ${format(end, 'MMM d, yyyy')}`
+              : `${format(start, 'MMM d, yyyy')} \u2013 ${format(end, 'MMM d, yyyy')}`;
+            return { display, subtitle: 'Trial Schedule' };
           }
         }
       }
@@ -559,14 +559,14 @@ const EventDetailPage: React.FC = () => {
       const displayDateStr = dispDate && dispDate !== 'undefined' && dispDate !== 'Invalid Date'
         ? dispDate
         : selectedSession.date ? format(new Date(selectedSession.date), 'MMM d, yyyy') : 'Date TBD';
-        
+
       const timePart = selectedSession.startTime && selectedSession.endTime
         ? ` • ${formatTimeFn(selectedSession.startTime)} \u2013 ${formatTimeFn(selectedSession.endTime)}`
         : '';
-        
-      return { 
-        display: displayDateStr === 'Date TBD' && !timePart ? 'Schedule Pending' : `${displayDateStr}${timePart}`, 
-        subtitle: 'Upcoming Class' 
+
+      return {
+        display: displayDateStr === 'Date TBD' && !timePart ? 'Schedule Pending' : `${displayDateStr}${timePart}`,
+        subtitle: 'Upcoming Class'
       };
     }
 
@@ -871,20 +871,23 @@ const EventDetailPage: React.FC = () => {
   };
 
   // Aggregate seat metrics across all schedules for "Class Insights"
-  const hasUnlimited = (event.dateSchedule || []).some((s: any) =>
+  // If there are standard schedules, use those for the main event capacity metrics (ignoring unlimited intro/trial sessions)
+  const capacitySchedules = standardSchedules.length > 0 ? standardSchedules : (event.dateSchedule || []);
+  
+  const hasUnlimited = capacitySchedules.some((s: any) =>
     s.unlimitedSeats || s.isUnlimited || s.availableSeats >= 999999 || s.totalSeats >= 999999
   );
   const totalSeats = hasUnlimited
     ? 0
-    : (event.dateSchedule || []).reduce((sum: number, s: any) => sum + (s.totalSeats ?? s.availableSeats ?? 0), 0);
-  const soldSeats = (event.dateSchedule || []).reduce((sum: number, s: any) => sum + (s.soldSeats ?? 0), 0);
+    : capacitySchedules.reduce((sum: number, s: any) => sum + (s.totalSeats ?? s.availableSeats ?? 0), 0);
+  const soldSeats = capacitySchedules.reduce((sum: number, s: any) => sum + (s.soldSeats ?? 0), 0);
   const firstDate = event.dateSchedule?.[0]?.date || event.dateSchedule?.[0]?.startDate;
   const totalAvailableEventSeats = hasUnlimited
     ? 0
-    : (event.dateSchedule || []).reduce((sum: number, s: any) => sum + (s.availableSeats ?? 0), 0);
+    : capacitySchedules.reduce((sum: number, s: any) => sum + (s.availableSeats ?? 0), 0);
 
   const selectedScheduleForCapacity = selectedSession
-    ? (event.dateSchedule || []).find((s: any) => String(s?._id) === String(selectedSession.scheduleId))
+    ? (event.dateSchedule || []).find((s: any) => String(s?._id) === String(selectedSession.scheduleId || selectedSession._id || selectedSession.id))
     : null;
 
   const bookingPanelTotalSeats = isUnlimited
@@ -897,7 +900,7 @@ const EventDetailPage: React.FC = () => {
   const bookingPanelAvailableSeats = isUnlimited
     ? 9999
     : (selectedSession ? selectedSession.availableSeats : totalAvailableEventSeats);
-  const bookingIsUnlimited = isUnlimited || hasUnlimited || bookingPanelTotalSeats >= 9999 || bookingPanelAvailableSeats >= 9999;
+  const bookingIsUnlimited = isUnlimited || bookingPanelTotalSeats >= 9999 || bookingPanelAvailableSeats >= 9999;
 
   const breadcrumbs = event ? [
     { name: 'Home', url: '/' },
@@ -1150,9 +1153,9 @@ const EventDetailPage: React.FC = () => {
                 <StatCard
                   title="Seats"
                   value={
-                    hasUnlimited || totalSeats >= 999999
+                    bookingIsUnlimited
                       ? 'Unlimited'
-                      : totalSeats
+                      : bookingPanelTotalSeats
                   }
                   icon={
                     <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -1164,9 +1167,9 @@ const EventDetailPage: React.FC = () => {
                 <StatCard
                   title="Available"
                   value={
-                    hasUnlimited || totalSeats >= 999999
+                    bookingIsUnlimited
                       ? 'Unlimited'
-                      : totalAvailableEventSeats
+                      : bookingPanelAvailableSeats
                   }
                   icon={
                     <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -1330,486 +1333,320 @@ const EventDetailPage: React.FC = () => {
 
 
 
-              {isEducational && (
-                <div className="mt-8" id="booking-panel">
-                  <h2 className="text-2xl font-bold text-gray-900 mb-6">Available Times</h2>
-                  <ProgramScheduleList
-                    dateSchedules={filteredSchedules.length > 0 ? filteredSchedules : (event.dateSchedule || [])}
-                    onEnroll={(scheduleId) => {
-                      const matchingSchedule = (event.dateSchedule || []).find((s: any) => String(s._id) === scheduleId || String(s.id) === scheduleId);
-                      if (matchingSchedule) {
-                        const isUnlimitedSeats = matchingSchedule.unlimitedSeats === true || 
-                                                 matchingSchedule.availableSeats === 999999 || 
-                                                 matchingSchedule.availableSeats > 900000;
-                        const newSession = {
-                          ...matchingSchedule,
-                          id: matchingSchedule._id || matchingSchedule.id,
-                          scheduleId: matchingSchedule._id || matchingSchedule.id,
-                          date: new Date(matchingSchedule.startDate || matchingSchedule.date),
-                          displayDate: format(new Date(matchingSchedule.startDate || matchingSchedule.date), 'MMM d, yyyy'),
-                          isUnlimited: isUnlimitedSeats
-                        };
-                        setSelectedSession(newSession as any);
-                        
-                        // Set quantity to 1 implicitly since we removed the quantity selector for educational events
-                        setQuantity(1);
-                        setTimeout(() => {
-                           handleBookNow(newSession);
-                        }, 50);
-                      }
-                    }}
-                    currency={event.currency || 'AED'}
-                    timezone={event.timezone}
-                  />
-                </div>
-              )}
+            {isEducational && (
+              <div className="mt-8" id="booking-panel">
+                <h2 className="text-2xl font-bold text-gray-900 mb-6">Available Times</h2>
+                <ProgramScheduleList
+                  dateSchedules={filteredSchedules.length > 0 ? filteredSchedules : (event.dateSchedule || [])}
+                  onEnroll={(scheduleId) => {
+                    const matchingSchedule = (event.dateSchedule || []).find((s: any) => String(s._id) === scheduleId || String(s.id) === scheduleId);
+                    if (matchingSchedule) {
+                      const isUnlimitedSeats = matchingSchedule.unlimitedSeats === true ||
+                        matchingSchedule.availableSeats === 999999 ||
+                        matchingSchedule.availableSeats > 900000;
+                      const newSession = {
+                        ...matchingSchedule,
+                        id: matchingSchedule._id || matchingSchedule.id,
+                        scheduleId: matchingSchedule._id || matchingSchedule.id,
+                        date: new Date(matchingSchedule.startDate || matchingSchedule.date),
+                        displayDate: format(new Date(matchingSchedule.startDate || matchingSchedule.date), 'MMM d, yyyy'),
+                        isUnlimited: isUnlimitedSeats
+                      };
+                      setSelectedSession(newSession as any);
 
-
-              {/* Modern Sidebar */}
-              <div className="space-y-6">
-
-
-                {/* Action Buttons */}
-                <Card variant="elevated" className="lg:hidden">
-                  <CardContent className="p-4">
-                    <div className="flex space-x-3">
-                      <button
-                        onClick={handleShare}
-                        className="flex-1 flex items-center justify-center py-3 px-4 bg-gradient-to-r from-blue-500 to-blue-600 text-white rounded-lg hover:from-blue-600 hover:to-blue-700 transition-all transform hover:-translate-y-0.5 shadow-lg"
-                      >
-                        <svg className="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8.684 13.342C8.886 12.938 9 12.482 9 12c0-.482-.114-.938-.316-1.342m0 2.684a3 3 0 110-2.684m0 2.684l6.632 3.316m-6.632-6l6.632-3.316m0 0a3 3 0 105.367-2.684 3 3 0 00-5.367 2.684zm0 9.316a3 3 0 105.368 2.684 3 3 0 00-5.368-2.684z" />
-                        </svg>
-                        Share
-                      </button>
-                      <button
-                        onClick={handleToggleFavorite}
-                        className={`flex-1 flex items-center justify-center py-3 px-4 text-white rounded-lg transition-all transform hover:-translate-y-0.5 shadow-lg ${isFavorite
-                          ? 'bg-gradient-to-r from-red-500 to-red-600 hover:from-red-600 hover:to-red-700'
-                          : 'bg-gradient-to-r from-pink-500 to-red-500 hover:from-pink-600 hover:to-red-600'
-                          }`}
-                      >
-                        <svg className="w-5 h-5 mr-2" fill={isFavorite ? 'currentColor' : 'none'} stroke="currentColor" viewBox="0 0 24 24">
-                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4.318 6.318a4.5 4.5 0 000 6.364L12 20.364l7.682-7.682a4.5 4.5 0 00-6.364-6.364L12 7.636l-1.318-1.318a4.5 4.5 0 00-6.364 0z" />
-                        </svg>
-                        {isFavorite ? 'Saved' : 'Save'}
-                      </button>
-                    </div>
-                  </CardContent>
-                </Card>
+                      // Set quantity to 1 implicitly since we removed the quantity selector for educational events
+                      setQuantity(1);
+                      setTimeout(() => {
+                        handleBookNow(newSession);
+                      }, 50);
+                    }
+                  }}
+                  currency={event.currency || 'AED'}
+                  timezone={event.timezone}
+                />
               </div>
+            )}
 
-              {/* Location Section */}
-              {event.venueType !== 'Online' && (
-                <div id="location" className="scroll-mt-32 mt-12 mb-12">
-                  <h2 className="text-2xl font-bold mb-6 text-gray-900">Event Location</h2>
-                  <div className="bg-gray-50 p-6 rounded-2xl border border-gray-200">
-                    <div className="flex items-center mb-6">
-                      <div className="w-12 h-12 bg-primary-100 rounded-full flex items-center justify-center mr-4">
-                        <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6 text-primary-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z" />
-                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 11a3 3 0 11-6 0 3 3 0 016 0z" />
-                        </svg>
-                      </div>
-                      <div>
-                        <h3 className="font-bold text-lg text-gray-900">
-                          {event.location?.city && event.location?.address
-                            ? `${event.location.city}, ${event.location.address}`
-                            : event.location?.city || event.location?.address || 'Location TBD'}
-                        </h3>
-                        <p className="text-gray-600">{event.location?.address}</p>
-                      </div>
+
+            {/* Modern Sidebar */}
+            <div className="space-y-6">
+
+
+              {/* Action Buttons */}
+              <Card variant="elevated" className="lg:hidden">
+                <CardContent className="p-4">
+                  <div className="flex space-x-3">
+                    <button
+                      onClick={handleShare}
+                      className="flex-1 flex items-center justify-center py-3 px-4 bg-gradient-to-r from-blue-500 to-blue-600 text-white rounded-lg hover:from-blue-600 hover:to-blue-700 transition-all transform hover:-translate-y-0.5 shadow-lg"
+                    >
+                      <svg className="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8.684 13.342C8.886 12.938 9 12.482 9 12c0-.482-.114-.938-.316-1.342m0 2.684a3 3 0 110-2.684m0 2.684l6.632 3.316m-6.632-6l6.632-3.316m0 0a3 3 0 105.367-2.684 3 3 0 00-5.367 2.684zm0 9.316a3 3 0 105.368 2.684 3 3 0 00-5.368-2.684z" />
+                      </svg>
+                      Share
+                    </button>
+                    <button
+                      onClick={handleToggleFavorite}
+                      className={`flex-1 flex items-center justify-center py-3 px-4 text-white rounded-lg transition-all transform hover:-translate-y-0.5 shadow-lg ${isFavorite
+                        ? 'bg-gradient-to-r from-red-500 to-red-600 hover:from-red-600 hover:to-red-700'
+                        : 'bg-gradient-to-r from-pink-500 to-red-500 hover:from-pink-600 hover:to-red-600'
+                        }`}
+                    >
+                      <svg className="w-5 h-5 mr-2" fill={isFavorite ? 'currentColor' : 'none'} stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4.318 6.318a4.5 4.5 0 000 6.364L12 20.364l7.682-7.682a4.5 4.5 0 00-6.364-6.364L12 7.636l-1.318-1.318a4.5 4.5 0 00-6.364 0z" />
+                      </svg>
+                      {isFavorite ? 'Saved' : 'Save'}
+                    </button>
+                  </div>
+                </CardContent>
+              </Card>
+            </div>
+
+            {/* Location Section */}
+            {event.venueType !== 'Online' && (
+              <div id="location" className="scroll-mt-32 mt-12 mb-12">
+                <h2 className="text-2xl font-bold mb-6 text-gray-900">Event Location</h2>
+                <div className="bg-gray-50 p-6 rounded-2xl border border-gray-200">
+                  <div className="flex items-center mb-6">
+                    <div className="w-12 h-12 bg-primary-100 rounded-full flex items-center justify-center mr-4">
+                      <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6 text-primary-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z" />
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 11a3 3 0 11-6 0 3 3 0 016 0z" />
+                      </svg>
                     </div>
-                    <div className="h-64 rounded-xl mb-6 overflow-hidden">
-                      {(() => {
-                        const loc = event.location as any;
-                        const lat = loc?.coordinates?.lat;
-                        const lng = loc?.coordinates?.lng;
-                        const query = lat && lng
-                          ? `${lat},${lng}`
-                          : encodeURIComponent(`${loc?.address || ''} ${loc?.city || ''}`.trim());
-                        const src = `https://maps.google.com/maps?q=${query}&output=embed&z=15`;
-                        return (
-                          <iframe
-                            title="Event Location Map"
-                            src={src}
-                            width="100%"
-                            height="100%"
-                            style={{ border: 0 }}
-                            allowFullScreen
-                            loading="lazy"
-                            referrerPolicy="no-referrer-when-downgrade"
-                            className="rounded-xl"
-                          />
-                        );
-                      })()}
-                    </div>
-                    <div className="flex flex-col sm:flex-row sm:justify-between gap-4">
-                      <button onClick={handleGetDirections} className="px-6 py-3 bg-white border border-gray-300 rounded-xl font-bold text-gray-700 hover:bg-gray-50 transition-colors flex items-center justify-center flex-1">
-                        <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 mr-2 text-gray-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 20l-5.447-2.724A1 1 0 013 16.382V5.618a1 1 0 011.447-.894L9 7m0 13l6-3m-6 3V7m6 10l4.553 2.276A1 1 0 0021 18.382V7.618a1 1 0 00-.553-.894L15 4m0 13V4m0 0L9 7" />
-                        </svg>
-                        Get Directions
-                      </button>
-                      <button onClick={handleShareLocation} className="px-6 py-3 bg-white border border-gray-300 rounded-xl font-bold text-gray-700 hover:bg-gray-50 transition-colors flex items-center justify-center flex-1">
-                        <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 mr-2 text-gray-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8.684 13.342C8.886 12.938 9 12.482 9 12c0-.482-.114-.938-.316-1.342m0 2.684a3 3 0 110-2.684m0 2.684l6.632 3.316m-6.632-6l6.632-3.316m0 0a3 3 0 105.367-2.684 3 3 0 00-5.367 2.684zm0 9.316a3 3 0 105.368 2.684 3 3 0 00-5.368-2.684z" />
-                        </svg>
-                        Share Location
-                      </button>
+                    <div>
+                      <h3 className="font-bold text-lg text-gray-900">
+                        {event.location?.city && event.location?.address
+                          ? `${event.location.city}, ${event.location.address}`
+                          : event.location?.city || event.location?.address || 'Location TBD'}
+                      </h3>
+                      <p className="text-gray-600">{event.location?.address}</p>
                     </div>
                   </div>
+                  <div className="h-64 rounded-xl mb-6 overflow-hidden">
+                    {(() => {
+                      const loc = event.location as any;
+                      const lat = loc?.coordinates?.lat;
+                      const lng = loc?.coordinates?.lng;
+                      const query = lat && lng
+                        ? `${lat},${lng}`
+                        : encodeURIComponent(`${loc?.address || ''} ${loc?.city || ''}`.trim());
+                      const src = `https://maps.google.com/maps?q=${query}&output=embed&z=15`;
+                      return (
+                        <iframe
+                          title="Event Location Map"
+                          src={src}
+                          width="100%"
+                          height="100%"
+                          style={{ border: 0 }}
+                          allowFullScreen
+                          loading="lazy"
+                          referrerPolicy="no-referrer-when-downgrade"
+                          className="rounded-xl"
+                        />
+                      );
+                    })()}
+                  </div>
+                  <div className="flex flex-col sm:flex-row sm:justify-between gap-4">
+                    <button onClick={handleGetDirections} className="px-6 py-3 bg-white border border-gray-300 rounded-xl font-bold text-gray-700 hover:bg-gray-50 transition-colors flex items-center justify-center flex-1">
+                      <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 mr-2 text-gray-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 20l-5.447-2.724A1 1 0 013 16.382V5.618a1 1 0 011.447-.894L9 7m0 13l6-3m-6 3V7m6 10l4.553 2.276A1 1 0 0021 18.382V7.618a1 1 0 00-.553-.894L15 4m0 13V4m0 0L9 7" />
+                      </svg>
+                      Get Directions
+                    </button>
+                    <button onClick={handleShareLocation} className="px-6 py-3 bg-white border border-gray-300 rounded-xl font-bold text-gray-700 hover:bg-gray-50 transition-colors flex items-center justify-center flex-1">
+                      <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 mr-2 text-gray-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8.684 13.342C8.886 12.938 9 12.482 9 12c0-.482-.114-.938-.316-1.342m0 2.684a3 3 0 110-2.684m0 2.684l6.632 3.316m-6.632-6l6.632-3.316m0 0a3 3 0 105.367-2.684 3 3 0 00-5.367 2.684zm0 9.316a3 3 0 105.368 2.684 3 3 0 00-5.368-2.684z" />
+                      </svg>
+                      Share Location
+                    </button>
+                  </div>
                 </div>
-              )}
+              </div>
+            )}
 
-              {/* FAQs Section */}
-              {event.faqs && event.faqs.length > 0 && (
-                <div id="faqs" className="scroll-mt-32 mt-12 mb-12">
-                  <h2 className="text-2xl font-bold mb-6 text-gray-900">Frequently Asked Questions</h2>
-                  <div className="space-y-4">
-                    {event.faqs.map((faq: any, index: number) => (
-                      <div key={index} className="bg-white rounded-2xl p-6 border border-gray-100 shadow-sm hover:border-primary-200 transition-colors">
-                        <div className="flex items-start">
-                          <div className="flex-shrink-0 w-10 h-10 bg-primary-50 rounded-full flex items-center justify-center mr-4">
-                            <svg className="w-5 h-5 text-primary-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8.228 9c.549-1.165 2.03-2 3.772-2 2.21 0 4 1.343 4 3 0 1.4-1.278 2.575-3.006 2.907-.542.104-.994.54-.994 1.093m0 3h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
-                            </svg>
-                          </div>
-                          <div className="flex-1">
-                            <h3 className="font-bold text-lg text-gray-900 mb-2">{faq.question}</h3>
-                            <p className="text-gray-600 leading-relaxed">{faq.answer}</p>
-                          </div>
+            {/* FAQs Section */}
+            {event.faqs && event.faqs.length > 0 && (
+              <div id="faqs" className="scroll-mt-32 mt-12 mb-12">
+                <h2 className="text-2xl font-bold mb-6 text-gray-900">Frequently Asked Questions</h2>
+                <div className="space-y-4">
+                  {event.faqs.map((faq: any, index: number) => (
+                    <div key={index} className="bg-white rounded-2xl p-6 border border-gray-100 shadow-sm hover:border-primary-200 transition-colors">
+                      <div className="flex items-start">
+                        <div className="flex-shrink-0 w-10 h-10 bg-primary-50 rounded-full flex items-center justify-center mr-4">
+                          <svg className="w-5 h-5 text-primary-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8.228 9c.549-1.165 2.03-2 3.772-2 2.21 0 4 1.343 4 3 0 1.4-1.278 2.575-3.006 2.907-.542.104-.994.54-.994 1.093m0 3h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                          </svg>
+                        </div>
+                        <div className="flex-1">
+                          <h3 className="font-bold text-lg text-gray-900 mb-2">{faq.question}</h3>
+                          <p className="text-gray-600 leading-relaxed">{faq.answer}</p>
                         </div>
                       </div>
-                    ))}
-                  </div>
+                    </div>
+                  ))}
                 </div>
-              )}
+              </div>
+            )}
 
 
-            </div>
+          </div>
 
           {/* Sticky Booking Panel - Right Side */}
           <div className="lg:col-span-1">
             <div className="sticky top-[80px] space-y-4 max-h-[calc(100vh-80px)] overflow-y-auto pb-4 scrollbar-hide">
-            {/* Intro Video Card */}
-            {event.introVideo && (
-              <Card variant="glass" className="shadow-lg overflow-hidden mb-4">
-                <div className="p-4 pb-2">
-                  <span className="text-sm text-gray-500 font-medium uppercase tracking-wider">
-                    Intro Video
-                  </span>
-                </div>
-                <div className="aspect-video bg-black">
-                  {event.introVideo.includes('youtube.com') || event.introVideo.includes('youtu.be') ? (
-                    <iframe
-                      src={event.introVideo
-                        .replace('watch?v=', 'embed/')
-                        .replace('youtu.be/', 'youtube.com/embed/')}
-                      title="Intro Video"
-                      allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
-                      allowFullScreen
-                      className="w-full h-full"
-                    />
-                  ) : event.introVideo.includes('vimeo.com') ? (
-                    <iframe
-                      src={event.introVideo.replace('vimeo.com/', 'player.vimeo.com/video/')}
-                      title="Intro Video"
-                      allow="autoplay; fullscreen; picture-in-picture"
-                      allowFullScreen
-                      className="w-full h-full"
-                    />
-                  ) : (
-                    <video
-                      src={event.introVideo}
-                      controls
-                      className="w-full h-full object-contain"
-                      preload="metadata"
-                    />
-                  )}
-                </div>
-              </Card>
-            )}
-
-            {/* Book Your Spot Card (Educational) */}
-            {isEducational && (
-              <Card variant="glass" className="mb-4 shadow-xl">
-                <CardHeader>
-                  <CardTitle className="text-2xl flex items-center">
-                    🎫 Book Your Spot
-                  </CardTitle>
-                  <div className="flex items-center justify-between mt-2">
-                    <span className="text-sm text-gray-600">Starting from</span>
-                    <div className="text-3xl font-bold bg-gradient-to-r from-primary-600 to-primary-800 bg-clip-text text-transparent">
-                      {isFree ? <span className="text-green-600">Free</span> : `${event.currency || 'AED'} ${currentPrice}`}
-                    </div>
+              {/* Intro Video Card */}
+              {event.introVideo && (
+                <Card variant="glass" className="shadow-lg overflow-hidden mb-4">
+                  <div className="p-4 pb-2">
+                    <span className="text-sm text-gray-500 font-medium uppercase tracking-wider">
+                      Intro Video
+                    </span>
                   </div>
-                  {/* Enhanced Progress Bar */}
-                  <div className="space-y-2 mt-4">
-                    <div className="w-full bg-gray-200 rounded-full h-3 relative overflow-hidden">
-                      <div
-                        className="bg-gradient-to-r from-green-400 to-green-600 h-3 rounded-full transition-all duration-500 ease-out shadow-sm"
-                        style={{
-                          width: bookingIsUnlimited
-                            ? '100%'
-                            : `${Math.min(100, Math.max(0, (bookingPanelAvailableSeats / Math.max(1, bookingPanelTotalSeats)) * 100))}%`
-                        }}
-                      >
-                        <div className="absolute inset-0 bg-white bg-opacity-25 animate-pulse"></div>
+                  <div className="aspect-video bg-black">
+                    {event.introVideo.includes('youtube.com') || event.introVideo.includes('youtu.be') ? (
+                      <iframe
+                        src={event.introVideo
+                          .replace('watch?v=', 'embed/')
+                          .replace('youtu.be/', 'youtube.com/embed/')}
+                        title="Intro Video"
+                        allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+                        allowFullScreen
+                        className="w-full h-full"
+                      />
+                    ) : event.introVideo.includes('vimeo.com') ? (
+                      <iframe
+                        src={event.introVideo.replace('vimeo.com/', 'player.vimeo.com/video/')}
+                        title="Intro Video"
+                        allow="autoplay; fullscreen; picture-in-picture"
+                        allowFullScreen
+                        className="w-full h-full"
+                      />
+                    ) : (
+                      <video
+                        src={event.introVideo}
+                        controls
+                        className="w-full h-full object-contain"
+                        preload="metadata"
+                      />
+                    )}
+                  </div>
+                </Card>
+              )}
+
+              {/* Book Your Spot Card (Educational) */}
+              {isEducational && (
+                <Card variant="glass" className="mb-4 shadow-xl">
+                  <CardHeader>
+                    <CardTitle className="text-2xl flex items-center">
+                      🎫 Book Your Spot
+                    </CardTitle>
+                    <div className="flex items-center justify-between mt-2">
+                      <span className="text-sm text-gray-600">Starting from</span>
+                      <div className="text-3xl font-bold bg-gradient-to-r from-primary-600 to-primary-800 bg-clip-text text-transparent">
+                        {isFree ? <span className="text-green-600">Free</span> : `${event.currency || 'AED'} ${currentPrice}`}
                       </div>
                     </div>
-                    <div className="flex justify-between text-sm text-gray-600">
-                      <span className="font-medium">{bookingIsUnlimited ? 'Unlimited' : `${bookingPanelAvailableSeats} available`}</span>
-                      <span>{bookingIsUnlimited ? 'No seat limit' : `${bookingPanelTotalSeats} total`}</span>
+                    {/* Enhanced Progress Bar */}
+                    <div className="space-y-2 mt-4">
+                      <div className="w-full bg-gray-200 rounded-full h-3 relative overflow-hidden">
+                        <div
+                          className="bg-gradient-to-r from-green-400 to-green-600 h-3 rounded-full transition-all duration-500 ease-out shadow-sm"
+                          style={{
+                            width: bookingIsUnlimited
+                              ? '100%'
+                              : `${Math.min(100, Math.max(0, (bookingPanelAvailableSeats / Math.max(1, bookingPanelTotalSeats)) * 100))}%`
+                          }}
+                        >
+                          <div className="absolute inset-0 bg-white bg-opacity-25 animate-pulse"></div>
+                        </div>
+                      </div>
+                      <div className="flex justify-between text-sm text-gray-600">
+                        <span className="font-medium">{bookingIsUnlimited ? 'Unlimited' : `${bookingPanelAvailableSeats} available`}</span>
+                        <span>{bookingIsUnlimited ? 'No seat limit' : `${bookingPanelTotalSeats} total`}</span>
+                      </div>
                     </div>
-                  </div>
-                </CardHeader>
-                <CardContent className="space-y-6">
-                  {hasProgramBlocks && (
-                    <div className="space-y-4">
-                      <label className="block text-gray-900 text-sm font-bold uppercase tracking-wider mb-2">
-                        Select Your Enrollment Type
-                      </label>
-                      <div className="grid grid-cols-1 gap-4">
-                        <label
-                          className={`rounded-2xl border-2 p-5 transition-all flex flex-col relative overflow-hidden group ${
-                            introSchedules.length > 0 
+                  </CardHeader>
+                  <CardContent className="space-y-6">
+                    {hasProgramBlocks && (
+                      <div className="space-y-4">
+                        <label className="block text-gray-900 text-sm font-bold uppercase tracking-wider mb-2">
+                          Select Your Enrollment Type
+                        </label>
+                        <div className="grid grid-cols-1 gap-4">
+                          <label
+                            className={`rounded-2xl border-2 p-5 transition-all flex flex-col relative overflow-hidden group ${introSchedules.length > 0
                               ? (bookingType === 'intro' ? 'border-primary-500 bg-gradient-to-br from-white to-primary-50 shadow-md cursor-pointer' : 'border-gray-200 hover:border-primary-300 bg-white hover:bg-gray-50 cursor-pointer')
                               : 'border-gray-200 bg-gray-50 opacity-60 cursor-not-allowed'
-                          }`}
-                          onClick={() => { if (introSchedules.length > 0) setBookingType('intro') }}
-                        >
-                          <div className="flex items-start justify-between relative z-10">
-                            <div className="flex items-start space-x-4">
-                              <div className="mt-1 flex-shrink-0">
-                                <div className={`w-6 h-6 rounded-full border-2 flex items-center justify-center transition-colors ${bookingType === 'intro' ? 'border-primary-600' : 'border-gray-300 group-hover:border-primary-400'}`}>
-                                  {bookingType === 'intro' && <div className="w-3 h-3 rounded-full bg-primary-600 shadow-sm"></div>}
-                                </div>
-                              </div>
-                              <div>
-                                <div className="flex items-center space-x-2">
-                                  <span className="text-lg font-bold text-gray-900">Trial Class</span>
-                                  {introSchedules.length > 0 && (
-                                    <span className="px-2.5 py-0.5 rounded-full bg-blue-100 text-blue-700 text-xs font-bold uppercase tracking-wide">First Time</span>
-                                  )}
-                                </div>
-                                <p className="text-sm text-gray-500 mt-1.5 leading-relaxed">
-                                  {introSchedules.length > 0 ? `Experience our free ${introClassesCount}-class trial session.` : 'No trial sessions available for this program.'}
-                                </p>
-                              </div>
-                            </div>
-                            <div className="text-right flex-shrink-0 ml-4">
-                              {introSchedules.length > 0 ? (
-                                <span className="font-black text-2xl text-green-500 tracking-tight">Free</span>
-                              ) : (
-                                <span className="font-black text-lg text-gray-400 tracking-tight flex items-center justify-center h-full">
-                                  <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M18.364 18.364A9 9 0 005.636 5.636m12.728 12.728A9 9 0 015.636 5.636m12.728 12.728L5.636 5.636" /></svg>
-                                </span>
-                              )}
-                            </div>
-                          </div>
-                        </label>
-
-                        <label
-                          className={`cursor-pointer rounded-2xl border-2 p-5 transition-all flex flex-col relative overflow-hidden group ${bookingType === 'program' ? 'border-amber-500 shadow-[0_0_20px_rgba(245,158,11,0.2)] bg-gradient-to-br from-white to-amber-50/50' : 'border-gray-200 hover:border-amber-300 bg-white hover:bg-gray-50'}`}
-                          onClick={() => setBookingType('program')}
-                        >
-                          {bookingType === 'program' && (
-                            <div className="absolute top-0 right-0 w-32 h-32 bg-amber-500/10 rounded-full blur-3xl -mr-10 -mt-10 pointer-events-none"></div>
-                          )}
-                          <div className="absolute top-0 right-0 bg-amber-500 text-white text-[10px] font-black uppercase tracking-widest px-4 py-1 rounded-bl-xl shadow-sm z-20">Recommended</div>
-                          <div className="flex items-start justify-between relative z-10 pt-2">
-                            <div className="flex items-start space-x-4">
-                              <div className="mt-1 flex-shrink-0">
-                                <div className={`w-6 h-6 rounded-full border-2 flex items-center justify-center transition-colors ${bookingType === 'program' ? 'border-amber-500' : 'border-gray-300 group-hover:border-amber-400'}`}>
-                                  {bookingType === 'program' && <div className="w-3 h-3 rounded-full bg-amber-500 shadow-sm"></div>}
-                                </div>
-                              </div>
-                              <div>
-                                <span className="text-xl font-bold text-gray-900 block leading-none">Full Program</span>
-                                <span className="text-amber-600 text-sm font-semibold mt-1.5 block flex items-center">
-                                  <svg className="w-4 h-4 mr-1" fill="currentColor" viewBox="0 0 20 20"><path d="M9.049 2.927c.3-.921 1.603-.921 1.902 0l1.07 3.292a1 1 0 00.95.69h3.462c.969 0 1.371 1.24.588 1.81l-2.8 2.034a1 1 0 00-.364 1.118l1.07 3.292c.3.921-.755 1.688-1.54 1.118l-2.8-2.034a1 1 0 00-1.175 0l-2.8 2.034c-.784.57-1.838-.197-1.539-1.118l1.07-3.292a1 1 0 00-.364-1.118L2.98 8.72c-.783-.57-.38-1.81.588-1.81h3.461a1 1 0 00.951-.69l1.07-3.292z"></path></svg>
-                                  {paidClassesCount} Premium 1:1 Classes
-                                </span>
-                                <p className="text-sm text-gray-500 mt-2 leading-relaxed max-w-[200px]">
-                                  Complete personalized premium sessions.
-                                </p>
-                              </div>
-                            </div>
-                            <div className="text-right flex-shrink-0 ml-2">
-                              <div className="flex flex-col items-end">
-                                <span className="text-xs text-gray-400 font-medium uppercase tracking-wider mb-0.5">Total</span>
-                                <div className="flex items-baseline space-x-1">
-                                  <span className="text-sm font-semibold text-gray-500">{event.currency || 'AED'}</span>
-                                  <span className="font-black text-3xl text-gray-900 tracking-tight">
-                                    {parseFloat(totalProgramPrice.toFixed(2))}
-                                  </span>
-                                </div>
-                                <span className="text-xs text-amber-600 font-semibold mt-1 bg-amber-50 px-2 py-0.5 rounded">
-                                  Only {event.currency || 'AED'} {pricePerClass.toFixed(2)} / class
-                                </span>
-                              </div>
-                            </div>
-                          </div>
-                        </label>
-                      </div>
-                    </div>
-                  )}
-
-                  <button
-                    onClick={() => {
-                      document.getElementById('booking-panel')?.scrollIntoView({ behavior: 'smooth', block: 'center' });
-                    }}
-                    className="w-full py-3 rounded-full font-bold text-base bg-[#4000D3] hover:bg-[#2b008e] text-white transition-colors shadow-md mt-4"
-                  >
-                    See All Available Times
-                  </button>
-                </CardContent>
-              </Card>
-            )}
-
-            {!isEducational ? (
-              <Card id="booking-panel" variant="glass" className="shadow-2xl">
-                <CardHeader>
-                  <CardTitle className="text-2xl flex items-center">
-                    {event.externalBookingLink ? '🔗 Book This Event' : '🎫 Book Your Spot'}
-                  </CardTitle>
-                  {!event.externalBookingLink && (
-                    <>
-                      <div className="flex items-center justify-between">
-                        <span className="text-sm text-gray-600">Starting from</span>
-                        <div className="text-3xl font-bold bg-gradient-to-r from-primary-600 to-primary-800 bg-clip-text text-transparent">
-                          {isFree ? <span className="text-green-600">Free</span> : `${event.currency || 'AED'} ${currentPrice}`}
-                        </div>
-                      </div>
-                      {/* Enhanced Progress Bar */}
-                      <div className="space-y-2">
-                        <div className="w-full bg-gray-200 rounded-full h-3 relative overflow-hidden">
-                          <div
-                            className="bg-gradient-to-r from-green-400 to-green-600 h-3 rounded-full transition-all duration-500 ease-out shadow-sm"
-                            style={{
-                              width: bookingIsUnlimited
-                                ? '100%'
-                                : `${Math.min(100, Math.max(0, (bookingPanelAvailableSeats / Math.max(1, bookingPanelTotalSeats)) * 100))}%`
-                            }}
-                          >
-                            <div className="absolute inset-0 bg-white bg-opacity-25 animate-pulse"></div>
-                          </div>
-                        </div>
-                        <div className="flex justify-between text-sm text-gray-600">
-                          <span className="font-medium">{bookingIsUnlimited ? 'Unlimited' : `${bookingPanelAvailableSeats} available`}</span>
-                          <span>{bookingIsUnlimited ? 'No seat limit' : `${bookingPanelTotalSeats} total`}</span>
-                        </div>
-                      </div>
-                    </>
-                  )}
-                </CardHeader>
-
-                <CardContent className="space-y-6">
-                  {/* External Booking UI */}
-                  {event.externalBookingLink ? (
-                    <div className="space-y-4">
-                      <div className="bg-amber-50 border border-amber-200 rounded-xl p-4">
-                        <div className="flex items-start space-x-3">
-                          <svg className="w-5 h-5 text-amber-600 mt-0.5 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
-                          </svg>
-                          <div>
-                            <p className="text-sm font-medium text-amber-800">External Booking</p>
-                            <p className="text-xs text-amber-700 mt-1">This event is managed by an external provider. You will be redirected to their website to complete your booking.</p>
-                          </div>
-                        </div>
-                      </div>
-                      <button
-                        onClick={handleBookNow}
-                        className="w-full py-4 rounded-xl font-bold text-lg bg-gradient-to-r from-orange-500 to-orange-600 hover:from-orange-600 hover:to-orange-700 text-white shadow-lg hover:shadow-xl transition-all duration-300 transform hover:-translate-y-1 hover:scale-105 flex items-center justify-center space-x-2"
-                      >
-                        <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14" />
-                        </svg>
-                        <span>Book on External Site</span>
-                      </button>
-                      <div className="flex items-center justify-center text-xs text-gray-500 space-x-2 bg-gray-50 rounded-lg p-3">
-                        <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14" />
-                        </svg>
-                        <span>You will be redirected to an external website</span>
-                      </div>
-                    </div>
-                  ) : (
-                    <>
-                      {hasProgramBlocks && (
-                        <div className="space-y-4 mb-6">
-                          <label className="block text-gray-900 text-sm font-bold uppercase tracking-wider mb-2">
-                            Select Your Enrollment Type
-                          </label>
-                          <div className="grid grid-cols-1 gap-4">
-                            <label
-                              className={`rounded-2xl border-2 p-5 transition-all flex flex-col relative overflow-hidden group ${
-                                introSchedules.length > 0 
-                                  ? (bookingType === 'intro' ? 'border-primary-500 bg-gradient-to-br from-white to-primary-50 shadow-md cursor-pointer' : 'border-gray-200 hover:border-primary-300 bg-white hover:bg-gray-50 cursor-pointer')
-                                  : 'border-gray-200 bg-gray-50 opacity-60 cursor-not-allowed'
                               }`}
-                              onClick={() => { if (introSchedules.length > 0) setBookingType('intro') }}
-                            >
-                              <div className="flex items-start justify-between relative z-10">
-                                <div className="flex items-start space-x-4">
-                                  <div className="mt-1 flex-shrink-0">
-                                    <div className={`w-6 h-6 rounded-full border-2 flex items-center justify-center transition-colors ${bookingType === 'intro' ? 'border-primary-600' : 'border-gray-300 group-hover:border-primary-400'}`}>
-                                      {bookingType === 'intro' && <div className="w-3 h-3 rounded-full bg-primary-600 shadow-sm"></div>}
-                                    </div>
-                                  </div>
-                                  <div>
-                                    <div className="flex items-center space-x-2">
-                                      <span className="text-lg font-bold text-gray-900">Trial Class</span>
-                                      {introSchedules.length > 0 && (
-                                        <span className="px-2.5 py-0.5 rounded-full bg-blue-100 text-blue-700 text-xs font-bold uppercase tracking-wide">First Time</span>
-                                      )}
-                                    </div>
-                                    <p className="text-sm text-gray-500 mt-1.5 leading-relaxed">
-                                      {introSchedules.length > 0 ? `Experience our free ${introClassesCount}-class trial session.` : 'No trial sessions available for this program.'}
-                                    </p>
+                            onClick={() => { if (introSchedules.length > 0) setBookingType('intro') }}
+                          >
+                            <div className="flex items-start justify-between relative z-10">
+                              <div className="flex items-start space-x-4">
+                                <div className="mt-1 flex-shrink-0">
+                                  <div className={`w-6 h-6 rounded-full border-2 flex items-center justify-center transition-colors ${bookingType === 'intro' ? 'border-primary-600' : 'border-gray-300 group-hover:border-primary-400'}`}>
+                                    {bookingType === 'intro' && <div className="w-3 h-3 rounded-full bg-primary-600 shadow-sm"></div>}
                                   </div>
                                 </div>
-                                <div className="text-right flex-shrink-0 ml-4">
-                                  {introSchedules.length > 0 ? (
-                                    <span className="font-black text-2xl text-green-500 tracking-tight">Free</span>
-                                  ) : (
-                                    <span className="font-black text-lg text-gray-400 tracking-tight flex items-center justify-center h-full">
-                                      <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M18.364 18.364A9 9 0 005.636 5.636m12.728 12.728A9 9 0 015.636 5.636m12.728 12.728L5.636 5.636" /></svg>
+                                <div>
+                                  <div className="flex items-center space-x-2">
+                                    <span className="text-lg font-bold text-gray-900">
+                                      {standardSchedules.length > 0 ? 'Trail Class' : 'Free Workshop'}
                                     </span>
-                                  )}
+                                    {introSchedules.length > 0 && standardSchedules.length > 0 && (
+                                      <span className="px-2.5 py-0.5 rounded-full bg-blue-100 text-blue-700 text-xs font-bold uppercase tracking-wide">First Time</span>
+                                    )}
+                                  </div>
+                                  <p className="text-sm text-gray-500 mt-1.5 leading-relaxed">
+                                    {introSchedules.length > 0
+                                      ? (standardSchedules.length > 0 ? 'Register for this introductory session to get started.' : 'Reserve your spot for this free introductory session.')
+                                      : 'No trial sessions available for this program.'}
+                                  </p>
                                 </div>
                               </div>
-                            </label>
+                              <div className="text-right flex-shrink-0 ml-4">
+                                {introSchedules.length > 0 ? (
+                                  <span className="font-black text-2xl text-green-500 tracking-tight">Free</span>
+                                ) : (
+                                  <span className="font-black text-lg text-gray-400 tracking-tight flex items-center justify-center h-full">
+                                    <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M18.364 18.364A9 9 0 005.636 5.636m12.728 12.728A9 9 0 015.636 5.636m12.728 12.728L5.636 5.636" /></svg>
+                                  </span>
+                                )}
+                              </div>
+                            </div>
+                          </label>
 
-                            <label
-                              className={`cursor-pointer rounded-2xl border-2 p-5 transition-all flex flex-col relative overflow-hidden group ${bookingType === 'program' ? 'border-amber-500 shadow-[0_0_20px_rgba(245,158,11,0.2)] bg-gradient-to-br from-white to-amber-50/50' : 'border-gray-200 hover:border-amber-300 bg-white hover:bg-gray-50'}`}
-                              onClick={() => setBookingType('program')}
-                            >
-                              {bookingType === 'program' && (
-                                <div className="absolute top-0 right-0 w-32 h-32 bg-amber-500/10 rounded-full blur-3xl -mr-10 -mt-10 pointer-events-none"></div>
-                              )}
-                              <div className="absolute top-0 right-0 bg-amber-500 text-white text-[10px] font-black uppercase tracking-widest px-4 py-1 rounded-bl-xl shadow-sm z-20">Recommended</div>
-                              <div className="flex items-start justify-between relative z-10 pt-2">
-                                <div className="flex items-start space-x-4">
-                                  <div className="mt-1 flex-shrink-0">
-                                    <div className={`w-6 h-6 rounded-full border-2 flex items-center justify-center transition-colors ${bookingType === 'program' ? 'border-amber-500' : 'border-gray-300 group-hover:border-amber-400'}`}>
-                                      {bookingType === 'program' && <div className="w-3 h-3 rounded-full bg-amber-500 shadow-sm"></div>}
-                                    </div>
-                                  </div>
-                                  <div>
-                                    <span className="text-xl font-bold text-gray-900 block leading-none">Full Program</span>
-                                    <span className="text-amber-600 text-sm font-semibold mt-1.5 block flex items-center">
-                                      <svg className="w-4 h-4 mr-1" fill="currentColor" viewBox="0 0 20 20"><path d="M9.049 2.927c.3-.921 1.603-.921 1.902 0l1.07 3.292a1 1 0 00.95.69h3.462c.969 0 1.371 1.24.588 1.81l-2.8 2.034a1 1 0 00-.364 1.118l1.07 3.292c.3.921-.755 1.688-1.54 1.118l-2.8-2.034a1 1 0 00-1.175 0l-2.8 2.034c-.784.57-1.838-.197-1.539-1.118l1.07-3.292a1 1 0 00-.364-1.118L2.98 8.72c-.783-.57-.38-1.81.588-1.81h3.461a1 1 0 00.951-.69l1.07-3.292z"></path></svg>
-                                      {paidClassesCount} Premium 1:1 Classes
-                                    </span>
-                                    <p className="text-sm text-gray-500 mt-2 leading-relaxed max-w-[200px]">
-                                      Complete personalized premium sessions.
-                                    </p>
+                          <label
+                            className={`rounded-2xl border-2 p-5 transition-all flex flex-col relative overflow-hidden group ${standardSchedules.length > 0
+                              ? (bookingType === 'program' ? 'border-amber-500 shadow-[0_0_20px_rgba(245,158,11,0.2)] bg-gradient-to-br from-white to-amber-50/50 cursor-pointer' : 'border-gray-200 hover:border-amber-300 bg-white hover:bg-gray-50 cursor-pointer')
+                              : 'border-gray-200 bg-gray-50 opacity-60 cursor-not-allowed'
+                              }`}
+                            onClick={() => { if (standardSchedules.length > 0) setBookingType('program') }}
+                          >
+                            {bookingType === 'program' && (
+                              <div className="absolute top-0 right-0 w-32 h-32 bg-amber-500/10 rounded-full blur-3xl -mr-10 -mt-10 pointer-events-none"></div>
+                            )}
+                            <div className="absolute top-0 right-0 bg-amber-500 text-white text-[10px] font-black uppercase tracking-widest px-4 py-1 rounded-bl-xl shadow-sm z-20">Recommended</div>
+                            <div className="flex items-start justify-between relative z-10 pt-2">
+                              <div className="flex items-start space-x-4">
+                                <div className="mt-1 flex-shrink-0">
+                                  <div className={`w-6 h-6 rounded-full border-2 flex items-center justify-center transition-colors ${bookingType === 'program' ? 'border-amber-500' : 'border-gray-300 group-hover:border-amber-400'}`}>
+                                    {bookingType === 'program' && <div className="w-3 h-3 rounded-full bg-amber-500 shadow-sm"></div>}
                                   </div>
                                 </div>
-                                <div className="text-right flex-shrink-0 ml-2">
+                                <div>
+                                  <span className="text-xl font-bold text-gray-900 block leading-none">Full Program</span>
+                                  <span className="text-amber-600 text-sm font-semibold mt-1.5 block flex items-center">
+                                    <svg className="w-4 h-4 mr-1" fill="currentColor" viewBox="0 0 20 20"><path d="M9.049 2.927c.3-.921 1.603-.921 1.902 0l1.07 3.292a1 1 0 00.95.69h3.462c.969 0 1.371 1.24.588 1.81l-2.8 2.034a1 1 0 00-.364 1.118l1.07 3.292c.3.921-.755 1.688-1.54 1.118l-2.8-2.034a1 1 0 00-1.175 0l-2.8 2.034c-.784.57-1.838-.197-1.539-1.118l1.07-3.292a1 1 0 00-.364-1.118L2.98 8.72c-.783-.57-.38-1.81.588-1.81h3.461a1 1 0 00.951-.69l1.07-3.292z"></path></svg>
+                                    {standardSchedules.length > 0 ? paidClassesCount : 0} Premium 1:1 Classes
+                                  </span>
+                                  <p className="text-sm text-gray-500 mt-2 leading-relaxed max-w-[200px]">
+                                    Complete personalized premium sessions.
+                                  </p>
+                                </div>
+                              </div>
+                              <div className="text-right flex-shrink-0 ml-2">
+                                {standardSchedules.length > 0 ? (
                                   <div className="flex flex-col items-end">
                                     <span className="text-xs text-gray-400 font-medium uppercase tracking-wider mb-0.5">Total</span>
                                     <div className="flex items-baseline space-x-1">
@@ -1822,390 +1659,580 @@ const EventDetailPage: React.FC = () => {
                                       Only {event.currency || 'AED'} {pricePerClass.toFixed(2)} / class
                                     </span>
                                   </div>
-                                </div>
-                              </div>
-                            </label>
-                          </div>
-                        </div>
-                      )}
-
-                      {/* Session Picker — replaces the old calendar + separate time-slot picker */}
-                      {isEducational ? (
-                        <ProgramScheduleList
-                          dateSchedules={filteredSchedules.length > 0 ? filteredSchedules : (event.dateSchedule || [])}
-                          onEnroll={(scheduleId) => {
-                            const matchingSchedule = (event.dateSchedule || []).find((s: any) => String(s._id) === scheduleId || String(s.id) === scheduleId);
-                            if (matchingSchedule) {
-                              const sessionObj = {
-                                ...matchingSchedule,
-                                id: matchingSchedule._id || matchingSchedule.id,
-                                scheduleId: matchingSchedule._id || matchingSchedule.id,
-                                date: new Date(matchingSchedule.startDate || matchingSchedule.date),
-                                displayDate: format(new Date(matchingSchedule.startDate || matchingSchedule.date), 'MMM d, yyyy'),
-                                isUnlimited: matchingSchedule.unlimitedSeats || false
-                              } as any;
-                              setSelectedSession(sessionObj);
-                              // Directly call handleBookNow with the constructed session
-                              handleBookNow(sessionObj);
-                            }
-                          }}
-                          currency={event.currency || 'AED'}
-                          timezone={event.timezone}
-                        />
-                      ) : (
-                        <SessionPicker
-                          dateSchedules={filteredSchedules.length > 0 ? filteredSchedules : (event.dateSchedule || [])}
-                          selectedSession={selectedSession}
-                          onSessionSelect={setSelectedSession}
-                          currency={event.currency || 'AED'}
-                          timezone={event.timezone}
-                          className="w-full"
-                        />
-                      )}
-
-                      {/* Quantity Selector */}
-                      <div className="space-y-3">
-                        <label className="block text-gray-700 text-sm font-semibold">
-                          🎟️ Number of Tickets
-                        </label>
-                        <div className="flex items-center bg-gradient-to-r from-gray-50 to-gray-100 rounded-xl p-2 border border-gray-200 shadow-inner">
-                          <button
-                            className="flex items-center justify-center w-12 h-12 bg-white text-gray-700 rounded-xl hover:bg-gray-100 hover:shadow-md transition-all focus:outline-none shadow-sm disabled:opacity-50 disabled:cursor-not-allowed"
-                            onClick={() => setQuantity(Math.max(1, quantity - 1))}
-                            disabled={quantity <= 1}
-                          >
-                            <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M20 12H4" />
-                            </svg>
-                          </button>
-                          <div className="flex-1 text-center py-3 font-bold text-xl text-gray-900">
-                            {quantity}
-                          </div>
-                          <button
-                            className="flex items-center justify-center w-12 h-12 bg-white text-gray-700 rounded-xl hover:bg-gray-100 hover:shadow-md transition-all focus:outline-none shadow-sm disabled:opacity-50 disabled:cursor-not-allowed"
-                            onClick={() => setQuantity(isUnlimited ? quantity + 1 : Math.min(currentAvailableSeats, quantity + 1))}
-                            disabled={!isUnlimited && quantity >= currentAvailableSeats}
-                          >
-                            <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
-                            </svg>
-                          </button>
-                        </div>
-                      </div>
-
-                      {/* Enhanced Pricing Breakdown */}
-                      <div className="bg-gradient-to-br from-gray-50 to-gray-100 rounded-xl p-5 space-y-3 border border-gray-200">
-                        {hasProgramBlocks ? (
-                          <>
-                            <div className="flex justify-between text-sm items-center">
-                              <span className="text-gray-600 flex items-center">
-                                <svg className="w-4 h-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 5v2m0 4v2m0 4v2M5 5a2 2 0 00-2 2v3a2 2 0 110 4v3a2 2 0 002 2h14a2 2 0 002-2v-3a2 2 0 110-4V7a2 2 0 00-2-2H5z" />
-                                </svg>
-                                Program Type
-                              </span>
-                              <span className="font-semibold text-gray-900">{bookingType === 'intro' ? 'Free Intro' : 'Full Program'}</span>
-                            </div>
-                            <div className="border-t border-gray-300 pt-3">
-                              <div className="flex justify-between font-bold text-lg items-center">
-                                <span className="text-gray-900">Total</span>
-                                {bookingType === 'intro' ? (
-                                  <span className="text-green-600 text-2xl">Free</span>
                                 ) : (
-                                  <span className="text-primary-600 text-2xl">{event.currency || 'AED'} {(totalProgramPrice * quantity).toFixed(2)}</span>
+                                  <span className="font-black text-lg text-gray-400 tracking-tight flex items-center justify-center h-full">
+                                    <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M18.364 18.364A9 9 0 005.636 5.636m12.728 12.728A9 9 0 015.636 5.636m12.728 12.728L5.636 5.636" /></svg>
+                                  </span>
                                 )}
                               </div>
                             </div>
-                          </>
-                        ) : isFree ? (
-                          <div className="flex justify-between font-bold text-lg items-center">
-                            <span className="text-gray-900">Total</span>
-                            <span className="text-green-600 text-2xl">Free</span>
+                          </label>
+                        </div>
+                      </div>
+                    )}
+
+                    <button
+                      onClick={() => {
+                        document.getElementById('booking-panel')?.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                      }}
+                      className="w-full py-3 rounded-full font-bold text-base bg-[#4000D3] hover:bg-[#2b008e] text-white transition-colors shadow-md mt-4"
+                    >
+                      See All Available Times
+                    </button>
+                  </CardContent>
+                </Card>
+              )}
+
+              {!isEducational ? (
+                <Card id="booking-panel" variant="glass" className="shadow-2xl">
+                  <CardHeader>
+                    <CardTitle className="text-2xl flex items-center">
+                      {event.externalBookingLink ? '🔗 Book This Event' : '🎫 Book Your Spot'}
+                    </CardTitle>
+                    {!event.externalBookingLink && (
+                      <>
+                        <div className="flex items-center justify-between">
+                          <span className="text-sm text-gray-600">Starting from</span>
+                          <div className="text-3xl font-bold bg-gradient-to-r from-primary-600 to-primary-800 bg-clip-text text-transparent">
+                            {isFree ? <span className="text-green-600">Free</span> : `${event.currency || 'AED'} ${currentPrice}`}
                           </div>
-                        ) : (
-                          <>
-                            <div className="flex justify-between text-sm items-center">
-                              <span className="text-gray-600 flex items-center">
-                                <svg className="w-4 h-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 5v2m0 4v2m0 4v2M5 5a2 2 0 00-2 2v3a2 2 0 110 4v3a2 2 0 002 2h14a2 2 0 002-2v-3a2 2 0 110-4V7a2 2 0 00-2-2H5z" />
-                                </svg>
-                                Tickets × {quantity}
-                              </span>
-                              <span className="font-semibold text-gray-900">{event.currency || 'AED'} {(currentPrice * quantity).toFixed(2)}</span>
+                        </div>
+                        {/* Enhanced Progress Bar */}
+                        <div className="space-y-2">
+                          <div className="w-full bg-gray-200 rounded-full h-3 relative overflow-hidden">
+                            <div
+                              className="bg-gradient-to-r from-green-400 to-green-600 h-3 rounded-full transition-all duration-500 ease-out shadow-sm"
+                              style={{
+                                width: bookingIsUnlimited
+                                  ? '100%'
+                                  : `${Math.min(100, Math.max(0, (bookingPanelAvailableSeats / Math.max(1, bookingPanelTotalSeats)) * 100))}%`
+                              }}
+                            >
+                              <div className="absolute inset-0 bg-white bg-opacity-25 animate-pulse"></div>
                             </div>
-                            <div className="flex justify-between text-sm items-center">
-                              <span className="text-gray-600 flex items-center">
-                                <svg className="w-4 h-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1" />
-                                </svg>
-                                Service Fee (10%)
-                              </span>
-                              <span className="font-semibold text-gray-900">{event.currency || 'AED'} {(currentPrice * quantity * 0.1).toFixed(2)}</span>
-                            </div>
-                            <div className="border-t border-gray-300 pt-3">
-                              <div className="flex justify-between font-bold text-lg items-center">
-                                <span className="text-gray-900">Total</span>
-                                <span className="text-primary-600 text-2xl">{event.currency || 'AED'} {(currentPrice * quantity * 1.1).toFixed(2)}</span>
-                              </div>
-                            </div>
-                          </>
-                        )}
-                      </div>
+                          </div>
+                          <div className="flex justify-between text-sm text-gray-600">
+                            <span className="font-medium">{bookingIsUnlimited ? 'Unlimited' : `${bookingPanelAvailableSeats} available`}</span>
+                            <span>{bookingIsUnlimited ? 'No seat limit' : `${bookingPanelTotalSeats} total`}</span>
+                          </div>
+                        </div>
+                      </>
+                    )}
+                  </CardHeader>
 
-                      {/* Action Buttons */}
-                      <div className="space-y-3">
+                  <CardContent className="space-y-6">
+                    {/* External Booking UI */}
+                    {event.externalBookingLink ? (
+                      <div className="space-y-4">
+                        <div className="bg-amber-50 border border-amber-200 rounded-xl p-4">
+                          <div className="flex items-start space-x-3">
+                            <svg className="w-5 h-5 text-amber-600 mt-0.5 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                            </svg>
+                            <div>
+                              <p className="text-sm font-medium text-amber-800">External Booking</p>
+                              <p className="text-xs text-amber-700 mt-1">This event is managed by an external provider. You will be redirected to their website to complete your booking.</p>
+                            </div>
+                          </div>
+                        </div>
                         <button
-                          id="book-now-btn"
                           onClick={handleBookNow}
-                          disabled={!selectedSession}
-                          className={`w-full py-4 rounded-xl font-bold text-lg transition-all duration-300 ${!selectedSession
-                            ? 'bg-gray-200 text-gray-400 cursor-not-allowed'
-                            : 'bg-gradient-to-r from-primary-500 to-primary-700 hover:from-primary-600 hover:to-primary-800 text-white shadow-lg hover:shadow-xl transform hover:-translate-y-1 hover:scale-105'
-                            }`}
+                          className="w-full py-4 rounded-xl font-bold text-lg bg-gradient-to-r from-orange-500 to-orange-600 hover:from-orange-600 hover:to-orange-700 text-white shadow-lg hover:shadow-xl transition-all duration-300 transform hover:-translate-y-1 hover:scale-105 flex items-center justify-center space-x-2"
                         >
-                          {!selectedSession ? '📅 Select a Session to Book' : '🎫 Book Now'}
+                          <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14" />
+                          </svg>
+                          <span>Book on External Site</span>
                         </button>
-
+                        <div className="flex items-center justify-center text-xs text-gray-500 space-x-2 bg-gray-50 rounded-lg p-3">
+                          <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14" />
+                          </svg>
+                          <span>You will be redirected to an external website</span>
+                        </div>
                       </div>
+                    ) : (
+                      <>
+                        {hasProgramBlocks && (
+                          <div className="space-y-4 mb-6">
+                            <label className="block text-gray-900 text-sm font-bold uppercase tracking-wider mb-2">
+                              Select Your Enrollment Type
+                            </label>
+                            <div className="grid grid-cols-1 gap-4">
+                              <label
+                                className={`rounded-2xl border-2 p-5 transition-all flex flex-col relative overflow-hidden group ${introSchedules.length > 0
+                                  ? (bookingType === 'intro' ? 'border-primary-500 bg-gradient-to-br from-white to-primary-50 shadow-md cursor-pointer' : 'border-gray-200 hover:border-primary-300 bg-white hover:bg-gray-50 cursor-pointer')
+                                  : 'border-gray-200 bg-gray-50 opacity-60 cursor-not-allowed'
+                                  }`}
+                                onClick={() => { if (introSchedules.length > 0) setBookingType('intro') }}
+                              >
+                                <div className="flex items-start justify-between relative z-10">
+                                  <div className="flex items-start space-x-4">
+                                    <div className="mt-1 flex-shrink-0">
+                                      <div className={`w-6 h-6 rounded-full border-2 flex items-center justify-center transition-colors ${bookingType === 'intro' ? 'border-primary-600' : 'border-gray-300 group-hover:border-primary-400'}`}>
+                                        {bookingType === 'intro' && <div className="w-3 h-3 rounded-full bg-primary-600 shadow-sm"></div>}
+                                      </div>
+                                    </div>
+                                    <div>
+                                      <div className="flex items-center space-x-2">
+                                        <span className="text-lg font-bold text-gray-900">
+                                          {standardSchedules.length > 0 ? 'Enroll Now' : 'Free Workshop'}
+                                        </span>
+                                        {introSchedules.length > 0 && standardSchedules.length > 0 && (
+                                          <span className="px-2.5 py-0.5 rounded-full bg-blue-100 text-blue-700 text-xs font-bold uppercase tracking-wide">First Time</span>
+                                        )}
+                                      </div>
+                                      <p className="text-sm text-gray-500 mt-1.5 leading-relaxed">
+                                        {introSchedules.length > 0
+                                          ? (standardSchedules.length > 0 ? 'Sign up for this introductory session to get started.' : 'Reserve your spot for this free introductory session.')
+                                          : 'No trial sessions available for this program.'}
+                                      </p>
+                                    </div>
+                                  </div>
+                                  <div className="text-right flex-shrink-0 ml-4">
+                                    {introSchedules.length > 0 ? (
+                                      <span className="font-black text-2xl text-green-500 tracking-tight">Free</span>
+                                    ) : (
+                                      <span className="font-black text-lg text-gray-400 tracking-tight flex items-center justify-center h-full">
+                                        <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M18.364 18.364A9 9 0 005.636 5.636m12.728 12.728A9 9 0 015.636 5.636m12.728 12.728L5.636 5.636" /></svg>
+                                      </span>
+                                    )}
+                                  </div>
+                                </div>
+                              </label>
 
-                      {/* Enhanced Security Note */}
-                      <div className="flex items-center justify-center text-xs text-gray-500 space-x-2 bg-gray-50 rounded-lg p-3">
-                        <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" />
+                              <label
+                                className={`rounded-2xl border-2 p-5 transition-all flex flex-col relative overflow-hidden group ${standardSchedules.length > 0
+                                  ? (bookingType === 'program' ? 'border-amber-500 shadow-[0_0_20px_rgba(245,158,11,0.2)] bg-gradient-to-br from-white to-amber-50/50 cursor-pointer' : 'border-gray-200 hover:border-amber-300 bg-white hover:bg-gray-50 cursor-pointer')
+                                  : 'border-gray-200 bg-gray-50 opacity-60 cursor-not-allowed'
+                                  }`}
+                                onClick={() => { if (standardSchedules.length > 0) setBookingType('program') }}
+                              >
+                                {bookingType === 'program' && (
+                                  <div className="absolute top-0 right-0 w-32 h-32 bg-amber-500/10 rounded-full blur-3xl -mr-10 -mt-10 pointer-events-none"></div>
+                                )}
+                                <div className="absolute top-0 right-0 bg-amber-500 text-white text-[10px] font-black uppercase tracking-widest px-4 py-1 rounded-bl-xl shadow-sm z-20">Recommended</div>
+                                <div className="flex items-start justify-between relative z-10 pt-2">
+                                  <div className="flex items-start space-x-4">
+                                    <div className="mt-1 flex-shrink-0">
+                                      <div className={`w-6 h-6 rounded-full border-2 flex items-center justify-center transition-colors ${bookingType === 'program' ? 'border-amber-500' : 'border-gray-300 group-hover:border-amber-400'}`}>
+                                        {bookingType === 'program' && <div className="w-3 h-3 rounded-full bg-amber-500 shadow-sm"></div>}
+                                      </div>
+                                    </div>
+                                    <div>
+                                      <span className="text-xl font-bold text-gray-900 block leading-none">Full Program</span>
+                                      <span className="text-amber-600 text-sm font-semibold mt-1.5 block flex items-center">
+                                        <svg className="w-4 h-4 mr-1" fill="currentColor" viewBox="0 0 20 20"><path d="M9.049 2.927c.3-.921 1.603-.921 1.902 0l1.07 3.292a1 1 0 00.95.69h3.462c.969 0 1.371 1.24.588 1.81l-2.8 2.034a1 1 0 00-.364 1.118l1.07 3.292c.3.921-.755 1.688-1.54 1.118l-2.8-2.034a1 1 0 00-1.175 0l-2.8 2.034c-.784.57-1.838-.197-1.539-1.118l1.07-3.292a1 1 0 00-.364-1.118L2.98 8.72c-.783-.57-.38-1.81.588-1.81h3.461a1 1 0 00.951-.69l1.07-3.292z"></path></svg>
+                                        {standardSchedules.length > 0 ? paidClassesCount : 0} Premium 1:1 Classes
+                                      </span>
+                                      <p className="text-sm text-gray-500 mt-2 leading-relaxed max-w-[200px]">
+                                        Complete personalized premium sessions.
+                                      </p>
+                                    </div>
+                                  </div>
+                                  <div className="text-right flex-shrink-0 ml-2">
+                                    {standardSchedules.length > 0 ? (
+                                      <div className="flex flex-col items-end">
+                                        <span className="text-xs text-gray-400 font-medium uppercase tracking-wider mb-0.5">Total</span>
+                                        <div className="flex items-baseline space-x-1">
+                                          <span className="text-sm font-semibold text-gray-500">{event.currency || 'AED'}</span>
+                                          <span className="font-black text-3xl text-gray-900 tracking-tight">
+                                            {parseFloat(totalProgramPrice.toFixed(2))}
+                                          </span>
+                                        </div>
+                                        <span className="text-xs text-amber-600 font-semibold mt-1 bg-amber-50 px-2 py-0.5 rounded">
+                                          Only {event.currency || 'AED'} {pricePerClass.toFixed(2)} / class
+                                        </span>
+                                      </div>
+                                    ) : (
+                                      <span className="font-black text-lg text-gray-400 tracking-tight flex items-center justify-center h-full">
+                                        <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M18.364 18.364A9 9 0 005.636 5.636m12.728 12.728A9 9 0 015.636 5.636m12.728 12.728L5.636 5.636" /></svg>
+                                      </span>
+                                    )}
+                                  </div>
+                                </div>
+                              </label>
+                            </div>
+                          </div>
+                        )}
+
+                        {/* Session Picker — replaces the old calendar + separate time-slot picker */}
+                        {isEducational ? (
+                          <ProgramScheduleList
+                            dateSchedules={filteredSchedules.length > 0 ? filteredSchedules : (event.dateSchedule || [])}
+                            onEnroll={(scheduleId) => {
+                              const matchingSchedule = (event.dateSchedule || []).find((s: any) => String(s._id) === scheduleId || String(s.id) === scheduleId);
+                              if (matchingSchedule) {
+                                const sessionObj = {
+                                  ...matchingSchedule,
+                                  id: matchingSchedule._id || matchingSchedule.id,
+                                  scheduleId: matchingSchedule._id || matchingSchedule.id,
+                                  date: new Date(matchingSchedule.startDate || matchingSchedule.date),
+                                  displayDate: format(new Date(matchingSchedule.startDate || matchingSchedule.date), 'MMM d, yyyy'),
+                                  isUnlimited: matchingSchedule.unlimitedSeats || false
+                                } as any;
+                                setSelectedSession(sessionObj);
+                                // Directly call handleBookNow with the constructed session
+                                handleBookNow(sessionObj);
+                              }
+                            }}
+                            currency={event.currency || 'AED'}
+                            timezone={event.timezone}
+                          />
+                        ) : (
+                          <SessionPicker
+                            dateSchedules={filteredSchedules.length > 0 ? filteredSchedules : (event.dateSchedule || [])}
+                            selectedSession={selectedSession}
+                            onSessionSelect={setSelectedSession}
+                            currency={event.currency || 'AED'}
+                            timezone={event.timezone}
+                            className="w-full"
+                          />
+                        )}
+
+                        {/* Quantity Selector */}
+                        <div className="space-y-3">
+                          <label className="block text-gray-700 text-sm font-semibold">
+                            🎟️ Number of Tickets
+                          </label>
+                          <div className="flex items-center bg-gradient-to-r from-gray-50 to-gray-100 rounded-xl p-2 border border-gray-200 shadow-inner">
+                            <button
+                              className="flex items-center justify-center w-12 h-12 bg-white text-gray-700 rounded-xl hover:bg-gray-100 hover:shadow-md transition-all focus:outline-none shadow-sm disabled:opacity-50 disabled:cursor-not-allowed"
+                              onClick={() => setQuantity(Math.max(1, quantity - 1))}
+                              disabled={quantity <= 1}
+                            >
+                              <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M20 12H4" />
+                              </svg>
+                            </button>
+                            <div className="flex-1 text-center py-3 font-bold text-xl text-gray-900">
+                              {quantity}
+                            </div>
+                            <button
+                              className="flex items-center justify-center w-12 h-12 bg-white text-gray-700 rounded-xl hover:bg-gray-100 hover:shadow-md transition-all focus:outline-none shadow-sm disabled:opacity-50 disabled:cursor-not-allowed"
+                              onClick={() => setQuantity(isUnlimited ? quantity + 1 : Math.min(currentAvailableSeats, quantity + 1))}
+                              disabled={!isUnlimited && quantity >= currentAvailableSeats}
+                            >
+                              <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
+                              </svg>
+                            </button>
+                          </div>
+                        </div>
+
+                        {/* Enhanced Pricing Breakdown */}
+                        <div className="bg-gradient-to-br from-gray-50 to-gray-100 rounded-xl p-5 space-y-3 border border-gray-200">
+                          {hasProgramBlocks ? (
+                            <>
+                              <div className="flex justify-between text-sm items-center">
+                                <span className="text-gray-600 flex items-center">
+                                  <svg className="w-4 h-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 5v2m0 4v2m0 4v2M5 5a2 2 0 00-2 2v3a2 2 0 110 4v3a2 2 0 002 2h14a2 2 0 002-2v-3a2 2 0 110-4V7a2 2 0 00-2-2H5z" />
+                                  </svg>
+                                  Program Type
+                                </span>
+                                <span className="font-semibold text-gray-900">{bookingType === 'intro' ? 'Free Intro' : 'Full Program'}</span>
+                              </div>
+                              <div className="border-t border-gray-300 pt-3">
+                                <div className="flex justify-between font-bold text-lg items-center">
+                                  <span className="text-gray-900">Total</span>
+                                  {bookingType === 'intro' ? (
+                                    <span className="text-green-600 text-2xl">Free</span>
+                                  ) : (
+                                    <span className="text-primary-600 text-2xl">{event.currency || 'AED'} {(totalProgramPrice * quantity).toFixed(2)}</span>
+                                  )}
+                                </div>
+                              </div>
+                            </>
+                          ) : isFree ? (
+                            <div className="flex justify-between font-bold text-lg items-center">
+                              <span className="text-gray-900">Total</span>
+                              <span className="text-green-600 text-2xl">Free</span>
+                            </div>
+                          ) : (
+                            <>
+                              <div className="flex justify-between text-sm items-center">
+                                <span className="text-gray-600 flex items-center">
+                                  <svg className="w-4 h-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 5v2m0 4v2m0 4v2M5 5a2 2 0 00-2 2v3a2 2 0 110 4v3a2 2 0 002 2h14a2 2 0 002-2v-3a2 2 0 110-4V7a2 2 0 00-2-2H5z" />
+                                  </svg>
+                                  Tickets × {quantity}
+                                </span>
+                                <span className="font-semibold text-gray-900">{event.currency || 'AED'} {(currentPrice * quantity).toFixed(2)}</span>
+                              </div>
+                              <div className="flex justify-between text-sm items-center">
+                                <span className="text-gray-600 flex items-center">
+                                  <svg className="w-4 h-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1" />
+                                  </svg>
+                                  Service Fee (10%)
+                                </span>
+                                <span className="font-semibold text-gray-900">{event.currency || 'AED'} {(currentPrice * quantity * 0.1).toFixed(2)}</span>
+                              </div>
+                              <div className="border-t border-gray-300 pt-3">
+                                <div className="flex justify-between font-bold text-lg items-center">
+                                  <span className="text-gray-900">Total</span>
+                                  <span className="text-primary-600 text-2xl">{event.currency || 'AED'} {(currentPrice * quantity * 1.1).toFixed(2)}</span>
+                                </div>
+                              </div>
+                            </>
+                          )}
+                        </div>
+
+                        {/* Action Buttons */}
+                        <div className="space-y-3">
+                          <button
+                            id="book-now-btn"
+                            onClick={handleBookNow}
+                            disabled={!selectedSession}
+                            className={`w-full py-4 rounded-xl font-bold text-lg transition-all duration-300 ${!selectedSession
+                              ? 'bg-gray-200 text-gray-400 cursor-not-allowed'
+                              : 'bg-gradient-to-r from-primary-500 to-primary-700 hover:from-primary-600 hover:to-primary-800 text-white shadow-lg hover:shadow-xl transform hover:-translate-y-1 hover:scale-105'
+                              }`}
+                          >
+                            {!selectedSession ? '📅 Select a Session to Book' : '🎫 Book Now'}
+                          </button>
+
+                        </div>
+
+                        {/* Enhanced Security Note */}
+                        <div className="flex items-center justify-center text-xs text-gray-500 space-x-2 bg-gray-50 rounded-lg p-3">
+                          <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" />
+                          </svg>
+                          <span>🔒 Secure booking • No charge until confirmed</span>
+                        </div>
+                      </>
+                    )}
+                  </CardContent>
+                </Card>
+              ) : null}
+
+              {/* Instructor Card (Educational Events) */}
+              {event.teacher && (
+                <Card variant="elevated" className='mt-4 mb-4' hover>
+                  <CardHeader>
+                    <CardTitle className="flex items-center">
+                      <div className="w-8 h-8 bg-gradient-to-br from-indigo-400 to-indigo-600 rounded-lg flex items-center justify-center mr-3">
+                        <svg className="w-5 h-5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4.354a4 4 0 110 5.292M15 21H3v-1a6 6 0 0112 0v1zm0 0h6v-1a6 6 0 00-9-5.197M13 7a4 4 0 11-8 0 4 4 0 018 0z" />
                         </svg>
-                        <span>🔒 Secure booking • No charge until confirmed</span>
                       </div>
-                    </>
-                  )}
-                </CardContent>
-              </Card>
-            ) : null}
+                      Instructor
+                    </CardTitle>
+                  </CardHeader>
+                  <CardContent className="space-y-4">
+                    <div className="flex items-center">
+                      <Avatar
+                        size="lg"
+                        src={event.teacher.photo}
+                        fallback={event.teacher.name}
+                        className="mr-4"
+                      />
+                      <div className="flex-1">
+                        <div className="font-semibold text-lg text-gray-900">
+                          {event.teacher.name}
+                        </div>
+                        <div className="text-sm text-gray-600">{event.teacher.specialization}</div>
+                        {event.teacher.email && <div className="text-xs text-gray-500 mt-1">{event.teacher.email}</div>}
+                      </div>
+                    </div>
 
-            {/* Instructor Card (Educational Events) */}
-            {event.teacher && (
-              <Card variant="elevated" className='mt-4 mb-4' hover>
+                    {event.teacher.bio && <InstructorBio bio={event.teacher.bio} />}
+
+                    <div className="pt-2">
+                      <Link
+                        to={`/teachers/${event.teacher.id}`}
+                        className="inline-flex py-2 px-4 bg-primary-50 hover:bg-primary-100 text-primary-600 font-medium text-sm rounded-lg transition-colors border border-primary-200"
+                      >
+                        View Full Profile
+                      </Link>
+                    </div>
+                  </CardContent>
+                </Card>
+              )}
+
+              {/* Vendor Information Card (hidden for teaching events – instructor card above replaces it) */}
+              {!event.teacher && <Card variant="elevated" className='mt-4 mb-4' hover>
                 <CardHeader>
                   <CardTitle className="flex items-center">
-                    <div className="w-8 h-8 bg-gradient-to-br from-indigo-400 to-indigo-600 rounded-lg flex items-center justify-center mr-3">
+                    <div className="w-8 h-8 bg-gradient-to-br from-primary-400 to-primary-600 rounded-lg flex items-center justify-center mr-3">
                       <svg className="w-5 h-5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4.354a4 4 0 110 5.292M15 21H3v-1a6 6 0 0112 0v1zm0 0h6v-1a6 6 0 00-9-5.197M13 7a4 4 0 11-8 0 4 4 0 018 0z" />
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-4m-5 0H9m0 0H5m0 0h2M7 7h3M7 10h3M7 13h3" />
                       </svg>
                     </div>
-                    Instructor
+                    Event Organizer
                   </CardTitle>
                 </CardHeader>
                 <CardContent className="space-y-4">
                   <div className="flex items-center">
                     <Avatar
                       size="lg"
-                      src={event.teacher.photo}
-                      fallback={event.teacher.name}
+                      src={event.vendorId?.logo || event.vendorId?.avatar}
+                      fallback={event.vendorId?.businessName || `${event.vendorId?.firstName || ''} ${event.vendorId?.lastName || ''}`.trim() || 'Vendor'}
                       className="mr-4"
                     />
                     <div className="flex-1">
                       <div className="font-semibold text-lg text-gray-900">
-                        {event.teacher.name}
+                        {event.vendorId?.businessName || `${event.vendorId?.firstName || ''} ${event.vendorId?.lastName || ''}`.trim()}
                       </div>
-                      <div className="text-sm text-gray-600">{event.teacher.specialization}</div>
-                      {event.teacher.email && <div className="text-xs text-gray-500 mt-1">{event.teacher.email}</div>}
+                      <div className="text-sm text-gray-600">{event.vendorId?.email}</div>
                     </div>
                   </div>
 
-                  {event.teacher.bio && <InstructorBio bio={event.teacher.bio} />}
+                  <div className="bg-gray-50 rounded-lg p-3">
+                    {event.vendorId?.bio ? (
+                      <div className="text-sm text-gray-700 whitespace-pre-wrap">{event.vendorId.bio}</div>
+                    ) : (
+                      <>
+                        <div className="text-sm font-medium text-gray-700 mb-1">Professional Event Organizer</div>
+                        <div className="text-xs text-gray-600">Specializing in education events for children</div>
+                      </>
+                    )}
+                  </div>
 
-                  <div className="pt-2">
-                    <Link
-                      to={`/teachers/${event.teacher.id}`}
-                      className="inline-flex py-2 px-4 bg-primary-50 hover:bg-primary-100 text-primary-600 font-medium text-sm rounded-lg transition-colors border border-primary-200"
+                  <div className="flex">
+                    <button
+                      onClick={handleViewVendorProfile}
+                      className="w-full py-2 px-3 bg-primary-600 text-white text-sm font-medium rounded-lg hover:bg-primary-700 transition-colors shadow-sm"
+                      title="View vendor profile"
                     >
-                      View Full Profile
-                    </Link>
+                      View Profile
+                    </button>
                   </div>
                 </CardContent>
-              </Card>
-            )}
+              </Card>}
 
-            {/* Vendor Information Card (hidden for teaching events – instructor card above replaces it) */}
-            {!event.teacher && <Card variant="elevated" className='mt-4 mb-4' hover>
-              <CardHeader>
-                <CardTitle className="flex items-center">
-                  <div className="w-8 h-8 bg-gradient-to-br from-primary-400 to-primary-600 rounded-lg flex items-center justify-center mr-3">
-                    <svg className="w-5 h-5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-4m-5 0H9m0 0H5m0 0h2M7 7h3M7 10h3M7 13h3" />
-                    </svg>
-                  </div>
-                  Event Organizer
-                </CardTitle>
-              </CardHeader>
-              <CardContent className="space-y-4">
-                <div className="flex items-center">
-                  <Avatar
-                    size="lg"
-                    src={event.vendorId?.logo || event.vendorId?.avatar}
-                    fallback={event.vendorId?.businessName || `${event.vendorId?.firstName || ''} ${event.vendorId?.lastName || ''}`.trim() || 'Vendor'}
-                    className="mr-4"
-                  />
-                  <div className="flex-1">
-                    <div className="font-semibold text-lg text-gray-900">
-                      {event.vendorId?.businessName || `${event.vendorId?.firstName || ''} ${event.vendorId?.lastName || ''}`.trim()}
-                    </div>
-                    <div className="text-sm text-gray-600">{event.vendorId?.email}</div>
-                  </div>
-                </div>
-
-                <div className="bg-gray-50 rounded-lg p-3">
-                  {event.vendorId?.bio ? (
-                    <div className="text-sm text-gray-700 whitespace-pre-wrap">{event.vendorId.bio}</div>
-                  ) : (
-                    <>
-                      <div className="text-sm font-medium text-gray-700 mb-1">Professional Event Organizer</div>
-                      <div className="text-xs text-gray-600">Specializing in education events for children</div>
-                    </>
-                  )}
-                </div>
-
-                <div className="flex">
-                  <button
-                    onClick={handleViewVendorProfile}
-                    className="w-full py-2 px-3 bg-primary-600 text-white text-sm font-medium rounded-lg hover:bg-primary-700 transition-colors shadow-sm"
-                    title="View vendor profile"
-                  >
-                    View Profile
-                  </button>
-                </div>
-              </CardContent>
-            </Card>}
-
-            {/* Location Information Card — hidden for online events */}
-            {event.venueType !== 'Online' && <Card variant="elevated" hover className='mt-4 mb-4'>
-              <CardHeader>
-                <CardTitle className="flex items-center">
-                  <div className="w-8 h-8 bg-gradient-to-br from-green-400 to-green-600 rounded-lg flex items-center justify-center mr-3">
-                    <svg className="w-5 h-5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z" />
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 11a3 3 0 11-6 0 3 3 0 016 0z" />
-                    </svg>
-                  </div>
-                  Event Location
-                </CardTitle>
-              </CardHeader>
-              <CardContent className="space-y-4">
-                <div className="space-y-2">
-                  <div className="font-semibold text-gray-900">{event.location?.address}</div>
-                  <div className="text-gray-600">{event.location?.city}</div>
-                  <div className="text-xs text-gray-500">
-                    📍 {event.location?.coordinates?.lat}, {event.location?.coordinates?.lng}
-                  </div>
-                </div>
-
-                {(() => {
-                  const loc = event.location as any;
-                  const lat = loc?.coordinates?.lat;
-                  const lng = loc?.coordinates?.lng;
-                  const query = lat && lng
-                    ? `${lat},${lng}`
-                    : encodeURIComponent(`${loc?.address || ''} ${loc?.city || ''}`.trim());
-                  const src = `https://maps.google.com/maps?q=${query}&output=embed&z=15`;
-                  return (
-                    <div className="rounded-lg overflow-hidden h-48">
-                      <iframe
-                        title="Event Location Map"
-                        src={src}
-                        width="100%"
-                        height="100%"
-                        style={{ border: 0 }}
-                        allowFullScreen
-                        loading="lazy"
-                        referrerPolicy="no-referrer-when-downgrade"
-                      />
-                    </div>
-                  );
-                })()}
-
-                <div className="flex space-x-2">
-                  <button onClick={handleGetDirections} className="flex-1 py-2 px-3 bg-green-600 text-white text-sm rounded-lg hover:bg-green-700 transition-colors">
-                    Get Directions
-                  </button>
-                  <button onClick={handleShareLocation} className="flex-1 py-2 px-3 border border-green-200 text-green-600 text-sm rounded-lg hover:bg-green-50 transition-colors">
-                    Share Location
-                  </button>
-                </div>
-              </CardContent>
-            </Card>}
-
-
-            {/* Claim Event Card - Only for affiliate events that haven't been claimed */}
-            {event.isAffiliateEvent && event.claimStatus !== 'claimed' && (() => {
-              const TEACHING_TYPES = ['Class', 'Course', 'Workshop', 'Bootcamp', 'Masterclass'];
-              const claimRoleLabel = TEACHING_TYPES.includes(event.type) ? 'teacher' : 'vendor';
-              return (
-                <Card variant="elevated" className="mt-6 border-2 border-primary-200 bg-gradient-to-br from-blue-50 to-white">
-                  <CardHeader>
-                    <CardTitle className="flex items-center text-primary-800">
-                      <svg className="w-6 h-6 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4M7.835 4.697a3.42 3.42 0 001.946-.806 3.42 3.42 0 014.438 0 3.42 3.42 0 001.946.806 3.42 3.42 0 013.138 3.138 3.42 3.42 0 00.806 1.946 3.42 3.42 0 010 4.438 3.42 3.42 0 00-.806 1.946 3.42 3.42 0 01-3.138 3.138 3.42 3.42 0 00-1.946.806 3.42 3.42 0 01-4.438 0 3.42 3.42 0 00-1.946-.806 3.42 3.42 0 01-3.138-3.138 3.42 3.42 0 00-.806-1.946 3.42 3.42 0 010-4.438 3.42 3.42 0 00.806-1.946 3.42 3.42 0 013.138-3.138z" />
+              {/* Location Information Card — hidden for online events */}
+              {event.venueType !== 'Online' && <Card variant="elevated" hover className='mt-4 mb-4'>
+                <CardHeader>
+                  <CardTitle className="flex items-center">
+                    <div className="w-8 h-8 bg-gradient-to-br from-green-400 to-green-600 rounded-lg flex items-center justify-center mr-3">
+                      <svg className="w-5 h-5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z" />
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 11a3 3 0 11-6 0 3 3 0 016 0z" />
                       </svg>
-                      Is this your event?
-                    </CardTitle>
-                    <p className="text-sm text-gray-600 mt-1">Claim this event as its {claimRoleLabel}</p>
-                  </CardHeader>
-                  <CardContent className="space-y-4">
-                    <div className="bg-white/50 rounded-lg p-3 space-y-2 text-sm border border-blue-100">
-                      <p className="font-medium text-gray-900">
-                        Claim this event to:
-                      </p>
-                      <div className="flex items-start">
-                        <svg className="w-5 h-5 text-green-500 mr-2 flex-shrink-0 mt-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
-                        </svg>
-                        <span>Update event details and specifications</span>
-                      </div>
-                      <div className="flex items-start">
-                        <svg className="w-5 h-5 text-green-500 mr-2 flex-shrink-0 mt-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
-                        </svg>
-                        <span>Access booking analytics</span>
-                      </div>
-                      <div className="flex items-start">
-                        <svg className="w-5 h-5 text-green-500 mr-2 flex-shrink-0 mt-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
-                        </svg>
-                        <span>Manage tickets and pricing</span>
-                      </div>
                     </div>
-
-                    <div className="bg-yellow-50 p-3 rounded text-xs text-yellow-800 border border-yellow-200">
-                      <strong>Disclaimer:</strong> Once claimed, it will be associated with your {claimRoleLabel} account. This event listing was automatically generated or imported and has not yet been verified by the organizer.
+                    Event Location
+                  </CardTitle>
+                </CardHeader>
+                <CardContent className="space-y-4">
+                  <div className="space-y-2">
+                    <div className="font-semibold text-gray-900">{event.location?.address}</div>
+                    <div className="text-gray-600">{event.location?.city}</div>
+                    <div className="text-xs text-gray-500">
+                      📍 {event.location?.coordinates?.lat}, {event.location?.coordinates?.lng}
                     </div>
+                  </div>
 
-                    <button
-                      onClick={handleClaimEvent}
-                      disabled={isClaimingEvent}
-                      className="w-full py-3 bg-gradient-to-r from-blue-600 to-blue-700 hover:from-blue-700 hover:to-blue-800 text-white font-bold rounded-xl shadow-lg hover:shadow-xl transition-all duration-300 transform hover:-translate-y-0.5 disabled:opacity-50 disabled:cursor-not-allowed disabled:transform-none"
-                    >
-                      {isClaimingEvent ? (
-                        <span className="flex items-center justify-center">
-                          <svg className="animate-spin -ml-1 mr-3 h-5 w-5 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
-                            <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
-                            <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
-                          </svg>
-                          Processing...
-                        </span>
-                      ) : (
-                        `Claim as ${claimRoleLabel}`
-                      )}
+                  {(() => {
+                    const loc = event.location as any;
+                    const lat = loc?.coordinates?.lat;
+                    const lng = loc?.coordinates?.lng;
+                    const query = lat && lng
+                      ? `${lat},${lng}`
+                      : encodeURIComponent(`${loc?.address || ''} ${loc?.city || ''}`.trim());
+                    const src = `https://maps.google.com/maps?q=${query}&output=embed&z=15`;
+                    return (
+                      <div className="rounded-lg overflow-hidden h-48">
+                        <iframe
+                          title="Event Location Map"
+                          src={src}
+                          width="100%"
+                          height="100%"
+                          style={{ border: 0 }}
+                          allowFullScreen
+                          loading="lazy"
+                          referrerPolicy="no-referrer-when-downgrade"
+                        />
+                      </div>
+                    );
+                  })()}
+
+                  <div className="flex space-x-2">
+                    <button onClick={handleGetDirections} className="flex-1 py-2 px-3 bg-green-600 text-white text-sm rounded-lg hover:bg-green-700 transition-colors">
+                      Get Directions
                     </button>
-                  </CardContent>
-                </Card>
-              );
-            })()}
+                    <button onClick={handleShareLocation} className="flex-1 py-2 px-3 border border-green-200 text-green-600 text-sm rounded-lg hover:bg-green-50 transition-colors">
+                      Share Location
+                    </button>
+                  </div>
+                </CardContent>
+              </Card>}
 
-            {/* Affiliate Disclaimer */}
-            {event.isAffiliateEvent && event.claimStatus !== 'claimed' && (
-              <p className="mt-4 text-xs text-gray-400 leading-relaxed">
-                Listings may include publicly available information for discovery purposes. Businesses may claim or request removal at any time.
-              </p>
-            )}
+
+              {/* Claim Event Card - Only for affiliate events that haven't been claimed */}
+              {event.isAffiliateEvent && event.claimStatus !== 'claimed' && (() => {
+                const TEACHING_TYPES = ['Class', 'Course', 'Workshop', 'Bootcamp', 'Masterclass'];
+                const claimRoleLabel = TEACHING_TYPES.includes(event.type) ? 'teacher' : 'vendor';
+                return (
+                  <Card variant="elevated" className="mt-6 border-2 border-primary-200 bg-gradient-to-br from-blue-50 to-white">
+                    <CardHeader>
+                      <CardTitle className="flex items-center text-primary-800">
+                        <svg className="w-6 h-6 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4M7.835 4.697a3.42 3.42 0 001.946-.806 3.42 3.42 0 014.438 0 3.42 3.42 0 001.946.806 3.42 3.42 0 013.138 3.138 3.42 3.42 0 00.806 1.946 3.42 3.42 0 010 4.438 3.42 3.42 0 00-.806 1.946 3.42 3.42 0 01-3.138 3.138 3.42 3.42 0 00-1.946.806 3.42 3.42 0 01-4.438 0 3.42 3.42 0 00-1.946-.806 3.42 3.42 0 01-3.138-3.138 3.42 3.42 0 00-.806-1.946 3.42 3.42 0 010-4.438 3.42 3.42 0 00.806-1.946 3.42 3.42 0 013.138-3.138z" />
+                        </svg>
+                        Is this your event?
+                      </CardTitle>
+                      <p className="text-sm text-gray-600 mt-1">Claim this event as its {claimRoleLabel}</p>
+                    </CardHeader>
+                    <CardContent className="space-y-4">
+                      <div className="bg-white/50 rounded-lg p-3 space-y-2 text-sm border border-blue-100">
+                        <p className="font-medium text-gray-900">
+                          Claim this event to:
+                        </p>
+                        <div className="flex items-start">
+                          <svg className="w-5 h-5 text-green-500 mr-2 flex-shrink-0 mt-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+                          </svg>
+                          <span>Update event details and specifications</span>
+                        </div>
+                        <div className="flex items-start">
+                          <svg className="w-5 h-5 text-green-500 mr-2 flex-shrink-0 mt-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+                          </svg>
+                          <span>Access booking analytics</span>
+                        </div>
+                        <div className="flex items-start">
+                          <svg className="w-5 h-5 text-green-500 mr-2 flex-shrink-0 mt-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+                          </svg>
+                          <span>Manage tickets and pricing</span>
+                        </div>
+                      </div>
+
+                      <div className="bg-yellow-50 p-3 rounded text-xs text-yellow-800 border border-yellow-200">
+                        <strong>Disclaimer:</strong> Once claimed, it will be associated with your {claimRoleLabel} account. This event listing was automatically generated or imported and has not yet been verified by the organizer.
+                      </div>
+
+                      <button
+                        onClick={handleClaimEvent}
+                        disabled={isClaimingEvent}
+                        className="w-full py-3 bg-gradient-to-r from-blue-600 to-blue-700 hover:from-blue-700 hover:to-blue-800 text-white font-bold rounded-xl shadow-lg hover:shadow-xl transition-all duration-300 transform hover:-translate-y-0.5 disabled:opacity-50 disabled:cursor-not-allowed disabled:transform-none"
+                      >
+                        {isClaimingEvent ? (
+                          <span className="flex items-center justify-center">
+                            <svg className="animate-spin -ml-1 mr-3 h-5 w-5 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                              <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                              <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                            </svg>
+                            Processing...
+                          </span>
+                        ) : (
+                          `Claim as ${claimRoleLabel}`
+                        )}
+                      </button>
+                    </CardContent>
+                  </Card>
+                );
+              })()}
+
+              {/* Affiliate Disclaimer */}
+              {event.isAffiliateEvent && event.claimStatus !== 'claimed' && (
+                <p className="mt-4 text-xs text-gray-400 leading-relaxed">
+                  Listings may include publicly available information for discovery purposes. Businesses may claim or request removal at any time.
+                </p>
+              )}
             </div>
           </div>
         </div>
