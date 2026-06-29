@@ -314,7 +314,19 @@ export async function streamJSONExportWithProgress(
 // ========== HELPER FUNCTIONS ==========
 
 /**
- * Escape CSV value (handle quotes, commas, newlines)
+ * Neutralise CSV formula injection.
+ * Cells starting with = + - @ TAB or CR are prefixed with a leading single
+ * quote so Excel / LibreOffice Calc do not evaluate them as formulae.
+ */
+function sanitizeFormulaInjection(str: string): string {
+  if (str.length > 0 && /^[=+\-@\t\r]/.test(str)) {
+    return `'${str}`;
+  }
+  return str;
+}
+
+/**
+ * Escape CSV value (handle quotes, commas, newlines, and formula injection)
  */
 function escapeCsvValue(value: any): string {
   if (value === null || value === undefined) {
@@ -322,17 +334,20 @@ function escapeCsvValue(value: any): string {
   }
 
   // Convert to string
-  let str = String(value);
+  let str: string;
 
   // Handle dates
   if (value instanceof Date) {
     str = value.toISOString();
+  } else if (typeof value === "object") {
+    // Handle objects/arrays
+    str = JSON.stringify(value);
+  } else {
+    str = String(value);
   }
 
-  // Handle objects/arrays
-  if (typeof value === "object") {
-    str = JSON.stringify(value);
-  }
+  // Neutralise formula injection before quote-wrapping
+  str = sanitizeFormulaInjection(str);
 
   // Escape quotes and wrap in quotes if needed
   if (

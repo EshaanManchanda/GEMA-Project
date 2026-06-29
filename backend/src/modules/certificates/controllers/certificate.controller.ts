@@ -16,6 +16,7 @@ import { renderCertificate } from "../../../workers/certificate.worker";
 import { certificateQueue } from "../../../config/queue";
 import { MediaService } from "../../../services/media.service";
 import logger from "../../../config/logger";
+import { toCsv, safeReportFilename } from "../../../utils/csv.utils";
 
 // ─── Guards ───────────────────────────────────────────────────────────────────
 
@@ -26,6 +27,47 @@ function validate(req: Request, next: NextFunction): boolean {
     return false;
   }
   return true;
+}
+
+// ─── Shared filter builder ────────────────────────────────────────────────────
+// Used by both listCertificates and exportCertificates so identical query
+// params always return identical rows from both endpoints.
+
+export interface CertificateFilterQuery {
+  eventId?: string;
+  userId?: string;
+  studentId?: string;
+  recipientEmail?: string;
+  status?: string;
+  type?: string;        // maps to certificateTypeSlug
+  issuedFrom?: string;  // ISO date string — start of issuedAt range
+  issuedTo?: string;    // ISO date string — end of issuedAt range
+}
+
+export function buildCertificateFilter(q: CertificateFilterQuery): Record<string, any> {
+  const filter: Record<string, any> = {};
+  if (q.eventId)        filter.eventId = q.eventId;
+  if (q.userId)         filter.userId = q.userId;
+  if (q.studentId)      filter["context.studentId"] = q.studentId;
+  if (q.recipientEmail) filter["recipient.email"] = q.recipientEmail.toLowerCase();
+  if (q.status)         filter.status = q.status;
+  if (q.type)           filter.certificateTypeSlug = q.type;
+
+  if (q.issuedFrom || q.issuedTo) {
+    filter.issuedAt = {};
+    if (q.issuedFrom) {
+      const start = new Date(q.issuedFrom);
+      start.setUTCHours(0, 0, 0, 0);
+      filter.issuedAt.$gte = start;
+    }
+    if (q.issuedTo) {
+      const end = new Date(q.issuedTo);
+      end.setUTCHours(23, 59, 59, 999);
+      filter.issuedAt.$lte = end;
+    }
+  }
+
+  return filter;
 }
 
 // ─── Templates ────────────────────────────────────────────────────────────────
@@ -220,14 +262,18 @@ export const getCertificate = async (req: Request, res: Response, next: NextFunc
 export const listCertificates = async (req: AuthRequest, res: Response, next: NextFunction) => {
   try {
     if (!validate(req, next)) return;
-    const { eventId, userId, studentId, recipientEmail, status, page = 1, limit = 20 } = req.query;
+    const { page = 1, limit = 20 } = req.query;
 
-    const filter: Record<string, any> = {};
-    if (eventId) filter.eventId = eventId;
-    if (userId) filter.userId = userId;
-    if (studentId) filter["context.studentId"] = studentId as string;
-    if (recipientEmail) filter["recipient.email"] = (recipientEmail as string).toLowerCase();
-    if (status) filter.status = status;
+    const filter = buildCertificateFilter({
+      eventId:        req.query.eventId as string | undefined,
+      userId:         req.query.userId as string | undefined,
+      studentId:      req.query.studentId as string | undefined,
+      recipientEmail: req.query.recipientEmail as string | undefined,
+      status:         req.query.status as string | undefined,
+      type:           req.query.type as string | undefined,
+      issuedFrom:     req.query.issuedFrom as string | undefined,
+      issuedTo:       req.query.issuedTo as string | undefined,
+    });
 
     const pageNum = parseInt(page as string);
     const limitNum = parseInt(limit as string);
@@ -648,5 +694,133 @@ export const listAuditLogs = async (req: AuthRequest, res: Response, next: NextF
       success: true,
       data: { logs, pagination: { currentPage: pageNum, totalPages: Math.ceil(total / limitNum), total } },
     });
+  } catch (error) { next(error); }
+};
+
+// ─── Export ───────────────────────────────────────────────────────────────────
+
+/**
+ * GET /certificates/export
+ * Returns a CSV with all certificate + full student information.
+ * Fetches certs with eventId/userId populated, then joins Student records
+ * via context.studentId to include every available student field.
+ * Also flattens the certificate's `data` mixed field (template merge values
+ * like school name, grade, custom fields filled at issuance time).
+ */
+export const exportCertificates = async (req: AuthRequest, res: Response, next: NextFunction) => {
+  try {
+    const filter = buildCertificateFilter({
+      eventId:        req.query.eventId as string | undefined,
+      userId:         req.query.userId as string | undefined,
+      studentId:      req.query.studentId as string | undefined,
+      recipientEmail: req.query.recipientEmail as string | undefined,
+      status:         req.query.status as string | undefined,
+      type:           req.query.type as string | undefined,
+      issuedFrom:     req.query.issuedFrom as string | undefined,
+      issuedTo:       req.query.issuedTo as string | undefined,
+    });
+
+    // Fetch all matching certificates (up to 10k; adjust limit if needed)
+    const certs = await Certificate.find(filter)
+      .populate("eventId", "title")
+      .populate("userId", "firstName lastName email phone role")
+      .sort({ issuedAt: -1, createdAt: -1 })
+      .limit(10_000)
+      .lean<any[]>();
+
+    // Secondary join: fetch Student records for any context.studentId values
+    const studentIds = [...new Set(
+      certs
+        .map((c: any) => c.context?.studentId)
+        .filter(Boolean)
+    )];
+
+    const studentMap: Record<string, any> = {};
+    if (studentIds.length > 0) {
+      const students = await Student.find({ _id: { $in: studentIds } })
+        .select(
+          "firstName lastName email dateOfBirth gender grade rollNumber phone " +
+          "address guardianRelation emergencyContact medicalNotes status schoolId"
+        )
+        .lean<any[]>();
+      for (const s of students) {
+        studentMap[s._id.toString()] = s;
+      }
+    }
+
+    // Build one flat row per certificate
+    const rows: Record<string, unknown>[] = certs.map((cert: any) => {
+      const student: any = studentMap[cert.context?.studentId?.toString?.()] ?? null;
+      const eventTitle = (cert.eventId as any)?.title ?? "";
+      const user = cert.userId as any;
+      const certData: any = cert.data ?? {};
+
+      const row: Record<string, unknown> = {
+        // Certificate identifiers
+        "Serial Number":         cert.serialNumber ?? "",
+        "Certificate Type":      cert.certificateTypeSlug ?? "",
+        "Status":                cert.status ?? "",
+        "Issued At":             cert.issuedAt ? new Date(cert.issuedAt).toISOString().split("T")[0] : "",
+        "Created At":            cert.createdAt ? new Date(cert.createdAt).toISOString().split("T")[0] : "",
+        "Event":                 eventTitle,
+
+        // Recipient (name/email at time of issuance — always present)
+        "Recipient Name":        cert.recipient?.name ?? "",
+        "Recipient Email":       cert.recipient?.email ?? "",
+
+        // Linked user account (account holder who booked/owns the cert)
+        "User First Name":       user?.firstName ?? "",
+        "User Last Name":        user?.lastName ?? "",
+        "User Email":            user?.email ?? "",
+        "User Phone":            user?.phone ?? "",
+        "User Role":             user?.role ?? "",
+
+        // Student profile fields (fully expanded)
+        "Student First Name":    student?.firstName ?? "",
+        "Student Last Name":     student?.lastName ?? "",
+        "Student Email":         student?.email ?? "",
+        "Student Phone":         student?.phone ?? "",
+        "Date of Birth":         student?.dateOfBirth ? new Date(student.dateOfBirth).toISOString().split("T")[0] : "",
+        "Gender":                student?.gender ?? "",
+        "Grade":                 student?.grade ?? "",
+        "Roll Number":           student?.rollNumber ?? "",
+        "School ID":             student?.schoolId?.toString() ?? "",
+        "Guardian Relation":     student?.guardianRelation ?? "",
+        "Student Status":        student?.status ?? "",
+        "Address Line1":         student?.address?.line1 ?? "",
+        "Address City":          student?.address?.city ?? "",
+        "Address State":         student?.address?.state ?? "",
+        "Address Country":       student?.address?.country ?? "",
+        "Address Zip":           student?.address?.zip ?? "",
+        "Emergency Contact Name":student?.emergencyContact?.name ?? "",
+        "Emergency Contact Phone":student?.emergencyContact?.phone ?? "",
+        "Emergency Contact Relation":student?.emergencyContact?.relation ?? "",
+        "Medical Notes":         student?.medicalNotes ?? "",
+      };
+
+      // Flatten cert.data (template merge fields — may contain school name,
+      // custom grade, course title, etc. filled at issuance time)
+      if (certData && typeof certData === "object") {
+        for (const [k, v] of Object.entries(certData)) {
+          const colName = `Data: ${k}`;
+          row[colName] = typeof v === "object" ? JSON.stringify(v) : String(v ?? "");
+        }
+      }
+
+      return row;
+    });
+
+    const dateStamp = new Date().toISOString().split("T")[0];
+    const filename = safeReportFilename("certificates-export", dateStamp) + ".csv";
+    const csv = toCsv(rows);
+
+    res.setHeader("Content-Type", "text/csv; charset=utf-8");
+    res.setHeader("Content-Disposition", `attachment; filename="${filename}"`);
+    res.send(csv);
+
+    logger.info(
+      `Certificate export by admin ${(req.user?._id || req.user?.id || "unknown").toString()}, ` +
+      `filter: ${JSON.stringify(filter)}, rows: ${rows.length}`,
+    );
   } catch (error) { next(error); }
 };

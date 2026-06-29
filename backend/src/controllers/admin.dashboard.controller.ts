@@ -187,13 +187,13 @@ export const getDashboardStats = async (
     ]);
 
     // System health metrics (lightweight)
+    // NOTE: errorRate, responseTime, databasePerformance are NOT YET connected to
+    // a real APM source. They return null / "unavailable" instead of fabricated values.
+    // Wire up to MongoDB Atlas / Datadog / Sentry when available.
     const systemUptime = {
       uptime: Math.floor(process.uptime()),
       status: "healthy",
     };
-    const errorRate = 0; // Placeholder - implement with APM tool
-    const responseTime = 0; // Placeholder - implement with APM tool
-    const databasePerformance = "good"; // Placeholder - implement with MongoDB Atlas metrics
 
     // Calculate growth percentages
     const userGrowthRate =
@@ -212,7 +212,10 @@ export const getDashboardStats = async (
         : 0;
 
     // Calculate additional metrics
-    const conversionRate = totalUsers > 0 ? (paidOrders / totalUsers) * 100 : 0;
+    // userPurchaseRate: paid orders ÷ total users × 100 (audience metric).
+    // NOT the same as viewToOrderRate (views→orders funnel) in OrderAnalytics.
+    // @deprecated field "conversionRate" below is an alias kept for one release.
+    const userPurchaseRate = totalUsers > 0 ? (paidOrders / totalUsers) * 100 : 0;
     const customerRetentionRate =
       totalUsers > 0
         ? (repeatCustomerRate[0]?.repeatCustomers / totalUsers) * 100
@@ -245,7 +248,9 @@ export const getDashboardStats = async (
         totalReviews,
         averageRating: Math.round(avgRating * 100) / 100,
         totalEventViews,
-        conversionRate: Math.round(conversionRate * 100) / 100,
+        userPurchaseRate: Math.round(userPurchaseRate * 100) / 100,
+        /** @deprecated use userPurchaseRate — kept for one release */
+        conversionRate: Math.round(userPurchaseRate * 100) / 100,
         averageOrderValue: Math.round(averageOrderValue * 100) / 100,
         customerRetentionRate: Math.round(customerRetentionRate * 100) / 100,
       },
@@ -358,9 +363,11 @@ export const getDashboardStats = async (
       systemHealth: {
         uptime: systemUptime.uptime,
         status: systemUptime.status,
-        errorRate,
-        responseTime,
-        databasePerformance,
+        /** null until an APM source is connected — do NOT render as a real KPI */
+        errorRate: null as null,
+        responseTime: null as null,
+        databasePerformance: null as null,
+        monitoringStatus: "not_connected" as const,
       },
 
       dateRange: {

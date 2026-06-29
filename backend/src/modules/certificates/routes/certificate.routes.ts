@@ -15,6 +15,7 @@ import {
   getBulkRequestStatus,
   getCertificate,
   listCertificates,
+  exportCertificates,
   verifyCertificate,
   revokeCertificate,
   retryCertificate,
@@ -181,11 +182,32 @@ router.get(
     query("userId").optional().isMongoId(),
     query("studentId").optional().isString(),
     query("recipientEmail").optional().isEmail(),
-    query("status").optional().isIn(["pending", "generating", "generated", "emailed", "failed", "revoked"]),
+    query("status").optional().isIn(["pending", "generating", "generated", "email_queued", "emailed", "failed", "revoked"]),
+    query("type").optional().isString(),
+    query("issuedFrom").optional().isISO8601(),
+    query("issuedTo").optional().isISO8601(),
     query("page").optional().isInt({ min: 1 }),
     query("limit").optional().isInt({ min: 1, max: 100 }),
   ],
   listCertificates,
+);
+
+// ─── Export certificates as CSV (admin only) ─────────────────────────────────
+
+router.get(
+  "/export",
+  authorize(["admin"]),
+  [
+    query("eventId").optional().isMongoId(),
+    query("userId").optional().isMongoId(),
+    query("studentId").optional().isString(),
+    query("recipientEmail").optional().isEmail(),
+    query("status").optional().isIn(["pending", "generating", "generated", "email_queued", "emailed", "failed", "revoked"]),
+    query("type").optional().isString(),
+    query("issuedFrom").optional().isISO8601(),
+    query("issuedTo").optional().isISO8601(),
+  ],
+  exportCertificates,
 );
 
 // ─── Purge all certificates (admin only) ─────────────────────────────────────

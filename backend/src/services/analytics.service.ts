@@ -1,6 +1,52 @@
 import mongoose from "mongoose";
 import { Event, Order, Ticket, User, Review } from "../models/index";
 
+// =============================================================================
+// ANALYTICS TERMINOLOGY CONTRACT
+// =============================================================================
+// These definitions apply to every analytics surface (global, per-event, CSV).
+// When adding new metrics, document them here first to prevent formula drift.
+//
+//  orderRevenue          — $sum of Order.total for paid orders.
+//                          Order-level aggregate. May span multiple events,
+//                          includes discounts, fees, taxes. Used for period/
+//                          trend totals in getDashboardSummary / getPeriodStats.
+//
+//  eventAttributedRevenue — $sum of items.totalPrice for paid order items
+//                          matched to a specific event. The canonical
+//                          per-event / top-events revenue figure.
+//                          Used in: getEventRevenueStats, getTopPerformingEvents,
+//                          per-event performance handler, dashboard topEvents.
+//
+//  refundAmount          — $sum of Order.refundAmount where status="refunded".
+//                          Sourced from paymentRouting or refundAmount field.
+//
+//  netRevenue            — eventAttributedRevenue − refundAmount (or
+//                          orderRevenue − refundAmount for order-level surfaces).
+//                          Explicitly noted per surface to avoid ambiguity.
+//
+//  platformCommission    — $sum of paymentRouting.platformCommission (paid orders).
+//  vendorPayout          — $sum of paymentRouting.vendorPayout (paid orders).
+//
+//  viewToOrderRate       — (confirmed/paid orders ÷ total event views) × 100.
+//                          Funnel metric: how many views convert to a purchase.
+//                          Formerly "conversionRate" in OrderAnalytics —
+//                          that name is deprecated; use viewToOrderRate.
+//
+//  userPurchaseRate      — (paid orders ÷ total users) × 100.
+//                          Audience metric: what fraction of users ever bought.
+//                          Previously also called "conversionRate" in dashboard
+//                          stats — renamed to avoid collision with viewToOrderRate.
+//
+// Reference fixture for tests:
+//   One paid Order with:
+//     - 2 event items (different eventIds), each with items.totalPrice set
+//     - a discount applied at order level
+//     - status="refunded" + refundAmount set
+//     - paymentRouting.platformCommission and .vendorPayout set
+//   All surfaces must agree on eventAttributedRevenue for each event item.
+// =============================================================================
+
 // Analytics interfaces
 export interface EventAnalytics {
   totalEvents: number;
@@ -21,12 +67,16 @@ export interface EventAnalytics {
 
 export interface OrderAnalytics {
   totalOrders: number;
+  /** orderRevenue: $sum of Order.total (paid). Order-level; may span multiple events. */
   totalRevenue: number;
   averageOrderValue: number;
   ordersByStatus: Array<{ status: string; count: number; revenue: number }>;
   ordersByMonth: Array<{ month: string; count: number; revenue: number }>;
   ordersByDay?: Array<{ day: string; count: number; revenue: number }>;
   topCurrencies: Array<{ currency: string; count: number; revenue: number }>;
+  /** viewToOrderRate: confirmed/paid orders ÷ event views × 100. Funnel metric. */
+  viewToOrderRate: number;
+  /** @deprecated Use viewToOrderRate. Kept for one release for backward compat. */
   conversionRate: number;
   refundRate: number;
 }
@@ -297,6 +347,9 @@ class AnalyticsService {
         count: item.count,
         revenue: item.revenue,
       })),
+      /** viewToOrderRate: confirmed paid orders / total event views × 100 */
+      viewToOrderRate: Math.round(computedConversionRate * 100) / 100,
+      /** @deprecated alias for viewToOrderRate — remove after one release */
       conversionRate: Math.round(computedConversionRate * 100) / 100,
       refundRate,
     };

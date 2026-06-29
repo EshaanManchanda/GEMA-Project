@@ -80,7 +80,16 @@ router.get('/traffic/referrers', async (req: Request, res: Response, next: NextF
   }
 });
 
-// GET /api/admin/search-console/summary
+// GET /api/admin/search-console/sites — list configured site URLs for the frontend dropdown
+router.get('/search-console/sites', (_req: Request, res: Response) => {
+  res.json({
+    success: true,
+    configured: gsc.isSearchConsoleConfigured(),
+    sites: gsc.getConfiguredSites(),
+  });
+});
+
+// GET /api/admin/search-console/summary?days=28&site=sc-domain:kidrove.ae
 router.get('/search-console/summary', async (req: Request, res: Response, next: NextFunction) => {
   try {
     if (!gsc.isSearchConsoleConfigured()) {
@@ -88,16 +97,16 @@ router.get('/search-console/summary', async (req: Request, res: Response, next: 
         success: true,
         data: null,
         configured: false,
-        message: 'Google Search Console is not configured. Set GOOGLE_SERVICE_ACCOUNT_JSON and SEARCH_CONSOLE_SITE_URL.',
+        message: 'Google Search Console not configured. Set GOOGLE_SERVICE_ACCOUNT_JSON and SEARCH_CONSOLE_SITE_URLS.',
       });
     }
 
     const days = Math.min(parseInt(req.query.days as string) || 28, 90);
-    const siteUrl = process.env.SEARCH_CONSOLE_SITE_URL!;
-    const cacheKey = `gsc:summary:${days}`;
+    const siteUrl = gsc.resolveSiteUrl(req.query.site as string | undefined);
+    const cacheKey = `gsc:summary:${siteUrl}:${days}`;
 
     const cached = await cacheService.get(cacheKey);
-    if (cached) return res.json({ success: true, data: cached, cached: true });
+    if (cached) return res.json({ success: true, data: cached, siteUrl, cached: true });
 
     const [summary, trend] = await Promise.all([
       gsc.getSearchSummary(siteUrl, days),
@@ -106,13 +115,13 @@ router.get('/search-console/summary', async (req: Request, res: Response, next: 
     const result = { summary, trend };
     await cacheService.set(cacheKey, result, { ttl: GSC_CACHE_TTL });
 
-    res.json({ success: true, data: result, configured: true });
+    res.json({ success: true, data: result, siteUrl, configured: true });
   } catch (err) {
     next(err);
   }
 });
 
-// GET /api/admin/search-console/queries
+// GET /api/admin/search-console/queries?days=28&site=sc-domain:kidrove.in
 router.get('/search-console/queries', async (req: Request, res: Response, next: NextFunction) => {
   try {
     if (!gsc.isSearchConsoleConfigured()) {
@@ -121,22 +130,22 @@ router.get('/search-console/queries', async (req: Request, res: Response, next: 
 
     const days = Math.min(parseInt(req.query.days as string) || 28, 90);
     const limit = Math.min(parseInt(req.query.limit as string) || 25, 100);
-    const siteUrl = process.env.SEARCH_CONSOLE_SITE_URL!;
-    const cacheKey = `gsc:queries:${days}:${limit}`;
+    const siteUrl = gsc.resolveSiteUrl(req.query.site as string | undefined);
+    const cacheKey = `gsc:queries:${siteUrl}:${days}:${limit}`;
 
     const cached = await cacheService.get(cacheKey);
-    if (cached) return res.json({ success: true, data: cached, cached: true });
+    if (cached) return res.json({ success: true, data: cached, siteUrl, cached: true });
 
     const data = await gsc.getTopQueries(siteUrl, days, limit);
     await cacheService.set(cacheKey, data, { ttl: GSC_CACHE_TTL });
 
-    res.json({ success: true, data, configured: true });
+    res.json({ success: true, data, siteUrl, configured: true });
   } catch (err) {
     next(err);
   }
 });
 
-// GET /api/admin/search-console/pages
+// GET /api/admin/search-console/pages?days=28&site=sc-domain:kidrove.com
 router.get('/search-console/pages', async (req: Request, res: Response, next: NextFunction) => {
   try {
     if (!gsc.isSearchConsoleConfigured()) {
@@ -144,11 +153,11 @@ router.get('/search-console/pages', async (req: Request, res: Response, next: Ne
     }
 
     const days = Math.min(parseInt(req.query.days as string) || 28, 90);
-    const siteUrl = process.env.SEARCH_CONSOLE_SITE_URL!;
-    const cacheKey = `gsc:pages:${days}`;
+    const siteUrl = gsc.resolveSiteUrl(req.query.site as string | undefined);
+    const cacheKey = `gsc:pages:${siteUrl}:${days}`;
 
     const cached = await cacheService.get(cacheKey);
-    if (cached) return res.json({ success: true, data: cached, cached: true });
+    if (cached) return res.json({ success: true, data: cached, siteUrl, cached: true });
 
     const [pages, countries] = await Promise.all([
       gsc.getTopPages(siteUrl, days),
@@ -157,7 +166,7 @@ router.get('/search-console/pages', async (req: Request, res: Response, next: Ne
     const result = { pages, countries };
     await cacheService.set(cacheKey, result, { ttl: GSC_CACHE_TTL });
 
-    res.json({ success: true, data: result, configured: true });
+    res.json({ success: true, data: result, siteUrl, configured: true });
   } catch (err) {
     next(err);
   }

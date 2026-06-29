@@ -16,8 +16,25 @@ const dateRange = (days: number) => {
   };
 };
 
+/** Parse SEARCH_CONSOLE_SITE_URLS (comma-separated) → array of site URLs. */
+export const getConfiguredSites = (): string[] => {
+  const raw = process.env.SEARCH_CONSOLE_SITE_URLS || process.env.SEARCH_CONSOLE_SITE_URL || '';
+  return raw.split(',').map(s => s.trim()).filter(Boolean);
+};
+
+/** Returns true only when credentials + at least one site URL are present. */
 export const isSearchConsoleConfigured = (): boolean => {
-  return !!(process.env.GOOGLE_SERVICE_ACCOUNT_JSON && process.env.SEARCH_CONSOLE_SITE_URL);
+  return !!(process.env.GOOGLE_SERVICE_ACCOUNT_JSON && getConfiguredSites().length > 0);
+};
+
+/**
+ * Resolve the requested site URL.
+ * Falls back to the first configured site if the requested one isn't in the list.
+ */
+export const resolveSiteUrl = (requested?: string): string => {
+  const sites = getConfiguredSites();
+  if (requested && sites.includes(requested)) return requested;
+  return sites[0];
 };
 
 export const getSearchSummary = async (siteUrl: string, days = 28) => {

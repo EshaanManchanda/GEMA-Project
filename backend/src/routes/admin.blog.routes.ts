@@ -5,6 +5,7 @@ import {
   updateBlog,
   deleteBlog,
   getAllBlogsAdmin,
+  exportBlogs,
   getBlogById,
   createCategory,
   updateCategory,
@@ -307,6 +308,20 @@ const getAllBlogsValidation = [
 // All admin blog routes require authentication and admin/superadmin role
 router.use(authenticate);
 router.use(authorize(["admin", "superadmin"]));
+
+// Blog performance CSV export (must come before /:id catch-all)
+router.get(
+  "/export",
+  [
+    query("status").optional().isIn(["draft", "published", "archived"]),
+    query("category").optional().isString(),
+    query("search").optional().isString(),
+    query("sortBy").optional().isIn(["createdAt", "updatedAt", "publishedAt", "viewCount", "likeCount", "shareCount", "commentsCount"]),
+    query("sortOrder").optional().isIn(["asc", "desc"]),
+  ],
+  validateRequest,
+  exportBlogs,
+);
 
 // Blog management routes
 router

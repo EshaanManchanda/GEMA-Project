@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useCallback } from 'react';
-import { Award, Search, XCircle, CheckCircle, RefreshCw, ExternalLink, Mail, Eye, Layout, Trash2, Pencil, RotateCcw, Upload, Users, ToggleLeft, ToggleRight, FileUp, AlertTriangle } from 'lucide-react';
+import { Award, Search, XCircle, CheckCircle, RefreshCw, ExternalLink, Mail, Eye, Layout, Trash2, Pencil, RotateCcw, Upload, Users, ToggleLeft, ToggleRight, FileUp, AlertTriangle, Download } from 'lucide-react';
 import { certificateAPI, type CertVerifyResult } from '../../services/api/reviewLinkAPI';
 import adminAPI from '../../services/api/adminAPI';
 import api from '../../services/api';
@@ -52,6 +52,12 @@ const CertListTab: React.FC = () => {
   const [saving, setSaving] = useState(false);
   const [hardDeleting, setHardDeleting] = useState<string | null>(null);
   const [purging, setPurging] = useState(false);
+
+  // Export filters
+  const [typeFilter, setTypeFilter] = useState('');
+  const [issuedFrom, setIssuedFrom] = useState('');
+  const [issuedTo, setIssuedTo] = useState('');
+  const [exportLoading, setExportLoading] = useState(false);
 
   const LIMIT = 20;
 
@@ -376,6 +382,56 @@ const CertListTab: React.FC = () => {
         <button onClick={fetchCerts} className="flex items-center gap-1 px-3 py-2 text-sm text-gray-600 border border-gray-300 rounded-lg hover:bg-gray-50">
           <RefreshCw className="w-3.5 h-3.5" />
         </button>
+
+        {/* Export controls */}
+        <div className="flex items-center gap-1.5 border border-indigo-200 rounded-lg px-2 py-1 bg-indigo-50">
+          <input
+            type="text"
+            placeholder="Type (slug)"
+            value={typeFilter}
+            onChange={(e) => setTypeFilter(e.target.value)}
+            className="text-xs border border-gray-300 rounded px-2 py-1 w-24 bg-white"
+          />
+          <input
+            type="date"
+            value={issuedFrom}
+            onChange={(e) => setIssuedFrom(e.target.value)}
+            className="text-xs border border-gray-300 rounded px-2 py-1 bg-white"
+            title="Issued from"
+          />
+          <span className="text-xs text-gray-400">–</span>
+          <input
+            type="date"
+            value={issuedTo}
+            onChange={(e) => setIssuedTo(e.target.value)}
+            className="text-xs border border-gray-300 rounded px-2 py-1 bg-white"
+            title="Issued to"
+          />
+          <button
+            onClick={async () => {
+              setExportLoading(true);
+              try {
+                await adminAPI.exportCertificates({
+                  status: statusFilter !== 'all' ? statusFilter : undefined,
+                  eventId: eventFilter || undefined,
+                  studentId: studentIdFilter || undefined,
+                  type: typeFilter || undefined,
+                  issuedFrom: issuedFrom || undefined,
+                  issuedTo: issuedTo || undefined,
+                });
+              } catch {
+                toast.error('Export failed');
+              } finally {
+                setExportLoading(false);
+              }
+            }}
+            disabled={exportLoading}
+            className="flex items-center gap-1 px-3 py-1.5 text-xs bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 disabled:opacity-50 transition-colors"
+          >
+            {exportLoading ? <RefreshCw className="w-3 h-3 animate-spin" /> : <Download className="w-3 h-3" />}
+            Export CSV
+          </button>
+        </div>
         <button
           onClick={() => handlePurge('storage-only')}
           disabled={purging}

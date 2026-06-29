@@ -7,11 +7,26 @@ import {
   ChevronDown, ChevronUp, AlertTriangle, Info, Mail, X
 } from 'lucide-react';
 import { toast } from 'react-hot-toast';
+import {
+  Chart as ChartJS,
+  CategoryScale,
+  LinearScale,
+  PointElement,
+  LineElement,
+  BarElement,
+  Title,
+  Tooltip,
+  Legend,
+  Filler,
+} from 'chart.js';
+import { Line } from 'react-chartjs-2';
 import adminAPI from '../../services/api/adminAPI';
-import analyticsAPI from '../../services/api/analyticsAPI';
+import { useEventPerformanceQuery } from '../../hooks/queries/useAdminQuery';
 import StatsCard from '../../components/admin/StatsCard';
 import PrivatePageSEO from '@/components/common/PrivatePageSEO';
 import logger from '@/utils/logger';
+
+ChartJS.register(CategoryScale, LinearScale, PointElement, LineElement, BarElement, Title, Tooltip, Legend, Filler);
 
 const STATUS_COLORS: Record<string, string> = {
   submitted: 'bg-blue-100 text-blue-800',
@@ -59,15 +74,18 @@ const AdminEventDetailPage: React.FC = () => {
   const [orderPagination, setOrderPagination] = useState<any>(null);
   const [orderLoading, setOrderLoading] = useState(false);
   const [orderPage, setOrderPage] = useState(1);
-  const [performance, setPerformance] = useState<any>(null);
   const [loading, setLoading] = useState(true);
-  const [perfLoading, setPerfLoading] = useState(false);
   const [activeTab, setActiveTab] = useState<'overview' | 'analytics' | 'registrations'>('overview');
   const [actionLoading, setActionLoading] = useState(false);
   const [rejectReason, setRejectReason] = useState('');
   const [showRejectModal, setShowRejectModal] = useState(false);
   const [openFaq, setOpenFaq] = useState<number | null>(null);
   const [imgSrc, setImgSrc] = useState<string | null>(null);
+
+  // Report download
+  const [reportLoading, setReportLoading] = useState(false);
+  const [reportFormat, setReportFormat] = useState<'pdf' | 'csv'>('pdf');
+  const [showReportMenu, setShowReportMenu] = useState(false);
 
   // Registrations tab
   const [statusFilter, setStatusFilter] = useState('');
@@ -169,33 +187,29 @@ const AdminEventDetailPage: React.FC = () => {
     return () => document.removeEventListener('keydown', handler);
   }, [drawerRow]);
 
-  useEffect(() => {
-    if (activeTab !== 'analytics') return;
-    if (!id || performance) return;
-    const load = async () => {
-      try {
-        setPerfLoading(true);
-        const result = await analyticsAPI.getEventPerformance(id);
-        setPerformance(result?.data || result);
-      } catch (err: any) {
-        logger.error('Failed to load performance data', err);
-      } finally {
-        setPerfLoading(false);
-      }
-    };
-    load();
-  }, [id, activeTab]);
+  // Performance data via React Query — fetches on first analytics tab open, cached thereafter
+  const {
+    data: performance,
+    isLoading: perfLoading,
+    isError: perfError,
+  } = useEventPerformanceQuery(id ?? '', {
+    enabled: !!id && activeTab === 'analytics',
+  });
 
   const hasUnlimitedSeats = useMemo(() =>
     event?.dateSchedule?.some((s: any) => s.unlimitedSeats), [event]);
 
+  // totalCapacity: use backend performance.seats.total as the authoritative figure
+  // (avoids the reservedSeats client-side add that disagreed with the backend count).
+  // Fall back to client-side sum only when performance data isn't loaded yet.
   const totalCapacity = useMemo(() => {
+    if (performance?.seats?.total != null) return performance.seats.total;
     if (!event?.dateSchedule) return 0;
     return event.dateSchedule.reduce((sum: number, s: any) => {
       if (s.unlimitedSeats) return sum;
-      return sum + (s.availableSeats || 0) + (s.soldSeats || 0) + (s.reservedSeats || 0);
+      return sum + (s.availableSeats || 0) + (s.soldSeats || 0);
     }, 0);
-  }, [event]);
+  }, [event, performance]);
 
   const totalSold = useMemo(() => {
     if (!event?.dateSchedule) return 0;
@@ -969,6 +983,39 @@ const AdminEventDetailPage: React.FC = () => {
         {/* ── Analytics Tab ── */}
         {activeTab === 'analytics' && (
           <div className="space-y-6">
+            {/* Report download toolbar */}
+            <div className="flex justify-end items-center gap-2">
+              <select
+                className="text-sm border border-gray-300 rounded-lg px-3 py-1.5 bg-white focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                value={reportFormat}
+                onChange={(e) => setReportFormat(e.target.value as 'pdf' | 'csv')}
+                disabled={reportLoading}
+              >
+                <option value="pdf">PDF (presentable)</option>
+                <option value="csv">CSV (raw data)</option>
+              </select>
+              <button
+                onClick={async () => {
+                  if (!id) return;
+                  setReportLoading(true);
+                  try {
+                    await adminAPI.downloadEventReport(id, reportFormat, '7d');
+                  } catch {
+                    // toast shown by ApiService on error
+                  } finally {
+                    setReportLoading(false);
+                  }
+                }}
+                disabled={reportLoading}
+                className="flex items-center gap-2 px-4 py-1.5 bg-indigo-600 text-white text-sm font-medium rounded-lg hover:bg-indigo-700 disabled:opacity-50 transition-colors"
+              >
+                {reportLoading
+                  ? <span className="animate-spin rounded-full h-4 w-4 border-b-2 border-white" />
+                  : <Download className="w-4 h-4" />}
+                Download Report (Last 7 Days)
+              </button>
+            </div>
+
             {perfLoading ? (
               <div className="flex justify-center py-12">
                 <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-indigo-600" />
@@ -1122,6 +1169,146 @@ const AdminEventDetailPage: React.FC = () => {
                         </div>
                       ))}
                     </div>
+                  </div>
+                )}
+
+                {/* ── Sales Over Time ── */}
+                {performance && (
+                  <div className="bg-white rounded-xl border border-gray-100 p-6">
+                    <h2 className="font-semibold text-gray-900 mb-4">Sales Over Time</h2>
+                    {!performance.salesByDay?.length ? (
+                      <p className="text-sm text-gray-400 py-8 text-center">No sales recorded in this date range</p>
+                    ) : (
+                      <Line
+                        data={{
+                          labels: performance.salesByDay.map((d: any) => {
+                            const parts = d.date.split('-');
+                            const months = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+                            return `${months[parseInt(parts[1]) - 1]} ${parseInt(parts[2])}`;
+                          }),
+                          datasets: [
+                            {
+                              label: `Revenue (${performance.event?.currency || 'AED'})`,
+                              data: performance.salesByDay.map((d: any) => d.revenue),
+                              borderColor: 'rgba(99, 102, 241, 1)',
+                              backgroundColor: 'rgba(99, 102, 241, 0.08)',
+                              tension: 0.4,
+                              fill: true,
+                              yAxisID: 'y',
+                            },
+                            {
+                              label: 'Tickets Sold',
+                              data: performance.salesByDay.map((d: any) => d.tickets),
+                              borderColor: 'rgba(16, 185, 129, 1)',
+                              backgroundColor: 'rgba(16, 185, 129, 0.08)',
+                              tension: 0.4,
+                              fill: true,
+                              yAxisID: 'y1',
+                            },
+                          ],
+                        }}
+                        options={{
+                          responsive: true,
+                          interaction: { mode: 'index', intersect: false },
+                          plugins: {
+                            legend: { position: 'top' as const },
+                            title: { display: false },
+                          },
+                          scales: {
+                            y: {
+                              type: 'linear',
+                              display: true,
+                              position: 'left',
+                              title: { display: true, text: `Revenue (${performance.event?.currency || 'AED'})` },
+                              ticks: { callback: (v: any) => v.toLocaleString() },
+                            },
+                            y1: {
+                              type: 'linear',
+                              display: true,
+                              position: 'right',
+                              title: { display: true, text: 'Tickets' },
+                              grid: { drawOnChartArea: false },
+                            },
+                          },
+                        }}
+                      />
+                    )}
+                  </div>
+                )}
+
+                {/* ── Schedule Breakdown ── */}
+                {(performance?.scheduleBreakdown?.length ?? 0) > 0 && (
+                  <div className="bg-white rounded-xl border border-gray-100 p-6">
+                    <h2 className="font-semibold text-gray-900 mb-4">
+                      Schedule Breakdown
+                      <span className="ml-2 text-sm font-normal text-gray-400">
+                        ({performance!.scheduleBreakdown.length} session{performance!.scheduleBreakdown.length !== 1 ? 's' : ''})
+                      </span>
+                    </h2>
+                    <div className="overflow-x-auto">
+                      <table className="w-full text-sm">
+                        <thead>
+                          <tr className="text-left text-gray-500 border-b border-gray-100">
+                            <th className="pb-2 font-medium">Date</th>
+                            <th className="pb-2 font-medium">Time</th>
+                            <th className="pb-2 font-medium text-right">Sold</th>
+                            <th className="pb-2 font-medium text-right">Capacity</th>
+                            <th className="pb-2 font-medium w-36">Utilization</th>
+                          </tr>
+                        </thead>
+                        <tbody>
+                          {performance!.scheduleBreakdown.map((s: any, idx: number) => {
+                            const rate = s.utilizationRate;
+                            const barColor = rate == null ? 'bg-gray-300'
+                              : rate >= 80 ? 'bg-green-500'
+                              : rate >= 50 ? 'bg-yellow-500'
+                              : 'bg-red-400';
+                            return (
+                              <tr key={idx} className="border-b border-gray-50 last:border-0">
+                                <td className="py-2.5 text-gray-700">
+                                  {s.date ? new Date(s.date).toLocaleDateString('en-AE', { month: 'short', day: 'numeric', year: 'numeric' }) : '—'}
+                                </td>
+                                <td className="py-2.5 text-gray-500">
+                                  {s.startTime && s.endTime ? `${s.startTime} – ${s.endTime}` : s.startTime || '—'}
+                                </td>
+                                <td className="py-2.5 text-right font-semibold text-gray-800">{s.soldSeats}</td>
+                                <td className="py-2.5 text-right text-gray-600">
+                                  {s.unlimitedSeats ? '∞' : (s.totalCapacity ?? '—')}
+                                </td>
+                                <td className="py-2.5">
+                                  {s.unlimitedSeats ? (
+                                    <span className="text-xs text-gray-400">Unlimited</span>
+                                  ) : rate != null ? (
+                                    <div className="flex items-center gap-2">
+                                      <div className="flex-1 bg-gray-100 rounded-full h-1.5">
+                                        <div
+                                          className={`${barColor} h-1.5 rounded-full transition-all`}
+                                          style={{ width: `${Math.min(rate, 100)}%` }}
+                                        />
+                                      </div>
+                                      <span className={`text-xs font-medium w-10 text-right ${
+                                        rate >= 80 ? 'text-green-600' : rate >= 50 ? 'text-yellow-600' : 'text-red-500'
+                                      }`}>
+                                        {rate.toFixed(0)}%
+                                      </span>
+                                    </div>
+                                  ) : (
+                                    <span className="text-xs text-gray-400">—</span>
+                                  )}
+                                </td>
+                              </tr>
+                            );
+                          })}
+                        </tbody>
+                      </table>
+                    </div>
+                  </div>
+                )}
+
+                {/* ── Error state ── */}
+                {perfError && !perfLoading && (
+                  <div className="bg-red-50 border border-red-100 rounded-xl p-4 text-sm text-red-600">
+                    Failed to load analytics data. Please refresh or try again.
                   </div>
                 )}
               </>

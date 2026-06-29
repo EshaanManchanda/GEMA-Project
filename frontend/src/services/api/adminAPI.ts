@@ -1,4 +1,5 @@
 import { ApiService } from '../api';
+import type { ReportFormat, ReportRange, CertificateExportFilters, BlogExportFilters } from '../../types/analytics';
 
 const adminAPI = {
   // Dashboard stats
@@ -1468,27 +1469,36 @@ const adminAPI = {
   // GOOGLE SEARCH CONSOLE
   // =============================================
 
-  getSearchConsoleSummary: async (days = 28) => {
+  getSearchConsoleSites: async () => {
     try {
-      const response = await ApiService.get('/admin/search-console/summary', { params: { days } });
+      const response = await ApiService.get('/admin/search-console/sites');
       return response.data;
     } catch (error) {
       throw error;
     }
   },
 
-  getSearchConsoleQueries: async (days = 28) => {
+  getSearchConsoleSummary: async (days = 28, site?: string) => {
     try {
-      const response = await ApiService.get('/admin/search-console/queries', { params: { days } });
+      const response = await ApiService.get('/admin/search-console/summary', { params: { days, site } });
       return response.data;
     } catch (error) {
       throw error;
     }
   },
 
-  getSearchConsolePages: async (days = 28) => {
+  getSearchConsoleQueries: async (days = 28, site?: string) => {
     try {
-      const response = await ApiService.get('/admin/search-console/pages', { params: { days } });
+      const response = await ApiService.get('/admin/search-console/queries', { params: { days, site } });
+      return response.data;
+    } catch (error) {
+      throw error;
+    }
+  },
+
+  getSearchConsolePages: async (days = 28, site?: string) => {
+    try {
+      const response = await ApiService.get('/admin/search-console/pages', { params: { days, site } });
       return response.data;
     } catch (error) {
       throw error;
@@ -1556,6 +1566,28 @@ const adminAPI = {
     } catch (error) {
       throw error;
     }
+  },
+
+  // ── Report downloads ────────────────────────────────────────────────────────
+
+  downloadEventReport: async (eventId: string, format: ReportFormat, range: ReportRange = '7d'): Promise<void> => {
+    const ext = format === 'pdf' ? 'pdf' : 'csv';
+    const filename = `event-report-${eventId}-${range}.${ext}`;
+    await ApiService.download(`/analytics/events/${eventId}/report?format=${format}&range=${range}`, filename);
+  },
+
+  exportCertificates: async (filters: CertificateExportFilters = {}): Promise<void> => {
+    const params = new URLSearchParams();
+    Object.entries(filters).forEach(([k, v]) => { if (v) params.set(k, v); });
+    const qs = params.toString() ? `?${params.toString()}` : '';
+    await ApiService.download(`/certificates/export${qs}`, `certificates-export-${new Date().toISOString().split('T')[0]}.csv`);
+  },
+
+  exportBlogs: async (filters: BlogExportFilters = {}): Promise<void> => {
+    const params = new URLSearchParams();
+    Object.entries(filters).forEach(([k, v]) => { if (v) params.set(k, v); });
+    const qs = params.toString() ? `?${params.toString()}` : '';
+    await ApiService.download(`/admin/blogs/export${qs}`, `blog-performance-${new Date().toISOString().split('T')[0]}.csv`);
   },
 };
 

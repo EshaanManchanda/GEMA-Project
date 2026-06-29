@@ -15,8 +15,17 @@ import {
   Legend,
 } from 'chart.js';
 import { Line, Bar, Pie, Doughnut } from 'react-chartjs-2';
+import { FaSearch, FaGlobe, FaMouse, FaEye } from 'react-icons/fa';
 import adminAPI from '../../services/api/adminAPI';
-import { ApiService } from '../../services/api';
+import analyticsAPI from '../../services/api/analyticsAPI';
+import type {
+  DashboardSummary,
+  EventAnalytics,
+  OrderAnalytics,
+  UserAnalytics,
+  TicketAnalytics,
+  VenueAnalytics,
+} from '@/types/analytics';
 import {
   FaUsers,
   FaCalendarAlt,
@@ -49,75 +58,6 @@ ChartJS.register(
 
 type TimeRange = '7days' | '30days' | '90days' | '1year';
 type Granularity = 'daily' | 'monthly';
-
-interface DashboardSummary {
-  totalRevenue: number;
-  totalEvents: number;
-  totalTicketsSold: number;
-  totalUsers: number;
-  revenueGrowth: number;
-  eventGrowth: number;
-  userGrowth: number;
-  topPerformingEvents: Array<{
-    eventId: string;
-    title: string;
-    revenue: number;
-    tickets: number;
-    rating: number;
-  }>;
-}
-
-interface EventAnalytics {
-  totalEvents: number;
-  activeEvents: number;
-  pendingApproval: number;
-  totalViews: number;
-  averageRating: number;
-  topCategories: Array<{ category: string; count: number }>;
-  topLocations: Array<{ city: string; count: number }>;
-  eventsByMonth: Array<{ month: string; count: number }>;
-}
-
-interface OrderAnalytics {
-  totalOrders: number;
-  totalRevenue: number;
-  averageOrderValue: number;
-  ordersByStatus: Array<{ status: string; count: number; revenue: number }>;
-  ordersByMonth: Array<{ month: string; count: number; revenue: number }>;
-  ordersByDay?: Array<{ day: string; count: number; revenue: number }>;
-  topCurrencies: Array<{ currency: string; count: number; revenue: number }>;
-  conversionRate: number;
-  refundRate: number;
-}
-
-interface UserAnalytics {
-  totalUsers: number;
-  activeUsers: number;
-  usersByRole: Array<{ role: string; count: number }>;
-  usersByMonth: Array<{ month: string; count: number }>;
-  topCountries: Array<{ country: string; count: number }>;
-  verificationRate: number;
-}
-
-interface TicketAnalytics {
-  totalTickets: number;
-  checkedInTickets: number;
-  transferredTickets: number;
-  cancelledTickets: number;
-  checkInRate: number;
-  transferRate: number;
-  ticketsByType: Array<{ type: string; count: number }>;
-  scansByHour: Array<{ hour: number; scans: number }>;
-}
-
-interface VenueAnalytics {
-  totalVenues: number;
-  activeVenues: number;
-  venuesByType: Array<{ type: string; count: number }>;
-  venuesByCity: Array<{ city: string; count: number }>;
-  averageCapacity: number;
-  utilizationRate: number;
-}
 
 const CHART_COLORS = [
   'rgba(59, 130, 246, 0.7)',
@@ -220,10 +160,29 @@ const AdminAnalyticsPage: React.FC = () => {
   const [userData, setUserData] = useState<UserAnalytics | null>(null);
   const [ticketData, setTicketData] = useState<TicketAnalytics | null>(null);
   const [venueData, setVenueData] = useState<VenueAnalytics | null>(null);
+  // Per-section error flags — one failed section shows an error chip, not a blank zero
+  const [sectionErrors, setSectionErrors] = useState<Record<string, boolean>>({});
+  // Financial metrics from admin dashboard stats
+  const [financialMetrics, setFinancialMetrics] = useState<{
+    netRevenue?: number; platformCommission?: number; vendorPayouts?: number; refundAmount?: number;
+  }>({});
+
+  // Google Search Console state
+  const [gscSites, setGscSites] = useState<string[]>([]);
+  const [gscSite, setGscSite] = useState('sc-domain:kidrove.com');
+  const [gscConfigured, setGscConfigured] = useState(true);
+  const [gscLoading, setGscLoading] = useState(false);
+  const [gscSummary, setGscSummary] = useState<{
+    summary: { clicks: number; impressions: number; ctr: number; position: number };
+    trend: { keys: string[]; clicks: number; impressions: number; ctr: number; position: number }[];
+  } | null>(null);
+  const [gscQueries, setGscQueries] = useState<{ keys: string[]; clicks: number; impressions: number; ctr: number; position: number }[]>([]);
+  const [gscPages, setGscPages] = useState<{ keys: string[]; clicks: number; impressions: number; ctr: number; position: number }[]>([]);
 
   const fetchData = useCallback(async () => {
     setIsLoading(true);
     setError(null);
+    setSectionErrors({});
     try {
       const dateRange = getDateRange(timeRange);
       const params = {
@@ -234,36 +193,54 @@ const AdminAnalyticsPage: React.FC = () => {
       const [dashRes, eventRes, orderRes, userRes, ticketRes, venueRes] = await Promise.allSettled([
         adminAPI.getDashboardStats(),
         adminAPI.getEventAnalytics(params),
-        ApiService.get('/analytics/orders', { params }),
+        analyticsAPI.getOrderAnalytics(params),
         adminAPI.getUserAnalytics(params),
         adminAPI.getTicketAnalytics(params),
         adminAPI.getVenueAnalytics(),
       ]);
 
+      const errors: Record<string, boolean> = {};
+
       if (dashRes.status === 'fulfilled') {
         const d = dashRes.value?.data || dashRes.value;
         setDashboard(d);
-      }
+        // Surface financial metrics already computed in dashboard-optimized service
+        if (d?.financialMetrics) {
+          setFinancialMetrics({
+            netRevenue: d.financialMetrics.netRevenue,
+            platformCommission: d.financialMetrics.platformCommission,
+            vendorPayouts: d.financialMetrics.vendorPayouts,
+            refundAmount: d.financialMetrics.refundAmount,
+          });
+        }
+      } else { errors.dashboard = true; }
+
       if (eventRes.status === 'fulfilled') {
         const d = eventRes.value?.data || eventRes.value;
         setEventData(d);
-      }
+      } else { errors.events = true; }
+
       if (orderRes.status === 'fulfilled') {
         const d = orderRes.value?.data || orderRes.value;
         setOrderData(d);
-      }
+      } else { errors.orders = true; }
+
       if (userRes.status === 'fulfilled') {
         const d = userRes.value?.data || userRes.value;
         setUserData(d);
-      }
+      } else { errors.users = true; }
+
       if (ticketRes.status === 'fulfilled') {
         const d = ticketRes.value?.data || ticketRes.value;
         setTicketData(d);
-      }
+      } else { errors.tickets = true; }
+
       if (venueRes.status === 'fulfilled') {
         const d = venueRes.value?.data || venueRes.value;
         setVenueData(d);
-      }
+      } else { errors.venues = true; }
+
+      if (Object.keys(errors).length) setSectionErrors(errors);
     } catch (err: any) {
       logger.error('Analytics fetch error:', err);
       setError(err?.message || 'Failed to load analytics data');
@@ -275,6 +252,42 @@ const AdminAnalyticsPage: React.FC = () => {
   useEffect(() => {
     fetchData();
   }, [fetchData]);
+
+  // Fetch available GSC sites once on mount
+  useEffect(() => {
+    adminAPI.getSearchConsoleSites().then((r: any) => {
+      if (r?.sites?.length) {
+        setGscSites(r.sites);
+        setGscSite(r.sites[0]);
+      }
+      if (r?.configured === false) setGscConfigured(false);
+    }).catch(() => {});
+  }, []);
+
+  const fetchGSC = useCallback(async () => {
+    setGscLoading(true);
+    try {
+      const days = timeRange === '7days' ? 7 : timeRange === '30days' ? 28 : 90;
+      const [sumRes, qRes, pRes] = await Promise.all([
+        adminAPI.getSearchConsoleSummary(days, gscSite),
+        adminAPI.getSearchConsoleQueries(days, gscSite),
+        adminAPI.getSearchConsolePages(days, gscSite),
+      ]);
+      if (sumRes?.configured === false) { setGscConfigured(false); return; }
+      setGscConfigured(true);
+      setGscSummary(sumRes?.data || null);
+      setGscQueries(Array.isArray(qRes?.data) ? qRes.data : []);
+      setGscPages(pRes?.data?.pages || []);
+    } catch (e) {
+      logger.error('GSC fetch error', e);
+    } finally {
+      setGscLoading(false);
+    }
+  }, [gscSite, timeRange]);
+
+  useEffect(() => {
+    fetchGSC();
+  }, [fetchGSC]);
 
   const handleExport = async (type: string = 'orders') => {
     try {
@@ -785,9 +798,9 @@ const AdminAnalyticsPage: React.FC = () => {
             <KPICard
               icon={<FaPercentage className="w-5 h-5 text-teal-600" />}
               iconBg="bg-teal-50"
-              value={`${(orderData?.conversionRate ?? 0).toFixed(2)}%`}
-              label="Conversion Rate"
-              sub="Views → Confirmed orders"
+              value={`${(orderData?.viewToOrderRate ?? orderData?.conversionRate ?? 0).toFixed(2)}%`}
+              label="View → Order Rate"
+              sub="Event views that converted to a paid order"
             />
             <KPICard
               icon={<FaMapMarkerAlt className="w-5 h-5 text-rose-600" />}
@@ -804,6 +817,52 @@ const AdminAnalyticsPage: React.FC = () => {
               sub={ticketData ? `${(ticketData.transferRate ?? 0).toFixed(1)}% transfer rate` : undefined}
             />
           </div>
+
+          {/* Per-section error chips */}
+          {Object.keys(sectionErrors).length > 0 && (
+            <div className="flex flex-wrap gap-2 mb-4">
+              {Object.keys(sectionErrors).map(section => (
+                <span key={section} className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full
+                  bg-red-50 border border-red-200 text-red-600 text-xs font-medium">
+                  ⚠ {section} data unavailable
+                </span>
+              ))}
+            </div>
+          )}
+
+          {/* KPI Cards — Row 3: Financial breakdown (already computed in dashboard-optimized) */}
+          {(financialMetrics.netRevenue != null || financialMetrics.platformCommission != null) && (
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 mb-4">
+              <KPICard
+                icon={<FaDollarSign className="w-5 h-5 text-emerald-600" />}
+                iconBg="bg-emerald-50"
+                value={formatCurrency(financialMetrics.netRevenue ?? 0)}
+                label="Net Revenue"
+                sub={financialMetrics.refundAmount != null ? `After ${formatCurrency(financialMetrics.refundAmount)} refunds` : undefined}
+              />
+              <KPICard
+                icon={<FaChartLine className="w-5 h-5 text-violet-600" />}
+                iconBg="bg-violet-50"
+                value={formatCurrency(financialMetrics.platformCommission ?? 0)}
+                label="Platform Commission"
+                sub="From paymentRouting"
+              />
+              <KPICard
+                icon={<FaExchangeAlt className="w-5 h-5 text-sky-600" />}
+                iconBg="bg-sky-50"
+                value={formatCurrency(financialMetrics.vendorPayouts ?? 0)}
+                label="Vendor Payouts"
+                sub="From paymentRouting"
+              />
+              <KPICard
+                icon={<FaArrowDown className="w-5 h-5 text-red-500" />}
+                iconBg="bg-red-50"
+                value={formatCurrency(financialMetrics.refundAmount ?? 0)}
+                label="Total Refunds"
+                sub={orderData?.refundRate != null ? `${orderData.refundRate.toFixed(1)}% refund rate` : undefined}
+              />
+            </div>
+          )}
 
           {/* Booking Funnel */}
           <div className="bg-white rounded-xl shadow-sm border border-gray-100 p-5 mb-6">
@@ -1023,6 +1082,243 @@ const AdminAnalyticsPage: React.FC = () => {
               )}
             </div>
           )}
+
+          {/* ─── Google Search Console ─────────────────────────────────── */}
+          <div className="bg-white rounded-xl shadow-sm border border-gray-100 p-5 mb-6">
+            {/* Header */}
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 mb-5">
+              <div className="flex items-center gap-2">
+                <div className="p-2 bg-blue-50 rounded-lg">
+                  <FaSearch className="w-4 h-4 text-blue-600" />
+                </div>
+                <div>
+                  <h3 className="font-semibold text-gray-900">Google Search Console</h3>
+                  <p className="text-xs text-gray-500">Organic search performance</p>
+                </div>
+              </div>
+
+              {/* Domain selector */}
+              {gscConfigured && gscSites.length > 1 && (
+                <div className="flex rounded-lg border border-gray-200 overflow-hidden text-sm">
+                  {gscSites.map(site => {
+                    const label = site.replace('sc-domain:', '');
+                    return (
+                      <button
+                        key={site}
+                        onClick={() => setGscSite(site)}
+                        className={`px-3 py-1.5 font-medium transition-colors ${
+                          gscSite === site
+                            ? 'bg-blue-600 text-white'
+                            : 'bg-white text-gray-600 hover:bg-gray-50'
+                        }`}
+                      >
+                        {label}
+                      </button>
+                    );
+                  })}
+                </div>
+              )}
+            </div>
+
+            {!gscConfigured ? (
+              <div className="text-center py-10 text-gray-400">
+                <FaGlobe className="w-8 h-8 mx-auto mb-2 opacity-30" />
+                <p className="text-sm">Search Console not configured.</p>
+                <p className="text-xs mt-1">Set GOOGLE_SERVICE_ACCOUNT_JSON and SEARCH_CONSOLE_SITE_URLS in backend .env</p>
+              </div>
+            ) : gscLoading ? (
+              <div className="flex items-center justify-center py-10">
+                <div className="animate-spin rounded-full h-7 w-7 border-b-2 border-blue-600" />
+              </div>
+            ) : (
+              <>
+                {/* KPI row */}
+                <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 mb-5">
+                  <div className="bg-blue-50 rounded-lg p-4">
+                    <div className="flex items-center gap-2 mb-1">
+                      <FaMouse className="w-3.5 h-3.5 text-blue-500" />
+                      <span className="text-xs text-gray-500 font-medium">Total Clicks</span>
+                    </div>
+                    <p className="text-2xl font-bold text-blue-700">
+                      {formatNumber(gscSummary?.summary?.clicks ?? 0)}
+                    </p>
+                  </div>
+                  <div className="bg-purple-50 rounded-lg p-4">
+                    <div className="flex items-center gap-2 mb-1">
+                      <FaEye className="w-3.5 h-3.5 text-purple-500" />
+                      <span className="text-xs text-gray-500 font-medium">Impressions</span>
+                    </div>
+                    <p className="text-2xl font-bold text-purple-700">
+                      {formatNumber(gscSummary?.summary?.impressions ?? 0)}
+                    </p>
+                  </div>
+                  <div className="bg-emerald-50 rounded-lg p-4">
+                    <div className="flex items-center gap-2 mb-1">
+                      <FaPercentage className="w-3.5 h-3.5 text-emerald-500" />
+                      <span className="text-xs text-gray-500 font-medium">Avg CTR</span>
+                    </div>
+                    <p className="text-2xl font-bold text-emerald-700">
+                      {((gscSummary?.summary?.ctr ?? 0) * 100).toFixed(2)}%
+                    </p>
+                  </div>
+                  <div className="bg-amber-50 rounded-lg p-4">
+                    <div className="flex items-center gap-2 mb-1">
+                      <FaTrophy className="w-3.5 h-3.5 text-amber-500" />
+                      <span className="text-xs text-gray-500 font-medium">Avg Position</span>
+                    </div>
+                    <p className="text-2xl font-bold text-amber-700">
+                      {(gscSummary?.summary?.position ?? 0).toFixed(1)}
+                    </p>
+                  </div>
+                </div>
+
+                {/* Trend chart */}
+                {(gscSummary?.trend?.length ?? 0) > 0 && (
+                  <div className="mb-5">
+                    <p className="text-xs font-medium text-gray-500 uppercase mb-2">Performance Trend</p>
+                    <div className="h-52">
+                      <Line
+                        data={{
+                          labels: (gscSummary?.trend ?? []).map(r => r.keys?.[0] ?? ''),
+                          datasets: [
+                            {
+                              label: 'Clicks',
+                              data: (gscSummary?.trend ?? []).map(r => r.clicks),
+                              borderColor: 'rgb(59, 130, 246)',
+                              backgroundColor: 'rgba(59, 130, 246, 0.08)',
+                              tension: 0.4,
+                              fill: true,
+                              pointRadius: 2,
+                              yAxisID: 'yClicks',
+                            },
+                            {
+                              label: 'Impressions',
+                              data: (gscSummary?.trend ?? []).map(r => r.impressions),
+                              borderColor: 'rgb(139, 92, 246)',
+                              backgroundColor: 'rgba(139, 92, 246, 0.08)',
+                              tension: 0.4,
+                              fill: true,
+                              pointRadius: 2,
+                              yAxisID: 'yImpressions',
+                            },
+                          ],
+                        }}
+                        options={{
+                          responsive: true,
+                          maintainAspectRatio: false,
+                          interaction: { mode: 'index' as const, intersect: false },
+                          plugins: {
+                            legend: {
+                              display: true,
+                              position: 'top' as const,
+                              labels: { usePointStyle: true, pointStyle: 'circle', font: { size: 11 } },
+                            },
+                            tooltip: { backgroundColor: 'rgba(0,0,0,0.8)', padding: 10, cornerRadius: 8 },
+                          },
+                          scales: {
+                            x: { grid: { display: false }, ticks: { font: { size: 10 }, maxTicksLimit: 12 } },
+                            yClicks: {
+                              type: 'linear' as const,
+                              position: 'left' as const,
+                              beginAtZero: true,
+                              grid: { color: 'rgba(0,0,0,0.04)' },
+                              ticks: { font: { size: 10 } },
+                              title: { display: true, text: 'Clicks', font: { size: 10 } },
+                            },
+                            yImpressions: {
+                              type: 'linear' as const,
+                              position: 'right' as const,
+                              beginAtZero: true,
+                              grid: { display: false },
+                              ticks: { font: { size: 10 } },
+                              title: { display: true, text: 'Impressions', font: { size: 10 } },
+                            },
+                          },
+                        }}
+                      />
+                    </div>
+                  </div>
+                )}
+
+                {/* Tables row */}
+                <div className="grid grid-cols-1 lg:grid-cols-2 gap-5">
+                  {/* Top Queries */}
+                  <div>
+                    <p className="text-xs font-medium text-gray-500 uppercase mb-2">Top Queries</p>
+                    {gscQueries.length === 0 ? (
+                      <p className="text-sm text-gray-400 py-4 text-center">No query data yet</p>
+                    ) : (
+                      <div className="overflow-x-auto">
+                        <table className="w-full text-sm">
+                          <thead>
+                            <tr className="text-xs text-gray-500 border-b border-gray-100">
+                              <th className="text-left pb-2 font-medium">Query</th>
+                              <th className="text-right pb-2 font-medium">Clicks</th>
+                              <th className="text-right pb-2 font-medium">Impr.</th>
+                              <th className="text-right pb-2 font-medium">CTR</th>
+                              <th className="text-right pb-2 font-medium">Pos.</th>
+                            </tr>
+                          </thead>
+                          <tbody>
+                            {gscQueries.slice(0, 10).map((row, i) => (
+                              <tr key={i} className="border-b border-gray-50 hover:bg-gray-50">
+                                <td className="py-1.5 pr-2 text-gray-800 max-w-[160px] truncate font-medium">
+                                  {row.keys?.[0] ?? '—'}
+                                </td>
+                                <td className="py-1.5 text-right text-blue-600 font-medium">{row.clicks}</td>
+                                <td className="py-1.5 text-right text-gray-500">{formatNumber(row.impressions)}</td>
+                                <td className="py-1.5 text-right text-emerald-600">{((row.ctr ?? 0) * 100).toFixed(1)}%</td>
+                                <td className="py-1.5 text-right text-amber-600">{(row.position ?? 0).toFixed(1)}</td>
+                              </tr>
+                            ))}
+                          </tbody>
+                        </table>
+                      </div>
+                    )}
+                  </div>
+
+                  {/* Top Pages */}
+                  <div>
+                    <p className="text-xs font-medium text-gray-500 uppercase mb-2">Top Pages</p>
+                    {gscPages.length === 0 ? (
+                      <p className="text-sm text-gray-400 py-4 text-center">No page data yet</p>
+                    ) : (
+                      <div className="overflow-x-auto">
+                        <table className="w-full text-sm">
+                          <thead>
+                            <tr className="text-xs text-gray-500 border-b border-gray-100">
+                              <th className="text-left pb-2 font-medium">Page</th>
+                              <th className="text-right pb-2 font-medium">Clicks</th>
+                              <th className="text-right pb-2 font-medium">Impr.</th>
+                              <th className="text-right pb-2 font-medium">CTR</th>
+                              <th className="text-right pb-2 font-medium">Pos.</th>
+                            </tr>
+                          </thead>
+                          <tbody>
+                            {gscPages.slice(0, 10).map((row, i) => {
+                              const url = row.keys?.[0] ?? '';
+                              const path = url.replace(/^https?:\/\/[^/]+/, '') || '/';
+                              return (
+                                <tr key={i} className="border-b border-gray-50 hover:bg-gray-50">
+                                  <td className="py-1.5 pr-2 text-gray-800 max-w-[160px] truncate font-medium" title={url}>
+                                    {path}
+                                  </td>
+                                  <td className="py-1.5 text-right text-blue-600 font-medium">{row.clicks}</td>
+                                  <td className="py-1.5 text-right text-gray-500">{formatNumber(row.impressions)}</td>
+                                  <td className="py-1.5 text-right text-emerald-600">{((row.ctr ?? 0) * 100).toFixed(1)}%</td>
+                                  <td className="py-1.5 text-right text-amber-600">{(row.position ?? 0).toFixed(1)}</td>
+                                </tr>
+                              );
+                            })}
+                          </tbody>
+                        </table>
+                      </div>
+                    )}
+                  </div>
+                </div>
+              </>
+            )}
+          </div>
 
           {/* Top Performers */}
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-6">

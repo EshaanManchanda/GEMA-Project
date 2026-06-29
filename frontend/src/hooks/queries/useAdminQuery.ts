@@ -1,6 +1,13 @@
 import { useQuery, UseQueryOptions } from '@tanstack/react-query';
 import adminAPI from '@/services/api/adminAPI';
+import analyticsAPI from '@/services/api/analyticsAPI';
 import { adminKeys } from './queryKeys';
+import type {
+  OrderAnalytics,
+  TicketAnalytics,
+  VenueAnalytics,
+  EventPerformance,
+} from '@/types/analytics';
 
 // ============================================
 // Dashboard & Analytics
@@ -69,6 +76,70 @@ export function useUserAnalyticsQuery(
     queryFn: () => adminAPI.getUserAnalytics(dateRange),
     staleTime: 5 * 60 * 1000, // 5 minutes
     gcTime: 15 * 60 * 1000, // 15 minutes
+    ...options,
+  });
+}
+
+/**
+ * Query hook for order analytics
+ */
+export function useOrderAnalyticsQuery(
+  dateRange?: { startDate?: string; endDate?: string },
+  options?: Omit<UseQueryOptions<OrderAnalytics>, 'queryKey' | 'queryFn'>
+) {
+  return useQuery<OrderAnalytics>({
+    queryKey: adminKeys.analytics.orders(dateRange),
+    queryFn: () => analyticsAPI.getOrderAnalytics(dateRange).then((r: any) => r?.data ?? r),
+    staleTime: 5 * 60 * 1000,
+    gcTime: 15 * 60 * 1000,
+    ...options,
+  });
+}
+
+/**
+ * Query hook for ticket analytics
+ */
+export function useTicketAnalyticsQuery(
+  dateRange?: { startDate?: string; endDate?: string },
+  options?: Omit<UseQueryOptions<TicketAnalytics>, 'queryKey' | 'queryFn'>
+) {
+  return useQuery<TicketAnalytics>({
+    queryKey: adminKeys.analytics.tickets(dateRange),
+    queryFn: () => analyticsAPI.getTicketAnalytics(dateRange).then((r: any) => r?.data ?? r),
+    staleTime: 5 * 60 * 1000,
+    gcTime: 15 * 60 * 1000,
+    ...options,
+  });
+}
+
+/**
+ * Query hook for venue analytics
+ */
+export function useVenueAnalyticsQuery(
+  options?: Omit<UseQueryOptions<VenueAnalytics>, 'queryKey' | 'queryFn'>
+) {
+  return useQuery<VenueAnalytics>({
+    queryKey: adminKeys.analytics.venues(),
+    queryFn: () => analyticsAPI.getVenueAnalytics().then((r: any) => r?.data ?? r),
+    staleTime: 10 * 60 * 1000,
+    gcTime: 30 * 60 * 1000,
+    ...options,
+  });
+}
+
+/**
+ * Query hook for per-event performance analytics
+ */
+export function useEventPerformanceQuery(
+  eventId: string,
+  options?: Omit<UseQueryOptions<EventPerformance>, 'queryKey' | 'queryFn'>
+) {
+  return useQuery<EventPerformance>({
+    queryKey: adminKeys.analytics.eventPerformance(eventId),
+    queryFn: () => analyticsAPI.getEventPerformance(eventId).then((r: any) => r?.data ?? r),
+    staleTime: 5 * 60 * 1000,
+    gcTime: 15 * 60 * 1000,
+    enabled: !!eventId,
     ...options,
   });
 }
@@ -219,20 +290,6 @@ export function useAdminOrdersQuery(params?: any, options?: Omit<UseQueryOptions
     queryFn: () => adminAPI.getAllOrders(params),
     staleTime: 1 * 60 * 1000, // 1 minute
     gcTime: 5 * 60 * 1000, // 5 minutes
-    ...options,
-  });
-}
-
-/**
- * Query hook for order analytics
- * @param params - Date range and filter parameters
- */
-export function useOrderAnalyticsQuery(params?: any, options?: Omit<UseQueryOptions<any>, 'queryKey' | 'queryFn'>) {
-  return useQuery({
-    queryKey: [...adminKeys.orders.all(), 'analytics', params || {}] as const,
-    queryFn: () => adminAPI.getOrderAnalytics(params),
-    staleTime: 5 * 60 * 1000, // 5 minutes
-    gcTime: 15 * 60 * 1000, // 15 minutes
     ...options,
   });
 }

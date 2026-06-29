@@ -272,7 +272,9 @@ export class DashboardOptimizedService {
             },
           ],
 
-          // Top events by revenue
+          // Top events by revenue — uses eventAttributedRevenue ($sum items.totalPrice)
+          // NOT unitPrice*quantity (ignores item-level discounts applied at checkout).
+          // Must match per-event handler and getEventRevenueStats. See terminology contract.
           topEventsByRevenue: [
             { $match: { paymentStatus: "paid" } },
             { $unwind: "$items" },
@@ -280,7 +282,7 @@ export class DashboardOptimizedService {
               $group: {
                 _id: "$items.eventId",
                 totalRevenue: {
-                  $sum: { $multiply: ["$items.unitPrice", "$items.quantity"] },
+                  $sum: "$items.totalPrice",
                 },
                 totalBookings: { $sum: "$items.quantity" },
               },

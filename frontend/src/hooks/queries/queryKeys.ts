@@ -106,7 +106,11 @@ export const adminKeys = {
     dashboard: () => [...adminKeys.analytics.all(), 'dashboard'] as const,
     revenue: (dateRange?: any) => [...adminKeys.analytics.all(), 'revenue', dateRange || {}] as const,
     events: (dateRange?: any) => [...adminKeys.analytics.all(), 'events', dateRange || {}] as const,
+    orders: (dateRange?: any) => [...adminKeys.analytics.all(), 'orders', dateRange || {}] as const,
+    tickets: (dateRange?: any) => [...adminKeys.analytics.all(), 'tickets', dateRange || {}] as const,
+    venues: () => [...adminKeys.analytics.all(), 'venues'] as const,
     users: (dateRange?: any) => [...adminKeys.analytics.all(), 'users', dateRange || {}] as const,
+    eventPerformance: (eventId: string) => [...adminKeys.analytics.all(), 'event-performance', eventId] as const,
   },
 
   // Admin orders

@@ -5,6 +5,7 @@ import { IBlog } from "../models/Blog";
 import { IBlogCategory } from "../models/BlogCategory";
 import catchAsync from "../utils/catchAsync";
 import { blogService } from "../services/blog.service";
+import { toCsv, safeReportFilename } from "../utils/csv.utils";
 import {
   transformBlogResponse,
   transformBlogsResponse,
@@ -397,6 +398,41 @@ export const deleteBlog = catchAsync(async (req: Request, res: Response) => {
   });
 });
 
+// ─── Shared blog admin filter builder ────────────────────────────────────────
+// Used by both getAllBlogsAdmin (list) and exportBlogs (export) so identical
+// query params always return identical rows from both endpoints.
+
+export interface BlogAdminFilterQuery {
+  status?: string;
+  category?: string;
+  search?: string;
+  sortBy?: string;
+  sortOrder?: string;
+}
+
+export function buildBlogAdminQuery(q: BlogAdminFilterQuery): {
+  filter: Record<string, any>;
+  sortQuery: Record<string, 1 | -1>;
+} {
+  const filter: Record<string, any> = {};
+
+  if (q.status)   filter.status = q.status;
+  if (q.category) filter.category = q.category;
+  if (q.search) {
+    filter.$or = [
+      { title:        { $regex: q.search, $options: "i" } },
+      { excerpt:      { $regex: q.search, $options: "i" } },
+      { "author.name":{ $regex: q.search, $options: "i" } },
+    ];
+  }
+
+  const ALLOWED_SORT = ["createdAt", "updatedAt", "publishedAt", "viewCount", "likeCount", "shareCount", "commentsCount"];
+  const sortField = ALLOWED_SORT.includes(q.sortBy as string) ? (q.sortBy as string) : "createdAt";
+  const sortQuery: Record<string, 1 | -1> = { [sortField]: q.sortOrder === "asc" ? 1 : -1 };
+
+  return { filter, sortQuery };
+}
+
 export const getAllBlogsAdmin = catchAsync(
   async (req: Request, res: Response) => {
     const {
@@ -413,40 +449,13 @@ export const getAllBlogsAdmin = catchAsync(
     const limitNumber = Math.min(50, Math.max(1, Number(limit)));
     const skip = (pageNumber - 1) * limitNumber;
 
-    // Build filter query
-    const filter: any = {};
-
-    if (status) {
-      filter.status = status;
-    }
-
-    if (category) {
-      filter.category = category;
-    }
-
-    if (search) {
-      filter.$or = [
-        { title: { $regex: search, $options: "i" } },
-        { excerpt: { $regex: search, $options: "i" } },
-        { "author.name": { $regex: search, $options: "i" } },
-      ];
-    }
-
-    // Build sort query
-    const sortQuery: any = {};
-    if (
-      [
-        "createdAt",
-        "updatedAt",
-        "publishedAt",
-        "viewCount",
-        "likeCount",
-      ].includes(sortBy as string)
-    ) {
-      sortQuery[sortBy as string] = sortOrder === "asc" ? 1 : -1;
-    } else {
-      sortQuery.createdAt = -1;
-    }
+    const { filter, sortQuery } = buildBlogAdminQuery({
+      status: status as string | undefined,
+      category: category as string | undefined,
+      search: search as string | undefined,
+      sortBy: sortBy as string | undefined,
+      sortOrder: sortOrder as string | undefined,
+    });
 
     const [blogs, totalBlogs] = await Promise.all([
       Blog.find(filter)
@@ -732,4 +741,61 @@ export const shareBlog = catchAsync(async (req: Request, res: Response) => {
     message: "Blog share recorded successfully",
     data: { shareCount: blog.shareCount },
   });
+});
+
+// ─── Blog performance CSV export ──────────────────────────────────────────────
+
+export const exportBlogs = catchAsync(async (req: Request, res: Response) => {
+  const { filter, sortQuery } = buildBlogAdminQuery({
+    status:    req.query.status    as string | undefined,
+    category:  req.query.category  as string | undefined,
+    search:    req.query.search    as string | undefined,
+    sortBy:    req.query.sortBy    as string | undefined,
+    sortOrder: req.query.sortOrder as string | undefined,
+  });
+
+  const blogs = await Blog.find(filter)
+    .populate("category", "name")
+    .select("title status author.name category viewCount likeCount shareCount commentsCount readTime publishedAt createdAt")
+    .sort(sortQuery)
+    .lean();
+
+  // Compute totals row
+  let totViews = 0, totLikes = 0, totShares = 0, totComments = 0;
+  const rows: Record<string, unknown>[] = blogs.map((b: any) => {
+    totViews    += b.viewCount    ?? 0;
+    totLikes    += b.likeCount    ?? 0;
+    totShares   += b.shareCount   ?? 0;
+    totComments += b.commentsCount ?? 0;
+    return {
+      Title:         b.title,
+      Status:        b.status,
+      Author:        b.author?.name ?? "",
+      Category:      b.category?.name ?? "",
+      "Views":       b.viewCount    ?? 0,
+      "Likes":       b.likeCount    ?? 0,
+      "Shares":      b.shareCount   ?? 0,
+      "Comments":    b.commentsCount ?? 0,
+      "Read Time (min)": b.readTime ?? 0,
+      "Published At":b.publishedAt ? new Date(b.publishedAt).toISOString().split("T")[0] : "",
+      "Created At":  b.createdAt   ? new Date(b.createdAt).toISOString().split("T")[0]   : "",
+    };
+  });
+
+  // Append totals row
+  rows.push({
+    Title: "TOTALS",
+    Status: "", Author: "", Category: "",
+    "Views": totViews, "Likes": totLikes,
+    "Shares": totShares, "Comments": totComments,
+    "Read Time (min)": "", "Published At": "", "Created At": "",
+  });
+
+  const dateStamp = new Date().toISOString().split("T")[0];
+  const filename = safeReportFilename("blog-performance", dateStamp) + ".csv";
+  const csv = toCsv(rows);
+
+  res.setHeader("Content-Type", "text/csv; charset=utf-8");
+  res.setHeader("Content-Disposition", `attachment; filename="${filename}"`);
+  res.send(csv);
 });

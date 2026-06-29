@@ -14,9 +14,11 @@ import {
   ExternalLink,
   Archive,
   BookOpen,
-  MessageSquare
+  MessageSquare,
+  Download
 } from 'lucide-react';
 import toast from 'react-hot-toast';
+import adminAPI from '../../services/api/adminAPI';
 import Button from '../ui/Button';
 import { Card, CardContent } from '../ui/Card';
 import Badge from '../ui/Badge';
@@ -90,6 +92,7 @@ const BlogList: React.FC = () => {
   const [showCommentManagement, setShowCommentManagement] = useState(false);
   const [selectedBlogs, setSelectedBlogs] = useState<string[]>([]);
   const [bulkLoading, setBulkLoading] = useState(false);
+  const [exportLoading, setExportLoading] = useState(false);
   const [selectedBlogForComments, setSelectedBlogForComments] = useState<Blog | null>(null);
   const [pagination, setPagination] = useState({
     currentPage: 1,
@@ -465,10 +468,37 @@ const BlogList: React.FC = () => {
             Create, edit, and manage your blog posts
           </p>
         </div>
-        <Button onClick={handleCreateBlog} size="md">
-          <Plus className="w-5 h-5 mr-2" />
-          Create Blog Post
-        </Button>
+        <div className="flex items-center gap-2">
+          <button
+            onClick={async () => {
+              setExportLoading(true);
+              try {
+                await adminAPI.exportBlogs({
+                  status: filters.status || undefined,
+                  category: filters.category || undefined,
+                  search: filters.search || undefined,
+                  sortBy: filters.sortBy || undefined,
+                  sortOrder: filters.sortOrder || undefined,
+                });
+              } catch {
+                toast.error('Export failed');
+              } finally {
+                setExportLoading(false);
+              }
+            }}
+            disabled={exportLoading}
+            className="flex items-center gap-2 px-3 py-2 text-sm text-indigo-700 border border-indigo-300 bg-indigo-50 rounded-lg hover:bg-indigo-100 disabled:opacity-50 transition-colors"
+          >
+            {exportLoading
+              ? <span className="animate-spin rounded-full h-4 w-4 border-b-2 border-indigo-600" />
+              : <Download className="w-4 h-4" />}
+            Export CSV
+          </button>
+          <Button onClick={handleCreateBlog} size="md">
+            <Plus className="w-5 h-5 mr-2" />
+            Create Blog Post
+          </Button>
+        </div>
       </div>
 
       {/* Stats Cards */}
