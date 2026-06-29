@@ -242,53 +242,6 @@ const TeachingSchedulePricingTab: React.FC<TeachingSchedulePricingTabProps> = ({
 
   return (
     <div className="space-y-8">
-      {/* ── Pricing Overview ── */}
-      {!isEducational && (
-        <div className="bg-white border border-gray-200 rounded-2xl p-6 shadow-sm">
-          <h3 className="text-lg font-bold text-gray-800 mb-6 flex items-center gap-2">
-            <DollarSign className="w-5 h-5 text-purple-600" />
-            Pricing Details
-          </h3>
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
-            <div>
-              <label className="block text-sm font-semibold text-gray-700 mb-2">
-                Base Price {!isFreeEvent && <span className="text-red-500">*</span>}
-              </label>
-              <div className="relative">
-                <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-                  <span className="text-gray-500 sm:text-sm">{currency}</span>
-                </div>
-                <input
-                  type="number"
-                  min="0"
-                  step="0.01"
-                  value={isFreeEvent ? '0' : basePrice}
-                  onChange={onBasePriceChange}
-                  disabled={isFreeEvent}
-                  placeholder="0.00"
-                  className={`w-full pl-12 pr-4 py-3 border rounded-xl shadow-sm focus:outline-none focus:ring-2 focus:ring-purple-500 text-lg font-medium transition-colors ${errors.basePrice ? 'border-red-400 focus:ring-red-500' : 'border-gray-200'
-                    } ${isFreeEvent ? 'bg-gray-100 text-gray-400 cursor-not-allowed' : 'bg-white'}`}
-                />
-              </div>
-              {errors.basePrice && <p className="text-red-500 text-sm mt-1">{errors.basePrice}</p>}
-              <p className="mt-2 text-xs text-gray-500">This price will be used as default for new sessions.</p>
-            </div>
-            <div>
-              <label className="block text-sm font-semibold text-gray-700 mb-2">Currency</label>
-              <select
-                value={currency}
-                onChange={onCurrencyChange}
-                className="w-full px-4 py-3 border border-gray-200 rounded-xl shadow-sm focus:outline-none focus:ring-2 focus:ring-purple-500 text-base font-medium bg-white"
-              >
-                {CURRENCIES.map((c) => (
-                  <option key={c} value={c}>{c}</option>
-                ))}
-              </select>
-            </div>
-          </div>
-        </div>
-      )}
-
       {/* ── Sessions Management ── */}
       <div className="bg-white border border-gray-200 rounded-2xl shadow-sm overflow-hidden">
         {/* Header */}

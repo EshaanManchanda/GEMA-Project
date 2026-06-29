@@ -908,21 +908,6 @@ const AdminEditEventPage: React.FC = () => {
     // Schedule validation
     if (validateAll || activeTab === "schedule") {
       const hasSchedules = schedules.length > 0;
-      if (!formData.isFreeEvent) {
-        if (!formData.basePrice?.trim() && !hasSchedules) {
-          newErrors.basePrice = "Base price is required";
-        } else if (
-          formData.basePrice?.trim() && (isNaN(parseFloat(formData.basePrice)) ||
-          parseFloat(formData.basePrice) < 0)
-        ) {
-          newErrors.basePrice =
-            "Price must be a valid number greater than or equal to 0";
-        }
-      }
-
-      if (!unlimitedCapacity && !formData.capacity?.trim() && !hasSchedules) {
-        newErrors.capacity = "Event capacity is required";
-      }
 
       // Validate each schedule
       schedules.forEach((schedule, index) => {
@@ -948,7 +933,7 @@ const AdminEditEventPage: React.FC = () => {
           }
         }
 
-        if (!formData.isFreeEvent) {
+        if (!formData.isFreeEvent && (!schedule.isFreeSession)) {
           if (!schedule.price) {
             newErrors[`schedule_${index}_price`] = "Price is required";
           } else if (
@@ -1073,8 +1058,8 @@ const AdminEditEventPage: React.FC = () => {
             : undefined,
         isFreeEvent: formData.isFreeEvent,
         vendorId: formData.vendorId?.trim() || undefined,
-        price: formData.isFreeEvent ? 0 : parseFloat(formData.basePrice || "0"),
-        currency: formData.currency,
+        price: schedules.length > 0 ? parseFloat(schedules[0].price || "0") : 0,
+        currency: "AED", // Defaulted since global currency is removed
         tags: formData.tags,
 
         // Admin-specific fields

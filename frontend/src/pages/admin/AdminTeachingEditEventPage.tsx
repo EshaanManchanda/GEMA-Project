@@ -639,12 +639,6 @@ const AdminTeachingEditEventPage: React.FC = () => {
 
     // Schedule validation
     if (validateAll || activeTab === 'schedule') {
-      if (!formData.basePrice?.trim() && schedules.length === 0) {
-        newErrors.basePrice = 'Base price is required';
-      } else if (formData.basePrice?.trim() && (isNaN(parseFloat(formData.basePrice)) || parseFloat(formData.basePrice) < 0)) {
-        newErrors.basePrice = 'Price must be a valid number greater than or equal to 0';
-      }
-
       // Validate each schedule
       schedules.forEach((schedule, index) => {
         if (!schedule.startDate) {
@@ -665,10 +659,12 @@ const AdminTeachingEditEventPage: React.FC = () => {
           }
         }
 
-        if (!schedule.price) {
-          newErrors[`schedule_${index}_price`] = 'Price is required';
-        } else if (isNaN(parseFloat(schedule.price)) || parseFloat(schedule.price) < 0) {
-          newErrors[`schedule_${index}_price`] = 'Price must be a valid number';
+        if (!schedule.isFreeSession) {
+          if (!schedule.price) {
+            newErrors[`schedule_${index}_price`] = 'Price is required';
+          } else if (isNaN(parseFloat(schedule.price)) || parseFloat(schedule.price) < 0) {
+            newErrors[`schedule_${index}_price`] = 'Price must be a valid number';
+          }
         }
       });
     }
@@ -822,8 +818,8 @@ const AdminTeachingEditEventPage: React.FC = () => {
         },
         meetingLink: (formData.teachingMode === 'Online' || formData.teachingMode === 'Hybrid') ? formData.meetingLink : undefined,
         googlePlaceId: formData.googlePlaceId,
-        price: parseFloat(formData.basePrice || "0"),
-        currency: formData.currency,
+        price: schedules.length > 0 ? parseFloat(schedules[0].price || "0") : 0,
+        currency: "AED", // Defaulted since global currency is removed
         tags: formData.tags,
 
         // Admin-specific fields
@@ -852,7 +848,7 @@ const AdminTeachingEditEventPage: React.FC = () => {
           totalSeats: schedule.unlimitedSeats
             ? undefined
             : parseInt(schedule.availableSeats) || undefined,
-          price: schedule.isFreeSession ? 0 : (schedule.price !== '' && schedule.price !== null && schedule.price !== undefined ? (parseFloat(schedule.price) || 0) : (parseFloat(formData.basePrice) || 0)),
+          price: schedule.isFreeSession ? 0 : (schedule.price !== '' && schedule.price !== null && schedule.price !== undefined ? (parseFloat(schedule.price) || 0) : 0),
           unlimitedSeats: schedule.unlimitedSeats || false,
           isSpecialDate: schedule.isSpecialDate || false,
           specialDates: schedule.specialDates || [],

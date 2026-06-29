@@ -465,7 +465,7 @@ const VendorEventFormPage: React.FC = () => {
       if (!schedule.unlimitedSeats && (!schedule.availableSeats || parseInt(schedule.availableSeats) <= 0)) {
         newErrors[`schedule_${index}_availableSeats`] = 'Available seats must be greater than 0';
       }
-      if (!isFreeEvent && (!schedule.price || parseFloat(schedule.price) < 0)) {
+      if (!schedule.isFreeSession && (!schedule.price || parseFloat(schedule.price) < 0)) {
         newErrors[`schedule_${index}_price`] = 'Price must be 0 or greater';
       }
     });
@@ -531,8 +531,8 @@ const VendorEventFormPage: React.FC = () => {
         },
         ...(formData.meetingLink && { meetingLink: formData.meetingLink }),
         price: minPrice,
-        currency: formData.currency,
-        ...(formData.capacity && parseInt(formData.capacity) > 0 ? { capacity: parseInt(formData.capacity) } : {}),
+        currency: "AED",
+        ...(schedules.length > 0 && parseInt(schedules[0].availableSeats) > 0 ? { capacity: parseInt(schedules[0].availableSeats) } : {}),
         requirePhoneVerification: formData.requirePhoneVerification,
         tags: formData.tags,
         timezone,
