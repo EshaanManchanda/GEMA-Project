@@ -723,7 +723,7 @@ export const exportCertificates = async (req: AuthRequest, res: Response, next: 
     // Fetch all matching certificates (up to 10k; adjust limit if needed)
     const certs = await Certificate.find(filter)
       .populate("eventId", "title")
-      .populate("userId", "firstName lastName email phone role")
+      .populate("userId", "firstName lastName email phone role schoolName")
       .sort({ issuedAt: -1, createdAt: -1 })
       .limit(10_000)
       .lean<any[]>();
@@ -774,6 +774,10 @@ export const exportCertificates = async (req: AuthRequest, res: Response, next: 
         "User Email":            user?.email ?? "",
         "User Phone":            user?.phone ?? "",
         "User Role":             user?.role ?? "",
+        "User School Name":      user?.schoolName ?? "",
+
+        // School Name: sourced from cert data (set at issuance) → user profile → student record
+        "School Name":           certData?.school ?? user?.schoolName ?? "",
 
         // Student profile fields (fully expanded)
         "Student First Name":    student?.firstName ?? "",

@@ -19,6 +19,7 @@ import HomeSkeleton from '@/components/client/home/HomeSkeleton';
 
 // Additional Sections
 import ReviewCarouselSwiper from '@/components/client/ReviewCarouselKeen';
+import GoogleReviewsCarousel from '@/components/client/GoogleReviewsCarousel';
 import FeaturedBlogsSection from '@/components/sections/FeaturedBlogsSection';
 import WhyChooseUs from '@/components/sections/WhyChooseUs';
 import HomepageFAQs from '@/components/sections/HomepageFAQs';
@@ -255,6 +256,11 @@ const HomePage: React.FC = () => {
         {/* Customer Reviews */}
         <ScrollReveal>
           <ReviewCarouselSwiper />
+        </ScrollReveal>
+
+        {/* Google Reviews Carousel — renders nothing when empty */}
+        <ScrollReveal>
+          <GoogleReviewsCarousel />
         </ScrollReveal>
 
         {/* Latest Blogs */}

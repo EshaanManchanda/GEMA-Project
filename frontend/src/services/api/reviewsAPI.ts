@@ -126,10 +126,59 @@ const reviewsAPI = {
     }
   },
 
-  // Google Maps Integration
+  // Google Maps Integration — DB-backed sync engine
   getGoogleReviews: async (eventId: string) => {
     try {
       const response = await ApiService.get(`/reviews/google/${eventId}`);
+      return response.data;
+    } catch (error) {
+      throw error;
+    }
+  },
+
+  // Admin: trigger sync for an event
+  syncGoogleReviews: async (eventId: string) => {
+    try {
+      const response = await ApiService.post(`/reviews/google/${eventId}/sync`);
+      return response.data;
+    } catch (error) {
+      throw error;
+    }
+  },
+
+  // Admin: get all stored reviews (includes hidden)
+  getAdminGoogleReviews: async (eventId: string) => {
+    try {
+      const response = await ApiService.get(`/reviews/google/${eventId}/admin`);
+      return response.data;
+    } catch (error) {
+      throw error;
+    }
+  },
+
+  // Admin: toggle visibility of a stored review
+  toggleGoogleReviewVisibility: async (
+    reviewDocId: string,
+    isVisible: boolean,
+    hiddenReason?: string,
+  ) => {
+    try {
+      const response = await ApiService.patch(
+        `/reviews/google/review/${reviewDocId}/visibility`,
+        { isVisible, hiddenReason },
+      );
+      return response.data;
+    } catch (error) {
+      throw error;
+    }
+  },
+
+  // Public: homepage carousel reviews (visible 4-5★ across all events)
+  getHomepageGoogleReviews: async (limit = 12) => {
+    try {
+      const response = await ApiService.get('/reviews/google/homepage', {
+        params: { limit },
+      });
       return response.data;
     } catch (error) {
       throw error;

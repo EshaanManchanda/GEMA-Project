@@ -415,13 +415,6 @@ export const initializePWA = async (): Promise<void> => {
 
     if (registered) {
       logger.debug('[PWA] Service worker registered successfully');
-
-      // Request notification permission on user interaction
-      document.addEventListener('click', async () => {
-        if (pwaService.notificationPermission === 'default') {
-          await pwaService.requestNotificationPermission();
-        }
-      }, { once: true });
     }
   } catch (error) {
     logger.error('[PWA] Failed to initialize PWA:', error);

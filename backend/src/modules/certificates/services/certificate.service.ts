@@ -49,6 +49,7 @@ export interface IssueForEventOpts {
   userId: string;
   reviewId?: string;
   recipient: { name: string; email: string };
+  context?: { courseId?: string; studentId?: string; customRef?: string };
   templateId?: string;
   certificateTypeSlug?: string;
   data?: Record<string, any>;
@@ -337,6 +338,7 @@ class CertificateService {
       userId: opts.userId,
       reviewId: opts.reviewId,
       recipient: opts.recipient,
+      context: opts.context,
       data: enrichedData,
       issuedBy: opts.issuedBy,
     });

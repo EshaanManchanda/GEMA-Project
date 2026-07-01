@@ -1,5 +1,6 @@
 import { Router } from "express";
 import { body, param, query } from "express-validator";
+import rateLimit from "express-rate-limit";
 import {
   createReview,
   getReviews,
@@ -18,9 +19,26 @@ import {
   getReviewLink,
   submitReviewViaLink,
   generateReviewLink,
+  syncGoogleReviews,
+  getAdminGoogleReviews,
+  toggleGoogleReviewVisibility,
+  getHomepageGoogleReviews,
 } from "../controllers/review.controller";
 import { authenticate, authorize } from "../middleware/auth";
 import { ReviewType, FlagReason, ReviewStatus } from "../models/index";
+
+// Strict limiter for the sync endpoint — calls the paid Google Places API
+const googleSyncLimiter = rateLimit({
+  windowMs: 60 * 60 * 1000, // 1 hour
+  max: 30, // 30 syncs per IP per hour (covers heavy admin use)
+  message: {
+    success: false,
+    message: "Too many sync requests. Please wait before syncing again.",
+    error: "RATE_LIMIT_EXCEEDED",
+  },
+  standardHeaders: true,
+  legacyHeaders: false,
+});
 
 const router = Router();
 
@@ -103,7 +121,18 @@ router.post(
   submitReviewViaLink,
 );
 
-// Google Maps reviews
+// Google Maps reviews — DB-backed, public
+router.get(
+  "/google/homepage",
+  [
+    query("limit")
+      .optional()
+      .isInt({ min: 1, max: 24 })
+      .withMessage("Limit must be between 1 and 24"),
+  ],
+  getHomepageGoogleReviews,
+);
+
 router.get(
   "/google/:eventId",
   [param("eventId").isMongoId().withMessage("Invalid event ID")],
@@ -300,6 +329,41 @@ router.post(
   authorize(["admin", "vendor"]),
   [param("eventId").isMongoId().withMessage("Invalid event ID")],
   generateReviewLink,
+);
+
+// ─── Google Reviews Sync Engine (admin/vendor) ────────────────────────────────
+
+// Sync Google reviews for an event (rate-limited — calls paid Google API)
+router.post(
+  "/google/:eventId/sync",
+  googleSyncLimiter,
+  authorize(["admin", "vendor"]),
+  [param("eventId").isMongoId().withMessage("Invalid event ID")],
+  syncGoogleReviews,
+);
+
+// Get all stored Google reviews for an event (includes hidden)
+router.get(
+  "/google/:eventId/admin",
+  authorize(["admin", "vendor"]),
+  [param("eventId").isMongoId().withMessage("Invalid event ID")],
+  getAdminGoogleReviews,
+);
+
+// Toggle visibility of a stored Google review
+router.patch(
+  "/google/review/:reviewDocId/visibility",
+  authorize(["admin", "vendor"]),
+  [
+    param("reviewDocId").isMongoId().withMessage("Invalid review ID"),
+    body("isVisible").isBoolean().withMessage("isVisible must be a boolean"),
+    body("hiddenReason")
+      .optional()
+      .trim()
+      .isLength({ max: 300 })
+      .withMessage("Hidden reason cannot exceed 300 characters"),
+  ],
+  toggleGoogleReviewVisibility,
 );
 
 // Admin: moderate a review

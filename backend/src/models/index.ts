@@ -267,6 +267,9 @@ export type { ITeacherBooking } from "./TeacherBooking";
 export { default as Gallery } from "./Gallery";
 export type { IGallery, IGalleryImage } from "./Gallery";
 
+export { default as GoogleReview } from "./GoogleReview";
+export type { IGoogleReview } from "./GoogleReview";
+
 export { default as Student } from "./Student";
 export type { IStudent, IStudentModel } from "./Student";
 

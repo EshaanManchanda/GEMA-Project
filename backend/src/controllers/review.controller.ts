@@ -7,6 +7,7 @@ import {
   Order,
   Event,
   User,
+  Vendor,
   Booking,
   Registration,
   RegistrationStatus,
@@ -14,10 +15,13 @@ import {
   ReviewType,
   ReviewStatus,
   FlagReason,
+  GoogleReview,
 } from "../models/index";
 import { AppError } from "../middleware/index";
 import { AuthRequest } from "../types/index";
 import { certificateService } from "../modules/certificates/services/certificate.service";
+import { googlePlacesService } from "../services/googlePlaces.service";
+import Student from "../models/Student";
 import logger from "../config/logger";
 
 const hasConfirmedEventBooking = async (
@@ -894,7 +898,7 @@ export const moderateReview = async (
   }
 };
 
-// @desc    Get Google Maps reviews for event
+// @desc    Get Google Maps reviews for event (DB-backed, no live API call)
 // @route   GET /api/reviews/google/:eventId
 // @access  Public
 export const getGoogleReviews = async (
@@ -905,9 +909,7 @@ export const getGoogleReviews = async (
   try {
     const { eventId } = req.params;
 
-    // Fetch event to get Google Place ID
     const event = await Event.findById(eventId).select("googlePlaceId title");
-
     if (!event) {
       return next(new AppError("Event not found", 404));
     }
@@ -918,41 +920,37 @@ export const getGoogleReviews = async (
         message: "No Google Place ID configured for this event",
         data: {
           reviews: [],
-          rating: 0,
+          averageRating: 0,
           totalRatings: 0,
           hasGooglePlaceId: false,
+          source: "db",
+          lastSyncedAt: null,
         },
       });
     }
 
-    const { googlePlacesService } =
-      await import("../services/googlePlaces.service");
-    const googleData = await googlePlacesService.getPlaceReviews(
-      event.googlePlaceId,
+    const stored = await googlePlacesService.getStoredReviews(
+      event._id as mongoose.Types.ObjectId,
+      { visibleOnly: true },
     );
 
     res.status(200).json({
       success: true,
       message: "Google reviews retrieved successfully",
-      data: {
-        ...googleData,
-        hasGooglePlaceId: true,
-        attribution: "Powered by Google",
-      },
+      data: stored,
     });
   } catch (error: any) {
     logger.error("Error fetching Google reviews:", error);
-
-    // Return empty reviews on error instead of failing the request
-    // This ensures the app doesn't break if Google API is down
     res.status(200).json({
       success: true,
       message: error.message || "Failed to fetch Google reviews",
       data: {
         reviews: [],
-        rating: 0,
+        averageRating: 0,
         totalRatings: 0,
         hasGooglePlaceId: true,
+        source: "db",
+        lastSyncedAt: null,
         error: error.message,
       },
     });
@@ -1003,6 +1001,18 @@ export const getReviewLink = async (req: Request, res: Response, next: NextFunct
       await user.save();
     }
 
+    // Find or create Student record linked to this user (parentUserId = user)
+    let student = await Student.findOne({ parentUserId: user._id, email: emailLower });
+    if (!student) {
+      student = await Student.create({
+        parentUserId: user._id,
+        email: emailLower,
+        firstName: rawFirst?.trim() || emailLower.split("@")[0],
+        lastName: rawLast?.trim() || ".",
+        status: "active",
+      });
+    }
+
     // Check if already reviewed
     const existing = await Review.findOne({
       user: user._id,
@@ -1047,6 +1057,7 @@ export const getReviewLink = async (req: Request, res: Response, next: NextFunct
       data: {
         alreadyReviewed: false,
         userId: user._id,
+        studentId: student._id,
         eventId,
         eventTitle: event.title,
       },
@@ -1071,10 +1082,14 @@ export const submitReviewViaLink = async (req: Request, res: Response, next: Nex
     const event = await Event.findById(eventId).select("title");
     if (!event) return next(new AppError("Event not found", 404));
 
-    const user = await User.findOne({ email: email.toLowerCase() });
+    const emailLower = email.toLowerCase();
+    const user = await User.findOne({ email: emailLower });
     if (!user) {
       return next(new AppError("Please open the review link first to register", 400));
     }
+
+    // Look up Student created during getReviewLink (for certificate context)
+    const student = await Student.findOne({ parentUserId: user._id, email: emailLower }).lean();
 
     // Prevent duplicate
     const existing = await Review.findOne({
@@ -1119,7 +1134,7 @@ export const submitReviewViaLink = async (req: Request, res: Response, next: Nex
     // Only issue certificate for immediately-approved reviews.
     // PENDING reviews (those with descriptions) get their certificate when admin approves.
     if (review.status === ReviewStatus.APPROVED) {
-      triggerCertificateForReview(review, user._id).catch((err) =>
+      triggerCertificateForReview(review, user._id, student?._id?.toString()).catch((err) =>
         logger.error("Certificate trigger failed:", err),
       );
     }
@@ -1128,6 +1143,172 @@ export const submitReviewViaLink = async (req: Request, res: Response, next: Nex
       success: true,
       message: "Review submitted successfully",
       data: { review },
+    });
+  } catch (error) {
+    next(error);
+  }
+};
+
+// ─── Google Reviews Sync Engine ──────────────────────────────────────────────
+
+/** Verify the caller is an admin or owns the given event. Returns null if OK, AppError if not. */
+async function assertGoogleReviewAccess(
+  req: AuthRequest,
+  eventId: string,
+): Promise<{ event: InstanceType<typeof Event> } | never> {
+  const event = await Event.findById(eventId).select("googlePlaceId vendorId title");
+  if (!event) throw new AppError("Event not found", 404);
+
+  const isAdmin = (req.user as any)?.role === "admin";
+  if (!isAdmin) {
+    const vendor = await Vendor.findOne({ userId: (req.user as any)?._id }).lean();
+    if (!vendor || event.vendorId?.toString() !== (vendor._id as any).toString()) {
+      throw new AppError("Access denied — you do not own this event", 403);
+    }
+  }
+
+  return { event: event as any };
+}
+
+// @desc    Admin: trigger a Google reviews sync for an event
+// @route   POST /api/reviews/google/:eventId/sync
+// @access  Admin / event owner vendor
+export const syncGoogleReviews = async (
+  req: AuthRequest,
+  res: Response,
+  next: NextFunction,
+) => {
+  try {
+    const { eventId } = req.params;
+    const { event } = await assertGoogleReviewAccess(req, eventId);
+
+    if (!event.googlePlaceId) {
+      return next(
+        new AppError(
+          "This event has no Google Place ID configured. Add one before syncing.",
+          400,
+        ),
+      );
+    }
+
+    const summary = await googlePlacesService.syncPlaceReviews(
+      event._id as mongoose.Types.ObjectId,
+      event.googlePlaceId,
+    );
+
+    res.status(200).json({
+      success: true,
+      message: `Sync complete — ${summary.totalFetched} reviews fetched`,
+      data: summary,
+    });
+  } catch (error) {
+    next(error);
+  }
+};
+
+// @desc    Admin: get all stored Google reviews for an event (includes hidden)
+// @route   GET /api/reviews/google/:eventId/admin
+// @access  Admin / event owner vendor
+export const getAdminGoogleReviews = async (
+  req: AuthRequest,
+  res: Response,
+  next: NextFunction,
+) => {
+  try {
+    const { eventId } = req.params;
+    const { event } = await assertGoogleReviewAccess(req, eventId);
+
+    if (!event.googlePlaceId) {
+      return res.status(200).json({
+        success: true,
+        data: {
+          reviews: [],
+          averageRating: 0,
+          totalRatings: 0,
+          hasGooglePlaceId: false,
+          source: "db",
+          lastSyncedAt: null,
+          visibleCount: 0,
+          hiddenCount: 0,
+        },
+      });
+    }
+
+    const stored = await googlePlacesService.getStoredReviews(
+      event._id as mongoose.Types.ObjectId,
+      { visibleOnly: false },
+    );
+
+    res.status(200).json({ success: true, data: stored });
+  } catch (error) {
+    next(error);
+  }
+};
+
+// @desc    Admin: toggle visibility of a stored Google review
+// @route   PATCH /api/reviews/google/review/:reviewDocId/visibility
+// @access  Admin / event owner vendor
+export const toggleGoogleReviewVisibility = async (
+  req: AuthRequest,
+  res: Response,
+  next: NextFunction,
+) => {
+  try {
+    const { reviewDocId } = req.params;
+    const { isVisible, hiddenReason } = req.body as {
+      isVisible: boolean;
+      hiddenReason?: string;
+    };
+
+    if (typeof isVisible !== "boolean") {
+      return next(new AppError("isVisible must be a boolean", 400));
+    }
+
+    const doc = await GoogleReview.findById(reviewDocId);
+    if (!doc) return next(new AppError("Review not found", 404));
+
+    // Ownership check against the review's event
+    await assertGoogleReviewAccess(req, doc.eventId.toString());
+
+    if (isVisible) {
+      doc.isVisible = true;
+      doc.hiddenReason = undefined;
+      doc.hiddenBy = undefined;
+      doc.hiddenAt = undefined;
+    } else {
+      doc.isVisible = false;
+      doc.hiddenReason = hiddenReason;
+      doc.hiddenBy = (req.user as any)?._id;
+      doc.hiddenAt = new Date();
+    }
+
+    await doc.save();
+
+    res.status(200).json({
+      success: true,
+      message: `Review ${isVisible ? "shown" : "hidden"}`,
+      data: { _id: doc._id, isVisible: doc.isVisible },
+    });
+  } catch (error) {
+    next(error);
+  }
+};
+
+// @desc    Public: homepage carousel — visible 4-5★ reviews across all events
+// @route   GET /api/reviews/google/homepage
+// @access  Public
+export const getHomepageGoogleReviews = async (
+  req: Request,
+  res: Response,
+  next: NextFunction,
+) => {
+  try {
+    const limit = Math.min(parseInt(String(req.query.limit ?? "12"), 10), 24);
+    const reviews = await googlePlacesService.getHomepageReviews(limit);
+
+    res.status(200).json({
+      success: true,
+      data: { reviews },
     });
   } catch (error) {
     next(error);
@@ -1152,11 +1333,10 @@ export const generateReviewLink = async (req: AuthRequest, res: Response, next: 
 
 // ─── Private helpers ──────────────────────────────────────────────────────────
 
-async function triggerCertificateForReview(review: any, userId: any): Promise<void> {
-  const user = await User.findById(userId).select("firstName lastName email");
+async function triggerCertificateForReview(review: any, userId: any, studentId?: string): Promise<void> {
+  const user = await User.findById(userId).select("firstName lastName email schoolName");
   if (!user || !user.email) return;
 
-  // issueForEvent: resolves template from event.certificateTypes, allocates serial, queues PDF + email
   await certificateService.issueForEvent({
     eventId: review.event.toString(),
     userId: userId.toString(),
@@ -1165,7 +1345,12 @@ async function triggerCertificateForReview(review: any, userId: any): Promise<vo
       name: `${user.firstName} ${user.lastName}`.trim(),
       email: user.email,
     },
-    data: { rating: review.rating, date: review.createdAt },
+    context: studentId ? { studentId } : undefined,
+    data: {
+      rating: review.rating,
+      date: review.createdAt,
+      ...(user.schoolName ? { school: user.schoolName } : {}),
+    },
     sendEmail: true,
   });
 }
