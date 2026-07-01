@@ -660,53 +660,58 @@ class AnalyticsService {
 
   /**
    * Helper: Get event revenue statistics
+   * Starts from Orders (not Events) to avoid O(events × orders) correlated $lookup
+   * that exceeds MongoDB's 100 MB aggregation memory limit on large datasets.
    */
   private async getEventRevenueStats(
     vendorId?: string,
     dateRange?: { start: Date; end: Date },
   ) {
-    const matchFilter: any = { isDeleted: { $ne: true } };
-    if (vendorId) matchFilter.vendorId = new mongoose.Types.ObjectId(vendorId);
+    const eventPostMatch: any = { "event.isDeleted": { $ne: true } };
+    if (vendorId) {
+      eventPostMatch["event.vendorId"] = new mongoose.Types.ObjectId(vendorId);
+    }
     if (dateRange) {
-      matchFilter.createdAt = { $gte: dateRange.start, $lte: dateRange.end };
+      eventPostMatch["event.createdAt"] = {
+        $gte: dateRange.start,
+        $lte: dateRange.end,
+      };
     }
 
-    return await Event.aggregate([
-      { $match: matchFilter },
-      {
-        $lookup: {
-          from: "orders",
-          let: { eventId: "$_id" },
-          pipeline: [
-            { $match: { $expr: { $eq: ["$paymentStatus", "paid"] } } },
-            { $unwind: "$items" },
-            { $match: { $expr: { $eq: ["$items.eventId", "$$eventId"] } } },
-            {
-              $group: {
-                _id: null,
-                revenue: { $sum: "$items.totalPrice" },
-                tickets: { $sum: "$items.quantity" },
-              },
-            },
-          ],
-          as: "orderData",
-        },
-      },
-      {
-        $project: {
-          eventId: "$_id",
-          title: "$title",
-          revenue: {
-            $ifNull: [{ $arrayElemAt: ["$orderData.revenue", 0] }, 0],
-          },
-          tickets: {
-            $ifNull: [{ $arrayElemAt: ["$orderData.tickets", 0] }, 0],
+    return await Order.aggregate(
+      [
+        { $match: { paymentStatus: "paid" } },
+        { $unwind: "$items" },
+        {
+          $group: {
+            _id: "$items.eventId",
+            revenue: { $sum: "$items.totalPrice" },
+            tickets: { $sum: "$items.quantity" },
           },
         },
-      },
-      { $sort: { revenue: -1 } },
-      { $limit: 10 },
-    ]);
+        {
+          $lookup: {
+            from: "events",
+            localField: "_id",
+            foreignField: "_id",
+            as: "event",
+          },
+        },
+        { $unwind: { path: "$event", preserveNullAndEmptyArrays: false } },
+        { $match: eventPostMatch },
+        {
+          $project: {
+            eventId: "$_id",
+            title: "$event.title",
+            revenue: 1,
+            tickets: 1,
+          },
+        },
+        { $sort: { revenue: -1 } },
+        { $limit: 10 },
+      ],
+      { allowDiskUse: true },
+    );
   }
 
   /**
@@ -756,62 +761,63 @@ class AnalyticsService {
 
   /**
    * Helper: Get top performing events
+   * Starts from Orders (not Events) to avoid O(events × orders) correlated $lookup.
    */
   private async getTopPerformingEvents(vendorId?: string, limit: number = 10) {
-    const matchFilter: any = { isDeleted: { $ne: true } };
-    if (vendorId) matchFilter.vendorId = new mongoose.Types.ObjectId(vendorId);
+    const eventPostMatch: any = { "event.isDeleted": { $ne: true } };
+    if (vendorId) {
+      eventPostMatch["event.vendorId"] = new mongoose.Types.ObjectId(vendorId);
+    }
 
-    return await Event.aggregate([
-      { $match: matchFilter },
-      {
-        $lookup: {
-          from: "orders",
-          let: { eventId: "$_id" },
-          pipeline: [
-            { $match: { $expr: { $eq: ["$paymentStatus", "paid"] } } },
-            { $unwind: "$items" },
-            { $match: { $expr: { $eq: ["$items.eventId", "$$eventId"] } } },
-            {
-              $group: {
-                _id: null,
-                revenue: { $sum: "$items.totalPrice" },
-                tickets: { $sum: "$items.quantity" },
-              },
+    return await Order.aggregate(
+      [
+        { $match: { paymentStatus: "paid" } },
+        { $unwind: "$items" },
+        {
+          $group: {
+            _id: "$items.eventId",
+            revenue: { $sum: "$items.totalPrice" },
+            tickets: { $sum: "$items.quantity" },
+          },
+        },
+        {
+          $lookup: {
+            from: "events",
+            localField: "_id",
+            foreignField: "_id",
+            as: "event",
+          },
+        },
+        { $unwind: { path: "$event", preserveNullAndEmptyArrays: false } },
+        { $match: eventPostMatch },
+        {
+          $lookup: {
+            from: "reviews",
+            localField: "_id",
+            foreignField: "event",
+            pipeline: [
+              { $match: { status: "approved" } },
+              { $group: { _id: null, avgRating: { $avg: "$rating" } } },
+            ],
+            as: "reviewData",
+          },
+        },
+        {
+          $project: {
+            eventId: "$_id",
+            title: "$event.title",
+            revenue: 1,
+            tickets: 1,
+            rating: {
+              $ifNull: [{ $arrayElemAt: ["$reviewData.avgRating", 0] }, 0],
             },
-          ],
-          as: "orderData",
-        },
-      },
-      {
-        $lookup: {
-          from: "reviews",
-          localField: "_id",
-          foreignField: "event",
-          pipeline: [
-            { $match: { status: "approved" } },
-            { $group: { _id: null, avgRating: { $avg: "$rating" } } },
-          ],
-          as: "reviewData",
-        },
-      },
-      {
-        $project: {
-          eventId: "$_id",
-          title: "$title",
-          revenue: {
-            $ifNull: [{ $arrayElemAt: ["$orderData.revenue", 0] }, 0],
-          },
-          tickets: {
-            $ifNull: [{ $arrayElemAt: ["$orderData.tickets", 0] }, 0],
-          },
-          rating: {
-            $ifNull: [{ $arrayElemAt: ["$reviewData.avgRating", 0] }, 0],
           },
         },
-      },
-      { $sort: { revenue: -1 } },
-      { $limit: limit },
-    ]);
+        { $sort: { revenue: -1 } },
+        { $limit: limit },
+      ],
+      { allowDiskUse: true },
+    );
   }
 }
 

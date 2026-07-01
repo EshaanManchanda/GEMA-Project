@@ -192,6 +192,8 @@ const AdminEventDetailPage: React.FC = () => {
     data: performance,
     isLoading: perfLoading,
     isError: perfError,
+    error: perfErrorObj,
+    refetch: refetchPerf,
   } = useEventPerformanceQuery(id ?? '', {
     enabled: !!id && activeTab === 'analytics',
   });
@@ -1307,9 +1309,23 @@ const AdminEventDetailPage: React.FC = () => {
 
                 {/* ── Error state ── */}
                 {perfError && !perfLoading && (
-                  <div className="bg-red-50 border border-red-100 rounded-xl p-4 text-sm text-red-600">
-                    Failed to load analytics data. Please refresh or try again.
-                  </div>
+                  (perfErrorObj as any)?.response?.status === 404 ? (
+                    <div className="bg-amber-50 border border-amber-100 rounded-xl p-6 text-center">
+                      <AlertTriangle className="w-8 h-8 text-amber-400 mx-auto mb-2" />
+                      <p className="text-sm font-medium text-amber-800">Event not found</p>
+                      <p className="text-xs text-amber-600 mt-1">This event no longer exists in the database.</p>
+                    </div>
+                  ) : (
+                    <div className="bg-red-50 border border-red-100 rounded-xl p-4 flex items-center justify-between gap-4">
+                      <p className="text-sm text-red-600">Failed to load analytics data. Please refresh or try again.</p>
+                      <button
+                        onClick={() => refetchPerf()}
+                        className="shrink-0 text-xs font-medium text-red-600 border border-red-300 rounded-lg px-3 py-1.5 hover:bg-red-100 transition-colors"
+                      >
+                        Retry
+                      </button>
+                    </div>
+                  )
                 )}
               </>
             )}
