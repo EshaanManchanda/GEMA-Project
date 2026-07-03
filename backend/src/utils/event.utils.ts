@@ -60,13 +60,16 @@ export const buildPublicEventFilter = (additionalFilters: any = {}) => {
 
   // Add expiration filter unless explicitly requested to include past events
   if (!additionalFilters.includePast) {
-    // Event is visible if: endDate >= (now - 24 hours)
+    // Event is visible if: endDate >= (now - 24 hours) OR it has no schedules
     // This means events remain visible until 24 hours after their actual end date
     baseFilter.$or = [
       // New format: check endDate with buffer
       { "dateSchedule.endDate": { $gte: bufferTime } },
       // Legacy format: check date field with buffer
       { "dateSchedule.date": { $gte: bufferTime } },
+      // Events with no schedules never expire automatically
+      { dateSchedule: { $size: 0 } },
+      { dateSchedule: { $exists: false } }
     ];
   }
 
@@ -182,7 +185,7 @@ export const isEventPubliclyVisible = (event: any): boolean => {
 
   // Check dateSchedule manually if isExpired method not available
   if (!event.dateSchedule || event.dateSchedule.length === 0) {
-    return false;
+    return true; // Events without schedules never expire automatically
   }
 
   const now = new Date();

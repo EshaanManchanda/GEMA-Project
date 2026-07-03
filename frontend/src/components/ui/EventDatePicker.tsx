@@ -32,6 +32,7 @@ interface DateSchedule {
   isOverride?: boolean;
   /** Optional time slots per date (from backend dateSchedule[].timeSlots). */
   timeSlots?: TimeSlot[];
+  description?: string;
 }
 
 interface EventDatePickerProps {
@@ -300,6 +301,11 @@ const EventDatePicker: React.FC<EventDatePickerProps> = ({
 
                 return (
                   <div className="mt-2 space-y-1">
+                    {schedule.description && (
+                      <div className="text-xs font-medium text-gray-700 bg-white/50 px-2 py-1 rounded border border-primary-200/50 inline-block mb-1">
+                        {schedule.description}
+                      </div>
+                    )}
                     {!hasSlots && (schedule as any).startTime && (schedule as any).endTime && (
                       <div className="flex items-center gap-2 text-xs text-primary-700">
                         <span>

@@ -23,6 +23,7 @@ interface Block {
   isUnlimited: boolean;
   scheduleId: string; // The ID to pass when enrolling
   teacherName?: string;
+  description?: string;
 }
 
 export const ProgramScheduleList: React.FC<ProgramScheduleListProps> = ({
@@ -76,8 +77,8 @@ export const ProgramScheduleList: React.FC<ProgramScheduleListProps> = ({
       const startDate = dates[0];
       const endDate = dates[dates.length - 1];
 
-      // Determine days of week (e.g. "Thursdays")
-      const daysSet = new Set(dates.map(d => `${format(d, 'EEEE')}s`));
+      // Determine days of week (e.g. "Sat", "Sun")
+      const daysSet = new Set(dates.map(d => format(d, 'EEE')));
       const daysOfWeek = Array.from(daysSet).join(' & ');
 
       // Format time
@@ -110,6 +111,7 @@ export const ProgramScheduleList: React.FC<ProgramScheduleListProps> = ({
         isUnlimited: !!schedule.unlimitedSeats || availableSeats >= 999999,
         scheduleId,
         teacherName: schedule.teacherName || 'Instructor', // Can be enriched from event
+        description: schedule.description,
       });
     });
 
@@ -158,10 +160,12 @@ export const ProgramScheduleList: React.FC<ProgramScheduleListProps> = ({
                   <span className="mx-2 text-gray-300">|</span> 
                   <span className="font-medium">Ends:</span> {format(block.endDate, 'MMM d')}
                 </p>
-                <p className="text-sm text-gray-600 mb-2">
-                  Taught by: <span className="font-medium">{block.teacherName}</span>
-                </p>
 
+                {block.description && (
+                  <p className="text-sm text-gray-700 font-medium mb-2 bg-indigo-50 border border-indigo-100 inline-block px-2 py-1 rounded">
+                    {block.description}
+                  </p>
+                )}
                 <button 
                   onClick={() => toggleExpand(block.id)}
                   className="text-primary-600 hover:text-primary-800 text-sm font-medium flex items-center transition-colors"

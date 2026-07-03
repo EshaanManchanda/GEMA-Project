@@ -138,6 +138,7 @@ export interface IEvent extends Document {
       price?: number; // Optional override price per slot
     }>;
     _id?: mongoose.Types.ObjectId;
+    description?: string;
   }>;
   seoMeta: {
     title: string;
@@ -658,6 +659,11 @@ const eventSchema = new Schema<IEvent>(
             },
           },
         ],
+        description: {
+          type: String,
+          trim: true,
+          maxlength: [1000, "Description cannot exceed 1000 characters"],
+        },
       },
     ],
     seoMeta: {

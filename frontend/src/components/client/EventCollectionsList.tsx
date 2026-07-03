@@ -65,9 +65,9 @@ const CollectionBlock: React.FC<{ collection: CollectionInfo }> = ({ collection 
     staleTime: 5 * 60 * 1000,
   });
 
-  // Fetch 1st 5 events from collection
+  // Fetch 1st 8 events from collection
   const sortedEvents = data?.events 
-    ? [...data.events].slice(0, 5)
+    ? [...data.events].slice(0, 8)
     : [];
 
   // Keen-slider setup
@@ -81,7 +81,7 @@ const CollectionBlock: React.FC<{ collection: CollectionInfo }> = ({ collection 
       },
       breakpoints: {
         '(min-width: 640px)': { slides: { perView: 2, spacing: 24 } },
-        '(min-width: 1024px)': { slides: { perView: 3, spacing: 28 } },
+        '(min-width: 1024px)': { slides: { perView: 4, spacing: 28 } },
       },
       slideChanged(slider) {
         setCurrentSlide(slider.track.details.rel);

@@ -790,6 +790,21 @@ const BookingDetails: React.FC<BookingDetailsProps> = ({
                   </div>
                 )}
 
+                {/* Optional Schedule Note / Description */}
+                {(selectedSchedule as any).description && (
+                  <div className="flex items-start space-x-3 p-3 bg-white rounded-xl border border-amber-200 shadow-sm">
+                    <div className="w-9 h-9 bg-amber-100 rounded-lg flex items-center justify-center flex-shrink-0">
+                      <Tag className="w-5 h-5 text-amber-600" />
+                    </div>
+                    <div>
+                      <div className="text-xs font-semibold text-amber-700 uppercase tracking-wider">Note / Package</div>
+                      <div className="text-sm font-medium text-gray-800">
+                        {(selectedSchedule as any).description}
+                      </div>
+                    </div>
+                  </div>
+                )}
+
                 {/* Seat availability */}
                 <div className="flex items-center space-x-3 p-3 bg-white rounded-xl border border-amber-200 shadow-sm">
                   <div className="w-9 h-9 bg-green-100 rounded-lg flex items-center justify-center flex-shrink-0">
@@ -983,6 +998,17 @@ const BookingDetails: React.FC<BookingDetailsProps> = ({
                             <span>Filling up fast!</span>
                           </div>
                         )}
+
+                      {(selectedSchedule as any).description && (
+                        <div className="mt-3 p-2 bg-blue-50/80 rounded border border-blue-100">
+                          <div className="flex items-start">
+                            <Tag className="w-4 h-4 text-blue-500 mr-2 mt-0.5 flex-shrink-0" />
+                            <div className="text-sm font-medium text-blue-900">
+                              {(selectedSchedule as any).description}
+                            </div>
+                          </div>
+                        </div>
+                      )}
                     </div>
 
                     <div className="text-right bg-white/80 backdrop-blur-sm rounded-lg p-3 shadow-md border border-blue-200">

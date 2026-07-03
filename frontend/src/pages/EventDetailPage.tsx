@@ -398,10 +398,14 @@ const EventDetailPage: React.FC = () => {
 
   // Auto-select first session when booking type changes
   useEffect(() => {
+    if (!event) return; // Wait for event to load
+    
     if (introSchedules.length === 0 && bookingType === 'intro') {
       setBookingType('program');
+    } else if (introSchedules.length > 0 && standardSchedules.length === 0 && bookingType === 'program') {
+      setBookingType('intro');
     }
-  }, [introSchedules.length, bookingType]);
+  }, [event, introSchedules.length, standardSchedules.length, bookingType]);
 
   useEffect(() => {
     if (filteredSchedules.length > 0) {
@@ -1221,12 +1225,14 @@ const EventDetailPage: React.FC = () => {
                     Syllabus
                   </button>
                 )}
-                <button
-                  className={`py-4 px-6 text-sm font-bold border-b-2 transition-colors ${activeSection === 'booking-panel' ? 'border-primary text-primary' : 'border-transparent text-gray-500 hover:text-gray-900'}`}
-                  onClick={() => scrollToSection('booking-panel')}
-                >
-                  Schedule
-                </button>
+                {!event.externalBookingLink && (
+                  <button
+                    className={`py-4 px-6 text-sm font-bold border-b-2 transition-colors ${activeSection === 'booking-panel' ? 'border-primary text-primary' : 'border-transparent text-gray-500 hover:text-gray-900'}`}
+                    onClick={() => scrollToSection('booking-panel')}
+                  >
+                    Schedule
+                  </button>
+                )}
                 {event.venueType !== 'Online' && (
                   <button
                     className={`py-4 px-6 text-sm font-bold border-b-2 transition-colors ${activeSection === 'location' ? 'border-primary text-primary' : 'border-transparent text-gray-500 hover:text-gray-900'}`}
@@ -1333,7 +1339,7 @@ const EventDetailPage: React.FC = () => {
 
 
 
-            {isEducational && (
+            {isEducational && (!event.externalBookingLink || (event.dateSchedule && event.dateSchedule.length > 0)) && (
               <div className="mt-8" id="booking-panel">
                 <h2 className="text-2xl font-bold text-gray-900 mb-6">Available Times</h2>
                 <ProgramScheduleList
@@ -1539,114 +1545,135 @@ const EventDetailPage: React.FC = () => {
                 <Card variant="glass" className="mb-4 shadow-xl">
                   <CardHeader>
                     <CardTitle className="text-2xl flex items-center">
-                      🎫 Book Your Spot
+                      {event.externalBookingLink ? '🔗 Book This Event' : '🎫 Book Your Spot'}
                     </CardTitle>
-                    <div className="flex items-center justify-between mt-2">
-                      <span className="text-sm text-gray-600">Starting from</span>
-                      <div className="text-3xl font-bold bg-gradient-to-r from-primary-600 to-primary-800 bg-clip-text text-transparent">
-                        {isFree ? <span className="text-green-600">Free</span> : `${event.currency || 'AED'} ${currentPrice}`}
-                      </div>
-                    </div>
-                    {/* Enhanced Progress Bar */}
-                    <div className="space-y-2 mt-4">
-                      <div className="w-full bg-gray-200 rounded-full h-3 relative overflow-hidden">
-                        <div
-                          className="bg-gradient-to-r from-green-400 to-green-600 h-3 rounded-full transition-all duration-500 ease-out shadow-sm"
-                          style={{
-                            width: bookingIsUnlimited
-                              ? '100%'
-                              : `${Math.min(100, Math.max(0, (bookingPanelAvailableSeats / Math.max(1, bookingPanelTotalSeats)) * 100))}%`
-                          }}
-                        >
-                          <div className="absolute inset-0 bg-white bg-opacity-25 animate-pulse"></div>
+                    {!event.externalBookingLink && (
+                      <>
+                        <div className="flex items-center justify-between mt-2">
+                          <span className="text-sm text-gray-600">Starting from</span>
+                          <div className="text-3xl font-bold bg-gradient-to-r from-primary-600 to-primary-800 bg-clip-text text-transparent">
+                            {isFree ? <span className="text-green-600">Free</span> : `${event.currency || 'AED'} ${currentPrice}`}
+                          </div>
                         </div>
-                      </div>
-                      <div className="flex justify-between text-sm text-gray-600">
-                        <span className="font-medium">{bookingIsUnlimited ? 'Unlimited' : `${bookingPanelAvailableSeats} available`}</span>
-                        <span>{bookingIsUnlimited ? 'No seat limit' : `${bookingPanelTotalSeats} total`}</span>
-                      </div>
-                    </div>
+                        {/* Enhanced Progress Bar */}
+                        <div className="space-y-2 mt-4">
+                          <div className="w-full bg-gray-200 rounded-full h-3 relative overflow-hidden">
+                            <div
+                              className="bg-gradient-to-r from-green-400 to-green-600 h-3 rounded-full transition-all duration-500 ease-out shadow-sm"
+                              style={{
+                                width: bookingIsUnlimited
+                                  ? '100%'
+                                  : `${Math.min(100, Math.max(0, (bookingPanelAvailableSeats / Math.max(1, bookingPanelTotalSeats)) * 100))}%`
+                              }}
+                            >
+                              <div className="absolute inset-0 bg-white bg-opacity-25 animate-pulse"></div>
+                            </div>
+                          </div>
+                          <div className="flex justify-between text-sm text-gray-600">
+                            <span className="font-medium">{bookingIsUnlimited ? 'Unlimited' : `${bookingPanelAvailableSeats} available`}</span>
+                            <span>{bookingIsUnlimited ? 'No seat limit' : `${bookingPanelTotalSeats} total`}</span>
+                          </div>
+                        </div>
+                      </>
+                    )}
                   </CardHeader>
                   <CardContent className="space-y-6">
-                    {hasProgramBlocks && (
+                    {event.externalBookingLink ? (
+                      <div className="space-y-4">
+                        <div className="bg-amber-50 border border-amber-200 rounded-xl p-4">
+                          <div className="flex items-start space-x-3">
+                            <svg className="w-5 h-5 text-amber-600 mt-0.5 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                            </svg>
+                            <div>
+                              <p className="text-sm font-medium text-amber-800">External Booking</p>
+                              <p className="text-xs text-amber-700 mt-1">This event is managed by an external provider. You will be redirected to their website to complete your booking.</p>
+                            </div>
+                          </div>
+                        </div>
+                        <button
+                          onClick={handleBookNow}
+                          className="w-full py-4 rounded-xl font-bold text-lg bg-gradient-to-r from-orange-500 to-orange-600 hover:from-orange-600 hover:to-orange-700 text-white shadow-lg hover:shadow-xl transition-all duration-300 transform hover:-translate-y-1 hover:scale-105 flex items-center justify-center space-x-2"
+                        >
+                          <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14" />
+                          </svg>
+                          <span>Book Now</span>
+                        </button>
+                      </div>
+                    ) : (
+                      <>
+                        {hasProgramBlocks && (
                       <div className="space-y-4">
                         <label className="block text-gray-900 text-sm font-bold uppercase tracking-wider mb-2">
                           Select Your Enrollment Type
                         </label>
                         <div className="grid grid-cols-1 gap-4">
-                          <label
-                            className={`rounded-2xl border-2 p-5 transition-all flex flex-col relative overflow-hidden group ${introSchedules.length > 0
-                              ? (bookingType === 'intro' ? 'border-primary-500 bg-gradient-to-br from-white to-primary-50 shadow-md cursor-pointer' : 'border-gray-200 hover:border-primary-300 bg-white hover:bg-gray-50 cursor-pointer')
-                              : 'border-gray-200 bg-gray-50 opacity-60 cursor-not-allowed'
+                          {introSchedules.length > 0 && (
+                            <label
+                              className={`rounded-2xl border-2 p-5 transition-all flex flex-col relative overflow-hidden group ${
+                                bookingType === 'intro' ? 'border-primary-600 shadow-[0_0_20px_rgba(37,99,235,0.15)] bg-gradient-to-br from-white to-primary-50/50 cursor-pointer' : 'border-gray-200 hover:border-primary-300 bg-white hover:bg-gray-50 cursor-pointer'
                               }`}
-                            onClick={() => { if (introSchedules.length > 0) setBookingType('intro') }}
-                          >
-                            <div className="flex items-start justify-between relative z-10">
-                              <div className="flex items-start space-x-4">
-                                <div className="mt-1 flex-shrink-0">
-                                  <div className={`w-6 h-6 rounded-full border-2 flex items-center justify-center transition-colors ${bookingType === 'intro' ? 'border-primary-600' : 'border-gray-300 group-hover:border-primary-400'}`}>
-                                    {bookingType === 'intro' && <div className="w-3 h-3 rounded-full bg-primary-600 shadow-sm"></div>}
+                              onClick={() => setBookingType('intro')}
+                            >
+                              <div className="flex items-start justify-between relative z-10">
+                                <div className="flex items-start space-x-4">
+                                  <div className="mt-1 flex-shrink-0">
+                                    <div className={`w-6 h-6 rounded-full border-2 flex items-center justify-center transition-colors ${bookingType === 'intro' ? 'border-primary-600' : 'border-gray-300 group-hover:border-primary-400'}`}>
+                                      {bookingType === 'intro' && <div className="w-3 h-3 rounded-full bg-primary-600 shadow-sm"></div>}
+                                    </div>
+                                  </div>
+                                  <div>
+                                    <div className="flex items-center space-x-2">
+                                      <span className="text-lg font-bold text-gray-900">
+                                        {standardSchedules.length > 0 ? 'Trail Class' : 'Free Workshop'}
+                                      </span>
+                                      {standardSchedules.length > 0 && (
+                                        <span className="px-2.5 py-0.5 rounded-full bg-blue-100 text-blue-700 text-xs font-bold uppercase tracking-wide">First Time</span>
+                                      )}
+                                    </div>
+                                    <p className="text-sm text-gray-500 mt-1.5 leading-relaxed">
+                                      {standardSchedules.length > 0 ? 'Register for this introductory session to get started.' : 'Reserve your spot for this free introductory session.'}
+                                    </p>
                                   </div>
                                 </div>
-                                <div>
-                                  <div className="flex items-center space-x-2">
-                                    <span className="text-lg font-bold text-gray-900">
-                                      {standardSchedules.length > 0 ? 'Trail Class' : 'Free Workshop'}
-                                    </span>
-                                    {introSchedules.length > 0 && standardSchedules.length > 0 && (
-                                      <span className="px-2.5 py-0.5 rounded-full bg-blue-100 text-blue-700 text-xs font-bold uppercase tracking-wide">First Time</span>
-                                    )}
-                                  </div>
-                                  <p className="text-sm text-gray-500 mt-1.5 leading-relaxed">
-                                    {introSchedules.length > 0
-                                      ? (standardSchedules.length > 0 ? 'Register for this introductory session to get started.' : 'Reserve your spot for this free introductory session.')
-                                      : 'No trial sessions available for this program.'}
-                                  </p>
-                                </div>
-                              </div>
-                              <div className="text-right flex-shrink-0 ml-4">
-                                {introSchedules.length > 0 ? (
+                                <div className="text-right flex-shrink-0 ml-4">
                                   <span className="font-black text-2xl text-green-500 tracking-tight">Free</span>
-                                ) : (
-                                  <span className="font-black text-lg text-gray-400 tracking-tight flex items-center justify-center h-full">
-                                    <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M18.364 18.364A9 9 0 005.636 5.636m12.728 12.728A9 9 0 015.636 5.636m12.728 12.728L5.636 5.636" /></svg>
-                                  </span>
-                                )}
+                                </div>
                               </div>
-                            </div>
-                          </label>
+                            </label>
+                          )}
 
-                          <label
-                            className={`rounded-2xl border-2 p-5 transition-all flex flex-col relative overflow-hidden group ${standardSchedules.length > 0
-                              ? (bookingType === 'program' ? 'border-amber-500 shadow-[0_0_20px_rgba(245,158,11,0.2)] bg-gradient-to-br from-white to-amber-50/50 cursor-pointer' : 'border-gray-200 hover:border-amber-300 bg-white hover:bg-gray-50 cursor-pointer')
-                              : 'border-gray-200 bg-gray-50 opacity-60 cursor-not-allowed'
+                          {standardSchedules.length > 0 && (
+                            <label
+                              className={`rounded-2xl border-2 p-5 transition-all flex flex-col relative overflow-hidden group ${
+                                bookingType === 'program' ? 'border-amber-500 shadow-[0_0_20px_rgba(245,158,11,0.2)] bg-gradient-to-br from-white to-amber-50/50 cursor-pointer' : 'border-gray-200 hover:border-amber-300 bg-white hover:bg-gray-50 cursor-pointer'
                               }`}
-                            onClick={() => { if (standardSchedules.length > 0) setBookingType('program') }}
-                          >
-                            {bookingType === 'program' && (
-                              <div className="absolute top-0 right-0 w-32 h-32 bg-amber-500/10 rounded-full blur-3xl -mr-10 -mt-10 pointer-events-none"></div>
-                            )}
-                            <div className="absolute top-0 right-0 bg-amber-500 text-white text-[10px] font-black uppercase tracking-widest px-4 py-1 rounded-bl-xl shadow-sm z-20">Recommended</div>
-                            <div className="flex items-start justify-between relative z-10 pt-2">
-                              <div className="flex items-start space-x-4">
-                                <div className="mt-1 flex-shrink-0">
-                                  <div className={`w-6 h-6 rounded-full border-2 flex items-center justify-center transition-colors ${bookingType === 'program' ? 'border-amber-500' : 'border-gray-300 group-hover:border-amber-400'}`}>
-                                    {bookingType === 'program' && <div className="w-3 h-3 rounded-full bg-amber-500 shadow-sm"></div>}
+                              onClick={() => setBookingType('program')}
+                            >
+                              {bookingType === 'program' && (
+                                <div className="absolute top-0 right-0 w-32 h-32 bg-amber-500/10 rounded-full blur-3xl -mr-10 -mt-10 pointer-events-none"></div>
+                              )}
+                              <div className="absolute top-0 right-0 bg-amber-500 text-white text-[10px] font-black uppercase tracking-widest px-4 py-1 rounded-bl-xl shadow-sm z-20">Recommended</div>
+                              <div className="flex items-start justify-between relative z-10 pt-2">
+                                <div className="flex items-start space-x-4">
+                                  <div className="mt-1 flex-shrink-0">
+                                    <div className={`w-6 h-6 rounded-full border-2 flex items-center justify-center transition-colors ${bookingType === 'program' ? 'border-amber-500' : 'border-gray-300 group-hover:border-amber-400'}`}>
+                                      {bookingType === 'program' && <div className="w-3 h-3 rounded-full bg-amber-500 shadow-sm"></div>}
+                                    </div>
+                                  </div>
+                                  <div>
+                                    <span className="text-xl font-bold text-gray-900 block leading-none">Full Program</span>
+                                    <span className="text-amber-600 text-sm font-semibold mt-1.5 block flex items-center">
+                                      <svg className="w-4 h-4 mr-1" fill="currentColor" viewBox="0 0 20 20"><path d="M9.049 2.927c.3-.921 1.603-.921 1.902 0l1.07 3.292a1 1 0 00.95.69h3.462c.969 0 1.371 1.24.588 1.81l-2.8 2.034a1 1 0 00-.364 1.118l1.07 3.292c.3.921-.755 1.688-1.54 1.118l-2.8-2.034a1 1 0 00-1.175 0l-2.8 2.034c-.784.57-1.838-.197-1.539-1.118l1.07-3.292a1 1 0 00-.364-1.118L2.98 8.72c-.783-.57-.38-1.81.588-1.81h3.461a1 1 0 00.951-.69l1.07-3.292z"></path></svg>
+                                      {paidClassesCount} Premium Classes
+                                    </span>
+                                    <p className="text-sm text-gray-500 mt-2 leading-relaxed max-w-[200px]">
+                                      Complete personalized premium sessions.
+                                    </p>
                                   </div>
                                 </div>
-                                <div>
-                                  <span className="text-xl font-bold text-gray-900 block leading-none">Full Program</span>
-                                  <span className="text-amber-600 text-sm font-semibold mt-1.5 block flex items-center">
-                                    <svg className="w-4 h-4 mr-1" fill="currentColor" viewBox="0 0 20 20"><path d="M9.049 2.927c.3-.921 1.603-.921 1.902 0l1.07 3.292a1 1 0 00.95.69h3.462c.969 0 1.371 1.24.588 1.81l-2.8 2.034a1 1 0 00-.364 1.118l1.07 3.292c.3.921-.755 1.688-1.54 1.118l-2.8-2.034a1 1 0 00-1.175 0l-2.8 2.034c-.784.57-1.838-.197-1.539-1.118l1.07-3.292a1 1 0 00-.364-1.118L2.98 8.72c-.783-.57-.38-1.81.588-1.81h3.461a1 1 0 00.951-.69l1.07-3.292z"></path></svg>
-                                    {standardSchedules.length > 0 ? paidClassesCount : 0} Premium 1:1 Classes
-                                  </span>
-                                  <p className="text-sm text-gray-500 mt-2 leading-relaxed max-w-[200px]">
-                                    Complete personalized premium sessions.
-                                  </p>
-                                </div>
-                              </div>
-                              <div className="text-right flex-shrink-0 ml-2">
-                                {standardSchedules.length > 0 ? (
+                                <div className="text-right flex-shrink-0 ml-2">
                                   <div className="flex flex-col items-end">
                                     <span className="text-xs text-gray-400 font-medium uppercase tracking-wider mb-0.5">Total</span>
                                     <div className="flex items-baseline space-x-1">
@@ -1659,14 +1686,10 @@ const EventDetailPage: React.FC = () => {
                                       Only {event.currency || 'AED'} {pricePerClass.toFixed(2)} / class
                                     </span>
                                   </div>
-                                ) : (
-                                  <span className="font-black text-lg text-gray-400 tracking-tight flex items-center justify-center h-full">
-                                    <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M18.364 18.364A9 9 0 005.636 5.636m12.728 12.728A9 9 0 015.636 5.636m12.728 12.728L5.636 5.636" /></svg>
-                                  </span>
-                                )}
+                                </div>
                               </div>
-                            </div>
-                          </label>
+                            </label>
+                          )}
                         </div>
                       </div>
                     )}
@@ -1679,6 +1702,8 @@ const EventDetailPage: React.FC = () => {
                     >
                       See All Available Times
                     </button>
+                      </>
+                    )}
                   </CardContent>
                 </Card>
               )}

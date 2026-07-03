@@ -58,6 +58,7 @@ interface Schedule {
   sessionType?: string;
   ratePerClass?: string;
   isFreeSession?: boolean;
+  description?: string;
 }
 
 interface FAQ {
@@ -486,6 +487,7 @@ const AdminEditEventPage: React.FC = () => {
               sessionType: resolvedSessionType,
               ratePerClass: schedule.ratePerClass?.toString() || '',
               isFreeSession: resolvedIsFreeSession,
+              description: schedule.description || '',
               timeSlots: (schedule.timeSlots || []).map(
                 (slot: any, slotIdx: number) => ({
                   id: slot._id || `slot-${index}-${slotIdx}`,
@@ -501,27 +503,7 @@ const AdminEditEventPage: React.FC = () => {
             };
           });
 
-          setSchedules(
-            transformedSchedules.length > 0
-              ? transformedSchedules
-              : [
-                {
-                  id: "schedule-1",
-                  startDate: "",
-                  endDate: "",
-                  startTime: "",
-                  endTime: "",
-                  availableSeats: "",
-                  totalSeats: "",
-                  price: "",
-                  unlimitedSeats: false,
-                  isSpecialDate: false,
-                  specialDates: [],
-                  priority: 0,
-                  isOverride: false,
-                },
-              ],
-          );
+          setSchedules(transformedSchedules);
 
           // If all schedules have unlimitedSeats, enable global unlimited capacity toggle
           if (
@@ -547,6 +529,7 @@ const AdminEditEventPage: React.FC = () => {
               specialDates: [],
               priority: 0,
               isOverride: false,
+              description: '',
             },
           ]);
         }
@@ -776,14 +759,13 @@ const AdminEditEventPage: React.FC = () => {
       specialDates: [],
       priority: 0,
       isOverride: false,
+      description: '',
     };
     setSchedules((prev) => [...prev, newSchedule]);
   };
 
   const handleRemoveSchedule = (index: number) => {
-    if (schedules.length > 1) {
-      setSchedules((prev) => prev.filter((_, i) => i !== index));
-    }
+    setSchedules((prev) => prev.filter((_, i) => i !== index));
   };
 
   const handleUnlimitedCapacityChange = (val: boolean) => {
@@ -1102,6 +1084,7 @@ const AdminEditEventPage: React.FC = () => {
           isOverride: schedule.isOverride || false,
           sessionType: schedule.sessionType,
           isFreeSession: schedule.isFreeSession || false,
+          description: schedule.description || '',
           ratePerClass: schedule.ratePerClass ? parseFloat(schedule.ratePerClass) : undefined,
           timeSlots: (schedule.timeSlots || []).map((slot) => ({
             date: new Date(slot.date),

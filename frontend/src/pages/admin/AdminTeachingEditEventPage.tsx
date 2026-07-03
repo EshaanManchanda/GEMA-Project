@@ -374,21 +374,7 @@ const AdminTeachingEditEventPage: React.FC = () => {
             };
           });
 
-          setSchedules(transformedSchedules.length > 0 ? transformedSchedules : [{
-            id: 'schedule-1',
-            startDate: '',
-            endDate: '',
-            startTime: '',
-            endTime: '',
-            availableSeats: '',
-            totalSeats: '',
-            price: '',
-            unlimitedSeats: false,
-            isSpecialDate: false,
-            specialDates: [],
-            priority: 0,
-            isOverride: false
-          }]);
+          setSchedules(transformedSchedules);
         } else {
           logger.debug('📝 Create mode - initializing empty form');
           // Initialize with one empty schedule for new events
@@ -553,9 +539,7 @@ const AdminTeachingEditEventPage: React.FC = () => {
   };
 
   const handleRemoveSchedule = (index: number) => {
-    if (schedules.length > 1) {
-      setSchedules(prev => prev.filter((_, i) => i !== index));
-    }
+    setSchedules(prev => prev.filter((_, i) => i !== index));
   };
 
   // FAQ management
@@ -852,6 +836,7 @@ const AdminTeachingEditEventPage: React.FC = () => {
           unlimitedSeats: schedule.unlimitedSeats || false,
           isSpecialDate: schedule.isSpecialDate || false,
           specialDates: schedule.specialDates || [],
+          description: schedule.description || '',
           priority: schedule.priority || 0,
           isOverride: schedule.isOverride || false,
           sessionType: schedule.sessionType,

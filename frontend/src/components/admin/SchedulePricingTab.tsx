@@ -30,6 +30,7 @@ interface Schedule {
   ratePerClass?: string;
   sessionType?: string;
   isFreeSession?: boolean;
+  description?: string;
 }
 
 interface SchedulePricingTabProps {
@@ -97,6 +98,7 @@ const SchedulePricingTab: React.FC<SchedulePricingTabProps> = ({
     scheduleType: 'single',
     cohortDays: [],
     isFreeSession: false,
+    description: '',
   });
 
   const generateRecurringSessions = () => {
@@ -142,6 +144,7 @@ const SchedulePricingTab: React.FC<SchedulePricingTabProps> = ({
         sessionType: schedule.sessionType || 'Standard Session',
         isFreeSession: schedule.isFreeSession || false,
         price: schedule.price || '',
+        description: schedule.description || '',
       });
     } else {
       setModalForm({
@@ -159,6 +162,7 @@ const SchedulePricingTab: React.FC<SchedulePricingTabProps> = ({
         scheduleType: 'single',
         cohortDays: [],
         isFreeSession: isFreeEvent,
+        description: '',
       });
     }
     setIsModalOpen(true);
@@ -447,6 +451,14 @@ const SchedulePricingTab: React.FC<SchedulePricingTabProps> = ({
                     </div>
                   </div>
 
+                  {schedule.description && (
+                    <div className="mb-4">
+                      <p className="text-sm font-medium text-gray-700 bg-gray-50 px-3 py-2 rounded-lg border border-gray-100">
+                        {schedule.description}
+                      </p>
+                    </div>
+                  )}
+
                   <div className="flex items-center justify-between pt-4 border-t border-gray-100">
                     <button
                       type="button"
@@ -468,7 +480,6 @@ const SchedulePricingTab: React.FC<SchedulePricingTabProps> = ({
                       <button
                         type="button"
                         onClick={() => onRemoveSchedule(index)}
-                        disabled={schedules.length === 1}
                         className="p-2 text-gray-400 hover:text-red-600 hover:bg-red-50 rounded-xl transition-colors disabled:opacity-30 disabled:cursor-not-allowed"
                         title="Delete Session"
                       >
@@ -599,6 +610,20 @@ const SchedulePricingTab: React.FC<SchedulePricingTabProps> = ({
                     onChange={(e) => setModalForm(prev => ({ ...prev, endTime: e.target.value }))}
                     className="w-full px-4 py-3 border border-gray-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-primary-500 shadow-sm"
                   />
+                </div>
+              </div>
+
+              <div className="grid grid-cols-1 gap-5">
+                <div>
+                  <label className="block text-sm font-bold text-gray-700 mb-2">Package / Note (Optional)</label>
+                  <input
+                    type="text"
+                    value={modalForm.description || ''}
+                    onChange={(e) => setModalForm(prev => ({ ...prev, description: e.target.value }))}
+                    placeholder="e.g. '1 Day: PROJECT + GAME'"
+                    className="w-full px-4 py-3 border border-gray-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-primary-500 shadow-sm"
+                  />
+                  <p className="text-xs text-gray-500 mt-1">Useful for identifying different packages or options on the frontend.</p>
                 </div>
               </div>
 
