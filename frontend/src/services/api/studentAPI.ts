@@ -35,6 +35,24 @@ export interface CreateStudentPayload {
   guardianRelation?: 'father' | 'mother' | 'guardian' | 'other';
 }
 
+export interface UpdateStudentPayload {
+  firstName?: string;
+  lastName?: string;
+  email?: string;
+  dateOfBirth?: string;
+  gender?: 'male' | 'female' | 'other';
+  schoolId?: string;
+  grade?: string;
+  rollNumber?: string;
+  phone?: string;
+  address?: { line1?: string; city?: string; state?: string; country?: string; zip?: string };
+  guardianRelation?: 'father' | 'mother' | 'guardian' | 'other';
+  emergencyContact?: { name: string; phone: string; relation?: string };
+  medicalNotes?: string;
+  avatar?: string;
+  status?: 'active' | 'inactive';
+}
+
 interface ListStudentsParams {
   parentUserId?: string;
   email?: string;
@@ -80,7 +98,7 @@ export const studentAPI = {
   create: (payload: CreateStudentPayload) =>
     api.post<{ success: boolean; data: { student: Student } }>('/students', payload),
 
-  update: (id: string, payload: Partial<CreateStudentPayload>) =>
+  update: (id: string, payload: UpdateStudentPayload) =>
     api.put<{ success: boolean; data: { student: Student } }>(`/students/${id}`, payload),
 
   delete: (id: string) =>

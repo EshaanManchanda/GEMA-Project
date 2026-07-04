@@ -44,7 +44,7 @@ router.get(
   [
     query("parentUserId").optional().isMongoId(),
     query("email").optional().isEmail(),
-    query("schoolId").optional().isMongoId(),
+    query("schoolId").optional().isString(),
     query("status").optional().isIn(["active", "inactive"]),
     query("page").optional().isInt({ min: 1 }),
     query("limit").optional().isInt({ min: 1, max: 100 }),

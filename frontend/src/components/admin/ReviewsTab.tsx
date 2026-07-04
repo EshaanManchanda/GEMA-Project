@@ -120,7 +120,7 @@ const ReviewsTab: React.FC<ReviewsTabProps> = ({
     try {
       setGoogleLoading(true);
       const response = await reviewsAPI.getAdminGoogleReviews(eventId);
-      setGoogleData(response.data ?? null);
+      setGoogleData(response ?? null);
     } catch (error) {
       logger.error('Failed to load Google reviews:', error);
       toast.error('Failed to load Google reviews');
@@ -133,8 +133,7 @@ const ReviewsTab: React.FC<ReviewsTabProps> = ({
     if (!googlePlaceId) return;
     try {
       setSyncing(true);
-      const response = await reviewsAPI.syncGoogleReviews(eventId);
-      const s = response.data;
+      const s = await reviewsAPI.syncGoogleReviews(eventId);
       toast.success(
         `Sync complete — ${s.totalFetched} fetched, ${s.inserted} new, ${s.updated} updated, ${s.hiddenPreserved} hidden preserved`,
         { duration: 6000 },

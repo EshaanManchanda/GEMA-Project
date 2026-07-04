@@ -12,7 +12,7 @@ const adminAPI = {
       // Fallback to individual endpoint if centralized one fails
       try {
         console.warn('Centralized dashboard endpoint failed, falling back to analytics endpoint');
-        const response = await ApiService.get('/analytics/dashboard');
+        const response = await ApiService.get('/insights/dashboard');
         return response;
       } catch (fallbackError) {
         throw error;
@@ -655,7 +655,7 @@ const adminAPI = {
   // Analytics
   getUserAnalytics: async (params?: any) => {
     try {
-      const response = await ApiService.get('/analytics/users', { params });
+      const response = await ApiService.get('/insights/users', { params });
       return response.data;
     } catch (error) {
       throw error;
@@ -664,7 +664,7 @@ const adminAPI = {
 
   getEventAnalytics: async (params?: any) => {
     try {
-      const response = await ApiService.get('/analytics/events', { params });
+      const response = await ApiService.get('/insights/events', { params });
       return response.data;
     } catch (error) {
       throw error;
@@ -673,7 +673,7 @@ const adminAPI = {
 
   getTicketAnalytics: async (params?: any) => {
     try {
-      const response = await ApiService.get('/analytics/tickets', { params });
+      const response = await ApiService.get('/insights/tickets', { params });
       return response.data;
     } catch (error) {
       throw error;
@@ -682,7 +682,7 @@ const adminAPI = {
 
   getVenueAnalytics: async (params?: any) => {
     try {
-      const response = await ApiService.get('/analytics/venues', { params });
+      const response = await ApiService.get('/insights/venues', { params });
       return response.data;
     } catch (error) {
       throw error;
@@ -691,7 +691,7 @@ const adminAPI = {
 
   getRevenueAnalytics: async (params?: any) => {
     try {
-      const response = await ApiService.get('/analytics/revenue', { params });
+      const response = await ApiService.get('/insights/revenue', { params });
       return response.data;
     } catch (error) {
       throw error;
@@ -700,7 +700,7 @@ const adminAPI = {
 
   exportAnalytics: async (params: { type: string; startDate?: string; endDate?: string; format?: 'json' | 'csv' }) => {
     try {
-      const response = await ApiService.get('/analytics/export', { params });
+      const response = await ApiService.get('/insights/export', { params });
       return response.data;
     } catch (error) {
       throw error;
@@ -1573,7 +1573,7 @@ const adminAPI = {
   downloadEventReport: async (eventId: string, format: ReportFormat, range: ReportRange = '7d'): Promise<void> => {
     const ext = format === 'pdf' ? 'pdf' : 'csv';
     const filename = `event-report-${eventId}-${range}.${ext}`;
-    await ApiService.download(`/analytics/events/${eventId}/report?format=${format}&range=${range}`, filename);
+    await ApiService.download(`/insights/events/${eventId}/report?format=${format}&range=${range}`, filename);
   },
 
   exportCertificates: async (filters: CertificateExportFilters = {}): Promise<void> => {

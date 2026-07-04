@@ -2450,19 +2450,12 @@ const EventDetailPage: React.FC = () => {
                 }
                 return reviewsWithComments.map((review: any, idx: number) => {
                   const name = review.author_name || `${review.user?.firstName || ''} ${review.user?.lastName || ''}`.trim() || 'Student';
-                  const initial = name.charAt(0).toUpperCase();
                   const avatar = review.profile_photo_url || review.user?.avatar;
                   const date = new Date(review.createdAt || review.time * 1000 || Date.now()).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
                   return (
                     <div key={review._id || `r-${idx}`} className="p-5 rounded-xl border border-gray-200 bg-white flex flex-col sm:flex-row items-start gap-4">
                       <div className="flex items-center gap-4 sm:w-48 flex-shrink-0">
-                        {avatar ? (
-                          <img src={avatar} alt={name} className="w-12 h-12 rounded-full object-cover flex-shrink-0" />
-                        ) : (
-                          <div className="w-12 h-12 rounded-full bg-primary flex items-center justify-center text-white text-xl font-bold flex-shrink-0">
-                            {initial}
-                          </div>
-                        )}
+                        <Avatar src={avatar} alt={name} fallback={name} size="lg" className="flex-shrink-0" />
                         <strong className="text-sm font-semibold text-gray-900 line-clamp-1">{name}</strong>
                       </div>
 

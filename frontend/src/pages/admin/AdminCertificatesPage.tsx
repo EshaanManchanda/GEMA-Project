@@ -48,7 +48,7 @@ const CertListTab: React.FC = () => {
   const [studentSearchError, setStudentSearchError] = useState('');
 
   const [editingCert, setEditingCert] = useState<any | null>(null);
-  const [editForm, setEditForm] = useState({ recipientName: '', recipientEmail: '', status: 'pending', certificateTypeSlug: '', dataText: '' });
+  const [editForm, setEditForm] = useState({ recipientName: '', recipientEmail: '', status: 'pending', certificateTypeSlug: '', schoolName: '', dataText: '' });
   const [saving, setSaving] = useState(false);
   const [hardDeleting, setHardDeleting] = useState<string | null>(null);
   const [purging, setPurging] = useState(false);
@@ -163,12 +163,17 @@ const CertListTab: React.FC = () => {
   };
 
   const openEdit = (cert: any) => {
-    const dataLines = Object.entries(cert.data || {}).map(([k, v]) => `${k}=${v}`).join('\n');
+    // "school" is edited via its own dedicated field below, not the generic Data Fields textarea
+    const dataLines = Object.entries(cert.data || {})
+      .filter(([k]) => k !== 'school')
+      .map(([k, v]) => `${k}=${v}`)
+      .join('\n');
     setEditForm({
       recipientName: cert.recipient?.name || cert.recipientName || '',
       recipientEmail: cert.recipient?.email || '',
       status: cert.status || 'pending',
       certificateTypeSlug: cert.certificateTypeSlug || '',
+      schoolName: cert.data?.school || cert.schoolName || '',
       dataText: dataLines,
     });
     setEditingCert(cert);
@@ -183,6 +188,7 @@ const CertListTab: React.FC = () => {
         const [k, ...v] = line.split('=');
         if (k?.trim()) dataObj[k.trim()] = v.join('=').trim();
       });
+      if (editForm.schoolName.trim()) dataObj.school = editForm.schoolName.trim();
       await api.put(`/certificates/${editingCert._id}`, {
         recipient: { name: editForm.recipientName, email: editForm.recipientEmail },
         status: editForm.status,
@@ -292,6 +298,12 @@ const CertListTab: React.FC = () => {
                     onChange={e => setEditForm(f => ({ ...f, certificateTypeSlug: e.target.value }))}
                     className="w-full text-sm px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500" />
                 </div>
+              </div>
+              <div>
+                <label className="block text-xs font-medium text-gray-600 mb-1">School Name</label>
+                <input type="text" value={editForm.schoolName} placeholder="Example School"
+                  onChange={e => setEditForm(f => ({ ...f, schoolName: e.target.value }))}
+                  className="w-full text-sm px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500" />
               </div>
               <div>
                 <label className="block text-xs font-medium text-gray-600 mb-1">Data Fields <span className="text-gray-400 font-normal">(key=value, one per line)</span></label>
@@ -468,6 +480,7 @@ const CertListTab: React.FC = () => {
                 <th className="px-4 py-3 text-left font-medium text-gray-600">Serial</th>
                 <th className="px-4 py-3 text-left font-medium text-gray-600">Recipient</th>
                 <th className="px-4 py-3 text-left font-medium text-gray-600">Event</th>
+                <th className="px-4 py-3 text-left font-medium text-gray-600">School</th>
                 <th className="px-4 py-3 text-left font-medium text-gray-600">Type</th>
                 <th className="px-4 py-3 text-left font-medium text-gray-600">Status</th>
                 <th className="px-4 py-3 text-left font-medium text-gray-600">Issued</th>
@@ -501,6 +514,9 @@ const CertListTab: React.FC = () => {
                   </td>
                   <td className="px-4 py-3 text-gray-700 max-w-[180px] truncate">
                     {(typeof cert.eventId === 'object' && cert.eventId?.title) || cert.eventTitle || '—'}
+                  </td>
+                  <td className="px-4 py-3 text-gray-700 max-w-[160px] truncate">
+                    {(cert as any).schoolName || (cert as any).data?.school || '—'}
                   </td>
                   <td className="px-4 py-3 text-xs text-gray-500">
                     {cert.certificateTypeSlug

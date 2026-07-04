@@ -128,6 +128,10 @@ router.use("/announcements", announcementBarRoutes);
 router.use("/popups", popupRoutes);
 
 // Analytics routes
+// Mounted at both paths: "/insights" is the canonical path (ad-blockers/Requestly
+// commonly block URLs containing "analytics"); "/analytics" kept alive for any
+// external caller (WP plugins, cached frontend bundles) hitting the old path directly.
+router.use("/insights", analyticsRoutes);
 router.use("/analytics", analyticsRoutes);
 
 // Admin User Management routes

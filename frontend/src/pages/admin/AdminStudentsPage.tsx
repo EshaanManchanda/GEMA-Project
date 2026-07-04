@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useCallback } from 'react';
-import { Users, Search, Plus, Pencil, Trash2, RefreshCw, X, ChevronDown, ChevronRight, Upload, CheckCircle, AlertCircle } from 'lucide-react';
+import { useNavigate } from 'react-router-dom';
+import { Users, Search, Plus, Pencil, Eye, Trash2, RefreshCw, X, ChevronDown, ChevronRight, Upload, CheckCircle, AlertCircle } from 'lucide-react';
 import { studentAPI, type Student, type CreateStudentPayload, type BulkImportResult } from '../../services/api/studentAPI';
 import toast from 'react-hot-toast';
 
@@ -276,6 +277,7 @@ const BulkImportStudentsModal: React.FC<{ onClose: () => void; onDone: () => voi
 // ─── Page ─────────────────────────────────────────────────────────────────────
 
 const AdminStudentsPage: React.FC = () => {
+  const navigate = useNavigate();
   const [students, setStudents] = useState<Student[]>([]);
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState('');
@@ -284,7 +286,6 @@ const AdminStudentsPage: React.FC = () => {
   const [total, setTotal] = useState(0);
   const [showModal, setShowModal] = useState(false);
   const [showBulkImport, setShowBulkImport] = useState(false);
-  const [editing, setEditing] = useState<Student | undefined>();
   const [deleting, setDeleting] = useState<string | null>(null);
   const [expanded, setExpanded] = useState<string | null>(null);
   const [parentSearch, setParentSearch] = useState('');
@@ -381,7 +382,7 @@ const AdminStudentsPage: React.FC = () => {
         <button onClick={() => setShowBulkImport(true)} className="flex items-center gap-1.5 px-4 py-2 text-sm bg-emerald-600 text-white rounded-lg hover:bg-emerald-700">
           <Upload className="w-4 h-4" /> Bulk Import
         </button>
-        <button onClick={() => { setEditing(undefined); setShowModal(true); }} className="flex items-center gap-1.5 px-4 py-2 text-sm bg-indigo-600 text-white rounded-lg hover:bg-indigo-700">
+        <button onClick={() => setShowModal(true)} className="flex items-center gap-1.5 px-4 py-2 text-sm bg-indigo-600 text-white rounded-lg hover:bg-indigo-700">
           <Plus className="w-4 h-4" /> Add Student
         </button>
       </div>
@@ -445,8 +446,10 @@ const AdminStudentsPage: React.FC = () => {
                       </button>
                     </td>
                     <td className="px-4 py-3">
-                      <p className="font-medium text-gray-900">{s.firstName} {s.lastName}</p>
-                      <p className="text-xs text-gray-400">{s.email}</p>
+                      <button onClick={() => navigate(`/admin/students/${s._id}`)} className="text-left hover:underline">
+                        <p className="font-medium text-gray-900">{s.firstName} {s.lastName}</p>
+                        <p className="text-xs text-gray-400">{s.email}</p>
+                      </button>
                     </td>
                     <td className="px-4 py-3">
                       <p className="text-gray-700">{getParentName(s)}</p>
@@ -462,7 +465,14 @@ const AdminStudentsPage: React.FC = () => {
                     <td className="px-4 py-3">
                       <div className="flex items-center gap-1.5">
                         <button
-                          onClick={() => { setEditing(s); setShowModal(true); }}
+                          onClick={() => navigate(`/admin/students/${s._id}`)}
+                          className="p-1.5 text-gray-500 hover:bg-gray-100 rounded"
+                          title="View"
+                        >
+                          <Eye className="w-4 h-4" />
+                        </button>
+                        <button
+                          onClick={() => navigate(`/admin/students/${s._id}/edit`)}
                           className="p-1.5 text-indigo-600 hover:bg-indigo-50 rounded"
                           title="Edit"
                         >
@@ -510,9 +520,8 @@ const AdminStudentsPage: React.FC = () => {
 
       {showModal && (
         <StudentFormModal
-          initial={editing}
-          onClose={() => { setShowModal(false); setEditing(undefined); }}
-          onSaved={() => { setShowModal(false); setEditing(undefined); fetchStudents(); }}
+          onClose={() => setShowModal(false)}
+          onSaved={() => { setShowModal(false); fetchStudents(); }}
         />
       )}
 

@@ -289,6 +289,7 @@ const formatAdminEventResponse = (event: any) => {
     combinedReviewCount: transformedEvent.combinedReviewCount || 0,
     googleRating: transformedEvent.googleRating || 0,
     googleReviewCount: transformedEvent.googleReviewCount || 0,
+    googlePlaceId: transformedEvent.googlePlaceId || "",
 
     // Educational content fields (Ensure these stay in the response)
     subject: transformedEvent.subject || "",
@@ -767,7 +768,7 @@ export const updateEvent = async (
     if (updateData.syllabus) {
       event.markModified("syllabus");
     }
-    await event.save();
+    await event.save({ validateModifiedOnly: true });
 
     // Populate vendor information
     const updatedEvent = await Event.findById(id)

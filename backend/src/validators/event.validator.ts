@@ -459,13 +459,12 @@ export const validateUpdateEvent = [
   sanitizeHtml("description"),
 
   body("shortDescription")
+    .optional()
     .trim()
     .notEmpty()
     .withMessage("Short description is required")
-    .trim()
     .isLength({ max: 500 })
-    .withMessage("Short description cannot exceed 500 characters")
-    ,
+    .withMessage("Short description cannot exceed 500 characters"),
 
   body("customCSS")
     .optional()

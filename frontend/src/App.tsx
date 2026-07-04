@@ -147,6 +147,8 @@ const AdminReviewsPage = React.lazy(() => import(/* webpackChunkName: "admin" */
 const AdminGalleriesPage = React.lazy(() => import(/* webpackChunkName: "admin" */ './pages/admin/AdminGalleriesPage'));
 const AdminCertificatesPage = React.lazy(() => import(/* webpackChunkName: "admin" */ './pages/admin/AdminCertificatesPage'));
 const AdminStudentsPage = React.lazy(() => import(/* webpackChunkName: "admin" */ './pages/admin/AdminStudentsPage'));
+const AdminStudentDetailPage = React.lazy(() => import(/* webpackChunkName: "admin" */ './pages/admin/AdminStudentDetailPage'));
+const AdminStudentEditPage = React.lazy(() => import(/* webpackChunkName: "admin" */ './pages/admin/AdminStudentEditPage'));
 const AdminSubmissionsPage = React.lazy(() => import(/* webpackChunkName: "admin" */ './pages/admin/AdminSubmissionsPage'));
 
 // Analytics Pages
@@ -1144,6 +1146,20 @@ function AppContent() {
             <AdminRoute>
               <Suspense fallback={<GenericPageSkeleton />}>
                 <AdminStudentsPage />
+              </Suspense>
+            </AdminRoute>
+          } />
+          <Route path="students/:id" element={
+            <AdminRoute>
+              <Suspense fallback={<GenericPageSkeleton />}>
+                <AdminStudentDetailPage />
+              </Suspense>
+            </AdminRoute>
+          } />
+          <Route path="students/:id/edit" element={
+            <AdminRoute>
+              <Suspense fallback={<GenericPageSkeleton />}>
+                <AdminStudentEditPage />
               </Suspense>
             </AdminRoute>
           } />

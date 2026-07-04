@@ -3,7 +3,7 @@ import { ApiService } from '../api';
 const analyticsAPI = {
   getDashboardSummary: async () => {
     try {
-      const response = await ApiService.get('/analytics/dashboard');
+      const response = await ApiService.get('/insights/dashboard');
       return response.data;
     } catch (error) {
       throw error;
@@ -12,7 +12,7 @@ const analyticsAPI = {
 
   getEventAnalytics: async (params?: { startDate?: string; endDate?: string }) => {
     try {
-      const response = await ApiService.get('/analytics/events', { params });
+      const response = await ApiService.get('/insights/events', { params });
       return response.data;
     } catch (error) {
       throw error;
@@ -21,7 +21,7 @@ const analyticsAPI = {
 
   getOrderAnalytics: async (params?: { startDate?: string; endDate?: string }) => {
     try {
-      const response = await ApiService.get('/analytics/orders', { params });
+      const response = await ApiService.get('/insights/orders', { params });
       return response.data;
     } catch (error) {
       throw error;
@@ -30,7 +30,7 @@ const analyticsAPI = {
 
   getTicketAnalytics: async (params?: { startDate?: string; endDate?: string }) => {
     try {
-      const response = await ApiService.get('/analytics/tickets', { params });
+      const response = await ApiService.get('/insights/tickets', { params });
       return response.data;
     } catch (error) {
       throw error;
@@ -39,7 +39,7 @@ const analyticsAPI = {
 
   getVenueAnalytics: async () => {
     try {
-      const response = await ApiService.get('/analytics/venues');
+      const response = await ApiService.get('/insights/venues');
       return response.data;
     } catch (error) {
       throw error;
@@ -48,7 +48,7 @@ const analyticsAPI = {
 
   getRevenueReport: async (params: { startDate: string; endDate: string; groupBy?: 'day' | 'month' }) => {
     try {
-      const response = await ApiService.get('/analytics/revenue', { params });
+      const response = await ApiService.get('/insights/revenue', { params });
       return response.data;
     } catch (error) {
       throw error;
@@ -57,7 +57,7 @@ const analyticsAPI = {
 
   getEventPerformance: async (eventId: string) => {
     try {
-      const response = await ApiService.get(`/analytics/events/${eventId}/performance`);
+      const response = await ApiService.get(`/insights/events/${eventId}/performance`);
       return response.data;
     } catch (error) {
       throw error;
@@ -66,7 +66,7 @@ const analyticsAPI = {
 
   exportAnalytics: async (params: { type: string; startDate?: string; endDate?: string; format?: 'json' | 'csv' }) => {
     try {
-      const response = await ApiService.get('/analytics/export', { params });
+      const response = await ApiService.get('/insights/export', { params });
       return response.data;
     } catch (error) {
       throw error;

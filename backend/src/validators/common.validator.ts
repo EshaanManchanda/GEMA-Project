@@ -314,6 +314,7 @@ export const validateEnum = (
 // Sanitize HTML input (prevent XSS)
 export const sanitizeHtml = (field: string) => {
   return body(field)
+    .optional({ nullable: true })
     .trim()
     .customSanitizer((value) => {
       // Basic HTML sanitization - remove script tags and event handlers

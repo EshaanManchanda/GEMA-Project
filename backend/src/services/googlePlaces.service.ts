@@ -19,6 +19,13 @@ export interface GoogleReview {
   // Internal fields for sync engine
   _reviewId?: string;
   _rawReviewName?: string;
+  // Admin-only fields (populated when visibleOnly=false)
+  _id?: string;
+  isVisible?: boolean;
+  hiddenReason?: string;
+  missingFromLatestSync?: boolean;
+  firstSyncedAt?: Date;
+  lastSyncedAt?: Date;
 }
 
 export interface SyncSummary {
@@ -122,7 +129,7 @@ export class GooglePlacesService {
       throw new Error("Place ID is required");
     }
 
-    const cacheKey = `google:place:v2:${placeId}`;
+    const cacheKey = `google:place:v3:${placeId}`;
     const cached = await cacheService.get<{
       reviews: GoogleReview[];
       rating: number;
@@ -143,6 +150,13 @@ export class GooglePlacesService {
           headers: {
             "X-Goog-Api-Key": this.apiKey,
             "X-Goog-FieldMask": "id,displayName,rating,userRatingCount,reviews",
+          },
+          params: {
+            // Google always caps this endpoint at 5 reviews regardless of these
+            // params — reviewsSort picks *which* 5, languageCode stabilizes
+            // text/locale instead of inferring it from the server's IP.
+            reviewsSort: "newest",
+            languageCode: "en",
           },
           timeout: 5000,
         },
@@ -187,7 +201,7 @@ export class GooglePlacesService {
    * Invalidate cache for a specific Place ID (admin use only)
    */
   async invalidatePlaceCache(placeId: string): Promise<boolean> {
-    const cacheKey = `google:place:${placeId}`;
+    const cacheKey = `google:place:v3:${placeId}`;
     const deleted = await cacheService.delete(cacheKey);
 
     if (deleted) {
@@ -316,6 +330,14 @@ export class GooglePlacesService {
       relative_time_description: d.relative_time_description,
       text: d.text,
       time: d.time,
+      ...(!options.visibleOnly && {
+        _id: (d._id as Types.ObjectId).toString(),
+        isVisible: d.isVisible,
+        hiddenReason: d.hiddenReason,
+        missingFromLatestSync: d.missingFromLatestSync,
+        firstSyncedAt: d.firstSyncedAt,
+        lastSyncedAt: d.lastSyncedAt,
+      }),
     }));
 
     // Ratings always computed from the visible subset for public

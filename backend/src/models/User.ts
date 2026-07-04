@@ -339,8 +339,8 @@ const UserSchema = new Schema<IUser>(
         type: Boolean,
         default: false,
       },
-      secret: String,
-      backupCodes: [String],
+      secret: { type: String, select: false },
+      backupCodes: { type: [String], select: false },
     },
     passwordReset: {
       token: String,
@@ -450,7 +450,7 @@ const UserSchema = new Schema<IUser>(
       hasCustomStripeAccount: Boolean,
       stripeAccountId: String,
       stripePublishableKey: String,
-      stripeSecretKey: String,
+      stripeSecretKey: { type: String, select: false },
       subscriptionActive: Boolean,
       preferredPayoutMethod: {
         type: String,
@@ -479,7 +479,10 @@ const UserSchema = new Schema<IUser>(
 
 // Indexes
 UserSchema.index({ email: 1 }, { unique: true });
-UserSchema.index({ "socialLogins.provider": 1, "socialLogins.providerId": 1 });
+UserSchema.index(
+  { "socialLogins.provider": 1, "socialLogins.providerId": 1 },
+  { unique: true, sparse: true },
+);
 UserSchema.index({ firebaseUid: 1 }, { unique: true, sparse: true }); // H2: prevent duplicate Google accounts
 
 // Additional indexes for KVM1 optimization - faster admin dashboard queries
@@ -519,6 +522,19 @@ UserSchema.pre("save", async function (next) {
   } catch (error) {
     next(error as Error);
   }
+});
+
+// Cap loginAttempts history so the array doesn't grow unbounded on repeated logins
+const MAX_LOGIN_ATTEMPTS_HISTORY = 20;
+UserSchema.pre("save", function (next) {
+  if (
+    this.isModified("loginAttempts") &&
+    this.loginAttempts &&
+    this.loginAttempts.length > MAX_LOGIN_ATTEMPTS_HISTORY
+  ) {
+    this.loginAttempts = this.loginAttempts.slice(-MAX_LOGIN_ATTEMPTS_HISTORY);
+  }
+  next();
 });
 
 // Create and export the User model

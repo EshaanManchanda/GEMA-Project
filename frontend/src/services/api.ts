@@ -63,6 +63,7 @@ api.interceptors.request.use(
     if (config.method?.toLowerCase() === 'get' && (
       config.url?.includes('/admin/') ||
       config.url?.includes('/analytics/') ||
+      config.url?.includes('/insights/') ||
       config.url?.includes('/stats')
     )) {
       const requestKey = createRequestKey(config.url || '', config.method, config.params);
@@ -288,7 +289,7 @@ export class ApiService {
     config?: AxiosRequestConfig
   ): Promise<ApiResponse<T>> {
     // Check for request deduplication for admin/stats endpoints
-    if (url.includes('/admin/') || url.includes('/analytics/') || url.includes('/stats')) {
+    if (url.includes('/admin/') || url.includes('/analytics/') || url.includes('/insights/') || url.includes('/stats')) {
       const requestKey = createRequestKey(url, 'GET', config?.params);
 
       // If there's already a pending request, return that promise

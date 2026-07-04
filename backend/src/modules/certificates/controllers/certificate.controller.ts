@@ -281,7 +281,7 @@ export const listCertificates = async (req: AuthRequest, res: Response, next: Ne
     const [certificates, total] = await Promise.all([
       Certificate.find(filter)
         .populate("eventId", "title")
-        .populate("userId", "firstName lastName email")
+        .populate("userId", "firstName lastName email schoolName")
         .populate("templateId", "name slug")
         .sort({ createdAt: -1 })
         .skip((pageNum - 1) * limitNum)
@@ -290,18 +290,20 @@ export const listCertificates = async (req: AuthRequest, res: Response, next: Ne
     ]);
 
     const studentIds = certificates.map(c => c.context?.studentId).filter(Boolean) as string[];
-    let studentMap: Record<string, { firstName: string; lastName: string; grade?: string }> = {};
+    let studentMap: Record<string, { firstName: string; lastName: string; grade?: string; schoolId?: string }> = {};
     if (studentIds.length > 0) {
-      const students = await Student.find({ _id: { $in: studentIds } }).select("firstName lastName grade").lean();
+      const students = await Student.find({ _id: { $in: studentIds } }).select("firstName lastName grade schoolId").lean();
       studentMap = Object.fromEntries(
         students.map(s => [(s._id as mongoose.Types.ObjectId).toString(), s]),
       );
     }
 
     const enriched = certificates.map(cert => {
-      const raw = cert.toObject();
+      const raw: any = cert.toObject();
       const sid = raw.context?.studentId;
-      return sid && studentMap[sid] ? { ...raw, studentInfo: studentMap[sid] } : raw;
+      const studentInfo = sid && studentMap[sid] ? studentMap[sid] : undefined;
+      const schoolName = raw.data?.school || studentInfo?.schoolId || (raw.userId as any)?.schoolName || "";
+      return { ...raw, ...(studentInfo ? { studentInfo } : {}), schoolName };
     });
 
     res.status(200).json({
@@ -776,8 +778,8 @@ export const exportCertificates = async (req: AuthRequest, res: Response, next: 
         "User Role":             user?.role ?? "",
         "User School Name":      user?.schoolName ?? "",
 
-        // School Name: sourced from cert data (set at issuance) → user profile → student record
-        "School Name":           certData?.school ?? user?.schoolName ?? "",
+        // School Name: sourced from cert data (set at issuance) → student record → user profile
+        "School Name":           certData?.school || student?.schoolId || user?.schoolName || "",
 
         // Student profile fields (fully expanded)
         "Student First Name":    student?.firstName ?? "",
@@ -788,7 +790,6 @@ export const exportCertificates = async (req: AuthRequest, res: Response, next: 
         "Gender":                student?.gender ?? "",
         "Grade":                 student?.grade ?? "",
         "Roll Number":           student?.rollNumber ?? "",
-        "School ID":             student?.schoolId?.toString() ?? "",
         "Guardian Relation":     student?.guardianRelation ?? "",
         "Student Status":        student?.status ?? "",
         "Address Line1":         student?.address?.line1 ?? "",

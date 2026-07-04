@@ -8,7 +8,7 @@ export interface IStudent extends Document {
   lastName: string;
   dateOfBirth?: Date;
   gender?: "male" | "female" | "other";
-  schoolId?: mongoose.Types.ObjectId;
+  schoolId?: string;
   grade?: string;
   rollNumber?: string;
   phone?: string;
@@ -44,7 +44,7 @@ const studentSchema = new Schema<IStudent>(
     lastName: { type: String, required: true, trim: true },
     dateOfBirth: Date,
     gender: { type: String, enum: ["male", "female", "other"] },
-    schoolId: { type: Schema.Types.ObjectId, ref: "School" },
+    schoolId: { type: String, trim: true },
     grade: { type: String, trim: true },
     rollNumber: { type: String, trim: true },
     phone: { type: String, trim: true },
@@ -69,6 +69,7 @@ const studentSchema = new Schema<IStudent>(
 );
 
 studentSchema.index({ parentUserId: 1, email: 1 }, { unique: true });
+studentSchema.index({ schoolId: 1 }); // school dashboard lookups
 
 studentSchema.statics.findByParentEmail = async function (email: string): Promise<IStudent[]> {
   const parent = await User.findOne({ email: email.toLowerCase().trim() }).select("_id");
