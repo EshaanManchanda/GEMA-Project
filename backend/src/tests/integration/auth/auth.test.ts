@@ -18,6 +18,7 @@ import request from "supertest";
 import { Application } from "express";
 import mongoose from "mongoose";
 import User, { UserRole, UserStatus } from "../../../models/User";
+import Vendor from "../../../models/Vendor";
 import { createTestApp } from "../setup/testApp";
 import { connectTestDB, clearTestDB, closeTestDB } from "../setup/testDB";
 
@@ -151,6 +152,33 @@ describe("POST /api/auth/register", () => {
     const cookies: string[] = ((res.headers["set-cookie"] as unknown) as string[]) || [];
     expect(cookies.some((c) => c.startsWith("accessToken="))).toBe(true);
     expect(cookies.some((c) => c.startsWith("refreshToken="))).toBe(true);
+  });
+
+  it("registers a vendor when role: 'vendor' is requested, and auto-creates a VendorProfile", async () => {
+    const payload = { ...customerPayload(), role: "vendor" };
+    const res = await registerUser(app, payload);
+
+    expect(res.status).toBe(201);
+    expect(res.body.data.user.role).toBe(UserRole.VENDOR);
+
+    const vendorProfile = await Vendor.findOne({ userId: res.body.data.user.id });
+    expect(vendorProfile).not.toBeNull();
+  });
+
+  it("registers a teacher when role: 'teacher' is requested", async () => {
+    const payload = { ...customerPayload(), role: "teacher" };
+    const res = await registerUser(app, payload);
+
+    expect(res.status).toBe(201);
+    expect(res.body.data.user.role).toBe(UserRole.TEACHER);
+  });
+
+  it("falls back to customer for a disallowed role (e.g. 'admin')", async () => {
+    const payload = { ...customerPayload(), role: "admin" };
+    const res = await registerUser(app, payload);
+
+    expect(res.status).toBe(201);
+    expect(res.body.data.user.role).toBe(UserRole.CUSTOMER);
   });
 
   it("sets isEmailVerified: false and status: pending on registration", async () => {

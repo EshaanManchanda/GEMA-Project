@@ -283,6 +283,7 @@ export const register = async (
       email,
       password,
       phone,
+      role: requestedRole,
     }: RegisterRequest = req.body;
     logger.debug("[REGISTER] Request body received:", {
       firstName,
@@ -321,8 +322,13 @@ export const register = async (
     const verificationOTP = generateOTP();
     const otpExpiry = getOTPExpiry(); // 10 minutes from now
 
-    // Public registration always creates customers — role cannot be set by caller
-    logger.debug("[REGISTER] Creating user with role: customer");
+    // Validate requested role against allowlist — same list as Google/Firebase sign-up.
+    // "employee"/"admin" are excluded: those accounts are created via invite, not self-register.
+    const newUserRole: GoogleAllowedRole =
+      requestedRole && (GOOGLE_ALLOWED_ROLES as readonly string[]).includes(requestedRole)
+        ? (requestedRole as GoogleAllowedRole)
+        : "customer";
+    logger.debug("[REGISTER] Creating user with role: " + newUserRole);
 
     // Create new user
     const user = await User.create({
@@ -331,13 +337,30 @@ export const register = async (
       email,
       passwordHash: password, // Will be hashed by pre-save hook
       phone,
-      role: "customer",
+      role: newUserRole,
       status: UserStatus.PENDING,
       emailVerification: {
         otp: verificationOTP,
         expiresAt: otpExpiry,
       },
     });
+
+    // Auto-create Vendor/Teacher profile — same pattern as Firebase sign-up
+    if (user.role === "vendor") {
+      try {
+        await getOrCreateVendorProfile(user._id);
+        logger.info("[REGISTER] Vendor profile auto-created", { userId: user._id });
+      } catch (vendorError) {
+        logger.error("[REGISTER] Failed to create vendor profile:", vendorError);
+      }
+    } else if (user.role === "teacher") {
+      try {
+        await getOrCreateTeacherProfile(user._id);
+        logger.info("[REGISTER] Teacher profile auto-created", { userId: user._id });
+      } catch (teacherError) {
+        logger.error("[REGISTER] Failed to create teacher profile:", teacherError);
+      }
+    }
 
     if (process.env.DEBUG_AUTH === "true" && process.env.NODE_ENV !== "production") {
       logger.debug("[REGISTER] User created successfully:", {
