@@ -5,6 +5,7 @@ import {
   type LoginCredentials,
   type RegisterData,
   type AuthResponse,
+  type RegisterResponse,
   type UserProfile,
   type UpdateProfileData,
   type AvatarUploadData,
@@ -75,7 +76,9 @@ export const registerUser = createAsyncThunk(
   async (userData: RegisterData, { rejectWithValue }) => {
     try {
       const response = await authAPI.register(userData);
-      toast.success('Account created successfully! Please verify your email.');
+      // Neutral wording — response may be the enumeration-protection path
+      // (existing email, no user created), so don't claim "account created".
+      toast.success('Please check your email to continue.');
       return response;
     } catch (error: any) {
       const message = error.response?.data?.message || 'Registration failed';
@@ -505,9 +508,12 @@ const authSlice = createSlice({
         state.isLoading = true;
         state.error = null;
       })
-      .addCase(registerUser.fulfilled, (state, action: PayloadAction<AuthResponse>) => {
+      .addCase(registerUser.fulfilled, (state, action: PayloadAction<RegisterResponse>) => {
         state.isLoading = false;
-        state.user = action.payload.user;
+        // Response has no `data.user` on the existing-email (enumeration
+        // protection) path — guard so the reducer can't throw and roll back
+        // the Immer draft (which would strand isLoading at true).
+        state.user = action.payload?.data?.user ?? null;
         state.isAuthenticated = false; // Not authenticated until email is verified
         state.isEmailVerified = false;
         state.isInitialized = true; // Auth state is known: pending verification

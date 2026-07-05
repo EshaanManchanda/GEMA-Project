@@ -78,6 +78,15 @@ export interface AuthResponse {
   expiresIn?: number;
 }
 
+// Register response — backend returns two shapes:
+// new email -> { success, message, data: { user } } (201, cookies set)
+// existing email -> { success, message } (200, enumeration protection, no data)
+export interface RegisterResponse {
+  success: boolean;
+  message: string;
+  data?: { user?: User };
+}
+
 // Password management types
 export interface ForgotPasswordData {
   email: string;

@@ -5,6 +5,7 @@ import {
   RegisterAPIData,
   User,
   AuthResponse,
+  RegisterResponse,
   UpdateProfileData,
   UserProfile,
   AvatarUploadData,
@@ -24,7 +25,7 @@ export const authAPI = {
     }
   },
 
-  register: async (userData: RegisterData): Promise<AuthResponse> => {
+  register: async (userData: RegisterData): Promise<RegisterResponse> => {
     try {
       // Transform to match backend API expectations
       const apiData: RegisterAPIData = {
@@ -35,8 +36,11 @@ export const authAPI = {
         phone: userData.phone,
         role: userData.role
       };
-      const response = await ApiService.post('/auth/register', apiData);
-      return response.data;
+      // ApiService.post already returns the HTTP body — do not unwrap `.data` again.
+      // Backend returns two shapes: new email -> { data: { user } }; existing email
+      // (enumeration protection) -> no `data` at all. Both are valid 200/201s.
+      const response = await ApiService.post<{ user?: User }>('/auth/register', apiData);
+      return response as RegisterResponse;
     } catch (error) {
       throw error;
     }
