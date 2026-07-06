@@ -81,7 +81,23 @@ export const registerUser = createAsyncThunk(
       toast.success('Please check your email to continue.');
       return response;
     } catch (error: any) {
-      const message = error.response?.data?.message || 'Registration failed';
+      let message = error.response?.data?.message || 'Registration failed';
+      
+      // Extract specific validation error if present
+      if (error.response?.data?.errors) {
+        const errors = error.response.data.errors;
+        if (Array.isArray(errors) && errors.length > 0) {
+          message = errors[0].msg || errors[0].message || message;
+        } else if (typeof errors === 'object' && !Array.isArray(errors)) {
+          const firstKey = Object.keys(errors)[0];
+          if (firstKey && typeof errors[firstKey] === 'string') {
+            message = errors[firstKey];
+          } else if (firstKey && errors[firstKey].msg) {
+            message = errors[firstKey].msg;
+          }
+        }
+      }
+      
       toast.error(message);
       return rejectWithValue(message);
     }

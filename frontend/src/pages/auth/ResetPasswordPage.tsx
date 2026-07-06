@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
-import { Link, useNavigate } from 'react-router-dom';
+import { Link, useNavigate, useLocation } from 'react-router-dom';
+import OTPInput from '@/components/common/OTPInput';
 import { authAPI } from '../../services/api/authAPI';
 import PrivatePageSEO from '@/components/common/PrivatePageSEO';
 
@@ -12,8 +13,12 @@ interface ResetPasswordFormData {
 
 const ResetPasswordPage: React.FC = () => {
   const navigate = useNavigate();
+  const location = useLocation();
+  const locationState = location.state as { email?: string } | null;
+  const initialEmail = locationState?.email || '';
+
   const [formData, setFormData] = useState<ResetPasswordFormData>({
-    email: '',
+    email: initialEmail,
     otp: '',
     password: '',
     confirmPassword: ''
@@ -22,6 +27,8 @@ const ResetPasswordPage: React.FC = () => {
   const [isLoading, setIsLoading] = useState<boolean>(false);
   const [resetError, setResetError] = useState<string | null>(null);
   const [resetSuccess, setResetSuccess] = useState<boolean>(false);
+  const [showPassword, setShowPassword] = useState<boolean>(false);
+  const [showConfirmPassword, setShowConfirmPassword] = useState<boolean>(false);
 
   const validateForm = (): boolean => {
     const newErrors: Partial<ResetPasswordFormData> = {};
@@ -38,16 +45,28 @@ const ResetPasswordPage: React.FC = () => {
     if (!formData.otp) {
       newErrors.otp = 'Verification code is required';
       isValid = false;
-    } else if (formData.otp.length !== 4) {
-      newErrors.otp = 'Verification code must be 4 digits';
+    } else if (formData.otp.length !== 6) {
+      newErrors.otp = 'Verification code must be 6 digits';
       isValid = false;
     }
 
     if (!formData.password) {
       newErrors.password = 'Password is required';
       isValid = false;
-    } else if (formData.password.length < 6) {
-      newErrors.password = 'Password must be at least 6 characters';
+    } else if (formData.password.length < 8) {
+      newErrors.password = 'Password must be at least 8 characters long';
+      isValid = false;
+    } else if (!/[A-Z]/.test(formData.password)) {
+      newErrors.password = 'Password must contain at least one uppercase letter';
+      isValid = false;
+    } else if (!/[a-z]/.test(formData.password)) {
+      newErrors.password = 'Password must contain at least one lowercase letter';
+      isValid = false;
+    } else if (!/\d/.test(formData.password)) {
+      newErrors.password = 'Password must contain at least one number';
+      isValid = false;
+    } else if (!/[!@#$%^&*]/.test(formData.password)) {
+      newErrors.password = 'Password must contain at least one special character (e.g., !@#$%^&*)';
       isValid = false;
     }
 
@@ -79,6 +98,16 @@ const ResetPasswordPage: React.FC = () => {
     }
 
     // Clear reset error when user makes changes
+    if (resetError) {
+      setResetError(null);
+    }
+  };
+
+  const handleOtpChange = (value: string) => {
+    setFormData(prev => ({ ...prev, otp: value }));
+    if (errors.otp) {
+      setErrors(prev => ({ ...prev, otp: undefined }));
+    }
     if (resetError) {
       setResetError(null);
     }
@@ -119,9 +148,15 @@ const ResetPasswordPage: React.FC = () => {
           <div className="text-center">
             <img src="/assets/animations/loading.svg" alt="Logo" className="h-12 w-12 mx-auto mb-4" />
             <h2 className="text-center text-2xl font-bold text-neutral-800">Reset your password</h2>
-            <p className="mt-2 text-center text-sm text-neutral-600">
-              Enter your email, verification code, and new password below.
-            </p>
+            {initialEmail ? (
+              <p className="mt-2 text-center text-sm text-neutral-600">
+                Enter the verification code sent to <strong className="text-neutral-800">{initialEmail}</strong> and your new password below.
+              </p>
+            ) : (
+              <p className="mt-2 text-center text-sm text-neutral-600">
+                Enter your email, verification code, and new password below.
+              </p>
+            )}
           </div>
         
         {resetError && (
@@ -157,8 +192,9 @@ const ResetPasswordPage: React.FC = () => {
           </div>
         ) : (
           <form className="mt-6 space-y-6" onSubmit={handleSubmit}>
-            <div className="form-group">
-              <label htmlFor="email" className="form-label text-sm font-medium text-neutral-700">Email address</label>
+            {!initialEmail && (
+              <div className="form-group">
+                <label htmlFor="email" className="form-label text-sm font-medium text-neutral-700">Email address</label>
               <div className="relative mt-1">
                 <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
                   <svg className="h-5 w-5 text-neutral-400" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor">
@@ -182,32 +218,20 @@ const ResetPasswordPage: React.FC = () => {
                 )}
               </div>
             </div>
+            )}
 
             <div className="form-group">
-              <label htmlFor="otp" className="form-label text-sm font-medium text-neutral-700">Verification code</label>
-              <div className="relative mt-1">
-                <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-                  <svg className="h-5 w-5 text-neutral-400" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor">
-                    <path fillRule="evenodd" d="M10 1a4.5 4.5 0 00-4.5 4.5V9H5a2 2 0 00-2 2v6a2 2 0 002 2h10a2 2 0 002-2v-6a2 2 0 00-2-2h-.5V5.5A4.5 4.5 0 0010 1zm3 8V5.5a3 3 0 10-6 0V9h6z" clipRule="evenodd" />
-                  </svg>
-                </div>
-                <input
-                  id="otp"
-                  name="otp"
-                  type="text"
-                  inputMode="numeric"
-                  pattern="[0-9]*"
-                  maxLength={4}
-                  required
-                  className={`input pl-10 w-full ${errors.otp ? 'input-error' : 'border-neutral-300'}`}
-                  placeholder="Enter 4-digit code"
-                  value={formData.otp}
-                  onChange={handleInputChange}
-                />
-                {errors.otp && (
-                  <p className="form-error mt-1">{errors.otp}</p>
-                )}
-              </div>
+              <label className="form-label text-sm font-medium text-neutral-700 block mb-2">Verification code</label>
+              <OTPInput
+                length={6}
+                value={formData.otp}
+                onChange={handleOtpChange}
+                error={!!errors.otp}
+                disabled={isLoading}
+              />
+              {errors.otp && (
+                <p className="form-error mt-1 text-center">{errors.otp}</p>
+              )}
             </div>
 
             <div className="form-group">
@@ -221,14 +245,30 @@ const ResetPasswordPage: React.FC = () => {
                 <input
                   id="password"
                   name="password"
-                  type="password"
+                  type={showPassword ? 'text' : 'password'}
                   autoComplete="new-password"
                   required
-                  className={`input pl-10 w-full ${errors.password ? 'input-error' : 'border-neutral-300'}`}
+                  className={`input pl-10 pr-10 w-full ${errors.password ? 'input-error' : 'border-neutral-300'}`}
                   placeholder="Enter new password"
                   value={formData.password}
                   onChange={handleInputChange}
                 />
+                <button
+                  type="button"
+                  className="absolute inset-y-0 right-0 pr-3 flex items-center"
+                  onClick={() => setShowPassword(!showPassword)}
+                >
+                  {showPassword ? (
+                    <svg className="h-5 w-5 text-neutral-400 hover:text-neutral-600" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13.875 18.825A10.05 10.05 0 0112 19c-4.478 0-8.268-2.943-9.543-7a9.97 9.97 0 011.563-3.029m5.858.908a3 3 0 114.243 4.243M9.878 9.878l4.242 4.242M9.88 9.88l-3.29-3.29m7.532 7.532l3.29 3.29M3 3l3.59 3.59m0 0A9.953 9.953 0 0112 5c4.478 0 8.268 2.943 9.543 7a10.025 10.025 0 01-4.132 5.411m0 0L21 21" />
+                    </svg>
+                  ) : (
+                    <svg className="h-5 w-5 text-neutral-400 hover:text-neutral-600" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
+                    </svg>
+                  )}
+                </button>
                 {errors.password && (
                   <p className="form-error mt-1">{errors.password}</p>
                 )}
@@ -246,14 +286,30 @@ const ResetPasswordPage: React.FC = () => {
                 <input
                   id="confirmPassword"
                   name="confirmPassword"
-                  type="password"
+                  type={showConfirmPassword ? 'text' : 'password'}
                   autoComplete="new-password"
                   required
-                  className={`input pl-10 w-full ${errors.confirmPassword ? 'input-error' : 'border-neutral-300'}`}
+                  className={`input pl-10 pr-10 w-full ${errors.confirmPassword ? 'input-error' : 'border-neutral-300'}`}
                   placeholder="Confirm new password"
                   value={formData.confirmPassword}
                   onChange={handleInputChange}
                 />
+                <button
+                  type="button"
+                  className="absolute inset-y-0 right-0 pr-3 flex items-center"
+                  onClick={() => setShowConfirmPassword(!showConfirmPassword)}
+                >
+                  {showConfirmPassword ? (
+                    <svg className="h-5 w-5 text-neutral-400 hover:text-neutral-600" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13.875 18.825A10.05 10.05 0 0112 19c-4.478 0-8.268-2.943-9.543-7a9.97 9.97 0 011.563-3.029m5.858.908a3 3 0 114.243 4.243M9.878 9.878l4.242 4.242M9.88 9.88l-3.29-3.29m7.532 7.532l3.29 3.29M3 3l3.59 3.59m0 0A9.953 9.953 0 0112 5c4.478 0 8.268 2.943 9.543 7a10.025 10.025 0 01-4.132 5.411m0 0L21 21" />
+                    </svg>
+                  ) : (
+                    <svg className="h-5 w-5 text-neutral-400 hover:text-neutral-600" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
+                    </svg>
+                  )}
+                </button>
                 {errors.confirmPassword && (
                   <p className="form-error mt-1">{errors.confirmPassword}</p>
                 )}

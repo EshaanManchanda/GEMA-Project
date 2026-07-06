@@ -72,14 +72,14 @@ const VerifyEmailPage: React.FC = () => {
       sessionStorage.removeItem('pendingVerifyEmail');
       setVerificationStatus('success');
 
-      // Auto-redirect to home after 2.5s
+      const redirectPath = new URLSearchParams(location.search).get('redirect') || '/';
+      // Auto-redirect to home or requested path after 2.5s
       setTimeout(() => {
-        navigate('/', { replace: true });
+        navigate(redirectPath, { replace: true });
       }, 2500);
     } catch (error: any) {
-      setErrorMessage(
-        error || 'Invalid or expired code. Please try again or request a new one.'
-      );
+      const msg = typeof error === 'string' ? error : error?.message || 'Invalid or expired code. Please try again or request a new one.';
+      setErrorMessage(msg);
     }
   };
 
@@ -96,9 +96,8 @@ const VerifyEmailPage: React.FC = () => {
       setErrorMessage('');
       startCooldown();
     } catch (error: any) {
-      setErrorMessage(
-        error || 'Failed to resend the verification code. Please try again.'
-      );
+      const msg = typeof error === 'string' ? error : error?.message || 'Failed to resend verification email. Please try again.';
+      setErrorMessage(msg);
     }
   };
 

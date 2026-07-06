@@ -58,7 +58,6 @@ const RegisterPage: React.FC = () => {
   const loginLink = redirectPath
     ? `/login?redirect=${encodeURIComponent(redirectPath)}`
     : '/login';
-  const [currentStep, setCurrentStep] = useState<1 | 2>(1);
   const [formData, setFormData] = useState<RegisterFormData>({
     firstName: '',
     lastName: '',
@@ -70,27 +69,10 @@ const RegisterPage: React.FC = () => {
     role: initialRole,
     agreeToTerms: false
   });
-  const [otp, setOtp] = useState<string>('');
-  const [otpError, setOtpError] = useState<string>('');
-  const [cooldown, setCooldown] = useState<number>(0);
-  const cooldownRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const [errors, setErrors] = useState<Partial<RegisterFormData>>({});
   const [showPassword, setShowPassword] = useState<boolean>(false);
   const [showConfirmPassword, setShowConfirmPassword] = useState<boolean>(false);
 
-  useEffect(() => {
-    return () => { if (cooldownRef.current) clearInterval(cooldownRef.current); };
-  }, []);
-
-  const startCooldown = () => {
-    setCooldown(60);
-    cooldownRef.current = setInterval(() => {
-      setCooldown(prev => {
-        if (prev <= 1) { clearInterval(cooldownRef.current!); return 0; }
-        return prev - 1;
-      });
-    }, 1000);
-  };
 
   // Clear any existing errors when component mounts
   useEffect(() => {
@@ -131,8 +113,17 @@ const RegisterPage: React.FC = () => {
     } else if (formData.password.length < 8) {
       newErrors.password = 'Password must be at least 8 characters long';
       isValid = false;
-    } else if (!/^(?=.*\d)(?=.*[a-z])(?=.*[A-Z])(?=.*[!@#$%^&*])/.test(formData.password)) {
-      newErrors.password = 'Password must contain at least one uppercase letter, one lowercase letter, one number, and one special character';
+    } else if (!/[A-Z]/.test(formData.password)) {
+      newErrors.password = 'Password must contain at least one uppercase letter';
+      isValid = false;
+    } else if (!/[a-z]/.test(formData.password)) {
+      newErrors.password = 'Password must contain at least one lowercase letter';
+      isValid = false;
+    } else if (!/\d/.test(formData.password)) {
+      newErrors.password = 'Password must contain at least one number';
+      isValid = false;
+    } else if (!/[!@#$%^&*]/.test(formData.password)) {
+      newErrors.password = 'Password must contain at least one special character (e.g., !@#$%^&*)';
       isValid = false;
     }
 

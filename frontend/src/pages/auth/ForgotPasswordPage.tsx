@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { Link } from 'react-router-dom';
+import { Link, useNavigate } from 'react-router-dom';
 import { authAPI } from '../../services/api/authAPI';
 import PrivatePageSEO from '@/components/common/PrivatePageSEO';
 
@@ -8,13 +8,13 @@ interface ForgotPasswordFormData {
 }
 
 const ForgotPasswordPage: React.FC = () => {
+  const navigate = useNavigate();
   const [formData, setFormData] = useState<ForgotPasswordFormData>({
     email: ''
   });
   const [errors, setErrors] = useState<Partial<ForgotPasswordFormData>>({});
   const [isLoading, setIsLoading] = useState<boolean>(false);
   const [requestError, setRequestError] = useState<string | null>(null);
-  const [requestSuccess, setRequestSuccess] = useState<boolean>(false);
 
   const validateForm = (): boolean => {
     const newErrors: Partial<ForgotPasswordFormData> = {};
@@ -62,11 +62,10 @@ const ForgotPasswordPage: React.FC = () => {
 
     setIsLoading(true);
     setRequestError(null);
-    setRequestSuccess(false);
 
     try {
       await authAPI.forgotPassword(formData.email);
-      setRequestSuccess(true);
+      navigate('/reset-password', { state: { email: formData.email } });
     } catch (error: any) {
       console.error('Password reset request error:', error);
       setRequestError(error?.response?.data?.message || error.message || 'An unexpected error occurred');
@@ -98,95 +97,71 @@ const ForgotPasswordPage: React.FC = () => {
           </div>
         )}
         
-        {requestSuccess ? (
-          <div className="alert alert-success mt-4" role="alert">
-            <div className="flex items-start">
-              <svg className="h-5 w-5 text-success-600 flex-shrink-0 mt-0.5" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor">
-                <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clipRule="evenodd" />
-              </svg>
-              <div className="ml-3">
-                <h3 className="text-sm font-medium text-success-800">Verification code sent!</h3>
-                <p className="mt-2 text-sm text-success-700">
-                  We've sent a verification code to <strong>{formData.email}</strong>. Please check your inbox and use the code to reset your password.
-                </p>
-                <div className="mt-4">
-                  <Link to="/reset-password" className="font-medium text-primary-600 hover:text-primary-700 transition-colors flex items-center">
-                    <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4 mr-1" viewBox="0 0 20 20" fill="currentColor">
-                      <path fillRule="evenodd" d="M10.293 3.293a1 1 0 011.414 0l6 6a1 1 0 010 1.414l-6 6a1 1 0 01-1.414-1.414L14.586 11H3a1 1 0 110-2h11.586l-4.293-4.293a1 1 0 010-1.414z" clipRule="evenodd" />
-                    </svg>
-                    Continue to reset password
-                  </Link>
-                </div>
+        <form className="mt-6 space-y-6" onSubmit={handleSubmit}>
+          <div className="form-group">
+            <label htmlFor="email" className="form-label text-sm font-medium text-neutral-700">Email address</label>
+            <div className="relative mt-1">
+              <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                <svg className="h-5 w-5 text-neutral-400" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor">
+                  <path d="M2.003 5.884L10 9.882l7.997-3.998A2 2 0 0016 4H4a2 2 0 00-1.997 1.884z" />
+                  <path d="M18 8.118l-8 4-8-4V14a2 2 0 002 2h12a2 2 0 002-2V8.118z" />
+                </svg>
               </div>
+              <input
+                id="email"
+                name="email"
+                type="email"
+                autoComplete="email"
+                required
+                className={`input pl-10 w-full ${errors.email ? 'input-error' : 'border-neutral-300'}`}
+                placeholder="you@example.com"
+                value={formData.email}
+                onChange={handleInputChange}
+              />
+              {errors.email && (
+                <p className="form-error mt-1">{errors.email}</p>
+              )}
             </div>
           </div>
-        ) : (
-          <form className="mt-6 space-y-6" onSubmit={handleSubmit}>
-            <div className="form-group">
-              <label htmlFor="email" className="form-label text-sm font-medium text-neutral-700">Email address</label>
-              <div className="relative mt-1">
-                <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-                  <svg className="h-5 w-5 text-neutral-400" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor">
-                    <path d="M2.003 5.884L10 9.882l7.997-3.998A2 2 0 0016 4H4a2 2 0 00-1.997 1.884z" />
-                    <path d="M18 8.118l-8 4-8-4V14a2 2 0 002 2h12a2 2 0 002-2V8.118z" />
+
+          <div className="mt-2">
+            <button
+              type="submit"
+              disabled={isLoading}
+              className={`btn btn-lg w-full flex justify-center items-center space-x-2 ${isLoading ? 'bg-primary-400 cursor-not-allowed' : 'bg-primary-600 hover:bg-primary-700'} text-white font-medium rounded-lg transition-all duration-200 shadow-sm hover:shadow`}
+            >
+              {isLoading ? (
+                <>
+                  <svg className="animate-spin h-5 w-5 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                    <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                    <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
                   </svg>
-                </div>
-                <input
-                  id="email"
-                  name="email"
-                  type="email"
-                  autoComplete="email"
-                  required
-                  className={`input pl-10 w-full ${errors.email ? 'input-error' : 'border-neutral-300'}`}
-                  placeholder="you@example.com"
-                  value={formData.email}
-                  onChange={handleInputChange}
-                />
-                {errors.email && (
-                  <p className="form-error mt-1">{errors.email}</p>
-                )}
-              </div>
-            </div>
+                  <span>Sending...</span>
+                </>
+              ) : (
+                <>
+                  <svg className="h-5 w-5 text-white" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor">
+                    <path d="M3 4a2 2 0 00-2 2v1.161l8.441 4.221a1.25 1.25 0 001.118 0L19 7.162V6a2 2 0 00-2-2H3z" />
+                    <path d="M19 8.839l-7.77 3.885a2.75 2.75 0 01-2.46 0L1 8.839V14a2 2 0 002 2h14a2 2 0 002-2V8.839z" />
+                  </svg>
+                  <span>Send verification code</span>
+                </>
+              )}
+            </button>
+          </div>
 
-            <div className="mt-2">
-              <button
-                type="submit"
-                disabled={isLoading}
-                className={`btn btn-lg w-full flex justify-center items-center space-x-2 ${isLoading ? 'bg-primary-400 cursor-not-allowed' : 'bg-primary-600 hover:bg-primary-700'} text-white font-medium rounded-lg transition-all duration-200 shadow-sm hover:shadow`}
-              >
-                {isLoading ? (
-                  <>
-                    <svg className="animate-spin h-5 w-5 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
-                      <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
-                      <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
-                    </svg>
-                    <span>Sending...</span>
-                  </>
-                ) : (
-                  <>
-                    <svg className="h-5 w-5 text-white" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor">
-                      <path d="M3 4a2 2 0 00-2 2v1.161l8.441 4.221a1.25 1.25 0 001.118 0L19 7.162V6a2 2 0 00-2-2H3z" />
-                      <path d="M19 8.839l-7.77 3.885a2.75 2.75 0 01-2.46 0L1 8.839V14a2 2 0 002 2h14a2 2 0 002-2V8.839z" />
-                    </svg>
-                    <span>Send verification code</span>
-                  </>
-                )}
-              </button>
-            </div>
-
-            <div className="text-center mt-4">
-              <Link 
-                to="/login" 
-                className="font-medium text-primary-600 hover:text-primary-700 transition-colors flex items-center justify-center"
-              >
-                <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4 mr-1" viewBox="0 0 20 20" fill="currentColor">
-                  <path fillRule="evenodd" d="M9.707 16.707a1 1 0 01-1.414 0l-6-6a1 1 0 010-1.414l6-6a1 1 0 011.414 1.414L5.414 9H17a1 1 0 110 2H5.414l4.293 4.293a1 1 0 010 1.414z" clipRule="evenodd" />
-                </svg>
-                Back to login
-              </Link>
-            </div>
-          </form>
-        )}
+          <div className="text-center mt-4">
+            <Link 
+              to="/login" 
+              className="font-medium text-primary-600 hover:text-primary-700 transition-colors flex items-center justify-center"
+            >
+              <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4 mr-1" viewBox="0 0 20 20" fill="currentColor">
+                <path fillRule="evenodd" d="M9.707 16.707a1 1 0 01-1.414 0l-6-6a1 1 0 010-1.414l6-6a1 1 0 011.414 1.414L5.414 9H17a1 1 0 110 2H5.414l4.293 4.293a1 1 0 010 1.414z" clipRule="evenodd" />
+              </svg>
+              Back to login
+            </Link>
+          </div>
+        </form>
       </div>
     </div>
     </div>

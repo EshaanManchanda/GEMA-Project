@@ -17,17 +17,10 @@ interface RegisterFormData {
     agreeToTerms: boolean;
 }
 
-interface OTPFormData {
-    otp: string;
-}
-
-type RegistrationStep = 1 | 2;
-
 const VendorRegisterPage: React.FC = () => {
     const navigate = useNavigate();
     const dispatch = useAppDispatch();
     const { isLoading, error } = useAppSelector((state) => state.auth);
-    const [currentStep, setCurrentStep] = useState<RegistrationStep>(1);
     const [formData, setFormData] = useState<RegisterFormData>({
         firstName: '',
         lastName: '',
@@ -38,11 +31,7 @@ const VendorRegisterPage: React.FC = () => {
         phoneNumber: '',
         agreeToTerms: false
     });
-    const [otpData, setOtpData] = useState<OTPFormData>({
-        otp: ''
-    });
     const [errors, setErrors] = useState<Partial<RegisterFormData>>({});
-    const [otpError, setOtpError] = useState<string>('');
     const [showPassword, setShowPassword] = useState<boolean>(false);
     const [showConfirmPassword, setShowConfirmPassword] = useState<boolean>(false);
 
@@ -79,8 +68,17 @@ const VendorRegisterPage: React.FC = () => {
         } else if (formData.password.length < 8) {
             newErrors.password = 'Password must be at least 8 characters long';
             isValid = false;
-        } else if (!/^(?=.*\d)(?=.*[a-z])(?=.*[A-Z])(?=.*[!@#$%^&*])/.test(formData.password)) {
-            newErrors.password = 'Password must contain at least one uppercase letter, one lowercase letter, one number, and one special character';
+        } else if (!/[A-Z]/.test(formData.password)) {
+            newErrors.password = 'Password must contain at least one uppercase letter';
+            isValid = false;
+        } else if (!/[a-z]/.test(formData.password)) {
+            newErrors.password = 'Password must contain at least one lowercase letter';
+            isValid = false;
+        } else if (!/\d/.test(formData.password)) {
+            newErrors.password = 'Password must contain at least one number';
+            isValid = false;
+        } else if (!/[!@#$%^&*]/.test(formData.password)) {
+            newErrors.password = 'Password must contain at least one special character (e.g., !@#$%^&*)';
             isValid = false;
         }
 
@@ -179,143 +177,12 @@ const VendorRegisterPage: React.FC = () => {
             })).unwrap();
 
             // Move to step 2 for email verification
-            setCurrentStep(2);
+            sessionStorage.setItem('pendingVerifyEmail', formData.email);
+            navigate('/verify-email?redirect=/vendor', { state: { email: formData.email }, replace: true });
         } catch (error: any) {
             console.error('Registration error:', error);
         }
     };
-
-    const handleOtpSubmit = async (e: React.FormEvent) => {
-        e.preventDefault();
-
-        if (!otpData.otp || otpData.otp.length !== 4) {
-            setOtpError('Please enter a valid 4-digit OTP');
-            return;
-        }
-
-        setOtpError('');
-
-        try {
-            await dispatch(verifyEmailWithOTP({ email: formData.email, otp: otpData.otp })).unwrap();
-
-            navigate('/vendor', {
-                state: {
-                    message: 'Registration completed successfully! Your email has been verified.',
-                    type: 'success'
-                }
-            });
-        } catch (error: any) {
-            console.error('OTP verification error:', error);
-            setOtpError(error || 'Invalid OTP. Please try again.');
-        }
-    };
-
-    const handleSkipVerification = () => {
-        navigate('/vendor', {
-            state: {
-                message: 'Registration completed successfully! You can verify your email later.',
-                type: 'info'
-            }
-        });
-    };
-
-    const handleResendOtp = async () => {
-        try {
-            await dispatch(resendVerificationEmail(formData.email)).unwrap();
-            setOtpError('');
-        } catch (error: any) {
-            console.error('Resend OTP error:', error);
-            setOtpError(error || 'Failed to resend OTP');
-        }
-    };
-
-    if (currentStep === 2) {
-        return (
-            <>
-                <PrivatePageSEO title="Verify Email | Kidrove" description="Verify your vendor email address" />
-                <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-orange-50 to-white py-12 px-4 sm:px-6 lg:px-8">
-                    <div className="max-w-md w-full space-y-6 animate-fade-in-up">
-                        <div className="bg-white p-8 rounded-xl shadow-medium border border-neutral-200">
-                            <div className="text-center">
-                                <div className="mx-auto mb-4 flex h-12 w-12 items-center justify-center rounded-full bg-orange-100 text-orange-600 font-bold">
-                                    OTP
-                                </div>
-                                <h2 className="text-center text-2xl font-bold text-neutral-800">Enter OTP</h2>
-                                <p className="mt-2 text-center text-sm text-neutral-600">
-                                    Check your email for the 4-digit OTP sent to{' '}
-                                    <span className="font-medium text-orange-600">{formData.email}</span>
-                                </p>
-                            </div>
-
-                            {otpError && (
-                                <div className="alert alert-error flex items-center space-x-3 mb-4" role="alert">
-                                    <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 text-error-600" viewBox="0 0 20 20" fill="currentColor">
-                                        <path fillRule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7 4a1 1 0 11-2 0 1 1 0 012 0zm-1-9a1 1 0 00-1 1v4a1 1 0 102 0V6a1 1 0 00-1-1z" clipRule="evenodd" />
-                                    </svg>
-                                    <p className="text-sm font-medium">{otpError}</p>
-                                </div>
-                            )}
-
-                            <form className="mt-6 space-y-6" onSubmit={handleOtpSubmit}>
-                                <div className="form-group">
-                                    <label htmlFor="otp" className="form-label text-center block">Enter OTP</label>
-                                    <OTPInput
-                                        value={otpData.otp}
-                                        onChange={(value) => setOtpData({ otp: value })}
-                                        error={!!otpError}
-                                        disabled={isLoading}
-                                    />
-                                </div>
-
-                                <div className="space-y-4">
-                                    <button
-                                        type="submit"
-                                        disabled={isLoading}
-                                        className={`btn btn-lg w-full flex justify-center items-center space-x-2 ${isLoading ? 'bg-orange-400 cursor-not-allowed' : 'bg-orange-600 hover:bg-orange-700'
-                                            } text-white font-medium rounded-lg transition-all duration-200 shadow-sm hover:shadow`}
-                                    >
-                                        {isLoading ? (
-                                            <>
-                                                <svg className="animate-spin h-5 w-5 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
-                                                    <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
-                                                    <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
-                                                </svg>
-                                                <span>Verifying...</span>
-                                            </>
-                                        ) : (
-                                            <span>Verify Email</span>
-                                        )}
-                                    </button>
-
-                                    <button
-                                        type="button"
-                                        onClick={handleSkipVerification}
-                                        className="btn btn-lg w-full border-2 border-neutral-200 bg-white text-neutral-700 hover:bg-neutral-50 font-medium rounded-lg transition-all duration-200"
-                                    >
-                                        Skip Verification
-                                    </button>
-                                </div>
-                            </form>
-
-                            <div className="text-center">
-                                <p className="text-sm text-neutral-600">
-                                    Didn't receive the code?{' '}
-                                    <button
-                                        type="button"
-                                        onClick={handleResendOtp}
-                                        disabled={isLoading}
-                                        className="font-medium text-orange-600 hover:text-orange-700 transition-colors disabled:text-orange-400"
-                                    >
-                                        Resend Code
-                                    </button>
-                                </p>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-            </>
-        );
-    }
 
     return (
         <>
