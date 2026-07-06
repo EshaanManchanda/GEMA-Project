@@ -11,6 +11,7 @@ import {
   updateTeacherPaymentMode,
   updateTeacherStatus,
   getTeacherStats,
+  syncTeacherUserData,
 } from "../controllers/admin.teacher.controller";
 import { adminVerifyTeacherBank } from "../controllers/teacher.payment.controller";
 
@@ -42,6 +43,13 @@ router.get("/stats", getTeacherStats);
 
 /**
  * ============================
+ * SYNC
+ * ============================
+ */
+router.post("/sync", syncTeacherUserData);
+
+/**
+ * ============================
  * LIST TEACHERS
  * ============================
  */
@@ -56,6 +64,7 @@ router.get(
       .optional()
       .isIn(Object.values(TeacherVerificationStatus)),
     query("isActive").optional().isBoolean(),
+    query("status").optional().isString(),
     query("sortBy").optional().isString(),
     query("sortOrder").optional().isIn(["asc", "desc"]),
   ],

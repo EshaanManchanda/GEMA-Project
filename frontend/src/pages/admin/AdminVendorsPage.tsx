@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { toast } from 'react-hot-toast';
-import { FaEye, FaTrash } from 'react-icons/fa';
+import { FaEye, FaTrash, FaCreditCard, FaPowerOff, FaMoneyBillWave } from 'react-icons/fa';
+import { format } from 'date-fns';
 import api from '../../services/api';
 import PrivatePageSEO from '@/components/common/PrivatePageSEO';
 import logger from '@/utils/logger';
@@ -28,6 +29,7 @@ interface Vendor {
   subscriptionPaidUntil?: string;
   isActive: boolean;
   isSuspended: boolean;
+  lastLogin?: string;
   verificationStatus: string;
   verificationDocuments?: {
     businessLicense?: VendorDoc;
@@ -69,14 +71,22 @@ const AdminVendorsPage: React.FC = () => {
   // Filters
   const [search, setSearch] = useState('');
   const [filterPaymentMode, setFilterPaymentMode] = useState('');
-  const [filterActive, setFilterActive] = useState('');
+  const [statusFilter, setStatusFilter] = useState('all');
   const [page, setPage] = useState(1);
   const [totalPages, setTotalPages] = useState(1);
+
+  const vendorActionIconStyle = {
+    width: 16,
+    height: 16,
+    minWidth: 16,
+    minHeight: 16,
+    flexShrink: 0,
+  } as const;
 
   useEffect(() => {
     fetchVendors();
     fetchStats();
-  }, [page, search, filterPaymentMode, filterActive]);
+  }, [page, search, filterPaymentMode, statusFilter]);
 
   const fetchVendors = async () => {
     setIsLoading(true);
@@ -86,7 +96,7 @@ const AdminVendorsPage: React.FC = () => {
       params.append('limit', '10');
       if (search) params.append('search', search);
       if (filterPaymentMode) params.append('paymentMode', filterPaymentMode);
-      if (filterActive) params.append('isActive', filterActive);
+      if (statusFilter !== 'all') params.append('status', statusFilter);
 
       const response = await api.get(`/admin/vendors?${params.toString()}`);
       setVendors(response.data.data.vendors);
@@ -104,6 +114,21 @@ const AdminVendorsPage: React.FC = () => {
       setStats(response.data.data);
     } catch (error) {
       logger.error('Failed to fetch stats:', error);
+    }
+  };
+
+  const handleSyncData = async () => {
+    if (!window.confirm('This will fix all vendor↔user data inconsistencies (orphan vendors, missing profiles). Run sync?')) return;
+    try {
+      const response = await api.post('/admin/vendors/sync');
+      const { orphanVendorsMarkedDeleted, vendorProfilesCreated, softDeletedVendorsReactivated } = response.data.data;
+      toast.success(
+        `Sync complete: ${orphanVendorsMarkedDeleted} orphans cleaned, ${vendorProfilesCreated} profiles created, ${softDeletedVendorsReactivated} reactivated.`
+      );
+      fetchVendors();
+      fetchStats();
+    } catch (error: any) {
+      toast.error(error.response?.data?.message || 'Sync failed');
     }
   };
 
@@ -223,9 +248,18 @@ const AdminVendorsPage: React.FC = () => {
       <div className="min-h-screen bg-gray-50 p-6">
         <div className="max-w-7xl mx-auto">
           {/* Header */}
-          <div className="mb-8">
-            <h1 className="text-3xl font-bold text-gray-900">Vendor Management</h1>
-            <p className="mt-2 text-gray-600">Manage vendor payment models and status</p>
+          <div className="mb-8 flex items-center justify-between">
+            <div>
+              <h1 className="text-3xl font-bold text-gray-900">Vendor Management</h1>
+              <p className="mt-2 text-gray-600">Manage vendor payment models and status</p>
+            </div>
+            <button
+              onClick={handleSyncData}
+              className="px-4 py-2 bg-indigo-600 text-white text-sm font-medium rounded-lg hover:bg-indigo-700 transition-colors flex items-center gap-2"
+              title="Fix vendor/user data inconsistencies"
+            >
+              🔄 Sync Data
+            </button>
           </div>
 
           {/* Stats Cards */}
@@ -288,18 +322,20 @@ const AdminVendorsPage: React.FC = () => {
                 <select
                   id="filter-active"
                   name="filterActive"
-                  value={filterActive}
-                  onChange={(e) => setFilterActive(e.target.value)}
+                  value={statusFilter}
+                  onChange={(e) => setStatusFilter(e.target.value)}
                   className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-orange-500 bg-white text-gray-900"
                 >
-                  <option value="">All</option>
-                  <option value="true">Active</option>
-                  <option value="false">Inactive</option>
+                  <option value="all">All Status</option>
+                  <option value="active">Active</option>
+                  <option value="inactive">Inactive</option>
+                  <option value="pending">Pending</option>
+                  <option value="suspended">Suspended</option>
                 </select>
               </div>
               <div className="flex items-end">
                 <button
-                  onClick={() => { setSearch(''); setFilterPaymentMode(''); setFilterActive(''); }}
+                  onClick={() => { setSearch(''); setFilterPaymentMode(''); setStatusFilter('all'); }}
                   className="w-full px-4 py-2 bg-gray-200 text-gray-700 rounded-lg hover:bg-gray-300 transition-colors"
                 >
                   Clear Filters
@@ -325,6 +361,7 @@ const AdminVendorsPage: React.FC = () => {
                       <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Rate/Subscription</th>
                       <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Status</th>
                       <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Subscription Until</th>
+                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Last Login</th>
                       <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Actions</th>
                     </tr>
                   </thead>
@@ -379,44 +416,47 @@ const AdminVendorsPage: React.FC = () => {
                             ? new Date(vendor.subscriptionPaidUntil).toLocaleDateString()
                             : '-'}
                         </td>
+                        <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                          {vendor.lastLogin ? format(new Date(vendor.lastLogin), 'MMM dd, yyyy HH:mm') : 'Never logged in'}
+                        </td>
                         <td className="px-6 py-4 whitespace-nowrap text-sm">
-                          <div className="flex items-center gap-1">
+                          <div className="flex items-center gap-2">
                             <button
                               onClick={() => openViewModal(vendor)}
                               title="View"
-                              className="p-2 rounded-lg text-blue-600 hover:text-blue-900 hover:bg-blue-50 transition-colors"
+                              className="p-2.5 bg-blue-50 text-blue-600 hover:text-white hover:bg-blue-600 rounded-lg transition-all duration-200 hover:scale-105 hover:shadow-md border border-blue-200"
                             >
-                              <FaEye />
+                              <FaEye style={vendorActionIconStyle} />
                             </button>
                             <button
                               onClick={() => openPaymentModeModal(vendor)}
                               title="Payment Mode"
-                              className="px-2 py-1 rounded-lg text-blue-600 hover:text-blue-800 hover:bg-blue-50 text-xs font-medium transition-colors"
+                              className="p-2.5 bg-indigo-50 text-indigo-600 hover:text-white hover:bg-indigo-600 rounded-lg transition-all duration-200 hover:scale-105 hover:shadow-md border border-indigo-200"
                             >
-                              Payment
+                              <FaCreditCard style={vendorActionIconStyle} />
                             </button>
                             <button
                               onClick={() => openStatusModal(vendor)}
                               title="Update Status"
-                              className="px-2 py-1 rounded-lg text-orange-600 hover:text-orange-800 hover:bg-orange-50 text-xs font-medium transition-colors"
+                              className="p-2.5 bg-orange-50 text-orange-600 hover:text-white hover:bg-orange-600 rounded-lg transition-all duration-200 hover:scale-105 hover:shadow-md border border-orange-200"
                             >
-                              Status
+                              <FaPowerOff style={vendorActionIconStyle} />
                             </button>
                             {vendor.paymentMode === 'custom_stripe' && (
                               <button
                                 onClick={() => handleAddManualPayment(vendor.id)}
                                 title="Add Manual Payment"
-                                className="px-2 py-1 rounded-lg text-green-600 hover:text-green-800 hover:bg-green-50 text-xs font-medium transition-colors"
+                                className="p-2.5 bg-green-50 text-green-600 hover:text-white hover:bg-green-600 rounded-lg transition-all duration-200 hover:scale-105 hover:shadow-md border border-green-200"
                               >
-                                +Pay
+                                <FaMoneyBillWave style={vendorActionIconStyle} />
                               </button>
                             )}
                             <button
                               onClick={() => handleDeleteVendor(vendor.id)}
                               title="Delete"
-                              className="p-2 rounded-lg text-red-600 hover:text-red-900 hover:bg-red-50 transition-colors"
+                              className="p-2.5 bg-red-50 text-red-600 hover:text-white hover:bg-red-600 rounded-lg transition-all duration-200 hover:scale-105 hover:shadow-md border border-red-200"
                             >
-                              <FaTrash />
+                              <FaTrash style={vendorActionIconStyle} />
                             </button>
                           </div>
                         </td>

@@ -301,7 +301,7 @@ const VendorSchema = new Schema<IVendor>(
     },
     phone: {
       type: String,
-      required: [true, "Phone is required"],
+      required: false,
       trim: true,
     },
     contactPerson: {

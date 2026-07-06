@@ -35,6 +35,7 @@ const AdminUserEditPage: React.FC = () => {
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [activeTab, setActiveTab] = useState<TabId>('basic');
+  const [formErrors, setFormErrors] = useState<Record<string, string>>({});
 
   // Basic info
   const [firstName, setFirstName] = useState('');
@@ -186,6 +187,25 @@ const AdminUserEditPage: React.FC = () => {
 
   const handleSubmit = async () => {
     if (!id) return;
+    
+    // Local Validation
+    const newErrors: Record<string, string> = {};
+    if (!email) {
+      newErrors.email = 'Email field is missing';
+    }
+    if (phone) {
+      const phoneRegex = /^\+?[1-9]\d{7,14}$/;
+      if (!phoneRegex.test(phone)) {
+        newErrors.phone = 'Phone number length or format is invalid';
+      }
+    }
+    if (Object.keys(newErrors).length > 0) {
+      setFormErrors(newErrors);
+      setActiveTab('basic');
+      return;
+    }
+    setFormErrors({});
+    
     setSaving(true);
     try {
       const payload: Record<string, any> = {};
@@ -272,7 +292,13 @@ const AdminUserEditPage: React.FC = () => {
         toast.error(response?.message ?? 'Update failed');
       }
     } catch (err: any) {
-      toast.error(err?.response?.data?.message ?? err?.message ?? 'Update failed');
+      if (err?.response?.data?.errors) {
+        setFormErrors(err.response.data.errors);
+        setActiveTab('basic');
+        toast.error('Validation error');
+      } else {
+        toast.error(err?.response?.data?.message ?? err?.message ?? 'Update failed');
+      }
     } finally {
       setSaving(false);
     }
@@ -373,12 +399,14 @@ const AdminUserEditPage: React.FC = () => {
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-1.5">Email</label>
                   <input type="email" value={email} onChange={e => setEmail(e.target.value)}
-                    className="w-full border border-gray-300 rounded-lg px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent" />
+                    className={`w-full border ${formErrors.email ? 'border-red-500' : 'border-gray-300'} rounded-lg px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent`} />
+                  {formErrors.email && <p className="text-sm text-red-500 mt-1">{formErrors.email}</p>}
                 </div>
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-1.5">Phone</label>
                   <input type="tel" value={phone} onChange={e => setPhone(e.target.value)} placeholder="Optional"
-                    className="w-full border border-gray-300 rounded-lg px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent" />
+                    className={`w-full border ${formErrors.phone ? 'border-red-500' : 'border-gray-300'} rounded-lg px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent`} />
+                  {formErrors.phone && <p className="text-sm text-red-500 mt-1">{formErrors.phone}</p>}
                 </div>
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-1.5">Role</label>

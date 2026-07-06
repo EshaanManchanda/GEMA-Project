@@ -17,10 +17,18 @@ export async function getOrCreateVendorProfile(
   const userIdObj =
     typeof userId === "string" ? new Types.ObjectId(userId) : userId;
 
-  // Try to find existing vendor
+  // Try to find existing vendor (including soft-deleted ones)
   let vendor = await Vendor.findOne({ userId: userIdObj });
 
   if (vendor) {
+    // If vendor exists but is soft-deleted, re-activate it
+    if (vendor.isDeleted) {
+      vendor.isDeleted = false;
+      vendor.deletedAt = undefined as any;
+      vendor.isActive = true;
+      await vendor.save();
+      logger.info(`✓ Re-activated soft-deleted vendor profile for user ${userId}`);
+    }
     return vendor;
   }
 
@@ -47,12 +55,12 @@ export async function getOrCreateVendorProfile(
 
     // Contact Information
     email: user.email,
-    phone: user.phone || "",
+    phone: user.phone || "Not provided",
     contactPerson: {
       name: `${user.firstName} ${user.lastName}`,
       position: "Owner",
       email: user.email,
-      phone: user.phone || "",
+      phone: user.phone || "Not provided",
     },
 
     // Address - Provide defaults to pass validation
@@ -124,6 +132,7 @@ export async function getOrCreateVendorProfile(
 
   return vendor;
 }
+
 
 /**
  * Ensure vendor profile exists for authenticated vendor user

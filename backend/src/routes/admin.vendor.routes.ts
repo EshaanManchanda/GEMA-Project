@@ -17,6 +17,7 @@ import {
   verifyVendorDocument,
   getVendorStats,
   deleteVendor,
+  syncVendorUserData,
 } from "../controllers/admin.vendor.controller";
 import { validateMongoId } from "../validators/common.validator";
 
@@ -41,6 +42,13 @@ router.get("/stats", getVendorStats);
  * @query   limit (optional, default 100)
  */
 router.get("/list", getVendorsList);
+
+/**
+ * @route   POST /api/admin/vendors/sync
+ * @desc    Fix all vendor↔user data inconsistencies (one-time cleanup)
+ * @access  Admin only
+ */
+router.post("/sync", syncVendorUserData);
 
 /**
  * @route   GET /api/admin/vendors

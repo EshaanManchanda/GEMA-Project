@@ -622,10 +622,16 @@ export const updateUser = async (
     if (userFields.phone !== undefined) coreUpdate.phone = updatedUser.phone;
 
     if (updatedUser.role === "vendor") {
+      const { getOrCreateVendorProfile } = require("../utils/vendorHelpers");
+      await getOrCreateVendorProfile(updatedUser._id);
+      
       if (Object.keys(coreUpdate).length > 0) {
         await Vendor.findOneAndUpdate({ userId: id }, { $set: coreUpdate });
       }
     } else if (updatedUser.role === "teacher") {
+      const { getOrCreateTeacherProfile } = require("../utils/teacherHelpers");
+      await getOrCreateTeacherProfile(updatedUser._id);
+
       if (userFields.firstName !== undefined || userFields.lastName !== undefined) {
         coreUpdate.fullName = `${updatedUser.firstName} ${updatedUser.lastName}`;
       }
@@ -649,6 +655,58 @@ export const updateUser = async (
       logger.warn(`Failed to invalidate user cache for ID ${id}: ${cacheError.message}`);
     }
 
+    // If the role was changed via the general update endpoint, sync profiles
+    if (userFields.role !== undefined && userFields.role !== user.role) {
+      const oldRole = user.role;
+      const newRole = userFields.role as string;
+
+      // Deactivate old role profile
+      try {
+        if (oldRole === UserRole.VENDOR && newRole !== UserRole.VENDOR) {
+          await Vendor.findOneAndUpdate(
+            { userId: id },
+            { $set: { isDeleted: true, deletedAt: new Date(), isActive: false } }
+          );
+          logger.info(`Soft-deleted vendor profile for user ${id} (role changed from vendor to ${newRole}) via updateUser`);
+        } else if (oldRole === UserRole.TEACHER && newRole !== UserRole.TEACHER) {
+          await Teacher.findOneAndUpdate(
+            { userId: id },
+            { $set: { isDeleted: true, deletedAt: new Date(), isActive: false } }
+          );
+          logger.info(`Soft-deleted teacher profile for user ${id} (role changed from teacher to ${newRole}) via updateUser`);
+        }
+      } catch (deactivateErr: any) {
+        logger.error(`Error deactivating old profile for user ${id}: ${deactivateErr.message}`);
+      }
+
+      // Create or re-activate new role profile
+      try {
+        if (newRole === UserRole.VENDOR) {
+          const existingVendor = await Vendor.findOne({ userId: id });
+          if (existingVendor) {
+            await Vendor.findOneAndUpdate(
+              { userId: id },
+              { $set: { isDeleted: false, deletedAt: undefined, isActive: updatedUser.status === 'active' } }
+            );
+          } else {
+            await getOrCreateVendorProfile(updatedUser._id);
+          }
+        } else if (newRole === UserRole.TEACHER) {
+          const existingTeacher = await Teacher.findOne({ userId: id });
+          if (existingTeacher) {
+            await Teacher.findOneAndUpdate(
+              { userId: id },
+              { $set: { isDeleted: false, deletedAt: undefined, isActive: updatedUser.status === 'active' } }
+            );
+          } else {
+            await getOrCreateTeacherProfile(updatedUser._id);
+          }
+        }
+      } catch (profileErr: any) {
+        logger.error(`Error creating/reactivating profile for role ${newRole} for user ${id}: ${profileErr.message}`);
+      }
+    }
+
     // Sync new email and name to Firebase Auth if firebaseUid is present
     if (updatedUser.firebaseUid) {
       try {
@@ -664,7 +722,7 @@ export const updateUser = async (
 
     // Re-fetch related for response
     let vendor, teacher, employee;
-    if (updatedUser.role === "vendor") vendor = await Vendor.findOne({ userId: id });
+    if (updatedUser.role === "vendor") vendor = await Vendor.findOne({ userId: id, isDeleted: { $ne: true } });
     else if (updatedUser.role === "teacher") teacher = await Teacher.findOne({ userId: id });
     else if (updatedUser.role === "employee") employee = await Employee.findOne({ userId: id });
 
@@ -879,6 +937,13 @@ export const updateUserRole = async (
       return next(new AppError("Invalid role", 400));
     }
 
+    // Fetch the user BEFORE updating to know the old role
+    const existingUser = await User.findById(id);
+    if (!existingUser) {
+      return next(new AppError("User not found", 404));
+    }
+    const oldRole = existingUser.role;
+
     // Update user role
     const user = await User.findByIdAndUpdate(
       id,
@@ -890,15 +955,53 @@ export const updateUserRole = async (
       return next(new AppError("User not found", 404));
     }
 
-    // Auto-create profiles if changed to vendor or teacher
+    // Deactivate old role's profile if role is changing AWAY from vendor/teacher
+    try {
+      if (oldRole === UserRole.VENDOR && role !== UserRole.VENDOR) {
+        // Soft-delete old vendor profile so it no longer appears in admin/vendors
+        await Vendor.findOneAndUpdate(
+          { userId: id },
+          { $set: { isDeleted: true, deletedAt: new Date(), isActive: false } }
+        );
+        logger.info(`Soft-deleted vendor profile for user ${id} (role changed from vendor to ${role})`);
+      } else if (oldRole === UserRole.TEACHER && role !== UserRole.TEACHER) {
+        // Soft-delete old teacher profile
+        await Teacher.findOneAndUpdate(
+          { userId: id },
+          { $set: { isDeleted: true, deletedAt: new Date(), isActive: false } }
+        );
+        logger.info(`Soft-deleted teacher profile for user ${id} (role changed from teacher to ${role})`);
+      }
+    } catch (deactivateError: any) {
+      logger.error(`Error deactivating old profile for user ${id}: ${deactivateError.message}`);
+    }
+
+    // Auto-create (or re-activate) profiles if changed TO vendor or teacher
     try {
       if (role === UserRole.VENDOR) {
-        await getOrCreateVendorProfile(user._id);
+        // If a soft-deleted vendor profile exists, re-activate it instead of creating a new one
+        const existingVendor = await Vendor.findOne({ userId: id });
+        if (existingVendor) {
+          await Vendor.findOneAndUpdate(
+            { userId: id },
+            { $set: { isDeleted: false, deletedAt: undefined, isActive: true } }
+          );
+        } else {
+          await getOrCreateVendorProfile(user._id);
+        }
       } else if (role === UserRole.TEACHER) {
-        await getOrCreateTeacherProfile(user._id);
+        const existingTeacher = await Teacher.findOne({ userId: id });
+        if (existingTeacher) {
+          await Teacher.findOneAndUpdate(
+            { userId: id },
+            { $set: { isDeleted: false, deletedAt: undefined, isActive: true } }
+          );
+        } else {
+          await getOrCreateTeacherProfile(user._id);
+        }
       }
     } catch (profileError: any) {
-      logger.error(`Error creating profile for role ${role}: ${profileError.message}`);
+      logger.error(`Error creating/reactivating profile for role ${role}: ${profileError.message}`);
       // Continue execution even if profile creation fails, as user role was updated
     }
 

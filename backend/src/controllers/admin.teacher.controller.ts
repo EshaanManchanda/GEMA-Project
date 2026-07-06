@@ -26,6 +26,7 @@ export const getAllTeachers = async (
       paymentMode,
       verificationStatus,
       isActive,
+      status,
       sortBy = "createdAt",
       sortOrder = "desc",
     } = req.query;
@@ -111,7 +112,7 @@ export const getAllTeachers = async (
     }
     // --- End: Auto-create Platform Affiliate Logic ---
 
-    const query: any = { isDeleted: false };
+    const query: any = { isDeleted: { $ne: true } };
 
     if (search) {
       query.$or = [
@@ -138,30 +139,39 @@ export const getAllTeachers = async (
       query.verificationStatus = verificationStatus;
     }
 
-    if (isActive !== undefined) {
-      query.isActive = isActive === "true";
-    }
+    // Filter by status now done in-memory after populate
+    const filterStatus = status || isActive; // Reuse the query parameter for now, but treat it as status string
 
     const pageNum = Number(page);
     const limitNum = Number(limit);
     const skip = (pageNum - 1) * limitNum;
 
-    const sort: any = { [sortBy as string]: sortOrder === "asc" ? 1 : -1 };
+    // Default sorting to descending by createdAt
+    const sortField = (sortBy as string) || "createdAt";
+    const order = sortOrder ? (sortOrder === "asc" ? 1 : -1) : -1;
+    const sort: any = { [sortField]: order };
 
-    const [teachers, total] = await Promise.all([
-      Teacher.find(query)
-        .populate("userId", "firstName lastName email")
-        .sort(sort)
-        .skip(skip)
-        .limit(limitNum)
-        .lean(),
-      Teacher.countDocuments(query),
-    ]);
+    const allTeachers = await Teacher.find(query)
+      .populate("userId", "firstName lastName email status lastLogin")
+      .sort(sort)
+      .lean();
+
+    // Filter out orphan teachers (userId is null) AND apply status filter if provided
+    const validTeachers = allTeachers.filter((t) => {
+      if (!t.userId) return false;
+      if (filterStatus && filterStatus !== 'all') {
+        return (t.userId as any).status === filterStatus;
+      }
+      return true;
+    });
+
+    const total = validTeachers.length;
+    const paginatedTeachers = validTeachers.slice(skip, skip + limitNum);
 
     res.json({
       success: true,
       data: {
-        teachers: teachers.map((t) => ({
+        teachers: paginatedTeachers.map((t) => ({
           id: t._id,
           _id: t._id,
           fullName: t.fullName,
@@ -170,9 +180,10 @@ export const getAllTeachers = async (
           user: t.userId,
           paymentMode: t.paymentSettings?.paymentMode,
           commissionRate: t.paymentSettings?.commissionRate,
+          isActive: (t.userId as any)?.status === 'active',
+          isSuspended: (t.userId as any)?.status === 'suspended',
+          lastLogin: (t.userId as any)?.lastLogin,
           verificationStatus: t.verificationStatus,
-          isActive: t.isActive,
-          isSuspended: t.isSuspended,
           teachingMode: t.teachingMode,
           languagesSpoken: t.languagesSpoken,
           createdAt: t.createdAt,
@@ -181,11 +192,98 @@ export const getAllTeachers = async (
           currentPage: pageNum,
           totalPages: Math.ceil(total / limitNum),
           total,
+          limit: limitNum,
         },
       },
     });
-  } catch (err) {
-    next(err);
+  } catch (error: any) {
+    next(error);
+  }
+};
+
+/**
+ * Sync Teacher data (maintenance route to fix orphans and missing profiles)
+ * @route POST /api/admin/teachers/sync
+ */
+export const syncTeacherUserData = async (
+  req: Request,
+  res: Response,
+  next: NextFunction
+): Promise<void> => {
+  try {
+    let stats = {
+      orphanedProfilesDeactivated: 0,
+      missingProfilesCreated: 0,
+      deletedProfilesReactivated: 0,
+    };
+
+    // 1. Soft-delete orphaned teachers (User is missing)
+    const teachers = await Teacher.find({ isDeleted: { $ne: true } });
+    for (const teacher of teachers) {
+      if (teacher.userId) {
+        const userExists = await User.findById(teacher.userId);
+        if (!userExists || userExists.status === 'suspended') {
+          // If User hard-deleted or suspended and we need to match status, here we just do soft delete if user doesn't exist.
+          if (!userExists) {
+            teacher.isDeleted = true;
+            teacher.isActive = false;
+            await teacher.save();
+            stats.orphanedProfilesDeactivated++;
+          }
+        }
+      }
+    }
+
+    // 2. Create missing profiles and reactivate soft-deleted ones for active 'teacher' Users
+    const teacherUsers = await User.find({ role: "teacher" });
+    for (const user of teacherUsers) {
+      let teacherProfile = await Teacher.findOne({ userId: user._id });
+
+      if (!teacherProfile) {
+        // Create missing
+        await Teacher.create({
+          userId: user._id,
+          email: user.email,
+          phone: user.phone || "+971500000000",
+          fullName: `${user.firstName} ${user.lastName}`.trim() || user.email.split("@")[0],
+          isActive: user.status === 'active',
+          isSuspended: user.status === 'suspended',
+          isDeleted: false,
+          verificationStatus: "verified", // default for legacy ones
+          teachingMode: "online",
+        });
+        stats.missingProfilesCreated++;
+      } else if (teacherProfile.isDeleted) {
+        // Reactivate erroneously soft-deleted ones
+        teacherProfile.isDeleted = false;
+        teacherProfile.isActive = user.status === 'active';
+        teacherProfile.isSuspended = user.status === 'suspended';
+        await teacherProfile.save();
+        stats.deletedProfilesReactivated++;
+      } else {
+        // Sync status
+        let updated = false;
+        if (teacherProfile.isActive !== (user.status === 'active')) {
+          teacherProfile.isActive = user.status === 'active';
+          updated = true;
+        }
+        if (teacherProfile.isSuspended !== (user.status === 'suspended')) {
+          teacherProfile.isSuspended = user.status === 'suspended';
+          updated = true;
+        }
+        if (updated) {
+          await teacherProfile.save();
+        }
+      }
+    }
+
+    res.status(200).json({
+      success: true,
+      message: "Teacher data synchronized successfully",
+      data: stats
+    });
+  } catch (error) {
+    next(error);
   }
 };
 
@@ -407,7 +505,11 @@ export const softDeleteTeacher = async (
   try {
     const { id } = req.params;
 
-    const teacher = await Teacher.findById(id);
+    let teacher = await Teacher.findById(id);
+    if (!teacher) {
+      // Fallback: in case the frontend passed the User ID instead of Teacher ID
+      teacher = await Teacher.findOne({ userId: id });
+    }
     if (!teacher) return next(new AppError("Teacher not found", 404));
 
     teacher.isDeleted = true;
@@ -415,6 +517,19 @@ export const softDeleteTeacher = async (
     teacher.isActive = false;
 
     await teacher.save();
+
+    // Downgrade the linked User's role to 'customer' so admin/users stays in sync
+    if (teacher.userId) {
+      try {
+        await User.findByIdAndUpdate(
+          teacher.userId,
+          { $set: { role: "customer" } },
+          { runValidators: true }
+        );
+      } catch (userSyncError: any) {
+        logger.error("Failed to downgrade user role after teacher deletion:", userSyncError);
+      }
+    }
 
     res.json({
       success: true,

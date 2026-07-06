@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { toast } from 'react-hot-toast';
 import { FaEye, FaEdit, FaCog, FaCreditCard, FaBan, FaCheck, FaLock, FaUnlock, FaTrash } from 'react-icons/fa';
 import adminAPI from '@/services/api/adminAPI';
+import api from '../../services/api';
 import PrivatePageSEO from '@/components/common/PrivatePageSEO';
 import logger from '@/utils/logger';
 
@@ -51,6 +52,35 @@ interface TeacherStats {
   teachersByVerificationStatus: Record<string, number>;
 }
 
+const mapUserToTeacherRow = (user: any): Teacher => ({
+  _id: user.teacherProfile?._id || user.id,
+  userId: user.id,
+  fullName: user.teacherProfile?.fullName || user.fullName || `${user.firstName || ''} ${user.lastName || ''}`.trim(),
+  email: user.email,
+  phone: user.phone || user.teacherProfile?.phone || '',
+  bio: user.teacherProfile?.bio,
+  subjects: user.teacherProfile?.subjects,
+  specialization: user.teacherProfile?.specialization,
+  yearsOfExperience: user.teacherProfile?.yearsOfExperience,
+  languagesSpoken: user.teacherProfile?.languagesSpoken,
+  teachingMode: user.teacherProfile?.teachingMode || 'online',
+  paymentMode: user.teacherProfile?.paymentMode || 'platform_stripe',
+  commissionRate: user.teacherProfile?.commissionRate,
+  isActive: user.status === 'active',
+  isSuspended: user.status === 'suspended',
+  verificationStatus: user.teacherProfile?.verificationStatus || 'pending',
+  createdAt: user.createdAt,
+  stripeConnectAccountId: user.teacherProfile?.stripeConnectAccountId,
+  stripeConnectOnboardingComplete: user.teacherProfile?.stripeConnectOnboardingComplete,
+  bankDetails: user.teacherProfile?.bankDetails,
+  user: {
+    firstName: user.firstName,
+    lastName: user.lastName,
+    email: user.email,
+    avatar: user.avatar,
+  },
+});
+
 const AdminTeachersPage: React.FC = () => {
   const [teachers, setTeachers] = useState<Teacher[]>([]);
   const [stats, setStats] = useState<TeacherStats | null>(null);
@@ -79,14 +109,14 @@ const AdminTeachersPage: React.FC = () => {
   const [search, setSearch] = useState('');
   const [filterPaymentMode, setFilterPaymentMode] = useState('');
   const [filterVerification, setFilterVerification] = useState('');
-  const [filterActive, setFilterActive] = useState('');
+  const [statusFilter, setStatusFilter] = useState('all');
   const [page, setPage] = useState(1);
   const [totalPages, setTotalPages] = useState(1);
 
   useEffect(() => {
     fetchTeachers();
     fetchStats();
-  }, [page, search, filterPaymentMode, filterVerification, filterActive]);
+  }, [page, search, filterPaymentMode, filterVerification, statusFilter]);
 
   const fetchTeachers = async () => {
     setIsLoading(true);
@@ -98,13 +128,37 @@ const AdminTeachersPage: React.FC = () => {
       if (search) params.search = search;
       if (filterPaymentMode) params.paymentMode = filterPaymentMode;
       if (filterVerification) params.verificationStatus = filterVerification;
-      if (filterActive) params.isActive = filterActive;
+      if (statusFilter !== 'all') params.status = statusFilter;
 
       const response = await adminAPI.getAllTeachers(params);
-      setTeachers(response.data?.teachers || response.teachers || []);
-      setTotalPages(response.data?.pagination?.totalPages || response.pagination?.totalPages || 1);
+      setTeachers(response.data.teachers);
+      setTotalPages(response.data.pagination.totalPages);
     } catch (error: any) {
-      toast.error(error.response?.data?.message || 'Failed to fetch teachers');
+      logger.warn('Primary teacher list failed, falling back to admin users data:', error);
+
+      try {
+        const fallbackResponse = await adminAPI.getAllUsers({
+          page,
+          limit: 10,
+          search: search || undefined,
+          role: 'teacher',
+          status: statusFilter !== 'all' ? statusFilter : undefined,
+          sortBy: 'createdAt',
+          sortOrder: 'desc',
+        });
+
+        const fallbackUsers = fallbackResponse.data.users || [];
+        setTeachers(fallbackUsers.map(mapUserToTeacherRow));
+        setTotalPages(fallbackResponse.data.pagination?.totalPages || 1);
+        if (fallbackUsers.length === 0) {
+          toast.error('No teachers found');
+        }
+      } catch (fallbackError: any) {
+        logger.error('Fallback teacher fetch failed:', fallbackError);
+        toast.error(error.response?.data?.message || 'Failed to fetch teachers');
+        setTeachers([]);
+        setTotalPages(1);
+      }
     } finally {
       setIsLoading(false);
     }
@@ -113,9 +167,24 @@ const AdminTeachersPage: React.FC = () => {
   const fetchStats = async () => {
     try {
       const response = await adminAPI.getTeacherStats();
-      setStats(response.data || response);
+      setStats(response.data);
     } catch (error) {
       logger.error('Failed to fetch stats:', error);
+    }
+  };
+
+  const handleSyncData = async () => {
+    if (!window.confirm('This will synchronize all teacher data from Users. Proceed?')) return;
+    setIsLoading(true);
+    try {
+      const response = await api.post('/admin/teachers/sync');
+      toast.success(response.data.message || 'Teacher data synchronized');
+      fetchTeachers();
+      fetchStats();
+    } catch (error: any) {
+      toast.error(error.response?.data?.message || 'Failed to sync teacher data');
+    } finally {
+      setIsLoading(false);
     }
   };
 
@@ -141,7 +210,7 @@ const AdminTeachersPage: React.FC = () => {
   const openEditModal = (teacher: Teacher) => {
     setSelectedTeacher(teacher);
     setFormData({
-      fullName: teacher.fullName || '',
+      fullName: teacher.fullName,
       bio: teacher.bio || '',
       subjects: teacher.subjects || [],
       specialization: teacher.specialization || '',
@@ -149,16 +218,10 @@ const AdminTeachersPage: React.FC = () => {
       languagesSpoken: teacher.languagesSpoken || [],
       teachingMode: teacher.teachingMode || 'online',
     });
-    setModalMode('edit');
-    setShowModal(true);
-  };
-
-  const openStatusModal = (teacher: Teacher) => {
-    setSelectedTeacher(teacher);
     setIsActive(teacher.isActive);
     setIsSuspended(teacher.isSuspended);
     setVerificationStatus(teacher.verificationStatus);
-    setModalMode('status');
+    setModalMode('edit');
     setShowModal(true);
   };
 
@@ -175,9 +238,15 @@ const AdminTeachersPage: React.FC = () => {
 
     try {
       await adminAPI.updateTeacher(selectedTeacher._id, formData);
+      await adminAPI.updateTeacherStatus(selectedTeacher._id, {
+        isActive,
+        isSuspended,
+        verificationStatus,
+      });
       toast.success('Teacher updated successfully');
       setShowModal(false);
       fetchTeachers();
+      fetchStats();
     } catch (error: any) {
       toast.error(error.response?.data?.message || 'Failed to update teacher');
     }
@@ -231,28 +300,6 @@ const AdminTeachersPage: React.FC = () => {
     }
   };
 
-  const handleQuickToggleActive = async (teacher: Teacher) => {
-    try {
-      await adminAPI.toggleTeacherActive(teacher._id, !teacher.isActive);
-      toast.success(`Teacher ${!teacher.isActive ? 'activated' : 'deactivated'}`);
-      fetchTeachers();
-      fetchStats();
-    } catch (error: any) {
-      toast.error(error.response?.data?.message || 'Failed to toggle status');
-    }
-  };
-
-  const handleQuickToggleSuspend = async (teacher: Teacher) => {
-    try {
-      await adminAPI.toggleTeacherSuspension(teacher._id, !teacher.isSuspended);
-      toast.success(`Teacher ${!teacher.isSuspended ? 'suspended' : 'unsuspended'}`);
-      fetchTeachers();
-      fetchStats();
-    } catch (error: any) {
-      toast.error(error.response?.data?.message || 'Failed to toggle suspension');
-    }
-  };
-
   const getVerificationBadgeColor = (status: string) => {
     switch (status) {
       case 'verified':
@@ -270,9 +317,18 @@ const AdminTeachersPage: React.FC = () => {
       <div className="min-h-screen bg-gray-50 p-6">
         <div className="max-w-7xl mx-auto">
           {/* Header */}
-          <div className="mb-8">
-            <h1 className="text-3xl font-bold text-gray-900">Teacher Management</h1>
-            <p className="mt-2 text-gray-600">Manage teacher profiles, verification, and payment settings</p>
+          <div className="mb-8 flex justify-between items-center">
+            <div>
+              <h1 className="text-3xl font-bold text-gray-900">Teacher Management</h1>
+              <p className="mt-2 text-gray-600">Manage teacher profiles, verification, and payment settings</p>
+            </div>
+            <button
+              onClick={handleSyncData}
+              disabled={isLoading}
+              className="flex items-center gap-2 px-4 py-2 bg-blue-50 text-blue-600 hover:bg-blue-100 rounded-lg font-medium transition-colors border border-blue-200 shadow-sm"
+            >
+              🔄 Sync Data
+            </button>
           </div>
 
           {/* Stats Cards */}
@@ -351,18 +407,17 @@ const AdminTeachersPage: React.FC = () => {
                 </select>
               </div>
               <div>
-                <label htmlFor="filter-active" className="block text-sm font-medium text-gray-700 mb-1">
-                  Status
-                </label>
+                <label className="block text-sm font-medium text-gray-700 mb-1">Status</label>
                 <select
-                  id="filter-active"
-                  value={filterActive}
-                  onChange={(e) => setFilterActive(e.target.value)}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-orange-500 bg-white text-gray-900"
+                  value={statusFilter}
+                  onChange={(e) => { setStatusFilter(e.target.value); setPage(1); }}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
                 >
-                  <option value="">All</option>
-                  <option value="true">Active</option>
-                  <option value="false">Inactive</option>
+                  <option value="all">All Status</option>
+                  <option value="active">Active</option>
+                  <option value="inactive">Inactive</option>
+                  <option value="pending">Pending</option>
+                  <option value="suspended">Suspended</option>
                 </select>
               </div>
               <div className="flex items-end">
@@ -371,9 +426,10 @@ const AdminTeachersPage: React.FC = () => {
                     setSearch('');
                     setFilterPaymentMode('');
                     setFilterVerification('');
-                    setFilterActive('');
+                    setStatusFilter('all');
+                    setPage(1);
                   }}
-                  className="w-full px-4 py-2 bg-gray-200 text-gray-700 rounded-lg hover:bg-gray-300 transition-colors"
+                  className="w-full px-4 py-2 bg-gray-100 text-gray-700 rounded-lg hover:bg-gray-200 transition-colors"
                 >
                   Clear Filters
                 </button>
@@ -471,61 +527,34 @@ const AdminTeachersPage: React.FC = () => {
                           </div>
                         </td>
                         <td className="px-6 py-4 whitespace-nowrap text-sm">
-                          <div className="flex items-center gap-1">
+                          <div className="flex items-center gap-2">
                             <button
                               onClick={() => openViewModal(teacher)}
                               title="View"
-                              className="p-2 rounded-lg text-gray-600 hover:text-gray-900 hover:bg-gray-100 transition-colors"
+                              className="p-2.5 bg-blue-50 text-blue-600 hover:text-white hover:bg-blue-600 rounded-lg transition-all duration-200 hover:scale-105 hover:shadow-md border border-blue-200"
                             >
-                              <FaEye />
+                              <FaEye className="w-4 h-4" />
                             </button>
                             <button
                               onClick={() => openEditModal(teacher)}
                               title="Edit"
-                              className="p-2 rounded-lg text-blue-600 hover:text-blue-900 hover:bg-blue-50 transition-colors"
+                              className="p-2.5 bg-blue-50 text-blue-600 hover:text-white hover:bg-blue-600 rounded-lg transition-all duration-200 hover:scale-105 hover:shadow-md border border-blue-200"
                             >
-                              <FaEdit />
-                            </button>
-                            <button
-                              onClick={() => openStatusModal(teacher)}
-                              title="Status"
-                              className="p-2 rounded-lg text-orange-600 hover:text-orange-900 hover:bg-orange-50 transition-colors"
-                            >
-                              <FaCog />
+                              <FaEdit className="w-4 h-4" />
                             </button>
                             <button
                               onClick={() => openPaymentModal(teacher)}
-                              title="Payment"
-                              className="p-2 rounded-lg text-purple-600 hover:text-purple-900 hover:bg-purple-50 transition-colors"
+                              title="Payment Mode"
+                              className="p-2.5 bg-indigo-50 text-indigo-600 hover:text-white hover:bg-indigo-600 rounded-lg transition-all duration-200 hover:scale-105 hover:shadow-md border border-indigo-200"
                             >
-                              <FaCreditCard />
-                            </button>
-                            <button
-                              onClick={() => handleQuickToggleActive(teacher)}
-                              title={teacher.isActive ? 'Deactivate' : 'Activate'}
-                              className={`p-2 rounded-lg transition-colors ${teacher.isActive
-                                ? 'text-yellow-600 hover:text-yellow-900 hover:bg-yellow-50'
-                                : 'text-green-600 hover:text-green-900 hover:bg-green-50'
-                                }`}
-                            >
-                              {teacher.isActive ? <FaBan /> : <FaCheck />}
-                            </button>
-                            <button
-                              onClick={() => handleQuickToggleSuspend(teacher)}
-                              title={teacher.isSuspended ? 'Unsuspend' : 'Suspend'}
-                              className={`p-2 rounded-lg transition-colors ${teacher.isSuspended
-                                ? 'text-green-600 hover:text-green-900 hover:bg-green-50'
-                                : 'text-red-600 hover:text-red-900 hover:bg-red-50'
-                                }`}
-                            >
-                              {teacher.isSuspended ? <FaUnlock /> : <FaLock />}
+                              <FaCreditCard className="w-4 h-4" />
                             </button>
                             <button
                               onClick={() => handleDeleteTeacher(teacher._id)}
                               title="Delete"
-                              className="p-2 rounded-lg text-red-600 hover:text-red-900 hover:bg-red-50 transition-colors"
+                              className="p-2.5 bg-red-50 text-red-600 hover:text-white hover:bg-red-600 rounded-lg transition-all duration-200 hover:scale-105 hover:shadow-md border border-red-200"
                             >
-                              <FaTrash />
+                              <FaTrash className="w-4 h-4" />
                             </button>
                           </div>
                         </td>
@@ -759,6 +788,47 @@ const AdminTeachersPage: React.FC = () => {
                         <option value="in_person">In Person</option>
                         <option value="hybrid">Hybrid</option>
                       </select>
+                    </div>
+
+                    {/* Status Fields */}
+                    <div className="border-t border-gray-200 pt-4 mt-2">
+                      <h3 className="text-sm font-semibold text-gray-700 uppercase tracking-wide mb-3">Status Settings</h3>
+                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                        <div>
+                          <label className="block text-sm font-medium text-gray-700 mb-1">Active Status</label>
+                          <select
+                            value={isActive ? 'true' : 'false'}
+                            onChange={(e) => setIsActive(e.target.value === 'true')}
+                            className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
+                          >
+                            <option value="true">Active</option>
+                            <option value="false">Inactive</option>
+                          </select>
+                        </div>
+                        <div>
+                          <label className="block text-sm font-medium text-gray-700 mb-1">Suspension</label>
+                          <select
+                            value={isSuspended ? 'true' : 'false'}
+                            onChange={(e) => setIsSuspended(e.target.value === 'true')}
+                            className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
+                          >
+                            <option value="false">Not Suspended</option>
+                            <option value="true">Suspended</option>
+                          </select>
+                        </div>
+                        <div className="sm:col-span-2">
+                          <label className="block text-sm font-medium text-gray-700 mb-1">Verification Status</label>
+                          <select
+                            value={verificationStatus}
+                            onChange={(e) => setVerificationStatus(e.target.value as any)}
+                            className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
+                          >
+                            <option value="pending">Pending</option>
+                            <option value="verified">Verified</option>
+                            <option value="rejected">Rejected</option>
+                          </select>
+                        </div>
+                      </div>
                     </div>
                   </div>
 

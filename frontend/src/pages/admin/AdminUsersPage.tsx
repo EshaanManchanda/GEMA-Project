@@ -61,6 +61,7 @@ const AdminUsersPage: React.FC = () => {
   const [actionLoading, setActionLoading] = useState<{ [key: string]: boolean }>({});
   const [viewModalTab, setViewModalTab] = useState<string>('basic');
   const [selectedRole, setSelectedRole] = useState<'customer' | 'vendor' | 'employee' | 'admin' | 'teacher'>('customer');
+  const [formErrors, setFormErrors] = useState<Record<string, string>>({});
 
   // Password reset modal states
   const [showPasswordResetModal, setShowPasswordResetModal] = useState<boolean>(false);
@@ -178,6 +179,7 @@ const AdminUsersPage: React.FC = () => {
 
   const handleCreateUser = () => {
     setSelectedRole('customer');
+    setFormErrors({});
     setIsCreateModalOpen(true);
   };
 
@@ -1327,18 +1329,50 @@ const AdminUsersPage: React.FC = () => {
                   }
                 }
 
+                // Local Validation
+                const newErrors: Record<string, string> = {};
+
+                if (!userData.email) {
+                  newErrors.email = 'Email field is missing';
+                }
+
+                if (userData.phone) {
+                  // basic check for length / format, assuming the backend might throw if it fails regex, we can also check here.
+                  const phoneRegex = /^\+?[1-9]\d{7,14}$/;
+                  if (!phoneRegex.test(userData.phone)) {
+                    newErrors.phone = 'Phone number length or format is invalid';
+                  }
+                }
+
+                const password = (formData.get('password') as string || '').trim();
+                const isCreating = true; // this modal is for create
+                if (isCreating && password) {
+                  if (password.length < 8) {
+                    newErrors.password = 'Password must be at least 8 characters long';
+                  } else if (!/[A-Z]/.test(password)) {
+                    newErrors.password = 'Password must contain at least one uppercase letter';
+                  } else if (!/[a-z]/.test(password)) {
+                    newErrors.password = 'Password must contain at least one lowercase letter';
+                  } else if (!/\d/.test(password)) {
+                    newErrors.password = 'Password must contain at least one number';
+                  } else if (!/[!@#$%^&*]/.test(password)) {
+                    newErrors.password = 'Password must contain at least one special character (e.g., !@#$%^&*)';
+                  }
+                }
+
+                if (Object.keys(newErrors).length > 0) {
+                  setFormErrors(newErrors);
+                  return;
+                }
+                setFormErrors({});
+
                 try {
                   setActionLoading({ ...actionLoading, form_submit: true });
 
                   const createData = {
                     ...userData,
-                    password: (formData.get('password') as string || '').trim() || 'TempPass123!'
+                    password: password || 'TempPass123!'
                   };
-                  if (createData.role === 'vendor' && !createData.phone) {
-                    toast.error('Phone number is required for vendor accounts');
-                    setActionLoading({ ...actionLoading, form_submit: false });
-                    return;
-                  }
                   const response = await adminAPI.createUser(createData);
                   if (response.success) {
                     toast.success('User created successfully');
@@ -1347,7 +1381,13 @@ const AdminUsersPage: React.FC = () => {
                   }
                 } catch (error: any) {
                   logger.error('Error saving user:', error);
-                  toast.error(error?.response?.data?.message || 'Failed to save user');
+                  
+                  if (error?.response?.data?.errors) {
+                    setFormErrors(error.response.data.errors);
+                    toast.error('Validation error');
+                  } else {
+                    toast.error(error?.response?.data?.message || 'Failed to save user');
+                  }
                 } finally {
                   setActionLoading({ ...actionLoading, form_submit: false });
                 }
@@ -1430,9 +1470,9 @@ const AdminUsersPage: React.FC = () => {
                               type="email"
                               name="email"
                               defaultValue={selectedUser?.email || ''}
-                              required
-                              className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white text-gray-900"
+                              className={`w-full px-3 py-2 border ${formErrors.email ? 'border-red-500' : 'border-gray-300'} rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white text-gray-900`}
                             />
+                            {formErrors.email && <p className="text-sm text-red-500 mt-1">{formErrors.email}</p>}
                           </div>
 
                           <div>
@@ -1442,9 +1482,13 @@ const AdminUsersPage: React.FC = () => {
                               name="phone"
                               defaultValue={selectedUser?.phone || ''}
                               placeholder="+971501234567"
-                              className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white text-gray-900"
+                              className={`w-full px-3 py-2 border ${formErrors.phone ? 'border-red-500' : 'border-gray-300'} rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white text-gray-900`}
                             />
-                            <p className="text-xs text-gray-500 mt-1">International format with country code</p>
+                            {formErrors.phone ? (
+                              <p className="text-sm text-red-500 mt-1">{formErrors.phone}</p>
+                            ) : (
+                              <p className="text-xs text-gray-500 mt-1">International format with country code</p>
+                            )}
                           </div>
                         </div>
                       </div>
@@ -1460,9 +1504,13 @@ const AdminUsersPage: React.FC = () => {
                                 type="password"
                                 name="password"
                                 placeholder="Leave empty for default password"
-                                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white text-gray-900"
+                                className={`w-full px-3 py-2 border ${formErrors.password ? 'border-red-500' : 'border-gray-300'} rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white text-gray-900`}
                               />
-                              <p className="text-xs text-gray-500 mt-1">Default: TempPass123!</p>
+                              {formErrors.password ? (
+                                <p className="text-sm text-red-500 mt-1">{formErrors.password}</p>
+                              ) : (
+                                <p className="text-xs text-gray-500 mt-1">Default: TempPass123!</p>
+                              )}
                             </div>
                           )}
 

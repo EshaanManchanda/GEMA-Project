@@ -23,7 +23,7 @@ export const getAllVendors = async (
       limit = "10",
       search,
       paymentMode,
-      isActive,
+      status, // New parameter instead of isActive
       sortBy = "createdAt",
       sortOrder = "desc",
     } = req.query;
@@ -46,35 +46,41 @@ export const getAllVendors = async (
       query["paymentSettings.paymentMode"] = paymentMode;
     }
 
-    // Filter by active status
-    if (isActive !== undefined) {
-      query.isActive = isActive === "true";
-    }
-
     const pageNum = parseInt(page as string);
     const limitNum = parseInt(limit as string);
     const skip = (pageNum - 1) * limitNum;
 
+    // Default sorting to descending by createdAt
     const sortObj: any = {};
-    sortObj[sortBy as string] = sortOrder === "asc" ? 1 : -1;
+    const sortField = (sortBy as string) || "createdAt";
+    const order = sortOrder ? (sortOrder === "asc" ? 1 : -1) : -1;
+    sortObj[sortField] = order;
 
-    const [vendors, total] = await Promise.all([
-      Vendor.find(query)
-        .populate("userId", "firstName lastName email")
-        .sort(sortObj)
-        .skip(skip)
-        .limit(limitNum)
-        .lean(),
-      Vendor.countDocuments(query),
-    ]);
+    // Fetch vendors and populate userId — vendors whose userId is null (user was hard-deleted) will have userId=null after populate
+    const allVendors = await Vendor.find(query)
+      .populate("userId", "firstName lastName email role status lastLogin")
+      .sort(sortObj)
+      .lean();
 
+    // Filter out orphan vendors (userId is null) AND apply status filter if provided
+    const validVendors = allVendors.filter((v) => {
+      if (!v.userId) return false;
+      if (status && status !== 'all') {
+        return (v.userId as any).status === status;
+      }
+      return true;
+    });
+
+    // Apply pagination on the filtered list
+    const total = validVendors.length;
+    const paginatedVendors = validVendors.slice(skip, skip + limitNum);
     const totalPages = Math.ceil(total / limitNum);
 
     const response: ApiResponse = {
       success: true,
       message: "Vendors retrieved successfully",
       data: {
-        vendors: vendors.map((vendor) => ({
+        vendors: paginatedVendors.map((vendor) => ({
           id: vendor._id,
           businessName: vendor.businessName,
           email: vendor.email,
@@ -85,8 +91,10 @@ export const getAllVendors = async (
           commissionRate: vendor.paymentSettings?.commissionRate || 5,
           subscriptionStatus: vendor.paymentSettings?.subscriptionStatus,
           subscriptionPaidUntil: vendor.paymentSettings?.subscriptionPaidUntil,
-          isActive: vendor.isActive,
-          isSuspended: vendor.isSuspended,
+          // Sync UI status with the actual User account status
+          isActive: (vendor.userId as any)?.status === 'active',
+          isSuspended: (vendor.userId as any)?.status === 'suspended',
+          lastLogin: (vendor.userId as any)?.lastLogin,
           verificationStatus: vendor.verificationStatus,
           createdAt: vendor.createdAt,
         })),
@@ -106,6 +114,7 @@ export const getAllVendors = async (
     next(error);
   }
 };
+
 
 /**
  * Get vendor by ID
@@ -500,12 +509,25 @@ export const deleteVendor = async (
       return next(new AppError("Vendor not found", 404));
     }
 
-    // Soft delete
+    // Soft delete the vendor profile
     vendor.isDeleted = true;
     vendor.deletedAt = new Date();
     vendor.isActive = false;
 
     await vendor.save();
+
+    // Also downgrade the linked User's role to 'customer' so admin/users stays in sync
+    if (vendor.userId) {
+      try {
+        await User.findByIdAndUpdate(
+          vendor.userId,
+          { $set: { role: "customer" } },
+          { runValidators: true }
+        );
+      } catch (userSyncError: any) {
+        console.error("Failed to downgrade user role after vendor deletion:", userSyncError);
+      }
+    }
 
     res.status(200).json({
       success: true,
@@ -610,24 +632,44 @@ export const getVendorStats = async (
   next: NextFunction,
 ): Promise<void> => {
   try {
-    const [
-      totalVendors,
-      activeVendors,
-      vendorsByPaymentMode,
-      vendorsBySubscriptionStatus,
-      expiringSoon,
-    ] = await Promise.all([
-      Vendor.countDocuments({ isDeleted: { $ne: true } }),
-      Vendor.countDocuments({
-        isActive: true,
-        isSuspended: false,
-        isDeleted: { $ne: true },
-      }),
+    // Use $lookup to join with User collection and filter out orphan vendors
+    const [statsResult] = await Vendor.aggregate([
+      // Only non-deleted vendors
+      { $match: { isDeleted: { $ne: true } } },
+      // Join with User collection to detect orphans
+      {
+        $lookup: {
+          from: "users",
+          localField: "userId",
+          foreignField: "_id",
+          as: "user",
+        },
+      },
+      // Filter out vendors whose user no longer exists
+      { $match: { "user.0": { $exists: true } } },
+      // Group all into stats
+      {
+        $group: {
+          _id: null,
+          totalVendors: { $sum: 1 },
+          activeVendors: {
+            $sum: {
+              $cond: [{ $and: [{ $eq: ["$isActive", true] }, { $ne: ["$isSuspended", true] }] }, 1, 0],
+            },
+          },
+        },
+      },
+    ]);
+
+    const totalVendors = statsResult?.totalVendors || 0;
+    const activeVendors = statsResult?.activeVendors || 0;
+
+    const [vendorsByPaymentMode, vendorsBySubscriptionStatus, expiringSoon] = await Promise.all([
       Vendor.aggregate([
         { $match: { isDeleted: { $ne: true } } },
-        {
-          $group: { _id: "$paymentSettings.paymentMode", count: { $sum: 1 } },
-        },
+        { $lookup: { from: "users", localField: "userId", foreignField: "_id", as: "user" } },
+        { $match: { "user.0": { $exists: true } } },
+        { $group: { _id: "$paymentSettings.paymentMode", count: { $sum: 1 } } },
       ]),
       Vendor.aggregate([
         {
@@ -636,6 +678,8 @@ export const getVendorStats = async (
             isDeleted: { $ne: true },
           },
         },
+        { $lookup: { from: "users", localField: "userId", foreignField: "_id", as: "user" } },
+        { $match: { "user.0": { $exists: true } } },
         {
           $group: {
             _id: "$paymentSettings.subscriptionStatus",
@@ -682,4 +726,100 @@ export const getVendorStats = async (
   } catch (error) {
     next(error);
   }
+
 };
+
+/**
+ * One-time data sync: fix vendor↔user inconsistencies
+ * Marks orphan vendors (no linked user) as deleted,
+ * and ensures all users with vendor role have a vendor profile.
+ * @route POST /api/admin/vendors/sync
+ */
+export const syncVendorUserData = async (
+  req: Request,
+  res: Response,
+  next: NextFunction,
+): Promise<void> => {
+  try {
+    // 1. Find all non-deleted vendors and check if their user still exists
+    const allVendors = await Vendor.find({ isDeleted: { $ne: true } }).lean();
+    const userIds = allVendors.map((v) => v.userId).filter(Boolean);
+
+    const existingUsers = await User.find(
+      { _id: { $in: userIds } },
+      { _id: 1, role: 1 }
+    ).lean();
+    const existingUserIds = new Set(existingUsers.map((u) => u._id.toString()));
+
+    // Mark orphan vendors (user no longer exists) as deleted
+    const orphanVendorIds = allVendors
+      .filter((v) => v.userId && !existingUserIds.has(v.userId.toString()))
+      .map((v) => v._id);
+
+    let orphansFixed = 0;
+    if (orphanVendorIds.length > 0) {
+      const result = await Vendor.updateMany(
+        { _id: { $in: orphanVendorIds } },
+        { $set: { isDeleted: true, deletedAt: new Date(), isActive: false } }
+      );
+      orphansFixed = result.modifiedCount;
+    }
+
+    // 2. Find vendor-role users who don't have a vendor profile, and create one
+    const vendorUsers = await User.find({ role: "vendor" }).lean();
+    const vendorDocs = await Vendor.find({
+      userId: { $in: vendorUsers.map((u) => u._id) },
+    }).lean();
+    const usersWithVendorDoc = new Set(vendorDocs.map((v) => v.userId?.toString()));
+
+    const usersWithoutProfile = vendorUsers.filter(
+      (u) => !usersWithVendorDoc.has(u._id.toString())
+    );
+
+    let profilesCreated = 0;
+    for (const u of usersWithoutProfile) {
+      try {
+        const { getOrCreateVendorProfile } = await import("../utils/vendorHelpers");
+        await getOrCreateVendorProfile(u._id);
+        profilesCreated++;
+      } catch (e: any) {
+        console.error(`Failed to create vendor profile for user ${u._id}:`, e.message);
+      }
+    }
+
+    // 3. Re-activate soft-deleted vendors whose user role is still 'vendor'
+    const deletedVendors = await Vendor.find({ isDeleted: true }).lean();
+    const deletedVendorUserIds = deletedVendors.map((v) => v.userId).filter(Boolean);
+    const vendorRoleUsers = await User.find({
+      _id: { $in: deletedVendorUserIds },
+      role: "vendor",
+    }, { _id: 1 }).lean();
+    const vendorRoleUserIdSet = new Set(vendorRoleUsers.map((u) => u._id.toString()));
+
+    const toReactivate = deletedVendors
+      .filter((v) => v.userId && vendorRoleUserIdSet.has(v.userId.toString()))
+      .map((v) => v._id);
+
+    let reactivated = 0;
+    if (toReactivate.length > 0) {
+      const result = await Vendor.updateMany(
+        { _id: { $in: toReactivate } },
+        { $set: { isDeleted: false, deletedAt: undefined, isActive: true } }
+      );
+      reactivated = result.modifiedCount;
+    }
+
+    res.status(200).json({
+      success: true,
+      message: "Vendor-User data sync complete",
+      data: {
+        orphanVendorsMarkedDeleted: orphansFixed,
+        vendorProfilesCreated: profilesCreated,
+        softDeletedVendorsReactivated: reactivated,
+      },
+    });
+  } catch (error) {
+    next(error);
+  }
+};
+
