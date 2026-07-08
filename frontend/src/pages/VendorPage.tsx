@@ -31,8 +31,6 @@ import vendorAPI from '@/services/api/vendorAPI';
 import reviewsAPI from '@/services/api/reviewsAPI';
 import { API_BASE_URL } from '@/config/api';
 import { VendorSEO } from '@/components/common/SEO';
-
-import { getEventImageFromEvent } from '@/utils/imageFallbacks';
 import { useAuthContext } from '@/hooks/useAuthContext';
 
 /* ─── Types ──────────────────────────────── */

@@ -49,6 +49,7 @@ const MediaUploadZone: React.FC<MediaUploadZoneProps> = ({
   const [isDragging, setIsDragging] = useState(false);
   const [files, setFiles] = useState<UploadFile[]>([]);
   const [uploading, setUploading] = useState(false);
+  const [altText, setAltText] = useState('');
 
   // Handle file selection
   const handleFiles = (selectedFiles: FileList | null) => {
@@ -174,7 +175,8 @@ const MediaUploadZone: React.FC<MediaUploadZoneProps> = ({
         const asset = await dispatch(uploadMedia({
           file: uploadFile.file,
           category,
-          folder
+          folder,
+          altText: altText.trim() || undefined
         })).unwrap();
 
         uploadedAssets.push(asset);
@@ -190,7 +192,8 @@ const MediaUploadZone: React.FC<MediaUploadZoneProps> = ({
         const result = await dispatch(uploadMultipleMedia({
           files: files.map(f => f.file),
           category,
-          folder
+          folder,
+          altText: altText.trim() || undefined
         })).unwrap();
 
         // Extract MediaAsset objects from successful uploads
@@ -249,6 +252,7 @@ const MediaUploadZone: React.FC<MediaUploadZoneProps> = ({
         setFiles(prev => prev.filter(f => f.status === 'error'));
         if (uploadedAssets.length > 0) {
           onUploadComplete?.(uploadedAssets);
+          setAltText('');
         }
       }, 2000);
 
@@ -313,6 +317,23 @@ const MediaUploadZone: React.FC<MediaUploadZoneProps> = ({
               </Button>
             )}
           </div>
+
+          {/* Alt text (applied to every file when Upload is pressed) */}
+          {!uploading && files.some(f => f.status === 'pending') && (
+            <div>
+              <label className="block text-xs font-medium text-gray-700 mb-1">
+                Alt text {files.length > 1 && '(applied to all uploaded images)'}
+              </label>
+              <input
+                type="text"
+                value={altText}
+                onChange={(e) => setAltText(e.target.value)}
+                maxLength={250}
+                placeholder="Describe the image for screen readers and SEO. Avoid keyword stuffing."
+                className="w-full text-sm border border-gray-300 rounded-md px-3 py-1.5 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+              />
+            </div>
+          )}
 
           <div className="max-h-64 overflow-y-auto space-y-2">
             {files.map((uploadFile) => (

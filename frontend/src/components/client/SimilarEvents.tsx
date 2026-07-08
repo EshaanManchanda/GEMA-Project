@@ -21,7 +21,7 @@ const HorizontalStrip: React.FC<{
       <div className="flex gap-4 overflow-x-auto pb-2 snap-x snap-mandatory scrollbar-hide">
         {events.map((ev: any) => (
           <div key={ev._id || ev.id} className="snap-start flex-shrink-0 w-72">
-            <EventCard event={ev} variant="compact" />
+            <EventCard {...ev} variant="compact" />
           </div>
         ))}
       </div>

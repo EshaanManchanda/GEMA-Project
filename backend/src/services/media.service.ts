@@ -25,6 +25,7 @@ export class MediaService {
       folder: string;
       uploadedBy?: string;
       tags?: string[];
+      altText?: string;
     },
   ): Promise<IMediaAsset> {
     // 1. Upload to storage provider
@@ -59,6 +60,7 @@ export class MediaService {
       category: options.category,
       folder: options.folder,
       tags: options.tags || [],
+      altText: options.altText || "",
       uploadedBy: options.uploadedBy,
       isPublic: true,
       usageCount: 0,
@@ -335,11 +337,11 @@ export class MediaService {
   /**
    * Update media tags
    */
-  async updateMediaTags(
+  async updateMediaMetadata(
     id: string,
-    tags: string[],
+    updates: { tags?: string[]; altText?: string },
   ): Promise<IMediaAsset | null> {
-    return MediaAsset.findByIdAndUpdate(id, { tags }, { new: true }).populate(
+    return MediaAsset.findByIdAndUpdate(id, updates, { new: true }).populate(
       "uploadedBy",
       "firstName lastName email avatar",
     );

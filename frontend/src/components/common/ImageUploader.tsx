@@ -123,7 +123,7 @@ const ImageUploader: React.FC<ImageUploaderProps> = ({
         if (result.status === 'fulfilled') {
           successfulUploads.push(result.value);
         } else {
-          errors.push(`Failed to upload ${files[index].name}: ${result.reason.message}`);
+          errors.push(`Couldn't upload ${files[index].name}. Please try a smaller file or try again.`);
         }
       });
 
@@ -142,7 +142,7 @@ const ImageUploader: React.FC<ImageUploaderProps> = ({
       }
 
     } catch (error: any) {
-      toast.error('Upload failed: ' + error.message);
+      toast.error('Upload failed. Please try again.');
       onUploadError?.(error.message);
     } finally {
       setUploading(false);

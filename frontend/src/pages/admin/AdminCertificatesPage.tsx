@@ -231,7 +231,7 @@ const CertListTab: React.FC = () => {
     try {
       const res = await certificateAPI.purgeAll({ eventId: eventFilter || undefined, mode });
       const data = res.data?.data;
-      toast.success(data?.message || 'Done');
+      toast.success(data?.message || 'Action completed successfully');
       fetchCerts();
     } catch (err: any) {
       toast.error(err?.response?.data?.message || 'Failed to purge');

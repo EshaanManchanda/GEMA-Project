@@ -219,7 +219,7 @@ class HomepageService {
           "title slug excerpt featuredImage featuredImageAsset author category readTime publishedAt",
         )
         .populate("category", "name slug color")
-        .populate("featuredImageAsset", "url thumbnailUrl variations")
+        .populate("featuredImageAsset", "url thumbnailUrl variations altText")
         .sort({ publishedAt: -1 })
         .limit(6)
         .lean(),

@@ -15,8 +15,6 @@ import {
   FaInstagram,
   FaFacebook,
   FaYoutube,
-  FaTwitter,
-  FaLinkedin,
   FaPlayCircle,
   FaDownload
 } from 'react-icons/fa';

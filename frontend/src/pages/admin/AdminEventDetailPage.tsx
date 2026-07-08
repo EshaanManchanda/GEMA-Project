@@ -85,7 +85,6 @@ const AdminEventDetailPage: React.FC = () => {
   // Report download
   const [reportLoading, setReportLoading] = useState(false);
   const [reportFormat, setReportFormat] = useState<'pdf' | 'csv'>('pdf');
-  const [showReportMenu, setShowReportMenu] = useState(false);
 
   // Registrations tab
   const [statusFilter, setStatusFilter] = useState('');
@@ -458,7 +457,7 @@ const AdminEventDetailPage: React.FC = () => {
       toast.success(`Exported ${allOrders.length} order${allOrders.length !== 1 ? 's' : ''}`);
     } catch (err: any) {
       logger.error('Export failed', err);
-      toast.error('Export failed');
+      toast.error('Export failed. Please try again.');
     } finally {
       setExportLoading(false);
     }

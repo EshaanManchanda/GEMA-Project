@@ -43,6 +43,15 @@ interface Schedule {
   specialDates?: string[];
   priority?: number;
   isOverride?: boolean;
+  timeSlots?: Array<{
+    date: string;
+    startTime: string;
+    endTime: string;
+    availableSeats: string;
+  }>;
+  sessionType?: string;
+  ratePerClass?: string;
+  isFreeSession?: boolean;
 }
 
 interface FAQ {

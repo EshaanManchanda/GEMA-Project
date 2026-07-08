@@ -41,6 +41,11 @@ export async function loginWithGoogle(role?: string): Promise<AuthResponse> {
       throw new Error('An account already exists with this email. Sign in with your original method.');
     }
 
+    // Browser blocked the popup (strict popup blockers, in-app browsers, Safari settings)
+    if (code === 'auth/popup-blocked') {
+      throw new Error('Popup blocked by your browser. Please allow popups for this site and try again.');
+    }
+
     throw popupError;
   }
 

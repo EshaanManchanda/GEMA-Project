@@ -4,6 +4,7 @@ import { FaArrowRight } from 'react-icons/fa';
 import { Blog } from '../../types/blog';
 import { getPlaceholderUrl, handleImageError } from '../../utils/placeholderImage';
 import logger from '../../utils/logger';
+import { getImageAlt } from '../../utils/imageAlt';
 
 interface FeaturedBlogsSectionProps {
   blogs?: Blog[];
@@ -336,7 +337,7 @@ const FeaturedBlogsSection: React.FC<FeaturedBlogsSectionProps> = ({
                 {/* Background Image */}
                 <img
                   src={getImageUrl(blog)}
-                  alt={blog.title}
+                  alt={getImageAlt(blog.featuredImageAsset, blog.title)}
                   className="absolute inset-0 w-full h-full object-cover"
                   loading={index === 0 ? 'eager' : 'lazy'}
                   onError={(e) => handleImageError(e, 'blogThumbnail', blog.title)}

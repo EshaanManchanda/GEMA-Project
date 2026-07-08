@@ -23,7 +23,6 @@ import {
 import Badge from "../../components/ui/Badge";
 import { MediaAsset } from "@/store/slices/mediaSlice";
 import PrivatePageSEO from "@/components/common/PrivatePageSEO";
-import PastEventMemoriesEditor from "@/components/common/PastEventMemoriesEditor";
 import { PastEventMemory } from "@/types/event";
 import { eventsKeys, adminKeys } from "@/hooks/queries/queryKeys";
 import logger from "@/utils/logger";
@@ -379,7 +378,7 @@ const AdminEditEventPage: React.FC = () => {
               description: event.seoMeta?.description || "",
               keywords: event.seoMeta?.keywords || [],
             },
-            collectionInfo: event.collectionInfo?.map(col => ({
+            collectionInfo: event.collectionInfo?.map((col: { heading?: string; shortDescription?: string; link?: string }) => ({
               heading: col.heading || "",
               shortDescription: col.shortDescription || "",
               link: col.link || "",
@@ -889,8 +888,6 @@ const AdminEditEventPage: React.FC = () => {
 
     // Schedule validation
     if (validateAll || activeTab === "schedule") {
-      const hasSchedules = schedules.length > 0;
-
       // Validate each schedule
       schedules.forEach((schedule, index) => {
         if (!schedule.isSpecialDate) {
@@ -1129,8 +1126,7 @@ const AdminEditEventPage: React.FC = () => {
       };
 
       if (isCreateMode) {
-        const response = await adminAPI.createEvent(eventData);
-        const newEventId = response?.data?.event?.id || response?.event?.id;
+        await adminAPI.createEvent(eventData);
 
         await Promise.all([
           queryClient.invalidateQueries({ queryKey: eventsKeys.all }),

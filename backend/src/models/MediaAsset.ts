@@ -37,6 +37,9 @@ export interface IMediaAsset extends Document {
   folder: string; // Virtual: "blogs.upload", "profile.upload", "event.uploads"
   tags: string[];
 
+  // Accessibility / SEO — one alt string per asset, reused everywhere it's placed
+  altText?: string;
+
   // Usage tracking
   usedBy: Array<{
     model: "Blog" | "Event" | "User" | "Reel";
@@ -169,6 +172,12 @@ const mediaAssetSchema = new Schema<IMediaAsset>(
         trim: true,
       },
     ],
+    altText: {
+      type: String,
+      trim: true,
+      maxlength: 250,
+      default: "",
+    },
     usedBy: [
       {
         model: {

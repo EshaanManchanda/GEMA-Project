@@ -68,7 +68,7 @@ const AdminBannersPage: React.FC = () => {
       await homepageAPI.invalidateCache();
       toast.success('Homepage cache cleared');
     } catch (error: any) {
-      toast.error('Failed to delete banner: ' + (error.message || 'Unknown error'));
+      toast.error('Failed to delete banner. Please try again.');
     }
   };
 
@@ -78,7 +78,7 @@ const AdminBannersPage: React.FC = () => {
       await homepageAPI.invalidateCache();
       toast.success('Homepage cache cleared - changes will appear immediately');
     } catch (error: any) {
-      toast.error('Failed to clear cache: ' + (error.message || 'Unknown error'));
+      toast.error('Failed to clear homepage cache. Please try again.');
     } finally {
       setIsCacheInvalidating(false);
     }

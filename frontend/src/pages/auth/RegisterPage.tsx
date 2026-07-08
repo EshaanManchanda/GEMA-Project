@@ -1,10 +1,9 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Link, useLocation, useNavigate } from 'react-router-dom';
 import { useAppDispatch, useAppSelector } from '@/store/hooks';
-import { registerUser, verifyEmailWithOTP, resendVerificationEmail, clearError, loginWithGoogleThunk } from '@/store/slices/authSlice';
+import { registerUser, clearError, loginWithGoogleThunk } from '@/store/slices/authSlice';
 import PhoneInput from '@/components/forms/PhoneInput';
 import PrivatePageSEO from '@/components/common/PrivatePageSEO';
-import OTPInput from '@/components/common/OTPInput';
 
 interface RegisterFormData {
   firstName: string;
@@ -50,7 +49,8 @@ const RegisterPage: React.FC = () => {
   const navigate = useNavigate();
   const location = useLocation();
   const dispatch = useAppDispatch();
-  const { isLoading, error } = useAppSelector((state) => state.auth);
+  const { isLoading } = useAppSelector((state) => state.auth);
+  const [registerError, setRegisterError] = useState<string>('');
   const searchParams = new URLSearchParams(location.search);
   const redirectPath = getSafeRedirectPath(searchParams.get('redirect'));
   const initialRole = resolveInitialRole(location.pathname, searchParams.get('role'));
@@ -212,6 +212,7 @@ const RegisterPage: React.FC = () => {
   const handleStep1Submit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!validateStep1Form()) return;
+    setRegisterError('');
     try {
       await dispatch(registerUser({
         firstName: formData.firstName,
@@ -229,6 +230,17 @@ const RegisterPage: React.FC = () => {
       navigate('/verify-email', { state: { email: formData.email }, replace: true });
     } catch (error: any) {
       console.error('Registration error:', error);
+      const message: string = typeof error === 'string' ? error : error?.message || 'Registration failed';
+
+      if (message.toLowerCase().includes('network') || message.toLowerCase().includes('timeout')) {
+        setRegisterError('Network error. Please check your internet connection and try again.');
+      } else if (message.toLowerCase().includes('too many') || message.toLowerCase().includes('rate limit')) {
+        setRegisterError('Too many attempts. Please wait a few minutes and try again.');
+      } else if (message.toLowerCase().includes('warming up')) {
+        setRegisterError('Backend server is starting up. Please wait a moment and try again.');
+      } else {
+        setRegisterError(message);
+      }
     }
   };
   return (
@@ -248,12 +260,12 @@ const RegisterPage: React.FC = () => {
               </p>
             </div>
 
-            {error && (
+            {registerError && (
               <div className="alert alert-error flex items-center space-x-3 mb-4" role="alert">
                 <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 text-error-600" viewBox="0 0 20 20" fill="currentColor">
                   <path fillRule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7 4a1 1 0 11-2 0 1 1 0 012 0zm-1-9a1 1 0 00-1 1v4a1 1 0 102 0V6a1 1 0 00-1-1z" clipRule="evenodd" />
                 </svg>
-                <p className="text-sm font-medium">{error}</p>
+                <p className="text-sm font-medium">{registerError}</p>
               </div>
             )}
 

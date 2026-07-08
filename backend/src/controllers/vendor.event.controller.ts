@@ -1,8 +1,9 @@
-import { Event, Category, Vendor } from "../models/index";
+import { Event, Category, Vendor, VerificationStatus } from "../models/index";
 import { AppError, catchAsync } from "../middleware/index";
 import { AuthRequest } from "../types/index";
 import { NextFunction, Response } from "express";
 import { getOrCreateVendorProfile } from "../utils/vendorHelpers";
+import { VENDOR_SETTABLE_STATUSES } from "../validators/vendor.event.validator";
 
 // @desc    Get single event by ID (vendor's own event)
 // @route   GET /api/vendors/events/:id
@@ -49,6 +50,15 @@ export const createVendorEvent = catchAsync(
     // Get vendor profile to get Vendor._id
     const vendorProfile = await getOrCreateVendorProfile(userId);
     const vendorId = vendorProfile._id;
+
+    // VE-4: block only rejected vendors from creating events. Unverified/pending vendors may
+    // still create — the real gate is admin approval (isApproved stays false below), so
+    // blocking all unverified vendors would break every brand-new vendor's first event.
+    if (vendorProfile.verificationStatus === VerificationStatus.REJECTED) {
+      return next(
+        new AppError("Vendor account is not permitted to create events", 403),
+      );
+    }
 
     const {
       title,
@@ -303,32 +313,55 @@ export const updateVendorEvent = catchAsync(
     }
 
     if (dateSchedule) {
-      event.dateSchedule = dateSchedule.map((schedule: any) => ({
-        ...(schedule._id && { _id: schedule._id }),
-        startDate: schedule.startDate,
-        endDate: schedule.endDate,
-        startTime: schedule.startTime || "",
-        endTime: schedule.endTime || "",
-        availableSeats: schedule.unlimitedSeats
-          ? 999999
-          : schedule.availableSeats || 0,
-        totalSeats: schedule.unlimitedSeats
-          ? 999999
-          : schedule.totalSeats || schedule.availableSeats || 0,
-        price: (isFreeEvent ?? (event as any).isFreeEvent) ? 0 : (schedule.price || event.price || 0),
-        unlimitedSeats: schedule.unlimitedSeats || false,
-        isOverride: schedule.isOverride || false,
-      }));
+      // Guard against setting seats below what's already booked/sold — prevents an
+      // impossible schedule (e.g. availableSeats=5 when soldSeats=20).
+      const existingById = new Map(
+        (event.dateSchedule || []).map((s: any) => [String(s._id), s]),
+      );
+      for (const schedule of dateSchedule) {
+        if (schedule.unlimitedSeats || !schedule._id) continue;
+        const existing = existingById.get(String(schedule._id));
+        const soldSeats = existing?.soldSeats || 0;
+        const newAvailable = schedule.availableSeats ?? existing?.availableSeats ?? 0;
+        if (soldSeats > 0 && newAvailable < soldSeats) {
+          return next(
+            new AppError(
+              `Cannot set availableSeats below already booked seats (${soldSeats}) for this schedule`,
+              400,
+            ),
+          );
+        }
+      }
+
+      event.dateSchedule = dateSchedule.map((schedule: any) => {
+        const existing = schedule._id ? existingById.get(String(schedule._id)) : undefined;
+        return {
+          ...(schedule._id && { _id: schedule._id }),
+          startDate: schedule.startDate,
+          endDate: schedule.endDate,
+          startTime: schedule.startTime || "",
+          endTime: schedule.endTime || "",
+          availableSeats: schedule.unlimitedSeats
+            ? 999999
+            : schedule.availableSeats || 0,
+          totalSeats: schedule.unlimitedSeats
+            ? 999999
+            : schedule.totalSeats || schedule.availableSeats || 0,
+          price: (isFreeEvent ?? (event as any).isFreeEvent) ? 0 : (schedule.price || event.price || 0),
+          unlimitedSeats: schedule.unlimitedSeats || false,
+          isOverride: schedule.isOverride || false,
+          soldSeats: existing?.soldSeats || 0,
+        };
+      });
     }
 
     if (seoMeta) event.seoMeta = seoMeta;
     if (faqs) event.faqs = faqs;
-    const VENDOR_ALLOWED_STATUSES = ["draft", "pending_review", "cancelled"];
     if (status) {
-      if (!VENDOR_ALLOWED_STATUSES.includes(status)) {
+      if (!VENDOR_SETTABLE_STATUSES.includes(status)) {
         return res.status(403).json({
           success: false,
-          message: `Vendors can only set status to: ${VENDOR_ALLOWED_STATUSES.join(", ")}`,
+          message: `Vendors can only set status to: ${VENDOR_SETTABLE_STATUSES.join(", ")}`,
         });
       }
       event.status = status;

@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { Link } from 'react-router-dom';
-import { FaCheckCircle, FaArrowRight, FaSun, FaStar, FaEnvelope, FaInstagram, FaFacebook, FaCrown, FaBolt, FaRocket, FaMedal } from 'react-icons/fa';
+import { FaCheckCircle, FaArrowRight, FaSun, FaCrown, FaBolt, FaRocket, FaMedal } from 'react-icons/fa';
 import { toast } from 'react-hot-toast';
 import api from '../services/api';
 
@@ -109,14 +109,6 @@ const TIMELINE = [
 
 const AGE_GROUP_OPTIONS = ['Under 3', '3–5 years', '6–9 years', '10–12 years', '13–16 years'];
 const EMIRATES = ['Abu Dhabi', 'Dubai', 'Sharjah', 'Ajman', 'Umm Al Quwain', 'Ras Al Khaimah', 'Fujairah'];
-const PARTNER_TYPES = [
-  { value: 'summer_camp', label: 'Summer Camp' },
-  { value: 'play_zone', label: 'Play Zone' },
-  { value: 'workshop', label: 'Workshop' },
-  { value: 'activity_centre', label: 'Activity Centre' },
-  { value: 'other', label: 'Other Kids Experience' },
-];
-
 const SummerPartnershipPage: React.FC = () => {
   const [selectedPackage, setSelectedPackage] = useState<string>('growth');
   const [submitting, setSubmitting] = useState(false);

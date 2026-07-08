@@ -1,6 +1,8 @@
-import React, { useEffect } from 'react';
-import { X, Copy, Trash2, Download, FileText, File } from 'lucide-react';
-import { MediaAsset } from '../../../store/slices/mediaSlice';
+import React, { useEffect, useState } from 'react';
+import { X, Copy, Trash2, Download, FileText, File, Save } from 'lucide-react';
+import { useDispatch } from 'react-redux';
+import { AppDispatch } from '../../../store';
+import { MediaAsset, updateMediaMetadata } from '../../../store/slices/mediaSlice';
 import Button from '../../ui/Button';
 import toast from 'react-hot-toast';
 import { format } from 'date-fns';
@@ -22,6 +24,56 @@ interface MediaDetailModalProps {
  * - Keyboard shortcuts (ESC to close)
  */
 const MediaDetailModal: React.FC<MediaDetailModalProps> = ({ asset, onClose, onDelete }) => {
+  const dispatch = useDispatch<AppDispatch>();
+  const [altTextInput, setAltTextInput] = useState(asset?.altText || '');
+  const [savingAlt, setSavingAlt] = useState(false);
+  const [pdfBlobUrl, setPdfBlobUrl] = useState<string | null>(null);
+  const [pdfError, setPdfError] = useState(false);
+
+  // Reseed local alt text when a different asset is opened
+  useEffect(() => {
+    setAltTextInput(asset?.altText || '');
+  }, [asset?._id]);
+
+  // Fetch the PDF as a blob so it renders in an <embed> without tripping the
+  // backend's X-Frame-Options/CSP frame-ancestors headers (those only block
+  // direct cross-origin framing, not a same-origin blob: URL). Because a
+  // blob: URL is same-origin, we must not trust the DB-stored mimeType alone —
+  // a malicious upload could label an HTML/SVG file as "application/pdf" and
+  // get script execution in the admin's origin. Re-check the fetched blob's
+  // actual Content-Type before ever creating an object URL from it.
+  useEffect(() => {
+    setPdfBlobUrl(null);
+    setPdfError(false);
+    if (!asset || asset.mimeType !== 'application/pdf') return;
+
+    let objectUrl: string | null = null;
+    let cancelled = false;
+
+    fetch(asset.url)
+      .then((res) => {
+        if (!res.ok) throw new Error(`Failed to fetch PDF (${res.status})`);
+        return res.blob();
+      })
+      .then((blob) => {
+        if (cancelled) return;
+        if (blob.type !== 'application/pdf') {
+          setPdfError(true);
+          return;
+        }
+        objectUrl = URL.createObjectURL(blob);
+        setPdfBlobUrl(objectUrl);
+      })
+      .catch(() => {
+        if (!cancelled) setPdfError(true);
+      });
+
+    return () => {
+      cancelled = true;
+      if (objectUrl) URL.revokeObjectURL(objectUrl);
+    };
+  }, [asset?._id]);
+
   // Handle ESC key to close
   useEffect(() => {
     const handleEscape = (e: KeyboardEvent) => {
@@ -67,10 +119,25 @@ const MediaDetailModal: React.FC<MediaDetailModalProps> = ({ asset, onClose, onD
     }
   };
 
+  // Save alt text (allows saving an empty string — clears alt / marks decorative)
+  const handleSaveAltText = async () => {
+    setSavingAlt(true);
+    try {
+      await dispatch(updateMediaMetadata({ id: asset._id, altText: altTextInput })).unwrap();
+      toast.success('Alt text updated');
+    } catch (error: any) {
+      toast.error(error.message || 'Failed to update alt text');
+    } finally {
+      setSavingAlt(false);
+    }
+  };
+
+  const altTextChanged = altTextInput !== (asset.altText || '');
+
   // Determine file type
   const isImage = asset.mimeType.startsWith('image/');
   const isVideo = asset.mimeType.startsWith('video/');
-  const isPDF = asset.mimeType.includes('pdf');
+  const isPDF = asset.mimeType === 'application/pdf';
   const isDocument = asset.mimeType.includes('document') || asset.mimeType.includes('word');
 
   // Get file icon
@@ -111,7 +178,7 @@ const MediaDetailModal: React.FC<MediaDetailModalProps> = ({ asset, onClose, onD
             {isImage && (
               <img
                 src={asset.url}
-                alt={asset.originalName}
+                alt={altTextInput || asset.originalName}
                 className="max-w-full max-h-[500px] object-contain rounded"
                 loading="lazy"
                 onError={(e) => {
@@ -131,7 +198,39 @@ const MediaDetailModal: React.FC<MediaDetailModalProps> = ({ asset, onClose, onD
               </video>
             )}
 
-            {!isImage && !isVideo && (
+            {isPDF && (
+              <div className="w-full flex flex-col gap-2">
+                {pdfError ? (
+                  <div className="flex flex-col items-center gap-4 py-12">
+                    {getFileIcon()}
+                    <p className="text-gray-600 text-center">
+                      Couldn't load a preview for this PDF.
+                    </p>
+                  </div>
+                ) : pdfBlobUrl ? (
+                  <embed
+                    src={pdfBlobUrl}
+                    type="application/pdf"
+                    title={asset.originalName}
+                    className="w-full h-[500px] rounded border border-gray-200 bg-white"
+                  />
+                ) : (
+                  <div className="flex items-center justify-center h-[500px]">
+                    <p className="text-gray-500">Loading preview...</p>
+                  </div>
+                )}
+                <a
+                  href={asset.url}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="text-sm text-blue-600 hover:underline self-center"
+                >
+                  Open in new tab
+                </a>
+              </div>
+            )}
+
+            {!isImage && !isVideo && !isPDF && (
               <div className="flex flex-col items-center gap-4">
                 {getFileIcon()}
                 <p className="text-gray-600 text-center">
@@ -185,6 +284,35 @@ const MediaDetailModal: React.FC<MediaDetailModalProps> = ({ asset, onClose, onD
                 </p>
               </div>
             )}
+
+            <div className="bg-gray-50 p-4 rounded-lg md:col-span-2">
+              <h3 className="text-sm font-medium text-gray-500 mb-2">Alt Text</h3>
+              <p className="text-xs text-gray-400 mb-2">
+                Describe the image for screen readers and SEO. Avoid keyword stuffing. Leave blank
+                for purely decorative images.
+              </p>
+              <div className="flex items-start gap-2">
+                <input
+                  type="text"
+                  value={altTextInput}
+                  onChange={(e) => setAltTextInput(e.target.value)}
+                  maxLength={250}
+                  placeholder="No alt text set"
+                  className="flex-1 px-3 py-2 bg-white border border-gray-300 rounded text-sm text-gray-900 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                />
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={handleSaveAltText}
+                  disabled={!altTextChanged || savingAlt}
+                  loading={savingAlt}
+                  className="flex items-center gap-1"
+                >
+                  <Save className="h-4 w-4" />
+                  Save
+                </Button>
+              </div>
+            </div>
 
             {asset.tags && asset.tags.length > 0 && (
               <div className="bg-gray-50 p-4 rounded-lg md:col-span-2">

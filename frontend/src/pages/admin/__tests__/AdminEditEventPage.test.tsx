@@ -8,7 +8,6 @@
  * Heavy dependencies (TipTapEditor, API calls, React Query, child tabs)
  * are mocked.
  */
-import React from 'react';
 import { render, screen, waitFor, act } from '@testing-library/react';
 
 // ---------------------------------------------------------------------------
@@ -36,11 +35,11 @@ jest.mock('@tanstack/react-query', () => ({
 // Mock API services
 // ---------------------------------------------------------------------------
 const mockGetEventById = jest.fn();
-const mockGetAllCategories = jest.fn(() => Promise.resolve([]));
-const mockGetVendorsList = jest.fn(() =>
+const mockGetAllCategories = jest.fn((..._args: any[]) => Promise.resolve([]));
+const mockGetVendorsList = jest.fn((..._args: any[]) =>
   Promise.resolve({ data: { vendors: [] } }),
 );
-const mockGetTeachingEventTeachers = jest.fn(() =>
+const mockGetTeachingEventTeachers = jest.fn((..._args: any[]) =>
   Promise.resolve({ data: { teachers: [] } }),
 );
 
@@ -78,16 +77,14 @@ jest.mock('../../../services/api/uploadAPI', () => ({
 // Mock child tab components — render stubs with data-testid
 // ---------------------------------------------------------------------------
 
-// Track the description that BasicInfoTab receives so we can assert on it.
-// The real BasicInfoTab lazy-loads TipTapEditor; we replace it with a
-// simple textarea that exercises the same onChange contract.
-let capturedDescription = '';
+// Track the onInputChange handler that BasicInfoTab receives so tests can
+// simulate typing. The real BasicInfoTab lazy-loads TipTapEditor; we replace
+// it with a simple textarea that exercises the same onChange contract.
 let capturedOnInputChange: ((e: any) => void) | null = null;
 
 jest.mock('../../../components/admin/BasicInfoTab', () => ({
   __esModule: true,
   default: (props: any) => {
-    capturedDescription = props.formData?.description ?? '';
     capturedOnInputChange = props.onInputChange;
     return (
       <div data-testid="basic-info-tab">
@@ -207,7 +204,6 @@ describe('AdminEditEventPage', () => {
   beforeEach(() => {
     jest.clearAllMocks();
     mockParams = {};
-    capturedDescription = '';
     capturedOnInputChange = null;
     mockGetAllCategories.mockResolvedValue([]);
     mockGetVendorsList.mockResolvedValue({ data: { vendors: [] } });

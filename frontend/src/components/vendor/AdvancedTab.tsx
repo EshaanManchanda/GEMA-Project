@@ -1,7 +1,6 @@
 import React from 'react';
 import { MapPin, Globe, Shield, HelpCircle, Trash2, Plus, Building2, Image } from 'lucide-react';
 import EventGalleryEditor from '../common/EventGalleryEditor';
-import { PastEventMemory } from '@/types/event';
 import TagInput from '../common/TagInput';
 import CountrySelect from '../forms/CountrySelect';
 import CityAutocomplete from '../forms/CityAutocomplete';

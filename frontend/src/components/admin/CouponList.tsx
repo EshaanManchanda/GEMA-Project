@@ -193,9 +193,9 @@ const CouponList: React.FC = () => {
       fetchCoupons();
     } catch (error: any) {
       if (error.response?.data?.message) {
-        toast.error(`Error: ${error.response.data.message}`);
+        toast.error(error.response.data.message);
       } else {
-        toast.error('Failed to delete coupon');
+        toast.error('Failed to delete coupon. Please try again.');
       }
     } finally {
       setShowDeleteConfirm(false);
@@ -246,9 +246,9 @@ const CouponList: React.FC = () => {
     } catch (error: any) {
       logger.error('[CouponList] Error bulk updating coupons:', error);
       if (error.response?.data?.message) {
-        toast.error(`Error: ${error.response.data.message}`);
+        toast.error(error.response.data.message);
       } else {
-        toast.error('Failed to update coupons');
+        toast.error('Failed to update coupons. Please try again.');
       }
     } finally {
       setBulkActionLoading(false);

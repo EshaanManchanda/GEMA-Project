@@ -67,7 +67,7 @@ const AdminCommissionTransactionDetailPage: React.FC = () => {
       setTransaction((prev) => prev ? { ...prev, status: 'approved' } : prev);
       toast.success('Commission approved');
     } catch {
-      toast.error('Approval failed');
+      toast.error('Failed to approve commission. Please try again.');
     } finally {
       setApproving(false);
     }

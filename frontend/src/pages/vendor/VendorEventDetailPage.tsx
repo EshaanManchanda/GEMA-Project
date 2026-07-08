@@ -161,7 +161,7 @@ const VendorEventDetailPage: React.FC = () => {
       await vendorAPI.exportEventParticipants(id, 'csv');
       toast.success('Participants exported');
     } catch {
-      toast.error('Export failed');
+      toast.error('Export failed. Please try again.');
     } finally {
       setIsExporting(false);
     }

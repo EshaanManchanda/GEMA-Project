@@ -1278,7 +1278,7 @@ const ProfilePage: React.FC = () => {
       return;
     }
     if (error) {
-      toast.error(error);
+      toast.error(error || 'Something went wrong updating your profile. Please try again.');
     }
   }, [error]);
 

@@ -30,7 +30,7 @@ class BannerService {
         },
       ],
     })
-      .populate("imageAsset", "url filename width height")
+      .populate("imageAsset", "url filename width height altText")
       .sort({ displayOrder: 1 })
       .lean();
 
@@ -63,7 +63,7 @@ class BannerService {
 
     const [allBanners, total] = await Promise.all([
       Banner.find(query)
-        .populate("imageAsset", "url filename width height")
+        .populate("imageAsset", "url filename width height altText")
         .populate("createdBy", "firstName lastName email")
         .sort({ displayOrder: 1, createdAt: -1 })
         .skip(skip)

@@ -48,6 +48,8 @@ export interface Session {
   scheduleId: string;
   /** Index inside `dateSchedule[n].timeSlots` — undefined for base-schedule sessions */
   timeSlotIndex?: number;
+  /** Alias for `scheduleId`/`id`, used by some callers for comparison — not always populated */
+  _id?: string;
 }
 
 interface RawTimeSlot {

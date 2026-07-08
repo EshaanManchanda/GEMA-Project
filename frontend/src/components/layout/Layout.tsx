@@ -4,7 +4,7 @@ import { motion } from 'framer-motion';
 import logger from '@/utils/logger';
 import { useSelector, useDispatch, shallowEqual } from 'react-redux';
 import { RootState, AppDispatch } from '@/store';
-import { logoutUser, selectIsAuthenticated } from '@/store/slices/authSlice';
+import { logoutUser } from '@/store/slices/authSlice';
 import {
   fetchRootCategories,
   selectCategories,

@@ -4,14 +4,11 @@ import { authenticate, authorize } from '../middleware/index';
 import { UserRole } from '../models/index';
 import PageView from '../models/PageView';
 import * as gsc from '../services/searchConsole.service';
-import cacheService from '../services/cache.service';
 
 const router = Router();
 
 router.use(authenticate);
 router.use(authorize([UserRole.ADMIN]));
-
-const GSC_CACHE_TTL = 60 * 60; // 1 hour
 
 // GET /api/admin/traffic/overview
 router.get('/traffic/overview', async (req: Request, res: Response, next: NextFunction) => {
@@ -103,19 +100,10 @@ router.get('/search-console/summary', async (req: Request, res: Response, next: 
 
     const days = Math.min(parseInt(req.query.days as string) || 28, 90);
     const siteUrl = gsc.resolveSiteUrl(req.query.site as string | undefined);
-    const cacheKey = `gsc:summary:${siteUrl}:${days}`;
 
-    const cached = await cacheService.get(cacheKey);
-    if (cached) return res.json({ success: true, data: cached, siteUrl, cached: true });
+    const { data, cached, fetchedAt } = await gsc.getCachedSummary(siteUrl, days);
 
-    const [summary, trend] = await Promise.all([
-      gsc.getSearchSummary(siteUrl, days),
-      gsc.getSearchTrend(siteUrl, days),
-    ]);
-    const result = { summary, trend };
-    await cacheService.set(cacheKey, result, { ttl: GSC_CACHE_TTL });
-
-    res.json({ success: true, data: result, siteUrl, configured: true });
+    res.json({ success: true, data, siteUrl, configured: true, cached, fetchedAt });
   } catch (err) {
     next(err);
   }
@@ -131,15 +119,10 @@ router.get('/search-console/queries', async (req: Request, res: Response, next: 
     const days = Math.min(parseInt(req.query.days as string) || 28, 90);
     const limit = Math.min(parseInt(req.query.limit as string) || 25, 100);
     const siteUrl = gsc.resolveSiteUrl(req.query.site as string | undefined);
-    const cacheKey = `gsc:queries:${siteUrl}:${days}:${limit}`;
 
-    const cached = await cacheService.get(cacheKey);
-    if (cached) return res.json({ success: true, data: cached, siteUrl, cached: true });
+    const { data, cached, fetchedAt } = await gsc.getCachedQueries(siteUrl, days, limit);
 
-    const data = await gsc.getTopQueries(siteUrl, days, limit);
-    await cacheService.set(cacheKey, data, { ttl: GSC_CACHE_TTL });
-
-    res.json({ success: true, data, siteUrl, configured: true });
+    res.json({ success: true, data, siteUrl, configured: true, cached, fetchedAt });
   } catch (err) {
     next(err);
   }
@@ -154,19 +137,10 @@ router.get('/search-console/pages', async (req: Request, res: Response, next: Ne
 
     const days = Math.min(parseInt(req.query.days as string) || 28, 90);
     const siteUrl = gsc.resolveSiteUrl(req.query.site as string | undefined);
-    const cacheKey = `gsc:pages:${siteUrl}:${days}`;
 
-    const cached = await cacheService.get(cacheKey);
-    if (cached) return res.json({ success: true, data: cached, siteUrl, cached: true });
+    const { data, cached, fetchedAt } = await gsc.getCachedPages(siteUrl, days);
 
-    const [pages, countries] = await Promise.all([
-      gsc.getTopPages(siteUrl, days),
-      gsc.getSearchByCountry(siteUrl, days),
-    ]);
-    const result = { pages, countries };
-    await cacheService.set(cacheKey, result, { ttl: GSC_CACHE_TTL });
-
-    res.json({ success: true, data: result, siteUrl, configured: true });
+    res.json({ success: true, data, siteUrl, configured: true, cached, fetchedAt });
   } catch (err) {
     next(err);
   }

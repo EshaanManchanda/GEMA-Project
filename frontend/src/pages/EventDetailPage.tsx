@@ -1,26 +1,10 @@
-import React, { useState, useEffect, useMemo, useRef } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import { useParams, Link, useNavigate } from 'react-router-dom';
 import {
-  Calendar,
-  Clock,
-  MapPin,
-  Users,
-  CheckCircle,
-  Share2,
-  Heart,
   ChevronRight,
-  Star,
-  Info,
   Image as ImageIcon,
-  Shield,
   BookOpen,
-  Award,
-  Zap,
-  Globe,
-  Tag,
-  MessageCircle,
   X,
-  Maximize2,
   ChevronLeft,
 } from 'lucide-react';
 import { useDispatch, useSelector } from 'react-redux';
@@ -182,24 +166,12 @@ const EventDetailPage: React.FC = () => {
   const [activeSection, setActiveSection] = useState('overview'); // scrollspy active section
   const [bookingType, setBookingType] = useState<'intro' | 'program'>('intro');
   const [isClaimingEvent, setIsClaimingEvent] = useState(false);
-  const [openSyllabusItems, setOpenSyllabusItems] = useState<Record<string, boolean>>({});
   const [showAllSyllabus, setShowAllSyllabus] = useState(false);
-  // Controls whether the full description is shown when only shortDescription is in preview
-  const [isDescriptionExpanded, setIsDescriptionExpanded] = useState(false);
   const [selectedMemoryIndex, setSelectedMemoryIndex] = useState<number | null>(null);
-  const [isAllMemoriesModalOpen, setIsAllMemoriesModalOpen] = useState(false);
   const [showAllEventGallery, setShowAllEventGallery] = useState(false);
   const { isAuthenticated } = useSelector((state: RootState) => state.auth);
   const { user: authUser } = useSelector((state: RootState) => state.auth);
   const hasValidUser = authUser && (authUser.email || authUser._id);
-
-  const toggleSyllabusItem = (id: string) => {
-    setOpenSyllabusItems(prev => ({
-      ...prev,
-      [id]: prev[id] === undefined ? false : !prev[id]
-    }));
-  };
-
 
   // TanStack Query replaces manual fetch + state management
   const { data: eventData, isLoading, error: queryError } = useEventQuery(slug!);
@@ -314,7 +286,7 @@ const EventDetailPage: React.FC = () => {
 
   // Reviews — fetched with TanStack Query for caching & deduplication
   const reviewsEnabled = !!event?._id;
-  const { data: platformReviewsData, isLoading: loadingReviews } = useQuery({
+  const { data: platformReviewsData, isLoading: _loadingReviews } = useQuery({
     queryKey: ['event-reviews', event?._id],
     queryFn: async () => {
       const response = await reviewsAPI.getEventReviews(event!._id);
@@ -369,7 +341,6 @@ const EventDetailPage: React.FC = () => {
   // Use the selected session if it's standard, otherwise the first standard session
   const selectedStandard = standardSchedules.find((s: any) => selectedSession && (s._id === selectedSession._id || s.id === selectedSession.id)) || standardSchedules[0];
 
-  const introClassesCount = introSchedules[0]?.timeSlots?.length || 1;
   const paidClassesCount = selectedStandard?.timeSlots?.length || 1;
 
   // The schedule's `price` field is the TOTAL package price for all classes in the cohort.
@@ -819,18 +790,6 @@ const EventDetailPage: React.FC = () => {
     dispatch(toggleFavorite(event._id));
   };
 
-  // Contact vendor handler
-  const handleContactVendor = () => {
-    if (!event?.vendorId) return;
-
-    const { email, firstName, lastName } = event.vendorId;
-    const subject = encodeURIComponent(`Inquiry about ${event.title}`);
-    const body = encodeURIComponent(`Hello ${firstName} ${lastName},\n\nI'm interested in your event "${event.title}".\n\n`);
-
-    // Open email client with pre-filled information
-    window.location.href = `mailto:${email}?subject=${subject}&body=${body}`;
-  };
-
   // View vendor profile handler
   const handleViewVendorProfile = () => {
     if (!event?.vendorId?._id) return;
@@ -884,8 +843,6 @@ const EventDetailPage: React.FC = () => {
   const totalSeats = hasUnlimited
     ? 0
     : capacitySchedules.reduce((sum: number, s: any) => sum + (s.totalSeats ?? s.availableSeats ?? 0), 0);
-  const soldSeats = capacitySchedules.reduce((sum: number, s: any) => sum + (s.soldSeats ?? 0), 0);
-  const firstDate = event.dateSchedule?.[0]?.date || event.dateSchedule?.[0]?.startDate;
   const totalAvailableEventSeats = hasUnlimited
     ? 0
     : capacitySchedules.reduce((sum: number, s: any) => sum + (s.availableSeats ?? 0), 0);

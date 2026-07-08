@@ -10,7 +10,6 @@ import {
   FaCreditCard,
   FaUniversity,
   FaSpinner,
-  FaCheck,
   FaBuilding,
   FaShieldAlt,
   FaTrash,
@@ -248,21 +247,6 @@ const VendorProfilePage: React.FC = () => {
     { id: 'bank', label: 'Bank Details', icon: <FaUniversity /> },
     { id: 'documents', label: 'Documents', icon: <FaFileAlt /> },
   ];
-
-  const TabButton: React.FC<{ id: string; label: string; icon: React.ReactNode }> = ({ id, label, icon }) => (
-    <motion.button
-      onClick={() => setActiveTab(id)}
-      className={`flex items-center gap-3 px-6 py-3 rounded-xl font-medium transition-all ${activeTab === id
-        ? 'bg-blue-50 text-blue-600 border-2 border-blue-200'
-        : 'text-gray-600 hover:bg-gray-50 border-2 border-transparent'
-        }`}
-      whileHover={{ scale: 1.02 }}
-      whileTap={{ scale: 0.98 }}
-    >
-      {icon}
-      <span className="hidden sm:inline">{label}</span>
-    </motion.button>
-  );
 
   if (isLoading) {
     return (

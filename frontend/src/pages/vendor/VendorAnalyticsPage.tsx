@@ -224,7 +224,7 @@ const VendorAnalyticsPage: React.FC = () => {
       await analyticsAPI.exportAnalytics({ type, ...dp, format: 'json' });
       toast.success(`${type} export ready`);
     } catch {
-      toast.error('Export failed');
+      toast.error('Export failed. Please try again.');
     } finally {
       setExporting(false);
     }

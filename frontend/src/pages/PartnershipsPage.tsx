@@ -1,5 +1,4 @@
-import React, { useState, useRef } from 'react';
-import { Link } from 'react-router-dom';
+import React, { useState } from 'react';
 import api from '../services/api';
 import { getCompanyAddress, getContactEmail, getContactPhone } from '../utils/brandConfig';
 import {
@@ -15,10 +14,6 @@ import {
   FaMapMarkerAlt,
   FaPhone,
   FaEnvelope,
-  FaLinkedin,
-  FaTwitter,
-  FaFacebook,
-  FaSun,
 } from 'react-icons/fa';
 import { toast } from 'react-hot-toast';
 
@@ -54,14 +49,6 @@ interface Metric {
   number: string;
   label: string;
   description: string;
-}
-
-interface Webinar {
-  title: string;
-  date: string;
-  time: string;
-  host: string;
-  status: 'live' | 'upcoming';
 }
 
 /* ─── Data ──────────────────────────────── */
@@ -197,30 +184,6 @@ const METRICS: Metric[] = [
     number: '25-40%',
     label: 'Conversion',
     description: 'Qualified leads to enrollment',
-  },
-];
-
-const WEBINARS: Webinar[] = [
-  {
-    title: 'Building Your Student Talent Pipeline',
-    date: 'May 20, 2026',
-    time: '2:00 PM GST',
-    host: 'KidRove + Your University',
-    status: 'upcoming',
-  },
-  {
-    title: 'Case Study: Successful Competition Execution',
-    date: 'May 27, 2026',
-    time: '2:00 PM GST',
-    host: 'KidRove + Case Study Partner',
-    status: 'upcoming',
-  },
-  {
-    title: 'Maximizing ROI from Student Engagement',
-    date: 'June 3, 2026',
-    time: '2:00 PM GST',
-    host: 'KidRove + Partnership Team',
-    status: 'upcoming',
   },
 ];
 
@@ -426,7 +389,7 @@ const ProgramModelsSection: React.FC = () => (
             </ul>
 
             <button
-              onClick={() => toast.success('Learn more feature coming soon!')}
+              onClick={() => toast('Coming soon!')}
               className="text-blue-600 font-bold flex items-center gap-2 hover:gap-3 transition-all"
             >
               Learn More <FaArrowRight className="text-sm" />
@@ -635,7 +598,7 @@ const UniversityPartnerSessionsSection: React.FC = () => {
                   <p>👥 {ev.team}</p>
                 </div>
                 <button
-                  onClick={() => toast.success('University session registration coming soon!')}
+                  onClick={() => toast('University session registration is coming soon!')}
                   className="w-full px-4 py-2 bg-gradient-to-r from-indigo-500 to-purple-600 text-white font-bold rounded-lg hover:shadow-lg transition-shadow text-sm"
                 >
                   Register Now

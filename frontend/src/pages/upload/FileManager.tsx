@@ -39,8 +39,8 @@ const FileManager: React.FC = () => {
     toast.success(`Successfully uploaded ${files.length} file(s) to ${activeCategory}`);
   };
 
-  const handleUploadError = (error: string) => {
-    toast.error('Upload failed: ' + error);
+  const handleUploadError = (_error: string) => {
+    toast.error('Upload failed. Please try again.');
   };
 
   const handleFileDelete = (_filename: string) => {

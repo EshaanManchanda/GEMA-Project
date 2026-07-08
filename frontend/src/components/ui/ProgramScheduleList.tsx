@@ -1,7 +1,6 @@
 import React, { useState, useMemo } from 'react';
-import { format, isSameDay } from 'date-fns';
+import { format } from 'date-fns';
 import { ChevronDown, ChevronUp } from 'lucide-react';
-import { RawSchedule } from '../../utils/scheduleUtils'; // We'll need to export RawSchedule or define it locally
 
 interface ProgramScheduleListProps {
   dateSchedules: any[]; // The raw event.dateSchedule array
@@ -29,7 +28,6 @@ interface Block {
 export const ProgramScheduleList: React.FC<ProgramScheduleListProps> = ({
   dateSchedules,
   onEnroll,
-  currency = 'AED',
   timezone,
 }) => {
   const [expandedBlocks, setExpandedBlocks] = useState<Record<string, boolean>>({});
@@ -95,7 +93,6 @@ export const ProgramScheduleList: React.FC<ProgramScheduleListProps> = ({
 
       const totalSeats = schedule.totalSeats || (schedule.availableSeats + (schedule.reservedSeats || 0) + (schedule.soldSeats || 0));
       const availableSeats = schedule.availableSeats || 0;
-      const filledSeats = totalSeats - availableSeats;
       const isSoldOut = availableSeats <= 0 && !schedule.unlimitedSeats;
 
       processedBlocks.push({

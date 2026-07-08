@@ -1,11 +1,6 @@
 import React, { useState, useEffect, useCallback } from 'react';
-import { Image, Search, Trash2, Plus, FolderOpen, RefreshCw } from 'lucide-react';
-import { galleryAPI, type Gallery, type GalleryImage } from '../../services/api/reviewLinkAPI';
-import api from '../../services/api';
+import { Image, Search } from 'lucide-react';
 import adminAPI from '../../services/api/adminAPI';
-import MediaPickerModal from '../../components/admin/media/MediaPickerModal';
-import { MediaAsset } from '../../store/slices/mediaSlice';
-import toast from 'react-hot-toast';
 import logger from '@/utils/logger';
 import EventGalleryEditor from '../../components/common/EventGalleryEditor';
 

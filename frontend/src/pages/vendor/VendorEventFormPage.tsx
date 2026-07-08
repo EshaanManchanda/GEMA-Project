@@ -128,6 +128,7 @@ const VendorEventFormPage: React.FC = () => {
     requirePhoneVerification: false,
     imageAssets: [],
     imagePreviewUrls: [],
+    syllabus: [],
     faqs: [],
     seoMeta: {
       title: '',
@@ -139,7 +140,6 @@ const VendorEventFormPage: React.FC = () => {
 
   const [bookingMethod, setBookingMethod] = useState<'internal' | 'external'>('internal');
   const [isFreeEvent, setIsFreeEvent] = useState<boolean>(false);
-  const [basePrice, setBasePrice] = useState<string>('');
   const [timezone, setTimezone] = useState<string>('Asia/Dubai');
 
   const [schedules, setSchedules] = useState<Schedule[]>([
@@ -158,7 +158,6 @@ const VendorEventFormPage: React.FC = () => {
 
   const [categories, setCategories] = useState<Category[]>([]);
   const [errors, setErrors] = useState<Record<string, string>>({});
-  const [showMediaPicker, setShowMediaPicker] = useState<boolean>(false);
   const [isUploadingImage, setIsUploadingImage] = useState<boolean>(false);
   const imageFileRef = useRef<HTMLInputElement>(null);
 
@@ -291,11 +290,6 @@ const VendorEventFormPage: React.FC = () => {
       ...prev,
       seoMeta: seoData
     }));
-  };
-
-  const handleCheckboxChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const { name, checked } = e.target;
-    setFormData(prev => ({ ...prev, [name]: checked }));
   };
 
   const handleTagsChange = (tags: string[]) => {

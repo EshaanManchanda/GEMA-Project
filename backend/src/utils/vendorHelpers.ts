@@ -54,6 +54,9 @@ export async function getOrCreateVendorProfile(
     coverImage: "",
 
     // Contact Information
+    // Vendor.phone / contactPerson.phone are required with no format constraint — phone isn't
+    // collected at registration, so without a placeholder this throws a ValidationError on
+    // every phone-less vendor's very first event-create call (auto-provisioning happens inline).
     email: user.email,
     phone: user.phone || "Not provided",
     contactPerson: {

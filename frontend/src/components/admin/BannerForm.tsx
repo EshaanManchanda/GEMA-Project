@@ -11,6 +11,7 @@ import Modal from '../ui/Modal';
 import MediaPickerModal from './media/MediaPickerModal';
 import { MediaAsset } from '../../store/slices/mediaSlice';
 import { Banner } from '../../services/api/bannerAPI';
+import { getImageAlt } from '../../utils/imageAlt';
 
 const bannerSchema = yup.object().shape({
   title: yup.string().required('Title is required').max(200, 'Title cannot exceed 200 characters'),
@@ -213,7 +214,7 @@ const BannerForm: React.FC<BannerFormProps> = ({ banner, onClose, onSubmit }) =>
                     <div className="relative w-full h-48 border border-gray-300 rounded-lg overflow-hidden">
                       <img
                         src={selectedImageAsset.url}
-                        alt="Banner preview"
+                        alt={getImageAlt(selectedImageAsset, selectedImageAsset.originalName || 'Banner preview')}
                         className="w-full h-full object-cover"
                       />
                       <button

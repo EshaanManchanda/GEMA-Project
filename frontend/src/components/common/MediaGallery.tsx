@@ -63,7 +63,7 @@ const MediaGallery: React.FC<MediaGalleryProps> = ({
       setCurrentPage(response.data.pagination.page);
       setTotalPages(response.data.pagination.pages);
     } catch (error: any) {
-      toast.error('Failed to load files: ' + error.message);
+      toast.error('Failed to load files. Please refresh and try again.');
     } finally {
       setLoading(false);
     }
@@ -88,7 +88,7 @@ const MediaGallery: React.FC<MediaGalleryProps> = ({
         onFileDelete?.(filename);
         toast.success('File deleted successfully');
       } catch (error: any) {
-        toast.error('Failed to delete file: ' + error.message);
+        toast.error('Failed to delete file. Please try again.');
       }
     }
   };

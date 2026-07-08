@@ -3,6 +3,7 @@ import mediaService from "../services/media.service";
 import { AppError } from "../middleware/error";
 import { AuthRequest } from "../types/express";
 import { config } from "../config/env";
+import { normalizeAltText } from "../utils/uploadHelpers";
 
 /**
  * Media Controller
@@ -51,7 +52,7 @@ export const uploadMedia = async (
     // Validate file size
     validateFileSize(req.file);
 
-    const { category, folder, tags } = req.body;
+    const { category, folder, tags, altText } = req.body;
 
     // Validate category
     const validCategories = [
@@ -86,6 +87,7 @@ export const uploadMedia = async (
             })()
           : tags
         : [],
+      altText: normalizeAltText(altText),
     });
 
     res.status(201).json({
@@ -114,7 +116,12 @@ export const uploadMultipleMedia = async (
       return next(new AppError("No files uploaded", 400));
     }
 
-    const { category, folder, tags } = req.body;
+    const { category, folder, tags, altText } = req.body;
+
+    // Shared alt text is opt-in only — applied to every file in the batch
+    // when the client explicitly sent a non-empty value. Otherwise assets are
+    // uploaded without alt text and edited individually later.
+    const normalizedAltText = normalizeAltText(altText);
 
     // Process files individually to capture per-file errors
     const results: Array<{ success: true; file: string; data: any }> = [];
@@ -141,6 +148,7 @@ export const uploadMultipleMedia = async (
                 })()
               : tags
             : [],
+          altText: normalizedAltText,
         });
 
         results.push({
@@ -266,13 +274,28 @@ export const updateMedia = async (
 ) => {
   try {
     const { id } = req.params;
-    const { tags } = req.body;
+    const { tags, altText } = req.body;
 
-    if (!tags || !Array.isArray(tags)) {
+    if (tags === undefined && altText === undefined) {
+      return next(
+        new AppError("Must provide at least one of: tags, altText", 400),
+      );
+    }
+
+    if (tags !== undefined && !Array.isArray(tags)) {
       return next(new AppError("Tags must be an array", 400));
     }
 
-    const media = await mediaService.updateMediaTags(id, tags);
+    if (altText !== undefined && typeof altText !== "string") {
+      return next(new AppError("altText must be a string", 400));
+    }
+
+    const updates: { tags?: string[]; altText?: string } = {};
+    if (tags !== undefined) updates.tags = tags;
+    // altText may be normalized to "" intentionally (clears alt / marks decorative)
+    if (altText !== undefined) updates.altText = normalizeAltText(altText);
+
+    const media = await mediaService.updateMediaMetadata(id, updates);
 
     if (!media) {
       return next(new AppError("Media not found", 404));

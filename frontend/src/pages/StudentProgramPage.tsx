@@ -1,10 +1,8 @@
 import React, { useState } from 'react';
-import { Link } from 'react-router-dom';
 import {
   FaArrowRight,
   FaTrophy,
   FaGraduationCap,
-  FaUsers,
   FaFire,
   FaCheckCircle,
   FaStar,
@@ -45,14 +43,6 @@ interface UpcomingEvent {
   status: 'coming_soon' | 'open';
   link?: string;
   category?: string;
-}
-
-interface UniversityEvent {
-  title: string;
-  date: string;
-  time: string;
-  team: string;
-  status: 'coming_soon' | 'open';
 }
 
 interface FAQItem {
@@ -189,30 +179,6 @@ const UPCOMING_EVENTS: UpcomingEvent[] = [
   },
 ];
 
-const UNIVERSITY_EVENTS: UniversityEvent[] = [
-  {
-    title: 'Harvard Week: Summer College Programs',
-    date: 'June 5, 2026',
-    time: '2:00 PM UTC',
-    team: 'Team Overland Summers',
-    status: 'coming_soon',
-  },
-  {
-    title: 'Immersive Film Making & Virtual Reality',
-    date: 'June 15, 2026',
-    time: '4:00 PM UTC',
-    team: 'Team UCA Canterbury',
-    status: 'coming_soon',
-  },
-  {
-    title: 'Inside Cybersecurity & Computer Science at Sharda University',
-    date: 'June 25, 2026',
-    time: '6:00 PM UTC',
-    team: 'Team Sharda University, India',
-    status: 'coming_soon',
-  },
-];
-
 const FAQS: FAQItem[] = [
   {
     question: 'Who can participate?',
@@ -266,7 +232,7 @@ const HeroSection: React.FC = () => (
             👉 Register Now <FaArrowRight />
           </button>
           <button
-            onClick={() => toast.success('School registration feature coming soon!')}
+            onClick={() => toast('School registration is coming soon!')}
             className="px-8 py-4 bg-white/20 text-white font-bold text-lg rounded-full hover:bg-white/30 transition-all duration-200 border-2 border-white flex items-center gap-2"
           >
             👉 Join Through Your School
@@ -522,7 +488,7 @@ const SchoolPartnershipSection: React.FC = () => (
                 </li>
               ))}
             </ul>
-            <button onClick={() => toast.success('School registration feature coming soon!')} className="px-8 py-3 bg-blue-600 text-white font-bold rounded-full hover:bg-blue-700 transition">
+            <button onClick={() => toast('School registration is coming soon!')} className="px-8 py-3 bg-blue-600 text-white font-bold rounded-full hover:bg-blue-700 transition">
               👉 Register Your School
             </button>
           </div>
@@ -578,7 +544,7 @@ const UpcomingEventsSection: React.FC = () => (
                   Register Now <FaArrowRight className="text-sm" />
                 </a>
               ) : (
-                <button onClick={() => toast.success('Registration feature coming soon!')} className="w-full px-4 py-2 bg-gradient-to-r from-blue-500 to-purple-500 text-white font-bold rounded-lg hover:shadow-lg transition-shadow flex items-center justify-center gap-2">
+                <button onClick={() => toast('Registration is coming soon!')} className="w-full px-4 py-2 bg-gradient-to-r from-blue-500 to-purple-500 text-white font-bold rounded-lg hover:shadow-lg transition-shadow flex items-center justify-center gap-2">
                   Register Now <FaArrowRight className="text-sm" />
                 </button>
               )}

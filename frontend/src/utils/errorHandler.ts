@@ -113,11 +113,15 @@ export class ErrorHandler {
         case 503:
           toast.error('Server error. Please try again later');
           break;
+        case 400:
+        case 422:
+          toast.error(message || 'Please check your input and try again');
+          break;
         default:
-          toast.error(message);
+          toast.error(message || 'Something went wrong. Please try again.');
       }
     } else {
-      toast.error(message);
+      toast.error(message || 'Something went wrong. Please try again.');
     }
   }
 

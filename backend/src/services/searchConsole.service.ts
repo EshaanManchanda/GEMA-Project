@@ -1,4 +1,5 @@
 import { google } from 'googleapis';
+import SearchConsoleSnapshot, { SearchConsoleSnapshotType } from '../models/SearchConsoleSnapshot';
 
 const getAuth = () => new google.auth.GoogleAuth({
   credentials: JSON.parse(process.env.GOOGLE_SERVICE_ACCOUNT_JSON!),
@@ -87,3 +88,51 @@ export const getSearchByCountry = async (siteUrl: string, days = 28) => {
   });
   return res.data.rows ?? [];
 };
+
+// Re-fetch from Google only after a cached snapshot goes stale — keeps the Search
+// Console API quota usage low (100 queries/day free tier) while serving instantly from Mongo.
+const SNAPSHOT_STALE_MS = 6 * 60 * 60 * 1000; // 6 hours
+
+const getOrRefreshSnapshot = async <T>(
+  type: SearchConsoleSnapshotType,
+  siteUrl: string,
+  days: number,
+  limit: number,
+  fetcher: () => Promise<T>,
+): Promise<{ data: T; cached: boolean; fetchedAt: Date }> => {
+  const query = { siteUrl, type, days, limit };
+  const existing = await SearchConsoleSnapshot.findOne(query).lean();
+  if (existing && Date.now() - new Date(existing.fetchedAt).getTime() < SNAPSHOT_STALE_MS) {
+    return { data: existing.data as T, cached: true, fetchedAt: existing.fetchedAt };
+  }
+
+  const data = await fetcher();
+  const fetchedAt = new Date();
+  await SearchConsoleSnapshot.findOneAndUpdate(
+    query,
+    { $set: { ...query, data, fetchedAt } },
+    { upsert: true },
+  );
+  return { data, cached: false, fetchedAt };
+};
+
+export const getCachedSummary = (siteUrl: string, days: number) =>
+  getOrRefreshSnapshot('summary', siteUrl, days, 0, async () => {
+    const [summary, trend] = await Promise.all([
+      getSearchSummary(siteUrl, days),
+      getSearchTrend(siteUrl, days),
+    ]);
+    return { summary, trend };
+  });
+
+export const getCachedQueries = (siteUrl: string, days: number, limit: number) =>
+  getOrRefreshSnapshot('queries', siteUrl, days, limit, () => getTopQueries(siteUrl, days, limit));
+
+export const getCachedPages = (siteUrl: string, days: number) =>
+  getOrRefreshSnapshot('pages', siteUrl, days, 0, async () => {
+    const [pages, countries] = await Promise.all([
+      getTopPages(siteUrl, days),
+      getSearchByCountry(siteUrl, days),
+    ]);
+    return { pages, countries };
+  });

@@ -42,6 +42,7 @@ export interface Blog {
     _id: string;
     url: string;
     thumbnailUrl?: string;
+    altText?: string;
     variations?: {
       thumbnail?: string;
       small?: string;

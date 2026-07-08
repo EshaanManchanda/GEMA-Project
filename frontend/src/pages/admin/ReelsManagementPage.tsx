@@ -3,7 +3,7 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import toast from 'react-hot-toast';
 import { Plus, Edit2, Trash2, Eye, EyeOff, Star, ExternalLink, Play, X, Film, Search } from 'lucide-react';
 import Button from '../../components/ui/Button';
-import { Card, CardContent, CardHeader, CardTitle } from '../../components/ui/Card';
+import { Card, CardContent } from '../../components/ui/Card';
 import ReelForm from '../../components/admin/ReelForm';
 import reelsAPI, { Reel } from '../../services/api/reelsAPI';
 import PrivatePageSEO from '@/components/common/PrivatePageSEO';

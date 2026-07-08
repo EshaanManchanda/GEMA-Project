@@ -17,6 +17,23 @@ export interface Partnership {
     notes?: string;
     plans?: string;
     contents?: string;
+    // Summer 2026 Campaign fields (mirrors backend/src/models/Partnership.ts)
+    campaignType?: 'general' | 'summer_2026';
+    selectedPackage?: 'basic' | 'starter' | 'growth' | 'premium' | 'category_sponsor';
+    campDetails?: string;
+    ageGroups?: string[];
+    emirate?: string;
+    numberOfKids?: string;
+    paymentStatus?: 'pending' | 'paid' | 'failed';
+    paymentSessionId?: string;
+    images?: Array<{
+        url: string;
+        caption?: string;
+    }>;
+    documentAttachments?: Array<{
+        url: string;
+        title?: string;
+    }>;
     socialMedia?: {
         facebook?: string;
         instagram?: string;

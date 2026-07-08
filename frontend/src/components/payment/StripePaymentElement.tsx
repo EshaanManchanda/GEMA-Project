@@ -146,7 +146,7 @@ const StripePaymentElement: React.FC<StripePaymentElementProps> = ({
         if (isRegulatory) {
           toast.error('Payment restricted - Please use Test Payment option');
         } else {
-          toast.error('Payment failed: ' + (error.message || 'Unknown error'));
+          toast.error(userFriendlyMessage);
         }
       } else if (paymentIntent) {
         // Payment successful

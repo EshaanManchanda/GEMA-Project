@@ -7,9 +7,9 @@ Welcome to the central documentation repository for the GEMA Event Management Pl
 - [Entity Relationship Diagram (ERD)](./architecture/erd.md)
 - [Frontend Architecture](./architecture/frontend-architecture.md)
 - [Getting Started / System Overview](./architecture/getting-started.md)
-- [Security Guidelines](./architecture/security.md)
 - [Security Middleware Architecture](./architecture/SECURITY.md)
 - [Visual Implementation Guides](./architecture/VISUAL_IMPLEMENTATION_GUIDES.md)
+- [Subscription Model](./architecture/SUBSCRIPTION_MODEL.md)
 
 ## 🚀 Deployment Guides (`/deployment/`)
 - [Unified Deployment Guide (Render, VPS, AWS, Vercel)](./deployment/deployment-guide.md)
@@ -17,18 +17,17 @@ Welcome to the central documentation repository for the GEMA Event Management Pl
 - [Frontend Deployment specific](./deployment/FRONTEND_DEPLOYMENT_GUIDE.md)
 - [MongoDB Atlas Setup Guide](./deployment/MONGODB_ATLAS_SETUP.md)
 - [Redis Configuration](./deployment/REDIS_CONFIGURATION.md)
-- [Redis Local Config](./deployment/REDIS_CONFIG_LOCAL.md)
+- [Redis Config](./deployment/REDIS_CONFIG.md)
 - [Redis Cloud Config](./deployment/REDIS_CONFIGURATION_CLOUD.md)
 - [CORS Fix Deployment Guide](./deployment/CORS_FIX_DEPLOYMENT_GUIDE.md)
 - [Nginx Performance Upgrade](./deployment/PERFORMANCE-UPGRADE.md)
 - [Publish Guide](./deployment/publish.md)
+- [Firewall Unblock Runbook](./deployment/FIREWALL_UNBLOCK_RUNBOOK.md)
+- [Pre-Deploy Security Checklist](./deployment/pre-deploy-security-checklist.md)
 
 ## 📚 API References & Flows (`/api/`)
 - [Complete API Reference](./api/api-reference.md)
 - [Postman Collection Guide](./api/POSTMAN_COLLECTION_GUIDE.md)
-- [Postman JSON Collection (Generated)](./api/gema-api.postman_collection.json)
-- [Postman JSON Collection (Complete)](./api/Gema-Complete-API.postman_collection.json)
-- [Postman Environment Config](./api/gema.postman_environment.json)
 - [Validators Structure](./api/VALIDATORS_README.md)
 - **Domain API Docs**:
   - [Authentication](./api/authentication.md)
@@ -57,6 +56,8 @@ Welcome to the central documentation repository for the GEMA Event Management Pl
   - [Blog Testing Guide](./testing/BLOG_TESTING_GUIDE.md)
   - [Frontend Testing Guide](./testing/FRONTEND_TESTING_GUIDE.md)
   - [Teaching Events Verification](./testing/TEACHING_EVENTS_VERIFICATION_CHECKLIST.md)
+  - [Master Testing Checklist](./testing/TESTING_CHECKLIST.md)
+  - [Google Signup Test Checklist](./testing/google-signup-test-checklist.md)
 
 ## 📦 Feature Implementations (`/features/`)
 
@@ -76,8 +77,16 @@ Welcome to the central documentation repository for the GEMA Event Management Pl
 - [Teacher Quick Setup](./features/TEACHER_TEACHING_EVENTS_QUICK_SETUP.md)
 - [Plan Teacher System original](./features/PLAN_TEACHER_SYSTEM.md)
 
+### Vendor Events
+- [Vendor Event System Audit](./features/VENDOR_EVENT_AUDIT.md)
+
+### Google Signup
+- [Google Signup Plan](./features/google-signup-plan.md)
+- [Google Signup Setup](./features/google-signup-setup.md)
+
 ### Various Features
 - [Collection Sections Details](./features/COLLECTION_SECTIONS_SUMMARY.md)
+- [Kidrove FAQ](./features/KIDROVE_FAQ.md)
 
 ## 📋 Summaries & Reports (`/summaries/`)
 - [Final Optimization Report](./summaries/FINAL_OPTIMIZATION_REPORT.md)
@@ -108,6 +117,9 @@ Welcome to the central documentation repository for the GEMA Event Management Pl
 - [Teacher ID Fix Notes](./troubleshooting/TEACHING_EVENT_TEACHERID_FIX.md)
 - [CreateContext Error Fix](./troubleshooting/FIX_CREATECONTEXT_ERROR.md)
 - [CSP Firebase Errors Fix](./troubleshooting/FIX_CSP_FIREBASE_ERRORS.md)
+- [Payout Automation Missing PayoutSystem (2026-03-01)](./troubleshooting/payout-automation-missing-PayoutSystem-20260301.md)
+- [Bugfix Session (2026-03-05)](./troubleshooting/bugfix-session-2026-03-05.md)
+- [TypeScript Error Fix Session (2026-03)](./troubleshooting/ts-error-fix-session-2026-03.md)
 
 ---
 *Generated centrally to consolidate all `frontend`, `backend`, and legacy `doc` references.*

@@ -56,3 +56,18 @@ export function formatDuration(ms: number): string {
   }
   return `${seconds}s`;
 }
+
+const ALT_TEXT_MAX_LENGTH = 250;
+
+/**
+ * Normalize and sanitize alt text for a MediaAsset.
+ * Never trusts client-side validation: rejects non-string input, trims,
+ * collapses repeated whitespace, and caps length. Empty string is a valid,
+ * intentional result (decorative image) — callers should not coerce it further.
+ * @param input Raw value from request body
+ * @returns Sanitized alt text, or "" if input is not usable
+ */
+export function normalizeAltText(input: unknown): string {
+  if (typeof input !== "string") return "";
+  return input.trim().replace(/\s+/g, " ").slice(0, ALT_TEXT_MAX_LENGTH);
+}

@@ -66,7 +66,7 @@ const StripePaymentForm: React.FC<StripePaymentFormProps> = ({
         logger.error('Payment confirmation error:', error);
         setErrorMessage(error.message || 'Payment failed. Please try again.');
         onError?.(error.message || 'Payment failed');
-        toast.error('Payment failed: ' + (error.message || 'Unknown error'));
+        toast.error(error.message || 'Payment failed. Please try again.');
       } else if (paymentIntent) {
         // Payment successful
         const paymentData = {

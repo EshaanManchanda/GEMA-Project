@@ -266,7 +266,7 @@ class StripeErrorBoundary extends React.Component<{children: React.ReactNode}, {
   }
 
   componentDidCatch(error: Error, errorInfo: React.ErrorInfo) {
-    logger.error('Stripe Elements crashed:', error, errorInfo);
+    logger.error('Stripe Elements crashed:', { error, errorInfo }, errorInfo.componentStack ?? undefined);
   }
 
   render() {

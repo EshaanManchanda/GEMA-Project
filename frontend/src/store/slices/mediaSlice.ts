@@ -25,6 +25,7 @@ export interface MediaAsset {
   publicId?: string;
   localPath?: string;
   tags?: string[];
+  altText?: string;
   variations?: {
     thumbnail?: string;
     small?: string;
@@ -129,6 +130,7 @@ export const uploadMedia = createAsyncThunk(
     category: string;
     folder: string;
     tags?: string[];
+    altText?: string;
   }) => {
     const formData = new FormData();
     formData.append('file', data.file);
@@ -136,6 +138,9 @@ export const uploadMedia = createAsyncThunk(
     formData.append('folder', data.folder);
     if (data.tags && data.tags.length > 0) {
       formData.append('tags', JSON.stringify(data.tags));
+    }
+    if (data.altText) {
+      formData.append('altText', data.altText);
     }
 
     const response = await api.post('/media/upload', formData, {
@@ -155,6 +160,8 @@ export const uploadMultipleMedia = createAsyncThunk(
     category: string;
     folder: string;
     tags?: string[];
+    /** Applied to every file in the batch when provided — see MediaUploadZone's "apply to all" toggle. */
+    altText?: string;
   }, { rejectWithValue }) => {
     try {
       const formData = new FormData();
@@ -165,6 +172,9 @@ export const uploadMultipleMedia = createAsyncThunk(
       formData.append('folder', data.folder);
       if (data.tags && data.tags.length > 0) {
         formData.append('tags', JSON.stringify(data.tags));
+      }
+      if (data.altText) {
+        formData.append('altText', data.altText);
       }
 
       const response = await api.post('/media/upload-multiple', formData, {
@@ -217,12 +227,13 @@ export const fetchMediaStats = createAsyncThunk(
 );
 
 /**
- * Update media tags
+ * Update media metadata (tags and/or alt text)
  */
-export const updateMediaTags = createAsyncThunk(
-  'media/updateMediaTags',
-  async (data: { id: string; tags: string[] }) => {
-    const response = await api.patch(`/media/${data.id}`, { tags: data.tags });
+export const updateMediaMetadata = createAsyncThunk(
+  'media/updateMediaMetadata',
+  async (data: { id: string; tags?: string[]; altText?: string }) => {
+    const { id, ...updates } = data;
+    const response = await api.patch(`/media/${id}`, updates);
     return response.data.data;
   }
 );
@@ -398,8 +409,8 @@ const mediaSlice = createSlice({
         state.stats = action.payload;
       })
 
-      // Update tags
-      .addCase(updateMediaTags.fulfilled, (state, action) => {
+      // Update metadata (tags / altText)
+      .addCase(updateMediaMetadata.fulfilled, (state, action) => {
         const index = state.assets.findIndex(asset => asset._id === action.payload._id);
         if (index > -1) {
           state.assets[index] = action.payload;

@@ -64,6 +64,11 @@ import {
   validateDocumentType,
   validateUpdateBooking,
 } from "../validators/vendor.validator";
+import {
+  validateVendorEventCreate,
+  validateVendorEventUpdate,
+  validateEventId,
+} from "../validators/vendor.event.validator";
 
 const router = Router();
 
@@ -112,35 +117,41 @@ router.get("/events", getVendorEvents);
  * @desc    Create a new event
  * @access  Vendor only
  */
-router.post("/events", createVendorEvent);
+router.post("/events", validateVendorEventCreate, validate, createVendorEvent);
 
 /**
  * @route   GET /api/vendors/events/:id
  * @desc    Get single event by ID
  * @access  Vendor only
  */
-router.get("/events/:id", getVendorEventById);
+router.get("/events/:id", validateEventId, validate, getVendorEventById);
 
 /**
  * @route   PUT /api/vendors/events/:id
  * @desc    Update vendor's own event
  * @access  Vendor only
  */
-router.put("/events/:id", updateVendorEvent);
+router.put(
+  "/events/:id",
+  validateEventId,
+  validateVendorEventUpdate,
+  validate,
+  updateVendorEvent,
+);
 
 /**
  * @route   DELETE /api/vendors/events/:id
  * @desc    Delete vendor's own event (soft or permanent)
  * @access  Vendor only
  */
-router.delete("/events/:id", deleteVendorEvent);
+router.delete("/events/:id", validateEventId, validate, deleteVendorEvent);
 
 /**
  * @route   PUT /api/vendors/events/:id/restore
  * @desc    Restore deleted event
  * @access  Vendor only
  */
-router.put("/events/:id/restore", restoreVendorEvent);
+router.put("/events/:id/restore", validateEventId, validate, restoreVendorEvent);
 
 /**
  * @route   GET /api/vendors/events/:eventId/participants/export

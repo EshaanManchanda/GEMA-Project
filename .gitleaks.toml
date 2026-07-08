@@ -1,0 +1,17 @@
+title = "Kidrove gitleaks config"
+
+# Extend the default gitleaks rule set.
+[extend]
+useDefault = true
+
+# Allowlist verified fake/test-fixture secrets so the first CI run doesn't
+# fail on committed example/test values. Add specific paths or regexes here
+# as false positives are confirmed — do NOT blanket-allow real secret dirs.
+[allowlist]
+description = "Fake and example credentials used only in tests/fixtures/examples"
+paths = [
+  '''\.env\.example$''',
+  '''backend/\.env\.example$''',
+  '''frontend/\.env\.example$''',
+  '''backend/src/tests/.*''',
+]

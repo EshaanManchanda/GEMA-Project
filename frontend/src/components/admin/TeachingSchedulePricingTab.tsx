@@ -1,5 +1,5 @@
-import React, { useState, useEffect } from 'react';
-import { Plus, Trash2, Calendar, DollarSign, Users, Clock, Repeat, Edit3, X, Check, Copy } from 'lucide-react';
+import React, { useState } from 'react';
+import { Plus, Trash2, Calendar, Users, Clock, Repeat, Edit3, X, Check, Copy } from 'lucide-react';
 
 interface Schedule {
   id: string;
@@ -53,7 +53,6 @@ const TeachingSchedulePricingTab: React.FC<TeachingSchedulePricingTabProps> = ({
   onAddSchedule,
   onRemoveSchedule,
   onCurrencyChange,
-  onBasePriceChange,
   isEducational = false,
 }) => {
   const [showRecurring, setShowRecurring] = useState(false);
@@ -80,17 +79,6 @@ const TeachingSchedulePricingTab: React.FC<TeachingSchedulePricingTabProps> = ({
     ratePerClass: '',
     isFreeSession: false,
   });
-
-  const formatDateDisplay = (dateStr: string) => {
-    if (!dateStr) return 'No date';
-    try {
-      return new Date(dateStr).toLocaleDateString('en-US', {
-        weekday: 'short', month: 'short', day: 'numeric', year: 'numeric',
-      });
-    } catch {
-      return dateStr;
-    }
-  };
 
   const openModal = (index: number | null = null) => {
     setEditingIndex(index);

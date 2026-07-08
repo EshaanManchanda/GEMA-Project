@@ -710,7 +710,7 @@ const AdminCommissionsPage: React.FC = () => {
                                       await dispatch(approveCommissions([transaction.id])).unwrap();
                                       toast.success('Commission approved');
                                     } catch {
-                                      toast.error('Approval failed');
+                                      toast.error('Failed to approve commission. Please try again.');
                                     }
                                   }}
                                   className="text-green-600 hover:text-green-900"

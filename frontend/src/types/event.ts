@@ -190,6 +190,13 @@ export interface Event {
   meetingLink?: string;
   meetingPassword?: string;
   isFreeEvent?: boolean;
+  programConfig?: {
+    isProgramBlock: boolean;
+    introClasses: number;
+    paidClasses: number;
+    pricePerClass: number;
+    totalProgramPrice: number;
+  };
   ageRange: [number, number];
   location: EventLocation;
   seoMeta: EventSeoMeta;

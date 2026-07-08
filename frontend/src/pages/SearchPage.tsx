@@ -507,18 +507,6 @@ const FilterContent: React.FC<FilterContentProps> = ({
   );
 };
 
-/** Decode common HTML entities in category/filter labels */
-const decodeHTMLEntities = (str: string): string => {
-  const entities: Record<string, string> = {
-    '&amp;': '&', '&lt;': '<', '&gt;': '>',
-    '&quot;': '"', '&#39;': "'", '&Amp;': '&',
-  };
-  return str.replace(
-    /&(?:amp|lt|gt|quot|#39|Amp);/gi,
-    (match) => entities[match] || match
-  );
-};
-
 const SearchPage: React.FC = () => {
   const [searchParams, setSearchParams] = useSearchParams();
   const dispatch = useDispatch<AppDispatch>();

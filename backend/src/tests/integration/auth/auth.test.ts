@@ -173,12 +173,11 @@ describe("POST /api/auth/register", () => {
     expect(res.body.data.user.role).toBe(UserRole.TEACHER);
   });
 
-  it("falls back to customer for a disallowed role (e.g. 'admin')", async () => {
+  it("rejects a disallowed role (e.g. 'admin') with 400 at the validation layer", async () => {
     const payload = { ...customerPayload(), role: "admin" };
     const res = await registerUser(app, payload);
 
-    expect(res.status).toBe(201);
-    expect(res.body.data.user.role).toBe(UserRole.CUSTOMER);
+    expect(res.status).toBe(400);
   });
 
   it("sets isEmailVerified: false and status: pending on registration", async () => {

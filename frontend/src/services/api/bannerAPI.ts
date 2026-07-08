@@ -10,6 +10,7 @@ export interface Banner {
     filename: string;
     width?: number;
     height?: number;
+    altText?: string;
   };
   link?: string;
   ctaText?: string;

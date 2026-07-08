@@ -24,9 +24,7 @@ import {
 import { toast } from 'react-hot-toast';
 import partnershipAPI, { Partnership } from '../services/api/partnershipAPI';
 import collectionsAPI from '../services/api/collectionsAPI';
-import eventsAPI from '../services/api/eventsAPI';
 import LoadingSpinner from '../components/common/LoadingSpinner';
-import CollectionSection from '../components/client/CollectionSection';
 import { mapToUIEvent } from '../utils/homePageUtils';
 import type { Event as UIEvent } from '../components/client/CollectionSection.types';
 

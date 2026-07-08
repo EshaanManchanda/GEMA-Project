@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { Plus, Trash2, Calendar, DollarSign, Users, Clock, Repeat, Edit3, X, Check, Copy, Star } from 'lucide-react';
+import { Plus, Trash2, Calendar, Users, Clock, Repeat, Edit3, X, Check, Copy } from 'lucide-react';
 import { TIMEZONE_OPTIONS } from '../../utils/timezoneUtils';
 
 interface Schedule {
@@ -44,15 +44,6 @@ interface SchedulePricingTabProps {
   onCapacityChange: (e: React.ChangeEvent<HTMLInputElement>) => void;
 }
 
-const COMPETITION_TYPES = ['Olympiad', 'Championship', 'Competition'];
-
-const getCapacityLabel = (type?: string) => {
-  if (type === 'Venue') return 'Venue Capacity';
-  if (type === 'Course' || type === 'Workshop') return 'Seats per Session';
-  if (type && COMPETITION_TYPES.includes(type)) return 'Max Participants';
-  return 'Event Capacity';
-};
-
 const SectionCard: React.FC<{ children: React.ReactNode; className?: string }> = ({ children, className = '' }) => (
   <div className={`bg-white rounded-2xl shadow-sm border border-gray-200 p-6 ${className}`}>
     {children}
@@ -80,14 +71,12 @@ const SchedulePricingTab: React.FC<SchedulePricingTabProps> = ({
   isFreeEvent = false,
   basePrice: _basePrice = '',
   timezone = 'Asia/Dubai',
-  onFreeEventChange,
   onBasePriceChange: _onBasePriceChange,
   onTimezoneChange,
   onScheduleChange,
   onAddSchedule,
   onRemoveSchedule,
   onCurrencyChange,
-  onCapacityChange,
 }) => {
   const [showRecurring, setShowRecurring] = useState(false);
   const [recurringDate, setRecurringDate] = useState('');

@@ -58,6 +58,7 @@ interface BasicInfoTabProps {
     featured: boolean;
     imagePreviewUrls: string[];
     meetingLink?: string;
+    meetingPassword?: string;
     competitionFormat?: string;
     teamSize?: string;
     skillLevel?: string;

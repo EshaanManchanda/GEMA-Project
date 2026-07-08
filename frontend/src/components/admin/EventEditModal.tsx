@@ -20,6 +20,7 @@ import { MediaAsset } from '../../store/slices/mediaSlice';
 import SEOEditor from '../seo/SEOEditor';
 import { config } from '../../config';
 import logger from '../../utils/logger';
+import { getImageAlt } from '../../utils/imageAlt';
 
 interface Vendor {
   id: string;
@@ -807,7 +808,7 @@ const EventEditModal: React.FC<EventEditModalProps> = ({ event, isOpen, onClose,
                       <div key={asset._id} className="relative group">
                         <img
                           src={asset.url}
-                          alt={asset.originalName}
+                          alt={getImageAlt(asset, asset.originalName)}
                           className="h-24 w-full object-cover rounded"
                         />
                         <button

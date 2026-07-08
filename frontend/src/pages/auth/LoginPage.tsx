@@ -190,7 +190,7 @@ const LoginPage: React.FC = () => {
 
         // Provide more helpful error messages
         if (errorMessage.includes('credentials')) {
-          setLoginError('Invalid email or password. Please check your credentials and try again.');
+          setLoginError("The email or password you entered doesn't match our records. Double-check for typos, or reset your password if you forgot it.");
         } else if (errorMessage.includes('network') || errorMessage.includes('timeout')) {
           setLoginError('Network error. Please check your internet connection and try again.');
         } else if (errorMessage.includes('warming up')) {
@@ -206,7 +206,7 @@ const LoginPage: React.FC = () => {
       if (error.code === 'ERR_NETWORK') {
         setLoginError('Unable to reach the server. Please check your internet connection.');
       } else if (error.response?.status === 401) {
-        setLoginError('Invalid email or password. Please try again.');
+        setLoginError("The email or password you entered doesn't match our records. Double-check for typos, or reset your password if you forgot it.");
       } else if (error.response?.status === 429) {
         setLoginError('Too many login attempts. Please wait a few minutes and try again.');
       } else if (error.response?.status >= 500) {
@@ -326,6 +326,14 @@ const LoginPage: React.FC = () => {
                 <div className="ml-3 flex-1">
                   <h3 className="text-sm font-medium text-error-800">Login Failed</h3>
                   <p className="text-sm text-error-700 mt-1">{loginError}</p>
+                  {loginError.includes("match our records") && (
+                    <Link
+                      to="/forgot-password"
+                      className="mt-2 inline-block text-sm font-medium text-error-700 hover:text-error-800 underline transition-colors"
+                    >
+                      Reset your password
+                    </Link>
+                  )}
                   {(loginError.includes('server') || loginError.includes('network') || loginError.includes('warming up')) && (
                     <button
                       type="button"

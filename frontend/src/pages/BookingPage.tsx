@@ -1025,7 +1025,7 @@ const BookingPage: React.FC = () => {
                   event={event}
                   onNext={handleCompleteBooking}
                   onPrev={handlePrevStep}
-                  schedulePrice={calculatePricing().pricePerTicket}
+                  schedulePrice={calculatePricing().pricePerTicket ?? 0}
                   bookingType={routeState?.bookingType || readBookingDraft(actualEventId || '')?.bookingType}
                 />
               ) : (

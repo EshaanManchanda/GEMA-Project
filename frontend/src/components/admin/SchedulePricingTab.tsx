@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { Plus, Trash2, Calendar, DollarSign, Users, Clock, ChevronDown, ChevronUp, Repeat, Edit3, X, Check, Copy } from 'lucide-react';
+import { Plus, Trash2, Calendar, Users, Clock, Repeat, Edit3, X, Check, Copy } from 'lucide-react';
 import { Card, CardHeader, CardTitle, CardContent } from '../ui/Card';
 
 interface TimeSlot {
@@ -53,8 +53,6 @@ interface SchedulePricingTabProps {
   onUnlimitedCapacityChange: (value: boolean) => void;
 }
 
-const CURRENCIES = ['AED', 'USD', 'EUR', 'GBP', 'SAR', 'QAR', 'KWD', 'EGP', 'CAD'];
-
 const SchedulePricingTab: React.FC<SchedulePricingTabProps> = ({
   schedules,
   currency,
@@ -63,15 +61,10 @@ const SchedulePricingTab: React.FC<SchedulePricingTabProps> = ({
   isFreeEvent,
   unlimitedCapacity,
   isEducational,
-  errors,
   onScheduleChange,
   onAddSchedule,
   onRemoveSchedule,
   onCurrencyChange,
-  onCapacityChange,
-  onBasePriceChange,
-  onFreeEventChange,
-  onUnlimitedCapacityChange,
 }) => {
   const [showRecurring, setShowRecurring] = useState(false);
   const [recurringDate, setRecurringDate] = useState('');

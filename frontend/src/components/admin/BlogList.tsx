@@ -481,7 +481,7 @@ const BlogList: React.FC = () => {
                   sortOrder: filters.sortOrder || undefined,
                 });
               } catch {
-                toast.error('Export failed');
+                toast.error('Export failed. Please try again.');
               } finally {
                 setExportLoading(false);
               }

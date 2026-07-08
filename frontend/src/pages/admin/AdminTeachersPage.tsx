@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { toast } from 'react-hot-toast';
-import { FaEye, FaEdit, FaCog, FaCreditCard, FaBan, FaCheck, FaLock, FaUnlock, FaTrash } from 'react-icons/fa';
+import { FaEye, FaEdit, FaCreditCard, FaTrash } from 'react-icons/fa';
 import adminAPI from '@/services/api/adminAPI';
 import api from '../../services/api';
 import PrivatePageSEO from '@/components/common/PrivatePageSEO';

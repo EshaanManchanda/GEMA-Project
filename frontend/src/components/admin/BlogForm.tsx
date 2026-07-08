@@ -36,6 +36,7 @@ import TagInput from '../common/TagInput';
 import { MediaAsset } from '../../store/slices/mediaSlice';
 import { config } from '../../config';
 import logger from '../../utils/logger';
+import { getImageAlt } from '../../utils/imageAlt';
 
 // Validation schema
 const blogSchema = yup.object().shape({
@@ -822,7 +823,7 @@ const BlogForm: React.FC<BlogFormProps> = ({
                                         ? field.value
                                         : ''
                                 }
-                                alt="Featured"
+                                alt={getImageAlt(selectedFeaturedImageAsset, watchedTitle || 'Featured')}
                                 className="w-full h-48 object-cover rounded-lg"
                               />
                               <button

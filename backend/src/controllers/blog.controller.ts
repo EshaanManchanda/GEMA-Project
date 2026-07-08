@@ -77,7 +77,7 @@ export const getAllBlogs = catchAsync(async (req: Request, res: Response) => {
   const [blogs, totalBlogs] = await Promise.all([
     Blog.find(filter)
       .populate("category", "name slug color")
-      .populate("featuredImageAsset", "url thumbnailUrl variations")
+      .populate("featuredImageAsset", "url thumbnailUrl variations altText")
       .select("-content") // Exclude content for list view
       .sort(sortQuery)
       .skip(skip)
@@ -116,7 +116,7 @@ export const getBlogBySlug = catchAsync(async (req: Request, res: Response) => {
 
   const blog = await Blog.findOne({ slug, status: "published" })
     .populate("category", "name slug color description")
-    .populate("featuredImageAsset", "url thumbnailUrl variations")
+    .populate("featuredImageAsset", "url thumbnailUrl variations altText")
     .lean();
 
   if (!blog) {
@@ -157,7 +157,7 @@ export const getFeaturedBlogs = catchAsync(
       featured: true,
     })
       .populate("category", "name slug color")
-      .populate("featuredImageAsset", "url thumbnailUrl variations")
+      .populate("featuredImageAsset", "url thumbnailUrl variations altText")
       .select("-content")
       .sort({ publishedAt: -1 })
       .limit(limitNumber)
@@ -195,7 +195,7 @@ export const getPopularBlogs = catchAsync(
 
     const blogs = await Blog.find({ status: "published" })
       .populate("category", "name slug color")
-      .populate("featuredImageAsset", "url thumbnailUrl variations")
+      .populate("featuredImageAsset", "url thumbnailUrl variations altText")
       .select("-content")
       .sort({ viewCount: -1, likeCount: -1 })
       .limit(limitNumber)
@@ -219,7 +219,7 @@ export const getRecentBlogs = catchAsync(
 
     const blogs = await Blog.find({ status: "published" })
       .populate("category", "name slug color")
-      .populate("featuredImageAsset", "url thumbnailUrl variations")
+      .populate("featuredImageAsset", "url thumbnailUrl variations altText")
       .select("-content")
       .sort({ publishedAt: -1 })
       .limit(limitNumber)
@@ -263,7 +263,7 @@ export const getRelatedBlogs = catchAsync(
       ],
     })
       .populate("category", "name slug color")
-      .populate("featuredImageAsset", "url thumbnailUrl variations")
+      .populate("featuredImageAsset", "url thumbnailUrl variations altText")
       .select("-content")
       .sort({ publishedAt: -1 })
       .limit(limitNumber)
@@ -308,7 +308,7 @@ export const createBlog = catchAsync(async (req: Request, res: Response) => {
   });
 
   await blog.populate("category", "name slug color");
-  await blog.populate("featuredImageAsset", "url thumbnailUrl variations");
+  await blog.populate("featuredImageAsset", "url thumbnailUrl variations altText");
 
   res.status(201).json({
     success: true,
@@ -364,7 +364,7 @@ export const updateBlog = catchAsync(async (req: Request, res: Response) => {
   }
 
   await blog.populate("category", "name slug color");
-  await blog.populate("featuredImageAsset", "url thumbnailUrl variations");
+  await blog.populate("featuredImageAsset", "url thumbnailUrl variations altText");
 
   res.status(200).json({
     success: true,
@@ -460,7 +460,7 @@ export const getAllBlogsAdmin = catchAsync(
     const [blogs, totalBlogs] = await Promise.all([
       Blog.find(filter)
         .populate("category", "name slug color")
-        .populate("featuredImageAsset", "url thumbnailUrl variations")
+        .populate("featuredImageAsset", "url thumbnailUrl variations altText")
         .select("-content")
         .sort(sortQuery)
         .skip(skip)
@@ -497,7 +497,7 @@ export const getBlogById = catchAsync(async (req: Request, res: Response) => {
 
   const blog = await Blog.findById(id)
     .populate("category", "name slug color description")
-    .populate("featuredImageAsset", "url thumbnailUrl variations")
+    .populate("featuredImageAsset", "url thumbnailUrl variations altText")
     .lean();
 
   if (!blog) {

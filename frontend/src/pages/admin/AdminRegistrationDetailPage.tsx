@@ -54,7 +54,7 @@ const AdminRegistrationDetailPage: React.FC = () => {
       setRegistration((r: any) => ({ ...r, status: reviewAction, adminRemarks: remarks }));
       setShowReviewModal(false);
     } catch (err: any) {
-      toast.error(err?.response?.data?.message || 'Action failed');
+      toast.error(err?.response?.data?.message || `Failed to ${reviewAction} registration. Please try again.`);
     } finally {
       setActionLoading(false);
     }

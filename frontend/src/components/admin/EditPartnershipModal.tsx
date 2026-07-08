@@ -1,8 +1,7 @@
 import React, { useState, useEffect } from 'react';
-import { X, Save, Edit, Plus, Trash2 } from 'lucide-react';
+import { X, Save, Plus, Trash2 } from 'lucide-react';
 import Button from '../ui/Button';
 import Checkbox from '../ui/Checkbox';
-import { Card, CardContent } from '../ui/Card';
 import Input from '../ui/Input';
 import Select from '../ui/Select';
 import Textarea from '../ui/Textarea';
@@ -26,6 +25,7 @@ interface Partnership {
   message: string;
   agreeToTerms: boolean;
   status: string;
+  paymentStatus?: 'pending' | 'paid' | 'failed';
   notes?: string;
   plans?: string;
   contents?: string;

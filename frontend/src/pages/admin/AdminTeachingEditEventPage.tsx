@@ -58,6 +58,7 @@ interface Schedule {
   sessionType?: string;
   ratePerClass?: string;
   isFreeSession?: boolean;
+  description?: string;
 }
 
 interface FAQ {
@@ -71,6 +72,7 @@ interface TeachingEventFormData {
   // Basic Info
   title: string;
   description: string;
+  shortDescription: string;
   customCSS: string;
   category: string;
   type: 'Class' | 'Course' | 'Workshop' | 'Bootcamp' | 'Masterclass';
@@ -135,6 +137,7 @@ interface TeachingEventFormData {
 interface Category {
   id: string;
   name: string;
+  slug: string;
 }
 
 interface Teacher {
@@ -157,6 +160,7 @@ const AdminTeachingEditEventPage: React.FC = () => {
   const [formData, setFormData] = useState<TeachingEventFormData>({
     title: '',
     description: '',
+    shortDescription: '',
     customCSS: '',
     category: '',
     type: 'Course',
@@ -225,7 +229,8 @@ const AdminTeachingEditEventPage: React.FC = () => {
         const categoriesArray = Array.isArray(categoriesData) ? categoriesData : [];
         const transformedCategories: Category[] = categoriesArray.map((cat: any) => ({
           id: cat._id || cat.id,
-          name: cat.name
+          name: cat.name,
+          slug: cat.slug || cat._id || cat.id
         }));
         setCategories(transformedCategories);
         logger.debug('✅ Categories loaded:', transformedCategories.length);
@@ -267,6 +272,7 @@ const AdminTeachingEditEventPage: React.FC = () => {
           const newFormData = {
             title: eventData.title || '',
             description: eventData.description || '',
+            shortDescription: eventData.shortDescription || '',
             customCSS: eventData.customCSS || '',
             category: eventData.category || '',
             type: eventData.type || 'Course',

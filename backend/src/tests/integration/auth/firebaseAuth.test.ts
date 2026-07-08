@@ -438,8 +438,9 @@ describe("POST /api/auth/firebase", () => {
     expect(vendorCount).toBe(1);
   });
 
-  // TC13: Vendor profile silently fails when user has no phone (known limitation)
-  it("TC13 — vendor profile creation silently fails when user has no phone (Google signup)", async () => {
+  // TC13: Vendor profile still auto-provisions with a placeholder phone (getOrCreateVendorProfile
+  // uses "Not provided" rather than blocking on a phone-less Google signup)
+  it("TC13 — auto-creates VendorProfile with placeholder phone when user has no phone (Google signup)", async () => {
     setupMocks();
 
     const res = await request(app)
@@ -450,9 +451,12 @@ describe("POST /api/auth/firebase", () => {
     expect(res.status).toBe(200);
     expect(res.body.data.user.role).toBe("vendor");
 
-    // But VendorProfile is NOT created (phone required by Vendor model)
+    // VendorProfile IS created, with a placeholder phone
     const vendorCount = await Vendor.countDocuments();
-    expect(vendorCount).toBe(0);
+    expect(vendorCount).toBe(1);
+
+    const vendor = await Vendor.findOne();
+    expect(vendor!.phone).toBe("Not provided");
   });
 
   // TC13: Teacher profile auto-creation

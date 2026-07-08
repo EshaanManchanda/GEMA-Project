@@ -5,6 +5,7 @@ import { ChevronLeft, ChevronRight } from 'lucide-react';
 import 'keen-slider/keen-slider.min.css';
 import { Banner } from '../../services/api/bannerAPI';
 import { getCloudinaryWebP, generateSrcSet, getLQIP } from '@/utils/cloudinaryHelpers';
+import { getImageAlt } from '../../utils/imageAlt';
 
 // Autoplay plugin with 5-second interval
 const AutoplayPlugin = (slider: any) => {
@@ -134,7 +135,7 @@ const BannerCarousel: React.FC<BannerCarouselProps> = ({ banners }) => {
               {/* Fallback to original format */}
               <img
                 src={getCloudinaryWebP(banner.imageAsset?.url, 1920)}
-                alt={banner.title}
+                alt={getImageAlt(banner.imageAsset, banner.title)}
                 className={`absolute inset-0 w-full h-full transition-opacity duration-300 ${
                   banner.objectFit === 'contain' ? 'object-contain' :
                   banner.objectFit === 'fill' ? 'object-fill' : 'object-cover'
