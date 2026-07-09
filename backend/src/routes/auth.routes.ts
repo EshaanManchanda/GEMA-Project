@@ -7,6 +7,7 @@ import {
   authLimiter,
   passwordResetLimiter,
   emailVerificationLimiter,
+  phoneOtpLimiter,
   changePasswordLimiter,
 } from "../middleware/index";
 import {
@@ -289,7 +290,7 @@ router.delete("/avatar", authenticate, authController.deleteAvatar);
 router.post(
   "/send-phone-verification",
   authenticate,
-  emailVerificationLimiter,
+  phoneOtpLimiter,
   validateSendPhoneOTP,
   validate,
   authController.sendPhoneVerificationOTP,
@@ -303,7 +304,7 @@ router.post(
 router.post(
   "/verify-phone",
   authenticate,
-  emailVerificationLimiter,
+  phoneOtpLimiter,
   validatePhoneOTP,
   validate,
   authController.verifyPhoneOTP,
@@ -317,7 +318,7 @@ router.post(
 router.post(
   "/resend-phone-verification",
   authenticate,
-  emailVerificationLimiter,
+  phoneOtpLimiter,
   authController.resendPhoneVerificationOTP,
 );
 

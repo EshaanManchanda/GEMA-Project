@@ -857,7 +857,6 @@ const AdminEditEventPage: React.FC = () => {
         newErrors.shortDescription = "Short description is required";
       if (!formData.category) newErrors.category = "Category is required";
       if (
-        !formData.isAffiliateEvent &&
         (!formData.vendorId || formData.vendorId.trim() === "") &&
         (!formData.teacherId || formData.teacherId.trim() === "")
       ) {
@@ -865,6 +864,17 @@ const AdminEditEventPage: React.FC = () => {
           "Either vendor or instructor assignment is required";
         newErrors.teacherId =
           "Either vendor or instructor assignment is required";
+      }
+
+      if (formData.isAffiliateEvent) {
+        const link = formData.externalBookingLink?.trim() || "";
+        if (!link) {
+          newErrors.externalBookingLink =
+            "External booking link is required for affiliate events";
+        } else if (!/^https?:\/\/.+/.test(link)) {
+          newErrors.externalBookingLink =
+            "External booking link must be a valid http(s) URL";
+        }
       }
       if (!formData.ageRangeMin?.trim())
         newErrors.ageRangeMin = "Minimum age is required";

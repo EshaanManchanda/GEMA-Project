@@ -112,6 +112,29 @@ export const emailVerificationLimiter: RateLimitRequestHandler = rateLimit({
 });
 
 /**
+ * Phone OTP rate limiter (authenticated: send/verify/resend phone verification)
+ * Limit: 5 requests per hour per user — separate from email so a compromised
+ * limiter on one channel can't be reused to lock out (or brute-force) the other
+ */
+export const phoneOtpLimiter: RateLimitRequestHandler = rateLimit({
+  windowMs: 60 * 60 * 1000, // 1 hour
+  max: 5,
+  message: createErrorMessage(60 * 60),
+  standardHeaders: true,
+  legacyHeaders: false,
+  keyGenerator: (req: Request) => {
+    const userId = (req as any).user?._id?.toString() || req.ip || "unknown";
+    return `phone-otp-${userId}`;
+  },
+  handler: (req: Request, res: Response) => {
+    res.status(429).json({
+      ...createErrorMessage(60 * 60),
+      message: "Too many phone verification requests. Please try again later.",
+    });
+  },
+});
+
+/**
  * Change-password rate limiter (authenticated)
  * Limit: 5 requests per hour per user — prevents brute-forcing currentPassword
  */

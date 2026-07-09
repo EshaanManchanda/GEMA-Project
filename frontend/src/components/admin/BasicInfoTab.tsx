@@ -140,25 +140,6 @@ const BasicInfoTab: React.FC<BasicInfoTabProps> = ({
     onSyllabusChange(newSyllabus);
   };
 
-  // Find the Platform Affiliate vendor
-  const affiliateVendor = vendors.find(v => v.businessName === 'Platform Affiliate');
-
-  // Handle affiliate event checkbox change
-  const handleAffiliateChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    onCheckboxChange(e);
-
-    // Auto-select Platform Affiliate vendor when affiliate event is enabled
-    if (e.target.checked && affiliateVendor) {
-      const syntheticEvent = {
-        target: {
-          name: 'vendorId',
-          value: affiliateVendor._id
-        }
-      } as React.ChangeEvent<HTMLSelectElement>;
-      onInputChange(syntheticEvent);
-    }
-  };
-
   // Handle description change from TipTapEditor
   const handleDescriptionChange = (content: string) => {
     const syntheticEvent = {
@@ -234,8 +215,7 @@ const BasicInfoTab: React.FC<BasicInfoTabProps> = ({
                 name="vendorId"
                 value={formData.vendorId}
                 onChange={onInputChange}
-                disabled={formData.isAffiliateEvent}
-                className={`w-full px-3 py-2 border ${errors.vendorId ? 'border-red-500' : 'border-gray-300'} rounded-md shadow-sm focus:outline-none focus:ring-primary focus:border-primary ${formData.isAffiliateEvent ? 'bg-gray-100 cursor-not-allowed' : ''}`}
+                className={`w-full px-3 py-2 border ${errors.vendorId ? 'border-red-500' : 'border-gray-300'} rounded-md shadow-sm focus:outline-none focus:ring-primary focus:border-primary`}
               >
                 <option value="">Select a vendor</option>
                 {(vendors || []).map(vendor => (
@@ -245,12 +225,11 @@ const BasicInfoTab: React.FC<BasicInfoTabProps> = ({
                 ))}
               </select>
               {errors.vendorId && <p className="mt-1 text-sm text-red-500">{errors.vendorId}</p>}
-              {formData.isAffiliateEvent ? (
+              <p className="mt-1 text-xs text-gray-500">Optional if an instructor is assigned</p>
+              {formData.isAffiliateEvent && (
                 <p className="mt-1 text-xs text-blue-600 font-medium">
-                  Auto-assigned to "Platform Affiliate" for affiliate events
+                  Affiliate event uses an external booking link; vendor selection is independent.
                 </p>
-              ) : (
-                <p className="mt-1 text-xs text-gray-500">Optional if an instructor is assigned</p>
               )}
             </div>
 
@@ -288,7 +267,7 @@ const BasicInfoTab: React.FC<BasicInfoTabProps> = ({
                   type="checkbox"
                   name="isAffiliateEvent"
                   checked={formData.isAffiliateEvent}
-                  onChange={handleAffiliateChange}
+                  onChange={onCheckboxChange}
                   className="mr-2 h-4 w-4 text-primary focus:ring-primary border-gray-300 rounded"
                 />
                 <span className="text-sm font-medium text-gray-700">

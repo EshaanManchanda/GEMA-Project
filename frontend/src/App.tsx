@@ -132,6 +132,8 @@ const AdminAnnouncementsPage = React.lazy(() => import(/* webpackChunkName: "adm
 const AdminSEOPage = React.lazy(() => import(/* webpackChunkName: "admin" */ './pages/admin/AdminSEOPage'));
 const AdminPopupsPage = React.lazy(() => import(/* webpackChunkName: "admin" */ './pages/admin/AdminPopupsPage'));
 const AdminCouponsPage = React.lazy(() => import(/* webpackChunkName: "admin" */ './pages/admin/AdminCouponsPage'));
+const AdminCommunicationsPage = React.lazy(() => import(/* webpackChunkName: "admin" */ './pages/admin/AdminCommunicationsPage'));
+const AdminEmailMarketingPage = React.lazy(() => import(/* webpackChunkName: "admin" */ './pages/admin/AdminEmailMarketingPage'));
 const ReelsManagementPage = React.lazy(() => import(/* webpackChunkName: "admin" */ './pages/admin/ReelsManagementPage'));
 const BulkImportPage = React.lazy(() => import(/* webpackChunkName: "admin" */ './pages/admin/BulkImportPage'));
 const AdminAnalyticsPage = React.lazy(() => import(/* webpackChunkName: "admin" */ './pages/admin/AdminAnalyticsPage'));
@@ -1314,6 +1316,24 @@ function AppContent() {
             <AdminRoute>
               <Suspense fallback={<GenericPageSkeleton />}>
                 <AdminCouponsPage />
+              </Suspense>
+            </AdminRoute>
+          } />
+
+          {/* WhatsApp Communications */}
+          <Route path="communications" element={
+            <AdminRoute>
+              <Suspense fallback={<GenericPageSkeleton />}>
+                <AdminCommunicationsPage />
+              </Suspense>
+            </AdminRoute>
+          } />
+
+          {/* Email Marketing */}
+          <Route path="email-marketing" element={
+            <AdminRoute>
+              <Suspense fallback={<GenericPageSkeleton />}>
+                <AdminEmailMarketingPage />
               </Suspense>
             </AdminRoute>
           } />

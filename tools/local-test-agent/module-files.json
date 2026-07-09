@@ -1,0 +1,48 @@
+{
+  "auth": [
+    "backend/src/routes/auth.routes.ts",
+    "backend/src/controllers/auth.controller.ts",
+    "backend/src/models/User.ts",
+    "backend/src/middleware/auth.ts",
+    "backend/src/validators/auth.validator.ts",
+    "backend/src/config/jwt.ts"
+  ],
+  "events": [
+    "backend/src/routes/event.routes.ts",
+    "backend/src/controllers/event.controller.ts",
+    "backend/src/models/Event.ts"
+  ],
+  "admin": [
+    "backend/src/routes/admin.event.routes.ts",
+    "backend/src/controllers/admin.event.controller.ts",
+    "backend/src/middleware/auth.ts"
+  ],
+  "vendor": [
+    "backend/src/routes/vendor.routes.ts",
+    "backend/src/controllers/vendor.controller.ts",
+    "backend/src/controllers/vendor.event.controller.ts",
+    "backend/src/validators/vendor.event.validator.ts"
+  ],
+  "booking": [
+    "backend/src/routes/booking.routes.ts",
+    "backend/src/controllers/booking.controller.ts",
+    "backend/src/models/Booking.ts",
+    "backend/src/models/Event.ts"
+  ],
+  "payment": [
+    "backend/src/routes/payment.routes.ts",
+    "backend/src/controllers/payment.controller.ts",
+    "backend/src/services/payment.service.ts",
+    "backend/src/config/stripe.ts"
+  ],
+  "stripe": [
+    "backend/src/config/stripe.ts",
+    "backend/src/controllers/payment.controller.ts",
+    "backend/src/services/payment.service.ts"
+  ],
+  "coupon": [
+    "backend/src/routes/coupon.routes.ts",
+    "backend/src/controllers/coupon.controller.ts",
+    "backend/src/models/Coupon.ts"
+  ]
+}

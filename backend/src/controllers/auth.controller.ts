@@ -17,7 +17,10 @@ import Teacher from "../models/Teacher";
 import Vendor from "../models/Vendor";
 import Employee from "../models/Employee";
 import { emailService } from "../services/email.service";
-import smsService from "../services/sms.service";
+import {
+  sendPhoneOtp,
+  OtpChannel,
+} from "../services/communication/otpDelivery.service";
 import { cacheService } from "../services/cache.service";
 import mediaService from "../services/media.service";
 import { getOrCreateVendorProfile } from "../utils/vendorHelpers";
@@ -39,7 +42,16 @@ import {
 } from "../types/index";
 import bcrypt from "bcryptjs";
 import crypto from "crypto";
-import { generateOTP, getOTPExpiry } from "../utils/otp";
+import {
+  generateOTP,
+  getOTPExpiry,
+  hashOTP,
+  verifyOTPHash,
+  MAX_OTP_ATTEMPTS,
+  isResendOnCooldown,
+  OTP_RESEND_COOLDOWN_SECONDS,
+  MAX_OTP_RESENDS,
+} from "../utils/otp";
 import {
   sanitizeToE164,
   validatePhoneForAPI,
@@ -1981,10 +1993,17 @@ export const sendPhoneVerificationOTP = async (
       throw new AppError("User not authenticated", 401);
     }
 
-    const { phone }: { phone: string } = req.body;
+    const {
+      phone,
+      channel = "whatsapp",
+    }: { phone: string; channel?: OtpChannel } = req.body;
 
     if (!phone) {
       throw new AppError("Phone number is required", 400);
+    }
+
+    if (channel !== "whatsapp" && channel !== "sms") {
+      throw new AppError('channel must be "whatsapp" or "sms"', 400);
     }
 
     // Comprehensive phone validation (format, mobile check, duplicate check)
@@ -2007,12 +2026,15 @@ export const sendPhoneVerificationOTP = async (
 
     // Generate 6-digit OTP
     const verificationOTP = generateOTP();
-    const otpExpiry = getOTPExpiry(); // 10 minutes from now
+    const otpExpiry = getOTPExpiry(); // OTP_EXPIRY_MINUTES from now
 
-    // Save OTP to user
+    // Save only the hash — never persist the plaintext code
     user.phoneVerification = {
-      code: verificationOTP,
+      otpHash: await hashOTP(verificationOTP),
       expiresAt: otpExpiry,
+      attempts: 0,
+      resendCount: 0,
+      lastSentAt: new Date(),
     };
 
     // Update phone if different (using validated E.164 format)
@@ -2023,25 +2045,29 @@ export const sendPhoneVerificationOTP = async (
 
     await user.save();
 
-    // Send SMS with verification OTP
-    const smsResult = await smsService.sendVerificationOTP(
+    // WhatsApp-first with automatic SMS fallback — never blocks a user
+    // without WhatsApp from verifying.
+    const deliveryResult = await sendPhoneOtp(
       validatedPhone,
       verificationOTP,
+      channel,
     );
 
-    if (!smsResult.success) {
-      // SMS failed to send, but we've already saved the OTP to DB
-      // Log the error but still allow the user to proceed (they can resend)
-      logger.error(`Failed to send OTP to ${phone}:`, smsResult.error);
+    if (!deliveryResult.success) {
+      logger.error(`Failed to send OTP to ${phone}:`, deliveryResult.error);
       throw new AppError(
         "Failed to send verification code. Please try again or contact support.",
         500,
       );
     }
 
+    user.phoneVerificationChannel = deliveryResult.channelUsed;
+    await user.save();
+
     const responseData: any = {
       message: "Verification OTP sent successfully",
-      provider: smsService.getProviderName(),
+      channel: deliveryResult.channelUsed,
+      provider: deliveryResult.providerName,
     };
 
     // Only send OTP in response during development mode
@@ -2071,8 +2097,8 @@ export const verifyPhoneOTP = async (
   next: NextFunction,
 ): Promise<void> => {
   try {
-    const user = req.user;
-    if (!user) {
+    const authUser = req.user;
+    if (!authUser) {
       throw new AppError("User not authenticated", 401);
     }
 
@@ -2082,8 +2108,16 @@ export const verifyPhoneOTP = async (
       throw new AppError("OTP is required", 400);
     }
 
+    // otpHash is select:false — re-fetch explicitly rather than trust req.user
+    const user = await User.findById(authUser._id).select(
+      "+phoneVerification.otpHash",
+    );
+    if (!user) {
+      throw new AppError("User not authenticated", 401);
+    }
+
     // Check if user has phoneVerification data
-    if (!user.phoneVerification || !user.phoneVerification.code) {
+    if (!user.phoneVerification || !user.phoneVerification.otpHash) {
       throw new AppError(
         "No verification OTP found. Please request a new one.",
         400,
@@ -2100,14 +2134,27 @@ export const verifyPhoneOTP = async (
       );
     }
 
-    // Verify OTP
-    if (user.phoneVerification.code !== otp) {
+    // Lock out after too many wrong attempts — force a fresh OTP
+    if (user.phoneVerification.attempts >= MAX_OTP_ATTEMPTS) {
+      user.phoneVerification = undefined;
+      await user.save();
+      throw new AppError(
+        "Too many incorrect attempts. Please request a new verification code.",
+        429,
+      );
+    }
+
+    // Verify OTP against stored hash
+    const isValidOTP = await verifyOTPHash(otp, user.phoneVerification.otpHash);
+    if (!isValidOTP) {
+      user.phoneVerification.attempts += 1;
+      await user.save();
       throw new AppError("Invalid verification OTP", 400);
     }
 
     // Mark phone as verified
     user.isPhoneVerified = true;
-    user.phoneVerification = undefined; // Clear verification OTP
+    user.phoneVerification = undefined; // Clear verification OTP — a used/expired code can never verify again
 
     // Update status if pending
     if (user.status === UserStatus.PENDING) {
@@ -2145,6 +2192,11 @@ export const resendPhoneVerificationOTP = async (
       throw new AppError("User not authenticated", 401);
     }
 
+    const { channel }: { channel?: OtpChannel } = req.body;
+    if (channel && channel !== "whatsapp" && channel !== "sms") {
+      throw new AppError('channel must be "whatsapp" or "sms"', 400);
+    }
+
     if (!user.phone) {
       throw new AppError(
         "No phone number found. Please add a phone number first.",
@@ -2156,34 +2208,59 @@ export const resendPhoneVerificationOTP = async (
       throw new AppError("Phone number is already verified", 400);
     }
 
+    if (isResendOnCooldown(user.phoneVerification?.lastSentAt)) {
+      throw new AppError(
+        `Please wait ${OTP_RESEND_COOLDOWN_SECONDS} seconds before requesting another code.`,
+        429,
+      );
+    }
+
+    const resendCount = user.phoneVerification?.resendCount ?? 0;
+    if (resendCount >= MAX_OTP_RESENDS) {
+      throw new AppError(
+        "Maximum resend attempts reached. Please try again later.",
+        429,
+      );
+    }
+
     // Generate new OTP
     const verificationOTP = generateOTP();
     const otpExpiry = getOTPExpiry();
 
     user.phoneVerification = {
-      code: verificationOTP,
+      otpHash: await hashOTP(verificationOTP),
       expiresAt: otpExpiry,
+      attempts: 0,
+      resendCount: resendCount + 1,
+      lastSentAt: new Date(),
     };
 
     await user.save();
 
-    // Send SMS with verification OTP
-    const smsResult = await smsService.sendVerificationOTP(
+    const deliveryResult = await sendPhoneOtp(
       user.phone,
       verificationOTP,
+      channel || user.phoneVerificationChannel || "whatsapp",
     );
 
-    if (!smsResult.success) {
-      logger.error(`Failed to resend OTP to ${user.phone}:`, smsResult.error);
+    if (!deliveryResult.success) {
+      logger.error(
+        `Failed to resend OTP to ${user.phone}:`,
+        deliveryResult.error,
+      );
       throw new AppError(
         "Failed to send verification code. Please try again or contact support.",
         500,
       );
     }
 
+    user.phoneVerificationChannel = deliveryResult.channelUsed;
+    await user.save();
+
     const responseData: any = {
       message: "Verification OTP resent successfully",
-      provider: smsService.getProviderName(),
+      channel: deliveryResult.channelUsed,
+      provider: deliveryResult.providerName,
     };
 
     // Only send OTP in response during development mode

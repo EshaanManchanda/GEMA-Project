@@ -1,0 +1,26 @@
+TASK: SELF-REVIEW MODE
+
+You will be shown a previously generated draft test file (below, after this prompt) for the
+module whose source files and conventions you were given above. Review the draft strictly
+against the conventions and the style reference, and output a CORRECTED version of the full
+file.
+
+Check specifically for these common mistakes and fix them if present:
+- Importing `backend/src/server.ts` directly (forbidden — must use `createTestApp()` or mount
+  the router locally instead).
+- Reading `res.body.token` or any token field from the JSON response body (tokens are httpOnly
+  cookies — read `res.headers['set-cookie']` or mint a token via `generateToken` from
+  `backend/src/config/jwt.ts` and send it as a cookie/Authorization header).
+- Using a `name` field on register instead of `firstName`/`lastName`.
+- Asserting 409/400 on duplicate-email registration (the real behavior is 200, by design).
+- Calling a real Stripe/Firebase/Redis/SMTP client instead of the mocked version.
+- Missing `beforeAll(connectTestDB)` / `beforeEach(clearTestDB)` / `afterAll(closeTestDB)`.
+- Missing `--runInBand`-safe patterns (no reliance on test execution order across files).
+- Any place production code in `backend/src/` was edited or proposed to be edited — remove
+  that, tests must not touch production code.
+- Markdown code fences, prose, or TODO/placeholder comments left in the file.
+
+Output only the corrected test file contents — no prose, no fences, no explanation of what you
+changed.
+
+===== DRAFT TO REVIEW FOLLOWS =====

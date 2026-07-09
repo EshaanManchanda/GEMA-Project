@@ -1,0 +1,28 @@
+TASK: GENERATE MODE
+
+Using the conventions and the style reference file provided above, write ONE complete Jest +
+Supertest integration test file for the module's source files provided below.
+
+Requirements:
+- Full file, starting with imports, ending with the closing brace of the last `describe` block.
+  No prose before or after the code. No markdown code fences (no ``` anywhere in your output —
+  output raw TypeScript only).
+- Follow the style reference's conventions exactly: import `createTestApp` (or extend it if the
+  module's routes aren't mounted there yet — in that case, import the router directly and mount
+  it on a local `express()` app inside the test file, matching the pattern used elsewhere), use
+  `connectTestDB / clearTestDB / closeTestDB` for DB lifecycle, use the same `jest.mock(...)`
+  block shapes for redis/firebase/email/queue/stripe as needed.
+- Use the REAL API shapes from the conventions file: firstName/lastName on register, cookie-based
+  tokens (never `res.body.token`), 200-on-duplicate-email, server-side booking amount
+  calculation, PaymentIntents (not Checkout Sessions), raw-body Stripe webhook, role-array
+  `authorize([...])` RBAC, cookie-or-Bearer token reading with a `tv` claim.
+- Cover both success and failure/security cases from a plan you form internally (success paths,
+  wrong-role/401/403, invalid input/validation errors, IDOR checks, and any trust-boundary
+  checks like ignoring a client-supplied amount/price/role field).
+- Use `beforeAll`, `beforeEach`, `afterEach`/`afterAll` correctly per the existing pattern
+  (connect once, clear between tests, close once at the end).
+- Do not call any real external service. Do not use a real Stripe/Firebase/Redis/SMTP
+  connection under any circumstance.
+- Do not modify or suggest modifying production code in `backend/src/` — tests only.
+
+Output only the test file contents.

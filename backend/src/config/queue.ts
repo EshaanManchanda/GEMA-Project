@@ -155,6 +155,7 @@ export const QUEUE_NAMES = {
   FAILED_JOBS: "failed-jobs",
   CERTIFICATE_GENERATION: "certificate-generation",
   SEAT_EXPIRY: "seat-expiry",
+  AUTOMATION: "automation",
 } as const;
 
 // QR Code Generation Queue
@@ -177,10 +178,15 @@ export const analyticsQueue = areQueuesDisabled
   ? null
   : new Queue(QUEUE_NAMES.ANALYTICS, queueConfig);
 
-// Notifications Queue
+// Notifications Queue — repurposed as the Communication system's queue (was
+// defined but never consumed). Job data carries a strict `jobType`:
+// whatsapp_template | whatsapp_otp | email_marketing_sync | email_campaign | retry_log.
 export const notificationsQueue = areQueuesDisabled
   ? null
   : new Queue(QUEUE_NAMES.NOTIFICATIONS, queueConfig);
+
+/** Semantic alias — new communication code should import this, not notificationsQueue. */
+export const communicationQueue = notificationsQueue;
 
 // Collection Sync Queue
 export const collectionSyncQueue = areQueuesDisabled
@@ -206,6 +212,12 @@ export const failedJobsQueue = areQueuesDisabled
 export const seatExpiryQueue = areQueuesDisabled
   ? null
   : new Queue(QUEUE_NAMES.SEAT_EXPIRY, queueConfig);
+
+// Automation Queue — recurring marketing/lifecycle sweeps (post-event review
+// requests, etc.) that dispatch through the Communication system.
+export const automationQueue = areQueuesDisabled
+  ? null
+  : new Queue(QUEUE_NAMES.AUTOMATION, queueConfig);
 
 // Queue Events DISABLED to reduce Redis connections (each QueueEvents = 1 connection)
 // Workers already handle logging, so these are redundant
@@ -233,6 +245,8 @@ const gracefulShutdown = async () => {
     certificateQueue?.close(),
     payoutQueue?.close(),
     failedJobsQueue?.close(),
+    seatExpiryQueue?.close(),
+    automationQueue?.close(),
   ].filter(Boolean);
 
   await Promise.all(closePromises);
@@ -294,6 +308,10 @@ function getQueueByName(name: string): Queue | null {
       return payoutQueue;
     case QUEUE_NAMES.FAILED_JOBS:
       return failedJobsQueue;
+    case QUEUE_NAMES.SEAT_EXPIRY:
+      return seatExpiryQueue;
+    case QUEUE_NAMES.AUTOMATION:
+      return automationQueue;
     default:
       return null;
   }

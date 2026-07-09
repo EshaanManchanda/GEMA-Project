@@ -29,6 +29,8 @@ import collectionSyncWorker from "./collection-sync.worker";
 import payoutWorker from "./payout.worker";
 import certificateWorker from "./certificate.worker";
 import seatExpiryWorker from "./seat-expiry.worker";
+import communicationWorker from "./communication.worker";
+import automationWorker from "./automation.worker";
 
 logger.info("Starting background workers...");
 
@@ -68,6 +70,18 @@ if (seatExpiryWorker) {
   logger.warn("Seat Expiry Worker: Not initialized");
 }
 
+if (communicationWorker) {
+  logger.info("Communication Worker: Started (WhatsApp/email-marketing)");
+} else {
+  logger.warn("Communication Worker: Not initialized");
+}
+
+if (automationWorker) {
+  logger.info("Automation Worker: Started (review-request sweep every 6h)");
+} else {
+  logger.warn("Automation Worker: Not initialized");
+}
+
 // Route permanently-failed jobs to Dead Letter Queue for visibility and manual replay
 const workersForDLQ = [
   { worker: qrWorker, name: "qr-generation" },
@@ -76,6 +90,8 @@ const workersForDLQ = [
   { worker: payoutWorker, name: "payout" },
   { worker: certificateWorker, name: "certificate-generation" },
   { worker: seatExpiryWorker, name: "seat-expiry" },
+  { worker: communicationWorker, name: "communication" },
+  { worker: automationWorker, name: "automation" },
 ];
 
 for (const { worker, name } of workersForDLQ) {
@@ -90,7 +106,7 @@ for (const { worker, name } of workersForDLQ) {
           error: err.message,
           failedAt: new Date().toISOString(),
         })
-        .catch(() => { }); // DLQ write should never crash the worker
+        .catch(() => {}); // DLQ write should never crash the worker
     }
   });
 }
@@ -167,6 +183,8 @@ const gracefulShutdown = async () => {
   if (payoutWorker) promises.push(payoutWorker.close());
   if (certificateWorker) promises.push(certificateWorker.close());
   if (seatExpiryWorker) promises.push(seatExpiryWorker.close());
+  if (communicationWorker) promises.push(communicationWorker.close());
+  if (automationWorker) promises.push(automationWorker.close());
 
   if (promises.length > 0) {
     await Promise.all(promises);

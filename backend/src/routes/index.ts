@@ -21,6 +21,8 @@ import adminModerationRoutes from "./admin.moderation.routes";
 import adminPayoutRoutes from "./admin.payout.routes";
 import adminSettingsRoutes from "./admin.settings.routes";
 import adminCommissionRoutes from "./admin.commission.routes";
+import adminCommunicationRoutes from "./admin.communication.routes";
+import cunnektWebhookRoutes from "./cunnekt.webhook.routes";
 import vendorRoutes from "./vendor.routes";
 import vendorPayoutRoutes from "./vendor.payout.routes";
 import vendorPaymentRoutes from "./vendor.payment.routes";
@@ -103,6 +105,10 @@ router.use("/orders", orderRoutes);
 // Payment routes
 router.use("/payments", paymentRoutes);
 
+// Cunnekt WhatsApp webhook — unauthenticated, secret-verified in controller.
+// Raw body for this path is mounted in server.ts before express.json().
+router.use("/webhooks/cunnekt", cunnektWebhookRoutes);
+
 // Review routes
 router.use("/reviews", reviewRoutes);
 
@@ -166,6 +172,9 @@ router.use("/admin", adminPayoutRoutes);
 
 // Admin Commission routes
 router.use("/admin", adminCommissionRoutes);
+
+// Admin Communication routes (WhatsApp/email-marketing logs, settings, retry)
+router.use("/admin", adminCommunicationRoutes);
 
 // Admin Settings routes
 router.use("/admin", adminSettingsRoutes);

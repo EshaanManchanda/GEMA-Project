@@ -1,6 +1,7 @@
 import { Router } from "express";
 import { authenticate, authorize } from "../middleware/auth";
 import { validate } from "../middleware/validation";
+import { requirePhoneVerificationCustom } from "../middleware/requirePhoneVerification";
 import { UserRole } from "../models/index";
 import {
   getAllPublicVendors,
@@ -378,6 +379,11 @@ router.post(
  */
 router.put(
   "/bank-details",
+  requirePhoneVerificationCustom({
+    customMessage:
+      "Phone verification required before adding payout bank details.",
+    errorCode: "PHONE_VERIFICATION_REQUIRED_FOR_PAYOUT",
+  }),
   validateBankDetails,
   validate,
   updateVendorBankDetails,

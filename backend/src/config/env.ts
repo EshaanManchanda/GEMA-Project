@@ -160,6 +160,26 @@ interface Config {
     placesApiKey: string;
     mapsApiKey: string;
   };
+  whatsapp: {
+    provider: string;
+    cunnektBaseUrl: string;
+    cunnektApiKey: string;
+    cunnektWabaNumber: string;
+    cunnektWebhookSecret: string;
+  };
+  emailMarketing: {
+    provider: string;
+    senderApiKey: string;
+    senderListId: string;
+    mailchimpApiKey: string;
+    mailchimpServerPrefix: string;
+    mailchimpAudienceId: string;
+  };
+  communication: {
+    queueEnabled: boolean;
+    testMode: boolean;
+    logRawProviderResponse: boolean;
+  };
 }
 
 // Define and export the configuration object
@@ -364,6 +384,29 @@ export const config: Config = {
   },
   commission: {
     chargeOnActiveSubscription: process.env.COMMISSION_CHARGE_ON_ACTIVE_SUBSCRIPTION === "true",
+  },
+  whatsapp: {
+    provider: process.env.WHATSAPP_PROVIDER || "dev",
+    cunnektBaseUrl: process.env.CUNNEKT_BASE_URL || "https://app2.cunnekt.com/v1",
+    cunnektApiKey: process.env.CUNNEKT_API_KEY || "",
+    cunnektWabaNumber: process.env.CUNNEKT_WABA_NUMBER || "",
+    cunnektWebhookSecret: process.env.CUNNEKT_WEBHOOK_SECRET || "",
+  },
+  emailMarketing: {
+    provider: process.env.EMAIL_MARKETING_PROVIDER || "dev",
+    senderApiKey: process.env.SENDER_API_KEY || "",
+    senderListId: process.env.SENDER_DEFAULT_LIST_ID || "",
+    mailchimpApiKey: process.env.MAILCHIMP_API_KEY || "",
+    mailchimpServerPrefix: process.env.MAILCHIMP_SERVER_PREFIX || "",
+    mailchimpAudienceId: process.env.MAILCHIMP_AUDIENCE_ID || "",
+  },
+  communication: {
+    queueEnabled: process.env.COMMUNICATION_QUEUE_ENABLED !== "false",
+    // Forces dev/mock providers even when real provider keys are present —
+    // guarantees local/dev work can never send a real WhatsApp/email-marketing message.
+    testMode: process.env.COMMUNICATION_TEST_MODE === "true",
+    logRawProviderResponse:
+      process.env.COMMUNICATION_LOG_RAW_PROVIDER_RESPONSE === "true",
   },
   google: {
     placesApiKey: process.env.GOOGLE_PLACES_API_KEY || "",

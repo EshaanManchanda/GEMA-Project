@@ -73,8 +73,17 @@ export interface IEmailVerification {
 }
 
 export interface IPhoneVerification {
-  code: string;
+  /** SHA-256 hash of the OTP code — never store the plaintext code. */
+  otpHash: string;
   expiresAt: Date;
+  /** Failed verify attempts against the current otpHash; locks out after max. */
+  attempts: number;
+  /** How many times an OTP has been (re)sent for this verification cycle. */
+  resendCount: number;
+  /** Timestamp of the last send/resend — drives the resend cooldown. */
+  lastSentAt: Date;
+  /** Set once the code is successfully verified; a used code can never verify again. */
+  usedAt?: Date;
 }
 
 export interface ILoginAttempt {
@@ -148,6 +157,8 @@ export interface IUser extends Document {
   passwordResetOTP?: IPasswordResetOTP;
   emailVerification?: IEmailVerification;
   phoneVerification?: IPhoneVerification;
+  /** Channel the last verification OTP was actually delivered through — audit only. */
+  phoneVerificationChannel?: "whatsapp" | "sms";
   loginAttempts?: ILoginAttempt[];
   lastLogin?: Date;
   firebaseUid?: string;
@@ -355,9 +366,14 @@ const UserSchema = new Schema<IUser>(
       expiresAt: Date,
     },
     phoneVerification: {
-      code: String,
+      otpHash: { type: String, select: false },
       expiresAt: Date,
+      attempts: { type: Number, default: 0 },
+      resendCount: { type: Number, default: 0 },
+      lastSentAt: Date,
+      usedAt: Date,
     },
+    phoneVerificationChannel: { type: String, enum: ["whatsapp", "sms"] },
     loginAttempts: [
       {
         timestamp: {

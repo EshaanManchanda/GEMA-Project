@@ -283,6 +283,10 @@ export const validateSendPhoneOTP = [
 
       return true;
     }),
+  body("channel")
+    .optional()
+    .isIn(["whatsapp", "sms"])
+    .withMessage('channel must be "whatsapp" or "sms"'),
 ];
 
 /**

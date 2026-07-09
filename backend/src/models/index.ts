@@ -292,3 +292,20 @@ export type {
   CertRequestStatus,
   CertRequestType,
 } from "./Certificate";
+
+export {
+  default as CommunicationLog,
+  CommunicationChannel,
+  CommunicationCategory,
+  CommunicationStatus,
+} from "./CommunicationLog";
+export type {
+  ICommunicationLog,
+  ISafeProviderSummary,
+} from "./CommunicationLog";
+
+export {
+  default as NotificationTemplate,
+  NotificationTemplateKey,
+} from "./NotificationTemplate";
+export type { INotificationTemplate } from "./NotificationTemplate";

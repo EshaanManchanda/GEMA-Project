@@ -9,7 +9,7 @@ import {
 } from "../utils/qrcode";
 import { TicketGenerationService } from "../services/ticketGeneration.service";
 import { sendTicketByEmail } from "../utils/mailer";
-import { smsService } from "../services/sms.service";
+import { sendTicketViaWhatsAppOrSms } from "../services/communication/ticketDelivery.service";
 import { v4 as uuidv4 } from "uuid";
 import logger from "../config/logger";
 
@@ -348,19 +348,27 @@ export const resendTicket = async (
       const venue = event.venueType === "Online"
         ? (event.meetingLink || "Online")
         : `${event.location?.address || ""}, ${event.location?.city || ""}`.trim().replace(/^,\s*/, "");
-      const result = await smsService.sendTicketViaSMS(
+      // WhatsApp-first with automatic SMS fallback — the client still asks
+      // for "sms" delivery, but WhatsApp is tried first per the WhatsApp
+      // communication rollout.
+      const result = await sendTicketViaWhatsAppOrSms({
         phone,
-        ticket.ticketNumber,
-        event.title,
-        event.dateSchedule[0]?.date || new Date(),
+        ticketNumber: ticket.ticketNumber,
+        eventTitle: event.title,
+        eventDate: event.dateSchedule[0]?.date || new Date(),
         venue,
-      );
+      });
       if (!result.success) {
-        return next(new AppError(`SMS delivery failed: ${result.error || "unknown error"}`, 502));
+        return next(
+          new AppError(
+            `Delivery failed: ${result.error || "unknown error"}`,
+            502,
+          ),
+        );
       }
       res.status(200).json({
         success: true,
-        message: "Ticket resent via SMS successfully",
+        message: `Ticket resent via ${result.channelUsed === "whatsapp" ? "WhatsApp" : "SMS"} successfully`,
       });
     }
   } catch (error) {

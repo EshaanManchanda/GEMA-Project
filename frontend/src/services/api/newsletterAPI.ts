@@ -97,6 +97,17 @@ const newsletterAPI = {
       } catch (error) {
         throw error;
       }
+    },
+
+    sendNewsletter: async (data: {
+      subject: string;
+      content: string;
+      frequency?: 'daily' | 'weekly' | 'monthly';
+      tags?: string[];
+      testMode?: boolean;
+    }) => {
+      const response = await ApiService.post('/newsletter/admin/send', data);
+      return response.data;
     }
   }
 };

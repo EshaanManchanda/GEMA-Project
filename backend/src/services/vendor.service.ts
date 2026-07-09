@@ -14,8 +14,16 @@ import { AppError } from "../middleware/index";
 import { getOrCreateVendorProfile } from "../utils/vendorHelpers";
 import { getFileInfo } from "../middleware/upload";
 import emailService from "./email.service";
-import smsService from "./sms.service";
-import { generateOTP } from "../utils/otp";
+import { sendPhoneOtp } from "./communication/otpDelivery.service";
+import {
+  generateOTP,
+  getOTPExpiry,
+  hashOTP,
+  verifyOTPHash,
+  MAX_OTP_ATTEMPTS,
+  isResendOnCooldown,
+  OTP_RESEND_COOLDOWN_SECONDS,
+} from "../utils/otp";
 import { escapeRegex } from "../utils/regexHelpers";
 import logger from "../config/logger";
 import { stripeConnectService } from "./stripe-connect.service";
@@ -1650,20 +1658,41 @@ class VendorService {
       throw new AppError("Phone number is required", 400);
     }
 
-    const otp = generateOTP();
-    const expiresAt = new Date(Date.now() + 10 * 60 * 1000);
+    const existing = await User.findById(userId).select(
+      "phoneVerification.lastSentAt",
+    );
+    if (isResendOnCooldown(existing?.phoneVerification?.lastSentAt)) {
+      throw new AppError(
+        `Please wait ${OTP_RESEND_COOLDOWN_SECONDS} seconds before requesting another code.`,
+        429,
+      );
+    }
 
+    const otp = generateOTP();
+    const expiresAt = getOTPExpiry();
+
+    // Store only the hash — never persist the plaintext code
     await User.findByIdAndUpdate(userId, {
-      "phoneVerification.code": otp,
-      "phoneVerification.expiresAt": expiresAt,
+      phoneVerification: {
+        otpHash: await hashOTP(otp),
+        expiresAt,
+        attempts: 0,
+        resendCount: 0,
+        lastSentAt: new Date(),
+      },
     });
 
-    await smsService.sendSMS(
-      phone,
-      `Your ${
-        process.env.APP_NAME || "Kidrove"
-      } verification code is: ${otp}. Valid for 10 minutes.`,
-    );
+    // WhatsApp-first with automatic SMS fallback.
+    const delivery = await sendPhoneOtp(phone, otp, "whatsapp");
+    if (!delivery.success) {
+      throw new AppError(
+        "Failed to send verification code. Please try again or contact support.",
+        500,
+      );
+    }
+    await User.findByIdAndUpdate(userId, {
+      phoneVerificationChannel: delivery.channelUsed,
+    });
 
     return { expiresAt };
   }
@@ -1676,17 +1705,34 @@ class VendorService {
       throw new AppError("Verification code is required", 400);
     }
 
-    const user = await User.findById(userId);
+    const user = await User.findById(userId).select(
+      "+phoneVerification.otpHash",
+    );
     if (!user) {
       throw new AppError("User not found", 404);
     }
 
     if (
-      !user.phoneVerification?.code ||
-      user.phoneVerification.code !== otp ||
+      !user.phoneVerification?.otpHash ||
       !user.phoneVerification.expiresAt ||
       user.phoneVerification.expiresAt < new Date()
     ) {
+      throw new AppError("Invalid or expired verification code", 400);
+    }
+
+    if (user.phoneVerification.attempts >= MAX_OTP_ATTEMPTS) {
+      user.phoneVerification = undefined;
+      await user.save();
+      throw new AppError(
+        "Too many incorrect attempts. Please request a new verification code.",
+        429,
+      );
+    }
+
+    const isValidOTP = await verifyOTPHash(otp, user.phoneVerification.otpHash);
+    if (!isValidOTP) {
+      user.phoneVerification.attempts += 1;
+      await user.save();
       throw new AppError("Invalid or expired verification code", 400);
     }
 

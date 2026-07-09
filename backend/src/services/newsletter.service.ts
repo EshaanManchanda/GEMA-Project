@@ -3,6 +3,7 @@ import NewsletterSubscriber, {
 } from "../models/NewsletterSubscriber";
 import { AppError } from "../middleware/error";
 import logger from "../config/logger";
+import { getEmailMarketingProvider } from "./communication/providers/emailMarketing.provider";
 
 interface CreateSubscriptionData {
   email: string;
@@ -40,6 +41,45 @@ interface SubscriptionResult extends INewsletterSubscriber {
 
 export class NewsletterService {
   /**
+   * Push the subscriber to the configured email-marketing provider (Sender/
+   * Mailchimp/dev). Never throws — a provider outage must never block a
+   * user-facing subscribe/unsubscribe request; failures are logged only.
+   */
+  private async syncContactToProvider(
+    subscriber: INewsletterSubscriber,
+  ): Promise<void> {
+    try {
+      const provider = getEmailMarketingProvider();
+      const result = await provider.upsertContact({
+        email: subscriber.email,
+        firstName: subscriber.name,
+        tags: subscriber.tags,
+      });
+      if (!result.success) {
+        logger.warn(
+          `Email marketing sync failed for ${subscriber.email}: ${result.errorMessage}`,
+        );
+      }
+    } catch (error) {
+      logger.error("Email marketing provider sync error:", error);
+    }
+  }
+
+  private async unsubscribeFromProvider(email: string): Promise<void> {
+    try {
+      const provider = getEmailMarketingProvider();
+      const result = await provider.unsubscribeContact(email);
+      if (!result.success) {
+        logger.warn(
+          `Email marketing unsubscribe sync failed for ${email}: ${result.errorMessage}`,
+        );
+      }
+    } catch (error) {
+      logger.error("Email marketing provider unsubscribe error:", error);
+    }
+  }
+
+  /**
    * Create a new subscription or reactivate an existing one
    */
   async createSubscription(
@@ -74,6 +114,7 @@ export class NewsletterService {
             };
           }
           await subscriber.save();
+          await this.syncContactToProvider(subscriber);
 
           const result: SubscriptionResult = subscriber;
           result.wasReactivated = false;
@@ -96,6 +137,7 @@ export class NewsletterService {
           }
 
           await subscriber.save();
+          await this.syncContactToProvider(subscriber);
 
           const result: SubscriptionResult = subscriber;
           result.wasReactivated = true;
@@ -119,6 +161,7 @@ export class NewsletterService {
       });
 
       await subscriber.save();
+      await this.syncContactToProvider(subscriber);
 
       const result: SubscriptionResult = subscriber;
       result.wasReactivated = false;
@@ -219,6 +262,7 @@ export class NewsletterService {
       }
 
       await subscriber.unsubscribe(reason);
+      await this.unsubscribeFromProvider(subscriber.email);
       return subscriber;
     } catch (error: any) {
       logger.error("=== NEWSLETTER SERVICE ERROR (UNSUBSCRIBE BY EMAIL) ===");
@@ -250,6 +294,7 @@ export class NewsletterService {
       }
 
       await subscriber.unsubscribe(reason);
+      await this.unsubscribeFromProvider(subscriber.email);
       return subscriber;
     } catch (error: any) {
       logger.error("=== NEWSLETTER SERVICE ERROR (UNSUBSCRIBE BY TOKEN) ===");
@@ -281,6 +326,7 @@ export class NewsletterService {
       }
 
       await subscriber.resubscribe();
+      await this.syncContactToProvider(subscriber);
       return subscriber;
     } catch (error: any) {
       logger.error("=== NEWSLETTER SERVICE ERROR (RESUBSCRIBE) ===");
@@ -424,9 +470,7 @@ export class NewsletterService {
 
       return subscribers;
     } catch (error: any) {
-      logger.error(
-        "=== NEWSLETTER SERVICE ERROR (GET ACTIVE SUBSCRIBERS) ===",
-      );
+      logger.error("=== NEWSLETTER SERVICE ERROR (GET ACTIVE SUBSCRIBERS) ===");
       logger.error("Error:", error.message);
 
       throw new AppError("Failed to get active subscribers", 500);
