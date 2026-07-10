@@ -1296,7 +1296,7 @@ const EventDetailPage: React.FC = () => {
 
 
 
-            {isEducational && (!event.externalBookingLink || (event.dateSchedule && event.dateSchedule.length > 0)) && (
+            {isEducational && !event.externalBookingLink && event.dateSchedule && event.dateSchedule.length > 0 && (
               <div className="mt-8" id="booking-panel">
                 <h2 className="text-2xl font-bold text-gray-900 mb-6">Available Times</h2>
                 <ProgramScheduleList
@@ -2144,7 +2144,7 @@ const EventDetailPage: React.FC = () => {
 
 
               {/* Claim Event Card - Only for affiliate events that haven't been claimed */}
-              {event.isAffiliateEvent && event.claimStatus !== 'claimed' && (() => {
+              {event.isAffiliateEvent && event.claimStatus === 'unclaimed' && (() => {
                 const TEACHING_TYPES = ['Class', 'Course', 'Workshop', 'Bootcamp', 'Masterclass'];
                 const claimRoleLabel = TEACHING_TYPES.includes(event.type) ? 'teacher' : 'vendor';
                 return (
@@ -2210,7 +2210,7 @@ const EventDetailPage: React.FC = () => {
               })()}
 
               {/* Affiliate Disclaimer */}
-              {event.isAffiliateEvent && event.claimStatus !== 'claimed' && (
+              {event.isAffiliateEvent && event.claimStatus === 'unclaimed' && (
                 <p className="mt-4 text-xs text-gray-400 leading-relaxed">
                   Listings may include publicly available information for discovery purposes. Businesses may claim or request removal at any time.
                 </p>
