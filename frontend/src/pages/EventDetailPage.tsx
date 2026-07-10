@@ -482,6 +482,42 @@ const EventDetailPage: React.FC = () => {
    * - Session selected → show just that session: "Mon, Jun 18 • 9:00 AM – 11:00 AM"
    */
   const getEventDateRange = (): { display: string; subtitle: string } => {
+    const getOverallRange = () => {
+      const schedules: any[] = event.dateSchedule;
+      if (!schedules?.length) {
+        return { display: format(new Date(event.date), 'MMM d, yyyy'), subtitle: 'Event Date' };
+      }
+      try {
+        const starts = schedules
+          .map((s: any) => new Date(s.startDate || s.date))
+          .filter((d: Date) => !isNaN(d.getTime()));
+        const ends = schedules
+          .map((s: any) => new Date(s.endDate || s.startDate || s.date))
+          .filter((d: Date) => !isNaN(d.getTime()));
+
+        if (!starts.length) {
+          return { display: format(new Date(event.date), 'MMM d, yyyy'), subtitle: 'Event Date' };
+        }
+        const minStart = new Date(Math.min(...starts.map((d: Date) => d.getTime())));
+        const maxEnd = new Date(Math.max(...ends.map((d: Date) => d.getTime())));
+        const sameDay = format(minStart, 'yyyy-MM-dd') === format(maxEnd, 'yyyy-MM-dd');
+        if (sameDay) {
+          return { display: format(minStart, 'MMM d, yyyy'), subtitle: 'Event Date' };
+        }
+        const sameYear = minStart.getFullYear() === maxEnd.getFullYear();
+        const display = sameYear
+          ? `${format(minStart, 'MMM d')} \u2013 ${format(maxEnd, 'MMM d, yyyy')}`
+          : `${format(minStart, 'MMM d, yyyy')} \u2013 ${format(maxEnd, 'MMM d, yyyy')}`;
+        return { display, subtitle: 'Date Range' };
+      } catch {
+        return { display: format(new Date(event.date), 'MMM d, yyyy'), subtitle: 'Event Date' };
+      }
+    };
+
+    if (event.externalBookingLink) {
+      return getOverallRange();
+    }
+
     if (isEducational && event.dateSchedule?.length > 0) {
       if (bookingType === 'program') {
         const schedule = selectedStandard || standardSchedules[0] || event.dateSchedule[0];
@@ -545,40 +581,7 @@ const EventDetailPage: React.FC = () => {
       };
     }
 
-    const schedules: any[] = event.dateSchedule;
-    if (!schedules?.length) {
-      return { display: format(new Date(event.date), 'MMM d, yyyy'), subtitle: 'Event Date' };
-    }
-
-    try {
-      const starts = schedules
-        .map((s: any) => new Date(s.startDate || s.date))
-        .filter((d: Date) => !isNaN(d.getTime()));
-      const ends = schedules
-        .map((s: any) => new Date(s.endDate || s.startDate || s.date))
-        .filter((d: Date) => !isNaN(d.getTime()));
-
-      if (!starts.length) {
-        return { display: format(new Date(event.date), 'MMM d, yyyy'), subtitle: 'Event Date' };
-      }
-
-      const minStart = new Date(Math.min(...starts.map((d: Date) => d.getTime())));
-      const maxEnd = new Date(Math.max(...ends.map((d: Date) => d.getTime())));
-      const sameDay = format(minStart, 'yyyy-MM-dd') === format(maxEnd, 'yyyy-MM-dd');
-
-      if (sameDay) {
-        return { display: format(minStart, 'MMM d, yyyy'), subtitle: 'Event Date' };
-      }
-
-      const sameYear = minStart.getFullYear() === maxEnd.getFullYear();
-      const display = sameYear
-        ? `${format(minStart, 'MMM d')} \u2013 ${format(maxEnd, 'MMM d, yyyy')}`
-        : `${format(minStart, 'MMM d, yyyy')} \u2013 ${format(maxEnd, 'MMM d, yyyy')}`;
-
-      return { display, subtitle: 'Date Range' };
-    } catch {
-      return { display: format(new Date(event.date), 'MMM d, yyyy'), subtitle: 'Event Date' };
-    }
+    return getOverallRange();
   };
 
   const currentSyllabus = event?.syllabus || [];
@@ -1099,7 +1102,7 @@ const EventDetailPage: React.FC = () => {
                 </svg>
                 Class Insights
               </h3>
-              <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+              <div className={`grid grid-cols-1 gap-4 ${event.externalBookingLink ? 'sm:grid-cols-2' : 'sm:grid-cols-3'}`}>
                 <StatCard
                   title="Views"
                   value={event.viewsCount || 0}
@@ -1125,20 +1128,22 @@ const EventDetailPage: React.FC = () => {
                   }
                   className="hover:shadow-lg transition-shadow border-none bg-gray-50 shadow-sm"
                 />
-                <StatCard
-                  title="Available"
-                  value={
-                    bookingIsUnlimited
-                      ? 'Unlimited'
-                      : bookingPanelAvailableSeats
-                  }
-                  icon={
-                    <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
-                    </svg>
-                  }
-                  className="hover:shadow-lg transition-shadow border-none bg-gray-50 shadow-sm"
-                />
+                {!event.externalBookingLink && (
+                  <StatCard
+                    title="Available"
+                    value={
+                      bookingIsUnlimited
+                        ? 'Unlimited'
+                        : bookingPanelAvailableSeats
+                    }
+                    icon={
+                      <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
+                      </svg>
+                    }
+                    className="hover:shadow-lg transition-shadow border-none bg-gray-50 shadow-sm"
+                  />
+                )}
               </div>
             </div>
 
@@ -1182,7 +1187,7 @@ const EventDetailPage: React.FC = () => {
                     Syllabus
                   </button>
                 )}
-                {!event.externalBookingLink && (
+                {event.dateSchedule && event.dateSchedule.length > 0 && (
                   <button
                     className={`py-4 px-6 text-sm font-bold border-b-2 transition-colors ${activeSection === 'booking-panel' ? 'border-primary text-primary' : 'border-transparent text-gray-500 hover:text-gray-900'}`}
                     onClick={() => scrollToSection('booking-panel')}
@@ -1296,7 +1301,7 @@ const EventDetailPage: React.FC = () => {
 
 
 
-            {isEducational && !event.externalBookingLink && event.dateSchedule && event.dateSchedule.length > 0 && (
+            {isEducational && event.dateSchedule && event.dateSchedule.length > 0 && (
               <div className="mt-8" id="booking-panel">
                 <h2 className="text-2xl font-bold text-gray-900 mb-6">Available Times</h2>
                 <ProgramScheduleList
@@ -1326,6 +1331,7 @@ const EventDetailPage: React.FC = () => {
                   }}
                   currency={event.currency || 'AED'}
                   timezone={event.timezone}
+                  hideEnrollButton={!!event.externalBookingLink}
                 />
               </div>
             )}

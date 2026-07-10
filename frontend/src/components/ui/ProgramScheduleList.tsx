@@ -7,6 +7,7 @@ interface ProgramScheduleListProps {
   onEnroll: (scheduleId: string) => void;
   currency?: string;
   timezone?: string;
+  hideEnrollButton?: boolean;
 }
 
 interface Block {
@@ -29,6 +30,7 @@ export const ProgramScheduleList: React.FC<ProgramScheduleListProps> = ({
   dateSchedules,
   onEnroll,
   timezone,
+  hideEnrollButton,
 }) => {
   const [expandedBlocks, setExpandedBlocks] = useState<Record<string, boolean>>({});
 
@@ -203,17 +205,19 @@ export const ProgramScheduleList: React.FC<ProgramScheduleListProps> = ({
                   )}
                 </div>
                 
-                <button
-                  onClick={() => onEnroll(block.scheduleId)}
-                  disabled={block.isSoldOut}
-                  className={`px-6 py-2 rounded-full font-bold transition-colors w-full md:w-auto ${
-                    block.isSoldOut 
-                      ? 'bg-gray-200 text-gray-400 cursor-not-allowed' 
-                      : 'bg-[#4000D3] hover:bg-[#2b008e] text-white'
-                  }`}
-                >
-                  Enroll
-                </button>
+                {!hideEnrollButton && (
+                  <button
+                    onClick={() => onEnroll(block.scheduleId)}
+                    disabled={block.isSoldOut}
+                    className={`px-6 py-2 rounded-full font-bold transition-colors w-full md:w-auto ${
+                      block.isSoldOut 
+                        ? 'bg-gray-200 text-gray-400 cursor-not-allowed' 
+                        : 'bg-[#4000D3] hover:bg-[#2b008e] text-white'
+                    }`}
+                  >
+                    Enroll
+                  </button>
+                )}
               </div>
 
             </div>
