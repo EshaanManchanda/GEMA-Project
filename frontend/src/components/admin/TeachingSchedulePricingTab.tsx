@@ -65,7 +65,7 @@ const TeachingSchedulePricingTab: React.FC<TeachingSchedulePricingTabProps> = ({
   // Modal State
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [editingIndex, setEditingIndex] = useState<number | null>(null);
-  const [modalForm, setModalForm] = useState<Partial<Schedule> & { scheduleType?: 'single' | 'cohort', cohortDays?: string[] }>({
+  const [modalForm, setModalForm] = useState<Partial<Schedule> & { scheduleType?: 'single' | 'cohort', cohortDays?: string[], generationMode?: 'full' | 'weekly' | 'daily' }>({
     startDate: '',
     endDate: '',
     startTime: '',
@@ -74,6 +74,7 @@ const TeachingSchedulePricingTab: React.FC<TeachingSchedulePricingTabProps> = ({
     price: '',
     unlimitedSeats: false,
     scheduleType: 'single',
+    generationMode: 'full',
     cohortDays: [],
     sessionType: 'Standard Session',
     ratePerClass: '',
@@ -95,6 +96,7 @@ const TeachingSchedulePricingTab: React.FC<TeachingSchedulePricingTabProps> = ({
       setModalForm({
         ...schedule,
         scheduleType: isCohort ? 'cohort' : 'single',
+        generationMode: 'full',
         cohortDays: cohortDays,
         sessionType: schedule.sessionType || 'Standard Session',
         isFreeSession: schedule.isFreeSession || false,
@@ -110,6 +112,7 @@ const TeachingSchedulePricingTab: React.FC<TeachingSchedulePricingTabProps> = ({
         price: basePrice || '',
         unlimitedSeats: false,
         scheduleType: 'single',
+        generationMode: 'full',
         cohortDays: [],
         sessionType: 'Standard Session',
         ratePerClass: '',
@@ -127,12 +130,9 @@ const TeachingSchedulePricingTab: React.FC<TeachingSchedulePricingTabProps> = ({
   const handleModalSave = () => {
     let finalForm = { ...modalForm };
 
-    if (finalForm.scheduleType === 'cohort' && finalForm.startDate && finalForm.endDate && finalForm.cohortDays && finalForm.cohortDays.length > 0) {
-      const start = new Date(finalForm.startDate);
-      const end = new Date(finalForm.endDate);
-      const daysMap: Record<string, number> = { 'Sunday': 0, 'Monday': 1, 'Tuesday': 2, 'Wednesday': 3, 'Thursday': 4, 'Friday': 5, 'Saturday': 6 };
-      const selectedDays = finalForm.cohortDays.map(d => daysMap[d]);
-
+    const daysMap: Record<string, number> = { 'Sunday': 0, 'Monday': 1, 'Tuesday': 2, 'Wednesday': 3, 'Thursday': 4, 'Friday': 5, 'Saturday': 6 };
+    
+    const generateTimeSlots = (start: Date, end: Date, selectedDays: number[]) => {
       const timeSlots = [];
       let currentDate = new Date(start);
       while (currentDate <= end) {
@@ -146,35 +146,96 @@ const TeachingSchedulePricingTab: React.FC<TeachingSchedulePricingTabProps> = ({
         }
         currentDate.setDate(currentDate.getDate() + 1);
       }
-      finalForm.timeSlots = timeSlots as any;
-
-      const numSlots = timeSlots.length;
-      if (numSlots > 0 && finalForm.price) {
-         finalForm.ratePerClass = (parseFloat(finalForm.price) / numSlots).toFixed(2);
-      }
-    } else if (finalForm.scheduleType === 'single') {
-      finalForm.timeSlots = [];
-      finalForm.endDate = finalForm.startDate;
-    }
+      return timeSlots;
+    };
 
     if (editingIndex !== null) {
-      // Update existing
+      if (finalForm.scheduleType === 'cohort' && finalForm.startDate && finalForm.endDate && finalForm.cohortDays && finalForm.cohortDays.length > 0) {
+        const start = new Date(finalForm.startDate);
+        const end = new Date(finalForm.endDate);
+        const selectedDays = finalForm.cohortDays.map(d => daysMap[d]);
+        const timeSlots = generateTimeSlots(start, end, selectedDays);
+        finalForm.timeSlots = timeSlots as any;
+
+        const numSlots = timeSlots.length;
+        if (numSlots > 0 && finalForm.price) {
+           finalForm.ratePerClass = (parseFloat(finalForm.price) / numSlots).toFixed(2);
+        }
+      } else if (finalForm.scheduleType === 'single') {
+        finalForm.timeSlots = [];
+        finalForm.endDate = finalForm.startDate;
+      }
+      
       Object.entries(finalForm).forEach(([field, value]) => {
-        if (value !== undefined) {
+        if (value !== undefined && field !== 'scheduleType' && field !== 'cohortDays' && field !== 'generationMode') {
           onScheduleChange(editingIndex, field as keyof Schedule, value as any);
         }
       });
     } else {
-      // Add new
-      onAddSchedule(false);
-      const newIdx = schedules.length;
-      setTimeout(() => {
-        Object.entries(finalForm).forEach(([field, value]) => {
-          if (value !== undefined) {
-            onScheduleChange(newIdx, field as keyof Schedule, value as any);
+      if (finalForm.scheduleType === 'cohort' && finalForm.startDate && finalForm.endDate) {
+        const start = new Date(finalForm.startDate);
+        const end = new Date(finalForm.endDate);
+        const selectedDays = (finalForm.cohortDays && finalForm.cohortDays.length > 0) 
+            ? finalForm.cohortDays.map(d => daysMap[d])
+            : [0, 1, 2, 3, 4, 5, 6];
+            
+        let schedulesToAdd: any[] = [];
+        
+        if (finalForm.generationMode === 'weekly') {
+          let currentStart = new Date(start);
+          while (currentStart <= end) {
+            let currentEnd = new Date(currentStart);
+            currentEnd.setDate(currentEnd.getDate() + 6);
+            if (currentEnd > end) currentEnd = new Date(end);
+            
+            const weekTimeSlots = generateTimeSlots(currentStart, currentEnd, selectedDays);
+            
+            if (weekTimeSlots.length > 0) {
+              const numSlots = weekTimeSlots.length;
+              const rate = (finalForm.price && numSlots > 0) ? (parseFloat(finalForm.price) / numSlots).toFixed(2) : '';
+              
+              schedulesToAdd.push({
+                ...finalForm,
+                startDate: currentStart.toISOString().split('T')[0],
+                endDate: currentEnd.toISOString().split('T')[0],
+                timeSlots: weekTimeSlots as any,
+                ratePerClass: rate,
+              });
+            }
+            
+            currentStart.setDate(currentStart.getDate() + 7);
           }
+        } else {
+          const timeSlots = generateTimeSlots(start, end, selectedDays);
+          finalForm.timeSlots = timeSlots as any;
+          if (timeSlots.length > 0 && finalForm.price) {
+             finalForm.ratePerClass = (parseFloat(finalForm.price) / timeSlots.length).toFixed(2);
+          }
+          schedulesToAdd.push(finalForm);
+        }
+        
+        schedulesToAdd.forEach((scheduleObj, i) => {
+          onAddSchedule(false);
+          const newIdx = schedules.length + i;
+          setTimeout(() => {
+            Object.entries(scheduleObj).forEach(([field, value]) => {
+              if (value !== undefined && field !== 'scheduleType' && field !== 'cohortDays' && field !== 'generationMode') {
+                onScheduleChange(newIdx, field as keyof Schedule, value as any);
+              }
+            });
+          }, (i + 1) * 50);
         });
-      }, 50);
+      } else {
+        onAddSchedule(false);
+        const newIdx = schedules.length;
+        setTimeout(() => {
+          Object.entries(finalForm).forEach(([field, value]) => {
+            if (value !== undefined && field !== 'scheduleType' && field !== 'cohortDays' && field !== 'generationMode') {
+              onScheduleChange(newIdx, field as keyof Schedule, value as any);
+            }
+          });
+        }, 50);
+      }
     }
     closeModal();
   };
@@ -505,9 +566,27 @@ const TeachingSchedulePricingTab: React.FC<TeachingSchedulePricingTabProps> = ({
                   className={`flex-1 py-2 text-sm font-bold rounded-lg transition-colors ${modalForm.scheduleType === 'cohort' ? 'bg-white text-gray-900 shadow-sm' : 'text-gray-500 hover:text-gray-700'
                     }`}
                 >
-                  Multi-Date Cohort
+                  Multi-Date Range
                 </button>
               </div>
+
+              {modalForm.scheduleType === 'cohort' && editingIndex === null && (
+                <div className="bg-purple-50/50 p-4 rounded-xl border border-purple-100">
+                  <label className="block text-sm font-bold text-gray-800 mb-3">Generation Mode (How should we create these sessions?)</label>
+                  <div className="flex flex-col sm:flex-row gap-3">
+                    <label className={`flex-1 flex flex-col items-start p-3 rounded-lg border-2 cursor-pointer transition-all ${modalForm.generationMode === 'full' ? 'border-primary-500 bg-white shadow-sm' : 'border-transparent bg-gray-50 hover:bg-gray-100'}`}>
+                      <input type="radio" name="genMode" className="sr-only" checked={modalForm.generationMode === 'full'} onChange={() => setModalForm(prev => ({...prev, generationMode: 'full'}))} />
+                      <span className="font-bold text-gray-900 text-sm mb-1">Full Term</span>
+                      <span className="text-xs text-gray-500">Creates 1 large cohort for the entire date range</span>
+                    </label>
+                    <label className={`flex-1 flex flex-col items-start p-3 rounded-lg border-2 cursor-pointer transition-all ${modalForm.generationMode === 'weekly' ? 'border-primary-500 bg-white shadow-sm' : 'border-transparent bg-gray-50 hover:bg-gray-100'}`}>
+                      <input type="radio" name="genMode" className="sr-only" checked={modalForm.generationMode === 'weekly'} onChange={() => setModalForm(prev => ({...prev, generationMode: 'weekly'}))} />
+                      <span className="font-bold text-gray-900 text-sm mb-1">Weekly Cohorts</span>
+                      <span className="text-xs text-gray-500">Splits the range into 7-day cohort chunks</span>
+                    </label>
+                  </div>
+                </div>
+              )}
 
               <div className="grid grid-cols-2 gap-4">
                 <div className="col-span-2 sm:col-span-1">
@@ -517,7 +596,7 @@ const TeachingSchedulePricingTab: React.FC<TeachingSchedulePricingTabProps> = ({
                   <input
                     type="date"
                     value={modalForm.startDate || ''}
-                    onChange={(e) => setModalForm(prev => ({ ...prev, startDate: e.target.value, ...(modalForm.scheduleType === 'single' ? { endDate: e.target.value } : {}) }))}
+                    onChange={(e) => setModalForm(prev => ({ ...prev, startDate: e.target.value }))}
                     className="w-full px-3 py-2.5 border border-gray-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-purple-500 shadow-sm"
                   />
                 </div>

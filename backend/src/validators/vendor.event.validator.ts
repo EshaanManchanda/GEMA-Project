@@ -42,13 +42,7 @@ const dateScheduleRules = (isCreate: boolean) => [
     .isISO8601()
     .withMessage("Start date must be a valid ISO 8601 date")
     .custom((value) => {
-      if (isCreate) {
-        const today = new Date();
-        today.setHours(0, 0, 0, 0);
-        if (new Date(value) < today) {
-          throw new Error("Start date cannot be in the past");
-        }
-      }
+      // Allow past dates during creation
       return true;
     }),
 

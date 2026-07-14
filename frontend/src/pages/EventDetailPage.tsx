@@ -178,6 +178,7 @@ const EventDetailPage: React.FC = () => {
   const [selectedMemoryIndex, setSelectedMemoryIndex] = useState<number | null>(null);
   const [showAllEventGallery, setShowAllEventGallery] = useState(false);
   const [nearPageEnd, setNearPageEnd] = useState(false);
+  const [showCalendar, setShowCalendar] = useState(false);
   const { isAuthenticated } = useSelector((state: RootState) => state.auth);
   const { user: authUser } = useSelector((state: RootState) => state.auth);
   const hasValidUser = authUser && (authUser.email || authUser._id);
@@ -395,10 +396,27 @@ const EventDetailPage: React.FC = () => {
     }
   }, [event?.dateSchedule, bookingType, introSchedules, standardSchedules, isEducational]);
 
+  const isSingleDay = (s: any) => {
+    if (!s.startDate || !s.endDate) return true;
+    return new Date(s.startDate).toDateString() === new Date(s.endDate).toDateString();
+  };
+
+  const programSchedules = useMemo(() => {
+    return filteredSchedules.filter((s: any) => 
+      (s.timeSlots && s.timeSlots.length > 0) || isSingleDay(s)
+    );
+  }, [filteredSchedules]);
+
+  const singleSessionSchedules = useMemo(() => {
+    return filteredSchedules.filter((s: any) => 
+      (!s.timeSlots || s.timeSlots.length === 0) && !isSingleDay(s)
+    );
+  }, [filteredSchedules]);
+
   // Auto-select first session when booking type changes
   useEffect(() => {
     if (!event) return; // Wait for event to load
-    
+
     if (introSchedules.length === 0 && bookingType === 'intro') {
       setBookingType('program');
     } else if (introSchedules.length > 0 && standardSchedules.length === 0 && bookingType === 'program') {
@@ -870,7 +888,7 @@ const EventDetailPage: React.FC = () => {
   // Aggregate seat metrics across all schedules for "Class Insights"
   // If there are standard schedules, use those for the main event capacity metrics (ignoring unlimited intro/trial sessions)
   const capacitySchedules = standardSchedules.length > 0 ? standardSchedules : (event.dateSchedule || []);
-  
+
   const hasUnlimited = capacitySchedules.some((s: any) =>
     s.unlimitedSeats || s.isUnlimited || s.availableSeats >= 999999 || s.totalSeats >= 999999
   );
@@ -1335,35 +1353,102 @@ const EventDetailPage: React.FC = () => {
             {isEducational && event.dateSchedule && event.dateSchedule.length > 0 && (
               <div className="mt-8" id="booking-panel">
                 <h2 className="text-2xl font-bold text-gray-900 mb-6">Available Times</h2>
-                <ProgramScheduleList
-                  dateSchedules={filteredSchedules.length > 0 ? filteredSchedules : (event.dateSchedule || [])}
-                  onEnroll={(scheduleId) => {
-                    const matchingSchedule = (event.dateSchedule || []).find((s: any) => String(s._id) === scheduleId || String(s.id) === scheduleId);
-                    if (matchingSchedule) {
-                      const isUnlimitedSeats = matchingSchedule.unlimitedSeats === true ||
-                        matchingSchedule.availableSeats === 999999 ||
-                        matchingSchedule.availableSeats > 900000;
-                      const newSession = {
-                        ...matchingSchedule,
-                        id: matchingSchedule._id || matchingSchedule.id,
-                        scheduleId: matchingSchedule._id || matchingSchedule.id,
-                        date: new Date(matchingSchedule.startDate || matchingSchedule.date),
-                        displayDate: format(new Date(matchingSchedule.startDate || matchingSchedule.date), 'MMM d, yyyy'),
-                        isUnlimited: isUnlimitedSeats
-                      };
-                      setSelectedSession(newSession as any);
 
-                      // Set quantity to 1 implicitly since we removed the quantity selector for educational events
-                      setQuantity(1);
-                      setTimeout(() => {
-                        handleBookNow(newSession);
-                      }, 50);
-                    }
-                  }}
-                  currency={event.currency || 'AED'}
-                  timezone={event.timezone}
-                  hideEnrollButton={!!event.externalBookingLink}
-                />
+                {programSchedules.length > 0 && (
+                  <div className="mb-8">
+                    <ProgramScheduleList
+                      dateSchedules={programSchedules}
+                      onEnroll={(scheduleId) => {
+                        const matchingSchedule = programSchedules.find((s: any) => String(s._id) === scheduleId || String(s.id) === scheduleId);
+                        if (matchingSchedule) {
+                          const isUnlimitedSeats = matchingSchedule.unlimitedSeats === true ||
+                            matchingSchedule.availableSeats === 999999 ||
+                            matchingSchedule.availableSeats > 900000;
+                          const newSession = {
+                            ...matchingSchedule,
+                            id: matchingSchedule._id || matchingSchedule.id,
+                            scheduleId: matchingSchedule._id || matchingSchedule.id,
+                            date: new Date(matchingSchedule.startDate || matchingSchedule.date),
+                            displayDate: format(new Date(matchingSchedule.startDate || matchingSchedule.date), 'MMM d, yyyy'),
+                            isUnlimited: isUnlimitedSeats
+                          };
+                          setSelectedSession(newSession as any);
+
+                          setQuantity(1);
+                          setTimeout(() => {
+                            handleBookNow(newSession);
+                          }, 50);
+                        }
+                      }}
+                      currency={event.currency || 'AED'}
+                      timezone={event.timezone}
+                      hideEnrollButton={!!event.externalBookingLink}
+                    />
+                  </div>
+                )}
+
+                {singleSessionSchedules.length > 0 && (
+                  <div className={programSchedules.length > 0 ? "mt-4" : ""}>
+                    {!programSchedules.length && (
+                      <h3 className="text-xl font-bold text-gray-900 mb-4">
+                        Available times
+                      </h3>
+                    )}
+                    <div className="border-b border-gray-200 pb-6 flex flex-col md:flex-row gap-4">
+                      {/* Left Column: Title and Subtitle */}
+                      <div className="md:w-1/4">
+                        <h4 className="font-bold text-lg text-gray-900">Flexible single Day classes</h4>
+                        <p className="text-gray-600 text-sm">Pick any available day</p>
+                      </div>
+
+                      {/* Middle Column: Description and Calendar Toggle */}
+                      <div className="md:w-2/4">
+                        <p className="text-sm text-gray-700 mb-1">
+                          Select a specific date from the calendar to view available times and book.
+                        </p>
+                        <button
+                          onClick={() => setShowCalendar(!showCalendar)}
+                          className="text-primary-600 hover:text-primary-800 text-sm font-medium flex items-center transition-colors mt-2"
+                        >
+                          {showCalendar ? 'Hide' : 'View'} Calendar
+                          {showCalendar ? (
+                            <svg className="w-4 h-4 ml-1" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 15l7-7 7 7" /></svg>
+                          ) : (
+                            <svg className="w-4 h-4 ml-1" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" /></svg>
+                          )}
+                        </button>
+
+                        {showCalendar && (
+                          <div className="mt-4 pt-4 border-t border-gray-100">
+                            <SessionPicker
+                              dateSchedules={singleSessionSchedules}
+                              selectedSession={selectedSession}
+                              onSessionSelect={(session) => {
+                                setSelectedSession(session as any);
+                                if (session && !event.externalBookingLink) {
+                                  setQuantity(1);
+                                  setTimeout(() => {
+                                    handleBookNow(session);
+                                  }, 50);
+                                }
+                              }}
+                              currency={event.currency || 'AED'}
+                              timezone={event.timezone}
+                              mode="cards"
+                            />
+                          </div>
+                        )}
+                      </div>
+
+                      {/* Right Column: Empty space to match ProgramScheduleList alignment */}
+                      <div className="md:w-1/4 flex flex-col md:items-end justify-start">
+                        <span className="text-xs text-primary-600 font-medium bg-primary-50 px-3 py-1 rounded-full w-max md:w-auto md:ml-auto">
+                          Select date to enroll
+                        </span>
+                      </div>
+                    </div>
+                  </div>
+                )}
               </div>
             )}
 
@@ -1598,104 +1683,102 @@ const EventDetailPage: React.FC = () => {
                     ) : (
                       <>
                         {hasProgramBlocks && (
-                      <div className="space-y-4">
-                        <label className="block text-gray-900 text-sm font-bold uppercase tracking-wider mb-2">
-                          Select Your Enrollment Type
-                        </label>
-                        <div className="grid grid-cols-1 gap-4">
-                          {introSchedules.length > 0 && (
-                            <label
-                              className={`rounded-2xl border-2 p-5 transition-all flex flex-col relative overflow-hidden group ${
-                                bookingType === 'intro' ? 'border-primary-600 shadow-[0_0_20px_rgba(37,99,235,0.15)] bg-gradient-to-br from-white to-primary-50/50 cursor-pointer' : 'border-gray-200 hover:border-primary-300 bg-white hover:bg-gray-50 cursor-pointer'
-                              }`}
-                              onClick={() => setBookingType('intro')}
-                            >
-                              <div className="flex items-start justify-between relative z-10">
-                                <div className="flex items-start space-x-4">
-                                  <div className="mt-1 flex-shrink-0">
-                                    <div className={`w-6 h-6 rounded-full border-2 flex items-center justify-center transition-colors ${bookingType === 'intro' ? 'border-primary-600' : 'border-gray-300 group-hover:border-primary-400'}`}>
-                                      {bookingType === 'intro' && <div className="w-3 h-3 rounded-full bg-primary-600 shadow-sm"></div>}
-                                    </div>
-                                  </div>
-                                  <div>
-                                    <div className="flex items-center space-x-2">
-                                      <span className="text-lg font-bold text-gray-900">
-                                        {standardSchedules.length > 0 ? 'Trail Class' : 'Free Workshop'}
-                                      </span>
-                                      {standardSchedules.length > 0 && (
-                                        <span className="px-2.5 py-0.5 rounded-full bg-blue-100 text-blue-700 text-xs font-bold uppercase tracking-wide">First Time</span>
-                                      )}
-                                    </div>
-                                    <p className="text-sm text-gray-500 mt-1.5 leading-relaxed">
-                                      {standardSchedules.length > 0 ? 'Register for this introductory session to get started.' : 'Reserve your spot for this free introductory session.'}
-                                    </p>
-                                  </div>
-                                </div>
-                                <div className="text-right flex-shrink-0 ml-4">
-                                  <span className="font-black text-2xl text-green-500 tracking-tight">Free</span>
-                                </div>
-                              </div>
+                          <div className="space-y-4">
+                            <label className="block text-gray-900 text-sm font-bold uppercase tracking-wider mb-2">
+                              Select Your Enrollment Type
                             </label>
-                          )}
-
-                          {standardSchedules.length > 0 && (
-                            <label
-                              className={`rounded-2xl border-2 p-5 transition-all flex flex-col relative overflow-hidden group ${
-                                bookingType === 'program' ? 'border-amber-500 shadow-[0_0_20px_rgba(245,158,11,0.2)] bg-gradient-to-br from-white to-amber-50/50 cursor-pointer' : 'border-gray-200 hover:border-amber-300 bg-white hover:bg-gray-50 cursor-pointer'
-                              }`}
-                              onClick={() => setBookingType('program')}
-                            >
-                              {bookingType === 'program' && (
-                                <div className="absolute top-0 right-0 w-32 h-32 bg-amber-500/10 rounded-full blur-3xl -mr-10 -mt-10 pointer-events-none"></div>
+                            <div className="grid grid-cols-1 gap-4">
+                              {introSchedules.length > 0 && (
+                                <label
+                                  className={`rounded-2xl border-2 p-5 transition-all flex flex-col relative overflow-hidden group ${bookingType === 'intro' ? 'border-primary-600 shadow-[0_0_20px_rgba(37,99,235,0.15)] bg-gradient-to-br from-white to-primary-50/50 cursor-pointer' : 'border-gray-200 hover:border-primary-300 bg-white hover:bg-gray-50 cursor-pointer'
+                                    }`}
+                                  onClick={() => setBookingType('intro')}
+                                >
+                                  <div className="flex items-start justify-between relative z-10">
+                                    <div className="flex items-start space-x-4">
+                                      <div className="mt-1 flex-shrink-0">
+                                        <div className={`w-6 h-6 rounded-full border-2 flex items-center justify-center transition-colors ${bookingType === 'intro' ? 'border-primary-600' : 'border-gray-300 group-hover:border-primary-400'}`}>
+                                          {bookingType === 'intro' && <div className="w-3 h-3 rounded-full bg-primary-600 shadow-sm"></div>}
+                                        </div>
+                                      </div>
+                                      <div>
+                                        <div className="flex items-center space-x-2">
+                                          <span className="text-lg font-bold text-gray-900">
+                                            {standardSchedules.length > 0 ? 'Trial Class' : 'Free Workshop'}
+                                          </span>
+                                          {standardSchedules.length > 0 && (
+                                            <span className="px-2.5 py-0.5 rounded-full bg-blue-100 text-blue-700 text-xs font-bold uppercase tracking-wide">First Time</span>
+                                          )}
+                                        </div>
+                                        <p className="text-sm text-gray-500 mt-1.5 leading-relaxed">
+                                          {standardSchedules.length > 0 ? 'Register for this introductory session to get started.' : 'Reserve your spot for this free introductory session.'}
+                                        </p>
+                                      </div>
+                                    </div>
+                                    <div className="text-right flex-shrink-0 ml-4">
+                                      <span className="font-black text-2xl text-green-500 tracking-tight">Free</span>
+                                    </div>
+                                  </div>
+                                </label>
                               )}
-                              <div className="absolute top-0 right-0 bg-amber-500 text-white text-[10px] font-black uppercase tracking-widest px-4 py-1 rounded-bl-xl shadow-sm z-20">Recommended</div>
-                              <div className="flex items-start justify-between relative z-10 pt-2">
-                                <div className="flex items-start space-x-4">
-                                  <div className="mt-1 flex-shrink-0">
-                                    <div className={`w-6 h-6 rounded-full border-2 flex items-center justify-center transition-colors ${bookingType === 'program' ? 'border-amber-500' : 'border-gray-300 group-hover:border-amber-400'}`}>
-                                      {bookingType === 'program' && <div className="w-3 h-3 rounded-full bg-amber-500 shadow-sm"></div>}
-                                    </div>
-                                  </div>
-                                  <div>
-                                    <span className="text-xl font-bold text-gray-900 block leading-none">Full Program</span>
-                                    <span className="text-amber-600 text-sm font-semibold mt-1.5 block flex items-center">
-                                      <svg className="w-4 h-4 mr-1" fill="currentColor" viewBox="0 0 20 20"><path d="M9.049 2.927c.3-.921 1.603-.921 1.902 0l1.07 3.292a1 1 0 00.95.69h3.462c.969 0 1.371 1.24.588 1.81l-2.8 2.034a1 1 0 00-.364 1.118l1.07 3.292c.3.921-.755 1.688-1.54 1.118l-2.8-2.034a1 1 0 00-1.175 0l-2.8 2.034c-.784.57-1.838-.197-1.539-1.118l1.07-3.292a1 1 0 00-.364-1.118L2.98 8.72c-.783-.57-.38-1.81.588-1.81h3.461a1 1 0 00.951-.69l1.07-3.292z"></path></svg>
-                                      {paidClassesCount} Premium Classes
-                                    </span>
-                                    <p className="text-sm text-gray-500 mt-2 leading-relaxed max-w-[200px]">
-                                      Complete personalized premium sessions.
-                                    </p>
-                                  </div>
-                                </div>
-                                <div className="text-right flex-shrink-0 ml-2">
-                                  <div className="flex flex-col items-end">
-                                    <span className="text-xs text-gray-400 font-medium uppercase tracking-wider mb-0.5">Total</span>
-                                    <div className="flex items-baseline space-x-1">
-                                      <span className="text-sm font-semibold text-gray-500">{event.currency || 'AED'}</span>
-                                      <span className="font-black text-3xl text-gray-900 tracking-tight">
-                                        {parseFloat(totalProgramPrice.toFixed(2))}
-                                      </span>
-                                    </div>
-                                    <span className="text-xs text-amber-600 font-semibold mt-1 bg-amber-50 px-2 py-0.5 rounded">
-                                      Only {event.currency || 'AED'} {pricePerClass.toFixed(2)} / class
-                                    </span>
-                                  </div>
-                                </div>
-                              </div>
-                            </label>
-                          )}
-                        </div>
-                      </div>
-                    )}
 
-                    <button
-                      onClick={() => {
-                        document.getElementById('booking-panel')?.scrollIntoView({ behavior: 'smooth', block: 'center' });
-                      }}
-                      className="w-full py-3 rounded-full font-bold text-base bg-[#4000D3] hover:bg-[#2b008e] text-white transition-colors shadow-md mt-4"
-                    >
-                      See All Available Times
-                    </button>
+                              {standardSchedules.length > 0 && (
+                                <label
+                                  className={`rounded-2xl border-2 p-5 transition-all flex flex-col relative overflow-hidden group ${bookingType === 'program' ? 'border-amber-500 shadow-[0_0_20px_rgba(245,158,11,0.2)] bg-gradient-to-br from-white to-amber-50/50 cursor-pointer' : 'border-gray-200 hover:border-amber-300 bg-white hover:bg-gray-50 cursor-pointer'
+                                    }`}
+                                  onClick={() => setBookingType('program')}
+                                >
+                                  {bookingType === 'program' && (
+                                    <div className="absolute top-0 right-0 w-32 h-32 bg-amber-500/10 rounded-full blur-3xl -mr-10 -mt-10 pointer-events-none"></div>
+                                  )}
+                                  <div className="absolute top-0 right-0 bg-amber-500 text-white text-[10px] font-black uppercase tracking-widest px-4 py-1 rounded-bl-xl shadow-sm z-20">Recommended</div>
+                                  <div className="flex items-start justify-between relative z-10 pt-2">
+                                    <div className="flex items-start space-x-4">
+                                      <div className="mt-1 flex-shrink-0">
+                                        <div className={`w-6 h-6 rounded-full border-2 flex items-center justify-center transition-colors ${bookingType === 'program' ? 'border-amber-500' : 'border-gray-300 group-hover:border-amber-400'}`}>
+                                          {bookingType === 'program' && <div className="w-3 h-3 rounded-full bg-amber-500 shadow-sm"></div>}
+                                        </div>
+                                      </div>
+                                      <div>
+                                        <span className="text-xl font-bold text-gray-900 block leading-none">Full Program</span>
+                                        <span className="text-amber-600 text-sm font-semibold mt-1.5 block flex items-center">
+                                          <svg className="w-4 h-4 mr-1" fill="currentColor" viewBox="0 0 20 20"><path d="M9.049 2.927c.3-.921 1.603-.921 1.902 0l1.07 3.292a1 1 0 00.95.69h3.462c.969 0 1.371 1.24.588 1.81l-2.8 2.034a1 1 0 00-.364 1.118l1.07 3.292c.3.921-.755 1.688-1.54 1.118l-2.8-2.034a1 1 0 00-1.175 0l-2.8 2.034c-.784.57-1.838-.197-1.539-1.118l1.07-3.292a1 1 0 00-.364-1.118L2.98 8.72c-.783-.57-.38-1.81.588-1.81h3.461a1 1 0 00.951-.69l1.07-3.292z"></path></svg>
+                                          {paidClassesCount} Premium Classes
+                                        </span>
+                                        <p className="text-sm text-gray-500 mt-2 leading-relaxed max-w-[200px]">
+                                          Complete personalized premium sessions.
+                                        </p>
+                                      </div>
+                                    </div>
+                                    <div className="text-right flex-shrink-0 ml-2">
+                                      <div className="flex flex-col items-end">
+                                        <span className="text-xs text-gray-400 font-medium uppercase tracking-wider mb-0.5">Total</span>
+                                        <div className="flex items-baseline space-x-1">
+                                          <span className="text-sm font-semibold text-gray-500">{event.currency || 'AED'}</span>
+                                          <span className="font-black text-3xl text-gray-900 tracking-tight">
+                                            {parseFloat(totalProgramPrice.toFixed(2))}
+                                          </span>
+                                        </div>
+                                        <span className="text-xs text-amber-600 font-semibold mt-1 bg-amber-50 px-2 py-0.5 rounded">
+                                          Only {event.currency || 'AED'} {pricePerClass.toFixed(2)} / class
+                                        </span>
+                                      </div>
+                                    </div>
+                                  </div>
+                                </label>
+                              )}
+                            </div>
+                          </div>
+                        )}
+
+                        <button
+                          onClick={() => {
+                            document.getElementById('booking-panel')?.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                          }}
+                          className="w-full py-3 rounded-full font-bold text-base bg-[#4000D3] hover:bg-[#2b008e] text-white transition-colors shadow-md mt-4"
+                        >
+                          See All Available Time slots
+                        </button>
                       </>
                     )}
                   </CardContent>

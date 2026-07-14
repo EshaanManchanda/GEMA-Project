@@ -600,6 +600,11 @@ const eventSchema = new Schema<IEvent>(
           required: [true, "Schedule price is required"],
           min: [0, "Price cannot be negative"],
         },
+        billingCycle: {
+          type: String,
+          enum: ["total", "daily", "weekly", "monthly"],
+          default: "total",
+        },
         ratePerClass: {
           type: Number,
           min: [0, "Rate per class cannot be negative"],
