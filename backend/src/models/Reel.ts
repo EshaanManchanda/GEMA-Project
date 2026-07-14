@@ -219,6 +219,11 @@ const reelSchema = new Schema<IReel>(
 // Compound index for efficient querying
 reelSchema.index({ visibility: 1, displayOrder: 1, createdAt: -1 });
 
+// Keyset-cursor index for the public infinite feed — must mirror the exact
+// sort used by getPublicReelsCursor (visibility filter, displayOrder asc,
+// createdAt desc, _id desc tiebreaker) so that query hits an IXSCAN.
+reelSchema.index({ visibility: 1, displayOrder: 1, createdAt: -1, _id: -1 });
+
 // Index for featured reels
 reelSchema.index({ isFeatured: 1 });
 

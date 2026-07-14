@@ -110,6 +110,7 @@ const AdminDashboardPage = React.lazy(() => import(/* webpackChunkName: "admin" 
 const AdminUsersPage = React.lazy(() => import(/* webpackChunkName: "admin" */ './pages/admin/AdminUsersPage'));
 const AdminUserEditPage = React.lazy(() => import(/* webpackChunkName: "admin" */ './pages/admin/AdminUserEditPage'));
 const AdminVendorsPage = React.lazy(() => import(/* webpackChunkName: "admin" */ './pages/admin/AdminVendorsPage'));
+const AdminServicePackagesPage = React.lazy(() => import(/* webpackChunkName: "admin" */ './pages/admin/AdminServicePackagesPage'));
 const AdminTeachersPage = React.lazy(() => import(/* webpackChunkName: "admin" */ './pages/admin/AdminTeachersPage'));
 const AdminOrganizationsPage = React.lazy(() => import(/* webpackChunkName: "admin" */ './pages/admin/AdminOrganizationsPage'));
 
@@ -1035,6 +1036,15 @@ function AppContent() {
             <AdminRoute>
               <Suspense fallback={<GenericPageSkeleton />}>
                 <AdminVendorsPage />
+              </Suspense>
+            </AdminRoute>
+          } />
+
+          {/* Vendor Service Packages (offline-sold marketing bundles) */}
+          <Route path="service-packages" element={
+            <AdminRoute>
+              <Suspense fallback={<GenericPageSkeleton />}>
+                <AdminServicePackagesPage />
               </Suspense>
             </AdminRoute>
           } />

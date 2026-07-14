@@ -38,7 +38,7 @@ export interface SearchEvent {
   description: string;
   category: string;
   type: 'Event' | 'Course' | 'Venue';
-  venueType: 'Indoor' | 'Outdoor';
+  venueType: 'Indoor' | 'Outdoor' | 'Online' | 'Offline';
   images: string[];
   dateSchedule: DateSchedule[];
   price: number;

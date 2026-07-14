@@ -61,6 +61,21 @@ const vendorAPI = {
     }
   },
 
+  // Vendor's own service packages (offline-sold marketing bundles) — progress/expiry
+  getServicePackages: async (includePast = false) => {
+    try {
+      const response = await ApiService.get('/vendors/service-packages', {
+        params: includePast ? { includePast: '1' } : undefined,
+      });
+      logApiResponse('GET /vendors/service-packages', response);
+      const data = extractApiData(response);
+      return data || { packages: [], blogs: [] };
+    } catch (error) {
+      logApiResponse('GET /vendors/service-packages', null, error);
+      throw error;
+    }
+  },
+
   getVendorBookings: async (params?: any) => {
     try {
       const response = await ApiService.get('/vendors/bookings', { params });
@@ -590,37 +605,6 @@ const vendorAPI = {
     }
   },
 
-  // Save Stripe API keys
-  saveStripeApiKeys: async (publishableKey: string, secretKey: string, testMode: boolean) => {
-    try {
-      const response = await ApiService.put('/vendors/payment-settings/stripe/keys', {
-        publishableKey,
-        secretKey,
-        testMode
-      });
-      logApiResponse('PUT /vendors/payment-settings/stripe/keys', response);
-      return extractApiData(response);
-    } catch (error) {
-      logApiResponse('PUT /vendors/payment-settings/stripe/keys', null, error);
-      throw error;
-    }
-  },
-
-  // Validate Stripe API keys
-  validateStripeApiKeys: async (publishableKey: string, secretKey: string) => {
-    try {
-      const response = await ApiService.put('/vendors/payment-settings/stripe/keys', {
-        publishableKey,
-        secretKey,
-        testMode: publishableKey.startsWith('pk_test_'),
-      });
-      logApiResponse('PUT /vendors/payment-settings/stripe/keys (validate)', response);
-      return extractApiData(response);
-    } catch (error) {
-      logApiResponse('PUT /vendors/payment-settings/stripe/keys (validate)', null, error);
-      throw error;
-    }
-  },
 };
 
 export default vendorAPI;

@@ -25,6 +25,52 @@ export interface PaginatedResult<T> {
   };
 }
 
+export interface ReelCursorPayload {
+  displayOrder: number;
+  createdAt: string; // ISO string — keep encode/decode symmetric
+  _id: string;
+}
+
+export interface CursorPaginatedResult<T> {
+  reels: T[];
+  nextCursor: string | null;
+  hasMore: boolean;
+}
+
+/**
+ * Encode a reel's sort-key fields into an opaque cursor string.
+ * Must stay in exact sort parity with the query in getPublicReelsCursor
+ * (displayOrder asc, createdAt desc, _id desc) — any mismatch here
+ * silently produces duplicate or skipped reels in the feed.
+ */
+function encodeReelCursor(payload: ReelCursorPayload): string {
+  return Buffer.from(JSON.stringify(payload)).toString("base64url");
+}
+
+/**
+ * Decode and validate a client-supplied cursor. Never throws on malformed
+ * input — callers should treat a null return as "bad cursor" and respond 400.
+ */
+function decodeReelCursor(cursor: string): ReelCursorPayload | null {
+  try {
+    const decoded = JSON.parse(
+      Buffer.from(cursor, "base64url").toString("utf-8"),
+    );
+    if (
+      typeof decoded?.displayOrder !== "number" ||
+      typeof decoded?.createdAt !== "string" ||
+      typeof decoded?._id !== "string" ||
+      !mongoose.Types.ObjectId.isValid(decoded._id) ||
+      Number.isNaN(new Date(decoded.createdAt).getTime())
+    ) {
+      return null;
+    }
+    return decoded as ReelCursorPayload;
+  } catch {
+    return null;
+  }
+}
+
 export class ReelService {
   /**
    * Validate that a MediaAsset exists
@@ -330,6 +376,72 @@ export class ReelService {
         total,
         pages: Math.ceil(total / limit),
       },
+    };
+  }
+
+  /**
+   * Get public reels using keyset (cursor) pagination instead of .skip().
+   * Offset pagination shifts as new reels publish mid-scroll, causing the
+   * infinite feed to duplicate or skip reels — a cursor built from the same
+   * sort key the query uses doesn't have that problem.
+   *
+   * Sort is { displayOrder: 1, createdAt: -1, _id: -1 } — this MUST match
+   * encodeReelCursor/decodeReelCursor's field set exactly.
+   *
+   * Returns `{ reels: [], nextCursor: null, hasMore: false }` (not a thrown
+   * error) when `cursor` is present but malformed — callers decide whether
+   * that should surface as a 400.
+   */
+  async getPublicReelsCursor(options: {
+    cursor?: string;
+    limit?: number;
+  }): Promise<CursorPaginatedResult<IReel> & { invalidCursor?: boolean }> {
+    const limit = Math.min(50, Math.max(1, options.limit || 10));
+    const query: any = { visibility: "public" };
+
+    if (options.cursor) {
+      const decoded = decodeReelCursor(options.cursor);
+      if (!decoded) {
+        return { reels: [], nextCursor: null, hasMore: false, invalidCursor: true };
+      }
+
+      const createdAt = new Date(decoded.createdAt);
+      query.$or = [
+        { displayOrder: { $gt: decoded.displayOrder } },
+        { displayOrder: decoded.displayOrder, createdAt: { $lt: createdAt } },
+        {
+          displayOrder: decoded.displayOrder,
+          createdAt,
+          _id: { $lt: new mongoose.Types.ObjectId(decoded._id) },
+        },
+      ];
+    }
+
+    const reels = await Reel.find(query)
+      .sort({ displayOrder: 1, createdAt: -1, _id: -1 })
+      .limit(limit + 1) // fetch one extra to know if there's a next page
+      .populate("videoAsset", "url thumbnailUrl duration mimeType")
+      .populate("thumbnailAsset", "url thumbnailUrl")
+      .populate("linkedEvent", "title slug pricing location dateSchedule")
+      .lean();
+
+    const hasMore = reels.length > limit;
+    const page = hasMore ? reels.slice(0, limit) : reels;
+
+    const last = page[page.length - 1] as any;
+    const nextCursor =
+      hasMore && last
+        ? encodeReelCursor({
+            displayOrder: last.displayOrder,
+            createdAt: new Date(last.createdAt).toISOString(),
+            _id: last._id.toString(),
+          })
+        : null;
+
+    return {
+      reels: page as unknown as IReel[],
+      nextCursor,
+      hasMore,
     };
   }
 

@@ -269,7 +269,7 @@ export const getOrder = async (
       userId,
     }).populate(
       "items.eventId",
-      "title category type images location vendorId venueType meetingLink",
+      "title category type images location vendorId venueType meetingLink dateSchedule timezone",
     );
 
     if (!order) {

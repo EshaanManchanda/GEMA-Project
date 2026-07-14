@@ -22,9 +22,18 @@ import {
   deleteCertificateType,
   getSimilarEvents,
   getOrganizerEvents,
+  getTrendingNearYou,
+  getPeopleAlsoBooked,
+  getRecommendedForYou,
+  parseAiEventSearch,
 } from "../controllers/event.controller";
+import {
+  trackAffiliateClick,
+  getEventAnalytics,
+} from "../controllers/event.affiliate.controller";
 import { authenticate, authorize } from "../middleware/auth";
 import { validateEventSEO } from "../validators/event.validator";
+import { createCustomLimiter } from "../middleware/rateLimiter";
 
 const router = Router();
 
@@ -32,9 +41,23 @@ const router = Router();
 router.get("/", getEvents);
 router.get("/categories", getEventCategories);
 router.get("/cities", getUniqueCities); // Must be before /:slug route
+router.get("/trending-near-you", getTrendingNearYou); // Must be before /:slug route
+router.get("/recommended-for-you", authenticate, getRecommendedForYou); // Must be before /:slug route
+router.post(
+  "/ai-search",
+  createCustomLimiter({ windowMs: 60 * 1000, max: 20, keyPrefix: "ai-search" }),
+  parseAiEventSearch,
+);
 // Discovery routes — two-segment paths, no conflict with /:slug
 router.get("/:id/similar", getSimilarEvents);
 router.get("/:id/organizer-events", getOrganizerEvents);
+router.get("/:id/also-booked", getPeopleAlsoBooked);
+// External booking click tracking + per-event analytics — must stay public and
+// ahead of the authenticate gate below, otherwise anonymous visitor clicks 401
+// silently and never persist (this router owns "/events" ahead of
+// event.affiliate.routes, which shadows those handlers entirely).
+router.post("/:id/track-click", trackAffiliateClick);
+router.get("/:id/analytics", getEventAnalytics);
 router.get(
   "/:slug",
   [param("slug").notEmpty().withMessage("Event slug is required")],

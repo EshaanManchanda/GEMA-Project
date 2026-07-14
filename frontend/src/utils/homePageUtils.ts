@@ -38,6 +38,7 @@ export const mapToUIEvent = (event: ApiEvent): UIEvent => {
         })),
         date: fallbackDate,
         location: event.location,
+        venueType: event.venueType,
         vendorId: businessName ? { businessName } : undefined,
         ageGroup: event.ageRange ? `${event.ageRange[0]}-${event.ageRange[1]}` : undefined,
         rating: 0,

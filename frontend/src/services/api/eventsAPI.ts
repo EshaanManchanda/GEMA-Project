@@ -208,6 +208,40 @@ const eventsAPI = {
     }
   },
 
+  getTrendingNearYou: async (city?: string, excludeId?: string, limit: number = 8) => {
+    try {
+      const response = await ApiService.get('/events/trending-near-you', {
+        params: { city, excludeId, limit },
+      });
+      return extractEventsData(response);
+    } catch (error) {
+      throw error;
+    }
+  },
+
+  getPeopleAlsoBooked: async (eventId: string, limit: number = 8) => {
+    try {
+      const response = await ApiService.get(`/events/${eventId}/also-booked`, { params: { limit } });
+      return extractEventsData(response);
+    } catch (error) {
+      throw error;
+    }
+  },
+
+  aiSearch: async (query: string) => {
+    const response = await ApiService.post('/events/ai-search', { query });
+    return extractApiData(response) as { filters: Record<string, any> };
+  },
+
+  getRecommendedForYou: async (limit: number = 8) => {
+    try {
+      const response = await ApiService.get('/events/recommended-for-you', { params: { limit } });
+      return extractEventsData(response);
+    } catch (error) {
+      throw error;
+    }
+  },
+
   updateEventStatus: async (id: string, status: string) => {
     try {
       const response = await ApiService.patch(`/events/${id}`, { status });

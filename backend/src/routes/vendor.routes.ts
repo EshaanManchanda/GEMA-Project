@@ -37,6 +37,9 @@ import {
   deleteVendorDocument,
   getVendorDocuments,
   exportEventParticipants,
+  getVendorServicePackages,
+  initializeStripeConnectOnboarding,
+  getStripeConnectStatus,
 } from "../controllers/vendor.controller";
 import {
   getVendorEventById,
@@ -105,6 +108,14 @@ router.use(authorize([UserRole.VENDOR]));
  * @access  Vendor only
  */
 router.get("/stats", getVendorDashboardStats);
+
+/**
+ * @route   GET /api/vendors/service-packages
+ * @desc    Get the authenticated vendor's own service packages (progress/expiry)
+ * @access  Vendor only
+ * @query   includePast=1 to also include completed/expired/cancelled packages
+ */
+router.get("/service-packages", getVendorServicePackages);
 
 /**
  * @route   GET /api/vendors/events
@@ -388,6 +399,20 @@ router.put(
   validate,
   updateVendorBankDetails,
 );
+
+/**
+ * @route   POST /api/vendors/stripe-connect/onboard
+ * @desc    Initialize Stripe Connect onboarding, returns hosted onboarding link
+ * @access  Vendor only
+ */
+router.post("/stripe-connect/onboard", initializeStripeConnectOnboarding);
+
+/**
+ * @route   GET /api/vendors/stripe-connect/status
+ * @desc    Get Stripe Connect account status
+ * @access  Vendor only
+ */
+router.get("/stripe-connect/status", getStripeConnectStatus);
 
 /**
  * @route   GET /api/vendors/documents

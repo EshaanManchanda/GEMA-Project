@@ -3,6 +3,8 @@ import { useLocation, useNavigate, Link, useSearchParams } from 'react-router-do
 import { format } from 'date-fns';
 import SEO from '../components/common/SEO';
 import bookingAPI from '../services/api/bookingAPI';
+import AddToCalendar from '../components/common/AddToCalendar';
+import { combineDateAndTime } from '../utils/calendarLinks';
 
 interface Event {
   id: number;
@@ -19,6 +21,9 @@ interface Event {
     name: string;
     logo: string;
   };
+  /** HH:mm — resolved from the booked schedule when available, for Add to Calendar precision. */
+  startTime?: string;
+  endTime?: string;
 }
 
 interface BookingFormData {
@@ -86,6 +91,12 @@ const PaymentSuccessPage: React.FC = () => {
           setNotFound(true);
           return;
         }
+        // Resolve the exact booked schedule (if the event's dateSchedule was populated)
+        // so Add to Calendar can build a precise, timed event instead of an all-day block.
+        const bookedSchedule = (order.items?.[0]?.eventId?.dateSchedule || []).find(
+          (s: any) => String(s?._id) === String(order.items?.[0]?.scheduleId),
+        );
+
         // Map API response to LocationState shape
         const mapped: LocationState = {
           orderId: order._id || order.id || orderId,
@@ -104,6 +115,8 @@ const PaymentSuccessPage: React.FC = () => {
               name: order.items?.[0]?.eventId?.vendorId?.businessName || '',
               logo: '',
             },
+            startTime: bookedSchedule?.startTime,
+            endTime: bookedSchedule?.endTime,
           },
           booking: {
             quantity: order.items?.[0]?.quantity || 1,
@@ -314,6 +327,23 @@ const PaymentSuccessPage: React.FC = () => {
                   </div>
                 )}
               </div>
+
+              {state.event.date && (
+                <AddToCalendar
+                  className="mt-4"
+                  filenameSlug={String(state.event.id) || 'booking'}
+                  event={{
+                    title: state.event.title,
+                    description: state.event.description || undefined,
+                    location: state.event.location || undefined,
+                    start: combineDateAndTime(new Date(state.event.date), state.event.startTime),
+                    end: state.event.endTime
+                      ? combineDateAndTime(new Date(state.event.date), state.event.endTime)
+                      : undefined,
+                    allDay: !state.event.startTime,
+                  }}
+                />
+              )}
             </div>
           </div>
 

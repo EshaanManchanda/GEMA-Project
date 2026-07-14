@@ -525,7 +525,7 @@ const VendorEventFormPage: React.FC = () => {
         },
         ...(formData.meetingLink && { meetingLink: formData.meetingLink }),
         price: minPrice,
-        currency: "AED",
+        currency: formData.currency || "AED",
         ...(schedules.length > 0 && parseInt(schedules[0].availableSeats) > 0 ? { capacity: parseInt(schedules[0].availableSeats) } : {}),
         requirePhoneVerification: formData.requirePhoneVerification,
         tags: formData.tags,
@@ -569,10 +569,11 @@ const VendorEventFormPage: React.FC = () => {
       } else {
         await createMutation.mutateAsync(payload);
       }
-      
-      window.location.href = '/vendor/events';
+
+      navigate('/vendor/events');
     } catch (error: any) {
       console.error('Error saving event:', error);
+      toast.error(error?.response?.data?.message || 'Failed to save event');
     }
   };
 

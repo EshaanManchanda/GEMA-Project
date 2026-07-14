@@ -1,6 +1,8 @@
 import React, { useEffect, useState } from 'react';
-import EventCard from './EventCard';
+import { useNavigate } from 'react-router-dom';
+import HorizontalEventCarousel from './HorizontalEventCarousel';
 import eventsAPI from '@/services/api/eventsAPI';
+import analyticsEventsAPI, { AnalyticsEventSection } from '@/services/api/analyticsEventsAPI';
 
 interface SimilarEventsProps {
   eventId: string;
@@ -8,32 +10,12 @@ interface SimilarEventsProps {
   limit?: number;
 }
 
-const HorizontalStrip: React.FC<{
-  title: string;
-  events: any[];
-  onCardClick?: (id: string) => void;
-}> = ({ title, events }) => {
-  if (!events.length) return null;
-
-  return (
-    <section className="py-8 px-4 md:px-6 border-t border-gray-100">
-      <h2 className="text-xl font-bold text-gray-900 mb-4">{title}</h2>
-      <div className="flex gap-4 overflow-x-auto pb-2 snap-x snap-mandatory scrollbar-hide">
-        {events.map((ev: any) => (
-          <div key={ev._id || ev.id} className="snap-start flex-shrink-0 w-72">
-            <EventCard {...ev} variant="compact" />
-          </div>
-        ))}
-      </div>
-    </section>
-  );
-};
-
 const SimilarEvents: React.FC<SimilarEventsProps> = ({
   eventId,
   organizerName,
   limit = 5,
 }) => {
+  const navigate = useNavigate();
   const [similar, setSimilar] = useState<any[]>([]);
   const [organizer, setOrganizer] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
@@ -65,13 +47,29 @@ const SimilarEvents: React.FC<SimilarEventsProps> = ({
     );
   }
 
+  const handleClick = (section: AnalyticsEventSection) => (ev: any, position: number) => {
+    const targetId = ev._id || ev.id;
+    analyticsEventsAPI.trackEvent('similarEventClicked', {
+      eventId: targetId,
+      sourceEventId: eventId,
+      section,
+      position,
+    });
+    navigate(`/events/${ev.slug || targetId}`);
+  };
+
   return (
     <>
-      <HorizontalStrip title="Similar Events" events={similar} />
+      <HorizontalEventCarousel
+        title="Similar Events"
+        events={similar}
+        onCardClick={handleClick('similar')}
+      />
       {organizer.length > 0 && (
-        <HorizontalStrip
+        <HorizontalEventCarousel
           title={organizerName ? `More from ${organizerName}` : 'More from this organizer'}
           events={organizer}
+          onCardClick={handleClick('organizer')}
         />
       )}
     </>

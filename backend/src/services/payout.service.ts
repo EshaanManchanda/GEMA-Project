@@ -915,8 +915,13 @@ class PayoutService {
     // Group by vendorId string
     const byVendor = new Map<string, typeof eligible>();
     for (const tx of eligible) {
-      const vid =
-        (tx.vendorId as any)?._id?.toString() || tx.vendorId.toString();
+      if (!tx.vendorId) {
+        logger.warn(
+          `Skipping payout-eligible transaction ${tx._id.toString()}: vendorId is null (orphaned reference)`,
+        );
+        continue;
+      }
+      const vid = (tx.vendorId as any)?._id?.toString() || tx.vendorId.toString();
       if (!byVendor.has(vid)) byVendor.set(vid, []);
       byVendor.get(vid)!.push(tx);
     }

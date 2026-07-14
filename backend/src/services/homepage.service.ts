@@ -102,7 +102,7 @@ class HomepageService {
         status: "published",
       })
         .select(
-          "title slug description images imageAssets price location dateSchedule category rating reviewCount viewsCount isFeatured vendorId ageGroup",
+          "title slug description images imageAssets price location venueType dateSchedule category rating reviewCount viewsCount isFeatured vendorId ageGroup",
         )
         .populate("category", "name slug")
         .populate("vendorId", "businessName")
@@ -122,7 +122,7 @@ class HomepageService {
         price: { $type: "number" }, // exclude docs where price is null/undefined
       })
         .select(
-          "title slug description images imageAssets price location dateSchedule category rating reviewCount viewsCount isFeatured vendorId ageGroup",
+          "title slug description images imageAssets price location venueType dateSchedule category rating reviewCount viewsCount isFeatured vendorId ageGroup",
         )
         .populate("category", "name slug")
         .populate("vendorId", "businessName")
@@ -142,7 +142,7 @@ class HomepageService {
         isFeatured: true,
       })
         .select(
-          "title slug description images imageAssets price location dateSchedule category rating reviewCount viewsCount isFeatured vendorId ageGroup",
+          "title slug description images imageAssets price location venueType dateSchedule category rating reviewCount viewsCount isFeatured vendorId ageGroup",
         )
         .populate("category", "name slug")
         .populate("vendorId", "businessName")
@@ -161,7 +161,7 @@ class HomepageService {
         status: "published",
       })
         .select(
-          "title slug description images imageAssets price location dateSchedule category rating reviewCount viewsCount isFeatured vendorId ageGroup",
+          "title slug description images imageAssets price location venueType dateSchedule category rating reviewCount viewsCount isFeatured vendorId ageGroup",
         )
         .populate("category", "name slug")
         .populate("vendorId", "businessName")

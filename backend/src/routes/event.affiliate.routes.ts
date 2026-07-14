@@ -1,23 +1,18 @@
 import { Router } from "express";
 import {
-  trackAffiliateClick,
   claimAffiliateEvent,
   getClaimedEvents,
   getAffiliateAnalytics,
-  getEventAnalytics,
 } from "../controllers/event.affiliate.controller";
 import { authenticate, authorize } from "../middleware/auth";
 
 const router = Router();
 
-/**
- * Public routes
- */
-// Track click on affiliate event (public - no auth required)
-router.post("/events/:id/track-click", trackAffiliateClick);
-
-// Get single event analytics (public for now, can be restricted)
-router.get("/events/:id/analytics", getEventAnalytics);
+// NOTE: /events/:id/track-click and /events/:id/analytics used to live here,
+// but event.routes.ts is mounted at the same "/events" prefix ahead of this
+// router and has its own blanket `router.use(authenticate)`, so requests to
+// those paths never reached these public handlers — they now live directly
+// in event.routes.ts, ahead of its authenticate gate.
 
 /**
  * Vendor routes

@@ -35,6 +35,7 @@ export interface Event {
   price?: number;
   currency?: string;
   location?: EventLocation | string;
+  venueType?: 'Indoor' | 'Outdoor' | 'Online' | 'Offline' | string;
   category?: string;
   categories?: string[];
   ageRange?: [number, number] | { min: number; max: number };

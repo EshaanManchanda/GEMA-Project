@@ -9,6 +9,10 @@ import {
   UserRole,
   Vendor,
   VerificationStatus,
+  VendorServicePackage,
+  VendorServiceUsage,
+  Blog,
+  PackageStatus,
 } from "../models/index";
 import { AppError } from "../middleware/index";
 import { getOrCreateVendorProfile } from "../utils/vendorHelpers";
@@ -66,12 +70,16 @@ export interface UpdateProfileInput {
   businessName?: string;
   description?: string;
   category?: string;
+  email?: string;
   address?: any;
   location?: any;
   website?: string;
   profileVideoUrl?: string;
   videoDescription?: string;
   languagesSpoken?: string[];
+  contactPerson?: any;
+  taxInformation?: any;
+  socialMedia?: any;
 }
 
 export interface CreateEmployeeInput {
@@ -122,7 +130,9 @@ class VendorService {
     const startOfLastMonth = new Date(now.getFullYear(), now.getMonth() - 1, 1);
     const endOfLastMonth = new Date(now.getFullYear(), now.getMonth(), 0, 23, 59, 59, 999);
 
-    const [aggAll, aggThisMonth, aggLastMonth] = await Promise.all([
+    const startOfTrendWindow = new Date(now.getFullYear(), now.getMonth() - 5, 1);
+
+    const [aggAll, aggThisMonth, aggLastMonth, trendAgg] = await Promise.all([
       Order.aggregate([
         { $match: orderFilter },
         { $group: { _id: null, totalRevenue: { $sum: "$total" }, totalBookings: { $sum: 1 } } },
@@ -135,9 +145,35 @@ class VendorService {
         { $match: { ...orderFilter, createdAt: { $gte: startOfLastMonth, $lte: endOfLastMonth } } },
         { $group: { _id: null, revenue: { $sum: "$total" } } },
       ]),
+      Order.aggregate([
+        { $match: { ...orderFilter, createdAt: { $gte: startOfTrendWindow } } },
+        {
+          $group: {
+            _id: { year: { $year: "$createdAt" }, month: { $month: "$createdAt" } },
+            revenue: { $sum: "$total" },
+          },
+        },
+      ]),
     ]);
 
     const round2 = (n: number) => Math.round(n * 100) / 100;
+
+    // Fill in the trailing 6 months (including the current one) so gaps show as 0, not missing points
+    const monthLabels = [
+      "Jan", "Feb", "Mar", "Apr", "May", "Jun",
+      "Jul", "Aug", "Sep", "Oct", "Nov", "Dec",
+    ];
+    const revenueTrend = Array.from({ length: 6 }, (_, i) => {
+      const d = new Date(now.getFullYear(), now.getMonth() - (5 - i), 1);
+      const match = trendAgg.find(
+        (t) => t._id.year === d.getFullYear() && t._id.month === d.getMonth() + 1,
+      );
+      return {
+        month: `${monthLabels[d.getMonth()]} ${d.getFullYear()}`,
+        revenue: round2(match?.revenue || 0),
+      };
+    });
+
     return {
       totalEvents,
       activeEvents,
@@ -145,6 +181,7 @@ class VendorService {
       totalRevenue: round2(aggAll[0]?.totalRevenue || 0),
       revenueThisMonth: round2(aggThisMonth[0]?.revenue || 0),
       revenueLastMonth: round2(aggLastMonth[0]?.revenue || 0),
+      revenueTrend,
     };
   }
 
@@ -156,6 +193,65 @@ class VendorService {
     return Event.find({ vendorId: vendorProfile._id })
       .populate("imageAssets", "url secureUrl publicId")
       .sort({ createdAt: -1 });
+  }
+
+  /**
+   * Get the authenticated vendor's own service packages, safely shaped
+   * (no adminNotes/paymentReference/source/createdBy — those are internal).
+   * Active packages first; pass includePast to also return completed/expired/cancelled.
+   */
+  async getServicePackages(userId: string, includePast = false) {
+    const vendorProfile = await getOrCreateVendorProfile(userId);
+    const vendorId = vendorProfile._id;
+
+    const query: Record<string, unknown> = { vendorId };
+    if (!includePast) {
+      query.status = { $in: [PackageStatus.ACTIVE, PackageStatus.COMPLETED] };
+    }
+
+    const packages = await VendorServicePackage.find(query)
+      .sort({ createdAt: -1 })
+      .select("-adminNotes -paymentReference -source -createdBy")
+      .lean({ virtuals: true });
+
+    const packageIds = packages.map((p) => p._id);
+
+    const usage = await VendorServiceUsage.find({
+      packageId: { $in: packageIds },
+      status: "active",
+    }).lean();
+
+    const eventIds = usage
+      .filter((u) => u.refModel === "Event" && u.refId)
+      .map((u) => u.refId);
+    const events = await Event.find({ _id: { $in: eventIds } })
+      .select("title slug isFeatured featuredUntil")
+      .lean();
+    const eventById = new Map(events.map((e) => [e._id.toString(), e]));
+
+    const blogs = await Blog.find({ vendorId })
+      .select("title slug status publishedAt")
+      .sort({ createdAt: -1 })
+      .lean();
+
+    const usageByPackage = new Map<string, typeof usage>();
+    for (const row of usage) {
+      const key = row.packageId.toString();
+      if (!usageByPackage.has(key)) usageByPackage.set(key, []);
+      usageByPackage.get(key)!.push(row);
+    }
+
+    const shaped = packages.map((pkg) => {
+      const pkgUsage = usageByPackage.get(pkg._id.toString()) || [];
+      const featuredEvents = pkgUsage
+        .filter((u) => u.refModel === "Event" && u.refId)
+        .map((u) => eventById.get(u.refId!.toString()))
+        .filter(Boolean);
+
+      return { ...pkg, featuredEvents };
+    });
+
+    return { packages: shaped, blogs };
   }
 
   /**
@@ -705,8 +801,12 @@ class VendorService {
   async getProfile(userId: string) {
     const vendor = await getOrCreateVendorProfile(userId);
     const user = await User.findById(userId).select(
+      // Note: phoneVerification.otpHash is already select:false at the schema
+      // level — do NOT also exclude the parent "phoneVerification" path here,
+      // MongoDB rejects a projection with both a parent and nested-child
+      // exclusion on the same path ("Path collision").
       "-passwordHash -twoFactorAuth.secret -passwordReset " +
-        "-emailVerification -phoneVerification -loginAttempts",
+        "-emailVerification -loginAttempts",
     );
 
     return { vendor, user };
@@ -730,8 +830,12 @@ class VendorService {
       { $set: userUpdates },
       { new: true, runValidators: true },
     ).select(
+      // Note: phoneVerification.otpHash is already select:false at the schema
+      // level — do NOT also exclude the parent "phoneVerification" path here,
+      // MongoDB rejects a projection with both a parent and nested-child
+      // exclusion on the same path ("Path collision").
       "-passwordHash -twoFactorAuth.secret -passwordReset " +
-        "-emailVerification -phoneVerification -loginAttempts",
+        "-emailVerification -loginAttempts",
     );
 
     if (!user) {
@@ -744,12 +848,19 @@ class VendorService {
       vendor.businessName = data.businessName;
     if (data.description !== undefined) vendor.description = data.description;
     if (data.category !== undefined) vendor.category = data.category;
+    if (data.email !== undefined) vendor.email = data.email;
     if (data.address !== undefined) vendor.address = data.address;
     if (data.location !== undefined) vendor.location = data.location;
     if (data.website !== undefined) vendor.website = data.website;
     if (data.profileVideoUrl !== undefined) vendor.profileVideoUrl = data.profileVideoUrl;
     if (data.videoDescription !== undefined) vendor.videoDescription = data.videoDescription;
     if (data.languagesSpoken !== undefined) vendor.languagesSpoken = data.languagesSpoken;
+    if (data.contactPerson !== undefined)
+      vendor.contactPerson = { ...vendor.contactPerson, ...data.contactPerson };
+    if (data.taxInformation !== undefined)
+      vendor.taxInformation = { ...vendor.taxInformation, ...data.taxInformation };
+    if (data.socialMedia !== undefined)
+      vendor.socialMedia = { ...vendor.socialMedia, ...data.socialMedia };
 
     await vendor.save();
 

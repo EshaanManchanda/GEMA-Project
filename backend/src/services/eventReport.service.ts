@@ -14,6 +14,7 @@ import Ticket from "../models/Ticket";
 import Review from "../models/Review";
 import Registration from "../models/Registration";
 import Certificate from "../models/Certificate";
+import AffiliateEventClick from "../models/AffiliateEventClick";
 import { AnalyticsDateRange, formatUtcPeriodLabel } from "../utils/dateHelpers";
 import { AppError } from "../middleware/error";
 
@@ -60,6 +61,17 @@ export interface EventReportSalesDay {
   tickets: number;
 }
 
+export interface EventReportExternalBooking {
+  enabled: boolean;
+  link?: string;
+  totalClicks: number;
+  uniqueClicks: number;
+  clicksInPeriod: number;
+  lastClickedAt?: string;
+  /** % of all-time viewers who clicked through to the external link (all-time totalClicks / viewsAllTime). */
+  clickThroughRate: number;
+}
+
 export interface EventReportData {
   event: {
     id: string;
@@ -82,6 +94,7 @@ export interface EventReportData {
   reviews: EventReportReviews;
   certificates: EventReportCertificates;
   dailySales: EventReportSalesDay[];
+  externalBooking: EventReportExternalBooking;
 }
 
 // ─── Builder ──────────────────────────────────────────────────────────────────
@@ -113,11 +126,19 @@ export async function buildEventReport(
     recentReviews,
     registrationData,
     certStats,
+    externalBookingClicksInPeriod,
   ] = await Promise.all([
     // 1. Event metadata
     Event.findById(eventObjId)
-      .select("title viewsCount location")
-      .lean<{ _id: mongoose.Types.ObjectId; title: string; viewsCount?: number; location?: { city?: string; country?: string } }>(),
+      .select("title viewsCount location externalBookingLink affiliateClickTracking")
+      .lean<{
+        _id: mongoose.Types.ObjectId;
+        title: string;
+        viewsCount?: number;
+        location?: { city?: string; country?: string };
+        externalBookingLink?: string;
+        affiliateClickTracking?: { totalClicks: number; uniqueClicks: number; lastClickedAt?: Date };
+      }>(),
 
     // 2. Revenue + orders for the window
     Order.aggregate([
@@ -206,6 +227,12 @@ export async function buildEventReport(
       },
       { $group: { _id: "$status", count: { $sum: 1 } } },
     ]),
+
+    // 9. External booking button clicks within the report period
+    AffiliateEventClick.countDocuments({
+      eventId: eventObjId,
+      clickedAt: { $gte: start, $lte: end },
+    }),
   ]);
 
   if (!eventDoc) throw new AppError("Event not found", 404);
@@ -289,5 +316,19 @@ export async function buildEventReport(
       revenue: Math.round(d.revenue * 100) / 100,
       tickets: d.tickets,
     })),
+    externalBooking: {
+      enabled: !!eventDoc.externalBookingLink,
+      link: eventDoc.externalBookingLink,
+      totalClicks: eventDoc.affiliateClickTracking?.totalClicks ?? 0,
+      uniqueClicks: eventDoc.affiliateClickTracking?.uniqueClicks ?? 0,
+      clicksInPeriod: externalBookingClicksInPeriod,
+      lastClickedAt: eventDoc.affiliateClickTracking?.lastClickedAt?.toISOString(),
+      clickThroughRate:
+        eventDoc.viewsCount && eventDoc.viewsCount > 0
+          ? Math.round(
+              ((eventDoc.affiliateClickTracking?.totalClicks ?? 0) / eventDoc.viewsCount) * 1000,
+            ) / 10
+          : 0,
+    },
   };
 }

@@ -27,7 +27,8 @@ const BookingSteps: React.FC<BookingStepsProps> = ({
   const currentIndex = getStepIndex(currentStep);
 
   return (
-    <div className="flex items-center justify-between max-w-2xl mx-auto">
+    <div className="overflow-x-auto -mx-4 px-4 sm:mx-0 sm:px-0 sm:overflow-visible scrollbar-hide">
+    <div className="flex items-center justify-between max-w-2xl mx-auto min-w-max sm:min-w-0">
       {steps.map((step, index) => {
         const stepValidated = isStepComplete(step.key);
         const isCurrent = step.key === currentStep;
@@ -102,6 +103,7 @@ const BookingSteps: React.FC<BookingStepsProps> = ({
           </div>
         );
       })}
+    </div>
     </div>
   );
 };

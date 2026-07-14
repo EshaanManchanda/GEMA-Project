@@ -14,6 +14,7 @@ import adminEmployeeRoutes from "./admin.employee.routes";
 import adminEventRoutes from "./admin.event.routes";
 import adminVenueRoutes from "./admin.venue.routes";
 import adminVendorRoutes from "./admin.vendor.routes";
+import adminServicePackageRoutes from "./admin.servicePackage.routes";
 import adminTeacherRoutes from "./admin.teacher.routes";
 import adminOrganizationRoutes from "./admin.organization.routes";
 import adminDashboardRoutes from "./admin.dashboard.routes";
@@ -154,6 +155,7 @@ router.use("/admin/venues", adminVenueRoutes);
 
 // Admin Vendor Management routes
 router.use("/admin/vendors", adminVendorRoutes);
+router.use("/admin/service-packages", adminServicePackageRoutes);
 
 // Admin Teacher Management routes
 router.use("/admin/teachers", adminTeacherRoutes);

@@ -77,7 +77,9 @@ if (communicationWorker) {
 }
 
 if (automationWorker) {
-  logger.info("Automation Worker: Started (review-request sweep every 6h)");
+  logger.info(
+    "Automation Worker: Started (review-request sweep every 6h, event reminders every 15min)",
+  );
 } else {
   logger.warn("Automation Worker: Not initialized");
 }

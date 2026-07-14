@@ -35,6 +35,7 @@ export interface EventCardProps {
     address?: string;
     coordinates?: { lat: number; lng: number };
   } | string;
+  venueType?: 'Indoor' | 'Outdoor' | 'Online' | 'Offline' | string;
   category?: string;
   categories?: string[];
   ageRange?: [number, number] | { min: number; max: number };
@@ -107,10 +108,17 @@ const formatPrice = (price?: number, currency: string = 'AED'): string => {
   }).format(price);
 };
 
-const getEventLocation = (location?: EventCardProps['location']): string => {
-  if (!location) return 'Location TBD';
-  if (typeof location === 'string') return location;
-  return location.city || location.address || 'Location TBD';
+// Falls back to venue type (e.g. "Online") when no city/address is set,
+// rather than showing a placeholder like "Location TBD". Blank if neither is known.
+const getEventLocation = (location?: EventCardProps['location'], venueType?: string): string => {
+  if (location) {
+    if (typeof location === 'string' && location.trim()) return location;
+    if (typeof location === 'object') {
+      const resolved = location.city || location.address;
+      if (resolved) return resolved;
+    }
+  }
+  return venueType || '';
 };
 
 const getEventImage = (event: EventCardProps): string => {
@@ -433,7 +441,7 @@ const EventCardBadges: React.FC<EventCardBadgesProps> = ({
     <>
       {ageGroup && showAgeGroup && (
         <div
-          className="absolute top-3 right-3 bg-white rounded-full px-3 py-1 text-sm font-semibold shadow-sm z-10"
+          className="absolute top-14 right-3 bg-white rounded-full px-3 py-1 text-xs sm:text-sm font-semibold shadow-sm z-10 whitespace-nowrap"
           style={{ color: 'var(--primary-color)' }}
         >
           <FaChild className="inline mr-1" />
@@ -489,6 +497,7 @@ const EventCardContent: React.FC<EventCardContentProps> = ({
 
 interface EventCardMetadataProps {
   location?: EventCardProps['location'];
+  venueType?: EventCardProps['venueType'];
   dateSchedule?: EventCardProps['dateSchedule'];
   date?: string;
   showLocation?: boolean;
@@ -499,6 +508,7 @@ interface EventCardMetadataProps {
 
 const EventCardMetadata: React.FC<EventCardMetadataProps> = ({
   location,
+  venueType,
   dateSchedule,
   date,
   showLocation = true,
@@ -508,13 +518,14 @@ const EventCardMetadata: React.FC<EventCardMetadataProps> = ({
 }) => {
   const event = { location, dateSchedule, date } as EventCardProps;
   const timeStr = getEventTime(event);
+  const locationText = getEventLocation(location, venueType);
 
   return (
     <div className="space-y-2 mb-3">
-      {showLocation && (
+      {showLocation && locationText && (
         <div className="flex items-center text-gray-700 text-sm">
           <FaMapMarkerAlt className="mr-2 flex-shrink-0" style={{ color: 'var(--primary-color)' }} />
-          <p className="truncate">{getEventLocation(location)}</p>
+          <p className="truncate">{locationText}</p>
         </div>
       )}
 
@@ -753,6 +764,7 @@ const EventCard: React.FC<EventCardProps> = (props) => {
 
         <EventCardMetadata
           location={event.location}
+          venueType={event.venueType}
           dateSchedule={event.dateSchedule}
           date={event.date}
           showLocation={showLocation}
@@ -832,6 +844,7 @@ const EventCard: React.FC<EventCardProps> = (props) => {
           />
           <EventCardMetadata
             location={event.location}
+            venueType={event.venueType}
             dateSchedule={event.dateSchedule}
             date={event.date}
             showLocation={showLocation}
@@ -904,10 +917,10 @@ const EventCard: React.FC<EventCardProps> = (props) => {
               {showPrice && event.price != null && (
                 <div className="text-xl font-bold">{formatPrice(event.price, event.currency)}</div>
               )}
-              {showLocation && (
+              {showLocation && getEventLocation(event.location, event.venueType) && (
                 <div className="flex items-center text-sm">
                   <FaMapMarkerAlt className="mr-1" />
-                  {getEventLocation(event.location)}
+                  {getEventLocation(event.location, event.venueType)}
                 </div>
               )}
             </div>
@@ -1009,6 +1022,7 @@ const EventCard: React.FC<EventCardProps> = (props) => {
 
         <EventCardMetadata
           location={event.location}
+          venueType={event.venueType}
           dateSchedule={event.dateSchedule}
           date={event.date}
           showLocation={showLocation}

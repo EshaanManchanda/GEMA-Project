@@ -83,6 +83,26 @@ export type { IBlog } from "./Blog";
 export { BlogCategory } from "./BlogCategory";
 export type { IBlogCategory } from "./BlogCategory";
 
+export {
+  default as VendorServicePackage,
+  ServiceItemType,
+  PackageStatus,
+  PackagePaymentStatus,
+  PackageSource,
+} from "./VendorServicePackage";
+export type {
+  IVendorServicePackage,
+  IServicePackageItem,
+} from "./VendorServicePackage";
+
+export { default as VendorServiceUsage } from "./VendorServiceUsage";
+export type {
+  IVendorServiceUsage,
+  ServiceUsageRefModel,
+  ServiceUsageStatus,
+  PromotionTierName,
+} from "./VendorServiceUsage";
+
 export { default as MediaAsset } from "./MediaAsset";
 export type { IMediaAsset } from "./MediaAsset";
 
@@ -309,3 +329,10 @@ export {
   NotificationTemplateKey,
 } from "./NotificationTemplate";
 export type { INotificationTemplate } from "./NotificationTemplate";
+
+export { default as AnalyticsEvent } from "./AnalyticsEvent";
+export type {
+  IAnalyticsEvent,
+  AnalyticsEventType,
+  AnalyticsEventSection,
+} from "./AnalyticsEvent";

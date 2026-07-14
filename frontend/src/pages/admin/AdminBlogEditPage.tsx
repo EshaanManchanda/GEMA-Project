@@ -6,6 +6,7 @@ import BlogForm from '../../components/admin/BlogForm';
 import blogAPI from '../../services/api/blogAPI';
 import PrivatePageSEO from '@/components/common/PrivatePageSEO';
 import logger from '@/utils/logger';
+import VendorAttributionPanel from '../../components/admin/VendorAttributionPanel';
 
 const AdminBlogEditPage: React.FC = () => {
   const { id } = useParams<{ id: string }>();
@@ -139,6 +140,15 @@ const AdminBlogEditPage: React.FC = () => {
               : 'Update blog post information. All required fields are marked with an asterisk (*).'}
           </p>
         </div>
+
+        {/* Vendor attribution — who this blog was posted for (offline service package tracking) */}
+        {!isCreateMode && id && (
+          <VendorAttributionPanel
+            blogId={id}
+            currentVendorId={blog?.vendorId?._id || blog?.vendorId}
+            onAttributed={fetchBlog}
+          />
+        )}
 
         {/* Form */}
         <div className="bg-white rounded-lg shadow-md">

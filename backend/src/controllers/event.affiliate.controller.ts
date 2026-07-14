@@ -6,7 +6,8 @@ import mongoose from "mongoose";
 import logger from "../config/logger";
 
 /**
- * Track affiliate event click
+ * Track external booking button click (any event with an externalBookingLink —
+ * affiliate events, or vendor/teacher/school events configured for external booking)
  * POST /api/events/:id/track-click
  */
 export const trackAffiliateClick = async (req: Request, res: Response) => {
@@ -28,10 +29,10 @@ export const trackAffiliateClick = async (req: Request, res: Response) => {
       return res.status(404).json({ message: "Event not found" });
     }
 
-    if (!event.isAffiliateEvent) {
+    if (!event.externalBookingLink) {
       return res
         .status(400)
-        .json({ message: "This is not an affiliate event" });
+        .json({ message: "This event has no external booking link" });
     }
 
     // Extract request information
@@ -327,17 +328,17 @@ export const getEventAnalytics = async (req: Request, res: Response) => {
     }
 
     const event = await Event.findById(eventId).select(
-      "title isAffiliateEvent affiliateClickTracking claimStatus",
+      "title isAffiliateEvent affiliateClickTracking claimStatus externalBookingLink",
     );
 
     if (!event) {
       return res.status(404).json({ message: "Event not found" });
     }
 
-    if (!event.isAffiliateEvent) {
+    if (!event.externalBookingLink) {
       return res
         .status(400)
-        .json({ message: "This is not an affiliate event" });
+        .json({ message: "This event has no external booking link" });
     }
 
     // Get click records

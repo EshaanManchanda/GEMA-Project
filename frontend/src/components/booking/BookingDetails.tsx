@@ -162,6 +162,7 @@ const BookingDetails: React.FC<BookingDetailsProps> = ({
   const [couponError, setCouponError] = useState<string | null>(null);
   const [appliedDiscount, setAppliedDiscount] = useState<number>(0);
   const [isValidatingCoupon, setIsValidatingCoupon] = useState(false);
+  const [showAllSessionDates, setShowAllSessionDates] = useState(false);
   const [validatedCoupon, setValidatedCoupon] =
     useState<CouponValidation | null>(null);
 
@@ -832,7 +833,10 @@ const BookingDetails: React.FC<BookingDetailsProps> = ({
                       </span>
                     </div>
                     <div className="divide-y divide-gray-100">
-                      {(selectedSchedule as any).timeSlots.map((slot: any, idx: number) => (
+                      {(showAllSessionDates
+                        ? (selectedSchedule as any).timeSlots
+                        : (selectedSchedule as any).timeSlots.slice(0, 5)
+                      ).map((slot: any, idx: number) => (
                         <div key={idx} className="flex items-center justify-between px-4 py-3 hover:bg-amber-50/50 transition-colors">
                           <div className="flex items-center space-x-3">
                             <div className="w-7 h-7 bg-amber-100 rounded-full flex items-center justify-center text-xs font-bold text-amber-700 flex-shrink-0">
@@ -858,6 +862,17 @@ const BookingDetails: React.FC<BookingDetailsProps> = ({
                         </div>
                       ))}
                     </div>
+                    {(selectedSchedule as any).timeSlots.length > 5 && (
+                      <button
+                        type="button"
+                        onClick={() => setShowAllSessionDates(v => !v)}
+                        className="w-full py-2.5 text-xs font-semibold text-amber-700 bg-amber-50 hover:bg-amber-100 transition-colors border-t border-amber-100"
+                      >
+                        {showAllSessionDates
+                          ? 'Show fewer dates'
+                          : `Show all ${(selectedSchedule as any).timeSlots.length} dates`}
+                      </button>
+                    )}
                   </div>
                 ) : (
                   /* Fallback: show date range if no timeSlots */

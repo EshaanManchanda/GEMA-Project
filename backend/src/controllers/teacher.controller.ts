@@ -931,7 +931,10 @@ export const getTeacherProfile = catchAsync(
     const teacher = await getOrCreateTeacherProfile(userId);
 
     const user = await User.findById(userId).select(
-      "-passwordHash -twoFactorAuth.secret -passwordReset -emailVerification -phoneVerification -loginAttempts",
+      // phoneVerification.otpHash is already select:false at the schema level —
+      // excluding the parent "phoneVerification" path too causes a MongoDB
+      // "Path collision" error (parent + nested-child exclusion on same path).
+      "-passwordHash -twoFactorAuth.secret -passwordReset -emailVerification -loginAttempts",
     );
 
     res.status(200).json({
@@ -995,7 +998,10 @@ export const updateTeacherProfile = catchAsync(
       { $set: userUpdates },
       { new: true, runValidators: true },
     ).select(
-      "-passwordHash -twoFactorAuth.secret -passwordReset -emailVerification -phoneVerification -loginAttempts",
+      // phoneVerification.otpHash is already select:false at the schema level —
+      // excluding the parent "phoneVerification" path too causes a MongoDB
+      // "Path collision" error (parent + nested-child exclusion on same path).
+      "-passwordHash -twoFactorAuth.secret -passwordReset -emailVerification -loginAttempts",
     );
 
     if (!user) {

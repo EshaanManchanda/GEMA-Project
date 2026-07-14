@@ -133,6 +133,25 @@ export const transformEventResponse = (event: any) => {
     sanitized.venueType = normalizedMode;
   }
 
+  // Real booking count — sum of actual soldSeats across every schedule (and
+  // its time slots, if any). Never fabricated; see gema-no-fake-trust-numbers.
+  if (Array.isArray(sanitized.dateSchedule)) {
+    sanitized.bookingsCount = sanitized.dateSchedule.reduce(
+      (total: number, schedule: any) => {
+        const scheduleSold = schedule?.soldSeats || 0;
+        const slotsSold = Array.isArray(schedule?.timeSlots)
+          ? schedule.timeSlots.reduce(
+              (slotTotal: number, slot: any) =>
+                slotTotal + (slot?.soldSeats || 0),
+              0,
+            )
+          : 0;
+        return total + scheduleSold + slotsSold;
+      },
+      0,
+    );
+  }
+
   return sanitized;
 };
 

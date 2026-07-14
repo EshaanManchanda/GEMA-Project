@@ -1,9 +1,14 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback, useMemo, lazy, Suspense } from 'react';
 import { Link } from 'react-router-dom';
+import { toast } from 'react-hot-toast';
 import vendorAPI from '../../services/api/vendorAPI';
 
 import { Event as EventType } from '../../types/event';
 import PrivatePageSEO from '@/components/common/PrivatePageSEO';
+import ChartSkeleton from '@/components/charts/ChartSkeleton';
+import VendorServicesCard from '@/components/vendor/VendorServicesCard';
+
+const VendorRevenueTrendChart = lazy(() => import('@/components/charts/VendorRevenueTrendChart'));
 
 interface Booking {
   id: string;
@@ -24,11 +29,22 @@ interface Stats {
   totalRevenue: number;
   revenueThisMonth: number;
   revenueLastMonth: number;
+  revenueTrend?: Array<{ month: string; revenue: number }>;
+}
+
+interface VendorProfileSummary {
+  verificationStatus?: 'verified' | 'pending' | 'unverified' | 'rejected';
+  paymentMode?: 'platform_stripe' | 'custom_stripe';
+  stripeConnectAccountId?: string;
+  stripePublishableKey?: string;
+  stripeKeysValidationError?: string;
 }
 
 interface DashboardEvent extends Omit<EventType, 'imageAssets'> {
   imageAssets?: Array<{ _id: string; url: string; secureUrl?: string } | string>;
 }
+
+const MS_PER_DAY = 1000 * 60 * 60 * 24;
 
 const getEventThumbnail = (event: DashboardEvent): string => {
   if (Array.isArray(event.imageAssets) && event.imageAssets.length > 0) {
@@ -47,6 +63,9 @@ const VendorDashboardPage: React.FC = () => {
   const [events, setEvents] = useState<DashboardEvent[]>([]);
   const [recentBookings, setRecentBookings] = useState<Booking[]>([]);
   const [stats, setStats] = useState<Stats | null>(null);
+  const [vendorProfile, setVendorProfile] = useState<VendorProfileSummary | null>(null);
+  const [servicePackages, setServicePackages] = useState<{ packages: any[]; blogs: any[] } | null>(null);
+  const [isLoadingPastPackages, setIsLoadingPastPackages] = useState(false);
   const [isLoading, setIsLoading] = useState<boolean>(true);
   const [error, setError] = useState<string | null>(null);
 
@@ -58,40 +77,94 @@ const VendorDashboardPage: React.FC = () => {
           e._id === eventId ? { ...e, status: 'pending_review' } : e,
         ),
       );
-    } catch (err) {
+      toast.success('Event submitted for review');
+    } catch (err: any) {
       console.error('Error submitting event for review:', err);
+      toast.error(err?.response?.data?.message || 'Failed to submit event for review');
     }
   };
 
+  const fetchDashboardData = useCallback(async () => {
+    setIsLoading(true);
+    setError(null);
+
+    // Fetch independently — one failing source shouldn't blank out the others
+    const [eventsResult, bookingsResult, statsResult, profileResult, servicePackagesResult] = await Promise.allSettled([
+      vendorAPI.getVendorEvents(),
+      vendorAPI.getVendorBookings({ limit: 5 }),
+      vendorAPI.getVendorStats(),
+      vendorAPI.getVendorProfile(),
+      vendorAPI.getServicePackages(),
+    ]);
+
+    if (eventsResult.status === 'fulfilled') {
+      setEvents(Array.isArray(eventsResult.value) ? eventsResult.value : []);
+    } else {
+      console.error('Error fetching vendor events:', eventsResult.reason);
+      setEvents([]);
+    }
+
+    if (bookingsResult.status === 'fulfilled') {
+      const bookingsData = bookingsResult.value;
+      setRecentBookings(Array.isArray(bookingsData) ? bookingsData : bookingsData?.bookings || []);
+    } else {
+      console.error('Error fetching vendor bookings:', bookingsResult.reason);
+      setRecentBookings([]);
+    }
+
+    if (statsResult.status === 'fulfilled') {
+      const statsData = statsResult.value;
+      setStats(statsData?.data || statsData);
+    } else {
+      console.error('Error fetching vendor stats:', statsResult.reason);
+      setStats(null);
+    }
+
+    if (profileResult.status === 'fulfilled') {
+      const profileData: any = profileResult.value;
+      const vendor = profileData?.vendor || profileData;
+      setVendorProfile({
+        verificationStatus: vendor?.verificationStatus,
+        paymentMode: vendor?.paymentSettings?.paymentMode,
+        stripeConnectAccountId: vendor?.paymentSettings?.stripeSettings?.stripeConnectAccountId,
+        stripePublishableKey: vendor?.paymentSettings?.stripeSettings?.stripePublishableKey,
+        stripeKeysValidationError: vendor?.paymentSettings?.stripeSettings?.stripeKeysValidationError,
+      });
+    } else {
+      console.error('Error fetching vendor profile:', profileResult.reason);
+      setVendorProfile(null);
+    }
+
+    if (servicePackagesResult.status === 'fulfilled') {
+      const data: any = servicePackagesResult.value;
+      setServicePackages({ packages: data?.packages || [], blogs: data?.blogs || [] });
+    } else {
+      console.error('Error fetching vendor service packages:', servicePackagesResult.reason);
+      setServicePackages(null);
+    }
+
+    // Profile and service packages are supplementary — don't surface their failure as a page-level error
+    if (eventsResult.status === 'rejected' || bookingsResult.status === 'rejected' || statsResult.status === 'rejected') {
+      setError('Some dashboard data failed to load. Please try again.');
+    }
+
+    setIsLoading(false);
+  }, []);
+
   useEffect(() => {
-    const fetchDashboardData = async () => {
-      try {
-        setIsLoading(true);
-        setError(null);
-
-        // Fetch real data from APIs
-        const [eventsData, bookingsData, statsData] = await Promise.all([
-          vendorAPI.getVendorEvents(),
-          vendorAPI.getVendorBookings({ limit: 5 }),
-          vendorAPI.getVendorStats()
-        ]);
-
-        // Handle API response format - extract data if it's wrapped in response object
-        setEvents(Array.isArray(eventsData) ? eventsData : []);
-        setRecentBookings(Array.isArray(bookingsData) ? bookingsData : bookingsData?.bookings || []);
-        setStats(statsData?.data || statsData);
-      } catch (err) {
-        console.error('Error fetching dashboard data:', err);
-        setError('Failed to load dashboard data. Please try again.');
-        setEvents([]);
-        setRecentBookings([]);
-        setStats(null);
-      } finally {
-        setIsLoading(false);
-      }
-    };
-
     fetchDashboardData();
+  }, [fetchDashboardData]);
+
+  const handleLoadPastPackages = useCallback(async () => {
+    setIsLoadingPastPackages(true);
+    try {
+      const data: any = await vendorAPI.getServicePackages(true);
+      setServicePackages({ packages: data?.packages || [], blogs: data?.blogs || [] });
+    } catch (err) {
+      console.error('Error fetching past service packages:', err);
+    } finally {
+      setIsLoadingPastPackages(false);
+    }
   }, []);
 
   const formatDate = (dateString: string): string => {
@@ -117,6 +190,40 @@ const VendorDashboardPage: React.FC = () => {
   const calculateProgress = (sold: number, total: number): number => {
     return Math.round((sold / total) * 100);
   };
+
+  const { lowInventoryEvents, startingSoonEvents } = useMemo(() => {
+    const now = Date.now();
+    const lowInventory: DashboardEvent[] = [];
+    const startingSoon: DashboardEvent[] = [];
+
+    events.forEach((event) => {
+      if (event.status !== 'published') return;
+      const schedule = event.dateSchedule?.[0];
+      if (!schedule) return;
+
+      const total = schedule.totalSeats || 0;
+      const sold = schedule.soldSeats || 0;
+      if (total > 0 && sold / total >= 0.9) {
+        lowInventory.push(event);
+      }
+
+      const dateStr = schedule.date || schedule.startDateTime || schedule.startDate;
+      if (dateStr) {
+        const daysUntil = (new Date(dateStr).getTime() - now) / MS_PER_DAY;
+        if (daysUntil >= 0 && daysUntil <= 3) {
+          startingSoon.push(event);
+        }
+      }
+    });
+
+    return { lowInventoryEvents: lowInventory, startingSoonEvents: startingSoon };
+  }, [events]);
+
+  const showVerificationBanner = !!vendorProfile?.verificationStatus && vendorProfile.verificationStatus !== 'verified';
+  const showStripeBanner =
+    vendorProfile?.paymentMode === 'custom_stripe' &&
+    (!!vendorProfile.stripeKeysValidationError ||
+      (!vendorProfile.stripeConnectAccountId && !vendorProfile.stripePublishableKey));
 
   if (isLoading) {
     return (
@@ -166,10 +273,95 @@ const VendorDashboardPage: React.FC = () => {
         </div>
 
         {error && (
-          <div className="bg-red-100 border-l-4 border-red-500 text-red-700 p-4 mb-6" role="alert">
+          <div className="bg-red-100 border-l-4 border-red-500 text-red-700 p-4 mb-6 flex items-center justify-between gap-4" role="alert">
             <p>{error}</p>
+            <button
+              onClick={() => fetchDashboardData()}
+              className="shrink-0 px-3 py-1.5 text-sm font-medium rounded-md bg-red-600 text-white hover:bg-red-700 transition-colors"
+            >
+              Retry
+            </button>
           </div>
         )}
+
+        {showVerificationBanner && (
+          <div
+            className={`border-l-4 p-4 mb-4 rounded-r-lg ${
+              vendorProfile?.verificationStatus === 'rejected'
+                ? 'bg-red-50 border-red-500 text-red-800'
+                : 'bg-yellow-50 border-yellow-500 text-yellow-800'
+            }`}
+            role="alert"
+          >
+            <p className="font-semibold">
+              {vendorProfile?.verificationStatus === 'rejected'
+                ? 'Your vendor verification was rejected'
+                : 'Your vendor account is not yet verified'}
+            </p>
+            <p className="text-sm mt-1">
+              {vendorProfile?.verificationStatus === 'rejected'
+                ? 'Review the feedback on your profile and resubmit your documents.'
+                : 'Some features may be limited until an admin reviews and verifies your account.'}{' '}
+              <Link to="/vendor/profile" className="underline font-medium">
+                Go to Profile
+              </Link>
+            </p>
+          </div>
+        )}
+
+        {showStripeBanner && (
+          <div className="border-l-4 border-red-500 bg-red-50 text-red-800 p-4 mb-6 rounded-r-lg" role="alert">
+            <p className="font-semibold">Payments are not set up correctly</p>
+            <p className="text-sm mt-1">
+              {vendorProfile?.stripeKeysValidationError
+                ? `Your Stripe keys failed validation: ${vendorProfile.stripeKeysValidationError}`
+                : 'You are on the custom Stripe payment mode but have not connected or added Stripe API keys yet.'}{' '}
+              Customers may not be able to pay for your events until this is fixed.{' '}
+              <Link to="/vendor/profile" className="underline font-medium">
+                Fix Payment Settings
+              </Link>
+            </p>
+          </div>
+        )}
+
+        {(lowInventoryEvents.length > 0 || startingSoonEvents.length > 0) && (
+          <div className="bg-blue-50 border-l-4 border-blue-400 text-blue-900 p-4 mb-6 rounded-r-lg" role="status">
+            <p className="font-semibold mb-1">Heads up</p>
+            <ul className="text-sm space-y-1 list-disc list-inside">
+              {startingSoonEvents.map((e) => (
+                <li key={`soon-${e._id}`}>
+                  <Link to={`/vendor/events/${e._id}`} className="underline">{e.title}</Link> starts within 3 days
+                </li>
+              ))}
+              {lowInventoryEvents.map((e) => (
+                <li key={`low-${e._id}`}>
+                  <Link to={`/vendor/events/${e._id}`} className="underline">{e.title}</Link> is 90%+ sold out
+                </li>
+              ))}
+            </ul>
+          </div>
+        )}
+
+        <div className="flex flex-wrap gap-3 mb-8">
+          <Link to="/vendor/payouts" className="px-4 py-2 rounded-lg bg-white border border-gray-200 shadow-sm text-sm font-medium text-gray-700 hover:border-gray-300 hover:shadow transition-all">
+            Payouts
+          </Link>
+          <Link to="/vendor/employees" className="px-4 py-2 rounded-lg bg-white border border-gray-200 shadow-sm text-sm font-medium text-gray-700 hover:border-gray-300 hover:shadow transition-all">
+            Employees
+          </Link>
+          <Link to="/vendor/analytics" className="px-4 py-2 rounded-lg bg-white border border-gray-200 shadow-sm text-sm font-medium text-gray-700 hover:border-gray-300 hover:shadow transition-all">
+            Analytics
+          </Link>
+          <Link to="/vendor/profile" className="px-4 py-2 rounded-lg bg-white border border-gray-200 shadow-sm text-sm font-medium text-gray-700 hover:border-gray-300 hover:shadow transition-all">
+            Payment Settings
+          </Link>
+        </div>
+
+        <VendorServicesCard
+          data={servicePackages}
+          onLoadPast={handleLoadPastPackages}
+          isLoadingPast={isLoadingPastPackages}
+        />
 
         {stats && (
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
@@ -261,6 +453,15 @@ const VendorDashboardPage: React.FC = () => {
           </div>
         )}
 
+        {stats?.revenueTrend && stats.revenueTrend.some((m) => m.revenue > 0) && (
+          <div className="bg-gradient-to-br from-white to-gray-50 rounded-2xl shadow-xl shadow-gray-200/50 border border-white/20 backdrop-blur-sm p-6 mb-8">
+            <h2 className="text-lg font-bold text-gray-900 mb-4">Revenue — Last 6 Months</h2>
+            <Suspense fallback={<ChartSkeleton height={240} />}>
+              <VendorRevenueTrendChart data={stats.revenueTrend} />
+            </Suspense>
+          </div>
+        )}
+
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
           <div className="lg:col-span-2">
             <div className="bg-gradient-to-br from-white to-gray-50 rounded-2xl shadow-xl shadow-gray-200/50 overflow-hidden border border-white/20 backdrop-blur-sm">
@@ -283,7 +484,7 @@ const VendorDashboardPage: React.FC = () => {
                   </div>
                 ) : (
                   <div className="space-y-6">
-                    {Array.isArray(events) && events.map((event) => (
+                    {events.slice(0, 5).map((event) => (
                       <div key={event._id} className="border rounded-lg overflow-hidden shadow-sm hover:shadow-md transition-shadow duration-200">
                         <div className="flex flex-col sm:flex-row">
                           <div className="sm:w-1/3 md:w-1/4">
@@ -309,7 +510,7 @@ const VendorDashboardPage: React.FC = () => {
                                 <div className="text-sm text-gray-500 mb-4">
                                   <p><span className="font-medium">Date:</span> {event.dateSchedule?.[0]?.date ? formatDate(event.dateSchedule[0].date) : 'TBD'}</p>
                                   <p><span className="font-medium">Location:</span> {event.location.city}, {event.location.address}</p>
-                                  <p><span className="font-medium">Price:</span> ${event.price.toFixed(2)}</p>
+                                  <p><span className="font-medium">Price:</span> {event.currency || 'AED'} {event.price.toFixed(2)}</p>
                                 </div>
                               </div>
                               <div className="mt-4 sm:mt-0">
@@ -351,6 +552,14 @@ const VendorDashboardPage: React.FC = () => {
                       </div>
                     ))}
                   </div>
+                )}
+                {events.length > 5 && (
+                  <p className="text-center text-sm text-gray-500 mt-4">
+                    +{events.length - 5} more —{' '}
+                    <Link to="/vendor/events" className="text-primary font-medium hover:underline">
+                      view all events
+                    </Link>
+                  </p>
                 )}
               </div>
             </div>

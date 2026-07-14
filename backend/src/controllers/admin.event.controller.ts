@@ -265,6 +265,10 @@ const formatAdminEventResponse = (event: any) => {
     status: transformedEvent.status || "pending",
     isAffiliateEvent: transformedEvent.isAffiliateEvent || false,
     externalBookingLink: transformedEvent.externalBookingLink || "",
+    affiliateClickTracking: transformedEvent.affiliateClickTracking || {
+      totalClicks: 0,
+      uniqueClicks: 0,
+    },
     claimStatus:
       transformedEvent.claimStatus ||
       (transformedEvent.isAffiliateEvent ? "unclaimed" : "not_claimable"),

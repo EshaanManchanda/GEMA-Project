@@ -1139,8 +1139,6 @@ const BookingPage: React.FC = () => {
           <div className="animate-spin rounded-full h-16 w-16 border-t-2 border-b-2 border-primary mx-auto mb-4"></div>
           <h2 className="text-xl font-semibold text-gray-700">Loading Event Details...</h2>
           <p className="text-gray-500 mt-2">Please wait while we prepare your booking</p>
-          <p className="text-xs text-gray-400 mt-4">Event ID: {actualEventId}</p>
-          <p className="text-xs text-gray-400 mt-1">Render #{renderCount.current}</p>
         </div>
       </div>
     );
@@ -1226,8 +1224,6 @@ const BookingPage: React.FC = () => {
               Browse Events
             </Button>
           </div>
-          <p className="text-xs text-gray-400 mt-4">Event ID: {actualEventId}</p>
-          <p className="text-xs text-gray-400">Render #{renderCount.current}</p>
         </Card>
       </div>
     );
@@ -1324,7 +1320,6 @@ const BookingPage: React.FC = () => {
                     {isFreeEvent ? 'Complete Your Registration' : 'Complete Your Booking'}
                   </h1>
                   <p className="text-gray-600">{event.title}</p>
-                  <p className="text-xs text-gray-400">Render #{renderCount.current} | Step: {currentStep}</p>
                 </div>
                 <div className="hidden sm:block">
                   <div className="flex items-center text-sm text-gray-500">

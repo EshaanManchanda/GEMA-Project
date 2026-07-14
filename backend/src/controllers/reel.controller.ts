@@ -6,6 +6,11 @@ import { validationResult } from "express-validator";
 /**
  * Get public reels (visibility='public') with pagination
  * GET /api/reels
+ *
+ * Supports two modes:
+ *  - ?cursor=&limit=  → keyset pagination (used by the infinite feed; no
+ *    duplicate/skipped reels as new ones publish mid-scroll)
+ *  - ?page=&limit=    → legacy offset pagination, kept for admin/older callers
  */
 export const getReels = async (
   req: Request,
@@ -18,11 +23,34 @@ export const getReels = async (
       throw new AppError("Validation failed", 400, errors.array());
     }
 
-    const { page, limit } = req.query;
+    const { page, limit, cursor } = req.query;
+    const parsedLimit = limit ? parseInt(limit as string, 10) : undefined;
+
+    if (cursor !== undefined || page === undefined) {
+      const result = await reelService.getPublicReelsCursor({
+        cursor: cursor as string | undefined,
+        limit: parsedLimit,
+      });
+
+      if (result.invalidCursor) {
+        throw new AppError("Invalid cursor", 400);
+      }
+
+      res.status(200).json({
+        success: true,
+        message: "Public reels retrieved successfully",
+        data: {
+          reels: result.reels,
+          nextCursor: result.nextCursor,
+          hasMore: result.hasMore,
+        },
+      });
+      return;
+    }
 
     const options = {
       page: page ? parseInt(page as string, 10) : 1,
-      limit: limit ? parseInt(limit as string, 10) : 10,
+      limit: parsedLimit || 10,
     };
 
     const result = await reelService.getPublicReels(options);

@@ -38,6 +38,27 @@ export const getVendorEvents = catchAsync(
   },
 );
 
+// @desc    Get the authenticated vendor's own service packages (progress/expiry)
+// @route   GET /api/vendors/service-packages
+export const getVendorServicePackages = catchAsync(
+  async (req: AuthRequest, res: Response, next: NextFunction) => {
+    const userId = req.user?._id || req.user?.id;
+    if (!userId) return next(new AppError("User not authenticated", 401));
+
+    const includePast = req.query.includePast === "1";
+    const data = await vendorService.getServicePackages(
+      userId.toString(),
+      includePast,
+    );
+
+    res.status(200).json({
+      success: true,
+      message: "Vendor service packages retrieved successfully",
+      data,
+    });
+  },
+);
+
 // @desc    Get bookings for the authenticated vendor's events
 // @route   GET /api/vendors/bookings
 export const getVendorBookings = catchAsync(

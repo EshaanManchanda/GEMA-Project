@@ -658,11 +658,12 @@ const SchedulePricingTab: React.FC<SchedulePricingTabProps> = ({
                   </label>
                   <div className="flex rounded-xl shadow-sm border border-gray-300 overflow-hidden">
                     <select
+                      name="currency"
                       value={currency}
                       onChange={onCurrencyChange}
                       className="px-3 pr-8 py-2.5 bg-gray-50 border-r border-gray-300 text-gray-700 font-medium focus:outline-none min-w-[80px]"
                     >
-                      {['AED', 'USD', 'EUR', 'GBP', 'SAR', 'QAR', 'KWD', 'BHD', 'OMR'].map(c => <option key={c} value={c}>{c}</option>)}
+                      {['AED', 'USD', 'EGP', 'CAD'].map(c => <option key={c} value={c}>{c}</option>)}
                     </select>
                     <input
                       type="number"

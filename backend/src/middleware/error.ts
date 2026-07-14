@@ -56,7 +56,7 @@ export const errorHandler = (
   }
 
   // Firebase Auth errors
-  if (err.code && err.code.startsWith("auth/")) {
+  if (typeof err.code === "string" && err.code.startsWith("auth/")) {
     errorResponse.message = "Authentication Error";
     errorResponse.errors = { code: err.code, message: err.message };
     return res.status(401).json(errorResponse);

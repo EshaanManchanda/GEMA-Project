@@ -21,6 +21,7 @@ import {
 } from 'chart.js';
 import { Line } from 'react-chartjs-2';
 import adminAPI from '../../services/api/adminAPI';
+import api from '../../services/api';
 import { useEventPerformanceQuery } from '../../hooks/queries/useAdminQuery';
 import StatsCard from '../../components/admin/StatsCard';
 import PrivatePageSEO from '@/components/common/PrivatePageSEO';
@@ -81,6 +82,14 @@ const AdminEventDetailPage: React.FC = () => {
   const [showRejectModal, setShowRejectModal] = useState(false);
   const [openFaq, setOpenFaq] = useState<number | null>(null);
   const [imgSrc, setImgSrc] = useState<string | null>(null);
+
+  // Feature-from-package (grant a vendor's offline-bought featured-event slot, no Stripe charge)
+  const [showGrantModal, setShowGrantModal] = useState(false);
+  const [grantPackages, setGrantPackages] = useState<any[]>([]);
+  const [grantPackageId, setGrantPackageId] = useState('');
+  const [grantTier, setGrantTier] = useState<'boost' | 'featured' | 'premium'>('boost');
+  const [grantLoading, setGrantLoading] = useState(false);
+  const [grantPackagesLoading, setGrantPackagesLoading] = useState(false);
 
   // Report download
   const [reportLoading, setReportLoading] = useState(false);
@@ -495,6 +504,53 @@ const AdminEventDetailPage: React.FC = () => {
     }
   };
 
+  const openGrantModal = async () => {
+    const vendorId = event?.vendor?._id || event?.vendor?.id || event?.vendorId;
+    if (!vendorId) {
+      toast.error('This event has no vendor to grant a package feature from');
+      return;
+    }
+    setShowGrantModal(true);
+    setGrantPackagesLoading(true);
+    try {
+      const response = await api.get('/admin/service-packages', { params: { vendorId } });
+      const all = response.data?.data || [];
+      const withOpenSlot = all.filter((pkg: any) => {
+        const status = pkg.computedStatus || pkg.status;
+        if (status !== 'active') return false;
+        return pkg.items.some((i: any) => i.type === 'featured_event' && i.used < i.quantity);
+      });
+      setGrantPackages(withOpenSlot);
+      setGrantPackageId('');
+    } catch (err: any) {
+      toast.error(err?.response?.data?.message || 'Failed to load vendor packages');
+    } finally {
+      setGrantPackagesLoading(false);
+    }
+  };
+
+  const handleGrantFeature = async () => {
+    if (!grantPackageId || !id) {
+      toast.error('Select a package');
+      return;
+    }
+    setGrantLoading(true);
+    try {
+      await api.post('/admin/service-packages/grant-feature', {
+        packageId: grantPackageId,
+        eventId: id,
+        tier: grantTier,
+      });
+      toast.success('Event featured from package — no charge');
+      setEvent((e: any) => ({ ...e, isFeatured: true }));
+      setShowGrantModal(false);
+    } catch (err: any) {
+      toast.error(err?.response?.data?.message || 'Failed to grant feature from package');
+    } finally {
+      setGrantLoading(false);
+    }
+  };
+
   const handleToggleFeatured = async () => {
     if (!id) return;
     try {
@@ -598,6 +654,15 @@ const AdminEventDetailPage: React.FC = () => {
             >
               <Star className="w-4 h-4" />
               {event.isFeatured ? 'Unfeature' : 'Feature'}
+            </button>
+            <button
+              onClick={openGrantModal}
+              disabled={actionLoading}
+              className="flex items-center gap-2 px-4 py-2 bg-white border border-purple-300 text-purple-700 rounded-lg hover:bg-purple-50 text-sm font-medium disabled:opacity-50"
+              title="Feature this event from a vendor's offline-bought service package — no Stripe charge"
+            >
+              <Star className="w-4 h-4" />
+              Feature from Package
             </button>
           </div>
         </div>
@@ -757,10 +822,19 @@ const AdminEventDetailPage: React.FC = () => {
                       icon={<Globe className="w-4 h-4" />}
                       label="External Booking"
                       value={
-                        <a href={event.externalBookingLink} target="_blank" rel="noopener noreferrer"
-                          className="text-indigo-600 hover:underline break-all">
-                          {event.externalBookingLink}
-                        </a>
+                        <div className="space-y-1">
+                          <a href={event.externalBookingLink} target="_blank" rel="noopener noreferrer"
+                            className="text-indigo-600 hover:underline break-all">
+                            {event.externalBookingLink}
+                          </a>
+                          <div className="text-xs text-gray-500">
+                            {event.affiliateClickTracking?.totalClicks ?? 0} click{(event.affiliateClickTracking?.totalClicks ?? 0) !== 1 ? 's' : ''}
+                            {' '}({event.affiliateClickTracking?.uniqueClicks ?? 0} unique)
+                            {event.affiliateClickTracking?.lastClickedAt && (
+                              <> · last clicked {new Date(event.affiliateClickTracking.lastClickedAt).toLocaleDateString()}</>
+                            )}
+                          </div>
+                        </div>
                       }
                     />
                   )}
@@ -1092,6 +1166,34 @@ const AdminEventDetailPage: React.FC = () => {
                     gradient="from-yellow-50 to-yellow-100"
                   />
                 </div>
+
+                {event.externalBookingLink && (
+                  <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+                    <StatsCard
+                      title="Booking Clicks (Total)"
+                      value={event.affiliateClickTracking?.totalClicks ?? 0}
+                      icon={Globe}
+                      iconColor="text-indigo-600"
+                      gradient="from-indigo-50 to-indigo-100"
+                    />
+                    <StatsCard
+                      title="Booking Clicks (Unique)"
+                      value={event.affiliateClickTracking?.uniqueClicks ?? 0}
+                      icon={Users}
+                      iconColor="text-cyan-600"
+                      gradient="from-cyan-50 to-cyan-100"
+                    />
+                    <StatsCard
+                      title="Last Clicked"
+                      value={event.affiliateClickTracking?.lastClickedAt
+                        ? new Date(event.affiliateClickTracking.lastClickedAt).toLocaleDateString()
+                        : '—'}
+                      icon={Clock}
+                      iconColor="text-gray-600"
+                      gradient="from-gray-50 to-gray-100"
+                    />
+                  </div>
+                )}
 
                 {performance && (
                   <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
@@ -1728,6 +1830,75 @@ const AdminEventDetailPage: React.FC = () => {
                 className="px-4 py-2 text-sm bg-red-600 text-white rounded-lg hover:bg-red-700 disabled:opacity-50"
               >
                 Reject Event
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Feature from Package Modal */}
+      {showGrantModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50">
+          <div className="bg-white rounded-xl p-6 w-full max-w-md shadow-xl">
+            <h2 className="text-lg font-semibold text-gray-900 mb-1">Feature from Package</h2>
+            <p className="text-xs text-gray-500 mb-4">
+              Grants this feature from an active offline-bought package — no Stripe charge.
+            </p>
+
+            {grantPackagesLoading ? (
+              <p className="text-sm text-gray-500">Loading vendor packages…</p>
+            ) : grantPackages.length === 0 ? (
+              <p className="text-sm text-gray-500">
+                This vendor has no active package with an open featured-event slot.
+              </p>
+            ) : (
+              <>
+                <div className="mb-3">
+                  <label className="block text-xs font-medium text-gray-600 mb-1">Package</label>
+                  <select
+                    value={grantPackageId}
+                    onChange={(e) => setGrantPackageId(e.target.value)}
+                    className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm"
+                  >
+                    <option value="">Select package…</option>
+                    {grantPackages.map((pkg) => {
+                      const item = pkg.items.find((i: any) => i.type === 'featured_event');
+                      return (
+                        <option key={pkg._id} value={pkg._id}>
+                          {pkg.name} ({item.quantity - item.used} remaining)
+                        </option>
+                      );
+                    })}
+                  </select>
+                </div>
+                <div className="mb-4">
+                  <label className="block text-xs font-medium text-gray-600 mb-1">Tier</label>
+                  <select
+                    value={grantTier}
+                    onChange={(e) => setGrantTier(e.target.value as 'boost' | 'featured' | 'premium')}
+                    className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm"
+                  >
+                    <option value="boost">Boost — 7 days</option>
+                    <option value="featured">Featured — 30 days</option>
+                    <option value="premium">Premium — 90 days</option>
+                  </select>
+                </div>
+              </>
+            )}
+
+            <div className="flex justify-end gap-3 mt-2">
+              <button
+                onClick={() => setShowGrantModal(false)}
+                className="px-4 py-2 text-sm text-gray-600 border border-gray-300 rounded-lg hover:bg-gray-50"
+              >
+                Cancel
+              </button>
+              <button
+                onClick={handleGrantFeature}
+                disabled={grantLoading || !grantPackageId}
+                className="px-4 py-2 text-sm bg-purple-600 text-white rounded-lg hover:bg-purple-700 disabled:opacity-50"
+              >
+                {grantLoading ? 'Granting…' : 'Grant Feature'}
               </button>
             </div>
           </div>

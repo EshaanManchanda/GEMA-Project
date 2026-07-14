@@ -993,6 +993,7 @@ const SearchPage: React.FC = () => {
                           price={event.price}
                           currency={event.currency}
                           location={event.location}
+                          venueType={event.venueType}
                           category={event.category}
                           ageRange={event.ageRange}
                           dateSchedule={event.dateSchedule}
@@ -1002,15 +1003,15 @@ const SearchPage: React.FC = () => {
                           reviewsCount={event.reviewsCount}
                           vendorId={event.vendorId}
                           variant="overlay"
-                          showPrice={false}
-                          showLocation={false}
+                          showPrice={true}
+                          showLocation={true}
                           showDate={false}
                           showTime={false}
                           showDescription={false}
                           showStats={false}
                           showCategory={false}
                           showVendor={false}
-                          showAgeGroup={false}
+                          showAgeGroup={true}
                           showFeaturedBadge={true}
                           isInWishlist={favoriteItems.some(fav => fav._id === event._id)}
                           onWishlistToggle={handleToggleFavorite}

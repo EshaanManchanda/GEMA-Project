@@ -1,6 +1,10 @@
-import React, { useMemo } from 'react';
+import React, { useMemo, useEffect } from 'react';
 import { FadeIn, ScrollReveal } from '@/components/animations';
 import { useSelector } from 'react-redux';
+import { useAppDispatch, useAppSelector } from '@/store/hooks';
+import { getFullProfile } from '@/store/slices/authSlice';
+import TrendingNearYou from '@/components/client/TrendingNearYou';
+import RecommendedForYou from '@/components/client/RecommendedForYou';
 import CollectionSection from '@/components/client/CollectionSection';
 import CollectionPills from '@/components/client/CollectionPills';
 import BannerCarousel from '@/components/client/BannerCarousel';
@@ -34,9 +38,22 @@ import { mapToUIEvent, mockEvents } from '@/utils/homePageUtils';
 
 const HomePage: React.FC = () => {
   const socialSettings = useSelector(selectSocialSettings);
+  const dispatch = useAppDispatch();
 
   // Single homepage query replaces 6 separate queries (400-600ms savings!)
   const { data: homepageData, isLoading: homepageLoading, error: homepageError } = useHomepageQuery();
+
+  // "Trending Near You" needs the user's saved city — lazily fetch the full
+  // profile only when logged in and it isn't already in the store (avoids an
+  // extra request for guests / users who never touch this section).
+  const { isAuthenticated, userProfile, isProfileLoading } = useAppSelector((s) => s.auth);
+  useEffect(() => {
+    if (isAuthenticated && !userProfile && !isProfileLoading) {
+      dispatch(getFullProfile());
+    }
+  }, [isAuthenticated, userProfile, isProfileLoading, dispatch]);
+  const nearYouCity = userProfile?.addresses?.find((a) => a.isDefault)?.city
+    || userProfile?.addresses?.[0]?.city;
 
   // Only block on homepage query (critical data)
   const isLoading = homepageLoading;
@@ -200,7 +217,13 @@ const HomePage: React.FC = () => {
           showAgeGroup={true}
         />
 
+        {/* Recommended For You — only for logged-in users; backend returns
+            empty until the user has view/favorite/order signal, so the
+            component itself hides when there's nothing to personalize. */}
+        {isAuthenticated && <RecommendedForYou />}
 
+        {/* Trending Near You — only for logged-in users with a saved city */}
+        {nearYouCity && <TrendingNearYou city={nearYouCity} />}
 
         {/* Reels Slider */}
         {reels && reels.length > 0 && (

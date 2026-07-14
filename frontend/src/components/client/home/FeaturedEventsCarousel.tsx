@@ -106,8 +106,8 @@ const FeaturedEventsCarousel: React.FC<{
                             <EventCard
                                 {...event}
                                 variant="overlay"
-                                showPrice={false}
-                                showLocation={false}
+                                showPrice={true}
+                                showLocation={true}
                                 showDate={false}
                                 showTime={false}
                                 showDescription={false}

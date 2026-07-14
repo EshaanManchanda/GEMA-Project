@@ -972,13 +972,16 @@ const BusinessDetailsTab: React.FC<{
   onUpdate: (data: Partial<VendorProfile>) => Promise<void>;
   isLoading: boolean;
 }> = ({ profile, onUpdate, isLoading }) => {
+  const [taxInfo, setTaxInfo] = useState(profile.taxInformation);
+
   const handleBusinessHoursSave = async (hours: any) => {
-    try {
-      await vendorAPI.updateBusinessHours(hours);
-      toast.success('Business hours updated successfully');
-    } catch (error) {
-      throw error;
-    }
+    await vendorAPI.updateBusinessHours(hours);
+    toast.success('Business hours updated successfully');
+  };
+
+  const handleTaxInfoSave = async (e: React.FormEvent) => {
+    e.preventDefault();
+    await onUpdate({ taxInformation: taxInfo });
   };
 
   return (
@@ -997,61 +1000,71 @@ const BusinessDetailsTab: React.FC<{
       </SectionCard>
 
       <SectionCard>
-        <h3 className="text-sm font-semibold text-gray-700 mb-4 flex items-center gap-2">
-          <FaBuilding className="w-3.5 h-3.5 text-blue-500" />
-          Tax Information
-        </h3>
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-          <FieldGroup label="Tax ID / Business Registration">
-            <input
-              type="text"
-              value={profile.taxInformation.taxId}
-              onChange={(e) => onUpdate({ taxInformation: { ...profile.taxInformation, taxId: e.target.value } })}
-              className={inputCls}
-            />
-          </FieldGroup>
-          <FieldGroup label="Business Type">
-            <select
-              value={profile.taxInformation.businessType}
-              onChange={(e) => onUpdate({ taxInformation: { ...profile.taxInformation, businessType: e.target.value } })}
-              className={inputCls}
+        <form onSubmit={handleTaxInfoSave}>
+          <h3 className="text-sm font-semibold text-gray-700 mb-4 flex items-center gap-2">
+            <FaBuilding className="w-3.5 h-3.5 text-blue-500" />
+            Tax Information
+          </h3>
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <FieldGroup label="Tax ID / Business Registration">
+              <input
+                type="text"
+                value={taxInfo.taxId}
+                onChange={(e) => setTaxInfo(prev => ({ ...prev, taxId: e.target.value }))}
+                className={inputCls}
+              />
+            </FieldGroup>
+            <FieldGroup label="Business Type">
+              <select
+                value={taxInfo.businessType}
+                onChange={(e) => setTaxInfo(prev => ({ ...prev, businessType: e.target.value }))}
+                className={inputCls}
+              >
+                <option value="">Select Type</option>
+                <option value="Sole Proprietorship">Sole Proprietorship</option>
+                <option value="LLC">LLC</option>
+                <option value="Corporation">Corporation</option>
+                <option value="Partnership">Partnership</option>
+              </select>
+            </FieldGroup>
+          </div>
+          <div className="flex justify-end mt-4">
+            <button
+              type="submit"
+              disabled={isLoading}
+              className="inline-flex items-center gap-2 bg-blue-600 text-white px-8 py-3 rounded-xl font-medium hover:bg-blue-700 transition-colors disabled:opacity-50"
             >
-              <option value="">Select Type</option>
-              <option value="Sole Proprietorship">Sole Proprietorship</option>
-              <option value="LLC">LLC</option>
-              <option value="Corporation">Corporation</option>
-              <option value="Partnership">Partnership</option>
-            </select>
-          </FieldGroup>
-        </div>
+              {isLoading ? <><FaSpinner className="animate-spin" /> Saving...</> : <><FaSave /> Save Changes</>}
+            </button>
+          </div>
+        </form>
       </SectionCard>
     </motion.div>
   );
 };
 
 // Payment Settings Tab
-const PaymentSettingsTab: React.FC<{ profile: VendorProfile; isLoading?: boolean; onRefresh?: () => void }> = ({ profile, isLoading, onRefresh }) => {
-  const handleSaveApiKeys = async (publishableKey: string, secretKey: string, testMode: boolean) => {
-    try {
-      await vendorAPI.saveStripeApiKeys(publishableKey, secretKey, testMode);
-      if (onRefresh) {
-        onRefresh(); // Refresh profile to get updated settings
-      }
-      toast.success('Stripe API keys saved successfully');
-    } catch (error: any) {
-      toast.error(error.response?.data?.message || 'Failed to save Stripe API keys');
-      throw error;
-    }
-  };
+const PaymentSettingsTab: React.FC<{ profile: VendorProfile; isLoading?: boolean; onRefresh?: () => void }> = ({ profile }) => {
+  const [stripeStatus, setStripeStatus] = useState<any>(undefined);
+  const [isLoadingStatus, setIsLoadingStatus] = useState(true);
 
-  const handleValidateKeys = async (publishableKey: string, secretKey: string) => {
-    try {
-      const result = await vendorAPI.validateStripeApiKeys(publishableKey, secretKey);
-      return result;
-    } catch (error: any) {
-      toast.error(error.response?.data?.message || 'Failed to validate Stripe API keys');
-      throw error;
-    }
+  useEffect(() => {
+    let cancelled = false;
+    (async () => {
+      try {
+        const data = await vendorAPI.getStripeConnectStatus();
+        if (!cancelled) setStripeStatus(data);
+      } catch (error) {
+        logger.error('Error fetching Stripe Connect status:', error);
+      } finally {
+        if (!cancelled) setIsLoadingStatus(false);
+      }
+    })();
+    return () => { cancelled = true; };
+  }, []);
+
+  const handleStartOnboarding = async () => {
+    return vendorAPI.initializeStripeOnboarding();
   };
 
   return (
@@ -1063,10 +1076,9 @@ const PaymentSettingsTab: React.FC<{ profile: VendorProfile; isLoading?: boolean
     >
       <SectionCard>
         <StripeConnectSetup
-          currentStatus={profile.stripeSettings}
-          onSaveApiKeys={handleSaveApiKeys}
-          onValidateKeys={handleValidateKeys}
-          isLoading={isLoading}
+          status={stripeStatus}
+          isLoadingStatus={isLoadingStatus}
+          onStartOnboarding={handleStartOnboarding}
         />
       </SectionCard>
 

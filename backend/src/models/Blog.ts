@@ -12,6 +12,7 @@ export interface IBlog extends Document {
   featuredImage?: string; // OLD - deprecated, keep for backward compatibility
   featuredImageAsset?: mongoose.Types.ObjectId; // NEW - shadow field for migration
   category: mongoose.Types.ObjectId;
+  vendorId?: mongoose.Types.ObjectId; // Optional attribution — set when a blog is posted on a vendor's behalf
   author: {
     name: string;
     email: string;
@@ -91,6 +92,14 @@ const blogSchema = new Schema<IBlog>(
       type: Schema.Types.ObjectId,
       ref: "BlogCategory",
       required: [true, "Blog category is required"],
+    },
+    vendorId: {
+      type: Schema.Types.ObjectId,
+      ref: "Vendor",
+      required: false,
+      index: true,
+      // Attribution only — does NOT consume a VendorServicePackage blog_post slot.
+      // Slot consumption is an explicit admin action (see admin.servicePackage.controller).
     },
     author: {
       name: {

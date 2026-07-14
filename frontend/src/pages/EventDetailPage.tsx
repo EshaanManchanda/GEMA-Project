@@ -39,6 +39,14 @@ import { API_BASE_URL } from '../config/api';
 import UserReviewStatus from '../components/client/UserReviewStatus';
 import reviewsAPI from '../services/api/reviewsAPI';
 import EventCollectionsList from '../components/client/EventCollectionsList';
+import SimilarEvents from '../components/client/SimilarEvents';
+import PeopleAlsoBooked from '../components/client/PeopleAlsoBooked';
+import ContinueExploring from '../components/client/ContinueExploring';
+import TrendingNearYou from '../components/client/TrendingNearYou';
+import { addRecentlyViewed } from '../store/slices/recentlyViewedSlice';
+import analyticsEventsAPI from '../services/api/analyticsEventsAPI';
+import AddToCalendar from '../components/common/AddToCalendar';
+import { combineDateAndTime } from '../utils/calendarLinks';
 import { galleryAPI } from '../services/api/reviewLinkAPI';
 import GalleryComponent from '../components/common/GalleryComponent';
 import { useSEO } from '@/hooks/useSEO';
@@ -169,6 +177,7 @@ const EventDetailPage: React.FC = () => {
   const [showAllSyllabus, setShowAllSyllabus] = useState(false);
   const [selectedMemoryIndex, setSelectedMemoryIndex] = useState<number | null>(null);
   const [showAllEventGallery, setShowAllEventGallery] = useState(false);
+  const [nearPageEnd, setNearPageEnd] = useState(false);
   const { isAuthenticated } = useSelector((state: RootState) => state.auth);
   const { user: authUser } = useSelector((state: RootState) => state.auth);
   const hasValidUser = authUser && (authUser.email || authUser._id);
@@ -269,6 +278,25 @@ const EventDetailPage: React.FC = () => {
   const isEducational = useMemo(() => {
     return event ? ['Class', 'Bootcamp', 'Masterclass', 'Course', 'Workshop'].includes(event.type) : false;
   }, [event]);
+
+  // Record the view for "Continue Exploring" + UX telemetry — only for real
+  // (non-mock) events, once per event id.
+  useEffect(() => {
+    if (!eventData || !eventData._id) return;
+
+    dispatch(addRecentlyViewed({
+      id: eventData._id,
+      slug: eventData.slug || eventData._id,
+      title: eventData.title,
+      image: getEventImage(eventData.images, eventData.title, 400, 300),
+      price: eventData.price,
+      currency: eventData.currency,
+      city: eventData.location?.city,
+      ageRange: eventData.ageRange,
+    }));
+
+    analyticsEventsAPI.trackEvent('eventViewed', { eventId: eventData._id });
+  }, [eventData?._id, dispatch]);
 
   // Handle URL canonicalization (ID -> Slug)
   useEffect(() => {
@@ -414,6 +442,11 @@ const EventDetailPage: React.FC = () => {
         }
       }
       setActiveSection(current);
+
+      // Hide the fixed mobile CTA bar once the footer is within reach, so it
+      // never permanently covers unreachable content (e.g. footer legal links).
+      const distanceFromBottom = document.body.offsetHeight - (window.innerHeight + window.scrollY);
+      setNearPageEnd(distanceFromBottom < 300);
     };
 
     window.addEventListener('scroll', handleScroll);
@@ -599,21 +632,19 @@ const EventDetailPage: React.FC = () => {
     }
     // Handle external booking (Affiliate or Vendor-configured)
     if (event.externalBookingLink) {
-      if (event.isAffiliateEvent) {
-        try {
-          // Generate session ID for tracking
-          const sessionId = `${Date.now()}-${Math.random().toString(36).substring(2, 11)}`;
-          // Track the click for affiliates
-          await fetch(`${API_BASE_URL}/events/${event._id}/track-click`, {
-            method: 'POST',
-            headers: {
-              'Content-Type': 'application/json',
-            },
-            body: JSON.stringify({ sessionId }),
-          });
-        } catch (error) {
-          console.error('Error tracking affiliate click:', error);
-        }
+      try {
+        // Generate session ID for tracking
+        const sessionId = `${Date.now()}-${Math.random().toString(36).substring(2, 11)}`;
+        // Track the click for any event with an external booking link
+        await fetch(`${API_BASE_URL}/events/${event._id}/track-click`, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({ sessionId }),
+        });
+      } catch (error) {
+        console.error('Error tracking external booking click:', error);
       }
       // Open external booking link in new tab
       window.open(event.externalBookingLink, '_blank', 'noopener,noreferrer');
@@ -1878,6 +1909,27 @@ const EventDetailPage: React.FC = () => {
                           />
                         )}
 
+                        {/* Add to Calendar — reflects the currently selected session */}
+                        {selectedSession && (
+                          <AddToCalendar
+                            filenameSlug={event.slug || event._id}
+                            event={{
+                              title: event.title,
+                              description: event.shortDescription || undefined,
+                              location: event.venueType === 'Online'
+                                ? (event.meetingLink || 'Online Event')
+                                : (event.location?.address && event.location.address !== 'Address TBD'
+                                  ? event.location.address
+                                  : event.location?.city) || undefined,
+                              start: combineDateAndTime(new Date(selectedSession.date), selectedSession.startTime),
+                              end: selectedSession.endTime
+                                ? combineDateAndTime(new Date(selectedSession.date), selectedSession.endTime)
+                                : undefined,
+                              allDay: !selectedSession.startTime,
+                            }}
+                          />
+                        )}
+
                         {/* Quantity Selector */}
                         <div className="space-y-3">
                           <label className="block text-gray-700 text-sm font-semibold">
@@ -2459,8 +2511,43 @@ const EventDetailPage: React.FC = () => {
           <EventCollectionsList collections={event.collectionInfo} />
         )}
 
-        {/* Sticky bottom CTA bar — mobile only */}
-        <div className="fixed bottom-0 left-0 right-0 z-50 bg-white border-t border-gray-200 p-3 flex items-center justify-between lg:hidden shadow-2xl" style={{ paddingBottom: 'calc(0.75rem + env(safe-area-inset-bottom))' }}>
+        {/* Similar Events + More from this organizer */}
+        {event?._id && (
+          <SimilarEvents
+            eventId={event._id}
+            organizerName={
+              event.vendorId?.businessName ||
+              `${event.vendorId?.firstName || ''} ${event.vendorId?.lastName || ''}`.trim() ||
+              undefined
+            }
+          />
+        )}
+
+        {/* People Also Booked — co-occurrence from confirmed orders */}
+        {event?._id && <PeopleAlsoBooked eventId={event._id} />}
+
+        {/* Continue Exploring — recently viewed events, excluding this one */}
+        <ContinueExploring excludeEventId={event?._id} />
+
+        {/* Trending in this event's city, excluding this one. Online events have
+            no meaningful city, so this falls back to global trending for them. */}
+        {event?._id && (
+          <TrendingNearYou
+            city={
+              event.venueType !== 'Online' && event.location?.city !== 'Location TBD'
+                ? event.location?.city
+                : undefined
+            }
+            excludeEventId={event._id}
+          />
+        )}
+
+        {/* Sticky bottom CTA bar — mobile only. Slides away near the footer so it never
+            permanently covers unreachable content (e.g. footer legal links). */}
+        <div
+          className={`fixed bottom-0 left-0 right-0 z-50 bg-white border-t border-gray-200 p-3 flex items-center justify-between lg:hidden shadow-2xl transition-transform duration-300 ${nearPageEnd ? 'translate-y-full' : 'translate-y-0'}`}
+          style={{ paddingBottom: 'calc(0.75rem + env(safe-area-inset-bottom))' }}
+        >
           <div>
             <div className="text-xs text-gray-500">Starting from</div>
             <div className="text-lg font-bold text-primary">

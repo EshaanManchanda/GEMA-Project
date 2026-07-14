@@ -1,6 +1,6 @@
 import { Request, Response, NextFunction } from "express";
 import { validationResult } from "express-validator";
-import { Event, User, Order } from "../models/index";
+import { Event, User, Order, AnalyticsEvent } from "../models/index";
 import Vendor from "../models/Vendor";
 import Teacher from "../models/Teacher";
 import MediaAsset from "../models/MediaAsset";
@@ -15,6 +15,7 @@ import {
 import { cacheService } from "../services/cache.service";
 import { invalidateEventCaches } from "../utils/cache.utils";
 import { escapeRegex } from "../utils/regexHelpers";
+import { parseEventQuery } from "../utils/aiEventQueryParser";
 import { escapeHtml } from "../utils/htmlHelpers";
 import { eventService } from "../services/event.service";
 import { CacheTTL } from "../config/cache-tiers"; // ✅ Phase 2.3: Tiered cache strategy
@@ -1315,9 +1316,10 @@ export const promoteEvent = async (
       now.getTime() + tierConfig.days * 24 * 60 * 60 * 1000,
     );
 
-    (event as any).promotionTier = tier;
-    (event as any).featuredUntil = featuredUntil;
-    (event as any).promotionPaidAt = now;
+    event.promotionTier = tier;
+    event.featuredUntil = featuredUntil;
+    event.promotionPaidAt = now;
+    event.promotionSource = "paid";
     event.isFeatured = true;
     await event.save();
 
@@ -1477,7 +1479,7 @@ export const deleteCertificateType = async (
 // Discovery: Similar Events (weighted scoring + fallback chain)
 // ---------------------------------------------------------------------------
 const SIMILAR_SELECT =
-  "_id slug title images category location price tags isFeatured viewsCount averageRating reviewCount currency dateSchedule ageRange vendorId teacherId";
+  "_id slug title images category location venueType meetingLink price tags isFeatured viewsCount averageRating reviewCount currency dateSchedule ageRange vendorId teacherId";
 
 export const getSimilarEvents = async (
   req: Request,
@@ -1608,6 +1610,104 @@ export const getSimilarEvents = async (
 };
 
 // ---------------------------------------------------------------------------
+// Discovery: People Also Booked (co-occurrence in confirmed orders)
+// ---------------------------------------------------------------------------
+export const getPeopleAlsoBooked = async (
+  req: Request,
+  res: Response,
+  next: NextFunction,
+) => {
+  try {
+    const { id } = req.params;
+    const limit = Math.min(parseInt(req.query.limit as string) || 8, 12);
+
+    const isMongoId = /^[0-9a-fA-F]{24}$/.test(id);
+    const source = (await Event.findOne(
+      isMongoId ? { _id: id } : { slug: id },
+    )
+      .select("_id")
+      .lean()) as any;
+
+    if (!source) return next(new AppError("Event not found", 404));
+
+    const sourceId = source._id;
+
+    // Customers with a confirmed order for this event
+    const buyers = await Order.distinct("userId", {
+      "items.eventId": sourceId,
+      status: "confirmed",
+    });
+
+    let coBookedIds: any[] = [];
+    if (buyers.length > 0) {
+      // Other events those same customers have confirmed orders for,
+      // ranked by how many distinct buyers co-booked each one.
+      const coBooked = await Order.aggregate([
+        {
+          $match: {
+            userId: { $in: buyers },
+            status: "confirmed",
+          },
+        },
+        { $unwind: "$items" },
+        { $match: { "items.eventId": { $ne: sourceId } } },
+        {
+          $group: {
+            _id: "$items.eventId",
+            buyerCount: { $addToSet: "$userId" },
+          },
+        },
+        { $project: { buyerCount: { $size: "$buyerCount" } } },
+        { $sort: { buyerCount: -1 } },
+        { $limit: limit * 2 }, // over-fetch — some ids may not pass buildPublicEventFilter
+      ]);
+      coBookedIds = coBooked.map((c) => c._id);
+    }
+
+    let results: any[] = [];
+    if (coBookedIds.length > 0) {
+      const events = (await Event.find({
+        ...buildPublicEventFilter(),
+        _id: { $in: coBookedIds },
+      })
+        .select(SIMILAR_SELECT)
+        .lean()) as any[];
+
+      // Preserve co-booking rank (Mongo doesn't guarantee $in order)
+      const rank = new Map(coBookedIds.map((id, i) => [id.toString(), i]));
+      results = events.sort(
+        (a, b) =>
+          (rank.get(a._id.toString()) ?? 999) -
+          (rank.get(b._id.toString()) ?? 999),
+      );
+    }
+
+    // Fallback: trending, excluding source + whatever co-booking already found
+    if (results.length < limit) {
+      const seen = new Set(results.map((e) => e._id.toString()));
+      seen.add(sourceId.toString());
+      const remaining = limit - results.length;
+      const trending = (await Event.find({
+        ...buildPublicEventFilter(),
+        _id: { $nin: [...seen] },
+      })
+        .select(SIMILAR_SELECT)
+        .sort({ viewsCount: -1 })
+        .limit(remaining)
+        .lean()) as any[];
+      results = [...results, ...trending];
+    }
+
+    res.status(200).json({
+      success: true,
+      data: sanitizeEventsOutput(results.slice(0, limit)),
+    });
+  } catch (error) {
+    next(error);
+  }
+};
+
+// ---------------------------------------------------------------------------
 // Discovery: More from this organizer
 // ---------------------------------------------------------------------------
 export const getOrganizerEvents = async (
@@ -1647,6 +1747,220 @@ export const getOrganizerEvents = async (
       success: true,
       data: sanitizeEventsOutput(events),
     });
+  } catch (error) {
+    next(error);
+  }
+};
+
+// ---------------------------------------------------------------------------
+// Discovery: Trending Near You (city-scoped, falls back to global trending)
+// ---------------------------------------------------------------------------
+export const getTrendingNearYou = async (
+  req: Request,
+  res: Response,
+  next: NextFunction,
+) => {
+  try {
+    const city = (req.query.city as string || "").trim();
+    const excludeId = req.query.excludeId as string;
+    const limit = Math.min(parseInt(req.query.limit as string) || 8, 12);
+
+    const excludeFilter =
+      excludeId && /^[0-9a-fA-F]{24}$/.test(excludeId)
+        ? { _id: { $ne: excludeId } }
+        : {};
+
+    let results: any[] = [];
+
+    if (city) {
+      results = (await Event.find({
+        ...buildPublicEventFilter(excludeFilter),
+        "location.city": new RegExp(`^${escapeRegex(city)}$`, "i"),
+      })
+        .select(SIMILAR_SELECT)
+        .sort({ viewsCount: -1 })
+        .limit(limit)
+        .lean()) as any[];
+    }
+
+    // Fallback: global trending, excluding whatever the city query already found
+    // (plus the source event, if any — folded into the same $nin as `seen`).
+    if (results.length < limit) {
+      const seen = new Set(results.map((e) => e._id.toString()));
+      if (excludeId && /^[0-9a-fA-F]{24}$/.test(excludeId)) seen.add(excludeId);
+      const remaining = limit - results.length;
+      const globalTrending = (await Event.find({
+        ...buildPublicEventFilter(),
+        _id: { $nin: [...seen] },
+      })
+        .select(SIMILAR_SELECT)
+        .sort({ viewsCount: -1 })
+        .limit(remaining)
+        .lean()) as any[];
+      results = [...results, ...globalTrending];
+    }
+
+    res.status(200).json({
+      success: true,
+      data: sanitizeEventsOutput(results.slice(0, limit)),
+    });
+  } catch (error) {
+    next(error);
+  }
+};
+
+// ---------------------------------------------------------------------------
+// Discovery: Recommended For You (scored from view history, favorites, orders)
+// ---------------------------------------------------------------------------
+export const getRecommendedForYou = async (
+  req: AuthRequest,
+  res: Response,
+  next: NextFunction,
+) => {
+  try {
+    const userId = req.user?._id || req.user?.id;
+    if (!userId) return next(new AppError("Authentication required", 401));
+
+    const limit = Math.min(parseInt(req.query.limit as string) || 8, 12);
+
+    // Signal sources: recently viewed events, favorites, and confirmed-order
+    // events. No signal at all means we can't personalize — return empty
+    // rather than silently falling back to global trending (that would just
+    // duplicate the separate Trending Near You section).
+    const [recentViews, favoriteUser, orderedEventIds] = await Promise.all([
+      AnalyticsEvent.find({ type: "eventViewed", userId })
+        .sort({ createdAt: -1 })
+        .limit(30)
+        .select("eventId")
+        .lean(),
+      User.findById(userId).select("favoriteEvents").lean(),
+      Order.distinct("items.eventId", { userId, status: "confirmed" }),
+    ]);
+
+    const sourceIdSet = new Set<string>([
+      ...recentViews.map((v: any) => v.eventId?.toString()).filter(Boolean),
+      ...((favoriteUser as any)?.favoriteEvents || []).map((id: any) =>
+        id.toString(),
+      ),
+      ...orderedEventIds.map((id: any) => id.toString()),
+    ]);
+
+    if (sourceIdSet.size === 0) {
+      return res.status(200).json({ success: true, data: [] });
+    }
+
+    const sourceEvents = (await Event.find({
+      _id: { $in: [...sourceIdSet] },
+    })
+      .select("category location tags")
+      .lean()) as any[];
+
+    // Mode (most frequent) category and city across the user's signal — the
+    // same two strongest weights Similar Events uses, applied at user scope
+    // instead of single-event scope.
+    const categoryCounts = new Map<string, number>();
+    const cityCounts = new Map<string, number>();
+    const tagSet = new Set<string>();
+    for (const ev of sourceEvents) {
+      if (ev.category)
+        categoryCounts.set(
+          ev.category,
+          (categoryCounts.get(ev.category) || 0) + 1,
+        );
+      const city = ev.location?.city;
+      if (city) cityCounts.set(city, (cityCounts.get(city) || 0) + 1);
+      (ev.tags || []).forEach((t: string) => tagSet.add(t));
+    }
+    const topCategory = [...categoryCounts.entries()].sort(
+      (a, b) => b[1] - a[1],
+    )[0]?.[0];
+    const topCity = [...cityCounts.entries()].sort(
+      (a, b) => b[1] - a[1],
+    )[0]?.[0];
+
+    const candidates = (await Event.find({
+      ...buildPublicEventFilter({ _id: { $nin: [...sourceIdSet] } }),
+    })
+      .select(SIMILAR_SELECT)
+      .sort({ viewsCount: -1 })
+      .limit(100)
+      .lean()) as any[];
+
+    const scored = candidates.map((ev) => {
+      let score = 0;
+      if (topCategory && ev.category === topCategory) score += 5;
+      if (topCity && ev.location?.city === topCity) score += 3;
+      if (Array.isArray(ev.tags) && ev.tags.some((t: string) => tagSet.has(t)))
+        score += 2;
+      if (ev.isFeatured) score += 1;
+      return { ev, score };
+    });
+
+    scored.sort(
+      (a, b) =>
+        b.score - a.score || (b.ev.viewsCount || 0) - (a.ev.viewsCount || 0),
+    );
+
+    let results = scored.filter((s) => s.score > 0).map((s) => s.ev);
+
+    // Fallback: fill remaining slots with trending among the same candidate
+    // pool (already excludes the user's own signal events).
+    if (results.length < limit) {
+      const seen = new Set(results.map((e) => e._id.toString()));
+      const remaining = candidates.filter((e) => !seen.has(e._id.toString()));
+      results = [...results, ...remaining];
+    }
+
+    res.status(200).json({
+      success: true,
+      data: sanitizeEventsOutput(results.slice(0, limit)),
+    });
+  } catch (error) {
+    next(error);
+  }
+};
+
+// ---------------------------------------------------------------------------
+// Discovery: AI Event Finder — natural language -> search filters.
+// Rule-based (no LLM): returns the parsed filters only, so the frontend can
+// apply them via the existing /events search flow rather than duplicating
+// its filter-building logic here.
+// ---------------------------------------------------------------------------
+export const parseAiEventSearch = async (
+  req: Request,
+  res: Response,
+  next: NextFunction,
+) => {
+  try {
+    const query = (req.body?.query as string || "").trim();
+    if (!query) {
+      return next(new AppError("query is required", 400));
+    }
+    if (query.length > 300) {
+      return next(new AppError("query is too long", 400));
+    }
+
+    const vocabulary = await cacheService.getOrSet(
+      "ai-search:vocabulary",
+      async () => {
+        const [categories, cities] = await Promise.all([
+          Event.distinct("category", { status: "published", isDeleted: false }),
+          Event.distinct("location.city", { status: "published", isDeleted: false }),
+        ]);
+        return {
+          categories: (categories as string[]).filter(Boolean),
+          cities: (cities as string[]).filter(Boolean),
+        };
+      },
+      { ttl: CacheTTL.CATEGORIES },
+    );
+
+    const filters = parseEventQuery(
+      query,
+      vocabulary || { categories: [], cities: [] },
+    );
+
+    res.status(200).json({ success: true, data: { filters } });
   } catch (error) {
     next(error);
   }

@@ -160,6 +160,7 @@ export interface IEvent extends Document {
   promotionTier?: "boost" | "featured" | "premium";
   featuredUntil?: Date;
   promotionPaidAt?: Date;
+  promotionSource?: "paid" | "package" | "admin_comp";
   images: string[]; // OLD - deprecated, keep for backward compatibility
   imageAssets?: mongoose.Types.ObjectId[]; // NEW - shadow field for migration
   bookingAttachments?: Array<{
@@ -725,6 +726,11 @@ const eventSchema = new Schema<IEvent>(
     },
     promotionPaidAt: {
       type: Date,
+    },
+    promotionSource: {
+      type: String,
+      enum: ["paid", "package", "admin_comp"],
+      default: "paid",
     },
     images: {
       type: [String],
