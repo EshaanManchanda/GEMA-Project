@@ -512,25 +512,8 @@ const AdminEditEventPage: React.FC = () => {
             setUnlimitedCapacity(true);
           }
         } else {
-          // CREATE MODE: Initialize with one empty schedule
-          setSchedules([
-            {
-              id: "schedule-1",
-              startDate: "",
-              endDate: "",
-              startTime: "",
-              endTime: "",
-              availableSeats: "",
-              totalSeats: "",
-              price: "",
-              unlimitedSeats: false,
-              isSpecialDate: false,
-              specialDates: [],
-              priority: 0,
-              isOverride: false,
-              description: '',
-            },
-          ]);
+          // CREATE MODE: Initialize with empty schedules array
+          setSchedules([]);
         }
       } catch (error: any) {
         logger.error("Error fetching data:", error);
@@ -1062,7 +1045,7 @@ const AdminEditEventPage: React.FC = () => {
         isAffiliateEvent: formData.isAffiliateEvent,
         externalBookingLink: formData.isAffiliateEvent
           ? formData.externalBookingLink
-          : undefined,
+          : "",
         claimStatus: formData.isAffiliateEvent
           ? formData.claimStatus
           : "not_claimable",

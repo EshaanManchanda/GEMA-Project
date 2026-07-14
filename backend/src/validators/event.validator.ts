@@ -320,11 +320,7 @@ export const validateCreateEvent = [
     .withMessage("Start date must be a valid ISO 8601 date")
     .toDate()
     .custom((value) => {
-      const now = new Date();
-      now.setHours(0, 0, 0, 0);
-      if (new Date(value) < now) {
-        throw new Error("Start date cannot be in the past");
-      }
+      // Allow past dates
       return true;
     }),
 
@@ -891,7 +887,7 @@ const adminSpecificFields = [
     .toBoolean(),
 
   body("externalBookingLink")
-    .optional()
+    .optional({ checkFalsy: true })
     .trim()
     .isURL({ protocols: ["http", "https"], require_protocol: true })
     .withMessage("External booking link must be a valid URL"),
@@ -953,7 +949,7 @@ const adminSpecificFieldsUpdate = [
     .toBoolean(),
 
   body("externalBookingLink")
-    .optional()
+    .optional({ checkFalsy: true })
     .trim()
     .isURL({ protocols: ["http", "https"], require_protocol: true })
     .withMessage("External booking link must be a valid URL"),

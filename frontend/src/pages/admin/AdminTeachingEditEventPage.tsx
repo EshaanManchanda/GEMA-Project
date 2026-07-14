@@ -383,22 +383,8 @@ const AdminTeachingEditEventPage: React.FC = () => {
           setSchedules(transformedSchedules);
         } else {
           logger.debug('📝 Create mode - initializing empty form');
-          // Initialize with one empty schedule for new events
-          setSchedules([{
-            id: 'schedule-1',
-            startDate: '',
-            endDate: '',
-            startTime: '',
-            endTime: '',
-            availableSeats: '',
-            totalSeats: '',
-            price: '',
-            unlimitedSeats: false,
-            isSpecialDate: false,
-            specialDates: [],
-            priority: 0,
-            isOverride: false
-          }]);
+          // Initialize with empty schedules array
+          setSchedules([]);
         }
       } catch (error: any) {
         logger.error('❌ Error fetching data:', error);
@@ -820,7 +806,7 @@ const AdminTeachingEditEventPage: React.FC = () => {
         isActive: formData.isActive,
         slug: formData.slug || undefined,
         isAffiliateTeachingEvent: formData.isAffiliateTeachingEvent,
-        externalBookingLink: formData.isAffiliateTeachingEvent ? formData.externalBookingLink : undefined,
+        externalBookingLink: formData.isAffiliateTeachingEvent ? formData.externalBookingLink : "",
         cancellationStatus: formData.cancellationStatus,
 
         // Multiple schedules

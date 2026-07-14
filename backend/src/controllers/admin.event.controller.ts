@@ -532,20 +532,7 @@ export const createEvent = async (
       }
     }
 
-    // Validate dateSchedule dates are in the future
-    if (eventData.dateSchedule && eventData.dateSchedule.length > 0) {
-      const now = new Date();
-      now.setHours(0, 0, 0, 0);
-      for (const schedule of eventData.dateSchedule) {
-        // Support both legacy 'date' and new 'startDate' formats
-        const dateToCheck = schedule.startDate || schedule.date;
-        if (new Date(dateToCheck) < now) {
-          return next(
-            new AppError("Schedule dates cannot be in the past", 400),
-          );
-        }
-      }
-    }
+    // Dates in the past are now allowed
 
     // Create event - Admin created events can be auto-approved
     const newEvent = await Event.create({

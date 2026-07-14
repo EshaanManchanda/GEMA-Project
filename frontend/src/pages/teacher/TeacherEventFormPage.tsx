@@ -141,18 +141,7 @@ const TeacherEventFormPage: React.FC = () => {
   const [isFreeEvent, setIsFreeEvent] = useState(false);
   const [basePrice, setBasePrice] = useState('');
   const [currency, setCurrency] = useState('AED');
-  const [schedules, setSchedules] = useState<Schedule[]>([
-    {
-      id: 'schedule-1',
-      startDate: '',
-      endDate: '',
-      startTime: '09:00',
-      endTime: '10:00',
-      availableSeats: '10',
-      price: '',
-      unlimitedSeats: false,
-    },
-  ]);
+  const [schedules, setSchedules] = useState<Schedule[]>([]);
   const [isDataLoaded, setIsDataLoaded] = useState(false);
 
   // Location

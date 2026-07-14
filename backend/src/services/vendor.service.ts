@@ -706,7 +706,7 @@ class VendorService {
     const vendor = await getOrCreateVendorProfile(userId);
     const user = await User.findById(userId).select(
       "-passwordHash -twoFactorAuth.secret -passwordReset " +
-        "-emailVerification -phoneVerification -loginAttempts",
+        "-emailVerification -loginAttempts",
     );
 
     return { vendor, user };
@@ -731,7 +731,7 @@ class VendorService {
       { new: true, runValidators: true },
     ).select(
       "-passwordHash -twoFactorAuth.secret -passwordReset " +
-        "-emailVerification -phoneVerification -loginAttempts",
+        "-emailVerification -loginAttempts",
     );
 
     if (!user) {

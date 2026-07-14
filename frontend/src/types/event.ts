@@ -63,6 +63,7 @@ export interface EventDateSchedule {
   soldSeats?: number;
   reservedSeats?: number;
   price?: number;
+  billingCycle?: 'total' | 'daily' | 'weekly' | 'monthly';
   unlimitedSeats?: boolean;
   isOverride?: boolean;
 }

@@ -339,7 +339,7 @@ const vendorAPI = {
 
   getClaimedEvents: async () => {
     try {
-      const response = await ApiService.get('/vendors/claimed-events');
+      const response = await ApiService.get('/vendor/claimed-events');
       return response;
     } catch (error) {
       throw error;
@@ -348,7 +348,7 @@ const vendorAPI = {
 
   getClaimedVenues: async () => {
     try {
-      const response = await ApiService.get('/vendors/claimed-venues');
+      const response = await ApiService.get('/vendor/claimed-venues');
       return response;
     } catch (error) {
       throw error;
@@ -453,7 +453,7 @@ const vendorAPI = {
 
       if (format === 'csv') {
         // Create download link for CSV
-        const url = window.URL.createObjectURL(new Blob([response.data]));
+        const url = window.URL.createObjectURL(new Blob([response as any]));
         const link = document.createElement('a');
         link.href = url;
         link.setAttribute('download', `employees-${Date.now()}.csv`);
@@ -465,7 +465,7 @@ const vendorAPI = {
         return { success: true, message: 'CSV exported successfully' };
       } else {
         // For JSON, trigger download
-        const dataStr = JSON.stringify(response.data, null, 2);
+        const dataStr = JSON.stringify(response, null, 2);
         const dataBlob = new Blob([dataStr], { type: 'application/json' });
         const url = window.URL.createObjectURL(dataBlob);
         const link = document.createElement('a');

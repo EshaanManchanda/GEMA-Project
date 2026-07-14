@@ -8,9 +8,10 @@ import { useCreateVendorEventMutation, useUpdateVendorEventMutation } from '../.
 import categoriesAPI from '../../services/api/categoriesAPI';
 import PrivatePageSEO from '@/components/common/PrivatePageSEO';
 import BasicInfoTab from '../../components/vendor/BasicInfoTab';
-import SchedulePricingTab from '../../components/vendor/SchedulePricingTab';
+import SchedulePricingTab from '../../components/admin/SchedulePricingTab';
 import AdvancedTab from '../../components/vendor/AdvancedTab';
 import { MediaAsset } from '../../store/slices/mediaSlice';
+import { TIMEZONE_OPTIONS } from '../../utils/timezoneUtils';
 
 interface EventFormData {
   title: string;
@@ -140,19 +141,11 @@ const VendorEventFormPage: React.FC = () => {
 
   const [bookingMethod, setBookingMethod] = useState<'internal' | 'external'>('internal');
   const [isFreeEvent, setIsFreeEvent] = useState<boolean>(false);
+  const [unlimitedCapacity, setUnlimitedCapacity] = useState<boolean>(false);
+  const [basePrice, setBasePrice] = useState<string>('');
   const [timezone, setTimezone] = useState<string>('Asia/Dubai');
 
-  const [schedules, setSchedules] = useState<Schedule[]>([
-    {
-      id: uuidv4(),
-      startDate: '',
-      endDate: '',
-      startTime: '',
-      endTime: '',
-      availableSeats: '',
-      price: ''
-    }
-  ]);
+  const [schedules, setSchedules] = useState<Schedule[]>([]);
 
   const [formFields, setFormFields] = useState<any[]>([]);
 
@@ -668,21 +661,38 @@ const VendorEventFormPage: React.FC = () => {
 
             {activeTab === 'schedule' && (
               <div className="space-y-8 animate-in fade-in slide-in-from-bottom-4 duration-500">
+                {/* Timezone */}
+                <div className="bg-white rounded-2xl shadow-sm border border-gray-200 p-6">
+                  <label className="block text-sm font-semibold text-gray-700 mb-1.5">Timezone</label>
+                  <select
+                    value={timezone}
+                    onChange={(e) => setTimezone(e.target.value)}
+                    className="w-full px-4 py-3 bg-white border border-gray-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-green-500 transition-shadow"
+                  >
+                    {TIMEZONE_OPTIONS.map(opt => (
+                      <option key={opt.value} value={opt.value}>{opt.label}</option>
+                    ))}
+                  </select>
+                  <div className="text-xs text-gray-400 mt-1.5">All session start/end times are interpreted in this timezone.</div>
+                </div>
+
                 <SchedulePricingTab
                   schedules={schedules}
                   currency={formData.currency}
                   capacity={formData.capacity}
-                  eventType={formData.type}
+                  basePrice={basePrice}
+                  isFreeEvent={isFreeEvent}
+                  unlimitedCapacity={unlimitedCapacity}
+                  isEducational={['Course', 'Workshop', 'Bootcamp', 'Class', 'Masterclass'].includes(formData.type)}
                   errors={errors}
-                  isFreeEvent={false}
-                  basePrice={""}
-                  timezone={timezone}
-                  onTimezoneChange={setTimezone}
                   onScheduleChange={handleScheduleChange}
                   onAddSchedule={handleAddSchedule}
                   onRemoveSchedule={handleRemoveSchedule}
                   onCurrencyChange={handleInputChange}
                   onCapacityChange={handleInputChange}
+                  onBasePriceChange={(e) => setBasePrice(e.target.value)}
+                  onFreeEventChange={setIsFreeEvent}
+                  onUnlimitedCapacityChange={setUnlimitedCapacity}
                 />
               </div>
             )}
