@@ -330,9 +330,14 @@ export {
 } from "./NotificationTemplate";
 export type { INotificationTemplate } from "./NotificationTemplate";
 
+
 export { default as AnalyticsEvent } from "./AnalyticsEvent";
 export type {
   IAnalyticsEvent,
   AnalyticsEventType,
   AnalyticsEventSection,
 } from "./AnalyticsEvent";
+
+export { default as LeadPage } from "./LeadPage";
+export type { ILeadPage, ILead } from "./LeadPage";
+

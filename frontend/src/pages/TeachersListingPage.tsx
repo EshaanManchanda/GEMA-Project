@@ -9,7 +9,6 @@ import { MdOutlineSort } from 'react-icons/md';
 import teacherAPI from '@/services/api/teacherAPI';
 import { API_BASE_URL } from '@/config/api';
 import type { ITeacher } from '@/types/teacher';
-
 interface PublicTeacher {
   user: {
     _id: string;
@@ -25,29 +24,24 @@ interface PublicTeacher {
     averageRating?: number;
   };
 }
-
 type SortOption = 'rating' | 'students' | 'events' | 'newest';
 type ModeFilter = 'all' | 'online' | 'offline' | 'hybrid';
-
 const SORT_LABELS: Record<SortOption, string> = {
   rating: 'Top Rated',
   students: 'Most Students',
   events: 'Most Events',
   newest: 'Newest',
 };
-
 const MODE_COLORS: Record<string, string> = {
   online: 'bg-blue-100 text-blue-700',
   offline: 'bg-amber-100 text-amber-700',
   hybrid: 'bg-violet-100 text-violet-700',
 };
-
 const MODE_ICONS: Record<string, React.ReactNode> = {
   online: <FaLaptop className="w-3 h-3" />,
   offline: <FaMapMarkerAlt className="w-3 h-3" />,
   hybrid: <FaChalkboardTeacher className="w-3 h-3" />,
 };
-
 const API_ORIGIN = (() => {
   try {
     return new URL(API_BASE_URL).origin;
@@ -55,7 +49,6 @@ const API_ORIGIN = (() => {
     return '';
   }
 })();
-
 const normalizeImageUrl = (url?: string) => {
   if (!url) return '';
   if (/^(https?:|data:|blob:)/i.test(url)) return url;
@@ -64,7 +57,6 @@ const normalizeImageUrl = (url?: string) => {
   }
   return url;
 };
-
 // ── Skeleton card ─────────────────────────────────────────────
 const SkeletonCard: React.FC = () => (
   <div className="bg-white rounded-2xl shadow-sm overflow-hidden animate-pulse">
@@ -88,12 +80,20 @@ const SkeletonCard: React.FC = () => (
     </div>
   </div>
 );
-
+const defaultTeacherCovers = [
+  'https://images.unsplash.com/photo-1524178232363-1fb2b075b655?q=80&w=800&auto=format&fit=crop',
+  'https://images.unsplash.com/photo-1517245386807-bb43f82c33c4?q=80&w=800&auto=format&fit=crop',
+  'https://images.unsplash.com/photo-1543269865-cbf427effbad?q=80&w=800&auto=format&fit=crop',
+  'https://images.unsplash.com/photo-1510531704581-5b2870972060?q=80&w=800&auto=format&fit=crop'
+];
 // ── Teacher card ──────────────────────────────────────────────
 const TeacherCard: React.FC<{ t: PublicTeacher; idx: number }> = ({ t, idx }) => {
   const isVerified = t.teacher.verificationStatus === 'verified';
   const mode = t.teacher.teachingMode;
-
+  // Use avatar as primary image, cover image as fallback, or random default
+  const cardImage = t.user.avatar ? normalizeImageUrl(t.user.avatar) :
+    t.teacher.coverImage ? normalizeImageUrl(t.teacher.coverImage) :
+      defaultTeacherCovers[idx % defaultTeacherCovers.length];
   return (
     <motion.div
       initial={{ opacity: 0, y: 20 }}
@@ -102,106 +102,77 @@ const TeacherCard: React.FC<{ t: PublicTeacher; idx: number }> = ({ t, idx }) =>
     >
       <Link
         to={`/teachers/${t.user._id}`}
-        className="block bg-white rounded-2xl shadow-sm hover:shadow-lg transition-all
-                   duration-300 overflow-hidden group border border-gray-100
-                   hover:border-purple-200"
+        className="block relative group rounded-2xl overflow-hidden aspect-[4/5] shadow-sm hover:shadow-xl transition-all duration-300"
       >
-        {/* Cover */}
-        <div className="h-24 bg-gradient-to-r from-purple-500 to-indigo-500 relative overflow-hidden">
-          {t.teacher.coverImage && (
-            <img
-              src={normalizeImageUrl(t.teacher.coverImage)}
-              alt="cover"
-              className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
-            />
-          )}
-          {/* Mode badge */}
-          {mode && (
+        {/* Background Image */}
+        <div className="absolute inset-0 bg-gray-200">
+          <img
+            src={cardImage}
+            alt={`${t.user.firstName} ${t.user.lastName}`}
+            className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-110"
+            loading="lazy"
+          />
+          {/* Gradient Overlays */}
+          <div className="absolute inset-0 bg-gradient-to-t from-purple-900/60 via-transparent to-transparent opacity-60 transition-opacity duration-300 group-hover:opacity-80" />
+          <div className="absolute inset-0 bg-gradient-to-t from-black/90 via-black/20 to-transparent opacity-80" />
+        </div>
+        {/* Mode badge */}
+        {mode && (
+          <div className="absolute top-3 right-3 z-10">
             <span
-              className={`absolute top-2 right-2 flex items-center gap-1 px-2 py-0.5
-                          rounded-full text-xs font-medium capitalize
-                          ${MODE_COLORS[mode] ?? 'bg-gray-100 text-gray-600'}`}
+              className={`flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-semibold capitalize backdrop-blur-md shadow-sm
+                          ${mode === 'online' ? 'bg-blue-500/80 text-white' :
+                  mode === 'offline' ? 'bg-amber-500/80 text-white' :
+                    'bg-violet-500/80 text-white'}`}
             >
               {MODE_ICONS[mode]}
               {mode}
             </span>
-          )}
-        </div>
-
-        <div className="px-4 pb-5">
-          {/* Avatar */}
-          <div className="flex justify-center -mt-10 mb-2">
-            <div className="relative">
-              <div className="w-20 h-20 rounded-full border-4 border-white shadow-md overflow-hidden
-                              bg-gradient-to-br from-purple-400 to-indigo-400">
-                {t.user.avatar ? (
-                  <img
-                    src={normalizeImageUrl(t.user.avatar)}
-                    alt={t.user.firstName}
-                    className="w-full h-full object-cover"
-                  />
-                ) : (
-                  <div className="w-full h-full flex items-center justify-center text-white
-                                  text-2xl font-bold">
-                    {t.user.firstName?.[0]}
-                  </div>
-                )}
-              </div>
-              {isVerified && (
-                <FaCheckCircle
-                  className="absolute -bottom-0.5 -right-0.5 w-5 h-5 text-blue-500
-                             bg-white rounded-full"
-                  title="Verified teacher"
-                />
-              )}
+          </div>
+        )}
+        {isVerified && (
+          <div className="absolute top-3 left-3 z-10">
+            <div className="bg-white/90 backdrop-blur-md rounded-full p-1 shadow-sm">
+              <FaCheckCircle className="w-5 h-5 text-blue-500" title="Verified teacher" />
             </div>
           </div>
-
-          {/* Name + specialization */}
-          <div className="text-center">
-            <h3 className="font-bold text-gray-900 group-hover:text-purple-600
-                           transition-colors leading-tight">
+        )}
+        {/* Content Overlay */}
+        <div className="absolute bottom-0 left-0 right-0 p-5 text-white transform transition-transform duration-300">
+          <div className="mb-2">
+            <h3 className="text-lg sm:text-xl font-bold leading-tight mb-1 group-hover:text-purple-300 transition-colors">
               {t.user.firstName} {t.user.lastName}
             </h3>
             {t.teacher.specialization && (
-              <p className="text-xs text-gray-500 mt-0.5 truncate">
+              <p className="text-sm font-medium opacity-90 truncate">
                 {t.teacher.specialization}
               </p>
             )}
-            {t.teacher.yearsOfExperience != null && t.teacher.yearsOfExperience > 0 && (
-              <p className="text-xs text-purple-500 font-medium mt-0.5">
-                {t.teacher.yearsOfExperience}y exp
-              </p>
-            )}
           </div>
-
-          {/* Subject chips */}
+          {/* Subjects */}
           {t.teacher.subjects && t.teacher.subjects.length > 0 && (
-            <div className="flex flex-wrap justify-center gap-1 mt-2">
-              {t.teacher.subjects.slice(0, 3).map((sub) => (
+            <div className="flex flex-wrap gap-1.5 mb-3">
+              {t.teacher.subjects.slice(0, 2).map((sub) => (
                 <span
                   key={sub}
-                  className="px-2 py-0.5 bg-purple-50 text-purple-600 rounded-full text-xs"
+                  className="px-2 py-0.5 bg-white/20 backdrop-blur-sm rounded-full text-[10px] font-medium"
                 >
                   {sub}
                 </span>
               ))}
-              {t.teacher.subjects.length > 3 && (
-                <span className="px-2 py-0.5 bg-gray-50 text-gray-500 rounded-full text-xs">
-                  +{t.teacher.subjects.length - 3}
+              {t.teacher.subjects.length > 2 && (
+                <span className="px-2 py-0.5 bg-white/10 backdrop-blur-sm rounded-full text-[10px]">
+                  +{t.teacher.subjects.length - 2}
                 </span>
               )}
             </div>
           )}
-
-          {/* Stats row */}
-          <div className="flex items-center justify-center gap-4 mt-3 text-xs text-gray-500">
+          {/* Stats */}
+          <div className="flex items-center gap-4 text-xs opacity-90 pt-3 border-t border-white/20">
             {t.stats?.averageRating != null && (
-              <span className="flex items-center gap-1">
+              <span className="flex items-center gap-1 font-medium">
                 <FaStar className="text-yellow-400 w-3 h-3" />
-                <span className="font-medium text-gray-700">
-                  {t.stats.averageRating.toFixed(1)}
-                </span>
+                {t.stats.averageRating.toFixed(1)}
               </span>
             )}
             {t.stats?.totalStudents != null && (
@@ -210,10 +181,9 @@ const TeacherCard: React.FC<{ t: PublicTeacher; idx: number }> = ({ t, idx }) =>
                 {t.stats.totalStudents.toLocaleString()}
               </span>
             )}
-            {t.stats?.totalEvents != null && (
-              <span className="flex items-center gap-1">
-                <FaChalkboardTeacher className="w-3 h-3" />
-                {t.stats.totalEvents}
+            {t.teacher.yearsOfExperience != null && t.teacher.yearsOfExperience > 0 && (
+              <span className="flex items-center gap-1 ml-auto font-medium text-purple-200">
+                {t.teacher.yearsOfExperience}y exp
               </span>
             )}
           </div>
@@ -222,19 +192,16 @@ const TeacherCard: React.FC<{ t: PublicTeacher; idx: number }> = ({ t, idx }) =>
     </motion.div>
   );
 };
-
 // ── Main page ─────────────────────────────────────────────────
 const TeachersListingPage: React.FC = () => {
   const [teachers, setTeachers] = useState<PublicTeacher[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-
   const [search, setSearch] = useState('');
   const [modeFilter, setModeFilter] = useState<ModeFilter>('all');
   const [activeSubject, setActiveSubject] = useState<string | null>(null);
   const [sortBy, setSortBy] = useState<SortOption>('newest');
   const [showSort, setShowSort] = useState(false);
-
   useEffect(() => {
     const fetchTeachers = async () => {
       try {
@@ -249,14 +216,12 @@ const TeachersListingPage: React.FC = () => {
     };
     fetchTeachers();
   }, []);
-
   // Collect all subjects across teachers
   const allSubjects = useMemo(() => {
     const set = new Set<string>();
     teachers.forEach((t) => t.teacher.subjects?.forEach((s) => set.add(s)));
     return Array.from(set).sort();
   }, [teachers]);
-
   // Filter + sort
   const filtered = useMemo(() => {
     let list = teachers.filter((t) => {
@@ -268,7 +233,6 @@ const TeachersListingPage: React.FC = () => {
       if (activeSubject && !t.teacher.subjects?.includes(activeSubject)) return false;
       return true;
     });
-
     list = [...list].sort((a, b) => {
       switch (sortBy) {
         case 'rating':
@@ -286,39 +250,45 @@ const TeachersListingPage: React.FC = () => {
           return 0;
       }
     });
-
     return list;
   }, [teachers, search, modeFilter, activeSubject, sortBy]);
-
   const hasFilters = search || modeFilter !== 'all' || activeSubject;
-
   const clearFilters = () => {
     setSearch('');
     setModeFilter('all');
     setActiveSubject(null);
   };
-
   return (
+
     <div className="min-h-screen bg-gray-50">
       {/* Hero */}
-      <div className="bg-gradient-to-r from-purple-700 to-indigo-700 text-white py-14">
-        <div className="container mx-auto px-4 text-center">
+      <div className="relative py-28 sm:py-48 overflow-hidden">
+        {/* Background Image & Overlay */}
+        <div className="absolute inset-0">
+          <img
+            src="https://images.unsplash.com/photo-1577896851231-70ef18881754?q=80&w=2070&auto=format&fit=crop"
+            alt="Teachers Header"
+            className="w-full h-full object-cover"
+          />
+          <div className="absolute inset-0 bg-gray-900/50 backdrop-blur-[2px]" />
+          <div className="absolute inset-0 bg-gradient-to-b from-black/50 via-transparent to-transparent" />
+        </div>
+        <div className="container mx-auto px-4 text-center relative z-10 text-white">
           <motion.h1
             initial={{ opacity: 0, y: -16 }}
             animate={{ opacity: 1, y: 0 }}
-            className="text-3xl sm:text-4xl md:text-5xl font-bold mb-3"
+            className="text-3xl sm:text-4xl md:text-5xl font-bold mb-4 drop-shadow-lg"
           >
-            Meet Our Teachers
+            Meet Our <span className='text-purple-400'>Teachers</span>
           </motion.h1>
           <motion.p
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             transition={{ delay: 0.1 }}
-            className="text-purple-200 text-base mb-8 max-w-xl mx-auto"
+            className="text-purple-300 text-base sm:text-lg mb-8 max-w-2xl mx-auto drop-shadow-md font-medium"
           >
             Learn from passionate educators across a variety of subjects
           </motion.p>
-
           {/* Search */}
           <motion.div
             initial={{ opacity: 0, scale: 0.96 }}
@@ -347,7 +317,6 @@ const TeachersListingPage: React.FC = () => {
           </motion.div>
         </div>
       </div>
-
       {/* Filters bar */}
       <div className="sticky top-0 z-20 bg-white border-b border-gray-100 shadow-sm">
         <div className="container mx-auto px-4 py-3 flex flex-wrap items-center gap-3">
@@ -367,10 +336,8 @@ const TeachersListingPage: React.FC = () => {
               </button>
             ))}
           </div>
-
           {/* Divider */}
           <div className="h-4 w-px bg-gray-200 hidden sm:block" />
-
           {/* Subject chips (top 8) */}
           <div className="flex items-center gap-1.5 flex-wrap flex-1 min-w-0">
             {allSubjects.slice(0, 8).map((sub) => (
@@ -387,7 +354,6 @@ const TeachersListingPage: React.FC = () => {
               </button>
             ))}
           </div>
-
           {/* Sort */}
           <div className="relative ml-auto">
             <button
@@ -424,7 +390,6 @@ const TeachersListingPage: React.FC = () => {
           </div>
         </div>
       </div>
-
       {/* Content */}
       <div className="container mx-auto px-4 py-10">
         {/* Results summary */}
@@ -449,7 +414,6 @@ const TeachersListingPage: React.FC = () => {
             )}
           </div>
         )}
-
         {/* Loading skeletons */}
         {isLoading && (
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-5">
@@ -458,7 +422,6 @@ const TeachersListingPage: React.FC = () => {
             ))}
           </div>
         )}
-
         {/* Error */}
         {error && !isLoading && (
           <div className="text-center py-20">
@@ -471,7 +434,6 @@ const TeachersListingPage: React.FC = () => {
             </button>
           </div>
         )}
-
         {/* Empty */}
         {!isLoading && !error && filtered.length === 0 && (
           <div className="text-center py-20">
@@ -484,7 +446,6 @@ const TeachersListingPage: React.FC = () => {
             </p>
           </div>
         )}
-
         {/* Grid */}
         {!isLoading && !error && filtered.length > 0 && (
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-5">
@@ -497,5 +458,4 @@ const TeachersListingPage: React.FC = () => {
     </div>
   );
 };
-
 export default TeachersListingPage;

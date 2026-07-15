@@ -153,6 +153,10 @@ const AdminStudentsPage = React.lazy(() => import(/* webpackChunkName: "admin" *
 const AdminStudentDetailPage = React.lazy(() => import(/* webpackChunkName: "admin" */ './pages/admin/AdminStudentDetailPage'));
 const AdminStudentEditPage = React.lazy(() => import(/* webpackChunkName: "admin" */ './pages/admin/AdminStudentEditPage'));
 const AdminSubmissionsPage = React.lazy(() => import(/* webpackChunkName: "admin" */ './pages/admin/AdminSubmissionsPage'));
+const AdminLeadPagesPage = React.lazy(() => import(/* webpackChunkName: "admin" */ './pages/admin/AdminLeadPagesPage'));
+
+// Lead Page (Public)
+const LeadPage = React.lazy(() => import(/* webpackChunkName: "lead" */ './pages/LeadPage'));
 
 // Analytics Pages
 const EventPerformance = React.lazy(() => import(/* webpackChunkName: "analytics" */ './pages/analytics/EventPerformance'));
@@ -331,6 +335,13 @@ function AppContent() {
           <Route path="events/:slug" element={
             <Suspense fallback={<EventDetailSkeleton />}>
               <EventDetailPage />
+            </Suspense>
+          } />
+
+          {/* Lead Page - Public promotional page */}
+          <Route path="lead-page" element={
+            <Suspense fallback={<GenericPageSkeleton />}>
+              <LeadPage />
             </Suspense>
           } />
           {/* Legacy: redirect old teaching-events detail URLs to the unified events page */}
@@ -1080,6 +1091,15 @@ function AppContent() {
                   <AdminEventsPage />
                 </Suspense>
               </PageErrorBoundary>
+            </AdminRoute>
+          } />
+
+          {/* Lead Pages Management */}
+          <Route path="lead-pages" element={
+            <AdminRoute>
+              <Suspense fallback={<GenericPageSkeleton />}>
+                <AdminLeadPagesPage />
+              </Suspense>
             </AdminRoute>
           } />
           <Route path="events/create" element={

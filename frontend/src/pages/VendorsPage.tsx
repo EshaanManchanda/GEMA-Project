@@ -74,8 +74,20 @@ const SkeletonCard: React.FC = () => (
   </div>
 );
 
+const defaultVendorCovers = [
+  'https://images.unsplash.com/photo-1542744173-8e7e53415bb0?q=80&w=800&auto=format&fit=crop',
+  'https://images.unsplash.com/photo-1552664730-d307ca884978?q=80&w=800&auto=format&fit=crop',
+  'https://images.unsplash.com/photo-1531482615713-2afd69097998?q=80&w=800&auto=format&fit=crop',
+  'https://images.unsplash.com/photo-1515169067868-5387ec356754?q=80&w=800&auto=format&fit=crop'
+];
+
 // ── Vendor card ──────────────────────────────────────────────
 const VendorCard: React.FC<{ vendor: Vendor; idx: number }> = ({ vendor, idx }) => {
+  // Use logo as the main profile picture/background, fallback to cover, then default
+  const cardImage = vendor.logo ? normalizeImageUrl(vendor.logo) :
+    vendor.coverImage ? normalizeImageUrl(vendor.coverImage) :
+      defaultVendorCovers[idx % defaultVendorCovers.length];
+
   return (
     <motion.div
       initial={{ opacity: 0, y: 20 }}
@@ -84,102 +96,78 @@ const VendorCard: React.FC<{ vendor: Vendor; idx: number }> = ({ vendor, idx }) 
     >
       <Link
         to={`/vendors/${vendor.id}`}
-        className="block bg-white rounded-2xl shadow-sm hover:shadow-lg transition-all
-                   duration-300 overflow-hidden group border border-gray-100
-                   hover:border-emerald-200"
+        className="block relative group rounded-2xl overflow-hidden aspect-[4/5] shadow-sm hover:shadow-xl transition-all duration-300"
       >
-        {/* Cover */}
-        <div className="h-24 bg-gradient-to-r from-emerald-500 to-teal-500 relative overflow-hidden">
-          {vendor.coverImage && (
-            <img
-              src={normalizeImageUrl(vendor.coverImage)}
-              alt="cover"
-              className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
-            />
-          )}
+        {/* Background Image */}
+        <div className="absolute inset-0 bg-gray-200">
+          <img
+            src={cardImage}
+            alt={vendor.name}
+            className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-110"
+            loading="lazy"
+          />
+          {/* Gradient Overlays */}
+          <div className="absolute inset-0 bg-gradient-to-t from-emerald-900/70 via-transparent to-transparent opacity-60 transition-opacity duration-300 group-hover:opacity-80" />
+          <div className="absolute inset-0 bg-gradient-to-t from-black/90 via-black/30 to-transparent opacity-80" />
         </div>
 
-        <div className="px-4 pb-5">
-          {/* Logo */}
-          <div className="flex justify-center -mt-10 mb-2">
-            <div className="relative">
-              <div className="w-20 h-20 rounded-full border-4 border-white shadow-md overflow-hidden
-                              bg-gradient-to-br from-emerald-400 to-teal-400 flex items-center justify-center">
-                {vendor.logo ? (
-                  <img
-                    src={normalizeImageUrl(vendor.logo)}
-                    alt={vendor.name}
-                    className="w-full h-full object-cover"
-                  />
-                ) : (
-                  <FaBuilding className="text-white text-2xl" />
-                )}
-              </div>
-              <FaCheckCircle
-                className="absolute -bottom-0.5 -right-0.5 w-5 h-5 text-emerald-500
-                           bg-white rounded-full"
-                title="Verified vendor"
-              />
-            </div>
+        {/* Verification Badge */}
+        <div className="absolute top-3 left-3 z-10">
+          <div className="bg-white/90 backdrop-blur-md rounded-full p-1 shadow-sm">
+            <FaCheckCircle className="w-5 h-5 text-emerald-500" title="Verified vendor" />
           </div>
+        </div>
 
-          {/* Name + Details */}
-          <div className="text-center">
-            <h3 className="font-bold text-gray-900 group-hover:text-emerald-600
-                           transition-colors leading-tight truncate px-2">
+        {/* Content Overlay */}
+        <div className="absolute bottom-0 left-0 right-0 p-5 text-white transform transition-transform duration-300">
+          <div className="mb-2">
+            <h3 className="text-lg sm:text-xl font-bold leading-tight mb-1 group-hover:text-emerald-300 transition-colors line-clamp-1">
               {vendor.name}
             </h3>
             {vendor.location && (
-              <p className="text-xs text-gray-500 mt-1 flex items-center justify-center gap-1">
-                <FaMapMarkerAlt className="w-3 h-3" />
+              <p className="text-xs font-medium opacity-90 flex items-center gap-1.5">
+                <FaMapMarkerAlt className="w-3 h-3 text-emerald-400" />
                 {vendor.location}
-              </p>
-            )}
-            {vendor.description && (
-              <p className="text-xs text-gray-600 mt-2 line-clamp-2 px-2 text-center">
-                {vendor.description}
               </p>
             )}
           </div>
 
-          {/* Category chips */}
+          {/* Categories */}
           {vendor.categories && vendor.categories.length > 0 && (
-            <div className="flex flex-wrap justify-center gap-1 mt-3">
-              {vendor.categories.slice(0, 3).map((cat) => (
+            <div className="flex flex-wrap gap-1.5 mb-3">
+              {vendor.categories.slice(0, 2).map((cat) => (
                 <span
                   key={cat}
-                  className="px-2 py-0.5 bg-emerald-50 text-emerald-600 rounded-full text-xs font-medium"
+                  className="px-2 py-0.5 bg-white/20 backdrop-blur-sm rounded-full text-[10px] font-medium"
                 >
                   {cat}
                 </span>
               ))}
-              {vendor.categories.length > 3 && (
-                <span className="px-2 py-0.5 bg-gray-50 text-gray-500 rounded-full text-xs">
-                  +{vendor.categories.length - 3}
+              {vendor.categories.length > 2 && (
+                <span className="px-2 py-0.5 bg-white/10 backdrop-blur-sm rounded-full text-[10px]">
+                  +{vendor.categories.length - 2}
                 </span>
               )}
             </div>
           )}
 
-          {/* Stats row */}
-          <div className="flex items-center justify-center gap-4 mt-4 pt-4 border-t border-gray-50 text-xs text-gray-500">
+          {/* Stats */}
+          <div className="flex items-center gap-4 text-xs opacity-90 pt-3 border-t border-white/20">
             {vendor.rating != null && (
-              <span className="flex items-center gap-1">
+              <span className="flex items-center gap-1 font-medium">
                 <FaStar className="text-yellow-400 w-3 h-3" />
-                <span className="font-medium text-gray-700">
-                  {vendor.rating.toFixed(1)}
-                </span>
+                {vendor.rating.toFixed(1)}
               </span>
             )}
             {vendor.reviewCount != null && (
               <span className="flex items-center gap-1" title="Reviews">
-                <FaUsers className="w-3 h-3 text-emerald-500/70" />
+                <FaUsers className="w-3 h-3 text-emerald-300" />
                 {vendor.reviewCount}
               </span>
             )}
             {vendor.eventCount != null && (
-              <span className="flex items-center gap-1" title="Events">
-                <FaCalendarAlt className="w-3 h-3 text-emerald-500/70" />
+              <span className="flex items-center gap-1 ml-auto" title="Events">
+                <FaCalendarAlt className="w-3 h-3 text-emerald-300" />
                 {vendor.eventCount}
               </span>
             )}
@@ -232,10 +220,10 @@ const VendorsPage: React.FC = () => {
   const filtered = useMemo(() => {
     let list = vendors.filter((v) => {
       if (activeCategory && !v.categories?.includes(activeCategory) && v.categories?.[0] !== activeCategory) {
-         // Also match partial strings if categories are comma separated
-         if (!v.categories?.some(c => c.toLowerCase().includes(activeCategory.toLowerCase()))) {
-            return false;
-         }
+        // Also match partial strings if categories are comma separated
+        if (!v.categories?.some(c => c.toLowerCase().includes(activeCategory.toLowerCase()))) {
+          return false;
+        }
       }
       return true;
     });
@@ -276,22 +264,33 @@ const VendorsPage: React.FC = () => {
         keywords={['event vendors', 'event organizers', 'party planners', 'event services']}
         breadcrumbs={breadcrumbs}
       />
-      
+
       {/* Hero */}
-      <div className="bg-gradient-to-r from-emerald-700 to-green-700 text-white py-14">
-        <div className="container mx-auto px-4 text-center">
+      <div className="relative py-28 sm:py-48 overflow-hidden">
+        {/* Background Image & Overlay */}
+        <div className="absolute inset-0">
+          <img
+            src="https://images.unsplash.com/photo-1540575467063-178a50c2df87?q=80&w=2070&auto=format&fit=crop"
+            alt="Vendors Header"
+            className="w-full h-full object-cover"
+          />
+          <div className="absolute inset-0 bg-gray-900/50 backdrop-blur-[2px]" />
+          <div className="absolute inset-0 bg-gradient-to-b from-black/50 via-transparent to-transparent" />
+        </div>
+
+        <div className="container mx-auto px-4 text-center relative z-10 text-white">
           <motion.h1
             initial={{ opacity: 0, y: -16 }}
             animate={{ opacity: 1, y: 0 }}
-            className="text-3xl sm:text-4xl md:text-5xl font-bold mb-3"
+            className="text-3xl sm:text-4xl md:text-5xl font-bold mb-4 drop-shadow-lg"
           >
-            Find Top Event Organizers
+            Find Top Event <span className='text-green-400'>Organizers</span>
           </motion.h1>
           <motion.p
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             transition={{ delay: 0.1 }}
-            className="text-emerald-100 text-base mb-8 max-w-xl mx-auto"
+            className="text-green-300 text-base sm:text-lg mb-8 max-w-2xl mx-auto drop-shadow-md font-medium"
           >
             Discover professional vendors to bring your perfect event to life.
           </motion.p>

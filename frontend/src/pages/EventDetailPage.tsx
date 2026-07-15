@@ -143,6 +143,13 @@ const mockEvents = [
 
 
 
+// ─── SVG Icons ───────────────────────────────────────────────────────────────
+const StarIcon = ({ className = "w-4 h-4" }: { className?: string }) => (
+  <svg viewBox="0 0 24 24" fill="currentColor" className={className}>
+    <polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2" />
+  </svg>
+);
+
 // ─── Instructor Bio with read-more toggle ────────────────────────────────────
 const InstructorBio: React.FC<{ bio: string }> = ({ bio }) => {
   const [expanded, setExpanded] = useState(false);
@@ -352,9 +359,11 @@ const EventDetailPage: React.FC = () => {
   }, [galleryData?._id]);
 
   const totalGalleryImages = galleryData?.images?.length || 0;
-  const shouldCollapseGallery = totalGalleryImages > 7;
+  const layoutType = galleryData?.type || 'grid';
+  const maxVisible = layoutType === 'messy' ? 5 : 6;
+  const shouldCollapseGallery = totalGalleryImages > maxVisible;
   const visibleGalleryImages = shouldCollapseGallery && !showAllEventGallery
-    ? galleryData?.images?.slice(0, 7)
+    ? galleryData?.images?.slice(0, maxVisible)
     : galleryData?.images;
 
   const usingMockData = !eventData && !isLoading;
@@ -402,13 +411,13 @@ const EventDetailPage: React.FC = () => {
   };
 
   const programSchedules = useMemo(() => {
-    return filteredSchedules.filter((s: any) => 
+    return filteredSchedules.filter((s: any) =>
       (s.timeSlots && s.timeSlots.length > 0) || isSingleDay(s)
     );
   }, [filteredSchedules]);
 
   const singleSessionSchedules = useMemo(() => {
-    return filteredSchedules.filter((s: any) => 
+    return filteredSchedules.filter((s: any) =>
       (!s.timeSlots || s.timeSlots.length === 0) && !isSingleDay(s)
     );
   }, [filteredSchedules]);
@@ -2364,7 +2373,17 @@ const EventDetailPage: React.FC = () => {
         {galleryData && galleryData.images?.length > 0 && (
           <div className="bg-white rounded-2xl shadow-xl overflow-hidden mb-12 border border-gray-100">
             <div className="p-8 md:p-10">
-              <h2 className="text-2xl md:text-3xl font-bold text-gray-900 mb-6">Event Gallery</h2>
+              <div className="flex flex-col mb-10">
+                <div className="flex items-center mb-2">
+                  <div className="p-4 rounded-2xl bg-orange-100 text-orange-600 mr-5 shadow-sm">
+                    <StarIcon className="w-8 h-8" />
+                  </div>
+                  <h2 className="text-2xl md:text-3xl font-bold text-gray-900">See It in Action</h2>
+                </div>
+                <p className="text-gray-500 text-base md:text-lg leading-relaxed mt-1 sm:ml-[5.5rem]">
+                  Get a sneak peek into the activities, vibrant atmosphere, and unforgettable experiences that make this event truly special.
+                </p>
+              </div>
               <GalleryComponent layout={galleryData.type} images={visibleGalleryImages || []} />
 
               {shouldCollapseGallery && !showAllEventGallery && (
@@ -2377,9 +2396,7 @@ const EventDetailPage: React.FC = () => {
                     <ImageIcon className="w-6 h-6 text-green-400" />
                     <span>View all {totalGalleryImages} photos</span>
                   </button>
-                  <p className="mt-4 text-gray-500 text-base text-center">
-                    Click to open full gallery
-                  </p>
+
                 </div>
               )}
             </div>
@@ -2402,7 +2419,7 @@ const EventDetailPage: React.FC = () => {
               {/* Modal Header */}
               <div className="px-8 md:px-12 pt-8 pb-2">
                 <h3 className="text-3xl md:text-4xl font-bold text-gray-900">
-                  Event Gallery
+                  See It in Action
                 </h3>
                 <p className="text-gray-500 text-lg mt-1">
                   {totalGalleryImages} Photos Captured

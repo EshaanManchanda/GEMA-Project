@@ -37,12 +37,9 @@ const GridLayout: React.FC<{ images: GalleryImage[]; onOpen: (img: GalleryImage)
   images,
   onOpen,
 }) => (
-  <div
-    className="grid gap-4"
-    style={{ gridTemplateColumns: 'repeat(auto-fit, minmax(260px, 1fr))' }}
-  >
+  <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
     {images.map((img, i) => (
-      <GalleryTile key={i} image={img} onClick={() => onOpen(img)} forcedAspect="aspect-[5/4]" />
+      <GalleryTile key={i} image={img} onClick={() => onOpen(img)} forcedAspect="aspect-[5/4]" tileClassName="w-full h-full" />
     ))}
   </div>
 );
@@ -52,33 +49,27 @@ const GridLayout: React.FC<{ images: GalleryImage[]; onOpen: (img: GalleryImage)
 const MessyLayout: React.FC<{ images: GalleryImage[]; onOpen: (img: GalleryImage) => void }> = ({
   images,
   onOpen,
-}) => (
-  <div className="grid grid-cols-2 lg:grid-cols-4 auto-rows-[110px] md:auto-rows-[130px] gap-3 md:gap-4">
-    {images.map((img, i) => (
-      <GalleryTile
-        key={i}
-        image={img}
-        onClick={() => onOpen(img)}
-        tileClassName={getMasonrySpanClass(i)}
-        forcedAspect="aspect-auto"
-      />
-    ))}
-  </div>
-);
-
-const getMasonrySpanClass = (index: number): string => {
-  const pattern = [
-    'col-span-2 row-span-2 md:col-span-2',
-    'row-span-1 md:col-span-1',
-    'row-span-1 md:col-span-1',
-    'row-span-1 md:col-span-1',
-    'row-span-1 md:col-span-1',
-    'col-span-2 row-span-1 md:col-span-2',
-    'row-span-1 md:col-span-1',
-    'row-span-1 md:col-span-1',
-  ];
-
-  return pattern[index % pattern.length];
+}) => {
+  return (
+    <div className="grid grid-cols-2 md:grid-cols-3 gap-4 auto-rows-[180px] md:auto-rows-[240px]">
+      {images.map((img, i) => {
+        let spanClass = 'col-span-1 row-span-1';
+        if (i === 2) {
+          spanClass = 'col-span-2 md:col-span-1 row-span-2';
+        }
+        return (
+          <div key={i} className={spanClass}>
+            <GalleryTile
+              image={img}
+              onClick={() => onOpen(img)}
+              tileClassName="w-full h-full"
+              forcedAspect="aspect-auto"
+            />
+          </div>
+        );
+      })}
+    </div>
+  );
 };
 
 // ─── Tile ─────────────────────────────────────────────────────────────────────

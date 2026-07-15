@@ -68,6 +68,8 @@ import reelRoutes from "./reel.routes";
 import adminReelRoutes from "./admin.reel.routes";
 import galleryRoutes from "./gallery.routes";
 import certificateRoutes from "./certificate.routes";
+import adminLeadPageRoutes from "./admin.lead-page.routes";
+import leadPageRoutes from "./lead-page.routes";
 import { Router } from "express";
 
 const router = Router();
@@ -304,5 +306,9 @@ router.use("/certificates", certificateRoutes);
 
 import studentRoutes from "./student.routes";
 router.use("/students", studentRoutes);
+
+// Lead Pages routes (Admin + Public)
+router.use("/admin/lead-pages", adminLeadPageRoutes);
+router.use("/lead-pages", leadPageRoutes);
 
 export default router;

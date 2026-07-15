@@ -1,6 +1,8 @@
 import React, { useState, useMemo, useRef, useEffect } from 'react';
 
-import { FaSearch, FaEdit, FaTrash, FaEye, FaCheck, FaTimes, FaStar, FaUndo, FaPlus, FaWpforms, FaLink } from 'react-icons/fa';
+import { FaSearch, FaEdit, FaTrash, FaEye, FaCheck, FaTimes, FaStar, FaUndo, FaPlus, FaWpforms, FaLink, FaBullhorn } from 'react-icons/fa';
+import { createLeadPage } from '../../services/api/leadPageAPI';
+import toast from 'react-hot-toast';
 import { reviewLinkAPI } from '../../services/api/reviewLinkAPI';
 import { useNavigate } from 'react-router-dom';
 import DOMPurify from 'isomorphic-dompurify';
@@ -732,6 +734,27 @@ const AdminEventsPage: React.FC = () => {
                                   title="Generate Review Link"
                                 >
                                   <FaLink size={14} />
+                                </button>
+
+                                <button
+                                  onClick={async () => {
+                                    try {
+                                      await createLeadPage(event.id);
+                                      toast.success('Lead page created! View it in Lead Pages section.');
+                                      navigate('/admin/lead-pages');
+                                    } catch (err: any) {
+                                      if (err?.response?.status === 409) {
+                                        toast.error('Lead page already exists for this event');
+                                        navigate('/admin/lead-pages');
+                                      } else {
+                                        toast.error('Failed to create lead page');
+                                      }
+                                    }
+                                  }}
+                                  className="inline-flex h-11 w-11 items-center justify-center rounded-lg border border-orange-100 text-orange-600 hover:text-orange-900 hover:bg-orange-50 transition-colors"
+                                  title="Create Lead Page"
+                                >
+                                  <FaBullhorn size={14} />
                                 </button>
 
                                 <button
