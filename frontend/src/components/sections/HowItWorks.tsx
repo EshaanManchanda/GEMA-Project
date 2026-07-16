@@ -100,7 +100,7 @@ const HowItWorks: React.FC = () => {
         <ScrollReveal delay={0.5}>
           <div className="text-center mt-12">
             <a
-              href="/events"
+              href="/search"
               className="inline-flex items-center gap-2 px-8 py-4 bg-gradient-to-r from-blue-600 to-purple-600 text-white font-semibold rounded-lg shadow-lg hover:shadow-xl transform hover:-translate-y-1 transition-all duration-300"
             >
               <FaSearch />

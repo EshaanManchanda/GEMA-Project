@@ -136,12 +136,10 @@ const BannerCarousel: React.FC<BannerCarouselProps> = ({ banners }) => {
               <img
                 src={getCloudinaryWebP(banner.imageAsset?.url, 1920)}
                 alt={getImageAlt(banner.imageAsset, banner.title)}
-                className={`absolute inset-0 w-full h-full ${
-                  index === 0 ? '' : 'transition-opacity duration-300'
-                } ${
-                  banner.objectFit === 'contain' ? 'object-contain' :
-                  banner.objectFit === 'fill' ? 'object-fill' : 'object-cover'
-                } ${index === 0 || imageLoaded[index] ? 'opacity-100' : 'opacity-0'}`}
+                className={`absolute inset-0 w-full h-full ${index === 0 ? '' : 'transition-opacity duration-300'
+                  } ${banner.objectFit === 'contain' ? 'object-contain' :
+                    banner.objectFit === 'fill' ? 'object-fill' : 'object-cover'
+                  } ${index === 0 || imageLoaded[index] ? 'opacity-100' : 'opacity-0'}`}
                 style={{ objectPosition: banner.objectPosition || 'center' }}
                 loading={index === 0 ? 'eager' : 'lazy'}
                 // @ts-expect-error - React 18 warning requires lowercase fetchpriority, but types are not updated yet

@@ -11,19 +11,16 @@ import {
 import { getEventImageFromEvent } from '../utils/imageFallbacks';
 import { galleryAPI } from '../services/api/reviewLinkAPI';
 import GalleryComponent from '../components/common/GalleryComponent';
+import { motion } from 'framer-motion';
+import { useVendorsQuery } from '@/hooks/queries/useVendorQuery';
+import VendorCard, { Vendor } from '@/components/vendor/VendorCard';
+import { useHomepageQuery } from '@/hooks/queries/useHomepageQuery';
+import HowItWorks from '@/components/sections/HowItWorks';
+import WhyChooseUs from '@/components/sections/WhyChooseUs';
+import HomepageFAQs from '@/components/sections/HomepageFAQs';
+import FeaturedBlogsSection from '@/components/sections/FeaturedBlogsSection';
+import { ScrollReveal } from '@/components/animations';
 
-// ─────────────────────────────────────────────────────────────────────────
-// DESIGN SYSTEM
-// KidRove lead pages are, functionally, a "boarding pass" for a kid's next
-// experience — so the visual language borrows from tickets: perforated
-// dividers, die-cut notches, mono-spaced meta labels, dashed tear-lines.
-// Palette: ink navy + warm paper + one coral accent + one teal accent +
-// sunshine for price/rating. No purple/pink gradients, no candy pastels.
-//
-// Add these once to your global stylesheet / index.html instead of the
-// runtime @import below if you'd rather not load fonts at render time:
-//   Bricolage Grotesque (display) · Inter (body) · IBM Plex Mono (labels)
-// ─────────────────────────────────────────────────────────────────────────
 
 const INK = '#161A23';
 const PAPER = '#FCFAF4';
@@ -292,27 +289,27 @@ const EventCard: React.FC<{ lp: ILeadPage }> = ({ lp }) => {
   return (
     <Link
       to={`/lead-page?eventId=${lp.event?._id}`}
-      className="group relative flex flex-col rounded-[22px] overflow-hidden border transition-all duration-300 hover:-translate-y-1"
-      style={{ borderColor: LINE, background: PAPER, boxShadow: '0 1px 0 rgba(22,26,35,0.04)' }}
+      className="group relative flex flex-col rounded-[22px] overflow-hidden border transition-all duration-500 hover:-translate-y-2 hover:shadow-[0_20px_40px_rgba(255,90,60,0.12)] bg-white"
+      style={{ borderColor: LINE, boxShadow: '0 4px 20px rgba(0,0,0,0.03)' }}
     >
       {/* Image */}
       <div className="h-48 w-full relative overflow-hidden" style={{ background: '#F1EDE2' }}>
         {imgSrc ? (
           <div
-            className="absolute inset-0 bg-cover bg-center transition-transform duration-500 group-hover:scale-105"
+            className="absolute inset-0 bg-cover bg-center transition-transform duration-700 group-hover:scale-110"
             style={{ backgroundImage: `url('${imgSrc}')` }}
           />
         ) : (
           <div className="absolute inset-0 flex items-center justify-center text-3xl">🎟️</div>
         )}
-        <span className="absolute top-3 left-3 kr-mono text-[10px] uppercase tracking-widest px-2.5 py-1 rounded-full" style={{ background: INK, color: PAPER }}>
+        <span className="absolute top-3 left-3 kr-mono text-[10px] font-bold uppercase tracking-widest px-3 py-1.5 rounded-full shadow-md bg-gradient-to-r from-orange-500 to-pink-500 text-white">
           {event?.category?.replace(/&amp;/g, '&') || 'Event'}
         </span>
       </div>
 
       {/* Perforated tear line at the seam between image and stub */}
       <div className="relative">
-        <TicketDivider bg={PAPER} />
+        <TicketDivider bg="#FFFFFF" />
       </div>
 
       {/* Info */}
@@ -327,9 +324,6 @@ const EventCard: React.FC<{ lp: ILeadPage }> = ({ lp }) => {
         </div>
       </div>
 
-      <span className="absolute bottom-5 right-5 flex items-center gap-1 kr-mono text-[11px] font-semibold uppercase tracking-wide opacity-0 group-hover:opacity-100 transition-opacity" style={{ color: TEAL }}>
-        View <ArrowRight />
-      </span>
     </Link>
   );
 };
@@ -339,6 +333,17 @@ const LeadPage: React.FC = () => {
   const [searchParams] = useSearchParams();
   const eventId = searchParams.get('eventId');
   const formRef = useRef<HTMLDivElement>(null);
+
+  const { data: vendorData } = useVendorsQuery({ limit: 12, sortBy: 'rating', sortOrder: 'desc' });
+  const fetchedVendors = (vendorData?.vendors || vendorData?.data?.vendors || []) as Vendor[];
+
+  const { data: homepageData } = useHomepageQuery();
+  const stats = homepageData?.stats || {
+    totalEvents: 2500,
+    totalVendors: 750,
+    totalVenues: 500,
+    totalClasses: 1000,
+  };
 
   const [globalPages, setGlobalPages] = useState<ILeadPage[]>([]);
   const [eventPage, setEventPage] = useState<ILeadPage | null>(null);
@@ -365,7 +370,7 @@ const LeadPage: React.FC = () => {
         .finally(() => setLoading(false));
     } else {
       getAllActiveLeadPages()
-        .then((data) => setGlobalPages(data))
+        .then((data) => setGlobalPages(data.filter(lp => !lp.isGlobal)))
         .catch(() => { })
         .finally(() => setLoading(false));
     }
@@ -887,101 +892,332 @@ const LeadPage: React.FC = () => {
       <GlobalStyles />
 
       {/* ── Hero ── */}
-      <div className="relative overflow-hidden pt-24 pb-24 px-4" style={{ background: INK }}>
-        <div className="absolute inset-0 kr-dotfield" />
-        <div className="absolute w-2 h-2 rounded-full kr-drift" style={{ top: '20%', left: '12%', background: SUN }} />
-        <div className="absolute w-2 h-2 rounded-full kr-drift" style={{ top: '65%', left: '85%', background: CORAL, animationDelay: '1.5s' }} />
-        <div className="absolute w-1.5 h-1.5 rounded-full kr-drift" style={{ top: '40%', left: '75%', background: TEAL, animationDelay: '3s' }} />
+      <div className="relative overflow-hidden pt-28 pb-32 px-4 flex items-center justify-center min-h-[70vh]">
+        {/* Dynamic Animated Mesh-like Background */}
+        <div className="absolute inset-0 bg-gray-900 overflow-hidden">
+          <motion.div
+            animate={{
+              scale: [1, 1.2, 1],
+              opacity: [0.3, 0.5, 0.3],
+              rotate: [0, 90, 0]
+            }}
+            transition={{ duration: 20, repeat: Infinity, ease: "linear" }}
+            className="absolute -top-[20%] -left-[10%] w-[60%] h-[60%] rounded-full bg-orange-600/20 blur-[100px]"
+          />
+          <motion.div
+            animate={{
+              scale: [1, 1.5, 1],
+              opacity: [0.2, 0.4, 0.2],
+              rotate: [0, -90, 0]
+            }}
+            transition={{ duration: 25, repeat: Infinity, ease: "linear" }}
+            className="absolute bottom-[0%] -right-[10%] w-[70%] h-[70%] rounded-full bg-teal-600/20 blur-[120px]"
+          />
+          <div className="absolute inset-0 kr-dotfield opacity-40" />
+        </div>
 
-        <div className="relative max-w-3xl mx-auto text-center">
-          <span className="inline-flex items-center gap-2 kr-mono text-[11px] uppercase tracking-widest px-4 py-2 rounded-full mb-7" style={{ background: 'rgba(252,250,244,0.1)', border: '1px solid rgba(252,250,244,0.2)', color: PAPER }}>
-            <TicketIcon /> KidRove lead pages
-          </span>
-          <h1 className="text-5xl sm:text-6xl font-extrabold kr-display mb-6 leading-[1.03]" style={{ color: PAPER }}>
-            Discover events<br />your kids will love
+        <motion.div
+          initial={{ opacity: 0, y: 30 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.8, ease: "easeOut" }}
+          className="relative max-w-4xl mx-auto text-center z-10 p-10 md:p-14 rounded-3xl backdrop-blur-md bg-white/5 border border-white/10 shadow-2xl"
+        >
+          <motion.span
+            initial={{ opacity: 0, scale: 0.9 }}
+            animate={{ opacity: 1, scale: 1 }}
+            transition={{ delay: 0.2, duration: 0.5 }}
+            className="inline-flex items-center gap-2 kr-mono text-[11px] uppercase tracking-widest px-5 py-2.5 rounded-full mb-8 shadow-inner"
+            style={{ background: 'rgba(255,255,255,0.1)', border: '1px solid rgba(255,255,255,0.2)', color: PAPER }}
+          >
+            <TicketIcon /> KidRove Lead Pages
+          </motion.span>
+          <h1 className="text-5xl md:text-7xl font-extrabold kr-display mb-6 leading-[1.1] tracking-tight text-white drop-shadow-md">
+            Discover events<br />your kids will <span className="text-transparent bg-clip-text bg-gradient-to-r from-orange-400 to-pink-500">love</span>
           </h1>
-          <p className="text-lg max-w-xl mx-auto mb-10" style={{ color: 'rgba(252,250,244,0.65)' }}>
+          <p className="text-lg md:text-xl max-w-2xl mx-auto mb-10 text-gray-300 font-light leading-relaxed">
             Hand-picked workshops and competitions designed to help your child grow, learn, and excel.
           </p>
-          <div className="flex flex-wrap gap-3 justify-center">
-            <Link to="/search" className="px-7 py-3.5 font-bold rounded-full hover:brightness-105 active:scale-[0.98] transition-all text-[15px]" style={{ background: CORAL, color: PAPER }}>
-              Browse all events
-            </Link>
-            <Link to="/vendor/register" className="px-7 py-3.5 font-bold rounded-full transition text-[15px]" style={{ border: '1px solid rgba(252,250,244,0.3)', color: PAPER }}>
-              List your event
-            </Link>
+          <div className="flex flex-wrap gap-4 justify-center items-center">
+            <motion.div whileHover={{ scale: 1.05 }} whileTap={{ scale: 0.98 }}>
+              <Link to="/search" className="px-8 h-14 font-bold rounded-full transition-all text-base shadow-lg hover:shadow-[0_0_20px_rgba(255,90,60,0.4)] inline-flex items-center justify-center gap-2" style={{ background: CORAL, color: PAPER }}>
+                Browse all events <ArrowRight />
+              </Link>
+            </motion.div>
+            <motion.div whileHover={{ scale: 1.05 }} whileTap={{ scale: 0.98 }}>
+              <Link to="/vendor/register" className="px-8 h-14 font-bold rounded-full transition-all text-base hover:bg-white/10 inline-flex items-center justify-center gap-2" style={{ border: '1px solid rgba(255,255,255,0.3)', color: PAPER }}>
+                List your event
+              </Link>
+            </motion.div>
           </div>
-        </div>
+        </motion.div>
       </div>
 
       {/* ── Why KidRove ── */}
-      <div className="py-16 px-4" style={{ borderBottom: `1px solid ${LINE}` }}>
-        <div className="max-w-5xl mx-auto text-center mb-12">
-          <h2 className="text-2xl sm:text-3xl font-bold kr-display mb-2" style={{ color: INK }}>Why families choose KidRove</h2>
-          <p style={{ color: '#7A7566' }}>The UAE's platform for children's events and educational programs</p>
-        </div>
-        <div className="max-w-5xl mx-auto grid sm:grid-cols-2 lg:grid-cols-4 gap-px" style={{ background: LINE }}>
-          {[
-            { stat: '500+', title: 'Verified events', desc: 'Quality-checked for every age group' },
-            { stat: '50K+', title: 'Families', desc: 'Trusted across the UAE since 2022' },
-            { stat: '4.8', title: 'Average rating', desc: "Top-rated for children's activities" },
-            { stat: '100%', title: 'Vetted organizers', desc: 'Background-checked before listing' },
-          ].map((item) => (
-            <div key={item.title} className="p-6 text-center transition-colors hover:bg-[#F5F1E5]" style={{ background: PAPER }}>
-              <p className="text-3xl font-extrabold kr-display mb-1" style={{ color: CORAL }}>{item.stat}</p>
-              <p className="font-bold text-sm mb-1" style={{ color: INK }}>{item.title}</p>
-              <p className="text-xs" style={{ color: '#8A8577' }}>{item.desc}</p>
-            </div>
-          ))}
+      <div className="relative z-20 -mt-16 px-4 mb-24">
+        <motion.div
+          initial={{ opacity: 0, y: 40 }}
+          whileInView={{ opacity: 1, y: 0 }}
+          viewport={{ once: true, margin: "-100px" }}
+          transition={{ duration: 0.7 }}
+          className="max-w-6xl mx-auto bg-white rounded-3xl shadow-[0_20px_50px_rgba(0,0,0,0.08)] border border-gray-100 overflow-hidden"
+        >
+          <div className="grid sm:grid-cols-2 lg:grid-cols-4 divide-y sm:divide-y-0 sm:divide-x divide-gray-100">
+            {[
+              { stat: `${stats.totalVendors}+`, title: 'Partners since 2017', desc: 'Trusted by over' },
+              { stat: `${stats.totalEvents}+`, title: 'Experiences', desc: 'Countless memories' },
+              { stat: `${stats.totalVenues}+`, title: 'Venue & Events', desc: 'Across the UAE' },
+              { stat: `${stats.totalClasses || stats.totalEvents || 1000}+`, title: 'Classes', desc: 'For every age group' },
+            ].map((item, idx) => (
+              <motion.div
+                key={item.title}
+                initial={{ opacity: 0, y: 20 }}
+                whileInView={{ opacity: 1, y: 0 }}
+                viewport={{ once: true }}
+                transition={{ delay: idx * 0.1 + 0.3, duration: 0.5 }}
+                className="p-10 text-center transition-colors hover:bg-gray-50/50 group"
+              >
+                <p className="text-4xl md:text-5xl font-extrabold kr-display mb-3 text-transparent bg-clip-text bg-gradient-to-br from-orange-500 to-pink-500 group-hover:scale-110 transition-transform duration-300">
+                  {item.stat}
+                </p>
+                <p className="font-bold text-lg mb-2 text-gray-900">{item.title}</p>
+                <p className="text-sm text-gray-500 leading-relaxed">{item.desc}</p>
+              </motion.div>
+            ))}
+          </div>
+        </motion.div>
+      </div>
+
+      {/* ── Trusted Partners Marquee ── */}
+      <div className="py-12 bg-gray-50 overflow-hidden flex flex-col items-center border-y border-gray-100">
+        <p className="kr-mono text-[11px] uppercase tracking-widest text-black mb-8 font-bold">Trusted by top organizers across the UAE</p>
+        <div className="flex w-[200%] md:w-[150%] lg:w-[100%] max-w-full overflow-hidden relative">
+          <div className="absolute inset-y-0 left-0 w-16 bg-gradient-to-r from-gray-50 to-transparent z-10" />
+          <div className="absolute inset-y-0 right-0 w-16 bg-gradient-to-l from-gray-50 to-transparent z-10" />
+
+          <motion.div
+            animate={{ x: ["0%", "-50%"] }}
+            transition={{ duration: fetchedVendors.length > 0 ? fetchedVendors.length * 3 : 25, repeat: Infinity, ease: "linear" }}
+            className="flex items-center justify-around w-[200%] min-w-max"
+          >
+            {fetchedVendors.length > 0 ? (
+              [...Array(2)].map((_, i) => (
+                <React.Fragment key={i}>
+                  {fetchedVendors.map((v) => (
+                    <div key={v.id} className="text-xl font-bold text-black/60 mx-8 kr-display">{v.name}</div>
+                  ))}
+                </React.Fragment>
+              ))
+            ) : (
+              [...Array(2)].map((_, i) => (
+                <React.Fragment key={i}>
+                  <div className="text-xl font-bold text-gray-300 mx-8 kr-display">Loading...</div>
+                  <div className="text-xl font-bold text-gray-300 mx-8 kr-display">Loading...</div>
+                  <div className="text-xl font-bold text-gray-300 mx-8 kr-display">Loading...</div>
+                </React.Fragment>
+              ))
+            )}
+          </motion.div>
         </div>
       </div>
 
-      {/* ── Active Lead Page Events ── */}
+      {/* ── How KidRove Works ── */}
+      <div className="bg-gray-50 border-b border-gray-100">
+        <HowItWorks />
+      </div>
+
+      {/* ── Active Lead Page Events (Promoted this week) ── */}
       <div className="py-16 px-4">
         <div className="max-w-6xl mx-auto">
-          <div className="text-center mb-12">
-            <span className="inline-block kr-mono text-[11px] uppercase tracking-widest px-3 py-1.5 rounded-full mb-4" style={{ background: '#EFEADB', color: TEAL }}>
+          <motion.div
+            initial={{ opacity: 0, y: 20 }}
+            whileInView={{ opacity: 1, y: 0 }}
+            viewport={{ once: true }}
+            className="text-center mb-16"
+          >
+            <span className="inline-block kr-mono text-[12px] font-bold uppercase tracking-widest px-4 py-2 rounded-full mb-5 bg-teal-50 text-teal-700">
               Featured events
             </span>
-            <h2 className="text-2xl sm:text-3xl font-bold kr-display mb-2" style={{ color: INK }}>Promoted this week</h2>
-            <p className="max-w-lg mx-auto" style={{ color: '#7A7566' }}>Click through to learn more and register your interest</p>
-          </div>
+            <h2 className="text-3xl md:text-4xl font-bold kr-display mb-4 text-gray-900">Promoted this week</h2>
+            <p className="max-w-lg mx-auto text-gray-500 text-lg">Click through to learn more and register your interest</p>
+          </motion.div>
 
           {globalPages.length === 0 ? (
-            <div className="text-center py-16 rounded-[24px] border-2 border-dashed" style={{ borderColor: LINE }}>
-              <div className="w-14 h-14 rounded-full flex items-center justify-center mx-auto mb-5" style={{ background: '#EFEADB', color: TEAL }}>
+            <motion.div
+              initial={{ opacity: 0, scale: 0.95 }}
+              whileInView={{ opacity: 1, scale: 1 }}
+              viewport={{ once: true }}
+              className="text-center py-24 rounded-[32px] border-2 border-dashed bg-gray-50/50"
+              style={{ borderColor: LINE }}
+            >
+              <div className="w-20 h-20 rounded-full flex items-center justify-center mx-auto mb-6 bg-white shadow-sm text-teal-600">
                 <TicketIcon />
               </div>
-              <p className="kr-mono text-xs uppercase tracking-widest mb-3" style={{ color: '#B7B2A2' }}>Nothing promoted right now</p>
-              <p className="mb-6" style={{ color: '#7A7566' }}>Check back soon, or explore the full catalogue.</p>
-              <Link to="/search" className="inline-flex items-center gap-2 px-6 py-3 font-bold rounded-full text-sm hover:brightness-105 transition" style={{ background: CORAL, color: PAPER }}>
+              <p className="kr-mono text-sm font-bold uppercase tracking-widest mb-4 text-gray-400">Nothing promoted right now</p>
+              <p className="mb-8 text-gray-600 text-lg">Check back soon, or explore the full catalogue.</p>
+              <Link to="/search" className="inline-flex items-center gap-2 px-8 py-4 font-bold rounded-full text-base hover:shadow-lg hover:-translate-y-1 transition-all" style={{ background: CORAL, color: PAPER }}>
                 Browse all events <ArrowRight />
               </Link>
-            </div>
+            </motion.div>
           ) : (
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-              {globalPages.map((lp) => (
-                <EventCard key={lp._id} lp={lp} />
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
+              {globalPages.map((lp, idx) => (
+                <motion.div
+                  key={lp._id}
+                  initial={{ opacity: 0, y: 30 }}
+                  whileInView={{ opacity: 1, y: 0 }}
+                  viewport={{ once: true, margin: "-50px" }}
+                  transition={{ delay: idx * 0.1, duration: 0.5 }}
+                >
+                  <EventCard lp={lp} />
+                </motion.div>
               ))}
             </div>
           )}
         </div>
       </div>
 
+
+
+      {/* ── Featured Organizers (Vendors) ── */}
+      <div className="py-20 px-4 bg-gray-50 border-t border-gray-100">
+        <div className="max-w-6xl mx-auto">
+          <div className="flex flex-col md:flex-row md:items-end justify-between mb-12 gap-6">
+            <div className="max-w-2xl">
+              <span className="inline-block kr-mono text-[12px] font-bold uppercase tracking-widest px-4 py-2 rounded-full mb-5 bg-blue-50 text-blue-700">
+                Top Organizers
+              </span>
+              <h2 className="text-3xl md:text-4xl font-bold kr-display mb-4 text-gray-900">Featured Vendors</h2>
+              <p className="text-gray-500 text-lg">Discover top-rated organizers creating memorable experiences.</p>
+            </div>
+            <Link to="/vendors" className="inline-flex items-center gap-2 font-bold text-blue-600 hover:text-blue-700 hover:underline">
+              View all vendors <ArrowRight />
+            </Link>
+          </div>
+
+          {fetchedVendors.length > 0 ? (
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
+              {fetchedVendors.slice(0, 4).map((vendor, idx) => (
+                <VendorCard key={vendor.id} vendor={vendor} idx={idx} />
+              ))}
+            </div>
+          ) : (
+            <div className="text-center py-12 text-gray-500">Loading vendors...</div>
+          )}
+        </div>
+      </div>
+
+      {/* ── Why Choose Us ── */}
+      <div className="bg-white">
+        <ScrollReveal>
+          <WhyChooseUs />
+        </ScrollReveal>
+      </div>
+
+      {/* ── Wall of Love (Testimonials) ── */}
+      <div className="py-24 px-4 bg-white border-t border-gray-100">
+        <div className="max-w-6xl mx-auto">
+          <div className="text-center mb-16">
+            <span className="inline-block kr-mono text-[12px] font-bold uppercase tracking-widest px-4 py-2 rounded-full mb-5 bg-orange-100 text-orange-600">
+              Wall of Love
+            </span>
+            <h2 className="text-3xl md:text-4xl font-bold kr-display mb-4 text-gray-900">Loved by parents & organizers</h2>
+          </div>
+
+          <div className="grid md:grid-cols-3 gap-8">
+            {[
+              {
+                quote: "KidRove made planning our weekends so easy! The robotics workshop my son attended was incredible. He can't wait for the next one.",
+                author: "Sarah M.",
+                role: "Parent of 2",
+                rating: 5
+              },
+              {
+                quote: "We sold out our art camp in just 3 days after listing it here. The quality of leads and the support team is unmatched in the UAE.",
+                author: "Dubai Art Studio",
+                role: "Event Organizer",
+                rating: 5
+              },
+              {
+                quote: "Finally, a platform that actually verifies the quality of children's events. I feel so safe booking through KidRove.",
+                author: "Ahmed R.",
+                role: "Parent",
+                rating: 5
+              }
+            ].map((review, idx) => (
+              <motion.div
+                key={idx}
+                initial={{ opacity: 0, y: 30 }}
+                whileInView={{ opacity: 1, y: 0 }}
+                viewport={{ once: true }}
+                transition={{ delay: idx * 0.2 }}
+                className="bg-white rounded-3xl p-8 shadow-[0_10px_30px_rgba(0,0,0,0.04)] border border-gray-100 flex flex-col justify-between hover:-translate-y-1 transition-transform"
+              >
+                <div>
+                  <div className="flex gap-1 mb-6 text-orange-400 text-lg">
+                    {[...Array(review.rating)].map((_, i) => <span key={i}>★</span>)}
+                  </div>
+                  <p className="text-gray-600 text-lg leading-relaxed mb-8 italic">"{review.quote}"</p>
+                </div>
+                <div className="flex items-center gap-3">
+                  <div className="w-10 h-10 rounded-full bg-gradient-to-r from-orange-200 to-pink-200 flex items-center justify-center text-orange-700 font-bold kr-display">
+                    {review.author.charAt(0)}
+                  </div>
+                  <div>
+                    <p className="font-bold text-gray-900 text-sm">{review.author}</p>
+                    <p className="text-xs text-gray-500">{review.role}</p>
+                  </div>
+                </div>
+              </motion.div>
+            ))}
+          </div>
+        </div>
+      </div>
+
+      {/* ── Featured Blogs ── */}
+      {homepageData?.featuredBlogs && homepageData.featuredBlogs.length > 0 && (
+        <div className="bg-white border-t border-gray-100">
+          <ScrollReveal>
+            <FeaturedBlogsSection blogs={homepageData.featuredBlogs} />
+          </ScrollReveal>
+        </div>
+      )}
+
+      {/* ── General FAQs ── */}
+      <div className="bg-gray-50 border-t border-gray-100">
+        <ScrollReveal>
+          <HomepageFAQs faqItems={homepageData?.seoContent?.faqItems} />
+        </ScrollReveal>
+      </div>
+
       {/* ── Global Lead Capture ── */}
-      <div className="py-16 px-4 relative overflow-hidden" style={{ background: INK }}>
-        <div className="absolute inset-0 kr-dotfield" />
-        <div className="relative max-w-md mx-auto">
-          <div className="text-center mb-8">
-            <p className="kr-mono text-[11px] uppercase tracking-widest mb-3" style={{ color: SUN }}>Kidrove lead collection</p>
-            <h2 className="text-2xl sm:text-3xl font-bold kr-display mb-2" style={{ color: PAPER }}>We'll tell you what's next</h2>
-            <p className="text-sm max-w-sm mx-auto" style={{ color: 'rgba(252,250,244,0.6)' }}>
-              Tell us what your kids are into and our team will reach out with matching events.
-            </p>
-          </div>
-          <div className="rounded-[24px] p-7" style={{ background: PAPER }}>
-            <GlobalLeadForm />
-          </div>
+      <div className="py-24 px-4 bg-gray-50">
+        <div className="max-w-6xl mx-auto">
+          <motion.div
+            initial={{ opacity: 0, y: 40 }}
+            whileInView={{ opacity: 1, y: 0 }}
+            viewport={{ once: true }}
+            transition={{ duration: 0.7 }}
+            className="bg-white rounded-[2rem] shadow-[0_20px_50px_rgba(0,0,0,0.05)] border border-gray-100 overflow-hidden flex flex-col lg:flex-row"
+          >
+            {/* Left side: Image/Graphic */}
+            <div className="lg:w-1/2 relative bg-gray-900 p-12 flex flex-col justify-center min-h-[400px] overflow-hidden">
+              <div className="absolute inset-0 bg-gradient-to-br from-orange-600 to-pink-700 opacity-90 mix-blend-multiply z-10" />
+              <div className="absolute inset-0 kr-dotfield opacity-30 z-10" />
+
+              <div className="relative z-20 text-white">
+                <p className="kr-mono text-[11px] uppercase tracking-widest mb-4 text-orange-200">Kidrove lead collection</p>
+                <h2 className="text-4xl md:text-5xl font-bold kr-display mb-6 leading-tight">We'll tell you what's next.</h2>
+                <p className="text-lg text-white/80 max-w-md font-light leading-relaxed">
+                  Tell us what your kids are into and our expert curation team will reach out with personalized, premium event recommendations.
+                </p>
+              </div>
+            </div>
+
+            {/* Right side: Form */}
+            <div className="lg:w-1/2 p-10 md:p-14">
+              <GlobalLeadForm />
+            </div>
+          </motion.div>
         </div>
       </div>
     </div>
@@ -989,8 +1225,6 @@ const LeadPage: React.FC = () => {
 };
 
 // ── Global Lead Form ─────────────────────────────────────────────────────────
-// Feeds the singleton "Kidrove Lead Collection" bucket via submitGlobalLead —
-// captured leads surface under /admin/lead-pages.
 const GlobalLeadForm: React.FC = () => {
   const [name, setName] = useState('');
   const [contact, setContact] = useState('');
@@ -1023,71 +1257,88 @@ const GlobalLeadForm: React.FC = () => {
 
   if (submitted) {
     return (
-      <div className="text-center py-6 kr-body">
-        <div className="w-14 h-14 rounded-full flex items-center justify-center mx-auto mb-4 kr-stamp" style={{ background: TEAL, color: PAPER }}>
+      <motion.div
+        initial={{ opacity: 0, scale: 0.9 }}
+        animate={{ opacity: 1, scale: 1 }}
+        className="text-center py-12 kr-body h-full flex flex-col justify-center"
+      >
+        <div className="w-20 h-20 rounded-full flex items-center justify-center mx-auto mb-6 bg-green-50 text-green-500 shadow-sm">
           <CheckIcon />
         </div>
-        <h3 className="text-lg font-bold kr-display mb-1.5" style={{ color: INK }}>Thanks for reaching out</h3>
-        <p className="text-sm" style={{ color: '#7A7566' }}>Our team will follow up with the latest events soon.</p>
-      </div>
+        <h3 className="text-2xl font-bold kr-display mb-3 text-gray-900">Thanks for reaching out!</h3>
+        <p className="text-lg text-gray-500 max-w-sm mx-auto">Our curation team will follow up with the latest events soon.</p>
+      </motion.div>
     );
   }
 
   return (
-    <form onSubmit={handleSubmit} className="space-y-4 kr-body">
-      <input
-        type="text"
-        value={name}
-        onChange={(e) => setName(e.target.value)}
-        placeholder="Full name"
-        required
-        className="w-full px-1 py-2.5 bg-transparent border-0 border-b-2 text-[15px] focus:outline-none transition-colors placeholder-gray-400"
-        style={{ borderColor: LINE, color: INK }}
-        onFocus={(e) => (e.currentTarget.style.borderColor = TEAL)}
-        onBlur={(e) => (e.currentTarget.style.borderColor = LINE)}
-      />
-      <div>
-        <div className="flex gap-3 kr-mono text-[11px] uppercase mb-2">
-          <button type="button" onClick={() => setContactType('phone')} style={{ color: contactType === 'phone' ? TEAL : '#B7B2A2', fontWeight: contactType === 'phone' ? 700 : 500 }}>Phone</button>
-          <span style={{ color: LINE }}>/</span>
-          <button type="button" onClick={() => setContactType('email')} style={{ color: contactType === 'email' ? TEAL : '#B7B2A2', fontWeight: contactType === 'email' ? 700 : 500 }}>Email</button>
-        </div>
+    <form onSubmit={handleSubmit} className="space-y-6 kr-body flex flex-col justify-center h-full">
+      <h3 className="text-2xl font-bold kr-display text-gray-900 mb-2">Get personalized recommendations</h3>
+
+      <div className="relative">
         <input
-          type={contactType === 'email' ? 'email' : 'tel'}
-          value={contact}
-          onChange={(e) => setContact(e.target.value)}
-          placeholder={contactType === 'email' ? 'your@email.com' : '+971 50 123 4567'}
+          type="text"
+          id="global-name"
+          value={name}
+          onChange={(e) => setName(e.target.value)}
+          placeholder=" "
           required
-          className="w-full px-1 py-2.5 bg-transparent border-0 border-b-2 text-[15px] focus:outline-none transition-colors placeholder-gray-400"
-          style={{ borderColor: LINE, color: INK }}
-          onFocus={(e) => (e.currentTarget.style.borderColor = TEAL)}
-          onBlur={(e) => (e.currentTarget.style.borderColor = LINE)}
+          className="peer w-full px-4 pt-6 pb-2 bg-gray-50 border-2 border-transparent rounded-xl text-[16px] focus:outline-none focus:bg-white focus:border-orange-500 focus:shadow-[0_0_0_4px_rgba(249,115,22,0.1)] transition-all text-gray-900"
         />
+        <label htmlFor="global-name" className="absolute left-4 top-2 text-[11px] font-bold kr-mono uppercase tracking-widest text-gray-400 transition-all peer-placeholder-shown:text-base peer-placeholder-shown:top-4 peer-placeholder-shown:normal-case peer-placeholder-shown:font-normal peer-placeholder-shown:tracking-normal peer-focus:top-2 peer-focus:text-[11px] peer-focus:font-bold peer-focus:uppercase peer-focus:tracking-widest peer-focus:text-orange-500">
+          Full Name
+        </label>
       </div>
+
       <div>
+        <div className="flex gap-4 kr-mono text-[11px] uppercase mb-3 ml-1">
+          <button type="button" onClick={() => setContactType('phone')} className={`transition-colors ${contactType === 'phone' ? 'text-orange-500 font-bold' : 'text-gray-400 font-medium hover:text-gray-600'}`}>Phone</button>
+          <span className="text-gray-300">/</span>
+          <button type="button" onClick={() => setContactType('email')} className={`transition-colors ${contactType === 'email' ? 'text-orange-500 font-bold' : 'text-gray-400 font-medium hover:text-gray-600'}`}>Email</button>
+        </div>
+        <div className="relative">
+          <input
+            type={contactType === 'email' ? 'email' : 'tel'}
+            id="global-contact"
+            value={contact}
+            onChange={(e) => setContact(e.target.value)}
+            placeholder=" "
+            required
+            className="peer w-full px-4 pt-6 pb-2 bg-gray-50 border-2 border-transparent rounded-xl text-[16px] focus:outline-none focus:bg-white focus:border-orange-500 focus:shadow-[0_0_0_4px_rgba(249,115,22,0.1)] transition-all text-gray-900"
+          />
+          <label htmlFor="global-contact" className="absolute left-4 top-2 text-[11px] font-bold kr-mono uppercase tracking-widest text-gray-400 transition-all peer-placeholder-shown:text-base peer-placeholder-shown:top-4 peer-placeholder-shown:normal-case peer-placeholder-shown:font-normal peer-placeholder-shown:tracking-normal peer-focus:top-2 peer-focus:text-[11px] peer-focus:font-bold peer-focus:uppercase peer-focus:tracking-widest peer-focus:text-orange-500">
+            {contactType === 'email' ? 'Email Address' : 'Phone Number'}
+          </label>
+        </div>
+      </div>
+
+      <div className="relative">
         <textarea
+          id="global-message"
           value={message}
           onChange={(e) => setMessage(e.target.value)}
-          rows={2}
-          placeholder="What kind of events are you looking for? (optional)"
-          className="w-full px-1 py-2.5 bg-transparent border-0 border-b-2 text-[15px] focus:outline-none transition-colors placeholder-gray-400 resize-none"
-          style={{ borderColor: LINE, color: INK }}
-          onFocus={(e) => (e.currentTarget.style.borderColor = TEAL)}
-          onBlur={(e) => (e.currentTarget.style.borderColor = LINE)}
+          rows={3}
+          placeholder=" "
+          className="peer w-full px-4 pt-6 pb-2 bg-gray-50 border-2 border-transparent rounded-xl text-[16px] focus:outline-none focus:bg-white focus:border-orange-500 focus:shadow-[0_0_0_4px_rgba(249,115,22,0.1)] transition-all resize-none text-gray-900"
         />
+        <label htmlFor="global-message" className="absolute left-4 top-2 text-[11px] font-bold kr-mono uppercase tracking-widest text-gray-400 transition-all peer-placeholder-shown:text-base peer-placeholder-shown:top-4 peer-placeholder-shown:normal-case peer-placeholder-shown:font-normal peer-placeholder-shown:tracking-normal peer-focus:top-2 peer-focus:text-[11px] peer-focus:font-bold peer-focus:uppercase peer-focus:tracking-widest peer-focus:text-orange-500">
+          Interests (optional)
+        </label>
       </div>
-      <button
+
+      <motion.button
+        whileHover={{ scale: 1.02 }}
+        whileTap={{ scale: 0.98 }}
         type="submit"
         disabled={loading}
-        className="w-full py-4 font-bold rounded-full hover:brightness-105 active:scale-[0.98] transition-all disabled:opacity-60 flex items-center justify-center gap-2 text-[15px]"
-        style={{ background: CORAL, color: PAPER }}
+        className="w-full py-4 mt-2 font-bold rounded-xl shadow-[0_10px_20px_rgba(249,115,22,0.2)] hover:shadow-[0_15px_30px_rgba(249,115,22,0.3)] disabled:opacity-60 flex items-center justify-center gap-2 text-[16px] bg-gradient-to-r from-orange-500 to-pink-600 text-white"
       >
         {loading ? (
-          <><span className="w-4 h-4 border-2 border-white/40 border-t-white rounded-full animate-spin" />Sending…</>
+          <><span className="w-5 h-5 border-2 border-white/40 border-t-white rounded-full animate-spin" />Sending…</>
         ) : (
-          'Get notified about events'
+          'Get Notified'
         )}
-      </button>
+      </motion.button>
     </form>
   );
 };

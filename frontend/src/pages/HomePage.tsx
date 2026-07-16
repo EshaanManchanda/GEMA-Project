@@ -1,4 +1,4 @@
-import React, { useMemo, useEffect } from 'react';
+import React, { useMemo, useEffect, Suspense, lazy } from 'react';
 import { FadeIn, ScrollReveal } from '@/components/animations';
 import { useSelector } from 'react-redux';
 import { useAppDispatch, useAppSelector } from '@/store/hooks';
@@ -21,17 +21,16 @@ import FeaturedEventsCarousel, { FeaturedEvent } from '@/components/client/home/
 import StatsSection from '@/components/client/home/StatsSection';
 import HomeSkeleton from '@/components/client/home/HomeSkeleton';
 
-// Additional Sections
-import ReviewCarouselSwiper from '@/components/client/ReviewCarouselKeen';
-import GoogleReviewsCarousel from '@/components/client/GoogleReviewsCarousel';
-import FeaturedBlogsSection from '@/components/sections/FeaturedBlogsSection';
-import WhyChooseUs from '@/components/sections/WhyChooseUs';
-import HomepageFAQs from '@/components/sections/HomepageFAQs';
-import GiftCardPromo from '@/components/sections/GiftCardPromo';
-import CitiesSection from '@/components/sections/CitiesSection';
-
-import FeaturedInstructors from '@/components/sections/FeaturedInstructors';
-import NewsletterSubscribe from '@/components/client/NewsletterSubscribe';
+// Additional Sections (Lazy Loaded)
+const ReviewCarouselSwiper = lazy(() => import('@/components/client/ReviewCarouselKeen'));
+const GoogleReviewsCarousel = lazy(() => import('@/components/client/GoogleReviewsCarousel'));
+const FeaturedBlogsSection = lazy(() => import('@/components/sections/FeaturedBlogsSection'));
+const WhyChooseUs = lazy(() => import('@/components/sections/WhyChooseUs'));
+const HomepageFAQs = lazy(() => import('@/components/sections/HomepageFAQs'));
+const GiftCardPromo = lazy(() => import('@/components/sections/GiftCardPromo'));
+const CitiesSection = lazy(() => import('@/components/sections/CitiesSection'));
+const FeaturedInstructors = lazy(() => import('@/components/sections/FeaturedInstructors'));
+const NewsletterSubscribe = lazy(() => import('@/components/client/NewsletterSubscribe'));
 
 // Imported Utils
 import { mapToUIEvent, mockEvents } from '@/utils/homePageUtils';
@@ -178,7 +177,9 @@ const HomePage: React.FC = () => {
         />
 
         {/* Explore By City */}
-        <CitiesSection />
+        <Suspense fallback={<div className="h-40" />}>
+          <CitiesSection />
+        </Suspense>
 
         {/* Carousel Layout - Best Price Tickets */}
         <CollectionSection
@@ -250,7 +251,9 @@ const HomePage: React.FC = () => {
         )}
 
         {/* Featured Instructors */}
-        <FeaturedInstructors />
+        <Suspense fallback={<div className="h-40" />}>
+          <FeaturedInstructors />
+        </Suspense>
 
         {/* Grid Layout - Handpicked Experiences */}
         {handpickedEvents.length > 0 && (
@@ -273,34 +276,46 @@ const HomePage: React.FC = () => {
 
         {/* Why Choose Us */}
         <ScrollReveal>
-          <WhyChooseUs />
+          <Suspense fallback={<div className="h-40" />}>
+            <WhyChooseUs />
+          </Suspense>
         </ScrollReveal>
 
         {/* Customer Reviews */}
         <ScrollReveal>
-          <ReviewCarouselSwiper />
+          <Suspense fallback={<div className="h-64" />}>
+            <ReviewCarouselSwiper />
+          </Suspense>
         </ScrollReveal>
 
         {/* Google Reviews Carousel — renders nothing when empty */}
         <ScrollReveal>
-          <GoogleReviewsCarousel />
+          <Suspense fallback={<div className="h-64" />}>
+            <GoogleReviewsCarousel />
+          </Suspense>
         </ScrollReveal>
 
         {/* Latest Blogs */}
         {featuredBlogs && featuredBlogs.length > 0 && (
           <ScrollReveal>
-            <FeaturedBlogsSection blogs={featuredBlogs} />
+            <Suspense fallback={<div className="h-64" />}>
+              <FeaturedBlogsSection blogs={featuredBlogs} />
+            </Suspense>
           </ScrollReveal>
         )}
 
         {/* FAQs */}
         <ScrollReveal>
-          <HomepageFAQs faqItems={seoContentData?.seoContent?.faqItems} />
+          <Suspense fallback={<div className="h-64" />}>
+            <HomepageFAQs faqItems={seoContentData?.seoContent?.faqItems} />
+          </Suspense>
         </ScrollReveal>
 
         {/* Gift Card Promo */}
         <ScrollReveal>
-          <GiftCardPromo />
+          <Suspense fallback={<div className="h-40" />}>
+            <GiftCardPromo />
+          </Suspense>
         </ScrollReveal>
 
         {/* Stats Section */}
@@ -310,7 +325,9 @@ const HomePage: React.FC = () => {
 
         {/* Newsletter Subscribe */}
         <ScrollReveal>
-          <NewsletterSubscribe />
+          <Suspense fallback={<div className="h-40" />}>
+            <NewsletterSubscribe />
+          </Suspense>
         </ScrollReveal>
       </div>
     </>

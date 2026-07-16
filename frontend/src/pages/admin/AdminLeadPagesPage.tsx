@@ -218,7 +218,7 @@ const AdminLeadPagesPage: React.FC = () => {
           Export CSV
         </button>
         <button
-          onClick={() => navigate('/lead-page')}
+          onClick={() => window.open('/lead-page', '_blank')}
           className="inline-flex items-center gap-2 px-4 py-2.5 bg-gradient-to-r from-orange-500 to-pink-600 text-white text-sm font-medium rounded-xl hover:opacity-90 transition whitespace-nowrap shadow"
         >
           <FaExternalLinkAlt size={12} />

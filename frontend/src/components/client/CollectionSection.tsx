@@ -396,8 +396,8 @@ const CollectionSection: React.FC<CollectionSectionProps> = ({
               showWishlist={showWishlist}
               isInWishlist={wishlistIds.includes((event.id || event._id) as string)}
               onWishlistToggle={onWishlistToggle}
-              priority={index === 0}
-              lazyLoad={index > 0}
+              priority={false}
+              lazyLoad={true}
             />
           </Item>
         ))}
@@ -427,8 +427,8 @@ const CollectionSection: React.FC<CollectionSectionProps> = ({
               showWishlist={showWishlist}
               isInWishlist={wishlistIds.includes((event.id || event._id) as string)}
               onWishlistToggle={onWishlistToggle}
-              priority={index === 0}
-              lazyLoad={index > 0}
+              priority={false}
+              lazyLoad={true}
             />
           </div>
         ))}
@@ -511,8 +511,8 @@ const CollectionSection: React.FC<CollectionSectionProps> = ({
                 showWishlist={showWishlist}
                 isInWishlist={wishlistIds.includes((event.id || event._id) as string)}
                 onWishlistToggle={onWishlistToggle}
-                priority={index === 0}
-                lazyLoad={index > 0}
+                priority={false}
+                lazyLoad={true}
               />
             </Item>
           ))}
@@ -557,8 +557,8 @@ const CollectionSection: React.FC<CollectionSectionProps> = ({
               showWishlist={showWishlist}
               isInWishlist={wishlistIds.includes((event.id || event._id) as string)}
               onWishlistToggle={onWishlistToggle}
-              priority={index === 0}
-              lazyLoad={index > 0}
+              priority={false}
+              lazyLoad={true}
             />
           </Item>
         ))}
@@ -602,8 +602,8 @@ const CollectionSection: React.FC<CollectionSectionProps> = ({
               showWishlist={showWishlist}
               isInWishlist={wishlistIds.includes((event.id || event._id) as string)}
               onWishlistToggle={onWishlistToggle}
-              priority={index === 0}
-              lazyLoad={index > 0}
+              priority={false}
+              lazyLoad={true}
             />
           </Item>
         ))}

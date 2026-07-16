@@ -317,7 +317,7 @@ const WishlistButton: React.FC<WishlistButtonProps> = ({
   return (
     <button
       onClick={handleClick}
-      className="absolute top-3 right-3 z-20 p-2 bg-white rounded-full shadow-md hover:scale-110 transition-transform duration-200"
+      className="absolute top-3 right-3 z-20 min-w-[44px] min-h-[44px] flex items-center justify-center bg-white rounded-full shadow-md hover:scale-110 transition-transform duration-200"
       aria-label={isInWishlist ? 'Remove from wishlist' : 'Add to wishlist'}
       type="button"
     >

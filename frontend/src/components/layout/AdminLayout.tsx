@@ -443,6 +443,8 @@ const AdminLayout: React.FC = () => {
               {/* Back to Site */}
               <Link
                 to="/"
+                target="_blank"
+                rel="noopener noreferrer"
                 className="hidden sm:flex items-center px-3 py-2 text-sm font-medium text-gray-700 hover:text-blue-600 hover:bg-blue-50 rounded-lg transition-colors"
               >
                 <svg className="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">

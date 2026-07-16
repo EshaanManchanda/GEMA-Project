@@ -116,8 +116,8 @@ const FeaturedEventsCarousel: React.FC<{
                                 showCategory={false}
                                 showVendor={false}
                                 showAgeGroup={true}
-                                priority={index === 0}
-                                lazyLoad={index > 0}
+                                priority={false}
+                                lazyLoad={true}
                                 showWishlist={false}
                             />
                         </div>
