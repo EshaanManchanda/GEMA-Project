@@ -16,6 +16,7 @@ import cacheService from "./cache.service";
 import statsService, { PublicStats } from "./stats.service";
 import { transformEventsResponse } from "../utils/event.utils";
 import { transformBlogResponse } from "../utils/blog.utils";
+import { attachDirectUrl } from "../utils/mediaUrl.util";
 import logger from "../config/logger";
 
 export interface HomepageVenue {
@@ -197,7 +198,7 @@ class HomepageService {
         .select(
           "title description imageAsset link ctaText ctaLink displayOrder titleVisible",
         )
-        .populate("imageAsset", "url filename width height")
+        .populate("imageAsset", "url filename width height publicId provider")
         .sort({ displayOrder: 1, createdAt: -1 })
         .lean(),
 
@@ -219,7 +220,10 @@ class HomepageService {
           "title slug excerpt featuredImage featuredImageAsset author category readTime publishedAt",
         )
         .populate("category", "name slug color")
-        .populate("featuredImageAsset", "url thumbnailUrl variations altText")
+        .populate(
+          "featuredImageAsset",
+          "url thumbnailUrl variations altText publicId provider",
+        )
         .sort({ publishedAt: -1 })
         .limit(6)
         .lean(),
@@ -232,7 +236,7 @@ class HomepageService {
           "title description videoSourceType externalVideoUrl videoAsset thumbnailAsset likes viewsCount shareCount displayOrder tags duration showLikeButton showShareButton showTitle linkedEvent",
         )
         .populate("videoAsset", "url thumbnailUrl duration mimeType")
-        .populate("thumbnailAsset", "url thumbnailUrl")
+        .populate("thumbnailAsset", "url thumbnailUrl publicId provider")
         .populate("linkedEvent", "title slug pricing location dateSchedule")
         .sort({ displayOrder: 1, createdAt: -1 })
         .limit(10)
@@ -434,6 +438,15 @@ class HomepageService {
 
     // Filter out banners with null/undefined imageAsset
     const validBanners = banners.filter((b) => b.imageAsset != null);
+
+    // Attach direct Cloudinary CDN URLs so the client can skip the
+    // /api/media/file/:uuid proxy (302 redirect) that was blowing up LCP
+    // on the hero banner. Safe to do broadly here since these are all
+    // image (not video) assets. Blog featuredImage is handled inside
+    // transformBlogResponse itself, since that's where the flat
+    // `featuredImage` string consumers actually read gets derived.
+    validBanners.forEach((b) => attachDirectUrl(b as any, "imageAsset"));
+    reels.forEach((r) => attachDirectUrl(r as any, "thumbnailAsset"));
 
     const data: HomepageData = {
       events: transformedEvents,

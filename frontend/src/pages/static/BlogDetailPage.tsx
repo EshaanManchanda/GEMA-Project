@@ -243,6 +243,15 @@ const BlogDetailPage: React.FC = () => {
         <meta name="twitter:title" content={blog.title} />
         <meta name="twitter:description" content={blog.excerpt} />
         <meta name="twitter:image" content={blog.featuredImage} />
+
+        {/* Playfair Display: blog-only heading font, loaded here instead of
+            globally (index.css used to @import it site-wide, which was a
+            render-blocking request paid by every page including the
+            homepage, which never uses this font). */}
+        <link
+          href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@400;500;600;700;800&display=swap"
+          rel="stylesheet"
+        />
       </Helmet>
 
       {/* Inject custom CSS if available */}

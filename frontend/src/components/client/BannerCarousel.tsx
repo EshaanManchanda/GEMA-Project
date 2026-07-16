@@ -44,6 +44,15 @@ interface BannerCarouselProps {
   banners: Banner[];
 }
 
+/**
+ * Prefer the direct Cloudinary CDN URL over the backend `/api/media/file/:uuid`
+ * proxy URL. The proxy 302-redirects to Cloudinary, which was adding a full
+ * extra request round-trip to the hero banner's LCP path before the browser
+ * could even start fetching the real (transformable) image.
+ */
+const bannerImageUrl = (asset: Banner['imageAsset']): string | undefined =>
+  asset?.directUrl || asset?.url;
+
 const BannerCarousel: React.FC<BannerCarouselProps> = ({ banners }) => {
   const navigate = useNavigate();
   const [currentSlide, setCurrentSlide] = useState(0);
@@ -51,7 +60,7 @@ const BannerCarousel: React.FC<BannerCarouselProps> = ({ banners }) => {
   const [imageLoaded, setImageLoaded] = useState<{ [key: number]: boolean }>({});
 
   // Filter out banners with missing imageAsset early for slider config
-  const validBanners = banners.filter(b => b.imageAsset?.url);
+  const validBanners = banners.filter(b => bannerImageUrl(b.imageAsset));
 
   const [sliderRef, instanceRef] = useKeenSlider<HTMLDivElement>(
     {
@@ -106,7 +115,7 @@ const BannerCarousel: React.FC<BannerCarouselProps> = ({ banners }) => {
             {/* Blurred background fill — only for explicitly 'contain' banners */}
             {banner.objectFit === 'contain' && (
               <img
-                src={banner.imageAsset?.url}
+                src={bannerImageUrl(banner.imageAsset)}
                 alt=""
                 aria-hidden="true"
                 className="absolute inset-0 w-full h-full object-cover blur-2xl scale-110 opacity-60"
@@ -116,9 +125,9 @@ const BannerCarousel: React.FC<BannerCarouselProps> = ({ banners }) => {
             {/* Banner Image with WebP optimization */}
             <picture className="block absolute inset-0 w-full h-full">
               {/* LQIP as background for perceived performance */}
-              {getLQIP(banner.imageAsset?.url) && !imageLoaded[index] && (
+              {getLQIP(bannerImageUrl(banner.imageAsset)) && !imageLoaded[index] && (
                 <img
-                  src={getLQIP(banner.imageAsset?.url)}
+                  src={getLQIP(bannerImageUrl(banner.imageAsset))}
                   alt=""
                   className="absolute inset-0 w-full h-full object-cover blur-sm"
                   aria-hidden="true"
@@ -128,13 +137,13 @@ const BannerCarousel: React.FC<BannerCarouselProps> = ({ banners }) => {
               {/* WebP source with responsive srcSet */}
               <source
                 type="image/webp"
-                srcSet={generateSrcSet(banner.imageAsset?.url, [1920, 1280, 768])}
+                srcSet={generateSrcSet(bannerImageUrl(banner.imageAsset), [1920, 1280, 768])}
                 sizes="100vw"
               />
 
               {/* Fallback to original format */}
               <img
-                src={getCloudinaryWebP(banner.imageAsset?.url, 1920)}
+                src={getCloudinaryWebP(bannerImageUrl(banner.imageAsset), 1920)}
                 alt={getImageAlt(banner.imageAsset, banner.title)}
                 className={`absolute inset-0 w-full h-full ${index === 0 ? '' : 'transition-opacity duration-300'
                   } ${banner.objectFit === 'contain' ? 'object-contain' :

@@ -6,6 +6,8 @@
  * Maintains backward compatibility with old featuredImage string field.
  */
 
+import { getDirectMediaUrl } from "./mediaUrl.util";
+
 /**
  * Transform blog document to include proper featured image URL
  * Handles both old (featuredImage string) and new (featuredImageAsset reference) formats
@@ -21,8 +23,13 @@ export const transformBlogResponse = (blog: any) => {
 
   // Extract image URL from featuredImageAsset if populated
   if (blog.featuredImageAsset && typeof blog.featuredImageAsset === "object") {
-    // New format: extract URL from populated MediaAsset
-    transformed.featuredImage = blog.featuredImageAsset.url;
+    // New format: prefer the direct Cloudinary CDN URL (requires the
+    // populate() call to select publicId+provider) so the client skips
+    // the /api/media/file/:uuid proxy redirect. Falls back to the proxy
+    // url if publicId/provider weren't selected.
+    transformed.featuredImage =
+      getDirectMediaUrl(blog.featuredImageAsset) ??
+      blog.featuredImageAsset.url;
     transformed.featuredImageThumbnail = blog.featuredImageAsset.thumbnailUrl;
     transformed.featuredImageVariations = blog.featuredImageAsset.variations;
   } else if (!blog.featuredImage && blog.featuredImageAsset) {

@@ -7,6 +7,10 @@ export interface Banner {
   imageAsset?: {
     _id: string;
     url: string;
+    /** Direct Cloudinary CDN URL, bypassing the /api/media/file/:uuid proxy
+     * redirect. Present when the backend populate selects publicId+provider
+     * (see homepage.service.ts). Prefer this over `url` when set. */
+    directUrl?: string;
     filename: string;
     width?: number;
     height?: number;

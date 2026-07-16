@@ -1,5 +1,9 @@
 @charset "UTF-8";
-@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=Playfair+Display:wght@400;500;600;700;800&display=swap');
+/* Inter is already loaded non-blocking via the preload link in index.html
+ * (Inter/Cairo/Poppins). Playfair Display is blog-article-only and is now
+ * loaded scoped to BlogDetailPage.tsx via <Helmet> instead of globally here
+ * — this @import was render-blocking every single page load, including
+ * pages (like the homepage) that never render either font. */
 @import 'react-datepicker/dist/react-datepicker.css';
 @import './animations.css';
 @tailwind base;
@@ -31,7 +35,10 @@
     --primary-color: rgb(var(--color-primary-DEFAULT));
 
     --secondary-color: #7e3899;
-    --accent-color: #f672a3;
+    /* Darkened from #f672a3 (2.67:1 contrast vs white — fails WCAG AA 4.5:1
+     * for the white-text "View Details" CTA buttons that use this as bg).
+     * #c13d76 measures 5.0:1, same hue family. */
+    --accent-color: #c13d76;
 
     /* Blog Typography Scale - Using Inter (body) + Playfair Display (headings) */
     --blog-font-body: 'Inter', system-ui, -apple-system, sans-serif;
