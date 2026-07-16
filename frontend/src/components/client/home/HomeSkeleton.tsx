@@ -2,8 +2,8 @@ import React from 'react';
 
 const HomeSkeleton: React.FC = () => (
     <div className="w-full bg-gray-50 animate-pulse">
-        {/* Banner Skeleton */}
-        <div className="w-full h-96 bg-gradient-to-br from-gray-200 to-gray-300 relative">
+        {/* Banner Skeleton — height matches BannerCarousel.tsx's keen-slider container exactly to prevent CLS */}
+        <div className="w-full aspect-[16/9] sm:aspect-auto sm:h-[55vh] md:h-[65vh] lg:h-[70vh] max-h-[800px] bg-gradient-to-br from-gray-200 to-gray-300 relative">
             <div className="absolute inset-0 flex flex-col items-center justify-center space-y-4">
                 <div className="w-16 h-6 bg-gray-300 rounded-full"></div>
                 <div className="w-80 h-12 bg-gray-300 rounded"></div>

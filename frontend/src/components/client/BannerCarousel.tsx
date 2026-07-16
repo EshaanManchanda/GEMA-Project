@@ -97,11 +97,11 @@ const BannerCarousel: React.FC<BannerCarouselProps> = ({ banners }) => {
 
   return (
     <div className="relative w-full bg-gray-50">
-      <div ref={sliderRef} className="keen-slider">
+      <div ref={sliderRef} className="keen-slider aspect-[16/9] sm:aspect-auto sm:h-[55vh] md:h-[65vh] lg:h-[70vh] max-h-[800px]">
         {validBanners.map((banner, index) => (
           <div
             key={banner._id}
-            className="keen-slider__slide relative w-full aspect-video sm:aspect-auto sm:h-[55vh] md:h-[65vh] lg:h-[70vh] max-h-[800px]"
+            className="keen-slider__slide relative w-full h-full"
           >
             {/* Blurred background fill — only for explicitly 'contain' banners */}
             {banner.objectFit === 'contain' && (
@@ -136,10 +136,12 @@ const BannerCarousel: React.FC<BannerCarouselProps> = ({ banners }) => {
               <img
                 src={getCloudinaryWebP(banner.imageAsset?.url, 1920)}
                 alt={getImageAlt(banner.imageAsset, banner.title)}
-                className={`absolute inset-0 w-full h-full transition-opacity duration-300 ${
+                className={`absolute inset-0 w-full h-full ${
+                  index === 0 ? '' : 'transition-opacity duration-300'
+                } ${
                   banner.objectFit === 'contain' ? 'object-contain' :
                   banner.objectFit === 'fill' ? 'object-fill' : 'object-cover'
-                } ${imageLoaded[index] ? 'opacity-100' : 'opacity-0'}`}
+                } ${index === 0 || imageLoaded[index] ? 'opacity-100' : 'opacity-0'}`}
                 style={{ objectPosition: banner.objectPosition || 'center' }}
                 loading={index === 0 ? 'eager' : 'lazy'}
                 // @ts-expect-error - React 18 warning requires lowercase fetchpriority, but types are not updated yet

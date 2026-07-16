@@ -139,6 +139,11 @@
   <!-- Preload critical assets -->
   <link rel="preload" fetchpriority="high" as="image" href="%VITE_SITE_LOGO%" type="image/png" />
 
+  <!-- Preload homepage data (banners/events/categories) so the fetch starts
+       during HTML parse instead of after the JS bundle downloads + React mounts +
+       useHomepageQuery fires. Cuts one full serial network hop off the hero LCP path. -->
+  <link rel="preload" fetchpriority="high" as="fetch" crossorigin href="%VITE_API_URL%/homepage" />
+
   <!-- Add native lazy loading and fetchpriority attributes -->
 
 

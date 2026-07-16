@@ -12,8 +12,10 @@ export const SkeletonBox: React.FC<{ className?: string }> = ({ className = '' }
 );
 
 // Hero banner skeleton
+// Height must match BannerCarousel.tsx's keen-slider container exactly (aspect-[16/9] sm:aspect-auto sm:h-[55vh] md:h-[65vh] lg:h-[70vh] max-h-[800px])
+// to prevent CLS when the skeleton is swapped for the real banner.
 const HeroBannerSkeleton = () => (
-  <div className="w-full h-96 md:h-[600px] bg-gradient-to-br from-gray-200 to-gray-300 animate-pulse relative">
+  <div className="w-full aspect-[16/9] sm:aspect-auto sm:h-[55vh] md:h-[65vh] lg:h-[70vh] max-h-[800px] bg-gradient-to-br from-gray-200 to-gray-300 animate-pulse relative">
     <div className="absolute inset-0 flex flex-col items-center justify-center space-y-6 px-4">
       <SkeletonBox className="w-32 h-8 rounded-full" />
       <SkeletonBox className="w-full max-w-2xl h-16" />

@@ -220,9 +220,16 @@ export default defineConfig({
             return 'charts';
           }
 
-          // Carousels & Sliders
-          if (id.includes('node_modules/keen-slider') ||
-            id.includes('node_modules/swiper')) {
+          // Tables & virtualization - own chunk so they don't bloat vendor-libs
+          if (id.includes('node_modules/@tanstack/react-table') ||
+            id.includes('node_modules/@tanstack/react-virtual') ||
+            id.includes('node_modules/@tanstack/table-core') ||
+            id.includes('node_modules/@tanstack/virtual-core')) {
+            return 'tables';
+          }
+
+          // Carousels & Sliders (consolidated on keen-slider; swiper removed)
+          if (id.includes('node_modules/keen-slider')) {
             return 'sliders';
           }
 
