@@ -291,6 +291,18 @@ export default defineConfig({
             return 'ui-libs';
           }
 
+          // Recharts and swiper/react both call React.createContext at module
+          // parse time (same hazard as react-router-dom/react-hot-toast above).
+          // Forcing them into the unrelated vendor-libs grab-bag broke chunk
+          // init order ("Re is not a function" on load). Let Rollup place them
+          // with their actual importer instead.
+          if (id.includes('node_modules/recharts') ||
+            id.includes('node_modules/d3-') ||
+            id.includes('node_modules/victory-vendor') ||
+            id.includes('node_modules/swiper')) {
+            return undefined;
+          }
+
           // Everything else from node_modules goes to vendor-libs
           if (id.includes('node_modules')) {
             return 'vendor-libs';
