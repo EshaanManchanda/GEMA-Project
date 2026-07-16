@@ -13,6 +13,13 @@ import {
   getPayoutStats,
   getPayoutAnalytics,
   exportPayoutData,
+  getPayoutBatches,
+  generatePayoutBatches,
+  getPayoutBatch,
+  approvePayoutBatch,
+  markPayoutBatchPaid,
+  cancelPayoutBatch,
+  exportPayoutBatch,
 } from "../controllers/admin.payout.controller";
 import { authenticate, authorize } from "../middleware/auth";
 import { validateRequest } from "../middleware/validation";
@@ -275,6 +282,87 @@ router.get(
   exportPayoutDataValidation,
   validateRequest,
   exportPayoutData,
+);
+
+// ─────────────────────────────────────────────────────────────────────────
+// Monthly vendor payout batches
+// ─────────────────────────────────────────────────────────────────────────
+
+const generateBatchesValidation = [
+  body("periodStart")
+    .optional()
+    .isISO8601()
+    .withMessage("periodStart must be a valid ISO 8601 date"),
+  body("periodEnd")
+    .optional()
+    .isISO8601()
+    .withMessage("periodEnd must be a valid ISO 8601 date"),
+];
+
+const markBatchPaidValidation = [
+  ...payoutIdValidation,
+  body("paymentMethod")
+    .isIn(["bank_transfer", "stripe_connect", "manual", "other"])
+    .withMessage("Invalid payment method"),
+  body("transactionReference")
+    .optional()
+    .isString()
+    .isLength({ max: 200 })
+    .withMessage("Transaction reference cannot exceed 200 characters"),
+];
+
+const cancelBatchValidation = [
+  ...payoutIdValidation,
+  body("reason")
+    .optional()
+    .isString()
+    .isLength({ max: 500 })
+    .withMessage("Reason cannot exceed 500 characters"),
+];
+
+// NOTE: this router is mounted at bare "/admin" (see routes/index.ts:
+// `router.use("/admin", adminPayoutRoutes)`), unlike admin.teacher.payout.routes
+// which is mounted at "/admin/teachers/payouts". The existing routes above
+// (vendor-earnings, payout-requests, ...) are flat under /admin for that
+// reason. The batch routes are explicitly namespaced under "/payouts/batches"
+// here so they don't collide with an unrelated future "/admin/batches"
+// resource — full paths are /api/admin/payouts/batches[...].
+router.get("/payouts/batches", getPayoutBatches);
+router.post(
+  "/payouts/batches/generate",
+  generateBatchesValidation,
+  validateRequest,
+  generatePayoutBatches,
+);
+router.get(
+  "/payouts/batches/:id",
+  payoutIdValidation,
+  validateRequest,
+  getPayoutBatch,
+);
+router.post(
+  "/payouts/batches/:id/approve",
+  payoutIdValidation,
+  validateRequest,
+  approvePayoutBatch,
+);
+router.post(
+  "/payouts/batches/:id/mark-paid",
+  markBatchPaidValidation,
+  validateRequest,
+  markPayoutBatchPaid,
+);
+router.post(
+  "/payouts/batches/:id/cancel",
+  cancelBatchValidation,
+  validateRequest,
+  cancelPayoutBatch,
+);
+router.get(
+  "/payouts/batches/:id/export",
+  payoutIdValidation,
+  validateRequest,
+  exportPayoutBatch,
 );
 
 export default router;

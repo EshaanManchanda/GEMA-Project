@@ -163,6 +163,13 @@ export {
 export type { IPayout, IBankDetails } from "./Payout";
 
 export {
+  default as VendorPayoutBatch,
+  VendorPayoutBatchStatus,
+  VendorPayoutBatchMethod,
+} from "./VendorPayoutBatch";
+export type { IVendorPayoutBatch } from "./VendorPayoutBatch";
+
+export {
   default as VendorSubscription,
   SubscriptionPlan,
   SubscriptionStatus,

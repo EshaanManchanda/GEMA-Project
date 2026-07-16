@@ -45,6 +45,7 @@ import {
   startPromotionExpiryCron,
   startCommissionBackfillCron,
   startSubscriptionExpiryCron,
+  startMonthlyPayoutBatchCron,
 } from "./utils/cron";
 import { redisClient, redisPool } from "./config/redis";
 import {
@@ -444,6 +445,7 @@ async function startServer() {
     startPromotionExpiryCron();
     startCommissionBackfillCron();
     startSubscriptionExpiryCron();
+    startMonthlyPayoutBatchCron();
     logger.info("Scheduled jobs initialized successfully");
 
     // Step 5: Start performance monitoring

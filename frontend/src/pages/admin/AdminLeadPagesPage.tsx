@@ -4,7 +4,7 @@ import toast from 'react-hot-toast';
 import {
   FaSearch, FaExternalLinkAlt, FaTrash,
   FaUsers, FaEye, FaChevronDown, FaChevronUp, FaCopy, FaFilter,
-  FaPhone, FaEnvelope, FaBullhorn, FaCalendarAlt, FaPowerOff, FaBan,
+  FaPhone, FaEnvelope, FaBullhorn, FaCalendarAlt, FaPowerOff, FaBan, FaGlobe,
 } from 'react-icons/fa';
 import {
   getAdminLeadPages,
@@ -41,16 +41,20 @@ const AdminLeadPagesPage: React.FC = () => {
     fetchLeadPages();
   }, []);
 
+  const GLOBAL_LABEL = 'Kidrove Lead Collection';
+
   const filtered = useMemo(() => {
-    return leadPages.filter((lp) => {
-      const matchSearch =
-        !search || lp.event?.title?.toLowerCase().includes(search.toLowerCase());
+    const list = leadPages.filter((lp) => {
+      const label = lp.isGlobal ? GLOBAL_LABEL : lp.event?.title || '';
+      const matchSearch = !search || label.toLowerCase().includes(search.toLowerCase());
       const matchStatus =
         statusFilter === 'all' ||
         (statusFilter === 'active' && lp.isActive) ||
         (statusFilter === 'inactive' && !lp.isActive);
       return matchSearch && matchStatus;
     });
+    // Pin the global bucket to the top so it's always easy to find.
+    return [...list].sort((a, b) => (b.isGlobal ? 1 : 0) - (a.isGlobal ? 1 : 0));
   }, [leadPages, search, statusFilter]);
 
   const toggleExpand = (id: string) => {
@@ -101,8 +105,10 @@ const AdminLeadPagesPage: React.FC = () => {
     }
   };
 
-  const copyLink = (eventId: string) => {
-    const url = `${window.location.origin}/lead-page?eventId=${eventId}`;
+  const copyLink = (eventId?: string) => {
+    const url = eventId
+      ? `${window.location.origin}/lead-page?eventId=${eventId}`
+      : `${window.location.origin}/lead-page`;
     navigator.clipboard.writeText(url).then(() => toast.success('Link copied!'));
   };
 
@@ -183,7 +189,9 @@ const AdminLeadPagesPage: React.FC = () => {
               ['Event', 'Lead Name', 'Email', 'Phone', 'Message', 'Submitted At']
             ];
             filtered.forEach(lp => {
-              const eventName = lp.event?.title?.replace(/,/g, '') || 'Unknown';
+              const eventName = lp.isGlobal
+                ? GLOBAL_LABEL
+                : lp.event?.title?.replace(/,/g, '') || 'Unknown';
               (lp.leads || []).forEach(lead => {
                 csvRows.push([
                   eventName,
@@ -250,21 +258,36 @@ const AdminLeadPagesPage: React.FC = () => {
                       {/* Event */}
                       <td className="px-5 py-4">
                         <div className="flex items-center gap-3">
-                          <img
-                            src={getEventImageFromEvent(lp.event as any, 100, 100)}
-                            alt={lp.event?.title}
-                            className="w-10 h-10 rounded-lg object-cover flex-shrink-0 border border-gray-100"
-                            onError={(e) => { e.currentTarget.src = '/default-event.jpg'; }}
-                          />
+                          {lp.isGlobal ? (
+                            <div className="w-10 h-10 rounded-lg flex-shrink-0 bg-gradient-to-br from-orange-500 to-pink-600 flex items-center justify-center">
+                              <FaGlobe className="text-white" size={16} />
+                            </div>
+                          ) : (
+                            <img
+                              src={getEventImageFromEvent(lp.event as any, 100, 100)}
+                              alt={lp.event?.title}
+                              className="w-10 h-10 rounded-lg object-cover flex-shrink-0 border border-gray-100"
+                              onError={(e) => { e.currentTarget.src = '/default-event.jpg'; }}
+                            />
+                          )}
                           <div className="min-w-0">
-                            <button 
-                              onClick={() => navigate(`/admin/events/${lp.event?._id}`)}
-                              className="text-sm font-semibold text-gray-900 truncate max-w-[180px] hover:text-orange-600 transition block text-left"
-                            >
-                              {lp.event?.title || 'Unknown Event'}
-                            </button>
+                            {lp.isGlobal ? (
+                              <div className="flex items-center gap-2">
+                                <span className="text-sm font-semibold text-gray-900">{GLOBAL_LABEL}</span>
+                                <span className="inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-bold uppercase tracking-wide bg-orange-100 text-orange-700">
+                                  Global
+                                </span>
+                              </div>
+                            ) : (
+                              <button
+                                onClick={() => navigate(`/admin/events/${lp.event?._id}`)}
+                                className="text-sm font-semibold text-gray-900 truncate max-w-[180px] hover:text-orange-600 transition block text-left"
+                              >
+                                {lp.event?.title || 'Unknown Event'}
+                              </button>
+                            )}
                             <p className="text-xs text-gray-400">
-                              {lp.event?.location?.city || ''}
+                              {lp.isGlobal ? 'Default lead capture (no event)' : lp.event?.location?.city || ''}
                             </p>
                           </div>
                         </div>
@@ -312,14 +335,16 @@ const AdminLeadPagesPage: React.FC = () => {
                       {/* Actions */}
                       <td className="px-5 py-4">
                         <div className="flex items-center gap-2">
-                          {/* View Event */}
-                          <button
-                            onClick={() => navigate(`/admin/events/${lp.event?._id}`)}
-                            className="inline-flex h-9 w-9 items-center justify-center rounded-lg border border-purple-100 text-purple-600 hover:bg-purple-50 transition-colors"
-                            title="View Event details"
-                          >
-                            <FaEye size={13} />
-                          </button>
+                          {/* View Event (event pages only) */}
+                          {!lp.isGlobal && (
+                            <button
+                              onClick={() => navigate(`/admin/events/${lp.event?._id}`)}
+                              className="inline-flex h-9 w-9 items-center justify-center rounded-lg border border-purple-100 text-purple-600 hover:bg-purple-50 transition-colors"
+                              title="View Event details"
+                            >
+                              <FaEye size={13} />
+                            </button>
+                          )}
 
                           {/* Copy link */}
                           <button
@@ -332,7 +357,7 @@ const AdminLeadPagesPage: React.FC = () => {
 
                           {/* Open in new tab */}
                           <button
-                            onClick={() => window.open(`/lead-page?eventId=${lp.event?._id}`, '_blank')}
+                            onClick={() => window.open(lp.isGlobal ? '/lead-page' : `/lead-page?eventId=${lp.event?._id}`, '_blank')}
                             className="inline-flex h-9 w-9 items-center justify-center rounded-lg border border-indigo-100 text-indigo-600 hover:bg-indigo-50 transition-colors"
                             title="Open lead page"
                           >
@@ -352,14 +377,16 @@ const AdminLeadPagesPage: React.FC = () => {
                           {lp.isActive ? <FaPowerOff size={14} /> : <FaBan size={14} />}
                           </button>
 
-                          {/* Delete */}
-                          <button
-                            onClick={() => setDeleteConfirm(lp._id)}
-                            className="inline-flex h-9 w-9 items-center justify-center rounded-lg border border-red-100 text-red-500 hover:bg-red-50 transition-colors"
-                            title="Delete lead page"
-                          >
-                            <FaTrash size={13} />
-                          </button>
+                          {/* Delete — global bucket is a permanent singleton, deactivate instead */}
+                          {!lp.isGlobal && (
+                            <button
+                              onClick={() => setDeleteConfirm(lp._id)}
+                              className="inline-flex h-9 w-9 items-center justify-center rounded-lg border border-red-100 text-red-500 hover:bg-red-50 transition-colors"
+                              title="Delete lead page"
+                            >
+                              <FaTrash size={13} />
+                            </button>
+                          )}
                         </div>
                       </td>
                     </tr>

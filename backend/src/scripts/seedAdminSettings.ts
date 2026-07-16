@@ -92,8 +92,13 @@ export const ensureAdminRevenueSettings = async (
       payoutFrequency: PayoutFrequency.WEEKLY,
       minimumPayoutAmount: 50, // 50 AED minimum
       payoutCurrency: "AED",
-      payoutProcessingTime: 24, // 24 hours
+      payoutProcessingTime: 24, // 24 hours (legacy, unused)
       holdPayoutsForNewVendors: 7, // 7 days hold for new vendors
+
+      // Payout hold + monthly settlement
+      payoutHoldHours: 24, // Refund/clawback hold before a RevenueTransaction is payout-eligible
+      monthlyPayoutDay: 5, // Day of month the monthly settlement batch is generated
+      autoPayoutEnabled: false, // Admin manually approves + marks batches paid
 
       // Payment gateway configurations
       paymentGateways: {

@@ -5,6 +5,7 @@ import {
   getAllActiveLeadPages,
   getLeadPageByEvent,
   submitLead,
+  submitGlobalLead,
   ILeadPage,
 } from '../services/api/leadPageAPI';
 import { getEventImageFromEvent } from '../utils/imageFallbacks';
@@ -508,8 +509,8 @@ const LeadPage: React.FC = () => {
                 <div className="grid md:grid-cols-2 gap-6">
                   {[
                     { title: 'Expert-led sessions', desc: 'Learn from industry professionals and certified instructors' },
-                    { title: 'Network &amp; connect', desc: 'Meet like-minded participants and build lasting connections' },
-                    { title: 'Certificates &amp; awards', desc: 'Earn recognition for participation and achievement' },
+                    { title: 'Network & connect', desc: 'Meet like-minded participants and build lasting connections' },
+                    { title: 'Certificates & awards', desc: 'Earn recognition for participation and achievement' },
                     { title: 'Hands-on learning', desc: 'Practical, activity-based learning for real-world skills' },
                   ].map((benefit, idx) => (
                     <div key={idx} className="bg-white rounded-2xl p-8 border border-gray-100 shadow-sm hover:shadow-md transition-shadow flex gap-6 group">
@@ -926,7 +927,7 @@ const LeadPage: React.FC = () => {
             { stat: '4.8', title: 'Average rating', desc: "Top-rated for children's activities" },
             { stat: '100%', title: 'Vetted organizers', desc: 'Background-checked before listing' },
           ].map((item) => (
-            <div key={item.title} className="p-6 text-center" style={{ background: PAPER }}>
+            <div key={item.title} className="p-6 text-center transition-colors hover:bg-[#F5F1E5]" style={{ background: PAPER }}>
               <p className="text-3xl font-extrabold kr-display mb-1" style={{ color: CORAL }}>{item.stat}</p>
               <p className="font-bold text-sm mb-1" style={{ color: INK }}>{item.title}</p>
               <p className="text-xs" style={{ color: '#8A8577' }}>{item.desc}</p>
@@ -947,7 +948,10 @@ const LeadPage: React.FC = () => {
           </div>
 
           {globalPages.length === 0 ? (
-            <div className="text-center py-16">
+            <div className="text-center py-16 rounded-[24px] border-2 border-dashed" style={{ borderColor: LINE }}>
+              <div className="w-14 h-14 rounded-full flex items-center justify-center mx-auto mb-5" style={{ background: '#EFEADB', color: TEAL }}>
+                <TicketIcon />
+              </div>
               <p className="kr-mono text-xs uppercase tracking-widest mb-3" style={{ color: '#B7B2A2' }}>Nothing promoted right now</p>
               <p className="mb-6" style={{ color: '#7A7566' }}>Check back soon, or explore the full catalogue.</p>
               <Link to="/search" className="inline-flex items-center gap-2 px-6 py-3 font-bold rounded-full text-sm hover:brightness-105 transition" style={{ background: CORAL, color: PAPER }}>
@@ -969,8 +973,11 @@ const LeadPage: React.FC = () => {
         <div className="absolute inset-0 kr-dotfield" />
         <div className="relative max-w-md mx-auto">
           <div className="text-center mb-8">
-            <p className="kr-mono text-[11px] uppercase tracking-widest mb-3" style={{ color: SUN }}>Stay in the loop</p>
-            <h2 className="text-2xl sm:text-3xl font-bold kr-display" style={{ color: PAPER }}>We'll tell you what's next</h2>
+            <p className="kr-mono text-[11px] uppercase tracking-widest mb-3" style={{ color: SUN }}>Kidrove lead collection</p>
+            <h2 className="text-2xl sm:text-3xl font-bold kr-display mb-2" style={{ color: PAPER }}>We'll tell you what's next</h2>
+            <p className="text-sm max-w-sm mx-auto" style={{ color: 'rgba(252,250,244,0.6)' }}>
+              Tell us what your kids are into and our team will reach out with matching events.
+            </p>
           </div>
           <div className="rounded-[24px] p-7" style={{ background: PAPER }}>
             <GlobalLeadForm />
@@ -982,11 +989,37 @@ const LeadPage: React.FC = () => {
 };
 
 // ── Global Lead Form ─────────────────────────────────────────────────────────
+// Feeds the singleton "Kidrove Lead Collection" bucket via submitGlobalLead —
+// captured leads surface under /admin/lead-pages.
 const GlobalLeadForm: React.FC = () => {
   const [name, setName] = useState('');
   const [contact, setContact] = useState('');
   const [contactType, setContactType] = useState<'email' | 'phone'>('phone');
+  const [message, setMessage] = useState('');
+  const [loading, setLoading] = useState(false);
   const [submitted, setSubmitted] = useState(false);
+
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!name.trim() || !contact.trim()) {
+      toast.error('Please fill in all required fields');
+      return;
+    }
+    setLoading(true);
+    try {
+      await submitGlobalLead({
+        name: name.trim(),
+        email: contactType === 'email' ? contact.trim() : undefined,
+        phone: contactType === 'phone' ? contact.trim() : undefined,
+        message: message.trim() || undefined,
+      });
+      setSubmitted(true);
+    } catch {
+      toast.error('Something went wrong. Please try again.');
+    } finally {
+      setLoading(false);
+    }
+  };
 
   if (submitted) {
     return (
@@ -1001,12 +1034,13 @@ const GlobalLeadForm: React.FC = () => {
   }
 
   return (
-    <div className="space-y-4 kr-body">
+    <form onSubmit={handleSubmit} className="space-y-4 kr-body">
       <input
         type="text"
         value={name}
         onChange={(e) => setName(e.target.value)}
         placeholder="Full name"
+        required
         className="w-full px-1 py-2.5 bg-transparent border-0 border-b-2 text-[15px] focus:outline-none transition-colors placeholder-gray-400"
         style={{ borderColor: LINE, color: INK }}
         onFocus={(e) => (e.currentTarget.style.borderColor = TEAL)}
@@ -1022,21 +1056,39 @@ const GlobalLeadForm: React.FC = () => {
           type={contactType === 'email' ? 'email' : 'tel'}
           value={contact}
           onChange={(e) => setContact(e.target.value)}
-          placeholder={contactType === 'email' ? 'your@email.com' : '+91 98765 43210'}
+          placeholder={contactType === 'email' ? 'your@email.com' : '+971 50 123 4567'}
+          required
           className="w-full px-1 py-2.5 bg-transparent border-0 border-b-2 text-[15px] focus:outline-none transition-colors placeholder-gray-400"
           style={{ borderColor: LINE, color: INK }}
           onFocus={(e) => (e.currentTarget.style.borderColor = TEAL)}
           onBlur={(e) => (e.currentTarget.style.borderColor = LINE)}
         />
       </div>
+      <div>
+        <textarea
+          value={message}
+          onChange={(e) => setMessage(e.target.value)}
+          rows={2}
+          placeholder="What kind of events are you looking for? (optional)"
+          className="w-full px-1 py-2.5 bg-transparent border-0 border-b-2 text-[15px] focus:outline-none transition-colors placeholder-gray-400 resize-none"
+          style={{ borderColor: LINE, color: INK }}
+          onFocus={(e) => (e.currentTarget.style.borderColor = TEAL)}
+          onBlur={(e) => (e.currentTarget.style.borderColor = LINE)}
+        />
+      </div>
       <button
-        onClick={() => { if (name && contact) setSubmitted(true); else toast.error('Please fill in all fields'); }}
-        className="w-full py-4 font-bold rounded-full hover:brightness-105 active:scale-[0.98] transition-all text-[15px]"
+        type="submit"
+        disabled={loading}
+        className="w-full py-4 font-bold rounded-full hover:brightness-105 active:scale-[0.98] transition-all disabled:opacity-60 flex items-center justify-center gap-2 text-[15px]"
         style={{ background: CORAL, color: PAPER }}
       >
-        Get notified about events
+        {loading ? (
+          <><span className="w-4 h-4 border-2 border-white/40 border-t-white rounded-full animate-spin" />Sending…</>
+        ) : (
+          'Get notified about events'
+        )}
       </button>
-    </div>
+    </form>
   );
 };
 

@@ -5,6 +5,7 @@ import { toast } from 'react-hot-toast';
 import { ApiService } from '../../services/api';
 import PrivatePageSEO from '@/components/common/PrivatePageSEO';
 import logger from '@/utils/logger';
+import VendorPayoutBatchesPanel from '../../components/admin/VendorPayoutBatchesPanel';
 import {
   fetchVendorEarnings,
   fetchPayoutRequests,
@@ -44,7 +45,7 @@ const AdminPayoutsPage: React.FC = () => {
   useSelector(selectPayoutError);
   const payoutSummary = useSelector(selectPayoutSummary);
 
-  const [activeTab, setActiveTab] = useState<'requests' | 'earnings' | 'stats'>('requests');
+  const [activeTab, setActiveTab] = useState<'requests' | 'earnings' | 'stats' | 'monthly'>('requests');
   const [selectedPayouts, setSelectedPayouts] = useState<string[]>([]);
   const [filters, setFilters] = useState<PayoutFilters>({
     status: 'all',
@@ -355,6 +356,15 @@ const AdminPayoutsPage: React.FC = () => {
                   }`}
               >
                 Analytics & Reports
+              </button>
+              <button
+                onClick={() => setActiveTab('monthly')}
+                className={`py-4 px-1 border-b-2 font-medium text-sm transition-colors ${activeTab === 'monthly'
+                    ? 'border-blue-500 text-blue-600'
+                    : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
+                  }`}
+              >
+                Monthly Batches
               </button>
             </nav>
           </div>
@@ -727,6 +737,8 @@ const AdminPayoutsPage: React.FC = () => {
                 </div>
               </div>
             )}
+
+            {activeTab === 'monthly' && <VendorPayoutBatchesPanel />}
           </div>
         </div>
 

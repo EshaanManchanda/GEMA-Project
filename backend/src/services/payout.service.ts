@@ -12,13 +12,20 @@ import Payout, {
   PayoutMethodType,
 } from "../models/Payout";
 import VendorSubscription from "../models/VendorSubscription";
-import AdminRevenueSettings from "../models/AdminRevenueSettings";
+import AdminRevenueSettings, {
+  PayoutFrequency,
+} from "../models/AdminRevenueSettings";
 import User, { UserRole, IUser } from "../models/User";
 import Vendor, { IVendor } from "../models/Vendor";
 import { AppError } from "../middleware/index";
 import CommissionTransaction, {
   CommissionTransactionStatus,
 } from "../models/CommissionTransaction";
+import VendorPayoutBatch, {
+  VendorPayoutBatchStatus,
+  VendorPayoutBatchMethod,
+  IVendorPayoutBatch,
+} from "../models/VendorPayoutBatch";
 import logger from "../config/logger";
 
 // Initialize Stripe (will be configured from admin settings)
@@ -902,6 +909,19 @@ class PayoutService {
    * Called hourly by cron.
    */
   public async processPendingEligiblePayouts(): Promise<void> {
+    const settings = await AdminRevenueSettings.getCurrentSettings();
+
+    // When settlement is monthly, eligible transactions are intentionally left
+    // PENDING here — they get claimed by generateMonthlyPayoutBatches() instead.
+    // This is the single-path guard: a RevenueTransaction is settled by exactly
+    // one mechanism, never both. See VendorPayoutBatch.ts header comment.
+    if (settings?.payoutFrequency === PayoutFrequency.MONTHLY) {
+      logger.info(
+        "[PayoutService] payoutFrequency=monthly — skipping per-request auto-payout, deferring to monthly batch settlement",
+      );
+      return;
+    }
+
     const now = new Date();
 
     const eligible = await RevenueTransaction.find({
@@ -1115,6 +1135,242 @@ class PayoutService {
     await affiliate.save();
 
     logger.info(`[PayoutService] Affiliate payout processed: ${affiliateId} — ${totalAmount}`);
+  }
+
+  // ─────────────────────────────────────────────────────────────────────────
+  // Monthly vendor payout settlement (VendorPayoutBatch)
+  //
+  // Layer 2 of the two-layer settlement model: RevenueTransaction.payoutEligibleAt
+  // (governed by AdminRevenueSettings.payoutHoldHours) decides WHEN money becomes
+  // eligible; the methods below decide WHEN eligible money is actually SETTLED,
+  // grouped into a monthly batch per vendor, reviewed and approved by an admin,
+  // then marked paid with a payment reference.
+  // ─────────────────────────────────────────────────────────────────────────
+
+  /**
+   * Eligible, unbatched, non-refunded RevenueTransactions for one vendor, up to cutoff.
+   */
+  public async getEligibleTransactions(
+    vendorId: string | mongoose.Types.ObjectId,
+    cutoff: Date,
+  ): Promise<IRevenueTransaction[]> {
+    return RevenueTransaction.find({
+      vendorId,
+      payoutEligibleAt: { $lte: cutoff },
+      payoutStatus: PayoutStatus.PENDING,
+      status: TransactionStatus.COMPLETED,
+      payoutBatchId: { $exists: false },
+    }).sort({ transactionDate: 1 });
+  }
+
+  /**
+   * Generate DRAFT VendorPayoutBatch docs, one per vendor, from all eligible,
+   * unbatched, non-refunded RevenueTransactions with payoutEligibleAt <= periodEnd.
+   * Not restricted to transactionDate within [periodStart, periodEnd] — any
+   * previously-eligible-but-unswept transaction (carried forward from a prior
+   * run, e.g. a vendor who was below the minimum last month) is picked up too.
+   *
+   * Vendors whose net payout is below AdminRevenueSettings.minimumPayoutAmount
+   * are skipped; their transactions remain unbatched (payoutBatchId unset) and
+   * roll into the next generation run automatically.
+   *
+   * Duplicate-generation guard: VendorPayoutBatch has a unique index on
+   * (vendorId, periodStart, periodEnd) for non-cancelled statuses — re-running
+   * for a period that already has a batch throws E11000 for that vendor, which
+   * is caught and reported as skipped rather than failing the whole run.
+   */
+  public async generateMonthlyPayoutBatches(
+    periodStart: Date,
+    periodEnd: Date,
+    createdBy: mongoose.Types.ObjectId,
+  ): Promise<{
+    created: IVendorPayoutBatch[];
+    skipped: Array<{ vendorId: string; reason: string }>;
+  }> {
+    const settings = await AdminRevenueSettings.getCurrentSettings();
+    const payoutHoldHours = (settings as any)?.payoutHoldHours ?? 24;
+    const minimumPayoutAmount = settings?.minimumPayoutAmount ?? 50;
+
+    const eligible = await RevenueTransaction.find({
+      payoutEligibleAt: { $lte: periodEnd },
+      payoutStatus: PayoutStatus.PENDING,
+      status: TransactionStatus.COMPLETED,
+      payoutBatchId: { $exists: false },
+    });
+
+    const byVendor = new Map<string, IRevenueTransaction[]>();
+    for (const tx of eligible) {
+      const vid = tx.vendorId.toString();
+      if (!byVendor.has(vid)) byVendor.set(vid, []);
+      byVendor.get(vid)!.push(tx);
+    }
+
+    const created: IVendorPayoutBatch[] = [];
+    const skipped: Array<{ vendorId: string; reason: string }> = [];
+
+    for (const [vendorId, txns] of byVendor) {
+      const grossRevenue = txns.reduce((sum, t) => sum + t.totalAmount, 0);
+      const platformCommission = txns.reduce((sum, t) => sum + t.adminCommission, 0);
+      const netPayout = txns.reduce((sum, t) => sum + t.vendorPayout, 0);
+
+      if (netPayout < minimumPayoutAmount) {
+        skipped.push({
+          vendorId,
+          reason: `Below minimum payout amount (${netPayout} < ${minimumPayoutAmount})`,
+        });
+        continue; // carry-forward — leave transactions unbatched for next run
+      }
+
+      const session = await mongoose.startSession();
+      try {
+        let batch: IVendorPayoutBatch | null = null;
+        await session.withTransaction(async () => {
+          const [doc] = await VendorPayoutBatch.create(
+            [
+              {
+                vendorId,
+                periodStart,
+                periodEnd,
+                grossRevenue,
+                platformCommission,
+                refunds: 0,
+                adjustments: 0,
+                netPayout,
+                currency: txns[0].currency || "AED",
+                status: VendorPayoutBatchStatus.DRAFT,
+                includedRevenueTransactionIds: txns.map((t) => t._id),
+                payoutHoldHoursSnapshot: payoutHoldHours,
+                createdBy,
+              },
+            ],
+            { session },
+          );
+          batch = doc;
+
+          await RevenueTransaction.updateMany(
+            { _id: { $in: txns.map((t) => t._id) } },
+            {
+              $set: {
+                payoutBatchId: doc._id,
+                payoutStatus: PayoutStatus.PROCESSING,
+              },
+            },
+            { session },
+          );
+        });
+        if (batch) created.push(batch);
+      } catch (error: any) {
+        if (error?.code === 11000) {
+          skipped.push({
+            vendorId,
+            reason: "Batch already exists for this vendor+period (duplicate run)",
+          });
+        } else {
+          logger.error(
+            `[PayoutService] Failed to generate batch for vendor ${vendorId}:`,
+            error,
+          );
+          skipped.push({ vendorId, reason: (error as Error).message });
+        }
+      } finally {
+        await session.endSession();
+      }
+    }
+
+    logger.info(
+      `[PayoutService] Monthly batch generation: ${created.length} created, ${skipped.length} skipped`,
+    );
+    return { created, skipped };
+  }
+
+  /**
+   * Approve a draft batch. Single-document write — no transaction needed.
+   */
+  public async approveBatch(
+    batchId: string,
+    adminId: mongoose.Types.ObjectId,
+  ): Promise<IVendorPayoutBatch> {
+    const batch = await VendorPayoutBatch.findById(batchId);
+    if (!batch) throw new AppError("Payout batch not found", 404);
+    return batch.approve(adminId);
+  }
+
+  /**
+   * Mark an approved batch as paid and flip its included transactions to
+   * payoutStatus COMPLETED. Batch is locked after this — see markPaid() guard.
+   */
+  public async markBatchPaid(
+    batchId: string,
+    adminId: mongoose.Types.ObjectId,
+    details: { paymentMethod: VendorPayoutBatchMethod; transactionReference?: string },
+  ): Promise<IVendorPayoutBatch> {
+    const batch = await VendorPayoutBatch.findById(batchId);
+    if (!batch) throw new AppError("Payout batch not found", 404);
+    if (batch.status !== VendorPayoutBatchStatus.APPROVED) {
+      throw new AppError("Only approved batches can be marked as paid", 400);
+    }
+
+    const session = await mongoose.startSession();
+    try {
+      await session.withTransaction(async () => {
+        batch.status = VendorPayoutBatchStatus.PAID;
+        batch.paidBy = adminId;
+        batch.paidAt = new Date();
+        batch.paymentMethod = details.paymentMethod;
+        if (details.transactionReference) {
+          batch.transactionReference = details.transactionReference;
+        }
+        await batch.save({ session });
+
+        await RevenueTransaction.updateMany(
+          { _id: { $in: batch.includedRevenueTransactionIds } },
+          { $set: { payoutStatus: PayoutStatus.COMPLETED, payoutDate: new Date() } },
+          { session },
+        );
+      });
+    } finally {
+      await session.endSession();
+    }
+    return batch;
+  }
+
+  /**
+   * Cancel a draft/approved batch — unstamps its transactions so they become
+   * eligible for a future batch again. Paid batches cannot be cancelled here.
+   */
+  public async cancelBatch(
+    batchId: string,
+    reason?: string,
+  ): Promise<IVendorPayoutBatch> {
+    const batch = await VendorPayoutBatch.findById(batchId);
+    if (!batch) throw new AppError("Payout batch not found", 404);
+    if (batch.status === VendorPayoutBatchStatus.PAID) {
+      throw new AppError(
+        "Paid batches cannot be cancelled — use the admin correction flow",
+        400,
+      );
+    }
+
+    const session = await mongoose.startSession();
+    try {
+      await session.withTransaction(async () => {
+        batch.status = VendorPayoutBatchStatus.CANCELLED;
+        if (reason) batch.adminNotes = reason;
+        await batch.save({ session });
+
+        await RevenueTransaction.updateMany(
+          { _id: { $in: batch.includedRevenueTransactionIds } },
+          {
+            $unset: { payoutBatchId: "" },
+            $set: { payoutStatus: PayoutStatus.PENDING },
+          },
+          { session },
+        );
+      });
+    } finally {
+      await session.endSession();
+    }
+    return batch;
   }
 }
 

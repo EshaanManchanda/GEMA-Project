@@ -42,6 +42,10 @@ export interface ICommissionTransaction extends Document {
   vendorCommission: number;
   commissions: ICommissionDetail[];
   status: CommissionTransactionStatus;
+  // Set true when this record is voided as a duplicate. Backs the orderId
+  // uniqueness partial index — see RevenueTransaction.ts for why a dedicated
+  // boolean is used instead of filtering on `status` directly.
+  settlementVoid: boolean;
   calculatedAt: Date;
   approvedAt?: Date;
   approvedBy?: mongoose.Types.ObjectId;
@@ -68,10 +72,12 @@ const CommissionTransactionSchema = new Schema<ICommissionTransaction>(
       index: true,
     },
     orderId: {
+      // Uniqueness enforced below via a partial index that excludes
+      // cancelled/voided txns — see index def and
+      // scripts/migrations/auditDuplicateRevenueTransactions.ts.
       type: mongoose.Schema.Types.ObjectId,
       ref: "Order",
       required: true,
-      index: true,
     },
     orderNumber: {
       type: String,
@@ -171,6 +177,11 @@ const CommissionTransactionSchema = new Schema<ICommissionTransaction>(
       required: true,
       index: true,
     },
+    settlementVoid: {
+      type: Boolean,
+      default: false,
+      required: true,
+    },
     calculatedAt: {
       type: Date,
       default: Date.now,
@@ -202,6 +213,21 @@ const CommissionTransactionSchema = new Schema<ICommissionTransaction>(
 );
 
 // Indexes
+// Uniqueness guard: one non-voided CommissionTransaction per order. Excludes
+// voided duplicates (settlementVoid: true — a voided duplicate keeps its
+// orderId for audit purposes and must not collide with the live record for
+// that order). MongoDB partial index filters don't support $ne — hence the
+// dedicated boolean flag instead of filtering on `status` directly.
+CommissionTransactionSchema.index(
+  { orderId: 1 },
+  {
+    unique: true,
+    partialFilterExpression: {
+      settlementVoid: false,
+    },
+  },
+);
+
 CommissionTransactionSchema.index({ status: 1, createdAt: -1 });
 CommissionTransactionSchema.index({ vendorId: 1, status: 1 });
 CommissionTransactionSchema.index({ calculatedAt: -1 });

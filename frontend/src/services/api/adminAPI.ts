@@ -799,6 +799,61 @@ const adminAPI = {
     }
   },
 
+  // Monthly vendor payout batches (VendorPayoutBatch)
+  getPayoutBatches: async (params?: { page?: number; limit?: number; status?: string; vendorId?: string; periodStart?: string }) => {
+    try {
+      const response = await ApiService.get('/admin/payouts/batches', { params });
+      return response;
+    } catch (error) {
+      throw error;
+    }
+  },
+
+  generatePayoutBatches: async (period?: { periodStart: string; periodEnd: string }) => {
+    try {
+      const response = await ApiService.post('/admin/payouts/batches/generate', period || {});
+      return response;
+    } catch (error) {
+      throw error;
+    }
+  },
+
+  getPayoutBatch: async (id: string) => {
+    try {
+      const response = await ApiService.get(`/admin/payouts/batches/${id}`);
+      return response;
+    } catch (error) {
+      throw error;
+    }
+  },
+
+  approvePayoutBatch: async (id: string) => {
+    try {
+      const response = await ApiService.post(`/admin/payouts/batches/${id}/approve`, {});
+      return response;
+    } catch (error) {
+      throw error;
+    }
+  },
+
+  markPayoutBatchPaid: async (id: string, details: { paymentMethod: string; transactionReference?: string }) => {
+    try {
+      const response = await ApiService.post(`/admin/payouts/batches/${id}/mark-paid`, details);
+      return response;
+    } catch (error) {
+      throw error;
+    }
+  },
+
+  cancelPayoutBatch: async (id: string, reason?: string) => {
+    try {
+      const response = await ApiService.post(`/admin/payouts/batches/${id}/cancel`, { reason });
+      return response;
+    } catch (error) {
+      throw error;
+    }
+  },
+
   testEmailConnection: async () => {
     try {
       const response = await ApiService.post('/admin/app-settings/email/test-connection');

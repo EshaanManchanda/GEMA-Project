@@ -16,10 +16,11 @@ import Order from "../models/Order";
 import User from "../models/User";
 import Vendor from "../models/Vendor";
 import Teacher from "../models/Teacher";
+import AdminRevenueSettings from "../models/AdminRevenueSettings";
 import logger from "../config/logger";
 import { config as envConfig } from "../config";
 
-const REFUND_WINDOW_DAYS = 7;
+const DEFAULT_PAYOUT_HOLD_HOURS = 24;
 
 /**
  * Commission calculation service
@@ -240,8 +241,29 @@ class CommissionService {
   }
 
   /**
+   * Admin-configurable payout hold window (hours). This is the refund/clawback
+   * safety period after payment confirmation before a vendor's money becomes
+   * payout-eligible. Falls back to DEFAULT_PAYOUT_HOLD_HOURS if settings are
+   * unavailable. Single read point — do not hardcode this value elsewhere.
+   */
+  async getPayoutHoldHours(): Promise<number> {
+    try {
+      const settings = await AdminRevenueSettings.getCurrentSettings();
+      const hours = (settings as any)?.payoutHoldHours;
+      return typeof hours === "number" && hours >= 0
+        ? hours
+        : DEFAULT_PAYOUT_HOLD_HOURS;
+    } catch (error) {
+      logger.error("Error reading payoutHoldHours, using default:", error);
+      return DEFAULT_PAYOUT_HOLD_HOURS;
+    }
+  }
+
+  /**
    * Create RevenueTransaction for a paid order (idempotent).
-   * payoutEligibleAt = order.createdAt + REFUND_WINDOW_DAYS.
+   * payoutEligibleAt = payment-confirmation time + admin-configured payoutHoldHours.
+   * This is the SINGLE writer of RevenueTransaction for order-driven revenue —
+   * Order.ts no longer creates these on the live path (see Order.markAsPaid).
    */
   private async createRevenueTransaction(
     orderData: any,
@@ -254,11 +276,13 @@ class CommissionService {
       const existing = await RevenueTransaction.findOne({ orderId: orderData._id });
       if (existing) return;
 
-      const transactionDate: Date = orderData.createdAt
-        ? new Date(orderData.createdAt)
-        : new Date();
-      const payoutEligibleAt = new Date(transactionDate);
-      payoutEligibleAt.setDate(payoutEligibleAt.getDate() + REFUND_WINDOW_DAYS);
+      const payoutHoldHours = await this.getPayoutHoldHours();
+      // transactionDate = payment confirmation time (now), not order.createdAt —
+      // the hold window protects against refunds from the moment money is captured.
+      const transactionDate = new Date();
+      const payoutEligibleAt = new Date(
+        transactionDate.getTime() + payoutHoldHours * 60 * 60 * 1000,
+      );
 
       await new RevenueTransaction({
         orderId: orderData._id,
@@ -274,25 +298,34 @@ class CommissionService {
         payoutStatus: PayoutStatus.PENDING,
         transactionDate,
         payoutEligibleAt,
+        payoutHoldHoursSnapshot: payoutHoldHours,
         stripePaymentId: orderData.stripePaymentIntentId,
         metadata: {
           eventTitle: orderData.items?.[0]?.eventTitle || "Event Booking",
         },
       }).save();
-    } catch (err) {
+    } catch (err: any) {
+      if (err?.code === 11000) {
+        // Concurrent writer already created it (webhook + backfill race) — expected, not an error.
+        logger.info(
+          `ℹ️  RevenueTransaction already exists for order ${orderData._id} (duplicate-key, race with concurrent writer)`,
+        );
+        return;
+      }
       // Non-fatal: log but don't fail the commission calculation
       logger.error("⚠️  Failed to create RevenueTransaction:", err);
     }
   }
 
   /**
-   * Backfill: find paid orders past the refund window with no CommissionTransaction
+   * Backfill: find paid orders past the payout hold window with no CommissionTransaction
    * and calculate commission + create RevenueTransaction for each.
-   * Called hourly by cron.
+   * Called hourly by cron. Safety net for the webhook path (see payment.service.ts
+   * handlePaymentSucceeded) — should normally find nothing to process.
    */
   async processUncommissionedOrders(): Promise<{ processed: number; failed: number }> {
-    const cutoff = new Date();
-    cutoff.setDate(cutoff.getDate() - REFUND_WINDOW_DAYS);
+    const payoutHoldHours = await this.getPayoutHoldHours();
+    const cutoff = new Date(Date.now() - payoutHoldHours * 60 * 60 * 1000);
 
     const paidOrders = await Order.find({
       paymentStatus: "paid",

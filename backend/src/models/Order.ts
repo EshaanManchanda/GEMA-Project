@@ -721,15 +721,13 @@ orderSchema.pre("save", async function (next) {
     }
   }
 
-  // Calculate admin commission if not already set (now async)
-  if (
-    this.isNew ||
-    this.isModified("total") ||
-    this.isModified("adminCommission.rate")
-  ) {
-    this.adminCommission.amount = await this.calculateAdminCommission();
-    this.adminCommission.calculatedAt = new Date();
-  }
+  // NOTE: this.adminCommission.amount is no longer auto-calculated here.
+  // commission.service.calculateCommissionForOrder() is the single source of
+  // truth for commission amounts (CommissionTransaction), and used to be
+  // duplicated here via calculateAdminCommission() — which looked up the vendor
+  // via User.findById(event.vendorId) despite event.vendorId being a Vendor._id,
+  // silently defaulting to a flat 5%. calculateAdminCommission() is kept
+  // (@deprecated) only for manual admin-entry call sites.
 
   next();
 });
@@ -773,25 +771,17 @@ orderSchema.methods.markAsPaid = async function (
     this.paymentMethod = paymentMethod as any;
   }
 
-  // Save the order first
   await this.save();
 
-  // Automatically create revenue transaction when order is marked as paid
-  try {
-    if (!this.adminCommission.revenueTransactionId) {
-      logger.info(`Creating revenue transaction for order ${this._id}`);
-      const revenueTransactionId = await this.createRevenueTransaction();
-      this.adminCommission.revenueTransactionId = revenueTransactionId;
-      await this.save();
-    }
-  } catch (error) {
-    logger.error(
-      `Failed to create revenue transaction for order ${this._id}:`,
-      error,
-    );
-    // Don't fail the payment marking if revenue transaction creation fails
-    // This can be retried later
-  }
+  // NOTE: RevenueTransaction/CommissionTransaction creation is intentionally NOT
+  // done here anymore. commission.service.calculateCommissionForOrder() is the
+  // single source of truth (called from the payment webhook, the sync payment
+  // controller, and the hourly backfill cron) — see doc/architecture/
+  // PAYMENT_COMMISSION_PAYOUT_SYSTEM.md. This method used to call
+  // this.createRevenueTransaction() here, which resolved vendor via
+  // User.findById(event.vendorId) even though event.vendorId is a Vendor._id,
+  // silently falling back to a flat 5% commission, and raced with the
+  // commission-service writer under inconsistent idempotency guards.
 
   return this;
 };
@@ -853,7 +843,17 @@ orderSchema.methods.addCommunication = function (
   });
 };
 
-// Method to calculate admin commission
+/**
+ * @deprecated No longer called from the live payment path (see markAsPaid and
+ * the pre-save hook above). commission.service.calculateCommissionForOrder()
+ * is the single source of truth. Kept only for manual admin-entry call sites
+ * (admin.revenue.controller.ts, admin.teacher.revenue.controller.ts) that
+ * construct RevenueTransaction records directly. Known bug: the default-rate
+ * branch below resolves the vendor via User.findById(event.vendorId), but
+ * event.vendorId is a Vendor._id, not a User._id — the lookup misses and
+ * silently falls back to a flat 5%. Do not wire this back into the live path
+ * without fixing that lookup (use Vendor.findById, as commission.service does).
+ */
 orderSchema.methods.calculateAdminCommission = async function (
   rate?: number,
 ): Promise<number> {
@@ -903,7 +903,13 @@ orderSchema.methods.calculateAdminCommission = async function (
   }
 };
 
-// Method to create revenue transaction
+/**
+ * @deprecated No longer called from markAsPaid. commission.service's private
+ * createRevenueTransaction() is the single writer, DB-guarded by a unique
+ * index on RevenueTransaction.orderId, and reads the admin-configurable
+ * payoutHoldHours setting instead of the hardcoded 24h below. Kept only for
+ * manual admin-entry call sites — see calculateAdminCommission() docblock.
+ */
 orderSchema.methods.createRevenueTransaction =
   async function (): Promise<mongoose.Types.ObjectId> {
     const RevenueTransaction = mongoose.model("RevenueTransaction");
@@ -944,7 +950,10 @@ orderSchema.methods.createRevenueTransaction =
     return revenueTransaction._id;
   };
 
-// Method to update commission tracking
+/**
+ * @deprecated Not called anywhere in the live path (verified: no callers
+ * outside this file). Kept for API-compatibility only.
+ */
 orderSchema.methods.updateCommissionTracking =
   async function (): Promise<IOrder> {
     if (!this.adminCommission.revenueTransactionId) {

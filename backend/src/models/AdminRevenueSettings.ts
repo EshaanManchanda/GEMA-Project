@@ -128,8 +128,13 @@ export interface IAdminRevenueSettings extends Document {
   payoutFrequency: PayoutFrequency;
   minimumPayoutAmount: number;
   payoutCurrency: string;
-  payoutProcessingTime: number; // Hours
+  payoutProcessingTime: number; // Hours (legacy, unused by any service — superseded by payoutHoldHours)
   holdPayoutsForNewVendors: number; // Days
+
+  // Payout hold + monthly settlement (admin-configurable refund/clawback window)
+  payoutHoldHours: number; // Hours a RevenueTransaction is held before payoutEligibleAt. Default 24.
+  monthlyPayoutDay: number; // Day of month (1-28) the monthly settlement batch is generated.
+  autoPayoutEnabled: boolean; // If false (default), admin must manually approve + mark batches paid.
 
   // Payment gateway configurations
   paymentGateways: IPaymentGatewaySettings;
@@ -367,6 +372,23 @@ const AdminRevenueSettingsSchema = new Schema<IAdminRevenueSettings>(
       required: true,
       min: [0, "Hold period cannot be negative"],
       default: 14,
+    },
+    payoutHoldHours: {
+      type: Number,
+      required: true,
+      min: [0, "Payout hold hours cannot be negative"],
+      default: 24,
+    },
+    monthlyPayoutDay: {
+      type: Number,
+      required: true,
+      min: [1, "Monthly payout day must be between 1 and 28"],
+      max: [28, "Monthly payout day must be between 1 and 28"],
+      default: 5,
+    },
+    autoPayoutEnabled: {
+      type: Boolean,
+      default: false,
     },
     paymentGateways: {
       stripe: {

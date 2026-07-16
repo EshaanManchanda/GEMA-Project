@@ -30,7 +30,8 @@ export interface LeadPageEvent {
 
 export interface ILeadPage {
   _id: string;
-  event: LeadPageEvent;
+  event?: LeadPageEvent;
+  isGlobal?: boolean;
   isActive: boolean;
   viewCount: number;
   leads: Lead[];
@@ -93,5 +94,13 @@ export const submitLead = async (
   data: { name: string; email?: string; phone?: string; message?: string }
 ): Promise<{ message: string }> => {
   const response = await api.post(`/lead-pages/${eventId}/lead`, data);
+  return response.data;
+};
+
+/** Submit a lead to the singleton global "Kidrove Lead Collection" bucket (no event) */
+export const submitGlobalLead = async (
+  data: { name: string; email?: string; phone?: string; message?: string }
+): Promise<{ message: string }> => {
+  const response = await api.post('/lead-pages/global/lead', data);
   return response.data;
 };

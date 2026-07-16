@@ -52,11 +52,26 @@ export interface IRevenueTransaction extends Document {
   status: TransactionStatus;
   payoutStatus: PayoutStatus;
 
+  // Set true when this record is voided as a duplicate (see
+  // scripts/migrations/auditDuplicateRevenueTransactions.ts). Backs the
+  // orderId uniqueness partial index — kept as a plain boolean because
+  // MongoDB partial index filters only support equality/$exists/$gt.../$and,
+  // not $ne, so filtering on status directly isn't usable there.
+  settlementVoid: boolean;
+
   // Dates
   transactionDate: Date;
   payoutDate?: Date;
   scheduledPayoutDate?: Date;
   payoutEligibleAt?: Date;
+
+  // Hold window snapshot — the AdminRevenueSettings.payoutHoldHours value in effect
+  // when this txn was created. Prevents later setting changes from retroactively
+  // moving already-calculated payoutEligibleAt dates.
+  payoutHoldHoursSnapshot?: number;
+
+  // Monthly settlement batch this txn was included in (set once, then locked)
+  payoutBatchId?: mongoose.Types.ObjectId;
 
   // References
   stripePaymentId?: string;
@@ -102,9 +117,10 @@ export interface IRevenueTransaction extends Document {
 const RevenueTransactionSchema = new Schema<IRevenueTransaction>(
   {
     orderId: {
+      // Uniqueness enforced below via a partial index (excludes fee-only txns
+      // with no orderId, AND excludes cancelled/voided txns — see index def).
       type: Schema.Types.ObjectId,
       ref: "Order",
-      sparse: true,
     },
     vendorId: {
       type: Schema.Types.ObjectId,
@@ -178,6 +194,11 @@ const RevenueTransactionSchema = new Schema<IRevenueTransaction>(
       required: true,
       index: true,
     },
+    settlementVoid: {
+      type: Boolean,
+      default: false,
+      required: true,
+    },
     payoutStatus: {
       type: String,
       enum: Object.values(PayoutStatus),
@@ -202,6 +223,16 @@ const RevenueTransactionSchema = new Schema<IRevenueTransaction>(
     payoutEligibleAt: {
       type: Date,
       index: true,
+    },
+    payoutHoldHoursSnapshot: {
+      type: Number,
+      min: [0, "Payout hold hours cannot be negative"],
+    },
+    payoutBatchId: {
+      type: Schema.Types.ObjectId,
+      ref: "VendorPayoutBatch",
+      index: true,
+      sparse: true,
     },
     stripePaymentId: {
       type: String,
@@ -243,6 +274,23 @@ const RevenueTransactionSchema = new Schema<IRevenueTransaction>(
   },
   {
     timestamps: true,
+  },
+);
+
+// Uniqueness guard: one non-voided RevenueTransaction per order. Excludes
+// fee-only txns (orderId unset) and voided duplicates (settlementVoid: true —
+// see scripts/migrations/auditDuplicateRevenueTransactions.ts). MongoDB
+// partial index filters only support equality/$exists(true)/$gt.../top-level
+// $and, not $ne — hence the dedicated boolean flag instead of filtering on
+// `status` directly.
+RevenueTransactionSchema.index(
+  { orderId: 1 },
+  {
+    unique: true,
+    partialFilterExpression: {
+      orderId: { $exists: true },
+      settlementVoid: false,
+    },
   },
 );
 

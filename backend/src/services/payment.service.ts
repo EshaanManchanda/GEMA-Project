@@ -14,6 +14,7 @@ import redisClient from "../config/redis";
 import { emailService } from "./email.service";
 import Affiliate from "../models/Affiliate";
 import Partnership from "../models/Partnership";
+import CommissionService from "./commission.service";
 
 export interface CreatePaymentIntentParams {
   amount: number;
@@ -656,6 +657,19 @@ export class PaymentService {
       logger.info(
         `Order ${orderId} marked as paid, confirmed, and tickets generated`,
       );
+
+      // Calculate commission + create RevenueTransaction immediately on payment
+      // confirmation, rather than waiting for the hourly backfill cron. Non-fatal:
+      // the cron (commission.service.processUncommissionedOrders) is the safety
+      // net if this fails — payment is already captured, so we must not throw here.
+      try {
+        await CommissionService.calculateCommissionForOrder(order._id);
+      } catch (commissionError) {
+        logger.error(
+          `Failed to calculate commission for order ${orderId} from webhook (will retry via hourly backfill):`,
+          commissionError,
+        );
+      }
 
       // Attribute affiliate conversion if order has affiliate code
       if (order.affiliateCode) {

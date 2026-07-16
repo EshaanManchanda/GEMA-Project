@@ -5,6 +5,9 @@ import PayoutService from "../services/payout.service";
 import RevenueTransaction from "../models/RevenueTransaction";
 import Payout from "../models/Payout";
 import User from "../models/User";
+import VendorPayoutBatch, {
+  VendorPayoutBatchMethod,
+} from "../models/VendorPayoutBatch";
 
 /**
  * Get vendor earnings (eligible for payout)
@@ -647,6 +650,253 @@ export const exportPayoutData = async (
         data: payouts,
         count: payouts.length,
       });
+    }
+  } catch (error) {
+    next(new AppError((error as Error).message, 500));
+  }
+};
+
+// ─────────────────────────────────────────────────────────────────────────
+// Monthly vendor payout batches (VendorPayoutBatch)
+// ─────────────────────────────────────────────────────────────────────────
+
+/**
+ * List payout batches, filterable by month (periodStart), vendor, and status.
+ */
+export const getPayoutBatches = async (
+  req: Request,
+  res: Response,
+  next: NextFunction,
+): Promise<void> => {
+  try {
+    const { page = 1, limit = 20, status, vendorId, periodStart } = req.query;
+
+    const query: any = {};
+    if (status && status !== "all") query.status = status;
+    if (vendorId) query.vendorId = vendorId;
+    if (periodStart) {
+      const start = new Date(periodStart as string);
+      query.periodStart = {
+        $gte: new Date(start.getFullYear(), start.getMonth(), 1),
+        $lt: new Date(start.getFullYear(), start.getMonth() + 1, 1),
+      };
+    }
+
+    const pageNum = parseInt(page as string);
+    const limitNum = parseInt(limit as string);
+
+    const [batches, total] = await Promise.all([
+      VendorPayoutBatch.find(query)
+        .populate("vendorId", "businessName email")
+        .populate("createdBy", "firstName lastName")
+        .populate("approvedBy", "firstName lastName")
+        .populate("paidBy", "firstName lastName")
+        .sort({ periodStart: -1, createdAt: -1 })
+        .skip((pageNum - 1) * limitNum)
+        .limit(limitNum),
+      VendorPayoutBatch.countDocuments(query),
+    ]);
+
+    res.status(200).json({
+      success: true,
+      data: batches,
+      pagination: {
+        page: pageNum,
+        limit: limitNum,
+        total,
+        pages: Math.ceil(total / limitNum),
+      },
+    });
+  } catch (error) {
+    next(new AppError((error as Error).message, 500));
+  }
+};
+
+/**
+ * Generate DRAFT monthly payout batches for a given period (defaults to the
+ * previous full calendar month if not specified).
+ */
+export const generatePayoutBatches = async (
+  req: Request,
+  res: Response,
+  next: NextFunction,
+): Promise<void> => {
+  try {
+    const { periodStart, periodEnd } = req.body;
+
+    let start: Date;
+    let end: Date;
+    if (periodStart && periodEnd) {
+      start = new Date(periodStart);
+      end = new Date(periodEnd);
+    } else {
+      const now = new Date();
+      start = new Date(now.getFullYear(), now.getMonth() - 1, 1);
+      end = new Date(now.getFullYear(), now.getMonth(), 0, 23, 59, 59, 999);
+    }
+
+    const adminId = (req.user?._id || req.user?.id) as mongoose.Types.ObjectId;
+    const result = await PayoutService.generateMonthlyPayoutBatches(
+      start,
+      end,
+      adminId,
+    );
+
+    res.status(200).json({
+      success: true,
+      message: `Generated ${result.created.length} batch(es), skipped ${result.skipped.length}`,
+      data: result,
+    });
+  } catch (error) {
+    next(new AppError((error as Error).message, 500));
+  }
+};
+
+/**
+ * Get one payout batch with its included transactions.
+ */
+export const getPayoutBatch = async (
+  req: Request,
+  res: Response,
+  next: NextFunction,
+): Promise<void> => {
+  try {
+    const { id } = req.params;
+    const batch = await VendorPayoutBatch.findById(id)
+      .populate("vendorId", "businessName email")
+      .populate("createdBy approvedBy paidBy", "firstName lastName")
+      .populate("includedRevenueTransactionIds");
+
+    if (!batch) {
+      return next(new AppError("Payout batch not found", 404));
+    }
+
+    res.status(200).json({ success: true, data: batch });
+  } catch (error) {
+    next(new AppError((error as Error).message, 500));
+  }
+};
+
+/**
+ * Approve a draft batch.
+ */
+export const approvePayoutBatch = async (
+  req: Request,
+  res: Response,
+  next: NextFunction,
+): Promise<void> => {
+  try {
+    const { id } = req.params;
+    const adminId = (req.user?._id || req.user?.id) as mongoose.Types.ObjectId;
+    const batch = await PayoutService.approveBatch(id, adminId);
+
+    res.status(200).json({
+      success: true,
+      message: "Payout batch approved",
+      data: batch,
+    });
+  } catch (error) {
+    next(new AppError((error as Error).message, 500));
+  }
+};
+
+/**
+ * Mark an approved batch as paid.
+ */
+export const markPayoutBatchPaid = async (
+  req: Request,
+  res: Response,
+  next: NextFunction,
+): Promise<void> => {
+  try {
+    const { id } = req.params;
+    const { paymentMethod, transactionReference } = req.body;
+
+    if (!paymentMethod) {
+      return next(new AppError("paymentMethod is required", 400));
+    }
+
+    const adminId = (req.user?._id || req.user?.id) as mongoose.Types.ObjectId;
+    const batch = await PayoutService.markBatchPaid(id, adminId, {
+      paymentMethod: paymentMethod as VendorPayoutBatchMethod,
+      transactionReference,
+    });
+
+    res.status(200).json({
+      success: true,
+      message: "Payout batch marked as paid",
+      data: batch,
+    });
+  } catch (error) {
+    next(new AppError((error as Error).message, 500));
+  }
+};
+
+/**
+ * Cancel a draft/approved batch — unstamps its transactions for future settlement.
+ */
+export const cancelPayoutBatch = async (
+  req: Request,
+  res: Response,
+  next: NextFunction,
+): Promise<void> => {
+  try {
+    const { id } = req.params;
+    const { reason } = req.body;
+    const batch = await PayoutService.cancelBatch(id, reason);
+
+    res.status(200).json({
+      success: true,
+      message: "Payout batch cancelled",
+      data: batch,
+    });
+  } catch (error) {
+    next(new AppError((error as Error).message, 500));
+  }
+};
+
+/**
+ * Export a payout batch (CSV or JSON) with included transaction detail.
+ */
+export const exportPayoutBatch = async (
+  req: Request,
+  res: Response,
+  next: NextFunction,
+): Promise<void> => {
+  try {
+    const { id } = req.params;
+    const { format = "json" } = req.query;
+
+    const batch = await VendorPayoutBatch.findById(id)
+      .populate("vendorId", "businessName email")
+      .populate("includedRevenueTransactionIds")
+      .lean();
+
+    if (!batch) {
+      return next(new AppError("Payout batch not found", 404));
+    }
+
+    if (format === "csv") {
+      const vendor = batch.vendorId as any;
+      const header =
+        "OrderId,TotalAmount,AdminCommission,VendorPayout,TransactionDate,PayoutEligibleAt\n";
+      const rows = ((batch.includedRevenueTransactionIds as any[]) || [])
+        .map(
+          (tx) =>
+            `${tx.orderId || ""},${tx.totalAmount},${tx.adminCommission},${tx.vendorPayout},"${tx.transactionDate}","${tx.payoutEligibleAt || ""}"`,
+        )
+        .join("\n");
+      const summary = `\nVendor,${vendor?.businessName || vendor?.email || batch.vendorId},Period,"${batch.periodStart} - ${batch.periodEnd}",Gross,${batch.grossRevenue},Commission,${batch.platformCommission},Net,${batch.netPayout},Status,${batch.status},Reference,${batch.transactionReference || ""}\n`;
+      const csv = header + rows + summary;
+
+      res.setHeader("Content-Type", "text/csv");
+      res.setHeader(
+        "Content-Disposition",
+        `attachment; filename=payout-batch-${id}.csv`,
+      );
+      res.send(csv);
+    } else {
+      res.status(200).json({ success: true, data: batch });
     }
   } catch (error) {
     next(new AppError((error as Error).message, 500));

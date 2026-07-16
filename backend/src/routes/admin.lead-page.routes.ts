@@ -19,12 +19,16 @@ router.post("/", async (req: Request, res: Response) => {
   try {
     const { eventId } = req.body;
     if (!eventId) {
-      return res.status(400).json({ success: false, message: "eventId is required" });
+      return res
+        .status(400)
+        .json({ success: false, message: "eventId is required" });
     }
 
     const event = await Event.findById(eventId);
     if (!event) {
-      return res.status(404).json({ success: false, message: "Event not found" });
+      return res
+        .status(404)
+        .json({ success: false, message: "Event not found" });
     }
 
     const existing = await LeadPage.findOne({ event: eventId });
@@ -45,7 +49,7 @@ router.post("/", async (req: Request, res: Response) => {
     const populated = await leadPage.populate({
       path: "event",
       select: "title images imageUrls imageAssets slug _id",
-      populate: { path: "imageAssets", select: "url thumbnailUrl secureUrl" }
+      populate: { path: "imageAssets", select: "url thumbnailUrl secureUrl" },
     });
 
     return res.status(201).json({ success: true, data: populated });
@@ -64,15 +68,16 @@ router.get("/", async (req: Request, res: Response) => {
   try {
     const { search, status } = req.query;
 
-    let query: any = {};
+    const query: any = {};
     if (status === "active") query.isActive = true;
     if (status === "inactive") query.isActive = false;
 
     let leadPages = await LeadPage.find(query)
       .populate({
         path: "event",
-        select: "title images imageUrls imageAssets slug category location vendor teacher _id",
-        populate: { path: "imageAssets", select: "url thumbnailUrl secureUrl" }
+        select:
+          "title images imageUrls imageAssets slug category location vendor teacher _id",
+        populate: { path: "imageAssets", select: "url thumbnailUrl secureUrl" },
       })
       .populate("createdBy", "firstName lastName email")
       .sort({ createdAt: -1 });
@@ -81,11 +86,15 @@ router.get("/", async (req: Request, res: Response) => {
     if (search && typeof search === "string") {
       const s = search.toLowerCase();
       leadPages = leadPages.filter((lp: any) =>
-        lp.event?.title?.toLowerCase().includes(s)
+        lp.event?.title?.toLowerCase().includes(s),
       );
     }
 
-    return res.json({ success: true, data: leadPages, total: leadPages.length });
+    return res.json({
+      success: true,
+      data: leadPages,
+      total: leadPages.length,
+    });
   } catch (error: any) {
     console.error("Get lead pages error:", error);
     return res.status(500).json({ success: false, message: "Server error" });
@@ -101,7 +110,9 @@ router.patch("/:id/toggle", async (req: Request, res: Response) => {
   try {
     const leadPage = await LeadPage.findById(req.params.id);
     if (!leadPage) {
-      return res.status(404).json({ success: false, message: "Lead page not found" });
+      return res
+        .status(404)
+        .json({ success: false, message: "Lead page not found" });
     }
     leadPage.isActive = !leadPage.isActive;
     await leadPage.save();
@@ -119,11 +130,24 @@ router.patch("/:id/toggle", async (req: Request, res: Response) => {
  */
 router.delete("/:id", async (req: Request, res: Response) => {
   try {
-    const leadPage = await LeadPage.findByIdAndDelete(req.params.id);
+    const leadPage = await LeadPage.findById(req.params.id);
     if (!leadPage) {
-      return res.status(404).json({ success: false, message: "Lead page not found" });
+      return res
+        .status(404)
+        .json({ success: false, message: "Lead page not found" });
     }
-    return res.json({ success: true, message: "Lead page deleted successfully" });
+    if (leadPage.isGlobal) {
+      return res.status(400).json({
+        success: false,
+        message:
+          "The global Kidrove Lead Collection bucket cannot be deleted. Deactivate it instead.",
+      });
+    }
+    await leadPage.deleteOne();
+    return res.json({
+      success: true,
+      message: "Lead page deleted successfully",
+    });
   } catch (error: any) {
     console.error("Delete lead page error:", error);
     return res.status(500).json({ success: false, message: "Server error" });
@@ -139,10 +163,12 @@ router.delete("/:id/leads/:leadId", async (req: Request, res: Response) => {
   try {
     const leadPage = await LeadPage.findById(req.params.id);
     if (!leadPage) {
-      return res.status(404).json({ success: false, message: "Lead page not found" });
+      return res
+        .status(404)
+        .json({ success: false, message: "Lead page not found" });
     }
     leadPage.leads = leadPage.leads.filter(
-      (lead: any) => lead._id.toString() !== req.params.leadId
+      (lead: any) => lead._id.toString() !== req.params.leadId,
     );
     await leadPage.save();
     return res.json({ success: true, message: "Lead deleted successfully" });
