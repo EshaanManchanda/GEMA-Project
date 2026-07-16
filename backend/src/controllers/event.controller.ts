@@ -1479,7 +1479,7 @@ export const deleteCertificateType = async (
 // Discovery: Similar Events (weighted scoring + fallback chain)
 // ---------------------------------------------------------------------------
 const SIMILAR_SELECT =
-  "_id slug title images category location venueType meetingLink price tags isFeatured viewsCount averageRating reviewCount currency dateSchedule ageRange vendorId teacherId";
+  "_id slug title images imageAssets category location venueType meetingLink price tags isFeatured viewsCount averageRating reviewCount currency dateSchedule ageRange vendorId teacherId";
 
 export const getSimilarEvents = async (
   req: Request,
@@ -1509,6 +1509,7 @@ export const getSimilarEvents = async (
       ...(source.category ? { category: source.category } : {}),
     })
       .select(SIMILAR_SELECT)
+      .populate("imageAssets", "url thumbnailUrl variations")
       .sort({ viewsCount: -1 })
       .limit(50)
       .lean()) as any[];
@@ -1580,6 +1581,7 @@ export const getSimilarEvents = async (
         _id: { $nin: [...seen, sourceId] },
       })
         .select(SIMILAR_SELECT)
+        .populate("imageAssets", "url thumbnailUrl variations")
         .sort({ viewsCount: -1 })
         .limit(limit - results.length)
         .lean()) as any[];
@@ -1595,6 +1597,7 @@ export const getSimilarEvents = async (
         _id: { $nin: [...seen, sourceId] },
       })
         .select(SIMILAR_SELECT)
+        .populate("imageAssets", "url thumbnailUrl variations")
         .limit(limit - results.length)
         .lean()) as any[];
       results = [...results, ...featuredFallback];
@@ -1671,6 +1674,7 @@ export const getPeopleAlsoBooked = async (
         _id: { $in: coBookedIds },
       })
         .select(SIMILAR_SELECT)
+        .populate("imageAssets", "url thumbnailUrl variations")
         .lean()) as any[];
 
       // Preserve co-booking rank (Mongo doesn't guarantee $in order)
@@ -1692,6 +1696,7 @@ export const getPeopleAlsoBooked = async (
         _id: { $nin: [...seen] },
       })
         .select(SIMILAR_SELECT)
+        .populate("imageAssets", "url thumbnailUrl variations")
         .sort({ viewsCount: -1 })
         .limit(remaining)
         .lean()) as any[];
@@ -1739,6 +1744,7 @@ export const getOrganizerEvents = async (
       _id: { $ne: source._id },
     })
       .select(SIMILAR_SELECT)
+      .populate("imageAssets", "url thumbnailUrl variations")
       .sort({ viewsCount: -1 })
       .limit(limit)
       .lean()) as any[];
@@ -1778,6 +1784,7 @@ export const getTrendingNearYou = async (
         "location.city": new RegExp(`^${escapeRegex(city)}$`, "i"),
       })
         .select(SIMILAR_SELECT)
+        .populate("imageAssets", "url thumbnailUrl variations")
         .sort({ viewsCount: -1 })
         .limit(limit)
         .lean()) as any[];
@@ -1794,6 +1801,7 @@ export const getTrendingNearYou = async (
         _id: { $nin: [...seen] },
       })
         .select(SIMILAR_SELECT)
+        .populate("imageAssets", "url thumbnailUrl variations")
         .sort({ viewsCount: -1 })
         .limit(remaining)
         .lean()) as any[];
@@ -1882,6 +1890,7 @@ export const getRecommendedForYou = async (
       ...buildPublicEventFilter({ _id: { $nin: [...sourceIdSet] } }),
     })
       .select(SIMILAR_SELECT)
+      .populate("imageAssets", "url thumbnailUrl variations")
       .sort({ viewsCount: -1 })
       .limit(100)
       .lean()) as any[];
