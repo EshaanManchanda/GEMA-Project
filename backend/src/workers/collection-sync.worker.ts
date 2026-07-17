@@ -5,8 +5,10 @@ import {
   bullMQConnection,
   areQueuesEnabled,
 } from "../config/queue";
+import { WORKER_TUNING } from "../config/workerTuning";
 import logger from "../config/logger";
 import { collectionSyncService } from "../services/collection-sync.service";
+import { isRedisConnectionError } from "../utils/redisError.util";
 
 export interface CollectionSyncJobData {
   type: "syncEvent" | "removeEvent" | "syncCollection" | "reconcileAll";
@@ -78,10 +80,10 @@ const collectionSyncWorker = areQueuesEnabled
       },
       {
         connection: bullMQConnection, // Use shared connection
-        concurrency: 1, // Single thread to avoid race conditions
+        concurrency: WORKER_TUNING.COLLECTION_SYNC.CONCURRENCY,
         limiter: {
-          max: 10, // Max 10 jobs per minute
-          duration: 60000,
+          max: WORKER_TUNING.COLLECTION_SYNC.RATE_LIMIT_MAX,
+          duration: WORKER_TUNING.COLLECTION_SYNC.RATE_LIMIT_DURATION_MS,
         },
       },
     )
@@ -104,19 +106,10 @@ if (collectionSyncWorker) {
 
   collectionSyncWorker.on("error", (error: Error) => {
     // Distinguish connection errors from job processing errors
-    const errorMessage = error.message || "";
-
-    if (
-      errorMessage.includes("isn't writeable") ||
-      errorMessage.includes("enableOfflineQueue") ||
-      errorMessage.includes("Connection is closed") ||
-      errorMessage.includes("ECONNREFUSED")
-    ) {
+    if (isRedisConnectionError(error)) {
       logger.warn(
         "Collection sync worker: Redis connection issue detected, waiting for reconnection...",
-        {
-          error: errorMessage,
-        },
+        { error: error.message },
       );
       // Don't exit - let retry strategy handle reconnection
     } else {
@@ -125,16 +118,6 @@ if (collectionSyncWorker) {
   });
 }
 
-// Graceful shutdown
-const gracefulShutdown = async () => {
-  if (collectionSyncWorker) {
-    logger.info("Shutting down collection sync worker...");
-    await collectionSyncWorker.close();
-    logger.info("Collection sync worker shut down");
-  }
-};
-
-process.on("SIGINT", gracefulShutdown);
-process.on("SIGTERM", gracefulShutdown);
+// Shutdown is owned by workers/index.ts, which closes every worker once.
 
 export default collectionSyncWorker;

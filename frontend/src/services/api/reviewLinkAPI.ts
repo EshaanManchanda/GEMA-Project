@@ -52,8 +52,29 @@ export const reviewLinkAPI = {
 
   submitReview: (
     eventId: string,
-    payload: { email: string; rating: number; comment?: string },
+    payload: {
+      email: string;
+      rating: number;
+      comment?: string;
+      media?: Array<{ type: 'image' | 'video'; url: string; order: number }>;
+    },
   ) => api.post(`/reviews/link/${eventId}`, payload),
+
+  uploadMedia: (eventId: string, email: string, files: File[]) => {
+    const formData = new FormData();
+    formData.append('email', email);
+    files.forEach((file) => formData.append('files', file));
+    return api.post<{
+      success: boolean;
+      message: string;
+      data: {
+        media: Array<{ type: 'image' | 'video'; url: string; order: number }>;
+        failed: Array<{ file: string; error: string }>;
+      };
+    }>(`/reviews/link/${eventId}/media`, formData, {
+      headers: { 'Content-Type': 'multipart/form-data' },
+    });
+  },
 
   generateLink: (eventId: string) =>
     api.post<{ success: boolean; data: { reviewLink: string } }>(

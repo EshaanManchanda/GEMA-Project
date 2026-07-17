@@ -5,9 +5,11 @@ import {
   emailQueue as configEmailQueue,
   areQueuesEnabled,
 } from "../config/queue";
+import { WORKER_TUNING } from "../config/workerTuning";
 import logger from "../config/logger";
 import { emailService } from "../services/email.service";
 import { emailRateLimiter } from "../utils/email-rate-limiter";
+import { isRedisConnectionError } from "../utils/redisError.util";
 
 // Re-export the email queue for use by other modules
 export const emailQueue = configEmailQueue;
@@ -193,10 +195,10 @@ const emailWorker = areQueuesEnabled
       },
       {
         connection: bullMQConnection, // Use shared connection
-        concurrency: 2, // OPTIMIZED for KVM1 single core: reduced from 5 to 2
+        concurrency: WORKER_TUNING.EMAIL.CONCURRENCY,
         limiter: {
-          max: 30, // Reduced from 50 for single core (respects email provider limits)
-          duration: 60000, // per minute
+          max: WORKER_TUNING.EMAIL.RATE_LIMIT_MAX,
+          duration: WORKER_TUNING.EMAIL.RATE_LIMIT_DURATION_MS,
         },
       },
     )
@@ -222,19 +224,10 @@ if (emailWorker) {
 
   emailWorker.on("error", (error: Error) => {
     // Distinguish connection errors from job processing errors
-    const errorMessage = error.message || "";
-
-    if (
-      errorMessage.includes("isn't writeable") ||
-      errorMessage.includes("enableOfflineQueue") ||
-      errorMessage.includes("Connection is closed") ||
-      errorMessage.includes("ECONNREFUSED")
-    ) {
+    if (isRedisConnectionError(error)) {
       logger.warn(
         "Email worker: Redis connection issue detected, waiting for reconnection...",
-        {
-          error: errorMessage,
-        },
+        { error: error.message },
       );
       // Don't exit - let retry strategy handle reconnection
     } else {
@@ -243,18 +236,6 @@ if (emailWorker) {
   });
 }
 
-// Graceful shutdown
-const gracefulShutdown = async () => {
-  if (emailWorker) {
-    logger.info("Shutting down email worker...");
-    await emailWorker.close();
-    logger.info("Email worker shut down successfully");
-  } else {
-    logger.info("Email worker was not initialized (Redis disabled)");
-  }
-};
-
-process.on("SIGINT", gracefulShutdown);
-process.on("SIGTERM", gracefulShutdown);
+// Shutdown is owned by workers/index.ts, which closes every worker once.
 
 export default emailWorker;

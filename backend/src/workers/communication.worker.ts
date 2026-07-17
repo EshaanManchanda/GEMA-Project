@@ -4,6 +4,7 @@ import {
   bullMQConnection,
   areQueuesEnabled,
 } from "../config/queue";
+import { WORKER_TUNING } from "../config/workerTuning";
 import logger from "../config/logger";
 import { config } from "../config/env";
 import {
@@ -150,7 +151,7 @@ const communicationWorker = areQueuesEnabled
       },
       {
         connection: bullMQConnection,
-        concurrency: 3,
+        concurrency: WORKER_TUNING.COMMUNICATION.CONCURRENCY,
       },
     )
   : null;
@@ -172,15 +173,6 @@ if (communicationWorker) {
   });
 }
 
-const gracefulShutdown = async () => {
-  if (communicationWorker) {
-    logger.info("Shutting down communication worker...");
-    await communicationWorker.close();
-    logger.info("Communication worker shut down successfully");
-  }
-};
-
-process.on("SIGINT", gracefulShutdown);
-process.on("SIGTERM", gracefulShutdown);
+// Shutdown is owned by workers/index.ts, which closes every worker once.
 
 export default communicationWorker;

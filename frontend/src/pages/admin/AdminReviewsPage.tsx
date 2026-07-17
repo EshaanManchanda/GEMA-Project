@@ -17,6 +17,13 @@ interface ReviewEvent {
   slug?: string;
 }
 
+interface ReviewMedia {
+  type: 'image' | 'video';
+  url: string;
+  thumbnail?: string;
+  caption?: string;
+}
+
 interface Review {
   _id: string;
   user: ReviewUser;
@@ -24,6 +31,7 @@ interface Review {
   rating: number;
   title?: string;
   comment?: string;
+  media?: ReviewMedia[];
   status: 'pending' | 'approved' | 'rejected' | 'hidden';
   verified: boolean;
   createdAt: string;
@@ -218,6 +226,33 @@ const AdminReviewsPage: React.FC = () => {
                       )}
                       {review.comment && (
                         <p className="text-gray-700 mt-1 text-sm leading-relaxed">{review.comment}</p>
+                      )}
+
+                      {review.media && review.media.length > 0 && (
+                        <div className="flex flex-wrap gap-2 mt-2">
+                          {review.media.map((m, mIdx) => (
+                            <a
+                              key={mIdx}
+                              href={m.url}
+                              target="_blank"
+                              rel="noopener noreferrer"
+                              className="relative w-16 h-16 rounded-md overflow-hidden bg-gray-100 border border-gray-200 flex-shrink-0"
+                            >
+                              {m.type === 'video' ? (
+                                <>
+                                  <video src={m.url} className="w-full h-full object-cover" muted />
+                                  <span className="absolute inset-0 flex items-center justify-center bg-black/30">
+                                    <svg className="w-4 h-4 text-white fill-current" viewBox="0 0 20 20">
+                                      <path d="M6 4l10 6-10 6V4z" />
+                                    </svg>
+                                  </span>
+                                </>
+                              ) : (
+                                <img src={m.thumbnail || m.url} alt={m.caption || ''} className="w-full h-full object-cover" />
+                              )}
+                            </a>
+                          ))}
+                        </div>
                       )}
 
                       <p className="text-xs text-gray-400 mt-2">{formatDate(review.createdAt)}</p>

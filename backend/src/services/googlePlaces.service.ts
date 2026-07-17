@@ -87,13 +87,18 @@ export class GooglePlacesService {
    * present, otherwise fall back to a deterministic hash that includes the
    * placeId so the same review on two different events never collides.
    */
-  private buildReviewId(r: NewPlacesReview, placeId: string): { reviewId: string; rawReviewName?: string } {
+  private buildReviewId(
+    r: NewPlacesReview,
+    placeId: string,
+  ): { reviewId: string; rawReviewName?: string } {
     if (r.name) {
       return { reviewId: r.name, rawReviewName: r.name };
     }
     const authorName = r.authorAttribution?.displayName ?? "";
     const time = r.publishTime ?? "";
-    const text = (r.text?.text ?? r.originalText?.text ?? "").trim().toLowerCase();
+    const text = (r.text?.text ?? r.originalText?.text ?? "")
+      .trim()
+      .toLowerCase();
     const raw = `${placeId}|${authorName}|${time}|${text}`;
     const reviewId = crypto.createHash("sha256").update(raw).digest("hex");
     return { reviewId };
@@ -109,7 +114,9 @@ export class GooglePlacesService {
       rating: r.rating,
       relative_time_description: r.relativePublishTimeDescription,
       text: r.text?.text ?? r.originalText?.text ?? "",
-      time: r.publishTime ? Math.floor(new Date(r.publishTime).getTime() / 1000) : 0,
+      time: r.publishTime
+        ? Math.floor(new Date(r.publishTime).getTime() / 1000)
+        : 0,
       _reviewId: reviewId,
       _rawReviewName: rawReviewName,
     };
@@ -171,7 +178,9 @@ export class GooglePlacesService {
 
       await cacheService.set(cacheKey, data, { ttl: this.cacheTTL });
 
-      logger.info(`Fetched ${data.reviews.length} Google reviews for place ${placeId}`);
+      logger.info(
+        `Fetched ${data.reviews.length} Google reviews for place ${placeId}`,
+      );
       return data;
     } catch (error: any) {
       logger.error("Error fetching Google Place reviews:", error);
@@ -321,9 +330,7 @@ export class GooglePlacesService {
     const filter: Record<string, unknown> = { eventId };
     if (options.visibleOnly) filter.isVisible = true;
 
-    const docs = await GoogleReviewModel.find(filter)
-      .sort({ time: -1 })
-      .lean();
+    const docs = await GoogleReviewModel.find(filter).sort({ time: -1 }).lean();
 
     const reviews: GoogleReview[] = docs.map((d) => ({
       author_name: d.author_name,
@@ -345,7 +352,9 @@ export class GooglePlacesService {
     }));
 
     // Ratings always computed from the visible subset for public
-    const visibleDocs = options.visibleOnly ? docs : docs.filter((d) => d.isVisible);
+    const visibleDocs = options.visibleOnly
+      ? docs
+      : docs.filter((d) => d.isVisible);
     const totalRatings = visibleDocs.length;
     const averageRating =
       totalRatings > 0
@@ -384,7 +393,10 @@ export class GooglePlacesService {
   async getHomepageReviews(limit = 12): Promise<GoogleReview[]> {
     // Fetch candidates (rating >= 4, visible), sorted best-first.
     // We over-fetch (limit * 4) so diversity filtering still fills the quota.
-    const candidates = await GoogleReviewModel.find({ isVisible: true, rating: { $gte: 4 } })
+    const candidates = await GoogleReviewModel.find({
+      isVisible: true,
+      rating: { $gte: 4 },
+    })
       .sort({ rating: -1, time: -1 })
       .limit(limit * 4)
       .lean();

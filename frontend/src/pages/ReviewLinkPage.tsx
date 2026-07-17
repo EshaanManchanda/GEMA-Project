@@ -1,8 +1,18 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import { useParams, useSearchParams } from 'react-router-dom';
 import { reviewLinkAPI, type ReviewLinkContext } from '../services/api/reviewLinkAPI';
 
 type Step = 'details' | 'loading' | 'form' | 'done' | 'already' | 'error';
+
+const MAX_MEDIA_FILES = 5;
+const MAX_IMAGE_SIZE = 50 * 1024 * 1024; // 50MB, mirrors backend MAX_IMAGE_SIZE default
+const MAX_VIDEO_SIZE = 500 * 1024 * 1024; // 500MB, mirrors backend MAX_VIDEO_SIZE default
+
+interface PendingFile {
+  file: File;
+  previewUrl: string;
+  kind: 'image' | 'video';
+}
 
 const StarRating: React.FC<{ value: number; onChange: (v: number) => void }> = ({
   value,
@@ -36,6 +46,17 @@ const ReviewLinkPage: React.FC = () => {
   const [comment, setComment] = useState('');
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState('');
+  const [pendingFiles, setPendingFiles] = useState<PendingFile[]>([]);
+  const [mediaError, setMediaError] = useState('');
+  const createdObjectUrls = useRef<string[]>([]);
+
+  // Revoke every object URL ever created for this session on unmount
+  useEffect(() => {
+    const urls = createdObjectUrls.current;
+    return () => {
+      urls.forEach((url) => URL.revokeObjectURL(url));
+    };
+  }, []);
 
   // If email pre-filled in URL, skip directly to resolving context
   useEffect(() => {
@@ -63,6 +84,51 @@ const ReviewLinkPage: React.FC = () => {
     resolveContext(email.trim());
   };
 
+  const handleFilesSelected = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const selected = Array.from(e.target.files || []);
+    e.target.value = ''; // allow re-selecting the same file after removal
+    if (selected.length === 0) return;
+
+    setMediaError('');
+
+    const room = MAX_MEDIA_FILES - pendingFiles.length;
+    if (room <= 0) {
+      setMediaError(`You can attach up to ${MAX_MEDIA_FILES} files.`);
+      return;
+    }
+
+    const accepted: PendingFile[] = [];
+    const rejected: string[] = [];
+
+    for (const file of selected.slice(0, room)) {
+      const isImage = file.type.startsWith('image/');
+      const isVideo = file.type.startsWith('video/');
+      if (!isImage && !isVideo) {
+        rejected.push(`${file.name} (unsupported type)`);
+        continue;
+      }
+      const maxSize = isImage ? MAX_IMAGE_SIZE : MAX_VIDEO_SIZE;
+      if (file.size > maxSize) {
+        rejected.push(`${file.name} (too large)`);
+        continue;
+      }
+      const previewUrl = URL.createObjectURL(file);
+      createdObjectUrls.current.push(previewUrl);
+      accepted.push({ file, previewUrl, kind: isImage ? 'image' : 'video' });
+    }
+
+    if (selected.length > room) {
+      rejected.push(`Only ${room} more file(s) can be added (max ${MAX_MEDIA_FILES}).`);
+    }
+    if (rejected.length > 0) setMediaError(rejected.join(', '));
+
+    setPendingFiles((prev) => [...prev, ...accepted]);
+  };
+
+  const handleRemoveFile = (index: number) => {
+    setPendingFiles((prev) => prev.filter((_, i) => i !== index));
+  };
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!rating) { setError('Please select a rating.'); return; }
@@ -70,10 +136,27 @@ const ReviewLinkPage: React.FC = () => {
     setSubmitting(true);
     setError('');
     try {
+      let media: Array<{ type: 'image' | 'video'; url: string; order: number }> | undefined;
+
+      if (pendingFiles.length > 0) {
+        const uploadRes = await reviewLinkAPI.uploadMedia(
+          eventId!,
+          email,
+          pendingFiles.map((p) => p.file),
+        );
+        media = uploadRes.data.data.media;
+        if (uploadRes.data.data.failed.length > 0) {
+          setMediaError(
+            `Some files couldn't be uploaded: ${uploadRes.data.data.failed.map((f) => f.file).join(', ')}`,
+          );
+        }
+      }
+
       await reviewLinkAPI.submitReview(eventId!, {
         email,
         rating,
         comment: comment.trim() || undefined,
+        media,
       });
       setStep('done');
     } catch (err: any) {
@@ -164,6 +247,49 @@ const ReviewLinkPage: React.FC = () => {
               />
             </div>
 
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">
+                Photos / Videos <span className="text-gray-400 font-normal">(optional, up to {MAX_MEDIA_FILES})</span>
+              </label>
+
+              {pendingFiles.length > 0 && (
+                <div className="grid grid-cols-4 gap-2 mb-2">
+                  {pendingFiles.map((p, i) => (
+                    <div key={i} className="relative aspect-square rounded-lg overflow-hidden bg-gray-100 border border-gray-200">
+                      {p.kind === 'image' ? (
+                        <img src={p.previewUrl} alt="" className="w-full h-full object-cover" />
+                      ) : (
+                        <video src={p.previewUrl} className="w-full h-full object-cover" muted />
+                      )}
+                      <button
+                        type="button"
+                        onClick={() => handleRemoveFile(i)}
+                        className="absolute top-1 right-1 w-5 h-5 rounded-full bg-black/60 text-white text-xs flex items-center justify-center hover:bg-black/80"
+                        aria-label="Remove"
+                      >
+                        ×
+                      </button>
+                    </div>
+                  ))}
+                </div>
+              )}
+
+              {pendingFiles.length < MAX_MEDIA_FILES && (
+                <label className="flex items-center justify-center border border-dashed border-gray-300 rounded-lg py-3 text-sm text-gray-500 cursor-pointer hover:border-indigo-400 hover:text-indigo-600 transition">
+                  <span>Add photos or videos</span>
+                  <input
+                    type="file"
+                    accept="image/*,video/*"
+                    multiple
+                    onChange={handleFilesSelected}
+                    className="hidden"
+                  />
+                </label>
+              )}
+
+              {mediaError && <p className="text-amber-600 text-xs mt-1">{mediaError}</p>}
+            </div>
+
             {error && <p className="text-red-500 text-sm">{error}</p>}
 
             <button
@@ -171,7 +297,7 @@ const ReviewLinkPage: React.FC = () => {
               disabled={submitting || !rating}
               className="w-full bg-indigo-600 text-white rounded-lg py-2.5 text-sm font-medium hover:bg-indigo-700 disabled:opacity-50 disabled:cursor-not-allowed transition"
             >
-              {submitting ? 'Submitting…' : 'Submit Review'}
+              {submitting ? (pendingFiles.length > 0 ? 'Uploading & submitting…' : 'Submitting…') : 'Submit Review'}
             </button>
           </form>
         )}

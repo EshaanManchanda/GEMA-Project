@@ -1,4 +1,6 @@
 import React, { useState, useEffect, useCallback } from 'react';
+import { Link } from 'react-router-dom';
+import toast from 'react-hot-toast';
 import PrivatePageSEO from '@/components/common/PrivatePageSEO';
 import logger from '@/utils/logger';
 import {
@@ -41,6 +43,7 @@ import {
   FaMapMarkerAlt,
   FaExchangeAlt,
   FaPercentage,
+  FaExternalLinkAlt,
 } from 'react-icons/fa';
 
 ChartJS.register(
@@ -178,6 +181,8 @@ const AdminAnalyticsPage: React.FC = () => {
   } | null>(null);
   const [gscQueries, setGscQueries] = useState<{ keys: string[]; clicks: number; impressions: number; ctr: number; position: number }[]>([]);
   const [gscPages, setGscPages] = useState<{ keys: string[]; clicks: number; impressions: number; ctr: number; position: number }[]>([]);
+  const [gscFetchedAt, setGscFetchedAt] = useState<string | null>(null);
+  const [gscSyncing, setGscSyncing] = useState(false);
 
   const fetchData = useCallback(async () => {
     setIsLoading(true);
@@ -278,6 +283,7 @@ const AdminAnalyticsPage: React.FC = () => {
       setGscSummary(sumRes?.data || null);
       setGscQueries(Array.isArray(qRes?.data) ? qRes.data : []);
       setGscPages(pRes?.data?.pages || []);
+      setGscFetchedAt(sumRes?.fetchedAt || null);
     } catch (e) {
       logger.error('GSC fetch error', e);
     } finally {
@@ -288,6 +294,24 @@ const AdminAnalyticsPage: React.FC = () => {
   useEffect(() => {
     fetchGSC();
   }, [fetchGSC]);
+
+  const handleGscSync = async () => {
+    setGscSyncing(true);
+    try {
+      const res = await adminAPI.syncSearchConsole(gscSite);
+      if (res?.success === false) {
+        toast.error(res?.message || 'Search Console sync failed');
+      } else {
+        toast.success(res?.message || 'Search Console synced');
+      }
+      await fetchGSC();
+    } catch (e: any) {
+      logger.error('GSC sync error', e);
+      toast.error(e?.response?.data?.message || 'Search Console sync failed');
+    } finally {
+      setGscSyncing(false);
+    }
+  };
 
   const handleExport = async (type: string = 'orders') => {
     try {
@@ -1097,27 +1121,53 @@ const AdminAnalyticsPage: React.FC = () => {
                 </div>
               </div>
 
-              {/* Domain selector */}
-              {gscConfigured && gscSites.length > 1 && (
-                <div className="flex rounded-lg border border-gray-200 overflow-hidden text-sm">
-                  {gscSites.map(site => {
-                    const label = site.replace('sc-domain:', '');
-                    return (
-                      <button
-                        key={site}
-                        onClick={() => setGscSite(site)}
-                        className={`px-3 py-1.5 font-medium transition-colors ${
-                          gscSite === site
-                            ? 'bg-blue-600 text-white'
-                            : 'bg-white text-gray-600 hover:bg-gray-50'
-                        }`}
-                      >
-                        {label}
-                      </button>
-                    );
-                  })}
-                </div>
-              )}
+              <div className="flex items-center gap-3">
+                {gscConfigured && gscFetchedAt && (
+                  <span className="text-xs text-gray-400 hidden sm:inline">
+                    Last synced {new Date(gscFetchedAt).toLocaleString()}
+                  </span>
+                )}
+
+                {/* Domain selector */}
+                {gscConfigured && gscSites.length > 1 && (
+                  <div className="flex rounded-lg border border-gray-200 overflow-hidden text-sm">
+                    {gscSites.map(site => {
+                      const label = site.replace('sc-domain:', '');
+                      return (
+                        <button
+                          key={site}
+                          onClick={() => setGscSite(site)}
+                          className={`px-3 py-1.5 font-medium transition-colors ${
+                            gscSite === site
+                              ? 'bg-blue-600 text-white'
+                              : 'bg-white text-gray-600 hover:bg-gray-50'
+                          }`}
+                        >
+                          {label}
+                        </button>
+                      );
+                    })}
+                  </div>
+                )}
+
+                {gscConfigured && (
+                  <button
+                    onClick={handleGscSync}
+                    disabled={gscSyncing || gscLoading}
+                    className="px-3 py-1.5 text-sm font-medium rounded-lg border border-blue-200 text-blue-600 bg-blue-50 hover:bg-blue-100 disabled:opacity-50 disabled:cursor-not-allowed transition-colors whitespace-nowrap"
+                  >
+                    {gscSyncing ? 'Syncing…' : 'Sync Now'}
+                  </button>
+                )}
+
+                <Link
+                  to="/admin/traffic"
+                  className="flex items-center gap-1.5 px-3 py-1.5 text-sm font-medium rounded-lg border border-gray-200 text-gray-600 bg-white hover:bg-gray-50 transition-colors whitespace-nowrap"
+                >
+                  Full Traffic Report
+                  <FaExternalLinkAlt className="w-3 h-3" />
+                </Link>
+              </div>
             </div>
 
             {!gscConfigured ? (

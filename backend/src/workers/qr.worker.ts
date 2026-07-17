@@ -4,8 +4,10 @@ import {
   bullMQConnection,
   areQueuesEnabled,
 } from "../config/queue";
+import { WORKER_TUNING } from "../config/workerTuning";
 import logger from "../config/logger";
 import { generateQRCode, generateSecureQRData } from "../utils/qrcode";
+import { isRedisConnectionError } from "../utils/redisError.util";
 
 export interface QRJobData {
   ticketNumber: string;
@@ -65,10 +67,10 @@ const qrWorker = areQueuesEnabled
       },
       {
         connection: bullMQConnection, // Use shared connection
-        concurrency: 2, // OPTIMIZED for KVM1 single core: reduced from 10 to 2
+        concurrency: WORKER_TUNING.QR_GENERATION.CONCURRENCY,
         limiter: {
-          max: 50, // Reduced from 100 for single core
-          duration: 1000, // per second
+          max: WORKER_TUNING.QR_GENERATION.RATE_LIMIT_MAX,
+          duration: WORKER_TUNING.QR_GENERATION.RATE_LIMIT_DURATION_MS,
         },
       },
     )
@@ -92,19 +94,10 @@ if (qrWorker) {
 
   qrWorker.on("error", (error: Error) => {
     // Distinguish connection errors from job processing errors
-    const errorMessage = error.message || "";
-
-    if (
-      errorMessage.includes("isn't writeable") ||
-      errorMessage.includes("enableOfflineQueue") ||
-      errorMessage.includes("Connection is closed") ||
-      errorMessage.includes("ECONNREFUSED")
-    ) {
+    if (isRedisConnectionError(error)) {
       logger.warn(
         "QR worker: Redis connection issue detected, waiting for reconnection...",
-        {
-          error: errorMessage,
-        },
+        { error: error.message },
       );
       // Don't exit - let retry strategy handle reconnection
     } else {
@@ -113,18 +106,6 @@ if (qrWorker) {
   });
 }
 
-// Graceful shutdown
-const gracefulShutdown = async () => {
-  if (qrWorker) {
-    logger.info("Shutting down QR worker...");
-    await qrWorker.close();
-    logger.info("QR worker shut down successfully");
-  } else {
-    logger.info("QR worker was not initialized (Redis disabled)");
-  }
-};
-
-process.on("SIGINT", gracefulShutdown);
-process.on("SIGTERM", gracefulShutdown);
+// Shutdown is owned by workers/index.ts, which closes every worker once.
 
 export default qrWorker;

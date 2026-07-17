@@ -1,4 +1,5 @@
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
+import toast from 'react-hot-toast';
 import {
   Chart as ChartJS,
   CategoryScale,
@@ -13,12 +14,15 @@ import {
   Legend,
 } from 'chart.js';
 import { Line, Bar, Doughnut } from 'react-chartjs-2';
+import { FaSyncAlt } from 'react-icons/fa';
 import {
   useTrafficOverviewQuery,
   useTrafficReferrersQuery,
+  useSearchConsoleSitesQuery,
   useSearchConsoleSummaryQuery,
   useSearchConsoleQueriesQuery,
   useSearchConsolePagesQuery,
+  useSyncSearchConsoleMutation,
 } from '@/hooks/queries/useAdminQuery';
 
 ChartJS.register(
@@ -125,12 +129,22 @@ const baseOptions = {
 // ─── Main Page ────────────────────────────────────────────────
 const AdminTrafficPage: React.FC = () => {
   const [days, setDays] = useState<DayRange>(28);
+  const [gscSite, setGscSite] = useState<string | undefined>(undefined);
+
+  const sitesQ = useSearchConsoleSitesQuery();
+  const sites: string[] = sitesQ.data?.sites ?? [];
+
+  // Default to the first configured site once the site list loads
+  useEffect(() => {
+    if (!gscSite && sites.length > 0) setGscSite(sites[0]);
+  }, [sites, gscSite]);
 
   const trafficQ = useTrafficOverviewQuery(days);
   const referrersQ = useTrafficReferrersQuery(days);
-  const gscSummaryQ = useSearchConsoleSummaryQuery(days);
-  const gscQueriesQ = useSearchConsoleQueriesQuery(days);
-  const gscPagesQ = useSearchConsolePagesQuery(days);
+  const gscSummaryQ = useSearchConsoleSummaryQuery(days, gscSite);
+  const gscQueriesQ = useSearchConsoleQueriesQuery(days, gscSite);
+  const gscPagesQ = useSearchConsolePagesQuery(days, gscSite);
+  const syncMutation = useSyncSearchConsoleMutation();
 
   const traffic = trafficQ.data?.data;
   const gscSummary = gscSummaryQ.data;
@@ -138,7 +152,20 @@ const AdminTrafficPage: React.FC = () => {
   const gscPages = gscPagesQ.data?.data;
   const referrers = referrersQ.data?.data ?? [];
 
-  const isGscConfigured = gscSummaryQ.data?.configured !== false;
+  const isGscConfigured = sitesQ.data?.configured !== false;
+
+  const handleGscSync = async () => {
+    try {
+      const res = await syncMutation.mutateAsync(gscSite);
+      if (res?.success === false) {
+        toast.error(res?.message || 'Search Console sync failed');
+      } else {
+        toast.success(res?.message || 'Search Console synced');
+      }
+    } catch (e: any) {
+      toast.error(e?.response?.data?.message || 'Search Console sync failed');
+    }
+  };
 
   // ── Traffic trend chart ────────────────────────────────────
   const trafficTrendData = {
@@ -325,6 +352,47 @@ const AdminTrafficPage: React.FC = () => {
           </div>
         )}
       </div>
+
+      {/* GSC controls: site selector, last synced, manual sync */}
+      {isGscConfigured && (
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+          <div className="flex items-center gap-3">
+            <h2 className="text-base font-semibold text-gray-800">Google Search Console</h2>
+            {gscSummary?.fetchedAt && (
+              <span className="text-xs text-gray-400">
+                Last synced {new Date(gscSummary.fetchedAt).toLocaleString()}
+              </span>
+            )}
+          </div>
+          <div className="flex items-center gap-2">
+            {sites.length > 1 && (
+              <div className="flex rounded-lg border border-gray-200 overflow-hidden text-sm">
+                {sites.map((site) => (
+                  <button
+                    key={site}
+                    onClick={() => setGscSite(site)}
+                    className={`px-3 py-1.5 font-medium transition-colors ${
+                      gscSite === site
+                        ? 'bg-blue-600 text-white'
+                        : 'bg-white text-gray-600 hover:bg-gray-50'
+                    }`}
+                  >
+                    {site.replace('sc-domain:', '')}
+                  </button>
+                ))}
+              </div>
+            )}
+            <button
+              onClick={handleGscSync}
+              disabled={syncMutation.isPending}
+              className="flex items-center gap-1.5 px-3 py-1.5 text-sm font-medium rounded-lg border border-blue-200 text-blue-600 bg-blue-50 hover:bg-blue-100 disabled:opacity-50 disabled:cursor-not-allowed transition-colors whitespace-nowrap"
+            >
+              <FaSyncAlt className={`w-3 h-3 ${syncMutation.isPending ? 'animate-spin' : ''}`} />
+              {syncMutation.isPending ? 'Syncing…' : 'Sync Now'}
+            </button>
+          </div>
+        </div>
+      )}
 
       {/* GSC Trend */}
       {isGscConfigured && (

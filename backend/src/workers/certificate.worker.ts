@@ -1,12 +1,26 @@
 import { Worker, Job } from "bullmq";
 import Handlebars from "handlebars";
 import QRCode from "qrcode";
-import { QUEUE_NAMES, bullMQConnection, areQueuesEnabled } from "../config/queue";
-import Certificate, { Template, AuditLog, CertificateRequest, ITemplate, ITemplateField } from "../models/Certificate";
+import {
+  QUEUE_NAMES,
+  bullMQConnection,
+  areQueuesEnabled,
+} from "../config/queue";
+import { WORKER_TUNING } from "../config/workerTuning";
+import Certificate, {
+  Template,
+  AuditLog,
+  CertificateRequest,
+  ITemplate,
+  ITemplateField,
+} from "../models/Certificate";
 import { emailService } from "../services/email.service";
 import { MediaService } from "../services/media.service";
 import logger from "../config/logger";
-import { downloadFileAsAttachment, safePdfFilename } from "../utils/emailAttachment.util";
+import {
+  downloadFileAsAttachment,
+  safePdfFilename,
+} from "../utils/emailAttachment.util";
 
 export interface CertificateJobData {
   certificateId: string;
@@ -19,14 +33,25 @@ export interface CertificateJobData {
 
 // ─── Handlebars helpers ───────────────────────────────────────────────────────
 
-Handlebars.registerHelper("upper", (str: string) => String(str ?? "").toUpperCase());
-Handlebars.registerHelper("lower", (str: string) => String(str ?? "").toLowerCase());
+Handlebars.registerHelper("upper", (str: string) =>
+  String(str ?? "").toUpperCase(),
+);
+Handlebars.registerHelper("lower", (str: string) =>
+  String(str ?? "").toLowerCase(),
+);
 Handlebars.registerHelper("date", (d: string | Date) => {
   const date = d ? new Date(d) : new Date();
-  return date.toLocaleDateString("en-GB", { day: "numeric", month: "long", year: "numeric" });
+  return date.toLocaleDateString("en-GB", {
+    day: "numeric",
+    month: "long",
+    year: "numeric",
+  });
 });
 Handlebars.registerHelper("year", () => new Date().getFullYear());
-Handlebars.registerHelper("default", (val: any, fallback: string) => val ?? fallback);
+Handlebars.registerHelper(
+  "default",
+  (val: any, fallback: string) => val ?? fallback,
+);
 
 // ─── Worker ───────────────────────────────────────────────────────────────────
 
@@ -34,7 +59,14 @@ const certificateWorker = areQueuesEnabled
   ? new Worker(
       QUEUE_NAMES.CERTIFICATE_GENERATION,
       async (job: Job<CertificateJobData>) => {
-        const { certificateId, requestId, templateId, recipient, data, options } = job.data;
+        const {
+          certificateId,
+          requestId,
+          templateId,
+          recipient,
+          data,
+          options,
+        } = job.data;
 
         logger.info(`Processing certificate job ${job.id}`, { certificateId });
 
@@ -52,7 +84,9 @@ const certificateWorker = areQueuesEnabled
 
         try {
           if (!templateId) {
-            throw new Error("No templateId provided — cannot generate certificate");
+            throw new Error(
+              "No templateId provided — cannot generate certificate",
+            );
           }
 
           const template = await Template.findById(templateId);
@@ -60,13 +94,17 @@ const certificateWorker = areQueuesEnabled
 
           // Build QR verification URL and generate QR image
           const baseUrl = process.env.FRONTEND_URL || "http://localhost:3000";
-          const cert = await Certificate.findById(certificateId).select("serialNumber");
+          const cert =
+            await Certificate.findById(certificateId).select("serialNumber");
           let qrData: string | undefined;
           let qrCodeUrl: string | undefined;
 
           if (cert?.serialNumber) {
             qrData = `${baseUrl}/certificates/verify/${cert.serialNumber}`;
-            qrCodeUrl = await QRCode.toDataURL(qrData, { width: 200, margin: 1 });
+            qrCodeUrl = await QRCode.toDataURL(qrData, {
+              width: 200,
+              margin: 1,
+            });
           }
 
           const pdfUrl = await renderCertificate(template, {
@@ -91,7 +129,9 @@ const certificateWorker = areQueuesEnabled
             qrData,
             qrCodeUrl,
             issuedAt: new Date(),
-            $push: { history: { event: "generation_complete", at: new Date() } },
+            $push: {
+              history: { event: "generation_complete", at: new Date() },
+            },
           });
 
           // Audit log
@@ -110,23 +150,40 @@ const certificateWorker = areQueuesEnabled
           }
 
           if (options?.sendEmail) {
-            const certDoc = await Certificate.findById(certificateId).populate("eventId", "title");
+            const certDoc = await Certificate.findById(certificateId).populate(
+              "eventId",
+              "title",
+            );
             const eventTitle = (certDoc?.eventId as any)?.title || "Event";
 
             try {
-              const pdfFilename = safePdfFilename(recipient.name, cert?.serialNumber);
+              const pdfFilename = safePdfFilename(
+                recipient.name,
+                cert?.serialNumber,
+              );
               const attachment = pdfUrl
-                ? await downloadFileAsAttachment(pdfUrl, pdfFilename, { expectedType: "application/pdf" })
+                ? await downloadFileAsAttachment(pdfUrl, pdfFilename, {
+                    expectedType: "application/pdf",
+                  })
                 : null;
 
               const messageId = await emailService.sendEmail({
                 to: recipient.email,
                 subject: `Your Certificate — ${eventTitle}`,
-                html: buildCertEmailHtml(recipient.name, eventTitle, cert?.serialNumber, pdfUrl, qrData),
+                html: buildCertEmailHtml(
+                  recipient.name,
+                  eventTitle,
+                  cert?.serialNumber,
+                  pdfUrl,
+                  qrData,
+                ),
                 attachments: attachment ? [attachment] : undefined,
               });
 
-              if (typeof messageId === "string" && messageId.startsWith("dev-email-")) {
+              if (
+                typeof messageId === "string" &&
+                messageId.startsWith("dev-email-")
+              ) {
                 throw new Error(
                   "SMTP delivery failed (dev fallback active). Check email host/user/password and from address.",
                 );
@@ -165,19 +222,31 @@ const certificateWorker = areQueuesEnabled
                 action: "certificate.email_failed",
                 entityType: "Certificate",
                 entityId: certificateId,
-                meta: { to: recipient.email, error: emailErr?.message || String(emailErr) },
+                meta: {
+                  to: recipient.email,
+                  error: emailErr?.message || String(emailErr),
+                },
               });
             }
           }
 
           logger.info(`Certificate job ${job.id} complete`, { certificateId });
         } catch (err: any) {
-          logger.error(`Certificate job ${job.id} failed`, { certificateId, error: err.message });
+          logger.error(`Certificate job ${job.id} failed`, {
+            certificateId,
+            error: err.message,
+          });
 
           await Certificate.findByIdAndUpdate(certificateId, {
             status: "failed",
             failureReason: err.message,
-            $push: { history: { event: "generation_failed", meta: { error: err.message }, at: new Date() } },
+            $push: {
+              history: {
+                event: "generation_failed",
+                meta: { error: err.message },
+                at: new Date(),
+              },
+            },
           });
 
           await AuditLog.create({
@@ -196,11 +265,19 @@ const certificateWorker = areQueuesEnabled
           throw err;
         }
       },
-      { connection: bullMQConnection!, concurrency: 1 },
+      {
+        connection: bullMQConnection!,
+        concurrency: WORKER_TUNING.CERTIFICATE_GENERATION.CONCURRENCY,
+      },
     )
   : null;
 
 // ─── Puppeteer browser lifecycle ─────────────────────────────────────────────
+// Launching Chromium per job costs ~1-2s; since concurrency is 1 there's no
+// contention, so one browser instance is kept alive across jobs and only
+// relaunched if it crashes or disconnects.
+
+let sharedBrowser: import("puppeteer").Browser | null = null;
 
 async function launchBrowser(): Promise<import("puppeteer").Browser> {
   const puppeteer = await import("puppeteer");
@@ -213,6 +290,24 @@ async function launchBrowser(): Promise<import("puppeteer").Browser> {
     ],
     headless: true,
   });
+}
+
+async function getBrowser(): Promise<import("puppeteer").Browser> {
+  if (sharedBrowser && sharedBrowser.connected) {
+    return sharedBrowser;
+  }
+  sharedBrowser = await launchBrowser();
+  sharedBrowser.on("disconnected", () => {
+    sharedBrowser = null;
+  });
+  return sharedBrowser;
+}
+
+export async function closeCertificateBrowser(): Promise<void> {
+  if (sharedBrowser) {
+    await sharedBrowser.close().catch(() => {});
+    sharedBrowser = null;
+  }
 }
 
 // ─── Render ───────────────────────────────────────────────────────────────────
@@ -228,45 +323,57 @@ export async function renderCertificate(
 
   if (!html) throw new Error("Certificate rendering produced empty content");
 
-  const orientation = template.defaultOptions?.orientation ?? 'landscape';
-  const pdfBuf = await htmlToPdf(html, template.canvasWidth ?? 1240, template.canvasHeight ?? 877, orientation);
+  const orientation = template.defaultOptions?.orientation ?? "landscape";
+  const pdfBuf = await htmlToPdf(
+    html,
+    template.canvasWidth ?? 1240,
+    template.canvasHeight ?? 877,
+    orientation,
+  );
 
   if (!pdfBuf?.length) {
     throw new Error("Generated certificate PDF is empty — aborting upload");
   }
 
   const mockFile: Express.Multer.File = {
-    fieldname: 'file',
-    originalname: 'certificate.pdf',
-    encoding: '7bit',
-    mimetype: 'application/pdf',
+    fieldname: "file",
+    originalname: "certificate.pdf",
+    encoding: "7bit",
+    mimetype: "application/pdf",
     size: pdfBuf.length,
     buffer: pdfBuf,
-    destination: '',
-    filename: '',
-    path: '',
+    destination: "",
+    filename: "",
+    path: "",
     stream: null as any,
   };
 
   const mediaAsset = await new MediaService().uploadMedia(mockFile, {
-    category: 'document',
-    folder: 'certificates',
-    tags: ['certificate'],
+    category: "document",
+    folder: "certificates",
+    tags: ["certificate"],
   });
 
   return mediaAsset.url;
 }
 
-async function htmlToPdf(html: string, widthPx: number, heightPx: number, orientation?: 'portrait' | 'landscape'): Promise<Buffer> {
+async function htmlToPdf(
+  html: string,
+  widthPx: number,
+  heightPx: number,
+  orientation?: "portrait" | "landscape",
+): Promise<Buffer> {
   const renderOnce = async (): Promise<Buffer> => {
-    let browser: any = null;
     let page: any = null;
     try {
-      browser = await launchBrowser();
+      const browser = await getBrowser();
       page = await browser.newPage();
       await page.setViewport({ width: widthPx, height: heightPx });
       // domcontentloaded avoids hanging on slow/external image loads
-      await page.setContent(html, { waitUntil: "domcontentloaded", timeout: 30000 });
+      await page.setContent(html, {
+        waitUntil: "domcontentloaded",
+        timeout: 30000,
+      });
       // Wait for all <img> elements to settle before capturing
       await page.evaluate(() =>
         Promise.all(
@@ -289,13 +396,13 @@ async function htmlToPdf(html: string, widthPx: number, heightPx: number, orient
       };
 
       // Handle orientation
-      if (orientation === 'portrait') {
+      if (orientation === "portrait") {
         // Swap dimensions for portrait - PDF output dimensions are swapped
         pdfOptions.width = `${heightPx}px`;
         pdfOptions.height = `${widthPx}px`;
-        pdfOptions.pageOrientation = 'portrait';
+        pdfOptions.pageOrientation = "portrait";
       } else {
-        pdfOptions.pageOrientation = 'landscape';
+        pdfOptions.pageOrientation = "landscape";
       }
 
       const pdf = await page.pdf(pdfOptions);
@@ -304,9 +411,6 @@ async function htmlToPdf(html: string, widthPx: number, heightPx: number, orient
       if (page) {
         await page.close().catch(() => {});
       }
-      if (browser) {
-        await browser.close().catch(() => {});
-      }
     }
   };
 
@@ -314,7 +418,11 @@ async function htmlToPdf(html: string, widthPx: number, heightPx: number, orient
     return await renderOnce();
   } catch (error: any) {
     const message = error?.message || String(error || "");
-    if (/connection closed|page has been closed|target closed|protocol error/i.test(message)) {
+    if (
+      /connection closed|page has been closed|target closed|protocol error/i.test(
+        message,
+      )
+    ) {
       return await renderOnce();
     }
 
@@ -322,30 +430,48 @@ async function htmlToPdf(html: string, widthPx: number, heightPx: number, orient
   }
 }
 
-function buildHtmlTemplate(html: string, css: string | undefined, data: Record<string, any>): string {
+function buildHtmlTemplate(
+  html: string,
+  css: string | undefined,
+  data: Record<string, any>,
+): string {
   const compiled = Handlebars.compile(html, { noEscape: true });
   if (!css) return compiled(data);
   return html.includes("</head>")
-    ? compiled({ ...data, __css: css }).replace("</head>", `<style>${css}</style></head>`)
+    ? compiled({ ...data, __css: css }).replace(
+        "</head>",
+        `<style>${css}</style></head>`,
+      )
     : `<style>${css}</style>${compiled(data)}`;
 }
 
-function buildVisualHtml(template: ITemplate, data: Record<string, any>): string {
-  const { backgroundImageUrl, canvasWidth = 1240, canvasHeight = 877, fields = [], defaultOptions } = template;
-  const orientation = defaultOptions?.orientation ?? 'landscape';
+function buildVisualHtml(
+  template: ITemplate,
+  data: Record<string, any>,
+): string {
+  const {
+    backgroundImageUrl,
+    canvasWidth = 1240,
+    canvasHeight = 877,
+    fields = [],
+    defaultOptions,
+  } = template;
+  const orientation = defaultOptions?.orientation ?? "landscape";
 
   // Swap dimensions for portrait orientation
-  const effectiveWidth = orientation === 'portrait' ? canvasHeight : canvasWidth;
-  const effectiveHeight = orientation === 'portrait' ? canvasWidth : canvasHeight;
+  const effectiveWidth =
+    orientation === "portrait" ? canvasHeight : canvasWidth;
+  const effectiveHeight =
+    orientation === "portrait" ? canvasWidth : canvasHeight;
 
   // Define font family mappings for web-safe fonts
   const fontFamilyMap: Record<string, string> = {
-    'serif': 'Georgia, "Times New Roman", Times, serif',
-    'sans-serif': 'Arial, Helvetica, sans-serif',
-    'monospace': '"Courier New", Courier, monospace',
-    'Georgia, serif': 'Georgia, serif',
+    serif: 'Georgia, "Times New Roman", Times, serif',
+    "sans-serif": "Arial, Helvetica, sans-serif",
+    monospace: '"Courier New", Courier, monospace',
+    "Georgia, serif": "Georgia, serif",
     "'Times New Roman', serif": '"Times New Roman", Times, serif',
-    'Arial, sans-serif': 'Arial, sans-serif',
+    "Arial, sans-serif": "Arial, sans-serif",
   };
 
   const fieldHtml = fields
@@ -366,16 +492,18 @@ function buildVisualHtml(template: ITemplate, data: Record<string, any>): string
       }
 
       // Get font family with proper fallback
-      const fontFamily = f.fontFamily ? (fontFamilyMap[f.fontFamily] || f.fontFamily) : '';
+      const fontFamily = f.fontFamily
+        ? fontFamilyMap[f.fontFamily] || f.fontFamily
+        : "";
 
       // Get text alignment - ensure it's valid CSS
-      const textAlign = f.textAlign || 'center';
+      const textAlign = f.textAlign || "center";
 
       // Get font weight - ensure it's valid CSS
-      const fontWeight = f.fontWeight === 'bold' ? 'bold' : 'normal';
+      const fontWeight = f.fontWeight === "bold" ? "bold" : "normal";
 
       // Get color with fallback
-      const color = f.color || '#000000';
+      const color = f.color || "#000000";
 
       // Get font size with fallback
       const fontSize = f.fontSize || 24;
@@ -388,7 +516,7 @@ function buildVisualHtml(template: ITemplate, data: Record<string, any>): string
         `font-size:${fontSize}px`,
         `font-weight:${fontWeight}`,
         `color:${color}`,
-        fontFamily ? `font-family:${fontFamily}` : '',
+        fontFamily ? `font-family:${fontFamily}` : "",
         `text-align:${textAlign}`,
         `white-space:nowrap`,
         `line-height:1.2`,
@@ -423,7 +551,10 @@ function buildVisualHtml(template: ITemplate, data: Record<string, any>): string
 </html>`;
 }
 
-function resolveFieldValue(field: ITemplateField, data: Record<string, any>): any {
+function resolveFieldValue(
+  field: ITemplateField,
+  data: Record<string, any>,
+): any {
   const keyMap: Record<string, string> = {
     recipientName: data.recipientName,
     studentName: data.studentName || data.recipientName,
@@ -438,7 +569,12 @@ function resolveFieldValue(field: ITemplateField, data: Record<string, any>): an
 }
 
 function escapeHtml(str: string): string {
-  return str.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;").replace(/'/g, "&#39;");
+  return str
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;")
+    .replace(/"/g, "&quot;")
+    .replace(/'/g, "&#39;");
 }
 
 // ─── Email HTML ───────────────────────────────────────────────────────────────
@@ -483,14 +619,22 @@ export function buildCertEmailHtml(
             </p>
           </div>
 
-          ${url ? `<div style="text-align:center;margin:24px 0;">
+          ${
+            url
+              ? `<div style="text-align:center;margin:24px 0;">
             <a href="${url}" style="display:inline-block;padding:12px 28px;background:#4f46e5;color:white;text-decoration:none;border-radius:8px;font-weight:600;font-size:15px;box-shadow:0 4px 6px -1px rgba(79, 70, 229, 0.2);">Download Backup Copy</a>
-          </div>` : ""}
+          </div>`
+              : ""
+          }
           
-          ${verifyUrl ? `<div style="margin-top:24px;padding-top:16px;border-top:1px dashed #e2e8f0;font-size:13px;color:#64748b;">
+          ${
+            verifyUrl
+              ? `<div style="margin-top:24px;padding-top:16px;border-top:1px dashed #e2e8f0;font-size:13px;color:#64748b;">
             <p style="margin:0 0 4px;font-weight:600;">Verify authenticity:</p>
             <a href="${verifyUrl}" style="color:#4f46e5;word-break:break-all;">${verifyUrl}</a>
-          </div>` : ""}
+          </div>`
+              : ""
+          }
         </div>
         <div style="text-align:center;margin-top:20px;color:#94a3b8;font-size:13px;">
           <p>The GEMA Platform Team</p>

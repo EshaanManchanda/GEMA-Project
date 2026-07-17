@@ -1,31 +1,44 @@
-import { google } from 'googleapis';
-import SearchConsoleSnapshot, { SearchConsoleSnapshotType } from '../models/SearchConsoleSnapshot';
+import { google } from "googleapis";
+import SearchConsoleSnapshot, {
+  SearchConsoleSnapshotType,
+} from "../models/SearchConsoleSnapshot";
+import SearchConsoleHistory from "../models/SearchConsoleHistory";
+import logger from "../config/logger";
 
-const getAuth = () => new google.auth.GoogleAuth({
-  credentials: JSON.parse(process.env.GOOGLE_SERVICE_ACCOUNT_JSON!),
-  scopes: ['https://www.googleapis.com/auth/webmasters.readonly'],
-});
+const getAuth = () =>
+  new google.auth.GoogleAuth({
+    credentials: JSON.parse(process.env.GOOGLE_SERVICE_ACCOUNT_JSON!),
+    scopes: ["https://www.googleapis.com/auth/webmasters.readonly"],
+  });
 
-const getSC = () => google.searchconsole({ version: 'v1', auth: getAuth() });
+const getSC = () => google.searchconsole({ version: "v1", auth: getAuth() });
 
 const dateRange = (days: number) => {
   const end = new Date();
   const start = new Date(Date.now() - days * 86400000);
   return {
-    startDate: start.toISOString().split('T')[0],
-    endDate: end.toISOString().split('T')[0],
+    startDate: start.toISOString().split("T")[0],
+    endDate: end.toISOString().split("T")[0],
   };
 };
 
 /** Parse SEARCH_CONSOLE_SITE_URLS (comma-separated) → array of site URLs. */
 export const getConfiguredSites = (): string[] => {
-  const raw = process.env.SEARCH_CONSOLE_SITE_URLS || process.env.SEARCH_CONSOLE_SITE_URL || '';
-  return raw.split(',').map(s => s.trim()).filter(Boolean);
+  const raw =
+    process.env.SEARCH_CONSOLE_SITE_URLS ||
+    process.env.SEARCH_CONSOLE_SITE_URL ||
+    "";
+  return raw
+    .split(",")
+    .map((s) => s.trim())
+    .filter(Boolean);
 };
 
 /** Returns true only when credentials + at least one site URL are present. */
 export const isSearchConsoleConfigured = (): boolean => {
-  return !!(process.env.GOOGLE_SERVICE_ACCOUNT_JSON && getConfiguredSites().length > 0);
+  return !!(
+    process.env.GOOGLE_SERVICE_ACCOUNT_JSON && getConfiguredSites().length > 0
+  );
 };
 
 /**
@@ -57,7 +70,7 @@ export const getTopQueries = async (siteUrl: string, days = 28, limit = 25) => {
   const { startDate, endDate } = dateRange(days);
   const res = await getSC().searchanalytics.query({
     siteUrl,
-    requestBody: { startDate, endDate, dimensions: ['query'], rowLimit: limit },
+    requestBody: { startDate, endDate, dimensions: ["query"], rowLimit: limit },
   });
   return res.data.rows ?? [];
 };
@@ -66,7 +79,7 @@ export const getTopPages = async (siteUrl: string, days = 28, limit = 25) => {
   const { startDate, endDate } = dateRange(days);
   const res = await getSC().searchanalytics.query({
     siteUrl,
-    requestBody: { startDate, endDate, dimensions: ['page'], rowLimit: limit },
+    requestBody: { startDate, endDate, dimensions: ["page"], rowLimit: limit },
   });
   return res.data.rows ?? [];
 };
@@ -75,7 +88,7 @@ export const getSearchTrend = async (siteUrl: string, days = 28) => {
   const { startDate, endDate } = dateRange(days);
   const res = await getSC().searchanalytics.query({
     siteUrl,
-    requestBody: { startDate, endDate, dimensions: ['date'], rowLimit: days },
+    requestBody: { startDate, endDate, dimensions: ["date"], rowLimit: days },
   });
   return res.data.rows ?? [];
 };
@@ -84,7 +97,7 @@ export const getSearchByCountry = async (siteUrl: string, days = 28) => {
   const { startDate, endDate } = dateRange(days);
   const res = await getSC().searchanalytics.query({
     siteUrl,
-    requestBody: { startDate, endDate, dimensions: ['country'], rowLimit: 15 },
+    requestBody: { startDate, endDate, dimensions: ["country"], rowLimit: 15 },
   });
   return res.data.rows ?? [];
 };
@@ -102,8 +115,15 @@ const getOrRefreshSnapshot = async <T>(
 ): Promise<{ data: T; cached: boolean; fetchedAt: Date }> => {
   const query = { siteUrl, type, days, limit };
   const existing = await SearchConsoleSnapshot.findOne(query).lean();
-  if (existing && Date.now() - new Date(existing.fetchedAt).getTime() < SNAPSHOT_STALE_MS) {
-    return { data: existing.data as T, cached: true, fetchedAt: existing.fetchedAt };
+  if (
+    existing &&
+    Date.now() - new Date(existing.fetchedAt).getTime() < SNAPSHOT_STALE_MS
+  ) {
+    return {
+      data: existing.data as T,
+      cached: true,
+      fetchedAt: existing.fetchedAt,
+    };
   }
 
   const data = await fetcher();
@@ -117,7 +137,7 @@ const getOrRefreshSnapshot = async <T>(
 };
 
 export const getCachedSummary = (siteUrl: string, days: number) =>
-  getOrRefreshSnapshot('summary', siteUrl, days, 0, async () => {
+  getOrRefreshSnapshot("summary", siteUrl, days, 0, async () => {
     const [summary, trend] = await Promise.all([
       getSearchSummary(siteUrl, days),
       getSearchTrend(siteUrl, days),
@@ -125,14 +145,176 @@ export const getCachedSummary = (siteUrl: string, days: number) =>
     return { summary, trend };
   });
 
-export const getCachedQueries = (siteUrl: string, days: number, limit: number) =>
-  getOrRefreshSnapshot('queries', siteUrl, days, limit, () => getTopQueries(siteUrl, days, limit));
+export const getCachedQueries = (
+  siteUrl: string,
+  days: number,
+  limit: number,
+) =>
+  getOrRefreshSnapshot("queries", siteUrl, days, limit, () =>
+    getTopQueries(siteUrl, days, limit),
+  );
 
 export const getCachedPages = (siteUrl: string, days: number) =>
-  getOrRefreshSnapshot('pages', siteUrl, days, 0, async () => {
+  getOrRefreshSnapshot("pages", siteUrl, days, 0, async () => {
     const [pages, countries] = await Promise.all([
       getTopPages(siteUrl, days),
       getSearchByCountry(siteUrl, days),
     ]);
     return { pages, countries };
   });
+
+// ─── Durable monthly persistence + manual/scheduled sync ──────────────────────
+
+const HISTORY_WINDOW_DAYS = 28;
+
+export interface SearchConsoleSyncResult {
+  siteUrl: string;
+  period: string;
+  summary: {
+    clicks: number;
+    impressions: number;
+    ctr: number;
+    position: number;
+  };
+  syncedAt: Date;
+}
+
+/**
+ * Pull fresh data straight from Google (bypassing the read-through cache) and
+ * write it to two places:
+ *  - SearchConsoleHistory: one durable record per (site, calendar month) —
+ *    survives independently of the 6h cache TTL, this is the actual "saved
+ *    to database" record admins can trust wasn't silently evicted.
+ *  - SearchConsoleSnapshot: refreshed in place so the dashboard's normal
+ *    read path shows the new numbers immediately instead of waiting for the
+ *    next stale-cache read to trigger its own live fetch.
+ */
+export const syncSite = async (
+  siteUrl: string,
+  syncType: "manual" | "scheduled" = "manual",
+): Promise<SearchConsoleSyncResult> => {
+  const days = HISTORY_WINDOW_DAYS;
+  const [summary, trend, queries, pagesResult] = await Promise.all([
+    getSearchSummary(siteUrl, days),
+    getSearchTrend(siteUrl, days),
+    getTopQueries(siteUrl, days, 25),
+    Promise.all([
+      getTopPages(siteUrl, days, 25),
+      getSearchByCountry(siteUrl, days),
+    ]),
+  ]);
+  const [pages, countries] = pagesResult;
+
+  const now = new Date();
+  const period = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}`;
+  const periodStart = new Date(now.getTime() - days * 86400000);
+
+  await SearchConsoleHistory.findOneAndUpdate(
+    { siteUrl, period },
+    {
+      $set: {
+        siteUrl,
+        period,
+        periodStart,
+        periodEnd: now,
+        summary,
+        topQueries: queries,
+        topPages: pages,
+        syncType,
+        syncedAt: now,
+      },
+    },
+    { upsert: true },
+  );
+
+  await Promise.all([
+    SearchConsoleSnapshot.findOneAndUpdate(
+      { siteUrl, type: "summary" as SearchConsoleSnapshotType, days, limit: 0 },
+      {
+        $set: {
+          siteUrl,
+          type: "summary",
+          days,
+          limit: 0,
+          data: { summary, trend },
+          fetchedAt: now,
+        },
+      },
+      { upsert: true },
+    ),
+    SearchConsoleSnapshot.findOneAndUpdate(
+      {
+        siteUrl,
+        type: "queries" as SearchConsoleSnapshotType,
+        days,
+        limit: 25,
+      },
+      {
+        $set: {
+          siteUrl,
+          type: "queries",
+          days,
+          limit: 25,
+          data: queries,
+          fetchedAt: now,
+        },
+      },
+      { upsert: true },
+    ),
+    SearchConsoleSnapshot.findOneAndUpdate(
+      { siteUrl, type: "pages" as SearchConsoleSnapshotType, days, limit: 0 },
+      {
+        $set: {
+          siteUrl,
+          type: "pages",
+          days,
+          limit: 0,
+          data: { pages, countries },
+          fetchedAt: now,
+        },
+      },
+      { upsert: true },
+    ),
+  ]);
+
+  logger.info(
+    `search-console: synced ${siteUrl} for period ${period} (${syncType})`,
+  );
+
+  return { siteUrl, period, summary, syncedAt: now };
+};
+
+export const syncAllConfiguredSites = async (
+  syncType: "manual" | "scheduled" = "manual",
+): Promise<
+  Array<{
+    siteUrl: string;
+    success: boolean;
+    error?: string;
+    result?: SearchConsoleSyncResult;
+  }>
+> => {
+  const sites = getConfiguredSites();
+  const results: Array<{
+    siteUrl: string;
+    success: boolean;
+    error?: string;
+    result?: SearchConsoleSyncResult;
+  }> = [];
+
+  for (const siteUrl of sites) {
+    try {
+      const result = await syncSite(siteUrl, syncType);
+      results.push({ siteUrl, success: true, result });
+    } catch (error: any) {
+      logger.error(`search-console: sync failed for ${siteUrl}`, error);
+      results.push({
+        siteUrl,
+        success: false,
+        error: error.message || "Sync failed",
+      });
+    }
+  }
+
+  return results;
+};

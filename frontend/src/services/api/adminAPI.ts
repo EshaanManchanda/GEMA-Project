@@ -1524,40 +1524,35 @@ const adminAPI = {
   // GOOGLE SEARCH CONSOLE
   // =============================================
 
-  getSearchConsoleSites: async () => {
-    try {
-      const response = await ApiService.get('/admin/search-console/sites');
-      return response.data;
-    } catch (error) {
-      throw error;
-    }
+  // Note: ApiService.get/post already resolve to the parsed response body
+  // ({ success, data, ... }) — these endpoints return sibling metadata
+  // (configured/siteUrl/cached/fetchedAt/message) alongside `data` that
+  // callers need, so we return the body as-is instead of peeling `.data`
+  // again (that would silently discard the metadata).
+  getSearchConsoleSites: async (): Promise<any> => {
+    return ApiService.get('/admin/search-console/sites');
   },
 
-  getSearchConsoleSummary: async (days = 28, site?: string) => {
-    try {
-      const response = await ApiService.get('/admin/search-console/summary', { params: { days, site } });
-      return response.data;
-    } catch (error) {
-      throw error;
-    }
+  getSearchConsoleSummary: async (days = 28, site?: string): Promise<any> => {
+    return ApiService.get('/admin/search-console/summary', { params: { days, site } });
   },
 
-  getSearchConsoleQueries: async (days = 28, site?: string) => {
-    try {
-      const response = await ApiService.get('/admin/search-console/queries', { params: { days, site } });
-      return response.data;
-    } catch (error) {
-      throw error;
-    }
+  getSearchConsoleQueries: async (days = 28, site?: string): Promise<any> => {
+    return ApiService.get('/admin/search-console/queries', { params: { days, site } });
   },
 
-  getSearchConsolePages: async (days = 28, site?: string) => {
-    try {
-      const response = await ApiService.get('/admin/search-console/pages', { params: { days, site } });
-      return response.data;
-    } catch (error) {
-      throw error;
-    }
+  getSearchConsolePages: async (days = 28, site?: string): Promise<any> => {
+    return ApiService.get('/admin/search-console/pages', { params: { days, site } });
+  },
+
+  // Force a live refetch from Google (bypasses the 6h cache) and persist it
+  // durably. Omit `site` to sync every configured property in one call.
+  syncSearchConsole: async (site?: string): Promise<any> => {
+    return ApiService.post('/admin/search-console/sync', undefined, { params: { site } });
+  },
+
+  getSearchConsoleHistory: async (months = 12, site?: string): Promise<any> => {
+    return ApiService.get('/admin/search-console/history', { params: { months, site } });
   },
   // =============================================
   // CERTIFICATE TEMPLATES & EVENT CERT TYPES

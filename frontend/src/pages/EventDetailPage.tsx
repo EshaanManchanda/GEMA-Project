@@ -2589,6 +2589,32 @@ const EventDetailPage: React.FC = () => {
                             {review.comment || review.text}
                           </p>
                         )}
+                        {Array.isArray(review.media) && review.media.length > 0 && (
+                          <div className="flex flex-wrap gap-2 mt-3">
+                            {review.media.map((m: { type: 'image' | 'video'; url: string; thumbnail?: string; caption?: string }, mIdx: number) => (
+                              <a
+                                key={mIdx}
+                                href={m.url}
+                                target="_blank"
+                                rel="noopener noreferrer"
+                                className="relative w-20 h-20 rounded-lg overflow-hidden bg-gray-100 border border-gray-200 flex-shrink-0"
+                              >
+                                {m.type === 'video' ? (
+                                  <>
+                                    <video src={m.url} className="w-full h-full object-cover" muted />
+                                    <span className="absolute inset-0 flex items-center justify-center bg-black/30">
+                                      <svg className="w-6 h-6 text-white fill-current" viewBox="0 0 20 20">
+                                        <path d="M6 4l10 6-10 6V4z" />
+                                      </svg>
+                                    </span>
+                                  </>
+                                ) : (
+                                  <img src={m.thumbnail || m.url} alt={m.caption || ''} className="w-full h-full object-cover" />
+                                )}
+                              </a>
+                            ))}
+                          </div>
+                        )}
                       </div>
                     </div>
                   );

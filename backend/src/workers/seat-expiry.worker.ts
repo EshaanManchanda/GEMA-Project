@@ -1,6 +1,12 @@
 import { Worker, Job } from "bullmq";
 import mongoose from "mongoose";
-import { QUEUE_NAMES, bullMQConnection, seatExpiryQueue, areQueuesEnabled } from "../config/queue";
+import {
+  QUEUE_NAMES,
+  bullMQConnection,
+  seatExpiryQueue,
+  areQueuesEnabled,
+} from "../config/queue";
+import { WORKER_TUNING } from "../config/workerTuning";
 import logger from "../config/logger";
 import Order from "../models/Order";
 import Event from "../models/Event";
@@ -28,7 +34,9 @@ const processSeatExpiry = async (_job: Job) => {
     return { released: 0 };
   }
 
-  logger.info(`seat-expiry: releasing seats for ${expiredOrders.length} expired orders`);
+  logger.info(
+    `seat-expiry: releasing seats for ${expiredOrders.length} expired orders`,
+  );
 
   let released = 0;
   for (const order of expiredOrders) {
@@ -65,20 +73,25 @@ const processSeatExpiry = async (_job: Job) => {
       released++;
     } catch (err) {
       await mongoSession.abortTransaction();
-      logger.error(`seat-expiry: failed to release seats for order ${order._id}`, err);
+      logger.error(
+        `seat-expiry: failed to release seats for order ${order._id}`,
+        err,
+      );
     } finally {
       mongoSession.endSession();
     }
   }
 
-  logger.info(`seat-expiry: released ${released}/${expiredOrders.length} orders`);
+  logger.info(
+    `seat-expiry: released ${released}/${expiredOrders.length} orders`,
+  );
   return { released };
 };
 
 const seatExpiryWorker = areQueuesEnabled
   ? new Worker(QUEUE_NAMES.SEAT_EXPIRY, processSeatExpiry, {
       connection: bullMQConnection!,
-      concurrency: 1,
+      concurrency: WORKER_TUNING.SEAT_EXPIRY.CONCURRENCY,
     })
   : null;
 
@@ -99,10 +112,12 @@ if (seatExpiryQueue) {
       {},
       {
         jobId: "seat-expiry-recurring",
-        repeat: { every: 5 * 60 * 1000 }, // every 5 minutes
+        repeat: { every: WORKER_TUNING.SEAT_EXPIRY.SWEEP_INTERVAL_MS },
       },
     )
-    .catch((err) => logger.error("seat-expiry: failed to schedule sweep job", err));
+    .catch((err) =>
+      logger.error("seat-expiry: failed to schedule sweep job", err),
+    );
 }
 
 export default seatExpiryWorker;

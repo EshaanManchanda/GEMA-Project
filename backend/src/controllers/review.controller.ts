@@ -21,13 +21,18 @@ import { AppError } from "../middleware/index";
 import { AuthRequest } from "../types/index";
 import { certificateService } from "../modules/certificates/services/certificate.service";
 import { googlePlacesService } from "../services/googlePlaces.service";
+import mediaService from "../services/media.service";
+import { config } from "../config/env";
 import Student from "../models/Student";
 import logger from "../config/logger";
 
 const hasConfirmedEventBooking = async (
   userId: string | mongoose.Types.ObjectId,
   eventId: string,
-): Promise<{ hasBooked: boolean; source: "booking" | "order" | "registration" | null }> => {
+): Promise<{
+  hasBooked: boolean;
+  source: "booking" | "order" | "registration" | null;
+}> => {
   const [booking, order, registration] = await Promise.all([
     Booking.findOne({
       userId,
@@ -126,9 +131,13 @@ export const createReview = async (
 
     if (existingReview) {
       return next(
-        new AppError("You have already reviewed this item. Thank you for sharing your experience!", 400, {
-          code: "ALREADY_REVIEWED",
-        }),
+        new AppError(
+          "You have already reviewed this item. Thank you for sharing your experience!",
+          400,
+          {
+            code: "ALREADY_REVIEWED",
+          },
+        ),
       );
     }
 
@@ -137,9 +146,13 @@ export const createReview = async (
       const bookingStatus = await hasConfirmedEventBooking(userId, targetId);
       if (!bookingStatus.hasBooked) {
         return next(
-          new AppError("You must have booked this event to write a review", 403, {
-            code: "NOT_BOOKED",
-          }),
+          new AppError(
+            "You must have booked this event to write a review",
+            403,
+            {
+              code: "NOT_BOOKED",
+            },
+          ),
         );
       }
     }
@@ -190,7 +203,7 @@ export const createReview = async (
     } else if (type === ReviewType.VENDOR) {
       reviewData.vendor = targetId;
     } else if (type === ReviewType.TEACHER) {
-      reviewData.teacher = targetId;  // Store teacher's User ID
+      reviewData.teacher = targetId; // Store teacher's User ID
     }
 
     const review = await Review.create(reviewData);
@@ -203,7 +216,10 @@ export const createReview = async (
     }
 
     // Trigger certificate generation after event review
-    if ((type === ReviewType.EVENT || type === ReviewType.TEACHING_EVENT) && review.event) {
+    if (
+      (type === ReviewType.EVENT || type === ReviewType.TEACHING_EVENT) &&
+      review.event
+    ) {
       triggerCertificateForReview(review, userId).catch((err) =>
         logger.error("Certificate trigger failed:", err),
       );
@@ -274,7 +290,7 @@ export const getReviews = async (
         } else if (type === ReviewType.VENDOR) {
           filter.vendor = id;
         } else if (type === ReviewType.TEACHER) {
-          filter.teacher = id;  // teacher's User ID
+          filter.teacher = id; // teacher's User ID
         }
       }
     }
@@ -521,9 +537,9 @@ export const checkTeacherReviewStatus = async (
     res.status(200).json({
       success: true,
       data: {
-        hasBooked: true,            // No booking gate for teacher reviews
+        hasBooked: true, // No booking gate for teacher reviews
         hasReviewed: !!existingReview,
-        reviewableTarget: teacherUserId,   // The teacher's user ID to target
+        reviewableTarget: teacherUserId, // The teacher's user ID to target
         review: existingReview || null,
       },
     });
@@ -531,7 +547,6 @@ export const checkTeacherReviewStatus = async (
     next(error);
   }
 };
-
 
 // @route   PUT /api/reviews/:id
 // @access  Private (Author only)
@@ -880,7 +895,8 @@ export const moderateReview = async (
     if (
       status === ReviewStatus.APPROVED &&
       wasNotApproved &&
-      (review.type === ReviewType.EVENT || review.type === ReviewType.TEACHING_EVENT) &&
+      (review.type === ReviewType.EVENT ||
+        review.type === ReviewType.TEACHING_EVENT) &&
       review.event
     ) {
       triggerCertificateForReview(review, review.user).catch((err) =>
@@ -961,7 +977,11 @@ export const getGoogleReviews = async (
 
 // @route   GET /api/reviews/link/:eventId?email=xxx&firstName=xxx&lastName=xxx&schoolName=xxx
 // @access  Public — find/create user, auto-book, return status (no tokens)
-export const getReviewLink = async (req: Request, res: Response, next: NextFunction) => {
+export const getReviewLink = async (
+  req: Request,
+  res: Response,
+  next: NextFunction,
+) => {
   try {
     const { eventId } = req.params;
     const {
@@ -1002,7 +1022,10 @@ export const getReviewLink = async (req: Request, res: Response, next: NextFunct
     }
 
     // Find or create Student record linked to this user (parentUserId = user)
-    let student = await Student.findOne({ parentUserId: user._id, email: emailLower });
+    let student = await Student.findOne({
+      parentUserId: user._id,
+      email: emailLower,
+    });
     if (!student) {
       student = await Student.create({
         parentUserId: user._id,
@@ -1032,7 +1055,13 @@ export const getReviewLink = async (req: Request, res: Response, next: NextFunct
     const hasRegistration = await Registration.findOne({
       userId: user._id,
       eventId,
-      status: { $in: [RegistrationStatus.SUBMITTED, RegistrationStatus.UNDER_REVIEW, RegistrationStatus.APPROVED] },
+      status: {
+        $in: [
+          RegistrationStatus.SUBMITTED,
+          RegistrationStatus.UNDER_REVIEW,
+          RegistrationStatus.APPROVED,
+        ],
+      },
     }).lean();
 
     if (!hasRegistration) {
@@ -1041,7 +1070,11 @@ export const getReviewLink = async (req: Request, res: Response, next: NextFunct
         userId: user._id,
         registrationData: [],
         files: [],
-        payment: { status: RegistrationPaymentStatus.PAID, amount: 0, currency: "AED" },
+        payment: {
+          status: RegistrationPaymentStatus.PAID,
+          amount: 0,
+          currency: "AED",
+        },
         status: RegistrationStatus.APPROVED,
         metadata: {
           ipAddress: req.ip,
@@ -1069,7 +1102,11 @@ export const getReviewLink = async (req: Request, res: Response, next: NextFunct
 
 // @route   POST /api/reviews/link/:eventId
 // @access  Public — submit review via link (no auth required, identified by email)
-export const submitReviewViaLink = async (req: Request, res: Response, next: NextFunction) => {
+export const submitReviewViaLink = async (
+  req: Request,
+  res: Response,
+  next: NextFunction,
+) => {
   try {
     const errors = validationResult(req);
     if (!errors.isEmpty()) {
@@ -1085,11 +1122,16 @@ export const submitReviewViaLink = async (req: Request, res: Response, next: Nex
     const emailLower = email.toLowerCase();
     const user = await User.findOne({ email: emailLower });
     if (!user) {
-      return next(new AppError("Please open the review link first to register", 400));
+      return next(
+        new AppError("Please open the review link first to register", 400),
+      );
     }
 
     // Look up Student created during getReviewLink (for certificate context)
-    const student = await Student.findOne({ parentUserId: user._id, email: emailLower }).lean();
+    const student = await Student.findOne({
+      parentUserId: user._id,
+      email: emailLower,
+    }).lean();
 
     // Prevent duplicate
     const existing = await Review.findOne({
@@ -1107,7 +1149,12 @@ export const submitReviewViaLink = async (req: Request, res: Response, next: Nex
       );
     }
 
-    const hasDescription = !!(comment?.trim() || title?.trim() || pros?.length || cons?.length);
+    const hasDescription = !!(
+      comment?.trim() ||
+      title?.trim() ||
+      pros?.length ||
+      cons?.length
+    );
 
     const review = await Review.create({
       type: ReviewType.EVENT,
@@ -1134,15 +1181,105 @@ export const submitReviewViaLink = async (req: Request, res: Response, next: Nex
     // Only issue certificate for immediately-approved reviews.
     // PENDING reviews (those with descriptions) get their certificate when admin approves.
     if (review.status === ReviewStatus.APPROVED) {
-      triggerCertificateForReview(review, user._id, student?._id?.toString()).catch((err) =>
-        logger.error("Certificate trigger failed:", err),
-      );
+      triggerCertificateForReview(
+        review,
+        user._id,
+        student?._id?.toString(),
+      ).catch((err) => logger.error("Certificate trigger failed:", err));
     }
 
     res.status(201).json({
       success: true,
       message: "Review submitted successfully",
       data: { review },
+    });
+  } catch (error) {
+    next(error);
+  }
+};
+
+// @desc    Public: upload images/videos to attach to a review-link submission
+// @route   POST /api/reviews/link/:eventId/media
+// @access  Public (rate-limited, identified by email like the rest of the link flow)
+export const uploadReviewMedia = async (
+  req: Request,
+  res: Response,
+  next: NextFunction,
+) => {
+  try {
+    const { eventId } = req.params;
+    const { email } = req.body;
+    const files = req.files as Express.Multer.File[] | undefined;
+
+    if (!files || files.length === 0) {
+      return next(new AppError("No files uploaded", 400));
+    }
+
+    const event = await Event.findById(eventId).select("_id");
+    if (!event) return next(new AppError("Event not found", 404));
+
+    let uploadedBy: string | undefined;
+    if (email) {
+      const user = await User.findOne({
+        email: String(email).toLowerCase(),
+      }).select("_id");
+      uploadedBy = user?._id?.toString();
+    }
+
+    const media: Array<{
+      type: "image" | "video";
+      url: string;
+      order: number;
+    }> = [];
+    const failed: Array<{ file: string; error: string }> = [];
+
+    for (const file of files) {
+      const isImage = file.mimetype.startsWith("image/");
+      const isVideo = file.mimetype.startsWith("video/");
+
+      if (!isImage && !isVideo) {
+        failed.push({
+          file: file.originalname,
+          error: "Only images and videos are allowed",
+        });
+        continue;
+      }
+
+      const maxSize = isImage
+        ? config.upload.maxImageSize
+        : config.upload.maxVideoSize;
+      if (file.size > maxSize) {
+        failed.push({
+          file: file.originalname,
+          error: `File too large. Maximum size is ${(maxSize / 1024 / 1024).toFixed(0)}MB`,
+        });
+        continue;
+      }
+
+      try {
+        const asset = await mediaService.uploadMedia(file, {
+          category: "misc",
+          folder: "reviews",
+          uploadedBy,
+          tags: ["review-media"],
+        });
+        media.push({
+          type: isImage ? "image" : "video",
+          url: asset.url,
+          order: media.length,
+        });
+      } catch (error: any) {
+        failed.push({
+          file: file.originalname,
+          error: error.message || "Upload failed",
+        });
+      }
+    }
+
+    res.status(media.length > 0 ? 201 : 400).json({
+      success: media.length > 0,
+      message: `${media.length} of ${files.length} file(s) uploaded`,
+      data: { media, failed },
     });
   } catch (error) {
     next(error);
@@ -1156,13 +1293,20 @@ async function assertGoogleReviewAccess(
   req: AuthRequest,
   eventId: string,
 ): Promise<{ event: InstanceType<typeof Event> } | never> {
-  const event = await Event.findById(eventId).select("googlePlaceId vendorId title");
+  const event = await Event.findById(eventId).select(
+    "googlePlaceId vendorId title",
+  );
   if (!event) throw new AppError("Event not found", 404);
 
   const isAdmin = (req.user as any)?.role === "admin";
   if (!isAdmin) {
-    const vendor = await Vendor.findOne({ userId: (req.user as any)?._id }).lean();
-    if (!vendor || event.vendorId?.toString() !== (vendor._id as any).toString()) {
+    const vendor = await Vendor.findOne({
+      userId: (req.user as any)?._id,
+    }).lean();
+    if (
+      !vendor ||
+      event.vendorId?.toString() !== (vendor._id as any).toString()
+    ) {
       throw new AppError("Access denied — you do not own this event", 403);
     }
   }
@@ -1317,7 +1461,11 @@ export const getHomepageGoogleReviews = async (
 
 // @route   POST /api/reviews/admin/link/:eventId/generate
 // @access  Admin/Vendor — generates a shareable review link for the event
-export const generateReviewLink = async (req: AuthRequest, res: Response, next: NextFunction) => {
+export const generateReviewLink = async (
+  req: AuthRequest,
+  res: Response,
+  next: NextFunction,
+) => {
   try {
     const { eventId } = req.params;
     const baseUrl = process.env.FRONTEND_URL || "http://localhost:3000";
@@ -1333,8 +1481,14 @@ export const generateReviewLink = async (req: AuthRequest, res: Response, next: 
 
 // ─── Private helpers ──────────────────────────────────────────────────────────
 
-async function triggerCertificateForReview(review: any, userId: any, studentId?: string): Promise<void> {
-  const user = await User.findById(userId).select("firstName lastName email schoolName");
+async function triggerCertificateForReview(
+  review: any,
+  userId: any,
+  studentId?: string,
+): Promise<void> {
+  const user = await User.findById(userId).select(
+    "firstName lastName email schoolName",
+  );
   if (!user || !user.email) return;
 
   await certificateService.issueForEvent({

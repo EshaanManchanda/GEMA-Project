@@ -23,9 +23,11 @@ import {
   getAdminGoogleReviews,
   toggleGoogleReviewVisibility,
   getHomepageGoogleReviews,
+  uploadReviewMedia,
 } from "../controllers/review.controller";
 import { authenticate, authorize } from "../middleware/auth";
 import { ReviewType, FlagReason, ReviewStatus } from "../models/index";
+import { uploadMultiple, handleUploadError } from "../middleware/upload";
 
 // Strict limiter for the sync endpoint — calls the paid Google Places API
 const googleSyncLimiter = rateLimit({
@@ -34,6 +36,19 @@ const googleSyncLimiter = rateLimit({
   message: {
     success: false,
     message: "Too many sync requests. Please wait before syncing again.",
+    error: "RATE_LIMIT_EXCEEDED",
+  },
+  standardHeaders: true,
+  legacyHeaders: false,
+});
+
+// Limiter for public review-media uploads (unauthenticated, identified by email)
+const reviewMediaLimiter = rateLimit({
+  windowMs: 15 * 60 * 1000, // 15 minutes
+  max: 20, // 20 upload requests per IP per window (each can carry up to 5 files)
+  message: {
+    success: false,
+    message: "Too many upload attempts. Please wait before trying again.",
     error: "RATE_LIMIT_EXCEEDED",
   },
   standardHeaders: true,
@@ -96,9 +111,21 @@ router.get(
   [
     param("eventId").isMongoId().withMessage("Invalid event ID"),
     query("email").isEmail().withMessage("Valid email required"),
-    query("firstName").optional().trim().isLength({ max: 50 }).withMessage("First name too long"),
-    query("lastName").optional().trim().isLength({ max: 50 }).withMessage("Last name too long"),
-    query("schoolName").optional().trim().isLength({ max: 150 }).withMessage("School name too long"),
+    query("firstName")
+      .optional()
+      .trim()
+      .isLength({ max: 50 })
+      .withMessage("First name too long"),
+    query("lastName")
+      .optional()
+      .trim()
+      .isLength({ max: 50 })
+      .withMessage("Last name too long"),
+    query("schoolName")
+      .optional()
+      .trim()
+      .isLength({ max: 150 })
+      .withMessage("School name too long"),
   ],
   getReviewLink,
 );
@@ -109,16 +136,44 @@ router.post(
   [
     param("eventId").isMongoId().withMessage("Invalid event ID"),
     body("email").isEmail().withMessage("Valid email required"),
-    body("rating").isInt({ min: 1, max: 5 }).withMessage("Rating must be between 1 and 5"),
-    body("title").optional().trim().isLength({ max: 100 }).withMessage("Title cannot exceed 100 characters"),
-    body("comment").optional().trim().isLength({ max: 2000 }).withMessage("Comment cannot exceed 2000 characters"),
+    body("rating")
+      .isInt({ min: 1, max: 5 })
+      .withMessage("Rating must be between 1 and 5"),
+    body("title")
+      .optional()
+      .trim()
+      .isLength({ max: 100 })
+      .withMessage("Title cannot exceed 100 characters"),
+    body("comment")
+      .optional()
+      .trim()
+      .isLength({ max: 2000 })
+      .withMessage("Comment cannot exceed 2000 characters"),
     body("pros").optional().isArray().withMessage("Pros must be an array"),
-    body("pros.*").optional().trim().isLength({ max: 200 }).withMessage("Each pro cannot exceed 200 characters"),
+    body("pros.*")
+      .optional()
+      .trim()
+      .isLength({ max: 200 })
+      .withMessage("Each pro cannot exceed 200 characters"),
     body("cons").optional().isArray().withMessage("Cons must be an array"),
-    body("cons.*").optional().trim().isLength({ max: 200 }).withMessage("Each con cannot exceed 200 characters"),
+    body("cons.*")
+      .optional()
+      .trim()
+      .isLength({ max: 200 })
+      .withMessage("Each con cannot exceed 200 characters"),
     body("media").optional().isArray().withMessage("Media must be an array"),
   ],
   submitReviewViaLink,
+);
+
+// Upload images/videos to attach to a review-link submission — public
+router.post(
+  "/link/:eventId/media",
+  reviewMediaLimiter,
+  uploadMultiple("files", 5),
+  handleUploadError,
+  [param("eventId").isMongoId().withMessage("Invalid event ID")],
+  uploadReviewMedia,
 );
 
 // Google Maps reviews — DB-backed, public

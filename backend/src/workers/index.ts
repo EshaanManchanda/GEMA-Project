@@ -1,3 +1,4 @@
+import { Worker } from "bullmq";
 import logger from "../config/logger";
 import {
   bullMQClient,
@@ -27,82 +28,86 @@ import qrWorker from "./qr.worker";
 import emailWorker from "./email.worker";
 import collectionSyncWorker from "./collection-sync.worker";
 import payoutWorker from "./payout.worker";
-import certificateWorker from "./certificate.worker";
+import certificateWorker, {
+  closeCertificateBrowser,
+} from "./certificate.worker";
 import seatExpiryWorker from "./seat-expiry.worker";
 import communicationWorker from "./communication.worker";
 import automationWorker from "./automation.worker";
+import searchConsoleWorker from "./searchConsole.worker";
+
+/**
+ * Single source of truth for every worker this process manages. Adding a
+ * worker means adding one entry here — logging, DLQ routing, and graceful
+ * shutdown all derive from this list instead of being hand-maintained in
+ * four separate places.
+ */
+interface WorkerEntry {
+  /** DLQ routing key, used as `originalQueue` on dead-lettered jobs */
+  dlqName: string;
+  worker: Worker | null;
+  startupMessage: string;
+}
+
+const WORKERS: WorkerEntry[] = [
+  {
+    dlqName: "qr-generation",
+    worker: qrWorker,
+    startupMessage: "QR Generation Worker",
+  },
+  { dlqName: "email", worker: emailWorker, startupMessage: "Email Worker" },
+  {
+    dlqName: "collection-sync",
+    worker: collectionSyncWorker,
+    startupMessage: "Collection Sync Worker",
+  },
+  { dlqName: "payout", worker: payoutWorker, startupMessage: "Payout Worker" },
+  {
+    dlqName: "certificate-generation",
+    worker: certificateWorker,
+    startupMessage: "Certificate Worker",
+  },
+  {
+    dlqName: "seat-expiry",
+    worker: seatExpiryWorker,
+    startupMessage: "Seat Expiry Worker (sweeps every 5 min)",
+  },
+  {
+    dlqName: "communication",
+    worker: communicationWorker,
+    startupMessage: "Communication Worker (WhatsApp/email-marketing)",
+  },
+  {
+    dlqName: "automation",
+    worker: automationWorker,
+    startupMessage:
+      "Automation Worker (review-request sweep every 6h, event reminders every 15min)",
+  },
+  {
+    dlqName: "search-console-sync",
+    worker: searchConsoleWorker,
+    startupMessage: "Search Console Worker (monthly sync, 1st @ 03:00)",
+  },
+];
 
 logger.info("Starting background workers...");
 
-if (qrWorker) {
-  logger.info("QR Generation Worker: Started");
-} else {
-  logger.warn("QR Generation Worker: Not initialized");
-}
-
-if (emailWorker) {
-  logger.info("Email Worker: Started");
-} else {
-  logger.warn("Email Worker: Not initialized");
-}
-
-if (collectionSyncWorker) {
-  logger.info("Collection Sync Worker: Started");
-} else {
-  logger.warn("Collection Sync Worker: Not initialized");
-}
-
-if (payoutWorker) {
-  logger.info("Payout Worker: Started");
-} else {
-  logger.warn("Payout Worker: Not initialized");
-}
-
-if (certificateWorker) {
-  logger.info("Certificate Worker: Started");
-} else {
-  logger.warn("Certificate Worker: Not initialized");
-}
-
-if (seatExpiryWorker) {
-  logger.info("Seat Expiry Worker: Started (sweeps every 5 min)");
-} else {
-  logger.warn("Seat Expiry Worker: Not initialized");
-}
-
-if (communicationWorker) {
-  logger.info("Communication Worker: Started (WhatsApp/email-marketing)");
-} else {
-  logger.warn("Communication Worker: Not initialized");
-}
-
-if (automationWorker) {
-  logger.info(
-    "Automation Worker: Started (review-request sweep every 6h, event reminders every 15min)",
-  );
-} else {
-  logger.warn("Automation Worker: Not initialized");
+for (const { worker, startupMessage } of WORKERS) {
+  if (worker) {
+    logger.info(`${startupMessage}: Started`);
+  } else {
+    logger.warn(`${startupMessage}: Not initialized`);
+  }
 }
 
 // Route permanently-failed jobs to Dead Letter Queue for visibility and manual replay
-const workersForDLQ = [
-  { worker: qrWorker, name: "qr-generation" },
-  { worker: emailWorker, name: "email" },
-  { worker: collectionSyncWorker, name: "collection-sync" },
-  { worker: payoutWorker, name: "payout" },
-  { worker: certificateWorker, name: "certificate-generation" },
-  { worker: seatExpiryWorker, name: "seat-expiry" },
-  { worker: communicationWorker, name: "communication" },
-  { worker: automationWorker, name: "automation" },
-];
-
-for (const { worker, name } of workersForDLQ) {
+for (const { worker, dlqName } of WORKERS) {
   if (!worker) continue;
   worker.on("failed", async (job, err) => {
     if (job && job.attemptsMade >= (job.opts.attempts ?? 3)) {
       await failedJobsQueue
         ?.add("dead-letter", {
-          originalQueue: name,
+          originalQueue: dlqName,
           jobName: job.name,
           jobData: job.data,
           error: err.message,
@@ -174,19 +179,15 @@ process.on("unhandledRejection", (reason: any) => {
   process.exit(1);
 });
 
-// Graceful shutdown
+// Graceful shutdown — the sole owner of SIGINT/SIGTERM for every worker.
+// Individual worker modules must not register their own shutdown handlers.
 const gracefulShutdown = async () => {
   logger.info("Gracefully shutting down workers...");
 
-  const promises: Promise<void>[] = [];
-  if (qrWorker) promises.push(qrWorker.close());
-  if (emailWorker) promises.push(emailWorker.close());
-  if (collectionSyncWorker) promises.push(collectionSyncWorker.close());
-  if (payoutWorker) promises.push(payoutWorker.close());
-  if (certificateWorker) promises.push(certificateWorker.close());
-  if (seatExpiryWorker) promises.push(seatExpiryWorker.close());
-  if (communicationWorker) promises.push(communicationWorker.close());
-  if (automationWorker) promises.push(automationWorker.close());
+  const promises: Promise<void>[] = WORKERS.filter((w) => w.worker).map((w) =>
+    w.worker!.close(),
+  );
+  promises.push(closeCertificateBrowser());
 
   if (promises.length > 0) {
     await Promise.all(promises);

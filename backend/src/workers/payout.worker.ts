@@ -4,9 +4,11 @@ import {
   bullMQConnection,
   areQueuesEnabled,
 } from "../config/queue";
+import { WORKER_TUNING } from "../config/workerTuning";
 import logger from "../config/logger";
 import PayoutService from "../services/payout.service";
 import RevenueTransaction from "../models/RevenueTransaction";
+import { isRedisConnectionError } from "../utils/redisError.util";
 
 export interface StripePayoutJobData {
   type: "process-stripe-payout";
@@ -27,7 +29,10 @@ export interface AffiliatePayoutJobData {
   affiliateId: string;
 }
 
-export type PayoutJobData = StripePayoutJobData | BankPayoutRequestJobData | AffiliatePayoutJobData;
+export type PayoutJobData =
+  | StripePayoutJobData
+  | BankPayoutRequestJobData
+  | AffiliatePayoutJobData;
 
 const payoutWorker = areQueuesEnabled
   ? new Worker(
@@ -94,7 +99,7 @@ const payoutWorker = areQueuesEnabled
       },
       {
         connection: bullMQConnection,
-        concurrency: 2, // Low concurrency — payout jobs touch Stripe API
+        concurrency: WORKER_TUNING.PAYOUT.CONCURRENCY,
       },
     )
   : null;
@@ -117,15 +122,10 @@ if (payoutWorker) {
   });
 
   payoutWorker.on("error", (error: Error) => {
-    const msg = error.message || "";
-    if (
-      msg.includes("isn't writeable") ||
-      msg.includes("Connection is closed") ||
-      msg.includes("ECONNREFUSED")
-    ) {
+    if (isRedisConnectionError(error)) {
       logger.warn(
         "Payout worker: Redis connection issue, waiting for reconnection...",
-        { error: msg },
+        { error: error.message },
       );
     } else {
       logger.error("Payout worker error:", error);
@@ -133,15 +133,6 @@ if (payoutWorker) {
   });
 }
 
-const gracefulShutdown = async () => {
-  if (payoutWorker) {
-    logger.info("Shutting down payout worker...");
-    await payoutWorker.close();
-    logger.info("Payout worker shut down successfully");
-  }
-};
-
-process.on("SIGINT", gracefulShutdown);
-process.on("SIGTERM", gracefulShutdown);
+// Shutdown is owned by workers/index.ts, which closes every worker once.
 
 export default payoutWorker;

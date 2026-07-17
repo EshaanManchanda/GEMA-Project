@@ -5,6 +5,7 @@ import {
   automationQueue,
   areQueuesEnabled,
 } from "../config/queue";
+import { WORKER_TUNING } from "../config/workerTuning";
 import logger from "../config/logger";
 import Event from "../models/Event";
 import Order from "../models/Order";
@@ -50,6 +51,8 @@ async function processReviewRequestSweep(_job: Job): Promise<{ sent: number }> {
   }
 
   let sent = 0;
+  const frontendUrl = process.env.FRONTEND_URL || "https://kidrove.com";
+
   for (const event of events) {
     const orders = await Order.find({
       "items.eventId": event._id,
@@ -58,13 +61,18 @@ async function processReviewRequestSweep(_job: Job): Promise<{ sent: number }> {
       .select("_id userId")
       .lean();
 
-    for (const order of orders) {
-      const user = await User.findById(order.userId)
-        .select("firstName phone")
-        .lean();
-      if (!user?.phone) continue;
+    if (orders.length === 0) continue;
 
-      const frontendUrl = process.env.FRONTEND_URL || "https://kidrove.com";
+    const users = await User.find({
+      _id: { $in: orders.map((o) => o.userId) },
+    })
+      .select("firstName phone")
+      .lean();
+    const usersById = new Map(users.map((u) => [u._id.toString(), u]));
+
+    for (const order of orders) {
+      const user = usersById.get(order.userId.toString());
+      if (!user?.phone) continue;
 
       try {
         await dispatch({
@@ -203,10 +211,17 @@ async function processEventReminderSweep(
         .select("_id userId")
         .lean();
 
+      if (orders.length === 0) continue;
+
+      const users = await User.find({
+        _id: { $in: orders.map((o) => o.userId) },
+      })
+        .select("firstName phone")
+        .lean();
+      const usersById = new Map(users.map((u) => [u._id.toString(), u]));
+
       for (const order of orders) {
-        const user = await User.findById(order.userId)
-          .select("firstName phone")
-          .lean();
+        const user = usersById.get(order.userId.toString());
         if (!user?.phone) continue;
 
         try {
@@ -259,7 +274,10 @@ const automationWorker = areQueuesEnabled
             return { sent: 0 };
         }
       },
-      { connection: bullMQConnection, concurrency: 1 },
+      {
+        connection: bullMQConnection,
+        concurrency: WORKER_TUNING.AUTOMATION.CONCURRENCY,
+      },
     )
   : null;
 
@@ -280,7 +298,9 @@ if (automationQueue) {
       {},
       {
         jobId: "review-request-sweep-recurring",
-        repeat: { every: 6 * 60 * 60 * 1000 }, // every 6 hours
+        repeat: {
+          every: WORKER_TUNING.AUTOMATION.REVIEW_REQUEST_SWEEP_INTERVAL_MS,
+        },
       },
     )
     .catch((err) =>
@@ -294,7 +314,9 @@ if (automationQueue) {
         {},
         {
           jobId: `${jobName}-recurring`,
-          repeat: { every: 15 * 60 * 1000 }, // every 15 minutes
+          repeat: {
+            every: WORKER_TUNING.AUTOMATION.REMINDER_SWEEP_INTERVAL_MS,
+          },
         },
       )
       .catch((err) =>
@@ -303,15 +325,6 @@ if (automationQueue) {
   }
 }
 
-const gracefulShutdown = async () => {
-  if (automationWorker) {
-    logger.info("Shutting down automation worker...");
-    await automationWorker.close();
-    logger.info("Automation worker shut down successfully");
-  }
-};
-
-process.on("SIGINT", gracefulShutdown);
-process.on("SIGTERM", gracefulShutdown);
+// Shutdown is owned by workers/index.ts, which closes every worker once.
 
 export default automationWorker;

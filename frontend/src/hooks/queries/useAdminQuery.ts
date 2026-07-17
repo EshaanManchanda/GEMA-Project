@@ -1,4 +1,4 @@
-import { useQuery, UseQueryOptions } from '@tanstack/react-query';
+import { useQuery, useMutation, useQueryClient, UseQueryOptions } from '@tanstack/react-query';
 import adminAPI from '@/services/api/adminAPI';
 import analyticsAPI from '@/services/api/analyticsAPI';
 import { adminKeys } from './queryKeys';
@@ -368,32 +368,56 @@ export function useTrafficReferrersQuery(days = 30, options?: Omit<UseQueryOptio
 // Google Search Console
 // ============================================
 
-export function useSearchConsoleSummaryQuery(days = 28, options?: Omit<UseQueryOptions<any>, 'queryKey' | 'queryFn'>) {
+export function useSearchConsoleSitesQuery(options?: Omit<UseQueryOptions<any>, 'queryKey' | 'queryFn'>) {
   return useQuery({
-    queryKey: adminKeys.searchConsole.summary(days),
-    queryFn: () => adminAPI.getSearchConsoleSummary(days),
+    queryKey: adminKeys.searchConsole.sites(),
+    queryFn: () => adminAPI.getSearchConsoleSites(),
+    staleTime: 60 * 60 * 1000, // site list rarely changes
+    gcTime: 2 * 60 * 60 * 1000,
+    ...options,
+  });
+}
+
+export function useSearchConsoleSummaryQuery(days = 28, site?: string, options?: Omit<UseQueryOptions<any>, 'queryKey' | 'queryFn'>) {
+  return useQuery({
+    queryKey: adminKeys.searchConsole.summary(days, site),
+    queryFn: () => adminAPI.getSearchConsoleSummary(days, site),
     staleTime: 60 * 60 * 1000, // 1 hour — matches backend cache TTL
     gcTime: 2 * 60 * 60 * 1000,
     ...options,
   });
 }
 
-export function useSearchConsoleQueriesQuery(days = 28, options?: Omit<UseQueryOptions<any>, 'queryKey' | 'queryFn'>) {
+export function useSearchConsoleQueriesQuery(days = 28, site?: string, options?: Omit<UseQueryOptions<any>, 'queryKey' | 'queryFn'>) {
   return useQuery({
-    queryKey: adminKeys.searchConsole.queries(days),
-    queryFn: () => adminAPI.getSearchConsoleQueries(days),
+    queryKey: adminKeys.searchConsole.queries(days, site),
+    queryFn: () => adminAPI.getSearchConsoleQueries(days, site),
     staleTime: 60 * 60 * 1000,
     gcTime: 2 * 60 * 60 * 1000,
     ...options,
   });
 }
 
-export function useSearchConsolePagesQuery(days = 28, options?: Omit<UseQueryOptions<any>, 'queryKey' | 'queryFn'>) {
+export function useSearchConsolePagesQuery(days = 28, site?: string, options?: Omit<UseQueryOptions<any>, 'queryKey' | 'queryFn'>) {
   return useQuery({
-    queryKey: adminKeys.searchConsole.pages(days),
-    queryFn: () => adminAPI.getSearchConsolePages(days),
+    queryKey: adminKeys.searchConsole.pages(days, site),
+    queryFn: () => adminAPI.getSearchConsolePages(days, site),
     staleTime: 60 * 60 * 1000,
     gcTime: 2 * 60 * 60 * 1000,
     ...options,
+  });
+}
+
+// Force a live refetch from Google (bypasses the 6h cache) and persists it
+// durably; invalidates every cached GSC query so the UI reflects the new
+// numbers immediately instead of waiting out the 1h staleTime.
+export function useSyncSearchConsoleMutation() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: (site?: string) => adminAPI.syncSearchConsole(site),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: [...adminKeys.all, 'gsc'] });
+    },
   });
 }

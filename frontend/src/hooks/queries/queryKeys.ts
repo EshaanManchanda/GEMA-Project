@@ -143,9 +143,10 @@ export const adminKeys = {
 
   // Google Search Console
   searchConsole: {
-    summary: (days: number) => [...adminKeys.all, 'gsc', 'summary', days] as const,
-    queries: (days: number) => [...adminKeys.all, 'gsc', 'queries', days] as const,
-    pages: (days: number) => [...adminKeys.all, 'gsc', 'pages', days] as const,
+    sites: () => [...adminKeys.all, 'gsc', 'sites'] as const,
+    summary: (days: number, site?: string) => [...adminKeys.all, 'gsc', 'summary', days, site ?? null] as const,
+    queries: (days: number, site?: string) => [...adminKeys.all, 'gsc', 'queries', days, site ?? null] as const,
+    pages: (days: number, site?: string) => [...adminKeys.all, 'gsc', 'pages', days, site ?? null] as const,
   },
 };
 
