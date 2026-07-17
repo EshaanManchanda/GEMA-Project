@@ -152,10 +152,10 @@ export class GooglePlacesService {
             "X-Goog-FieldMask": "id,displayName,rating,userRatingCount,reviews",
           },
           params: {
-            // Google always caps this endpoint at 5 reviews regardless of these
-            // params — reviewsSort picks *which* 5, languageCode stabilizes
-            // text/locale instead of inferring it from the server's IP.
-            reviewsSort: "newest",
+            // Google always caps this endpoint at 5 reviews. languageCode
+            // stabilizes text/locale instead of inferring it from the
+            // server's IP. NOTE: Places API (New) has no reviewsSort param —
+            // sending one causes a 400 INVALID_ARGUMENT.
             languageCode: "en",
           },
           timeout: 5000,
@@ -222,6 +222,10 @@ export class GooglePlacesService {
     eventId: Types.ObjectId,
     placeId: string,
   ): Promise<SyncSummary> {
+    // Sync is an explicit user action — always hit Google live, never serve
+    // the cached result (that cache exists solely to protect this call from
+    // being re-fired within the same TTL, not to skip an intentional sync).
+    await this.invalidatePlaceCache(placeId);
     const liveData = await this.getPlaceReviews(placeId);
     const now = new Date();
     const fetchedIds: string[] = [];
