@@ -5,8 +5,18 @@ import { emailService } from "../services/email.service";
 import { AppError } from "../middleware/error";
 import logger from "../config/logger";
 import { stripe } from "../config/stripe";
+import { config } from "../config/env";
 import User, { UserRole, UserStatus } from "../models/User";
 import crypto from "crypto";
+import {
+  dispatch,
+  CommunicationJobType,
+} from "../services/communication/communication.service";
+import {
+  CommunicationChannel,
+  CommunicationCategory,
+  NotificationTemplateKey,
+} from "../models/index";
 
 /**
  * Submit partnership form (public endpoint)
@@ -72,6 +82,22 @@ export const submitPartnership = async (
         selectedPackage,
         emirate,
       });
+
+      // WhatsApp admin_alert (fire-and-forget) — skipped entirely if no admin
+      // alert phone is configured, rather than failing the submission.
+      if (config.communication.adminAlertWhatsappPhone) {
+        dispatch({
+          jobType: CommunicationJobType.WHATSAPP_TEMPLATE,
+          channel: CommunicationChannel.WHATSAPP,
+          category: CommunicationCategory.ADMIN_ALERT,
+          templateKey: NotificationTemplateKey.PARTNER_FORM_ADMIN_ALERT,
+          to: config.communication.adminAlertWhatsappPhone,
+          vars: { partner_name: name, partner_email: email },
+          refs: {},
+        }).catch((err) =>
+          logger.error("WhatsApp partner_form_admin_alert dispatch failed:", err),
+        );
+      }
 
       // Send confirmation to user
       await emailService.sendPartnershipConfirmation({

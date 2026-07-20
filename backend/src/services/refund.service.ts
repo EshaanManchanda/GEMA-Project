@@ -4,6 +4,15 @@ import { PaymentService } from "./payment.service";
 import { convertToStripeAmount } from "../config/stripe";
 import logger from "../config/logger";
 import mongoose from "mongoose";
+import {
+  dispatch,
+  CommunicationJobType,
+} from "./communication/communication.service";
+import {
+  CommunicationChannel,
+  CommunicationCategory,
+  NotificationTemplateKey,
+} from "../models/index";
 
 export interface RefundResult {
   success: boolean;
@@ -243,6 +252,44 @@ export class RefundService {
         tax,
         cancellationType,
       });
+
+      // WhatsApp notifications (fire-and-forget, queued — refund is already
+      // committed above, a notification failure must never undo it).
+      if (customer?.phone) {
+        if (cancellationType === "event_cancelled") {
+          dispatch({
+            jobType: CommunicationJobType.WHATSAPP_TEMPLATE,
+            channel: CommunicationChannel.WHATSAPP,
+            category: CommunicationCategory.TRANSACTIONAL,
+            templateKey: NotificationTemplateKey.EVENT_CANCELLED,
+            to: customer.phone,
+            vars: {
+              customer_name: customer.firstName || "there",
+              event_title: order.items[0]?.eventTitle || "your event",
+              booking_id: order.orderNumber,
+            },
+            refs: { userId: order.userId.toString(), orderId: order._id.toString() },
+          }).catch((err) =>
+            logger.error(`WhatsApp event_cancelled dispatch failed for order ${orderId}:`, err),
+          );
+        }
+
+        dispatch({
+          jobType: CommunicationJobType.WHATSAPP_TEMPLATE,
+          channel: CommunicationChannel.WHATSAPP,
+          category: CommunicationCategory.TRANSACTIONAL,
+          templateKey: NotificationTemplateKey.REFUND_PROCESSED,
+          to: customer.phone,
+          vars: {
+            customer_name: customer.firstName || "there",
+            amount: `${order.currency} ${refundAmount}`,
+            order_id: order.orderNumber,
+          },
+          refs: { userId: order.userId.toString(), orderId: order._id.toString() },
+        }).catch((err) =>
+          logger.error(`WhatsApp refund_processed dispatch failed for order ${orderId}:`, err),
+        );
+      }
 
       return {
         success: true,

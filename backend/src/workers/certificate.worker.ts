@@ -21,6 +21,15 @@ import {
   downloadFileAsAttachment,
   safePdfFilename,
 } from "../utils/emailAttachment.util";
+import {
+  dispatch,
+  CommunicationJobType,
+} from "../services/communication/communication.service";
+import {
+  CommunicationChannel,
+  CommunicationCategory,
+  NotificationTemplateKey,
+} from "../models/index";
 
 export interface CertificateJobData {
   certificateId: string;
@@ -148,6 +157,37 @@ const certificateWorker = areQueuesEnabled
               $inc: { "progress.processed": 1 },
             });
           }
+
+          // WhatsApp certificate_issued (fire-and-forget — generation/email
+          // already succeeded above, a notification failure must not fail the job).
+          (async () => {
+            try {
+              const issuedCert = await Certificate.findById(certificateId)
+                .populate("eventId", "title")
+                .populate("userId", "phone");
+              const phone = (issuedCert?.userId as any)?.phone;
+              if (!phone) return;
+
+              await dispatch({
+                jobType: CommunicationJobType.WHATSAPP_TEMPLATE,
+                channel: CommunicationChannel.WHATSAPP,
+                category: CommunicationCategory.TRANSACTIONAL,
+                templateKey: NotificationTemplateKey.CERTIFICATE_ISSUED,
+                to: phone,
+                vars: {
+                  student_name: recipient.name,
+                  competition_name: (issuedCert?.eventId as any)?.title || "your event",
+                  certificate_link: pdfUrl,
+                },
+                refs: { userId: String(issuedCert?.userId), certificateId },
+              });
+            } catch (err) {
+              logger.error(
+                `WhatsApp certificate_issued dispatch failed for certificate ${certificateId}:`,
+                err,
+              );
+            }
+          })();
 
           if (options?.sendEmail) {
             const certDoc = await Certificate.findById(certificateId).populate(

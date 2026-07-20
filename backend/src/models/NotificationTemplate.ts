@@ -39,7 +39,16 @@ export interface INotificationTemplate extends Document {
    * can never drift apart. */
   purpose: CommunicationCategory;
 
+  /** Cunnekt's `templateid` for this template (from their Template List page) — this is the value actually sent to their API, not a symbolic name. */
   providerTemplateName: string;
+  /**
+   * Human-readable body copy with `{{variable_name}}` placeholders, in the
+   * same order as `requiredVariables`. Never sent to Cunnekt (approval/copy
+   * lives on their side against `providerTemplateName`) — used only for the
+   * admin preview/test-send UI so staff can see what a message will say
+   * without needing Cunnekt dashboard access.
+   */
+  bodyText: string;
   languageCode: string;
 
   /** Variable names the caller MUST supply — dispatch fails safely if any are missing. */
@@ -71,6 +80,7 @@ const notificationTemplateSchema = new Schema<INotificationTemplate>(
     },
 
     providerTemplateName: { type: String, required: true },
+    bodyText: { type: String, default: "" },
     languageCode: { type: String, default: "en" },
 
     requiredVariables: { type: [String], default: [] },

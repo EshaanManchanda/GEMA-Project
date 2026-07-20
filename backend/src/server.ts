@@ -290,6 +290,17 @@ app.use(
 app.set("etag", "strong");
 
 // Logging middleware
+// Redact the Cunnekt webhook secret (embedded as a URL path segment, since
+// Cunnekt supports no custom-header/signing scheme on outbound webhooks)
+// before it ever reaches morgan's output — overriding the built-in `url`
+// token means every log format (dev/combined) picks up the redaction.
+morgan.token("url", (req: Request) => {
+  const url = req.originalUrl || req.url;
+  return url.replace(
+    /^(\/api\/webhooks\/cunnekt)\/[^/?]+/,
+    "$1/[redacted]",
+  );
+});
 app.use(morgan(config.nodeEnv === "development" ? "dev" : "combined"));
 
 // Performance monitoring middleware

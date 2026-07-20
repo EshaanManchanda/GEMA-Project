@@ -48,7 +48,7 @@ async function handleWhatsAppSend(
   const provider = getWhatsAppProvider();
   const result = await provider.sendTemplate({
     to,
-    templateName: providerTemplateName,
+    templateId: providerTemplateName,
     languageCode,
     variables: vars,
   });

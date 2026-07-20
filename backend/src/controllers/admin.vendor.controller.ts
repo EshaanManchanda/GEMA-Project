@@ -7,6 +7,16 @@ import Vendor, {
   VendorSubscriptionStatus,
 } from "../models/Vendor";
 import User from "../models/User";
+import logger from "../config/logger";
+import {
+  dispatch,
+  CommunicationJobType,
+} from "../services/communication/communication.service";
+import {
+  CommunicationChannel,
+  CommunicationCategory,
+  NotificationTemplateKey,
+} from "../models/index";
 
 /**
  * Get all vendors with pagination
@@ -467,6 +477,10 @@ export const updateVendorVerification = async (
       return next(new AppError("Invalid verification status", 400));
     }
 
+    const previousStatus = (
+      await Vendor.findById(id).select("verificationStatus")
+    )?.verificationStatus;
+
     const vendor = await Vendor.findByIdAndUpdate(
       id,
       { verificationStatus },
@@ -475,6 +489,36 @@ export const updateVendorVerification = async (
 
     if (!vendor) {
       return next(new AppError("Vendor not found", 404));
+    }
+
+    // WhatsApp vendor_approved/vendor_rejected — only on an actual transition
+    // into that status, so repeat PATCHes with the same value don't re-notify.
+    if (vendor.phone && verificationStatus !== previousStatus) {
+      if (verificationStatus === "verified") {
+        dispatch({
+          jobType: CommunicationJobType.WHATSAPP_TEMPLATE,
+          channel: CommunicationChannel.WHATSAPP,
+          category: CommunicationCategory.TRANSACTIONAL,
+          templateKey: NotificationTemplateKey.VENDOR_APPROVED,
+          to: vendor.phone,
+          vars: { vendor_name: vendor.businessName },
+          refs: { userId: vendor.userId.toString() },
+        }).catch((err) =>
+          logger.error(`WhatsApp vendor_approved dispatch failed for vendor ${id}:`, err),
+        );
+      } else if (verificationStatus === "rejected") {
+        dispatch({
+          jobType: CommunicationJobType.WHATSAPP_TEMPLATE,
+          channel: CommunicationChannel.WHATSAPP,
+          category: CommunicationCategory.TRANSACTIONAL,
+          templateKey: NotificationTemplateKey.VENDOR_REJECTED,
+          to: vendor.phone,
+          vars: { vendor_name: vendor.businessName },
+          refs: { userId: vendor.userId.toString() },
+        }).catch((err) =>
+          logger.error(`WhatsApp vendor_rejected dispatch failed for vendor ${id}:`, err),
+        );
+      }
     }
 
     res.status(200).json({

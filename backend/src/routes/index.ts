@@ -23,6 +23,7 @@ import adminPayoutRoutes from "./admin.payout.routes";
 import adminSettingsRoutes from "./admin.settings.routes";
 import adminCommissionRoutes from "./admin.commission.routes";
 import adminCommunicationRoutes from "./admin.communication.routes";
+import adminNotificationTemplateRoutes from "./admin.notificationTemplate.routes";
 import cunnektWebhookRoutes from "./cunnekt.webhook.routes";
 import vendorRoutes from "./vendor.routes";
 import vendorPayoutRoutes from "./vendor.payout.routes";
@@ -179,6 +180,9 @@ router.use("/admin", adminCommissionRoutes);
 
 // Admin Communication routes (WhatsApp/email-marketing logs, settings, retry)
 router.use("/admin", adminCommunicationRoutes);
+
+// Admin Notification Template routes (CRUD for WhatsApp/email-marketing templates)
+router.use("/admin/notification-templates", adminNotificationTemplateRoutes);
 
 // Admin Settings routes
 router.use("/admin", adminSettingsRoutes);

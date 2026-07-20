@@ -90,7 +90,7 @@ async function tryWhatsAppOtp(
   const provider = getWhatsAppProvider();
   const result = await provider.sendTemplate({
     to: phone,
-    templateName: resolved.template.providerTemplateName,
+    templateId: resolved.template.providerTemplateName,
     languageCode: resolved.template.languageCode,
     variables: vars,
   });

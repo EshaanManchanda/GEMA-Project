@@ -1,10 +1,5 @@
 import { body, param } from "express-validator";
-import {
-  validateEmail,
-  validatePhone,
-  validateUrl,
-  validateStringLength,
-} from "./common.validator";
+import { validatePhone, validateStringLength } from "./common.validator";
 
 const DAYS_OF_WEEK = [
   "monday",
@@ -49,7 +44,20 @@ export const validateUpdateProfile = [
     .isLength({ max: 100 })
     .withMessage("Category cannot exceed 100 characters"),
 
-  validateEmail("email", false),
+  // Scoped locally (not the shared validateEmail helper) so an empty string
+  // is treated as "no email provided" rather than an invalid one — the
+  // Contact tab always submits `email: ''` for vendors without a public
+  // contact email, and the shared helper's plain .optional() only skips
+  // `undefined`, not falsy values, causing every save to 400.
+  body("email")
+    .optional({ values: "falsy" })
+    .trim()
+    .toLowerCase()
+    .isEmail()
+    .withMessage("Must be a valid email address")
+    .normalizeEmail()
+    .isLength({ max: 255 })
+    .withMessage("Email cannot exceed 255 characters"),
 
   validatePhone("phone", false),
 
@@ -101,9 +109,22 @@ export const validateUpdateProfile = [
     .notEmpty()
     .withMessage("Zip code cannot be empty"),
 
-  validateUrl("website", false),
+  // Scoped locally (not the shared validateUrl helper) — same empty-string
+  // issue as email above: the Business tab always submits '' when no
+  // website/video link is set.
+  body("website")
+    .optional({ values: "falsy" })
+    .trim()
+    .isURL({ protocols: ["http", "https"], require_protocol: true })
+    .withMessage("website must be a valid URL with http or https protocol"),
 
-  validateUrl("profileVideoUrl", false),
+  body("profileVideoUrl")
+    .optional({ values: "falsy" })
+    .trim()
+    .isURL({ protocols: ["http", "https"], require_protocol: true })
+    .withMessage(
+      "profileVideoUrl must be a valid URL with http or https protocol",
+    ),
 
   body("videoDescription")
     .optional()

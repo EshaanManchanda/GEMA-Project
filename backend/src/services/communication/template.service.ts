@@ -54,7 +54,9 @@ export async function resolveTemplate(
 
   return {
     template,
-    rendered: interpolate(template.providerTemplateName, vars),
+    rendered: template.bodyText
+      ? interpolate(template.bodyText, vars)
+      : `(no local copy on file for "${key}" — check the approved template on Cunnekt's dashboard)`,
   };
 }
 

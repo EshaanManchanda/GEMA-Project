@@ -12,7 +12,14 @@ const MONGODB_URI = config.mongodbUri;
 /**
  * Seed the WhatsApp (Cunnekt) notification templates. Upserts by
  * {key, channel, languageCode} — safe to re-run; never deletes existing rows
- * so admin edits (isEnabled, providerTemplateName) survive a re-seed.
+ * so admin edits (isEnabled, providerTemplateName, bodyText) survive a re-seed.
+ *
+ * `providerTemplateName` values below are PLACEHOLDERS (the old slug names,
+ * e.g. "kidrove_booking_confirmed") — Cunnekt's real send API needs the
+ * numeric/opaque `templateid` it assigns once each template is created and
+ * approved on their Template List page. Replace each via the admin
+ * NotificationTemplate editor once those IDs exist; sends will fail against
+ * these placeholders in the meantime (dev/test-mode provider is unaffected).
  */
 const templates = [
   {
@@ -21,6 +28,8 @@ const templates = [
     provider: "cunnekt",
     purpose: CommunicationCategory.TRANSACTIONAL,
     providerTemplateName: "kidrove_booking_confirmed",
+    bodyText:
+      'Hi {{customer_name}}, your booking for *{{event_title}}* on {{event_date}} is confirmed! Booking ID: {{booking_id}}. Get your ticket here: {{ticket_link}}',
     requiredVariables: [
       "customer_name",
       "event_title",
@@ -35,6 +44,8 @@ const templates = [
     provider: "cunnekt",
     purpose: CommunicationCategory.TRANSACTIONAL,
     providerTemplateName: "kidrove_payment_success",
+    bodyText:
+      "Hi {{customer_name}}, we've received your payment of {{amount}} for order {{order_id}}. Thank you for booking with Kidrove!",
     requiredVariables: ["customer_name", "amount", "order_id"],
   },
   {
@@ -43,6 +54,8 @@ const templates = [
     provider: "cunnekt",
     purpose: CommunicationCategory.TRANSACTIONAL,
     providerTemplateName: "kidrove_payment_failed",
+    bodyText:
+      "Hi {{customer_name}}, your payment for order {{order_id}} could not be processed. Please retry or contact support.",
     requiredVariables: ["customer_name", "order_id"],
   },
   {
@@ -51,6 +64,8 @@ const templates = [
     provider: "cunnekt",
     purpose: CommunicationCategory.TRANSACTIONAL,
     providerTemplateName: "kidrove_event_reminder_24h",
+    bodyText:
+      'Reminder: *{{event_title}}* is happening tomorrow, {{event_date}} at {{event_time}}. Location/link: {{location_or_link}}. See you there!',
     requiredVariables: [
       "event_title",
       "event_date",
@@ -64,6 +79,8 @@ const templates = [
     provider: "cunnekt",
     purpose: CommunicationCategory.TRANSACTIONAL,
     providerTemplateName: "kidrove_event_reminder_2h",
+    bodyText:
+      'Starting soon: *{{event_title}}* begins today at {{event_time}} ({{event_date}}). Location/link: {{location_or_link}}.',
     requiredVariables: [
       "event_title",
       "event_date",
@@ -77,6 +94,8 @@ const templates = [
     provider: "cunnekt",
     purpose: CommunicationCategory.TRANSACTIONAL,
     providerTemplateName: "kidrove_event_cancelled",
+    bodyText:
+      "Hi {{customer_name}}, we're sorry to inform you that *{{event_title}}* has been cancelled. Your booking ({{booking_id}}) will be refunded automatically.",
     requiredVariables: ["customer_name", "event_title", "booking_id"],
   },
   {
@@ -85,6 +104,8 @@ const templates = [
     provider: "cunnekt",
     purpose: CommunicationCategory.TRANSACTIONAL,
     providerTemplateName: "kidrove_refund_processed",
+    bodyText:
+      "Hi {{customer_name}}, your refund of {{amount}} for order {{order_id}} has been processed and will reflect in your account shortly.",
     requiredVariables: ["customer_name", "amount", "order_id"],
   },
   {
@@ -93,6 +114,8 @@ const templates = [
     provider: "cunnekt",
     purpose: CommunicationCategory.TRANSACTIONAL,
     providerTemplateName: "kidrove_certificate_issued",
+    bodyText:
+      'Congratulations {{student_name}}! Your certificate for *{{competition_name}}* is ready. Download it here: {{certificate_link}}',
     requiredVariables: ["student_name", "competition_name", "certificate_link"],
   },
   {
@@ -101,6 +124,8 @@ const templates = [
     provider: "cunnekt",
     purpose: CommunicationCategory.OTP,
     providerTemplateName: "kidrove_phone_verification_otp",
+    bodyText:
+      "*{{otp_code}}* is your Kidrove verification code. It expires in {{expiry_minutes}} minutes. Do not share this code with anyone.",
     requiredVariables: ["otp_code", "expiry_minutes"],
   },
   {
@@ -109,6 +134,8 @@ const templates = [
     provider: "cunnekt",
     purpose: CommunicationCategory.TRANSACTIONAL,
     providerTemplateName: "kidrove_ticket_delivery",
+    bodyText:
+      'Your ticket is ready! Ticket #{{ticket_number}} for *{{event_title}}* on {{event_date}} at {{venue}}. Please have this ready at entry.',
     requiredVariables: ["ticket_number", "event_title", "event_date", "venue"],
   },
   {
@@ -117,6 +144,8 @@ const templates = [
     provider: "cunnekt",
     purpose: CommunicationCategory.TRANSACTIONAL,
     providerTemplateName: "kidrove_event_review_request",
+    bodyText:
+      "Hi {{customer_name}}, how was *{{event_title}}*? We'd love your feedback — leave a quick review here: {{review_link}}",
     requiredVariables: ["customer_name", "event_title", "review_link"],
   },
   {
@@ -125,6 +154,8 @@ const templates = [
     provider: "cunnekt",
     purpose: CommunicationCategory.TRANSACTIONAL,
     providerTemplateName: "kidrove_vendor_approved",
+    bodyText:
+      "Hi {{vendor_name}}, great news — your vendor account on Kidrove has been approved! You can now start creating events.",
     requiredVariables: ["vendor_name"],
   },
   {
@@ -133,6 +164,8 @@ const templates = [
     provider: "cunnekt",
     purpose: CommunicationCategory.TRANSACTIONAL,
     providerTemplateName: "kidrove_vendor_rejected",
+    bodyText:
+      "Hi {{vendor_name}}, your vendor application on Kidrove was not approved at this time. Contact support for details.",
     requiredVariables: ["vendor_name"],
   },
   {
@@ -141,6 +174,8 @@ const templates = [
     provider: "cunnekt",
     purpose: CommunicationCategory.ADMIN_ALERT,
     providerTemplateName: "kidrove_partner_form_admin_alert",
+    bodyText:
+      "New partnership inquiry from {{partner_name}} ({{partner_email}}). Please review in the admin dashboard.",
     requiredVariables: ["partner_name", "partner_email"],
   },
 ];

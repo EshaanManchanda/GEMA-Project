@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import { FaInfoCircle, FaCalendarAlt, FaPlus, FaArrowLeft, FaSave } from 'react-icons/fa';
 import { v4 as uuidv4 } from 'uuid';
@@ -278,12 +278,20 @@ const VendorEventFormPage: React.FC = () => {
     }
   };
 
-  const handleSeoChange = (seoData: { title: string; description: string; keywords: string[] }) => {
+  const handleCheckboxChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const { name, checked } = e.target;
+    setFormData(prev => ({ ...prev, [name]: checked }));
+  };
+
+  // Memoized: SEOEditor's effect depends on this callback's identity, so an
+  // unstable reference here retriggers that effect -> setFormData -> re-render
+  // -> new reference -> infinite "Maximum update depth exceeded" loop.
+  const handleSeoChange = useCallback((seoData: { title: string; description: string; keywords: string[] }) => {
     setFormData(prev => ({
       ...prev,
       seoMeta: seoData
     }));
-  };
+  }, []);
 
   const handleTagsChange = (tags: string[]) => {
     setFormData(prev => ({ ...prev, tags }));
@@ -712,6 +720,7 @@ const VendorEventFormPage: React.FC = () => {
                   onCountryChange={handleCountryChange}
                   errors={errors}
                   onInputChange={handleInputChange}
+                  onCheckboxChange={handleCheckboxChange}
                   onSeoChange={handleSeoChange}
                   eventData={{
                     title: formData.title,

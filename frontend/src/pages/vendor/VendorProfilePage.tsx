@@ -15,7 +15,6 @@ import {
   FaTrash,
   FaVideo,
   FaLanguage,
-  FaLink,
   FaPlay,
   FaGlobe,
   FaLinkedin,
@@ -34,6 +33,17 @@ import DocumentUpload from '../../components/vendor/DocumentUpload';
 import BusinessHoursEditor from '../../components/vendor/BusinessHoursEditor';
 import PhoneVerificationSection from '../../components/profile/PhoneVerificationSection';
 import logger from '../../utils/logger';
+import ErrorHandler from '../../utils/errorHandler';
+
+/**
+ * Extracts the real backend error reason (validation field message, or
+ * server `message`) instead of showing a generic "Failed to X" toast that
+ * hides why the save actually failed.
+ */
+const getErrorMessage = (error: unknown, fallback: string): string => {
+  const { message } = ErrorHandler.handleApiError(error, { component: 'VendorProfilePage' });
+  return message && message !== 'An unexpected error occurred' ? message : fallback;
+};
 
 const SectionCard: React.FC<{ children: React.ReactNode; className?: string }> = ({
   children,
@@ -146,6 +156,9 @@ const VendorProfilePage: React.FC = () => {
           country: vendor.address?.country || 'United States',
         },
         website: vendor.website || '',
+        profileVideoUrl: vendor.profileVideoUrl || '',
+        videoDescription: vendor.videoDescription || '',
+        languagesSpoken: vendor.languagesSpoken || [],
         socialMedia: {
           facebook: vendor.socialMedia?.facebook || '',
           instagram: vendor.socialMedia?.instagram || '',
@@ -177,7 +190,7 @@ const VendorProfilePage: React.FC = () => {
       setProfile(transformedProfile);
     } catch (error) {
       logger.error('Error fetching vendor profile:', error);
-      toast.error('Failed to load profile');
+      toast.error(getErrorMessage(error, 'Failed to load profile'));
     } finally {
       setIsLoading(false);
     }
@@ -200,7 +213,7 @@ const VendorProfilePage: React.FC = () => {
       }
     } catch (error: any) {
       logger.error(`Error uploading ${type}:`, error);
-      toast.error(`Failed to upload ${type}`);
+      toast.error(getErrorMessage(error, `Failed to upload ${type}`));
     }
   };
 
@@ -221,7 +234,7 @@ const VendorProfilePage: React.FC = () => {
       toast.success(`${type === 'logo' ? 'Logo' : 'Cover image'} deleted successfully`);
     } catch (error: any) {
       logger.error(`Error deleting ${type}:`, error);
-      toast.error(`Failed to delete ${type}`);
+      toast.error(getErrorMessage(error, `Failed to delete ${type}`));
     }
   };
 
@@ -233,7 +246,8 @@ const VendorProfilePage: React.FC = () => {
       toast.success('Profile updated successfully');
     } catch (error: any) {
       logger.error('Error updating profile:', error);
-      toast.error('Failed to update profile');
+      toast.error(getErrorMessage(error, 'Failed to update profile'));
+      throw error;
     } finally {
       setSaving(false);
     }
@@ -490,10 +504,34 @@ const BusinessInfoTab: React.FC<{
     videoDescription: profile.videoDescription || '',
     languagesSpoken: profile.languagesSpoken || [],
   });
-
-  const [videoInputMode, setVideoInputMode] = useState<'upload' | 'link'>('link');
   const [videoLinkInput, setVideoLinkInput] = useState(profile.profileVideoUrl || '');
-  const [isUploadingVideo, setIsUploadingVideo] = useState(false);
+
+  // Tracks whether the user has made unsaved edits in this tab. Guards the
+  // resync effect below so a background profile refresh (e.g. another tab's
+  // save, or onRefresh from phone verification) never clobbers in-progress
+  // edits here.
+  const [isDirty, setIsDirty] = useState(false);
+  const updateFormData = (updater: (prev: typeof formData) => typeof formData) => {
+    setIsDirty(true);
+    setFormData(updater);
+  };
+
+  // Resync local form state from the vendor profile on identity change
+  // (e.g. switching accounts) — never on every profile object mutation,
+  // and never while the user has unsaved edits.
+  useEffect(() => {
+    if (isDirty) return;
+    setFormData({
+      businessName: profile.businessName,
+      description: profile.description,
+      website: profile.website,
+      profileVideoUrl: profile.profileVideoUrl || '',
+      videoDescription: profile.videoDescription || '',
+      languagesSpoken: profile.languagesSpoken || [],
+    });
+    setVideoLinkInput(profile.profileVideoUrl || '');
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [profile.id]);
 
   const AVAILABLE_LANGUAGES = [
     { value: 'English', label: 'English' },
@@ -521,39 +559,17 @@ const BusinessInfoTab: React.FC<{
 
   const handleVideoLink = () => {
     if (videoLinkInput) {
-      setFormData(prev => ({ ...prev, profileVideoUrl: videoLinkInput }));
-    }
-  };
-
-  const handleVideoUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    if (!file) return;
-
-    if (file.size > 50 * 1024 * 1024) {
-      toast.error('Video size must be less than 50MB');
-      return;
-    }
-
-    try {
-      setIsUploadingVideo(true);
-      // We will fallback to link mode if vendorAPI doesn't support video upload yet
-      // but ideally use the same backend endpoint. We assume onUpdate will be used later.
-      toast.error('Video file upload is currently not supported for vendors. Please use a YouTube/Vimeo link.');
-    } catch (error) {
-      console.error('Error uploading video:', error);
-      toast.error('Failed to upload video');
-    } finally {
-      setIsUploadingVideo(false);
+      updateFormData(prev => ({ ...prev, profileVideoUrl: videoLinkInput }));
     }
   };
 
   const clearVideo = () => {
-    setFormData(prev => ({ ...prev, profileVideoUrl: '' }));
+    updateFormData(prev => ({ ...prev, profileVideoUrl: '' }));
     setVideoLinkInput('');
   };
 
   const toggleLanguage = (lang: string) => {
-    setFormData(prev => {
+    updateFormData(prev => {
       const current = prev.languagesSpoken || [];
       if (current.includes(lang)) {
         return { ...prev, languagesSpoken: current.filter(l => l !== lang) };
@@ -565,7 +581,13 @@ const BusinessInfoTab: React.FC<{
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    await onUpdate(formData);
+    try {
+      await onUpdate(formData);
+      setIsDirty(false);
+    } catch {
+      // Error toast already shown by the parent handler; keep local edits
+      // so the user doesn't lose in-progress changes.
+    }
   };
 
   return (
@@ -586,7 +608,7 @@ const BusinessInfoTab: React.FC<{
               <input
                 type="text"
                 value={formData.businessName}
-                onChange={(e) => setFormData(prev => ({ ...prev, businessName: e.target.value }))}
+                onChange={(e) => updateFormData(prev => ({ ...prev, businessName: e.target.value }))}
                 className={inputCls}
                 required
               />
@@ -595,7 +617,7 @@ const BusinessInfoTab: React.FC<{
             <FieldGroup label="Description" hint="Tell us about your business...">
               <textarea
                 value={formData.description}
-                onChange={(e) => setFormData(prev => ({ ...prev, description: e.target.value }))}
+                onChange={(e) => updateFormData(prev => ({ ...prev, description: e.target.value }))}
                 rows={5}
                 className={`${inputCls} resize-none`}
               />
@@ -605,7 +627,7 @@ const BusinessInfoTab: React.FC<{
               <input
                 type="url"
                 value={formData.website}
-                onChange={(e) => setFormData(prev => ({ ...prev, website: e.target.value }))}
+                onChange={(e) => updateFormData(prev => ({ ...prev, website: e.target.value }))}
                 className={inputCls}
                 placeholder="https://example.com"
               />
@@ -619,71 +641,25 @@ const BusinessInfoTab: React.FC<{
             <FaVideo className="w-3.5 h-3.5 text-blue-500" />
             Introduction Video
           </h3>
-          <p className="text-xs text-gray-400 mb-4">Add a short video to introduce your business. You can paste a YouTube / Vimeo link.</p>
+          <p className="text-xs text-gray-400 mb-4">Add a short video to introduce your business. Paste a YouTube / Vimeo link.</p>
 
-          {/* Mode toggle */}
+          {/* Link input — file upload isn't supported yet, so only link mode is offered */}
           <div className="flex gap-2 mb-4">
+            <input
+              type="url"
+              value={videoLinkInput}
+              onChange={(e) => setVideoLinkInput(e.target.value)}
+              placeholder="https://youtube.com/watch?v=... or https://vimeo.com/..."
+              className={inputCls}
+            />
             <button
               type="button"
-              onClick={() => setVideoInputMode('link')}
-              className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium transition-all ${videoInputMode === 'link' ? 'bg-blue-600 text-white' : 'bg-gray-100 text-gray-600 hover:bg-gray-200'}`}
+              onClick={handleVideoLink}
+              className="px-4 py-3 bg-blue-600 text-white rounded-xl hover:bg-blue-700 transition-colors font-medium text-sm whitespace-nowrap"
             >
-              <FaLink className="w-3 h-3" /> Paste Link
-            </button>
-            <button
-              type="button"
-              onClick={() => setVideoInputMode('upload')}
-              className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium transition-all ${videoInputMode === 'upload' ? 'bg-blue-600 text-white' : 'bg-gray-100 text-gray-600 hover:bg-gray-200'}`}
-            >
-              <FaVideo className="w-3 h-3" /> Upload File
+              Set Link
             </button>
           </div>
-
-          {/* Link input */}
-          {videoInputMode === 'link' && (
-            <div className="flex gap-2 mb-4">
-              <input
-                type="url"
-                value={videoLinkInput}
-                onChange={(e) => setVideoLinkInput(e.target.value)}
-                placeholder="https://youtube.com/watch?v=... or https://vimeo.com/..."
-                className={inputCls}
-              />
-              <button
-                type="button"
-                onClick={handleVideoLink}
-                className="px-4 py-3 bg-blue-600 text-white rounded-xl hover:bg-blue-700 transition-colors font-medium text-sm whitespace-nowrap"
-              >
-                Set Link
-              </button>
-            </div>
-          )}
-
-          {/* Upload input */}
-          {videoInputMode === 'upload' && (
-            <div className="mb-4">
-              <label className={`flex items-center justify-center gap-3 w-full py-4 border-2 border-dashed rounded-xl cursor-pointer transition-colors ${isUploadingVideo ? 'border-blue-300 bg-blue-50' : 'border-gray-300 hover:border-blue-400 hover:bg-blue-50'}`}>
-                {isUploadingVideo ? (
-                  <>
-                    <div className="animate-spin w-5 h-5 border-2 border-blue-500 border-t-transparent rounded-full" />
-                    <span className="text-sm text-blue-600 font-medium">Uploading video…</span>
-                  </>
-                ) : (
-                  <>
-                    <FaVideo className="w-5 h-5 text-gray-400" />
-                    <span className="text-sm text-gray-500">Click to upload a video file (MP4, WebM, OGG)</span>
-                  </>
-                )}
-                <input
-                  type="file"
-                  accept="video/*"
-                  className="hidden"
-                  onChange={handleVideoUpload}
-                  disabled={isUploadingVideo}
-                />
-              </label>
-            </div>
-          )}
 
           {/* Current video preview */}
           {formData.profileVideoUrl && (
@@ -729,7 +705,7 @@ const BusinessInfoTab: React.FC<{
           >
             <textarea
               value={formData.videoDescription}
-              onChange={(e) => setFormData(prev => ({ ...prev, videoDescription: e.target.value }))}
+              onChange={(e) => updateFormData(prev => ({ ...prev, videoDescription: e.target.value }))}
               rows={3}
               placeholder="e.g. Learn more about what we do..."
               className={`${inputCls} resize-none`}
@@ -794,9 +770,35 @@ const ContactAddressTab: React.FC<{
     socialMedia: profile.socialMedia,
   });
 
+  // Same dirty-tracked resync as BusinessInfoTab — this tab stays mounted
+  // through the phone-verification `onRefresh()` call below, so without the
+  // dirty guard a background profile refresh would clobber unsaved edits.
+  const [isDirty, setIsDirty] = useState(false);
+  const updateFormData = (updater: (prev: typeof formData) => typeof formData) => {
+    setIsDirty(true);
+    setFormData(updater);
+  };
+
+  useEffect(() => {
+    if (isDirty) return;
+    setFormData({
+      email: profile.email,
+      phone: profile.phone,
+      address: profile.address,
+      contactPerson: profile.contactPerson,
+      socialMedia: profile.socialMedia,
+    });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [profile.id]);
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    await onUpdate(formData);
+    try {
+      await onUpdate(formData);
+      setIsDirty(false);
+    } catch {
+      // Error toast already shown by the parent handler; keep local edits.
+    }
   };
 
   const handleSendPhoneVerification = async (phone: string) => {
@@ -839,7 +841,7 @@ const ContactAddressTab: React.FC<{
               <input
                 type="email"
                 value={formData.email}
-                onChange={(e) => setFormData(prev => ({ ...prev, email: e.target.value }))}
+                onChange={(e) => updateFormData(prev => ({ ...prev, email: e.target.value }))}
                 className={inputCls}
                 required
               />
@@ -849,7 +851,7 @@ const ContactAddressTab: React.FC<{
               <input
                 type="tel"
                 value={formData.phone}
-                onChange={(e) => setFormData(prev => ({ ...prev, phone: e.target.value }))}
+                onChange={(e) => updateFormData(prev => ({ ...prev, phone: e.target.value }))}
                 className={inputCls}
                 required
               />
@@ -878,7 +880,7 @@ const ContactAddressTab: React.FC<{
                 <input
                   type="text"
                   value={formData.address.street}
-                  onChange={(e) => setFormData(prev => ({ ...prev, address: { ...prev.address, street: e.target.value } }))}
+                  onChange={(e) => updateFormData(prev => ({ ...prev, address: { ...prev.address, street: e.target.value } }))}
                   className={inputCls}
                 />
               </FieldGroup>
@@ -887,7 +889,7 @@ const ContactAddressTab: React.FC<{
               <input
                 type="text"
                 value={formData.address.city}
-                onChange={(e) => setFormData(prev => ({ ...prev, address: { ...prev.address, city: e.target.value } }))}
+                onChange={(e) => updateFormData(prev => ({ ...prev, address: { ...prev.address, city: e.target.value } }))}
                 className={inputCls}
               />
             </FieldGroup>
@@ -895,7 +897,7 @@ const ContactAddressTab: React.FC<{
               <input
                 type="text"
                 value={formData.address.state}
-                onChange={(e) => setFormData(prev => ({ ...prev, address: { ...prev.address, state: e.target.value } }))}
+                onChange={(e) => updateFormData(prev => ({ ...prev, address: { ...prev.address, state: e.target.value } }))}
                 className={inputCls}
               />
             </FieldGroup>
@@ -903,7 +905,7 @@ const ContactAddressTab: React.FC<{
               <input
                 type="text"
                 value={formData.address.zipCode}
-                onChange={(e) => setFormData(prev => ({ ...prev, address: { ...prev.address, zipCode: e.target.value } }))}
+                onChange={(e) => updateFormData(prev => ({ ...prev, address: { ...prev.address, zipCode: e.target.value } }))}
                 className={inputCls}
               />
             </FieldGroup>
@@ -911,7 +913,7 @@ const ContactAddressTab: React.FC<{
               <input
                 type="text"
                 value={formData.address.country}
-                onChange={(e) => setFormData(prev => ({ ...prev, address: { ...prev.address, country: e.target.value } }))}
+                onChange={(e) => updateFormData(prev => ({ ...prev, address: { ...prev.address, country: e.target.value } }))}
                 className={inputCls}
               />
             </FieldGroup>
@@ -940,7 +942,7 @@ const ContactAddressTab: React.FC<{
                 <input
                   type="url"
                   value={formData.socialMedia[s.key as keyof typeof formData.socialMedia] as string || ''}
-                  onChange={(e) => setFormData(prev => ({
+                  onChange={(e) => updateFormData(prev => ({
                     ...prev,
                     socialMedia: { ...prev.socialMedia, [s.key]: e.target.value }
                   }))}
@@ -981,7 +983,11 @@ const BusinessDetailsTab: React.FC<{
 
   const handleTaxInfoSave = async (e: React.FormEvent) => {
     e.preventDefault();
-    await onUpdate({ taxInformation: taxInfo });
+    try {
+      await onUpdate({ taxInformation: taxInfo });
+    } catch {
+      // Error toast already shown by the parent handler.
+    }
   };
 
   return (
@@ -1100,7 +1106,7 @@ const BankDetailsTab: React.FC<{ profile: VendorProfile }> = ({ profile }) => {
       await vendorAPI.updateBankDetails(details);
       toast.success('Bank details saved successfully');
     } catch (error: any) {
-      toast.error('Failed to save bank details');
+      toast.error(getErrorMessage(error, 'Failed to save bank details'));
       throw error;
     }
   };
@@ -1130,7 +1136,7 @@ const DocumentsTab: React.FC<{ profile: VendorProfile; onRefresh: () => void }> 
       toast.success('Document uploaded successfully');
       onRefresh(); // Refresh to get updated documents
     } catch (error: any) {
-      toast.error('Failed to upload document');
+      toast.error(getErrorMessage(error, 'Failed to upload document'));
       throw error;
     }
   };
@@ -1141,7 +1147,7 @@ const DocumentsTab: React.FC<{ profile: VendorProfile; onRefresh: () => void }> 
       toast.success('Document deleted successfully');
       onRefresh(); // Refresh to get updated documents
     } catch (error: any) {
-      toast.error('Failed to delete document');
+      toast.error(getErrorMessage(error, 'Failed to delete document'));
       throw error;
     }
   };

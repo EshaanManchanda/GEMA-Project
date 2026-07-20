@@ -25,7 +25,7 @@ export class ErrorHandler {
    * Handle and log API errors
    */
   static handleApiError(error: any, context?: ErrorContext): ApiError {
-    let apiError: ApiError = {
+    const apiError: ApiError = {
       message: 'An unexpected error occurred',
       status: 500
     };
@@ -66,18 +66,29 @@ export class ErrorHandler {
       return data;
     }
 
+    // Field-level validation errors take priority over a generic top-level
+    // `message` (e.g. express-validator's `validate` middleware returns
+    // `{ message: "Validation failed", errors: { field: msg } }` — without
+    // this, callers only ever see "Validation failed" and never learn which
+    // field was rejected).
+    if (data?.errors) {
+      if (Array.isArray(data.errors)) {
+        const msg = data.errors
+          .map((err: any) => err.message || err.msg || err.toString())
+          .join(', ');
+        if (msg) return msg;
+      } else if (typeof data.errors === 'object') {
+        const msg = Object.values(data.errors).filter(Boolean).join(', ');
+        if (msg) return msg;
+      }
+    }
+
     if (data?.error) {
       return data.error;
     }
 
     if (data?.message) {
       return data.message;
-    }
-
-    if (data?.errors && Array.isArray(data.errors)) {
-      return data.errors.map((err: any) => 
-        err.message || err.msg || err.toString()
-      ).join(', ');
     }
 
     if (data?.details) {

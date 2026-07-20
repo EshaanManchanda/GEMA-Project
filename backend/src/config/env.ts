@@ -162,9 +162,10 @@ interface Config {
   };
   whatsapp: {
     provider: string;
+    /** Which Cunnekt API generation the connected dashboard/workspace generates. See doc/CUNNEKT_API_GUIDE.md §1/§29 — never guessed, must match the dashboard's own "API Payload" output. */
+    cunnektApiVersion: "legacy" | "rest-v1";
     cunnektBaseUrl: string;
     cunnektApiKey: string;
-    cunnektWabaNumber: string;
     cunnektWebhookSecret: string;
   };
   emailMarketing: {
@@ -179,6 +180,8 @@ interface Config {
     queueEnabled: boolean;
     testMode: boolean;
     logRawProviderResponse: boolean;
+    /** WhatsApp number (E.164) that receives admin_alert-category templates (e.g. partner_form_admin_alert). Alerts are skipped if unset. */
+    adminAlertWhatsappPhone: string;
   };
 }
 
@@ -387,9 +390,12 @@ export const config: Config = {
   },
   whatsapp: {
     provider: process.env.WHATSAPP_PROVIDER || "dev",
-    cunnektBaseUrl: process.env.CUNNEKT_BASE_URL || "https://app2.cunnekt.com/v1",
+    cunnektApiVersion:
+      (process.env.CUNNEKT_API_VERSION || "legacy") === "rest-v1"
+        ? "rest-v1"
+        : "legacy",
+    cunnektBaseUrl: process.env.CUNNEKT_BASE_URL || "https://app.cunnekt.com",
     cunnektApiKey: process.env.CUNNEKT_API_KEY || "",
-    cunnektWabaNumber: process.env.CUNNEKT_WABA_NUMBER || "",
     cunnektWebhookSecret: process.env.CUNNEKT_WEBHOOK_SECRET || "",
   },
   emailMarketing: {
@@ -407,6 +413,7 @@ export const config: Config = {
     testMode: process.env.COMMUNICATION_TEST_MODE === "true",
     logRawProviderResponse:
       process.env.COMMUNICATION_LOG_RAW_PROVIDER_RESPONSE === "true",
+    adminAlertWhatsappPhone: process.env.ADMIN_ALERT_WHATSAPP_PHONE || "",
   },
   google: {
     placesApiKey: process.env.GOOGLE_PLACES_API_KEY || "",

@@ -15,6 +15,15 @@ import { emailService } from "./email.service";
 import Affiliate from "../models/Affiliate";
 import Partnership from "../models/Partnership";
 import CommissionService from "./commission.service";
+import {
+  dispatch,
+  CommunicationJobType,
+} from "./communication/communication.service";
+import {
+  CommunicationChannel,
+  CommunicationCategory,
+  NotificationTemplateKey,
+} from "../models/index";
 
 export interface CreatePaymentIntentParams {
   amount: number;
@@ -695,7 +704,7 @@ export class PaymentService {
       (async () => {
         try {
           const user = await User.findById(order.userId)
-            .select("email firstName")
+            .select("email firstName phone")
             .lean();
           if (!user) return;
           const u = user as any;
@@ -705,6 +714,48 @@ export class PaymentService {
             "items.eventId",
             "title venueType meetingLink meetingPassword type",
           );
+
+          // WhatsApp booking_confirmed + payment_success (fire-and-forget,
+          // queued via dispatch() — a missing/invalid phone just fails the
+          // CommunicationLog entry, never blocks order confirmation).
+          if (u.phone) {
+            const firstItem = order.items[0];
+            dispatch({
+              jobType: CommunicationJobType.WHATSAPP_TEMPLATE,
+              channel: CommunicationChannel.WHATSAPP,
+              category: CommunicationCategory.TRANSACTIONAL,
+              templateKey: NotificationTemplateKey.BOOKING_CONFIRMED,
+              to: u.phone,
+              vars: {
+                customer_name: u.firstName || "there",
+                event_title: firstItem?.eventTitle || "your event",
+                event_date: firstItem?.scheduleDate
+                  ? new Date(firstItem.scheduleDate).toLocaleDateString("en-US", { dateStyle: "medium" })
+                  : "",
+                booking_id: order.orderNumber,
+                ticket_link: `${config.frontendUrl}/dashboard/tickets`,
+              },
+              refs: { userId: order.userId.toString(), orderId: order._id.toString() },
+            }).catch((err) =>
+              logger.error(`WhatsApp booking_confirmed dispatch failed for order ${orderId}:`, err),
+            );
+
+            dispatch({
+              jobType: CommunicationJobType.WHATSAPP_TEMPLATE,
+              channel: CommunicationChannel.WHATSAPP,
+              category: CommunicationCategory.TRANSACTIONAL,
+              templateKey: NotificationTemplateKey.PAYMENT_SUCCESS,
+              to: u.phone,
+              vars: {
+                customer_name: u.firstName || "there",
+                amount: `${order.currency} ${order.total}`,
+                order_id: order.orderNumber,
+              },
+              refs: { userId: order.userId.toString(), orderId: order._id.toString() },
+            }).catch((err) =>
+              logger.error(`WhatsApp payment_success dispatch failed for order ${orderId}:`, err),
+            );
+          }
 
           // 1. Order confirmation email
           await emailService.sendOrderConfirmationEmail({
@@ -807,6 +858,28 @@ export class PaymentService {
           },
           scheduledFor: new Date(),
         }).catch((err: Error) => logger.error("Failed to create payment failure notification:", err));
+
+        User.findById(order.userId)
+          .select("firstName phone")
+          .lean()
+          .then((user: any) => {
+            if (!user?.phone) return;
+            return dispatch({
+              jobType: CommunicationJobType.WHATSAPP_TEMPLATE,
+              channel: CommunicationChannel.WHATSAPP,
+              category: CommunicationCategory.TRANSACTIONAL,
+              templateKey: NotificationTemplateKey.PAYMENT_FAILED,
+              to: user.phone,
+              vars: {
+                customer_name: user.firstName || "there",
+                order_id: order.orderNumber,
+              },
+              refs: { userId: order.userId.toString(), orderId: order._id.toString() },
+            });
+          })
+          .catch((err: Error) =>
+            logger.error(`WhatsApp payment_failed dispatch failed for order ${orderId}:`, err),
+          );
       }
       logger.info(`Payment attempt logged for order ${orderId}, status: failed`);
     } catch (error) {
