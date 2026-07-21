@@ -26,6 +26,36 @@ export interface WhatsAppProvider {
   sendTemplate(input: WhatsAppSendInput): Promise<WhatsAppSendResult>;
 }
 
+/** True when a Cunnekt API key looks like a real credential, not empty or a
+ * leftover placeholder (`your_key_here`, `changeme`, etc). Used to decide
+ * between a real send and a clean CONFIGURATION_ERROR — never a silent
+ * "success" — when credentials aren't actually configured. */
+function isUsableKey(key: string | undefined | null): boolean {
+  if (!key || !key.trim()) return false;
+  return !/^(your_|changeme|placeholder|xxx)/i.test(key.trim());
+}
+
+let hasWarnedAboutDeprecatedApiVersion = false;
+
+/**
+ * `CUNNEKT_API_VERSION` used to select between "legacy" and a fabricated,
+ * never-confirmed "rest-v1" generation. That second generation has been
+ * removed (see CunnektWhatsAppProvider's class doc comment) — the field is
+ * now a no-op, kept only so an existing `.env` doesn't error. Warn once at
+ * startup if it's set to anything other than unset/"legacy" so a stale
+ * `rest-v1` value doesn't silently go unnoticed.
+ */
+function warnIfDeprecatedApiVersionSet(): void {
+  if (hasWarnedAboutDeprecatedApiVersion) return;
+  const value = config.whatsapp.cunnektApiVersion;
+  if (value && value !== "legacy") {
+    hasWarnedAboutDeprecatedApiVersion = true;
+    logger.warn(
+      `CUNNEKT_API_VERSION="${value}" is deprecated and ignored — Cunnekt only has one confirmed send API (POST {CUNNEKT_BASE_URL}/sendnotification). Remove this env var; it no longer selects any behavior.`,
+    );
+  }
+}
+
 /**
  * Logs the rendered message instead of calling a real API. Used whenever
  * WHATSAPP_PROVIDER=dev or COMMUNICATION_TEST_MODE=true — local/dev work can
@@ -54,73 +84,103 @@ export class DevWhatsAppProvider implements WhatsAppProvider {
 }
 
 /**
+ * Returned by getWhatsAppProvider() instead of a real send whenever
+ * WHATSAPP_PROVIDER=cunnekt but CUNNEKT_API_KEY is missing/placeholder AND
+ * COMMUNICATION_TEST_MODE is not explicitly true. A broken production
+ * config must fail loudly (CONFIGURATION_ERROR, log marked FAILED) — it
+ * must NEVER silently simulate a successful send via the dev provider.
+ * Real dev-mode fake sends only happen through COMMUNICATION_TEST_MODE=true.
+ */
+export class MisconfiguredWhatsAppProvider implements WhatsAppProvider {
+  name = "Misconfigured";
+
+  constructor(private readonly reason: string) {}
+
+  async testConnection(): Promise<boolean> {
+    return false;
+  }
+
+  async sendTemplate(_input: WhatsAppSendInput): Promise<WhatsAppSendResult> {
+    logger.error(`WhatsApp send blocked — ${this.reason}`);
+    return {
+      success: false,
+      errorCode: "CONFIGURATION_ERROR",
+      errorMessage: this.reason,
+      isRetryable: false,
+    };
+  }
+}
+
+/**
  * Cunnekt WhatsApp Business API client.
  *
- * Cunnekt exposes two incompatible API generations (see
- * doc/CUNNEKT_API_GUIDE.md §1). Neither is guessed here — `CUNNEKT_API_VERSION`
- * selects which one this workspace's dashboard actually generates:
+ * CUNNEKT_BASE_URL is the *full* base as shown on Cunnekt's own dashboard
+ * ("API Setting" page), which already includes the version segment, e.g.
+ * `https://app2.cunnekt.com/v1`. Endpoint paths below are appended directly
+ * to that base, not re-prefixed with their own version segment.
  *
- *   - "legacy":  POST {baseUrl}/api/v1/whatsapp/sendtemplate
- *                body { mobile, templateid, overridebot, template: { components } }
- *   - "rest-v1": POST {baseUrl}/restapi/v1/whatsapp/sendtemplate
- *                body { messaging_product, recipient_type, to, type, template: { name, language, components } }
+ * CONFIRMED against Cunnekt's real "Template Sending API" documentation
+ * (plain, with-variables, with-media-header, and carousel examples all
+ * share this endpoint):
  *
- * `NotificationTemplate.providerTemplateName` is sent as `templateid` in
- * legacy mode and as `template.name` in rest-v1 mode — same DB field, per
- * the field the target API actually expects.
+ *   POST {baseUrl}/sendnotification
+ *   headers: { "API-KEY": <key> }
+ *   body:   { mobile, templateid }                          — no variables
+ *           { mobile, templateid, template: { components } } — with variables
  *
- * ⚠️ Per the guide's §36 production rule, this still has NOT been validated
- * against a real dashboard-generated payload for this account. Before
- * go-live: open the Cunnekt dashboard → template → "API Payload" action,
- * confirm it matches the mode selected here, and correct CUNNEKT_API_VERSION
- * / CUNNEKT_BASE_URL if not.
+ * `template.components` is an array of `{ type, parameters }` blocks:
+ *   - `{ type: "body", parameters: [{ type: "text", text }, ...] }` fills
+ *     `{{1}}, {{2}}, ...` in the template body, positionally.
+ *   - `{ type: "header", parameters: [{ type: "image"|"document"|"video",
+ *     image|document|video: { link, filename? } }] }` fills a media header
+ *     — NOT implemented here (no current NotificationTemplate uses a media
+ *     header); extend `buildRequest()`/`WhatsAppSendInput` if one is added.
+ *   - Omit the `body` block entirely when the template has no body
+ *     variables (per the docs); omit `template` entirely when there's
+ *     nothing in it at all.
  *
- * ⚠️ Success-response shape is unconfirmed for both generations (doc §24 —
- * "do not hard-code a guessed field... without a captured response"). The
- * Meta Cloud API shape (`messages[0].id`) is tried first as a best guess,
- * with fallbacks, and the full raw response is always logged/stored so the
- * real field can be identified from a live send.
+ * `NotificationTemplate.providerTemplateName` is sent as `templateid`.
+ *
+ * A previously-guessed second "rest-v1" generation (`/restapi/whatsapp/...`,
+ * a Meta-Cloud-API-style body) was removed — nothing across every real
+ * Cunnekt doc seen supports it existing at all; it was never confirmed and
+ * risked silently routing a real send into an endpoint that doesn't exist.
+ * `CUNNEKT_API_VERSION` is now a no-op, kept only for `.env` compatibility.
+ *
+ * ⚠️ Success-response shape is still unconfirmed — Cunnekt's docs don't show
+ * one. The Meta Cloud API shape (`messages[0].id`) is tried first as a best
+ * guess, with fallbacks, and the full raw response is always logged/stored
+ * so the real field can be identified from a live send.
  */
 export class CunnektWhatsAppProvider implements WhatsAppProvider {
   name = "Cunnekt";
 
   private baseUrl = config.whatsapp.cunnektBaseUrl;
   private apiKey = config.whatsapp.cunnektApiKey;
-  private apiVersion = config.whatsapp.cunnektApiVersion;
 
   constructor() {
-    if (!this.apiKey) {
-      throw new Error("Cunnekt credentials not configured (CUNNEKT_API_KEY)");
+    // Secondary guard — getWhatsAppProvider() already checks isUsableKey()
+    // before constructing this class, so this should be unreachable via
+    // that path, but keeps direct instantiation safe too.
+    if (!isUsableKey(this.apiKey)) {
+      throw new Error(
+        "Cunnekt API key missing or still a placeholder (CUNNEKT_API_KEY)",
+      );
     }
+    warnIfDeprecatedApiVersionSet();
   }
 
   /**
-   * rest-v1 has a documented read endpoint (GET .../whatsapp/templates,
-   * doc §13) used as a real connection probe. Legacy has no documented
-   * health/list endpoint at all (doc §34) — inventing one would violate the
-   * guide's "don't guess" rule, so legacy mode only confirms credentials
-   * are configured, not that they're valid.
+   * Cunnekt's confirmed docs (sendnotification + getmediafile) don't include
+   * a health/connection-test endpoint — inventing one would violate the
+   * "don't guess" rule, so this only confirms an API key is configured, not
+   * that it's valid.
    */
   async testConnection(): Promise<boolean> {
-    if (this.apiVersion === "legacy") {
-      logger.warn(
-        "Cunnekt legacy API has no documented connection-test endpoint; testConnection() only confirms an API key is configured.",
-      );
-      return Boolean(this.apiKey);
-    }
-
-    try {
-      const response = await fetch(
-        `${this.baseUrl}/restapi/v1/whatsapp/templates`,
-        {
-          method: "GET",
-          headers: { "API-KEY": this.apiKey },
-        },
-      );
-      return response.status !== 401 && response.status !== 403;
-    } catch {
-      return false;
-    }
+    logger.warn(
+      "Cunnekt API has no documented connection-test endpoint; testConnection() only confirms an API key is configured.",
+    );
+    return isUsableKey(this.apiKey);
   }
 
   private buildRequest(input: WhatsAppSendInput): {
@@ -141,30 +201,18 @@ export class CunnektWhatsAppProvider implements WhatsAppProvider {
           ]
         : [];
 
-    if (this.apiVersion === "rest-v1") {
-      return {
-        url: `${this.baseUrl}/restapi/v1/whatsapp/sendtemplate`,
-        body: {
-          messaging_product: "whatsapp",
-          recipient_type: "individual",
-          to: input.to,
-          type: "template",
-          template: {
-            name: input.templateId,
-            language: { code: input.languageCode || "en" },
-            components,
-          },
-        },
-      };
-    }
-
+    // CONFIRMED against Cunnekt's real "Template Sending API" docs (both the
+    // plain and the with-media/variables samples). `template` is omitted
+    // entirely when there's nothing to put in it (no header, no body
+    // variables), matching the docs' plain `{ mobile, templateid }` example
+    // exactly. No `overridebot` field — that was an earlier unconfirmed
+    // guess, not part of the real payload.
     return {
-      url: `${this.baseUrl}/api/v1/whatsapp/sendtemplate`,
+      url: `${this.baseUrl}/sendnotification`,
       body: {
         mobile: input.to,
         templateid: input.templateId,
-        overridebot: "no",
-        template: { components },
+        ...(components.length > 0 ? { template: { components } } : {}),
       },
     };
   }
@@ -239,13 +287,20 @@ export function getWhatsAppProvider(): WhatsAppProvider {
 
   switch (config.whatsapp.provider.toLowerCase()) {
     case "cunnekt":
+      if (!isUsableKey(config.whatsapp.cunnektApiKey)) {
+        // COMMUNICATION_TEST_MODE already won above — this is a real
+        // (non-test) environment with no usable Cunnekt key. Fail clearly
+        // instead of quietly falling back to a fake "sent".
+        return new MisconfiguredWhatsAppProvider(
+          "Cunnekt API key missing or still a placeholder (CUNNEKT_API_KEY) — set a real key from the Cunnekt dashboard",
+        );
+      }
       try {
         return new CunnektWhatsAppProvider();
       } catch (error: any) {
-        logger.error(
-          `Failed to initialize Cunnekt provider, falling back to dev: ${error.message}`,
+        return new MisconfiguredWhatsAppProvider(
+          `Failed to initialize Cunnekt provider: ${error.message}`,
         );
-        return new DevWhatsAppProvider();
       }
 
     case "dev":

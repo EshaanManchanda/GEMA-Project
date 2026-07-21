@@ -10,6 +10,21 @@ import { config } from "../../config/env";
 import { sanitizeToE164 } from "../../utils/phoneValidation";
 import { resolveTemplate } from "./template.service";
 import logger from "../../config/logger";
+import { runCommunicationJob } from "./deliver.service";
+
+/**
+ * Inline (no-queue) delivery is only ever attempted in dev/test with Redis
+ * explicitly disabled. In production a missing queue must fail clearly
+ * (QUEUE_DISABLED) rather than send synchronously and bypass BullMQ's
+ * retry/backoff semantics — a blocking provider call inside a request
+ * handler is not an acceptable production behavior.
+ */
+function isInlineDeliveryAllowed(): boolean {
+  return (
+    process.env.DISABLE_REDIS === "true" &&
+    (config.nodeEnv === "development" || config.nodeEnv === "test")
+  );
+}
 
 /**
  * Strict job types for the communication worker (Phase 2). Keeping this a
@@ -38,6 +53,7 @@ export const NON_RETRYABLE_ERROR_CODES = new Set([
   "CONSENT_DENIED",
   "MISSING_VARIABLES",
   "QUEUE_DISABLED",
+  "CONFIGURATION_ERROR",
 ]);
 
 export interface DispatchRefs {
@@ -198,18 +214,9 @@ export async function dispatch(
     recipientEmail = input.to.trim().toLowerCase();
   }
 
-  if (!communicationQueue) {
-    logger.warn(
-      `Communication queue disabled — dropping dispatch for ${input.templateKey} to ${input.to}`,
-    );
-    return failLog(
-      idempotencyKey,
-      baseFields,
-      "QUEUE_DISABLED",
-      "Communication queue is disabled (Redis unavailable)",
-    );
-  }
-
+  // Write the log as QUEUED first — every path below (queued, inline-sent,
+  // inline-failed, enqueue-failed) starts from this same row so the DB
+  // never disagrees with what actually happened.
   const log = await CommunicationLog.findOneAndUpdate(
     { idempotencyKey },
     {
@@ -228,17 +235,56 @@ export async function dispatch(
     { upsert: true, new: true },
   );
 
-  await communicationQueue.add(input.jobType, {
+  const jobData = {
     logId: log._id.toString(),
     jobType: input.jobType,
-    to: recipientPhone || recipientEmail,
+    to: (recipientPhone || recipientEmail)!,
     templateKey: input.templateKey,
     providerTemplateName: resolved.template.providerTemplateName,
     languageCode: input.languageCode || "en",
     vars: input.vars,
-  });
+  };
 
-  return log;
+  if (communicationQueue) {
+    try {
+      await communicationQueue.add(input.jobType, jobData);
+    } catch (error: any) {
+      // The log was already written QUEUED above — if the enqueue itself
+      // fails (e.g. Redis auth rejected), that row must not be left
+      // permanently "queued" with no job behind it. Flip it to FAILED
+      // before rethrowing so the admin UI shows the real state.
+      log.status = CommunicationStatus.FAILED;
+      log.errorCode = "QUEUE_ENQUEUE_FAILED";
+      log.errorMessage =
+        error?.message || "Failed to enqueue communication job";
+      log.failedAt = new Date();
+      await log.save();
+      throw error;
+    }
+    return log;
+  }
+
+  if (isInlineDeliveryAllowed()) {
+    logger.warn(
+      `Communication queue disabled — sending ${input.templateKey} to ${input.to} inline (dev/test only)`,
+    );
+    await runCommunicationJob(jobData, {
+      allowThrowOnRetryable: false,
+      timeoutMs: 10_000,
+    });
+    const updated = await CommunicationLog.findById(log._id);
+    return updated || log;
+  }
+
+  logger.warn(
+    `Communication queue disabled — dropping dispatch for ${input.templateKey} to ${input.to}`,
+  );
+  return failLog(
+    idempotencyKey,
+    baseFields,
+    "QUEUE_DISABLED",
+    "Communication queue is disabled (Redis unavailable)",
+  );
 }
 
 /**
@@ -255,7 +301,14 @@ export async function retryLog(logId: string): Promise<ICommunicationLog> {
       `Log ${logId} failed with non-retryable error "${log.errorCode}" — cannot retry`,
     );
   }
-  if (!communicationQueue) {
+  // Guard against a concurrent retry click (or a retry racing an in-flight
+  // send) firing twice — only a terminal FAILED log may be retried.
+  if (log.status !== CommunicationStatus.FAILED) {
+    throw new Error(
+      `Log ${logId} is currently "${log.status}" — only a failed log can be retried`,
+    );
+  }
+  if (!communicationQueue && !isInlineDeliveryAllowed()) {
     throw new Error("Communication queue is disabled");
   }
 
@@ -265,15 +318,37 @@ export async function retryLog(logId: string): Promise<ICommunicationLog> {
   log.errorMessage = undefined;
   await log.save();
 
-  await communicationQueue.add(CommunicationJobType.RETRY_LOG, {
+  const jobData = {
     logId: log._id.toString(),
     jobType: CommunicationJobType.RETRY_LOG,
-    to: log.recipientPhone || log.recipientEmail,
+    to: (log.recipientPhone || log.recipientEmail)!,
     templateKey: log.templateKey,
     providerTemplateName: log.providerTemplateName,
     languageCode: "en",
     vars: log.vars || {},
-  });
+  };
 
-  return log;
+  if (communicationQueue) {
+    try {
+      await communicationQueue.add(CommunicationJobType.RETRY_LOG, jobData);
+    } catch (error: any) {
+      log.status = CommunicationStatus.FAILED;
+      log.errorCode = "QUEUE_ENQUEUE_FAILED";
+      log.errorMessage = error?.message || "Failed to enqueue retry job";
+      log.failedAt = new Date();
+      await log.save();
+      throw error;
+    }
+    return log;
+  }
+
+  // Queue disabled, inline delivery allowed (dev/test) — run once. The
+  // shared runner's idempotency guard also protects against this racing a
+  // send that completed between the status check above and now.
+  await runCommunicationJob(jobData, {
+    allowThrowOnRetryable: false,
+    timeoutMs: 10_000,
+  });
+  const updated = await CommunicationLog.findById(log._id);
+  return updated || log;
 }

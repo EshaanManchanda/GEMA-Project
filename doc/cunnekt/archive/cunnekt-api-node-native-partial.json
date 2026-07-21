@@ -1,0 +1,73 @@
+{
+  "_superseded": {
+    "date": "2026-07-21",
+    "reason": "This file is a self-described 'partial'/'unverified' AI-reconstructed extraction of Cunnekt's Postman docs (see its own 'status'/'reason'/'unverifiedFields' fields below). Its one concrete claim — POST {base}/whatsapp/sendtemplate — is WRONG and directly contradicted by real Postman documentation the project owner copy-pasted verbatim from Cunnekt's own docs site, which confirms the actual endpoint is POST {CUNNEKT_BASE_URL}/sendnotification (see backend/src/services/communication/providers/whatsapp.provider.ts class doc comment for the confirmed shape, including template variables and media headers).",
+    "doNotUse": "Do not use this file as a source of truth for the Cunnekt API. It is kept only for historical reference of what was tried before real documentation was obtained."
+  },
+  "name": "Cunnekt API - verified public extraction",
+  "status": "partial",
+  "reason": "The supplied Postman documentation is JavaScript-rendered and did not expose the full machine-readable collection through the public document fetch. Only endpoints and fields directly visible in indexed official Postman/Cunnekt pages are included.",
+  "baseUrlCandidates": [
+    {
+      "url": "https://app.cunnekt.com/api/v1",
+      "status": "mentioned in project context; confirm against Cunnekt dashboard API Payload"
+    },
+    {
+      "url": "https://app2.cunnekt.com/v1",
+      "status": "legacy/account-dependent candidate; confirm before production use"
+    }
+  ],
+  "authentication": {
+    "header": "API-KEY",
+    "value": "{{CUNNEKT_API_KEY}}",
+    "status": "supported by Cunnekt developer material/project provider investigation; confirm exact casing in dashboard"
+  },
+  "endpoints": [
+    {
+      "name": "Send Template Message",
+      "method": "POST",
+      "path": "/whatsapp/sendtemplate",
+      "confirmedRequestFields": {
+        "mobile": {
+          "example": "919876543210",
+          "description": "Receiver mobile number with country code"
+        },
+        "templateid": {
+          "example": "1036659577939498",
+          "description": "Approved Cunnekt/WhatsApp template ID"
+        }
+      },
+      "sampleBody": {
+        "mobile": "919876543210",
+        "templateid": "1036659577939498"
+      },
+      "unverifiedFields": [
+        "template variable/parameter field",
+        "media/header field",
+        "button parameter field",
+        "callback/reference field",
+        "response message ID field"
+      ],
+      "nodeNativeFetch": "const response = await fetch(\n  `${process.env.CUNNEKT_BASE_URL}/whatsapp/sendtemplate`,\n  {\n    method: \"POST\",\n    headers: {\n      \"Content-Type\": \"application/json\",\n      \"API-KEY\": process.env.CUNNEKT_API_KEY\n    },\n    body: JSON.stringify({\n      mobile: \"919876543210\",\n      templateid: \"1036659577939498\"\n    }),\n    signal: AbortSignal.timeout(15000)\n  }\n);\n\nconst text = await response.text();\nlet body;\ntry {\n  body = text ? JSON.parse(text) : null;\n} catch {\n  body = text;\n}\n\nif (!response.ok) {\n  throw new Error(`Cunnekt ${response.status}: ${JSON.stringify(body)}`);\n}\n\nconsole.log(body);",
+      "nodeNativeHttps": "import https from \"node:https\";\n\nconst body = JSON.stringify({\n  mobile: \"919876543210\",\n  templateid: \"1036659577939498\"\n});\n\nconst baseUrl = new URL(process.env.CUNNEKT_BASE_URL);\n\nconst request = https.request(\n  {\n    protocol: baseUrl.protocol,\n    hostname: baseUrl.hostname,\n    port: baseUrl.port || 443,\n    path: `${baseUrl.pathname.replace(/\\/$/, \"\")}/whatsapp/sendtemplate`,\n    method: \"POST\",\n    headers: {\n      \"Content-Type\": \"application/json\",\n      \"Content-Length\": Buffer.byteLength(body),\n      \"API-KEY\": process.env.CUNNEKT_API_KEY\n    },\n    timeout: 15000\n  },\n  (response) => {\n    let raw = \"\";\n\n    response.setEncoding(\"utf8\");\n    response.on(\"data\", (chunk) => {\n      raw += chunk;\n    });\n\n    response.on(\"end\", () => {\n      let parsed;\n      try {\n        parsed = raw ? JSON.parse(raw) : null;\n      } catch {\n        parsed = raw;\n      }\n\n      if (\n        response.statusCode === undefined ||\n        response.statusCode < 200 ||\n        response.statusCode >= 300\n      ) {\n        console.error(\"Cunnekt request failed\", {\n          statusCode: response.statusCode,\n          body: parsed\n        });\n        return;\n      }\n\n      console.log(parsed);\n    });\n  }\n);\n\nrequest.on(\"timeout\", () => {\n  request.destroy(new Error(\"Cunnekt request timed out\"));\n});\n\nrequest.on(\"error\", (error) => {\n  console.error(\"Cunnekt request error:\", error.message);\n});\n\nrequest.write(body);\nrequest.end();"
+    }
+  ],
+  "requiredForCompleteExtraction": {
+    "preferred": "Export the Cunnekt Postman collection as Collection v2.1 JSON and upload it.",
+    "alternatives": [
+      "Share the public Run in Postman collection link containing a read-only access key.",
+      "Download and upload the collection JSON from Postman.",
+      "Copy the endpoint list and API Payload examples from the logged-in Cunnekt dashboard."
+    ],
+    "resultAfterExport": [
+      "Every endpoint and HTTP method",
+      "Headers and authentication",
+      "Path and query parameters",
+      "Exact sample request bodies",
+      "Sample responses",
+      "Node.js native fetch examples",
+      "Node.js node:https examples",
+      "Environment variable template"
+    ]
+  }
+}

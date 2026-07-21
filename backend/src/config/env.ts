@@ -162,8 +162,17 @@ interface Config {
   };
   whatsapp: {
     provider: string;
-    /** Which Cunnekt API generation the connected dashboard/workspace generates. See doc/CUNNEKT_API_GUIDE.md §1/§29 — never guessed, must match the dashboard's own "API Payload" output. */
-    cunnektApiVersion: "legacy" | "rest-v1";
+    /**
+     * @deprecated Cunnekt only has one confirmed send API (`POST
+     * {CUNNEKT_BASE_URL}/sendnotification`) — the previously-guessed
+     * "rest-v1" generation was never real for this account and has been
+     * removed from CunnektWhatsAppProvider. This field is read (not
+     * dropped) only so an existing `.env` with `CUNNEKT_API_VERSION` set
+     * doesn't error; it no longer selects any behavior. See
+     * whatsapp.provider.ts's one-time startup warning if it's set to
+     * anything other than "legacy"/unset.
+     */
+    cunnektApiVersion: string;
     cunnektBaseUrl: string;
     cunnektApiKey: string;
     cunnektWebhookSecret: string;
@@ -390,11 +399,16 @@ export const config: Config = {
   },
   whatsapp: {
     provider: process.env.WHATSAPP_PROVIDER || "dev",
-    cunnektApiVersion:
-      (process.env.CUNNEKT_API_VERSION || "legacy") === "rest-v1"
-        ? "rest-v1"
-        : "legacy",
-    cunnektBaseUrl: process.env.CUNNEKT_BASE_URL || "https://app.cunnekt.com",
+    // @deprecated — kept only so an old .env value doesn't error; see the
+    // Config type's doc comment and whatsapp.provider.ts's startup warning.
+    cunnektApiVersion: process.env.CUNNEKT_API_VERSION || "legacy",
+    // Trailing slash stripped defensively — buildRequest() in
+    // whatsapp.provider.ts always joins with a leading "/", so a base URL
+    // with its own trailing slash would produce a double "//" in every
+    // request path regardless of what's pasted into CUNNEKT_BASE_URL.
+    cunnektBaseUrl: (
+      process.env.CUNNEKT_BASE_URL || "https://app.cunnekt.com"
+    ).replace(/\/+$/, ""),
     cunnektApiKey: process.env.CUNNEKT_API_KEY || "",
     cunnektWebhookSecret: process.env.CUNNEKT_WEBHOOK_SECRET || "",
   },

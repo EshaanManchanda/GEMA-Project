@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { Plus, Pencil, Trash2, X, Save } from 'lucide-react';
+import { Plus, Pencil, Trash2, X, Save, Wand2 } from 'lucide-react';
 import toast from 'react-hot-toast';
 import notificationTemplateAPI, {
   NotificationTemplate,
@@ -12,6 +12,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/Card';
 import Input from '@/components/ui/Input';
 import Select from '@/components/ui/Select';
 import Badge from '@/components/ui/Badge';
+import { findSampleTemplate } from './sampleWhatsappTemplates';
 
 const CHANNEL_OPTIONS = [
   { value: 'whatsapp', label: 'WhatsApp' },
@@ -170,9 +171,27 @@ const NotificationTemplatesTab: React.FC = () => {
             <div className="grid md:grid-cols-2 gap-3">
               <Input
                 label="Template Key"
-                placeholder="e.g. custom_new_flow"
+                placeholder="e.g. booking_confirmed, custom_new_flow"
                 value={createForm.key}
-                onChange={(e) => setCreateForm({ ...createForm, key: e.target.value })}
+                onChange={(e) => {
+                  const key = e.target.value;
+                  const sample = findSampleTemplate(key);
+                  // Auto-fill from the Setup Guide sample only into fields
+                  // still blank — never clobber something already typed.
+                  setCreateForm((prev) => ({
+                    ...prev,
+                    key,
+                    bodyText: sample && !prev.bodyText ? sample.body : prev.bodyText,
+                    requiredVariablesCsv:
+                      sample && !prev.requiredVariablesCsv
+                        ? sample.variables.join(', ')
+                        : prev.requiredVariablesCsv,
+                    providerTemplateName:
+                      sample && !prev.providerTemplateName
+                        ? sample.providerTemplateName
+                        : prev.providerTemplateName,
+                  }));
+                }}
               />
               <Input
                 label="Cunnekt Template ID"
@@ -194,7 +213,29 @@ const NotificationTemplatesTab: React.FC = () => {
               />
             </div>
             <div className="space-y-1">
-              <label className="text-sm font-medium text-gray-700 block">Body copy (local preview only)</label>
+              <div className="flex items-center justify-between">
+                <label className="text-sm font-medium text-gray-700 block">Body copy (local preview only)</label>
+                {findSampleTemplate(createForm.key) && (
+                  <Button
+                    size="sm"
+                    variant="outline"
+                    leftIcon={<Wand2 className="w-3 h-3" />}
+                    onClick={() => {
+                      const sample = findSampleTemplate(createForm.key);
+                      if (!sample) return;
+                      setCreateForm((prev) => ({
+                        ...prev,
+                        bodyText: sample.body,
+                        requiredVariablesCsv: sample.variables.join(', '),
+                        providerTemplateName: prev.providerTemplateName || sample.providerTemplateName,
+                      }));
+                      toast.success('Body copy filled from Setup Guide sample');
+                    }}
+                  >
+                    Use Setup Guide sample
+                  </Button>
+                )}
+              </div>
               <textarea
                 className="w-full rounded-xl border border-gray-200 bg-white px-4 py-2 text-sm font-mono focus:outline-none focus:ring-2 focus:ring-primary-400"
                 rows={3}
@@ -280,7 +321,28 @@ const NotificationTemplatesTab: React.FC = () => {
                       onChange={(e) => setEditState({ ...editState, providerTemplateName: e.target.value })}
                     />
                     <div className="space-y-1">
-                      <label className="text-sm font-medium text-gray-700 block">Body copy (local preview only)</label>
+                      <div className="flex items-center justify-between">
+                        <label className="text-sm font-medium text-gray-700 block">Body copy (local preview only)</label>
+                        {findSampleTemplate(t.key) && (
+                          <Button
+                            size="sm"
+                            variant="outline"
+                            leftIcon={<Wand2 className="w-3 h-3" />}
+                            onClick={() => {
+                              const sample = findSampleTemplate(t.key);
+                              if (!sample || !editState) return;
+                              setEditState({
+                                ...editState,
+                                bodyText: sample.body,
+                                requiredVariablesCsv: sample.variables.join(', '),
+                              });
+                              toast.success('Body copy reset to Setup Guide sample');
+                            }}
+                          >
+                            Reset to Setup Guide sample
+                          </Button>
+                        )}
+                      </div>
                       <textarea
                         className="w-full rounded-xl border border-gray-200 bg-white px-4 py-2 text-sm font-mono focus:outline-none focus:ring-2 focus:ring-primary-400"
                         rows={3}
@@ -323,9 +385,28 @@ const NotificationTemplatesTab: React.FC = () => {
                     </Button>
                   </div>
                 ) : (
-                  <p className="text-sm text-gray-600 mt-2 whitespace-pre-wrap">
-                    {t.bodyText || <span className="text-gray-400 italic">no local body copy set</span>}
-                  </p>
+                  (() => {
+                    const sample = findSampleTemplate(t.key);
+                    if (t.bodyText) {
+                      return (
+                        <p className="text-sm text-gray-600 mt-2 whitespace-pre-wrap">{t.bodyText}</p>
+                      );
+                    }
+                    if (sample) {
+                      return (
+                        <div className="mt-2">
+                          <p className="text-sm text-gray-600 whitespace-pre-wrap">{sample.body}</p>
+                          <p className="text-xs text-gray-400 italic mt-1">
+                            Default from Setup Guide sample — not yet saved locally. Click Edit → "Reset to Setup
+                            Guide sample" to save it.
+                          </p>
+                        </div>
+                      );
+                    }
+                    return (
+                      <p className="text-sm text-gray-400 italic mt-2">no local body copy set</p>
+                    );
+                  })()
                 )}
               </div>
             ))}

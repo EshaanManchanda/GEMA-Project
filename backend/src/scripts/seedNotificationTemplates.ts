@@ -28,8 +28,10 @@ const templates = [
     provider: "cunnekt",
     purpose: CommunicationCategory.TRANSACTIONAL,
     providerTemplateName: "kidrove_booking_confirmed",
+    // WhatsApp template rule: a variable can't be the first or last token in
+    // the body — trailing text added after {{ticket_link}} to satisfy that.
     bodyText:
-      'Hi {{customer_name}}, your booking for *{{event_title}}* on {{event_date}} is confirmed! Booking ID: {{booking_id}}. Get your ticket here: {{ticket_link}}',
+      "Hi {{customer_name}}, your booking for *{{event_title}}* on {{event_date}} is confirmed! Booking ID: {{booking_id}}. Tap to view your ticket: {{ticket_link}}. See you there!",
     requiredVariables: [
       "customer_name",
       "event_title",
@@ -65,7 +67,7 @@ const templates = [
     purpose: CommunicationCategory.TRANSACTIONAL,
     providerTemplateName: "kidrove_event_reminder_24h",
     bodyText:
-      'Reminder: *{{event_title}}* is happening tomorrow, {{event_date}} at {{event_time}}. Location/link: {{location_or_link}}. See you there!',
+      "Reminder: *{{event_title}}* is happening tomorrow, {{event_date}} at {{event_time}}. Location/link: {{location_or_link}}. See you there!",
     requiredVariables: [
       "event_title",
       "event_date",
@@ -79,8 +81,11 @@ const templates = [
     provider: "cunnekt",
     purpose: CommunicationCategory.TRANSACTIONAL,
     providerTemplateName: "kidrove_event_reminder_2h",
+    // WhatsApp template rule: a variable can't be the first or last token in
+    // the body — trailing text added after {{location_or_link}} (a bare
+    // period right after a variable isn't reliably enough for some templates).
     bodyText:
-      'Starting soon: *{{event_title}}* begins today at {{event_time}} ({{event_date}}). Location/link: {{location_or_link}}.',
+      "Starting soon: *{{event_title}}* begins today at {{event_time}} ({{event_date}}). Location/link: {{location_or_link}}. Don't miss it!",
     requiredVariables: [
       "event_title",
       "event_date",
@@ -114,8 +119,10 @@ const templates = [
     provider: "cunnekt",
     purpose: CommunicationCategory.TRANSACTIONAL,
     providerTemplateName: "kidrove_certificate_issued",
+    // WhatsApp template rule: a variable can't be the first or last token in
+    // the body — trailing text added after {{certificate_link}}.
     bodyText:
-      'Congratulations {{student_name}}! Your certificate for *{{competition_name}}* is ready. Download it here: {{certificate_link}}',
+      "Congratulations {{student_name}}! Your certificate for *{{competition_name}}* is ready. Download it here: {{certificate_link}}. Well done!",
     requiredVariables: ["student_name", "competition_name", "certificate_link"],
   },
   {
@@ -124,8 +131,10 @@ const templates = [
     provider: "cunnekt",
     purpose: CommunicationCategory.OTP,
     providerTemplateName: "kidrove_phone_verification_otp",
+    // WhatsApp template rule: a variable can't be the first or last token in
+    // the body — leading text added before {{otp_code}}.
     bodyText:
-      "*{{otp_code}}* is your Kidrove verification code. It expires in {{expiry_minutes}} minutes. Do not share this code with anyone.",
+      "Your Kidrove verification code is *{{otp_code}}*. It expires in {{expiry_minutes}} minutes. Do not share this code with anyone.",
     requiredVariables: ["otp_code", "expiry_minutes"],
   },
   {
@@ -135,7 +144,7 @@ const templates = [
     purpose: CommunicationCategory.TRANSACTIONAL,
     providerTemplateName: "kidrove_ticket_delivery",
     bodyText:
-      'Your ticket is ready! Ticket #{{ticket_number}} for *{{event_title}}* on {{event_date}} at {{venue}}. Please have this ready at entry.',
+      "Your ticket is ready! Ticket #{{ticket_number}} for *{{event_title}}* on {{event_date}} at {{venue}}. Please have this ready at entry.",
     requiredVariables: ["ticket_number", "event_title", "event_date", "venue"],
   },
   {
@@ -144,8 +153,10 @@ const templates = [
     provider: "cunnekt",
     purpose: CommunicationCategory.TRANSACTIONAL,
     providerTemplateName: "kidrove_event_review_request",
+    // WhatsApp template rule: a variable can't be the first or last token in
+    // the body — trailing text added after {{review_link}}.
     bodyText:
-      "Hi {{customer_name}}, how was *{{event_title}}*? We'd love your feedback — leave a quick review here: {{review_link}}",
+      "Hi {{customer_name}}, how was *{{event_title}}*? We'd love your feedback — leave a quick review here: {{review_link}}. Thank you!",
     requiredVariables: ["customer_name", "event_title", "review_link"],
   },
   {
