@@ -6,6 +6,7 @@ import Vendor, {
 import User from "../models/User";
 import { Types } from "mongoose";
 import logger from "../config/logger";
+import { shouldAutoApproveVendors } from "../services/settings.service";
 
 /**
  * Get or create vendor profile for a user
@@ -129,9 +130,24 @@ export async function getOrCreateVendorProfile(
     memberSince: user.createdAt || new Date(),
   });
 
+  // autoApproveVendors governs vendor APPROVAL only — it must stay separate
+  // from email/phone verification, which are tracked independently on User.
+  const autoApprove = await shouldAutoApproveVendors();
+  vendor.verificationStatus = autoApprove
+    ? VerificationStatus.VERIFIED
+    : VerificationStatus.PENDING;
+  // A pending vendor is inactive (blocked from publishing) regardless of
+  // their User.status; an approved vendor still follows the user's own
+  // active/suspended state set above.
+  if (!autoApprove) {
+    vendor.isActive = false;
+  }
+
   await vendor.save();
 
-  logger.info(`✓ Auto-created vendor profile for user ${userId}`);
+  logger.info(
+    `✓ Auto-created vendor profile for user ${userId} (verificationStatus=${vendor.verificationStatus})`,
+  );
 
   return vendor;
 }

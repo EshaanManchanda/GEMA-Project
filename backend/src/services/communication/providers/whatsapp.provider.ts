@@ -246,6 +246,19 @@ export class CunnektWhatsAppProvider implements WhatsAppProvider {
         };
       }
 
+      // Cunnekt returns HTTP 200 even on failure (bad template, bad number,
+      // etc) — the real signal is `status: false` in the body. `response.ok`
+      // alone was letting these through as fake "success" sends.
+      if (responseBody?.status === false) {
+        return {
+          success: false,
+          errorCode: "CUNNEKT_REJECTED",
+          errorMessage: responseBody?.message || "Cunnekt rejected the send",
+          isRetryable: false,
+          raw: responseBody,
+        };
+      }
+
       const providerMessageId =
         responseBody?.messages?.[0]?.id ||
         responseBody?.data?.id ||

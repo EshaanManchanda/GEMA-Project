@@ -138,4 +138,28 @@ describe("CunnektWhatsAppProvider — request shape (confirmed /sendnotification
     const [calledUrl] = (global.fetch as jest.Mock).mock.calls[0];
     expect(calledUrl).toBe("https://app2.cunnekt.com/v1/sendnotification");
   });
+
+  // Regression guard: Cunnekt returns HTTP 200 even when the send itself
+  // failed (e.g. bad templateid) — { status: false, message: "..." } in the
+  // body is the real signal. Checking only response.ok let these through as
+  // fake "success" sends with a log status of SENT.
+  it("treats an HTTP 200 with status:false body as a failed send", async () => {
+    global.fetch = jest.fn().mockResolvedValue({
+      ok: true,
+      status: 200,
+      json: async () => ({ status: false, message: "Invalid Template" }),
+    }) as unknown as typeof fetch;
+    const provider = new CunnektWhatsAppProvider();
+
+    const result = await provider.sendTemplate({
+      to: "+15551234567",
+      templateId: "bad-template-id",
+      variables: {},
+    });
+
+    expect(result.success).toBe(false);
+    expect(result.errorCode).toBe("CUNNEKT_REJECTED");
+    expect(result.errorMessage).toBe("Invalid Template");
+    expect(result.isRetryable).toBe(false);
+  });
 });

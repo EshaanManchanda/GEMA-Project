@@ -258,8 +258,11 @@ const UserSchema = new Schema<IUser>(
       default: false,
     },
     isPhoneVerified: {
+      // Temporary: phone verification system is disabled (see
+      // config.phoneVerification.required); default to verified so no user
+      // is blocked. Revert to `default: false` when resuming the feature.
       type: Boolean,
-      default: false,
+      default: true,
     },
     gender: {
       type: String,

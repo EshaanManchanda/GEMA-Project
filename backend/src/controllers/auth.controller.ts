@@ -25,6 +25,7 @@ import { cacheService } from "../services/cache.service";
 import mediaService from "../services/media.service";
 import { getOrCreateVendorProfile } from "../utils/vendorHelpers";
 import { getOrCreateTeacherProfile } from "../utils/teacherHelpers";
+import { isRegistrationAllowed } from "../services/settings.service";
 import { GOOGLE_ALLOWED_ROLES, GoogleAllowedRole } from "../constants/roles";
 import {
   AuthResponse,
@@ -306,6 +307,15 @@ export const register = async (
 
     if (!email || !password) {
       throw new AppError("Email and password are required", 400);
+    }
+
+    if (!(await isRegistrationAllowed())) {
+      res.status(403).json({
+        success: false,
+        code: "REGISTRATION_DISABLED",
+        message: "New registrations are temporarily disabled.",
+      });
+      return;
     }
 
     // Check if user already exists — neutral response to prevent email enumeration
@@ -1369,8 +1379,19 @@ export const firebaseAuth = async (
       });
     }
 
-    // If user still doesn't exist, create a new one
+    // If user still doesn't exist, create a new one — but only when new public
+    // account creation is currently allowed. Existing/linked accounts above
+    // already passed assertUserCanLogin and are unaffected by this toggle.
     if (!user) {
+      if (!(await isRegistrationAllowed())) {
+        res.status(403).json({
+          success: false,
+          code: "REGISTRATION_DISABLED",
+          message: "New registrations are temporarily disabled.",
+        });
+        return;
+      }
+
       authBranch = "new";
 
       const firstName = firebaseName ? firebaseName.split(" ")[0] : "User";

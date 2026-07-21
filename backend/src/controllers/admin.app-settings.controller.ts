@@ -3,8 +3,49 @@ import SystemSettings from "../models/SystemSettings";
 import EmailSettings from "../models/EmailSettings";
 import PaymentSettings from "../models/PaymentSettings";
 import SocialSettings from "../models/SocialSettings";
+import AuditLog, { AuditAction } from "../models/AuditLog";
 import logger from "../config/logger";
 import { emailService } from "../services/email.service";
+import { invalidateSettingsCache } from "../services/settings.service";
+
+/** Field names that must never be written to the audit log. */
+const SECRET_FIELD_NAMES = new Set([
+  "smtpPassword",
+  "smtpUser",
+  "stripeSecretKey",
+  "stripePublishableKey",
+  "stripeWebhookSecret",
+  "paypalClientSecret",
+  "paypalClientId",
+  "apiKey",
+  "apiSecret",
+  "password",
+]);
+
+/**
+ * Diff two plain objects, returning only the keys whose value actually
+ * changed. Secret-bearing field names are recorded as changed but with
+ * their values redacted rather than logged in the clear.
+ */
+function diffSettings(
+  before: Record<string, unknown>,
+  after: Record<string, unknown>,
+): Record<string, { from: unknown; to: unknown }> {
+  const diff: Record<string, { from: unknown; to: unknown }> = {};
+  for (const key of Object.keys(after)) {
+    const beforeValue = before[key];
+    const afterValue = after[key];
+    if (JSON.stringify(beforeValue) === JSON.stringify(afterValue)) {
+      continue;
+    }
+    if (SECRET_FIELD_NAMES.has(key)) {
+      diff[key] = { from: "[redacted]", to: "[redacted]" };
+    } else {
+      diff[key] = { from: beforeValue, to: afterValue };
+    }
+  }
+  return diff;
+}
 
 /**
  * Get all application settings
@@ -66,9 +107,20 @@ export const updateAppSettings = async (
         SocialSettings.getSettings(),
       ]);
 
+    // Snapshot pre-update values for the audit diff, before Object.assign
+    // mutates the documents in place.
+    const beforeSystem = currentSystem.toObject();
+    const beforeEmail = currentEmail.toObject();
+    const beforePayment = currentPayment.toObject();
+    const beforeSocial = currentSocial.toObject();
+
     // Update each settings document if provided
     if (systemSettings) {
       Object.assign(currentSystem, systemSettings);
+      const admin = req.user;
+      currentSystem.lastModifiedBy = admin
+        ? `${admin.firstName} ${admin.lastName}`.trim() || admin.email
+        : undefined;
     }
 
     if (emailSettings) {
@@ -93,6 +145,31 @@ export const updateAppSettings = async (
       ]);
 
     logger.info("Application settings updated successfully");
+
+    // Bust the settings cache so every instance reads the new values on the
+    // very next request instead of waiting out the TTL.
+    await invalidateSettingsCache();
+
+    // Record who changed what, redacting anything secret. One row covers the
+    // whole request even though it spans four documents, since the admin
+    // submitted them as a single save.
+    const changedFields = {
+      ...diffSettings(beforeSystem, currentSystem.toObject()),
+      ...diffSettings(beforeEmail, currentEmail.toObject()),
+      ...diffSettings(beforePayment, currentPayment.toObject()),
+      ...diffSettings(beforeSocial, currentSocial.toObject()),
+    };
+    if (Object.keys(changedFields).length > 0) {
+      AuditLog.create({
+        action: AuditAction.SETTINGS_UPDATE,
+        userId: req.user?._id || req.user?.id,
+        ip: req.ip,
+        userAgent: req.get("user-agent"),
+        metadata: { changedFields },
+      }).catch((auditError) =>
+        logger.error(`Failed to write settings audit log: ${auditError.message}`),
+      );
+    }
 
     // Reload email transporter if SMTP settings changed
     if (emailSettings && updatedEmail.smtpHost) {

@@ -23,6 +23,12 @@ export const requirePhoneVerification = (
   next: NextFunction,
 ): void => {
   try {
+    // Phone verification is temporarily disabled system-wide — see
+    // config.phoneVerification.required.
+    if (!config.phoneVerification.required) {
+      return next();
+    }
+
     // Check if user is authenticated
     if (!req.user) {
       throw new AppError("Authentication required", 401);
@@ -243,6 +249,12 @@ export const requirePhoneVerificationCustom = (options: {
 
   return (req: Request, res: Response, next: NextFunction): void => {
     try {
+      // Phone verification is temporarily disabled system-wide — see
+      // config.phoneVerification.required.
+      if (!config.phoneVerification.required) {
+        return next();
+      }
+
       // Check if user is authenticated
       if (!req.user) {
         throw new AppError("Authentication required", 401);

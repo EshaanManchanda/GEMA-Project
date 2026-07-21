@@ -13,6 +13,7 @@ export enum AuditAction {
   PAYOUT = "payout",
   ACCOUNT_LOCKED = "account_locked",
   SESSION_REVOKED = "session_revoked",
+  SETTINGS_UPDATE = "settings_update",
 }
 
 export interface IAuditLog extends Document {

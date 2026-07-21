@@ -26,9 +26,11 @@ interface SystemSettings {
   autoApproveVendors: boolean;
   autoApproveReviews: boolean;
   emailNotifications: boolean;
-  smsNotifications: boolean;
+  whatsappNotifications: boolean;
   pushNotifications: boolean;
   animationsEnabled: boolean;
+  lastModifiedBy?: string;
+  updatedAt?: string;
 }
 
 interface EmailSettings {
@@ -93,8 +95,8 @@ const AdminSettingsPage: React.FC = () => {
     autoApproveVendors: false,
     autoApproveReviews: false,
     emailNotifications: true,
-    smsNotifications: false,
-    pushNotifications: true,
+    whatsappNotifications: false,
+    pushNotifications: false,
     animationsEnabled: true,
   });
 
@@ -487,18 +489,25 @@ const AdminSettingsPage: React.FC = () => {
 
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                   <div className="space-y-4">
-                    <div className="flex items-center">
-                      <input
-                        type="checkbox"
-                        id="maintenanceMode"
-                        name="maintenanceMode"
-                        checked={systemSettings.maintenanceMode}
-                        onChange={handleSystemSettingsChange}
-                        className="h-4 w-4 text-primary focus:ring-primary border-gray-300 rounded"
-                      />
-                      <label htmlFor="maintenanceMode" className="ml-2 block text-sm text-gray-700">
-                        Maintenance Mode
-                      </label>
+                    <div>
+                      <div className="flex items-center">
+                        <input
+                          type="checkbox"
+                          id="maintenanceMode"
+                          name="maintenanceMode"
+                          checked={systemSettings.maintenanceMode}
+                          onChange={handleSystemSettingsChange}
+                          className="h-4 w-4 text-primary focus:ring-primary border-gray-300 rounded"
+                        />
+                        <label htmlFor="maintenanceMode" className="ml-2 block text-sm text-gray-700">
+                          Maintenance Mode
+                        </label>
+                      </div>
+                      {systemSettings.maintenanceMode && (
+                        <p className="ml-6 mt-1 text-xs text-amber-600">
+                          Public visitors will be unable to access Kidrove. Admins remain unaffected.
+                        </p>
+                      )}
                     </div>
 
                     <div className="flex items-center">
@@ -515,48 +524,69 @@ const AdminSettingsPage: React.FC = () => {
                       </label>
                     </div>
 
-                    <div className="flex items-center">
-                      <input
-                        type="checkbox"
-                        id="autoApproveEvents"
-                        name="autoApproveEvents"
-                        checked={systemSettings.autoApproveEvents}
-                        onChange={handleSystemSettingsChange}
-                        className="h-4 w-4 text-primary focus:ring-primary border-gray-300 rounded"
-                      />
-                      <label htmlFor="autoApproveEvents" className="ml-2 block text-sm text-gray-700">
-                        Auto-approve Events
-                      </label>
+                    <div>
+                      <div className="flex items-center">
+                        <input
+                          type="checkbox"
+                          id="autoApproveEvents"
+                          name="autoApproveEvents"
+                          checked={systemSettings.autoApproveEvents}
+                          onChange={handleSystemSettingsChange}
+                          className="h-4 w-4 text-primary focus:ring-primary border-gray-300 rounded"
+                        />
+                        <label htmlFor="autoApproveEvents" className="ml-2 block text-sm text-gray-700">
+                          Auto-approve Events
+                        </label>
+                      </div>
+                      {systemSettings.autoApproveEvents && (
+                        <p className="ml-6 mt-1 text-xs text-amber-600">
+                          Vendor events may become public without admin review.
+                        </p>
+                      )}
                     </div>
 
-                    <div className="flex items-center">
-                      <input
-                        type="checkbox"
-                        id="autoApproveVendors"
-                        name="autoApproveVendors"
-                        checked={systemSettings.autoApproveVendors}
-                        onChange={handleSystemSettingsChange}
-                        className="h-4 w-4 text-primary focus:ring-primary border-gray-300 rounded"
-                      />
-                      <label htmlFor="autoApproveVendors" className="ml-2 block text-sm text-gray-700">
-                        Auto-approve Vendors
-                      </label>
+                    <div>
+                      <div className="flex items-center">
+                        <input
+                          type="checkbox"
+                          id="autoApproveVendors"
+                          name="autoApproveVendors"
+                          checked={systemSettings.autoApproveVendors}
+                          onChange={handleSystemSettingsChange}
+                          className="h-4 w-4 text-primary focus:ring-primary border-gray-300 rounded"
+                        />
+                        <label htmlFor="autoApproveVendors" className="ml-2 block text-sm text-gray-700">
+                          Auto-approve Vendors
+                        </label>
+                      </div>
+                      {systemSettings.autoApproveVendors && (
+                        <p className="ml-6 mt-1 text-xs text-amber-600">
+                          New vendors may gain publishing access immediately.
+                        </p>
+                      )}
                     </div>
                   </div>
 
                   <div className="space-y-4">
-                    <div className="flex items-center">
-                      <input
-                        type="checkbox"
-                        id="autoApproveReviews"
-                        name="autoApproveReviews"
-                        checked={systemSettings.autoApproveReviews}
-                        onChange={handleSystemSettingsChange}
-                        className="h-4 w-4 text-primary focus:ring-primary border-gray-300 rounded"
-                      />
-                      <label htmlFor="autoApproveReviews" className="ml-2 block text-sm text-gray-700">
-                        Auto-approve Reviews
-                      </label>
+                    <div>
+                      <div className="flex items-center">
+                        <input
+                          type="checkbox"
+                          id="autoApproveReviews"
+                          name="autoApproveReviews"
+                          checked={systemSettings.autoApproveReviews}
+                          onChange={handleSystemSettingsChange}
+                          className="h-4 w-4 text-primary focus:ring-primary border-gray-300 rounded"
+                        />
+                        <label htmlFor="autoApproveReviews" className="ml-2 block text-sm text-gray-700">
+                          Auto-approve Reviews
+                        </label>
+                      </div>
+                      {systemSettings.autoApproveReviews && (
+                        <p className="ml-6 mt-1 text-xs text-amber-600">
+                          New reviews may appear publicly without moderation.
+                        </p>
+                      )}
                     </div>
 
                     <div className="flex items-center">
@@ -573,35 +603,61 @@ const AdminSettingsPage: React.FC = () => {
                       </label>
                     </div>
 
-                    <div className="flex items-center">
-                      <input
-                        type="checkbox"
-                        id="smsNotifications"
-                        name="smsNotifications"
-                        checked={systemSettings.smsNotifications}
-                        onChange={handleSystemSettingsChange}
-                        className="h-4 w-4 text-primary focus:ring-primary border-gray-300 rounded"
-                      />
-                      <label htmlFor="smsNotifications" className="ml-2 block text-sm text-gray-700">
-                        SMS Notifications
-                      </label>
+                    <div>
+                      <div className="flex items-center">
+                        <input
+                          type="checkbox"
+                          id="whatsappNotifications"
+                          name="whatsappNotifications"
+                          checked={systemSettings.whatsappNotifications}
+                          onChange={handleSystemSettingsChange}
+                          className="h-4 w-4 text-primary focus:ring-primary border-gray-300 rounded"
+                        />
+                        <label htmlFor="whatsappNotifications" className="ml-2 block text-sm text-gray-700">
+                          WhatsApp Notifications
+                        </label>
+                      </div>
+                      {systemSettings.whatsappNotifications && (
+                        <p className="ml-6 mt-1 text-xs text-amber-600">
+                          Enabling this may send messages through Cunnekt and incur provider charges.
+                        </p>
+                      )}
                     </div>
 
-                    <div className="flex items-center">
-                      <input
-                        type="checkbox"
-                        id="pushNotifications"
-                        name="pushNotifications"
-                        checked={systemSettings.pushNotifications}
-                        onChange={handleSystemSettingsChange}
-                        className="h-4 w-4 text-primary focus:ring-primary border-gray-300 rounded"
-                      />
-                      <label htmlFor="pushNotifications" className="ml-2 block text-sm text-gray-700">
-                        Push Notifications
-                      </label>
+                    <div>
+                      <div className="flex items-center">
+                        <input
+                          type="checkbox"
+                          id="pushNotifications"
+                          name="pushNotifications"
+                          checked={systemSettings.pushNotifications}
+                          disabled
+                          onChange={handleSystemSettingsChange}
+                          className="h-4 w-4 text-primary border-gray-300 rounded opacity-50 cursor-not-allowed"
+                        />
+                        <label htmlFor="pushNotifications" className="ml-2 block text-sm text-gray-400">
+                          Push Notifications
+                        </label>
+                        <span className="ml-2 px-1.5 py-0.5 text-[10px] font-semibold uppercase tracking-wide bg-gray-200 text-gray-500 rounded">
+                          Coming soon
+                        </span>
+                      </div>
+                      <p className="ml-6 mt-1 text-xs text-gray-400">
+                        Requires a configured push provider and registered user devices.
+                      </p>
                     </div>
                   </div>
                 </div>
+
+                {(systemSettings.lastModifiedBy || systemSettings.updatedAt) && (
+                  <p className="text-xs text-gray-400">
+                    Last updated{' '}
+                    {systemSettings.updatedAt
+                      ? new Date(systemSettings.updatedAt).toLocaleString()
+                      : ''}
+                    {systemSettings.lastModifiedBy ? ` by ${systemSettings.lastModifiedBy}` : ''}
+                  </p>
+                )}
 
                 {/* UI / Appearance */}
                 <div className="border-t pt-6">

@@ -11,6 +11,10 @@ import { sanitizeToE164 } from "../../utils/phoneValidation";
 import { resolveTemplate } from "./template.service";
 import logger from "../../config/logger";
 import { runCommunicationJob } from "./deliver.service";
+import {
+  areEmailNotificationsEnabled,
+  areWhatsappNotificationsEnabled,
+} from "../settings.service";
 
 /**
  * Inline (no-queue) delivery is only ever attempted in dev/test with Redis
@@ -127,6 +131,32 @@ async function failLog(
 }
 
 /**
+ * Records a deliberate no-send: the message was withheld by an admin
+ * notification-preference toggle, not by a delivery failure. The provider
+ * is never called for a skipped dispatch.
+ */
+async function skipLog(
+  idempotencyKey: string,
+  base: Partial<ICommunicationLog>,
+  reasonCode: string,
+): Promise<ICommunicationLog> {
+  return CommunicationLog.findOneAndUpdate(
+    { idempotencyKey },
+    {
+      $set: {
+        ...base,
+        status: CommunicationStatus.SKIPPED,
+        errorCode: reasonCode,
+        errorMessage: "Skipped — recipient notification preference is disabled",
+        skippedAt: new Date(),
+      },
+      $setOnInsert: { idempotencyKey, retryCount: 0 },
+    },
+    { upsert: true, new: true },
+  );
+}
+
+/**
  * Single entry point for every outbound communication. Never calls a
  * provider directly and never throws for expected failure modes (missing
  * template, missing variables, invalid phone, consent denied) — those are
@@ -172,6 +202,35 @@ export async function dispatch(
       "CONSENT_DENIED",
       "Marketing consent not granted for this recipient",
     );
+  }
+
+  // Admin notification-preference gate — OTP/TRANSACTIONAL/ADMIN_ALERT
+  // categories always go through regardless of these toggles; only
+  // MARKETING (i.e. optional/promotional) messages are gated here. This
+  // must never affect phone OTP delivery (services/communication/otpDelivery.service.ts),
+  // which does not call dispatch() with category MARKETING.
+  if (input.category === CommunicationCategory.MARKETING) {
+    const isEmailChannel =
+      input.channel === CommunicationChannel.EMAIL ||
+      input.channel === CommunicationChannel.EMAIL_MARKETING;
+    const isWhatsappOrSmsChannel =
+      input.channel === CommunicationChannel.WHATSAPP ||
+      input.channel === CommunicationChannel.SMS;
+
+    if (isEmailChannel && !(await areEmailNotificationsEnabled())) {
+      return skipLog(
+        idempotencyKey,
+        baseFields,
+        "EMAIL_NOTIFICATIONS_DISABLED",
+      );
+    }
+    if (isWhatsappOrSmsChannel && !(await areWhatsappNotificationsEnabled())) {
+      return skipLog(
+        idempotencyKey,
+        baseFields,
+        "WHATSAPP_NOTIFICATIONS_DISABLED",
+      );
+    }
   }
 
   let resolved;

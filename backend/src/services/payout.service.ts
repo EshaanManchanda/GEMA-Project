@@ -726,8 +726,15 @@ class PayoutService {
     error?: string;
   }> {
     try {
-      // Get vendor
-      const vendor = await User.findById(vendorId);
+      // `vendorId` here is the Vendor document's own _id (matching how
+      // RevenueTransaction/Payout.vendorId are actually populated elsewhere
+      // in this method) — resolve the Vendor first, then its linked User
+      // for vendorPaymentSettings (which lives on User, not Vendor).
+      const vendorDoc = await Vendor.findById(vendorId);
+      if (!vendorDoc) {
+        return { success: false, error: "Invalid vendor" };
+      }
+      const vendor = await User.findById(vendorDoc.userId);
       if (!vendor || vendor.role !== UserRole.VENDOR) {
         return { success: false, error: "Invalid vendor" };
       }
@@ -735,10 +742,12 @@ class PayoutService {
       // Calculate available balance
       const earnings = await this.calculateVendorEarnings(vendorId);
 
-      // Check minimum payout requirement
+      // Check minimum payout requirement — vendor payment settings (minimum
+      // payout, preferred method, bank details) live on Vendor.paymentSettings,
+      // not User.vendorPaymentSettings.
       const settings = await AdminRevenueSettings.getCurrentSettings();
       const minimumPayout =
-        vendor.vendorPaymentSettings?.minimumPayout ||
+        vendorDoc.paymentSettings?.minimumPayout ||
         settings?.minimumPayoutAmount ||
         50;
 
@@ -767,8 +776,8 @@ class PayoutService {
 
       // Determine payout method
       let payoutMethod: PayoutMethodType = PayoutMethodType.BANK_TRANSFER;
-      if (vendor.vendorPaymentSettings?.preferredPayoutMethod) {
-        payoutMethod = vendor.vendorPaymentSettings
+      if (vendorDoc.paymentSettings?.preferredPayoutMethod) {
+        payoutMethod = vendorDoc.paymentSettings
           .preferredPayoutMethod as PayoutMethodType;
       }
 
@@ -780,7 +789,7 @@ class PayoutService {
         status: PayoutRequestStatus.PENDING,
         requestedBy: vendorId,
         payoutMethod,
-        bankDetails: vendor.vendorPaymentSettings?.bankAccountDetails,
+        bankDetails: vendorDoc.paymentSettings?.bankAccountDetails,
         revenueTransactionIds: pendingTransactions.map((tx) => tx._id),
         totalOrders: pendingTransactions.length,
         metadata: {

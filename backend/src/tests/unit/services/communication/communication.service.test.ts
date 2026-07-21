@@ -13,6 +13,10 @@ import {
   CommunicationJobType,
 } from "../../../../services/communication/communication.service";
 import CommunicationLog from "../../../../models/CommunicationLog";
+import {
+  areEmailNotificationsEnabled,
+  areWhatsappNotificationsEnabled,
+} from "../../../../services/settings.service";
 
 jest.mock("../../../../models/CommunicationLog", () => {
   const actual = jest.requireActual("../../../../models/CommunicationLog");
@@ -34,6 +38,10 @@ jest.mock("../../../../utils/phoneValidation");
 jest.mock("../../../../services/communication/template.service");
 jest.mock("../../../../services/communication/deliver.service");
 jest.mock("../../../../config/logger");
+jest.mock("../../../../services/settings.service", () => ({
+  areEmailNotificationsEnabled: jest.fn(),
+  areWhatsappNotificationsEnabled: jest.fn(),
+}));
 
 // Raw require (not `import * as`) — TS's `__importStar` interop helper
 // wraps namespace imports in a read-only object, which would make the
@@ -50,6 +58,8 @@ const mockedFindById = CommunicationLog.findById as jest.Mock;
 const mockedSanitize = sanitizeToE164 as jest.Mock;
 const mockedResolveTemplate = resolveTemplate as jest.Mock;
 const mockedRunCommunicationJob = runCommunicationJob as jest.Mock;
+const mockedAreEmailEnabled = areEmailNotificationsEnabled as jest.Mock;
+const mockedAreWhatsappEnabled = areWhatsappNotificationsEnabled as jest.Mock;
 
 function baseInput() {
   return {
@@ -75,6 +85,8 @@ describe("communication.service — dispatch()", () => {
       rendered: "Hi Ada, your booking is confirmed.",
     });
     queueConfig.communicationQueue = null;
+    mockedAreEmailEnabled.mockResolvedValue(true);
+    mockedAreWhatsappEnabled.mockResolvedValue(true);
   });
 
   afterEach(() => {
@@ -178,6 +190,87 @@ describe("communication.service — dispatch()", () => {
 
     expect(mockedRunCommunicationJob).not.toHaveBeenCalled();
     expect(result.errorCode).toBe("QUEUE_DISABLED");
+  });
+});
+
+describe("communication.service — dispatch() notification-preference gating", () => {
+  beforeEach(() => {
+    jest.clearAllMocks();
+    mockedFindOne.mockResolvedValue(null);
+    mockedSanitize.mockReturnValue("+15551234567");
+    mockedResolveTemplate.mockResolvedValue({
+      template: { providerTemplateName: "promo_v1" },
+      rendered: "Big sale this weekend!",
+    });
+    queueConfig.communicationQueue = { add: jest.fn().mockResolvedValue(undefined) };
+  });
+
+  function marketingInput(channel: CommunicationChannel) {
+    return {
+      jobType: CommunicationJobType.WHATSAPP_TEMPLATE,
+      channel,
+      category: CommunicationCategory.MARKETING,
+      templateKey: "promo",
+      to: channel === CommunicationChannel.EMAIL ? "user@example.com" : "0555 123 4567",
+      vars: {},
+      consent: true,
+    };
+  }
+
+  it("skips (not fails) an optional EMAIL send when emailNotifications is disabled, without calling the queue", async () => {
+    mockedAreEmailEnabled.mockResolvedValue(false);
+    const skippedDoc: any = { _id: "log-1", status: CommunicationStatus.SKIPPED };
+    mockedFindOneAndUpdate.mockResolvedValue(skippedDoc);
+
+    const result = await dispatch(marketingInput(CommunicationChannel.EMAIL));
+
+    expect(result.status).toBe(CommunicationStatus.SKIPPED);
+    expect(mockedResolveTemplate).not.toHaveBeenCalled();
+    expect((queueConfig.communicationQueue as any).add).not.toHaveBeenCalled();
+    expect(mockedFindOneAndUpdate).toHaveBeenCalledWith(
+      expect.anything(),
+      expect.objectContaining({
+        $set: expect.objectContaining({
+          status: CommunicationStatus.SKIPPED,
+          errorCode: "EMAIL_NOTIFICATIONS_DISABLED",
+        }),
+      }),
+      expect.anything(),
+    );
+  });
+
+  it("skips an optional WHATSAPP send when whatsappNotifications is disabled, without calling the queue", async () => {
+    mockedAreWhatsappEnabled.mockResolvedValue(false);
+    const skippedDoc: any = { _id: "log-1", status: CommunicationStatus.SKIPPED };
+    mockedFindOneAndUpdate.mockResolvedValue(skippedDoc);
+
+    const result = await dispatch(marketingInput(CommunicationChannel.WHATSAPP));
+
+    expect(result.status).toBe(CommunicationStatus.SKIPPED);
+    expect((queueConfig.communicationQueue as any).add).not.toHaveBeenCalled();
+  });
+
+  it("sends a MARKETING email normally when emailNotifications is enabled", async () => {
+    mockedAreEmailEnabled.mockResolvedValue(true);
+    const queuedDoc: any = { _id: "log-1", status: CommunicationStatus.QUEUED };
+    mockedFindOneAndUpdate.mockResolvedValue(queuedDoc);
+
+    const result = await dispatch(marketingInput(CommunicationChannel.EMAIL));
+
+    expect(result.status).toBe(CommunicationStatus.QUEUED);
+    expect((queueConfig.communicationQueue as any).add).toHaveBeenCalled();
+  });
+
+  it("never gates a TRANSACTIONAL/OTP send on the notification-preference toggles", async () => {
+    mockedAreEmailEnabled.mockResolvedValue(false);
+    mockedAreWhatsappEnabled.mockResolvedValue(false);
+    const queuedDoc: any = { _id: "log-1", status: CommunicationStatus.QUEUED };
+    mockedFindOneAndUpdate.mockResolvedValue(queuedDoc);
+
+    const result = await dispatch(baseInput()); // category: TRANSACTIONAL
+
+    expect(result.status).toBe(CommunicationStatus.QUEUED);
+    expect((queueConfig.communicationQueue as any).add).toHaveBeenCalled();
   });
 });
 

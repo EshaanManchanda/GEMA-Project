@@ -30,6 +30,12 @@ export enum CommunicationStatus {
   BOUNCED = "bounced",
   UNSUBSCRIBED = "unsubscribed",
   EXPIRED = "expired",
+  /**
+   * Deliberately not attempted because an admin notification-preference
+   * toggle (email/WhatsApp) was off. Distinct from FAILED: nothing went
+   * wrong, the message was correctly withheld by policy.
+   */
+  SKIPPED = "skipped",
 }
 
 /** Safe-by-default summary — never contains raw payloads or message bodies. */
@@ -85,6 +91,7 @@ export interface ICommunicationLog extends Document {
   deliveredAt?: Date;
   readAt?: Date;
   failedAt?: Date;
+  skippedAt?: Date;
 
   createdAt: Date;
   updatedAt: Date;
@@ -153,6 +160,7 @@ const communicationLogSchema = new Schema<ICommunicationLog>(
     deliveredAt: Date,
     readAt: Date,
     failedAt: Date,
+    skippedAt: Date,
   },
   { timestamps: true },
 );

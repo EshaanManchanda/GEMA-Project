@@ -16,6 +16,8 @@ import hpp from "hpp";
 import authRoutes from "../../../routes/auth.routes";
 import eventRoutes from "../../../routes/event.routes";
 import adminEventRoutes from "../../../routes/admin.event.routes";
+import adminSettingsRoutes from "../../../routes/admin.settings.routes";
+import { maintenanceModeGuard } from "../../../middleware/maintenance.middleware";
 import { errorHandler, notFound } from "../../../middleware/index";
 
 // Ensure required env vars exist before middleware imports try to read them
@@ -50,10 +52,16 @@ export const createTestApp = (): Application => {
   app.use(express.urlencoded({ extended: true }));
   app.use(cookieParser());
 
+  // Global maintenance-mode gate — mirrors server.ts ordering (ahead of the
+  // route table). Inert for existing suites since maintenanceMode defaults
+  // to false and nothing here flips it unless a test explicitly does so.
+  app.use(maintenanceModeGuard);
+
   // Mount routes
   app.use("/api/auth", authRoutes);
   app.use("/api/events", eventRoutes);
   app.use("/api/admin/events", adminEventRoutes);
+  app.use("/api/admin", adminSettingsRoutes);
 
   // Health check
   app.get("/api/health", (_req: Request, res: Response) => {

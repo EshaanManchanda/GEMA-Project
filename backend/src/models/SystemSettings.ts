@@ -19,9 +19,13 @@ export interface ISystemSettings extends Document {
   autoApproveVendors: boolean;
   autoApproveReviews: boolean;
   emailNotifications: boolean;
+  /** @deprecated use `whatsappNotifications` — kept for migration fallback only */
   smsNotifications: boolean;
+  whatsappNotifications: boolean;
   pushNotifications: boolean;
   animationsEnabled: boolean;
+  /** Name/email of the admin who last saved these settings — for the admin UI's "Last updated by" line. */
+  lastModifiedBy?: string;
   createdAt: Date;
   updatedAt: Date;
 }
@@ -122,6 +126,10 @@ const SystemSettingsSchema = new Schema<ISystemSettings>(
       type: Boolean,
       default: false,
     },
+    whatsappNotifications: {
+      type: Boolean,
+      default: false,
+    },
     pushNotifications: {
       type: Boolean,
       default: true,
@@ -129,6 +137,9 @@ const SystemSettingsSchema = new Schema<ISystemSettings>(
     animationsEnabled: {
       type: Boolean,
       default: true,
+    },
+    lastModifiedBy: {
+      type: String,
     },
   },
   {

@@ -27,6 +27,7 @@ import {
   logPerformanceSummary,
 } from "./middleware/performance";
 import { setQueryTimeout } from "./middleware/query-timeout";
+import { maintenanceModeGuard } from "./middleware/maintenance.middleware";
 import routes from "./routes/index";
 import healthRoutes from "./routes/health.routes";
 import currencyRoutes from "./routes/currency.routes";
@@ -334,6 +335,12 @@ app.use((req: Request, res: Response, next: NextFunction) => {
     return timeoutMiddleware(30)(req, res, next); // ✅ Reduced from 90s to 30s
   }
 });
+
+// Maintenance-mode gate — must run before the route table so it covers
+// every module; exempts admin, auth login/refresh, health, and webhooks.
+// Mounted at root (not "/api") so req.path inside the guard still carries
+// the "/api/..." prefix its exempt-path list matches against.
+app.use(maintenanceModeGuard);
 
 // API routes
 app.use("/api", routes);

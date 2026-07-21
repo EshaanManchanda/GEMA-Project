@@ -18,6 +18,7 @@ import {
   GoogleReview,
 } from "../models/index";
 import { AppError } from "../middleware/index";
+import { shouldAutoApproveReviews } from "../services/settings.service";
 import { AuthRequest } from "../types/index";
 import { certificateService } from "../modules/certificates/services/certificate.service";
 import { googlePlacesService } from "../services/googlePlaces.service";
@@ -180,6 +181,10 @@ export const createReview = async (
       }
     }
 
+    // autoApproveReviews only decides whether the review is public right
+    // away — it never bypasses the booking/purchase/duplicate checks above.
+    const autoApprove = await shouldAutoApproveReviews();
+
     const reviewData: any = {
       type,
       user: userId,
@@ -195,7 +200,7 @@ export const createReview = async (
       source: "web",
       ipAddress: req.ip,
       userAgent: req.headers["user-agent"],
-      status: ReviewStatus.APPROVED,
+      status: autoApprove ? ReviewStatus.APPROVED : ReviewStatus.PENDING,
     };
 
     if (type === ReviewType.EVENT || type === ReviewType.TEACHING_EVENT) {
@@ -215,8 +220,10 @@ export const createReview = async (
       });
     }
 
-    // Trigger certificate generation after event review
+    // Trigger certificate generation only for immediately-approved reviews;
+    // PENDING reviews get theirs when an admin approves via moderateReview.
     if (
+      autoApprove &&
       (type === ReviewType.EVENT || type === ReviewType.TEACHING_EVENT) &&
       review.event
     ) {
@@ -227,7 +234,9 @@ export const createReview = async (
 
     res.status(201).json({
       success: true,
-      message: "Review created successfully",
+      message: autoApprove
+        ? "Review created successfully"
+        : "Review submitted successfully. It will be visible after admin approval.",
       data: { review },
     });
   } catch (error) {
@@ -1156,6 +1165,11 @@ export const submitReviewViaLink = async (
       cons?.length
     );
 
+    // Spam/quality control (hasDescription) and the global autoApproveReviews
+    // toggle both have to allow immediate publication — either one requiring
+    // moderation sends the review to PENDING.
+    const autoApprove = (await shouldAutoApproveReviews()) && !hasDescription;
+
     const review = await Review.create({
       type: ReviewType.EVENT,
       user: user._id,
@@ -1171,7 +1185,7 @@ export const submitReviewViaLink = async (
       source: "web",
       ipAddress: req.ip,
       userAgent: req.headers["user-agent"],
-      status: hasDescription ? ReviewStatus.PENDING : ReviewStatus.APPROVED,
+      status: autoApprove ? ReviewStatus.APPROVED : ReviewStatus.PENDING,
     });
 
     await User.findByIdAndUpdate(user._id, {

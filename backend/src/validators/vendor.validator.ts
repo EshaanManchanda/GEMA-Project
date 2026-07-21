@@ -172,19 +172,19 @@ export const validateBankDetails = [
     .withMessage("Account number cannot exceed 34 characters"),
 
   body("routingNumber")
-    .optional()
+    .optional({ checkFalsy: true })
     .trim()
     .matches(/^[A-Za-z0-9]+$/)
     .withMessage("Routing number contains invalid characters"),
 
   body("iban")
-    .optional()
+    .optional({ checkFalsy: true })
     .trim()
     .matches(/^[A-Z]{2}\d{2}[A-Z0-9]{4,30}$/)
     .withMessage("IBAN format is invalid"),
 
   body("swiftCode")
-    .optional()
+    .optional({ checkFalsy: true })
     .trim()
     .matches(/^[A-Z]{6}[A-Z0-9]{2}([A-Z0-9]{3})?$/)
     .withMessage("SWIFT/BIC code format is invalid"),

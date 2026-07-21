@@ -1,7 +1,7 @@
 import { Request, Response, NextFunction } from "express";
 import { validationResult } from "express-validator";
 import { Event, User, Order, AnalyticsEvent } from "../models/index";
-import Vendor from "../models/Vendor";
+import Vendor, { VerificationStatus } from "../models/Vendor";
 import Teacher from "../models/Teacher";
 import MediaAsset from "../models/MediaAsset";
 import { AppError } from "../middleware/index";
@@ -18,6 +18,7 @@ import { escapeRegex } from "../utils/regexHelpers";
 import { parseEventQuery } from "../utils/aiEventQueryParser";
 import { escapeHtml } from "../utils/htmlHelpers";
 import { eventService } from "../services/event.service";
+import { shouldAutoApproveEvents } from "../services/settings.service";
 import { CacheTTL } from "../config/cache-tiers"; // ✅ Phase 2.3: Tiered cache strategy
 import { emailService } from "../services/email.service";
 import { stripe } from "../config/stripe";
@@ -644,12 +645,31 @@ export const createEvent = async (
       return next(new AppError("Only vendors can create events", 403));
     }
 
+    // Pending (not-yet-approved) vendors cannot publish events at all —
+    // this is the vendor-approval gate, distinct from the per-event
+    // autoApproveEvents toggle checked below.
+    const vendorProfile = await Vendor.findOne({ userId })
+      .select("verificationStatus")
+      .lean();
+    if (vendorProfile?.verificationStatus === VerificationStatus.PENDING) {
+      return next(
+        new AppError(
+          "Your vendor account is pending admin approval. You cannot create events until it is approved.",
+          403,
+        ),
+      );
+    }
+
+    // This route is vendor-only (checked above), so the autoApproveEvents
+    // toggle applies unconditionally here. Admin-created events go through a
+    // different path and are not subject to this setting.
+    const autoApprove = await shouldAutoApproveEvents();
     const eventData = {
       ...req.body,
       vendorId: userId,
-      isApproved: false, // Events require admin approval
+      isApproved: autoApprove,
       isActive: true, // Set as active by default
-      status: "pending", // Status starts as pending approval
+      status: autoApprove ? "published" : "pending",
     };
 
     // USE SERVICE LAYER (handles media tracking)
@@ -660,7 +680,9 @@ export const createEvent = async (
 
     res.status(201).json({
       success: true,
-      message: "Event created successfully. Pending admin approval.",
+      message: autoApprove
+        ? "Event created and published."
+        : "Event created successfully. Pending admin approval.",
       data: { event },
     });
   } catch (error) {

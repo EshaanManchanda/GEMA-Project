@@ -1050,11 +1050,17 @@ const BusinessDetailsTab: React.FC<{
 };
 
 // Payment Settings Tab
+const STRIPE_CONNECT_ENABLED = false;
+
 const PaymentSettingsTab: React.FC<{ profile: VendorProfile; isLoading?: boolean; onRefresh?: () => void }> = ({ profile }) => {
   const [stripeStatus, setStripeStatus] = useState<any>(undefined);
   const [isLoadingStatus, setIsLoadingStatus] = useState(true);
 
   useEffect(() => {
+    if (!STRIPE_CONNECT_ENABLED) {
+      setIsLoadingStatus(false);
+      return;
+    }
     let cancelled = false;
     (async () => {
       try {
@@ -1080,13 +1086,15 @@ const PaymentSettingsTab: React.FC<{ profile: VendorProfile; isLoading?: boolean
       animate={{ opacity: 1, y: 0 }}
       className="space-y-5"
     >
-      <SectionCard>
-        <StripeConnectSetup
-          status={stripeStatus}
-          isLoadingStatus={isLoadingStatus}
-          onStartOnboarding={handleStartOnboarding}
-        />
-      </SectionCard>
+      {STRIPE_CONNECT_ENABLED && (
+        <SectionCard>
+          <StripeConnectSetup
+            status={stripeStatus}
+            isLoadingStatus={isLoadingStatus}
+            onStartOnboarding={handleStartOnboarding}
+          />
+        </SectionCard>
+      )}
 
       {profile.commissionRate !== undefined && (
         <SectionCard className="bg-blue-50/50">

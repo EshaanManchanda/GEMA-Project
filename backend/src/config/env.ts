@@ -380,7 +380,10 @@ export const config: Config = {
     editTimeLimit: parseInt(process.env.REVIEW_EDIT_TIME_LIMIT || "24", 10),
   },
   phoneVerification: {
-    required: process.env.REQUIRE_PHONE_VERIFICATION !== "false", // Default true for backward compatibility
+    // Temporarily disabled system-wide — default OFF unless explicitly
+    // re-enabled via REQUIRE_PHONE_VERIFICATION=true. Flip this back (and
+    // the User schema's isPhoneVerified default) to resume the feature.
+    required: process.env.REQUIRE_PHONE_VERIFICATION === "true",
   },
   brand: {
     appName: process.env.APP_NAME || "Kidrove",

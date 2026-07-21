@@ -886,6 +886,94 @@ export const validateSystemSettings = [
 ];
 
 /**
+ * Validate PUT /api/admin/app-settings body.
+ * Whitelists the known boolean toggles on `systemSettings` so a request like
+ * `{ systemSettings: { maintenanceMode: "yes" } }` is rejected with 400
+ * instead of being silently coerced or persisted.
+ */
+const SYSTEM_SETTINGS_BOOLEAN_FIELDS = [
+  "maintenanceMode",
+  "allowRegistration",
+  "autoApproveEvents",
+  "autoApproveVendors",
+  "autoApproveReviews",
+  "emailNotifications",
+  "smsNotifications",
+  "whatsappNotifications",
+  "pushNotifications",
+  "animationsEnabled",
+] as const;
+
+export const validateAppSettings = [
+  body("systemSettings")
+    .optional()
+    .isObject()
+    .withMessage("systemSettings must be an object"),
+  body("emailSettings")
+    .optional()
+    .isObject()
+    .withMessage("emailSettings must be an object"),
+  body("paymentSettings")
+    .optional()
+    .isObject()
+    .withMessage("paymentSettings must be an object"),
+  body("socialSettings")
+    .optional()
+    .isObject()
+    .withMessage("socialSettings must be an object"),
+
+  ...SYSTEM_SETTINGS_BOOLEAN_FIELDS.map((field) =>
+    body(`systemSettings.${field}`)
+      .optional()
+      .isBoolean()
+      .withMessage(`systemSettings.${field} must be a boolean`)
+      .toBoolean(),
+  ),
+
+  body("systemSettings.bookingFeePercentage")
+    .optional()
+    .isFloat({ min: 0, max: 100 })
+    .withMessage("bookingFeePercentage must be between 0 and 100")
+    .toFloat(),
+
+  body("systemSettings.taxPercentage")
+    .optional()
+    .isFloat({ min: 0, max: 100 })
+    .withMessage("taxPercentage must be between 0 and 100")
+    .toFloat(),
+
+  body("systemSettings.maxImagesPerEvent")
+    .optional()
+    .isInt({ min: 1 })
+    .withMessage("maxImagesPerEvent must be a positive integer")
+    .toInt(),
+
+  body("systemSettings.maxEventsPerVendor")
+    .optional()
+    .isInt({ min: 1 })
+    .withMessage("maxEventsPerVendor must be a positive integer")
+    .toInt(),
+
+  // Reject unknown top-level keys so the endpoint can't become a silent
+  // dumping ground for arbitrary fields.
+  body().custom((value) => {
+    const allowedTopLevel = new Set([
+      "systemSettings",
+      "emailSettings",
+      "paymentSettings",
+      "socialSettings",
+    ]);
+    const unknown = Object.keys(value || {}).filter(
+      (key) => !allowedTopLevel.has(key),
+    );
+    if (unknown.length > 0) {
+      throw new Error(`Unknown settings key(s): ${unknown.join(", ")}`);
+    }
+    return true;
+  }),
+];
+
+/**
  * Validate update event certificate types
  */
 export const validateUpdateCertificateTypes = [
@@ -965,6 +1053,7 @@ export default {
 
   // System settings
   validateSystemSettings,
+  validateAppSettings,
 
   // Event certificate types
   validateUpdateCertificateTypes,

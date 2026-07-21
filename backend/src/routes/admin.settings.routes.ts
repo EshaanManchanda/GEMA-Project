@@ -12,6 +12,8 @@ import {
 } from "../controllers/admin.app-settings.controller";
 import { authenticate, authorize } from "../middleware/auth";
 import { UserRole } from "../models/User";
+import { validateAppSettings } from "../validators/admin.validator";
+import { validate } from "../middleware/validation";
 
 const router = express.Router();
 
@@ -40,7 +42,7 @@ router.get("/settings/health", getPlatformHealth);
 router.get("/app-settings", getAppSettings);
 
 // PUT /api/admin/app-settings - Update application settings
-router.put("/app-settings", updateAppSettings);
+router.put("/app-settings", validateAppSettings, validate, updateAppSettings);
 
 // POST /api/admin/app-settings/email/test-connection - Test email connection
 router.post("/app-settings/email/test-connection", testEmailConnection);
