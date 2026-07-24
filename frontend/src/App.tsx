@@ -110,6 +110,8 @@ const AdminDashboardPage = React.lazy(() => import(/* webpackChunkName: "admin" 
 const AdminUsersPage = React.lazy(() => import(/* webpackChunkName: "admin" */ './pages/admin/AdminUsersPage'));
 const AdminUserEditPage = React.lazy(() => import(/* webpackChunkName: "admin" */ './pages/admin/AdminUserEditPage'));
 const AdminVendorsPage = React.lazy(() => import(/* webpackChunkName: "admin" */ './pages/admin/AdminVendorsPage'));
+const AdminVendorDetailPage = React.lazy(() => import(/* webpackChunkName: "admin" */ './pages/admin/AdminVendorDetailPage'));
+const AdminVendorCreatePage = React.lazy(() => import(/* webpackChunkName: "admin" */ './pages/admin/AdminVendorCreatePage'));
 const AdminServicePackagesPage = React.lazy(() => import(/* webpackChunkName: "admin" */ './pages/admin/AdminServicePackagesPage'));
 const AdminTeachersPage = React.lazy(() => import(/* webpackChunkName: "admin" */ './pages/admin/AdminTeachersPage'));
 const AdminOrganizationsPage = React.lazy(() => import(/* webpackChunkName: "admin" */ './pages/admin/AdminOrganizationsPage'));
@@ -1047,6 +1049,27 @@ function AppContent() {
             <AdminRoute>
               <Suspense fallback={<GenericPageSkeleton />}>
                 <AdminVendorsPage />
+              </Suspense>
+            </AdminRoute>
+          } />
+          <Route path="vendors/new" element={
+            <AdminRoute>
+              <Suspense fallback={<GenericPageSkeleton />}>
+                <AdminVendorCreatePage />
+              </Suspense>
+            </AdminRoute>
+          } />
+          <Route path="vendors/:id" element={
+            <AdminRoute>
+              <Suspense fallback={<GenericPageSkeleton />}>
+                <AdminVendorDetailPage />
+              </Suspense>
+            </AdminRoute>
+          } />
+          <Route path="vendors/:id/edit" element={
+            <AdminRoute>
+              <Suspense fallback={<GenericPageSkeleton />}>
+                <AdminVendorDetailPage />
               </Suspense>
             </AdminRoute>
           } />

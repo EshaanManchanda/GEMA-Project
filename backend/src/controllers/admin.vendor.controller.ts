@@ -1,12 +1,13 @@
 import { Request, Response, NextFunction } from "express";
 import mongoose from "mongoose";
+import { randomBytes } from "crypto";
 import { AppError } from "../middleware/index";
 import { ApiResponse, AuthRequest } from "../types/index";
 import Vendor, {
   PaymentMode,
   VendorSubscriptionStatus,
 } from "../models/Vendor";
-import User from "../models/User";
+import User, { UserRole, UserStatus } from "../models/User";
 import logger from "../config/logger";
 import {
   dispatch,
@@ -143,7 +144,10 @@ export const getVendorById = async (
     }
 
     const vendor = await Vendor.findById(id)
-      .populate("userId", "firstName lastName email")
+      .populate(
+        "userId",
+        "firstName lastName email phone status lastLogin isEmailVerified isPhoneVerified createdAt",
+      )
       .lean();
 
     if (!vendor) {
@@ -157,8 +161,25 @@ export const getVendorById = async (
         vendor: {
           id: vendor._id,
           businessName: vendor.businessName,
+          description: vendor.description,
+          category: vendor.category,
+          website: vendor.website,
+          profileVideoUrl: vendor.profileVideoUrl,
+          videoDescription: vendor.videoDescription,
+          languagesSpoken: vendor.languagesSpoken,
+          logo: vendor.logo,
+          coverImage: vendor.coverImage,
+          slug: vendor.slug,
           email: vendor.email,
           phone: vendor.phone,
+          contactPerson: vendor.contactPerson,
+          address: vendor.address,
+          location: vendor.location,
+          businessHours: vendor.businessHours,
+          socialMedia: vendor.socialMedia,
+          taxInformation: vendor.taxInformation,
+          verificationNotes: vendor.verificationNotes,
+          memberSince: vendor.memberSince,
           user: vendor.userId,
           paymentSettings: {
             paymentMode:
@@ -167,6 +188,8 @@ export const getVendorById = async (
             paymentModeChangedAt: vendor.paymentSettings?.paymentModeChangedAt,
             commissionRate: vendor.paymentSettings?.commissionRate || 5,
             customCommissionRate: vendor.paymentSettings?.customCommissionRate,
+            commissionAgreements:
+              vendor.paymentSettings?.commissionAgreements || [],
             subscriptionStatus: vendor.paymentSettings?.subscriptionStatus,
             subscriptionAmount:
               vendor.paymentSettings?.subscriptionAmount || 150,
@@ -174,19 +197,288 @@ export const getVendorById = async (
               vendor.paymentSettings?.subscriptionStartDate,
             subscriptionPaidUntil:
               vendor.paymentSettings?.subscriptionPaidUntil,
+            subscriptionCancelAtPeriodEnd:
+              vendor.paymentSettings?.subscriptionCancelAtPeriodEnd,
             subscriptionHistory:
               vendor.paymentSettings?.subscriptionHistory || [],
+            payoutSchedule: vendor.paymentSettings?.payoutSchedule,
+            minimumPayout: vendor.paymentSettings?.minimumPayout,
+            preferredPayoutMethod:
+              vendor.paymentSettings?.preferredPayoutMethod,
+            bankAccountDetails: vendor.paymentSettings?.bankAccountDetails,
+            acceptsPlatformPayments:
+              vendor.paymentSettings?.acceptsPlatformPayments,
+            autoPayoutEnabled: vendor.paymentSettings?.autoPayoutEnabled,
+            // Safe Stripe Connect subset only — never expose stripeSecretKey
+            // (it's select:false at the schema level so it's already excluded).
+            stripeConnect: {
+              accountId:
+                vendor.paymentSettings?.stripeSettings?.stripeConnectAccountId,
+              onboardingComplete:
+                vendor.paymentSettings?.stripeSettings
+                  ?.stripeConnectOnboardingComplete,
+              capabilities:
+                vendor.paymentSettings?.stripeSettings
+                  ?.stripeConnectCapabilities,
+              testMode: vendor.paymentSettings?.stripeSettings?.stripeTestMode,
+              subscriptionStatus:
+                vendor.paymentSettings?.stripeSettings
+                  ?.stripeSubscriptionStatus,
+              currentPeriodEnd:
+                vendor.paymentSettings?.stripeSettings?.stripeCurrentPeriodEnd,
+            },
           },
           isActive: vendor.isActive,
           isSuspended: vendor.isSuspended,
           suspensionReason: vendor.suspensionReason,
           verificationStatus: vendor.verificationStatus,
           verificationDocuments: vendor.verificationDocuments,
-          logo: vendor.logo,
           stats: vendor.stats,
           createdAt: vendor.createdAt,
         },
       },
+    };
+
+    res.status(200).json(response);
+  } catch (error) {
+    next(error);
+  }
+};
+
+/**
+ * Create a new vendor (admin-initiated onboarding)
+ * @route POST /api/admin/vendors
+ */
+export const createVendor = async (
+  req: Request,
+  res: Response,
+  next: NextFunction,
+): Promise<void> => {
+  try {
+    const {
+      firstName,
+      lastName,
+      email,
+      phone,
+      password,
+      businessName,
+      description,
+      category,
+      website,
+      paymentMode,
+      commissionRate,
+      subscriptionAmount,
+    } = req.body;
+
+    if (!firstName || !lastName || !email || !businessName) {
+      return next(
+        new AppError(
+          "First name, last name, email, and business name are required",
+          400,
+        ),
+      );
+    }
+
+    const existingUser = await User.findOne({ email });
+    if (existingUser) {
+      return next(new AppError("User with this email already exists", 409));
+    }
+
+    const cleanPhone = phone && phone.trim() !== "" ? phone.trim() : undefined;
+    const plainPassword =
+      password && password.trim() !== ""
+        ? password.trim()
+        : randomBytes(18).toString("base64url");
+
+    const user = await User.create({
+      firstName,
+      lastName,
+      email,
+      passwordHash: plainPassword,
+      phone: cleanPhone,
+      role: UserRole.VENDOR,
+      status: UserStatus.ACTIVE,
+      isEmailVerified: false,
+      isPhoneVerified: true,
+    });
+
+    const { getOrCreateVendorProfile } = await import(
+      "../utils/vendorHelpers"
+    );
+    const vendor = await getOrCreateVendorProfile(user._id);
+
+    vendor.businessName = businessName;
+    if (description !== undefined) vendor.description = description;
+    if (category !== undefined) vendor.category = category;
+    if (website !== undefined) vendor.website = website;
+    if (cleanPhone) {
+      vendor.phone = cleanPhone;
+      vendor.contactPerson = {
+        ...vendor.contactPerson,
+        name: `${firstName} ${lastName}`,
+        phone: cleanPhone,
+      };
+    }
+    vendor.email = email;
+
+    if (
+      paymentMode &&
+      Object.values(PaymentMode).includes(paymentMode as PaymentMode)
+    ) {
+      vendor.paymentSettings.paymentMode = paymentMode;
+    }
+    if (commissionRate !== undefined) {
+      vendor.paymentSettings.commissionRate = Number(commissionRate);
+    }
+    if (subscriptionAmount !== undefined) {
+      vendor.paymentSettings.subscriptionAmount = Number(subscriptionAmount);
+    }
+
+    await vendor.save();
+
+    const response: ApiResponse = {
+      success: true,
+      message: "Vendor created successfully",
+      data: {
+        vendor: {
+          id: vendor._id,
+          businessName: vendor.businessName,
+          email: vendor.email,
+          user: {
+            id: user._id,
+            firstName: user.firstName,
+            lastName: user.lastName,
+            email: user.email,
+          },
+        },
+        // Only surfaced once, to the authenticated admin who just created this
+        // account — never logged or stored anywhere else. Omitted when the
+        // admin supplied their own password.
+        ...(password && password.trim() !== "" ? {} : { temporaryPassword: plainPassword }),
+      },
+    };
+
+    res.status(201).json(response);
+  } catch (error) {
+    next(error);
+  }
+};
+
+/**
+ * Update vendor business/contact/tax profile (general edit, not payment/status/verification)
+ * @route PUT /api/admin/vendors/:id
+ */
+export const updateVendorProfile = async (
+  req: Request,
+  res: Response,
+  next: NextFunction,
+): Promise<void> => {
+  try {
+    const { id } = req.params;
+
+    if (!mongoose.Types.ObjectId.isValid(id)) {
+      return next(new AppError("Invalid vendor ID", 400));
+    }
+
+    const vendor = await Vendor.findById(id);
+    if (!vendor) {
+      return next(new AppError("Vendor not found", 404));
+    }
+
+    const {
+      firstName,
+      lastName,
+      businessName,
+      description,
+      category,
+      email,
+      phone,
+      website,
+      profileVideoUrl,
+      videoDescription,
+      languagesSpoken,
+      logo,
+      coverImage,
+      address,
+      contactPerson,
+      taxInformation,
+      socialMedia,
+      commissionRate,
+      subscriptionAmount,
+      payoutSchedule,
+      minimumPayout,
+      preferredPayoutMethod,
+      bankAccountDetails,
+      verificationNotes,
+    } = req.body;
+
+    if (email && email !== vendor.email) {
+      const emailOwner = await User.findOne({ email });
+      if (emailOwner && emailOwner._id.toString() !== vendor.userId.toString()) {
+        return next(new AppError("Email already in use by another account", 409));
+      }
+    }
+
+    if (businessName !== undefined) vendor.businessName = businessName;
+    if (description !== undefined) vendor.description = description;
+    if (category !== undefined) vendor.category = category;
+    if (email !== undefined) vendor.email = email;
+    if (phone !== undefined) vendor.phone = phone;
+    if (website !== undefined) vendor.website = website;
+    if (profileVideoUrl !== undefined) vendor.profileVideoUrl = profileVideoUrl;
+    if (videoDescription !== undefined) vendor.videoDescription = videoDescription;
+    if (languagesSpoken !== undefined) vendor.languagesSpoken = languagesSpoken;
+    if (logo !== undefined) vendor.logo = logo;
+    if (coverImage !== undefined) vendor.coverImage = coverImage;
+    if (verificationNotes !== undefined) vendor.verificationNotes = verificationNotes;
+    if (address !== undefined) vendor.address = { ...vendor.address, ...address };
+    if (contactPerson !== undefined)
+      vendor.contactPerson = { ...vendor.contactPerson, ...contactPerson };
+    if (taxInformation !== undefined)
+      vendor.taxInformation = { ...vendor.taxInformation, ...taxInformation };
+    if (socialMedia !== undefined)
+      vendor.socialMedia = { ...vendor.socialMedia, ...socialMedia };
+    if (commissionRate !== undefined)
+      vendor.paymentSettings.commissionRate = Number(commissionRate);
+    if (subscriptionAmount !== undefined)
+      vendor.paymentSettings.subscriptionAmount = Number(subscriptionAmount);
+    if (payoutSchedule !== undefined)
+      vendor.paymentSettings.payoutSchedule = payoutSchedule;
+    if (minimumPayout !== undefined)
+      vendor.paymentSettings.minimumPayout = Number(minimumPayout);
+    if (preferredPayoutMethod !== undefined)
+      vendor.paymentSettings.preferredPayoutMethod = preferredPayoutMethod;
+    if (bankAccountDetails !== undefined)
+      vendor.paymentSettings.bankAccountDetails = {
+        ...vendor.paymentSettings.bankAccountDetails,
+        ...bankAccountDetails,
+      };
+
+    await vendor.save();
+
+    if (
+      vendor.userId &&
+      (firstName !== undefined ||
+        lastName !== undefined ||
+        email !== undefined ||
+        phone !== undefined)
+    ) {
+      const userUpdates: any = {};
+      if (firstName !== undefined) userUpdates.firstName = firstName;
+      if (lastName !== undefined) userUpdates.lastName = lastName;
+      if (email !== undefined) userUpdates.email = email;
+      if (phone !== undefined) userUpdates.phone = phone;
+      await User.findByIdAndUpdate(
+        vendor.userId,
+        { $set: userUpdates },
+        { runValidators: true },
+      );
+    }
+
+    const response: ApiResponse = {
+      success: true,
+      message: "Vendor updated successfully",
+      data: { vendor },
     };
 
     res.status(200).json(response);

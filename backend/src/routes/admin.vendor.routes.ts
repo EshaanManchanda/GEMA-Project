@@ -10,6 +10,8 @@ import {
   getAllVendors,
   getVendorById,
   getVendorsList,
+  createVendor,
+  updateVendorProfile,
   updateVendorPaymentMode,
   updateVendorSubscriptionStatus,
   updateVendorStatus,
@@ -59,11 +61,31 @@ router.post("/sync", syncVendorUserData);
 router.get("/", getAllVendors);
 
 /**
+ * @route   POST /api/admin/vendors
+ * @desc    Create a new vendor (admin-initiated onboarding)
+ * @access  Admin only
+ * @body    { firstName, lastName, email, phone?, password?, businessName, description?, category?, website?, paymentMode?, commissionRate?, subscriptionAmount? }
+ */
+router.post("/", createVendor);
+
+/**
  * @route   GET /api/admin/vendors/:id
  * @desc    Get vendor by ID
  * @access  Admin only
  */
 router.get("/:id", validateMongoId("id", "param"), validate, getVendorById);
+
+/**
+ * @route   PUT /api/admin/vendors/:id
+ * @desc    Update vendor business/contact/tax/payout profile
+ * @access  Admin only
+ */
+router.put(
+  "/:id",
+  validateMongoId("id", "param"),
+  validate,
+  updateVendorProfile,
+);
 
 /**
  * @route   PUT /api/admin/vendors/:id/payment-mode

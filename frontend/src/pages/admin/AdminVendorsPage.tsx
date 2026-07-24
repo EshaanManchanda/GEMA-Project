@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { toast } from 'react-hot-toast';
-import { FaEye, FaTrash, FaCreditCard, FaPowerOff, FaMoneyBillWave } from 'react-icons/fa';
+import { FaEye, FaEdit, FaPlus, FaTrash, FaCreditCard, FaPowerOff, FaMoneyBillWave } from 'react-icons/fa';
 import { format } from 'date-fns';
 import api from '../../services/api';
 import PrivatePageSEO from '@/components/common/PrivatePageSEO';
@@ -49,16 +50,13 @@ interface VendorStats {
 }
 
 const AdminVendorsPage: React.FC = () => {
+  const navigate = useNavigate();
   const [vendors, setVendors] = useState<Vendor[]>([]);
   const [stats, setStats] = useState<VendorStats | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [selectedVendor, setSelectedVendor] = useState<Vendor | null>(null);
   const [showModal, setShowModal] = useState(false);
   const [modalMode, setModalMode] = useState<'paymentMode' | 'status'>('paymentMode');
-
-  // View modal state
-  const [showViewModal, setShowViewModal] = useState(false);
-  const [viewVendor, setViewVendor] = useState<Vendor | null>(null);
 
   // Form state
   const [paymentMode, setPaymentMode] = useState<'platform_stripe' | 'custom_stripe'>('platform_stripe');
@@ -187,34 +185,6 @@ const AdminVendorsPage: React.FC = () => {
     }
   };
 
-  const openViewModal = async (vendor: Vendor) => {
-    setShowViewModal(true);
-    setViewVendor(vendor);
-    try {
-      const response = await api.get(`/admin/vendors/${vendor.id}`);
-      const full = response.data.data.vendor;
-      setViewVendor({
-        ...vendor,
-        logo: full.logo,
-        verificationDocuments: full.verificationDocuments,
-        verificationStatus: full.verificationStatus,
-      });
-    } catch (err) {
-      logger.error('Failed to fetch vendor details:', err);
-    }
-  };
-
-  const handleUpdateVerification = async (vendorId: string, status: string) => {
-    try {
-      await api.put(`/admin/vendors/${vendorId}/verification`, { verificationStatus: status });
-      toast.success(`Vendor verification ${status}`);
-      setViewVendor(prev => prev ? { ...prev, verificationStatus: status } : null);
-      fetchVendors();
-    } catch (error: any) {
-      toast.error(error.response?.data?.message || 'Failed to update verification');
-    }
-  };
-
   const handleDeleteVendor = async (vendorId: string) => {
     if (!window.confirm('Delete this vendor? This action cannot be undone.')) return;
     try {
@@ -253,13 +223,21 @@ const AdminVendorsPage: React.FC = () => {
               <h1 className="text-3xl font-bold text-gray-900">Vendor Management</h1>
               <p className="mt-2 text-gray-600">Manage vendor payment models and status</p>
             </div>
-            <button
-              onClick={handleSyncData}
-              className="px-4 py-2 bg-indigo-600 text-white text-sm font-medium rounded-lg hover:bg-indigo-700 transition-colors flex items-center gap-2"
-              title="Fix vendor/user data inconsistencies"
-            >
-              🔄 Sync Data
-            </button>
+            <div className="flex items-center gap-3">
+              <button
+                onClick={handleSyncData}
+                className="px-4 py-2 bg-indigo-600 text-white text-sm font-medium rounded-lg hover:bg-indigo-700 transition-colors flex items-center gap-2"
+                title="Fix vendor/user data inconsistencies"
+              >
+                🔄 Sync Data
+              </button>
+              <button
+                onClick={() => navigate('/admin/vendors/new')}
+                className="px-4 py-2 bg-orange-600 text-white text-sm font-medium rounded-lg hover:bg-orange-700 transition-colors flex items-center gap-2"
+              >
+                <FaPlus /> Add Vendor
+              </button>
+            </div>
           </div>
 
           {/* Stats Cards */}
@@ -422,11 +400,18 @@ const AdminVendorsPage: React.FC = () => {
                         <td className="px-6 py-4 whitespace-nowrap text-sm">
                           <div className="flex items-center gap-2">
                             <button
-                              onClick={() => openViewModal(vendor)}
+                              onClick={() => navigate(`/admin/vendors/${vendor.id}`)}
                               title="View"
                               className="p-2.5 bg-blue-50 text-blue-600 hover:text-white hover:bg-blue-600 rounded-lg transition-all duration-200 hover:scale-105 hover:shadow-md border border-blue-200"
                             >
                               <FaEye style={vendorActionIconStyle} />
+                            </button>
+                            <button
+                              onClick={() => navigate(`/admin/vendors/${vendor.id}/edit`)}
+                              title="Edit"
+                              className="p-2.5 bg-purple-50 text-purple-600 hover:text-white hover:bg-purple-600 rounded-lg transition-all duration-200 hover:scale-105 hover:shadow-md border border-purple-200"
+                            >
+                              <FaEdit style={vendorActionIconStyle} />
                             </button>
                             <button
                               onClick={() => openPaymentModeModal(vendor)}
@@ -491,195 +476,6 @@ const AdminVendorsPage: React.FC = () => {
             )}
           </div>
         </div>
-
-        {/* View Modal */}
-        {showViewModal && viewVendor && (
-          <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
-            <div className="bg-white rounded-lg max-w-lg w-full p-6 max-h-[90vh] overflow-y-auto">
-              <h2 className="text-xl font-bold text-gray-900 mb-4">Vendor Details</h2>
-
-              {/* Logo */}
-              {viewVendor.logo && (
-                <div className="mb-4 flex items-center gap-3">
-                  <img src={viewVendor.logo} alt="Logo" className="w-16 h-16 rounded-full object-cover border border-gray-200" />
-                  <span className="text-sm text-gray-500">Business Logo</span>
-                </div>
-              )}
-
-              <dl className="space-y-3 mb-6">
-                <div>
-                  <dt className="text-xs font-medium text-gray-500 uppercase">Business Name</dt>
-                  <dd className="text-sm text-gray-900">{viewVendor.businessName}</dd>
-                </div>
-                <div>
-                  <dt className="text-xs font-medium text-gray-500 uppercase">Email</dt>
-                  <dd className="text-sm text-gray-900">{viewVendor.email}</dd>
-                </div>
-                <div>
-                  <dt className="text-xs font-medium text-gray-500 uppercase">Phone</dt>
-                  <dd className="text-sm text-gray-900">{viewVendor.phone || '-'}</dd>
-                </div>
-                <div>
-                  <dt className="text-xs font-medium text-gray-500 uppercase">Payment Mode</dt>
-                  <dd className="text-sm text-gray-900">
-                    {viewVendor.paymentMode === 'platform_stripe' ? 'Commission' : 'Subscription'}
-                  </dd>
-                </div>
-                <div>
-                  <dt className="text-xs font-medium text-gray-500 uppercase">Status</dt>
-                  <dd className="text-sm text-gray-900">
-                    {viewVendor.isActive ? 'Active' : 'Inactive'}
-                    {viewVendor.isSuspended && ' (Suspended)'}
-                  </dd>
-                </div>
-                <div>
-                  <dt className="text-xs font-medium text-gray-500 uppercase">Member Since</dt>
-                  <dd className="text-sm text-gray-900">{new Date(viewVendor.createdAt).toLocaleDateString()}</dd>
-                </div>
-              </dl>
-
-              {/* Document Verification Section */}
-              <div className="border-t border-gray-200 pt-4">
-                <h3 className="text-base font-semibold text-gray-900 mb-3">Document Verification</h3>
-
-                {/* Current Status */}
-                <div className="flex items-center gap-2 mb-4">
-                  <span className="text-sm text-gray-600">Current status:</span>
-                  <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${
-                    viewVendor.verificationStatus === 'verified' ? 'bg-green-100 text-green-800' :
-                    viewVendor.verificationStatus === 'pending' ? 'bg-yellow-100 text-yellow-800' :
-                    viewVendor.verificationStatus === 'rejected' ? 'bg-red-100 text-red-800' :
-                    'bg-gray-100 text-gray-800'
-                  }`}>
-                    {viewVendor.verificationStatus}
-                  </span>
-                </div>
-
-                {/* Documents */}
-                {viewVendor.verificationDocuments && Object.keys(viewVendor.verificationDocuments).length > 0 ? (
-                  <div className="space-y-2 mb-4">
-                    {(['businessLicense', 'taxCertificate', 'identityDocument'] as const).map((docType) => {
-                      const doc = viewVendor.verificationDocuments?.[docType];
-                      if (!doc?.url) return null;
-                      const labels: Record<string, string> = {
-                        businessLicense: 'Business License',
-                        taxCertificate: 'Tax Certificate',
-                        identityDocument: 'Identity Document',
-                      };
-                      return (
-                        <div key={docType} className="bg-gray-50 rounded-lg p-3">
-                          <div className="flex items-center justify-between mb-2">
-                            <div>
-                              <p className="text-sm font-medium text-gray-700">{labels[docType]}</p>
-                              {doc.uploadedAt && (
-                                <p className="text-xs text-gray-500">Uploaded {new Date(doc.uploadedAt).toLocaleDateString()}</p>
-                              )}
-                              {doc.status && (
-                                <span className={`text-xs font-medium px-1.5 py-0.5 rounded-full ${
-                                  doc.status === 'approved' ? 'bg-green-100 text-green-700' :
-                                  doc.status === 'rejected' ? 'bg-red-100 text-red-700' :
-                                  'bg-gray-100 text-gray-600'
-                                }`}>
-                                  {doc.status}
-                                </span>
-                              )}
-                            </div>
-                            <a
-                              href={doc.url}
-                              target="_blank"
-                              rel="noopener noreferrer"
-                              className="text-xs font-medium text-blue-600 hover:text-blue-800 underline"
-                            >
-                              View
-                            </a>
-                          </div>
-                          <div className="flex gap-1.5">
-                            <button
-                              onClick={async () => {
-                                try {
-                                  await api.patch(`/admin/vendors/${viewVendor.id}/verify-document`, { docType, status: 'approved' });
-                                  toast.success('Document approved');
-                                  setViewVendor(prev => prev ? {
-                                    ...prev,
-                                    verificationDocuments: {
-                                      ...prev.verificationDocuments,
-                                      [docType]: { ...doc, status: 'approved' },
-                                    },
-                                  } : null);
-                                } catch {
-                                  toast.error('Failed to approve document');
-                                }
-                              }}
-                              disabled={doc.status === 'approved'}
-                              className="flex-1 bg-green-600 text-white px-2 py-1 rounded text-xs font-medium hover:bg-green-700 disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
-                            >
-                              Approve
-                            </button>
-                            <button
-                              onClick={async () => {
-                                try {
-                                  await api.patch(`/admin/vendors/${viewVendor.id}/verify-document`, { docType, status: 'rejected' });
-                                  toast.error('Document rejected');
-                                  setViewVendor(prev => prev ? {
-                                    ...prev,
-                                    verificationDocuments: {
-                                      ...prev.verificationDocuments,
-                                      [docType]: { ...doc, status: 'rejected' },
-                                    },
-                                  } : null);
-                                } catch {
-                                  toast.error('Failed to reject document');
-                                }
-                              }}
-                              disabled={doc.status === 'rejected'}
-                              className="flex-1 bg-red-600 text-white px-2 py-1 rounded text-xs font-medium hover:bg-red-700 disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
-                            >
-                              Reject
-                            </button>
-                          </div>
-                        </div>
-                      );
-                    })}
-                  </div>
-                ) : (
-                  <p className="text-sm text-gray-500 mb-4">No documents uploaded yet.</p>
-                )}
-
-                {/* Approve / Reject Buttons */}
-                <div className="flex gap-2">
-                  <button
-                    onClick={() => handleUpdateVerification(viewVendor.id, 'verified')}
-                    disabled={viewVendor.verificationStatus === 'verified'}
-                    className="flex-1 bg-green-600 text-white px-3 py-2 rounded-lg text-sm font-medium hover:bg-green-700 disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
-                  >
-                    Approve
-                  </button>
-                  <button
-                    onClick={() => handleUpdateVerification(viewVendor.id, 'rejected')}
-                    disabled={viewVendor.verificationStatus === 'rejected'}
-                    className="flex-1 bg-red-600 text-white px-3 py-2 rounded-lg text-sm font-medium hover:bg-red-700 disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
-                  >
-                    Reject
-                  </button>
-                  <button
-                    onClick={() => handleUpdateVerification(viewVendor.id, 'pending')}
-                    disabled={viewVendor.verificationStatus === 'pending'}
-                    className="flex-1 bg-yellow-500 text-white px-3 py-2 rounded-lg text-sm font-medium hover:bg-yellow-600 disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
-                  >
-                    Set Pending
-                  </button>
-                </div>
-              </div>
-
-              <button
-                onClick={() => setShowViewModal(false)}
-                className="mt-6 w-full bg-gray-200 text-gray-800 px-4 py-2 rounded-lg hover:bg-gray-300 transition-colors font-medium"
-              >
-                Close
-              </button>
-            </div>
-          </div>
-        )}
 
         {/* Modal */}
         {showModal && selectedVendor && (
