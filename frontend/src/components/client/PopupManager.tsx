@@ -197,11 +197,20 @@ const PopupManager: React.FC = () => {
     if (!currentPopup?.ctaLink) return;
     recordClick.mutate(currentPopup._id);
 
+    // Dismiss the popup when CTA is clicked so it doesn't keep appearing
+    setDismissalRecord(currentPopup);
+    setIsVisible(false);
+
     if (currentPopup.ctaLink.startsWith('http')) {
       window.open(currentPopup.ctaLink, '_blank', 'noopener,noreferrer');
     } else {
       window.location.href = currentPopup.ctaLink;
     }
+    
+    setTimeout(() => {
+      setCurrentPopup(null);
+      setHasTriggered(false);
+    }, 300);
   };
 
   if (!currentPopup) return null;
