@@ -1106,12 +1106,6 @@ const LeadPage: React.FC = () => {
         </div>
       </div>
 
-      {/* ── Why Choose Us ── */}
-      <div className="bg-white">
-        <ScrollReveal>
-          <WhyChooseUs />
-        </ScrollReveal>
-      </div>
 
       {/* ── Wall of Love (Testimonials) ── */}
       <div className="py-24 px-4 bg-white border-t border-gray-100">

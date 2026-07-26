@@ -340,11 +340,16 @@ const VendorEventFormPage: React.FC = () => {
   };
 
   const handleImagesChange = (assets: MediaAsset[], previewUrls: string[]) => {
-    setFormData(prev => ({
-      ...prev,
-      imageAssets: [...prev.imageAssets, ...assets.map(a => a._id)],
-      imagePreviewUrls: [...prev.imagePreviewUrls, ...previewUrls]
-    }));
+    setFormData((prev) => {
+      const newImageIds = assets.map(a => a._id).filter(id => !prev.imageAssets.includes(id));
+      const newUrls = previewUrls.filter(url => !prev.imagePreviewUrls.includes(url));
+      
+      return {
+        ...prev,
+        imageAssets: [...prev.imageAssets, ...newImageIds],
+        imagePreviewUrls: [...prev.imagePreviewUrls, ...newUrls]
+      };
+    });
     if (previewUrls.length > 0 && errors.images) {
       setErrors(prev => { const e = { ...prev }; delete e.images; return e; });
     }

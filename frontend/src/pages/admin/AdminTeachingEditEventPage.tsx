@@ -450,12 +450,20 @@ const AdminTeachingEditEventPage: React.FC = () => {
   };
 
   const handleImagesChange = (assets: MediaAsset[]) => {
-    setSelectedImageAssets(assets);
-    setFormData(prev => ({
-      ...prev,
-      images: assets.map(a => a._id),
-      imagePreviewUrls: assets.map(a => a.url)
-    }));
+    setSelectedImageAssets((prev) => {
+      const newAssets = assets.filter(a => !prev.some(p => p._id === a._id));
+      return [...prev, ...newAssets];
+    });
+    setFormData((prev) => {
+      const newImageIds = assets.map((a) => a._id).filter(id => !prev.images.includes(id));
+      const newUrls = assets.map((a) => a.url).filter(url => !prev.imagePreviewUrls.includes(url));
+      
+      return {
+        ...prev,
+        images: [...prev.images, ...newImageIds],
+        imagePreviewUrls: [...prev.imagePreviewUrls, ...newUrls]
+      };
+    });
 
     if (assets.length > 0 && errors.images) {
       setErrors(prev => {
