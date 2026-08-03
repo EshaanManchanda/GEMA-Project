@@ -17,6 +17,8 @@ import authRoutes from "../../../routes/auth.routes";
 import eventRoutes from "../../../routes/event.routes";
 import adminEventRoutes from "../../../routes/admin.event.routes";
 import adminSettingsRoutes from "../../../routes/admin.settings.routes";
+import analyticsRoutes from "../../../routes/analytics.routes";
+import adminBusinessReportRoutes from "../../../routes/admin.businessReport.routes";
 import { maintenanceModeGuard } from "../../../middleware/maintenance.middleware";
 import { errorHandler, notFound } from "../../../middleware/index";
 
@@ -62,6 +64,8 @@ export const createTestApp = (): Application => {
   app.use("/api/events", eventRoutes);
   app.use("/api/admin/events", adminEventRoutes);
   app.use("/api/admin", adminSettingsRoutes);
+  app.use("/api/insights", analyticsRoutes);
+  app.use("/api/admin/business-reports", adminBusinessReportRoutes);
 
   // Health check
   app.get("/api/health", (_req: Request, res: Response) => {

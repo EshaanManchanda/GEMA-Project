@@ -11,6 +11,10 @@ export { default as Input } from './Input';
 export { default as Modal, ConfirmationModal } from './Modal';
 export { default as StatCard } from './StatCard';
 export { default as Checkbox } from './Checkbox';
+export { default as ProgressBar } from './ProgressBar';
+export { default as TrendBadge } from './TrendBadge';
 // Export types
 export type { InputProps } from './Input';
 export type { TableColumn, TablePagination, TableSort, DataTableProps } from './DataTable';
+export type { ProgressBarProps } from './ProgressBar';
+export type { TrendBadgeProps } from './TrendBadge';

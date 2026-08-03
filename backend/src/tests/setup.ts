@@ -20,6 +20,8 @@ process.env.FRONTEND_URL = "http://localhost:3000";
 process.env.CLOUDINARY_CLOUD_NAME = "test-cloud";
 process.env.CLOUDINARY_API_KEY = "test-api-key";
 process.env.CLOUDINARY_API_SECRET = "test-api-secret";
+process.env.REPORT_INTEGRITY_SECRET = "test-report-integrity-secret-32ch!!";
+process.env.REPORT_INTEGRITY_KEY_ID = "test-key-1";
 
 // Mock console methods to reduce noise during tests
 global.console = {

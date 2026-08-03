@@ -302,6 +302,15 @@ const AdminLayout: React.FC = () => {
       )
     },
     {
+      name: 'Business Reports',
+      path: '/admin/business-reports',
+      icon: (
+        <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 17V9m4 8V5m4 12v-3M5 21h14a2 2 0 002-2V5a2 2 0 00-2-2H5a2 2 0 00-2 2v14a2 2 0 002 2z" />
+        </svg>
+      )
+    },
+    {
       name: 'Settings',
       path: '/admin/settings',
       icon: (

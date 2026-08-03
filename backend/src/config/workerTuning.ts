@@ -40,4 +40,7 @@ export const WORKER_TUNING = {
   SEARCH_CONSOLE_SYNC: {
     CONCURRENCY: 1,
   },
+  BUSINESS_SNAPSHOT: {
+    CONCURRENCY: 1, // one vendor at a time — each job does several DB aggregations
+  },
 } as const;

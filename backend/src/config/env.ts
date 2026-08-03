@@ -60,6 +60,10 @@ interface Config {
   jwtExpiresIn: string;
   jwtRefreshSecret: string;
   jwtRefreshExpiresIn: string;
+  /** HMAC-SHA256 key for KBOS snapshot integrity checksums (see snapshotIntegrity.service.ts). */
+  reportIntegritySecret: string;
+  /** Stamped alongside each hash so a future secret rotation doesn't break verification of old snapshots. */
+  reportIntegrityKeyId: string;
   frontendUrl: string;
   rateLimitWindowMs: number;
   rateLimitMax: number;
@@ -253,6 +257,8 @@ export const config: Config = {
   jwtExpiresIn: process.env.JWT_EXPIRES_IN || "7d",
   jwtRefreshSecret: process.env.JWT_REFRESH_SECRET as string,
   jwtRefreshExpiresIn: process.env.JWT_REFRESH_EXPIRES_IN || "30d",
+  reportIntegritySecret: process.env.REPORT_INTEGRITY_SECRET as string,
+  reportIntegrityKeyId: process.env.REPORT_INTEGRITY_KEY_ID || "default",
   frontendUrl: process.env.FRONTEND_URL || "http://localhost:3001",
   rateLimitWindowMs: parseInt(process.env.RATE_LIMIT_WINDOW_MS || "900000", 10),
   rateLimitMax: parseInt(process.env.RATE_LIMIT_MAX || "500", 10),
@@ -269,10 +275,12 @@ export const config: Config = {
     testPublishableKey: process.env.STRIPE_TEST_PUBLISHABLE_KEY || "",
     // Recurring price for the 150 AED/month vendor subscription.
     // Run: npx ts-node src/scripts/utilities/createVendorSubscriptionPrice.ts
-    vendorSubscriptionPriceId: process.env.STRIPE_VENDOR_SUBSCRIPTION_PRICE_ID || "",
+    vendorSubscriptionPriceId:
+      process.env.STRIPE_VENDOR_SUBSCRIPTION_PRICE_ID || "",
     // Portal configuration with subscription_cancel disabled (auto-created lazily if blank).
     // Set after first server start: STRIPE_PORTAL_NO_CANCEL_CONFIG_ID=bpc_xxx
-    vendorPortalNoCancelConfigId: process.env.STRIPE_PORTAL_NO_CANCEL_CONFIG_ID || "",
+    vendorPortalNoCancelConfigId:
+      process.env.STRIPE_PORTAL_NO_CANCEL_CONFIG_ID || "",
   },
   email: {
     service: process.env.EMAIL_SERVICE || "mailtrap",
@@ -398,7 +406,8 @@ export const config: Config = {
       "contact@kidrove.com",
   },
   commission: {
-    chargeOnActiveSubscription: process.env.COMMISSION_CHARGE_ON_ACTIVE_SUBSCRIPTION === "true",
+    chargeOnActiveSubscription:
+      process.env.COMMISSION_CHARGE_ON_ACTIVE_SUBSCRIPTION === "true",
   },
   whatsapp: {
     provider: process.env.WHATSAPP_PROVIDER || "dev",
@@ -463,14 +472,29 @@ const validateEnv = (): void => {
     const jwtSecret = process.env.JWT_SECRET ?? "";
     const jwtRefreshSecret = process.env.JWT_REFRESH_SECRET ?? "";
     if (jwtSecret.length < 32) {
-      throw new Error("JWT_SECRET must be at least 32 characters in production.");
+      throw new Error(
+        "JWT_SECRET must be at least 32 characters in production.",
+      );
     }
     if (jwtRefreshSecret.length < 32) {
-      throw new Error("JWT_REFRESH_SECRET must be at least 32 characters in production.");
+      throw new Error(
+        "JWT_REFRESH_SECRET must be at least 32 characters in production.",
+      );
     }
     if (jwtSecret === jwtRefreshSecret) {
-      throw new Error("JWT_SECRET and JWT_REFRESH_SECRET must be different values.");
+      throw new Error(
+        "JWT_SECRET and JWT_REFRESH_SECRET must be different values.",
+      );
     }
+  }
+
+  // Business report (KBOS) integrity checksum secret — warn, don't block,
+  // since it's a new feature and the codebase's other secrets already
+  // follow this same warn-in-prod pattern (see Firebase below).
+  if (isProduction && !process.env.REPORT_INTEGRITY_SECRET) {
+    console.warn(
+      "Warning: REPORT_INTEGRITY_SECRET is not set in production. Business report snapshot checksums will fail to compute.",
+    );
   }
 
   // Firebase validation only in production

@@ -27,6 +27,12 @@ const vendorAPI = {
     }
   },
 
+  // Admin-scoped vendor detail (full profile — used by admin business report / vendor pages)
+  getAdminVendorById: async (id: string) => {
+    const response = await ApiService.get(`/admin/vendors/${id}`);
+    return response.data.vendor;
+  },
+
   // Get public vendor profile (no authentication required)
   getPublicVendorProfile: async (id: string) => {
     try {

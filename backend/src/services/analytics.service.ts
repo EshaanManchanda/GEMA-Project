@@ -1,5 +1,6 @@
 import mongoose from "mongoose";
 import { Event, Order, Ticket, User, Review } from "../models/index";
+import { fillDailySeries, fillMonthlySeries } from "../utils/dateHelpers";
 
 // =============================================================================
 // ANALYTICS TERMINOLOGY CONTRACT
@@ -203,10 +204,13 @@ class AnalyticsService {
         city: item._id,
         count: item.count,
       })),
-      eventsByMonth: monthlyStats.map((item: any) => ({
-        month: item._id,
-        count: item.count,
-      })),
+      eventsByMonth: dateRange
+        ? fillMonthlySeries(
+            monthlyStats.map((item: any) => ({ month: item._id, count: item.count })),
+            dateRange,
+            (month) => ({ month, count: 0 }),
+          )
+        : monthlyStats.map((item: any) => ({ month: item._id, count: item.count })),
       revenueByEvent: revenueStats,
     };
   }
@@ -323,6 +327,28 @@ class AnalyticsService {
       totalViews > 0 ? (confirmedOrderCount / totalViews) * 100 : 0;
 
     const round2 = (n: number) => Math.round(n * 100) / 100;
+
+    const ordersByMonthRaw = monthlyStats.map((item: any) => ({
+      month: item._id,
+      count: item.count,
+      revenue: Math.round(item.revenue * 100) / 100,
+    }));
+    const ordersByDayRaw = dailyStats.map((item: any) => ({
+      day: item._id,
+      count: item.count,
+      revenue: Math.round(item.revenue * 100) / 100,
+    }));
+
+    // Zero-fill so a sparse period (e.g. 2 order days in a 90-day range)
+    // renders as a flat trend with real gaps, not a misleading line jumping
+    // straight between the only two days that had data — see fillDailySeries.
+    const ordersByMonth = dateRange
+      ? fillMonthlySeries(ordersByMonthRaw, dateRange, (month) => ({ month, count: 0, revenue: 0 }))
+      : ordersByMonthRaw;
+    const ordersByDay = dateRange
+      ? fillDailySeries(ordersByDayRaw, dateRange, (day) => ({ day, count: 0, revenue: 0 }))
+      : ordersByDayRaw;
+
     return {
       totalOrders,
       totalRevenue: round2(stats.totalRevenue || 0),
@@ -332,16 +358,8 @@ class AnalyticsService {
         count: item.count,
         revenue: item.revenue,
       })),
-      ordersByMonth: monthlyStats.map((item: any) => ({
-        month: item._id,
-        count: item.count,
-        revenue: Math.round(item.revenue * 100) / 100,
-      })),
-      ordersByDay: dailyStats.map((item: any) => ({
-        day: item._id,
-        count: item.count,
-        revenue: Math.round(item.revenue * 100) / 100,
-      })),
+      ordersByMonth,
+      ordersByDay,
       topCurrencies: currencyStats.map((item: any) => ({
         currency: item._id,
         count: item.count,
@@ -508,10 +526,13 @@ class AnalyticsService {
         role: item._id,
         count: item.count,
       })),
-      usersByMonth: monthlyStats.map((item: any) => ({
-        month: item._id,
-        count: item.count,
-      })),
+      usersByMonth: dateRange
+        ? fillMonthlySeries(
+            monthlyStats.map((item: any) => ({ month: item._id, count: item.count })),
+            dateRange,
+            (month) => ({ month, count: 0 }),
+          )
+        : monthlyStats.map((item: any) => ({ month: item._id, count: item.count })),
       topCountries: countryStats.map((item: any) => ({
         country: item._id,
         count: item.count,

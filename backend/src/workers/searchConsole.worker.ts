@@ -12,7 +12,8 @@ import * as gsc from "../services/searchConsole.service";
 /**
  * Pull fresh Search Console data for every configured property and persist it
  * durably (SearchConsoleHistory), independent of admins visiting the
- * analytics page. Runs monthly; also invoked directly by the admin "Sync Now"
+ * analytics page. Runs once a month, on the 15th — no sync happens just from
+ * loading the analytics page. Also invoked directly by the admin "Sync Now"
  * button via the /search-console/sync route (that path doesn't go through
  * this queue — it calls the service function inline for an immediate result).
  */
@@ -55,16 +56,36 @@ if (searchConsoleWorker) {
 }
 
 // Schedule the recurring monthly sync once (idempotent — BullMQ deduplicates
-// by jobId). Cron pattern: 03:00 on the 1st of every month, server time.
+// by jobId). Cron pattern: 03:00 on the 15th of every month, server time —
+// the only automatic sync; everything else is the admin "Sync Now" button.
+//
+// BullMQ keys repeatable jobs by jobId + repeat options together, so changing
+// the pattern alone (as happened when this moved from the 1st to the 15th)
+// leaves the old schedule registered rather than replacing it. Sweep any
+// repeatable job under this jobId with a stale pattern before (re)adding the
+// current one, so redeploys self-heal instead of firing both schedules.
+const MONTHLY_SYNC_JOB_ID = "search-console-monthly-sync";
+const MONTHLY_SYNC_CRON = "0 3 15 * *";
+
 if (searchConsoleSyncQueue) {
   searchConsoleSyncQueue
-    .add(
-      "monthly-sync",
-      {},
-      {
-        jobId: "search-console-monthly-sync",
-        repeat: { pattern: "0 3 1 * *" },
-      },
+    .getRepeatableJobs()
+    .then((jobs) =>
+      Promise.all(
+        jobs
+          .filter((j) => j.id === MONTHLY_SYNC_JOB_ID && j.pattern !== MONTHLY_SYNC_CRON)
+          .map((j) => searchConsoleSyncQueue!.removeRepeatableByKey(j.key)),
+      ),
+    )
+    .then(() =>
+      searchConsoleSyncQueue!.add(
+        "monthly-sync",
+        {},
+        {
+          jobId: MONTHLY_SYNC_JOB_ID,
+          repeat: { pattern: MONTHLY_SYNC_CRON },
+        },
+      ),
     )
     .catch((err) =>
       logger.error("search-console-sync: failed to schedule monthly job", err),

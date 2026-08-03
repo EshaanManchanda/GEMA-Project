@@ -24,6 +24,8 @@ export interface ISystemSettings extends Document {
   whatsappNotifications: boolean;
   pushNotifications: boolean;
   animationsEnabled: boolean;
+  /** Kill switch for the Business Optimization / Report Center (KBOS). Admin access is never gated by this — only the vendor-facing surface is. */
+  businessReportsEnabled: boolean;
   /** Name/email of the admin who last saved these settings — for the admin UI's "Last updated by" line. */
   lastModifiedBy?: string;
   createdAt: Date;
@@ -135,6 +137,10 @@ const SystemSettingsSchema = new Schema<ISystemSettings>(
       default: true,
     },
     animationsEnabled: {
+      type: Boolean,
+      default: true,
+    },
+    businessReportsEnabled: {
       type: Boolean,
       default: true,
     },

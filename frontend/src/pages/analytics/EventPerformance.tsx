@@ -16,6 +16,7 @@ import {
 import { Line, Bar } from 'react-chartjs-2';
 import LoadingSpinner from '@/components/common/LoadingSpinner';
 import analyticsAPI from '@/services/api/analyticsAPI';
+import { convertToCSV } from '@/utils/csvExport';
 import {
   FaDownload,
   FaChartLine,
@@ -112,30 +113,6 @@ const formatScheduleDate = (dateStr: string) => {
   const d = new Date(dateStr);
   return d.toLocaleDateString('en-AE', { weekday: 'short', month: 'short', day: 'numeric' });
 };
-
-function convertToCSV(data: Record<string, any>[], filename: string) {
-  if (!data.length) return;
-  const headers = Object.keys(data[0]);
-  const csvRows = [
-    headers.join(','),
-    ...data.map(row =>
-      headers.map(h => {
-        const val = row[h];
-        const str = val === null || val === undefined ? '' : String(val);
-        return str.includes(',') || str.includes('"') || str.includes('\n')
-          ? `"${str.replace(/"/g, '""')}"`
-          : str;
-      }).join(',')
-    ),
-  ];
-  const blob = new Blob([csvRows.join('\n')], { type: 'text/csv' });
-  const url = URL.createObjectURL(blob);
-  const a = document.createElement('a');
-  a.href = url;
-  a.download = `${filename}.csv`;
-  a.click();
-  URL.revokeObjectURL(url);
-}
 
 const EventPerformance: React.FC = () => {
   const { eventId } = useParams<{ eventId: string }>();

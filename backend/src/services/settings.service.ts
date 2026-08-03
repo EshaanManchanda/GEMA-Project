@@ -100,6 +100,16 @@ export async function areWhatsappNotificationsEnabled(): Promise<boolean> {
   return value === true;
 }
 
+/**
+ * App-wide kill switch for the Business Optimization / Report Center (KBOS).
+ * Only gates the vendor-facing surface — admin access to business reports is
+ * never gated by this flag.
+ */
+export async function areBusinessReportsEnabled(): Promise<boolean> {
+  const settings = await getSystemSettings();
+  return settings.businessReportsEnabled !== false;
+}
+
 export default {
   getSystemSettings,
   invalidateSettingsCache,
@@ -110,4 +120,5 @@ export default {
   shouldAutoApproveReviews,
   areEmailNotificationsEnabled,
   areWhatsappNotificationsEnabled,
+  areBusinessReportsEnabled,
 };

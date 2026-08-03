@@ -15,7 +15,9 @@ export async function invalidateEventCaches(eventId?: string): Promise<void> {
       await cacheService.delete(`event:${eventId}`);
       // Clear all single events to prevent stale data for slug-based queries
       const singleEventsCount = await cacheService.deletePattern("event:*");
-      logger.info(`Invalidated cache for event ${eventId} and all other single event caches (${singleEventsCount} entries) to prevent stale data`);
+      logger.info(
+        `Invalidated cache for event ${eventId} and all other single event caches (${singleEventsCount} entries) to prevent stale data`,
+      );
     }
 
     // Invalidate featured events cache
@@ -65,5 +67,35 @@ export async function invalidateAllCaches(): Promise<void> {
     logger.warn("Invalidated ALL caches");
   } catch (error) {
     logger.error("Error invalidating all caches:", error);
+  }
+}
+
+/**
+ * Invalidate the KBOS business-report PDF/CSV cache
+ * (`report:business:${vendorId}:${period}:${type}:pdf`, see
+ * routes/analytics.routes.ts) for a vendor, optionally scoped to one period.
+ *
+ * Call after anything that changes what a report renders: snapshot
+ * generation, notes edits, status changes, promotion-input edits, task
+ * toggling, or a vendor profile/logo/cover-image update. Deliberately NOT
+ * wired into admin.user.controller.ts's vendor-update paths — five more
+ * call sites to close a 10-minute cache window on an admin-initiated edit
+ * is poor ROI; see the KBOS hardening plan.
+ */
+export async function invalidateBusinessReportCaches(
+  vendorId: string,
+  period?: string,
+): Promise<void> {
+  try {
+    const pattern = period
+      ? `report:business:${vendorId}:${period}:*`
+      : `report:business:${vendorId}:*`;
+    const count = await cacheService.deletePattern(pattern);
+    logger.info(
+      `Invalidated ${count} business report cache entries for vendor ${vendorId}` +
+        (period ? ` (${period})` : ""),
+    );
+  } catch (error) {
+    logger.error("Error invalidating business report caches:", error);
   }
 }

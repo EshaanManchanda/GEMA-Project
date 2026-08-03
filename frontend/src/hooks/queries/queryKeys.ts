@@ -148,6 +148,22 @@ export const adminKeys = {
     queries: (days: number, site?: string) => [...adminKeys.all, 'gsc', 'queries', days, site ?? null] as const,
     pages: (days: number, site?: string) => [...adminKeys.all, 'gsc', 'pages', days, site ?? null] as const,
   },
+
+  // Business Optimization / Report Center (KBOS Phase 1)
+  businessReports: {
+    all: () => [...adminKeys.all, 'business-reports'] as const,
+    overview: (filters?: any) => [...adminKeys.businessReports.all(), 'overview', filters || {}] as const,
+    promotionInput: (vendorId: string, period?: string) =>
+      [...adminKeys.businessReports.all(), 'promotion-input', vendorId, period ?? null] as const,
+    health: (vendorId: string, period?: string) =>
+      [...adminKeys.businessReports.all(), 'health', vendorId, period ?? null] as const,
+    healthHistory: (vendorId: string) =>
+      [...adminKeys.businessReports.all(), 'health-history', vendorId] as const,
+    snapshot: (vendorId: string, period?: string) =>
+      [...adminKeys.businessReports.all(), 'snapshot', vendorId, period ?? null] as const,
+    bulkGenerateProgress: (jobId: string) =>
+      [...adminKeys.businessReports.all(), 'bulk-generate', jobId] as const,
+  },
 };
 
 // Vendor query keys

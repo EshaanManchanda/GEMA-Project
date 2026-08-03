@@ -167,6 +167,29 @@ Set in WP plugin configs — typically `http://localhost:PORT` in dev.
 - Generate React component → `qwen2.5-coder:7b`
 - Cross-module integration design → **Claude main brain** (multi-file)
 
+## Local Test-Generation Agent (`tools/local-test-agent/`)
+Shell + Ollama pipeline for backend Jest/Supertest test drafts — keeps test writing off Claude
+tokens per the sub-brain routing rules above. Suggest → human review → manual copy only; it
+never writes into `backend/src/tests/`.
+
+```bash
+./tools/local-test-agent/scan-module.sh <module> plan       # test plan, no code
+./tools/local-test-agent/scan-module.sh <module> generate   # draft test file
+./tools/local-test-agent/check-output.sh <output-file>       # sanity gate before copying
+```
+
+- Modules seeded in `module-files.json`: auth, events, admin, vendor, booking, payment, stripe,
+  coupon. Unlisted modules fall back to grep discovery over `backend/src`.
+- Model by risk: `qwen2.5-coder:7b` for auth/events; `deepseek-coder-v2:16b-lite-instruct-q4_K_M`
+  for admin/vendor/booking/payment/stripe (also useful as a second opinion when qwen's draft
+  fails review — it's slower on CPU, expect several minutes per call).
+- `check-output.sh` hard-fails on forbidden patterns (`server.ts` import, token in response
+  body, real Stripe/Mongo/Cloudinary/Nodemailer calls) but a PASS is not a green light to copy
+  — it still warns-only on missing DB lifecycle calls and wrong duplicate-email status, both of
+  which qwen2.5-coder:7b has hallucinated in practice. Always eyeball the draft against
+  `backend/src/tests/integration/auth/auth.test.ts` before copying.
+- Full workflow, red-flag checklist, and prompt details: `tools/local-test-agent/README.md`.
+
 ## How to Run
 ```bash
 cd backend && npm install && npm run dev   # or npm start for dist

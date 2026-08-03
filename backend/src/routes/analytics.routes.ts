@@ -4,7 +4,6 @@ import { AuthRequest } from "../types/index";
 import { AppError } from "../middleware/error";
 import { authenticate, authorize } from "../middleware/auth";
 import { analyticsService } from "../services/analytics.service";
-import Vendor from "../models/Vendor";
 import {
   toCsv,
   analyticsToRows,
@@ -16,13 +15,46 @@ import {
   lastNDaysRange,
   formatUtcPeriodLabel,
 } from "../utils/dateHelpers";
-import { buildEventReport, ReportRange } from "../services/eventReport.service";
+import {
+  buildEventReport,
+  eventReportToCsv,
+  ReportRange,
+} from "../services/eventReport.service";
+import {
+  buildEventReportHtml,
+  buildBusinessHealthHtml,
+  buildPromotionSnapshotHtml,
+} from "../services/reportTemplate.service";
 import { renderReportPdf } from "../utils/pdf.utils";
 import cacheService from "../services/cache.service";
+import { invalidateBusinessReportCaches } from "../utils/cache.utils";
+import { logReportGeneration } from "../services/reportObservability.service";
+import {
+  ReportGenerationOperation,
+  ReportGenerationStatus,
+  ReportGenerationTrigger,
+} from "../models/ReportGenerationLog";
 import { createCustomLimiter } from "../middleware/rateLimiter";
-import { EventReportData } from "../services/eventReport.service";
 import Event from "../models/Event";
 import { trackAnalyticsEvent } from "../controllers/analyticsEvent.controller";
+import { resolveVendorId } from "../utils/vendorResolve";
+import Vendor from "../models/Vendor";
+import VendorSubscription from "../models/VendorSubscription";
+import VendorBusinessSnapshot from "../models/VendorBusinessSnapshot";
+import VendorPromotionInput from "../models/VendorPromotionInput";
+import {
+  computeVendorHealth,
+  generateSnapshot,
+  getSnapshotHistory,
+  toReportPayload,
+  reportPayloadToCsv,
+  periodOfDate,
+} from "../services/businessReport.service";
+import settingsService from "../services/settings.service";
+import { verifySnapshot } from "../services/snapshotIntegrity.service";
+import { config } from "../config/env";
+import logger from "../config/logger";
+import { INTEGRITY_MISMATCH_BLOCKS_LOCKED_DOWNLOAD } from "../constants/businessHealth.rules";
 
 const router = Router();
 
@@ -37,16 +69,8 @@ router.post("/track", trackLimiter, trackAnalyticsEvent);
 
 router.use(authenticate);
 
-/**
- * Resolve vendor profile _id from the logged-in user.
- * Events store event.vendorId = Vendor._id (not User._id).
- */
-async function resolveVendorId(req: AuthRequest): Promise<string | undefined> {
-  if (req.user?.role !== "vendor") return undefined;
-  const userId = req.user._id || req.user.id;
-  const profile = await Vendor.findOne({ userId }).select("_id").lean();
-  return profile?._id?.toString();
-}
+// resolveVendorId (User -> Vendor profile _id lookup) now lives in
+// utils/vendorResolve.ts so other report routes can reuse it.
 
 // Use shared parseAnalyticsDateRange (UTC day-boundary clamping, consistent defaults)
 const parseDateRange = (startDate: any, endDate: any) =>
@@ -468,417 +492,9 @@ const pdfReportLimiter = createCustomLimiter({
   message: "Too many report requests. Please wait and try again.",
 });
 
-// ─── Event report helpers ─────────────────────────────────────────────────────
-
-/** Build a human-readable period label used in report filenames. */
-function rangeToLabel(range: ReportRange): string {
-  return range === "7d" ? "last-7-days" : "last-30-days";
-}
-
-/**
- * Render an EventReportData object as a multi-section CSV string.
- * Each section has a header row, data rows, and a totals row.
- * Views row is labeled "(all-time)" while other KPIs are labeled per the range.
- */
-function eventReportToCsv(report: EventReportData): string {
-  const rangeLabel = `(last ${report.period.range === "7d" ? "7" : "30"} days)`;
-  const rows: Record<string, unknown>[] = [];
-
-  // ── Section 1: Report info ──
-  rows.push({
-    Section: "Report Info",
-    Field: "Event",
-    Value: report.event.title,
-  });
-  rows.push({ Section: "", Field: "Location", Value: report.event.location });
-  rows.push({
-    Section: "",
-    Field: "Report Period",
-    Value: report.period.label,
-  });
-  rows.push({ Section: "", Field: "Generated At", Value: report.generated.at });
-  rows.push({});
-
-  // ── Section 2: KPIs ──
-  rows.push({
-    Section: "KPIs",
-    Field: `Registrations ${rangeLabel}`,
-    Value: report.kpis.registrations,
-  });
-  rows.push({
-    Section: "",
-    Field: `Revenue ${rangeLabel}`,
-    Value: report.kpis.revenue,
-  });
-  rows.push({
-    Section: "",
-    Field: `Tickets Sold ${rangeLabel}`,
-    Value: report.kpis.ticketsSold,
-  });
-  rows.push({
-    Section: "",
-    Field: `Certificates Issued ${rangeLabel}`,
-    Value: report.kpis.certificatesIssued,
-  });
-  rows.push({
-    Section: "",
-    Field: `Reviews ${rangeLabel}`,
-    Value: report.kpis.reviews,
-  });
-  rows.push({
-    Section: "",
-    Field: "Total Views (all-time)",
-    Value: report.event.viewsAllTime,
-  });
-  rows.push({});
-
-  // ── Section 2b: External Booking ──
-  if (report.externalBooking.enabled) {
-    rows.push({
-      Section: "External Booking",
-      Field: "Link",
-      Value: report.externalBooking.link ?? "",
-    });
-    rows.push({
-      Section: "",
-      Field: `Button Clicks ${rangeLabel}`,
-      Value: report.externalBooking.clicksInPeriod,
-    });
-    rows.push({
-      Section: "",
-      Field: "Total Clicks (all-time)",
-      Value: report.externalBooking.totalClicks,
-    });
-    rows.push({
-      Section: "",
-      Field: "Unique Clicks (all-time)",
-      Value: report.externalBooking.uniqueClicks,
-    });
-    rows.push({
-      Section: "",
-      Field: "Click-Through Rate (all-time)",
-      Value: `${report.externalBooking.clickThroughRate}%`,
-    });
-    rows.push({
-      Section: "",
-      Field: "Last Clicked",
-      Value: report.externalBooking.lastClickedAt ?? "—",
-    });
-    rows.push({});
-    rows.push({
-      Section: "",
-      Field: "Note",
-      Value:
-        "Booking happens on the external site — registrations, revenue, and certificates below are not tracked on-platform for this event.",
-    });
-    rows.push({});
-  }
-
-  // ── Section 3: Registrations by status ──
-  rows.push({ Section: "Registrations by Status", Status: "", Count: "" });
-  for (const [status, count] of Object.entries(report.registrations.byStatus)) {
-    rows.push({ Section: "", Status: status, Count: count });
-  }
-  rows.push({
-    Section: "",
-    Status: "TOTAL",
-    Count: report.registrations.total,
-  });
-  rows.push({});
-
-  // ── Section 4: Reviews ──
-  rows.push({
-    Section: "Reviews",
-    Field: "Average Rating",
-    Value: report.reviews.averageRating,
-  });
-  rows.push({
-    Section: "",
-    Field: "Total Reviews",
-    Value: report.reviews.total,
-  });
-  for (const [stars, n] of Object.entries(report.reviews.distribution)) {
-    rows.push({ Section: "", Field: `${stars}-star`, Value: n });
-  }
-  rows.push({});
-
-  if (report.reviews.recent.length > 0) {
-    rows.push({
-      Section: "Recent Reviews",
-      Rating: "Rating",
-      Comment: "Comment",
-      Reviewer: "Reviewer",
-      Date: "Date",
-    });
-    for (const r of report.reviews.recent) {
-      rows.push({
-        Section: "",
-        Rating: r.rating,
-        Comment: r.comment ?? "",
-        Reviewer: r.userName ?? "",
-        Date: r.date,
-      });
-    }
-    rows.push({});
-  }
-
-  // ── Section 5: Certificates by status ──
-  rows.push({ Section: "Certificates by Status", Status: "", Count: "" });
-  for (const [status, count] of Object.entries(report.certificates.byStatus)) {
-    rows.push({ Section: "", Status: status, Count: count });
-  }
-  rows.push({ Section: "", Status: "TOTAL", Count: report.certificates.total });
-  rows.push({});
-
-  // ── Section 6: Daily sales ──
-  if (report.dailySales.length > 0) {
-    rows.push({
-      Section: "Daily Sales",
-      Date: "Date",
-      Orders: "Orders",
-      Revenue: "Revenue",
-      Tickets: "Tickets",
-    });
-    let totOrders = 0,
-      totRevenue = 0,
-      totTickets = 0;
-    for (const d of report.dailySales) {
-      rows.push({
-        Section: "",
-        Date: d.date,
-        Orders: d.orders,
-        Revenue: d.revenue,
-        Tickets: d.tickets,
-      });
-      totOrders += d.orders;
-      totRevenue += d.revenue;
-      totTickets += d.tickets;
-    }
-    rows.push({
-      Section: "",
-      Date: "TOTAL",
-      Orders: totOrders,
-      Revenue: Math.round(totRevenue * 100) / 100,
-      Tickets: totTickets,
-    });
-  } else {
-    rows.push({
-      Section: "Daily Sales",
-      Date: "No data in this period",
-      Orders: "",
-      Revenue: "",
-      Tickets: "",
-    });
-  }
-
-  return toCsv(rows);
-}
-
-/** Build a self-contained A4 HTML string for the event report PDF. */
-function buildEventReportHtml(report: EventReportData): string {
-  const rangeLabel = `Last ${report.period.range === "7d" ? "7" : "30"} days`;
-
-  const esc = (s: unknown) =>
-    String(s ?? "")
-      .replace(/&/g, "&amp;")
-      .replace(/</g, "&lt;")
-      .replace(/>/g, "&gt;")
-      .replace(/"/g, "&quot;")
-      .replace(/'/g, "&#39;");
-
-  const kpiCard = (label: string, value: string | number, note?: string) => `
-    <div class="kpi-card">
-      <div class="kpi-value">${value}</div>
-      <div class="kpi-label">${label}</div>
-      ${note ? `<div class="kpi-note">${note}</div>` : ""}
-    </div>`;
-
-  const statusTableRows = (byStatus: Record<string, number>) => {
-    const entries = Object.entries(byStatus);
-    if (!entries.length)
-      return `<tr><td colspan="2" class="empty">No data in this period</td></tr>`;
-    return entries
-      .map(([s, n]) => `<tr><td>${s}</td><td>${n}</td></tr>`)
-      .join("");
-  };
-
-  const ratingBar = (stars: number, count: number, total: number) => {
-    const pct = total > 0 ? Math.round((count / total) * 100) : 0;
-    return `
-      <div class="rating-row">
-        <span class="stars">${"★".repeat(stars)}${"☆".repeat(5 - stars)}</span>
-        <div class="bar-track"><div class="bar-fill" style="width:${pct}%"></div></div>
-        <span class="bar-count">${count}</span>
-      </div>`;
-  };
-
-  const dailySalesRows = () => {
-    if (!report.dailySales.length)
-      return `<tr><td colspan="4" class="empty">No data in this period</td></tr>`;
-    let totO = 0,
-      totR = 0,
-      totT = 0;
-    const rows = report.dailySales.map((d) => {
-      totO += d.orders;
-      totR += d.revenue;
-      totT += d.tickets;
-      return `<tr><td>${d.date}</td><td>${d.orders}</td><td>${d.revenue.toFixed(2)}</td><td>${d.tickets}</td></tr>`;
-    });
-    rows.push(
-      `<tr class="totals-row"><td>TOTAL</td><td>${totO}</td><td>${totR.toFixed(2)}</td><td>${totT}</td></tr>`,
-    );
-    return rows.join("");
-  };
-
-  const recentReviewsSection = () => {
-    if (!report.reviews.recent.length)
-      return `<p class="empty">No reviews in this period.</p>`;
-    return `<table><thead><tr><th>Rating</th><th>Reviewer</th><th>Comment</th><th>Date</th></tr></thead><tbody>
-      ${report.reviews.recent
-        .map(
-          (r) => `<tr>
-        <td>${"★".repeat(r.rating)}${"☆".repeat(5 - r.rating)}</td>
-        <td>${r.userName ?? "—"}</td>
-        <td>${r.comment ?? "—"}</td>
-        <td>${r.date}</td>
-      </tr>`,
-        )
-        .join("")}
-    </tbody></table>`;
-  };
-
-  return `<!DOCTYPE html>
-<html lang="en">
-<head>
-<meta charset="UTF-8">
-<style>
-  * { box-sizing: border-box; margin: 0; padding: 0; }
-  body { font-family: sans-serif; font-size: 11px; color: #1a1a2e; background: #fff; padding: 0; }
-  .header { background: linear-gradient(135deg, #0f3460 0%, #16213e 100%); color: #fff; padding: 20px 24px 16px; }
-  .header h1 { font-size: 18px; font-weight: 700; margin-bottom: 4px; }
-  .header .meta { font-size: 9.5px; opacity: 0.8; }
-  .period-banner { background: #e8f4f8; border-left: 4px solid #0f3460; padding: 8px 14px; margin: 14px 24px; font-size: 9.5px; color: #0f3460; }
-  .period-banner strong { font-weight: 600; }
-  .section { margin: 14px 24px; }
-  .section-title { font-size: 12px; font-weight: 700; color: #0f3460; border-bottom: 2px solid #0f3460; padding-bottom: 4px; margin-bottom: 10px; }
-  .kpi-grid { display: flex; flex-wrap: wrap; gap: 10px; }
-  .kpi-card { flex: 1 1 120px; background: #f7f9fc; border: 1px solid #dbe3f0; border-radius: 6px; padding: 10px 12px; text-align: center; }
-  .kpi-value { font-size: 20px; font-weight: 700; color: #0f3460; }
-  .kpi-label { font-size: 9px; color: #555; margin-top: 2px; }
-  .kpi-note { font-size: 8.5px; color: #999; font-style: italic; margin-top: 2px; }
-  table { width: 100%; border-collapse: collapse; margin-top: 6px; font-size: 10px; }
-  th { background: #0f3460; color: #fff; padding: 5px 8px; text-align: left; font-weight: 600; }
-  td { padding: 4px 8px; border-bottom: 1px solid #eef0f5; }
-  tr:nth-child(even) td { background: #f7f9fc; }
-  .totals-row td { font-weight: 700; background: #e8f4f8 !important; }
-  .empty { color: #999; font-style: italic; text-align: center; padding: 10px; }
-  .rating-row { display: flex; align-items: center; gap: 8px; margin-bottom: 4px; }
-  .stars { font-size: 11px; color: #f59e0b; min-width: 70px; }
-  .bar-track { flex: 1; height: 8px; background: #eee; border-radius: 4px; overflow: hidden; }
-  .bar-fill { height: 100%; background: #0f3460; border-radius: 4px; }
-  .bar-count { min-width: 24px; text-align: right; color: #555; font-size: 9.5px; }
-  .two-col { display: flex; gap: 20px; }
-  .two-col > div { flex: 1; }
-</style>
-</head>
-<body>
-
-<div class="header">
-  <h1>${esc(report.event.title)}</h1>
-  <div class="meta">
-    ${report.event.location !== "—" ? `${esc(report.event.location)} &nbsp;|&nbsp; ` : ""}Event Report &nbsp;|&nbsp; Generated ${report.generated.at.slice(0, 10)}
-  </div>
-</div>
-
-<div class="period-banner">
-  <strong>Report period:</strong> ${report.period.label} &nbsp;(${rangeLabel}) &nbsp;&mdash;&nbsp;
-  Views shown are all-time totals; all other metrics cover the report period above.
-</div>
-
-<div class="section">
-  <div class="section-title">Key Performance Indicators</div>
-  <div class="kpi-grid">
-    ${kpiCard("Registrations", report.kpis.registrations, rangeLabel)}
-    ${kpiCard("Revenue", `${report.kpis.revenue.toFixed(2)}`, rangeLabel)}
-    ${kpiCard("Tickets Sold", report.kpis.ticketsSold, rangeLabel)}
-    ${kpiCard("Certificates Issued", report.kpis.certificatesIssued, rangeLabel)}
-    ${kpiCard("Reviews", report.kpis.reviews, rangeLabel)}
-    ${kpiCard("Total Views", report.event.viewsAllTime, "all-time")}
-    ${report.externalBooking.enabled ? kpiCard("Booking Clicks", report.externalBooking.clicksInPeriod, rangeLabel) : ""}
-  </div>
-</div>
-
-${
-  report.externalBooking.enabled
-    ? `
-<div class="section">
-  <div class="section-title">External Booking</div>
-  <table>
-    <thead><tr><th>Link</th><th>Total Clicks</th><th>Unique Clicks</th><th>CTR (all-time)</th><th>Last Clicked</th></tr></thead>
-    <tbody>
-      <tr>
-        <td style="word-break:break-all">${esc(report.externalBooking.link ?? "—")}</td>
-        <td>${report.externalBooking.totalClicks}</td>
-        <td>${report.externalBooking.uniqueClicks}</td>
-        <td>${report.externalBooking.clickThroughRate}%</td>
-        <td>${report.externalBooking.lastClickedAt ? report.externalBooking.lastClickedAt.slice(0, 10) : "—"}</td>
-      </tr>
-    </tbody>
-  </table>
-</div>
-<div class="period-banner" style="background:#fff7e6;border-left-color:#b45309;color:#7a4d05">
-  Booking happens on the external site — registrations, revenue, and certificates below are not tracked on-platform for this event.
-</div>`
-    : ""
-}
-
-<div class="two-col" style="margin:0 24px">
-  <div>
-    <div class="section-title" style="margin-bottom:8px">Registrations by Status</div>
-    <table>
-      <thead><tr><th>Status</th><th>Count</th></tr></thead>
-      <tbody>
-        ${statusTableRows(report.registrations.byStatus)}
-        ${report.registrations.total > 0 ? `<tr class="totals-row"><td>TOTAL</td><td>${report.registrations.total}</td></tr>` : ""}
-      </tbody>
-    </table>
-  </div>
-  <div>
-    <div class="section-title" style="margin-bottom:8px">Certificates by Status</div>
-    <table>
-      <thead><tr><th>Status</th><th>Count</th></tr></thead>
-      <tbody>
-        ${statusTableRows(report.certificates.byStatus)}
-        ${report.certificates.total > 0 ? `<tr class="totals-row"><td>TOTAL</td><td>${report.certificates.total}</td></tr>` : ""}
-      </tbody>
-    </table>
-  </div>
-</div>
-
-<div class="section">
-  <div class="section-title">Reviews — Rating Distribution</div>
-  ${
-    report.reviews.total === 0
-      ? `<p class="empty">No reviews in this period.</p>`
-      : `<div style="margin-bottom:10px">
-        <div style="font-size:10px;color:#555;margin-bottom:6px">Average: <strong>${report.reviews.averageRating} / 5</strong> &nbsp; (${report.reviews.total} reviews)</div>
-        ${[5, 4, 3, 2, 1].map((s) => ratingBar(s, report.reviews.distribution[s] ?? 0, report.reviews.total)).join("")}
-       </div>`
-  }
-  ${recentReviewsSection()}
-</div>
-
-<div class="section">
-  <div class="section-title">Daily Sales</div>
-  <table>
-    <thead><tr><th>Date</th><th>Orders</th><th>Revenue</th><th>Tickets</th></tr></thead>
-    <tbody>${dailySalesRows()}</tbody>
-  </table>
-</div>
-
-</body>
-</html>`;
-}
+// eventReportToCsv and buildEventReportHtml were extracted to
+// services/eventReport.service.ts and services/reportTemplate.service.ts
+// respectively (see imports above) to make them reusable outside this route file.
 
 // @route   GET /api/analytics/events/:eventId/report
 // @access  Private (Admin, Vendor-owner)
@@ -1048,6 +664,381 @@ router.get(
           data,
         });
       }
+    } catch (error) {
+      next(error);
+    }
+  },
+);
+
+// ─── Business Optimization / Report Center (KBOS Phase 1) ─────────────────────
+
+/**
+ * Admin never gated. A vendor is gated by both the app-wide kill switch
+ * (SystemSettings.businessReportsEnabled) and their subscription's
+ * advancedAnalytics flag — but most vendors are on the platform_stripe
+ * payment mode and never have a VendorSubscription document at all (that
+ * model is specific to the custom-Stripe subscription flow). Treating
+ * "no subscription document" as gated would lock out the majority of
+ * vendors by default, which defeats the point of a soft entitlement flag —
+ * so a missing document is treated as ungated, and only an explicit
+ * `advancedAnalytics: false` on a real subscription restricts access.
+ */
+async function assertBusinessReportsAccess(req: AuthRequest): Promise<void> {
+  if (req.user?.role === "admin") return;
+
+  const enabled = await settingsService.areBusinessReportsEnabled();
+  if (!enabled) {
+    throw new AppError("Business reports are currently unavailable", 503);
+  }
+
+  const vendorId = await resolveVendorId(req);
+  const subscription = await VendorSubscription.findOne({ vendorId })
+    .select("planFeatures.advancedAnalytics")
+    .lean();
+  if (subscription && subscription.planFeatures?.advancedAnalytics === false) {
+    throw new AppError("Business reports are not included in your plan", 403);
+  }
+}
+
+/** Vendors may only access their own vendorId; admins may access any. */
+async function assertVendorOwnership(
+  req: AuthRequest,
+  vendorId: string,
+): Promise<void> {
+  if (req.user?.role === "admin") return;
+  const ownVendorId = await resolveVendorId(req);
+  if (!ownVendorId || ownVendorId !== vendorId) {
+    throw new AppError("Access denied", 403);
+  }
+}
+
+const businessReportPdfLimiter = createCustomLimiter({
+  windowMs: 10 * 60 * 1000,
+  max: 10,
+  message: "Too many report requests. Please wait and try again.",
+});
+
+// @route   GET /api/insights/vendors/:vendorId/health
+// @access  Private (Admin, Vendor-self)
+router.get(
+  "/vendors/:vendorId/health",
+  authorize(["admin", "vendor"]),
+  async (req: AuthRequest, res: Response, next: NextFunction) => {
+    try {
+      const { vendorId } = req.params;
+      if (!mongoose.Types.ObjectId.isValid(vendorId)) {
+        return next(new AppError("Invalid vendor ID", 400));
+      }
+      await assertVendorOwnership(req, vendorId);
+      await assertBusinessReportsAccess(req);
+
+      const period = (req.query.period as string) || periodOfDate();
+      const health = await computeVendorHealth(vendorId, period);
+
+      res.status(200).json({
+        success: true,
+        message: "Vendor business health retrieved successfully",
+        data: health,
+      });
+    } catch (error) {
+      next(error);
+    }
+  },
+);
+
+// @route   GET /api/insights/vendors/:vendorId/health/history
+// @access  Private (Admin, Vendor-self)
+router.get(
+  "/vendors/:vendorId/health/history",
+  authorize(["admin", "vendor"]),
+  async (req: AuthRequest, res: Response, next: NextFunction) => {
+    try {
+      const { vendorId } = req.params;
+      if (!mongoose.Types.ObjectId.isValid(vendorId)) {
+        return next(new AppError("Invalid vendor ID", 400));
+      }
+      await assertVendorOwnership(req, vendorId);
+      await assertBusinessReportsAccess(req);
+
+      const limit = Math.min(
+        Math.max(parseInt((req.query.limit as string) ?? "24", 10), 1),
+        60,
+      );
+      const history = await getSnapshotHistory(vendorId, limit);
+
+      res.status(200).json({
+        success: true,
+        message: "Vendor business health history retrieved successfully",
+        data: history,
+      });
+    } catch (error) {
+      next(error);
+    }
+  },
+);
+
+// @route   PATCH /api/insights/vendors/:vendorId/tasks/:taskCode
+// @access  Private (Admin, Vendor-self)
+router.patch(
+  "/vendors/:vendorId/tasks/:taskCode",
+  authorize(["admin", "vendor"]),
+  async (req: AuthRequest, res: Response, next: NextFunction) => {
+    try {
+      const { vendorId, taskCode } = req.params;
+      const { done } = req.body as { done?: boolean };
+      if (!mongoose.Types.ObjectId.isValid(vendorId)) {
+        return next(new AppError("Invalid vendor ID", 400));
+      }
+      if (typeof done !== "boolean") {
+        return next(new AppError("done must be a boolean", 400));
+      }
+      await assertVendorOwnership(req, vendorId);
+      await assertBusinessReportsAccess(req);
+
+      const period = (req.query.period as string) || periodOfDate();
+      const actorId = (req.user?._id || req.user?.id)?.toString();
+
+      const snapshot = await VendorBusinessSnapshot.findOne({
+        vendorId,
+        period,
+      });
+      if (!snapshot) {
+        return next(
+          new AppError("No snapshot exists for this period yet", 404),
+        );
+      }
+      const task = snapshot.tasks.find((t) => t.code === taskCode);
+      if (!task) return next(new AppError("Task not found", 404));
+
+      task.done = done;
+      task.completedAt = done ? new Date() : undefined;
+      task.completedBy =
+        done && actorId
+          ? new mongoose.Types.ObjectId(actorId as string)
+          : undefined;
+      await snapshot.save();
+      await invalidateBusinessReportCaches(vendorId, period);
+
+      res.status(200).json({
+        success: true,
+        message: "Task updated successfully",
+        data: task,
+      });
+    } catch (error) {
+      next(error);
+    }
+  },
+);
+
+// @route   GET /api/insights/vendors/:vendorId/report
+// @access  Private (Admin, Vendor-self)
+router.get(
+  "/vendors/:vendorId/report",
+  authorize(["admin", "vendor"]),
+  async (req: AuthRequest, res: Response, next: NextFunction) => {
+    try {
+      const requestStart = Date.now();
+      const requestTrigger =
+        req.user?.role === "admin"
+          ? ReportGenerationTrigger.ADMIN_REQUEST
+          : ReportGenerationTrigger.VENDOR_REQUEST;
+      const { vendorId } = req.params;
+      const period = req.query.period as string;
+      const type = ((req.query.type as string) || "health") as
+        | "promotion"
+        | "health";
+      const format = ((req.query.format as string) || "pdf") as "pdf" | "csv";
+
+      if (!mongoose.Types.ObjectId.isValid(vendorId)) {
+        return next(new AppError("Invalid vendor ID", 400));
+      }
+      if (!period || !/^\d{4}-(0[1-9]|1[0-2])$/.test(period)) {
+        return next(
+          new AppError('period is required in "YYYY-MM" format', 400),
+        );
+      }
+      if (!["promotion", "health"].includes(type)) {
+        return next(new AppError("type must be promotion or health", 400));
+      }
+      if (!["pdf", "csv"].includes(format)) {
+        return next(new AppError("format must be pdf or csv", 400));
+      }
+
+      await assertVendorOwnership(req, vendorId);
+      await assertBusinessReportsAccess(req);
+
+      const vendor = await Vendor.findById(vendorId).select(
+        "businessName logo coverImage description website socialMedia verificationStatus createdAt stats",
+      );
+      if (!vendor) return next(new AppError("Vendor not found", 404));
+
+      let snapshot = await VendorBusinessSnapshot.findOne({ vendorId, period });
+      if (!snapshot) {
+        // First request for this period generates and freezes it, mirroring
+        // how the existing event report builds on first request.
+        const actorId = (req.user?._id || req.user?.id)?.toString();
+        snapshot = await generateSnapshot(vendorId, period, {
+          generatedBy: "manual",
+          actorId,
+          trigger: requestTrigger,
+        });
+      }
+
+      const integrity = verifySnapshot(snapshot, config.reportIntegritySecret);
+      if (integrity.status === "mismatch") {
+        logger.error(
+          `Business report snapshot integrity mismatch for vendor ${vendorId} (${period})`,
+          integrity,
+        );
+        await logReportGeneration({
+          operation: ReportGenerationOperation.PDF_RENDER,
+          status: ReportGenerationStatus.FAILED,
+          trigger: requestTrigger,
+          vendorId: new mongoose.Types.ObjectId(vendorId),
+          period,
+          snapshotId: snapshot._id,
+          reportType: type,
+          format,
+          durationMs: Date.now() - requestStart,
+          errorCode: "INTEGRITY_MISMATCH",
+          errorMessage: "Snapshot content hash does not match stored checksum.",
+        });
+        if (
+          snapshot.status === "locked" &&
+          INTEGRITY_MISMATCH_BLOCKS_LOCKED_DOWNLOAD
+        ) {
+          return next(
+            new AppError(
+              "This snapshot failed its integrity check and cannot be downloaded. Contact support.",
+              409,
+            ),
+          );
+        }
+      }
+
+      const payload = toReportPayload(snapshot, vendor);
+
+      if (format === "csv") {
+        const csvBody = reportPayloadToCsv(payload);
+        const filename =
+          safeReportFilename("business-report", vendor.businessName, period) +
+          ".csv";
+        res.setHeader("Content-Type", "text/csv; charset=utf-8");
+        res.setHeader(
+          "Content-Disposition",
+          `attachment; filename="${filename}"`,
+        );
+        await logReportGeneration({
+          operation: ReportGenerationOperation.CSV_RENDER,
+          status: ReportGenerationStatus.SUCCEEDED,
+          trigger: requestTrigger,
+          vendorId: new mongoose.Types.ObjectId(vendorId),
+          period,
+          snapshotId: snapshot._id,
+          reportType: type,
+          format: "csv",
+          durationMs: Date.now() - requestStart,
+        });
+        return res.send(csvBody);
+      }
+
+      // PDF format
+      await new Promise<void>((resolve, reject) => {
+        businessReportPdfLimiter(req, res, (err?: any) =>
+          err ? reject(err) : resolve(),
+        );
+      });
+
+      // Content-addressed: keying on the integrity hash (rather than, say,
+      // snapshot.updatedAt) means regeneration automatically mints a new
+      // key and stale entries just expire via the existing 600s TTL — no
+      // reliance on remembering to call invalidateBusinessReportCaches at
+      // every future mutation site. updatedAt specifically would be a trap:
+      // the download path itself calls snapshot.save() below to push a
+      // "downloaded" audit entry, which would mint a new cache key on every
+      // single download and permanently zero out the hit rate. A legacy
+      // snapshot with no integrity block falls back to a fixed "legacy" tag
+      // (still content-invalidated by the 003a helper on mutation).
+      const contentTag =
+        snapshot.integrity?.contentHash?.slice(0, 16) ?? "legacy";
+      const cacheKey = `report:business:${vendorId}:${period}:${type}:${contentTag}:pdf`;
+      const cached = await cacheService.get<Buffer>(cacheKey);
+      const filename =
+        safeReportFilename("business-report", vendor.businessName, period) +
+        ".pdf";
+
+      if (cached) {
+        const buf = Buffer.isBuffer(cached)
+          ? cached
+          : Buffer.from(cached as any);
+        res.setHeader("Content-Type", "application/pdf");
+        res.setHeader(
+          "Content-Disposition",
+          `attachment; filename="${filename}"`,
+        );
+        await logReportGeneration({
+          operation: ReportGenerationOperation.PDF_RENDER,
+          status: ReportGenerationStatus.CACHE_HIT,
+          trigger: requestTrigger,
+          vendorId: new mongoose.Types.ObjectId(vendorId),
+          period,
+          snapshotId: snapshot._id,
+          reportType: type,
+          format: "pdf",
+          cacheHit: true,
+          durationMs: Date.now() - requestStart,
+        });
+        return res.send(buf);
+      }
+
+      let html: string;
+      if (type === "promotion") {
+        const promotionInput = await VendorPromotionInput.findOne({
+          vendorId,
+          period,
+        });
+        html = buildPromotionSnapshotHtml(payload, promotionInput);
+      } else {
+        html = buildBusinessHealthHtml(payload);
+      }
+      const renderStart = Date.now();
+      const pdfBuffer = await renderReportPdf(html);
+      const renderMs = Date.now() - renderStart;
+      await cacheService.set(cacheKey, pdfBuffer, { ttl: 600 });
+      await logReportGeneration({
+        operation: ReportGenerationOperation.PDF_RENDER,
+        status: ReportGenerationStatus.SUCCEEDED,
+        trigger: requestTrigger,
+        vendorId: new mongoose.Types.ObjectId(vendorId),
+        period,
+        snapshotId: snapshot._id,
+        reportType: type,
+        format: "pdf",
+        cacheHit: false,
+        pdfBytes: pdfBuffer.length,
+        durationMs: Date.now() - requestStart,
+        renderMs,
+      });
+
+      snapshot.auditTrail.push({
+        action: "downloaded",
+        actorId:
+          req.user?._id || req.user?.id
+            ? new mongoose.Types.ObjectId(
+                (req.user?._id || req.user?.id) as string,
+              )
+            : snapshot.vendorId,
+        at: new Date(),
+        detail: `${type} pdf`,
+      });
+      await snapshot.save();
+
+      res.setHeader("Content-Type", "application/pdf");
+      res.setHeader(
+        "Content-Disposition",
+        `attachment; filename="${filename}"`,
+      );
+      return res.send(pdfBuffer);
     } catch (error) {
       next(error);
     }

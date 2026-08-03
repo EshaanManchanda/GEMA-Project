@@ -38,6 +38,32 @@ export interface ISocialMedia {
   linkedin?: string;
   youtube?: string;
   website?: string;
+  googleBusinessUrl?: string;
+  tiktok?: string;
+  whatsapp?: string;
+}
+
+export interface IBusinessProfileBranch {
+  name: string;
+  address: string;
+}
+
+/**
+ * Fields specific to the Business Optimization / Report Center (KBOS Phase 1).
+ * Kept as its own subdocument rather than adding these directly to IVendor
+ * so the "extra" business-consulting fields stay visually distinct from the
+ * core marketplace profile fields above.
+ */
+export interface IBusinessProfile {
+  mission?: string;
+  vision?: string;
+  targetAudience?: string;
+  ageGroupMin?: number;
+  ageGroupMax?: number;
+  certifications?: string[];
+  awards?: string[];
+  licenseNumber?: string;
+  branches?: IBusinessProfileBranch[];
 }
 
 export interface IContactPerson {
@@ -205,6 +231,7 @@ export interface IVendor extends Document {
   businessHours?: IBusinessHours;
   socialMedia?: ISocialMedia;
   website?: string;
+  businessProfile?: IBusinessProfile;
 
   // Tax & Legal
   taxInformation?: ITaxInformation;
@@ -370,8 +397,29 @@ const VendorSchema = new Schema<IVendor>(
       linkedin: String,
       youtube: String,
       website: String,
+      googleBusinessUrl: String,
+      tiktok: String,
+      whatsapp: String,
     },
     website: String,
+
+    // Business Optimization / Report Center profile fields (KBOS Phase 1)
+    businessProfile: {
+      mission: { type: String, trim: true, maxlength: 1000 },
+      vision: { type: String, trim: true, maxlength: 1000 },
+      targetAudience: { type: String, trim: true, maxlength: 500 },
+      ageGroupMin: { type: Number, min: 0 },
+      ageGroupMax: { type: Number, min: 0 },
+      certifications: [{ type: String, trim: true }],
+      awards: [{ type: String, trim: true }],
+      licenseNumber: { type: String, trim: true },
+      branches: [
+        {
+          name: { type: String, trim: true, required: true },
+          address: { type: String, trim: true, required: true },
+        },
+      ],
+    },
 
     // Tax & Legal
     taxInformation: {

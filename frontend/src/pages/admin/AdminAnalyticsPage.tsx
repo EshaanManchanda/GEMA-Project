@@ -3,6 +3,7 @@ import { Link } from 'react-router-dom';
 import toast from 'react-hot-toast';
 import PrivatePageSEO from '@/components/common/PrivatePageSEO';
 import logger from '@/utils/logger';
+import { convertToCSV } from '@/utils/csvExport';
 import {
   Chart as ChartJS,
   CategoryScale,
@@ -125,30 +126,6 @@ const formatHour = (hour: number) => {
   if (hour === 12) return '12 PM';
   return hour < 12 ? `${hour} AM` : `${hour - 12} PM`;
 };
-
-function convertToCSV(data: Record<string, any>[], filename: string) {
-  if (!data.length) return;
-  const headers = Object.keys(data[0]);
-  const csvRows = [
-    headers.join(','),
-    ...data.map(row =>
-      headers.map(h => {
-        const val = row[h];
-        const str = val === null || val === undefined ? '' : String(val);
-        return str.includes(',') || str.includes('"') || str.includes('\n')
-          ? `"${str.replace(/"/g, '""')}"`
-          : str;
-      }).join(',')
-    ),
-  ];
-  const blob = new Blob([csvRows.join('\n')], { type: 'text/csv' });
-  const url = URL.createObjectURL(blob);
-  const a = document.createElement('a');
-  a.href = url;
-  a.download = `${filename}.csv`;
-  a.click();
-  URL.revokeObjectURL(url);
-}
 
 const AdminAnalyticsPage: React.FC = () => {
   const [timeRange, setTimeRange] = useState<TimeRange>('30days');

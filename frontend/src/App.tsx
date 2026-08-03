@@ -140,6 +140,8 @@ const AdminEmailMarketingPage = React.lazy(() => import(/* webpackChunkName: "ad
 const ReelsManagementPage = React.lazy(() => import(/* webpackChunkName: "admin" */ './pages/admin/ReelsManagementPage'));
 const BulkImportPage = React.lazy(() => import(/* webpackChunkName: "admin" */ './pages/admin/BulkImportPage'));
 const AdminAnalyticsPage = React.lazy(() => import(/* webpackChunkName: "admin" */ './pages/admin/AdminAnalyticsPage'));
+const AdminBusinessReportsPage = React.lazy(() => import(/* webpackChunkName: "admin" */ './pages/admin/AdminBusinessReportsPage'));
+const AdminVendorBusinessReportPage = React.lazy(() => import(/* webpackChunkName: "admin" */ './pages/admin/AdminVendorBusinessReportPage'));
 const AdminTrafficPage = React.lazy(() => import(/* webpackChunkName: "admin" */ './pages/admin/AdminTrafficPage'));
 const AdminSettingsPage = React.lazy(() => import(/* webpackChunkName: "admin" */ './pages/admin/AdminSettingsPage'));
 const AdminEventDetailPage = React.lazy(() => import(/* webpackChunkName: "admin" */ './pages/admin/AdminEventDetailPage'));
@@ -1423,6 +1425,20 @@ function AppContent() {
             <AdminRoute>
               <Suspense fallback={<GenericPageSkeleton />}>
                 <AdminAnalyticsPage />
+              </Suspense>
+            </AdminRoute>
+          } />
+          <Route path="business-reports" element={
+            <AdminRoute>
+              <Suspense fallback={<GenericPageSkeleton />}>
+                <AdminBusinessReportsPage />
+              </Suspense>
+            </AdminRoute>
+          } />
+          <Route path="business-reports/vendors/:vendorId" element={
+            <AdminRoute>
+              <Suspense fallback={<GenericPageSkeleton />}>
+                <AdminVendorBusinessReportPage />
               </Suspense>
             </AdminRoute>
           } />

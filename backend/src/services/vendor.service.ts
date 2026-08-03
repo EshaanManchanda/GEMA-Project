@@ -16,6 +16,7 @@ import {
 } from "../models/index";
 import { AppError } from "../middleware/index";
 import { getOrCreateVendorProfile } from "../utils/vendorHelpers";
+import { invalidateBusinessReportCaches } from "../utils/cache.utils";
 import { getFileInfo } from "../middleware/upload";
 import emailService from "./email.service";
 import { sendPhoneOtp } from "./communication/otpDelivery.service";
@@ -118,7 +119,12 @@ class VendorService {
 
     const [totalEvents, activeEvents, vendorEvents] = await Promise.all([
       Event.countDocuments({ vendorId, isDeleted: false }),
-      Event.countDocuments({ vendorId, isDeleted: false, isApproved: true, isActive: true }),
+      Event.countDocuments({
+        vendorId,
+        isDeleted: false,
+        isApproved: true,
+        isActive: true,
+      }),
       Event.find({ vendorId, isDeleted: false }).select("_id").lean(),
     ]);
 
@@ -128,28 +134,54 @@ class VendorService {
     const now = new Date();
     const startOfThisMonth = new Date(now.getFullYear(), now.getMonth(), 1);
     const startOfLastMonth = new Date(now.getFullYear(), now.getMonth() - 1, 1);
-    const endOfLastMonth = new Date(now.getFullYear(), now.getMonth(), 0, 23, 59, 59, 999);
+    const endOfLastMonth = new Date(
+      now.getFullYear(),
+      now.getMonth(),
+      0,
+      23,
+      59,
+      59,
+      999,
+    );
 
-    const startOfTrendWindow = new Date(now.getFullYear(), now.getMonth() - 5, 1);
+    const startOfTrendWindow = new Date(
+      now.getFullYear(),
+      now.getMonth() - 5,
+      1,
+    );
 
     const [aggAll, aggThisMonth, aggLastMonth, trendAgg] = await Promise.all([
       Order.aggregate([
         { $match: orderFilter },
-        { $group: { _id: null, totalRevenue: { $sum: "$total" }, totalBookings: { $sum: 1 } } },
+        {
+          $group: {
+            _id: null,
+            totalRevenue: { $sum: "$total" },
+            totalBookings: { $sum: 1 },
+          },
+        },
       ]),
       Order.aggregate([
         { $match: { ...orderFilter, createdAt: { $gte: startOfThisMonth } } },
         { $group: { _id: null, revenue: { $sum: "$total" } } },
       ]),
       Order.aggregate([
-        { $match: { ...orderFilter, createdAt: { $gte: startOfLastMonth, $lte: endOfLastMonth } } },
+        {
+          $match: {
+            ...orderFilter,
+            createdAt: { $gte: startOfLastMonth, $lte: endOfLastMonth },
+          },
+        },
         { $group: { _id: null, revenue: { $sum: "$total" } } },
       ]),
       Order.aggregate([
         { $match: { ...orderFilter, createdAt: { $gte: startOfTrendWindow } } },
         {
           $group: {
-            _id: { year: { $year: "$createdAt" }, month: { $month: "$createdAt" } },
+            _id: {
+              year: { $year: "$createdAt" },
+              month: { $month: "$createdAt" },
+            },
             revenue: { $sum: "$total" },
           },
         },
@@ -160,13 +192,24 @@ class VendorService {
 
     // Fill in the trailing 6 months (including the current one) so gaps show as 0, not missing points
     const monthLabels = [
-      "Jan", "Feb", "Mar", "Apr", "May", "Jun",
-      "Jul", "Aug", "Sep", "Oct", "Nov", "Dec",
+      "Jan",
+      "Feb",
+      "Mar",
+      "Apr",
+      "May",
+      "Jun",
+      "Jul",
+      "Aug",
+      "Sep",
+      "Oct",
+      "Nov",
+      "Dec",
     ];
     const revenueTrend = Array.from({ length: 6 }, (_, i) => {
       const d = new Date(now.getFullYear(), now.getMonth() - (5 - i), 1);
       const match = trendAgg.find(
-        (t) => t._id.year === d.getFullYear() && t._id.month === d.getMonth() + 1,
+        (t) =>
+          t._id.year === d.getFullYear() && t._id.month === d.getMonth() + 1,
       );
       return {
         month: `${monthLabels[d.getMonth()]} ${d.getFullYear()}`,
@@ -551,11 +594,18 @@ class VendorService {
   /**
    * Export participant-level rows for a specific event
    */
-  async exportEventParticipants(userId: string, eventId: string, format: string) {
+  async exportEventParticipants(
+    userId: string,
+    eventId: string,
+    format: string,
+  ) {
     const vendorProfile = await getOrCreateVendorProfile(userId);
 
     // Verify vendor owns the event
-    const event = await Event.findOne({ _id: eventId, vendorId: vendorProfile._id });
+    const event = await Event.findOne({
+      _id: eventId,
+      vendorId: vendorProfile._id,
+    });
     if (!event) {
       throw new AppError("Event not found or access denied", 404);
     }
@@ -636,14 +686,20 @@ class VendorService {
           const baseRow = [
             order.orderNumber || order._id,
             `"${item.eventTitle || ""}"`,
-            item.scheduleDate ? new Date(item.scheduleDate).toLocaleDateString() : "",
+            item.scheduleDate
+              ? new Date(item.scheduleDate).toLocaleDateString()
+              : "",
             `"${customerName}"`,
             order.billingAddress.email || "",
             order.billingAddress.phone || "",
           ];
 
           if (participants.length === 0) {
-            csvRows.push([...baseRow, "", "", "", "", "", "", "", "", "", "", ""].join(","));
+            csvRows.push(
+              [...baseRow, "", "", "", "", "", "", "", "", "", "", ""].join(
+                ",",
+              ),
+            );
             return;
           }
 
@@ -852,17 +908,24 @@ class VendorService {
     if (data.address !== undefined) vendor.address = data.address;
     if (data.location !== undefined) vendor.location = data.location;
     if (data.website !== undefined) vendor.website = data.website;
-    if (data.profileVideoUrl !== undefined) vendor.profileVideoUrl = data.profileVideoUrl;
-    if (data.videoDescription !== undefined) vendor.videoDescription = data.videoDescription;
-    if (data.languagesSpoken !== undefined) vendor.languagesSpoken = data.languagesSpoken;
+    if (data.profileVideoUrl !== undefined)
+      vendor.profileVideoUrl = data.profileVideoUrl;
+    if (data.videoDescription !== undefined)
+      vendor.videoDescription = data.videoDescription;
+    if (data.languagesSpoken !== undefined)
+      vendor.languagesSpoken = data.languagesSpoken;
     if (data.contactPerson !== undefined)
       vendor.contactPerson = { ...vendor.contactPerson, ...data.contactPerson };
     if (data.taxInformation !== undefined)
-      vendor.taxInformation = { ...vendor.taxInformation, ...data.taxInformation };
+      vendor.taxInformation = {
+        ...vendor.taxInformation,
+        ...data.taxInformation,
+      };
     if (data.socialMedia !== undefined)
       vendor.socialMedia = { ...vendor.socialMedia, ...data.socialMedia };
 
     await vendor.save();
+    await invalidateBusinessReportCaches(vendor._id.toString());
 
     return { user, vendor };
   }
@@ -886,6 +949,7 @@ class VendorService {
     }
 
     await vendorProfile.save();
+    await invalidateBusinessReportCaches(vendorProfile._id.toString());
 
     return {
       logo: vendorProfile.logo,
@@ -908,6 +972,7 @@ class VendorService {
     }
 
     await vendorProfile.save();
+    await invalidateBusinessReportCaches(vendorProfile._id.toString());
 
     return {
       logo: vendorProfile.logo || "",
@@ -1016,19 +1081,19 @@ class VendorService {
 
     if (params.search) {
       const searchRegex = new RegExp(escapeRegex(params.search), "i");
-      
+
       // Also match Vendor businessName for the search
       const matchedVendors = await Vendor.find({
         businessName: searchRegex,
-        isSuspended: false
+        isSuspended: false,
       }).select("userId");
-      
-      const matchedVendorUserIds = matchedVendors.map(v => v.userId);
+
+      const matchedVendorUserIds = matchedVendors.map((v) => v.userId);
 
       userQuery.$or = [
         { firstName: searchRegex },
         { lastName: searchRegex },
-        { _id: { $in: matchedVendorUserIds } }
+        { _id: { $in: matchedVendorUserIds } },
       ];
     }
 
@@ -1054,12 +1119,17 @@ class VendorService {
       isSuspended: false,
     }).lean();
 
-    const vendorMap = new Map(vendors.map((v: any) => [v.userId.toString(), v]));
+    const vendorMap = new Map(
+      vendors.map((v: any) => [v.userId.toString(), v]),
+    );
 
     // 4. Map them together
     const transformedVendors = users.map((u: any) => {
       const v: any = vendorMap.get(u._id.toString()) || {};
-      const name = v.businessName || `${u.firstName || ''} ${u.lastName || ''}`.trim() || 'Vendor';
+      const name =
+        v.businessName ||
+        `${u.firstName || ""} ${u.lastName || ""}`.trim() ||
+        "Vendor";
 
       return {
         id: u._id.toString(),
@@ -1098,7 +1168,9 @@ class VendorService {
 
     if (!isObjectId) {
       // Slug-based lookup
-      const vendorDoc = await Vendor.findOne({ slug: vendorUserId }).select("userId");
+      const vendorDoc = await Vendor.findOne({ slug: vendorUserId }).select(
+        "userId",
+      );
       if (!vendorDoc) throw new AppError("Vendor not found", 404);
       resolvedUserId = vendorDoc.userId.toString();
       user = await User.findOne({

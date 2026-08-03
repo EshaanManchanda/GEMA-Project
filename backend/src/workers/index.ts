@@ -35,6 +35,7 @@ import seatExpiryWorker from "./seat-expiry.worker";
 import communicationWorker from "./communication.worker";
 import automationWorker from "./automation.worker";
 import searchConsoleWorker from "./searchConsole.worker";
+import businessSnapshotWorker from "./businessSnapshot.worker";
 
 /**
  * Single source of truth for every worker this process manages. Adding a
@@ -87,6 +88,12 @@ const WORKERS: WorkerEntry[] = [
     dlqName: "search-console-sync",
     worker: searchConsoleWorker,
     startupMessage: "Search Console Worker (monthly sync, 1st @ 03:00)",
+  },
+  {
+    dlqName: "analytics",
+    worker: businessSnapshotWorker,
+    startupMessage:
+      "Business Snapshot Worker (monthly run, 1st @ 04:00; also handles admin bulk-generate)",
   },
 ];
 

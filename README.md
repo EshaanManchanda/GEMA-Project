@@ -175,6 +175,18 @@ cd frontend
 npm test
 ```
 
+### Local Test-Generation Agent (Ollama)
+
+`tools/local-test-agent/` drafts backend Jest/Supertest tests via a local Ollama model for human
+review — never auto-writes into `backend/src/tests/`, no cloud calls.
+
+```bash
+./tools/local-test-agent/scan-module.sh auth generate
+./tools/local-test-agent/check-output.sh tools/local-test-agent/output/auth.generate.latest.md
+```
+
+See `doc/testing/LOCAL_TEST_AGENT_GUIDE.md` for the full workflow and known model-quality caveats.
+
 ## Deployment
 
 ### Backend Deployment (Render/Railway/Heroku)

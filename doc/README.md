@@ -58,6 +58,7 @@ Welcome to the central documentation repository for the GEMA Event Management Pl
   - [Teaching Events Verification](./testing/TEACHING_EVENTS_VERIFICATION_CHECKLIST.md)
   - [Master Testing Checklist](./testing/TESTING_CHECKLIST.md)
   - [Google Signup Test Checklist](./testing/google-signup-test-checklist.md)
+  - [Local Test-Generation Agent (Ollama)](./testing/LOCAL_TEST_AGENT_GUIDE.md)
 
 ## 📦 Feature Implementations (`/features/`)
 

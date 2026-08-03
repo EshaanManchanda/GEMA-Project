@@ -17,6 +17,7 @@ import Certificate from "../models/Certificate";
 import AffiliateEventClick from "../models/AffiliateEventClick";
 import { AnalyticsDateRange, formatUtcPeriodLabel } from "../utils/dateHelpers";
 import { AppError } from "../middleware/error";
+import { toCsv } from "../utils/csv.utils";
 
 // ─── Public contract ──────────────────────────────────────────────────────────
 
@@ -331,4 +332,209 @@ export async function buildEventReport(
           : 0,
     },
   };
+}
+
+// ─── CSV renderer ─────────────────────────────────────────────────────────────
+
+/**
+ * Render an EventReportData object as a multi-section CSV string.
+ * Each section has a header row, data rows, and a totals row.
+ * Views row is labeled "(all-time)" while other KPIs are labeled per the range.
+ *
+ * Extracted from routes/analytics.routes.ts (formerly a private, unreusable
+ * function) so the new business-report endpoints can reuse the same CSV
+ * building blocks alongside toCsv().
+ */
+export function eventReportToCsv(report: EventReportData): string {
+  const rangeLabel = `(last ${report.period.range === "7d" ? "7" : "30"} days)`;
+  const rows: Record<string, unknown>[] = [];
+
+  // ── Section 1: Report info ──
+  rows.push({
+    Section: "Report Info",
+    Field: "Event",
+    Value: report.event.title,
+  });
+  rows.push({ Section: "", Field: "Location", Value: report.event.location });
+  rows.push({
+    Section: "",
+    Field: "Report Period",
+    Value: report.period.label,
+  });
+  rows.push({ Section: "", Field: "Generated At", Value: report.generated.at });
+  rows.push({});
+
+  // ── Section 2: KPIs ──
+  rows.push({
+    Section: "KPIs",
+    Field: `Registrations ${rangeLabel}`,
+    Value: report.kpis.registrations,
+  });
+  rows.push({
+    Section: "",
+    Field: `Revenue ${rangeLabel}`,
+    Value: report.kpis.revenue,
+  });
+  rows.push({
+    Section: "",
+    Field: `Tickets Sold ${rangeLabel}`,
+    Value: report.kpis.ticketsSold,
+  });
+  rows.push({
+    Section: "",
+    Field: `Certificates Issued ${rangeLabel}`,
+    Value: report.kpis.certificatesIssued,
+  });
+  rows.push({
+    Section: "",
+    Field: `Reviews ${rangeLabel}`,
+    Value: report.kpis.reviews,
+  });
+  rows.push({
+    Section: "",
+    Field: "Total Views (all-time)",
+    Value: report.event.viewsAllTime,
+  });
+  rows.push({});
+
+  // ── Section 2b: External Booking ──
+  if (report.externalBooking.enabled) {
+    rows.push({
+      Section: "External Booking",
+      Field: "Link",
+      Value: report.externalBooking.link ?? "",
+    });
+    rows.push({
+      Section: "",
+      Field: `Button Clicks ${rangeLabel}`,
+      Value: report.externalBooking.clicksInPeriod,
+    });
+    rows.push({
+      Section: "",
+      Field: "Total Clicks (all-time)",
+      Value: report.externalBooking.totalClicks,
+    });
+    rows.push({
+      Section: "",
+      Field: "Unique Clicks (all-time)",
+      Value: report.externalBooking.uniqueClicks,
+    });
+    rows.push({
+      Section: "",
+      Field: "Click-Through Rate (all-time)",
+      Value: `${report.externalBooking.clickThroughRate}%`,
+    });
+    rows.push({
+      Section: "",
+      Field: "Last Clicked",
+      Value: report.externalBooking.lastClickedAt ?? "—",
+    });
+    rows.push({});
+    rows.push({
+      Section: "",
+      Field: "Note",
+      Value:
+        "Booking happens on the external site — registrations, revenue, and certificates below are not tracked on-platform for this event.",
+    });
+    rows.push({});
+  }
+
+  // ── Section 3: Registrations by status ──
+  rows.push({ Section: "Registrations by Status", Status: "", Count: "" });
+  for (const [status, count] of Object.entries(report.registrations.byStatus)) {
+    rows.push({ Section: "", Status: status, Count: count });
+  }
+  rows.push({
+    Section: "",
+    Status: "TOTAL",
+    Count: report.registrations.total,
+  });
+  rows.push({});
+
+  // ── Section 4: Reviews ──
+  rows.push({
+    Section: "Reviews",
+    Field: "Average Rating",
+    Value: report.reviews.averageRating,
+  });
+  rows.push({
+    Section: "",
+    Field: "Total Reviews",
+    Value: report.reviews.total,
+  });
+  for (const [stars, n] of Object.entries(report.reviews.distribution)) {
+    rows.push({ Section: "", Field: `${stars}-star`, Value: n });
+  }
+  rows.push({});
+
+  if (report.reviews.recent.length > 0) {
+    rows.push({
+      Section: "Recent Reviews",
+      Rating: "Rating",
+      Comment: "Comment",
+      Reviewer: "Reviewer",
+      Date: "Date",
+    });
+    for (const r of report.reviews.recent) {
+      rows.push({
+        Section: "",
+        Rating: r.rating,
+        Comment: r.comment ?? "",
+        Reviewer: r.userName ?? "",
+        Date: r.date,
+      });
+    }
+    rows.push({});
+  }
+
+  // ── Section 5: Certificates by status ──
+  rows.push({ Section: "Certificates by Status", Status: "", Count: "" });
+  for (const [status, count] of Object.entries(report.certificates.byStatus)) {
+    rows.push({ Section: "", Status: status, Count: count });
+  }
+  rows.push({ Section: "", Status: "TOTAL", Count: report.certificates.total });
+  rows.push({});
+
+  // ── Section 6: Daily sales ──
+  if (report.dailySales.length > 0) {
+    rows.push({
+      Section: "Daily Sales",
+      Date: "Date",
+      Orders: "Orders",
+      Revenue: "Revenue",
+      Tickets: "Tickets",
+    });
+    let totOrders = 0,
+      totRevenue = 0,
+      totTickets = 0;
+    for (const d of report.dailySales) {
+      rows.push({
+        Section: "",
+        Date: d.date,
+        Orders: d.orders,
+        Revenue: d.revenue,
+        Tickets: d.tickets,
+      });
+      totOrders += d.orders;
+      totRevenue += d.revenue;
+      totTickets += d.tickets;
+    }
+    rows.push({
+      Section: "",
+      Date: "TOTAL",
+      Orders: totOrders,
+      Revenue: Math.round(totRevenue * 100) / 100,
+      Tickets: totTickets,
+    });
+  } else {
+    rows.push({
+      Section: "Daily Sales",
+      Date: "No data in this period",
+      Orders: "",
+      Revenue: "",
+      Tickets: "",
+    });
+  }
+
+  return toCsv(rows);
 }
