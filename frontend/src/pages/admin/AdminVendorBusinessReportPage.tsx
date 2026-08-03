@@ -277,7 +277,7 @@ const AdminVendorBusinessReportPage: React.FC = () => {
   const h = health.data;
   const snap = snapshot.data;
   const v = vendor.data as AdminVendorDetail | undefined;
-  const safeLogo = getSafeHttpUrl(v?.logo);
+  const safeLogo = v?.logo ? (v.logo.startsWith('/') || v.logo.startsWith('data:image/') ? v.logo : getSafeHttpUrl(v.logo)) : undefined;
   const safeWebsite = getSafeHttpUrl(v?.website);
   const vendorVisibleNotes = vendorNotesDraft ?? snap?.notes?.vendorVisible ?? '';
   const internalNotes = internalNotesDraft ?? snap?.notes?.internal ?? '';
@@ -738,23 +738,27 @@ const AdminVendorBusinessReportPage: React.FC = () => {
               {h.tasks.length === 0 ? (
                 <p className="text-sm text-gray-500">No open action items.</p>
               ) : (
-                h.tasks.map((task) => (
-                  <label key={task.code} className="flex items-center gap-2 text-sm">
-                    <input
-                      type="checkbox"
-                      checked={task.done}
-                      onChange={(e) =>
-                        toggleTaskMutation.mutate({
-                          vendorId,
-                          taskCode: task.code,
-                          done: e.target.checked,
-                          period,
-                        })
-                      }
-                    />
-                    <span className={task.done ? 'line-through text-gray-400' : 'text-gray-700'}>{task.label}</span>
-                  </label>
-                ))
+                h.tasks.map((task) => {
+                  const isDone = snap?.tasks?.find(t => t.code === task.code)?.done ?? false;
+                  return (
+                    <label key={task.code} className={`flex items-center gap-2 text-sm ${!snap || snap.status === 'locked' ? 'opacity-50 cursor-not-allowed' : 'cursor-pointer'}`}>
+                      <input
+                        type="checkbox"
+                        checked={isDone}
+                        disabled={!snap || snap.status === 'locked'}
+                        onChange={(e) =>
+                          toggleTaskMutation.mutate({
+                            vendorId,
+                            taskCode: task.code,
+                            done: e.target.checked,
+                            period,
+                          })
+                        }
+                      />
+                      <span className={isDone ? 'line-through text-gray-400' : 'text-gray-700'}>{task.label}</span>
+                    </label>
+                  );
+                })
               )}
             </CardContent>
           </Card>

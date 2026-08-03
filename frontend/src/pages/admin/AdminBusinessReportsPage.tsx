@@ -173,7 +173,9 @@ const AdminBusinessReportsPage: React.FC = () => {
                           {row.logo ? (
                             <img src={row.logo} alt="" className="w-8 h-8 rounded-full object-cover" />
                           ) : (
-                            <div className="w-8 h-8 rounded-full bg-gray-200" />
+                            <div className="w-8 h-8 rounded-full bg-gray-200 flex items-center justify-center text-gray-500 font-medium text-xs">
+                              {row.businessName?.charAt(0)?.toUpperCase() ?? '?'}
+                            </div>
                           )}
                           <div>
                             <button
