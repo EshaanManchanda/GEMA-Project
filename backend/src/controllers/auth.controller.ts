@@ -2,7 +2,7 @@ import { Request, Response, NextFunction, CookieOptions } from "express";
 import mongoose from "mongoose";
 import { getAuth } from "../config/firebase";
 import type { DecodedIdToken } from "firebase-admin/auth";
-import { generateToken, generateRefreshToken } from "../config/jwt";
+import { generateToken, generateRefreshToken, verifyRefreshToken } from "../config/jwt";
 import {
   User,
   UserStatus,
@@ -761,6 +761,15 @@ export const refreshToken = async (
       throw new AppError("No refresh token provided", 401);
     }
 
+    // Verify JWT signature + exp BEFORE trusting the token at all — the DB
+    // lookup below only proves *some* refresh token with this hash exists;
+    // it does not prove this token was ever legitimately issued by us.
+    const decoded = verifyRefreshToken(rawToken);
+    if (!decoded || !decoded.id) {
+      clearAuthCookies(res);
+      throw new AppError("Invalid or expired refresh token", 401);
+    }
+
     const tokenHash = hashToken(rawToken);
 
     // Check if a revoked token is being replayed — sign of theft; nuke the whole family
@@ -784,6 +793,13 @@ export const refreshToken = async (
       throw new AppError("Invalid or expired refresh token", 401);
     }
 
+    // The JWT's own subject must match the DB row's owner — belt and suspenders
+    // against a token whose hash happens to collide with a different user's row.
+    if (decoded.id !== refreshTokenDoc.user.toString()) {
+      clearAuthCookies(res);
+      throw new AppError("Invalid or expired refresh token", 401);
+    }
+
     // Check if token is expired
     if (refreshTokenDoc.expiresAt < new Date()) {
       refreshTokenDoc.isRevoked = true;
@@ -797,6 +813,10 @@ export const refreshToken = async (
     if (!user) {
       throw new AppError("User not found", 404);
     }
+
+    // A suspended/inactive account must not be able to mint fresh access
+    // tokens via refresh, even with a still-valid, unrevoked refresh token.
+    assertUserCanLogin(user);
 
     // Revoke old refresh token before issuing new one (rotation)
     refreshTokenDoc.isRevoked = true;
