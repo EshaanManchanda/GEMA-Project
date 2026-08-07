@@ -102,7 +102,8 @@ const extractCookie = (cookies: string[], name: string): string => {
   return c.split(";")[0].replace(`${name}=`, "");
 };
 
-const authCookie = (token: string) => `accessToken=${token}`;
+const authCookie = (token: string, csrfToken?: string) =>
+  csrfToken ? `accessToken=${token}; XSRF-TOKEN=${csrfToken}` : `accessToken=${token}`;
 
 const uniqueEmail = (label: string) =>
   `${label}.${Date.now()}.${Math.random().toString(36).slice(2)}@example.com`;
@@ -112,7 +113,7 @@ const registerAndLogin = async (
   app: Application,
   role: "customer" | "vendor" | "admin",
   emailLabel: string,
-): Promise<{ accessToken: string; userId: string }> => {
+): Promise<{ accessToken: string; csrfToken: string; userId: string }> => {
   const email = uniqueEmail(emailLabel);
   const password = "Test@1234!";
 
@@ -133,11 +134,12 @@ const registerAndLogin = async (
   const loginRes = await request(app).post("/api/auth/login").send({ email, password });
   const cookies: string[] = (loginRes.headers["set-cookie"] as unknown as string[]) || [];
   const accessToken = extractCookie(cookies, "accessToken");
+  const csrfToken = extractCookie(cookies, "XSRF-TOKEN");
 
   const user = await User.findOne({ email }).lean();
   const userId = (user as any)._id.toString();
 
-  return { accessToken, userId };
+  return { accessToken, csrfToken, userId };
 };
 
 // ---------------------------------------------------------------------------
@@ -276,22 +278,24 @@ describe("Admin settings enforcement", () => {
 
   describe("PUT /api/admin/app-settings validation", () => {
     it("rejects a non-boolean toggle value with 400", async () => {
-      const { accessToken } = await registerAndLogin(app, "admin", "validationadmin");
+      const { accessToken, csrfToken } = await registerAndLogin(app, "admin", "validationadmin");
 
       const res = await request(app)
         .put("/api/admin/app-settings")
-        .set("Cookie", authCookie(accessToken))
+        .set("Cookie", authCookie(accessToken, csrfToken))
+        .set("X-CSRF-Token", csrfToken)
         .send({ systemSettings: { maintenanceMode: "yes" } });
 
       expect(res.status).toBe(400);
     });
 
     it("accepts a valid boolean toggle update and persists it", async () => {
-      const { accessToken } = await registerAndLogin(app, "admin", "validupdateadmin");
+      const { accessToken, csrfToken } = await registerAndLogin(app, "admin", "validupdateadmin");
 
       const res = await request(app)
         .put("/api/admin/app-settings")
-        .set("Cookie", authCookie(accessToken))
+        .set("Cookie", authCookie(accessToken, csrfToken))
+        .set("X-CSRF-Token", csrfToken)
         .send({ systemSettings: { autoApproveReviews: true } });
 
       expect(res.status).toBe(200);

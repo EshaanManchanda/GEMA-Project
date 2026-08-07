@@ -147,7 +147,7 @@ const extractCookie = (cookies: string[], name: string): string => {
 const registerAndLoginVendor = async (
   app: Application,
   emailSuffix: string = "",
-): Promise<{ accessToken: string; userId: string }> => {
+): Promise<{ accessToken: string; csrfToken: string; userId: string }> => {
   const email = `vendor${emailSuffix}.${Date.now()}.${Math.random()
     .toString(36)
     .slice(2)}@example.com`;
@@ -165,14 +165,16 @@ const registerAndLoginVendor = async (
   const loginRes = await request(app).post("/api/auth/login").send({ email, password });
   const cookies: string[] = (loginRes.headers["set-cookie"] as unknown as string[]) || [];
   const accessToken = extractCookie(cookies, "accessToken");
+  const csrfToken = extractCookie(cookies, "XSRF-TOKEN");
 
   const user = await User.findOne({ email }).lean();
   const userId = (user as any)._id.toString();
 
-  return { accessToken, userId };
+  return { accessToken, csrfToken, userId };
 };
 
-const authCookie = (token: string) => `accessToken=${token}`;
+const authCookie = (token: string, csrfToken?: string) =>
+  csrfToken ? `accessToken=${token}; XSRF-TOKEN=${csrfToken}` : `accessToken=${token}`;
 
 const seedCategory = async (nameSuffix = "") => {
   const category = await Category.create({
@@ -240,55 +242,61 @@ describe("Vendor Event CRUD — /api/vendors/events", () => {
 
   describe("POST /events — validation", () => {
     it("TC-EVT-01: rejects missing title/description/category", async () => {
-      const { accessToken } = await registerAndLoginVendor(app, "-01");
+      const { accessToken, csrfToken } = await registerAndLoginVendor(app, "-01");
       const res = await request(app)
         .post("/api/vendors/events")
-        .set("Cookie", authCookie(accessToken))
+        .set("Cookie", authCookie(accessToken, csrfToken))
+        .set("X-CSRF-Token", csrfToken)
         .send(basePayload({ title: "" }));
       expect(res.status).toBe(400);
     });
 
     it("TC-EVT-02: rejects missing location city/address for non-online events", async () => {
-      const { accessToken } = await registerAndLoginVendor(app, "-02");
+      const { accessToken, csrfToken } = await registerAndLoginVendor(app, "-02");
       const res = await request(app)
         .post("/api/vendors/events")
-        .set("Cookie", authCookie(accessToken))
+        .set("Cookie", authCookie(accessToken, csrfToken))
+        .set("X-CSRF-Token", csrfToken)
         .send(basePayload({ location: { city: "", address: "" } }));
       expect(res.status).toBe(400);
     });
 
     it("TC-EVT-03: rejects empty dateSchedule", async () => {
-      const { accessToken } = await registerAndLoginVendor(app, "-03");
+      const { accessToken, csrfToken } = await registerAndLoginVendor(app, "-03");
       const res = await request(app)
         .post("/api/vendors/events")
-        .set("Cookie", authCookie(accessToken))
+        .set("Cookie", authCookie(accessToken, csrfToken))
+        .set("X-CSRF-Token", csrfToken)
         .send(basePayload({ dateSchedule: [] }));
       expect(res.status).toBe(400);
     });
 
     it("TC-EVT-04: rejects unknown category", async () => {
-      const { accessToken } = await registerAndLoginVendor(app, "-04");
+      const { accessToken, csrfToken } = await registerAndLoginVendor(app, "-04");
       const res = await request(app)
         .post("/api/vendors/events")
-        .set("Cookie", authCookie(accessToken))
+        .set("Cookie", authCookie(accessToken, csrfToken))
+        .set("X-CSRF-Token", csrfToken)
         .send(basePayload({ category: "does-not-exist" }));
       expect(res.status).toBe(400);
     });
 
     it("TC-EVT-05: rejects affiliate event without externalBookingLink", async () => {
-      const { accessToken } = await registerAndLoginVendor(app, "-05");
+      const { accessToken, csrfToken } = await registerAndLoginVendor(app, "-05");
       const res = await request(app)
         .post("/api/vendors/events")
-        .set("Cookie", authCookie(accessToken))
+        .set("Cookie", authCookie(accessToken, csrfToken))
+        .set("X-CSRF-Token", csrfToken)
         .send(basePayload({ isAffiliateEvent: true }));
       expect(res.status).toBe(400);
     });
 
     it("VE-2: rejects endDate before startDate", async () => {
-      const { accessToken } = await registerAndLoginVendor(app, "-endbefore");
+      const { accessToken, csrfToken } = await registerAndLoginVendor(app, "-endbefore");
       const res = await request(app)
         .post("/api/vendors/events")
-        .set("Cookie", authCookie(accessToken))
+        .set("Cookie", authCookie(accessToken, csrfToken))
+        .set("X-CSRF-Token", csrfToken)
         .send(
           basePayload({
             dateSchedule: [
@@ -305,12 +313,13 @@ describe("Vendor Event CRUD — /api/vendors/events", () => {
     });
 
     it("VE-2: rejects a past startDate", async () => {
-      const { accessToken } = await registerAndLoginVendor(app, "-pastdate");
+      const { accessToken, csrfToken } = await registerAndLoginVendor(app, "-pastdate");
       const past = new Date();
       past.setDate(past.getDate() - 5);
       const res = await request(app)
         .post("/api/vendors/events")
-        .set("Cookie", authCookie(accessToken))
+        .set("Cookie", authCookie(accessToken, csrfToken))
+        .set("X-CSRF-Token", csrfToken)
         .send(
           basePayload({
             dateSchedule: [
@@ -327,19 +336,21 @@ describe("Vendor Event CRUD — /api/vendors/events", () => {
     });
 
     it("VE-2: rejects negative top-level price", async () => {
-      const { accessToken } = await registerAndLoginVendor(app, "-negprice");
+      const { accessToken, csrfToken } = await registerAndLoginVendor(app, "-negprice");
       const res = await request(app)
         .post("/api/vendors/events")
-        .set("Cookie", authCookie(accessToken))
+        .set("Cookie", authCookie(accessToken, csrfToken))
+        .set("X-CSRF-Token", csrfToken)
         .send(basePayload({ price: -10 }));
       expect(res.status).toBe(400);
     });
 
     it("VE-2: rejects negative schedule price", async () => {
-      const { accessToken } = await registerAndLoginVendor(app, "-negschedprice");
+      const { accessToken, csrfToken } = await registerAndLoginVendor(app, "-negschedprice");
       const res = await request(app)
         .post("/api/vendors/events")
-        .set("Cookie", authCookie(accessToken))
+        .set("Cookie", authCookie(accessToken, csrfToken))
+        .set("X-CSRF-Token", csrfToken)
         .send(
           basePayload({
             dateSchedule: [
@@ -356,10 +367,11 @@ describe("Vendor Event CRUD — /api/vendors/events", () => {
     });
 
     it("VE-2: rejects availableSeats <= 0 on a non-unlimited schedule", async () => {
-      const { accessToken } = await registerAndLoginVendor(app, "-zeroSeats");
+      const { accessToken, csrfToken } = await registerAndLoginVendor(app, "-zeroSeats");
       const res = await request(app)
         .post("/api/vendors/events")
-        .set("Cookie", authCookie(accessToken))
+        .set("Cookie", authCookie(accessToken, csrfToken))
+        .set("X-CSRF-Token", csrfToken)
         .send(
           basePayload({
             dateSchedule: [
@@ -376,10 +388,11 @@ describe("Vendor Event CRUD — /api/vendors/events", () => {
     });
 
     it("VE-2: rejects an online event without a valid meetingLink", async () => {
-      const { accessToken } = await registerAndLoginVendor(app, "-onlineNoLink");
+      const { accessToken, csrfToken } = await registerAndLoginVendor(app, "-onlineNoLink");
       const res = await request(app)
         .post("/api/vendors/events")
-        .set("Cookie", authCookie(accessToken))
+        .set("Cookie", authCookie(accessToken, csrfToken))
+        .set("X-CSRF-Token", csrfToken)
         .send(basePayload({ venueType: "Online", location: undefined, meetingLink: "" }));
       expect(res.status).toBe(400);
     });
@@ -389,10 +402,11 @@ describe("Vendor Event CRUD — /api/vendors/events", () => {
 
   describe("POST /events — success semantics", () => {
     it("TC-EVT-06: sets isApproved=false and status='draft' for new events", async () => {
-      const { accessToken } = await registerAndLoginVendor(app, "-06");
+      const { accessToken, csrfToken } = await registerAndLoginVendor(app, "-06");
       const res = await request(app)
         .post("/api/vendors/events")
-        .set("Cookie", authCookie(accessToken))
+        .set("Cookie", authCookie(accessToken, csrfToken))
+        .set("X-CSRF-Token", csrfToken)
         .send(basePayload());
       expect(res.status).toBe(201);
       expect(res.body.data.event.isApproved).toBe(false);
@@ -400,20 +414,22 @@ describe("Vendor Event CRUD — /api/vendors/events", () => {
     });
 
     it("TC-EVT-07: forces price=0 when isFreeEvent=true", async () => {
-      const { accessToken } = await registerAndLoginVendor(app, "-07");
+      const { accessToken, csrfToken } = await registerAndLoginVendor(app, "-07");
       const res = await request(app)
         .post("/api/vendors/events")
-        .set("Cookie", authCookie(accessToken))
+        .set("Cookie", authCookie(accessToken, csrfToken))
+        .set("X-CSRF-Token", csrfToken)
         .send(basePayload({ isFreeEvent: true, price: 100 }));
       expect(res.status).toBe(201);
       expect(res.body.data.event.price).toBe(0);
     });
 
     it("TC-EVT-08: sets seats to 999999 when unlimitedSeats=true", async () => {
-      const { accessToken } = await registerAndLoginVendor(app, "-08");
+      const { accessToken, csrfToken } = await registerAndLoginVendor(app, "-08");
       const res = await request(app)
         .post("/api/vendors/events")
-        .set("Cookie", authCookie(accessToken))
+        .set("Cookie", authCookie(accessToken, csrfToken))
+        .set("X-CSRF-Token", csrfToken)
         .send(
           basePayload({
             dateSchedule: [
@@ -432,10 +448,11 @@ describe("Vendor Event CRUD — /api/vendors/events", () => {
     });
 
     it("TC-EVT-09: sets vendorId to Vendor._id, not User._id", async () => {
-      const { accessToken, userId } = await registerAndLoginVendor(app, "-09");
+      const { accessToken, csrfToken, userId } = await registerAndLoginVendor(app, "-09");
       const res = await request(app)
         .post("/api/vendors/events")
-        .set("Cookie", authCookie(accessToken))
+        .set("Cookie", authCookie(accessToken, csrfToken))
+        .set("X-CSRF-Token", csrfToken)
         .send(basePayload());
       expect(res.status).toBe(201);
       const vendorProfile = await Vendor.findOne({ userId }).lean();
@@ -448,21 +465,23 @@ describe("Vendor Event CRUD — /api/vendors/events", () => {
 
   describe("POST /events — access control", () => {
     it("VE-5: ignores isApproved=true in the payload (still saved false)", async () => {
-      const { accessToken } = await registerAndLoginVendor(app, "-spoofApproved");
+      const { accessToken, csrfToken } = await registerAndLoginVendor(app, "-spoofApproved");
       const res = await request(app)
         .post("/api/vendors/events")
-        .set("Cookie", authCookie(accessToken))
+        .set("Cookie", authCookie(accessToken, csrfToken))
+        .set("X-CSRF-Token", csrfToken)
         .send(basePayload({ isApproved: true }));
       expect(res.status).toBe(201);
       expect(res.body.data.event.isApproved).toBe(false);
     });
 
     it("VE-5: ignores a foreign vendorId in the payload", async () => {
-      const { accessToken, userId } = await registerAndLoginVendor(app, "-spoofVendorId");
+      const { accessToken, csrfToken, userId } = await registerAndLoginVendor(app, "-spoofVendorId");
       const foreignVendorId = "507f1f77bcf86cd799439011";
       const res = await request(app)
         .post("/api/vendors/events")
-        .set("Cookie", authCookie(accessToken))
+        .set("Cookie", authCookie(accessToken, csrfToken))
+        .set("X-CSRF-Token", csrfToken)
         .send(basePayload({ vendorId: foreignVendorId }));
       expect(res.status).toBe(201);
       const vendorProfile = await Vendor.findOne({ userId }).lean();
@@ -471,21 +490,23 @@ describe("Vendor Event CRUD — /api/vendors/events", () => {
     });
 
     it("VE-5: ignores status='published' in the create payload (forces draft)", async () => {
-      const { accessToken } = await registerAndLoginVendor(app, "-spoofStatus");
+      const { accessToken, csrfToken } = await registerAndLoginVendor(app, "-spoofStatus");
       const res = await request(app)
         .post("/api/vendors/events")
-        .set("Cookie", authCookie(accessToken))
+        .set("Cookie", authCookie(accessToken, csrfToken))
+        .set("X-CSRF-Token", csrfToken)
         .send(basePayload({ status: "published" }));
       expect(res.status).toBe(201);
       expect(res.body.data.event.status).toBe("draft");
     });
 
     it("VE-4: blocks event creation for a REJECTED vendor", async () => {
-      const { accessToken, userId } = await registerAndLoginVendor(app, "-rejected");
+      const { accessToken, csrfToken, userId } = await registerAndLoginVendor(app, "-rejected");
       // Trigger auto-create, then flip verification status to rejected.
       await request(app)
         .post("/api/vendors/events")
-        .set("Cookie", authCookie(accessToken))
+        .set("Cookie", authCookie(accessToken, csrfToken))
+        .set("X-CSRF-Token", csrfToken)
         .send(basePayload());
       await Vendor.findOneAndUpdate(
         { userId },
@@ -494,28 +515,31 @@ describe("Vendor Event CRUD — /api/vendors/events", () => {
 
       const res = await request(app)
         .post("/api/vendors/events")
-        .set("Cookie", authCookie(accessToken))
+        .set("Cookie", authCookie(accessToken, csrfToken))
+        .set("X-CSRF-Token", csrfToken)
         .send(basePayload());
       expect(res.status).toBe(403);
     });
 
     it("VE-4: allows event creation for UNVERIFIED and PENDING vendors", async () => {
-      const { accessToken: unverifiedToken } = await registerAndLoginVendor(app, "-unverified");
+      const { accessToken: unverifiedToken, csrfToken: unverifiedCsrfToken } = await registerAndLoginVendor(app, "-unverified");
       const resUnverified = await request(app)
         .post("/api/vendors/events")
-        .set("Cookie", authCookie(unverifiedToken))
+        .set("Cookie", authCookie(unverifiedToken, unverifiedCsrfToken))
+        .set("X-CSRF-Token", unverifiedCsrfToken)
         .send(basePayload());
       expect(resUnverified.status).toBe(201);
       expect(resUnverified.body.data.event.status).toBe("draft");
 
-      const { accessToken: pendingToken, userId: pendingUserId } = await registerAndLoginVendor(
+      const { accessToken: pendingToken, csrfToken: pendingCsrfToken, userId: pendingUserId } = await registerAndLoginVendor(
         app,
         "-pending",
       );
       // Trigger auto-create of the Vendor doc, then flip it to pending.
       await request(app)
         .post("/api/vendors/events")
-        .set("Cookie", authCookie(pendingToken))
+        .set("Cookie", authCookie(pendingToken, pendingCsrfToken))
+        .set("X-CSRF-Token", pendingCsrfToken)
         .send(basePayload({ title: "Seed Event" }));
       await Vendor.findOneAndUpdate(
         { userId: pendingUserId },
@@ -523,7 +547,8 @@ describe("Vendor Event CRUD — /api/vendors/events", () => {
       );
       const resPending = await request(app)
         .post("/api/vendors/events")
-        .set("Cookie", authCookie(pendingToken))
+        .set("Cookie", authCookie(pendingToken, pendingCsrfToken))
+        .set("X-CSRF-Token", pendingCsrfToken)
         .send(basePayload({ title: "Second Event" }));
       expect(resPending.status).toBe(201);
     });
@@ -532,10 +557,11 @@ describe("Vendor Event CRUD — /api/vendors/events", () => {
   // ─── UPDATE (TC-EVT-10..13 + VE-1/VE-3) ────────────────────────────────
 
   describe("PUT /events/:id", () => {
-    const createEvent = async (accessToken: string, overrides = {}) => {
+    const createEvent = async (accessToken: string, csrfToken: string, overrides = {}) => {
       const res = await request(app)
         .post("/api/vendors/events")
-        .set("Cookie", authCookie(accessToken))
+        .set("Cookie", authCookie(accessToken, csrfToken))
+        .set("X-CSRF-Token", csrfToken)
         .send(basePayload(overrides));
       return res.body.data.event;
     };
@@ -543,22 +569,24 @@ describe("Vendor Event CRUD — /api/vendors/events", () => {
     it("TC-EVT-10: returns 404 when updating another vendor's event", async () => {
       const vendorA = await registerAndLoginVendor(app, "-ownerA");
       const vendorB = await registerAndLoginVendor(app, "-ownerB");
-      const event = await createEvent(vendorA.accessToken);
+      const event = await createEvent(vendorA.accessToken, vendorA.csrfToken);
 
       const res = await request(app)
         .put(`/api/vendors/events/${event._id}`)
-        .set("Cookie", authCookie(vendorB.accessToken))
+        .set("Cookie", authCookie(vendorB.accessToken, vendorB.csrfToken))
+        .set("X-CSRF-Token", vendorB.csrfToken)
         .send({ title: "Hijacked" });
       expect(res.status).toBe(404);
     });
 
     it("TC-EVT-11 [VE-1 fixed]: rejects status='published' (cannot bypass approval)", async () => {
-      const { accessToken } = await registerAndLoginVendor(app, "-noPublish");
-      const event = await createEvent(accessToken);
+      const { accessToken, csrfToken } = await registerAndLoginVendor(app, "-noPublish");
+      const event = await createEvent(accessToken, csrfToken);
 
       const res = await request(app)
         .put(`/api/vendors/events/${event._id}`)
-        .set("Cookie", authCookie(accessToken))
+        .set("Cookie", authCookie(accessToken, csrfToken))
+        .set("X-CSRF-Token", csrfToken)
         .send({ status: "published" });
       // Rejected at the validator layer (400) before the controller's own whitelist check
       // (which would otherwise return 403) — either way, the vendor cannot self-publish.
@@ -568,24 +596,26 @@ describe("Vendor Event CRUD — /api/vendors/events", () => {
     });
 
     it("VE-1 regression: status='pending_review' is rejected cleanly, not a 500", async () => {
-      const { accessToken } = await registerAndLoginVendor(app, "-pendingReview");
-      const event = await createEvent(accessToken);
+      const { accessToken, csrfToken } = await registerAndLoginVendor(app, "-pendingReview");
+      const event = await createEvent(accessToken, csrfToken);
 
       const res = await request(app)
         .put(`/api/vendors/events/${event._id}`)
-        .set("Cookie", authCookie(accessToken))
+        .set("Cookie", authCookie(accessToken, csrfToken))
+        .set("X-CSRF-Token", csrfToken)
         .send({ status: "pending_review" });
       expect(res.status).not.toBe(500);
       expect([400, 403]).toContain(res.status);
     });
 
     it("VE-1: status='pending' is accepted and does not crash", async () => {
-      const { accessToken } = await registerAndLoginVendor(app, "-pendingOk");
-      const event = await createEvent(accessToken);
+      const { accessToken, csrfToken } = await registerAndLoginVendor(app, "-pendingOk");
+      const event = await createEvent(accessToken, csrfToken);
 
       const res = await request(app)
         .put(`/api/vendors/events/${event._id}`)
-        .set("Cookie", authCookie(accessToken))
+        .set("Cookie", authCookie(accessToken, csrfToken))
+        .set("X-CSRF-Token", csrfToken)
         .send({ status: "pending" });
       expect(res.status).toBe(200);
       expect(res.body.data.event.status).toBe("pending");
@@ -593,33 +623,36 @@ describe("Vendor Event CRUD — /api/vendors/events", () => {
     });
 
     it("TC-EVT-12: allows updating title and persists the change", async () => {
-      const { accessToken } = await registerAndLoginVendor(app, "-titleUpdate");
-      const event = await createEvent(accessToken);
+      const { accessToken, csrfToken } = await registerAndLoginVendor(app, "-titleUpdate");
+      const event = await createEvent(accessToken, csrfToken);
 
       const res = await request(app)
         .put(`/api/vendors/events/${event._id}`)
-        .set("Cookie", authCookie(accessToken))
+        .set("Cookie", authCookie(accessToken, csrfToken))
+        .set("X-CSRF-Token", csrfToken)
         .send({ title: "Updated Robotics Workshop" });
       expect(res.status).toBe(200);
       expect(res.body.data.event.title).toBe("Updated Robotics Workshop");
     });
 
     it("TC-EVT-13: rejects an invalid category on update", async () => {
-      const { accessToken } = await registerAndLoginVendor(app, "-badCategoryUpdate");
-      const event = await createEvent(accessToken);
+      const { accessToken, csrfToken } = await registerAndLoginVendor(app, "-badCategoryUpdate");
+      const event = await createEvent(accessToken, csrfToken);
 
       const res = await request(app)
         .put(`/api/vendors/events/${event._id}`)
-        .set("Cookie", authCookie(accessToken))
+        .set("Cookie", authCookie(accessToken, csrfToken))
+        .set("X-CSRF-Token", csrfToken)
         .send({ category: "fake-category" });
       expect(res.status).toBe(400);
     });
 
     it("VE-3: rejects a malformed :id with 400, not a 500 CastError", async () => {
-      const { accessToken } = await registerAndLoginVendor(app, "-badId");
+      const { accessToken, csrfToken } = await registerAndLoginVendor(app, "-badId");
       const res = await request(app)
         .put("/api/vendors/events/not-a-valid-object-id")
-        .set("Cookie", authCookie(accessToken))
+        .set("Cookie", authCookie(accessToken, csrfToken))
+        .set("X-CSRF-Token", csrfToken)
         .send({ title: "x" });
       expect(res.status).toBe(400);
     });
@@ -627,12 +660,13 @@ describe("Vendor Event CRUD — /api/vendors/events", () => {
     it("does not allow updating title on an old event to be blocked by past-date rules", async () => {
       // Regression for the create-vs-update split: updating unrelated fields on an event
       // whose schedule already has (by now) a past-ish date must not 400.
-      const { accessToken } = await registerAndLoginVendor(app, "-partialUpdate");
-      const event = await createEvent(accessToken);
+      const { accessToken, csrfToken } = await registerAndLoginVendor(app, "-partialUpdate");
+      const event = await createEvent(accessToken, csrfToken);
 
       const res = await request(app)
         .put(`/api/vendors/events/${event._id}`)
-        .set("Cookie", authCookie(accessToken))
+        .set("Cookie", authCookie(accessToken, csrfToken))
+        .set("X-CSRF-Token", csrfToken)
         .send({ shortDescription: "Updated short description." });
       expect(res.status).toBe(200);
       expect(res.body.data.event.shortDescription).toBe("Updated short description.");
@@ -642,21 +676,23 @@ describe("Vendor Event CRUD — /api/vendors/events", () => {
   // ─── DELETE (TC-EVT-14..16) ─────────────────────────────────────────────
 
   describe("DELETE /events/:id", () => {
-    const createEvent = async (accessToken: string) => {
+    const createEvent = async (accessToken: string, csrfToken: string) => {
       const res = await request(app)
         .post("/api/vendors/events")
-        .set("Cookie", authCookie(accessToken))
+        .set("Cookie", authCookie(accessToken, csrfToken))
+        .set("X-CSRF-Token", csrfToken)
         .send(basePayload());
       return res.body.data.event;
     };
 
     it("TC-EVT-14: soft-deletes by default (isDeleted=true, status='archived')", async () => {
-      const { accessToken } = await registerAndLoginVendor(app, "-softDelete");
-      const event = await createEvent(accessToken);
+      const { accessToken, csrfToken } = await registerAndLoginVendor(app, "-softDelete");
+      const event = await createEvent(accessToken, csrfToken);
 
       const res = await request(app)
         .delete(`/api/vendors/events/${event._id}`)
-        .set("Cookie", authCookie(accessToken));
+        .set("Cookie", authCookie(accessToken, csrfToken))
+        .set("X-CSRF-Token", csrfToken);
       expect(res.status).toBe(200);
 
       const stored = await Event.findById(event._id).lean();
@@ -665,12 +701,13 @@ describe("Vendor Event CRUD — /api/vendors/events", () => {
     });
 
     it("TC-EVT-15: permanently deletes when ?permanent=true", async () => {
-      const { accessToken } = await registerAndLoginVendor(app, "-hardDelete");
-      const event = await createEvent(accessToken);
+      const { accessToken, csrfToken } = await registerAndLoginVendor(app, "-hardDelete");
+      const event = await createEvent(accessToken, csrfToken);
 
       const res = await request(app)
         .delete(`/api/vendors/events/${event._id}?permanent=true`)
-        .set("Cookie", authCookie(accessToken));
+        .set("Cookie", authCookie(accessToken, csrfToken))
+        .set("X-CSRF-Token", csrfToken);
       expect(res.status).toBe(200);
 
       const stored = await Event.findById(event._id).lean();
@@ -680,11 +717,12 @@ describe("Vendor Event CRUD — /api/vendors/events", () => {
     it("TC-EVT-16: returns 404 when deleting another vendor's event", async () => {
       const vendorA = await registerAndLoginVendor(app, "-delOwnerA");
       const vendorB = await registerAndLoginVendor(app, "-delOwnerB");
-      const event = await createEvent(vendorA.accessToken);
+      const event = await createEvent(vendorA.accessToken, vendorA.csrfToken);
 
       const res = await request(app)
         .delete(`/api/vendors/events/${event._id}`)
-        .set("Cookie", authCookie(vendorB.accessToken));
+        .set("Cookie", authCookie(vendorB.accessToken, vendorB.csrfToken))
+        .set("X-CSRF-Token", vendorB.csrfToken);
       expect(res.status).toBe(404);
     });
   });
@@ -693,36 +731,41 @@ describe("Vendor Event CRUD — /api/vendors/events", () => {
 
   describe("PUT /events/:id/restore", () => {
     it("TC-EVT-17: restores a soft-deleted event to 'draft' status", async () => {
-      const { accessToken } = await registerAndLoginVendor(app, "-restore");
+      const { accessToken, csrfToken } = await registerAndLoginVendor(app, "-restore");
       const created = await request(app)
         .post("/api/vendors/events")
-        .set("Cookie", authCookie(accessToken))
+        .set("Cookie", authCookie(accessToken, csrfToken))
+        .set("X-CSRF-Token", csrfToken)
         .send(basePayload());
       const event = created.body.data.event;
 
       await request(app)
         .delete(`/api/vendors/events/${event._id}`)
-        .set("Cookie", authCookie(accessToken));
+        .set("Cookie", authCookie(accessToken, csrfToken))
+        .set("X-CSRF-Token", csrfToken);
 
       const res = await request(app)
         .put(`/api/vendors/events/${event._id}/restore`)
-        .set("Cookie", authCookie(accessToken));
+        .set("Cookie", authCookie(accessToken, csrfToken))
+        .set("X-CSRF-Token", csrfToken);
       expect(res.status).toBe(200);
       expect(res.body.data.event.isDeleted).toBe(false);
       expect(res.body.data.event.status).toBe("draft");
     });
 
     it("returns 404 restoring another vendor's event or a non-deleted event", async () => {
-      const { accessToken } = await registerAndLoginVendor(app, "-restoreNotDeleted");
+      const { accessToken, csrfToken } = await registerAndLoginVendor(app, "-restoreNotDeleted");
       const created = await request(app)
         .post("/api/vendors/events")
-        .set("Cookie", authCookie(accessToken))
+        .set("Cookie", authCookie(accessToken, csrfToken))
+        .set("X-CSRF-Token", csrfToken)
         .send(basePayload());
       const event = created.body.data.event;
 
       const res = await request(app)
         .put(`/api/vendors/events/${event._id}/restore`)
-        .set("Cookie", authCookie(accessToken));
+        .set("Cookie", authCookie(accessToken, csrfToken))
+        .set("X-CSRF-Token", csrfToken);
       expect(res.status).toBe(404);
     });
   });

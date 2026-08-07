@@ -21,6 +21,7 @@ import analyticsRoutes from "../../../routes/analytics.routes";
 import adminBusinessReportRoutes from "../../../routes/admin.businessReport.routes";
 import { maintenanceModeGuard } from "../../../middleware/maintenance.middleware";
 import { errorHandler, notFound } from "../../../middleware/index";
+import { verifyCsrfToken } from "../../../middleware/csrf";
 
 // Ensure required env vars exist before middleware imports try to read them
 process.env.JWT_SECRET = process.env.JWT_SECRET || "test-jwt-secret-key-32chars!!";
@@ -53,6 +54,7 @@ export const createTestApp = (): Application => {
   app.use(express.json({ limit: "10mb" }));
   app.use(express.urlencoded({ extended: true }));
   app.use(cookieParser());
+  app.use(verifyCsrfToken);
 
   // Global maintenance-mode gate — mirrors server.ts ordering (ahead of the
   // route table). Inert for existing suites since maintenanceMode defaults

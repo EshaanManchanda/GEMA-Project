@@ -118,11 +118,12 @@ async function registerAndLoginVendor(app: Application, label: string) {
   const cookies: string[] =
     (loginRes.headers["set-cookie"] as unknown as string[]) || [];
   const accessToken = extractCookie(cookies, "accessToken");
+  const csrfToken = extractCookie(cookies, "XSRF-TOKEN");
 
   const userId = registerRes.body.data.user.id;
   const vendor = await Vendor.findOne({ userId });
 
-  return { accessToken, userId, vendorId: vendor!._id.toString() };
+  return { accessToken, csrfToken, userId, vendorId: vendor!._id.toString() };
 }
 
 async function registerAndLoginAdmin(app: Application, label: string) {
@@ -139,7 +140,10 @@ async function registerAndLoginAdmin(app: Application, label: string) {
     .send({ email: payload.email, password: payload.password });
   const cookies: string[] =
     (loginRes.headers["set-cookie"] as unknown as string[]) || [];
-  return { accessToken: extractCookie(cookies, "accessToken") };
+  return {
+    accessToken: extractCookie(cookies, "accessToken"),
+    csrfToken: extractCookie(cookies, "XSRF-TOKEN"),
+  };
 }
 
 const PERIOD = "2026-06";
@@ -192,13 +196,15 @@ describe("GET /api/admin/business-reports/overview — segmentation", () => {
     // segment under test.
     await request(app)
       .post(`/api/admin/business-reports/vendors/${vendor.vendorId}/snapshot`)
-      .set("Cookie", `accessToken=${admin.accessToken}`)
+      .set("Cookie", `accessToken=${admin.accessToken}; XSRF-TOKEN=${admin.csrfToken}`)
+      .set("X-CSRF-Token", admin.csrfToken)
       .send({ period: PERIOD });
 
     const all = await request(app)
       .get("/api/admin/business-reports/overview")
       .query({ period: PERIOD })
-      .set("Cookie", `accessToken=${admin.accessToken}`);
+      .set("Cookie", `accessToken=${admin.accessToken}; XSRF-TOKEN=${admin.csrfToken}`)
+      .set("X-CSRF-Token", admin.csrfToken);
     expect(all.status).toBe(200);
     const row = all.body.data.rows.find(
       (r: any) => r.vendorId === vendor.vendorId,
@@ -210,7 +216,8 @@ describe("GET /api/admin/business-reports/overview — segmentation", () => {
     const filtered = await request(app)
       .get("/api/admin/business-reports/overview")
       .query({ period: PERIOD, filter: "new" })
-      .set("Cookie", `accessToken=${admin.accessToken}`);
+      .set("Cookie", `accessToken=${admin.accessToken}; XSRF-TOKEN=${admin.csrfToken}`)
+      .set("X-CSRF-Token", admin.csrfToken);
     expect(filtered.status).toBe(200);
     expect(
       filtered.body.data.rows.some((r: any) => r.vendorId === vendor.vendorId),
@@ -225,7 +232,8 @@ describe("GET /api/admin/business-reports/overview — segmentation", () => {
     const res = await request(app)
       .get("/api/admin/business-reports/overview")
       .query({ period: PERIOD, filter: "inactive" })
-      .set("Cookie", `accessToken=${admin.accessToken}`);
+      .set("Cookie", `accessToken=${admin.accessToken}; XSRF-TOKEN=${admin.csrfToken}`)
+      .set("X-CSRF-Token", admin.csrfToken);
 
     expect(res.status).toBe(200);
     expect(
@@ -242,7 +250,8 @@ describe("GET /api/admin/business-reports/vendors/:vendorId/snapshot", () => {
     const res = await request(app)
       .get(`/api/admin/business-reports/vendors/${vendor.vendorId}/snapshot`)
       .query({ period: PERIOD })
-      .set("Cookie", `accessToken=${admin.accessToken}`);
+      .set("Cookie", `accessToken=${admin.accessToken}; XSRF-TOKEN=${admin.csrfToken}`)
+      .set("X-CSRF-Token", admin.csrfToken);
 
     expect(res.status).toBe(200);
     expect(res.body.data).toBeNull();
@@ -254,13 +263,15 @@ describe("GET /api/admin/business-reports/vendors/:vendorId/snapshot", () => {
 
     const created = await request(app)
       .post(`/api/admin/business-reports/vendors/${vendor.vendorId}/snapshot`)
-      .set("Cookie", `accessToken=${admin.accessToken}`)
+      .set("Cookie", `accessToken=${admin.accessToken}; XSRF-TOKEN=${admin.csrfToken}`)
+      .set("X-CSRF-Token", admin.csrfToken)
       .send({ period: PERIOD });
 
     const res = await request(app)
       .get(`/api/admin/business-reports/vendors/${vendor.vendorId}/snapshot`)
       .query({ period: PERIOD })
-      .set("Cookie", `accessToken=${admin.accessToken}`);
+      .set("Cookie", `accessToken=${admin.accessToken}; XSRF-TOKEN=${admin.csrfToken}`)
+      .set("X-CSRF-Token", admin.csrfToken);
 
     expect(res.status).toBe(200);
     expect(res.body.data._id).toBe(created.body.data._id);
@@ -275,7 +286,8 @@ describe("POST /api/admin/business-reports/vendors/:vendorId/snapshot", () => {
 
     const res = await request(app)
       .post(`/api/admin/business-reports/vendors/${vendor.vendorId}/snapshot`)
-      .set("Cookie", `accessToken=${admin.accessToken}`)
+      .set("Cookie", `accessToken=${admin.accessToken}; XSRF-TOKEN=${admin.csrfToken}`)
+      .set("X-CSRF-Token", admin.csrfToken)
       .send({ period: PERIOD });
 
     expect(res.status).toBe(200);
@@ -295,11 +307,13 @@ describe("POST /api/admin/business-reports/vendors/:vendorId/snapshot", () => {
 
     const first = await request(app)
       .post(`/api/admin/business-reports/vendors/${vendor.vendorId}/snapshot`)
-      .set("Cookie", `accessToken=${admin.accessToken}`)
+      .set("Cookie", `accessToken=${admin.accessToken}; XSRF-TOKEN=${admin.csrfToken}`)
+      .set("X-CSRF-Token", admin.csrfToken)
       .send({ period: PERIOD });
     const second = await request(app)
       .post(`/api/admin/business-reports/vendors/${vendor.vendorId}/snapshot`)
-      .set("Cookie", `accessToken=${admin.accessToken}`)
+      .set("Cookie", `accessToken=${admin.accessToken}; XSRF-TOKEN=${admin.csrfToken}`)
+      .set("X-CSRF-Token", admin.csrfToken)
       .send({ period: PERIOD });
 
     expect(first.status).toBe(200);
@@ -319,20 +333,23 @@ describe("POST /api/admin/business-reports/vendors/:vendorId/snapshot", () => {
 
     const created = await request(app)
       .post(`/api/admin/business-reports/vendors/${vendor.vendorId}/snapshot`)
-      .set("Cookie", `accessToken=${admin.accessToken}`)
+      .set("Cookie", `accessToken=${admin.accessToken}; XSRF-TOKEN=${admin.csrfToken}`)
+      .set("X-CSRF-Token", admin.csrfToken)
       .send({ period: PERIOD });
     const snapshotId = created.body.data._id;
 
     const lockRes = await request(app)
       .patch(`/api/admin/business-reports/snapshots/${snapshotId}/status`)
-      .set("Cookie", `accessToken=${admin.accessToken}`)
+      .set("Cookie", `accessToken=${admin.accessToken}; XSRF-TOKEN=${admin.csrfToken}`)
+      .set("X-CSRF-Token", admin.csrfToken)
       .send({ status: "locked" });
     expect(lockRes.status).toBe(200);
     expect(lockRes.body.data.status).toBe("locked");
 
     const regenerate = await request(app)
       .post(`/api/admin/business-reports/vendors/${vendor.vendorId}/snapshot`)
-      .set("Cookie", `accessToken=${admin.accessToken}`)
+      .set("Cookie", `accessToken=${admin.accessToken}; XSRF-TOKEN=${admin.csrfToken}`)
+      .set("X-CSRF-Token", admin.csrfToken)
       .send({ period: PERIOD });
     expect(regenerate.status).toBe(409);
   });
@@ -375,7 +392,8 @@ describe("KBOS 007 — frozen platform benchmarks", () => {
 
     const created = await request(app)
       .post(`/api/admin/business-reports/vendors/${vendor.vendorId}/snapshot`)
-      .set("Cookie", `accessToken=${admin.accessToken}`)
+      .set("Cookie", `accessToken=${admin.accessToken}; XSRF-TOKEN=${admin.csrfToken}`)
+      .set("X-CSRF-Token", admin.csrfToken)
       .send({ period: PERIOD });
 
     expect(created.status).toBe(200);
@@ -420,13 +438,15 @@ describe("GET /api/insights/vendors/:vendorId/report — ownership", () => {
 
     await request(app)
       .post(`/api/admin/business-reports/vendors/${vendorB.vendorId}/snapshot`)
-      .set("Cookie", `accessToken=${admin.accessToken}`)
+      .set("Cookie", `accessToken=${admin.accessToken}; XSRF-TOKEN=${admin.csrfToken}`)
+      .set("X-CSRF-Token", admin.csrfToken)
       .send({ period: PERIOD });
 
     const res = await request(app)
       .get(`/api/insights/vendors/${vendorB.vendorId}/report`)
       .query({ period: PERIOD, type: "health", format: "csv" })
-      .set("Cookie", `accessToken=${vendorA.accessToken}`);
+      .set("Cookie", `accessToken=${vendorA.accessToken}; XSRF-TOKEN=${vendorA.csrfToken}`)
+      .set("X-CSRF-Token", vendorA.csrfToken);
 
     expect(res.status).toBe(403);
   });
@@ -437,7 +457,8 @@ describe("GET /api/insights/vendors/:vendorId/report — ownership", () => {
     const res = await request(app)
       .get(`/api/insights/vendors/${vendor.vendorId}/report`)
       .query({ period: PERIOD, type: "health", format: "csv" })
-      .set("Cookie", `accessToken=${vendor.accessToken}`);
+      .set("Cookie", `accessToken=${vendor.accessToken}; XSRF-TOKEN=${vendor.csrfToken}`)
+      .set("X-CSRF-Token", vendor.csrfToken);
 
     expect(res.status).toBe(200);
   });
@@ -451,7 +472,8 @@ describe("GET /api/insights/vendors/:vendorId/report — CSV format", () => {
     const res = await request(app)
       .get(`/api/insights/vendors/${vendor.vendorId}/report`)
       .query({ period: PERIOD, type: "health", format: "csv" })
-      .set("Cookie", `accessToken=${admin.accessToken}`);
+      .set("Cookie", `accessToken=${admin.accessToken}; XSRF-TOKEN=${admin.csrfToken}`)
+      .set("X-CSRF-Token", admin.csrfToken);
 
     expect(res.status).toBe(200);
     expect(res.headers["content-type"]).toContain("text/csv");
@@ -467,13 +489,15 @@ describe("Internal notes confidentiality boundary", () => {
 
     const created = await request(app)
       .post(`/api/admin/business-reports/vendors/${vendor.vendorId}/snapshot`)
-      .set("Cookie", `accessToken=${admin.accessToken}`)
+      .set("Cookie", `accessToken=${admin.accessToken}; XSRF-TOKEN=${admin.csrfToken}`)
+      .set("X-CSRF-Token", admin.csrfToken)
       .send({ period: PERIOD });
     const snapshotId = created.body.data._id;
 
     await request(app)
       .put(`/api/admin/business-reports/snapshots/${snapshotId}/notes`)
-      .set("Cookie", `accessToken=${admin.accessToken}`)
+      .set("Cookie", `accessToken=${admin.accessToken}; XSRF-TOKEN=${admin.csrfToken}`)
+      .set("X-CSRF-Token", admin.csrfToken)
       .send({
         vendorVisible: "Great progress this month.",
         internal: "SECRET_INTERNAL_ONLY_TEXT — slow to respond, premium lead",
@@ -482,7 +506,8 @@ describe("Internal notes confidentiality boundary", () => {
     const res = await request(app)
       .get(`/api/insights/vendors/${vendor.vendorId}/report`)
       .query({ period: PERIOD, type: "health", format: "csv" })
-      .set("Cookie", `accessToken=${admin.accessToken}`);
+      .set("Cookie", `accessToken=${admin.accessToken}; XSRF-TOKEN=${admin.csrfToken}`)
+      .set("X-CSRF-Token", admin.csrfToken);
 
     expect(res.status).toBe(200);
     expect(res.text).not.toContain("SECRET_INTERNAL_ONLY_TEXT");
@@ -495,13 +520,15 @@ describe("Internal notes confidentiality boundary", () => {
 
     const created = await request(app)
       .post(`/api/admin/business-reports/vendors/${vendor.vendorId}/snapshot`)
-      .set("Cookie", `accessToken=${admin.accessToken}`)
+      .set("Cookie", `accessToken=${admin.accessToken}; XSRF-TOKEN=${admin.csrfToken}`)
+      .set("X-CSRF-Token", admin.csrfToken)
       .send({ period: PERIOD });
     const snapshotId = created.body.data._id;
 
     await request(app)
       .put(`/api/admin/business-reports/snapshots/${snapshotId}/notes`)
-      .set("Cookie", `accessToken=${admin.accessToken}`)
+      .set("Cookie", `accessToken=${admin.accessToken}; XSRF-TOKEN=${admin.csrfToken}`)
+      .set("X-CSRF-Token", admin.csrfToken)
       .send({
         vendorVisible: "Great progress this month.",
         internal: "SECRET_INTERNAL_ONLY_TEXT — slow to respond, premium lead",
@@ -510,7 +537,8 @@ describe("Internal notes confidentiality boundary", () => {
     const res = await request(app)
       .get(`/api/insights/vendors/${vendor.vendorId}/report`)
       .query({ period: PERIOD, type: "health", format: "pdf" })
-      .set("Cookie", `accessToken=${admin.accessToken}`);
+      .set("Cookie", `accessToken=${admin.accessToken}; XSRF-TOKEN=${admin.csrfToken}`)
+      .set("X-CSRF-Token", admin.csrfToken);
 
     expect(res.status).toBe(200);
     expect(capturedPdfHtml).toBeDefined();
@@ -524,13 +552,15 @@ describe("Internal notes confidentiality boundary", () => {
 
     await request(app)
       .post(`/api/admin/business-reports/vendors/${vendor.vendorId}/snapshot`)
-      .set("Cookie", `accessToken=${admin.accessToken}`)
+      .set("Cookie", `accessToken=${admin.accessToken}; XSRF-TOKEN=${admin.csrfToken}`)
+      .set("X-CSRF-Token", admin.csrfToken)
       .send({ period: PERIOD });
 
     const res = await request(app)
       .get(`/api/insights/vendors/${vendor.vendorId}/report`)
       .query({ period: PERIOD, type: "health", format: "pdf" })
-      .set("Cookie", `accessToken=${admin.accessToken}`);
+      .set("Cookie", `accessToken=${admin.accessToken}; XSRF-TOKEN=${admin.csrfToken}`)
+      .set("X-CSRF-Token", admin.csrfToken);
 
     expect(res.status).toBe(200);
     expect(capturedPdfHtml).toContain("Layout v1.0");
@@ -550,7 +580,8 @@ describe("Business report cache invalidation", () => {
 
     const created = await request(app)
       .post(`/api/admin/business-reports/vendors/${vendor.vendorId}/snapshot`)
-      .set("Cookie", `accessToken=${admin.accessToken}`)
+      .set("Cookie", `accessToken=${admin.accessToken}; XSRF-TOKEN=${admin.csrfToken}`)
+      .set("X-CSRF-Token", admin.csrfToken)
       .send({ period: PERIOD });
     const snapshotId = created.body.data._id;
 
@@ -559,7 +590,8 @@ describe("Business report cache invalidation", () => {
 
     await request(app)
       .put(`/api/admin/business-reports/snapshots/${snapshotId}/notes`)
-      .set("Cookie", `accessToken=${admin.accessToken}`)
+      .set("Cookie", `accessToken=${admin.accessToken}; XSRF-TOKEN=${admin.csrfToken}`)
+      .set("X-CSRF-Token", admin.csrfToken)
       .send({ vendorVisible: "Updated note." });
 
     expect(deletePatternSpy).toHaveBeenCalledWith(
@@ -581,7 +613,8 @@ describe("Business report cache invalidation", () => {
         `/api/admin/business-reports/vendors/${vendor.vendorId}/promotion-input`,
       )
       .query({ period: PERIOD })
-      .set("Cookie", `accessToken=${admin.accessToken}`)
+      .set("Cookie", `accessToken=${admin.accessToken}; XSRF-TOKEN=${admin.csrfToken}`)
+      .set("X-CSRF-Token", admin.csrfToken)
       .send({ impressions: 500 });
 
     expect(deletePatternSpy).toHaveBeenCalledWith(
@@ -599,7 +632,8 @@ describe("Report generation observability", () => {
 
     const res = await request(app)
       .post(`/api/admin/business-reports/vendors/${vendor.vendorId}/snapshot`)
-      .set("Cookie", `accessToken=${admin.accessToken}`)
+      .set("Cookie", `accessToken=${admin.accessToken}; XSRF-TOKEN=${admin.csrfToken}`)
+      .set("X-CSRF-Token", admin.csrfToken)
       .send({ period: PERIOD });
     expect(res.status).toBe(200);
 
@@ -619,18 +653,21 @@ describe("Report generation observability", () => {
 
     const created = await request(app)
       .post(`/api/admin/business-reports/vendors/${vendor.vendorId}/snapshot`)
-      .set("Cookie", `accessToken=${admin.accessToken}`)
+      .set("Cookie", `accessToken=${admin.accessToken}; XSRF-TOKEN=${admin.csrfToken}`)
+      .set("X-CSRF-Token", admin.csrfToken)
       .send({ period: PERIOD });
     const snapshotId = created.body.data._id;
 
     await request(app)
       .patch(`/api/admin/business-reports/snapshots/${snapshotId}/status`)
-      .set("Cookie", `accessToken=${admin.accessToken}`)
+      .set("Cookie", `accessToken=${admin.accessToken}; XSRF-TOKEN=${admin.csrfToken}`)
+      .set("X-CSRF-Token", admin.csrfToken)
       .send({ status: "locked" });
 
     const retry = await request(app)
       .post(`/api/admin/business-reports/vendors/${vendor.vendorId}/snapshot`)
-      .set("Cookie", `accessToken=${admin.accessToken}`)
+      .set("Cookie", `accessToken=${admin.accessToken}; XSRF-TOKEN=${admin.csrfToken}`)
+      .set("X-CSRF-Token", admin.csrfToken)
       .send({ period: PERIOD });
     expect(retry.status).toBe(409);
 
@@ -667,7 +704,8 @@ describe("Report generation observability", () => {
     const res = await request(app)
       .get(`/api/insights/vendors/${vendor.vendorId}/report`)
       .query({ period: PERIOD, type: "health", format: "pdf" })
-      .set("Cookie", `accessToken=${admin.accessToken}`);
+      .set("Cookie", `accessToken=${admin.accessToken}; XSRF-TOKEN=${admin.csrfToken}`)
+      .set("X-CSRF-Token", admin.csrfToken);
     expect(res.status).toBe(200);
 
     const log = await ReportGenerationLog.findOne({
@@ -692,7 +730,8 @@ describe("Report generation observability", () => {
 
     const res = await request(app)
       .post(`/api/admin/business-reports/vendors/${vendor.vendorId}/snapshot`)
-      .set("Cookie", `accessToken=${admin.accessToken}`)
+      .set("Cookie", `accessToken=${admin.accessToken}; XSRF-TOKEN=${admin.csrfToken}`)
+      .set("X-CSRF-Token", admin.csrfToken)
       .send({ period: PERIOD });
 
     // The snapshot itself must still succeed — observability failures are
@@ -713,7 +752,8 @@ describe("PUT .../promotion-input — manual-input validation", () => {
         `/api/admin/business-reports/vendors/${vendor.vendorId}/promotion-input`,
       )
       .query({ period: PERIOD })
-      .set("Cookie", `accessToken=${admin.accessToken}`)
+      .set("Cookie", `accessToken=${admin.accessToken}; XSRF-TOKEN=${admin.csrfToken}`)
+      .set("X-CSRF-Token", admin.csrfToken)
       .send({
         bannerPlacements: [
           { label: "Suspicious banner", impressions: 10, clicks: 500 },
@@ -736,7 +776,8 @@ describe("PUT .../promotion-input — manual-input validation", () => {
         `/api/admin/business-reports/vendors/${vendor.vendorId}/promotion-input`,
       )
       .query({ period: PERIOD })
-      .set("Cookie", `accessToken=${admin.accessToken}`)
+      .set("Cookie", `accessToken=${admin.accessToken}; XSRF-TOKEN=${admin.csrfToken}`)
+      .set("X-CSRF-Token", admin.csrfToken)
       .send({ impressions: 1e15 });
 
     expect(res.status).toBe(400);
@@ -751,7 +792,8 @@ describe("PUT .../promotion-input — manual-input validation", () => {
         `/api/admin/business-reports/vendors/${vendor.vendorId}/promotion-input`,
       )
       .query({ period: PERIOD })
-      .set("Cookie", `accessToken=${admin.accessToken}`)
+      .set("Cookie", `accessToken=${admin.accessToken}; XSRF-TOKEN=${admin.csrfToken}`)
+      .set("X-CSRF-Token", admin.csrfToken)
       .send({ impressions: 5000 });
 
     expect(res.status).toBe(200);
@@ -768,7 +810,8 @@ describe("PATCH /api/insights/vendors/:vendorId/tasks/:taskCode", () => {
     // giving at least one task to toggle.
     const created = await request(app)
       .post(`/api/admin/business-reports/vendors/${vendor.vendorId}/snapshot`)
-      .set("Cookie", `accessToken=${admin.accessToken}`)
+      .set("Cookie", `accessToken=${admin.accessToken}; XSRF-TOKEN=${admin.csrfToken}`)
+      .set("X-CSRF-Token", admin.csrfToken)
       .send({ period: PERIOD });
     const tasks = created.body.data.tasks as Array<{
       code: string;
@@ -780,7 +823,8 @@ describe("PATCH /api/insights/vendors/:vendorId/tasks/:taskCode", () => {
     const res = await request(app)
       .patch(`/api/insights/vendors/${vendor.vendorId}/tasks/${taskCode}`)
       .query({ period: PERIOD })
-      .set("Cookie", `accessToken=${vendor.accessToken}`)
+      .set("Cookie", `accessToken=${vendor.accessToken}; XSRF-TOKEN=${vendor.csrfToken}`)
+      .set("X-CSRF-Token", vendor.csrfToken)
       .send({ done: true });
 
     expect(res.status).toBe(200);
@@ -802,13 +846,15 @@ describe("KBOS 003b — content-addressed cache key", () => {
 
     await request(app)
       .post(`/api/admin/business-reports/vendors/${vendor.vendorId}/snapshot`)
-      .set("Cookie", `accessToken=${admin.accessToken}`)
+      .set("Cookie", `accessToken=${admin.accessToken}; XSRF-TOKEN=${admin.csrfToken}`)
+      .set("X-CSRF-Token", admin.csrfToken)
       .send({ period: PERIOD });
 
     const firstDownload = await request(app)
       .get(`/api/insights/vendors/${vendor.vendorId}/report`)
       .query({ period: PERIOD, type: "health", format: "pdf" })
-      .set("Cookie", `accessToken=${admin.accessToken}`);
+      .set("Cookie", `accessToken=${admin.accessToken}; XSRF-TOKEN=${admin.csrfToken}`)
+      .set("X-CSRF-Token", admin.csrfToken);
     expect(firstDownload.status).toBe(200);
     expect(capturedPdfHtml).toBeDefined();
 
@@ -818,13 +864,15 @@ describe("KBOS 003b — content-addressed cache key", () => {
     capturedPdfHtml = undefined;
     await request(app)
       .post(`/api/admin/business-reports/vendors/${vendor.vendorId}/snapshot`)
-      .set("Cookie", `accessToken=${admin.accessToken}`)
+      .set("Cookie", `accessToken=${admin.accessToken}; XSRF-TOKEN=${admin.csrfToken}`)
+      .set("X-CSRF-Token", admin.csrfToken)
       .send({ period: PERIOD });
 
     const secondDownload = await request(app)
       .get(`/api/insights/vendors/${vendor.vendorId}/report`)
       .query({ period: PERIOD, type: "health", format: "pdf" })
-      .set("Cookie", `accessToken=${admin.accessToken}`);
+      .set("Cookie", `accessToken=${admin.accessToken}; XSRF-TOKEN=${admin.csrfToken}`)
+      .set("X-CSRF-Token", admin.csrfToken);
     expect(secondDownload.status).toBe(200);
     // If the stale cache key were reused, renderReportPdf would never be
     // called and capturedPdfHtml would stay undefined.
@@ -848,7 +896,8 @@ describe("KBOS 005 — snapshot integrity checksum", () => {
 
       const created = await request(app)
         .post(`/api/admin/business-reports/vendors/${vendor.vendorId}/snapshot`)
-        .set("Cookie", `accessToken=${admin.accessToken}`)
+        .set("Cookie", `accessToken=${admin.accessToken}; XSRF-TOKEN=${admin.csrfToken}`)
+      .set("X-CSRF-Token", admin.csrfToken)
         .send({ period: PERIOD });
 
       expect(created.status).toBe(200);
@@ -857,7 +906,8 @@ describe("KBOS 005 — snapshot integrity checksum", () => {
       const res = await request(app)
         .get(`/api/admin/business-reports/vendors/${vendor.vendorId}/snapshot`)
         .query({ period: PERIOD })
-        .set("Cookie", `accessToken=${admin.accessToken}`);
+        .set("Cookie", `accessToken=${admin.accessToken}; XSRF-TOKEN=${admin.csrfToken}`)
+      .set("X-CSRF-Token", admin.csrfToken);
       expect(res.body.integrity.status).toBe("unhashed");
     } finally {
       config.reportIntegritySecret = originalSecret;
@@ -870,13 +920,15 @@ describe("KBOS 005 — snapshot integrity checksum", () => {
 
     await request(app)
       .post(`/api/admin/business-reports/vendors/${vendor.vendorId}/snapshot`)
-      .set("Cookie", `accessToken=${admin.accessToken}`)
+      .set("Cookie", `accessToken=${admin.accessToken}; XSRF-TOKEN=${admin.csrfToken}`)
+      .set("X-CSRF-Token", admin.csrfToken)
       .send({ period: PERIOD });
 
     const res = await request(app)
       .get(`/api/admin/business-reports/vendors/${vendor.vendorId}/snapshot`)
       .query({ period: PERIOD })
-      .set("Cookie", `accessToken=${admin.accessToken}`);
+      .set("Cookie", `accessToken=${admin.accessToken}; XSRF-TOKEN=${admin.csrfToken}`)
+      .set("X-CSRF-Token", admin.csrfToken);
 
     expect(res.status).toBe(200);
     expect(res.body.integrity.status).toBe("verified");
@@ -888,7 +940,8 @@ describe("KBOS 005 — snapshot integrity checksum", () => {
 
     await request(app)
       .post(`/api/admin/business-reports/vendors/${vendor.vendorId}/snapshot`)
-      .set("Cookie", `accessToken=${admin.accessToken}`)
+      .set("Cookie", `accessToken=${admin.accessToken}; XSRF-TOKEN=${admin.csrfToken}`)
+      .set("X-CSRF-Token", admin.csrfToken)
       .send({ period: PERIOD });
 
     await VendorBusinessSnapshot.updateOne(
@@ -899,7 +952,8 @@ describe("KBOS 005 — snapshot integrity checksum", () => {
     const res = await request(app)
       .get(`/api/admin/business-reports/vendors/${vendor.vendorId}/snapshot`)
       .query({ period: PERIOD })
-      .set("Cookie", `accessToken=${admin.accessToken}`);
+      .set("Cookie", `accessToken=${admin.accessToken}; XSRF-TOKEN=${admin.csrfToken}`)
+      .set("X-CSRF-Token", admin.csrfToken);
 
     expect(res.status).toBe(200);
     expect(res.body.integrity.status).toBe("mismatch");
@@ -911,7 +965,8 @@ describe("KBOS 005 — snapshot integrity checksum", () => {
 
     const created = await request(app)
       .post(`/api/admin/business-reports/vendors/${vendor.vendorId}/snapshot`)
-      .set("Cookie", `accessToken=${admin.accessToken}`)
+      .set("Cookie", `accessToken=${admin.accessToken}; XSRF-TOKEN=${admin.csrfToken}`)
+      .set("X-CSRF-Token", admin.csrfToken)
       .send({ period: PERIOD });
     const tasks = created.body.data.tasks as Array<{ code: string }>;
     expect(tasks.length).toBeGreaterThan(0);
@@ -919,13 +974,15 @@ describe("KBOS 005 — snapshot integrity checksum", () => {
     await request(app)
       .patch(`/api/insights/vendors/${vendor.vendorId}/tasks/${tasks[0].code}`)
       .query({ period: PERIOD })
-      .set("Cookie", `accessToken=${vendor.accessToken}`)
+      .set("Cookie", `accessToken=${vendor.accessToken}; XSRF-TOKEN=${vendor.csrfToken}`)
+      .set("X-CSRF-Token", vendor.csrfToken)
       .send({ done: true });
 
     const res = await request(app)
       .get(`/api/admin/business-reports/vendors/${vendor.vendorId}/snapshot`)
       .query({ period: PERIOD })
-      .set("Cookie", `accessToken=${admin.accessToken}`);
+      .set("Cookie", `accessToken=${admin.accessToken}; XSRF-TOKEN=${admin.csrfToken}`)
+      .set("X-CSRF-Token", admin.csrfToken);
 
     expect(res.status).toBe(200);
     expect(res.body.integrity.status).toBe("verified");
@@ -937,13 +994,15 @@ describe("KBOS 005 — snapshot integrity checksum", () => {
 
     const created = await request(app)
       .post(`/api/admin/business-reports/vendors/${vendor.vendorId}/snapshot`)
-      .set("Cookie", `accessToken=${admin.accessToken}`)
+      .set("Cookie", `accessToken=${admin.accessToken}; XSRF-TOKEN=${admin.csrfToken}`)
+      .set("X-CSRF-Token", admin.csrfToken)
       .send({ period: PERIOD });
     const snapshotId = created.body.data._id;
 
     await request(app)
       .patch(`/api/admin/business-reports/snapshots/${snapshotId}/status`)
-      .set("Cookie", `accessToken=${admin.accessToken}`)
+      .set("Cookie", `accessToken=${admin.accessToken}; XSRF-TOKEN=${admin.csrfToken}`)
+      .set("X-CSRF-Token", admin.csrfToken)
       .send({ status: "locked" });
 
     await VendorBusinessSnapshot.updateOne(
@@ -954,7 +1013,8 @@ describe("KBOS 005 — snapshot integrity checksum", () => {
     const res = await request(app)
       .get(`/api/insights/vendors/${vendor.vendorId}/report`)
       .query({ period: PERIOD, type: "health", format: "csv" })
-      .set("Cookie", `accessToken=${admin.accessToken}`);
+      .set("Cookie", `accessToken=${admin.accessToken}; XSRF-TOKEN=${admin.csrfToken}`)
+      .set("X-CSRF-Token", admin.csrfToken);
 
     expect(res.status).toBe(409);
   });
@@ -965,7 +1025,8 @@ describe("KBOS 005 — snapshot integrity checksum", () => {
 
     const created = await request(app)
       .post(`/api/admin/business-reports/vendors/${vendor.vendorId}/snapshot`)
-      .set("Cookie", `accessToken=${admin.accessToken}`)
+      .set("Cookie", `accessToken=${admin.accessToken}; XSRF-TOKEN=${admin.csrfToken}`)
+      .set("X-CSRF-Token", admin.csrfToken)
       .send({ period: PERIOD });
     const snapshotId = created.body.data._id;
 
@@ -977,7 +1038,8 @@ describe("KBOS 005 — snapshot integrity checksum", () => {
     const res = await request(app)
       .get(`/api/insights/vendors/${vendor.vendorId}/report`)
       .query({ period: PERIOD, type: "health", format: "csv" })
-      .set("Cookie", `accessToken=${admin.accessToken}`);
+      .set("Cookie", `accessToken=${admin.accessToken}; XSRF-TOKEN=${admin.csrfToken}`)
+      .set("X-CSRF-Token", admin.csrfToken);
 
     expect(res.status).toBe(200);
   });

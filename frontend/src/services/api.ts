@@ -41,6 +41,14 @@ const api: AxiosInstance = axios.create({
     'Content-Type': 'application/json',
   },
   withCredentials: true, // IMPORTANT: Send cookies with every request for httpOnly cookie auth
+  // Double-submit CSRF: backend issues a readable XSRF-TOKEN cookie alongside
+  // the httpOnly auth cookies (see backend/src/middleware/csrf.ts); axios
+  // reads it and echoes it back as a header on state-changing requests.
+  // withXSRFToken is required for this to apply cross-origin (dev: different
+  // ports), not just same-origin — CORS's origin allowlist is what keeps this safe.
+  xsrfCookieName: 'XSRF-TOKEN',
+  xsrfHeaderName: 'X-CSRF-Token',
+  withXSRFToken: true,
 });
 
 // Request interceptor for deduplication and logging

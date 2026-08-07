@@ -62,6 +62,7 @@ import { toISOStringSafe, toDateStringSafe } from "../utils/dateHelpers";
 import { config } from "../config/index";
 import logger from "../config/logger";
 import { audit, AuditAction } from "../utils/auditLog";
+import { issueCsrfToken, clearCsrfToken } from "../middleware/csrf";
 
 /** One-way hash of a refresh token for safe DB storage (raw token only lives in cookie). */
 const hashToken = (raw: string): string =>
@@ -80,8 +81,9 @@ const getCookieOptions = (): CookieOptions => {
   // COOKIE_SAMESITE env var lets ops choose at deploy time:
   //   same-registrable-domain deploy → "lax" (no CSRF plumbing needed)
   //   cross-site deploy → "none" (must pair with CORS allowlist hardening)
-  const sameSite = (process.env.COOKIE_SAMESITE as "lax" | "none" | "strict") ||
-    (useSecureCookies ? "lax" : "lax");
+  // Default "lax" unless ops explicitly opts into cross-site "none" via env —
+  // useSecureCookies alone does not change this (see COOKIE_SAMESITE comment above).
+  const sameSite = (process.env.COOKIE_SAMESITE as "lax" | "none" | "strict") || "lax";
 
   return {
     httpOnly: true,
@@ -101,8 +103,9 @@ const getRefreshCookieOptions = (): CookieOptions => {
     frontendUrl.includes("localhost") || frontendUrl.includes("127.0.0.1");
 
   const useSecureCookies = isProduction && !isLocalhost;
-  const sameSite = (process.env.COOKIE_SAMESITE as "lax" | "none" | "strict") ||
-    (useSecureCookies ? "lax" : "lax");
+  // Default "lax" unless ops explicitly opts into cross-site "none" via env —
+  // useSecureCookies alone does not change this (see COOKIE_SAMESITE comment above).
+  const sameSite = (process.env.COOKIE_SAMESITE as "lax" | "none" | "strict") || "lax";
 
   return {
     httpOnly: true,
@@ -149,6 +152,9 @@ const setAuthCookies = (
 
   res.cookie("accessToken", accessToken, cookieOptions);
   res.cookie("refreshToken", refreshToken, refreshOptions);
+  // Double-submit CSRF cookie — must be (re)issued every time the auth
+  // cookies are, so the frontend always has a fresh token to echo back.
+  issueCsrfToken(res);
 
   if (process.env.DEBUG_AUTH === "true" && process.env.NODE_ENV !== "production") {
     logger.debug("[SET_COOKIES] Cookies set successfully");
@@ -169,8 +175,7 @@ const getClearCookieOptions = (path: "/" | "/api/auth"): CookieOptions => {
     frontendUrl.includes("localhost") || frontendUrl.includes("127.0.0.1");
   const useSecureCookies = isProduction && !isLocalhost;
   const sameSite =
-    (process.env.COOKIE_SAMESITE as "lax" | "none" | "strict") ||
-    (useSecureCookies ? "lax" : "lax");
+    (process.env.COOKIE_SAMESITE as "lax" | "none" | "strict") || "lax";
 
   return {
     httpOnly: true,
@@ -188,6 +193,7 @@ const getClearCookieOptions = (path: "/" | "/api/auth"): CookieOptions => {
 const clearAuthCookies = (res: Response): void => {
   res.clearCookie("accessToken", getClearCookieOptions("/"));
   res.clearCookie("refreshToken", getClearCookieOptions("/api/auth"));
+  clearCsrfToken(res);
 };
 
 /**

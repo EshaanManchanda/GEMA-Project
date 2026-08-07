@@ -28,6 +28,7 @@ import {
 } from "./middleware/performance";
 import { setQueryTimeout } from "./middleware/query-timeout";
 import { maintenanceModeGuard } from "./middleware/maintenance.middleware";
+import { verifyCsrfToken } from "./middleware/csrf";
 import routes from "./routes/index";
 import healthRoutes from "./routes/health.routes";
 import currencyRoutes from "./routes/currency.routes";
@@ -270,6 +271,10 @@ app.use(express.urlencoded({ extended: true, limit: "10mb" }));
 app.use(mongoSanitize());
 app.use(hpp());
 app.use(cookieParser());
+
+// Double-submit CSRF check — cookie-authenticated state-changing requests
+// only; Bearer-token clients and raw-body webhooks are exempt (see csrf.ts).
+app.use(verifyCsrfToken);
 
 // Enhanced compression middleware (optimized for KVM1)
 app.use(

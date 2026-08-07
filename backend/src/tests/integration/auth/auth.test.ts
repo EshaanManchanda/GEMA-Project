@@ -127,8 +127,9 @@ const registerAndLogin = async (app: Application, payload = customerPayload()) =
   const cookies: string[] = ((loginRes.headers["set-cookie"] as unknown) as string[]) || [];
   const accessToken = extractCookie(cookies, "accessToken");
   const refreshToken = extractCookie(cookies, "refreshToken");
+  const csrfToken = extractCookie(cookies, "XSRF-TOKEN");
 
-  return { accessToken, refreshToken, cookies, user: loginRes.body.data?.user };
+  return { accessToken, refreshToken, csrfToken, cookies, user: loginRes.body.data?.user };
 };
 
 // ---------------------------------------------------------------------------
@@ -571,11 +572,12 @@ describe("POST /api/auth/refresh-token", () => {
 
 describe("POST /api/auth/logout", () => {
   it("logs out and clears auth cookies → 200", async () => {
-    const { cookies } = await registerAndLogin(app);
+    const { cookies, csrfToken } = await registerAndLogin(app);
 
     const res = await request(app)
       .post("/api/auth/logout")
-      .set("Cookie", cookies);
+      .set("Cookie", cookies)
+      .set("X-CSRF-Token", csrfToken);
 
     expect(res.status).toBe(200);
     expect(res.body.success).toBe(true);
@@ -592,6 +594,70 @@ describe("POST /api/auth/logout", () => {
 
   it("returns 200 even when called without any token (idempotent)", async () => {
     const res = await request(app).post("/api/auth/logout").send({});
+    expect(res.status).toBe(200);
+  });
+});
+
+// ===========================================================================
+// CSRF PROTECTION (double-submit cookie)
+// ===========================================================================
+
+describe("CSRF protection on cookie-authenticated state-changing requests", () => {
+  it("sets a readable XSRF-TOKEN cookie on login", async () => {
+    const { csrfToken } = await registerAndLogin(app);
+    expect(csrfToken).toBeTruthy();
+  });
+
+  it("rejects a cookie-authenticated POST with no CSRF header → 403", async () => {
+    const { cookies } = await registerAndLogin(app);
+
+    const res = await request(app)
+      .post("/api/auth/logout")
+      .set("Cookie", cookies);
+
+    expect(res.status).toBe(403);
+  });
+
+  it("rejects a cookie-authenticated POST with a wrong CSRF header → 403", async () => {
+    const { cookies } = await registerAndLogin(app);
+
+    const res = await request(app)
+      .post("/api/auth/logout")
+      .set("Cookie", cookies)
+      .set("X-CSRF-Token", "0".repeat(64));
+
+    expect(res.status).toBe(403);
+  });
+
+  it("accepts a cookie-authenticated POST with the matching CSRF header → 200", async () => {
+    const { cookies, csrfToken } = await registerAndLogin(app);
+
+    const res = await request(app)
+      .post("/api/auth/logout")
+      .set("Cookie", cookies)
+      .set("X-CSRF-Token", csrfToken);
+
+    expect(res.status).toBe(200);
+  });
+
+  it("does not require a CSRF header for Bearer-token (non-cookie) auth", async () => {
+    const { accessToken } = await registerAndLogin(app);
+
+    const res = await request(app)
+      .put("/api/auth/change-password")
+      .set("Authorization", `Bearer ${accessToken}`)
+      .send({ currentPassword: "wrong-password-doesnt-matter", newPassword: "NewPass@5678!" });
+
+    // No CSRF-related 403 — the request reaches auth logic and fails on
+    // password mismatch instead, proving Bearer auth was never CSRF-gated.
+    expect(res.status).not.toBe(403);
+  });
+
+  it("does not require a CSRF header for GET requests", async () => {
+    const { cookies } = await registerAndLogin(app);
+
+    const res = await request(app).get("/api/auth/me").set("Cookie", cookies);
+
     expect(res.status).toBe(200);
   });
 });
