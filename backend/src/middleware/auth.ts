@@ -231,12 +231,25 @@ export const authenticateOptional = async (
       const userDoc = await User.findById(decoded.id);
       if (userDoc) {
         user = userDoc.toObject({ virtuals: ["id"] }) as IUser;
-        await cacheService.set(cacheKey, user, { ttl: 600 });
+        // Match `authenticate`'s 120s TTL — 600s let a suspended/logged-out-all
+        // user keep looking authenticated for up to 10 minutes on this path.
+        await cacheService.set(cacheKey, user, { ttl: 120 });
       }
     }
 
     if (user) {
-      req.user = user as IUser;
+      // Mirror `authenticate`'s tokenVersion + account-status checks. This is
+      // the *optional* variant, so a stale/invalidated token means "proceed
+      // as guest", not a 401 — but silently attaching the user regardless
+      // let a suspended account or a post-logout-all token keep looking
+      // authenticated wherever this middleware backs a route (e.g. /auth/me).
+      const expectedTv = user.tokenVersion ?? 0;
+      const status = (user as any).status;
+      const tvValid = decoded.tv !== undefined && decoded.tv === expectedTv;
+      const statusOk = status !== "suspended" && status !== "inactive";
+      if (tvValid && statusOk) {
+        req.user = user as IUser;
+      }
     }
     next();
   } catch (error) {
