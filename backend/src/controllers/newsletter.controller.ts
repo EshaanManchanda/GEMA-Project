@@ -334,14 +334,24 @@ export const sendNewsletter = async (
       testEmail: req.user!.email,
     });
 
-    if (subscribers.length === 0) {
-      return next(
-        new AppError("No subscribers found matching the criteria", 400),
-      );
+    // In test mode, if the admin isn't subscribed, we still want to send them the test email
+    const recipients = subscribers.length > 0 ? [...subscribers] : [];
+    if (recipients.length === 0) {
+      if (testMode) {
+        recipients.push({
+          _id: "test-preview",
+          email: req.user!.email,
+          unsubscribeToken: "test-preview",
+        } as any);
+      } else {
+        return next(
+          new AppError("No subscribers found matching the criteria", 400),
+        );
+      }
     }
 
     const frontendUrl = process.env.FRONTEND_URL || "https://kidrove.com";
-    const emailPromises = subscribers.map(async (subscriber: any) => {
+    const emailPromises = recipients.map(async (subscriber: any) => {
       const unsubscribeUrl = `${frontendUrl}/newsletter/unsubscribe/${subscriber.unsubscribeToken}`;
       const htmlWithFooter = `${content}
         <hr style="margin-top:32px;border:none;border-top:1px solid #eee"/>
@@ -357,14 +367,19 @@ export const sendNewsletter = async (
     });
     await Promise.all(emailPromises);
 
-    const subscriberIds = subscribers.map((s: any) => s._id.toString());
-    await newsletterService.updateLastEmailSent(subscriberIds);
+    const subscriberIds = recipients
+      .filter((s: any) => s._id !== "test-preview")
+      .map((s: any) => s._id.toString());
+      
+    if (subscriberIds.length > 0) {
+      await newsletterService.updateLastEmailSent(subscriberIds);
+    }
 
     res.status(200).json({
       success: true,
       message: `Newsletter ${testMode ? "test " : ""}sent successfully`,
       data: {
-        recipientCount: subscribers.length,
+        recipientCount: recipients.length,
         subject,
         testMode,
       },

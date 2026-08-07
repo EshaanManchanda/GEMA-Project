@@ -461,6 +461,11 @@ const EventDetailPage: React.FC = () => {
       for (const section of sections) {
         const element = document.getElementById(section);
         if (element) {
+          // Skip booking-panel on desktop for non-educational events since it's in a sticky sidebar
+          if (section === 'booking-panel' && !isEducational && window.innerWidth >= 1024) {
+            continue;
+          }
+          
           const rect = element.getBoundingClientRect();
           // If the element's top is near or above the sticky header offset
           if (rect.top <= 200) {
@@ -479,7 +484,7 @@ const EventDetailPage: React.FC = () => {
     window.addEventListener('scroll', handleScroll);
     handleScroll(); // Check initially
     return () => window.removeEventListener('scroll', handleScroll);
-  }, []);
+  }, [isEducational]);
 
   const scrollToSection = (id: string) => {
     const element = document.getElementById(id);
@@ -1132,26 +1137,6 @@ const EventDetailPage: React.FC = () => {
             </div>
 
 
-
-            {/* Topics */}
-            {event.tags && event.tags.length > 0 && (
-              <div className="mb-8">
-                <h3 className="text-lg font-bold text-gray-900 mb-4 flex items-center">
-                  <svg className="w-5 h-5 mr-2 text-primary-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M7 7h.01M7 3h5c.512 0 1.024.195 1.414.586l7 7a2 2 0 010 2.828l-7 7a2 2 0 01-2.828 0l-7-7A1.994 1.994 0 013 12V7a4 4 0 014-4z" />
-                  </svg>
-                  Topics
-                </h3>
-                <div className="flex flex-wrap gap-2">
-                  {event.tags.map((tag: string, index: number) => (
-                    <span key={index} className="px-4 py-1.5 bg-white border border-gray-100 shadow-sm text-primary-700 text-sm font-medium rounded-full hover:bg-primary-50 hover:border-primary-200 transition-all cursor-pointer">
-                      #{tag}
-                    </span>
-                  ))}
-                </div>
-              </div>
-            )}
-
             {/* Class Insights */}
             <div className="mb-8">
               <h3 className="text-lg font-bold text-gray-900 mb-4 flex items-center">
@@ -1296,6 +1281,24 @@ const EventDetailPage: React.FC = () => {
                 }}
               />
 
+              {event.tags && event.tags.length > 0 && (
+                <div className="mb-8 mt-8">
+                  <h3 className="text-lg font-bold text-gray-900 mb-4 flex items-center">
+                    <svg className="w-5 h-5 mr-2 text-primary-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M7 7h.01M7 3h5c.512 0 1.024.195 1.414.586l7 7a2 2 0 010 2.828l-7 7a2 2 0 01-2.828 0l-7-7A1.994 1.994 0 013 12V7a4 4 0 014-4z" />
+                    </svg>
+                    Topics
+                  </h3>
+                  <div className="flex flex-wrap gap-2">
+                    {event.tags.map((tag: string, index: number) => (
+                      <span key={index} className="px-4 py-1.5 bg-white border border-gray-100 shadow-sm text-primary-700 text-sm font-medium rounded-full hover:bg-primary-50 hover:border-primary-200 transition-all cursor-pointer">
+                        #{tag}
+                      </span>
+                    ))}
+                  </div>
+                </div>
+              )}
+
               {event.features && event.features.length > 0 && (
                 <>
                   <h3 className="text-xl font-bold mb-4 text-gray-900">Event Features</h3>
@@ -1311,6 +1314,8 @@ const EventDetailPage: React.FC = () => {
                   </ul>
                 </>
               )}
+
+
             </div>
 
             {/* Syllabus Section */}

@@ -586,6 +586,7 @@ const gracefulShutdown = async (signal: string) => {
 
 process.on("SIGTERM", () => gracefulShutdown("SIGTERM"));
 process.on("SIGINT", () => gracefulShutdown("SIGINT"));
+process.on("SIGUSR2", () => gracefulShutdown("SIGUSR2")); // For nodemon restarts
 
 // Start the server
 startServer();
