@@ -439,19 +439,28 @@ export class PaymentService {
   }
 
   /**
-   * Process webhook event from Stripe
+   * Verify a Stripe webhook signature and return the parsed event.
+   * Must be called synchronously before acknowledging the webhook request —
+   * responding 200 before this check lets forged payloads through and stops
+   * Stripe retrying genuinely-failed events.
+   * Throws if the signature is missing/invalid.
    */
-  static async processWebhookEvent(
+  static verifyWebhookSignature(
     payload: string | Buffer,
     signature: string,
-  ): Promise<void> {
-    try {
-      const event = stripe.webhooks.constructEvent(
-        payload,
-        signature,
-        process.env.STRIPE_WEBHOOK_SECRET!,
-      );
+  ): Stripe.Event {
+    return stripe.webhooks.constructEvent(
+      payload,
+      signature,
+      process.env.STRIPE_WEBHOOK_SECRET!,
+    );
+  }
 
+  /**
+   * Process an already-signature-verified webhook event from Stripe.
+   */
+  static async processWebhookEvent(event: Stripe.Event): Promise<void> {
+    try {
       logger.info(`Received Stripe webhook: ${event.type}`);
 
       // Deduplicate webhook events using Redis

@@ -266,19 +266,25 @@ export class TeacherPaymentService {
   }
 
   /**
-   * Process Stripe webhook
+   * Verify a Stripe webhook signature and return the parsed event.
+   * Must be called synchronously before acknowledging the webhook request.
    */
-  static async processWebhookEvent(
+  static verifyWebhookSignature(
     payload: string | Buffer,
     signature: string,
-  ): Promise<void> {
-    try {
-      const event = stripe.webhooks.constructEvent(
-        payload,
-        signature,
-        process.env.STRIPE_WEBHOOK_SECRET!,
-      );
+  ): Stripe.Event {
+    return stripe.webhooks.constructEvent(
+      payload,
+      signature,
+      process.env.STRIPE_WEBHOOK_SECRET!,
+    );
+  }
 
+  /**
+   * Process an already-signature-verified webhook event.
+   */
+  static async processWebhookEvent(event: Stripe.Event): Promise<void> {
+    try {
       switch (event.type) {
         case "payment_intent.succeeded":
           await this.handlePaymentSucceeded(

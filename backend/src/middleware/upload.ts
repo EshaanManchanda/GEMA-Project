@@ -35,6 +35,21 @@ const createSubDirectories = () => {
 
 createSubDirectories();
 
+// Fixed allowlist — req.body.category must never flow unvalidated into a
+// filesystem path (path.join) or Cloudinary folder. Client-controlled
+// category values previously allowed path traversal (e.g. "../../etc").
+const ALLOWED_UPLOAD_CATEGORIES = new Set([
+  "events",
+  "venues",
+  "users",
+  "tickets",
+  "documents",
+  "registrations",
+  "blogs",
+  "blogContent",
+  "misc",
+]);
+
 // Helper function to determine category from request
 const getCategoryFromRequest = (req: Request): string => {
   if (req.path.includes("/events") || req.path.includes("/event-images"))
@@ -53,7 +68,11 @@ const getCategoryFromRequest = (req: Request): string => {
   if (req.path.includes("/registration")) return "registrations";
   if (req.path.includes("/blog"))
     return req.path.includes("/content") ? "blogContent" : "blogs";
-  if (req.body.category) return req.body.category;
+  if (
+    typeof req.body.category === "string" &&
+    ALLOWED_UPLOAD_CATEGORIES.has(req.body.category)
+  )
+    return req.body.category;
   return "misc";
 };
 
@@ -178,13 +197,37 @@ const fileFilter = (
   }
 };
 
-// Base multer configuration (general purpose)
+// Image-only multer configuration (avatars, event/venue images, QR codes).
+// These endpoints never accept video, so they must not inherit the 500MB
+// video ceiling — that let any of them be used to exhaust disk/memory on
+// a 4GB VPS with a single 500MB (x10 files) POST.
 const upload = multer({
   storage,
   fileFilter,
   limits: {
-    fileSize: config.upload.maxVideoSize, // Use largest limit (500MB for videos)
+    fileSize: config.upload.maxImageSize, // 50MB
     files: 10, // Maximum 10 files per request
+  },
+});
+
+// Document/registration multer configuration (tickets, invoices, misc files).
+const uploadDoc = multer({
+  storage,
+  fileFilter,
+  limits: {
+    fileSize: config.upload.maxDocumentSize, // 25MB
+    files: 10,
+  },
+});
+
+// Video-capable multer configuration — ONLY for endpoints that legitimately
+// accept video (blog content media). Kept at the full 500MB ceiling.
+const uploadVideo = multer({
+  storage,
+  fileFilter,
+  limits: {
+    fileSize: config.upload.maxVideoSize, // 500MB
+    files: 10,
   },
 });
 
@@ -193,7 +236,7 @@ const uploadBlog = multer({
   storage,
   fileFilter,
   limits: {
-    fileSize: config.upload.maxImageSize, // 10MB for blog images (was incorrectly using maxVideoSize)
+    fileSize: config.upload.maxImageSize, // 50MB
     files: 1, // Single file for featured image
   },
 });
@@ -228,13 +271,13 @@ export const uploadVenueImages = upload.fields([
 export const uploadUserAvatar = upload.single("avatar");
 
 // Document upload middleware (for tickets, invoices, etc.)
-export const uploadDocument = upload.single("document");
+export const uploadDocument = uploadDoc.single("document");
 
 // QR code upload middleware
 export const uploadQRCode = upload.single("qrCode");
 
 // Registration files upload middleware (supports multiple dynamic fields)
-export const uploadRegistrationFiles = upload.any();
+export const uploadRegistrationFiles = uploadDoc.any();
 
 // ──────────────────────────────────────────────────────────────────────────────
 // Booking attachment upload middleware.
@@ -278,9 +321,6 @@ export const uploadBookingAttachment = (
   res: any,
   next: any,
 ) => {
-  const isPdf = (req.headers["x-file-mimetype"] === "application/pdf") ||
-    (req as any)._bookingAttachmentIsPdf;
-
   // We need to choose the right Cloudinary storage BEFORE multer runs.
   // Since we don't have the file's mimetype before parsing, we use a
   // "routing" multer that applies the correct storage per file.
@@ -323,8 +363,9 @@ export const uploadBookingAttachment = (
 // Blog-specific upload middleware with proper size limits
 export const uploadBlogFeaturedImage = uploadBlog.single("featuredImage");
 
-// Blog content media upload (images and videos within content)
-export const uploadBlogContentMedia = upload.single("media");
+// Blog content media upload (images and videos within content) — the only
+// endpoint that legitimately needs the video-size ceiling.
+export const uploadBlogContentMedia = uploadVideo.single("media");
 
 // Error handling middleware for multer errors
 export const handleUploadError = (
@@ -335,14 +376,9 @@ export const handleUploadError = (
 ) => {
   if (error instanceof multer.MulterError) {
     if (error.code === "LIMIT_FILE_SIZE") {
-      return next(
-        new AppError(
-          "File too large. Maximum size allowed is " +
-            config.upload.maxFileSize / 1024 / 1024 +
-            "MB",
-          400,
-        ),
-      );
+      // Limit is instance-specific now (image/document/video tiers), so we
+      // don't claim a single global number here.
+      return next(new AppError("File too large for this upload type.", 400));
     }
     if (error.code === "LIMIT_FILE_COUNT") {
       return next(new AppError("Too many files uploaded", 400));

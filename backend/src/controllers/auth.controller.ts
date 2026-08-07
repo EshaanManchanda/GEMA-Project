@@ -156,21 +156,28 @@ const setAuthCookies = (
 };
 
 /**
- * Get cookie options for clearing (without maxAge to avoid Express deprecation warning)
+ * Get cookie options for clearing (without maxAge to avoid Express deprecation warning).
+ * A browser only matches a Set-Cookie clear instruction to an existing cookie by
+ * name + domain + path — so these MUST mirror the path (and sameSite, to stay
+ * consistent with the setter) used in getCookieOptions()/getRefreshCookieOptions()
+ * for the corresponding cookie, or the cookie will not actually be cleared.
  */
-const getClearCookieOptions = (): CookieOptions => {
+const getClearCookieOptions = (path: "/" | "/api/auth"): CookieOptions => {
   const isProduction = config.nodeEnv === "production";
   const frontendUrl = config.frontendUrl || "";
   const isLocalhost =
     frontendUrl.includes("localhost") || frontendUrl.includes("127.0.0.1");
   const useSecureCookies = isProduction && !isLocalhost;
+  const sameSite =
+    (process.env.COOKIE_SAMESITE as "lax" | "none" | "strict") ||
+    (useSecureCookies ? "lax" : "lax");
 
   return {
     httpOnly: true,
     secure: useSecureCookies,
-    sameSite: useSecureCookies ? "none" : "lax",
+    sameSite,
     domain: undefined,
-    path: "/",
+    path,
     // maxAge intentionally omitted - Express 5.x will set expiry automatically
   };
 };
@@ -179,9 +186,8 @@ const getClearCookieOptions = (): CookieOptions => {
  * Clear auth cookies on response
  */
 const clearAuthCookies = (res: Response): void => {
-  const clearOptions = getClearCookieOptions();
-  res.clearCookie("accessToken", clearOptions);
-  res.clearCookie("refreshToken", clearOptions);
+  res.clearCookie("accessToken", getClearCookieOptions("/"));
+  res.clearCookie("refreshToken", getClearCookieOptions("/api/auth"));
 };
 
 /**

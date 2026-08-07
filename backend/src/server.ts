@@ -218,9 +218,6 @@ app.use(
     optionsSuccessStatus: 200,
   }),
 );
-app.use(mongoSanitize());
-app.use(hpp());
-
 // Rate limiting optimized for KVM1 (single core protection)
 // Shorter windows and lower limits to prevent single CPU from being overwhelmed
 
@@ -269,6 +266,9 @@ app.use("/api/payments/webhook", express.raw({ type: "application/json" }));
 app.use("/api/webhooks/cunnekt", express.raw({ type: "application/json" }));
 app.use(express.json({ limit: "10mb" }));
 app.use(express.urlencoded({ extended: true, limit: "10mb" }));
+// Must run AFTER body parsers — mongoSanitize/hpp need req.body populated to sanitize it
+app.use(mongoSanitize());
+app.use(hpp());
 app.use(cookieParser());
 
 // Enhanced compression middleware (optimized for KVM1)

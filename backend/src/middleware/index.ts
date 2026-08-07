@@ -16,22 +16,6 @@ export {
   checkPhoneVerificationStatus,
 } from "./requirePhoneVerification";
 
-// Security middleware
-export {
-  securityHeaders,
-  corsOptions,
-  sanitizeRequest,
-  preventParameterPollution,
-  sanitizeInput,
-  requestSizeLimiter,
-  detectSuspiciousActivity,
-  checkIPRestrictions,
-  securityLogger,
-  blacklistIP,
-  removeFromBlacklist,
-  applySecurityMiddleware,
-} from "./security";
-
 // Rate limiting middleware
 export {
   generalLimiter,

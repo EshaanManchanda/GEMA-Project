@@ -393,11 +393,22 @@ export const handleWebhook = async (
     return next(new AppError("Missing Stripe signature", 400));
   }
 
-  // Acknowledge immediately to prevent Stripe retries (must respond < 30s)
+  // Verify the signature SYNCHRONOUSLY before acknowledging. Responding 200
+  // before this check would let forged payloads through and would stop
+  // Stripe retrying events that genuinely fail verification.
+  let event;
+  try {
+    event = PaymentService.verifyWebhookSignature(req.body, signature);
+  } catch (err) {
+    logger.warn("[WEBHOOK] Signature verification failed:", err);
+    return next(new AppError("Invalid Stripe signature", 400));
+  }
+
+  // Acknowledge now that the event is verified (must respond < 30s).
   res.status(200).json({ received: true });
 
   // Process asynchronously — already idempotent via Redis dedup
-  PaymentService.processWebhookEvent(req.body, signature).catch((err) => {
+  PaymentService.processWebhookEvent(event).catch((err) => {
     logger.error("[WEBHOOK] Async processing error:", err);
   });
 };
