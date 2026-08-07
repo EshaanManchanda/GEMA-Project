@@ -8,104 +8,59 @@ Central full-stack MERN application for the GEMA ecosystem. Manages events, cour
 - **Frontend:** React 18 + TypeScript, Vite, Zustand, React Query, Tailwind CSS
 - **Real-time:** Socket.io, WebRTC (proctoring)
 - **Entry:** `backend/dist/server.js` (compiled), source in `backend/src/`
-- **Auth:** JWT (httpOnly cookies) + Firebase + RBAC permission system
+- **Auth:** JWT (httpOnly cookies) + Firebase + string-role authorization (`authorize([...])`) — see Role System below
 
 ## Architecture
-**Modular Monolith** — organized by domain modules under `backend/src/modules/`.
-Each module owns its controller, service, repository, routes, validators, models, types.
+**Classic layered app, not a modular monolith.** No `backend/src/modules/` (except a single
+`certificates` folder), no `shared/` tree, no `Permission` enum, no `requirePermission`, no
+`scopeToOwner`. Everything lives in flat, type-grouped top-level folders. Verify counts with
+`find backend/src -name '*.ts' | xargs wc -l` before trusting anything below — this doc drifts.
 
 ```
-backend/src/
-├── modules/                    # 39 domain modules (315 files)
-│   ├── auth/                   # Registration, login, JWT, Firebase, role switching
-│   ├── users/                  # User model, admin user management
-│   ├── events/                 # Event CRUD, vendor/teacher/school events
-│   ├── bookings/               # Booking flow, seat reservation
-│   ├── orders/                 # Order management, payment routing
-│   ├── payments/               # Stripe, refunds, webhooks
-│   ├── tickets/                # Ticket generation, QR codes
-│   ├── vendors/                # Vendor dashboard, Stripe Connect
-│   ├── teachers/               # Teacher profile, payouts, subscriptions
-│   ├── schools/                # School management, invites
-│   ├── students/               # Student profiles, enrollment
-│   ├── parents/                # Parent profiles, child management
-│   ├── employees/              # Vendor + school employees
-│   ├── lms/                    # Courses, lessons, quizzes, assignments
-│   ├── examinations/           # Online exam system with proctoring
-│   ├── certificates/           # Certificate generation, verification
-│   ├── student-portal/         # Student/parent portal APIs
-│   ├── erp/                    # Finance, HR, inventory, scheduling
-│   ├── content/                # Blogs, SEO, reels, banners, popups
-│   ├── notifications/          # Email, SMS, push
-│   ├── media/                  # File uploads, Cloudinary
-│   ├── reviews/                # Review CRUD, flagging
-│   ├── affiliates/             # Affiliate tracking
-│   ├── commissions/            # Commission calculation
-│   ├── payouts/                # Payout processing
-│   ├── registrations/          # Event registration
-│   ├── checkin/                # Event check-in
-│   ├── venues/                 # Venue management
-│   ├── coupons/                # Coupon management
-│   ├── categories/             # Event/course categories
-│   ├── collections/            # Event collections
-│   ├── settings/               # System settings
-│   ├── analytics/              # Dashboard stats, analytics
-│   ├── admin/                  # Cross-cutting admin operations
-│   ├── messaging/              # Internal messaging
-│   ├── notices/                # Notice board & announcements
-│   ├── complaints/             # Grievance system
-│   ├── feedback/               # Surveys & feedback
-│   ├── calendar/               # Academic calendar
-│   ├── audit/                  # Audit log & compliance
-│   ├── integrations/           # Webhooks, API keys
-│   ├── contact/                # Contact form
-│   ├── partnerships/           # Partnership inquiries
-│   ├── favorites/              # User favorites
-│   ├── search/                 # Search
-│   ├── currency/               # Currency conversion
-│   └── health/                 # Health check
-├── shared/                     # Cross-cutting concerns
-│   ├── config/                 # env, database, redis, queue, logger
-│   ├── middleware/             # auth, error, validation, security, rateLimiter
-│   ├── errors/                 # AppError, error codes
-│   ├── types/                  # Cross-domain types
-│   ├── utils/                  # Pure helpers (otp, dateHelpers, phoneUtils)
-│   ├── permissions/            # RBAC permission system (50+ permissions)
-│   └── decorators/             # @Roles(), @CurrentUser()
-├── workers/                    # BullMQ workers (email, qr, payout, etc.)
-├── scripts/                    # Migrations, seeds, utilities
-│   ├── seeds/
-│   ├── migrations/
-│   └── utilities/
-└── server.ts                   # Thin entry point (uses registerModules())
+backend/src/  (~161k LOC)
+├── controllers/    # ~75 files — auth.controller.ts is 2,300+ lines, no service layer
+├── routes/         # ~82 files
+├── services/       # ~49 files
+├── models/         # ~69 Mongoose models
+├── middleware/      # ~13 files (auth, error, validation, upload, rateLimiter, timeout...)
+├── validators/      # ~29 files (express-validator schemas) — coverage is partial, not universal
+├── utils/           # ~34 files (otp, dateHelpers, phoneUtils, css utils...)
+├── config/          # ~15 files (env, database, redis, queue, logger, jwt, cloudinary...)
+├── workers/         # ~12 BullMQ workers (email, qr, payout, etc.)
+├── modules/         # ONLY `certificates/` — not a pattern, an outlier
+├── tests/           # ~29 files — mostly integration/unit, minimal security-specific coverage
+└── server.ts        # NOT thin — inline helmet/CORS/rate-limiter/sanitizer config
 ```
 
-## Role System (14 roles + RBAC)
+## Role System (7 roles, string-based authorization)
 
+Actual `UserRole` enum (`models/User.ts`):
 ```
-Super Admin → Admin → [Moderator, Blog Writer, Support Agent, Content Manager, Finance Manager]
-Vendor → Employee [Manager, Scanner, Coordinator, Security]
-School → Teacher → Employee [School Staff]
-Customer
-Student → linked to Parent
-Parent → linked to Student(s)
+admin | customer | vendor | employee | teacher | parent | student
 ```
 
-- **RBAC:** 50+ granular permissions across 15 domains
-- **Admin sub-roles:** Custom permissions, scope restrictions, expiry support
-- **Auth middleware:** `authenticate` → `requirePermission(...)` → `scopeToOwner(...)`
-- **Role switching:** `POST /api/auth/switch-role`, `GET /api/auth/available-roles`
+- **No RBAC permission system.** Authorization is ~196 call sites of
+  `authorize(["admin", "vendor", ...])` scattered across ~58 route files — string-role checks,
+  not permission-based. A few sites reference a phantom `"superadmin"` role that isn't in the
+  enum (fails closed, but is dead/misleading code).
+- **No admin sub-roles, no scope restrictions, no permission expiry.**
+- **Auth middleware chain in practice:** `authenticate` → `authorize([...roles])`. There is no
+  `scopeToOwner` — per-resource ownership checks are hand-rolled per controller (an IDOR risk
+  surface — see security audit plan if present under `~/.claude/plans/`).
+- **No role switching.** `POST /api/auth/switch-role` and `GET /api/auth/available-roles` do
+  not exist. A user has exactly one role for the life of their account.
+
+If you are about to write code against `Permission.X`, `requirePermission(...)`, or
+`switch-role`, stop — grep first. These do not exist yet.
 
 ## Key Directories
 ```
 gema/
 ├── backend/
 │   ├── src/
-│   │   ├── modules/            # 39 domain modules (315 files)
-│   │   ├── shared/             # Cross-cutting concerns
-│   │   ├── models/index.ts     # Barrel re-export from modules/
-│   │   ├── routes/index.ts     # Barrel re-export from modules/
-│   │   └── server.ts           # Thin entry point
+│   │   ├── controllers/ routes/ services/ models/  # flat, layered (see Architecture)
+│   │   ├── middleware/ validators/ utils/ config/
+│   │   └── server.ts           # inline app setup, not a thin bootstrap
 │   └── dist/                   # Compiled output
 ├── frontend/
 │   └── src/
@@ -130,6 +85,11 @@ Set in WP plugin configs — typically `http://localhost:PORT` in dev.
 
 ## Planning Documents
 
+**These describe a target/aspirational architecture (39-61 modules, 14 roles, 50+ permission
+RBAC) that was never built.** The live backend is the flat layered structure described above
+under Architecture and Role System. Treat this table as a roadmap of intent, not current state
+— always verify against actual source before relying on a claim from one of these docs.
+
 | Document | Purpose |
 |---|---|
 | `MASTER_OPTIMIZATION_PLAN.md` | **Single source of truth** — architecture, roles, all 61 modules, 120 models, roadmap |
@@ -145,7 +105,11 @@ Set in WP plugin configs — typically `http://localhost:PORT` in dev.
 
 ## Module Count
 
-| Category | Modules | Models |
+**Aspirational (see Planning Documents caveat above) — not current state.** The live backend
+has no module boundaries; it has ~69 Mongoose models in one flat `models/` directory and no
+module/feature grouping at all.
+
+| Category | Modules (target) | Models (target) |
 |---|---|---|
 | Core (migrated) | 24 | ~30 |
 | New roles | 3 | 4 |
@@ -155,7 +119,7 @@ Set in WP plugin configs — typically `http://localhost:PORT` in dev.
 | Student Portal | 1 | 1 |
 | ERP | 4 | 12 |
 | Additional features | 22 | 36 |
-| **Total** | **61** | **~120** |
+| **Total (target)** | **61** | **~120** |
 
 ## Sub-Brain Tasks (use Ollama, not Claude tokens)
 - Explain any Express controller or route → `qwen2.5-coder:7b`
@@ -197,16 +161,17 @@ cd frontend && npm install && npm run dev
 ```
 
 ## Backend Rules & Conventions
+**Aspirational — the live code does not follow all of these yet** (e.g. `auth.controller.ts`
+is 2,300+ lines with no service layer; there is no repository layer at all; DB queries happen
+directly in controllers/services via Mongoose throughout). Apply these to new/touched code;
+don't assume existing files already comply.
 - **Controllers stay thin** — max 200 lines, delegate to services
 - **Business logic in Services** — no Express/Mongoose coupling
-- **DB queries in Repositories only** — no direct Mongoose in controllers
 - **Validate at boundaries** — express-validator on input, not internally
-- **No raw SQL/Mongoose in controllers** — use repository layer
-- **Use RBAC permissions** — `requirePermission(Permission.X)` not `authorize(["admin"])`
-- **Use enum for roles** — `UserRole.ADMIN` not `"admin"`
-- **One module per PR** — extract, test, merge, repeat
-- **No breaking changes** — all routes must work after move
-- **No duplicate models** — each model exists in ONE module only
+- **Use `UserRole` enum for role checks** — `authorize([UserRole.ADMIN])` not `authorize(["admin"])`
+  is the real pattern today; there is no permission system to migrate to yet (see Role System)
+- **No breaking changes** — all routes must work after any refactor
+- **No duplicate models** — each model exists in exactly one place under `models/`
 
 ## Frontend Rules & Conventions
 - **Pages are thin** — compose feature components, no business logic
@@ -285,6 +250,8 @@ frontend/src/
 ## Notes
 - The `gema-mcp-server` in `.claude/mcp/` was originally developed on Windows — build is missing. Needs `npm run build` once source is ported to Linux.
 - `.mcp.json` paths have been fixed to Linux paths.
-- **Backend migration complete:** 39 modules, 315 files, 0 TypeScript errors
+- **Backend is NOT modularized.** The 39/61-module structure described in the Planning
+  Documents was never built — see Architecture and Module Count above. `npm run typecheck`
+  does currently pass with 0 errors as of 2026-08-07; re-verify before relying on that.
 - **Frontend migration pending:** See `FRONTEND_DEVELOPMENT_PLAN.md` for 24-week roadmap
 - **GitHub token:** Set in `.opencode.json` — only `backup` branch can be updated (pre-push hook protects other branches)
