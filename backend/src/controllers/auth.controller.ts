@@ -368,8 +368,9 @@ export const register = async (
       role: newUserRole,
       status: UserStatus.PENDING,
       emailVerification: {
-        otp: verificationOTP,
+        otpHash: await hashOTP(verificationOTP),
         expiresAt: otpExpiry,
+        attempts: 0,
       },
     });
 
@@ -505,8 +506,9 @@ export const registerAdmin = async (
       status: UserStatus.ACTIVE, // Admin users are active immediately
       isEmailVerified: true, // Admin users are verified immediately
       emailVerification: {
-        otp: verificationOTP,
+        otpHash: await hashOTP(verificationOTP),
         expiresAt: otpExpiry,
+        attempts: 0,
       },
     });
 
@@ -570,8 +572,9 @@ export const resendVerificationEmail = async (
     const otpExpiry = getOTPExpiry(); // 10 minutes from now
 
     user.emailVerification = {
-      otp: verificationOTP,
+      otpHash: await hashOTP(verificationOTP),
       expiresAt: otpExpiry,
+      attempts: 0,
     };
 
     await user.save();
@@ -1189,10 +1192,11 @@ export const forgotPassword = async (
     const otp = generateOTP();
     const otpExpiry = getOTPExpiry(); // 10 minutes from now
 
-    // Save OTP to user
+    // Save only the hash — never persist the plaintext code
     user.passwordResetOTP = {
-      otp,
+      otpHash: await hashOTP(otp),
       expiresAt: otpExpiry,
+      attempts: 0,
     };
     await user.save();
 
@@ -1235,15 +1239,32 @@ export const resetPassword = async (
       throw new AppError("Email, OTP, and new password are required", 400);
     }
 
-    // Find user by email and OTP
-    const user = await User.findOne({
-      email,
-      "passwordResetOTP.otp": otp,
-      "passwordResetOTP.expiresAt": { $gt: new Date() },
-    });
+    const GENERIC_OTP_ERROR = "Invalid or expired OTP code";
 
-    if (!user) {
-      throw new AppError("Invalid or expired OTP code", 400);
+    // otpHash is select:false — must fetch explicitly to compare
+    const user = await User.findOne({ email }).select(
+      "+passwordResetOTP.otpHash",
+    );
+
+    if (!user || !user.passwordResetOTP || !user.passwordResetOTP.otpHash) {
+      throw new AppError(GENERIC_OTP_ERROR, 400);
+    }
+
+    // Expired or too many wrong attempts — force a fresh OTP request either way
+    if (
+      user.passwordResetOTP.expiresAt < new Date() ||
+      user.passwordResetOTP.attempts >= MAX_OTP_ATTEMPTS
+    ) {
+      user.passwordResetOTP = undefined;
+      await user.save();
+      throw new AppError(GENERIC_OTP_ERROR, 400);
+    }
+
+    const isValidOTP = await verifyOTPHash(otp, user.passwordResetOTP.otpHash);
+    if (!isValidOTP) {
+      user.passwordResetOTP.attempts += 1;
+      await user.save();
+      throw new AppError(GENERIC_OTP_ERROR, 400);
     }
 
     // Update password and invalidate all existing sessions
@@ -1280,15 +1301,32 @@ export const verifyEmail = async (
   try {
     const { email, otp }: VerifyEmailRequest = req.body;
 
-    // Find user by email AND OTP — both must match to prevent cross-account OTP attacks
+    const GENERIC_OTP_ERROR = "Invalid or expired verification OTP";
+
+    // otpHash is select:false — must fetch explicitly to compare
     const user = await User.findOne({
       email: email.toLowerCase().trim(),
-      "emailVerification.otp": otp,
-      "emailVerification.expiresAt": { $gt: new Date() },
-    });
+    }).select("+emailVerification.otpHash");
 
-    if (!user) {
-      throw new AppError("Invalid or expired verification OTP", 400);
+    if (!user || !user.emailVerification || !user.emailVerification.otpHash) {
+      throw new AppError(GENERIC_OTP_ERROR, 400);
+    }
+
+    // Expired or too many wrong attempts — force a fresh OTP request either way
+    if (
+      user.emailVerification.expiresAt < new Date() ||
+      user.emailVerification.attempts >= MAX_OTP_ATTEMPTS
+    ) {
+      user.emailVerification = undefined;
+      await user.save();
+      throw new AppError(GENERIC_OTP_ERROR, 400);
+    }
+
+    const isValidOTP = await verifyOTPHash(otp, user.emailVerification.otpHash);
+    if (!isValidOTP) {
+      user.emailVerification.attempts += 1;
+      await user.save();
+      throw new AppError(GENERIC_OTP_ERROR, 400);
     }
 
     // Mark email as verified

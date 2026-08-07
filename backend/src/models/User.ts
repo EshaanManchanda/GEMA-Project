@@ -63,13 +63,19 @@ export interface IPasswordReset {
 }
 
 export interface IPasswordResetOTP {
-  otp: string;
+  /** bcrypt hash of the OTP code — never store the plaintext code. */
+  otpHash: string;
   expiresAt: Date;
+  /** Failed verify attempts against the current otpHash; locks out after MAX_OTP_ATTEMPTS. */
+  attempts: number;
 }
 
 export interface IEmailVerification {
-  otp: string;
+  /** bcrypt hash of the OTP code — never store the plaintext code. */
+  otpHash: string;
   expiresAt: Date;
+  /** Failed verify attempts against the current otpHash; locks out after MAX_OTP_ATTEMPTS. */
+  attempts: number;
 }
 
 export interface IPhoneVerification {
@@ -361,12 +367,14 @@ const UserSchema = new Schema<IUser>(
       expiresAt: Date,
     },
     passwordResetOTP: {
-      otp: String,
+      otpHash: { type: String, select: false },
       expiresAt: Date,
+      attempts: { type: Number, default: 0 },
     },
     emailVerification: {
-      otp: String,
+      otpHash: { type: String, select: false },
       expiresAt: Date,
+      attempts: { type: Number, default: 0 },
     },
     phoneVerification: {
       otpHash: { type: String, select: false },

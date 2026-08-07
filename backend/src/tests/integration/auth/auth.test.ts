@@ -21,6 +21,7 @@ import User, { UserRole, UserStatus } from "../../../models/User";
 import Vendor from "../../../models/Vendor";
 import { createTestApp } from "../setup/testApp";
 import { connectTestDB, clearTestDB, closeTestDB } from "../setup/testDB";
+import { emailService } from "../../../services/email.service";
 
 // ---------------------------------------------------------------------------
 // Mocks — must come before any module that imports them
@@ -82,6 +83,25 @@ const customerPayload = () => ({
 /** Register a user and return the response */
 const registerUser = (app: Application, payload = customerPayload()) =>
   request(app).post("/api/auth/register").send(payload);
+
+/**
+ * OTPs are bcrypt-hashed at rest and never selected by default, so tests can no
+ * longer read the plaintext code back from the DB. Read it from the mocked
+ * email service call instead — the plaintext is still passed there pre-hash.
+ */
+const getVerificationOTP = (email: string): string => {
+  const calls = (emailService.sendVerificationEmail as jest.Mock).mock.calls;
+  const match = [...calls].reverse().find((args) => args[0]?.to === email);
+  if (!match) throw new Error(`No verification email captured for ${email}`);
+  return match[0].otp;
+};
+
+const getResetOTP = (email: string): string => {
+  const calls = (emailService.sendPasswordResetEmail as jest.Mock).mock.calls;
+  const match = [...calls].reverse().find((args) => args[0]?.to === email);
+  if (!match) throw new Error(`No reset email captured for ${email}`);
+  return match[0].resetOTP;
+};
 
 /** Extract a named cookie's value from a Set-Cookie header array */
 const extractCookie = (cookies: string[], name: string): string => {
@@ -422,8 +442,7 @@ describe("POST /api/auth/verify-email", () => {
     const payload = customerPayload();
     await registerUser(app, payload);
 
-    const user = await User.findOne({ email: payload.email });
-    const otp = user!.emailVerification!.otp;
+    const otp = getVerificationOTP(payload.email);
 
     const res = await request(app)
       .post("/api/auth/verify-email")
@@ -457,8 +476,7 @@ describe("POST /api/auth/verify-email", () => {
     await registerUser(app, attacker);
 
     // Get the victim's OTP
-    const victimUser = await User.findOne({ email: victim.email });
-    const victimOTP = victimUser!.emailVerification!.otp;
+    const victimOTP = getVerificationOTP(victim.email);
 
     // Attacker tries to verify victim's account using their own email + victim's OTP
     const res = await request(app)
@@ -482,8 +500,7 @@ describe("POST /api/auth/verify-email", () => {
       { "emailVerification.expiresAt": new Date(Date.now() - 1000) }
     );
 
-    const user = await User.findOne({ email: payload.email });
-    const otp = user!.emailVerification!.otp;
+    const otp = getVerificationOTP(payload.email);
 
     const res = await request(app)
       .post("/api/auth/verify-email")
@@ -689,9 +706,12 @@ describe("POST /api/auth/forgot-password", () => {
       .post("/api/auth/forgot-password")
       .send({ email: payload.email });
 
-    const user = await User.findOne({ email: payload.email });
+    const user = await User.findOne({ email: payload.email }).select(
+      "+passwordResetOTP.otpHash",
+    );
     expect(user!.passwordResetOTP).toBeDefined();
-    expect(user!.passwordResetOTP!.otp).toHaveLength(6);
+    expect(user!.passwordResetOTP!.otpHash).toBeTruthy();
+    expect(getResetOTP(payload.email)).toHaveLength(6);
   });
 
   it("returns 400 when email field is missing", async () => {
@@ -716,8 +736,7 @@ describe("POST /api/auth/reset-password", () => {
       .post("/api/auth/forgot-password")
       .send({ email: payload.email });
 
-    const user = await User.findOne({ email: payload.email });
-    const otp = user!.passwordResetOTP!.otp;
+    const otp = getResetOTP(payload.email);
 
     return { payload, otp };
   };
@@ -799,11 +818,13 @@ describe("POST /api/auth/reset-password", () => {
       .post("/api/auth/reset-password")
       .send({ email: payload.email, otp, newPassword: "NewPass@5678!" });
 
-    const user = await User.findOne({ email: payload.email });
+    const user = await User.findOne({ email: payload.email }).select(
+      "+passwordResetOTP.otpHash",
+    );
     // After reset, OTP field should have no usable OTP value
     // (Mongoose may keep the sub-document as an empty object {} rather than undefined)
     const resetOTP = user!.passwordResetOTP as any;
-    const hasOTP = resetOTP && resetOTP.otp;
+    const hasOTP = resetOTP && resetOTP.otpHash;
     expect(hasOTP).toBeFalsy();
   });
 

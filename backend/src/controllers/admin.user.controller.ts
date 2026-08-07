@@ -173,7 +173,7 @@ const formatAdminUserResponse = (user: any, related?: {
       backupCodesCount: user.twoFactorAuth?.backupCodes?.length ?? 0,
     },
     emailVerification: user.emailVerification
-      ? { hasOtp: !!user.emailVerification.otp, expiresAt: user.emailVerification.expiresAt }
+      ? { hasOtp: !!user.emailVerification.otpHash, expiresAt: user.emailVerification.expiresAt }
       : undefined,
     addresses: user.addresses || [],
     preferences: user.preferences,
@@ -314,7 +314,7 @@ export const getUserById = async (
       return next(new AppError("Invalid user ID", 400));
     }
 
-    const user = await User.findById(id);
+    const user = await User.findById(id).select("+emailVerification.otpHash");
 
     if (!user) {
       return next(new AppError("User not found", 404));
