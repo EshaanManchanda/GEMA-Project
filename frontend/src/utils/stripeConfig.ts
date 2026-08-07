@@ -22,6 +22,16 @@ export interface StripeKeyValidation {
   warnings: string[];
 }
 
+/**
+ * Whether a clientSecret is a real Stripe PaymentIntent secret
+ * ({id}_secret_{secret}, id starting with "pi_") vs. a backend-side synthetic
+ * placeholder like "free_pi_<orderId>_secret" or "test_pi_<orderId>_secret"
+ * used for zero-charge/test bookings. Stripe's Elements throws if handed the
+ * latter, so callers must branch on this before mounting <Elements>.
+ */
+export const isRealStripeClientSecret = (secret?: string | null): boolean =>
+  !!secret && /^pi_[^_]+_secret_.+$/.test(secret);
+
 export const validateStripeKey = (key: string, expectedType?: 'live' | 'test'): StripeKeyValidation => {
   const result: StripeKeyValidation = {
     isValid: false,

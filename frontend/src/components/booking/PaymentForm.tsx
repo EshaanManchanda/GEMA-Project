@@ -8,6 +8,7 @@ import { AppDispatch } from '../../store';
 import StripeElementsWrapper from '../payment/StripeElementsWrapper';
 import StripePaymentElement from '../payment/StripePaymentElement';
 import { getRegionalPaymentMethods, getPreferredPaymentMethod, shouldShowRegulatoryWarning, getRegulatoryMessage } from '../../utils/paymentConfig';
+import { isRealStripeClientSecret } from '../../utils/stripeConfig';
 import { getEnvironmentInfo, getPaymentMethodAvailability } from '../../utils/environmentUtils';
 import { formatCurrency, getDefaultCurrency } from '../../utils/currencyUtils';
 import { useCurrencyContext } from '../../contexts/PreferencesContext';
@@ -322,6 +323,29 @@ const PaymentForm: React.FC<PaymentFormProps> = ({
     }
   };
 
+  // Guard against auto-confirming more than once per mount
+  const autoConfirmedRef = React.useRef(false);
+
+  // The backend returns a synthetic (non-Stripe) clientSecret when the
+  // resolved price is actually 0 — e.g. a 100%-off coupon — even though the
+  // client requested Stripe. Stripe's <Elements> throws on a non-PaymentIntent
+  // secret, so detect this case and confirm the booking directly instead of
+  // ever trying to mount the real card form.
+  useEffect(() => {
+    if (
+      selectedPaymentMethod === 'stripe' &&
+      checkout?.clientSecret &&
+      !isRealStripeClientSecret(checkout.clientSecret) &&
+      !autoConfirmedRef.current
+    ) {
+      autoConfirmedRef.current = true;
+      logger.warn('Received a non-Stripe clientSecret while Stripe was selected — auto-confirming instead of mounting Elements', {
+        prefix: checkout.clientSecret.substring(0, 12),
+      });
+      handlePaymentSuccess();
+    }
+  }, [selectedPaymentMethod, checkout?.clientSecret]);
+
   // Handle fallback to test payment — also clear stale Stripe PI so a fresh one can be created later
   const handleFallbackToTestPayment = () => {
     dispatch(resetCheckout());
@@ -581,8 +605,8 @@ const PaymentForm: React.FC<PaymentFormProps> = ({
         </CardContent>
       </Card>
 
-      {/* Real Stripe Elements */}
-      {selectedPaymentMethod === 'stripe' && checkout?.clientSecret && (
+      {/* Real Stripe Elements — never mount with a synthetic (free/test) secret */}
+      {selectedPaymentMethod === 'stripe' && checkout?.clientSecret && isRealStripeClientSecret(checkout.clientSecret) && (
         <StripeElementsWrapper
           clientSecret={checkout.clientSecret}
           vendorId={stableVendorId}
@@ -617,9 +641,9 @@ const PaymentForm: React.FC<PaymentFormProps> = ({
         </StripeElementsWrapper>
       )}
 
-      {/* Loading state for Stripe Elements - this block can now be removed or simplified if the above handles all loading */}
-      {/* The previous loading state for Stripe Elements is now handled within the StripeElementsWrapper render prop */}
-      {selectedPaymentMethod === 'stripe' && !checkout?.clientSecret && (
+      {/* Loading state — also covers the brief window where a synthetic (non-Stripe)
+          clientSecret has come back and we're auto-confirming instead of rendering Elements */}
+      {selectedPaymentMethod === 'stripe' && (!checkout?.clientSecret || !isRealStripeClientSecret(checkout.clientSecret)) && (
         <Card>
           <CardHeader>
             <CardTitle className="flex items-center">
