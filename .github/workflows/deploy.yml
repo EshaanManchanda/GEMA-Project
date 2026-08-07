@@ -1,0 +1,228 @@
+name: Deploy GEMA
+
+on:
+  push:
+    branches:
+      - main
+      - dev
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: false
+
+env:
+  NODE_VERSION: '22'
+
+jobs:
+  # ── Lint & Type-check ────────────────────────────────────────────────
+  lint:
+    name: Lint & Type-check
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: 'npm'
+          cache-dependency-path: |
+            backend/package-lock.json
+            frontend/package-lock.json
+
+      - name: Backend lint
+        working-directory: ./backend
+        run: |
+          npm ci
+          npm run lint
+          npm run typecheck
+
+      - name: Frontend lint + type-check
+        working-directory: ./frontend
+        run: |
+          npm ci
+          npm run lint
+          npm run type-check
+
+  # ── Tests ────────────────────────────────────────────────────────────
+  test:
+    name: Tests
+    needs: lint
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: 'npm'
+          cache-dependency-path: |
+            backend/package-lock.json
+            frontend/package-lock.json
+
+      - name: Backend tests
+        working-directory: ./backend
+        run: |
+          npm ci
+          npm run test
+
+      - name: Frontend tests
+        working-directory: ./frontend
+        run: |
+          npm ci
+          npm run test:ci
+
+  # ── Build ────────────────────────────────────────────────────────────
+  build:
+    name: Build
+    needs: test
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: 'npm'
+          cache-dependency-path: |
+            backend/package-lock.json
+            frontend/package-lock.json
+
+      - name: Build backend
+        working-directory: ./backend
+        run: |
+          npm ci
+          npm run build
+
+      - name: Build frontend
+        working-directory: ./frontend
+        run: |
+          npm ci
+          npm run build
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: backend-dist
+          path: backend/dist
+          retention-days: 1
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: frontend-dist
+          path: frontend/dist
+          retention-days: 1
+
+  # ── Deploy: Staging (dev branch) ─────────────────────────────────────
+  deploy-staging:
+    name: Deploy to Staging
+    needs: build
+    if: github.ref == 'refs/heads/dev'
+    runs-on: ubuntu-latest
+    environment: staging
+    steps:
+      - uses: appleboy/ssh-action@v1.0.3
+        with:
+          host: ${{ secrets.VPS_HOST_STAGING }}
+          username: ${{ secrets.VPS_USER }}
+          key: ${{ secrets.VPS_SSH_KEY }}
+          port: ${{ secrets.VPS_PORT || 22 }}
+          script: |
+            set -e
+            cd /var/www/GEMA-Project
+
+            git fetch origin dev
+            git checkout dev
+            git pull origin dev
+
+            cd backend && npm install --omit=dev && npm run build && cd ..
+            cd frontend && npm install --omit=dev && npm run build && cd ..
+
+            pm2 restart gema-backend || pm2 start ecosystem.config.js --env development --only gema-backend
+            pm2 restart gema-worker  || pm2 start ecosystem.config.js --env development --only gema-worker
+            pm2 save
+            pm2 status
+
+  # ── Deploy: Production (main branch) ─────────────────────────────────
+  deploy-production:
+    name: Deploy to Production
+    needs: build
+    if: github.ref == 'refs/heads/main'
+    runs-on: ubuntu-latest
+    environment: production
+    steps:
+      - uses: appleboy/ssh-action@v1.0.3
+        env:
+          PROD_MONGODB_URI: ${{ secrets.PROD_MONGODB_URI }}
+        with:
+          host: ${{ secrets.VPS_HOST_PROD }}
+          username: ${{ secrets.VPS_USER }}
+          key: ${{ secrets.VPS_SSH_KEY }}
+          port: ${{ secrets.VPS_PORT || 22 }}
+          envs: PROD_MONGODB_URI
+          script: |
+            set -e
+            cd /var/www/GEMA-Project
+
+            STAMP=$(date +%Y%m%d_%H%M%S)
+            cp -r backend/dist  backend/dist.backup.$STAMP  2>/dev/null || true
+            cp -r frontend/dist frontend/dist.backup.$STAMP 2>/dev/null || true
+
+            # DB backup — outside served web root, strict perms
+            mkdir -p /var/backups/kidrove && chmod 700 /var/backups/kidrove
+            if [ -n "$PROD_MONGODB_URI" ]; then
+              mongodump --uri="$PROD_MONGODB_URI" --archive="/var/backups/kidrove/db_$STAMP.gz" --gzip \
+                || { echo "::error::DB backup failed"; exit 1; }
+              ls -dt /var/backups/kidrove/db_*.gz 2>/dev/null | tail -n +4 | xargs rm -f || true
+            else
+              echo "::warning::PROD_MONGODB_URI not set, skipping DB backup"
+            fi
+
+            git fetch origin main
+            git checkout main
+            git pull origin main
+
+            cd backend && npm install --omit=dev && npm run build && cd ..
+            cd frontend && npm install --omit=dev && npm run build && cd ..
+
+            pm2 reload ecosystem.config.js --env production --only gema-backend
+            pm2 reload ecosystem.config.js --env production --only gema-worker
+            pm2 save
+            pm2 status
+
+            ls -dt /var/www/GEMA-Project/backend/dist.backup.*  2>/dev/null | tail -n +4 | xargs rm -rf || true
+            ls -dt /var/www/GEMA-Project/frontend/dist.backup.* 2>/dev/null | tail -n +4 | xargs rm -rf || true
+
+  # ── Health check ──────────────────────────────────────────────────────
+  health-check:
+    name: Health Check
+    needs: deploy-production
+    runs-on: ubuntu-latest
+    steps:
+      - name: Wait for boot
+        run: sleep 20
+
+      - name: Backend basic health
+        run: |
+          curl -f --retry 3 --retry-delay 5 \
+            https://${{ secrets.VPS_HOST_PROD }}/health/basic \
+            || exit 1
+
+      - name: Wait for services to warm up
+        run: sleep 10
+
+      - name: Backend full health (DB + Redis + queues)
+        run: |
+          curl -f --retry 3 --retry-delay 10 \
+            https://${{ secrets.VPS_HOST_PROD }}/api/health \
+            || exit 1
+
+      - name: Rollback hint on failure
+        if: failure()
+        run: |
+          echo "::error::Health check failed. Rollback cmd:"
+          echo "::error::ssh VPS 'cd /var/www/GEMA-Project && git checkout <prev-sha> && cd backend && npm run build && pm2 reload ecosystem.config.js --env production'"
