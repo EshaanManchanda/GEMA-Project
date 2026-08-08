@@ -278,7 +278,6 @@ const TeacherEventFormPage: React.FC = () => {
     if (!description.trim()) newErrors.description = 'Description is required';
     if (!shortDescription.trim()) newErrors.shortDescription = 'Short description is required';
     if (!category) newErrors.category = 'Category is required';
-    if (!isFreeEvent && !basePrice.trim()) newErrors.basePrice = 'Base price is required';
 
     // Validate age range
     const minAge = parseInt(ageRangeMin);
@@ -291,6 +290,9 @@ const TeacherEventFormPage: React.FC = () => {
       if (!s.endDate) newErrors[`schedule_${idx}_endDate`] = 'End date required';
       if (!s.unlimitedSeats && !s.availableSeats) {
         newErrors[`schedule_${idx}_seats`] = 'Seats required';
+      }
+      if (!isFreeEvent && !s.isFreeSession && s.sessionType !== 'Intro Session' && (!s.price || parseFloat(s.price) < 0)) {
+        newErrors[`schedule_${idx}_price`] = 'Price must be 0 or greater';
       }
     });
 
@@ -341,7 +343,7 @@ const TeacherEventFormPage: React.FC = () => {
         },
         seoMeta: seoMeta.title || seoMeta.description || seoMeta.keywords.length > 0 ? seoMeta : undefined,
         isFreeEvent,
-        price: isFreeEvent ? 0 : parseFloat(basePrice),
+        price: isFreeEvent ? 0 : Math.min(...schedules.map(s => parseFloat(s.price || '0'))),
         currency,
         tags,
         dateSchedule: schedules.map((s) => ({
@@ -353,7 +355,7 @@ const TeacherEventFormPage: React.FC = () => {
           // Both set to the same value from the input; the backend will adjust availableSeats based on bookings
           availableSeats: s.unlimitedSeats ? 999999 : parseInt(s.availableSeats) || 10,
           totalSeats: s.unlimitedSeats ? 999999 : parseInt(s.availableSeats) || 10,
-          price: isFreeEvent ? 0 : (s.price ? parseFloat(s.price) : parseFloat(basePrice)),
+          price: isFreeEvent ? 0 : (s.sessionType === 'Intro Session' ? 0 : parseFloat(s.price || '0')),
           unlimitedSeats: s.unlimitedSeats,
           sessionType: s.sessionType,
           ratePerClass: s.ratePerClass ? parseFloat(s.ratePerClass) : undefined,
