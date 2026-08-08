@@ -240,16 +240,22 @@ export const getEvents = async (
 
     // Case-insensitive category matching (events store category as slugs)
     if (category) {
-      additionalFilters.category = new RegExp(
-        `^${escapeRegex(category as string)}$`,
-        "i",
-      );
+      const catArray = (category as string).split(",").map((c) => new RegExp(`^${escapeRegex(c.trim())}$`, "i"));
+      additionalFilters.category = { $in: catArray };
     }
-    // String() coercion on these prevents NoSQL operator injection (e.g. ?type[$ne]=x)
-    if (type) additionalFilters.type = String(type);
-    if (venueType) additionalFilters.venueType = String(venueType);
-    if (city)
-      additionalFilters["location.city"] = new RegExp(escapeRegex(city as string), "i");
+    // Handle comma-separated arrays for type and venueType
+    if (type) {
+      const typeArray = (type as string).split(",").map(t => String(t.trim()));
+      additionalFilters.type = { $in: typeArray };
+    }
+    if (venueType) {
+      const venueTypeArray = (venueType as string).split(",").map(vt => String(vt.trim()));
+      additionalFilters.venueType = { $in: venueTypeArray };
+    }
+    if (city) {
+      const cityArray = (city as string).split(",").map((c) => new RegExp(escapeRegex(c.trim()), "i"));
+      additionalFilters["location.city"] = { $in: cityArray };
+    }
     if (currency) additionalFilters.currency = String(currency);
     if (featured !== undefined) {
       additionalFilters.isFeatured = featured === "true";
@@ -277,7 +283,13 @@ export const getEvents = async (
     }
 
     // Build public event filter (includes expiration check)
+    // User requested to show all approved events in search, including past/archived
+    additionalFilters.includePast = true;
     const filter = buildPublicEventFilter(additionalFilters);
+    
+    // Allow archived events to show up as long as they are approved
+    filter.status = { $in: ["published", "archived"] };
+
 
     // Price filtering
     if (minPrice || maxPrice) {

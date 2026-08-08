@@ -145,31 +145,42 @@ export const getTeacherDashboardStats = catchAsync(
     };
     if (hasDateFilter) orderFilter.createdAt = dateFilter;
 
-    // Total Bookings
-    const totalBookings = await Order.countDocuments(orderFilter);
+    // Total Bookings (sum of quantities for teacher's events)
+    const bookingsAgg = await Order.aggregate([
+      { $match: orderFilter },
+      { $unwind: "$items" },
+      { $match: { "items.eventId": { $in: teachingEventIds } } },
+      { $group: { _id: null, totalQuantity: { $sum: "$items.quantity" } } }
+    ]);
+    const totalBookings = bookingsAgg[0]?.totalQuantity || 0;
 
     // Total revenue + unique students
     const paidOrders = await Order.find({
       ...orderFilter,
       paymentStatus: { $in: ["paid", "free"] },
-    }).select("total userId");
+    }).select("total userId items");
 
-    const totalRevenue = paidOrders.reduce(
-      (sum, order) => sum + ((order as any).total || 0),
-      0,
-    );
+    const totalRevenue = paidOrders.reduce((sum, order: any) => {
+      const teacherItemsTotal = (order.items || []).reduce((itemSum: number, item: any) => {
+        if (teachingEventIds.some((id: any) => id.equals(item.eventId))) {
+          return itemSum + (item.totalPrice || 0);
+        }
+        return itemSum;
+      }, 0);
+      return sum + teacherItemsTotal;
+    }, 0);
 
     const uniqueStudentIds = new Set(
       paidOrders.map((o) => (o as any).userId?.toString()).filter(Boolean),
     );
     const totalStudents = uniqueStudentIds.size;
 
-    // Average rating across teacher's events
+    // Average rating across teacher's events (weighted by review count)
     const ratedEvents = teacherEvents.filter((e: any) => (e.reviewCount || 0) > 0);
-    const averageRating = ratedEvents.length > 0
-      ? ratedEvents.reduce((sum: number, e: any) => sum + (e.averageRating || 0), 0) / ratedEvents.length
-      : 0;
     const totalReviews = teacherEvents.reduce((sum: number, e: any) => sum + (e.reviewCount || 0), 0);
+    const averageRating = totalReviews > 0
+      ? ratedEvents.reduce((sum: number, e: any) => sum + (e.averageRating || 0) * (e.reviewCount || 0), 0) / totalReviews
+      : 0;
 
     res.status(200).json({
       success: true,
@@ -370,57 +381,77 @@ export const getTeacherBookings = catchAsync(
     ]);
 
     // Map Order → ITeacherBooking shape expected by frontend
-    const Bookings = orders.map((order: any) => ({
-      _id: order._id,
-      bookingNumber: order.orderNumber || order._id.toString(),
-      studentId: order.userId
-        ? {
-            _id: order.userId._id,
-            firstName: order.userId.firstName,
-            lastName: order.userId.lastName,
-            email: order.userId.email,
-            phone: order.userId.phone,
-          }
-        : null,
-      sessions: (order.items || []).map((item: any) => ({
-        teachingEventId: item.eventId?._id || item.eventId,
-        teachingEventTitle: item.eventTitle || item.eventId?.title || "N/A",
-        scheduleDate: item.scheduleDate,
-        quantity: item.quantity,
-        unitPrice: item.unitPrice,
-        totalPrice: item.totalPrice,
-        currency: item.currency || order.currency || "AED",
-        students: (item.participants || []).map((p: any) => ({
-          name: p.name,
-          age: p.age,
+    const Bookings = orders.map((order: any) => {
+      // Filter items to only include those belonging to the teacher
+      const teacherItems = (order.items || []).filter((item: any) => 
+        teachingEventIds.some((id) => id.toString() === (item.eventId?._id || item.eventId).toString())
+      );
+      
+      const teacherSubtotal = teacherItems.reduce((sum: number, item: any) => sum + (item.totalPrice || 0), 0);
+      
+      return {
+        _id: order._id,
+        bookingNumber: order.orderNumber || order._id.toString(),
+        studentId: order.userId
+          ? {
+              _id: order.userId._id,
+              firstName: order.userId.firstName,
+              lastName: order.userId.lastName,
+              email: order.userId.email,
+              phone: order.userId.phone,
+            }
+          : null,
+        sessions: teacherItems.map((item: any) => ({
+          teachingEventId: item.eventId?._id || item.eventId,
+          teachingEventTitle: item.eventTitle || item.eventId?.title || "N/A",
+          scheduleDate: item.scheduleDate,
+          quantity: item.quantity,
+          unitPrice: item.unitPrice,
+          totalPrice: item.totalPrice,
+          currency: item.currency || order.currency || "AED",
+          students: (item.participants || []).map((p: any) => ({
+            name: p.name,
+            age: p.age,
+          })),
         })),
-      })),
-      subtotal: order.subtotal ?? order.total ?? 0,
-      vat: order.vat ?? 0,
-      discount: order.couponDiscount ?? order.discount ?? 0,
-      totalAmount: order.total ?? 0,
-      currency: order.currency || "AED",
-      status: order.status,
-      paymentStatus: order.paymentStatus === "free" ? "paid" : (order.paymentStatus || "pending"),
-      paymentMethod: order.paymentMethod,
-      programStatus: order.programStatus,
-      meetingLink: (order.items && order.items.length > 0) ? order.items[0].meetingLink : undefined,
-      createdAt: order.createdAt,
-      updatedAt: order.updatedAt,
-    }));
+        subtotal: teacherSubtotal,
+        vat: 0,
+        discount: 0,
+        totalAmount: teacherSubtotal,
+        currency: order.currency || "AED",
+        status: order.status,
+        paymentStatus: order.paymentStatus === "free" ? "paid" : (order.paymentStatus || "pending"),
+        paymentMethod: order.paymentMethod,
+        programStatus: order.programStatus,
+        meetingLink: (teacherItems.length > 0) ? teacherItems[0].meetingLink : undefined,
+        createdAt: order.createdAt,
+        updatedAt: order.updatedAt,
+      };
+    });
 
-    // Stats aggregation on Order
+    // Stats aggregation on Order (apportioned to teacher's events)
     const statsAgg = await Order.aggregate([
       { $match: filter },
+      { $unwind: "$items" },
+      { $match: { "items.eventId": { $in: teachingEventIds } } },
+      {
+        $group: {
+          _id: "$_id",
+          orderRevenue: { $sum: "$items.totalPrice" },
+          orderQuantity: { $sum: "$items.quantity" },
+          status: { $first: "$status" },
+          paymentStatus: { $first: "$paymentStatus" }
+        }
+      },
       {
         $group: {
           _id: null,
-          totalRevenue: { $sum: "$total" },
-          totalBookings: { $sum: 1 },
-          confirmedBookings: { $sum: { $cond: [{ $eq: ["$status", "confirmed"] }, 1, 0] } },
-          cancelledBookings: { $sum: { $cond: [{ $eq: ["$status", "cancelled"] }, 1, 0] } },
-          paidBookings: { $sum: { $cond: [{ $in: ["$paymentStatus", ["paid", "free"]] }, 1, 0] } },
-          pendingPayments: { $sum: { $cond: [{ $eq: ["$paymentStatus", "pending"] }, 1, 0] } },
+          totalRevenue: { $sum: "$orderRevenue" },
+          totalBookings: { $sum: "$orderQuantity" },
+          confirmedBookings: { $sum: { $cond: [{ $eq: ["$status", "confirmed"] }, "$orderQuantity", 0] } },
+          cancelledBookings: { $sum: { $cond: [{ $eq: ["$status", "cancelled"] }, "$orderQuantity", 0] } },
+          paidBookings: { $sum: { $cond: [{ $in: ["$paymentStatus", ["paid", "free"]] }, "$orderQuantity", 0] } },
+          pendingPayments: { $sum: { $cond: [{ $eq: ["$paymentStatus", "pending"] }, "$orderQuantity", 0] } },
         },
       },
     ]);

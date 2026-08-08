@@ -145,10 +145,7 @@ const sharedFieldRules = () => [
 // unrelated field edits (e.g. updating just the title). The model's pre-validate hook still
 // enforces city-for-offline against the full saved document either way.
 const createOnlyVenueRules = () => [
-  body("meetingLink")
-    .if(body("venueType").equals("Online"))
-    .notEmpty()
-    .withMessage("Meeting link is required for online events"),
+
 
   body("location.city")
     .if(body("venueType").not().equals("Online"))

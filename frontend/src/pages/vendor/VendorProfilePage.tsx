@@ -25,7 +25,7 @@ import {
 import PrivatePageSEO from '@/components/common/PrivatePageSEO';
 import vendorAPI from '../../services/api/vendorAPI';
 import { useDispatch } from 'react-redux';
-import { updateUser } from '@/store/slices/authSlice';
+import { updateUser, getFullProfile } from '../../store/slices/authSlice';
 
 import StripeConnectSetup from '../../components/vendor/StripeConnectSetup';
 import BankDetailsForm from '../../components/vendor/BankDetailsForm';
@@ -209,6 +209,7 @@ const VendorProfilePage: React.FC = () => {
         if (type === 'logo' && response.logo) {
           dispatch(updateUser({ avatar: response.logo }));
         }
+        dispatch(getFullProfile() as any);
         toast.success(`${type === 'logo' ? 'Logo' : 'Cover image'} uploaded successfully`);
       }
     } catch (error: any) {
@@ -231,6 +232,8 @@ const VendorProfilePage: React.FC = () => {
         dispatch(updateUser({ avatar: '' }));
       }
       
+      dispatch(getFullProfile() as any);
+      
       toast.success(`${type === 'logo' ? 'Logo' : 'Cover image'} deleted successfully`);
     } catch (error: any) {
       logger.error(`Error deleting ${type}:`, error);
@@ -243,6 +246,7 @@ const VendorProfilePage: React.FC = () => {
     try {
       await vendorAPI.updateVendorProfile(data);
       setProfile(prev => prev ? { ...prev, ...data } : null);
+      dispatch(getFullProfile() as any);
       toast.success('Profile updated successfully');
     } catch (error: any) {
       logger.error('Error updating profile:', error);

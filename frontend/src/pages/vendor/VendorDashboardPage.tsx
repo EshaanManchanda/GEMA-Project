@@ -342,20 +342,7 @@ const VendorDashboardPage: React.FC = () => {
           </div>
         )}
 
-        <div className="flex flex-wrap gap-3 mb-8">
-          <Link to="/vendor/payouts" className="px-4 py-2 rounded-lg bg-white border border-gray-200 shadow-sm text-sm font-medium text-gray-700 hover:border-gray-300 hover:shadow transition-all">
-            Payouts
-          </Link>
-          <Link to="/vendor/employees" className="px-4 py-2 rounded-lg bg-white border border-gray-200 shadow-sm text-sm font-medium text-gray-700 hover:border-gray-300 hover:shadow transition-all">
-            Employees
-          </Link>
-          <Link to="/vendor/analytics" className="px-4 py-2 rounded-lg bg-white border border-gray-200 shadow-sm text-sm font-medium text-gray-700 hover:border-gray-300 hover:shadow transition-all">
-            Analytics
-          </Link>
-          <Link to="/vendor/profile" className="px-4 py-2 rounded-lg bg-white border border-gray-200 shadow-sm text-sm font-medium text-gray-700 hover:border-gray-300 hover:shadow transition-all">
-            Payment Settings
-          </Link>
-        </div>
+
 
         <VendorServicesCard
           data={servicePackages}

@@ -60,7 +60,8 @@ export const getOverview = async (
       isDeleted: { $ne: true },
       isActive: true,
     })
-      .select("businessName logo verificationStatus createdAt")
+      .populate("userId", "firstName lastName avatar")
+      .select("businessName logo verificationStatus createdAt userId")
       .lean();
     const vendorIds = vendors.map((v) => v._id);
 
@@ -108,10 +109,17 @@ export const getOverview = async (
         // classifyVendorSegments's SegmentInput doc-comment.
       });
 
+      const user = v.userId as any;
+      const businessName =
+        user && v.businessName === user.firstName && user.lastName
+          ? `${user.firstName} ${user.lastName}`
+          : v.businessName;
+      const logo = v.logo || (user?.avatar);
+
       return {
         vendorId: v._id,
-        businessName: v.businessName,
-        logo: v.logo,
+        businessName,
+        logo,
         verificationStatus: v.verificationStatus,
         hasSnapshot: !!snap,
         snapshotId: snap?._id ?? null,

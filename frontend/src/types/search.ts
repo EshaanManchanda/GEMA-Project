@@ -61,10 +61,10 @@ export interface SearchEvent {
 }
 
 export interface SearchFilters {
-  category?: string;
-  type?: string;
-  venueType?: string;
-  city?: string;
+  category?: string[];
+  type?: string[];
+  venueType?: string[];
+  city?: string[];
   minPrice?: number;
   maxPrice?: number;
   currency?: string;

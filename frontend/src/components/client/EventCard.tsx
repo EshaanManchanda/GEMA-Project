@@ -441,11 +441,11 @@ const EventCardBadges: React.FC<EventCardBadgesProps> = ({
     <>
       {ageGroup && showAgeGroup && (
         <div
-          className="absolute top-14 right-3 bg-white rounded-full px-3 py-1 text-xs sm:text-sm font-semibold shadow-sm z-10 whitespace-nowrap"
+          className="absolute top-[60px] right-3 bg-white/95 backdrop-blur-sm rounded-full px-2.5 py-1 text-[11px] sm:text-xs font-medium shadow-sm z-10 whitespace-nowrap flex items-center gap-1 border border-white/20"
           style={{ color: 'var(--primary-color)' }}
         >
-          <FaChild className="inline mr-1" />
-          Ages {ageGroup}
+          <FaChild className="text-xs opacity-90" />
+          <span>Ages {ageGroup}</span>
         </div>
       )}
       {isFeatured && showFeaturedBadge && (

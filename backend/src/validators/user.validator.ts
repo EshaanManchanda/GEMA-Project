@@ -35,7 +35,7 @@ export const validateProfileUpdate = [
   validatePhone("phone", false),
 
   body("gender")
-    .optional()
+    .optional({ checkFalsy: true })
     .isIn(["male", "female", "other", "prefer_not_to_say"])
     .withMessage("Gender must be male, female, other, or prefer_not_to_say"),
 

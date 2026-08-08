@@ -200,6 +200,13 @@ export const AIChatbot: React.FC = () => {
 
   // Health check
   useEffect(() => {
+    // Prevent Local Network Access (LNA) permission prompts in production
+    // by not attempting to fetch from localhost if the environment variable wasn't set.
+    if (import.meta.env.PROD && CHATBOT_URL.includes('localhost')) {
+      setServerOk(false);
+      return;
+    }
+    
     fetch(`${CHATBOT_URL}/api/chatbot/health`, { credentials: 'include' })
       .then(r => r.ok ? setServerOk(true) : setServerOk(false))
       .catch(() => setServerOk(false));

@@ -103,6 +103,10 @@ export interface INotificationPreferences {
   email: boolean;
   sms: boolean;
   push: boolean;
+  marketing: boolean;
+  security: boolean;
+  bookingReminders: boolean;
+  eventUpdates: boolean;
 }
 
 export interface IPreferences {
@@ -447,6 +451,22 @@ const UserSchema = new Schema<IUser>(
           default: false,
         },
         push: {
+          type: Boolean,
+          default: true,
+        },
+        marketing: {
+          type: Boolean,
+          default: true,
+        },
+        security: {
+          type: Boolean,
+          default: true,
+        },
+        bookingReminders: {
+          type: Boolean,
+          default: true,
+        },
+        eventUpdates: {
           type: Boolean,
           default: true,
         },

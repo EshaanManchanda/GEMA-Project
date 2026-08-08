@@ -480,7 +480,7 @@ const VendorPage: React.FC = () => {
           </div>
           <h2 className="text-xl font-bold text-gray-900 mb-2">Profile Not Found</h2>
           <p className="text-gray-500 mb-5">{error || 'This vendor profile is unavailable.'}</p>
-          <Link to="/teachers" className="inline-flex items-center gap-2 px-5 py-2.5 bg-blue-600 text-white rounded-xl font-semibold hover:bg-blue-700 transition-colors">
+          <Link to="/vendors" className="inline-flex items-center gap-2 px-5 py-2.5 bg-blue-600 text-white rounded-xl font-semibold hover:bg-blue-700 transition-colors">
             <FaArrowLeft /> Back to Vendors
           </Link>
         </div>
@@ -537,7 +537,7 @@ const VendorPage: React.FC = () => {
 
         <div className="relative z-10 max-w-5xl mx-auto px-4 sm:px-6 pt-6 pb-12">
           <Link
-            to="/teachers"
+            to="/vendors"
             className="inline-flex items-center gap-2 text-white/60 hover:text-white text-sm font-medium mb-8 transition-colors"
           >
             <FaArrowLeft className="text-[10px]" /> Back to Vendors

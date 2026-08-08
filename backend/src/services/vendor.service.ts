@@ -153,17 +153,21 @@ class VendorService {
     const [aggAll, aggThisMonth, aggLastMonth, trendAgg] = await Promise.all([
       Order.aggregate([
         { $match: orderFilter },
+        { $unwind: "$items" },
+        { $match: { "items.eventId": { $in: eventIds } } },
         {
           $group: {
             _id: null,
-            totalRevenue: { $sum: "$total" },
-            totalBookings: { $sum: 1 },
+            totalRevenue: { $sum: "$items.totalPrice" },
+            totalBookings: { $sum: "$items.quantity" },
           },
         },
       ]),
       Order.aggregate([
         { $match: { ...orderFilter, createdAt: { $gte: startOfThisMonth } } },
-        { $group: { _id: null, revenue: { $sum: "$total" } } },
+        { $unwind: "$items" },
+        { $match: { "items.eventId": { $in: eventIds } } },
+        { $group: { _id: null, revenue: { $sum: "$items.totalPrice" } } },
       ]),
       Order.aggregate([
         {
@@ -172,17 +176,21 @@ class VendorService {
             createdAt: { $gte: startOfLastMonth, $lte: endOfLastMonth },
           },
         },
-        { $group: { _id: null, revenue: { $sum: "$total" } } },
+        { $unwind: "$items" },
+        { $match: { "items.eventId": { $in: eventIds } } },
+        { $group: { _id: null, revenue: { $sum: "$items.totalPrice" } } },
       ]),
       Order.aggregate([
         { $match: { ...orderFilter, createdAt: { $gte: startOfTrendWindow } } },
+        { $unwind: "$items" },
+        { $match: { "items.eventId": { $in: eventIds } } },
         {
           $group: {
             _id: {
               year: { $year: "$createdAt" },
               month: { $month: "$createdAt" },
             },
-            revenue: { $sum: "$total" },
+            revenue: { $sum: "$items.totalPrice" },
           },
         },
       ]),
@@ -354,7 +362,7 @@ class VendorService {
     const sort: any = {};
     sort[params.sortBy || "createdAt"] = params.sortOrder === "asc" ? 1 : -1;
 
-    const [bookings, total] = await Promise.all([
+    const [rawBookings, total] = await Promise.all([
       Order.find(filter)
         .populate("userId", "firstName lastName email phone")
         .populate("items.eventId", "title category images")
@@ -365,31 +373,59 @@ class VendorService {
       Order.countDocuments(filter),
     ]);
 
+    const vendorEventIdsStr = eventIds.map((id) => id.toString());
+    const bookings = rawBookings.map((order: any) => {
+      const vendorItems = order.items.filter((item: any) => {
+        const itemId =
+          typeof item.eventId === "object" && item.eventId !== null
+            ? item.eventId._id.toString()
+            : item.eventId?.toString();
+        return vendorEventIdsStr.includes(itemId);
+      });
+
+      const newSubtotal = vendorItems.reduce(
+        (sum: number, item: any) => sum + item.totalPrice,
+        0,
+      );
+      const itemsRatio = order.subtotal > 0 ? newSubtotal / order.subtotal : 0;
+
+      return {
+        ...order,
+        items: vendorItems,
+        subtotal: newSubtotal,
+        total: order.total * itemsRatio,
+        tax: (order.tax || 0) * itemsRatio,
+        serviceFee: (order.serviceFee || 0) * itemsRatio,
+      };
+    });
+
     const stats = await Order.aggregate([
       { $match: filter },
+      { $unwind: "$items" },
+      { $match: { "items.eventId": { $in: eventIds } } },
       {
         $group: {
           _id: null,
-          totalRevenue: { $sum: "$total" },
-          totalBookings: { $sum: 1 },
+          totalRevenue: { $sum: "$items.totalPrice" },
+          totalBookings: { $sum: "$items.quantity" },
           confirmedBookings: {
             $sum: {
-              $cond: [{ $eq: ["$status", "confirmed"] }, 1, 0],
+              $cond: [{ $eq: ["$status", "confirmed"] }, "$items.quantity", 0],
             },
           },
           cancelledBookings: {
             $sum: {
-              $cond: [{ $eq: ["$status", "cancelled"] }, 1, 0],
+              $cond: [{ $eq: ["$status", "cancelled"] }, "$items.quantity", 0],
             },
           },
           paidBookings: {
             $sum: {
-              $cond: [{ $eq: ["$paymentStatus", "paid"] }, 1, 0],
+              $cond: [{ $eq: ["$paymentStatus", "paid"] }, "$items.quantity", 0],
             },
           },
           pendingPayments: {
             $sum: {
-              $cond: [{ $eq: ["$paymentStatus", "pending"] }, 1, 0],
+              $cond: [{ $eq: ["$paymentStatus", "pending"] }, "$items.quantity", 0],
             },
           },
         },
@@ -432,11 +468,33 @@ class VendorService {
       "items.eventId": { $in: eventIds },
     })
       .populate("userId", "firstName lastName email phone avatar")
-      .populate("items.eventId", "title category images location");
+      .populate("items.eventId", "title category images location")
+      .lean();
 
     if (!booking) {
       throw new AppError("Booking not found", 404);
     }
+
+    const vendorEventIdsStr = eventIds.map((id) => id.toString());
+    const vendorItems = booking.items.filter((item: any) => {
+      const itemId =
+        typeof item.eventId === "object" && item.eventId !== null
+          ? item.eventId._id.toString()
+          : item.eventId?.toString();
+      return vendorEventIdsStr.includes(itemId);
+    });
+
+    const newSubtotal = vendorItems.reduce(
+      (sum: number, item: any) => sum + item.totalPrice,
+      0,
+    );
+    const itemsRatio = booking.subtotal > 0 ? newSubtotal / booking.subtotal : 0;
+
+    (booking as any).items = vendorItems;
+    (booking as any).subtotal = newSubtotal;
+    (booking as any).total = (booking.total || 0) * itemsRatio;
+    (booking as any).tax = (booking.tax || 0) * itemsRatio;
+    (booking as any).serviceFee = ((booking as any).serviceFee || 0) * itemsRatio;
 
     return booking;
   }

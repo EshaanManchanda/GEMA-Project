@@ -123,12 +123,6 @@ export const createTeacherEvent = catchAsync(
       return next(new AppError("City is required", 400));
     }
 
-    if (normalizedEventMode === "Online" && !meetingLink) {
-      return next(
-        new AppError("Meeting link is required for online events", 400),
-      );
-    }
-
     const categoryDoc = await Category.findOne({
       slug: category,
       isActive: true,

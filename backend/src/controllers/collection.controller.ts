@@ -406,18 +406,17 @@ export const createCollection = async (
 
       // Verify events exist if provided
       if (normalizedEventIds.length > 0) {
-      const existingEvents = await Event.find({
-            _id: { $in: normalizedEventIds },
-        isDeleted: false,
-        isApproved: true,
-      });
+        const existingEvents = await Event.find({
+          _id: { $in: normalizedEventIds },
+          isDeleted: false,
+        });
 
         if (existingEvents.length !== normalizedEventIds.length) {
-        return next(
-          new AppError("Some events do not exist or are not approved", 400),
-        );
+          return next(
+            new AppError("Some events do not exist", 400),
+          );
+        }
       }
-    }
 
     const collection = new Collection({
       title,
@@ -483,12 +482,11 @@ export const updateCollection = async (
       const existingEvents = await Event.find({
         _id: { $in: normalizedEventIds },
         isDeleted: false,
-        isApproved: true,
       });
 
       if (existingEvents.length !== normalizedEventIds.length) {
         return next(
-          new AppError("Some events do not exist or are not approved", 400),
+          new AppError("Some events do not exist", 400),
         );
       }
     }
@@ -636,15 +634,14 @@ export const addEventToCollection = async (
     const { id } = req.params;
     const { eventId } = req.body;
 
-    // Verify event exists and is approved
+    // Verify event exists
     const event = await Event.findOne({
       _id: eventId,
       isDeleted: false,
-      isApproved: true,
     });
 
     if (!event) {
-      return next(new AppError("Event not found or not approved", 404));
+      return next(new AppError("Event not found", 404));
     }
 
     const collection = await Collection.findByIdAndUpdate(
@@ -771,7 +768,7 @@ export const getAdminCollections = async (
           path: "events",
           select:
             "title category images type price currency vendorId isApproved",
-          match: { isDeleted: false, isApproved: true, isActive: true },
+          match: { isDeleted: false },
           populate: {
             path: "vendorId",
             select: "firstName lastName businessName",
