@@ -25,8 +25,8 @@ import {
 import { Event } from '../../types/event';
 import bookingAPI from '../../services/api/bookingAPI';
 import { useErrorHandler } from '../../utils/errorHandler';
-import vendorPaymentService, { VendorPaymentInfo } from '../../services/vendorPaymentService';
 import { logger } from '../../utils/logger';
+import { calculateOrderPricing, resolveVatRate } from '../../utils/pricing';
 
 import Button from '../ui/Button';
 import { Card, CardContent, CardHeader, CardTitle } from '../ui/Card';
@@ -62,7 +62,6 @@ const PaymentForm: React.FC<PaymentFormProps> = ({
   const [agreedToTerms, setAgreedToTermsLocal] = useState(bookingFlow.agreedToTerms ?? true);
   const [agreedToPrivacy, setAgreedToPrivacy] = useState(true);
   const [marketingConsent, setMarketingConsent] = useState(true);
-  const [vendorPaymentInfo, setVendorPaymentInfo] = useState<VendorPaymentInfo | null>(null);
 
   const { currencyInfo } = useCurrencyContext();
 
@@ -83,33 +82,6 @@ const PaymentForm: React.FC<PaymentFormProps> = ({
     }
     return undefined;
   }, [event.vendorId]);
-
-  // Fetch vendor payment info on mount
-  useEffect(() => {
-    const fetchVendorPaymentInfo = async () => {
-      if (stableVendorId) {
-        // Valid vendorId - fetch payment info
-        const info = await vendorPaymentService.getVendorPaymentInfo(stableVendorId);
-        setVendorPaymentInfo(info);
-      } else {
-        // Invalid or missing vendorId - use platform defaults
-        logger.warn('Invalid or missing vendorId, using platform payment defaults', {
-          vendorId: event.vendorId,
-          hasVendorId: !!event.vendorId,
-          isObject: typeof event.vendorId === 'object'
-        });
-        setVendorPaymentInfo({
-          vendorId: 'platform',
-          hasCustomStripe: false,
-          stripePublishableKey: null,
-          serviceFeeRate: 5,
-          usePlatformStripe: true,
-        });
-      }
-    };
-
-    fetchVendorPaymentInfo();
-  }, [stableVendorId, event.vendorId]);
 
   const paymentMethods = [
     {
@@ -185,7 +157,9 @@ const PaymentForm: React.FC<PaymentFormProps> = ({
     }
   }, [selectedPaymentMethod, checkout?.clientSecret, participants.length, event._id, bookingFlow.scheduleId, bookingFlow.selectedDate, bookingType, dispatch]);
 
-  // Calculate total amount
+  // Calculate total amount. Service fees are no longer charged to the
+  // customer — this delegates to the same shared formula the backend uses
+  // (utils/pricing.ts), rather than a locally duplicated one.
   const calculateTotal = () => {
     const basePrice = schedulePrice || event.price;
     const participantCount = participants.length;
@@ -194,26 +168,25 @@ const PaymentForm: React.FC<PaymentFormProps> = ({
     // Apply discount if coupon is applied
     const discountAmount = bookingFlow.couponCode ? subtotal * 0.1 : 0; // 10% discount example
 
-    // Service fee based on vendor payment settings
-    // If vendor has custom Stripe, no service fee. Otherwise, use vendor's commission rate
-    const serviceFeeRate = vendorPaymentInfo?.serviceFeeRate || 5; // Default 5%
-    const serviceFee = vendorPaymentInfo?.usePlatformStripe !== false ? (subtotal * (serviceFeeRate / 100)) : 0;
-
-    const tax = (subtotal - discountAmount + serviceFee) * 0.05; // 5% tax
-    const total = subtotal - discountAmount + serviceFee + tax;
+    const vatRate = resolveVatRate(undefined);
+    const { vat, total } = calculateOrderPricing({
+      subtotal,
+      couponDiscount: discountAmount,
+      vatRate,
+      currency: event.currency || getDefaultCurrency(),
+      isFree: subtotal === 0,
+    });
 
     return {
       subtotal,
       discountAmount,
-      serviceFee,
-      serviceFeeRate,
-      tax,
+      vat,
+      vatRate,
       total,
-      hasVendorStripe: vendorPaymentInfo?.hasCustomStripe || false,
     };
   };
 
-  const { subtotal, discountAmount, serviceFee, serviceFeeRate, tax, total, hasVendorStripe } = calculateTotal();
+  const { subtotal, discountAmount, vat, vatRate, total } = calculateTotal();
 
   // Handle payment method selection
   const handlePaymentMethodChange = (method: string) => {
@@ -278,8 +251,8 @@ const PaymentForm: React.FC<PaymentFormProps> = ({
         participants
       });
 
-      // Store pricing so BookingConfirmation displays correct service fee / tax
-      const { subtotal, serviceFee, tax } = calculateTotal();
+      // Store pricing so BookingConfirmation displays the correct VAT
+      const { subtotal, vat } = calculateTotal();
       dispatch(setCurrentBooking({
         id: confirmResponse?.orderId || orderId || '',
         bookingNumber: confirmResponse?.bookingId || '',
@@ -291,9 +264,9 @@ const PaymentForm: React.FC<PaymentFormProps> = ({
         totalParticipants: participants.length,
         bookingDate: new Date().toISOString(),
         unitPrice: schedulePrice || event.price,
-        totalAmount: confirmResponse?.amountPaid ?? (subtotal + serviceFee + tax),
-        serviceFee: confirmResponse?.serviceFee ?? serviceFee,
-        taxAmount: confirmResponse?.tax ?? tax,
+        totalAmount: confirmResponse?.amountPaid ?? (subtotal + vat),
+        serviceFee: confirmResponse?.serviceFee ?? 0,
+        vatAmount: confirmResponse?.vat ?? vat,
         discountAmount: confirmResponse?.couponDiscount ?? 0,
         currency: event.currency || getDefaultCurrency(),
         payment: {
@@ -679,27 +652,9 @@ const PaymentForm: React.FC<PaymentFormProps> = ({
               </div>
             )}
 
-            {hasVendorStripe ? (
-              <div className="flex justify-between text-sm text-green-600">
-                <span className="flex items-center">
-                  Service Fee
-                  <Info className="w-3 h-3 ml-1" aria-label="No service fee - vendor payment" />
-                </span>
-                <span className="font-medium">Free</span>
-              </div>
-            ) : (
-              <div className="flex justify-between text-sm text-gray-600">
-                <span className="flex items-center">
-                  Service Fee ({serviceFeeRate}%)
-                  <Info className="w-3 h-3 ml-1" aria-label="Platform payment processing fee" />
-                </span>
-                <span>{formatCurrency(serviceFee, event.currency || getDefaultCurrency())}</span>
-              </div>
-            )}
-
             <div className="flex justify-between text-sm text-gray-600">
-              <span>Tax (5%)</span>
-              <span>{formatCurrency(tax, event.currency || getDefaultCurrency())}</span>
+              <span>VAT ({vatRate}%)</span>
+              <span>{formatCurrency(vat, event.currency || getDefaultCurrency())}</span>
             </div>
 
             <div className="border-t pt-3">

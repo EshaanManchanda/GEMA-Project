@@ -331,7 +331,7 @@ const AdminEventDetailPage: React.FC = () => {
         // Order info
         'Order Number', 'Order Status', 'Payment Status', 'Payment Method',
         'Subtotal', 'Discount', 'Coupon Code', 'Coupon Discount',
-        'Service Fee', 'Tax', 'Total', 'Currency',
+        'VAT', 'Total', 'Currency',
         'Coupon Code Used', 'Affiliate Code',
         'Special Requests', 'Dietary Restrictions', 'Accessibility Needs',
         'Check-In Status', 'Check-In Time',
@@ -363,8 +363,7 @@ const AdminEventDetailPage: React.FC = () => {
           String(order.discount ?? ''),
           order.couponCode || '',
           String(order.couponDiscount ?? ''),
-          String(order.serviceFee ?? ''),
-          String(order.tax ?? ''),
+          String(order.vat ?? ''),
           String(order.total ?? ''),
           order.currency || '',
           order.couponCode || '',

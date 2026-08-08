@@ -1043,10 +1043,8 @@ describe("VENDOR SYSTEM AUDIT — Test Cases", () => {
       // Result: 404
     });
 
-    it("TC-API-05: [ISSUE M9] checkServiceFee route doesn't exist", () => {
-      // Frontend: POST /vendors/check-service-fee
-      // Backend:  (no route)
-      // Result: 404
+    it("TC-API-05: [ISSUE M9, RESOLVED] checkServiceFee removed — had zero callers and computed a customer-facing fee that no longer exists post service-fee removal", () => {
+      // vendorAPI.checkServiceFee deleted (see plan: VAT rename + service-fee removal).
     });
 
     it("TC-API-06: [ISSUE M10] applyForVendor route doesn't exist", () => {

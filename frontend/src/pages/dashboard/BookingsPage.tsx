@@ -438,7 +438,7 @@ const BookingsPage: React.FC = () => {
               totalAmount={selectedBookingForCancel.total || 0}
               subtotal={selectedBookingForCancel.subtotal || 0}
               serviceFee={selectedBookingForCancel.serviceFee || 0}
-              tax={selectedBookingForCancel.tax || 0}
+              vat={selectedBookingForCancel.vat || 0}
               currency={selectedBookingForCancel.currency?.toUpperCase() || 'AED'}
               onSuccess={() => {
                 dispatch(fetchBookings({})); // Refresh bookings after cancellation

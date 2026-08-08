@@ -15,8 +15,10 @@ export interface ICancellationLog extends Document {
   // Financial details
   originalAmount: number;
   refundAmount: number;
+  // @deprecated legacy — only non-zero on cancellation logs written before
+  // service-fee removal.
   serviceFee: number;
-  tax: number;
+  vat: number;
   currency: string;
 
   // Refund tracking
@@ -106,10 +108,10 @@ const cancellationLogSchema = new Schema<ICancellationLog>(
       default: 0,
       min: [0, "Service fee cannot be negative"],
     },
-    tax: {
+    vat: {
       type: Number,
       default: 0,
-      min: [0, "Tax cannot be negative"],
+      min: [0, "VAT cannot be negative"],
     },
     currency: {
       type: String,

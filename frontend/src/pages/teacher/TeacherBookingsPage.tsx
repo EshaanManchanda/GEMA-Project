@@ -380,8 +380,8 @@ const TeacherBookingsPage: React.FC = () => {
                         <span>{selectedBooking.currency} {selectedBooking.subtotal}</span>
                       </div>
                       <div className="flex justify-between">
-                        <span className="text-gray-500">Tax</span>
-                        <span>{selectedBooking.currency} {selectedBooking.tax}</span>
+                        <span className="text-gray-500">VAT</span>
+                        <span>{selectedBooking.currency} {selectedBooking.vat}</span>
                       </div>
                       <div className="flex justify-between">
                         <span className="text-gray-500">Discount</span>

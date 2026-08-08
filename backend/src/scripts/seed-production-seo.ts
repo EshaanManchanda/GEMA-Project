@@ -315,7 +315,7 @@ const productionSeoData: any[] = [
       {
         question: "Do you charge any booking fees?",
         answer:
-          "Yes, a small service fee is added to bookings to maintain our platform. The exact fee amount is always displayed transparently during the checkout process before you confirm your payment. Some premium events may have additional fees set by the event organizers.",
+          "No booking or service fee is added — you pay the ticket price plus applicable VAT, always shown transparently during checkout before you confirm your payment. Some premium events may have additional fees set by the event organizers.",
         category: "Payments",
       },
       {
@@ -363,7 +363,7 @@ const productionSeoData: any[] = [
       {
         question: "When do vendors receive payment for bookings?",
         answer:
-          "Vendors receive payments for successful events 24 hours after the event concludes, minus our service fee. For events with advance bookings, you can opt for our Early Payout program to receive partial payments before the event date. Payments are transferred directly to your connected bank account or vendor wallet.",
+          "Vendors receive payments for successful events 24 hours after the event concludes, minus our platform commission. For events with advance bookings, you can opt for our Early Payout program to receive partial payments before the event date. Payments are transferred directly to your connected bank account or vendor wallet.",
         category: "Vendors",
       },
     ],

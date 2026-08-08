@@ -434,10 +434,10 @@ const AdminOrderDetailPage: React.FC = () => {
                                     <span className="text-gray-500">Subtotal</span>
                                     <span className="text-gray-900">{formatCurrency(order.subtotal, order.currency)}</span>
                                 </div>
-                                {order.tax > 0 && (
+                                {order.vat > 0 && (
                                     <div className="flex justify-between text-sm">
-                                        <span className="text-gray-500">Tax</span>
-                                        <span className="text-gray-900">{formatCurrency(order.tax, order.currency)}</span>
+                                        <span className="text-gray-500">VAT</span>
+                                        <span className="text-gray-900">{formatCurrency(order.vat, order.currency)}</span>
                                     </div>
                                 )}
                                 {order.serviceFee !== undefined && order.serviceFee > 0 && (

@@ -26,8 +26,9 @@ interface Booking {
     currency: string;
   }>;
   subtotal: number;
-  tax: number;
-  serviceFee: number;
+  vat: number;
+  // legacy — only non-zero on bookings that predate service-fee removal
+  serviceFee?: number;
   total: number;
   currency: string;
   status: 'pending' | 'confirmed' | 'cancelled' | 'refunded';
@@ -742,7 +743,7 @@ const DashboardPage: React.FC = () => {
             totalAmount={selectedBookingForCancel.total || 0}
             subtotal={selectedBookingForCancel.subtotal || 0}
             serviceFee={selectedBookingForCancel.serviceFee || 0}
-            tax={selectedBookingForCancel.tax || 0}
+            vat={selectedBookingForCancel.vat || 0}
             currency={selectedBookingForCancel.currency?.toUpperCase() || 'AED'}
             onSuccess={() => {
               fetchDashboardData(); // Refresh dashboard after cancellation

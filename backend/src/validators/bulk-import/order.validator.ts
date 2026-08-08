@@ -9,7 +9,9 @@ import mongoose from "mongoose";
  * - items[].eventId: Accept eventTitle OR eventId
  *
  * Amount Reconciliation (CRITICAL):
- * - subtotal + tax + serviceFee - discount - couponDiscount = total (±1 cent tolerance)
+ * - subtotal + vat + serviceFee - discount - couponDiscount = total (±1 cent tolerance)
+ *   (serviceFee is legacy-only — only non-zero on historical orders that predate
+ *   service-fee removal; it stays optional here so those imports still validate)
  * - items[].totalPrice = items[].unitPrice * items[].quantity
  * - sum(items[].totalPrice) = subtotal
  * - paymentRouting.platformCommission + paymentRouting.vendorPayout ≤ total
@@ -253,10 +255,10 @@ export const validateOrderImport: ValidationChain[] = [
     .isFloat({ min: 0 })
     .withMessage("Subtotal must be non-negative"),
 
-  body("data.*.tax")
+  body("data.*.vat")
     .optional()
     .isFloat({ min: 0 })
-    .withMessage("Tax must be non-negative"),
+    .withMessage("VAT must be non-negative"),
 
   body("data.*.serviceFee")
     .optional()
@@ -288,18 +290,18 @@ export const validateOrderImport: ValidationChain[] = [
   // Validate total amount reconciliation
   body("data.*").custom((order) => {
     const subtotal = order.subtotal || 0;
-    const tax = order.tax || 0;
+    const vat = order.vat || 0;
     const serviceFee = order.serviceFee || 0;
     const discount = order.discount || 0;
     const couponDiscount = order.couponDiscount || 0;
     const total = order.total || 0;
 
-    const calculated = subtotal + tax + serviceFee - discount - couponDiscount;
+    const calculated = subtotal + vat + serviceFee - discount - couponDiscount;
     const diff = Math.abs(calculated - total);
 
     if (diff > 0.01) {
       throw new Error(
-        `Total amount mismatch: subtotal(${subtotal}) + tax(${tax}) + serviceFee(${serviceFee}) - discount(${discount}) - couponDiscount(${couponDiscount}) = ${calculated}, but total is ${total}`,
+        `Total amount mismatch: subtotal(${subtotal}) + vat(${vat}) + serviceFee(${serviceFee}) - discount(${discount}) - couponDiscount(${couponDiscount}) = ${calculated}, but total is ${total}`,
       );
     }
     return true;

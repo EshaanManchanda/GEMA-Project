@@ -568,14 +568,14 @@ const AdminVendorDetailPage: React.FC = () => {
                 <Field label="Tax ID"><input className={inputCls} value={form.taxId} onChange={e => handleChange('taxId', e.target.value)} /></Field>
                 <Field label="Business Type"><input className={inputCls} value={form.businessType} onChange={e => handleChange('businessType', e.target.value)} /></Field>
                 <Field label="Registration Number"><input className={inputCls} value={form.registrationNumber} onChange={e => handleChange('registrationNumber', e.target.value)} /></Field>
-                <Field label="VAT Number"><input className={inputCls} value={form.vatNumber} onChange={e => handleChange('vatNumber', e.target.value)} /></Field>
+                <Field label="VAT Registration Number"><input className={inputCls} value={form.vatNumber} onChange={e => handleChange('vatNumber', e.target.value)} /></Field>
               </div>
             ) : (
               <dl className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <Item label="Tax ID" value={vendor.taxInformation?.taxId || '-'} />
                 <Item label="Business Type" value={vendor.taxInformation?.businessType || '-'} />
                 <Item label="Registration Number" value={vendor.taxInformation?.registrationNumber || '-'} />
-                <Item label="VAT Number" value={vendor.taxInformation?.vatNumber || '-'} />
+                <Item label="VAT Registration Number" value={vendor.taxInformation?.vatNumber || '-'} />
               </dl>
             )}
           </Section>

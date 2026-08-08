@@ -295,23 +295,6 @@ const vendorAPI = {
     }
   },
 
-  // Check if service fee applies for this vendor
-  checkServiceFee: async (vendorId: string, amount: number) => {
-    try {
-      const paymentInfo = await ApiService.get(`/vendors/${vendorId}/payment-info`);
-      const info = paymentInfo.data?.data || paymentInfo.data;
-      const commissionRate = info?.commissionRate ?? 0.05;
-      return {
-        serviceFee: amount * commissionRate,
-        commissionRate,
-        usesVendorStripe: info?.usesVendorStripe ?? false,
-      };
-    } catch (error) {
-      logApiResponse('GET /vendors/:id/payment-info (fee check)', null, error);
-      throw error;
-    }
-  },
-
   // Vendor Event CRUD operations
   getVendorEventById: async (id: string) => {
     try {

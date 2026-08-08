@@ -42,14 +42,16 @@ Source files: `services/payment.service.ts`, `services/refund.service.ts`
 
 ## RefundService — calculateRefundableAmount
 
+VAT is refundable along with the ticket price; only a legacy `serviceFee` (0 on every order created after service-fee removal) is withheld. See `backend/src/tests/unit/services/refund.service.test.ts` for the executable version of these cases.
+
 | Test ID | Description | Preconditions | Input | Expected Output | Priority |
 |---------|-------------|---------------|-------|-----------------|----------|
-| TC-PAY-021 | Happy path: paid order with service fee and tax | N/A | `order.paymentStatus = "paid"`, `subtotal = 100`, `serviceFee = 5`, `tax = 5`, `couponDiscount = 0` | `refundAmount: 100`, `nonRefundableAmount: 10`, `serviceFee: 5`, `tax: 5` | High |
-| TC-PAY-022 | Coupon discount reduces refundable amount | N/A | `subtotal = 100`, `couponDiscount = 20`, `serviceFee = 4`, `tax = 4` | `refundAmount: 80`, `nonRefundableAmount: 8` | High |
-| TC-PAY-023 | Order not paid — returns all zeros | N/A | `order.paymentStatus = "pending"` | `refundAmount: 0`, `nonRefundableAmount: 0`, `serviceFee: 0`, `tax: 0` | High |
-| TC-PAY-024 | Coupon discount larger than subtotal — no negative refund | N/A | `subtotal = 10`, `couponDiscount = 15`, `serviceFee = 1`, `tax = 1` | `refundAmount: 0` (Math.max(0, -5) = 0) | High |
-| TC-PAY-025 | Zero service fee and tax | N/A | `subtotal = 50`, `serviceFee = 0`, `tax = 0`, `paymentStatus = "paid"` | `refundAmount: 50`, `nonRefundableAmount: 0` | Medium |
-| TC-PAY-026 | Missing serviceFee/tax fields default to 0 | Order created without fee fields | `subtotal = 60`, `serviceFee` undefined, `tax` undefined | Treated as 0; `refundAmount: 60` | Medium |
+| TC-PAY-021 | Happy path: paid order with legacy service fee and VAT | N/A | `order.paymentStatus = "paid"`, `subtotal = 100`, `serviceFee = 5`, `vat = 5.25`, `couponDiscount = 0` | `refundAmount: 105.25`, `nonRefundableAmount: 5`, `serviceFee: 5`, `vat: 5.25` | High |
+| TC-PAY-022 | Coupon discount reduces refundable amount, VAT still added back | N/A | `subtotal = 100`, `couponDiscount = 20`, `vat = 4`, `serviceFee = 0` | `refundAmount: 84`, `nonRefundableAmount: 0` | High |
+| TC-PAY-023 | Order not paid — returns all zeros | N/A | `order.paymentStatus = "pending"` | `refundAmount: 0`, `nonRefundableAmount: 0`, `serviceFee: 0`, `vat: 0` | High |
+| TC-PAY-024 | Coupon discount larger than subtotal — no negative refund | N/A | `subtotal = 10`, `couponDiscount = 15`, `vat = 0`, `serviceFee = 0` | `refundAmount: 0` (Math.max(0, -5) = 0) | High |
+| TC-PAY-025 | Zero VAT and no legacy service fee | N/A | `subtotal = 50`, `serviceFee = 0`, `vat = 0`, `paymentStatus = "paid"` | `refundAmount: 50`, `nonRefundableAmount: 0` | Medium |
+| TC-PAY-026 | Missing serviceFee/vat fields default to 0 | Order created without fee fields | `subtotal = 60`, `serviceFee` undefined, `vat` undefined | Treated as 0; `refundAmount: 60` | Medium |
 
 ---
 

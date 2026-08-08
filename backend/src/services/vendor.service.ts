@@ -814,7 +814,7 @@ class VendorService {
             },
           ],
           subtotal: parseFloat(row.totalAmount),
-          tax: 0,
+          vat: 0,
           discount: 0,
           total: parseFloat(row.totalAmount),
           currency: row.currency || event.currency || "AED",

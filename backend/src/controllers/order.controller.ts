@@ -6,6 +6,7 @@ import { AppError } from "../middleware/index";
 import { AuthRequest } from "../types/index";
 import { emailService } from "../services/email.service";
 import { CouponService } from "../services/coupon.service";
+import { calculateOrderPricing, resolveVatRate } from "../services/pricing.service";
 import { stripe } from "../config/stripe";
 import logger from "../config/logger";
 import { v4 as uuidv4 } from "uuid";
@@ -128,51 +129,77 @@ export const createOrder = async (
       subtotal += totalPrice;
     }
 
-    // Get fee rates from AdminRevenueSettings
+    // Get VAT rate from AdminRevenueSettings. Service fees are no longer
+    // charged to the customer (see plan: VAT rename + service-fee removal)
+    // — the platform still earns via vendor-side commission, computed
+    // separately in commission.service.ts.
     const adminSettings = await AdminRevenueSettings.findOne({});
-    const serviceFeeRate = adminSettings?.defaultCommissionRate || 5;
-    const taxRate = adminSettings?.taxSettings?.vatRate || 5;
+    const vatRate = resolveVatRate(adminSettings?.taxSettings?.vatRate);
+    const currency = processedItems[0].currency;
 
-    // Calculate fees
-    const serviceFee = subtotal * (serviceFeeRate / 100);
-    const tax = (subtotal + serviceFee) * (taxRate / 100);
+    // Validate the coupon (if any) BEFORE creating the order, so VAT is
+    // charged on the coupon-discounted amount — not applied after the fact
+    // like the old flow did, which left VAT computed on the pre-coupon
+    // subtotal even after a coupon was later applied.
+    let couponDiscount = 0;
+    let validatedCoupon: any = null;
+    if (couponCode) {
+      try {
+        const eventIds = processedItems.map((item: any) => item.eventId.toString());
+        const couponResult = await CouponService.validateCoupon(
+          couponCode,
+          userId,
+          subtotal,
+          eventIds,
+        );
+        couponDiscount = couponResult.discountAmount;
+        validatedCoupon = couponResult.coupon;
+      } catch (couponErr) {
+        logger.warn("Coupon validation failed, proceeding without discount", {
+          couponCode,
+        });
+      }
+    }
 
-    // Create order (coupon applied after creation so we have the order._id)
+    const { vat, total } = calculateOrderPricing({
+      subtotal,
+      couponDiscount,
+      vatRate,
+      currency,
+      isFree: subtotal === 0,
+    });
+
     const orderData = {
       userId,
       items: processedItems,
       subtotal,
-      tax,
-      serviceFee,
-      serviceFeeRate,
-      taxRate,
+      vat,
+      vatRate,
+      total,
       discount: 0,
-      couponDiscount: 0,
-      currency: processedItems[0].currency,
+      couponCode: validatedCoupon ? validatedCoupon.code : undefined,
+      couponDiscount,
+      currency,
       billingAddress,
       notes,
       affiliateCode,
-      couponCode,
     };
 
     const order = await Order.create(orderData);
 
-    // Apply coupon discount if provided
-    let couponDiscount = 0;
-    if (couponCode) {
+    // Record coupon usage against the now-created order (usage tracking
+    // only — pricing was already computed above).
+    if (validatedCoupon) {
       try {
-        const coupon = await Coupon.findByCode(couponCode);
-        if (coupon) {
-          const result = await CouponService.applyCoupon(
-            coupon._id.toString(),
-            order._id.toString(),
-            userId,
-          );
-          couponDiscount = result.discountAmount;
-        }
+        await CouponService.applyCoupon(
+          validatedCoupon._id.toString(),
+          order._id.toString(),
+          userId,
+        );
       } catch (couponErr) {
-        logger.warn("Coupon application failed, proceeding without discount", {
+        logger.warn("Coupon usage tracking failed (order pricing unaffected)", {
           couponCode,
+          orderId: order._id,
         });
       }
     }
@@ -368,8 +395,9 @@ export const cancelOrder = async (
           orderNumber: order.orderNumber,
           refundAmount,
           nonRefundableAmount: order.total - refundAmount,
+          // legacy — only non-zero on orders that predate service-fee removal
           serviceFee: (order as any).serviceFee || 0,
-          tax: (order as any).tax || 0,
+          vat: (order as any).vat || 0,
           currency: order.currency,
           reason: reason || "Customer request",
         });

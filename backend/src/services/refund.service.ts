@@ -19,8 +19,10 @@ export interface RefundResult {
   refundId?: string;
   refundAmount: number;
   nonRefundableAmount: number;
+  // @deprecated legacy — only non-zero on orders that predate service-fee
+  // removal; those are the only orders where anything is non-refundable.
   serviceFee: number;
-  tax: number;
+  vat: number;
   error?: string;
 }
 
@@ -46,9 +48,14 @@ export interface BatchRefundResult {
 
 export class RefundService {
   /**
-   * Calculate refund amount for an order based on cancellation type
-   * Policy: Only ticket price (subtotal) is refundable
-   * Service fee and tax are NOT refundable
+   * Calculate refund amount for an order based on cancellation type.
+   *
+   * Policy: ticket price (subtotal - couponDiscount) AND VAT are refundable
+   * — if the sale is reversed, the tax charged on it is reversed too. Only
+   * `serviceFee` is withheld, and only on legacy orders that predate
+   * service-fee removal (see plan: VAT rename + service-fee removal, Phase
+   * 7) — it's always 0 on new orders, so `nonRefundableAmount` is 0 for
+   * every order created after that change.
    */
   static calculateRefundableAmount(
     order: any,
@@ -57,28 +64,28 @@ export class RefundService {
     refundAmount: number;
     nonRefundableAmount: number;
     serviceFee: number;
-    tax: number;
+    vat: number;
   } {
     if (order.paymentStatus !== "paid") {
-      return { refundAmount: 0, nonRefundableAmount: 0, serviceFee: 0, tax: 0 };
+      return { refundAmount: 0, nonRefundableAmount: 0, serviceFee: 0, vat: 0 };
     }
 
-    // Get the fees from the order
+    // Legacy-only — 0 on every order created after service-fee removal.
     const serviceFee = order.serviceFee || 0;
-    const tax = order.tax || 0;
+    const vat = order.vat || 0;
 
     // Ticket price = subtotal - any coupon discount
     const ticketPrice = order.subtotal - (order.couponDiscount || 0);
 
-    // Non-refundable = serviceFee + tax
-    const nonRefundableAmount = serviceFee + tax;
+    // Only the legacy service fee is withheld; VAT is refunded along with
+    // the ticket price.
+    const nonRefundableAmount = serviceFee;
 
-    // Only ticket price is refundable
     return {
-      refundAmount: Math.max(0, ticketPrice),
-      nonRefundableAmount: nonRefundableAmount,
-      serviceFee: serviceFee,
-      tax: tax,
+      refundAmount: Math.max(0, ticketPrice + vat),
+      nonRefundableAmount,
+      serviceFee,
+      vat,
     };
   }
 
@@ -118,7 +125,7 @@ export class RefundService {
       }
 
       // Calculate refund amount
-      const { refundAmount, nonRefundableAmount, serviceFee, tax } =
+      const { refundAmount, nonRefundableAmount, serviceFee, vat } =
         this.calculateRefundableAmount(order, cancellationType);
 
       if (refundAmount <= 0) {
@@ -200,7 +207,7 @@ export class RefundService {
             originalAmount: order.total,
             refundAmount,
             serviceFee,
-            tax,
+            vat,
             currency: order.currency,
             refundStatus: "completed",
             refundTransactionId: refundId,
@@ -249,7 +256,7 @@ export class RefundService {
         refundAmount,
         nonRefundableAmount,
         serviceFee,
-        tax,
+        vat,
         cancellationType,
       });
 
@@ -297,7 +304,7 @@ export class RefundService {
         refundAmount,
         nonRefundableAmount,
         serviceFee,
-        tax,
+        vat,
       };
     } catch (error: any) {
       await session.abortTransaction();
@@ -308,7 +315,7 @@ export class RefundService {
         refundAmount: 0,
         nonRefundableAmount: 0,
         serviceFee: 0,
-        tax: 0,
+        vat: 0,
         error: error.message,
       };
     } finally {
@@ -412,7 +419,7 @@ export class RefundService {
         refundAmount: 0,
         nonRefundableAmount: 0,
         serviceFee: 0,
-        tax: 0,
+        vat: 0,
         error: "Invalid or non-failed cancellation log",
       };
     }

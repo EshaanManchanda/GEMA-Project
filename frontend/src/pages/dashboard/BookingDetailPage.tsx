@@ -44,8 +44,9 @@ interface BookingDetail {
   qrCode?: string;
   total: number;
   subtotal?: number;
+  // legacy — only non-zero on bookings that predate service-fee removal
   serviceFee?: number;
-  tax?: number;
+  vat?: number;
   currency: string;
   paymentMethod: string;
   paymentStatus: string;
@@ -762,7 +763,7 @@ const BookingDetailPage: React.FC = () => {
               totalAmount={booking.total || 0}
               subtotal={booking.subtotal || 0}
               serviceFee={booking.serviceFee || 0}
-              tax={booking.tax || 0}
+              vat={booking.vat || 0}
               currency={booking.currency?.toUpperCase() || 'AED'}
               onSuccess={() => {
                 fetchBookingDetails(); // Refresh booking details after cancellation

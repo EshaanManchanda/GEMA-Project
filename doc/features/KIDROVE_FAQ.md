@@ -116,7 +116,7 @@ The Vendor Dashboard (`vendorAPI` integration) is your comprehensive command cen
 **2. Financial Analytics & Stripe Integration**
 - **Dashboard Stats**: Instantly check top-level revenue, bookings volume, and performance metrics dynamically loading from platform databases.
 - **Stripe Connect Portal**: Directly initialize your Stripe Connect onboarding. You can track your Connect status, view pending automated payouts, or securely store and validate your own custom Stripe API Keys (Publishable/Secret) if you have opted to manage direct processing.
-- **Fee Transparency**: Instantly click "Check Service Fee" to see what commission split Kidrove will deduct before placing an order.
+- **Fee Transparency**: View your vendor payment info to see what commission rate Kidrove will deduct from your payout for each order. Customers are not charged a separate service fee — they pay the ticket price plus VAT.
 
 **3. Storefront & Profile Customization**
 - **Brand Identity**: Upload your official vector logo and expansive cover images.

@@ -40,7 +40,7 @@ export interface IOrder {
   orderNumber: string;
   items: IOrderItem[];
   subtotal: number;
-  tax: number;
+  vat: number;
   discount: number;
   total: number;
   currency: string;
@@ -52,6 +52,7 @@ export interface IOrder {
   affiliateCode?: string;
   couponCode?: string;
   couponDiscount?: number;
+  // @deprecated legacy — only non-zero on orders that predate service-fee removal
   serviceFee?: number;
 
   // Payment routing fields

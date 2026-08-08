@@ -92,10 +92,11 @@ const BookingConfirmation: React.FC<BookingConfirmationProps> = ({
   const discount = currentBooking?.discountAmount
     ?? (currentBooking as any)?.couponDiscount
     ?? 0;
+  // legacy — only non-zero on bookings that predate service-fee removal
   const serviceFee = currentBooking?.serviceFee ?? 0;
-  const tax = currentBooking?.taxAmount ?? 0;
+  const vat = currentBooking?.vatAmount ?? 0;
   const total = currentBooking?.totalAmount
-    ?? (subtotal - discount + serviceFee + tax);
+    ?? (subtotal - discount + serviceFee + vat);
 
   // Handle sharing
   const handleShare = async () => {
@@ -400,13 +401,15 @@ const BookingConfirmation: React.FC<BookingConfirmationProps> = ({
                     <span>-{event.currency} {discount.toFixed(2)}</span>
                   </div>
                 )}
+                {serviceFee > 0 && (
+                  <div className="flex justify-between">
+                    <span>Service Fee</span>
+                    <span>{event.currency} {serviceFee.toFixed(2)}</span>
+                  </div>
+                )}
                 <div className="flex justify-between">
-                  <span>Service Fee</span>
-                  <span>{event.currency} {serviceFee.toFixed(2)}</span>
-                </div>
-                <div className="flex justify-between">
-                  <span>Tax</span>
-                  <span>{event.currency} {tax.toFixed(2)}</span>
+                  <span>VAT</span>
+                  <span>{event.currency} {vat.toFixed(2)}</span>
                 </div>
                 <div className="border-t pt-2">
                   <div className="flex justify-between font-semibold">

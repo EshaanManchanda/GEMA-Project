@@ -17,8 +17,6 @@ interface SystemSettings {
   defaultLanguage: string;
   timeZone: string;
   currency: string;
-  bookingFeePercentage: number;
-  taxPercentage: number;
   featuredEventCost: number;
   maxImagesPerEvent: number;
   maxEventsPerVendor: number;
@@ -75,6 +73,21 @@ const AdminSettingsPage: React.FC = () => {
   const [isTestingEmail, setIsTestingEmail] = useState<boolean>(false);
   const [emailTestResult, setEmailTestResult] = useState<string>('');
 
+  // VAT rate — lives on AdminRevenueSettings.taxSettings (the object
+  // actually read by booking/order pricing), NOT on SystemSettings. The old
+  // "Tax Rate (%)" input here was bound to a SystemSettings.taxPercentage
+  // field that no calculation ever read, so admins saw a rate that didn't
+  // match what customers were charged. See plan: VAT rename + service-fee
+  // removal, Phase 9.
+  //
+  // The full taxSettings object (not just the rate) is kept in state
+  // because the backend's PUT /admin/settings does `Object.assign(settings,
+  // req.body)` at the top level — sending `{ taxSettings: { vatRate } }`
+  // alone would replace the whole sub-document and wipe out its other
+  // fields (serviceTaxRate, calculationMethod, etc). Saving always sends
+  // the full object back with only vatRate overridden.
+  const [taxSettings, setTaxSettings] = useState<Record<string, any>>({ vatRate: 5 });
+
   // System Settings
   const [systemSettings, setSystemSettings] = useState<SystemSettings>({
     siteName: import.meta.env.VITE_APP_NAME_FULL || 'Kidrove Events',
@@ -86,8 +99,6 @@ const AdminSettingsPage: React.FC = () => {
     defaultLanguage: 'en',
     timeZone: 'UTC',
     currency: 'USD',
-    bookingFeePercentage: 5,
-    taxPercentage: 7.5,
     featuredEventCost: 49.99,
     maxImagesPerEvent: 10,
     maxEventsPerVendor: 50,
@@ -158,8 +169,44 @@ const AdminSettingsPage: React.FC = () => {
       }
     };
 
+    const fetchVatRate = async () => {
+      try {
+        const revenueSettingsResponse = await adminAPI.getSettings();
+        const fetchedTaxSettings = revenueSettingsResponse?.data?.taxSettings;
+        if (fetchedTaxSettings) setTaxSettings(fetchedTaxSettings);
+      } catch (error) {
+        logger.error('Using default VAT rate - API not available:', error);
+      }
+    };
+
     fetchSettings();
+    fetchVatRate();
   }, []);
+
+  const handleVatRateChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const rate = parseFloat(e.target.value);
+    setTaxSettings(prev => ({ ...prev, vatRate: Number.isFinite(rate) ? rate : 0 }));
+  };
+
+  const handleSaveVatRate = async () => {
+    setIsSaving(true);
+    setSaveSuccess(false);
+    setSaveError('');
+    try {
+      const response = await adminAPI.updateSettings({ taxSettings });
+      if (response.success) {
+        setSaveSuccess(true);
+        setTimeout(() => setSaveSuccess(false), 3000);
+      } else {
+        throw new Error(response.message || 'Failed to save VAT rate');
+      }
+    } catch (error: any) {
+      logger.error('Error saving VAT rate:', error);
+      setSaveError(error.message || 'Failed to save VAT rate');
+    } finally {
+      setIsSaving(false);
+    }
+  };
 
   const handleSystemSettingsChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement>) => {
     const { name, value, type } = e.target as HTMLInputElement;
@@ -446,31 +493,30 @@ const AdminSettingsPage: React.FC = () => {
 
                 <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
                   <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1">Booking Fee (%)</label>
-                    <input
-                      type="number"
-                      name="bookingFeePercentage"
-                      value={systemSettings.bookingFeePercentage}
-                      onChange={handleSystemSettingsChange}
-                      min="0"
-                      max="100"
-                      step="0.1"
-                      className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-1 focus:ring-primary bg-white text-gray-900"
-                    />
-                  </div>
-
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1">Tax Rate (%)</label>
-                    <input
-                      type="number"
-                      name="taxPercentage"
-                      value={systemSettings.taxPercentage}
-                      onChange={handleSystemSettingsChange}
-                      min="0"
-                      max="100"
-                      step="0.1"
-                      className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-1 focus:ring-primary bg-white text-gray-900"
-                    />
+                    <label className="block text-sm font-medium text-gray-700 mb-1">VAT Rate (%)</label>
+                    <div className="flex gap-2">
+                      <input
+                        type="number"
+                        name="vatRate"
+                        value={taxSettings.vatRate ?? 5}
+                        onChange={handleVatRateChange}
+                        min="0"
+                        max="100"
+                        step="0.1"
+                        className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-1 focus:ring-primary bg-white text-gray-900"
+                      />
+                      <button
+                        type="button"
+                        onClick={handleSaveVatRate}
+                        disabled={isSaving}
+                        className="px-3 py-2 text-sm font-medium text-white bg-primary rounded-md hover:opacity-90 disabled:opacity-50 whitespace-nowrap"
+                      >
+                        Save
+                      </button>
+                    </div>
+                    <p className="mt-1 text-xs text-gray-500">
+                      Rate actually charged on bookings — this is the single source of truth for VAT.
+                    </p>
                   </div>
 
                   <div>

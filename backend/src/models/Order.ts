@@ -46,7 +46,7 @@ export interface IOrder extends Document {
   orderNumber: string;
   items: IOrderItem[];
   subtotal: number;
-  tax: number;
+  vat: number;
   discount: number;
   total: number;
   currency: string;
@@ -67,9 +67,13 @@ export interface IOrder extends Document {
   affiliateCode?: string;
   couponCode?: string;
   couponDiscount?: number;
+  // @deprecated legacy — only non-zero on orders written before service-fee
+  // removal. Never set by new bookings; kept so historical orders still show
+  // what was actually charged.
   serviceFee?: number;
+  // @deprecated legacy — see serviceFee.
   serviceFeeRate?: number;
-  taxRate?: number;
+  vatRate?: number;
 
   // Vendor management fields
   vendorNotes?: string;
@@ -310,10 +314,10 @@ const orderSchema = new Schema<IOrder>(
       required: [true, "Subtotal is required"],
       min: [0, "Subtotal cannot be negative"],
     },
-    tax: {
+    vat: {
       type: Number,
       default: 0,
-      min: [0, "Tax cannot be negative"],
+      min: [0, "VAT cannot be negative"],
     },
     discount: {
       type: Number,
@@ -393,22 +397,26 @@ const orderSchema = new Schema<IOrder>(
       type: Number,
       min: [0, "Coupon discount cannot be negative"],
     },
+    // @deprecated legacy — service fees are no longer charged on new orders.
+    // Kept so historical orders still show what was actually charged; never
+    // written by new bookings.
     serviceFee: {
       type: Number,
       default: 0,
       min: [0, "Service fee cannot be negative"],
     },
+    // @deprecated legacy — see serviceFee.
     serviceFeeRate: {
       type: Number,
-      default: 5,
+      default: 0,
       min: [0, "Service fee rate cannot be negative"],
       max: [100, "Service fee rate cannot exceed 100%"],
     },
-    taxRate: {
+    vatRate: {
       type: Number,
       default: 5,
-      min: [0, "Tax rate cannot be negative"],
-      max: [100, "Tax rate cannot exceed 100%"],
+      min: [0, "VAT rate cannot be negative"],
+      max: [100, "VAT rate cannot exceed 100%"],
     },
     // Vendor management fields
     vendorNotes: {
@@ -707,10 +715,15 @@ orderSchema.pre("save", async function (next) {
     (this.paymentIntentId as string)?.startsWith("free_pi_");
 
   if (!isFreeOrder) {
-    // Calculate total (subtotal + tax - discount - couponDiscount)
+    // Calculate total (subtotal + vat - discount - couponDiscount).
+    // `serviceFee` is legacy-only (see field comment) — it's 0 on every new
+    // order, so this term is inert going forward. It's kept so that a
+    // legacy order re-saved after service-fee removal still recomputes to
+    // its original, already-charged total instead of silently dropping the
+    // fee the customer actually paid.
     this.total =
       this.subtotal +
-      (this.tax || 0) +
+      (this.vat || 0) +
       (this.serviceFee || 0) -
       (this.discount || 0) -
       (this.couponDiscount || 0);
@@ -964,7 +977,8 @@ orderSchema.methods.updateCommissionTracking =
   };
 
 // Method to calculate refund amount based on cancellation policy
-// Policy: Event price is refundable, 10% service charge is NOT refundable
+// Policy: event price AND VAT are refundable; a legacy service fee (0 on
+// every order created after service-fee removal) is NOT refundable.
 // Customer can only cancel 24 hours or more before event
 orderSchema.methods.calculateRefundAmount = function (
   cancellationType?:
@@ -994,12 +1008,13 @@ orderSchema.methods.calculateRefundAmount = function (
     return 0; // No refund if less than 24 hours before event
   }
 
-  // Calculate the event price (subtotal) without the service fee
+  // Event price (ticket price, net of coupon) plus VAT are refundable.
   const eventPrice = this.subtotal - (this.couponDiscount || 0);
+  const vat = this.vat || 0;
 
-  // Service fee (10%) is NOT refundable
-  // Refund only the event price portion
-  const refundAmount = eventPrice;
+  // serviceFee is legacy-only (0 on every order since service-fee removal)
+  // and is never refunded — simply not added here.
+  const refundAmount = eventPrice + vat;
 
   return Math.max(0, refundAmount);
 };

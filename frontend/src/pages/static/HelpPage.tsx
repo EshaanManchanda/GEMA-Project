@@ -64,7 +64,7 @@ const HelpPage: React.FC = () => {
       description: 'Payment methods, invoices, and billing issues',
       articles: [
         'Accepted payment methods',
-        'Understanding service fees',
+        'Understanding VAT charges',
         'Requesting a refund',
         'Updating payment information',
         'Troubleshooting payment issues'

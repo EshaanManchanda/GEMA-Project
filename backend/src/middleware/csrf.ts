@@ -11,6 +11,31 @@ const STATE_CHANGING_METHODS = new Set(["POST", "PUT", "PATCH", "DELETE"]);
 // they carry no CSRF cookie/header contract and must stay exempt.
 const EXEMPT_PREFIXES = ["/api/payments/webhook", "/api/webhooks/cunnekt"];
 
+// Auth-bootstrap endpoints — none of these run `authenticate` (see
+// routes/auth.routes.ts) and none of them rely on trusting an ambient
+// session cookie, so CSRF doesn't apply to them:
+//   - login/register/refresh mint a NEW session and can't be expected to
+//     already hold a CSRF token for it
+//   - forgot/reset-password and verify-email are pre-auth OTP flows keyed
+//     by email+code in the body, not by cookie
+// Critically, a browser can carry a stale/expired accessToken cookie from a
+// previous session even while hitting these endpoints (nothing clears it
+// client-side just because it expired) — gating on cookie *presence* rather
+// than the route's actual trust model would 403 login/refresh forever for
+// that browser, with no way to recover since refresh-token would 403 too.
+const EXEMPT_EXACT_PATHS = new Set([
+  "/api/auth/register",
+  "/api/auth/register-admin",
+  "/api/auth/login",
+  "/api/auth/logout",
+  "/api/auth/refresh-token",
+  "/api/auth/forgot-password",
+  "/api/auth/reset-password",
+  "/api/auth/verify-email",
+  "/api/auth/resend-verification-email",
+  "/api/auth/firebase",
+]);
+
 const cookieSameSite = (): "lax" | "none" | "strict" =>
   (process.env.COOKIE_SAMESITE as "lax" | "none" | "strict") || "lax";
 
@@ -64,6 +89,10 @@ export const verifyCsrfToken = (
   }
 
   if (EXEMPT_PREFIXES.some((prefix) => req.path.startsWith(prefix))) {
+    return next();
+  }
+
+  if (EXEMPT_EXACT_PATHS.has(req.path)) {
     return next();
   }
 

@@ -28,6 +28,24 @@ const RETRY_MULTIPLIER = 2;
 // Request deduplication
 const pendingRequests = new Map<string, Promise<any>>();
 
+// Shared in-flight token-refresh promise. Both the 401 (expired access token)
+// and 403 (missing/stale CSRF token) retry paths call this — without it,
+// several requests failing at once (e.g. fire-and-forget analytics calls
+// firing together on page load) would each dispatch their own refresh,
+// stampeding the endpoint and tripping its rate limiter.
+let refreshPromise: Promise<unknown> | null = null;
+const refreshAuthSession = (): Promise<unknown> => {
+  if (!refreshPromise) {
+    refreshPromise = store
+      .dispatch(refreshToken())
+      .unwrap()
+      .finally(() => {
+        refreshPromise = null;
+      });
+  }
+  return refreshPromise;
+};
+
 // Helper function to create request key for deduplication
 const createRequestKey = (url: string, method: string, params?: any): string => {
   return `${method.toUpperCase()}:${url}:${JSON.stringify(params || {})}`;
@@ -116,7 +134,7 @@ api.interceptors.response.use(
         logger.debug('[API] 401 error - Attempting token refresh via httpOnly cookie...');
 
         // Attempt to refresh token (refreshToken cookie is sent automatically)
-        await store.dispatch(refreshToken()).unwrap();
+        await refreshAuthSession();
 
         logger.debug('[API] Token refresh successful - Retrying original request...');
 
@@ -176,6 +194,28 @@ api.interceptors.response.use(
         }
 
         return Promise.reject(refreshError);
+      }
+    }
+
+    // Handle a CSRF-token rejection with a one-time refresh + retry. Covers
+    // sessions that predate the CSRF rollout: the httpOnly accessToken
+    // cookie is still valid, but this browser never received an XSRF-TOKEN
+    // cookie, so every mutating request would otherwise 403 forever (this
+    // only ever hits a 401 refresh path, never a 403 one). Refreshing
+    // re-issues XSRF-TOKEN via setAuthCookies on the backend.
+    if (
+      error.response?.status === 403 &&
+      error.response?.data?.message === 'Invalid or missing CSRF token.' &&
+      !originalRequest._csrfRetry
+    ) {
+      originalRequest._csrfRetry = true;
+      try {
+        logger.debug('[API] CSRF token missing/stale - refreshing session to mint a fresh one...');
+        await refreshAuthSession();
+        return api(originalRequest);
+      } catch (refreshError) {
+        logger.error('[API] CSRF-recovery refresh failed:', refreshError);
+        return Promise.reject(error);
       }
     }
 

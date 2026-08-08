@@ -156,7 +156,7 @@ sequenceDiagram
     RS->>RS: startSession() + startTransaction()
     RS->>DB: Order.findById(orderId)
     RS->>RS: calculateRefundableAmount(order, cancellationType)
-    Note over RS: Only subtotal is refundable\nserviceFee + tax = non-refundable
+    Note over RS: subtotal + vat are refundable\nserviceFee (legacy only) = non-refundable
     RS->>PS: PaymentService.getStripeInstance(order)
     PS-->>RS: stripe instance (platform or vendor)
     RS->>Stripe: stripe.refunds.create({paymentIntent, amount: refundableInFils})
@@ -169,8 +169,8 @@ sequenceDiagram
 ```
 
 **Refund policy:**
-- Refundable: `order.subtotal - couponDiscount`
-- Non-refundable: `serviceFee + tax`
+- Refundable: `order.subtotal - couponDiscount + order.vat`
+- Non-refundable: `serviceFee` (legacy only — 0 on every order created after service-fee removal)
 - `order.paymentStatus !== 'paid'` → `refundAmount: 0`
 
 ---
@@ -193,7 +193,7 @@ flowchart LR
 
 | Model | Purpose |
 |-------|---------|
-| `Order` | Core order record — paymentStatus, paymentIntentId, subtotal, serviceFee, tax |
+| `Order` | Core order record — paymentStatus, paymentIntentId, subtotal, vat, serviceFee (legacy) |
 | `Payment` | Stripe payment record — paymentIntentId, chargeId, status |
 | `CommissionTransaction` | Platform commission per order — linked to Order, Vendor, CommissionConfig |
 | `RevenueTransaction` | Full audit log of all money movement |

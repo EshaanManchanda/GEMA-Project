@@ -110,7 +110,7 @@ export class QueueService {
           refundAmount: d.refundAmount,
           nonRefundableAmount: d.nonRefundableAmount,
           serviceFee: d.serviceFee,
-          tax: d.tax,
+          vat: d.vat,
           currency: d.currency,
           reason: d.reason,
         });
@@ -126,7 +126,7 @@ export class QueueService {
           nonRefundableAmount: d.nonRefundableAmount,
           currency: d.currency,
           serviceFee: d.serviceFee,
-          tax: d.tax,
+          vat: d.vat,
         });
       case "refundProcessed":
         return emailService.sendRefundProcessedEmail({

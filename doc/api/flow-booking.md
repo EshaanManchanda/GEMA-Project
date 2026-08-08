@@ -78,9 +78,8 @@ sequenceDiagram
         CS-->>BC: { discountAmount, coupon.code }
     end
 
-    BC->>BC: serviceFee = (subtotal - couponDiscount) * serviceFeeRate / 100
-    BC->>BC: tax = (subtotal - couponDiscount + serviceFee) * taxRate / 100
-    BC->>BC: total = subtotal - couponDiscount + tax + serviceFee
+    BC->>BC: vat = (subtotal - couponDiscount) * vatRate / 100
+    BC->>BC: total = subtotal - couponDiscount + vat
 
     BC->>DB: new Order({ status: pending, paymentStatus: pending, ... }).save(session)
     DB-->>BC: Saved Order (_id, orderNumber GM-XXXXX)
@@ -211,7 +210,7 @@ flowchart TD
     Y -- Yes --> Z[Apply couponDiscount]
     W -- No --> Z2[couponDiscount = 0]
 
-    Z --> AA[Calculate fees:\nserviceFee = subtotal-discount × rate\ntax = base+fee × taxRate\ntotal = subtotal - discount + tax + fee]
+    Z --> AA[Calculate VAT:\nvat = subtotal-discount × vatRate\ntotal = subtotal - discount + vat]
     Z2 --> AA
 
     AA --> AB[Start Mongoose session\nBegin transaction]
@@ -287,16 +286,18 @@ For events with limited capacity, the controller uses a single `findOneAndUpdate
 
 **Step 5 — Payment routing determination**
 
-`PaymentService.getPaymentRouting()` inspects the vendor or teacher's payment settings. If the vendor uses their own Stripe account (`CUSTOM_STRIPE` mode) and has an active subscription, payments go directly to their account with zero platform commission. Otherwise, the platform Stripe account is used and a commission (default 5%) is charged as a service fee.
+`PaymentService.getPaymentRouting()` inspects the vendor or teacher's payment settings. If the vendor uses their own Stripe account (`CUSTOM_STRIPE` mode) and has an active subscription, payments go directly to their account with zero platform commission. Otherwise, the platform Stripe account is used and a commission (default 5%) is deducted from the vendor's payout — this commission is never charged to the customer.
 
-**Step 6 — Fee calculation**
+**Step 6 — Pricing calculation**
 
-All fees are calculated in AED. The breakdown is:
+All amounts are calculated in AED via the shared `calculateOrderPricing()` (`backend/src/services/pricing.service.ts`), the single source of truth also used by `order.controller.ts`. The breakdown is:
 - `subtotal = unitPrice × seats`
 - `couponDiscount` — applied if a valid coupon code was provided
-- `serviceFee = (subtotal - couponDiscount) × serviceFeeRate / 100`
-- `tax = (subtotal - couponDiscount + serviceFee) × taxRate / 100`
-- `total = subtotal - couponDiscount + tax + serviceFee`
+- `taxableBase = subtotal - couponDiscount`
+- `vat = taxableBase × vatRate / 100`
+- `total = taxableBase + vat`
+
+No service fee is charged to the customer. The platform earns solely via vendor-side commission, computed separately in `commission.service.ts` against `(subtotal - couponDiscount)` — excluding VAT.
 
 **Step 7 — Order creation and payment intent**
 
@@ -346,7 +347,7 @@ HTTP 200 is returned with `bookingId` (the human-readable order number, e.g. `GM
 
 **GET /api/bookings/:id** — Fetch a single booking by MongoDB `_id` or `orderNumber`. Scoped to the authenticated user.
 
-**PUT /api/bookings/:id/cancel** — Cancels the booking. Applies the 24-hour cancellation policy (see edge cases below). Initiates a Stripe refund for the eligible amount if a `paymentIntentId` exists. The service fee is non-refundable by policy.
+**PUT /api/bookings/:id/cancel** — Cancels the booking. Applies the 24-hour cancellation policy (see edge cases below). Initiates a Stripe refund for the eligible amount (ticket price + VAT) via `Order.calculateRefundAmount()` if a `paymentIntentId` exists. A legacy service fee, if present on the order, is not refundable.
 
 ---
 
@@ -391,10 +392,10 @@ Sending the vendor notification email is wrapped in a `try/catch`. Any failure i
 ### Refund Policy
 
 `order.calculateRefundAmount()` implements the following policy:
-- Paid user-requested cancellations more than 24 hours before event: refund = `subtotal - couponDiscount` (event price only)
+- Paid user-requested cancellations more than 24 hours before event: refund = `subtotal - couponDiscount + vat` (event price + VAT)
 - Paid user-requested cancellations within 24 hours: refund = 0
-- Service fee is never refunded (`serviceFeeRefunded` field tracks this)
-- Admin or event-cancelled orders: full event price refunded regardless of timing
+- A legacy service fee (0 on every order created after service-fee removal) is never refunded (`serviceFeeRefunded` field tracks this)
+- Admin or event-cancelled orders: full event price + VAT refunded regardless of timing
 
 ### Multi-Currency Display vs. Charge
 
@@ -436,14 +437,14 @@ The full order document. All active booking operations read and write this model
 | `orderNumber` | String | Auto-generated: `GM-<timestamp36>-<random4>` |
 | `items[]` | OrderItem[] | min 1 item |
 | `subtotal` | Number | Computed pre-save from items |
-| `tax` | Number | Default 0 |
-| `serviceFee` | Number | Platform commission |
-| `serviceFeeRate` | Number | Default 5% |
-| `taxRate` | Number | Default 5% |
+| `vat` | Number | Default 0 |
+| `vatRate` | Number | Default 5% |
+| `serviceFee` | Number | @deprecated legacy — 0 on every order created after service-fee removal |
+| `serviceFeeRate` | Number | @deprecated legacy — see `serviceFee` |
 | `discount` | Number | Default 0 |
 | `couponCode` | String | Optional |
 | `couponDiscount` | Number | min 0 |
-| `total` | Number | Computed pre-save: subtotal + tax + serviceFee - discount - couponDiscount |
+| `total` | Number | Computed pre-save: subtotal + vat + serviceFee - discount - couponDiscount |
 | `currency` | enum | `INR`, `AED`, `USD`, `EUR`, `GBP`, `EGP`, `CAD` — default `INR` |
 | `chargedCurrency` | enum | Always `AED` for this implementation |
 | `chargedAmount` | Number | Actual amount charged in AED |

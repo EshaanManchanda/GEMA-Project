@@ -1,5 +1,7 @@
 // Coupon utility functions for consistent discount calculations
 
+import { calculateOrderPricing, resolveVatRate } from './pricing';
+
 export interface CouponInfo {
   code: string;
   discountPercentage: number;
@@ -85,18 +87,21 @@ export const calculateDiscount = (couponCode: string, subtotal: number) => {
 };
 
 /**
- * Calculates final pricing with discount applied
+ * Calculates final pricing with discount applied. Delegates the actual
+ * subtotal/VAT/total math to utils/pricing.ts (calculateOrderPricing) — the
+ * single source of truth shared with the backend formula — rather than
+ * computing it locally. Service fees are no longer charged to the customer.
  * @param subtotal - The subtotal amount
  * @param couponCode - The coupon code (optional)
- * @param serviceFeeRate - The service fee rate (0-100, default 5)
- * @param hasServiceFee - Whether service fee applies (default true)
+ * @param vatRate - The VAT rate (0-100), server-provided when available
+ * @param currency - ISO currency code (default 'AED')
  * @returns Complete pricing breakdown
  */
 export const calculatePricingWithDiscount = (
   subtotal: number,
   couponCode?: string,
-  serviceFeeRate: number = 5,
-  hasServiceFee: boolean = true
+  vatRate: number = resolveVatRate(undefined),
+  currency: string = 'AED'
 ) => {
   const discountResult = couponCode ? calculateDiscount(couponCode, subtotal) : {
     discountAmount: 0,
@@ -105,25 +110,22 @@ export const calculatePricingWithDiscount = (
     isValid: false
   };
 
-  // Calculate service fee if applicable
-  const serviceFee = hasServiceFee ? (subtotal * serviceFeeRate) / 100 : 0;
-
-  // Calculate tax on subtotal + service fee - discount
-  const taxableAmount = Math.max(0, subtotal + serviceFee - discountResult.discountAmount);
-  const tax = taxableAmount * 0.05; // 5% tax
-
-  const total = Math.max(0, subtotal + serviceFee - discountResult.discountAmount + tax);
+  const { vat, total } = calculateOrderPricing({
+    subtotal,
+    couponDiscount: discountResult.discountAmount,
+    vatRate,
+    currency,
+    isFree: subtotal === 0,
+  });
 
   return {
     subtotal,
     discount: discountResult.discountAmount,
     discountPercentage: discountResult.discountPercentage,
-    serviceFee,
-    tax,
+    vat,
     total,
     coupon: discountResult.coupon,
     isValidCoupon: discountResult.isValid,
     couponError: discountResult.error || null,
-    hasServiceFee
   };
 };

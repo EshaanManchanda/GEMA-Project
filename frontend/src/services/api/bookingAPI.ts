@@ -17,6 +17,51 @@ export interface ConfirmBookingData {
   participants?: BookingParticipant[];
 }
 
+/**
+ * Shape of POST /bookings/initiate's `data` (see
+ * backend/src/controllers/booking.controller.ts, initiateBooking response
+ * and the existing-pending-order idempotency branch). Typed so a backend
+ * field rename (e.g. tax -> vat) is a compile error here instead of a
+ * silent `undefined` at the call site — see BookingPage.tsx / PaymentForm.tsx.
+ */
+export interface InitiateBookingResponse {
+  bookingId: string;
+  orderId: string;
+  paymentIntentId: string | null;
+  clientSecret: string | null;
+  amount: number;
+  subtotal: number;
+  vat: number;
+  vatRate: number;
+  couponCode?: string;
+  couponDiscount: number;
+  currency: string;
+  expiresAt: string;
+  alreadyConfirmed?: boolean;
+}
+
+/**
+ * Shape of POST /bookings/confirm's `data` (see
+ * booking.controller.ts confirmBooking response). `serviceFee` is
+ * legacy-only — 0 on every booking confirmed after service-fee removal.
+ */
+export interface ConfirmBookingResponse {
+  bookingId: string;
+  orderId: string;
+  eventTitle: string;
+  date: string;
+  seats: number;
+  amountPaid: number;
+  subtotal: number;
+  serviceFee: number;
+  vat: number;
+  couponDiscount: number;
+  currency: string;
+  status: string;
+  paymentStatus: string;
+  tickets: any[];
+}
+
 export interface BookingParticipant {
   name: string;
   email: string;
@@ -41,22 +86,22 @@ export interface BookingParticipant {
 
 const bookingAPI = {
   // New booking flow methods to match backend routes
-  initiateBooking: async (bookingData: InitiateBookingData) => {
+  initiateBooking: async (bookingData: InitiateBookingData): Promise<InitiateBookingResponse> => {
     try {
       const response = await ApiService.post('/bookings/initiate', bookingData);
       logApiResponse('POST /bookings/initiate', response);
-      return extractApiData(response);
+      return extractApiData<InitiateBookingResponse>(response);
     } catch (error) {
       logApiResponse('POST /bookings/initiate', null, error);
       throw error;
     }
   },
 
-  confirmBooking: async (confirmData: ConfirmBookingData) => {
+  confirmBooking: async (confirmData: ConfirmBookingData): Promise<ConfirmBookingResponse> => {
     try {
       const response = await ApiService.post('/bookings/confirm', confirmData);
       logApiResponse('POST /bookings/confirm', response);
-      return extractApiData(response);
+      return extractApiData<ConfirmBookingResponse>(response);
     } catch (error) {
       logApiResponse('POST /bookings/confirm', null, error);
       throw error;

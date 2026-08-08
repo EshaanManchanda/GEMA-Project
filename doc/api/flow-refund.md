@@ -10,8 +10,8 @@
 | Component | Refundable? | Notes |
 |-----------|-------------|-------|
 | Ticket price (subtotal − coupon) | Yes | Full amount refunded |
-| Service fee | No | Platform revenue, non-refundable |
-| Tax | No | Non-refundable |
+| VAT | Yes | Refunded along with the ticket price — if the sale is reversed, the tax on it is reversed too |
+| Service fee | No (legacy only) | Only non-zero on orders that predate service-fee removal; 0 on every order since |
 | Coupon discount | N/A | Already deducted from subtotal |
 
 **Condition:** `order.paymentStatus === 'paid'` required. Any other status returns `refundAmount: 0`.
@@ -24,11 +24,11 @@
 flowchart TD
     A[Order] --> B{paymentStatus == 'paid'?}
     B -->|No| C[Return: refundAmount=0, everything=0]
-    B -->|Yes| D[serviceFee = order.serviceFee or 0]
-    D --> E[tax = order.tax or 0]
+    B -->|Yes| D[serviceFee = order.serviceFee or 0 legacy only]
+    D --> E[vat = order.vat or 0]
     E --> F[ticketPrice = order.subtotal - couponDiscount]
-    F --> G[nonRefundableAmount = serviceFee + tax]
-    G --> H[refundAmount = Math.max 0, ticketPrice]
+    F --> G[nonRefundableAmount = serviceFee]
+    G --> H[refundAmount = Math.max 0, ticketPrice + vat]
     H --> I[Return RefundCalculation]
 ```
 
@@ -59,7 +59,7 @@ sequenceDiagram
     RS->>Mongo: Order.findByIdAndUpdate({paymentStatus:'refunded', refundId, refundedAt})
     RS->>Mongo: CancellationLog.create({orderId, eventId, userId, reason, refundAmount, initiatedBy, cancellationType})
     RS->>Mongo: commitTransaction()
-    RS-->>Initiator: RefundResult {success:true, refundId, refundAmount, nonRefundableAmount, serviceFee, tax}
+    RS-->>Initiator: RefundResult {success:true, refundId, refundAmount, nonRefundableAmount, serviceFee, vat}
 ```
 
 ---

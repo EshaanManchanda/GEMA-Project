@@ -10,8 +10,9 @@ interface CancelOrderModalProps {
   eventTitle: string;
   eventDate: Date | string;
   totalAmount: number;
-  serviceFee: number;
-  tax?: number;
+  // legacy — only non-zero on orders that predate service-fee removal
+  serviceFee?: number;
+  vat?: number;
   subtotal: number;
   currency: string;
   onSuccess?: () => void;
@@ -22,8 +23,8 @@ interface CancellationResult {
   orderNumber: string;
   refundAmount: number;
   nonRefundableAmount: number;
-  serviceFee: number;
-  tax: number;
+  serviceFee?: number;
+  vat: number;
   refundId?: string;
   message: string;
 }
@@ -36,8 +37,8 @@ const CancelOrderModal: React.FC<CancelOrderModalProps> = ({
   eventTitle,
   eventDate,
   totalAmount: _totalAmount,
-  serviceFee,
-  tax = 0,
+  serviceFee = 0,
+  vat = 0,
   subtotal,
   currency,
   onSuccess,
@@ -50,10 +51,10 @@ const CancelOrderModal: React.FC<CancelOrderModalProps> = ({
   const [canCancel, setCanCancel] = useState(true);
   const [cantCancelReason, setCantCancelReason] = useState<string | null>(null);
 
-  // Calculate refund amount (subtotal is the ticket price, which is refundable)
-  // Non-refundable = serviceFee + tax
-  const refundAmount = subtotal;
-  const nonRefundableAmount = serviceFee + tax;
+  // VAT is refundable along with the ticket price; only a legacy serviceFee
+  // (0 on every order created after service-fee removal) is withheld.
+  const refundAmount = subtotal + vat;
+  const nonRefundableAmount = serviceFee;
 
   // Check if cancellation is allowed (24 hours before event)
   useEffect(() => {
@@ -176,17 +177,13 @@ const CancelOrderModal: React.FC<CancelOrderModalProps> = ({
                       <h4 className="text-sm font-medium text-green-800">Refund Breakdown</h4>
                       <dl className="mt-2 space-y-1 text-sm">
                         <div className="flex justify-between">
-                          <dt className="text-green-700">Ticket Price (Refundable):</dt>
+                          <dt className="text-green-700">Ticket Price + VAT (Refundable):</dt>
                           <dd className="font-bold text-green-800">{currency} {refundAmount.toFixed(2)}</dd>
                         </div>
-                        <div className="flex justify-between">
-                          <dt className="text-gray-500">Service Fee:</dt>
-                          <dd className="text-gray-600">{currency} {serviceFee.toFixed(2)}</dd>
-                        </div>
-                        {tax > 0 && (
+                        {serviceFee > 0 && (
                           <div className="flex justify-between">
-                            <dt className="text-gray-500">Tax:</dt>
-                            <dd className="text-gray-600">{currency} {tax.toFixed(2)}</dd>
+                            <dt className="text-gray-500">Service Fee:</dt>
+                            <dd className="text-gray-600">{currency} {serviceFee.toFixed(2)}</dd>
                           </div>
                         )}
                         <div className="flex justify-between border-t border-gray-200 pt-1 mt-1">
@@ -203,7 +200,7 @@ const CancelOrderModal: React.FC<CancelOrderModalProps> = ({
                           <h3 className="text-sm font-medium text-yellow-800">Please Note</h3>
                           <div className="mt-2 text-sm text-yellow-700">
                             <ul className="list-disc space-y-1 pl-5">
-                              <li>Service fee and tax are non-refundable</li>
+                              {serviceFee > 0 && <li>Service fee is non-refundable</li>}
                               <li>Refunds take 5-10 business days to process</li>
                               <li>You will receive a confirmation email</li>
                             </ul>
@@ -254,7 +251,7 @@ const CancelOrderModal: React.FC<CancelOrderModalProps> = ({
                         <dd className="font-bold text-green-600">{currency} {result.refundAmount.toFixed(2)}</dd>
                       </div>
                       <div className="flex justify-between">
-                        <dt className="text-gray-500">Non-refundable (Fees + Tax):</dt>
+                        <dt className="text-gray-500">Non-refundable:</dt>
                         <dd className="text-gray-600">{currency} {result.nonRefundableAmount.toFixed(2)}</dd>
                       </div>
                       {result.refundId && (

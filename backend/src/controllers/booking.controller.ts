@@ -17,6 +17,7 @@ import EventModel from "../models/Event";
 import AdminRevenueSettings from "../models/AdminRevenueSettings";
 import { AppError } from "../middleware/index";
 import { PaymentService } from "../services/payment.service";
+import { calculateOrderPricing, resolveVatRate } from "../services/pricing.service";
 import { config, logger } from "../config/index";
 import redisClient from "../config/redis";
 import { generateQRCode, generateSecureQRData } from "../utils/qrcode";
@@ -183,10 +184,8 @@ export const initiateBooking = async (
           clientSecret: orderAny.paymentIntentClientSecret ?? null,
           amount: orderAny.total,
           subtotal: orderAny.subtotal,
-          serviceFee: orderAny.serviceFee,
-          serviceFeeRate: orderAny.serviceFeeRate,
-          tax: orderAny.tax,
-          taxRate: orderAny.taxRate,
+          vat: orderAny.vat,
+          vatRate: orderAny.vatRate,
           couponDiscount: orderAny.couponDiscount || 0,
           currency: orderAny.currency || "AED",
           alreadyConfirmed: false,
@@ -362,11 +361,11 @@ export const initiateBooking = async (
       0,
     );
 
-    // adminSettings already fetched in parallel above
-    const serviceFeeRate = paymentRouting.usesVendorStripe
-      ? 0
-      : adminSettings?.defaultCommissionRate || 5;
-    const taxRate = adminSettings?.taxSettings?.vatRate || 5;
+    // adminSettings already fetched in parallel above.
+    // Service fees are no longer charged to the customer (see plan: VAT
+    // rename + service-fee removal) — the platform still earns via
+    // vendor-side commission, computed separately in commission.service.ts.
+    const vatRate = resolveVatRate(adminSettings?.taxSettings?.vatRate);
 
     // Calculate total amount (all in AED)
     // Calculate total amount (all in AED)
@@ -431,15 +430,13 @@ export const initiateBooking = async (
       }
     }
 
-    const serviceFee = isFreeEvent
-      ? 0
-      : (subtotal - couponDiscount) * (serviceFeeRate / 100);
-    const tax = isFreeEvent
-      ? 0
-      : (subtotal - couponDiscount + serviceFee) * (taxRate / 100);
-    const total = isFreeEvent
-      ? 0
-      : subtotal - couponDiscount + tax + serviceFee;
+    const { vat, total } = calculateOrderPricing({
+      subtotal,
+      couponDiscount,
+      vatRate,
+      currency: "AED",
+      isFree: isFreeEvent,
+    });
 
     // Use Mongoose transaction for order + payment intent
     const session = await mongoose.startSession();
@@ -464,10 +461,8 @@ export const initiateBooking = async (
           },
         ],
         subtotal,
-        tax,
-        serviceFee,
-        serviceFeeRate,
-        taxRate,
+        vat,
+        vatRate,
         total,
         currency: "AED",
         chargedCurrency: "AED",
@@ -567,10 +562,8 @@ export const initiateBooking = async (
           clientSecret: paymentSession.clientSecret,
           amount: total,
           subtotal,
-          serviceFee,
-          serviceFeeRate,
-          tax,
-          taxRate,
+          vat,
+          vatRate,
           couponCode: validatedCouponCode,
           couponDiscount,
           currency: "AED",
@@ -1253,8 +1246,9 @@ export const confirmBooking = async (
         seats: order.items.reduce((sum, item) => sum + item.quantity, 0),
         amountPaid: order.total,
         subtotal: (order as any).subtotal || 0,
+        // legacy — only non-zero on orders that predate service-fee removal
         serviceFee: (order as any).serviceFee || 0,
-        tax: (order as any).tax || 0,
+        vat: (order as any).vat || 0,
         couponDiscount: (order as any).couponDiscount || 0,
         currency: order.currency,
         status: order.status,
@@ -1439,8 +1433,9 @@ export const cancelBooking = async (
           orderNumber: order.orderNumber,
           refundAmount,
           nonRefundableAmount: order.total - refundAmount,
+          // legacy — only non-zero on orders that predate service-fee removal
           serviceFee: (order as any).serviceFee || 0,
-          tax: (order as any).tax || 0,
+          vat: (order as any).vat || 0,
           currency: order.currency,
           reason: reason || "Customer request",
         });

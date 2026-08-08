@@ -216,8 +216,8 @@ The platform provides the following high-level capabilities:
 - **C-004:** JWT clock tolerance is fixed at 60 seconds to accommodate server time-sync variance.
 - **C-005:** The charged currency is always INR or AED depending on the Stripe account in use; display currency may differ and is converted via exchange rates.
 - **C-006:** Supported currencies are: AED, INR, USD, EUR, GBP, EGP, CAD.
-- **C-007:** The default platform commission rate is 5% of order total.
-- **C-008:** The service fee (applied to customer orders) is non-refundable on customer-initiated cancellations.
+- **C-007:** The default platform commission rate is 5% of the order subtotal net of coupon discount (excludes VAT) — deducted from the vendor's payout, never charged to the customer.
+- **C-008:** A legacy per-order service fee field is retained for historical orders only; it is not charged on any order created after service-fee removal and is non-refundable where present.
 - **C-009:** Customers may cancel orders only up to 24 hours before the earliest event in the order.
 - **C-010:** Media assets use Cloudinary in production; local Multer is used for transit only.
 - **C-011:** The BullMQ worker process must run in parallel with the main server for background jobs to execute.
@@ -372,7 +372,7 @@ Requirements are identified by the format `FR-[DOMAIN]-[NNN]`.
 
 **FR-ORD-002:** The system shall auto-generate a unique order number in the format `GM-{timestamp}-{random}` on first save.
 
-**FR-ORD-003:** The system shall calculate the order subtotal as the sum of all item total prices. The order total shall equal: `subtotal + tax + serviceFee - discount - couponDiscount`. The total shall never be negative.
+**FR-ORD-003:** The system shall calculate the order subtotal as the sum of all item total prices. The order total shall equal: `subtotal + vat + serviceFee - discount - couponDiscount` (`serviceFee` is 0 on every order created after service-fee removal, retained only for historical orders). The total shall never be negative.
 
 **FR-ORD-004:** Orders shall record a billing address including: first name, last name, email, phone, address, city, state, zip code, and country.
 
@@ -400,9 +400,9 @@ Requirements are identified by the format `FR-[DOMAIN]-[NNN]`.
 
 **FR-ORD-014:** The cancellation type shall be recorded: `user_requested`, `event_cancelled`, or `admin_cancelled`.
 
-**FR-ORD-015:** The refund amount shall be calculated as the event price portion (subtotal minus coupon discount). The service fee shall not be refunded on customer-initiated cancellations.
+**FR-ORD-015:** The refund amount shall be calculated as the event price portion (subtotal minus coupon discount) plus VAT. A legacy service fee, where present on the order, shall not be refunded on customer-initiated cancellations.
 
-**FR-ORD-016:** For event-cancelled or admin-cancelled orders, the system shall process a full refund of the event price.
+**FR-ORD-016:** For event-cancelled or admin-cancelled orders, the system shall process a full refund of the event price plus VAT.
 
 **FR-ORD-017:** Refund status shall be tracked: `pending`, `processing`, `completed`, `failed`. Refund transaction IDs shall be stored.
 
@@ -452,7 +452,7 @@ Requirements are identified by the format `FR-[DOMAIN]-[NNN]`.
 
 **FR-PAY-009:** The system shall calculate and record a platform fee and gateway fee per payment. The net amount to the platform shall be `amount - platformFee - gatewayFee`.
 
-**FR-PAY-010:** The service fee rate shall default to 5% of the order subtotal, configurable per order. The service fee shall be non-refundable on customer-initiated cancellations.
+**FR-PAY-010:** No service fee is charged on orders created after service-fee removal. The platform commission rate shall default to 5% of the order subtotal net of coupon discount, deducted from the vendor's payout, configurable per order.
 
 #### 3.4.5 Refunds
 
@@ -919,7 +919,7 @@ Requirements are identified by the format `FR-[DOMAIN]-[NNN]`.
 
 **SC-002 — Currency Primary:** The platform's primary operating currency is AED (UAE Dirham). The Stripe account charges in INR (Indian Rupee). Multi-currency display is supported but does not change the underlying charged currency. Supported currencies are limited to: `AED`, `INR`, `USD`, `EUR`, `GBP`, `EGP`, `CAD`.
 
-**SC-003 — Cancellation Policy:** Customer-initiated order cancellations are only permitted more than 24 hours before the event. Service fees (10% of subtotal) are non-refundable in all customer-initiated cancellation scenarios.
+**SC-003 — Cancellation Policy:** Customer-initiated order cancellations are only permitted more than 24 hours before the event. Ticket price and VAT are refunded; a legacy service fee, where present on the order, is non-refundable in all customer-initiated cancellation scenarios.
 
 **SC-004 — Order Quantity Limit:** A single order item may contain a maximum of 50 tickets. This is a hard limit enforced by the Order model schema.
 

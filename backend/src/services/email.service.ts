@@ -155,8 +155,10 @@ export interface CancellationConfirmationEmailOptions {
   orderNumber: string;
   refundAmount: number;
   nonRefundableAmount: number;
-  serviceFee: number;
-  tax: number;
+  // @deprecated legacy — only set on orders that predate service-fee removal;
+  // the render path shows this row only when it is a positive number.
+  serviceFee?: number;
+  vat: number;
   currency: string;
   reason: string;
 }
@@ -171,8 +173,10 @@ export interface EventCancellationEmailOptions {
   refundAmount: number;
   nonRefundableAmount: number;
   currency: string;
-  serviceFee: number;
-  tax: number;
+  // @deprecated legacy — only set on orders that predate service-fee removal;
+  // the render path shows this row only when it is a positive number.
+  serviceFee?: number;
+  vat: number;
 }
 
 export interface RefundProcessedEmailOptions {
@@ -1614,19 +1618,15 @@ class EmailService {
                   <td style="padding: 8px;"><strong>${options.orderNumber}</strong></td>
                 </tr>
                 <tr>
-                  <td style="padding: 8px; font-weight: 500;">Ticket Price (Refundable):</td>
+                  <td style="padding: 8px; font-weight: 500;">Ticket Price + VAT (Refundable):</td>
                   <td style="padding: 8px;"><strong style="color: #10b981; font-size: 18px;">${options.currency} ${options.refundAmount.toFixed(2)}</strong></td>
                 </tr>
-                <tr>
-                  <td style="padding: 8px; font-weight: 500;">Service Fee:</td>
-                  <td style="padding: 8px;">${options.currency} ${options.serviceFee.toFixed(2)}</td>
-                </tr>
                 ${
-                  options.tax > 0
+                  (options.serviceFee ?? 0) > 0
                     ? `
                 <tr>
-                  <td style="padding: 8px; font-weight: 500;">Tax:</td>
-                  <td style="padding: 8px;">${options.currency} ${options.tax.toFixed(2)}</td>
+                  <td style="padding: 8px; font-weight: 500;">Service Fee:</td>
+                  <td style="padding: 8px;">${options.currency} ${(options.serviceFee ?? 0).toFixed(2)}</td>
                 </tr>
                 `
                     : ""
@@ -1714,19 +1714,15 @@ class EmailService {
               <p>We're automatically processing a refund for your booking:</p>
               <table style="width: 100%; font-size: 14px;">
                 <tr>
-                  <td style="padding: 8px; font-weight: 500;">Ticket Price (Refundable):</td>
+                  <td style="padding: 8px; font-weight: 500;">Ticket Price + VAT (Refundable):</td>
                   <td style="padding: 8px;"><strong style="color: #10b981; font-size: 20px;">${options.currency} ${options.refundAmount.toFixed(2)}</strong></td>
                 </tr>
-                <tr>
-                  <td style="padding: 8px; font-weight: 500;">Service Fee:</td>
-                  <td style="padding: 8px;">${options.currency} ${options.serviceFee.toFixed(2)}</td>
-                </tr>
                 ${
-                  options.tax > 0
+                  (options.serviceFee ?? 0) > 0
                     ? `
                 <tr>
-                  <td style="padding: 8px; font-weight: 500;">Tax:</td>
-                  <td style="padding: 8px;">${options.currency} ${options.tax.toFixed(2)}</td>
+                  <td style="padding: 8px; font-weight: 500;">Service Fee:</td>
+                  <td style="padding: 8px;">${options.currency} ${(options.serviceFee ?? 0).toFixed(2)}</td>
                 </tr>
                 `
                     : ""

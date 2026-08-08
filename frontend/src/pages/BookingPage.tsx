@@ -21,12 +21,13 @@ import {
 } from '../store/slices/bookingsSlice';
 
 import eventsAPI from '../services/api/eventsAPI';
-import bookingAPI from '../services/api/bookingAPI';
+import bookingAPI, { InitiateBookingResponse } from '../services/api/bookingAPI';
 import { Event } from '../types/event';
 import { useErrorHandler } from '../utils/errorHandler';
 import { logger } from '../utils/logger';
 import { ComponentErrorBoundary } from '../components/common/ErrorBoundary';
 import { calculatePricingWithDiscount } from '../utils/couponUtils';
+import { resolveVatRate } from '../utils/pricing';
 import { getCurrentPageUrl } from '../utils/urlHelper';
 import SEO from '../components/common/SEO';
 
@@ -159,7 +160,7 @@ const BookingPage: React.FC = () => {
   const [event, setEvent] = useState<Event | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const [bookingResponse, setBookingResponse] = useState<any>(null);
+  const [bookingResponse, setBookingResponse] = useState<InitiateBookingResponse | null>(null);
   const [isProcessingBooking, setIsProcessingBooking] = useState(false);
   const [processingMessage, setProcessingMessage] = useState('Processing your booking...');
 
@@ -761,9 +762,7 @@ const BookingPage: React.FC = () => {
       setProcessingMessage('Confirming your booking...');
 
       // Confirm the booking (for test payments, payment is auto-approved)
-      const confirmResponse = await handleBookingConfirmation(initiateResponse);
-
-      return confirmResponse;
+      await handleBookingConfirmation(initiateResponse);
     } catch (err) {
       toast.dismiss(); // Dismiss any loading toasts
       setIsProcessingBooking(false);
@@ -818,8 +817,13 @@ const BookingPage: React.FC = () => {
   };
 
   // Helper function to handle booking confirmation after successful payment
-  const handleBookingConfirmation = async (initiateResponse: any) => {
+  const handleBookingConfirmation = async (initiateResponse: InitiateBookingResponse) => {
     toast.loading('Finalizing your booking...');
+
+    if (!initiateResponse.paymentIntentId) {
+      toast.dismiss();
+      throw new Error('Missing payment intent. Please try again.');
+    }
 
     try {
       const confirmResponse = await bookingAPI.confirmBooking({
@@ -850,8 +854,8 @@ const BookingPage: React.FC = () => {
         status: (confirmResponse.status as any) || 'confirmed',
         unitPrice: event?.price ?? 0,
         totalAmount: confirmResponse.amountPaid ?? 0,
-        serviceFee: confirmResponse.serviceFee ?? initiateResponse?.serviceFee ?? 0,
-        taxAmount: confirmResponse.tax ?? initiateResponse?.tax ?? 0,
+        serviceFee: confirmResponse.serviceFee ?? 0,
+        vatAmount: confirmResponse.vat ?? initiateResponse?.vat ?? 0,
         discountAmount: confirmResponse.couponDiscount ?? initiateResponse?.couponDiscount ?? 0,
         currency: confirmResponse.currency || event?.currency || 'AED',
         userId: '',
@@ -896,7 +900,7 @@ const BookingPage: React.FC = () => {
 
   // Calculate pricing with discounts
   const calculatePricing = () => {
-    if (!event) return { subtotal: 0, discount: 0, total: 0, discountPercentage: 0, serviceFee: 0, tax: 0, hasServiceFee: true };
+    if (!event) return { subtotal: 0, discount: 0, total: 0, discountPercentage: 0, vat: 0 };
 
     const participantCount = bookingFlow.participants.length || 1;
     let defaultPrice: number;
@@ -929,24 +933,23 @@ const BookingPage: React.FC = () => {
     const pricePerTicket = bookingFlow.lockedUnitPrice ?? defaultPrice;
     const subtotal = pricePerTicket * participantCount;
 
-    const hasServiceFee = true;
-    const serviceFeeRate = bookingResponse?.serviceFeeRate ?? 5;
+    // VAT rate comes from the server (booking-initiate response); falls back
+    // to DEFAULT_VAT_RATE when not yet known (e.g. before initiate runs).
+    const vatRate = resolveVatRate(bookingResponse?.vatRate);
 
     // Use centralized coupon utility for consistent calculation
-    const pricing = calculatePricingWithDiscount(subtotal, bookingFlow.couponCode, serviceFeeRate, hasServiceFee);
+    const pricing = calculatePricingWithDiscount(subtotal, bookingFlow.couponCode, vatRate);
 
     return {
       subtotal: pricing.subtotal,
       discount: pricing.discount,
-      serviceFee: pricing.serviceFee,
-      tax: pricing.tax,
+      vat: pricing.vat,
       total: pricing.total,
       pricePerTicket,
       participantCount,
       discountPercentage: pricing.discountPercentage,
       isValidCoupon: pricing.isValidCoupon,
       couponError: pricing.couponError,
-      hasServiceFee: pricing.hasServiceFee
     };
   };
 
@@ -1415,15 +1418,9 @@ const BookingPage: React.FC = () => {
                                   <span>-{event.currency} {pricing.discount.toFixed(2)}</span>
                                 </div>
                               )}
-                              {pricing.hasServiceFee && pricing.serviceFee > 0 && (
-                                <div className="flex justify-between text-sm">
-                                  <span>Service Fee (5%):</span>
-                                  <span>{event.currency} {pricing.serviceFee.toFixed(2)}</span>
-                                </div>
-                              )}
                               <div className="flex justify-between text-sm">
-                                <span>Tax (5%):</span>
-                                <span>{event.currency} {pricing.tax.toFixed(2)}</span>
+                                <span>VAT ({resolveVatRate(bookingResponse?.vatRate)}%):</span>
+                                <span>{event.currency} {pricing.vat.toFixed(2)}</span>
                               </div>
                               <div className="border-t pt-2 flex justify-between font-semibold">
                                 <span>Total:</span>

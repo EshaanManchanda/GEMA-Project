@@ -158,9 +158,13 @@ const RevenueTransactionSchema = new Schema<IRevenueTransaction>(
       type: Number,
       min: [0, "Recipient payout cannot be negative"],
     },
+    // @deprecated legacy — service fees are no longer charged on new orders
+    // (see plan: VAT rename + service-fee removal). Kept optional so
+    // historical RevenueTransaction docs remain readable; no longer required
+    // for new writes.
     serviceFeeRate: {
       type: Number,
-      required: [true, "Service fee rate is required"],
+      default: 0,
       min: [0, "Service fee rate cannot be negative"],
       max: [100, "Service fee rate cannot exceed 100%"],
     },

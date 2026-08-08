@@ -18,8 +18,9 @@ const sendEventCancellationEmail = async (data: {
   refundAmount: number;
   nonRefundableAmount: number;
   currency: string;
-  serviceFee: number;
-  tax: number;
+  // legacy — only non-zero on orders that predate service-fee removal
+  serviceFee?: number;
+  vat: number;
 }) => {
   if (emailQueue) {
     await emailQueue.add("eventCancellation", {
@@ -131,8 +132,10 @@ export const cancelEvent = async (
           "email firstName phone",
         );
         if (customer?.email) {
-          // Send cancellation email (queue if available, direct otherwise)
-          const tax = order.tax || 0;
+          // Send cancellation email (queue if available, direct otherwise).
+          // VAT is refundable — only a legacy serviceFee (0 on new orders)
+          // is withheld. See plan: VAT rename + service-fee removal, Phase 7.
+          const vat = order.vat || 0;
           const serviceFee = order.serviceFee || 0;
           await sendEventCancellationEmail({
             to: customer.email,
@@ -143,10 +146,10 @@ export const cancelEvent = async (
             orderNumber: order.orderNumber,
             reason,
             refundAmount: order.refundAmount || 0,
-            nonRefundableAmount: serviceFee + tax,
+            nonRefundableAmount: serviceFee,
             currency: order.currency,
             serviceFee,
-            tax,
+            vat,
           });
         }
         return { success: true, orderId: order._id };
@@ -389,7 +392,7 @@ export const retryNotifications = async (
           "email firstName phone",
         );
         if (customer?.email) {
-          const tax = log.tax || 0;
+          const vat = log.vat || 0;
           const serviceFee = log.serviceFee || 0;
           await sendEventCancellationEmail({
             to: customer.email,
@@ -400,10 +403,10 @@ export const retryNotifications = async (
             orderNumber: log.metadata?.orderNumber,
             reason: log.reason,
             refundAmount: log.refundAmount,
-            nonRefundableAmount: serviceFee + tax,
+            nonRefundableAmount: serviceFee,
             currency: log.currency,
             serviceFee,
-            tax,
+            vat,
           });
 
           // Update log notification status
@@ -506,7 +509,7 @@ export const cancelOrder = async (
       refundResult.refundAmount = amounts.refundAmount;
       refundResult.nonRefundableAmount = amounts.nonRefundableAmount;
       refundResult.serviceFee = amounts.serviceFee;
-      refundResult.tax = amounts.tax;
+      refundResult.vat = amounts.vat;
       refundResult.error = refundResult.error;
     }
 
@@ -521,7 +524,7 @@ export const cancelOrder = async (
           refundAmount: refundResult.refundAmount,
           nonRefundableAmount: refundResult.nonRefundableAmount,
           serviceFee: refundResult.serviceFee,
-          tax: refundResult.tax,
+          vat: refundResult.vat,
           currency: order.currency,
           reason: reason || "Customer requested cancellation",
         });
@@ -542,7 +545,7 @@ export const cancelOrder = async (
         refundAmount: refundResult.refundAmount,
         nonRefundableAmount: refundResult.nonRefundableAmount,
         serviceFee: refundResult.serviceFee,
-        tax: refundResult.tax,
+        vat: refundResult.vat,
         refundId: refundResult.refundId,
         message: refundResult.error
           ? `Your order has been cancelled. Note: Auto-refund failed (${refundResult.error}). Please contact support if you expect a refund.`

@@ -150,6 +150,10 @@ class CommissionService {
       ) {
         const transactionId = await this.generateTransactionId();
         const totalAmount = orderData.total || 0;
+        const commissionBase = Math.max(
+          0,
+          (orderData.subtotal || 0) - (orderData.couponDiscount || 0),
+        );
         const zeroCommission = new CommissionTransaction({
           transactionId,
           orderId: orderData._id,
@@ -171,7 +175,13 @@ class CommissionService {
           metadata: { reason: "subscription_model_active" },
         });
         await zeroCommission.save();
-        await this.createRevenueTransaction(orderData, event.vendorId, totalAmount, 0);
+        await this.createRevenueTransaction(
+          orderData,
+          event.vendorId,
+          totalAmount,
+          0,
+          commissionBase,
+        );
         logger.info(
           `✅ Zero commission for order ${orderId}: subscription model active`,
         );
@@ -181,10 +191,17 @@ class CommissionService {
       // Get active commission configuration
       const config = await this.getActiveCommissionConfig();
 
-      // Calculate commission amounts
+      // totalAmount is what the customer actually paid (subtotal + VAT) —
+      // used for the vendor payout math below. commissionBase excludes VAT:
+      // the platform doesn't earn commission on tax money it doesn't keep.
+      // (See plan: VAT rename + service-fee removal, Phase 6.)
       const totalAmount = orderData.total || 0;
+      const commissionBase = Math.max(
+        0,
+        (orderData.subtotal || 0) - (orderData.couponDiscount || 0),
+      );
       const commissionResult = this.applyCommissionRules(
-        totalAmount,
+        commissionBase,
         config,
         orderData,
       );
@@ -227,6 +244,7 @@ class CommissionService {
         event.vendorId,
         totalAmount,
         commissionResult.totalCommission,
+        commissionBase,
       );
 
       logger.info(
@@ -264,12 +282,18 @@ class CommissionService {
    * payoutEligibleAt = payment-confirmation time + admin-configured payoutHoldHours.
    * This is the SINGLE writer of RevenueTransaction for order-driven revenue —
    * Order.ts no longer creates these on the live path (see Order.markAsPaid).
+   *
+   * `totalAmount` (what the customer paid, VAT-inclusive) drives vendorPayout;
+   * `commissionBase` (VAT-excluded) drives the displayed commission rate — so
+   * the rate reflects what was actually applied, not diluted by dividing over
+   * a VAT-inclusive total. See plan: VAT rename + service-fee removal, Phase 6.
    */
   private async createRevenueTransaction(
     orderData: any,
     vendorId: any,
     totalAmount: number,
     commissionAmount: number,
+    commissionBase: number,
   ): Promise<void> {
     try {
       if (!vendorId) return;
@@ -291,7 +315,8 @@ class CommissionService {
         totalAmount,
         adminCommission: commissionAmount,
         vendorPayout: totalAmount - commissionAmount,
-        serviceFeeRate: totalAmount > 0 ? (commissionAmount / totalAmount) * 100 : 0,
+        serviceFeeRate:
+          commissionBase > 0 ? (commissionAmount / commissionBase) * 100 : 0,
         currency: orderData.currency || "AED",
         revenueStream: RevenueStream.BOOKING,
         status: TransactionStatus.COMPLETED,

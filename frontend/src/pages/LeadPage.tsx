@@ -16,7 +16,6 @@ import { useVendorsQuery } from '@/hooks/queries/useVendorQuery';
 import VendorCard, { Vendor } from '@/components/vendor/VendorCard';
 import { useHomepageQuery } from '@/hooks/queries/useHomepageQuery';
 import HowItWorks from '@/components/sections/HowItWorks';
-import WhyChooseUs from '@/components/sections/WhyChooseUs';
 import HomepageFAQs from '@/components/sections/HomepageFAQs';
 import FeaturedBlogsSection from '@/components/sections/FeaturedBlogsSection';
 import { ScrollReveal } from '@/components/animations';
@@ -248,31 +247,6 @@ const LeadForm: React.FC<LeadFormProps> = ({ eventId, eventTitle }) => {
         Private &amp; never shared with third parties
       </p>
     </form>
-  );
-};
-
-// ── FAQ Accordion ────────────────────────────────────────────────────────────
-const FAQItem: React.FC<{ question: string; answer: string; index: number }> = ({ question, answer, index }) => {
-  const [open, setOpen] = useState(index === 0);
-  return (
-    <div>
-      <button
-        className="w-full flex items-center justify-between py-4 text-left"
-        onClick={() => setOpen(!open)}
-      >
-        <span className="flex items-baseline gap-3 pr-4">
-          <span className="kr-mono text-[11px]" style={{ color: open ? TEAL : '#B7B2A2' }}>{String(index + 1).padStart(2, '0')}</span>
-          <span className="font-semibold text-[15px] kr-body" style={{ color: INK }}>{question}</span>
-        </span>
-        <span className="flex-shrink-0 transition-transform duration-200" style={{ color: open ? TEAL : '#B7B2A2', transform: open ? 'rotate(180deg)' : 'none' }}>
-          <ChevronDown />
-        </span>
-      </button>
-      <div className={`transition-all duration-200 ${open ? 'max-h-96 opacity-100' : 'max-h-0 opacity-0'} overflow-hidden`}>
-        <p className="pb-4 pl-8 text-sm leading-relaxed kr-body" style={{ color: '#5B5647' }}>{answer}</p>
-      </div>
-      <div className="border-t" style={{ borderColor: LINE }} />
-    </div>
   );
 };
 

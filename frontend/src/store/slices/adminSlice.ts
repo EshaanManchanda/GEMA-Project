@@ -129,7 +129,6 @@ export interface SystemSettings {
     bankTransferEnabled: boolean;
     commissionRate: number;
     currency: string;
-    taxRate: number;
   };
 
   // Email settings

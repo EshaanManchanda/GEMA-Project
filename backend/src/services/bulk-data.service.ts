@@ -1032,7 +1032,7 @@ class BulkDataService {
         if (record.subtotal !== undefined && record.total !== undefined) {
           const calculated =
             (record.subtotal || 0) +
-            (record.tax || 0) +
+            (record.vat || 0) +
             (record.serviceFee || 0) -
             (record.discount || 0) -
             (record.couponDiscount || 0);

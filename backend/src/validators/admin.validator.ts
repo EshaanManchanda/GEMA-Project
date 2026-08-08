@@ -930,18 +930,6 @@ export const validateAppSettings = [
       .toBoolean(),
   ),
 
-  body("systemSettings.bookingFeePercentage")
-    .optional()
-    .isFloat({ min: 0, max: 100 })
-    .withMessage("bookingFeePercentage must be between 0 and 100")
-    .toFloat(),
-
-  body("systemSettings.taxPercentage")
-    .optional()
-    .isFloat({ min: 0, max: 100 })
-    .withMessage("taxPercentage must be between 0 and 100")
-    .toFloat(),
-
   body("systemSettings.maxImagesPerEvent")
     .optional()
     .isInt({ min: 1 })

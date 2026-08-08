@@ -39,7 +39,7 @@ export interface ITeacherBooking extends Document {
   sessions: ITeachingBookingItem[];
 
   subtotal: number;
-  tax: number;
+  vat: number;
   discount: number;
   totalAmount: number;
   currency: string;
@@ -156,7 +156,7 @@ const teacherBookingSchema = new Schema<ITeacherBooking>(
     },
 
     subtotal: Number,
-    tax: { type: Number, default: 0 },
+    vat: { type: Number, default: 0 },
     discount: { type: Number, default: 0 },
     totalAmount: Number,
     currency: { type: String, default: "AED" },
@@ -227,7 +227,7 @@ teacherBookingSchema.pre("save", function (next) {
 
   this.subtotal = this.sessions.reduce((sum, s) => sum + s.totalPrice, 0);
 
-  this.totalAmount = this.subtotal + (this.tax || 0) - (this.discount || 0);
+  this.totalAmount = this.subtotal + (this.vat || 0) - (this.discount || 0);
 
   next();
 });

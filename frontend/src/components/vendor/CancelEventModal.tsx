@@ -107,7 +107,7 @@ const CancelEventModal: React.FC<CancelEventModalProps> = ({
                       <div className="mt-2 text-sm text-yellow-700">
                         <ul className="list-disc space-y-1 pl-5">
                           <li>All bookings for this event will be cancelled</li>
-                          <li>Customers will receive automatic refunds (minus 10% service fee)</li>
+                          <li>Customers will receive automatic refunds of their full ticket price and VAT</li>
                           <li>Email notifications will be sent to all affected customers</li>
                           <li>This action cannot be undone</li>
                         </ul>

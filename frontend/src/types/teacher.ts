@@ -276,7 +276,7 @@ export interface ITeacherBooking {
     }>;
   }>;
   subtotal: number;
-  tax: number;
+  vat: number;
   discount: number;
   totalAmount: number;
   currency: string;

@@ -10,8 +10,6 @@ export interface ISystemSettings extends Document {
   defaultLanguage: string;
   timeZone: string;
   currency: string;
-  bookingFeePercentage: number;
-  taxPercentage: number;
   featuredEventCost: number;
   maxImagesPerEvent: number;
   maxEventsPerVendor: number;
@@ -80,18 +78,6 @@ const SystemSettingsSchema = new Schema<ISystemSettings>(
       type: String,
       default: "AED",
       enum: ["USD", "EUR", "GBP", "AED", "JPY"],
-    },
-    bookingFeePercentage: {
-      type: Number,
-      default: 5,
-      min: 0,
-      max: 100,
-    },
-    taxPercentage: {
-      type: Number,
-      default: 7.5,
-      min: 0,
-      max: 100,
     },
     featuredEventCost: {
       type: Number,

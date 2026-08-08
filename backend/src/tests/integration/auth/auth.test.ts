@@ -608,34 +608,37 @@ describe("CSRF protection on cookie-authenticated state-changing requests", () =
     expect(csrfToken).toBeTruthy();
   });
 
-  it("rejects a cookie-authenticated POST with no CSRF header → 403", async () => {
+  it("rejects a cookie-authenticated PUT with no CSRF header → 403", async () => {
     const { cookies } = await registerAndLogin(app);
 
     const res = await request(app)
-      .post("/api/auth/logout")
-      .set("Cookie", cookies);
-
-    expect(res.status).toBe(403);
-  });
-
-  it("rejects a cookie-authenticated POST with a wrong CSRF header → 403", async () => {
-    const { cookies } = await registerAndLogin(app);
-
-    const res = await request(app)
-      .post("/api/auth/logout")
+      .put("/api/auth/change-password")
       .set("Cookie", cookies)
-      .set("X-CSRF-Token", "0".repeat(64));
+      .send({ currentPassword: "Test@1234!", newPassword: "NewPass@5678!" });
 
     expect(res.status).toBe(403);
   });
 
-  it("accepts a cookie-authenticated POST with the matching CSRF header → 200", async () => {
+  it("rejects a cookie-authenticated PUT with a wrong CSRF header → 403", async () => {
+    const { cookies } = await registerAndLogin(app);
+
+    const res = await request(app)
+      .put("/api/auth/change-password")
+      .set("Cookie", cookies)
+      .set("X-CSRF-Token", "0".repeat(64))
+      .send({ currentPassword: "Test@1234!", newPassword: "NewPass@5678!" });
+
+    expect(res.status).toBe(403);
+  });
+
+  it("accepts a cookie-authenticated PUT with the matching CSRF header → 200", async () => {
     const { cookies, csrfToken } = await registerAndLogin(app);
 
     const res = await request(app)
-      .post("/api/auth/logout")
+      .put("/api/auth/change-password")
       .set("Cookie", cookies)
-      .set("X-CSRF-Token", csrfToken);
+      .set("X-CSRF-Token", csrfToken)
+      .send({ currentPassword: "Test@1234!", newPassword: "NewPass@5678!" });
 
     expect(res.status).toBe(200);
   });

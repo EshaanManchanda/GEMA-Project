@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { Plus, Trash2, Calendar, Users, Clock, Repeat, Edit3, X, Check, Copy } from 'lucide-react';
+import { Plus, Trash2, Calendar, Users, Clock, Repeat, Edit3, X, Check } from 'lucide-react';
 import { Card, CardHeader, CardTitle, CardContent } from '../ui/Card';
 
 interface TimeSlot {

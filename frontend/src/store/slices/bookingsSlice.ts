@@ -56,7 +56,8 @@ export interface Booking {
   currency: string;
   discountAmount?: number;
   couponCode?: string;
-  taxAmount?: number;
+  vatAmount?: number;
+  // @deprecated legacy — only non-zero on bookings that predate service-fee removal
   serviceFee?: number;
 
   // Payment

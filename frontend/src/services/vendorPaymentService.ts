@@ -11,6 +11,7 @@ export interface VendorPaymentInfo {
   vendorId: string;
   hasCustomStripe: boolean;
   stripePublishableKey: string | null;
+  /** Vendor's own commission rate paid to the platform — not a customer-facing fee. */
   serviceFeeRate: number;
   usePlatformStripe: boolean;
 }
@@ -203,30 +204,6 @@ class VendorPaymentService {
   }
 
   /**
-   * Calculate total price with service fee
-   */
-  calculateTotalWithFees(subtotal: number, vendorPaymentInfo: VendorPaymentInfo): {
-    subtotal: number;
-    serviceFee: number;
-    tax: number;
-    total: number;
-  } {
-    const serviceFee = vendorPaymentInfo.usePlatformStripe
-      ? subtotal * (vendorPaymentInfo.serviceFeeRate / 100)
-      : 0;
-
-    const tax = subtotal * 0.05; // 5% tax
-    const total = subtotal + serviceFee + tax;
-
-    return {
-      subtotal,
-      serviceFee,
-      tax,
-      total,
-    };
-  }
-
-  /**
    * Clear cache for a specific vendor or all vendors
    */
   clearCache(vendorId?: string) {
@@ -237,16 +214,6 @@ class VendorPaymentService {
       this.cache.clear();
       logger.debug('Cleared all vendor payment cache');
     }
-  }
-
-  /**
-   * Get service fee description for display
-   */
-  getServiceFeeDescription(vendorPaymentInfo: VendorPaymentInfo): string {
-    if (!vendorPaymentInfo.usePlatformStripe) {
-      return 'No service fee (vendor payment)';
-    }
-    return `${vendorPaymentInfo.serviceFeeRate}% platform service fee`;
   }
 }
 

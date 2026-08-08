@@ -114,7 +114,7 @@ const emailWorker = areQueuesEnabled
                 refundAmount: data.templateData.refundAmount,
                 nonRefundableAmount: data.templateData.nonRefundableAmount,
                 serviceFee: data.templateData.serviceFee,
-                tax: data.templateData.tax,
+                vat: data.templateData.vat,
                 currency: data.templateData.currency,
                 reason: data.templateData.reason,
               });
@@ -132,7 +132,7 @@ const emailWorker = areQueuesEnabled
                 nonRefundableAmount: data.templateData.nonRefundableAmount,
                 currency: data.templateData.currency,
                 serviceFee: data.templateData.serviceFee,
-                tax: data.templateData.tax,
+                vat: data.templateData.vat,
               });
               break;
 
