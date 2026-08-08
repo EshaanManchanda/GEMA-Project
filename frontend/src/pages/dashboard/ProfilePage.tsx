@@ -291,7 +291,7 @@ const PersonalInfoTab: React.FC<{
     gender: userProfile?.gender || '',
   });
 
-  const [selectedCountry, setSelectedCountry] = useState<Country>('US');
+  const [selectedCountry, setSelectedCountry] = useState<Country>('AE');
   const [phoneValidation, setPhoneValidation] = useState<{
     isValid: boolean;
     isMobile: boolean;
@@ -382,7 +382,7 @@ const PersonalInfoTab: React.FC<{
     setFormData(prev => ({ ...prev, phone: value || '' }));
   };
 
-  const exampleNumber = selectedCountry ? getExamplePhone(selectedCountry) : '+1 234 567 8900';
+  const exampleNumber = selectedCountry ? getExamplePhone(selectedCountry) : '+971 50 123 4567';
 
   return (
     <HoverCard className="bg-white rounded-2xl p-8 shadow-lg border border-gray-100">

@@ -924,8 +924,21 @@ export const updateProfile = async (
       }
     }
 
-    if (dateOfBirth) user.dateOfBirth = new Date(dateOfBirth);
-    if (gender) user.gender = gender as Gender;
+    if (dateOfBirth !== undefined) {
+      if (!dateOfBirth) {
+        user.dateOfBirth = undefined;
+      } else {
+        user.dateOfBirth = new Date(dateOfBirth);
+      }
+    }
+    
+    if (gender !== undefined) {
+      if (!gender) {
+        user.gender = undefined;
+      } else {
+        user.gender = gender as Gender;
+      }
+    }
 
     // Update preferences if provided
     if (preferences) {
@@ -938,6 +951,10 @@ export const updateProfile = async (
             email: true,
             sms: false,
             push: true,
+            marketing: true,
+            security: true,
+            bookingReminders: true,
+            eventUpdates: true,
           },
         };
       }

@@ -6,6 +6,7 @@ import {
   getContactEmail,
 } from "../utils/brandConfig";
 import logger from "../config/logger";
+import User from "../models/User";
 
 export interface EmailOptions {
   to: string | string[];
@@ -18,6 +19,7 @@ export interface EmailOptions {
     path?: string;
     contentType?: string;
   }>;
+  notificationType?: 'marketing' | 'security' | 'bookingReminders' | 'eventUpdates' | 'essential';
 }
 
 export interface VerificationEmailOptions {
@@ -294,6 +296,27 @@ class EmailService {
    */
   async sendEmail(options: EmailOptions): Promise<string> {
     try {
+      // Check notification preferences for non-essential emails
+      if (options.notificationType && options.notificationType !== 'essential') {
+        const toList = Array.isArray(options.to) ? options.to : [options.to];
+        for (const email of toList) {
+          const user = await User.findOne({ email });
+          if (user && user.preferences?.notifications) {
+            // Check global email setting first
+            if (user.preferences.notifications.email === false) {
+              logger.info(`[EmailService] User ${email} opted out of all non-essential emails.`);
+              return "opted-out";
+            }
+            // Check specific notification type
+            const prefKey = options.notificationType;
+            if ((user.preferences.notifications as any)[prefKey] === false) {
+               logger.info(`[EmailService] User ${email} opted out of ${prefKey} emails.`);
+               return "opted-out";
+            }
+          }
+        }
+      }
+
       const fromAddress = `"${config.email.fromName}" <${config.email.from}>`;
       const mailOptions = {
         from: fromAddress,
@@ -1002,6 +1025,7 @@ class EmailService {
       to: options.to,
       subject: `New Booking Received - ${options.eventTitle} (${options.orderNumber})`,
       html,
+      notificationType: 'bookingReminders'
     });
   }
 

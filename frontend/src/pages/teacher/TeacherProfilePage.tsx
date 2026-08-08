@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { useLocation } from 'react-router-dom';
+import { useDispatch } from 'react-redux';
 import { motion } from 'framer-motion';
 import { useForm } from 'react-hook-form';
 import { toast } from 'react-hot-toast';
@@ -42,6 +43,7 @@ import {
   useUpdateBankDetails,
 } from '@/hooks/mutations/useTeacherMutations';
 import teacherAPI from '@/services/api/teacherAPI';
+import { getFullProfile } from '@/store/slices/authSlice';
 import type { TeacherProfileUpdateInput, IAvailabilityHours, IQualification } from '@/types/teacher';
 
 const AVAILABLE_LANGUAGES = [
@@ -112,6 +114,7 @@ const normalizeImageUrl = (url?: string) => {
 };
 
 const TeacherProfilePage: React.FC = () => {
+  const dispatch = useDispatch();
   const location = useLocation();
   const didApplyTab = useRef(false);
   const [activeTab, setActiveTab] = useState<
@@ -208,6 +211,7 @@ const TeacherProfilePage: React.FC = () => {
       setSaveSuccess(true);
       setTimeout(() => setSaveSuccess(false), 3000);
       refetch();
+      dispatch(getFullProfile() as any);
     } catch (error: any) {
       toast.error(error?.message || 'Failed to update profile');
     } finally {
@@ -262,6 +266,7 @@ const TeacherProfilePage: React.FC = () => {
       setProfileImageUrl(normalizeImageUrl(result?.avatarUrl || result?.data?.avatarUrl) || localPreview);
       toast.success('Profile image updated!');
       refetch();
+      dispatch(getFullProfile() as any);
     } catch {
       setProfileImageUrl(localPreview);
       toast.error('Failed to upload image');

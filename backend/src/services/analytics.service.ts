@@ -751,13 +751,14 @@ class AnalyticsService {
     const orderMatchFilter: any = { ...dateFilter, paymentStatus: "paid" };
     const ticketMatchFilter: any = { ...dateFilter };
 
+    let eventIds: any[] = [];
     if (vendorId) {
       eventMatchFilter.vendorId = new mongoose.Types.ObjectId(vendorId);
 
       const vendorEvents = await Event.find({
         vendorId: new mongoose.Types.ObjectId(vendorId),
       }).select("_id");
-      const eventIds = vendorEvents.map((event) => event._id);
+      eventIds = vendorEvents.map((event) => event._id);
       orderMatchFilter["items.eventId"] = { $in: eventIds };
       ticketMatchFilter.eventId = { $in: eventIds };
     }
@@ -766,7 +767,13 @@ class AnalyticsService {
       Event.countDocuments(eventMatchFilter),
       Order.aggregate([
         { $match: orderMatchFilter },
-        { $group: { _id: null, revenue: { $sum: "$total" } } },
+        ...(vendorId
+          ? [
+              { $unwind: "$items" },
+              { $match: { "items.eventId": { $in: eventIds } } },
+              { $group: { _id: null, revenue: { $sum: "$items.totalPrice" } } },
+            ]
+          : [{ $group: { _id: null, revenue: { $sum: "$total" } } }]),
       ]),
       Ticket.countDocuments(ticketMatchFilter),
       vendorId ? Promise.resolve(0) : User.countDocuments(dateFilter),

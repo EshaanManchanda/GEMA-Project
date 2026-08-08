@@ -117,9 +117,7 @@ class CommissionService {
         ? await Teacher.findById(event.teacherId)
         : null;
 
-      if (!vendorProfile && !teacherProfile) {
-        throw new Error(`No vendor or teacher found for order: ${orderId}`);
-      }
+      // If a vendor or teacher was deleted, their profile will be null, but we still need to process the commission transaction to avoid infinite retry loops in cron.
 
       // Resolve display name for the transaction
       let vendorName = "Unknown Vendor";
@@ -129,6 +127,13 @@ class CommissionService {
           .lean();
         if (vendorUser) {
           vendorName = `${(vendorUser as any).firstName} ${(vendorUser as any).lastName}`;
+        }
+      } else if (teacherProfile) {
+        const teacherUser = await User.findById(teacherProfile.userId)
+          .select("firstName lastName")
+          .lean();
+        if (teacherUser) {
+          vendorName = `${(teacherUser as any).firstName} ${(teacherUser as any).lastName}`;
         }
       }
 
@@ -154,7 +159,7 @@ class CommissionService {
           transactionId,
           orderId: orderData._id,
           orderNumber: orderData.orderNumber || orderId.toString(),
-          vendorId: event.vendorId,
+          vendorId: event.vendorId || event.teacherId || new mongoose.Types.ObjectId("000000000000000000000000"),
           vendorName,
           customerId: orderData.userId,
           customerName: orderData.userId
@@ -171,7 +176,7 @@ class CommissionService {
           metadata: { reason: "subscription_model_active" },
         });
         await zeroCommission.save();
-        await this.createRevenueTransaction(orderData, event.vendorId, totalAmount, 0);
+        await this.createRevenueTransaction(orderData, event.vendorId || event.teacherId, totalAmount, 0);
         logger.info(
           `✅ Zero commission for order ${orderId}: subscription model active`,
         );
@@ -201,7 +206,7 @@ class CommissionService {
             transactionId,
             orderId: orderData._id,
             orderNumber: orderData.orderNumber || orderId.toString(),
-            vendorId: event.vendorId,
+            vendorId: event.vendorId || event.teacherId || new mongoose.Types.ObjectId("000000000000000000000000"),
             vendorName,
             customerId: orderData.userId,
             customerName: orderData.userId
@@ -224,7 +229,7 @@ class CommissionService {
 
       await this.createRevenueTransaction(
         orderData,
-        event.vendorId,
+        event.vendorId || event.teacherId,
         totalAmount,
         commissionResult.totalCommission,
       );
