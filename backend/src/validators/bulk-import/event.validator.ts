@@ -93,11 +93,9 @@ export const validateEventImport = [
     .isIn(["Indoor", "Outdoor", "Online", "Offline"])
     .withMessage("venueType must be: Indoor, Outdoor, Online, or Offline"),
 
-  // Meeting link (required for Online events)
+  // Meeting link (optional but must be valid URL if provided)
   body("data.*.meetingLink")
-    .if(body("data.*.venueType").equals("Online"))
-    .notEmpty()
-    .withMessage("Meeting link is required for online events")
+    .optional({ checkFalsy: true })
     .isURL()
     .withMessage("Meeting link must be a valid URL"),
 

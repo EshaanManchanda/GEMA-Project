@@ -579,7 +579,26 @@ const VendorEventFormPage: React.FC = () => {
       navigate('/vendor/events');
     } catch (error: any) {
       console.error('Error saving event:', error);
-      toast.error(error?.response?.data?.message || 'Failed to save event');
+      
+      const responseData = error?.response?.data;
+      
+      if (responseData?.errors && Array.isArray(responseData.errors) && responseData.errors.length > 0) {
+        responseData.errors.forEach((err: any) => {
+          toast.error(err.msg || err.message || 'Validation failed');
+        });
+      } else if (responseData?.details && typeof responseData.details === 'object') {
+        Object.values(responseData.details).forEach((err: any) => {
+          if (err && err.msg) {
+            toast.error(err.msg);
+          } else if (typeof err === 'string') {
+            toast.error(err);
+          }
+        });
+      } else if (responseData?.message) {
+        toast.error(responseData.message);
+      } else {
+        toast.error('Failed to save event');
+      }
     }
   };
 
