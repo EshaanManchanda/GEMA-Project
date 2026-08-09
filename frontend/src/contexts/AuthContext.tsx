@@ -45,6 +45,24 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
     const initializeAuth = async () => {
       logger.debug('[AuthContext] 🔄 Starting auth initialization...');
+
+      // Optimization: avoid unnecessary network calls for first-time guests.
+      // If the user has never authenticated in this browser (no persisted flag),
+      // attempt a lightweight detection of a server-side session before skipping /auth/me.
+      const everAuthenticated = localStorage.getItem('gema_ever_authenticated') === 'true';
+
+      // Lightweight session indicators:
+      // 1) Presence of a readable XSRF cookie (backend issues XSRF-TOKEN alongside httpOnly cookies)
+      // 2) A legacy/stored refresh token in localStorage (fallback)
+      const hasXsrfCookie = typeof document !== 'undefined' && document.cookie.split(';').some((c) => c.trim().startsWith('XSRF-TOKEN='));
+      const storedRefreshToken = localStorage.getItem('refreshToken');
+
+      if (!everAuthenticated && !hasXsrfCookie && !storedRefreshToken) {
+        logger.debug('[AuthContext] No prior session or session indicators detected - skipping silent /auth/me call');
+        dispatch(clearError());
+        return;
+      }
+
       try {
         dispatch(clearError());
         await dispatch(getCurrentUser() as any);

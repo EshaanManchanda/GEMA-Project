@@ -1,0 +1,69 @@
+1. when i start "npm run dev" /backend "(node:169144) [MONGOOSE] Warning: Duplicate schema index on {"firebaseUid":1} found. This is often due to declaring an index using both "index: true" and "schema.index()". Please remove the duplicate index definition.
+(Use `node --trace-warnings ...` to show where the warning was created)
+(node:169144) [MONGOOSE] Warning: Duplicate schema index on {"googlePlaceId":1} found. This is often due to declaring an index using both "index: true" and "schema.index()". Please remove the duplicate index definition.
+(node:169144) [MONGOOSE] Warning: Duplicate schema index on {"vendorId":1} found. This is often due to declaring an index using both "index: true" and "schema.index()". Please remove the duplicate index definition.
+(node:169144) [MONGOOSE] Warning: Duplicate schema index on {"eventId":1,"reviewId":1} found. This is often due to declaring an index using both "index: true" and "schema.index()". Please remove the duplicate index definition.
+(node:169144) [MONGOOSE] Warning: Duplicate schema index on {"isFeatured":1} found. This is often due to declaring an index using both "index: true" and "schema.index()". Please remove the duplicate index definition.
+(node:169144) [MONGOOSE] Warning: Duplicate schema index on {"timestamp":1} found. This is often due to declaring an index using both "index: true" and "schema.index()". Please remove the duplicate index definition.
+2026-08-08 12:05:07 info: MongoDB Connected Successfully: cluster0-shard-00-01.x0iqu.mongodb.net {
+  "service": "gema-backend",
+  "readyState": 1,
+  "database": "kidrove"
+}"
+
+2. errors found when user comes to home page "2026-08-08 12:06:08 error: Error: User not found {
+  "service": "gema-backend",
+  "stack": "Error: User not found\n    at refreshToken (/home/eshaan-manchanda/Desktop/code/GEMA-Project-aditya/backend/src/controllers/auth.controller.ts:820:13)\n    at processTicksAndRejections (node:internal/process/task_queues:104:5)",
+  "path": "/api/auth/refresh-token",
+  "method": "POST"
+}:","2026-08-08 12:06:08 error: Error: Not authorized to access this route {
+  "service": "gema-backend",
+  "stack": "Error: Not authorized to access this route\n    at authenticate (/home/eshaan-manchanda/Desktop/code/GEMA-Project-aditya/backend/src/middleware/auth.ts:67:17)\n    at Layer.handle [as handle_request] (/home/eshaan-manchanda/Desktop/code/GEMA-Project-aditya/backend/node_modules/express/lib/router/layer.js:95:5)\n    at next (/home/eshaan-manchanda/Desktop/code/GEMA-Project-aditya/backend/node_modules/express/lib/router/route.js:149:13)\n    at Route.dispatch (/home/eshaan-manchanda/Desktop/code/GEMA-Project-aditya/backend/node_modules/express/lib/router/route.js:119:3)\n    at Layer.handle [as handle_request] (/home/eshaan-manchanda/Desktop/code/GEMA-Project-aditya/backend/node_modules/express/lib/router/layer.js:95:5)\n    at /home/eshaan-manchanda/Desktop/code/GEMA-Project-aditya/backend/node_modules/express/lib/router/index.js:284:15\n    at router.process_params (/home/eshaan-manchanda/Desktop/code/GEMA-Project-aditya/backend/node_modules/express/lib/router/index.js:346:12)\n    at next (/home/eshaan-manchanda/Desktop/code/GEMA-Project-aditya/backend/node_modules/express/lib/router/index.js:280:10)\n    at router.handle (/home/eshaan-manchanda/Desktop/code/GEMA-Project-aditya/backend/node_modules/express/lib/router/index.js:175:3)\n    at router (/home/eshaan-manchanda/Desktop/code/GEMA-Project-aditya/backend/node_modules/express/lib/router/index.js:47:12)",
+  "path": "/api/auth/profile",
+  "method": "GET"
+}"
+
+3. when i open an event detail page "2026-08-08 12:08:56 info: [getActiveAnnouncements] Querying announcements: {
+  "service": "gema-backend",
+  "currentRoute": "/events/dubai-world-trade-centre",
+  "now": "2026-08-08T06:38:56.687Z"
+}
+2026-08-08 12:08:56 info: ❌ Cache MISS for event dubai-world-trade-centre (slug) {
+  "service": "gema-backend"
+}","2026-08-08 12:08:42 error: Error: Gallery not found {
+  "service": "gema-backend",
+  "stack": "Error: Gallery not found\n    at getGalleryByEvent (/home/eshaan-manchanda/Desktop/code/GEMA-Project-aditya/backend/src/controllers/gallery.controller.ts:58:31)\n    at processTicksAndRejections (node:internal/process/task_queues:104:5)",
+  "path": "/api/galleries/event/6a758d1978ad5cc0dc73c50c",
+  "method": "GET"
+}, "Request URL
+http://localhost:5001/api/galleries/event/6a758d1978ad5cc0dc73c50c
+Request Method
+GET
+Status Code
+404 Not Found
+Remote Address
+[::1]:5001,  Response: "{"success":false,"message":"Gallery not found","errors":{}}"
+
+4. axios.js?v=2bdc9741:1784 A preload for 'http://localhost:5001/api/homepage' is found, but is not used because the request credentials mode does not match. Consider taking a look at crossorigin attribute.
+
+5. admin event edit page "http://localhost:3000/admin/events/6a758d1978ad5cc0dc73c50c/edit" , Assigned Vendor are not visable in the dropdown menu
+
+6. check for this issue , "Validation failed: 1 field has errors. Please review and correct the highlighted fields.
+"0: Teaching events should have either teacherId OR vendorId, not both" , i selected teacher/instructor still getting this error."
+
+7. "A form field element should have an id or name attribute
+An element doesn't have an autocomplete attribute
+Deprecated feature used
+Incorrect use of <label for=FORM_ELEMENT>
+Incorrect use of <label for=FORM_ELEMENT>
+No label associated with a form field" browser showing these issues in my website
+
+
+8. "Request URL
+https://maps.googleapis.com/maps/api/mapsjs/gen_204?csp_test=true
+Referrer Policy
+strict-origin-when-cross-origin
+" response: failed to load data.
+
+9. "remove service fees" "Service Fee (10%)
+AED 5600.00", form frontend. 

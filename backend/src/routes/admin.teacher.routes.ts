@@ -12,6 +12,7 @@ import {
   updateTeacherStatus,
   getTeacherStats,
   syncTeacherUserData,
+  getAllTeachersOptions,
 } from "../controllers/admin.teacher.controller";
 import { adminVerifyTeacherBank } from "../controllers/teacher.payment.controller";
 
@@ -47,6 +48,21 @@ router.get("/stats", getTeacherStats);
  * ============================
  */
 router.post("/sync", syncTeacherUserData);
+
+/**
+ * ============================
+ * LIST TEACHERS options
+ * ============================
+ */
+router.get(
+  "/options",
+  [
+    query("search").optional().isString(),
+    query("limit").optional().isInt({ min: 1, max: 1000 }),
+  ],
+  validate,
+  getAllTeachersOptions,
+);
 
 /**
  * ============================

@@ -493,7 +493,7 @@ class VendorService {
     (booking as any).items = vendorItems;
     (booking as any).subtotal = newSubtotal;
     (booking as any).total = (booking.total || 0) * itemsRatio;
-    (booking as any).tax = (booking.tax || 0) * itemsRatio;
+    (booking as any).vat = ((booking as any).vat || 0) * itemsRatio;
     (booking as any).serviceFee = ((booking as any).serviceFee || 0) * itemsRatio;
 
     return booking;

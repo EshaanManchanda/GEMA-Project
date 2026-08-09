@@ -46,6 +46,14 @@ router.get("/stats", getVendorStats);
 router.get("/list", getVendorsList);
 
 /**
+ * @route   GET /api/admin/vendors/options
+ * @desc    Get simple vendors list for dropdowns (alias for /list)
+ * @access  Admin only
+ * @query   limit (optional, default 100)
+ */
+router.get("/options", getVendorsList);
+
+/**
  * @route   POST /api/admin/vendors/sync
  * @desc    Fix all vendor↔user data inconsistencies (one-time cleanup)
  * @access  Admin only

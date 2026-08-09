@@ -166,9 +166,7 @@ interface EventFormData {
 
 interface Teacher {
   id: string;
-  firstName: string;
-  lastName: string;
-  email: string;
+  fullName: string;
 }
 
 interface Category {
@@ -269,9 +267,14 @@ const AdminEditEventPage: React.FC = () => {
 
       try {
         // Fetch categories for all modes
-        const categoriesData = await categoriesAPI.getAllCategories({
-          tree: false,
-        });
+        const [categoriesData, vendorsResponse, teachersResponse] = await Promise.all([
+          categoriesAPI.getAllCategories({
+            tree: false,
+          }),
+          adminAPI.getVendorsList(),
+          adminAPI.getTeachingEventTeachers(),
+        ]);
+
         const categoriesArray = Array.isArray(categoriesData)
           ? categoriesData
           : [];
@@ -285,28 +288,19 @@ const AdminEditEventPage: React.FC = () => {
         setCategories(transformedCategories);
 
         // Fetch vendors for all modes (Create & Edit)
-        const vendorsResponse = await adminAPI.getVendorsList();
         const vendorsData =
           vendorsResponse?.data?.vendors ||
-          vendorsResponse?.data?.users ||
-          vendorsResponse?.data ||
           [];
         setVendors(vendorsData);
 
-        // Fetch teachers for all modes (Create & Edit)
-        const teachersResponse = await adminAPI.getTeachingEventTeachers();
+        // Fetch teachers for options.
         const teachersData =
           teachersResponse?.data?.teachers ||
-          teachersResponse?.data?.data?.teachers ||
-          teachersResponse?.data?.users ||
-          teachersResponse?.data ||
           [];
         setTeachers(
           (teachersData || []).map((t: any) => ({
             id: t._id || t.id,
-            firstName: t.firstName,
-            lastName: t.lastName,
-            email: t.email,
+            fullName: t.fullName || `${t.firstName} ${t.lastName}`,
           })),
         );
 
@@ -601,7 +595,7 @@ const AdminEditEventPage: React.FC = () => {
     setFormData((prev) => {
       const newImageIds = assets.map((a) => a._id).filter(id => !prev.images.includes(id));
       const newUrls = assets.map((a) => a.url).filter(url => !prev.imagePreviewUrls.includes(url));
-      
+
       return {
         ...prev,
         images: [...prev.images, ...newImageIds], // Store MediaAsset IDs
@@ -965,12 +959,12 @@ const AdminEditEventPage: React.FC = () => {
 
     if (!validation.isValid) {
       const firstErrorField = Object.keys(validation.errors)[0];
-      
+
       let errorTab = "basic" as any;
       if (['basePrice', 'capacity'].includes(firstErrorField) || firstErrorField.startsWith('schedule_')) {
-         errorTab = "schedule";
+        errorTab = "schedule";
       } else if (['city', 'country', 'address'].includes(firstErrorField) || firstErrorField.startsWith('faq_')) {
-         errorTab = "advanced";
+        errorTab = "advanced";
       }
       setActiveTab(errorTab);
 
@@ -980,6 +974,19 @@ const AdminEditEventPage: React.FC = () => {
       });
       window.scrollTo({ top: 0, behavior: "smooth" });
       return;
+    }
+
+    // Pre-submit: ensure selected vendor still exists in the current vendor list
+    if (formData.vendorId) {
+      const vendorExists = (vendors || []).some((v) => v._id === formData.vendorId || (v as any).id === formData.vendorId);
+      if (!vendorExists) {
+        const vendorMsg = 'Selected vendor was not found or is inactive.';
+        setErrors((prev) => ({ ...prev, vendorId: vendorMsg }));
+        setSaveStatus({ type: 'error', message: vendorMsg, validationErrors: { vendorId: vendorMsg } });
+        setActiveTab('basic');
+        window.scrollTo({ top: 0, behavior: 'smooth' });
+        return;
+      }
     }
 
     try {
@@ -1106,8 +1113,8 @@ const AdminEditEventPage: React.FC = () => {
               ? formData.seoMeta.keywords
               : formData.tags,
         },
-        collectionInfo: formData.collectionInfo && formData.collectionInfo.length > 0 
-          ? formData.collectionInfo.filter(c => c.heading || c.link) 
+        collectionInfo: formData.collectionInfo && formData.collectionInfo.length > 0
+          ? formData.collectionInfo.filter(c => c.heading || c.link)
           : undefined,
 
         faqs: formData.faqs.map((faq) => ({
@@ -1165,17 +1172,39 @@ const AdminEditEventPage: React.FC = () => {
 
       // Check if the error contains validation errors
       const validationErrors = error.response?.data?.errors;
-      if (validationErrors && typeof validationErrors === "object") {
-        // Extract and format validation errors
+      if (validationErrors) {
+        // Extract and format validation errors into a flat mapping { field: message }
         const errorMessages: Record<string, string> = {};
-        Object.keys(validationErrors).forEach((field) => {
-          const fieldErrors = validationErrors[field];
-          if (Array.isArray(fieldErrors) && fieldErrors.length > 0) {
-            errorMessages[field] = fieldErrors[0].msg || fieldErrors[0];
-          } else if (typeof fieldErrors === "string") {
-            errorMessages[field] = fieldErrors;
-          }
-        });
+
+        // If the server returned an array (express-validator .array() form)
+        if (Array.isArray(validationErrors)) {
+          validationErrors.forEach((errItem: any) => {
+            const field = errItem.param || errItem.path || errItem.field || 'unknown';
+            const msg = errItem.msg || errItem.message || String(errItem);
+            if (!errorMessages[field]) errorMessages[field] = msg;
+          });
+        } else if (typeof validationErrors === 'object') {
+          // If it's an object map: field -> string | array | nested object
+          Object.keys(validationErrors).forEach((field) => {
+            const fieldErrors = (validationErrors as any)[field];
+
+            if (Array.isArray(fieldErrors) && fieldErrors.length > 0) {
+              const fe = fieldErrors[0];
+              errorMessages[field] = fe?.msg || fe?.message || String(fe);
+            } else if (typeof fieldErrors === 'string') {
+              errorMessages[field] = fieldErrors;
+            } else if (fieldErrors && typeof fieldErrors === 'object') {
+              // Try common nested shapes
+              if (fieldErrors.msg || fieldErrors.message) {
+                errorMessages[field] = fieldErrors.msg || fieldErrors.message;
+              } else {
+                // Fallback: pick the first truthy string value from the nested object
+                const nested = Object.values(fieldErrors).find((v: any) => typeof v === 'string' && v.trim());
+                if (nested) errorMessages[field] = nested as string;
+              }
+            }
+          });
+        }
 
         setErrors(errorMessages);
 
@@ -1183,9 +1212,25 @@ const AdminEditEventPage: React.FC = () => {
         const errorCount = Object.keys(errorMessages).length;
         setSaveStatus({
           type: "error",
-          message: `Validation failed: ${errorCount} field${errorCount > 1 ? "s" : ""} ${errorCount > 1 ? "have" : "has"} errors. Please review and correct the highlighted fields.`,
+          message: `Validation failed: ${errorCount} field${errorCount !== 1 ? "s" : ""} ${errorCount !== 1 ? "have" : "has"} errors. Please review and correct the highlighted fields.`,
           validationErrors: errorMessages,
         });
+
+        // If vendor-related error was returned as a top-level message instead of errors object,
+        // also set vendorId in errors map so the UI highlights the field.
+        const topMessage: string | undefined = error.response?.data?.message;
+        if (
+          (!errorCount || errorCount === 0) &&
+          topMessage &&
+          /vendor not found|vendor not active|vendor not found or inactive/i.test(topMessage)
+        ) {
+          const vendorMsg = 'Selected vendor was not found or is inactive.';
+          setErrors((prev) => ({ ...prev, vendorId: vendorMsg }));
+          setSaveStatus((prev) => ({
+            ...(prev as any),
+            validationErrors: { ...((prev as any)?.validationErrors || {}), vendorId: vendorMsg },
+          }));
+        }
       } else {
         // Generic error handling
         setSaveStatus({

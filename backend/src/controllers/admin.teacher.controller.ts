@@ -202,6 +202,46 @@ export const getAllTeachers = async (
 };
 
 /**
+ * Get all teachers with pagination
+ * @route GET /api/admin/teachers/options
+ */
+export const getAllTeachersOptions = async (
+  req: Request,
+  res: Response,
+  next: NextFunction,
+) => {
+  try {
+    const search =
+      typeof req.query.search === "string"
+        ? req.query.search.trim()
+        : "";
+
+    const limit = Math.min(
+      Math.max(Number(req.query.limit) || 20, 1),
+      50
+    );
+
+    // Get active teachers, sorted by full name
+    const teachers = await Teacher.find({ isActive: true, isDeleted: { $ne: true }, fullName: { $regex: search, $options: "i" } })
+      .select("_id fullName")
+      .sort({ fullName: 1 })
+      .limit(limit)
+      .lean();
+
+    res.json({
+      success: true,
+      data: {
+        teachers: teachers.map((teacher) => ({
+          _id: teacher._id,
+          fullName: teacher.fullName,
+        })),
+      },
+    });
+  } catch (error) {
+    next(error);
+  }
+};
+/**
  * Sync Teacher data (maintenance route to fix orphans and missing profiles)
  * @route POST /api/admin/teachers/sync
  */

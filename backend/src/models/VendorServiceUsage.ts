@@ -43,7 +43,6 @@ const VendorServiceUsageSchema = new Schema<IVendorServiceUsage>(
       type: Schema.Types.ObjectId,
       ref: "Vendor",
       required: [true, "Vendor ID is required"],
-      index: true,
     },
     packageId: {
       type: Schema.Types.ObjectId,

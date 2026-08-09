@@ -79,7 +79,7 @@ interface BasicInfoTabProps {
   };
   categories: Category[];
   vendors: Vendor[];
-  teachers: Array<{ id: string; firstName: string; lastName: string; email: string }>;
+  teachers: Array<{ id: string; fullName: string }>;
   errors: Record<string, string>;
   onInputChange: (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>) => void;
   onCheckboxChange: (e: React.ChangeEvent<HTMLInputElement>) => void;
@@ -220,7 +220,7 @@ const BasicInfoTab: React.FC<BasicInfoTabProps> = ({
                 <option value="">Select a vendor</option>
                 {(vendors || []).map(vendor => (
                   <option key={vendor._id} value={vendor._id}>
-                    {vendor.businessName} ({vendor.email})
+                    {vendor.businessName}
                   </option>
                 ))}
               </select>
@@ -252,7 +252,7 @@ const BasicInfoTab: React.FC<BasicInfoTabProps> = ({
                   <option value="">Select Instructor</option>
                   {(teachers || []).map((teacher) => (
                     <option key={teacher.id} value={teacher.id}>
-                      {teacher.firstName} {teacher.lastName} ({teacher.email})
+                      {teacher.fullName}  
                     </option>
                   ))}
                 </select>

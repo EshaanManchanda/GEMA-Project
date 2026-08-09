@@ -69,9 +69,6 @@ googleReviewSchema.index({ eventId: 1, reviewId: 1 }, { unique: true });
 googleReviewSchema.index({ eventId: 1, isVisible: 1, time: -1 });
 // Homepage carousel
 googleReviewSchema.index({ isVisible: 1, rating: -1, time: -1 });
-// Mark missing reviews efficiently
-googleReviewSchema.index({ eventId: 1, reviewId: 1 });
-
 export default mongoose.model<IGoogleReview>(
   "GoogleReview",
   googleReviewSchema,

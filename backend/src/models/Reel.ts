@@ -163,7 +163,6 @@ const reelSchema = new Schema<IReel>(
     isFeatured: {
       type: Boolean,
       default: false,
-      index: true,
     },
     displayOrder: {
       type: Number,

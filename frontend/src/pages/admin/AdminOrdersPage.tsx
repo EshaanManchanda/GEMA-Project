@@ -6,13 +6,14 @@ import { Search, ChevronDown, ChevronUp, Check, X, Trash2, DollarSign, Eye } fro
 import { toast } from 'react-hot-toast';
 import PrivatePageSEO from '@/components/common/PrivatePageSEO';
 import logger from '@/utils/logger';
+import { convertToCSV } from '@/utils/csvExport';
 
 const AdminOrdersPage: React.FC = () => {
   const [orders, setOrders] = useState<IOrder[]>([]);
   const [isLoading, setIsLoading] = useState<boolean>(true);
   const [searchTerm, setSearchTerm] = useState<string>('');
-  const [statusFilter, setStatusFilter] = useState<string>('all');
-  const [paymentStatusFilter, setPaymentStatusFilter] = useState<string>('all');
+  const [statusFilter, setStatusFilter] = useState<'all' | 'pending' | 'confirmed' | 'cancelled' | 'refunded'>('all');
+  const [paymentStatusFilter, setPaymentStatusFilter] = useState<'all' | 'pending' | 'paid' | 'failed' | 'refunded' | 'free'>('all');
   const [sortBy, setSortBy] = useState<'createdAt' | 'total' | 'status' | 'paymentStatus'>('createdAt');
   const [sortOrder, setSortOrder] = useState<'asc' | 'desc'>('desc');
   const [selectedOrders, setSelectedOrders] = useState<string[]>([]);
@@ -21,6 +22,7 @@ const AdminOrdersPage: React.FC = () => {
   const [orderToAction, setOrderToAction] = useState<string | null>(null);
   const [refundAmount, setRefundAmount] = useState<string>('');
   const [refundReason, setRefundReason] = useState<string>('');
+  const [isExporting, setIsExporting] = useState<boolean>(false);
 
   // Pagination
   const [currentPage, setCurrentPage] = useState<number>(1);
@@ -40,11 +42,11 @@ const AdminOrdersPage: React.FC = () => {
       };
 
       if (statusFilter !== 'all') {
-        params.status = statusFilter as any;
+        params.status = statusFilter;
       }
 
       if (paymentStatusFilter !== 'all') {
-        params.paymentStatus = paymentStatusFilter as any;
+        params.paymentStatus = paymentStatusFilter;
       }
 
       if (searchTerm) {
@@ -56,9 +58,9 @@ const AdminOrdersPage: React.FC = () => {
       setOrders(response.orders);
       setTotalPages(response.pagination.totalPages);
       setTotalOrders(response.pagination.totalOrders);
-    } catch (error: any) {
+    } catch (error: unknown) {
       logger.error('Error fetching orders:', error);
-      toast.error(error?.message || 'Failed to fetch orders');
+      toast.error(getErrorMessage(error) || 'Failed to fetch orders');
     } finally {
       setIsLoading(false);
     }
@@ -115,11 +117,12 @@ const AdminOrdersPage: React.FC = () => {
           await adminAPI.updateOrder(orderToAction, { status: 'cancelled' });
           toast.success('Order cancelled successfully');
           break;
-        case 'refund':
+        case 'refund': {
           const amount = refundAmount ? parseFloat(refundAmount) : undefined;
           await adminAPI.refundOrder(orderToAction, amount, refundReason);
           toast.success('Order refunded successfully');
           break;
+        }
         case 'delete':
           await adminAPI.deleteOrder(orderToAction);
           toast.success('Order deleted successfully');
@@ -128,9 +131,9 @@ const AdminOrdersPage: React.FC = () => {
 
       // Refresh orders after action
       await fetchOrders();
-    } catch (error: any) {
+    } catch (error: unknown) {
       logger.error('Error performing order action:', error);
-      toast.error(error?.response?.data?.message || `Failed to ${actionType} order`);
+      toast.error(getErrorMessage(error) || `Failed to ${actionType} order`);
     } finally {
       setIsActionModalOpen(false);
       setOrderToAction(null);
@@ -162,9 +165,9 @@ const AdminOrdersPage: React.FC = () => {
       // Refresh orders after bulk action
       await fetchOrders();
       setSelectedOrders([]);
-    } catch (error: any) {
+    } catch (error: unknown) {
       logger.error('Error performing bulk action:', error);
-      toast.error(error?.response?.data?.message || `Failed to perform bulk ${action}`);
+      toast.error(getErrorMessage(error) || `Failed to perform bulk ${action}`);
     }
   };
 
@@ -184,6 +187,121 @@ const AdminOrdersPage: React.FC = () => {
       style: 'currency',
       currency: currency,
     }).format(amount);
+  };
+
+  const buildOrderQueryParams = (includeFilters: boolean, page: number = 1): GetOrdersParams => {
+    const params: GetOrdersParams = {
+      page,
+      limit: 100,
+      sortBy,
+      sortOrder,
+    };
+
+    if (includeFilters) {
+      if (statusFilter !== 'all') {
+        params.status = statusFilter as GetOrdersParams['status'];
+      }
+
+      if (paymentStatusFilter !== 'all') {
+        params.paymentStatus = paymentStatusFilter as GetOrdersParams['paymentStatus'];
+      }
+
+      if (searchTerm) {
+        params.search = searchTerm;
+      }
+    }
+
+    return params;
+  };
+
+  const getOrdersFromResponse = (response: unknown): IOrder[] => {
+    if (!response || typeof response !== 'object') return [];
+
+    const resp = response as Record<string, unknown>;
+    const firstLevelData = resp.data as Record<string, unknown> | undefined;
+    const secondLevelData = firstLevelData?.data as Record<string, unknown> | undefined;
+    const orders = resp.orders || firstLevelData?.orders || secondLevelData?.orders;
+
+    return Array.isArray(orders) ? (orders as IOrder[]) : [];
+  };
+
+  const getPaginationFromResponse = (response: unknown) => {
+    if (!response || typeof response !== 'object') return { totalPages: 1 };
+
+    const resp = response as Record<string, unknown>;
+    const firstLevelData = resp.data as Record<string, unknown> | undefined;
+    const secondLevelData = firstLevelData?.data as Record<string, unknown> | undefined;
+    const pagination = resp.pagination || firstLevelData?.pagination || secondLevelData?.pagination;
+
+    return typeof pagination === 'object' && pagination !== null
+      ? (pagination as { totalPages?: number })
+      : { totalPages: 1 };
+  };
+
+  const getErrorMessage = (error: unknown): string => {
+    if (!error || typeof error !== 'object') return 'Unknown error';
+
+    const err = error as Record<string, unknown>;
+    if (typeof err.message === 'string') return err.message;
+
+    const response = err.response as Record<string, unknown> | undefined;
+    const data = response?.data as Record<string, unknown> | undefined;
+    if (typeof data?.message === 'string') return data.message;
+
+    return 'Unknown error';
+  };
+
+  const exportOrdersToCsv = async (includeFilters: boolean) => {
+    setIsExporting(true);
+
+    try {
+      const allOrders: IOrder[] = [];
+      const firstResponse = await adminAPI.getAllOrders(buildOrderQueryParams(includeFilters, 1));
+      const firstPageOrders = getOrdersFromResponse(firstResponse);
+      const firstPagination = getPaginationFromResponse(firstResponse);
+
+      allOrders.push(...firstPageOrders);
+
+      const totalPagesToFetch = Number(firstPagination.totalPages || 1);
+      for (let page = 2; page <= totalPagesToFetch; page += 1) {
+        const response = await adminAPI.getAllOrders(buildOrderQueryParams(includeFilters, page));
+        const ordersPage = getOrdersFromResponse(response);
+        allOrders.push(...ordersPage);
+      }
+
+      if (!allOrders.length) {
+        toast.error('No orders found to export.');
+        return;
+      }
+
+      const csvData = allOrders.map((order) => ({
+        orderNumber: order.orderNumber,
+        customerName: `${order.billingAddress.firstName} ${order.billingAddress.lastName}`,
+        customerEmail: order.billingAddress.email,
+        customerPhone: order.billingAddress.phone,
+        status: order.status,
+        paymentStatus: order.paymentStatus,
+        paymentMethod: order.paymentMethod || '',
+        transactionId: order.transactionId || '',
+        couponCode: order.couponCode || '',
+        total: order.total,
+        currency: order.currency,
+        itemsCount: order.items.length,
+        itemTitles: order.items.map((item) => `${item.eventTitle} x${item.quantity}`).join('; '),
+        billingAddress: `${order.billingAddress.address}, ${order.billingAddress.city}, ${order.billingAddress.state}, ${order.billingAddress.zipCode}, ${order.billingAddress.country}`,
+        createdAt: new Date(order.createdAt).toISOString(),
+        updatedAt: new Date(order.updatedAt).toISOString(),
+      }));
+
+      const filename = `orders-${includeFilters ? 'filtered' : 'all'}-${new Date().toISOString().split('T')[0]}`;
+      convertToCSV(csvData, filename);
+      toast.success(`Exported ${allOrders.length} order${allOrders.length > 1 ? 's' : ''} to CSV`);
+    } catch (error: unknown) {
+      logger.error('Error exporting orders to CSV:', error);
+      toast.error(getErrorMessage(error) || 'Failed to export orders');
+    } finally {
+      setIsExporting(false);
+    }
   };
 
   const getStatusBadgeClass = (status: IOrder['status']) => {
@@ -336,6 +454,23 @@ const AdminOrdersPage: React.FC = () => {
               <option value="100">100 per page</option>
             </select>
           </div>
+        </div>
+
+        <div className="flex flex-wrap items-center gap-3 mb-6">
+          <button
+            onClick={() => exportOrdersToCsv(true)}
+            disabled={isExporting}
+            className="px-4 py-2 bg-primary text-white rounded-lg hover:bg-primary-dark transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+          >
+            {isExporting ? 'Exporting...' : 'Export Filtered Orders'}
+          </button>
+          <button
+            onClick={() => exportOrdersToCsv(false)}
+            disabled={isExporting}
+            className="px-4 py-2 bg-white border border-gray-300 text-gray-900 rounded-lg hover:bg-gray-50 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+          >
+            Export All Orders
+          </button>
         </div>
 
         {/* Bulk Actions */}

@@ -19,7 +19,7 @@ const PageViewSchema = new Schema<IPageView>({
   country:   { type: String, default: null },
   device:    { type: String, enum: ['mobile', 'tablet', 'desktop', 'bot', 'unknown'], default: 'unknown' },
   sessionId: { type: String, default: null },
-  timestamp: { type: Date, default: Date.now, index: true },
+  timestamp: { type: Date, default: Date.now },
 }, { timestamps: false });
 
 // TTL index — auto-delete records older than 90 days
