@@ -83,11 +83,6 @@ const UsersIcon = () => (
     <path d="M23 21v-2a4 4 0 00-3-3.87M16 3.13a4 4 0 010 7.75" />
   </svg>
 );
-const ChevronDown = () => (
-  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} className="w-4 h-4">
-    <polyline points="6 9 12 15 18 9" />
-  </svg>
-);
 const ArrowRight = () => (
   <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} className="w-5 h-5">
     <line x1="5" y1="12" x2="19" y2="12" /><polyline points="12 5 19 12 12 19" />
@@ -940,7 +935,7 @@ const LeadPage: React.FC = () => {
               { stat: `${stats.totalVendors}+`, title: 'Partners since 2017', desc: 'Trusted by over' },
               { stat: `${stats.totalEvents}+`, title: 'Experiences', desc: 'Countless memories' },
               { stat: `${stats.totalVenues}+`, title: 'Venue & Events', desc: 'Across the UAE' },
-              { stat: `${stats.totalClasses || stats.totalEvents || 1000}+`, title: 'Classes', desc: 'For every age group' },
+              { stat: `${(stats as { totalClasses?: number }).totalClasses || stats.totalEvents || 1000}+`, title: 'Classes', desc: 'For every age group' },
             ].map((item, idx) => (
               <motion.div
                 key={item.title}

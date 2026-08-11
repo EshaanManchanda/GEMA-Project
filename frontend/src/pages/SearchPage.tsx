@@ -2,7 +2,7 @@ import React, { useState, useEffect, useMemo, useCallback, useRef } from 'react'
 import { useSearchParams } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
 import {
-  FaSearch, FaTimes, FaChevronDown, FaMapMarkerAlt, FaCalendarAlt,
+  FaSearch, FaTimes, FaChevronDown, FaCalendarAlt,
   FaDollarSign, FaUsers, FaBuilding, FaStar, FaFilter, FaSlidersH, FaTag
 } from 'react-icons/fa';
 import { SearchEvent, SearchFilters, FilterOptions } from '../types/search';
@@ -145,17 +145,6 @@ const CheckRow: React.FC<{ label: string; checked: boolean; onChange: () => void
   </label>
 );
 
-// ── Radio row ─────────────────────────────────────────────────────────────────
-const RadioRow: React.FC<{ label: string; checked: boolean; onChange: () => void }> = ({ label, checked, onChange }) => (
-  <label className="flex items-center gap-3 py-2 cursor-pointer hover:text-indigo-700 group" onClick={(e) => { e.preventDefault(); onChange(); }}>
-    <div className={`w-4 h-4 rounded-full border-2 flex items-center justify-center flex-shrink-0 transition-colors ${checked ? 'border-indigo-600' : 'border-gray-300 group-hover:border-indigo-400'
-      }`}>
-      {checked && <div className="w-2 h-2 rounded-full bg-indigo-600" />}
-    </div>
-    <span className="text-sm text-gray-700 group-hover:text-gray-900">{label}</span>
-  </label>
-);
-
 // ── Main SearchPage ───────────────────────────────────────────────────────────
 const SearchPage: React.FC = () => {
   const [searchParams, setSearchParams] = useSearchParams();
@@ -262,14 +251,12 @@ const SearchPage: React.FC = () => {
   const [pendingCategory, setPendingCategory] = useState<string[]>(filters.category || []);
   const [pendingType, setPendingType] = useState<string[]>(filters.type || []);
   const [pendingVenueType, setPendingVenueType] = useState<string[]>(filters.venueType || []);
-  const [pendingCity, setPendingCity] = useState<string[]>(filters.city || []);
 
   useEffect(() => {
     setPendingCategory(filters.category || []);
     setPendingType(filters.type || []);
     setPendingVenueType(filters.venueType || []);
-    setPendingCity(filters.city || []);
-  }, [filters.category, filters.type, filters.venueType, filters.city]);
+  }, [filters.category, filters.type, filters.venueType]);
 
   useEffect(() => { if (searchInput !== query) setSearchInput(query); }, [query]); // eslint-disable-line
 
@@ -413,12 +400,6 @@ const SearchPage: React.FC = () => {
     if (filters.venueType.length === 1) return filters.venueType[0];
     return `${filters.venueType.length} Venues`;
   }, [filters.venueType]);
-
-  const cityLabel = useMemo(() => {
-    if (!filters.city?.length) return 'City';
-    if (filters.city.length === 1) return filters.city[0];
-    return `${filters.city.length} Cities`;
-  }, [filters.city]);
 
   const priceLabel = filters.minPrice !== undefined || filters.maxPrice !== undefined
     ? `${filters.minPrice ?? 0}–${filters.maxPrice ?? 3000} ${filters.currency || 'AED'}` : 'Price';

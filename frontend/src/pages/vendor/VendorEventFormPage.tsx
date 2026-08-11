@@ -61,6 +61,7 @@ interface Schedule {
   startTime?: string;
   endTime?: string;
   availableSeats: string;
+  totalSeats?: string;
   price: string;
   unlimitedSeats?: boolean;
   isSpecialDate?: boolean;
@@ -71,11 +72,14 @@ interface Schedule {
   sessionType?: string;
   isFreeSession?: boolean;
   ratePerClass?: string;
+  description?: string;
   timeSlots?: Array<{
+    id: string;
     date: string;
     startTime: string;
     endTime: string;
     availableSeats: string;
+    price: string;
   }>;
 }
 

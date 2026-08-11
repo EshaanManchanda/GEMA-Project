@@ -417,9 +417,11 @@ const AdminEditEventPage: React.FC = () => {
                 ...prev,
                 {
                   id: event.teacher.id,
-                  firstName: event.teacher.firstName || "",
-                  lastName: event.teacher.lastName || "",
-                  email: event.teacher.email || "",
+                  fullName:
+                    event.teacher.fullName ||
+                    [event.teacher.firstName, event.teacher.lastName].filter(Boolean).join(" ") ||
+                    event.teacher.email ||
+                    "Current Teacher",
                 },
               ];
             });

@@ -1,16 +1,13 @@
 import React, { useState, useEffect, useMemo } from 'react';
-import { Link } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
 import {
-  FaSearch, FaStar, FaUsers, FaCalendarAlt,
-  FaMapMarkerAlt, FaCheckCircle, FaTimes, FaBuilding
+  FaSearch, FaTimes, FaBuilding
 } from 'react-icons/fa';
 import { MdOutlineSort } from 'react-icons/md';
 import { useVendorsQuery } from '@/hooks/queries/useVendorQuery';
 import { useDebounce } from '@/hooks/useDebounce';
 import SEO from '@/components/common/SEO';
-import { API_BASE_URL } from '@/config/api';
-import VendorCard, { Vendor, defaultVendorCovers } from '@/components/vendor/VendorCard';
+import VendorCard, { Vendor } from '@/components/vendor/VendorCard';
 
 
 

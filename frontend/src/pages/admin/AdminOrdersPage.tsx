@@ -410,7 +410,7 @@ const AdminOrdersPage: React.FC = () => {
             <select
               value={statusFilter}
               onChange={(e) => {
-                setStatusFilter(e.target.value);
+                setStatusFilter(e.target.value as 'all' | 'pending' | 'confirmed' | 'cancelled' | 'refunded');
                 setCurrentPage(1);
               }}
               className="px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary focus:border-transparent bg-white text-gray-900"
@@ -426,7 +426,7 @@ const AdminOrdersPage: React.FC = () => {
             <select
               value={paymentStatusFilter}
               onChange={(e) => {
-                setPaymentStatusFilter(e.target.value);
+                setPaymentStatusFilter(e.target.value as 'all' | 'pending' | 'paid' | 'failed' | 'refunded' | 'free');
                 setCurrentPage(1);
               }}
               className="px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary focus:border-transparent bg-white text-gray-900"

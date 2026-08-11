@@ -32,11 +32,6 @@ const SORT_LABELS: Record<SortOption, string> = {
   events: 'Most Events',
   newest: 'Newest',
 };
-const MODE_COLORS: Record<string, string> = {
-  online: 'bg-blue-100 text-blue-700',
-  offline: 'bg-amber-100 text-amber-700',
-  hybrid: 'bg-violet-100 text-violet-700',
-};
 const MODE_ICONS: Record<string, React.ReactNode> = {
   online: <FaLaptop className="w-3 h-3" />,
   offline: <FaMapMarkerAlt className="w-3 h-3" />,
