@@ -3,6 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import { toast } from 'react-hot-toast';
 import { FaEye, FaEdit, FaPlus, FaTrash, FaCreditCard, FaPowerOff, FaMoneyBillWave } from 'react-icons/fa';
 import { format } from 'date-fns';
+import { RefreshCw } from 'lucide-react';
 import api from '../../services/api';
 import PrivatePageSEO from '@/components/common/PrivatePageSEO';
 import logger from '@/utils/logger';
@@ -215,31 +216,40 @@ const AdminVendorsPage: React.FC = () => {
   return (
     <>
       <PrivatePageSEO title="Admin - Vendors | Kidrove" description="Manage vendors and payment models" />
-      <div className="min-h-screen bg-gray-50 p-6">
-        <div className="max-w-7xl mx-auto">
-          {/* Header */}
-          <div className="mb-8 flex items-center justify-between">
-            <div>
-              <h1 className="text-3xl font-bold text-gray-900">Vendor Management</h1>
-              <p className="mt-2 text-gray-600">Manage vendor payment models and status</p>
-            </div>
-            <div className="flex items-center gap-3">
-              <button
-                onClick={handleSyncData}
-                className="px-4 py-2 bg-indigo-600 text-white text-sm font-medium rounded-lg hover:bg-indigo-700 transition-colors flex items-center gap-2"
-                title="Fix vendor/user data inconsistencies"
-              >
-                🔄 Sync Data
-              </button>
-              <button
-                onClick={() => navigate('/admin/vendors/new')}
-                className="px-4 py-2 bg-orange-600 text-white text-sm font-medium rounded-lg hover:bg-orange-700 transition-colors flex items-center gap-2"
-              >
-                <FaPlus /> Add Vendor
-              </button>
+      <div className="min-h-screen bg-gray-50">
+        {/* Sticky Header */}
+        <div className="sticky top-0 z-40 bg-white border-b border-gray-200 shadow-md">
+          <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6">
+            <div className="flex items-center justify-between flex-wrap gap-4">
+              <div>
+                <h1 className="text-3xl md:text-4xl lg:text-5xl font-bold bg-gradient-to-r from-gray-900 to-gray-700 bg-clip-text text-transparent">
+                  Vendor Management
+                </h1>
+                <div className="flex items-center gap-2 mt-2">
+                  <span className="text-xs bg-blue-100 text-blue-600 px-2 py-1 rounded-full">Admin</span>
+                  <span className="text-sm text-gray-500">Manage vendor payment models and status</span>
+                </div>
+              </div>
+              <div className="flex items-center gap-3">
+                <button
+                  onClick={handleSyncData}
+                  className="px-4 py-3 bg-indigo-600 text-white text-sm font-medium rounded-lg hover:bg-indigo-700 transition-colors flex items-center gap-2"
+                  title="Fix vendor/user data inconsistencies"
+                >
+                  <RefreshCw className="w-4 h-4" /> Sync Data
+                </button>
+                <button
+                  onClick={() => navigate('/admin/vendors/new')}
+                  className="flex items-center gap-2 px-6 py-3 bg-gradient-to-r from-primary-500 to-primary-700 text-white font-bold rounded-xl hover:from-primary-600 hover:to-primary-800 hover:shadow-xl transition-all duration-200"
+                >
+                  <FaPlus /> Add Vendor
+                </button>
+              </div>
             </div>
           </div>
+        </div>
 
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
           {/* Stats Cards */}
           {stats && (
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-4 mb-8">

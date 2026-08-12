@@ -1,7 +1,8 @@
 import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { toast } from 'react-hot-toast';
-import { FaArrowLeft, FaSave, FaSpinner } from 'react-icons/fa';
+import { ArrowLeft, Save, Building2, UserCircle2, Wallet } from 'lucide-react';
+import { FaSpinner } from 'react-icons/fa';
 import api from '../../services/api';
 import PrivatePageSEO from '@/components/common/PrivatePageSEO';
 
@@ -12,6 +13,7 @@ const AdminVendorCreatePage: React.FC = () => {
   const navigate = useNavigate();
   const [saving, setSaving] = useState(false);
   const [errors, setErrors] = useState<Record<string, string>>({});
+  const [saveStatus, setSaveStatus] = useState<{ type: 'success' | 'error'; message: string } | null>(null);
 
   const [firstName, setFirstName] = useState('');
   const [lastName, setLastName] = useState('');
@@ -34,9 +36,12 @@ const AdminVendorCreatePage: React.FC = () => {
     if (!businessName) newErrors.businessName = 'Business name is required';
     if (Object.keys(newErrors).length > 0) {
       setErrors(newErrors);
+      setSaveStatus({ type: 'error', message: 'Please fix the highlighted fields before continuing.' });
+      window.scrollTo({ top: 0, behavior: 'smooth' });
       return;
     }
     setErrors({});
+    setSaveStatus(null);
 
     setSaving(true);
     try {
@@ -66,7 +71,10 @@ const AdminVendorCreatePage: React.FC = () => {
       }
       navigate(vendorId ? `/admin/vendors/${vendorId}` : '/admin/vendors');
     } catch (error: any) {
-      toast.error(error.response?.data?.message || 'Failed to create vendor');
+      const message = error.response?.data?.message || 'Failed to create vendor';
+      toast.error(message);
+      setSaveStatus({ type: 'error', message });
+      window.scrollTo({ top: 0, behavior: 'smooth' });
     } finally {
       setSaving(false);
     }
@@ -76,26 +84,53 @@ const AdminVendorCreatePage: React.FC = () => {
     <>
       <PrivatePageSEO title="Create Vendor — Admin" description="Create a new vendor account" />
       <div className="min-h-screen bg-gray-50">
-        <div className="bg-white border-b border-gray-200 px-6 py-4">
-          <div className="max-w-3xl mx-auto flex items-center justify-between">
-            <div className="flex items-center gap-4">
-              <button onClick={() => navigate('/admin/vendors')}
-                className="p-2 text-gray-500 hover:text-gray-700 hover:bg-gray-100 rounded-lg transition-colors">
-                <FaArrowLeft />
+        {/* Sticky Header */}
+        <div className="sticky top-0 z-40 bg-white border-b border-gray-200 shadow-md">
+          <div className="max-w-5xl mx-auto px-4 sm:px-6 lg:px-8 py-6">
+            <div className="flex items-center justify-between flex-wrap gap-4">
+              <div className="flex items-center space-x-4">
+                <button
+                  onClick={() => navigate('/admin/vendors')}
+                  className="text-gray-600 hover:text-gray-900 transition-colors"
+                >
+                  <ArrowLeft className="w-5 h-5" />
+                </button>
+                <div>
+                  <h1 className="text-2xl md:text-3xl lg:text-4xl font-bold bg-gradient-to-r from-gray-900 to-gray-700 bg-clip-text text-transparent">
+                    Create New Vendor
+                  </h1>
+                  <div className="flex items-center gap-2 mt-2">
+                    <span className="text-xs bg-blue-100 text-blue-600 px-2 py-1 rounded-full">Admin</span>
+                    <span className="text-sm text-gray-500">Sets up an owner account and business profile</span>
+                  </div>
+                </div>
+              </div>
+              <button
+                onClick={handleSubmit}
+                disabled={saving}
+                className="flex items-center gap-2 px-6 py-3 bg-gradient-to-r from-primary-500 to-primary-700 text-white font-bold rounded-xl hover:from-primary-600 hover:to-primary-800 hover:shadow-xl transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed"
+              >
+                {saving ? <FaSpinner className="animate-spin" /> : <Save className="w-4 h-4" />}
+                {saving ? 'Creating…' : 'Create Vendor'}
               </button>
-              <h1 className="text-xl font-semibold text-gray-900">Create Vendor</h1>
             </div>
-            <button onClick={handleSubmit} disabled={saving}
-              className="flex items-center gap-2 px-5 py-2.5 bg-orange-600 text-white rounded-lg hover:bg-orange-700 transition-colors disabled:opacity-60 font-medium">
-              {saving ? <FaSpinner className="animate-spin" /> : <FaSave />}
-              {saving ? 'Creating…' : 'Create Vendor'}
-            </button>
           </div>
         </div>
 
-        <div className="max-w-3xl mx-auto px-6 py-8 space-y-6">
+        {/* Status Messages */}
+        {saveStatus && (
+          <div className="max-w-5xl mx-auto px-4 sm:px-6 lg:px-8 mt-4">
+            <div className={`p-4 rounded-xl ${saveStatus.type === 'success' ? 'bg-green-100 text-green-700' : 'bg-red-100 text-red-700'}`}>
+              <p className="font-medium">{saveStatus.message}</p>
+            </div>
+          </div>
+        )}
+
+        <div className="max-w-5xl mx-auto px-4 sm:px-6 lg:px-8 py-8 space-y-6">
           <div className="bg-white rounded-xl shadow-sm border border-gray-100 p-6 space-y-5">
-            <h2 className="text-lg font-semibold text-gray-800">Owner Account</h2>
+            <h2 className="text-lg font-semibold text-gray-800 flex items-center gap-2">
+              <UserCircle2 className="w-5 h-5 text-orange-600" /> Owner Account
+            </h2>
             <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
               <div>
                 <label className={labelCls}>First Name</label>
@@ -124,7 +159,9 @@ const AdminVendorCreatePage: React.FC = () => {
           </div>
 
           <div className="bg-white rounded-xl shadow-sm border border-gray-100 p-6 space-y-5">
-            <h2 className="text-lg font-semibold text-gray-800">Business Information</h2>
+            <h2 className="text-lg font-semibold text-gray-800 flex items-center gap-2">
+              <Building2 className="w-5 h-5 text-orange-600" /> Business Information
+            </h2>
             <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
               <div className="md:col-span-2">
                 <label className={labelCls}>Business Name</label>
@@ -147,7 +184,9 @@ const AdminVendorCreatePage: React.FC = () => {
           </div>
 
           <div className="bg-white rounded-xl shadow-sm border border-gray-100 p-6 space-y-5">
-            <h2 className="text-lg font-semibold text-gray-800">Payment Model</h2>
+            <h2 className="text-lg font-semibold text-gray-800 flex items-center gap-2">
+              <Wallet className="w-5 h-5 text-orange-600" /> Payment Model
+            </h2>
             <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
               <div>
                 <label className={labelCls}>Payment Model</label>
