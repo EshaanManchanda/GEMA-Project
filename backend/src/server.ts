@@ -1,3 +1,5 @@
+import "./instrument"; // Sentry init — must be the first import (see file for why)
+import * as Sentry from "@sentry/node";
 import express, {
   Express,
   Application,
@@ -388,6 +390,12 @@ app.get("/", (req: Request, res: Response) => {
 
 // 404 handler
 app.use(notFound);
+
+// Sentry: capture exceptions before they reach our own error handler.
+// No-op when SENTRY_DSN is unset (Sentry.init was skipped in instrument.ts).
+if (config.sentryDsn) {
+  Sentry.setupExpressErrorHandler(app);
+}
 
 // Error handler
 app.use(errorHandler);

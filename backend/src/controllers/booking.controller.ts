@@ -507,6 +507,18 @@ export const initiateBooking = async (
           clientSecret: `free_pi_${tempOrder._id}_secret`,
         };
       } else if (paymentMethod === "test") {
+        if (config.nodeEnv === "production") {
+          await session.abortTransaction();
+          session.endSession();
+          logger.warn("Rejected test payment method in production", {
+            userId,
+            orderId: tempOrder._id,
+            ip: req.ip,
+          });
+          return next(
+            new AppError("Test payment method is not available", 403),
+          );
+        }
         paymentSession = {
           paymentIntentId: `test_pi_${tempOrder._id}`,
           clientSecret: `test_pi_${tempOrder._id}_secret`,
@@ -704,7 +716,17 @@ export const confirmBooking = async (
         payment_method: "free",
       };
     } else if (paymentIntentId.startsWith("test_pi_")) {
-      // Test payment: auto-confirm for testing/development purposes
+      // Test payment: auto-confirm for testing/development purposes only.
+      // Never allow this bypass in production — it would let anyone confirm
+      // an order as paid without an actual Stripe charge.
+      if (config.nodeEnv === "production") {
+        logger.warn("Rejected test_pi_ payment confirmation in production", {
+          orderId: order._id,
+          userId: requestUserId,
+          ip: req.ip,
+        });
+        return next(new AppError("Invalid payment intent", 400));
+      }
       logger.info("Processing test payment booking confirmation", {
         paymentIntentId: paymentIntentId.substring(0, 30) + "...",
         orderId: order._id,

@@ -8,6 +8,8 @@ import { subscriptionService } from "../services/subscription.service";
 import { getOrCreateTeacherProfile } from "../utils/teacherHelpers";
 import { Types } from "mongoose";
 import { AppError } from "../middleware/error";
+import { encryptField } from "../utils/encryption";
+import Stripe from "stripe";
 import Notification, {
   NotificationType,
   NotificationPriority,
@@ -353,20 +355,42 @@ export const updateTeacherStripeKey = async (req: Request, res: Response) => {
       return res.status(400).json({ message: "manualStripeKey is required" });
     }
 
+    const secretKeyPrefix = isTestMode ? "sk_test_" : "sk_live_";
+    if (!manualStripeKey.startsWith(secretKeyPrefix)) {
+      return res.status(400).json({
+        message: `Invalid secret key format. Expected to start with ${secretKeyPrefix}`,
+      });
+    }
+
     const teacher = await Teacher.findOne({ userId });
     if (!teacher) {
       return res.status(404).json({ message: "Teacher profile not found" });
     }
 
+    // Test the key by making a live API call before persisting it
+    try {
+      const testStripe = new Stripe(manualStripeKey, {
+        apiVersion: "2025-08-27.basil",
+      });
+      await testStripe.balance.retrieve();
+    } catch (validationError: any) {
+      return res.status(400).json({
+        message: "Stripe key validation failed",
+        error: validationError.message,
+      });
+    }
+
     // Note: manualStripeKey and isTestMode properties don't exist on IStripeConfig
-    // Using stripeSecretKey and stripeTestMode instead
-    teacher.paymentSettings.stripeSettings.stripeSecretKey = manualStripeKey;
+    // Using stripeSecretKey and stripeTestMode instead. Secret key is encrypted
+    // at rest (see utils/encryption.ts).
+    teacher.paymentSettings.stripeSettings.stripeSecretKey =
+      encryptField(manualStripeKey);
     teacher.paymentSettings.stripeSettings.stripeTestMode = !!isTestMode;
 
     await teacher.save();
 
     res.json({
-      message: "Manual Stripe key saved successfully",
+      message: "Manual Stripe key saved and validated successfully",
       testMode: teacher.paymentSettings.stripeSettings.stripeTestMode,
     });
   } catch (error: any) {

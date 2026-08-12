@@ -10,6 +10,7 @@ import { stripe } from "../config/stripe";
 import User from "../models/User";
 import { getOrCreateVendorProfile } from "../utils/vendorHelpers";
 import { config } from "../config/index";
+import { encryptField } from "../utils/encryption";
 import logger from "../config/logger";
 import { AppError } from "../middleware";
 
@@ -349,10 +350,11 @@ export const updateStripeKeys = async (req: Request, res: Response) => {
       const testStripe = new Stripe(secretKey, { apiVersion: "2025-08-27.basil" });
       await testStripe.balance.retrieve();
 
-      // Keys are valid
+      // Keys are valid — secret key is encrypted at rest (see utils/encryption.ts)
       vendor.paymentSettings.stripeSettings.stripePublishableKey =
         publishableKey;
-      vendor.paymentSettings.stripeSettings.stripeSecretKey = secretKey;
+      vendor.paymentSettings.stripeSettings.stripeSecretKey =
+        encryptField(secretKey);
       vendor.paymentSettings.stripeSettings.stripeTestMode = testMode;
       vendor.paymentSettings.stripeSettings.stripeKeysLastValidated =
         new Date();

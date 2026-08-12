@@ -24,6 +24,7 @@ import {
   CommunicationCategory,
   NotificationTemplateKey,
 } from "../models/index";
+import { decryptField } from "../utils/encryption";
 
 export interface CreatePaymentIntentParams {
   amount: number;
@@ -151,7 +152,9 @@ export class PaymentService {
       const hasStripeConnect =
         stripeSettings.stripeConnectOnboardingComplete &&
         stripeSettings.stripeConnectAccountId;
-      const vendorSecretKey = stripeSettings.stripeSecretKey;
+      const vendorSecretKey = stripeSettings.stripeSecretKey
+        ? decryptField(stripeSettings.stripeSecretKey)
+        : undefined;
 
       if (
         usesCustomStripe &&
@@ -1000,8 +1003,9 @@ export class PaymentService {
       const isFullRefund = charge.refunded;
 
       await Order.findByIdAndUpdate(orderId, {
-        refundStatus: isFullRefund ? "fully_refunded" : "partially_refunded",
-        refundedAmount,
+        ...(isFullRefund ? { status: "refunded", paymentStatus: "refunded" } : {}),
+        refundStatus: "completed",
+        refundAmount: refundedAmount,
         refundedAt: new Date(),
       });
 

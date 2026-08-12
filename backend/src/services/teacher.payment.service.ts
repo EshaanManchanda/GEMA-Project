@@ -3,6 +3,7 @@ import { Order } from "../models/index";
 import Teacher, { TeacherPaymentMode } from "../models/Teacher";
 import Stripe from "stripe";
 import logger from "../config/logger";
+import { decryptField } from "../utils/encryption";
 
 export interface CreateTeacherPaymentIntentParams {
   amount: number;
@@ -57,7 +58,9 @@ export class TeacherPaymentService {
         stripeSettings.stripeConnectOnboardingComplete &&
         stripeSettings.stripeConnectAccountId;
 
-      const teacherSecretKey = stripeSettings.stripeSecretKey;
+      const teacherSecretKey = stripeSettings.stripeSecretKey
+        ? decryptField(stripeSettings.stripeSecretKey)
+        : undefined;
 
       if (
         usesCustomStripe &&

@@ -20,6 +20,7 @@ import {
   deleteFile,
 } from "../middleware/upload";
 import { authenticate } from "../middleware/auth";
+import { uploadLimiter } from "../middleware/rateLimiter";
 import uploadService from "../services/upload.service";
 import mediaService from "../services/media.service";
 import { getOptimizedImageUrl, extractPublicId } from "../config/cloudinary";
@@ -93,6 +94,7 @@ router.use("/files", (req: Request, res: Response, next: NextFunction) => {
 router.post(
   "/single",
   authenticate,
+  uploadLimiter,
   uploadSingle("file"),
   handleUploadError,
   (req: AuthRequest, res: Response, next: NextFunction) => {
@@ -118,6 +120,7 @@ router.post(
 router.post(
   "/multiple",
   authenticate,
+  uploadLimiter,
   uploadMultiple("files", 5),
   handleUploadError,
   (req: AuthRequest, res: Response, next: NextFunction) => {
@@ -145,6 +148,7 @@ router.post(
 router.post(
   "/event-images",
   authenticate,
+  uploadLimiter,
   uploadEventImages,
   handleUploadError,
   (req: AuthRequest, res: Response, next: NextFunction) => {
@@ -178,6 +182,7 @@ router.post(
 router.post(
   "/venue-images",
   authenticate,
+  uploadLimiter,
   uploadVenueImages,
   handleUploadError,
   (req: AuthRequest, res: Response, next: NextFunction) => {
@@ -211,6 +216,7 @@ router.post(
 router.post(
   "/avatar",
   authenticate,
+  uploadLimiter,
   uploadUserAvatar,
   handleUploadError,
   async (req: AuthRequest, res: Response, next: NextFunction) => {
@@ -291,6 +297,7 @@ router.post(
 router.post(
   "/document",
   authenticate,
+  uploadLimiter,
   uploadDocument,
   handleUploadError,
   (req: AuthRequest, res: Response, next: NextFunction) => {
@@ -320,6 +327,7 @@ router.post(
 router.post(
   "/booking-attachment",
   authenticate,
+  uploadLimiter,
   uploadBookingAttachment,
   handleUploadError,
   (req: AuthRequest, res: Response, next: NextFunction) => {
@@ -345,6 +353,7 @@ router.post(
 router.post(
   "/blog-featured-image",
   authenticate,
+  uploadLimiter,
   uploadBlogFeaturedImage,
   handleUploadError,
   // Debug middleware - log file details after multer processing
@@ -403,6 +412,7 @@ router.post(
 router.post(
   "/blog-content-media",
   authenticate,
+  uploadLimiter,
   uploadBlogContentMedia,
   handleUploadError,
   (req: AuthRequest, res: Response, next: NextFunction) => {
@@ -432,6 +442,7 @@ router.post(
 router.delete(
   "/file/:filename",
   authenticate,
+  uploadLimiter,
   async (req: AuthRequest, res: Response, next: NextFunction) => {
     try {
       const { filename } = req.params;
@@ -711,6 +722,7 @@ router.get(
 router.post(
   "/batch",
   authenticate,
+  uploadLimiter,
   uploadMultiple("files", 10),
   handleUploadError,
   async (req: AuthRequest, res: Response, next: NextFunction) => {
@@ -795,6 +807,7 @@ router.get(
 router.delete(
   "/enhanced/:identifier",
   authenticate,
+  uploadLimiter,
   async (req: AuthRequest, res: Response, next: NextFunction) => {
     try {
       const { identifier } = req.params;

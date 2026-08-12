@@ -1463,7 +1463,7 @@ const AdminEditEventPage: React.FC = () => {
                   currency={formData.currency || "AED"}
                   capacity={formData.capacity || ""}
                   basePrice={formData.basePrice || ""}
-                  isFreeEvent={false}
+                  isFreeEvent={formData.isFreeEvent}
                   unlimitedCapacity={unlimitedCapacity}
                   isEducational={['Course', 'Workshop', 'Bootcamp', 'Class', 'Masterclass'].includes(formData.type)}
                   errors={errors}

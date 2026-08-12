@@ -5,7 +5,7 @@ import CommissionService from "../services/commission.service";
 import { Order, User, Event } from "../models/index";
 import { AppError } from "../middleware/index";
 import { AuthRequest } from "../types/index";
-import { config } from "../config/index";
+import { convertToStripeAmount, stripePublishableKey, stripe } from "../config/stripe";
 import logger from "../config/logger";
 
 // @desc    Create payment intent for order
@@ -284,9 +284,14 @@ export const processRefund = async (
 
     // Process refund
     const refundAmount = amount || order.total;
+    if (refundAmount > order.total) {
+      return next(
+        new AppError("Refund amount cannot exceed the order total", 400),
+      );
+    }
     const stripeRefund = await PaymentService.createRefund(
       order.paymentIntentId,
-      refundAmount,
+      convertToStripeAmount(refundAmount, order.currency),
       reason,
     );
 
@@ -367,6 +372,23 @@ export const removePaymentMethod = async (
       return next(new AppError("User not authenticated", 401));
     }
 
+    const user = await User.findById(userId);
+    if (!user) {
+      return next(new AppError("User not found", 404));
+    }
+
+    // Verify the payment method belongs to this user's Stripe customer
+    // before detaching — Stripe will detach any valid ID with no ownership check.
+    const customer = await PaymentService.createOrGetCustomer(
+      user.email,
+      `${user.firstName} ${user.lastName}`,
+      userId,
+    );
+    const paymentMethod = await stripe.paymentMethods.retrieve(id);
+    if (paymentMethod.customer !== customer.id) {
+      return next(new AppError("Payment method not found", 404));
+    }
+
     // Detach payment method
     await PaymentService.detachPaymentMethod(id);
 
@@ -425,7 +447,7 @@ export const getStripeConfig = async (
     res.status(200).json({
       success: true,
       data: {
-        publishableKey: config.stripe.publishableKey,
+        publishableKey: stripePublishableKey,
       },
     });
   } catch (error) {
@@ -442,6 +464,11 @@ export const getPaymentAnalytics = async (
   next: NextFunction,
 ) => {
   try {
+    const errors = validationResult(req);
+    if (!errors.isEmpty()) {
+      return next(new AppError("Validation failed", 400, errors.array()));
+    }
+
     const { period = "30" } = req.query;
     const days = parseInt(period as string);
     const startDate = new Date();

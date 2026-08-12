@@ -745,22 +745,6 @@ orderSchema.pre("save", async function (next) {
   next();
 });
 
-// Method to mark order as confirmed
-orderSchema.methods.confirm = function () {
-  this.status = "confirmed";
-  this.confirmedAt = new Date();
-  // Free orders: also mark paymentStatus so it doesn't stay "pending"
-  if (
-    this.paymentStatus === "pending" &&
-    (this.total === 0 ||
-      this.paymentMethod === "free" ||
-      (this.paymentIntentId as string)?.startsWith("free_pi_"))
-  ) {
-    this.paymentStatus = "free";
-  }
-  return this.save();
-};
-
 // Method to mark order as cancelled
 orderSchema.methods.cancel = function (reason?: string) {
   this.status = "cancelled";
@@ -1089,13 +1073,18 @@ orderSchema.virtual("totalTickets").get(function () {
   return this.items.reduce((sum, item) => sum + item.quantity, 0);
 });
 
-// Instance method implementations
-// NOTE: This is a duplicate - the main implementation is above
-// Keeping for backwards compatibility, but it delegates to the method defined earlier
-
 orderSchema.methods.confirm = async function () {
   this.status = "confirmed";
   this.confirmedAt = new Date();
+  // Free orders: also mark paymentStatus so it doesn't stay "pending"
+  if (
+    this.paymentStatus === "pending" &&
+    (this.total === 0 ||
+      this.paymentMethod === "free" ||
+      (this.paymentIntentId as string)?.startsWith("free_pi_"))
+  ) {
+    this.paymentStatus = "free";
+  }
 
   // Save the order first
   await this.save();

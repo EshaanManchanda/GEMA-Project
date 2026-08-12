@@ -64,6 +64,10 @@ interface Config {
   reportIntegritySecret: string;
   /** Stamped alongside each hash so a future secret rotation doesn't break verification of old snapshots. */
   reportIntegrityKeyId: string;
+  /** AES-256-GCM key source for encrypting sensitive fields at rest (see utils/encryption.ts) — e.g. vendor/teacher manual Stripe secret keys. */
+  fieldEncryptionKey: string;
+  /** Optional — Sentry error-tracking is disabled (no-op) when unset. */
+  sentryDsn: string | undefined;
   frontendUrl: string;
   rateLimitWindowMs: number;
   rateLimitMax: number;
@@ -259,6 +263,8 @@ export const config: Config = {
   jwtRefreshExpiresIn: process.env.JWT_REFRESH_EXPIRES_IN || "30d",
   reportIntegritySecret: process.env.REPORT_INTEGRITY_SECRET as string,
   reportIntegrityKeyId: process.env.REPORT_INTEGRITY_KEY_ID || "default",
+  fieldEncryptionKey: process.env.FIELD_ENCRYPTION_KEY || "",
+  sentryDsn: process.env.SENTRY_DSN || undefined,
   frontendUrl: process.env.FRONTEND_URL || "http://localhost:3001",
   rateLimitWindowMs: parseInt(process.env.RATE_LIMIT_WINDOW_MS || "900000", 10),
   rateLimitMax: parseInt(process.env.RATE_LIMIT_MAX || "500", 10),
@@ -494,6 +500,13 @@ const validateEnv = (): void => {
   if (isProduction && !process.env.REPORT_INTEGRITY_SECRET) {
     console.warn(
       "Warning: REPORT_INTEGRITY_SECRET is not set in production. Business report snapshot checksums will fail to compute.",
+    );
+  }
+
+  // Encrypts vendor/teacher manual Stripe secret keys at rest — see utils/encryption.ts.
+  if (isProduction && !process.env.FIELD_ENCRYPTION_KEY) {
+    console.warn(
+      "Warning: FIELD_ENCRYPTION_KEY is not set in production. Vendor/teacher manual Stripe secret keys will be stored in plaintext. Generate one with: node -e \"console.log(require('crypto').randomBytes(32).toString('hex'))\"",
     );
   }
 
