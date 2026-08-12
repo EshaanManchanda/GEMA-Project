@@ -10,8 +10,8 @@
   "scripts": {
     "dev": "nodemon src/server.ts",
     "dev:worker": "nodemon src/workers/index.ts",
-    "build": "node --max-old-space-size=${TS_BUILD_HEAP_SIZE:-2048} ./node_modules/typescript/bin/tsc -p tsconfig.build.json",
-    "typecheck": "node --max-old-space-size=${TS_BUILD_HEAP_SIZE:-2048} ./node_modules/typescript/bin/tsc -p tsconfig.build.json --noEmit",
+    "build": "node --max-old-space-size=${TS_BUILD_HEAP_SIZE:-4096} ./node_modules/typescript/bin/tsc -p tsconfig.build.json",
+    "typecheck": "node --max-old-space-size=${TS_BUILD_HEAP_SIZE:-4096} ./node_modules/typescript/bin/tsc -p tsconfig.build.json --noEmit",
     "start": "node dist/server.js",
     "start:worker": "node dist/workers/index.js",
     "start:prod": "NODE_ENV=production node dist/server.js",
