@@ -20,6 +20,7 @@ interface Block {
   availableSeats: number;
   totalSeats: number;
   isSoldOut: boolean;
+  isPast: boolean;
   isUnlimited: boolean;
   scheduleId: string; // The ID to pass when enrolling
   teacherName?: string;
@@ -97,6 +98,12 @@ export const ProgramScheduleList: React.FC<ProgramScheduleListProps> = ({
       const availableSeats = schedule.availableSeats || 0;
       const isSoldOut = availableSeats <= 0 && !schedule.unlimitedSeats;
 
+      // Mirrors backend isSchedulePast (event.utils.ts): end-of-day cutoff on
+      // endDate/date, falling back to startDate for single-day schedules.
+      const cutoff = new Date(endDate);
+      cutoff.setHours(23, 59, 59, 999);
+      const isPast = cutoff.getTime() < Date.now();
+
       processedBlocks.push({
         id: scheduleId,
         daysOfWeek,
@@ -107,6 +114,7 @@ export const ProgramScheduleList: React.FC<ProgramScheduleListProps> = ({
         availableSeats,
         totalSeats,
         isSoldOut,
+        isPast,
         isUnlimited: !!schedule.unlimitedSeats || availableSeats >= 999999,
         scheduleId,
         teacherName: schedule.teacherName || 'Instructor', // Can be enriched from event
@@ -187,7 +195,11 @@ export const ProgramScheduleList: React.FC<ProgramScheduleListProps> = ({
               {/* Right Column: Seats and Enroll */}
               <div className="md:w-1/4 flex flex-col md:items-end justify-start">
                 <div className="text-right mb-3 w-full flex justify-between md:flex-col md:justify-start">
-                  {(!block.isUnlimited && block.availableSeats < 9999) && (
+                  {block.isPast ? (
+                    <span className="text-sm text-gray-500 font-medium mt-1">
+                      Currently unavailable
+                    </span>
+                  ) : (!block.isUnlimited && block.availableSeats < 9999) && (
                     <>
                       <span className="text-xs text-gray-500 font-medium bg-gray-100 px-2 py-1 rounded-full w-max md:w-auto md:ml-auto md:mb-1">
                         {Math.max(0, filledSeats)} seats filled
@@ -204,18 +216,18 @@ export const ProgramScheduleList: React.FC<ProgramScheduleListProps> = ({
                     </>
                   )}
                 </div>
-                
+
                 {!hideEnrollButton && (
                   <button
                     onClick={() => onEnroll(block.scheduleId)}
-                    disabled={block.isSoldOut}
+                    disabled={block.isSoldOut || block.isPast}
                     className={`px-6 py-2 rounded-full font-bold transition-colors w-full md:w-auto ${
-                      block.isSoldOut 
-                        ? 'bg-gray-200 text-gray-400 cursor-not-allowed' 
+                      block.isSoldOut || block.isPast
+                        ? 'bg-gray-200 text-gray-400 cursor-not-allowed'
                         : 'bg-[#4000D3] hover:bg-[#2b008e] text-white'
                     }`}
                   >
-                    Enroll
+                    {block.isPast ? 'Unavailable' : 'Enroll'}
                   </button>
                 )}
               </div>

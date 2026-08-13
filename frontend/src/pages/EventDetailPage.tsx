@@ -411,6 +411,17 @@ const EventDetailPage: React.FC = () => {
     return new Date(s.startDate).toDateString() === new Date(s.endDate).toDateString();
   };
 
+  // Mirrors backend isSchedulePast (event.utils.ts): end-of-day cutoff on
+  // endDate/date, falling back to startDate for single-day schedules.
+  const isSchedulePast = (s: any): boolean => {
+    const end = s?.endDate || s?.date || s?.startDate;
+    if (!end) return false;
+    const cutoff = new Date(end);
+    if (isNaN(cutoff.getTime())) return false;
+    cutoff.setHours(23, 59, 59, 999);
+    return cutoff.getTime() < Date.now();
+  };
+
   const programSchedules = useMemo(() => {
     return filteredSchedules.filter((s: any) =>
       (s.timeSlots && s.timeSlots.length > 0) || isSingleDay(s)
@@ -436,13 +447,17 @@ const EventDetailPage: React.FC = () => {
 
   useEffect(() => {
     if (filteredSchedules.length > 0) {
-      setSelectedSession(filteredSchedules[0] as Session);
+      const upcoming = filteredSchedules.filter((s: any) => !isSchedulePast(s));
+      setSelectedSession((upcoming[0] || filteredSchedules[0]) as Session);
     } else if (event?.dateSchedule?.length > 0) {
-      setSelectedSession(event.dateSchedule[0] as Session);
+      const upcoming = event.dateSchedule.filter((s: any) => !isSchedulePast(s));
+      setSelectedSession((upcoming[0] || event.dateSchedule[0]) as Session);
     } else {
       setSelectedSession(null);
     }
   }, [bookingType, event?.dateSchedule, filteredSchedules]);
+
+  const isSelectedSessionPast = !!selectedSession && isSchedulePast(selectedSession);
 
   // Derive booking values directly from the selected session (set by SessionPicker)
   const currentPrice = selectedSession?.price ?? event?.price ?? 0;
@@ -2132,13 +2147,13 @@ const EventDetailPage: React.FC = () => {
                           <button
                             id="book-now-btn"
                             onClick={handleBookNow}
-                            disabled={!selectedSession}
-                            className={`w-full py-4 rounded-xl font-bold text-lg transition-all duration-300 ${!selectedSession
+                            disabled={!selectedSession || isSelectedSessionPast}
+                            className={`w-full py-4 rounded-xl font-bold text-lg transition-all duration-300 ${!selectedSession || isSelectedSessionPast
                               ? 'bg-gray-200 text-gray-400 cursor-not-allowed'
                               : 'bg-gradient-to-r from-primary-500 to-primary-700 hover:from-primary-600 hover:to-primary-800 text-white shadow-lg hover:shadow-xl transform hover:-translate-y-1 hover:scale-105'
                               }`}
                           >
-                            {!selectedSession ? '📅 Select a Session to Book' : '🎫 Book Now'}
+                            {!selectedSession ? '📅 Select a Session to Book' : isSelectedSessionPast ? 'Currently Unavailable' : '🎫 Book Now'}
                           </button>
 
                         </div>

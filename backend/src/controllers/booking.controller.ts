@@ -27,6 +27,7 @@ import { emailService } from "../services/email.service";
 import { v4 as uuidv4 } from "uuid";
 import { audit, AuditAction } from "../utils/auditLog";
 import { downloadFileAsAttachment } from "../utils/emailAttachment.util";
+import { isSchedulePast } from "../utils/event.utils";
 
 type EventBookingAttachment = {
   originalName?: string;
@@ -254,6 +255,12 @@ export const initiateBooking = async (
         })),
       });
       return next(new AppError("Event schedule not found", 404));
+    }
+
+    if (isSchedulePast(schedule)) {
+      return next(
+        new AppError("This event schedule has already passed and is no longer available for booking.", 400),
+      );
     }
 
     // Use the resolved schedule ObjectId for all subsequent Mongoose queries.

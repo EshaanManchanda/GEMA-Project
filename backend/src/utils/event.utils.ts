@@ -152,6 +152,8 @@ export const transformEventResponse = (event: any) => {
     );
   }
 
+  sanitized.availability = computeEventAvailability(sanitized);
+
   return sanitized;
 };
 
@@ -179,6 +181,69 @@ export const sanitizeEventOutput = (event: any) => {
  */
 export const sanitizeEventsOutput = (events: any[]) => {
   return transformEventsResponse(events);
+};
+
+export type EventAvailabilityStatus =
+  | "available"
+  | "unavailable"
+  | "sold_out"
+  | "cancelled";
+
+export interface EventAvailability {
+  status: EventAvailabilityStatus;
+  reason?: "past" | "cancelled" | "sold_out";
+}
+
+/**
+ * A schedule is past once its end-of-day cutoff (endDate/date, or startDate as
+ * last resort) is behind now. No buffer here — this drives booking eligibility,
+ * which is stricter than the 24h public-listing buffer in buildPublicEventFilter.
+ */
+export const isSchedulePast = (schedule: any, now: Date = new Date()): boolean => {
+  const end = schedule?.endDate || schedule?.date || schedule?.startDate;
+  if (!end) return false;
+
+  const endDate = new Date(end);
+  if (isNaN(endDate.getTime())) return false;
+
+  endDate.setHours(23, 59, 59, 999);
+  return endDate.getTime() < now.getTime();
+};
+
+const isScheduleSoldOut = (schedule: any): boolean => {
+  if (schedule?.unlimitedSeats) return false;
+  const seats = schedule?.availableSeats;
+  return typeof seats === "number" && seats <= 0;
+};
+
+/**
+ * Derived availability, separate from event.status (draft/published/...).
+ * A published, active event can still be "unavailable" once every schedule
+ * has passed — see gema-no-fake-trust-numbers memory for why we don't hide
+ * completed events outright, just gate booking on them.
+ */
+export const computeEventAvailability = (event: any): EventAvailability => {
+  if (event?.cancellationStatus === "cancelled") {
+    return { status: "cancelled", reason: "cancelled" };
+  }
+
+  const schedules = Array.isArray(event?.dateSchedule) ? event.dateSchedule : [];
+  if (schedules.length === 0) {
+    return { status: "available" };
+  }
+
+  const now = new Date();
+  const upcoming = schedules.filter((s: any) => !isSchedulePast(s, now));
+
+  if (upcoming.length === 0) {
+    return { status: "unavailable", reason: "past" };
+  }
+
+  if (upcoming.every(isScheduleSoldOut)) {
+    return { status: "sold_out", reason: "sold_out" };
+  }
+
+  return { status: "available" };
 };
 
 /**
