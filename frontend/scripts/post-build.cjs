@@ -55,6 +55,60 @@ function countFiles(dirPath, extension) {
 }
 
 /**
+ * Sum size of files matching an extension, recursively
+ */
+function getSizeByExtension(dirPath, extension) {
+  let totalSize = 0;
+
+  if (!fs.existsSync(dirPath)) {
+    return 0;
+  }
+
+  const files = fs.readdirSync(dirPath, { withFileTypes: true });
+
+  for (const file of files) {
+    const filePath = path.join(dirPath, file.name);
+
+    if (file.isDirectory()) {
+      totalSize += getSizeByExtension(filePath, extension);
+    } else if (file.name.endsWith(extension) && !file.name.endsWith('.map')) {
+      try {
+        totalSize += fs.statSync(filePath).size;
+      } catch (err) {
+        console.warn(`Warning: Could not stat ${filePath}`);
+      }
+    }
+  }
+
+  return totalSize;
+}
+
+/**
+ * Count files matching an extension, recursively
+ */
+function countFilesByExtension(dirPath, extension) {
+  let total = 0;
+
+  if (!fs.existsSync(dirPath)) {
+    return 0;
+  }
+
+  const files = fs.readdirSync(dirPath, { withFileTypes: true });
+
+  for (const file of files) {
+    const filePath = path.join(dirPath, file.name);
+
+    if (file.isDirectory()) {
+      total += countFilesByExtension(filePath, extension);
+    } else if (file.name.endsWith(extension) && !file.name.endsWith('.map')) {
+      total += 1;
+    }
+  }
+
+  return total;
+}
+
+/**
  * Main build verification
  */
 function verifyBuild() {
@@ -69,15 +123,22 @@ function verifyBuild() {
     process.exit(1);
   }
 
-  // Calculate sizes
+  // Calculate sizes.
+  // Vite (see vite.config.ts build.rollupOptions.output) emits JS to dist/js/
+  // and everything else — CSS, images, fonts — to dist/assets/. There is no
+  // dist/css or dist/images directory.
   const distSize = getDirectorySize('dist');
   const jsSize = getDirectorySize('dist/js');
-  const cssSize = getDirectorySize('dist/css');
-  const imagesSize = getDirectorySize('dist/images');
+  const cssSize = getSizeByExtension('dist/assets', '.css');
+  const imageExtensions = ['.png', '.jpg', '.jpeg', '.svg', '.webp', '.gif', '.ico', '.avif'];
+  const imagesSize = imageExtensions.reduce(
+    (sum, ext) => sum + getSizeByExtension('dist/assets', ext),
+    0,
+  );
 
   // Get file counts
   const jsFiles = countFiles('dist/js', '.js');
-  const cssFiles = countFiles('dist/css', '.css');
+  const cssFiles = countFilesByExtension('dist/assets', '.css');
   const sourcemapFiles = fs.existsSync('dist/js')
     ? fs.readdirSync('dist/js').filter(f => f.endsWith('.map')).length
     : 0;
