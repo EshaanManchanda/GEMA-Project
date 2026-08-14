@@ -162,6 +162,9 @@ const AdminLeadPagesPage = React.lazy(() => import(/* webpackChunkName: "admin" 
 // Lead Page (Public)
 const LeadPage = React.lazy(() => import(/* webpackChunkName: "lead" */ './pages/LeadPage'));
 
+// Competition Page (AI Art Competition 2026)
+const AiArtCompetitionPage = React.lazy(() => import(/* webpackChunkName: "competition" */ './pages/AiArtCompetitionPage'));
+
 // Analytics Pages
 const EventPerformance = React.lazy(() => import(/* webpackChunkName: "analytics" */ './pages/analytics/EventPerformance'));
 
@@ -346,6 +349,13 @@ function AppContent() {
           <Route path="lead-page" element={
             <Suspense fallback={<GenericPageSkeleton />}>
               <LeadPage />
+            </Suspense>
+          } />
+
+          {/* AI Art Competition 2026 */}
+          <Route path="ai-art-competition" element={
+            <Suspense fallback={<GenericPageSkeleton />}>
+              <AiArtCompetitionPage />
             </Suspense>
           } />
           {/* Legacy: redirect old teaching-events detail URLs to the unified events page */}

@@ -233,6 +233,14 @@ export interface RegistrationApprovalEmailOptions {
   venueType?: string;
 }
 
+export interface CompetitionSubmissionEmailOptions {
+  to: string;
+  studentName: string;
+  parentName: string;
+  refNo: string;
+  artworkTitle: string;
+}
+
 class EmailService {
   private transporter: nodemailer.Transporter;
 
@@ -2150,6 +2158,74 @@ class EmailService {
     await this.sendEmail({
       to: options.to,
       subject: `Registration ${isApproved ? "Approved" : "Rejected"} - ${options.eventTitle}`,
+      html,
+    });
+  }
+
+  async sendCompetitionSubmissionEmail(
+    options: CompetitionSubmissionEmailOptions,
+  ): Promise<void> {
+    const brand = getBrandConfig();
+    const html = `
+      <!DOCTYPE html>
+      <html>
+      <head>
+        <meta charset="utf-8">
+        <style>
+          body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif; line-height: 1.6; color: #374151; margin: 0; padding: 0; background-color: #f3f4f6; }
+          .container { max-width: 600px; margin: 40px auto; background: white; border-radius: 12px; overflow: hidden; box-shadow: 0 4px 6px rgba(0,0,0,0.05); }
+          .header { background: #2563eb; color: white; padding: 30px; text-align: center; }
+          .header h1 { margin: 0; font-size: 24px; font-weight: 600; }
+          .content { padding: 40px 30px; }
+          .footer { background: #f9fafb; padding: 20px 30px; text-align: center; font-size: 13px; color: #6b7280; border-top: 1px solid #e5e7eb; }
+          .info-box { background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 8px; padding: 20px; margin: 25px 0; }
+        </style>
+      </head>
+      <body>
+        <div class="container">
+          <div class="header">
+            <h1>🎉 Entry Submitted!</h1>
+          </div>
+          <div class="content">
+            <h2>Hi ${options.parentName}!</h2>
+            <p>Your competition entry for <strong>${options.studentName}</strong> has been received successfully.</p>
+            
+            <div class="info-box">
+              <h4 style="margin: 0 0 10px; color: #374151;">Submission Details</h4>
+              <table style="width: 100%; font-size: 13px;">
+                <tr>
+                  <td style="padding: 5px 0; color: #6b7280; font-weight: 500; width: 100px;">Ref No:</td>
+                  <td style="color: #1f2937;"><strong>${options.refNo}</strong></td>
+                </tr>
+                <tr>
+                  <td style="padding: 5px 0; color: #6b7280; font-weight: 500;">Artwork:</td>
+                  <td style="color: #1f2937;">${options.artworkTitle}</td>
+                </tr>
+              </table>
+            </div>
+
+            <h4 style="margin-top: 25px;">What happens next?</h4>
+            <ul style="padding-left: 20px; margin-top: 10px; color: #4b5563;">
+              <li style="margin-bottom: 8px;"><strong>Participation Certificate:</strong> Every eligible participant receives a Kidrove certificate.</li>
+              <li style="margin-bottom: 8px;"><strong>Winners Announced:</strong> Selected winners receive Gold, Silver & Bronze badges.</li>
+              <li><strong>Gallery Feature:</strong> Outstanding artwork may be featured in the Kidrove AI Visions of the UAE Gallery.</li>
+            </ul>
+
+            <p style="font-size: 13px; color: #6b7280; margin-top: 25px;">
+              Thank you for participating!
+            </p>
+          </div>
+          <div class="footer">
+            <p>Best regards,<br>${getTeamSignature()}</p>
+          </div>
+        </div>
+      </body>
+      </html>
+    `;
+
+    await this.sendEmail({
+      to: options.to,
+      subject: "Competition Entry Received!",
       html,
     });
   }

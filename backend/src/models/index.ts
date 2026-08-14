@@ -348,3 +348,24 @@ export type {
 export { default as LeadPage } from "./LeadPage";
 export type { ILeadPage, ILead } from "./LeadPage";
 
+// Competition Models (AI Art Competition 2026)
+export {
+  default as CompetitionSubmission,
+  SubmissionStatus,
+  ArtworkPermission,
+  ChangesAfterGeneration,
+  CreationType,
+  Grade as CompetitionGrade,
+  Gender as CompetitionGender,
+  SchoolEmirate,
+  AiTool,
+} from "./CompetitionSubmission";
+export type {
+  ICompetitionSubmission,
+  IParticipantDetails,
+  IArtworkDetails,
+  IAiCreation,
+  IArtworkUpload,
+  IDeclarations,
+  IConsentSection,
+} from "./CompetitionSubmission";

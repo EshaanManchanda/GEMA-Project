@@ -72,6 +72,7 @@ import galleryRoutes from "./gallery.routes";
 import certificateRoutes from "./certificate.routes";
 import adminLeadPageRoutes from "./admin.lead-page.routes";
 import leadPageRoutes from "./lead-page.routes";
+import competitionRoutes from "./competition.routes";
 import { Router } from "express";
 
 const router = Router();
@@ -318,5 +319,8 @@ router.use("/students", studentRoutes);
 // Lead Pages routes (Admin + Public)
 router.use("/admin/lead-pages", adminLeadPageRoutes);
 router.use("/lead-pages", leadPageRoutes);
+
+// Competition routes (AI Art Competition 2026)
+router.use("/competition", competitionRoutes);
 
 export default router;

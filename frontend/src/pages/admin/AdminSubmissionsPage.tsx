@@ -15,12 +15,16 @@ import {
     Send,
     UserCheck,
     UserX,
-    RefreshCw
+    RefreshCw,
+    Award,
+    Image as ImageIcon
 } from 'lucide-react';
 import toast from 'react-hot-toast';
+import adminAPI from '@/services/api/adminAPI';
 import contactAPI, { Contact, ContactStats } from '@/services/api/contactAPI';
 import newsletterAPI from '@/services/api/newsletterAPI';
 import partnershipAPI, { Partnership, PartnershipStats } from '@/services/api/partnershipAPI';
+import competitionAPI, { CompetitionSubmission } from '@/services/api/competitionAPI';
 import PrivatePageSEO from '@/components/common/PrivatePageSEO';
 
 // ─── Types ────────────────────────────────────────────────────────────────────
@@ -973,9 +977,456 @@ function PartnershipTab() {
     );
 }
 
+// ─── Competition Detail Modal ───────────────────────────────────────────────────
+
+function CompetitionDetailModal({
+    submission,
+    onClose,
+    onUpdateStatus
+}: {
+    submission: CompetitionSubmission;
+    onClose: () => void;
+    onUpdateStatus: (id: string, status: string, notes: string) => Promise<void>;
+}) {
+    const [notes, setNotes] = useState('');
+    const [status, setStatus] = useState(submission.status);
+    const [loading, setLoading] = useState(false);
+    const [templates, setTemplates] = useState<any[]>([]);
+    const [selectedTemplate, setSelectedTemplate] = useState('');
+
+    useEffect(() => {
+        adminAPI.getCertTemplates()
+            .then(data => setTemplates(data))
+            .catch(err => console.error('Failed to load templates', err));
+    }, []);
+
+    const handleSave = async () => {
+        setLoading(true);
+        try {
+            await onUpdateStatus(submission._id, status, notes);
+            if ((status === 'shortlisted' || status === 'winner') && selectedTemplate) {
+                await competitionAPI.generateCertificate(submission._id, selectedTemplate);
+                toast.success('Certificate generation triggered');
+            }
+        } catch (err) {
+            console.error('Failed to save status or generate certificate', err);
+            toast.error('Error saving or generating certificate');
+        }
+        setLoading(false);
+        onClose();
+    };
+
+    return (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 backdrop-blur-sm p-4">
+            <div className="bg-white rounded-2xl shadow-2xl w-full max-w-3xl max-h-[90vh] overflow-y-auto">
+                <div className="flex items-center justify-between p-6 border-b border-gray-100 sticky top-0 bg-white z-10">
+                    <div>
+                        <h2 className="text-lg font-semibold text-gray-900">{submission.artwork?.title}</h2>
+                        <p className="text-sm text-gray-500">By {submission.participant?.studentFullName} (Age {submission.participant?.studentAge})</p>
+                    </div>
+                    <button onClick={onClose} className="p-2 rounded-lg hover:bg-gray-100 transition-colors">
+                        <X className="w-5 h-5 text-gray-500" />
+                    </button>
+                </div>
+
+                <div className="p-6 space-y-6">
+                    {/* Artwork Preview */}
+                    <div className="bg-gray-50 rounded-xl p-4 flex flex-col items-center border border-gray-200">
+                        <img src={submission.artworkUpload?.artworkUrl} alt={submission.artwork?.title} className="max-h-96 rounded-lg object-contain shadow-sm mb-4" />
+                        <p className="text-sm font-medium text-gray-700 italic text-center max-w-2xl">"{submission.artwork?.description}"</p>
+                    </div>
+
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                        {/* Participant Info */}
+                        <div className="space-y-3">
+                            <h3 className="font-semibold text-gray-900 border-b pb-2">Participant Details</h3>
+                            <div className="text-sm">
+                                <span className="font-medium text-gray-600">Student Name:</span> {submission.participant?.studentFullName}
+                            </div>
+                            <div className="text-sm">
+                                <span className="font-medium text-gray-600">Age:</span> {submission.participant?.studentAge}
+                            </div>
+                            <div className="text-sm">
+                                <span className="font-medium text-gray-600">Grade:</span> {submission.participant?.grade}
+                            </div>
+                            <div className="text-sm">
+                                <span className="font-medium text-gray-600">Gender:</span> {submission.participant?.gender || 'N/A'}
+                            </div>
+                            <div className="text-sm">
+                                <span className="font-medium text-gray-600">School:</span> {submission.participant?.schoolName} ({submission.participant?.schoolEmirate})
+                            </div>
+                            <div className="text-sm mt-3 pt-3 border-t border-gray-100">
+                                <span className="font-medium text-gray-600">Parent/Guardian:</span> {submission.participant?.parentName}
+                            </div>
+                            <div className="text-sm">
+                                <span className="font-medium text-gray-600">Parent Email:</span> {submission.participant?.parentEmail}
+                            </div>
+                            <div className="text-sm">
+                                <span className="font-medium text-gray-600">Parent Phone:</span> {submission.participant?.parentPhone}
+                            </div>
+                        </div>
+
+                        {/* AI Creation Details */}
+                        <div className="space-y-3">
+                            <h3 className="font-semibold text-gray-900 border-b pb-2">AI Creation Details</h3>
+                            <div className="text-sm">
+                                <span className="font-medium text-gray-600">Tools:</span> {submission.aiCreation?.tools?.join(', ')} {submission.aiCreation?.otherToolName ? `(${submission.aiCreation.otherToolName})` : ''}
+                            </div>
+                            <div className="text-sm">
+                                <span className="font-medium text-gray-600">Creation Type:</span> {submission.aiCreation?.creationType}
+                            </div>
+                            <div className="text-sm mt-2">
+                                <span className="font-medium text-gray-600 block mb-1">Main Prompt:</span>
+                                <div className="bg-gray-50 p-2 rounded border border-gray-200 text-gray-800 text-xs whitespace-pre-wrap">{submission.aiCreation?.mainPrompt}</div>
+                            </div>
+                            {submission.aiCreation?.additionalPrompts && submission.aiCreation.additionalPrompts.length > 0 && (
+                                <div className="text-sm mt-2">
+                                    <span className="font-medium text-gray-600 block mb-1">Additional Prompts:</span>
+                                    {submission.aiCreation.additionalPrompts.map((p, i) => (
+                                        <div key={i} className="bg-gray-50 p-2 rounded border border-gray-200 text-gray-800 text-xs whitespace-pre-wrap mb-1">{p}</div>
+                                    ))}
+                                </div>
+                            )}
+                            {submission.aiCreation?.changesAfterGeneration && submission.aiCreation.changesAfterGeneration !== 'No changes' && (
+                                <div className="text-sm mt-2">
+                                    <span className="font-medium text-gray-600 block mb-1">Changes:</span>
+                                    <div className="bg-gray-50 p-2 rounded border border-gray-200 text-gray-800 text-xs whitespace-pre-wrap">
+                                        <span className="font-medium block mb-1">{submission.aiCreation.changesAfterGeneration}</span>
+                                        {submission.aiCreation?.changesDescription}
+                                    </div>
+                                </div>
+                            )}
+                            {submission.aiCreation?.processScreenshotUrl && (
+                                <div className="text-sm mt-2">
+                                    <span className="font-medium text-gray-600 block mb-1">Process Screenshot:</span>
+                                    <a href={submission.aiCreation.processScreenshotUrl} target="_blank" rel="noopener noreferrer" className="text-blue-600 hover:underline text-xs">
+                                        View Screenshot
+                                    </a>
+                                </div>
+                            )}
+                        </div>
+
+                        {/* Declarations & Consent */}
+                        <div className="space-y-3 md:col-span-2 mt-2">
+                            <h3 className="font-semibold text-gray-900 border-b pb-2">Declarations & Consent</h3>
+                            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                <div className="space-y-2">
+                                    <div className="text-sm flex items-start gap-2">
+                                        <CheckCheck className={`w-4 h-4 mt-0.5 ${submission.declarations?.agreeTerms ? 'text-green-500' : 'text-gray-300'}`} />
+                                        <span className="text-gray-700">Agreed to Terms & Conditions</span>
+                                    </div>
+                                    <div className="text-sm flex items-start gap-2">
+                                        <CheckCheck className={`w-4 h-4 mt-0.5 ${submission.declarations?.responsibleAiDeclaration ? 'text-green-500' : 'text-gray-300'}`} />
+                                        <span className="text-gray-700">Responsible AI Declaration</span>
+                                    </div>
+                                    <div className="text-sm flex items-start gap-2">
+                                        <CheckCheck className={`w-4 h-4 mt-0.5 ${submission.declarations?.originalityDeclaration ? 'text-green-500' : 'text-gray-300'}`} />
+                                        <span className="text-gray-700">Originality Declaration</span>
+                                    </div>
+                                    <div className="text-sm flex items-start gap-2">
+                                        <CheckCheck className={`w-4 h-4 mt-0.5 ${submission.consent?.parentGuardianConsent ? 'text-green-500' : 'text-gray-300'}`} />
+                                        <span className="text-gray-700">Parent/Guardian Consent</span>
+                                    </div>
+                                </div>
+                                <div className="space-y-2">
+                                    <div className="text-sm flex items-start gap-2">
+                                        <CheckCheck className={`w-4 h-4 mt-0.5 ${submission.consent?.artworkDisplayPermission === 'yes' ? 'text-green-500' : 'text-gray-300'}`} />
+                                        <span className="text-gray-700">Artwork Display: {submission.consent?.artworkDisplayPermission || 'No'}</span>
+                                    </div>
+                                    <div className="text-sm flex items-start gap-2">
+                                        <CheckCheck className={`w-4 h-4 mt-0.5 ${submission.consent?.nameDisplayPermission ? 'text-green-500' : 'text-gray-300'}`} />
+                                        <span className="text-gray-700">Name Display Permission</span>
+                                    </div>
+                                    <div className="text-sm flex items-start gap-2">
+                                        <CheckCheck className={`w-4 h-4 mt-0.5 ${submission.consent?.competitionUpdatesConsent ? 'text-green-500' : 'text-gray-300'}`} />
+                                        <span className="text-gray-700">Competition Updates Consent</span>
+                                    </div>
+                                    <div className="text-sm flex items-start gap-2">
+                                        <CheckCheck className={`w-4 h-4 mt-0.5 ${submission.consent?.marketingConsent ? 'text-green-500' : 'text-gray-300'}`} />
+                                        <span className="text-gray-700">Marketing Consent</span>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    {/* Admin Status */}
+                    <div className="bg-blue-50 p-4 rounded-xl border border-blue-100">
+                        <h3 className="font-semibold text-blue-900 mb-3">Admin Actions</h3>
+                        <div className="flex flex-col gap-3">
+                            <div className="flex items-center gap-3">
+                                <span className="text-sm font-medium text-blue-800 w-24">Status:</span>
+                                <select
+                                    value={status}
+                                    onChange={(e) => setStatus(e.target.value)}
+                                    className="bg-white px-3 py-1.5 rounded-lg border border-blue-200 text-sm focus:ring-blue-500 w-48"
+                                >
+                                    <option value="pending">Pending</option>
+                                    <option value="shortlisted">Shortlisted</option>
+                                    <option value="winner">Winner</option>
+                                    <option value="disqualified">Disqualified</option>
+                                </select>
+                            </div>
+                            {(status === 'shortlisted' || status === 'winner') && (
+                                <div className="flex items-center gap-3">
+                                    <span className="text-sm font-medium text-blue-800 w-24">Certificate:</span>
+                                    <select
+                                        value={selectedTemplate}
+                                        onChange={(e) => setSelectedTemplate(e.target.value)}
+                                        className="bg-white px-3 py-1.5 rounded-lg border border-blue-200 text-sm focus:ring-blue-500 w-48"
+                                    >
+                                        <option value="">Select Certificate</option>
+                                        {templates.map(t => (
+                                            <option key={t._id} value={t._id}>{t.name}</option>
+                                        ))}
+                                    </select>
+                                </div>
+                            )}
+                            <div className="flex items-start gap-3">
+                                <span className="text-sm font-medium text-blue-800 w-24 mt-2">Notes:</span>
+                                <textarea
+                                    value={notes}
+                                    onChange={e => setNotes(e.target.value)}
+                                    rows={2}
+                                    placeholder="Add internal notes..."
+                                    className="flex-1 bg-white border border-blue-200 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-blue-500 resize-none"
+                                />
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <div className="flex flex-wrap gap-2 px-6 pb-6 pt-2 bg-gray-50 border-t border-gray-100 sticky bottom-0">
+                    <button
+                        onClick={async () => {
+                            if (!confirm('Are you sure you want to delete this submission?')) return;
+                            setLoading(true);
+                            await onDelete(submission._id);
+                            setLoading(false);
+                            onClose();
+                        }}
+                        disabled={loading}
+                        className="inline-flex items-center gap-2 px-4 py-2 bg-red-600 hover:bg-red-700 text-white rounded-lg text-sm font-medium transition-colors disabled:opacity-50"
+                    >
+                        <Trash2 className="w-4 h-4" /> Delete
+                    </button>
+                    <button
+                        onClick={handleSave}
+                        disabled={loading}
+                        className="inline-flex items-center gap-2 px-6 py-2.5 bg-blue-600 hover:bg-blue-700 text-white rounded-lg text-sm font-medium transition-colors disabled:opacity-50 ml-auto"
+                    >
+                        Save Evaluation
+                    </button>
+                </div>
+            </div>
+        </div>
+    );
+}
+
+// ─── Competition Tab ──────────────────────────────────────────────────────────
+
+function CompetitionTab() {
+    const [submissions, setSubmissions] = useState<CompetitionSubmission[]>([]);
+    const [pagination, setPagination] = useState<Pagination | null>(null);
+    const [isLoading, setIsLoading] = useState(true);
+    const [search, setSearch] = useState('');
+    const [searchInput, setSearchInput] = useState('');
+    const [statusFilter, setStatusFilter] = useState('');
+    const [page, setPage] = useState(1);
+    const [selectedSubmission, setSelectedSubmission] = useState<CompetitionSubmission | null>(null);
+
+    const fetchSubmissions = useCallback(async () => {
+        setIsLoading(true);
+        try {
+            const res = await competitionAPI.getSubmissions({
+                page,
+                limit: 20,
+                status: statusFilter || undefined,
+                search: search || undefined,
+            });
+            setSubmissions(res.data.submissions || []);
+            setPagination({
+                currentPage: res.data.pagination.page,
+                totalPages: res.data.pagination.pages,
+                totalCount: res.data.pagination.total,
+                limit: res.data.pagination.limit,
+                hasNext: res.data.pagination.page < res.data.pagination.pages,
+                hasPrev: res.data.pagination.page > 1
+            });
+        } catch (err: any) {
+            toast.error(err.message || 'Failed to fetch competition submissions');
+        } finally {
+            setIsLoading(false);
+        }
+    }, [page, statusFilter]);
+
+    useEffect(() => { fetchSubmissions(); }, [fetchSubmissions]);
+
+    // Debounce search
+    useEffect(() => {
+        const t = setTimeout(() => { setSearch(searchInput); setPage(1); }, 400);
+        return () => clearTimeout(t);
+    }, [searchInput]);
+
+    const handleUpdateStatus = async (id: string, status: string, notes: string) => {
+        try {
+            await competitionAPI.updateSubmissionStatus(id, status, notes);
+            toast.success('Submission updated successfully');
+            fetchSubmissions();
+        } catch (err: any) {
+            toast.error('Failed to update submission');
+        }
+    };
+
+    const handleDelete = async (id: string) => {
+        try {
+            await competitionAPI.deleteSubmission(id);
+            toast.success('Submission deleted successfully');
+            fetchSubmissions();
+        } catch (err: any) {
+            toast.error('Failed to delete submission');
+        }
+    };
+
+    return (
+        <div className="space-y-6">
+            {/* Filters */}
+            <div className="bg-white rounded-xl border border-gray-200 shadow-sm p-4">
+                <div className="flex flex-col sm:flex-row gap-3">
+                    <div className="relative flex-1">
+                        <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 w-4 h-4" />
+                        <input
+                            type="text"
+                            value={searchInput}
+                            onChange={e => setSearchInput(e.target.value)}
+                            placeholder="Search by student, parent email, artwork title…"
+                            className="w-full pl-10 pr-4 py-2.5 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                        />
+                    </div>
+                    <select
+                        value={statusFilter}
+                        onChange={e => { setStatusFilter(e.target.value); setPage(1); }}
+                        className="px-4 py-2.5 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-blue-500 focus:border-transparent bg-white"
+                    >
+                        <option value="">All Statuses</option>
+                        <option value="pending">Pending</option>
+                        <option value="under_review">Under Review</option>
+                        <option value="shortlisted">Shortlisted</option>
+                        <option value="winner">Winner</option>
+                        <option value="disqualified">Disqualified</option>
+                        <option value="rejected">Rejected</option>
+                    </select>
+                    <button onClick={fetchSubmissions} className="p-2.5 border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors flex items-center gap-2 text-sm text-gray-600">
+                        <RefreshCw className="w-4 h-4" /> Refresh
+                    </button>
+                </div>
+            </div>
+
+            {/* Table */}
+            <div className="bg-white rounded-xl border border-gray-200 shadow-sm overflow-hidden">
+                {isLoading ? (
+                    <div className="flex items-center justify-center py-16">
+                        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600" />
+                    </div>
+                ) : submissions.length === 0 ? (
+                    <div className="flex flex-col items-center justify-center py-16 text-gray-400">
+                        <ImageIcon className="w-12 h-12 mb-3 opacity-40" />
+                        <p className="text-lg font-medium">No competition submissions found</p>
+                    </div>
+                ) : (
+                    <div className="overflow-x-auto">
+                        <table className="w-full text-sm">
+                            <thead className="bg-gray-50 border-b border-gray-200">
+                                <tr>
+                                    <th className="text-left px-4 py-3 font-medium text-gray-600">Ref No.</th>
+                                    <th className="text-left px-4 py-3 font-medium text-gray-600">Artwork / Title</th>
+                                    <th className="text-left px-4 py-3 font-medium text-gray-600">Student</th>
+                                    <th className="text-left px-4 py-3 font-medium text-gray-600 hidden md:table-cell">School</th>
+                                    <th className="text-left px-4 py-3 font-medium text-gray-600">Status</th>
+                                    <th className="text-left px-4 py-3 font-medium text-gray-600 hidden lg:table-cell">Date</th>
+                                    <th className="text-right px-4 py-3 font-medium text-gray-600">Actions</th>
+                                </tr>
+                            </thead>
+                            <tbody className="divide-y divide-gray-100">
+                                {submissions.map(sub => (
+                                    <tr key={sub._id} className="hover:bg-gray-50 transition-colors">
+                                        <td className="px-4 py-3">
+                                            <span className="font-mono text-xs text-gray-600 bg-gray-100 px-2 py-1 rounded">KAC2026-{sub._id.slice(-8).toUpperCase()}</span>
+                                        </td>
+                                        <td className="px-4 py-3">
+                                            <p className="font-medium text-gray-900 truncate max-w-[200px]">{sub.artwork?.title}</p>
+                                        </td>
+                                        <td className="px-4 py-3">
+                                            <p className="font-medium text-gray-900">{sub.participant?.studentFullName}</p>
+                                            <p className="text-gray-500 text-xs">Grade {sub.participant?.grade}</p>
+                                        </td>
+                                        <td className="px-4 py-3 hidden md:table-cell">
+                                            <p className="text-gray-900 text-sm truncate max-w-[200px]">{sub.participant?.schoolName}</p>
+                                            <p className="text-gray-500 text-xs">{sub.participant?.schoolEmirate}</p>
+                                        </td>
+                                        <td className="px-4 py-3">
+                                            <span className={`inline-flex px-2 py-1 text-xs font-medium rounded-full capitalize
+                                                ${sub.status === 'winner' ? 'bg-yellow-100 text-yellow-800' :
+                                                  sub.status === 'shortlisted' ? 'bg-purple-100 text-purple-800' :
+                                                  sub.status === 'under_review' ? 'bg-blue-100 text-blue-800' :
+                                                  sub.status === 'rejected' ? 'bg-red-100 text-red-800' :
+                                                  sub.status === 'disqualified' ? 'bg-gray-200 text-gray-800' :
+                                                  'bg-gray-100 text-gray-800'}`}>
+                                                {sub.status.replace('_', ' ')}
+                                            </span>
+                                        </td>
+                                        <td className="px-4 py-3 hidden lg:table-cell text-gray-500 whitespace-nowrap">
+                                            {new Date(sub.createdAt).toLocaleDateString()}
+                                        </td>
+                                        <td className="px-4 py-3">
+                                            <div className="flex justify-end gap-1">
+                                                <button
+                                                    onClick={() => setSelectedSubmission(sub)}
+                                                    className="p-1.5 rounded-lg hover:bg-blue-50 text-blue-600 transition-colors"
+                                                    title="View"
+                                                >
+                                                    <Eye className="w-4 h-4" />
+                                                </button>
+                                                <button
+                                                    onClick={async () => {
+                                                        if (!confirm('Delete this submission?')) return;
+                                                        await handleDelete(sub._id);
+                                                    }}
+                                                    className="p-1.5 rounded-lg hover:bg-red-50 text-red-500 transition-colors"
+                                                    title="Delete"
+                                                >
+                                                    <Trash2 className="w-4 h-4" />
+                                                </button>
+                                            </div>
+                                        </td>
+                                    </tr>
+                                ))}
+                            </tbody>
+                        </table>
+                    </div>
+                )}
+                {pagination && !isLoading && (
+                    <div className="border-t border-gray-100 px-4 py-3">
+                        <PaginationBar pagination={pagination} onPage={p => setPage(p)} />
+                    </div>
+                )}
+            </div>
+
+            {selectedSubmission && (
+                <CompetitionDetailModal
+                    submission={selectedSubmission}
+                    onClose={() => setSelectedSubmission(null)}
+                    onUpdateStatus={handleUpdateStatus}
+                    onDelete={handleDelete}
+                />
+            )}
+        </div>
+    );
+}
+
 // ─── Main Page ────────────────────────────────────────────────────────────────
 
-type TabId = 'contact' | 'newsletter' | 'partnership';
+type TabId = 'contact' | 'newsletter' | 'partnership' | 'competition';
 
 const TABS: { id: TabId; label: string; icon: React.ReactNode }[] = [
     {
@@ -992,6 +1443,11 @@ const TABS: { id: TabId; label: string; icon: React.ReactNode }[] = [
         id: 'partnership',
         label: 'Partnerships',
         icon: <UserCheck className="w-4 h-4" />
+    },
+    {
+        id: 'competition',
+        label: 'Competition',
+        icon: <Award className="w-4 h-4" />
     }
 ];
 
@@ -1030,6 +1486,7 @@ const AdminSubmissionsPage: React.FC = () => {
                 {activeTab === 'contact' && <ContactTab />}
                 {activeTab === 'newsletter' && <NewsletterTab />}
                 {activeTab === 'partnership' && <PartnershipTab />}
+                {activeTab === 'competition' && <CompetitionTab />}
             </div>
         </>
     );
