@@ -759,6 +759,91 @@ export const logout = async (
   }
 };
 
+/** Result of one successful rotation, shared with any request that raced in
+ *  on the exact same pre-rotation token — see inFlightRefreshes below. */
+interface RefreshResult {
+  user: InstanceType<typeof User>;
+  accessToken: string;
+  refreshToken: string;
+}
+
+// Two requests can legitimately carry the identical pre-rotation refresh
+// cookie at once (the 401 and CSRF-mismatch retry paths both firing, or two
+// browser tabs) — that is NOT token theft, it's the same session racing
+// itself. Keyed by tokenHash so a second concurrent request for that exact
+// token awaits and reuses the first request's rotation instead of being
+// told "already revoked" and treated as a replay. A *different* (older,
+// already-superseded) token presented later still hits the normal
+// reuse-detection path below and revokes the family — this map only ever
+// shortcuts the literal same-token race, never forgives a distinct stolen
+// token. In-memory only — safe because this deploy runs a single PM2 fork
+// instance (see backend/src/config — no cross-instance state to miss).
+const inFlightRefreshes = new Map<string, Promise<RefreshResult>>();
+
+const rotateRefreshToken = async (
+  rawToken: string,
+  decoded: { id: string },
+  req: Request,
+): Promise<RefreshResult> => {
+  const tokenHash = hashToken(rawToken);
+
+  // Check if a revoked token is being replayed — sign of theft; nuke the whole family
+  const revokedDoc = await RefreshToken.findOne({ token: tokenHash, isRevoked: true });
+  if (revokedDoc) {
+    logger.warn("[SECURITY] Refresh token reuse detected — revoking all sessions", {
+      userId: revokedDoc.user,
+      ip: req.ip,
+      ua: req.headers["user-agent"],
+    });
+    await RefreshToken.updateMany({ user: revokedDoc.user }, { isRevoked: true });
+    audit({
+      action: AuditAction.SESSION_REVOKED,
+      userId: revokedDoc.user,
+      req,
+      metadata: { reason: "refresh_token_reuse" },
+    });
+    throw new AppError("Session compromised. Please login again.", 401);
+  }
+
+  // Find the active token by hash
+  const refreshTokenDoc = await RefreshToken.findOne({ token: tokenHash, isRevoked: false });
+  if (!refreshTokenDoc) {
+    throw new AppError("Invalid or expired refresh token", 401);
+  }
+
+  // The JWT's own subject must match the DB row's owner — belt and suspenders
+  // against a token whose hash happens to collide with a different user's row.
+  if (decoded.id !== refreshTokenDoc.user.toString()) {
+    throw new AppError("Invalid or expired refresh token", 401);
+  }
+
+  // Check if token is expired
+  if (refreshTokenDoc.expiresAt < new Date()) {
+    refreshTokenDoc.isRevoked = true;
+    await refreshTokenDoc.save();
+    throw new AppError("Refresh token expired", 401);
+  }
+
+  // Get user
+  const user = await User.findById(refreshTokenDoc.user);
+  if (!user) {
+    throw new AppError("User not found", 404);
+  }
+
+  // A suspended/inactive account must not be able to mint fresh access
+  // tokens via refresh, even with a still-valid, unrevoked refresh token.
+  assertUserCanLogin(user);
+
+  // Revoke old refresh token before issuing new one (rotation)
+  refreshTokenDoc.isRevoked = true;
+  await refreshTokenDoc.save();
+
+  // Generate new tokens
+  const tokens = await generateAuthTokens(user._id.toString(), req);
+
+  return { user, accessToken: tokens.accessToken, refreshToken: tokens.refreshToken };
+};
+
 /**
  * @desc    Refresh access token
  * @route   POST /api/auth/refresh-token
@@ -788,68 +873,33 @@ export const refreshToken = async (
 
     const tokenHash = hashToken(rawToken);
 
-    // Check if a revoked token is being replayed — sign of theft; nuke the whole family
-    const revokedDoc = await RefreshToken.findOne({ token: tokenHash, isRevoked: true });
-    if (revokedDoc) {
-      logger.warn("[SECURITY] Refresh token reuse detected — revoking all sessions", {
-        userId: revokedDoc.user,
-        ip: req.ip,
-        ua: req.headers["user-agent"],
+    let resultPromise = inFlightRefreshes.get(tokenHash);
+    if (!resultPromise) {
+      resultPromise = rotateRefreshToken(rawToken, decoded, req).finally(() => {
+        inFlightRefreshes.delete(tokenHash);
       });
-      await RefreshToken.updateMany({ user: revokedDoc.user }, { isRevoked: true });
+      inFlightRefreshes.set(tokenHash, resultPromise);
+    }
+
+    let result: RefreshResult;
+    try {
+      result = await resultPromise;
+    } catch (error) {
       clearAuthCookies(res);
-      audit({ action: AuditAction.SESSION_REVOKED, userId: revokedDoc.user, req, metadata: { reason: "refresh_token_reuse" } });
-      throw new AppError("Session compromised. Please login again.", 401);
+      throw error;
     }
 
-    // Find the active token by hash
-    const refreshTokenDoc = await RefreshToken.findOne({ token: tokenHash, isRevoked: false });
-    if (!refreshTokenDoc) {
-      clearAuthCookies(res);
-      throw new AppError("Invalid or expired refresh token", 401);
-    }
-
-    // The JWT's own subject must match the DB row's owner — belt and suspenders
-    // against a token whose hash happens to collide with a different user's row.
-    if (decoded.id !== refreshTokenDoc.user.toString()) {
-      clearAuthCookies(res);
-      throw new AppError("Invalid or expired refresh token", 401);
-    }
-
-    // Check if token is expired
-    if (refreshTokenDoc.expiresAt < new Date()) {
-      refreshTokenDoc.isRevoked = true;
-      await refreshTokenDoc.save();
-      clearAuthCookies(res);
-      throw new AppError("Refresh token expired", 401);
-    }
-
-    // Get user
-    const user = await User.findById(refreshTokenDoc.user);
-    if (!user) {
-      throw new AppError("User not found", 404);
-    }
-
-    // A suspended/inactive account must not be able to mint fresh access
-    // tokens via refresh, even with a still-valid, unrevoked refresh token.
-    assertUserCanLogin(user);
-
-    // Revoke old refresh token before issuing new one (rotation)
-    refreshTokenDoc.isRevoked = true;
-    await refreshTokenDoc.save();
-
-    // Generate new tokens
-    const tokens = await generateAuthTokens(user._id.toString(), req);
-
-    // Set new httpOnly cookies
-    const csrfToken = setAuthCookies(res, tokens.accessToken, tokens.refreshToken);
+    // Set new httpOnly cookies — every request that raced in on this same
+    // token (not just the one that ran rotateRefreshToken) gets the same
+    // winning token pair, so no browser tab is left holding a stale cookie.
+    const csrfToken = setAuthCookies(res, result.accessToken, result.refreshToken);
 
     // Return response — tokens are in httpOnly cookies; body carries user only
     res.status(200).json({
       success: true,
       message: "Token refreshed successfully. New auth cookies have been set.",
       data: {
-        user: formatUserResponse(user),
+        user: formatUserResponse(result.user),
         csrfToken,
       },
     });

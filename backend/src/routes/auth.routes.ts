@@ -5,6 +5,7 @@ import {
   authenticateOptional,
   validate,
   authLimiter,
+  refreshTokenLimiter,
   passwordResetLimiter,
   emailVerificationLimiter,
   phoneOtpLimiter,
@@ -86,7 +87,7 @@ router.post("/logout", authController.logout);
  */
 router.post(
   "/refresh-token",
-  authLimiter,
+  refreshTokenLimiter,
   validateRefreshToken,
   validate,
   authController.refreshToken,

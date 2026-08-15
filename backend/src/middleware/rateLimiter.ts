@@ -64,6 +64,30 @@ export const authLimiter: RateLimitRequestHandler = rateLimit({
 });
 
 /**
+ * Refresh-token rate limiter — deliberately separate from authLimiter.
+ * Refresh is triggered automatically (401 retry, CSRF-mismatch retry, multiple
+ * tabs) rather than by a human typing credentials, so it needs a much higher
+ * ceiling than login's brute-force guard. Keyed by IP only (refresh requests
+ * carry no email — under authLimiter's ip+email key they all collapsed onto
+ * one shared `ip-` bucket, so unrelated users/tabs on the same IP could trip
+ * each other's limit and get logged out — see incident 2026-08-15).
+ * Limit: 30 requests per 15 minutes per IP
+ */
+export const refreshTokenLimiter: RateLimitRequestHandler = rateLimit({
+  windowMs: 15 * 60 * 1000, // 15 minutes
+  max: 30,
+  message: createErrorMessage(15 * 60),
+  standardHeaders: true,
+  legacyHeaders: false,
+  skipSuccessfulRequests: true,
+  keyGenerator: (req: Request) => req.ip || req.socket.remoteAddress || "unknown",
+  handler: (req: Request, res: Response) => {
+    logger.warn(`Refresh-token rate limit exceeded for IP: ${req.ip}`);
+    res.status(429).json(createErrorMessage(15 * 60));
+  },
+});
+
+/**
  * Password reset rate limiter
  * Limit: 3 requests per hour per IP
  */

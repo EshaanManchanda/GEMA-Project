@@ -982,11 +982,13 @@ function PartnershipTab() {
 function CompetitionDetailModal({
     submission,
     onClose,
-    onUpdateStatus
+    onUpdateStatus,
+    onDelete
 }: {
     submission: CompetitionSubmission;
     onClose: () => void;
     onUpdateStatus: (id: string, status: string, notes: string) => Promise<void>;
+    onDelete: (id: string) => Promise<void>;
 }) {
     const [notes, setNotes] = useState('');
     const [status, setStatus] = useState(submission.status);

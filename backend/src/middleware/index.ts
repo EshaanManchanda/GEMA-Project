@@ -20,6 +20,7 @@ export {
 export {
   generalLimiter,
   authLimiter,
+  refreshTokenLimiter,
   passwordResetLimiter,
   emailVerificationLimiter,
   phoneOtpLimiter,

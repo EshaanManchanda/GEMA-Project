@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useCallback } from 'react';
-import { Link, useNavigate } from 'react-router-dom';
+import { Link } from 'react-router-dom';
 import adminAPI from '../../services/api/adminAPI';
 import { IOrder, GetOrdersParams } from '../../types/order';
 import { Search, ChevronDown, ChevronUp, Check, X, Trash2, DollarSign, Eye } from 'lucide-react';
@@ -9,7 +9,6 @@ import logger from '@/utils/logger';
 import { convertToCSV } from '@/utils/csvExport';
 
 const AdminOrdersPage: React.FC = () => {
-  const navigate = useNavigate();
   const [orders, setOrders] = useState<IOrder[]>([]);
   const [isLoading, setIsLoading] = useState<boolean>(true);
   const [searchTerm, setSearchTerm] = useState<string>('');
