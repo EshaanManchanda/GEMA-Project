@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useCallback } from 'react';
-import { Link } from 'react-router-dom';
+import { Link, useNavigate } from 'react-router-dom';
 import adminAPI from '../../services/api/adminAPI';
 import { IOrder, GetOrdersParams } from '../../types/order';
 import { Search, ChevronDown, ChevronUp, Check, X, Trash2, DollarSign, Eye } from 'lucide-react';
@@ -9,6 +9,7 @@ import logger from '@/utils/logger';
 import { convertToCSV } from '@/utils/csvExport';
 
 const AdminOrdersPage: React.FC = () => {
+  const navigate = useNavigate();
   const [orders, setOrders] = useState<IOrder[]>([]);
   const [isLoading, setIsLoading] = useState<boolean>(true);
   const [searchTerm, setSearchTerm] = useState<string>('');
@@ -611,40 +612,45 @@ const AdminOrdersPage: React.FC = () => {
                       <div className="flex items-center gap-2">
                         <Link
                           to={`/admin/orders/${order._id}`}
-                          className="text-blue-600 hover:text-blue-900"
+                          className="inline-flex h-11 w-11 items-center justify-center rounded-lg border border-blue-100 text-blue-600 hover:text-blue-900 hover:bg-blue-50 transition-colors"
+                          title="View Order"
                         >
-                          <Eye className="w-4 h-4" />
+                          <Eye className="w-[15px] h-[15px]" />
                         </Link>
                         {order.status === 'pending' && (
                           <button
                             onClick={() => handleActionClick(order._id, 'confirm')}
-                            className="text-green-600 hover:text-green-900"
+                            className="inline-flex h-11 w-11 items-center justify-center rounded-lg border border-green-100 text-green-600 hover:text-green-900 hover:bg-green-50 transition-colors"
+                            title="Confirm Order"
                           >
-                            <Check className="w-4 h-4" />
+                            <Check className="w-[15px] h-[15px]" />
                           </button>
                         )}
                         {(order.status === 'pending' || order.status === 'confirmed') && (
                           <button
                             onClick={() => handleActionClick(order._id, 'cancel')}
-                            className="text-red-600 hover:text-red-900"
+                            className="inline-flex h-11 w-11 items-center justify-center rounded-lg border border-red-100 text-red-600 hover:text-red-900 hover:bg-red-50 transition-colors"
+                            title="Cancel Order"
                           >
-                            <X className="w-4 h-4" />
+                            <X className="w-[15px] h-[15px]" />
                           </button>
                         )}
                         {order.paymentStatus === 'paid' && order.status !== 'refunded' && (
                           <button
                             onClick={() => handleActionClick(order._id, 'refund')}
-                            className="text-orange-600 hover:text-orange-900"
+                            className="inline-flex h-11 w-11 items-center justify-center rounded-lg border border-orange-100 text-orange-600 hover:text-orange-900 hover:bg-orange-50 transition-colors"
+                            title="Refund Order"
                           >
-                            <DollarSign className="w-4 h-4" />
+                            <DollarSign className="w-[15px] h-[15px]" />
                           </button>
                         )}
                         {(order.status === 'pending' || order.status === 'cancelled') && (
                           <button
                             onClick={() => handleActionClick(order._id, 'delete')}
-                            className="text-red-600 hover:text-red-900"
+                            className="inline-flex h-11 w-11 items-center justify-center rounded-lg border border-red-100 text-red-600 hover:text-red-900 hover:bg-red-50 transition-colors"
+                            title="Delete Order"
                           >
-                            <Trash2 className="w-4 h-4" />
+                            <Trash2 className="w-[15px] h-[15px]" />
                           </button>
                         )}
                       </div>

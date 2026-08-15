@@ -13,6 +13,7 @@ import {
   updateProfile as updateProfileAction,
   getCurrentUser,
   clearError,
+  setInitialized,
   selectIsAuthenticated,
   selectIsInitialized,
   selectUser,
@@ -60,6 +61,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       if (!everAuthenticated && !hasXsrfCookie && !storedRefreshToken) {
         logger.debug('[AuthContext] No prior session or session indicators detected - skipping silent /auth/me call');
         dispatch(clearError());
+        dispatch(setInitialized(true));
         return;
       }
 
