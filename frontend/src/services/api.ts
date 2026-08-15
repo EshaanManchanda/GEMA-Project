@@ -59,20 +59,73 @@ const api: AxiosInstance = axios.create({
     'Content-Type': 'application/json',
   },
   withCredentials: true, // IMPORTANT: Send cookies with every request for httpOnly cookie auth
-  // Double-submit CSRF: backend issues a readable XSRF-TOKEN cookie alongside
-  // the httpOnly auth cookies (see backend/src/middleware/csrf.ts); axios
-  // reads it and echoes it back as a header on state-changing requests.
-  // withXSRFToken is required for this to apply cross-origin (dev: different
-  // ports), not just same-origin — CORS's origin allowlist is what keeps this safe.
-  xsrfCookieName: 'XSRF-TOKEN',
-  xsrfHeaderName: 'X-CSRF-Token',
-  withXSRFToken: true,
 });
+
+// Double-submit CSRF: backend issues a readable XSRF-TOKEN cookie alongside
+// the httpOnly auth cookies (see backend/src/middleware/csrf.ts) AND returns
+// the same value in the JSON body of login/register/refresh-token/firebase
+// (see setAuthCookies() in auth.controller.ts). We keep it here in memory
+// rather than reading document.cookie, because a cross-site frontend
+// (different registrable domain than the API — e.g. kidrove.in calling
+// api.kidrove.com, not a subdomain) can never read that cookie via JS at
+// all, regardless of SameSite. This single path works for both same-site
+// (.com) and cross-site (.in/.ae) deploys.
+let csrfToken: string | null = null;
+
+export const setCsrfToken = (token: string | null): void => {
+  csrfToken = token;
+};
+
+export const getCsrfToken = (): string | null => csrfToken;
+
+// Fallback for the case a page reload wiped the in-memory token but the
+// session (httpOnly accessToken cookie) is still valid: fetch a fresh one
+// from the body-based bootstrap endpoint instead of guessing. Deduplicated
+// so concurrent mutating requests on load don't all fire their own fetch.
+let csrfBootstrapPromise: Promise<string | null> | null = null;
+const bootstrapCsrfToken = (): Promise<string | null> => {
+  if (csrfToken) return Promise.resolve(csrfToken);
+  if (!csrfBootstrapPromise) {
+    csrfBootstrapPromise = api
+      .get('/auth/csrf-token')
+      .then((res) => {
+        const token = res.data?.data?.csrfToken ?? null;
+        csrfToken = token;
+        return token;
+      })
+      .catch(() => null)
+      .finally(() => {
+        csrfBootstrapPromise = null;
+      });
+  }
+  return csrfBootstrapPromise;
+};
+
+const STATE_CHANGING_METHODS = new Set(['post', 'put', 'patch', 'delete']);
+
+// Mirrors backend/src/middleware/csrf.ts's EXEMPT_EXACT_PATHS — these mint a
+// NEW session (or are pre-auth OTP flows) and can't be expected to already
+// hold a CSRF token for it. Prefetching here would 401 against
+// /auth/csrf-token for a not-yet-authenticated visitor and misfire the
+// response interceptor's 401 handling below.
+const CSRF_BOOTSTRAP_EXEMPT_PATHS = [
+  '/auth/register',
+  '/auth/register-admin',
+  '/auth/login',
+  '/auth/logout',
+  '/auth/refresh-token',
+  '/auth/forgot-password',
+  '/auth/reset-password',
+  '/auth/verify-email',
+  '/auth/resend-verification-email',
+  '/auth/firebase',
+  '/auth/csrf-token',
+];
 
 // Request interceptor for deduplication and logging
 // Note: Auth tokens are now sent via httpOnly cookies automatically (no need to set Authorization header)
 api.interceptors.request.use(
-  (config) => {
+  async (config) => {
     // Log request for debugging
     if (import.meta.env.DEV) {
       logger.debug('[API Interceptor] Request:', {
@@ -84,6 +137,26 @@ api.interceptors.request.use(
 
     // Auth tokens are sent via httpOnly cookies (withCredentials: true above)
     // No localStorage fallback — tokens must not be XSS-accessible
+
+    // Attach the double-submit CSRF header on state-changing requests. If we
+    // don't have a token in memory yet (e.g. page was just reloaded) but this
+    // browser has a session before, fetch one from the bootstrap endpoint —
+    // guarded by the exempt list + 'ever authenticated' flag so anonymous
+    // visitors and the auth-bootstrap endpoints themselves never trigger a
+    // pointless 401 (those aren't cookie-authenticated, so the backend never
+    // requires a CSRF header from them in the first place).
+    const method = config.method?.toLowerCase();
+    const isExemptPath = CSRF_BOOTSTRAP_EXEMPT_PATHS.some((p) => config.url?.includes(p));
+    if (method && STATE_CHANGING_METHODS.has(method) && !isExemptPath) {
+      let token = csrfToken;
+      if (!token && localStorage.getItem('gema_ever_authenticated') === 'true') {
+        token = await bootstrapCsrfToken();
+      }
+      if (token) {
+        config.headers = config.headers ?? {};
+        (config.headers as any)['X-CSRF-Token'] = token;
+      }
+    }
 
     // Add request deduplication for GET requests (stats/dashboard endpoints)
     if (config.method?.toLowerCase() === 'get' && (

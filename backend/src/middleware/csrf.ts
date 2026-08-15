@@ -55,6 +55,7 @@ export const issueCsrfToken = (res: Response): string => {
     httpOnly: false,
     secure: isProduction,
     sameSite: cookieSameSite(),
+    domain: config.cookieDomain,
     path: "/",
     maxAge: 30 * 24 * 60 * 60 * 1000, // matches refresh cookie lifetime
   });
@@ -67,6 +68,7 @@ export const clearCsrfToken = (res: Response): void => {
     httpOnly: false,
     secure: config.nodeEnv === "production",
     sameSite: cookieSameSite(),
+    domain: config.cookieDomain,
     path: "/",
   });
 };

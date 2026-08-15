@@ -76,6 +76,12 @@ export interface AuthResponse {
   token?: string;
   refreshToken?: string;
   expiresIn?: number;
+  // Double-submit CSRF token, issued alongside the httpOnly auth cookies.
+  // A cross-site frontend (different registrable domain than the API, e.g.
+  // kidrove.in calling api.kidrove.com) can't read the XSRF-TOKEN cookie via
+  // document.cookie, so the backend also returns it here — see api.ts's
+  // setCsrfToken/getCsrfToken.
+  csrfToken?: string;
 }
 
 // Register response — backend returns two shapes:

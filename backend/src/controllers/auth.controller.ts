@@ -89,7 +89,7 @@ const getCookieOptions = (): CookieOptions => {
     httpOnly: true,
     secure: useSecureCookies,
     sameSite,
-    domain: undefined,
+    domain: config.cookieDomain,
     path: "/",
     priority: "high",
     maxAge: 7 * 24 * 60 * 60 * 1000,
@@ -111,7 +111,7 @@ const getRefreshCookieOptions = (): CookieOptions => {
     httpOnly: true,
     secure: useSecureCookies,
     sameSite,
-    domain: undefined,
+    domain: config.cookieDomain,
     // Scoped to auth routes only — refresh token should not ride on every request
     path: "/api/auth",
     priority: "high",
@@ -126,7 +126,7 @@ const setAuthCookies = (
   res: Response,
   accessToken: string,
   refreshToken: string,
-): void => {
+): string => {
   // Validate tokens before setting cookies
   if (!accessToken || accessToken.trim() === "") {
     logger.error("[SET_COOKIES] Attempted to set empty accessToken");
@@ -154,11 +154,17 @@ const setAuthCookies = (
   res.cookie("refreshToken", refreshToken, refreshOptions);
   // Double-submit CSRF cookie — must be (re)issued every time the auth
   // cookies are, so the frontend always has a fresh token to echo back.
-  issueCsrfToken(res);
+  // Also returned so callers can put it in the response body: a
+  // cross-site frontend (different registrable domain than the API, e.g.
+  // kidrove.in calling api.kidrove.com) can never read this cookie via
+  // document.cookie, so the body is the only channel it has to learn it.
+  const csrfToken = issueCsrfToken(res);
 
   if (process.env.DEBUG_AUTH === "true" && process.env.NODE_ENV !== "production") {
     logger.debug("[SET_COOKIES] Cookies set successfully");
   }
+
+  return csrfToken;
 };
 
 /**
@@ -181,7 +187,7 @@ const getClearCookieOptions = (path: "/" | "/api/auth"): CookieOptions => {
     httpOnly: true,
     secure: useSecureCookies,
     sameSite,
-    domain: undefined,
+    domain: config.cookieDomain,
     path,
     // maxAge intentionally omitted - Express 5.x will set expiry automatically
   };
@@ -412,7 +418,7 @@ export const register = async (
     const tokens = await generateAuthTokens(user._id.toString(), req);
 
     // Set httpOnly cookies
-    setAuthCookies(res, tokens.accessToken, tokens.refreshToken);
+    const csrfToken = setAuthCookies(res, tokens.accessToken, tokens.refreshToken);
 
     // Send verification email - failure rolls back user creation
     try {
@@ -442,7 +448,8 @@ export const register = async (
       });
     }
 
-    // Return response — tokens are in httpOnly cookies; body carries user only
+    // Return response — tokens are in httpOnly cookies; body carries user +
+    // csrfToken (cross-site frontends can't read the XSRF-TOKEN cookie, see setAuthCookies)
     logger.info("Registration successful");
     audit({ action: AuditAction.REGISTER, userId: user._id, req });
     res.status(201).json({
@@ -450,6 +457,7 @@ export const register = async (
       message: "User registered successfully. Auth cookies have been set.",
       data: {
         user: formatUserResponse(user),
+        csrfToken,
       },
     });
   } catch (error) {
@@ -522,7 +530,7 @@ export const registerAdmin = async (
     const tokens = await generateAuthTokens(user._id.toString(), req);
 
     // Set httpOnly cookies
-    setAuthCookies(res, tokens.accessToken, tokens.refreshToken);
+    const csrfToken = setAuthCookies(res, tokens.accessToken, tokens.refreshToken);
 
     // Optionally send welcome email (you can customize this)
     try {
@@ -543,6 +551,7 @@ export const registerAdmin = async (
         "Admin user registered successfully. Auth cookies have been set.",
       data: {
         user: formatUserResponse(user),
+        csrfToken,
       },
     });
   } catch (error) {
@@ -699,7 +708,7 @@ export const login = async (
     const tokens = await generateAuthTokens(user._id.toString(), req);
 
     // Set httpOnly cookies
-    setAuthCookies(res, tokens.accessToken, tokens.refreshToken);
+    const csrfToken = setAuthCookies(res, tokens.accessToken, tokens.refreshToken);
 
     // Return response — tokens are in httpOnly cookies; body carries user only
     res.status(200).json({
@@ -707,6 +716,7 @@ export const login = async (
       message: "Login successful. Auth cookies have been set.",
       data: {
         user: formatUserResponse(user),
+        csrfToken,
       },
     });
   } catch (error) {
@@ -832,7 +842,7 @@ export const refreshToken = async (
     const tokens = await generateAuthTokens(user._id.toString(), req);
 
     // Set new httpOnly cookies
-    setAuthCookies(res, tokens.accessToken, tokens.refreshToken);
+    const csrfToken = setAuthCookies(res, tokens.accessToken, tokens.refreshToken);
 
     // Return response — tokens are in httpOnly cookies; body carries user only
     res.status(200).json({
@@ -840,6 +850,7 @@ export const refreshToken = async (
       message: "Token refreshed successfully. New auth cookies have been set.",
       data: {
         user: formatUserResponse(user),
+        csrfToken,
       },
     });
   } catch (error) {
@@ -874,6 +885,35 @@ export const getCurrentUser = async (
       message: "User retrieved successfully",
       data: formatUserResponse(user),
     } as ApiResponse<UserResponse>);
+  } catch (error) {
+    next(error);
+  }
+};
+
+/**
+ * @desc    (Re)issue the CSRF token for the current session, in the response
+ *          body rather than relying on the frontend reading the XSRF-TOKEN
+ *          cookie. A cross-site frontend (different registrable domain than
+ *          the API, e.g. kidrove.in calling api.kidrove.com) can never read
+ *          that cookie via document.cookie — this is its only path to the
+ *          token. Called on app boot / after a page reload, when the
+ *          frontend's in-memory copy from login/refresh is gone but the
+ *          httpOnly accessToken cookie (and thus the session) is still valid.
+ * @route   GET /api/auth/csrf-token
+ * @access  Private
+ */
+export const getCsrfToken = async (
+  req: Request,
+  res: Response,
+  next: NextFunction,
+): Promise<void> => {
+  try {
+    const csrfToken = issueCsrfToken(res);
+    res.status(200).json({
+      success: true,
+      message: "CSRF token issued.",
+      data: { csrfToken },
+    });
   } catch (error) {
     next(error);
   }
@@ -1185,11 +1225,12 @@ export const changePassword = async (
 
     // Issue fresh tokens so the current session stays alive
     const tokens = await generateAuthTokens(user._id.toString(), req);
-    setAuthCookies(res, tokens.accessToken, tokens.refreshToken);
+    const csrfToken = setAuthCookies(res, tokens.accessToken, tokens.refreshToken);
 
     res.status(200).json({
       success: true,
       message: "Password changed successfully. All other sessions have been logged out.",
+      data: { csrfToken },
     } as ApiResponse);
   } catch (error) {
     next(error);
@@ -1546,7 +1587,7 @@ export const firebaseAuth = async (
     const tokens = await generateAuthTokens(user._id.toString(), req);
 
     // Set httpOnly cookies
-    setAuthCookies(res, tokens.accessToken, tokens.refreshToken);
+    const csrfToken = setAuthCookies(res, tokens.accessToken, tokens.refreshToken);
 
     // Return response
     res.status(200).json({
@@ -1554,6 +1595,7 @@ export const firebaseAuth = async (
       message: "Firebase authentication successful. Auth cookies have been set.",
       data: {
         user: formatUserResponse(user),
+        csrfToken,
       },
     });
   } catch (error) {

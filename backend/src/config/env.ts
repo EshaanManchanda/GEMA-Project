@@ -69,6 +69,8 @@ interface Config {
   /** Optional — Sentry error-tracking is disabled (no-op) when unset. */
   sentryDsn: string | undefined;
   frontendUrl: string;
+  /** Optional — shares auth/CSRF cookies across subdomains (e.g. ".kidrove.com"). Unset = host-only cookie. */
+  cookieDomain: string | undefined;
   rateLimitWindowMs: number;
   rateLimitMax: number;
   firebase: {
@@ -266,6 +268,7 @@ export const config: Config = {
   fieldEncryptionKey: process.env.FIELD_ENCRYPTION_KEY || "",
   sentryDsn: process.env.SENTRY_DSN || undefined,
   frontendUrl: process.env.FRONTEND_URL || "http://localhost:3001",
+  cookieDomain: process.env.COOKIE_DOMAIN || undefined,
   rateLimitWindowMs: parseInt(process.env.RATE_LIMIT_WINDOW_MS || "900000", 10),
   rateLimitMax: parseInt(process.env.RATE_LIMIT_MAX || "500", 10),
   firebase: {

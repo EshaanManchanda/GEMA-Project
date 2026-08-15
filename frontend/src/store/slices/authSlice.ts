@@ -1,5 +1,6 @@
 import { createSlice, createAsyncThunk, PayloadAction } from '@reduxjs/toolkit';
 import authAPI from '@services/api/authAPI';
+import { setCsrfToken } from '@services/api';
 import {
   type User,
   type LoginCredentials,
@@ -55,6 +56,7 @@ export const loginUser = createAsyncThunk(
         email: credentials.email,
         password: credentials.password
       });
+      setCsrfToken(response.csrfToken ?? null);
       toast.success('Welcome back!');
 
       // Handle role-based redirect if navigate function is provided
@@ -76,6 +78,9 @@ export const registerUser = createAsyncThunk(
   async (userData: RegisterData, { rejectWithValue }) => {
     try {
       const response = await authAPI.register(userData);
+      // Enumeration-protection path (existing email) never calls setAuthCookies,
+      // so there's no token to capture there — guard for its absence.
+      setCsrfToken((response as any)?.csrfToken ?? null);
       // Neutral wording — response may be the enumeration-protection path
       // (existing email, no user created), so don't claim "account created".
       toast.success('Please check your email to continue.');
@@ -114,6 +119,7 @@ export const logoutUser = createAsyncThunk(
       // Clear persisted auth state from localStorage
       localStorage.removeItem('persist:auth');
       localStorage.removeItem('gema_ever_authenticated');
+      setCsrfToken(null);
 
       toast.success('Logged out successfully');
       return null;
@@ -124,6 +130,7 @@ export const logoutUser = createAsyncThunk(
       // Still clear persisted state even on error
       localStorage.removeItem('persist:auth');
       localStorage.removeItem('gema_ever_authenticated');
+      setCsrfToken(null);
 
       return null;
     }
@@ -145,10 +152,12 @@ export const clearAuthOnFailure = createAsyncThunk(
       // Clear persisted auth state
       localStorage.removeItem('persist:auth');
       // Keep gema_ever_authenticated flag for detection
+      setCsrfToken(null);
 
       return null;
     } catch (error: any) {
       localStorage.removeItem('persist:auth');
+      setCsrfToken(null);
       return null;
     }
   }
@@ -164,6 +173,10 @@ export const refreshToken = createAsyncThunk(
       // But we also check localStorage for fallback (if cookies blocked)
       const storedRefreshToken = localStorage.getItem('refreshToken');
       const response = await authAPI.refreshToken(storedRefreshToken || undefined);
+      // The 403-CSRF retry path in api.ts's response interceptor relies on
+      // this to populate the in-memory token before it retries the original
+      // (previously-403'd) request.
+      setCsrfToken(response.csrfToken ?? null);
       return response;
     } catch (error: any) {
       const message = error.response?.data?.message || 'Token refresh failed';
@@ -426,6 +439,7 @@ export const loginWithGoogleThunk = createAsyncThunk(
   async ({ navigate, role }: { navigate?: any; role?: string }, { rejectWithValue }) => {
     try {
       const response = await loginWithGoogle(role);
+      setCsrfToken(response.csrfToken ?? null);
       toast.success('Signed in with Google successfully!');
 
       // Handle role-based redirect if navigate function is provided

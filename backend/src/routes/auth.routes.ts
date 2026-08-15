@@ -100,6 +100,14 @@ router.post(
 router.get("/me", authenticateOptional, authController.getCurrentUser);
 
 /**
+ * @route   GET /api/auth/csrf-token
+ * @desc    (Re)issue the CSRF token in the response body for cross-site
+ *          frontends that can't read the XSRF-TOKEN cookie directly
+ * @access  Private
+ */
+router.get("/csrf-token", authenticate, authController.getCsrfToken);
+
+/**
  * @route   GET /api/auth/profile
  * @desc    Get full user profile with enhanced data
  * @access  Private
