@@ -194,11 +194,40 @@ const getClearCookieOptions = (path: "/" | "/api/auth"): CookieOptions => {
 };
 
 /**
+ * Domain scopes a stale accessToken/refreshToken/XSRF-TOKEN cookie could be
+ * sitting under from a previous deploy (host-only api.kidrove.com from
+ * before COOKIE_DOMAIN was set, or a bare-apex value entered by hand).
+ * Cookie deletion matches by (name, domain, path) — a stale cookie with a
+ * domain we never re-clear coexists forever alongside the current one and
+ * gets sent as a duplicate on every request, with cookie-parser picking
+ * whichever the browser lists first (usually the OLDEST, already-rotated
+ * one) — silently breaking refresh for any browser that still holds one.
+ */
+const staleCookieDomainVariants = (): (string | undefined)[] => {
+  const current = config.cookieDomain;
+  const variants = new Set<string | undefined>([current, undefined]);
+  if (current?.startsWith(".")) {
+    variants.add(current.slice(1));
+  }
+  return Array.from(variants);
+};
+
+const clearCookieAllDomains = (
+  res: Response,
+  name: string,
+  path: "/" | "/api/auth",
+): void => {
+  for (const domain of staleCookieDomainVariants()) {
+    res.clearCookie(name, { ...getClearCookieOptions(path), domain });
+  }
+};
+
+/**
  * Clear auth cookies on response
  */
 const clearAuthCookies = (res: Response): void => {
-  res.clearCookie("accessToken", getClearCookieOptions("/"));
-  res.clearCookie("refreshToken", getClearCookieOptions("/api/auth"));
+  clearCookieAllDomains(res, "accessToken", "/");
+  clearCookieAllDomains(res, "refreshToken", "/api/auth");
   clearCsrfToken(res);
 };
 

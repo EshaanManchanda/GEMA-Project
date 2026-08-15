@@ -63,14 +63,29 @@ export const issueCsrfToken = (res: Response): string => {
   return token;
 };
 
+// Domain scopes a stale XSRF-TOKEN could be sitting under from a previous
+// deploy (host-only, or bare-apex) — see clearCookieAllDomains in
+// auth.controller.ts for why every variant must be swept, not just the
+// current config.cookieDomain.
+const staleCookieDomainVariants = (): (string | undefined)[] => {
+  const current = config.cookieDomain;
+  const variants = new Set<string | undefined>([current, undefined]);
+  if (current?.startsWith(".")) {
+    variants.add(current.slice(1));
+  }
+  return Array.from(variants);
+};
+
 export const clearCsrfToken = (res: Response): void => {
-  res.clearCookie(CSRF_COOKIE_NAME, {
-    httpOnly: false,
-    secure: config.nodeEnv === "production",
-    sameSite: cookieSameSite(),
-    domain: config.cookieDomain,
-    path: "/",
-  });
+  for (const domain of staleCookieDomainVariants()) {
+    res.clearCookie(CSRF_COOKIE_NAME, {
+      httpOnly: false,
+      secure: config.nodeEnv === "production",
+      sameSite: cookieSameSite(),
+      domain,
+      path: "/",
+    });
+  }
 };
 
 /**
