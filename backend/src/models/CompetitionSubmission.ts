@@ -59,7 +59,7 @@ export enum ChangesAfterGeneration {
 export enum SubmissionStatus {
   PENDING = "pending",
   UNDER_REVIEW = "under_review",
-  SHORTLISTED = "shortlisted",
+  APPROVED = "approved",
   WINNER = "winner",
   DISQUALIFIED = "disqualified",
   REJECTED = "rejected",
@@ -79,6 +79,7 @@ export interface IParticipantDetails {
   studentFullName: string;
   studentAge: number;
   grade: Grade;
+  cohort?: string;
   gender?: Gender;
   schoolName: string;
   schoolEmirate: SchoolEmirate;
@@ -95,8 +96,6 @@ export interface IAiCreation {
   creationType: CreationType;
   mainPrompt: string;
   additionalPrompts?: string[];
-  processScreenshotUrl?: string;
-  processScreenshotPublicId?: string;
   changesAfterGeneration: ChangesAfterGeneration;
   changesDescription?: string;
 }
@@ -134,6 +133,8 @@ export interface ICompetitionSubmission extends Document {
   consent: IConsentSection;
   status: SubmissionStatus;
   adminNotes?: string;
+  medal?: string;
+  certificateTemplateId?: string;
   metadata: {
     ipAddress?: string;
     userAgent?: string;
@@ -189,6 +190,10 @@ const competitionSubmissionSchema = new Schema<ICompetitionSubmission>(
           values: Object.values(Grade),
           message: "Invalid grade selection",
         },
+      },
+      cohort: {
+        type: String,
+        trim: true,
       },
       gender: {
         type: String,
@@ -263,12 +268,6 @@ const competitionSubmissionSchema = new Schema<ICompetitionSubmission>(
           validator: (v: string[]) => v.length <= 3,
           message: "Maximum 3 additional prompts allowed",
         },
-      },
-      processScreenshotUrl: {
-        type: String,
-      },
-      processScreenshotPublicId: {
-        type: String,
       },
       changesAfterGeneration: {
         type: String,
@@ -383,6 +382,8 @@ const competitionSubmissionSchema = new Schema<ICompetitionSubmission>(
       trim: true,
       maxlength: [2000, "Admin notes cannot exceed 2000 characters"],
     },
+    medal: { type: String },
+    certificateTemplateId: { type: String },
 
     metadata: {
       ipAddress: { type: String },

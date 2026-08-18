@@ -987,14 +987,15 @@ function CompetitionDetailModal({
 }: {
     submission: CompetitionSubmission;
     onClose: () => void;
-    onUpdateStatus: (id: string, status: string, notes: string) => Promise<void>;
+    onUpdateStatus: (id: string, status: string, notes: string, medal?: string, certificateTemplateId?: string) => Promise<void>;
     onDelete: (id: string) => Promise<void>;
 }) {
-    const [notes, setNotes] = useState('');
+    const [notes, setNotes] = useState(submission.adminNotes || '');
     const [status, setStatus] = useState(submission.status);
+    const [medal, setMedal] = useState(submission.medal || '');
     const [loading, setLoading] = useState(false);
     const [templates, setTemplates] = useState<any[]>([]);
-    const [selectedTemplate, setSelectedTemplate] = useState('');
+    const [selectedTemplate, setSelectedTemplate] = useState(submission.certificateTemplateId || '');
 
     useEffect(() => {
         adminAPI.getCertTemplates()
@@ -1002,12 +1003,25 @@ function CompetitionDetailModal({
             .catch(err => console.error('Failed to load templates', err));
     }, []);
 
+    useEffect(() => {
+        setNotes(submission.adminNotes || '');
+        setStatus(submission.status);
+        setMedal(submission.medal || '');
+        setSelectedTemplate(submission.certificateTemplateId || '');
+    }, [submission]);
+
     const handleSave = async () => {
         setLoading(true);
         try {
-            await onUpdateStatus(submission._id, status, notes);
-            if ((status === 'shortlisted' || status === 'winner') && selectedTemplate) {
-                await competitionAPI.generateCertificate(submission._id, selectedTemplate);
+            await onUpdateStatus(
+                submission._id, 
+                status, 
+                notes, 
+                status === 'winner' ? medal : undefined, 
+                (status === 'approved' || status === 'winner') ? selectedTemplate : undefined
+            );
+            if ((status === 'approved' || status === 'winner') && selectedTemplate) {
+                await competitionAPI.generateCertificate(submission._id, selectedTemplate, status === 'winner' ? medal : undefined);
                 toast.success('Certificate generation triggered');
             }
         } catch (err) {
@@ -1051,9 +1065,12 @@ function CompetitionDetailModal({
                             <div className="text-sm">
                                 <span className="font-medium text-gray-600">Grade:</span> {submission.participant?.grade}
                             </div>
-                            <div className="text-sm">
+                            <p className="text-sm">
+                                <span className="font-medium text-gray-600">Cohort:</span> {submission.participant?.cohort || 'N/A'}
+                            </p>
+                            <p className="text-sm">
                                 <span className="font-medium text-gray-600">Gender:</span> {submission.participant?.gender || 'N/A'}
-                            </div>
+                            </p>
                             <div className="text-sm">
                                 <span className="font-medium text-gray-600">School:</span> {submission.participant?.schoolName} ({submission.participant?.schoolEmirate})
                             </div>
@@ -1117,18 +1134,6 @@ function CompetitionDetailModal({
                                         <CheckCheck className={`w-4 h-4 mt-0.5 ${submission.declarations?.agreeTerms ? 'text-green-500' : 'text-gray-300'}`} />
                                         <span className="text-gray-700">Agreed to Terms & Conditions</span>
                                     </div>
-                                    <div className="text-sm flex items-start gap-2">
-                                        <CheckCheck className={`w-4 h-4 mt-0.5 ${submission.declarations?.responsibleAiDeclaration ? 'text-green-500' : 'text-gray-300'}`} />
-                                        <span className="text-gray-700">Responsible AI Declaration</span>
-                                    </div>
-                                    <div className="text-sm flex items-start gap-2">
-                                        <CheckCheck className={`w-4 h-4 mt-0.5 ${submission.declarations?.originalityDeclaration ? 'text-green-500' : 'text-gray-300'}`} />
-                                        <span className="text-gray-700">Originality Declaration</span>
-                                    </div>
-                                    <div className="text-sm flex items-start gap-2">
-                                        <CheckCheck className={`w-4 h-4 mt-0.5 ${submission.consent?.parentGuardianConsent ? 'text-green-500' : 'text-gray-300'}`} />
-                                        <span className="text-gray-700">Parent/Guardian Consent</span>
-                                    </div>
                                 </div>
                                 <div className="space-y-2">
                                     <div className="text-sm flex items-start gap-2">
@@ -1164,12 +1169,27 @@ function CompetitionDetailModal({
                                     className="bg-white px-3 py-1.5 rounded-lg border border-blue-200 text-sm focus:ring-blue-500 w-48"
                                 >
                                     <option value="pending">Pending</option>
-                                    <option value="shortlisted">Shortlisted</option>
+                                    <option value="approved">Approved</option>
                                     <option value="winner">Winner</option>
                                     <option value="disqualified">Disqualified</option>
                                 </select>
+                                {status === 'winner' && (
+                                    <>
+                                        <span className="text-sm font-medium text-blue-800 ml-2">Medal:</span>
+                                        <select
+                                            value={medal}
+                                            onChange={(e) => setMedal(e.target.value)}
+                                            className="bg-white px-3 py-1.5 rounded-lg border border-blue-200 text-sm focus:ring-blue-500 w-48"
+                                        >
+                                            <option value="">Select Medal</option>
+                                            <option value="Gold">Gold</option>
+                                            <option value="Silver">Silver</option>
+                                            <option value="Bronze">Bronze</option>
+                                        </select>
+                                    </>
+                                )}
                             </div>
-                            {(status === 'shortlisted' || status === 'winner') && (
+                            {(status === 'approved' || status === 'winner') && (
                                 <div className="flex items-center gap-3">
                                     <span className="text-sm font-medium text-blue-800 w-24">Certificate:</span>
                                     <select
@@ -1234,6 +1254,7 @@ function CompetitionTab() {
     const [search, setSearch] = useState('');
     const [searchInput, setSearchInput] = useState('');
     const [statusFilter, setStatusFilter] = useState('');
+    const [medalFilter, setMedalFilter] = useState('');
     const [page, setPage] = useState(1);
     const [selectedSubmission, setSelectedSubmission] = useState<CompetitionSubmission | null>(null);
 
@@ -1244,6 +1265,7 @@ function CompetitionTab() {
                 page,
                 limit: 20,
                 status: statusFilter || undefined,
+                medal: medalFilter || undefined,
                 search: search || undefined,
             });
             setSubmissions(res.data.submissions || []);
@@ -1260,7 +1282,7 @@ function CompetitionTab() {
         } finally {
             setIsLoading(false);
         }
-    }, [page, statusFilter]);
+    }, [page, statusFilter, medalFilter, search]);
 
     useEffect(() => { fetchSubmissions(); }, [fetchSubmissions]);
 
@@ -1270,10 +1292,10 @@ function CompetitionTab() {
         return () => clearTimeout(t);
     }, [searchInput]);
 
-    const handleUpdateStatus = async (id: string, status: string, notes: string) => {
+    const handleUpdateStatus = async (id: string, status: string, notes: string, medal?: string, certificateTemplateId?: string) => {
         try {
-            await competitionAPI.updateSubmissionStatus(id, status, notes);
-            toast.success('Submission updated successfully');
+            await competitionAPI.updateSubmissionStatus(id, status, notes, medal, certificateTemplateId);
+            toast.success('Status updated successfully');
             fetchSubmissions();
         } catch (err: any) {
             toast.error('Failed to update submission');
@@ -1312,11 +1334,19 @@ function CompetitionTab() {
                     >
                         <option value="">All Statuses</option>
                         <option value="pending">Pending</option>
-                        <option value="under_review">Under Review</option>
-                        <option value="shortlisted">Shortlisted</option>
+                        <option value="approved">Approved</option>
                         <option value="winner">Winner</option>
                         <option value="disqualified">Disqualified</option>
-                        <option value="rejected">Rejected</option>
+                    </select>
+                    <select
+                        value={medalFilter}
+                        onChange={e => { setMedalFilter(e.target.value); setPage(1); }}
+                        className="px-4 py-2.5 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-blue-500 focus:border-transparent bg-white"
+                    >
+                        <option value="">All Medals</option>
+                        <option value="Gold">Gold</option>
+                        <option value="Silver">Silver</option>
+                        <option value="Bronze">Bronze</option>
                     </select>
                     <button onClick={fetchSubmissions} className="p-2.5 border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors flex items-center gap-2 text-sm text-gray-600">
                         <RefreshCw className="w-4 h-4" /> Refresh
@@ -1345,6 +1375,7 @@ function CompetitionTab() {
                                     <th className="text-left px-4 py-3 font-medium text-gray-600">Student</th>
                                     <th className="text-left px-4 py-3 font-medium text-gray-600 hidden md:table-cell">School</th>
                                     <th className="text-left px-4 py-3 font-medium text-gray-600">Status</th>
+                                    <th className="text-left px-4 py-3 font-medium text-gray-600">Medal</th>
                                     <th className="text-left px-4 py-3 font-medium text-gray-600 hidden lg:table-cell">Date</th>
                                     <th className="text-right px-4 py-3 font-medium text-gray-600">Actions</th>
                                 </tr>
@@ -1369,13 +1400,26 @@ function CompetitionTab() {
                                         <td className="px-4 py-3">
                                             <span className={`inline-flex px-2 py-1 text-xs font-medium rounded-full capitalize
                                                 ${sub.status === 'winner' ? 'bg-yellow-100 text-yellow-800' :
-                                                  sub.status === 'shortlisted' ? 'bg-purple-100 text-purple-800' :
+                                                  sub.status === 'approved' ? 'bg-purple-100 text-purple-800' :
                                                   sub.status === 'under_review' ? 'bg-blue-100 text-blue-800' :
                                                   sub.status === 'rejected' ? 'bg-red-100 text-red-800' :
                                                   sub.status === 'disqualified' ? 'bg-gray-200 text-gray-800' :
                                                   'bg-gray-100 text-gray-800'}`}>
                                                 {sub.status.replace('_', ' ')}
                                             </span>
+                                        </td>
+                                        <td className="px-4 py-3">
+                                            {sub.medal ? (
+                                                <span className={`inline-flex items-center gap-1.5 px-2 py-1 text-xs font-medium rounded-full border
+                                                    ${sub.medal === 'Gold' ? 'bg-yellow-100 text-yellow-800 border-yellow-200' : 
+                                                      sub.medal === 'Silver' ? 'bg-gray-100 text-gray-800 border-gray-200' :
+                                                      sub.medal === 'Bronze' ? 'bg-orange-100 text-orange-800 border-orange-200' : ''}`}
+                                                >
+                                                    {sub.medal === 'Gold' ? '🥇' : sub.medal === 'Silver' ? '🥈' : sub.medal === 'Bronze' ? '🥉' : ''} {sub.medal}
+                                                </span>
+                                            ) : (
+                                                <span className="text-gray-400 text-xs">-</span>
+                                            )}
                                         </td>
                                         <td className="px-4 py-3 hidden lg:table-cell text-gray-500 whitespace-nowrap">
                                             {new Date(sub.createdAt).toLocaleDateString()}

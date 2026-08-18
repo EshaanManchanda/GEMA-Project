@@ -10,6 +10,7 @@ export interface CompetitionSubmitPayload {
   studentFullName: string;
   studentAge: number;
   grade: string;
+  cohort?: string;
   gender?: string;
   schoolName: string;
   schoolEmirate: string;
@@ -22,7 +23,6 @@ export interface CompetitionSubmitPayload {
   creationType: string;
   mainPrompt: string;
   additionalPrompts?: string[];
-  processScreenshot?: File | null;
   changesAfterGeneration: string;
   changesDescription?: string;
   // Section 4b – Artwork file
@@ -59,6 +59,7 @@ export interface CompetitionSubmission {
     studentFullName: string;
     studentAge: number;
     grade: string;
+    cohort?: string;
     gender?: string;
     schoolName: string;
     schoolEmirate: string;
@@ -73,7 +74,6 @@ export interface CompetitionSubmission {
     creationType: string;
     mainPrompt: string;
     additionalPrompts?: string[];
-    processScreenshotUrl?: string;
     changesAfterGeneration: string;
     changesDescription?: string;
   };
@@ -96,6 +96,8 @@ export interface CompetitionSubmission {
     marketingConsent: boolean;
   };
   status: string;
+  medal?: string;
+  certificateTemplateId?: string;
   metadata: { submittedAt: string };
   createdAt: string;
 }
@@ -135,9 +137,6 @@ const competitionAPI = {
     if (payload.additionalPrompts?.length) {
       formData.append('additionalPrompts', JSON.stringify(payload.additionalPrompts.filter(Boolean)));
     }
-    if (payload.processScreenshot) {
-      formData.append('screenshot', payload.processScreenshot);
-    }
     formData.append('changesAfterGeneration', payload.changesAfterGeneration);
     if (payload.changesDescription) {
       formData.append('changesDescription', payload.changesDescription);
@@ -168,15 +167,16 @@ const competitionAPI = {
   /**
    * Admin: get all competition submissions.
    */
-  getSubmissions: async (params?: {
+  getSubmissions: async (options: {
     page?: number;
     limit?: number;
     status?: string;
+    medal?: string;
+    search?: string;
     emirate?: string;
     grade?: string;
-    search?: string;
   }) => {
-    const response = await ApiService.get('/competition/submissions', { params });
+    const response = await ApiService.get('/competition/submissions', { params: options });
     return response as {
       success: boolean;
       data: {
@@ -197,12 +197,20 @@ const competitionAPI = {
   /**
    * Admin: update submission status.
    */
-  updateSubmissionStatus: async (id: string, status: string, adminNotes?: string) => {
+  updateSubmissionStatus: async (
+    id: string,
+    status: string,
+    adminNotes?: string,
+    medal?: string,
+    certificateTemplateId?: string
+  ) => {
     const response = await ApiService.patch(`/competition/submissions/${id}/status`, {
       status,
       adminNotes,
+      medal,
+      certificateTemplateId,
     });
-    return response as { success: boolean; data: { submission: CompetitionSubmission } };
+    return response as { success: boolean; message: string; data: any };
   },
 
   /**
@@ -216,9 +224,10 @@ const competitionAPI = {
   /**
    * Admin: generate certificate for submission.
    */
-  generateCertificate: async (id: string, templateId: string) => {
+  generateCertificate: async (id: string, templateId: string, medal?: string) => {
     const response = await ApiService.post(`/competition/submissions/${id}/certificate`, {
       templateId,
+      medal,
     });
     return response as { success: boolean };
   },

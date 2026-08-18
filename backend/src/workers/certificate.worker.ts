@@ -584,7 +584,7 @@ function buildVisualHtml(
 </head>
 <body>
 <div class="canvas">
-  ${backgroundImageUrl ? `<img class="bg" src="${backgroundImageUrl}" alt="" crossorigin="anonymous" />` : ""}
+  ${backgroundImageUrl ? `<img class="bg" src="${backgroundImageUrl}" alt="" />` : ""}
   ${fieldHtml}
 </div>
 </body>
@@ -625,7 +625,15 @@ export function buildCertEmailHtml(
   serial?: string,
   url?: string,
   verifyUrl?: string,
+  medal?: string,
 ): string {
+  const isKidrove = eventTitle.toLowerCase().includes("kidrove") || eventTitle.toLowerCase().includes("competition");
+  const gradient = isKidrove 
+    ? "linear-gradient(135deg, #f59e0b 0%, #ea580c 100%)" 
+    : "linear-gradient(135deg, #4f46e5 0%, #7c3aed 100%)";
+  const brandName = isKidrove ? "Kidrove" : "GEMA Platform";
+  const btnColor = isKidrove ? "#ea580c" : "#4f46e5";
+
   return `
     <!DOCTYPE html>
     <html>
@@ -634,51 +642,57 @@ export function buildCertEmailHtml(
       <meta name="viewport" content="width=device-width,initial-scale=1.0">
       <title>Your Certificate</title>
     </head>
-    <body style="font-family:Arial,sans-serif;line-height:1.6;color:#1e293b;background:#f8fafc;margin:0;padding:0;">
-      <div style="max-width:600px;margin:0 auto;padding:24px;">
-        <div style="background:linear-gradient(135deg,#4f46e5 0%,#7c3aed 100%);color:white;padding:28px 24px;text-align:center;border-radius:12px 12px 0 0;">
-          <h1 style="margin:0;font-size:26px;">🏆 Congratulations!</h1>
-          <p style="margin:8px 0 0;opacity:0.9;font-size:15px;">You've earned a new certificate</p>
+    <body style="font-family:'Helvetica Neue', Arial, sans-serif;line-height:1.6;color:#1e293b;background:#0f172a;margin:0;padding:40px 20px;">
+      <div style="max-width:600px;margin:0 auto;background:white;border-radius:20px;overflow:hidden;box-shadow:0 20px 40px rgba(0,0,0,0.4);border:1px solid #1e293b;">
+        <div style="background:${gradient};color:white;padding:40px 30px;text-align:center;position:relative;">
+          ${medal ? `<div style="display:inline-block;background:rgba(0,0,0,0.2);padding:8px 16px;border-radius:30px;font-size:12px;font-weight:800;letter-spacing:2px;text-transform:uppercase;margin-bottom:15px;border:1px solid rgba(255,255,255,0.2);">✨ ${medal} Medal Winner ✨</div>` : ''}
+          <h1 style="margin:0;font-size:32px;font-weight:800;letter-spacing:-0.5px;">🏆 Congratulations!</h1>
+          <p style="margin:12px 0 0;opacity:0.9;font-size:16px;">${medal ? `You have won a medal in the ${eventTitle}` : `You've earned a new certificate`}</p>
         </div>
-        <div style="background:white;padding:28px 24px;border-radius:0 0 12px 12px;box-shadow:0 2px 8px rgba(0,0,0,0.06);">
-          <p style="font-size:17px;">Hi <strong>${name}</strong>!</p>
-          <p>We are absolutely thrilled to present you with this certificate for your participation in <strong>${eventTitle}</strong>.</p>
-          <p>Your dedication, effort, and enthusiasm are truly appreciated. Thank you for being a wonderful part of this event, and for taking the time to share your review!</p>
+        
+        <div style="padding:40px;background:#ffffff;">
+          <h2 style="font-size:24px;font-weight:800;color:#0f172a;margin-top:0;">Hi ${name}!</h2>
+          <p style="font-size:16px;color:#475569;margin-bottom:30px;">
+            We are absolutely thrilled to present you with this official certificate for your incredible effort in <strong>${eventTitle}</strong>.
+            ${medal ? ` Outstanding work earning the <strong>${medal} Medal</strong>!` : ''}
+          </p>
           
-          <div style="background:#f8fafc;border-radius:8px;padding:20px;margin:24px 0;border:1px solid #e2e8f0;">
-            <p style="margin:0 0 8px;font-weight:700;font-size:15px;color:#4f46e5;">Certificate Details</p>
-            <table style="width:100%;font-size:14px;color:#475569;">
-              <tr><td style="padding:4px 0;font-weight:600;width:120px;">Event:</td><td>${eventTitle}</td></tr>
-              ${serial ? `<tr><td style="padding:4px 0;font-weight:600;">Serial #:</td><td style="font-family:monospace;">${serial}</td></tr>` : ""}
+          <div style="background:#f8fafc;border-radius:16px;padding:25px;margin:30px 0;border:1px solid #e2e8f0;border-left:4px solid ${btnColor};">
+            <span style="font-size:12px;text-transform:uppercase;letter-spacing:1.5px;color:#64748b;font-weight:800;margin-bottom:15px;display:block;">Certificate Details</span>
+            <table style="width:100%;border-collapse:collapse;">
+              <tr><td style="padding:12px 0;border-bottom:1px dashed #cbd5e1;color:#64748b;font-weight:600;font-size:14px;width:40%;">Event</td><td style="padding:12px 0;border-bottom:1px dashed #cbd5e1;color:#0f172a;font-weight:800;font-size:14px;text-align:right;">${eventTitle}</td></tr>
+              ${medal ? `<tr><td style="padding:12px 0;border-bottom:1px dashed #cbd5e1;color:#64748b;font-weight:600;font-size:14px;">Medal</td><td style="padding:12px 0;border-bottom:1px dashed #cbd5e1;color:#f59e0b;font-weight:800;font-size:14px;text-align:right;">${medal} Medal</td></tr>` : ""}
+              ${serial ? `<tr><td style="padding:12px 0;color:#64748b;font-weight:600;font-size:14px;">Serial ID</td><td style="padding:12px 0;color:#0f172a;font-weight:800;font-size:14px;text-align:right;"><span style="background:#0f172a;color:${btnColor};padding:4px 10px;border-radius:6px;font-family:monospace;letter-spacing:1px;">${serial}</span></td></tr>` : ""}
             </table>
           </div>
 
-          <div style="background:#f0fdf4;border-radius:8px;padding:16px;margin:20px 0;border-left:4px solid #16a34a;">
-            <p style="margin:0;font-size:15px;color:#166534;font-weight:600;">
-              📎 Your official certificate has been attached to this email as a PDF document.
+          <div style="background:#f0fdf4;border-radius:12px;padding:20px;margin:30px 0;border:1px solid #bbf7d0;">
+            <p style="margin:0;font-size:14px;color:#166534;font-weight:600;line-height:1.5;">
+              📎 Your official high-resolution certificate is attached to this email as a PDF.
             </p>
           </div>
 
           ${
             url
-              ? `<div style="text-align:center;margin:24px 0;">
-            <a href="${url}" style="display:inline-block;padding:12px 28px;background:#4f46e5;color:white;text-decoration:none;border-radius:8px;font-weight:600;font-size:15px;box-shadow:0 4px 6px -1px rgba(79, 70, 229, 0.2);">Download Backup Copy</a>
+              ? `<div style="text-align:center;margin:35px 0;">
+            <a href="${url}" style="display:inline-block;padding:14px 32px;background:${btnColor};color:white;text-decoration:none;border-radius:12px;font-weight:700;font-size:16px;box-shadow:0 10px 15px -3px rgba(0,0,0,0.1);">Download Backup Copy</a>
           </div>`
               : ""
           }
           
           ${
             verifyUrl
-              ? `<div style="margin-top:24px;padding-top:16px;border-top:1px dashed #e2e8f0;font-size:13px;color:#64748b;">
-            <p style="margin:0 0 4px;font-weight:600;">Verify authenticity:</p>
-            <a href="${verifyUrl}" style="color:#4f46e5;word-break:break-all;">${verifyUrl}</a>
+              ? `<div style="margin-top:35px;padding-top:20px;border-top:1px dashed #e2e8f0;text-align:center;">
+            <p style="margin:0 0 8px;font-size:13px;font-weight:700;color:#64748b;text-transform:uppercase;letter-spacing:1px;">Verify Authenticity</p>
+            <a href="${verifyUrl}" style="color:${btnColor};font-size:13px;word-break:break-all;">${verifyUrl}</a>
           </div>`
               : ""
           }
         </div>
-        <div style="text-align:center;margin-top:20px;color:#94a3b8;font-size:13px;">
-          <p>The GEMA Platform Team</p>
-          <p>This certificate was issued automatically.</p>
+        <div style="background:#0f172a;padding:30px;text-align:center;color:#94a3b8;font-size:12px;border-top:1px solid #1e293b;">
+          <span style="font-weight:800;font-size:18px;color:white;letter-spacing:1px;margin-bottom:15px;display:block;">${brandName.toUpperCase()}</span>
+          <p style="margin:5px 0;">Inspiring the creators of tomorrow.</p>
+          <p style="margin:5px 0;">&copy; ${new Date().getFullYear()} ${brandName}. All rights reserved.</p>
         </div>
       </div>
     </body>

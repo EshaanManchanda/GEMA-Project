@@ -29,7 +29,6 @@ export const submitCompetition = catchAsync(
     const body = req.body;
     const files = req.files as { [fieldname: string]: Express.Multer.File[] } | undefined;
     const artworkFile = files?.artwork?.[0];
-    const screenshotFile = files?.screenshot?.[0];
 
     // ── Validate required artwork file ────────────────────────────────────────
     if (!artworkFile) {
@@ -83,34 +82,6 @@ export const submitCompetition = catchAsync(
       }
     } else {
       return next(new AppError("Failed to process artwork file", 500));
-    }
-
-    // ── Optionally upload screenshot ──────────────────────────────────────────
-    let processScreenshotUrl: string | undefined;
-    let processScreenshotPublicId: string | undefined;
-
-    if (screenshotFile) {
-      try {
-        if ((screenshotFile as any).secure_url) {
-          processScreenshotUrl = (screenshotFile as any).secure_url;
-          processScreenshotPublicId = (screenshotFile as any).public_id;
-        } else if (screenshotFile.path) {
-          const ssUpload = await uploadService.uploadToCloudinary(screenshotFile.path, {
-            folder: "gema/competition-screenshots",
-            resourceType: "image",
-          });
-          if (ssUpload.success && ssUpload.url) {
-            processScreenshotUrl = ssUpload.url;
-            processScreenshotPublicId = ssUpload.publicId;
-          }
-          if (fs.existsSync(screenshotFile.path)) {
-            fs.unlinkSync(screenshotFile.path);
-          }
-        }
-      } catch (err) {
-        logger.warn("[competition] Screenshot upload failed (non-fatal)", err);
-        // Non-fatal — continue without screenshot
-      }
     }
 
     // ── Parse additional prompts ──────────────────────────────────────────────
@@ -210,7 +181,8 @@ export const submitCompetition = catchAsync(
                 </div>
                 <p>Best regards,<br>The KidRove Team</p>
               </div>
-            `
+            `,
+            notificationType: "essential"
           });
         }
       } catch (err) {
@@ -241,8 +213,6 @@ export const submitCompetition = catchAsync(
         creationType: body.creationType,
         mainPrompt: body.mainPrompt?.trim(),
         additionalPrompts,
-        processScreenshotUrl,
-        processScreenshotPublicId,
         changesAfterGeneration: body.changesAfterGeneration,
         changesDescription: body.changesDescription?.trim() || undefined,
       },
@@ -334,14 +304,32 @@ export const getSubmissions = catchAsync(
     if (req.query.grade) {
       filter["participant.grade"] = req.query.grade;
     }
+    if (req.query.medal) {
+      filter.medal = req.query.medal;
+    }
     if (req.query.search) {
-      const searchRegex = new RegExp(req.query.search as string, "i");
-      filter.$or = [
+      const searchStr = req.query.search as string;
+      const searchRegex = new RegExp(searchStr, "i");
+      const orConditions: any[] = [
         { "participant.studentFullName": searchRegex },
         { "participant.parentEmail": searchRegex },
         { "participant.parentName": searchRegex },
         { "artwork.title": searchRegex },
       ];
+
+      if (searchStr.toUpperCase().startsWith("KAC2026-")) {
+        const suffix = searchStr.substring(8).toLowerCase();
+        orConditions.push({
+          $expr: {
+            $regexMatch: {
+              input: { $toString: "$_id" },
+              regex: new RegExp(`${suffix}$`, "i")
+            }
+          }
+        });
+      }
+
+      filter.$or = orConditions;
     }
 
     const [submissions, total] = await Promise.all([
@@ -395,7 +383,7 @@ export const getSubmissionById = catchAsync(
 // @access  Private (Admin)
 export const updateSubmissionStatus = catchAsync(
   async (req: Request, res: Response, next: NextFunction) => {
-    const { status, adminNotes } = req.body;
+    const { status, adminNotes, medal, certificateTemplateId } = req.body;
 
     if (!Object.values(SubmissionStatus).includes(status)) {
       return next(new AppError("Invalid status value", 400));
@@ -406,6 +394,8 @@ export const updateSubmissionStatus = catchAsync(
       {
         status,
         ...(adminNotes !== undefined ? { adminNotes } : {}),
+        ...(medal !== undefined ? { medal } : {}),
+        ...(certificateTemplateId !== undefined ? { certificateTemplateId } : {}),
       },
       { new: true, runValidators: true },
     );
@@ -466,7 +456,7 @@ export const deleteSubmission = catchAsync(
 export const generateSubmissionCertificate = catchAsync(
   async (req: AuthRequest, res: Response, next: NextFunction) => {
     const { id } = req.params;
-    const { templateId } = req.body;
+    const { templateId, medal } = req.body;
 
     if (!templateId) {
       return next(new AppError("Template ID is required", 400));
@@ -494,12 +484,13 @@ export const generateSubmissionCertificate = catchAsync(
         schoolName: submission.participant.schoolName,
         artworkTitle: submission.artwork.title,
         grade: submission.participant.grade,
+        ...(medal ? { medal } : {}),
       },
       issuedBy: req.user?._id?.toString() || req.user?.id,
     });
 
-    // Queue PDF generation
-    await certificateService.queuePDFGeneration(certificate._id.toString(), {
+    // Generate PDF synchronously instead of queuing to ensure it doesn't get stuck
+    await certificateService.generateCertificateSynchronously(certificate._id.toString(), {
       templateId,
       recipient: {
         name: submission.participant.studentFullName,
@@ -511,13 +502,14 @@ export const generateSubmissionCertificate = catchAsync(
         schoolName: submission.participant.schoolName,
         artworkTitle: submission.artwork.title,
         grade: submission.participant.grade,
+        ...(medal ? { medal } : {}),
       },
-      options: { sendEmail: true },
+      sendEmail: true,
     });
 
     res.status(200).json({
       success: true,
-      message: "Certificate generation queued successfully",
+      message: "Certificate generated successfully",
       data: { certificate },
     });
   }

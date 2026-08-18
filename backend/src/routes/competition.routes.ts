@@ -19,14 +19,12 @@ const router = Router();
  * POST /api/competition/submit
  * Submit a competition entry (multipart/form-data).
  * - "artwork" field = the final artwork image (JPG/PNG, max 10 MB)
- * - "screenshot" field = optional process screenshot
  * - All other fields are text fields in the form body.
  */
 router.post(
   "/submit",
   uploadFields([
     { name: "artwork", maxCount: 1 },
-    { name: "screenshot", maxCount: 1 },
   ]),
   handleUploadError,
   submitCompetition,
@@ -51,7 +49,7 @@ router.get("/submissions/:id", getSubmissionById);
 
 /**
  * PATCH /api/competition/submissions/:id/status
- * Update submission status (pending / under_review / shortlisted / winner / disqualified / rejected).
+ * Update submission status (pending / under_review / approved / winner / disqualified / rejected).
  * Body: { status, adminNotes? }
  */
 router.patch("/submissions/:id/status", updateSubmissionStatus);

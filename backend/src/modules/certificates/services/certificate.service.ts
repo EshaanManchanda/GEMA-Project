@@ -216,6 +216,7 @@ class CertificateService {
         certificate.serialNumber,
         certificate.pdfUrl,
         certificate.qrData,
+        certificate.data?.medal
       ),
       attachments: attachment ? [attachment] : undefined,
     });
@@ -244,7 +245,7 @@ class CertificateService {
     });
   }
 
-  private async generateCertificateSynchronously(
+  async generateCertificateSynchronously(
     certificateId: string,
     opts: {
       templateId?: string;

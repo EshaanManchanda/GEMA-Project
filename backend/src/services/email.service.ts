@@ -2165,58 +2165,93 @@ class EmailService {
   async sendCompetitionSubmissionEmail(
     options: CompetitionSubmissionEmailOptions,
   ): Promise<void> {
-    const brand = getBrandConfig();
     const html = `
       <!DOCTYPE html>
       <html>
       <head>
         <meta charset="utf-8">
         <style>
-          body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif; line-height: 1.6; color: #374151; margin: 0; padding: 0; background-color: #f3f4f6; }
-          .container { max-width: 600px; margin: 40px auto; background: white; border-radius: 12px; overflow: hidden; box-shadow: 0 4px 6px rgba(0,0,0,0.05); }
-          .header { background: #2563eb; color: white; padding: 30px; text-align: center; }
-          .header h1 { margin: 0; font-size: 24px; font-weight: 600; }
-          .content { padding: 40px 30px; }
-          .footer { background: #f9fafb; padding: 20px 30px; text-align: center; font-size: 13px; color: #6b7280; border-top: 1px solid #e5e7eb; }
-          .info-box { background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 8px; padding: 20px; margin: 25px 0; }
+          body { font-family: 'Helvetica Neue', Arial, sans-serif; line-height: 1.6; color: #334155; margin: 0; padding: 40px 20px; background-color: #0f172a; }
+          .container { max-width: 600px; margin: 0 auto; background: white; border-radius: 20px; overflow: hidden; box-shadow: 0 20px 40px rgba(0,0,0,0.4); border: 1px solid #1e293b; }
+          .header { background: linear-gradient(135deg, #f59e0b 0%, #ea580c 100%); color: white; padding: 40px 30px; text-align: center; position: relative; }
+          .header-badge { display: inline-block; background: rgba(0,0,0,0.2); padding: 8px 16px; border-radius: 30px; font-size: 12px; font-weight: 800; letter-spacing: 2px; text-transform: uppercase; margin-bottom: 15px; border: 1px solid rgba(255,255,255,0.2); }
+          .header h1 { margin: 0; font-size: 32px; font-weight: 800; letter-spacing: -0.5px; }
+          .content { padding: 40px; background: #ffffff; }
+          .greeting { font-size: 24px; font-weight: 800; color: #0f172a; margin-top: 0; }
+          .lead { font-size: 16px; color: #475569; margin-bottom: 30px; }
+          .info-box { background: #f8fafc; border-radius: 16px; padding: 25px; margin: 30px 0; border: 1px solid #e2e8f0; position: relative; }
+          .info-box::before { content: ''; position: absolute; left: 0; top: 0; bottom: 0; width: 4px; background: linear-gradient(to bottom, #f59e0b, #ea580c); border-radius: 16px 0 0 16px; }
+          .info-title { font-size: 12px; text-transform: uppercase; letter-spacing: 1.5px; color: #64748b; font-weight: 800; margin-bottom: 15px; display: block; }
+          .info-table { width: 100%; border-collapse: collapse; }
+          .info-table td { padding: 12px 0; border-bottom: 1px dashed #cbd5e1; }
+          .info-table tr:last-child td { border-bottom: none; padding-bottom: 0; }
+          .info-label { color: #64748b; font-weight: 600; font-size: 14px; width: 40%; }
+          .info-value { color: #0f172a; font-weight: 800; font-size: 14px; text-align: right; }
+          .ref-code { background: #0f172a; color: #f59e0b; padding: 4px 10px; border-radius: 6px; font-family: monospace; letter-spacing: 1px; }
+          .next-steps { margin-top: 40px; }
+          .next-steps h3 { font-size: 18px; color: #0f172a; font-weight: 800; margin-bottom: 20px; }
+          .step-item { margin-bottom: 20px; padding: 20px; background: #f8fafc; border-radius: 12px; }
+          .step-content h4 { margin: 0 0 5px 0; color: #0f172a; font-weight: 700; font-size: 15px; }
+          .step-content p { margin: 0; color: #64748b; font-size: 14px; line-height: 1.5; }
+          .footer { background: #0f172a; padding: 30px; text-align: center; color: #94a3b8; font-size: 12px; border-top: 1px solid #1e293b; }
+          .footer p { margin: 5px 0; }
+          .brand-logo { font-weight: 800; font-size: 18px; color: white; letter-spacing: 1px; margin-bottom: 15px; display: block; }
         </style>
       </head>
       <body>
         <div class="container">
           <div class="header">
-            <h1>🎉 Entry Submitted!</h1>
+            <div class="header-badge">✨ Kidrove AI Art 2026</div>
+            <h1>Entry Submitted!</h1>
           </div>
           <div class="content">
-            <h2>Hi ${options.parentName}!</h2>
-            <p>Your competition entry for <strong>${options.studentName}</strong> has been received successfully.</p>
+            <h2 class="greeting">Hi ${options.parentName}!</h2>
+            <p class="lead">Your competition entry for <strong style="color: #ea580c;">${options.studentName}</strong> has been received successfully. Our judges are excited to see their vision of the future.</p>
             
             <div class="info-box">
-              <h4 style="margin: 0 0 10px; color: #374151;">Submission Details</h4>
-              <table style="width: 100%; font-size: 13px;">
+              <span class="info-title">Submission Receipt</span>
+              <table class="info-table">
                 <tr>
-                  <td style="padding: 5px 0; color: #6b7280; font-weight: 500; width: 100px;">Ref No:</td>
-                  <td style="color: #1f2937;"><strong>${options.refNo}</strong></td>
+                  <td class="info-label">Reference ID</td>
+                  <td class="info-value"><span class="ref-code">${options.refNo}</span></td>
                 </tr>
                 <tr>
-                  <td style="padding: 5px 0; color: #6b7280; font-weight: 500;">Artwork:</td>
-                  <td style="color: #1f2937;">${options.artworkTitle}</td>
+                  <td class="info-label">Artwork Title</td>
+                  <td class="info-value">${options.artworkTitle}</td>
                 </tr>
               </table>
             </div>
 
-            <h4 style="margin-top: 25px;">What happens next?</h4>
-            <ul style="padding-left: 20px; margin-top: 10px; color: #4b5563;">
-              <li style="margin-bottom: 8px;"><strong>Participation Certificate:</strong> Every eligible participant receives a Kidrove certificate.</li>
-              <li style="margin-bottom: 8px;"><strong>Winners Announced:</strong> Selected winners receive Gold, Silver & Bronze badges.</li>
-              <li><strong>Gallery Feature:</strong> Outstanding artwork may be featured in the Kidrove AI Visions of the UAE Gallery.</li>
-            </ul>
+            <div class="next-steps">
+              <h3>📌 What happens next?</h3>
+              
+              <div class="step-item">
+                <div class="step-content">
+                  <h4>📜 Participation Certificate</h4>
+                  <p>Every eligible student receives an official Kidrove certificate honoring their effort.</p>
+                </div>
+              </div>
 
-            <p style="font-size: 13px; color: #6b7280; margin-top: 25px;">
-              Thank you for participating!
-            </p>
+              <div class="step-item">
+                <div class="step-content">
+                  <h4>🏆 Winners Announced</h4>
+                  <p>The judging panel will evaluate entries and award Gold, Silver, and Bronze medals to top performers.</p>
+                </div>
+              </div>
+
+              <div class="step-item">
+                <div class="step-content">
+                  <h4>🎨 Virtual Exhibition</h4>
+                  <p>Outstanding creations will be showcased in the exclusive Kidrove AI Art Gallery.</p>
+                </div>
+              </div>
+            </div>
+
           </div>
           <div class="footer">
-            <p>Best regards,<br>${getTeamSignature()}</p>
+            <span class="brand-logo">KIDROVE</span>
+            <p>Inspiring the creators of tomorrow.</p>
+            <p>&copy; ${new Date().getFullYear()} Kidrove. All rights reserved.</p>
           </div>
         </div>
       </body>
@@ -2227,6 +2262,7 @@ class EmailService {
       to: options.to,
       subject: "Competition Entry Received!",
       html,
+      notificationType: "essential"
     });
   }
 
