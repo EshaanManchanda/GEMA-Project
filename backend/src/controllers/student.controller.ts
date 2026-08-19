@@ -133,9 +133,16 @@ export const updateStudent = async (req: AuthRequest, res: Response, next: NextF
 
 export const deleteStudent = async (req: AuthRequest, res: Response, next: NextFunction) => {
   try {
-    const student = await Student.findByIdAndUpdate(req.params.id, { status: "inactive" }, { new: true });
-    if (!student) return next(new AppError("Student not found", 404));
-    res.status(200).json({ success: true, data: { student } });
+    const { permanent } = req.query;
+    if (permanent === 'true') {
+      const student = await Student.findByIdAndDelete(req.params.id);
+      if (!student) return next(new AppError("Student not found", 404));
+      return res.status(200).json({ success: true, message: "Student permanently deleted" });
+    } else {
+      const student = await Student.findByIdAndUpdate(req.params.id, { status: "inactive" }, { new: true });
+      if (!student) return next(new AppError("Student not found", 404));
+      return res.status(200).json({ success: true, data: { student } });
+    }
   } catch (error) {
     next(error);
   }

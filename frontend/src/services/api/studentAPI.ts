@@ -101,6 +101,8 @@ export const studentAPI = {
   update: (id: string, payload: UpdateStudentPayload) =>
     api.put<{ success: boolean; data: { student: Student } }>(`/students/${id}`, payload),
 
-  delete: (id: string) =>
-    api.delete<{ success: boolean; data: { student: Student } }>(`/students/${id}`),
+  delete: (id: string, permanent?: boolean) =>
+    api.delete<{ success: boolean; data?: { student: Student }; message?: string }>(
+      `/students/${id}${permanent ? '?permanent=true' : ''}`
+    ),
 };

@@ -313,15 +313,19 @@ const AdminStudentsPage: React.FC = () => {
 
   useEffect(() => { fetchStudents(); }, [fetchStudents]);
 
-  const handleDelete = async (id: string, name: string) => {
-    if (!confirm(`Deactivate student ${name}?`)) return;
+  const [deleteConfirmModal, setDeleteConfirmModal] = useState<{ id: string, name: string } | null>(null);
+
+  const handlePerformDelete = async (permanent: boolean) => {
+    if (!deleteConfirmModal) return;
+    const { id, name } = deleteConfirmModal;
     setDeleting(id);
+    setDeleteConfirmModal(null);
     try {
-      await studentAPI.delete(id);
-      toast.success('Student deactivated');
+      await studentAPI.delete(id, permanent);
+      toast.success(permanent ? 'Student permanently deleted' : 'Student deactivated');
       fetchStudents();
     } catch (err: any) {
-      toast.error(err?.response?.data?.message || 'Failed to deactivate');
+      toast.error(err?.response?.data?.message || 'Failed to delete');
     } finally {
       setDeleting(null);
     }
@@ -479,10 +483,10 @@ const AdminStudentsPage: React.FC = () => {
                           <Pencil className="w-4 h-4" />
                         </button>
                         <button
-                          onClick={() => handleDelete(s._id, `${s.firstName} ${s.lastName}`)}
-                          disabled={deleting === s._id || s.status === 'inactive'}
+                          onClick={() => setDeleteConfirmModal({ id: s._id, name: `${s.firstName} ${s.lastName}` })}
+                          disabled={deleting === s._id}
                           className="p-1.5 text-red-500 hover:bg-red-50 rounded disabled:opacity-40"
-                          title="Deactivate"
+                          title="Delete Student"
                         >
                           {deleting === s._id ? <RefreshCw className="w-4 h-4 animate-spin" /> : <Trash2 className="w-4 h-4" />}
                         </button>
@@ -530,6 +534,44 @@ const AdminStudentsPage: React.FC = () => {
           onClose={() => setShowBulkImport(false)}
           onDone={fetchStudents}
         />
+      )}
+
+      {deleteConfirmModal && (
+        <div className="fixed inset-0 z-50 bg-black/50 flex items-center justify-center p-4">
+          <div className="bg-white rounded-2xl w-full max-w-md shadow-2xl overflow-hidden p-6">
+            <h2 className="text-xl font-bold text-gray-900 mb-2">Delete Student</h2>
+            <p className="text-sm text-gray-600 mb-6">
+              You are about to delete <span className="font-semibold text-gray-900">{deleteConfirmModal.name}</span>.
+              <br /><br />
+              <strong>Soft Delete:</strong> Hides the student by setting their status to inactive.
+              <br />
+              <strong>Permanent Delete:</strong> Completely removes the student from the database. This action cannot be undone.
+            </p>
+            <div className="flex flex-col gap-3">
+              <button
+                onClick={() => handlePerformDelete(false)}
+                disabled={deleting !== null}
+                className="w-full py-2.5 bg-orange-100 text-orange-700 font-medium rounded-lg hover:bg-orange-200 transition-colors"
+              >
+                Soft Delete (Deactivate)
+              </button>
+              <button
+                onClick={() => handlePerformDelete(true)}
+                disabled={deleting !== null}
+                className="w-full py-2.5 bg-red-600 text-white font-medium rounded-lg hover:bg-red-700 transition-colors"
+              >
+                Permanent Delete
+              </button>
+              <button
+                onClick={() => setDeleteConfirmModal(null)}
+                disabled={deleting !== null}
+                className="w-full py-2.5 bg-gray-100 text-gray-700 font-medium rounded-lg hover:bg-gray-200 transition-colors"
+              >
+                Cancel
+              </button>
+            </div>
+          </div>
+        </div>
       )}
     </div>
   );
