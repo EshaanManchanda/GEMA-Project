@@ -167,21 +167,37 @@ export const submitCompetition = catchAsync(
         }
 
         if (isNewUser) {
+          const welcomeHtml = `
+            <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px; border: 1px solid #eee; border-radius: 10px;">
+              <h2 style="color: #4f46e5;">Welcome to KidRove, ${parent.firstName}!</h2>
+              <p>Thank you for participating in the KidRove AI Art Competition. A parent account has been created for you to track submissions.</p>
+              <div style="background-color: #eff6ff; padding: 15px; border-radius: 8px; margin: 20px 0; border: 1px solid #bfdbfe;">
+                <p><strong>Login Email:</strong> ${parentEmail}</p>
+                <p><strong>Temporary Password:</strong> <code>${tempPassword}</code></p>
+                <p>Please log in at <a href="${config.frontendUrl}/login">${config.frontendUrl}/login</a> and change your password.</p>
+              </div>
+              <p style="color: #666; font-size: 14px;">If you have any questions, feel free to contact us.</p>
+            </div>
+          `;
+          
+          const welcomeText = `
+Welcome to KidRove, ${parent.firstName}!
+
+Thank you for participating in the KidRove AI Art Competition. A parent account has been created for you to track submissions.
+
+Login Email: ${parentEmail}
+Temporary Password: ${tempPassword}
+
+Please log in at ${config.frontendUrl}/login and change your password.
+
+If you have any questions, feel free to contact us.
+          `.trim();
+
           await emailService.sendEmail({
             to: parentEmail,
             subject: "Welcome to KidRove!",
-            html: `
-              <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px; border: 1px solid #eee; border-radius: 10px;">
-                <h2 style="color: #4f46e5;">Welcome to KidRove, ${parent.firstName}!</h2>
-                <p>Thank you for participating in the KidRove AI Art Competition. A parent account has been created for you to track submissions.</p>
-                <div style="background-color: #eff6ff; padding: 15px; border-radius: 8px; margin: 20px 0; border: 1px solid #bfdbfe;">
-                  <p><strong>Login Email:</strong> ${parentEmail}</p>
-                  <p><strong>Temporary Password:</strong> <code>${tempPassword}</code></p>
-                  <p>Please log in at <a href="${config.frontendUrl}/login">${config.frontendUrl}/login</a> and change your password.</p>
-                </div>
-                <p>Best regards,<br>The KidRove Team</p>
-              </div>
-            `,
+            html: welcomeHtml,
+            text: welcomeText,
             notificationType: "essential"
           });
         }

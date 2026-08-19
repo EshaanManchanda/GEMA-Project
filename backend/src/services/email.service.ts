@@ -2258,10 +2258,29 @@ class EmailService {
       </html>
     `;
 
+    const text = `
+Hi ${options.parentName}!
+
+Your competition entry for ${options.studentName} has been received successfully. Our judges are excited to see their vision of the future.
+
+Submission Receipt:
+- Reference ID: ${options.refNo}
+- Artwork Title: ${options.artworkTitle}
+
+What happens next?
+- Participation Certificate: Every eligible student receives an official Kidrove certificate honoring their effort.
+- Winners Announced: The judging panel will evaluate entries and award Gold, Silver, and Bronze medals to top performers.
+- Virtual Exhibition: Outstanding creations will be showcased in the exclusive Kidrove AI Art Gallery.
+
+Kidrove - Inspiring the creators of tomorrow.
+© ${new Date().getFullYear()} Kidrove. All rights reserved.
+    `.trim();
+
     await this.sendEmail({
       to: options.to,
       subject: "Competition Entry Received!",
       html,
+      text,
       notificationType: "essential"
     });
   }
