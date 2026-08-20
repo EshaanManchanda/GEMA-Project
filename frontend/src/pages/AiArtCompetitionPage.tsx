@@ -3,7 +3,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 import {
   FiUser, FiUpload,
   FiCheck, FiChevronRight, FiChevronLeft, FiAlertCircle,
-  FiAward, FiStar, FiImage, FiTrash2, FiChevronDown, FiX, FiMail
+  FiAward, FiStar, FiImage, FiTrash2, FiChevronDown, FiX, FiMail, FiEdit2, FiPlay
 } from 'react-icons/fi';
 import { HiOutlineSparkles } from 'react-icons/hi2';
 import SEO from '@/components/common/SEO';
@@ -52,7 +52,7 @@ const WHAT_NOT_TO_DO = [
   "Create content involving graphic violence, explicit material or disturbing imagery.",
   "Create political propaganda or content targeting political parties, governments or individuals.",
   "Use AI to impersonate real people in a misleading or inappropriate manner.",
-  "Submit misleading or deceptive content presented as a real photograph.",
+  "Submit misleading or deceptive content presented as a real photograph when the competition entry is intended to be an AI artwork.",
   "Use AI-generated content that violates the rules or terms of the AI platform being used.",
   "Submit someone else's AI artwork and claim it as their own.",
 ];
@@ -274,8 +274,8 @@ export default function AiArtCompetitionPage() {
       setErrors(['Only JPG/JPEG and PNG files are accepted']);
       return;
     }
-    if (file.size > 10 * 1024 * 1024) {
-      setErrors(['File must be 10 MB or less']);
+    if (file.size > 1 * 1024 * 1024) {
+      setErrors(['File must be 1 MB or less']);
       return;
     }
     const preview = URL.createObjectURL(file);
@@ -479,7 +479,7 @@ export default function AiArtCompetitionPage() {
             Your idea is the <span className="text-amber-400">main character.</span>
           </h2>
           <p className="mt-3 text-sm text-slate-400 max-w-xl">
-            We are not looking for the student who knows the most complicated AI tool. We want to see your idea, your imagination, and your use of AI.
+            We are not looking for the student who simply knows the most complicated AI tool. We want to see: YOUR IDEA + YOUR IMAGINATION + YOUR USE OF AI.
           </p>
         </div>
         <div className="grid gap-5 md:grid-cols-3">
@@ -559,7 +559,7 @@ export default function AiArtCompetitionPage() {
           <div className="space-y-4 flex-1">
             {[
               { label: 'Format', value: 'JPG or PNG only' },
-              { label: 'File Size', value: 'Max 1 MB' },
+              { label: 'File Size', value: 'Recommended max: 1 MB' },
               { label: 'Quantity', value: 'ONE artwork only' },
               { label: 'Content', value: 'Must be AI-generated' },
             ].map((r, i) => (
@@ -568,6 +568,10 @@ export default function AiArtCompetitionPage() {
                 <span className="text-slate-200 font-semibold text-sm">{r.value}</span>
               </div>
             ))}
+            <div className="mt-4 p-3 bg-amber-500/10 border border-amber-500/20 rounded-xl">
+              <span className="text-amber-400 text-[10px] font-bold uppercase tracking-wider block mb-1">Important</span>
+              <span className="text-slate-300 text-xs">Once submitted, an entry cannot normally be replaced unless Kidrove specifically requests a corrected submission.</span>
+            </div>
           </div>
         </div>
 
@@ -630,16 +634,16 @@ export default function AiArtCompetitionPage() {
             One theme. <span className="text-blue-400">Four ways to see it.</span>
           </h3>
           <p className="mt-3 text-sm text-slate-400 max-w-xl">
-            Every student participates individually and submits their own artwork. Your grade group is your starting line, not a box.
+            Individual student participation is allowed, but the participant must be a student of a UAE-based school. Every student participates individually and submits their own artwork.
           </p>
         </div>
 
         <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4 mb-4">
           {[
-            { grades: 'Grades 1–3', name: 'AI Dreamers', detail: 'Start with a wild idea. The sky is the first draft.', icon: '🌟', color: 'from-purple-500/20 to-indigo-500/10 border-purple-500/30' },
-            { grades: 'Grades 4–6', name: 'AI Creators', detail: 'Turn what you picture into a world others can visit.', icon: '🎨', color: 'from-blue-500/20 to-cyan-500/10 border-blue-500/30' },
-            { grades: 'Grades 7–9', name: 'AI Explorers', detail: 'Push the prompt further. Find a UAE nobody expected.', icon: '🚀', color: 'from-emerald-500/20 to-teal-500/10 border-emerald-500/30' },
-            { grades: 'Grades 10–12', name: 'AI Visionaries', detail: 'Make a point of view. Show us the future you see.', icon: '💡', color: 'from-amber-500/20 to-orange-500/10 border-amber-500/30' },
+            { grades: 'Grades 1–3', name: 'AI Dreamers Cohorts', detail: 'Start with a wild idea. The sky is the first draft.', icon: '🌟', color: 'from-purple-500/20 to-indigo-500/10 border-purple-500/30' },
+            { grades: 'Grades 4–6', name: 'AI Creators Cohorts', detail: 'Turn what you picture into a world others can visit.', icon: '🎨', color: 'from-blue-500/20 to-cyan-500/10 border-blue-500/30' },
+            { grades: 'Grades 7–9', name: 'AI Explorers Cohorts', detail: 'Push the prompt further. Find a UAE nobody expected.', icon: '🚀', color: 'from-emerald-500/20 to-teal-500/10 border-emerald-500/30' },
+            { grades: 'Grades 10–12', name: 'AI Visionaries Cohorts', detail: 'Make a point of view. Show us the future you see.', icon: '💡', color: 'from-amber-500/20 to-orange-500/10 border-amber-500/30' },
           ].map((cohort, idx) => (
             <div key={idx} className={`bg-gradient-to-br ${cohort.color} border rounded-2xl p-6 relative overflow-hidden group hover:-translate-y-1 transition-transform`}>
               <span className="block text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-4 opacity-80">{cohort.grades}</span>
@@ -722,55 +726,197 @@ export default function AiArtCompetitionPage() {
       />
 
       {/* ── Hero Section ─────────────────────────────────────────────────── */}
-      <div className="relative pt-28 pb-24 overflow-hidden bg-gradient-to-b from-[#0B1220] to-[#0E1525] border-b border-slate-700/30">
-        <div className="absolute inset-0 bg-[radial-gradient(ellipse_60%_50%_at_15%_30%,rgba(245,158,11,0.15),transparent)] pointer-events-none" />
-        <div className="absolute inset-0 bg-[radial-gradient(ellipse_60%_50%_at_85%_70%,rgba(59,130,246,0.15),transparent)] pointer-events-none" />
+      <div className="relative pt-24 pb-16 overflow-hidden font-sans border-b border-[#111C45]/60" style={{ background: 'radial-gradient(ellipse 80% 90% at 0% 0%, #0D1B3E 0%, #111C45 15%, #07111F 38%, #020509 60%, #000000 100%)' }}>
+        {/* Mobile/Tablet Background Gradient */}
+        <div className="absolute inset-0 bg-gradient-to-b from-[#0D1B3E] via-[#07111F] to-black lg:hidden pointer-events-none" />
 
-        <div className="max-w-6xl mx-auto px-4 text-center relative z-10">
-          <div className="inline-flex items-center gap-2 bg-amber-500/10 border border-amber-500/30 text-amber-300 font-bold px-4.5 py-2 rounded-full text-xs tracking-wider uppercase mb-8 shadow-sm">
-            <HiOutlineSparkles className="text-amber-400 animate-pulse text-lg" />
-            <span>Kidrove AI Art Competition 2026</span>
+        {/* Desktop Complex Glows */}
+        <div className="hidden lg:block">
+          {/* Blue sweep that extends across the top toward the image */}
+          <div className="absolute inset-0 bg-[radial-gradient(ellipse_75%_45%_at_50%_0%,rgba(15,35,90,0.5),transparent_70%)] pointer-events-none" />
+          {/* Blue aura right behind / under the image */}
+          <div className="absolute inset-0 bg-[radial-gradient(ellipse_45%_60%_at_75%_30%,rgba(13,27,62,0.65),transparent_65%)] pointer-events-none" />
+          <div className="absolute inset-0 bg-[radial-gradient(ellipse_30%_40%_at_68%_15%,rgba(20,40,100,0.4),transparent_60%)] pointer-events-none" />
+          {/* Right & bottom fade to pure black */}
+          <div className="absolute inset-0 bg-[radial-gradient(ellipse_50%_70%_at_100%_100%,rgba(0,0,0,0.95),transparent_55%)] pointer-events-none" />
+          <div className="absolute inset-0 bg-[linear-gradient(to_bottom,transparent_25%,rgba(0,0,0,0.9)_100%)] pointer-events-none" />
+          {/* Amber warmth hint (top badge area) */}
+          <div className="absolute inset-0 bg-[radial-gradient(ellipse_20%_15%_at_10%_8%,rgba(245,158,11,0.07),transparent)] pointer-events-none" />
+        </div>
+        {/* Right Background Image for Desktop — seamless cinematic blend */}
+        <div className="hidden lg:block absolute top-0 right-0 w-[65%] h-full z-0 pointer-events-none">
+          <div
+            className="w-full h-[800px] relative overflow-hidden"
+            style={{
+              WebkitMaskImage:
+                'linear-gradient(to right, transparent 0%, black 18%, black 100%), ' +
+                'linear-gradient(to bottom, black 0%, black 80%, transparent 100%)',
+              WebkitMaskComposite: 'destination-in',
+              maskImage:
+                'linear-gradient(to right, transparent 0%, black 18%, black 100%), ' +
+                'linear-gradient(to bottom, black 0%, black 80%, transparent 100%)',
+              maskComposite: 'intersect',
+              maskSize: '100% 100%',
+            }}
+          >
+            <img
+              src="/assets/dubb.png"
+              alt="Futuristic UAE AI Artwork"
+              className="w-full h-full object-cover object-left-top scale-[1.15]"
+            />
+            {/* Left edge — bleeds into navy hero text area */}
+            <div className="absolute inset-0 pointer-events-none" style={{ background: 'linear-gradient(to right, rgba(13,27,62,0.95) 0%, rgba(7,17,31,0.5) 15%, transparent 35%)' }} />
+            {/* Bottom fade to black */}
+            <div className="absolute inset-0 pointer-events-none" style={{ background: 'linear-gradient(to top, rgba(0,0,0,0.95) 0%, rgba(0,0,0,0.4) 15%, transparent 40%)' }} />
+            {/* Top fade to navy */}
+            <div className="absolute inset-0 pointer-events-none" style={{ background: 'linear-gradient(to bottom, rgba(13,27,62,0.6) 0%, rgba(7,17,31,0.2) 12%, transparent 28%)' }} />
+            {/* Navy color-grade: ties image palette to page */}
+            <div className="absolute inset-0 pointer-events-none" style={{ background: 'radial-gradient(ellipse 80% 55% at 25% 15%, rgba(13,27,62,0.28), transparent 60%)', mixBlendMode: 'multiply' }} />
           </div>
+        </div>
 
-          <h1 className="text-5xl md:text-7xl font-black text-white mb-8 leading-tight">
-            If AI Could Draw <br />
-            <span className="text-transparent bg-clip-text bg-gradient-to-r from-amber-400 via-yellow-300 to-orange-500 drop-shadow-md">
-              My UAE…
-            </span>
-          </h1>
+        <div className="max-w-[1400px] mx-auto px-6 relative z-10">
 
-          <div className="max-w-3xl mx-auto mb-10 space-y-4">
-            <p className="text-gray-400 font-semibold text-lg md:text-xl">
-              Imagine the UAE through your eyes. Create it with AI. Let the world see your imagination.
-            </p>
-            <p className="text-amber-400 font-bold text-lg">Now it is your turn to imagine it.</p>
-          </div>
+          {/* Top Section: Text */}
+          <div className="flex flex-col lg:flex-row items-start justify-between gap-10 lg:gap-16 mb-20 lg:mb-40 min-h-[500px]">
 
-          <div className="flex flex-col sm:flex-row gap-4 justify-center items-center mb-20">
-            <a href="#submit-entry" className="w-full sm:w-auto px-8 py-4 bg-gradient-to-r from-amber-500 to-yellow-400 text-slate-950 font-black rounded-full shadow-lg hover:shadow-amber-500/20 hover:scale-105 transition-all text-center flex items-center justify-center gap-2 text-sm">
-              Submit Your Entry <FiChevronRight className="stroke-[3] text-lg" />
-            </a>
-            <a href="#competition-info" className="w-full sm:w-auto px-8 py-4 bg-slate-800/60 border border-slate-700/50 text-slate-300 font-bold rounded-full hover:bg-slate-800 hover:text-white transition-all text-center text-sm">
-              Learn More
-            </a>
-          </div>
-
-          {/* Highlights Row */}
-          <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-4 md:gap-6 max-w-6xl mx-auto">
-            {[
-              { label: 'Gold, Silver or Bronze', value: '🏆 Medals', desc: 'Medals for Top Performers' },
-              { label: 'Participation', value: '📜 Certificate of', desc: 'For every student' },
-              { label: 'Exhibition', value: '🎨 Public Gallery', desc: 'Showcasing top talent' },
-              { label: 'Open to Grades 1–12', value: '🧑‍🎓 All UAE Students', desc: 'Any UAE school' },
-            ].map((item, idx) => (
-              <div key={idx} className="bg-slate-800/40 backdrop-blur-md border border-slate-700/40 rounded-3xl p-6 md:p-8 hover:-translate-y-1.5 transition-all duration-300 text-center shadow-xl shadow-black/30 group">
-                <span className="text-4xl md:text-5xl block mb-4 group-hover:scale-110 transition-transform">{item.value.split(' ')[0]}</span>
-                <span className="text-lg font-black text-white block mb-2">{item.value.split(' ').slice(1).join(' ')}</span>
-                <span className="text-sm font-bold text-amber-400 block mb-1">{item.label}</span>
-                <span className="text-sm text-slate-500">{item.desc}</span>
+            {/* Left: Text Content */}
+            <div className="w-full lg:w-[45%] text-center lg:text-left xl:pl-8 flex flex-col items-center lg:items-start">
+              <div className="inline-flex items-center gap-2 border border-amber-500/50 text-amber-400 font-bold px-4 py-1.5 rounded-full text-xs tracking-wider mb-8 bg-[#1A1814]">
+                <HiOutlineSparkles className="text-amber-400 text-sm" />
+                <span>KIDROVE AI ART COMPETITION 2026</span>
               </div>
-            ))}
+
+              <h1 className="text-5xl md:text-6xl lg:text-[72px] font-semibold text-white mb-6 leading-[1.1] tracking-tight">
+                If AI Could Draw <br />
+                <span className="text-amber-400 font-bold">
+                  My UAE...
+                </span>
+              </h1>
+
+              <div className="w-16 h-0.5 bg-gradient-to-r from-amber-400 to-transparent mb-8 relative mx-auto lg:mx-0">
+                <HiOutlineSparkles className="text-amber-400 text-sm absolute -right-4 -top-2" />
+              </div>
+
+              <p className="text-slate-300 text-lg md:text-xl max-w-[420px] mb-10 leading-relaxed font-light mx-auto lg:mx-0">
+                Imagine the UAE through your eyes.<br />
+                Create it with AI. Let the world see<br />
+                your imagination.
+              </p>
+
+              {/* Pills */}
+              <div className="flex flex-wrap justify-center lg:justify-start items-center gap-6 text-sm text-slate-300 font-medium mb-12">
+                <div className="flex items-center gap-2"><span className="text-lg">🎓</span> Grades 1–12</div>
+
+                <div className="flex items-center gap-2"><HiOutlineSparkles className="text-lg text-amber-400" /> AI-generated Artwork</div>
+              </div>
+
+              {/* Buttons */}
+              <div className="flex flex-col sm:flex-row justify-center lg:justify-start gap-4 items-center mb-12 w-full sm:w-auto">
+                <a href="#submit-entry" className="px-8 py-3.5 bg-amber-400 text-slate-950 font-bold rounded-full shadow-[0_0_20px_rgba(251,191,36,0.3)] hover:bg-amber-300 hover:scale-105 transition-all flex items-center justify-center gap-2 text-sm w-full sm:w-auto">
+                  <FiEdit2 className="text-lg" /> Submit Your Entry <FiChevronRight className="stroke-[3] text-lg ml-2" />
+                </a>
+                <a href="#competition-info" className="px-8 py-3.5 bg-transparent border border-slate-600 text-white font-semibold rounded-full hover:bg-slate-800 transition-all flex items-center justify-center gap-2 text-sm w-full sm:w-auto">
+                  Learn More
+                </a>
+              </div>
+
+              {/* Footer Trust Marker */}
+              <div className="flex justify-center lg:justify-start items-center gap-3 text-slate-400 text-sm font-medium w-full">
+                <div className="w-5 h-5 rounded-full bg-slate-800 flex items-center justify-center border border-slate-700 shrink-0"><FiCheck className="text-[10px] text-slate-300 stroke-[3]" /></div>
+                Safe. Original. Creative. That's Kidrove.
+              </div>
+            </div>
+            {/* Mobile Illustration Image (Hidden on Desktop) */}
+            <div className="w-full lg:hidden relative mt-10">
+              <img
+                src="/assets/dubb.png"
+                alt="Futuristic UAE AI Artwork"
+                className="w-full aspect-square sm:aspect-video object-cover rounded-[2rem] shadow-2xl border border-slate-700/30"
+              />
+            </div>
+
           </div>
+
+          {/* Middle Section: Imagine It... */}
+          <div className="bg-[#0B101D] border border-slate-800 rounded-3xl p-8 mb-10 shadow-2xl relative overflow-hidden">
+            {/* Glows */}
+            <div className="absolute top-0 right-1/4 w-32 h-32 bg-blue-500/10 blur-[50px]" />
+            <div className="absolute bottom-0 left-1/4 w-32 h-32 bg-amber-500/10 blur-[50px]" />
+
+            <div className="flex items-center gap-2 text-amber-400 font-bold text-lg mb-8 relative z-10">
+              <HiOutlineSparkles /> Imagine it...
+            </div>
+
+            <div className="grid grid-cols-2 md:grid-cols-5 gap-6 text-center text-xs md:text-sm text-slate-300 relative z-10">
+              <div className="flex flex-col items-center gap-3 border-r border-slate-700/50 pr-4 last:border-0 last:pr-0">
+                <span className="text-4xl text-blue-400">🏙️</span>
+                <p className="leading-snug">A futuristic city<br />with flying cars?</p>
+              </div>
+              <div className="flex flex-col items-center gap-3 border-r border-slate-700/50 pr-4 last:border-0 last:pr-0">
+                <span className="text-4xl text-amber-400">🌴</span>
+                <p className="leading-snug">A beautiful desert<br />under a sky full of stars?</p>
+              </div>
+              <div className="flex flex-col items-center gap-3 border-r border-slate-700/50 pr-4 last:border-0 last:pr-0">
+                <span className="text-4xl">🌍</span>
+                <p className="leading-snug">A place where every<br />culture comes together?</p>
+              </div>
+              <div className="flex flex-col items-center gap-3 border-r border-slate-700/50 pr-4 last:border-0 last:pr-0">
+                <span className="text-4xl text-emerald-400">🍃</span>
+                <p className="leading-snug">A greener, smarter<br />UAE of the future?</p>
+              </div>
+              <div className="flex flex-col items-center gap-3">
+                <span className="text-4xl text-rose-500">❤️</span>
+                <p className="leading-snug">Or simply the UAE<br />that feels like home?</p>
+              </div>
+            </div>
+
+            <div className="mt-10 text-center relative z-10">
+              <p className="text-slate-200 font-medium text-lg">Now it is your turn to <span className="text-amber-400 font-bold">imagine it.</span></p>
+            </div>
+          </div>
+
+          {/* Bottom Section: Highlights/Cards */}
+          <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-4 md:gap-6 mb-8">
+            {/* Win Medals */}
+            <div className="bg-[#0B101D] border border-amber-500/50 rounded-3xl p-6 md:p-8 text-center shadow-[0_0_20px_rgba(245,158,11,0.15)] group hover:-translate-y-1 transition-transform relative overflow-hidden">
+              <div className="absolute inset-0 bg-gradient-to-b from-amber-500/5 to-transparent pointer-events-none" />
+              <span className="text-6xl block mb-5 relative z-10 drop-shadow-[0_0_15px_rgba(245,158,11,0.3)]">🏆</span>
+              <h3 className="text-lg font-bold text-white mb-2 relative z-10">Win Medals</h3>
+              <p className="text-amber-400 text-sm font-semibold mb-2 relative z-10">Gold, Silver or Bronze</p>
+              <p className="text-slate-400 text-xs relative z-10">Medals for Top Performers</p>
+            </div>
+
+            {/* Get Certified */}
+            <div className="bg-[#0B101D] border border-indigo-500/50 rounded-3xl p-6 md:p-8 text-center shadow-[0_0_20px_rgba(99,102,241,0.15)] group hover:-translate-y-1 transition-transform relative overflow-hidden">
+              <div className="absolute inset-0 bg-gradient-to-b from-indigo-500/5 to-transparent pointer-events-none" />
+              <span className="text-6xl block mb-5 relative z-10 drop-shadow-[0_0_15px_rgba(99,102,241,0.3)]">📜</span>
+              <h3 className="text-lg font-bold text-white mb-2 relative z-10">Get Certified</h3>
+              <p className="text-yellow-400 text-sm font-semibold mb-2 relative z-10">Certificate of Participation</p>
+              <p className="text-slate-400 text-xs relative z-10">For every student</p>
+            </div>
+
+            {/* Be Featured */}
+            <div className="bg-[#0B101D] border border-pink-500/50 rounded-3xl p-6 md:p-8 text-center shadow-[0_0_20px_rgba(236,72,153,0.15)] group hover:-translate-y-1 transition-transform relative overflow-hidden">
+              <div className="absolute inset-0 bg-gradient-to-b from-pink-500/5 to-transparent pointer-events-none" />
+              <span className="text-6xl block mb-5 relative z-10 drop-shadow-[0_0_15px_rgba(236,72,153,0.3)]">🎨</span>
+              <h3 className="text-lg font-bold text-white mb-2 relative z-10">Be Featured</h3>
+              <p className="text-yellow-400 text-sm font-semibold mb-2 relative z-10">Public Gallery Exhibition</p>
+              <p className="text-slate-400 text-xs relative z-10">Showcasing top talent</p>
+            </div>
+
+            {/* Open to All UAE Students */}
+            <div className="bg-[#0B101D] border border-cyan-500/50 rounded-3xl p-6 md:p-8 text-center shadow-[0_0_20px_rgba(6,182,212,0.15)] group hover:-translate-y-1 transition-transform relative overflow-hidden">
+              <div className="absolute inset-0 bg-gradient-to-b from-cyan-500/5 to-transparent pointer-events-none" />
+              <span className="text-6xl block mb-5 relative z-10 drop-shadow-[0_0_15px_rgba(6,182,212,0.3)]">👩‍🎓</span>
+              <h3 className="text-lg font-bold text-white mb-2 relative z-10">All UAE Students</h3>
+              <p className="text-yellow-400 text-sm font-semibold mb-2 relative z-10">Grades 1–12</p>
+              <p className="text-slate-400 text-xs relative z-10">Any UAE school</p>
+            </div>
+          </div>
+
+
+
         </div>
       </div>
 
@@ -1103,7 +1249,7 @@ export default function AiArtCompetitionPage() {
                   <div>
                     <SectionHeader icon="🖼️" title="Artwork Upload" step="Section 4 of 5" />
                     <p className="text-slate-400 text-sm mb-6 leading-relaxed">
-                      Upload your finalized high-resolution artwork. Valid formats: <span className="text-white font-bold">JPG, JPEG, PNG</span>. Max file size: <span className="text-white font-bold">10 MB</span>.
+                      Upload your finalized high-resolution artwork. Valid formats: <span className="text-white font-bold">JPG, JPEG, PNG</span>. Recommended maximum file size: <span className="text-white font-bold">1 MB</span>.
                     </p>
                     <input ref={fileInputRef} type="file" accept="image/jpeg,image/png" className="hidden" onChange={(e) => handleArtworkFile(e.target.files?.[0] || null)} />
                     <div
@@ -1132,7 +1278,7 @@ export default function AiArtCompetitionPage() {
                           </div>
                           <h3 className="text-white font-bold text-base mb-1">Upload your artwork</h3>
                           <p className="text-slate-500 text-xs">Drag and drop your file here, or click to browse</p>
-                          <p className="text-slate-600 text-[10px] mt-4">JPG, JPEG, PNG (Max 10MB)</p>
+                          <p className="text-slate-600 text-[10px] mt-4">JPG, JPEG, PNG (Recommended Max 1MB)</p>
                         </div>
                       )}
                     </div>
