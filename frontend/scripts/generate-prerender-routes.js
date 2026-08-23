@@ -41,25 +41,35 @@ async function generateRoutes() {
         }
     };
 
-    // Helper to fetch and extract routes
-    const fetchRoutes = async (type, url, transformFn) => {
-        console.log(`Fetching ${type} from ${url}...`);
+    // Helper to fetch ALL pages of a listing endpoint and extract routes.
+    // Backend list endpoints silently clamp `limit` (events: 100, blogs: 50),
+    // so a single request can never return more than one page's worth —
+    // must follow `hasNextPage` until it's false or routes go missing from
+    // the sitemap past the clamp.
+    const fetchRoutes = async (type, baseUrl, pageSize, transformFn, getPagination) => {
+        console.log(`Fetching ${type} from ${baseUrl}...`);
+        const allRoutes = [];
+        let page = 1;
         try {
-            const response = await fetchWithTimeout(url);
-            if (!response.ok) {
-                throw new Error(`${type} API responded with ${response.status}`);
+            while (true) {
+                const url = `${baseUrl}&limit=${pageSize}&page=${page}`;
+                const response = await fetchWithTimeout(url);
+                if (!response.ok) {
+                    throw new Error(`${type} API responded with ${response.status} (page ${page})`);
+                }
+                const data = await response.json();
+                allRoutes.push(...transformFn(data));
+
+                const pagination = getPagination(data);
+                if (!pagination?.hasNextPage) break;
+                page += 1;
             }
-            const data = await response.json();
-            const newRoutes = transformFn(data);
-            if (newRoutes && newRoutes.length > 0) {
-                console.log(`✅ Added ${newRoutes.length} ${type} routes`);
-                return newRoutes;
-            }
-            return [];
+            console.log(`✅ Added ${allRoutes.length} ${type} routes (${page} page${page > 1 ? 's' : ''})`);
+            return allRoutes;
         } catch (err) {
             console.error(`❌ Error fetching ${type}:`, err.message);
-            console.error('   This is non-critical - static routes will still be generated');
-            return [];
+            console.error(`   Fetched ${allRoutes.length} ${type} routes before failing — using what we have`);
+            return allRoutes;
         }
     };
 
@@ -67,7 +77,8 @@ async function generateRoutes() {
     const results = await Promise.allSettled([
         fetchRoutes(
             'events',
-            `${API_BASE_URL}/events?limit=1000&status=published`,
+            `${API_BASE_URL}/events?status=published`,
+            100, // MAX_LIMIT clamp in event.controller.ts
             (data) => {
                 if (!data?.data?.events) return [];
                 return data.data.events.map(e => {
@@ -78,12 +89,15 @@ async function generateRoutes() {
                     const identifier = e.slug || e._id;
                     return `/events/${identifier}`;
                 });
-            }
+            },
+            (data) => data?.data?.pagination
         ),
         fetchRoutes(
             'blogs',
-            `${API_BASE_URL}/blogs?limit=100&status=published`,
-            (data) => data?.data?.blogs?.map(b => `/blog/${b.slug}`) || []
+            `${API_BASE_URL}/blogs?status=published`,
+            50, // clamp in blog.controller.ts getAllBlogs
+            (data) => data?.data?.blogs?.map(b => `/blog/${b.slug}`) || [],
+            (data) => data?.data?.pagination
         )
     ]);
 
