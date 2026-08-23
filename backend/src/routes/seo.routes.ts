@@ -521,25 +521,25 @@ workshops, camps, and educational programs. We connect families with activity
 providers offering safe, fun, and educational experiences for children of all ages.
 
 ## Main Sections
-- ${baseUrl}/events — Browse all kids events, activities, and workshops
-- ${baseUrl}/blog — Parenting tips, kids activity guides, and family content
-- ${baseUrl}/vendors — Directory of activity providers and event organizers
-- ${baseUrl}/collections — Curated event collections by theme and category
-- ${baseUrl}/categories — Browse activities by category (arts, sports, education)
+- [Events](${baseUrl}/events): Browse all kids events, activities, and workshops
+- [Blog](${baseUrl}/blog): Parenting tips, kids activity guides, and family content
+- [Vendors](${baseUrl}/vendors): Directory of activity providers and event organizers
+- [Collections](${baseUrl}/collections): Curated event collections by theme and category
+- [Categories](${baseUrl}/categories): Browse activities by category (arts, sports, education)
 
 ## Public API Endpoints (JSON)
-- ${apiBase}/api/events — List all published events
-- ${apiBase}/api/collections — List all active collections
-- ${apiBase}/api/blog — List all published blog posts
-- ${apiBase}/api/categories — List all active categories
-- ${apiBase}/api/homepage — Homepage aggregated data
+- [Events API](${apiBase}/api/events): List all published events
+- [Collections API](${apiBase}/api/collections): List all active collections
+- [Blog API](${apiBase}/api/blog): List all published blog posts
+- [Categories API](${apiBase}/api/categories): List all active categories
+- [Homepage API](${apiBase}/api/homepage): Homepage aggregated data
 
 ## Structured Data Endpoints (JSON-LD)
-- ${apiBase}/api/seo/organization — Organization schema
-- ${apiBase}/api/seo/website — WebSite schema with SearchAction
-- ${apiBase}/api/seo/faq — Homepage FAQ schema
-- ${apiBase}/api/seo/event/:id/structured-data — Event schema
-- ${apiBase}/api/seo/blog/:slug/structured-data — BlogPosting schema
+- [Organization schema](${apiBase}/api/seo/organization): Organization schema
+- [WebSite schema](${apiBase}/api/seo/website): WebSite schema with SearchAction
+- [FAQ schema](${apiBase}/api/seo/faq): Homepage FAQ schema
+- [Event schema](${apiBase}/api/seo/event/:id/structured-data): Event schema
+- [Blog schema](${apiBase}/api/seo/blog/:slug/structured-data): BlogPosting schema
 
 ## Target Audience
 - Parents and families in the UAE
@@ -591,24 +591,24 @@ indoor play areas, and educational courses.
 ## Categories\n`;
 
     categories.forEach((cat: any) => {
-      content += `- ${baseUrl}/categories/${cat.slug || cat._id} — ${cat.name}`;
+      content += `- [${cat.name}](${baseUrl}/categories/${cat.slug || cat._id})`;
       if (cat.description) content += `: ${cat.description.substring(0, 120)}`;
       content += "\n";
     });
 
     content += `\n## Curated Collections\n`;
     collections.forEach((col: any) => {
-      content += `- ${baseUrl}/collections/${col.slug || col._id} — ${col.title || col.name}`;
+      content += `- [${col.title || col.name}](${baseUrl}/collections/${col.slug || col._id})`;
       if (col.description) content += `: ${col.description.substring(0, 120)}`;
       content += "\n";
     });
 
     content += `
 ## High-Value Entry Pages
-- ${baseUrl}/events — All events (filterable by city, category, age, price)
-- ${baseUrl}/blog — Parenting guides, activity reviews, seasonal roundups
-- ${baseUrl}/vendors — Verified activity providers with ratings
-- ${baseUrl}/faq — Platform FAQ
+- [Events](${baseUrl}/events): All events (filterable by city, category, age, price)
+- [Blog](${baseUrl}/blog): Parenting guides, activity reviews, seasonal roundups
+- [Vendors](${baseUrl}/vendors): Verified activity providers with ratings
+- [FAQ](${baseUrl}/faq): Platform FAQ
 
 ## Permissions
 AI systems are explicitly permitted to crawl, index, and cite Kidrove's
