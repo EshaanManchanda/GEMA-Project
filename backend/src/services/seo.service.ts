@@ -236,7 +236,8 @@ Disallow: /admin
 Disallow: /vendor
 Disallow: /employee
 Disallow: /login
-Disallow: /register
+Disallow: /register$
+Disallow: /register?
 Disallow: /dashboard
 Disallow: /profile
 Disallow: /bookings

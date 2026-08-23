@@ -152,7 +152,10 @@ const HomePage: React.FC = () => {
   }
 
   // Extract first banner image for LCP preload optimization
-  const firstBannerImage = bannersData?.banners?.[0]?.imageAsset?.url;
+  // Must match BannerCarousel's own URL selection (directUrl || url) or the
+  // preloaded resource won't be the one actually rendered.
+  const firstBannerAsset = bannersData?.banners?.[0]?.imageAsset;
+  const firstBannerImage = firstBannerAsset?.directUrl || firstBannerAsset?.url;
 
   return (
     <>

@@ -121,7 +121,9 @@ router.get(
             return res.send(buffer);
           }
 
-          // Images: redirect to optimized Cloudinary CDN URL
+          // Images: proxy bytes through backend (no redirect) so crawlers
+          // that fetch this URL for indexing get a 200 with image content
+          // instead of a redirect, which Search Console flags as an error.
           const cloudinaryProvider = new CloudinaryProvider();
           const cloudinaryUrl = cloudinaryProvider.getUrl(asset.publicId);
 
@@ -132,11 +134,22 @@ router.get(
             throw new Error("Invalid Cloudinary URL");
           }
 
+          const imageUpstream = await fetch(cloudinaryUrl);
+          if (!imageUpstream.ok) {
+            throw new Error(`Cloudinary returned ${imageUpstream.status}`);
+          }
+
+          const imageBuffer = Buffer.from(await imageUpstream.arrayBuffer());
+          const upstreamContentType =
+            imageUpstream.headers.get("content-type") || asset.mimeType;
+
+          res.setHeader("Content-Type", upstreamContentType);
+          res.setHeader("Content-Length", imageBuffer.length.toString());
           res.setHeader("Access-Control-Allow-Origin", "*");
           res.setHeader("Cross-Origin-Resource-Policy", "cross-origin");
           res.setHeader("Cache-Control", "public, max-age=31536000");
 
-          return res.redirect(cloudinaryUrl);
+          return res.send(imageBuffer);
         } catch (error: any) {
           logger.error(
             `[Media Route] Cloudinary error for ${asset.uuid}:`,

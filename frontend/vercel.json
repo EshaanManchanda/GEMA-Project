@@ -140,27 +140,27 @@
     {
       "source": "/events/:slug",
       "has": [{ "type": "header", "key": "user-agent", "value": "(?i).*(GPTBot|OAI-SearchBot|ChatGPT-User|ClaudeBot|anthropic-ai|Claude-Web|PerplexityBot|Perplexity-User|Google-Extended|Googlebot|Bingbot|Applebot|CCBot|FacebookBot|Twitterbot|LinkedInBot|Slackbot|cohere-ai|Bytespider).*" }],
-      "destination": "https://gema-project.onrender.com/events/:slug"
+      "destination": "https://gema-project.onrender.com/og/event/:slug"
     },
     {
       "source": "/collections/:id",
       "has": [{ "type": "header", "key": "user-agent", "value": "(?i).*(GPTBot|OAI-SearchBot|ChatGPT-User|ClaudeBot|anthropic-ai|Claude-Web|PerplexityBot|Perplexity-User|Google-Extended|Googlebot|Bingbot|Applebot|CCBot|FacebookBot|Twitterbot|LinkedInBot|Slackbot|cohere-ai|Bytespider).*" }],
-      "destination": "https://gema-project.onrender.com/collections/:id"
+      "destination": "https://gema-project.onrender.com/og/collection/:id"
     },
     {
       "source": "/blog/:slug",
       "has": [{ "type": "header", "key": "user-agent", "value": "(?i).*(GPTBot|OAI-SearchBot|ChatGPT-User|ClaudeBot|anthropic-ai|Claude-Web|PerplexityBot|Perplexity-User|Google-Extended|Googlebot|Bingbot|Applebot|CCBot|FacebookBot|Twitterbot|LinkedInBot|Slackbot|cohere-ai|Bytespider).*" }],
-      "destination": "https://gema-project.onrender.com/blog/:slug"
+      "destination": "https://gema-project.onrender.com/og/blog/:slug"
     },
     {
       "source": "/vendors/:id",
       "has": [{ "type": "header", "key": "user-agent", "value": "(?i).*(GPTBot|OAI-SearchBot|ChatGPT-User|ClaudeBot|anthropic-ai|Claude-Web|PerplexityBot|Perplexity-User|Google-Extended|Googlebot|Bingbot|Applebot|CCBot|FacebookBot|Twitterbot|LinkedInBot|Slackbot|cohere-ai|Bytespider).*" }],
-      "destination": "https://gema-project.onrender.com/vendors/:id"
+      "destination": "https://gema-project.onrender.com/og/vendor/:id"
     },
     {
       "source": "/teachers/:id",
       "has": [{ "type": "header", "key": "user-agent", "value": "(?i).*(GPTBot|OAI-SearchBot|ChatGPT-User|ClaudeBot|anthropic-ai|Claude-Web|PerplexityBot|Perplexity-User|Google-Extended|Googlebot|Bingbot|Applebot|CCBot|FacebookBot|Twitterbot|LinkedInBot|Slackbot|cohere-ai|Bytespider).*" }],
-      "destination": "https://gema-project.onrender.com/teachers/:id"
+      "destination": "https://gema-project.onrender.com/og/teacher/:id"
     },
     {
       "source": "/categories/:slug",
@@ -177,6 +177,11 @@
       "source": "/home",
       "destination": "/",
       "permanent": false
+    },
+    {
+      "source": "/blog/best-preschools-in-abu-dhabi",
+      "destination": "/blog/best-preschools-in-abu-dhabi-a-parent-s-guide",
+      "permanent": true
     }
   ],
   "cleanUrls": true,

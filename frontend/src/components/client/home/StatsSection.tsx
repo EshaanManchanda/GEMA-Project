@@ -19,7 +19,6 @@ const StatsSection: React.FC<StatsProps> = ({ stats }) => {
         <section className="relative w-full py-10 sm:py-16 px-4 sm:px-6">
             {/* Background image with WebP support */}
             <picture className="absolute inset-0 -z-10">
-                <source type="image/webp" srcSet="/assets/images/trust-with-kidrove.webp" />
                 <img
                     src="/assets/images/trust-with-kidrove.png"
                     alt=""

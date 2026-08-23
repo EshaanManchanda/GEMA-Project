@@ -571,7 +571,7 @@ export const HomeSEO: React.FC<{
     contactPoint: {
       '@type': 'ContactPoint',
       contactType: 'customer service',
-      email: 'info@gema-events.com',
+      email: 'contact@kidrove.com',
       telephone: '+971-4-123-4567',
       areaServed: 'AE',
       availableLanguage: ['English', 'Arabic']
@@ -697,7 +697,7 @@ export const FAQPageSEO: React.FC<{
   faqs: Array<{ question: string; answer: string }>;
   breadcrumbs?: SEOProps['breadcrumbs'];
 }> = ({ faqs, breadcrumbs }) => {
-  const baseUrl = import.meta.env.VITE_APP_URL || 'https://kidrove.com';
+  const baseUrl = import.meta.env.VITE_APP_URL || 'https://gema-events.com';
 
   const faqStructuredData = {
     '@context': 'https://schema.org',
@@ -726,7 +726,7 @@ export const FAQPageSEO: React.FC<{
 };
 
 export const ReelSEO: React.FC<{ reel: any }> = ({ reel }) => {
-  const baseUrl = import.meta.env.VITE_APP_URL || 'https://kidrove.com';
+  const baseUrl = import.meta.env.VITE_APP_URL || 'https://gema-events.com';
 
   const thumbnailUrl = reel.thumbnailAsset?.url || reel.videoAsset?.thumbnailUrl || '';
   const videoUrl = reel.videoAsset?.url || reel.externalVideoUrl || '';

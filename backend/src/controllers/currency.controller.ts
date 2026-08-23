@@ -6,7 +6,9 @@ import logger from "../config/logger";
 export const detectCurrency = catchAsync(
   async (req: Request, res: Response, next: NextFunction) => {
     try {
-      const response = await axios.get("https://ipapi.co/json/");
+      const response = await axios.get("https://ipapi.co/json/", {
+        timeout: 5000,
+      });
       const { currency } = response.data;
 
       if (!currency) {
