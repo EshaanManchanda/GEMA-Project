@@ -2002,6 +2002,16 @@ class VendorService {
 
     const vendor = await getOrCreateVendorProfile(userId);
 
+    // An unverified/pending/rejected vendor must not be able to attach
+    // payout banking details before admin review — see event creation's
+    // matching gate in event.controller.ts for the same rationale.
+    if (vendor.verificationStatus !== VerificationStatus.VERIFIED) {
+      throw new AppError(
+        "Your vendor account must be approved by an admin before adding payout bank details.",
+        403,
+      );
+    }
+
     if (!vendor.paymentSettings.bankAccountDetails) {
       vendor.paymentSettings.bankAccountDetails = {};
     }

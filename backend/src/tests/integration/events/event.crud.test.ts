@@ -18,6 +18,8 @@ import request from "supertest";
 import { Application } from "express";
 import User, { UserRole, UserStatus } from "../../../models/User";
 import Event from "../../../models/Event";
+import Vendor, { VerificationStatus } from "../../../models/Vendor";
+import { getOrCreateVendorProfile } from "../../../utils/vendorHelpers";
 import { createTestApp } from "../setup/testApp";
 import { connectTestDB, clearTestDB, closeTestDB } from "../setup/testDB";
 import { emailService } from "../../../services/email.service";
@@ -164,6 +166,19 @@ const registerAndLogin = async (
       { email },
       { role, isEmailVerified: true, status: UserStatus.ACTIVE }
     );
+
+    // POST /api/events now requires a VERIFIED vendor profile (event
+    // creation is gated on admin approval, not just role) — create and
+    // approve one so these RBAC/CRUD tests exercise a realistic verified
+    // vendor rather than the create-event call itself.
+    if (role === "vendor") {
+      const user = await User.findOne({ email }).lean();
+      await getOrCreateVendorProfile(user!._id);
+      await Vendor.findOneAndUpdate(
+        { userId: user!._id },
+        { verificationStatus: VerificationStatus.VERIFIED }
+      );
+    }
   }
 
   // Ensure user is verified + active (admin already is, but belt-and-suspenders)
@@ -764,11 +779,7 @@ describe("H. Ownership / Mass Assignment", () => {
     expect(res.status).toBe(404);
   });
 
-  it("mass assignment: vendorId, isApproved, status fields in PUT body are accepted (documents vulnerability)", async () => {
-    // TODO: SECURITY — field whitelist needed
-    // The controller uses `...req.body` which allows mass assignment of
-    // sensitive fields. This test documents the current behavior as a
-    // known vulnerability that should be fixed with a field whitelist.
+  it("blocks mass assignment of vendorId, isApproved, and status via PUT body", async () => {
     const { res: createRes, vendor } = await createEventAsVendor(app);
     const eventId = createRes.body.data.event._id;
     const originalVendorId = vendor.userId;
@@ -776,7 +787,7 @@ describe("H. Ownership / Mass Assignment", () => {
     const otherVendor = await registerAndLogin(app, "vendor", "-other-ma");
 
     // Vendor tries to mass-assign vendorId, isApproved, and status
-    await request(app)
+    const res = await request(app)
       .put(`/api/events/${eventId}`)
       .set("Authorization", `Bearer ${vendor.accessToken}`)
       .send({
@@ -785,22 +796,39 @@ describe("H. Ownership / Mass Assignment", () => {
         status: "published",
       });
 
-    // Read event from DB to check what was actually persisted
-    const event = await Event.findById(eventId).lean();
+    // "published" isn't a vendor-settable status — rejected before any write.
+    expect(res.status).toBe(403);
 
-    // Document the vulnerability: vendorId was mass-assigned via ...req.body
-    // This assertion shows the current (insecure) behavior.
-    // If vendorId changed, the vulnerability is confirmed.
-    // If vendorId didn't change, the service layer may have protected it.
-    const currentVendorId = (event as any).vendorId?.toString();
-    if (currentVendorId !== originalVendorId) {
-      // Vulnerability confirmed — vendorId was overwritten
-      // TODO: SECURITY — field whitelist needed to prevent this
-      expect(currentVendorId).not.toBe(originalVendorId);
-    } else {
-      // Service layer or model hooks protected against vendorId change
-      expect(currentVendorId).toBe(originalVendorId);
-    }
+    const event = await Event.findById(eventId).lean();
+    expect((event as any).vendorId?.toString()).toBe(originalVendorId);
+    expect((event as any).isApproved).toBe(false);
+    expect((event as any).status).not.toBe("published");
+  });
+
+  it("silently drops vendorId/isApproved but applies an allowed field + status in the same PUT", async () => {
+    const { res: createRes, vendor } = await createEventAsVendor(app);
+    const eventId = createRes.body.data.event._id;
+    const originalVendorId = vendor.userId;
+
+    const otherVendor = await registerAndLogin(app, "vendor", "-other-ma2");
+
+    const res = await request(app)
+      .put(`/api/events/${eventId}`)
+      .set("Authorization", `Bearer ${vendor.accessToken}`)
+      .send({
+        vendorId: otherVendor.userId,
+        isApproved: true,
+        status: "pending",
+        title: "Updated Title",
+      });
+
+    expect(res.status).toBe(200);
+
+    const event = await Event.findById(eventId).lean();
+    expect((event as any).vendorId?.toString()).toBe(originalVendorId);
+    expect((event as any).isApproved).toBe(false);
+    expect((event as any).status).toBe("pending");
+    expect((event as any).title).toBe("Updated Title");
   });
 });
 

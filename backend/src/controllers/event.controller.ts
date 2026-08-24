@@ -19,6 +19,7 @@ import { parseEventQuery } from "../utils/aiEventQueryParser";
 import { escapeHtml } from "../utils/htmlHelpers";
 import { eventService } from "../services/event.service";
 import { shouldAutoApproveEvents } from "../services/settings.service";
+import { VENDOR_SETTABLE_STATUSES } from "../validators/vendor.event.validator";
 import { CacheTTL } from "../config/cache-tiers"; // ✅ Phase 2.3: Tiered cache strategy
 import { emailService } from "../services/email.service";
 import { stripe } from "../config/stripe";
@@ -657,16 +658,19 @@ export const createEvent = async (
       return next(new AppError("Only vendors can create events", 403));
     }
 
-    // Pending (not-yet-approved) vendors cannot publish events at all —
-    // this is the vendor-approval gate, distinct from the per-event
-    // autoApproveEvents toggle checked below.
+    // Only a fully verified vendor may use this endpoint — it can
+    // auto-publish live (isApproved: true) below when autoApproveEvents is
+    // on, so anything short of VERIFIED (unverified, pending, rejected, or
+    // no vendor profile at all) must be blocked here. This is the
+    // vendor-approval gate, distinct from the per-event autoApproveEvents
+    // toggle checked below.
     const vendorProfile = await Vendor.findOne({ userId })
       .select("verificationStatus")
       .lean();
-    if (vendorProfile?.verificationStatus === VerificationStatus.PENDING) {
+    if (vendorProfile?.verificationStatus !== VerificationStatus.VERIFIED) {
       return next(
         new AppError(
-          "Your vendor account is pending admin approval. You cannot create events until it is approved.",
+          "Your vendor account must be approved by an admin before you can create events.",
           403,
         ),
       );
@@ -738,8 +742,46 @@ export const updateEvent = async (
         JSON.stringify(req.body.dateSchedule) !==
           JSON.stringify(event.dateSchedule));
 
+    // This route's ownership check above (findOne with vendorId: userId)
+    // means only the owning vendor ever reaches this point — admin callers
+    // always 404 here and use the dedicated /admin/events/:id/approve
+    // routes instead. So req.body must never be trusted for fields that
+    // control approval/ownership/moderation state: spreading it directly
+    // (the old behavior) let a vendor mass-assign isApproved: true,
+    // status: "published", or even vendorId to steal/dump the event onto
+    // another account. Strip those and clamp status the same way the
+    // sibling /api/vendors/events/:id route already does.
+    const {
+      vendorId: _vendorId,
+      isApproved: _isApproved,
+      isFeatured: _isFeatured,
+      isDeleted: _isDeleted,
+      deletedAt: _deletedAt,
+      viewsCount: _viewsCount,
+      averageRating: _averageRating,
+      totalReviews: _totalReviews,
+      status: requestedStatus,
+      _id: _bodyId,
+      createdAt: _createdAt,
+      updatedAt: _updatedAt,
+      ...safeUpdateFields
+    } = req.body;
+
+    if (
+      requestedStatus !== undefined &&
+      !VENDOR_SETTABLE_STATUSES.includes(requestedStatus)
+    ) {
+      return next(
+        new AppError(
+          `You can only set status to: ${VENDOR_SETTABLE_STATUSES.join(", ")}`,
+          403,
+        ),
+      );
+    }
+
     const updateData = {
-      ...req.body,
+      ...safeUpdateFields,
+      ...(requestedStatus !== undefined && { status: requestedStatus }),
       ...(requiresReapproval && { isApproved: false }),
     };
 
