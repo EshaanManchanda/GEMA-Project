@@ -15,7 +15,6 @@
 import mongoose from "mongoose";
 import Vendor, { IVendor } from "../models/Vendor";
 import Event from "../models/Event";
-import Booking from "../models/Booking";
 import Order from "../models/Order";
 import Review, { ReviewStatus } from "../models/Review";
 import VendorBusinessSnapshot, {
@@ -323,22 +322,52 @@ export async function computeVendorHealth(
         },
       },
     ]),
+    // Bookings are ticket purchases (Order.items.quantity), not the `Booking`
+    // model — nothing in the real purchase flow ever writes a Booking
+    // document (see vendor.service.ts / dashboard-optimized.service.ts for
+    // the same pattern), so counting against it always returned 0 and
+    // silently zeroed out the whole Operations dimension.
     (async () => {
       const eventIds = await Event.find({ vendorId: vendorObjId }).distinct(
         "_id",
       );
-      const [totalBookings, cancelledBookings] = await Promise.all([
-        Booking.countDocuments({
-          eventId: { $in: eventIds },
-          createdAt: { $gte: start, $lte: end },
-        }),
-        Booking.countDocuments({
-          eventId: { $in: eventIds },
-          status: "cancelled",
-          createdAt: { $gte: start, $lte: end },
-        }),
+      const [agg] = await Order.aggregate([
+        {
+          $match: {
+            "items.eventId": { $in: eventIds },
+            createdAt: { $gte: start, $lte: end },
+          },
+        },
+        { $unwind: "$items" },
+        { $match: { "items.eventId": { $in: eventIds } } },
+        {
+          $group: {
+            _id: null,
+            totalBookings: {
+              $sum: {
+                $cond: [
+                  { $eq: ["$paymentStatus", "paid"] },
+                  "$items.quantity",
+                  0,
+                ],
+              },
+            },
+            cancelledBookings: {
+              $sum: {
+                $cond: [
+                  { $eq: ["$status", "cancelled"] },
+                  "$items.quantity",
+                  0,
+                ],
+              },
+            },
+          },
+        },
       ]);
-      return { totalBookings, cancelledBookings };
+      return {
+        totalBookings: agg?.totalBookings ?? 0,
+        cancelledBookings: agg?.cancelledBookings ?? 0,
+      };
     })(),
     VendorPromotionInput.findOne({ vendorId: vendorObjId, period }).lean(),
     (async () => {
@@ -466,7 +495,7 @@ function buildMetricEntries(args: {
     totalOrders: number;
     averageOrderValue: number;
   };
-  ticketAnalytics: { checkInRate: number };
+  ticketAnalytics: { checkInRate: number; totalTickets: number };
   reviewStats: { total: number; avgRating: number };
   bookingAgg: { totalBookings: number; cancelledBookings: number };
   eventAnalyticsAllTime: {
@@ -553,7 +582,9 @@ function buildMetricEntries(args: {
     metric(
       "checkInRate",
       "Check-In Rate",
-      args.ticketAnalytics.checkInRate,
+      args.ticketAnalytics.totalTickets > 0
+        ? args.ticketAnalytics.checkInRate
+        : null,
       "%",
       "auto",
     ),
@@ -915,9 +946,17 @@ export async function refreshVendorStats(vendorId: string): Promise<void> {
       Event.find({ vendorId: vendorObjId }).distinct("_id"),
     ]);
 
-  const totalBookings = await Booking.countDocuments({
-    eventId: { $in: eventIds },
-  });
+  // Same real ticket-purchase source as computeVendorHealth's bookingAgg —
+  // see the comment there for why this can't be the `Booking` model.
+  const [bookingAgg] = await Order.aggregate([
+    {
+      $match: { "items.eventId": { $in: eventIds }, paymentStatus: "paid" },
+    },
+    { $unwind: "$items" },
+    { $match: { "items.eventId": { $in: eventIds } } },
+    { $group: { _id: null, totalBookings: { $sum: "$items.quantity" } } },
+  ]);
+  const totalBookings = bookingAgg?.totalBookings ?? 0;
   const reviewStats = reviewAgg[0] ?? { total: 0, avgRating: 0 };
 
   await Vendor.findByIdAndUpdate(vendorObjId, {
