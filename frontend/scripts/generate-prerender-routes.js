@@ -22,6 +22,12 @@ async function generateRoutes() {
         '/learn/robotics',
         '/learn/python',
         '/learn/ai-for-kids',
+        '/best-activities-for-kids',
+        '/age-appropriate-experiences',
+        '/educational-workshops',
+        '/outdoor-activities-for-children',
+        '/family-friendly-adventures',
+        '/seasonal-events-for-kids',
     ];
 
     console.log('Fetching dynamic routes...');

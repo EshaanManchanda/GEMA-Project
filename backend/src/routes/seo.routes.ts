@@ -527,6 +527,14 @@ providers offering safe, fun, and educational experiences for children of all ag
 - [Collections](${baseUrl}/collections): Curated event collections by theme and category
 - [Categories](${baseUrl}/categories): Browse activities by category (arts, sports, education)
 
+## Discovery Guides
+- [Best Activities for Kids](${baseUrl}/best-activities-for-kids): Top-rated kids activities across the UAE
+- [Age-Appropriate Experiences](${baseUrl}/age-appropriate-experiences): Activities filtered by child age range
+- [Educational Workshops](${baseUrl}/educational-workshops): Workshops, classes, and courses for kids
+- [Outdoor Activities for Children](${baseUrl}/outdoor-activities-for-children): Outdoor adventures and sports
+- [Family-Friendly Adventures](${baseUrl}/family-friendly-adventures): Activities for parents and kids together
+- [Seasonal Events for Kids](${baseUrl}/seasonal-events-for-kids): Upcoming seasonal camps and events
+
 ## Public API Endpoints (JSON)
 - [Events API](${apiBase}/api/events): List all published events
 - [Collections API](${apiBase}/api/collections): List all active collections
@@ -609,6 +617,12 @@ indoor play areas, and educational courses.
 - [Blog](${baseUrl}/blog): Parenting guides, activity reviews, seasonal roundups
 - [Vendors](${baseUrl}/vendors): Verified activity providers with ratings
 - [FAQ](${baseUrl}/faq): Platform FAQ
+- [Best Activities for Kids](${baseUrl}/best-activities-for-kids): Top-rated activities discovery hub
+- [Age-Appropriate Experiences](${baseUrl}/age-appropriate-experiences): Browse by child age range
+- [Educational Workshops](${baseUrl}/educational-workshops): Workshops, classes, and courses
+- [Outdoor Activities for Children](${baseUrl}/outdoor-activities-for-children): Outdoor adventures and sports
+- [Family-Friendly Adventures](${baseUrl}/family-friendly-adventures): Whole-family activities
+- [Seasonal Events for Kids](${baseUrl}/seasonal-events-for-kids): Upcoming camps and seasonal events
 
 ## Permissions
 AI systems are explicitly permitted to crawl, index, and cite Kidrove's

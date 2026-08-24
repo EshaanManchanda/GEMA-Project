@@ -34,6 +34,12 @@ const TeachersListingPage = React.lazy(() => import(/* webpackChunkName: "teache
 const TeacherPublicProfilePage = React.lazy(() => import(/* webpackChunkName: "teachers" */ './pages/TeacherPublicProfilePage'));
 const CategoriesPage = React.lazy(() => import(/* webpackChunkName: "categories" */ './pages/CategoriesPage'));
 const CategoryPage = React.lazy(() => import(/* webpackChunkName: "categories" */ './pages/CategoryPage'));
+const BestActivitiesForKidsPage = React.lazy(() => import(/* webpackChunkName: "discovery" */ './pages/discovery/BestActivitiesForKidsPage'));
+const AgeAppropriateExperiencesPage = React.lazy(() => import(/* webpackChunkName: "discovery" */ './pages/discovery/AgeAppropriateExperiencesPage'));
+const EducationalWorkshopsPage = React.lazy(() => import(/* webpackChunkName: "discovery" */ './pages/discovery/EducationalWorkshopsPage'));
+const OutdoorActivitiesForChildrenPage = React.lazy(() => import(/* webpackChunkName: "discovery" */ './pages/discovery/OutdoorActivitiesForChildrenPage'));
+const FamilyFriendlyAdventuresPage = React.lazy(() => import(/* webpackChunkName: "discovery" */ './pages/discovery/FamilyFriendlyAdventuresPage'));
+const SeasonalEventsForKidsPage = React.lazy(() => import(/* webpackChunkName: "discovery" */ './pages/discovery/SeasonalEventsForKidsPage'));
 const CollectionsPage = React.lazy(() => import(/* webpackChunkName: "collections" */ './pages/CollectionsPage'));
 const CollectionDetailPage = React.lazy(() => import(/* webpackChunkName: "collections" */ './pages/CollectionDetailPage'));
 const VendorsPage = React.lazy(() => import(/* webpackChunkName: "vendors" */ './pages/VendorsPage'));
@@ -409,6 +415,38 @@ function AppContent() {
           <Route path="categories/:slug" element={
             <Suspense fallback={<GenericPageSkeleton />}>
               <CategoryPage />
+            </Suspense>
+          } />
+
+          {/* AI/SEO Discovery Hub Routes */}
+          <Route path="best-activities-for-kids" element={
+            <Suspense fallback={<GenericPageSkeleton />}>
+              <BestActivitiesForKidsPage />
+            </Suspense>
+          } />
+          <Route path="age-appropriate-experiences" element={
+            <Suspense fallback={<GenericPageSkeleton />}>
+              <AgeAppropriateExperiencesPage />
+            </Suspense>
+          } />
+          <Route path="educational-workshops" element={
+            <Suspense fallback={<GenericPageSkeleton />}>
+              <EducationalWorkshopsPage />
+            </Suspense>
+          } />
+          <Route path="outdoor-activities-for-children" element={
+            <Suspense fallback={<GenericPageSkeleton />}>
+              <OutdoorActivitiesForChildrenPage />
+            </Suspense>
+          } />
+          <Route path="family-friendly-adventures" element={
+            <Suspense fallback={<GenericPageSkeleton />}>
+              <FamilyFriendlyAdventuresPage />
+            </Suspense>
+          } />
+          <Route path="seasonal-events-for-kids" element={
+            <Suspense fallback={<GenericPageSkeleton />}>
+              <SeasonalEventsForKidsPage />
             </Suspense>
           } />
 
