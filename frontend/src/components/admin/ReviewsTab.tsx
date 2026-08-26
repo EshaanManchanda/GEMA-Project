@@ -352,13 +352,12 @@ const ReviewsTab: React.FC<ReviewsTabProps> = ({
               {googleData.reviews.map((review) => (
                 <div
                   key={review._id}
-                  className={`border rounded-lg p-4 transition ${
-                    !review.isVisible
+                  className={`border rounded-lg p-4 transition ${!review.isVisible
                       ? 'bg-gray-50 border-gray-300 opacity-75'
                       : review.missingFromLatestSync
-                      ? 'border-amber-200 bg-amber-50'
-                      : 'border-gray-200 hover:border-blue-200'
-                  }`}
+                        ? 'border-amber-200 bg-amber-50'
+                        : 'border-gray-200 hover:border-blue-200'
+                    }`}
                 >
                   <div className="flex items-start gap-3">
                     {review.profile_photo_url ? (
@@ -384,11 +383,10 @@ const ReviewsTab: React.FC<ReviewsTabProps> = ({
                         {/* Visibility toggle */}
                         <button
                           onClick={() => handleToggleVisibility(review._id, review.isVisible)}
-                          className={`p-2 rounded transition flex-shrink-0 ${
-                            review.isVisible
+                          className={`p-2 rounded transition flex-shrink-0 ${review.isVisible
                               ? 'bg-gray-100 text-gray-600 hover:bg-red-100 hover:text-red-600'
                               : 'bg-blue-100 text-blue-600 hover:bg-blue-200'
-                          }`}
+                            }`}
                           title={review.isVisible ? 'Hide this review' : 'Show this review'}
                         >
                           {review.isVisible ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
@@ -464,12 +462,11 @@ const ReviewsTab: React.FC<ReviewsTabProps> = ({
                       {review.verified && (
                         <span className="text-xs bg-blue-100 text-blue-600 px-2 py-0.5 rounded-full font-medium">✓ Verified</span>
                       )}
-                      <span className={`text-xs px-2 py-0.5 rounded-full font-medium ${
-                        review.status === 'approved' ? 'bg-green-100 text-green-600' :
-                        review.status === 'pending' ? 'bg-yellow-100 text-yellow-600' :
-                        review.status === 'hidden' ? 'bg-gray-100 text-gray-600' :
-                        'bg-red-100 text-red-600'
-                      }`}>{review.status}</span>
+                      <span className={`text-xs px-2 py-0.5 rounded-full font-medium ${review.status === 'approved' ? 'bg-green-100 text-green-600' :
+                          review.status === 'pending' ? 'bg-yellow-100 text-yellow-600' :
+                            review.status === 'hidden' ? 'bg-gray-100 text-gray-600' :
+                              'bg-red-100 text-red-600'
+                        }`}>{review.status}</span>
                     </div>
                     <div className="flex items-center gap-1 mt-1">
                       {[...Array(5)].map((_, i) => (

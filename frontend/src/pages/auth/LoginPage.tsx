@@ -152,7 +152,7 @@ const LoginPage: React.FC = () => {
       // Use Redux action for login
       setLoginStatus('Verifying credentials...');
       const result = await dispatch(loginUser({
-        email: formData.email,
+        email: formData.email.trim(),
         password: formData.password,
         rememberMe: formData.rememberMe
       }));
