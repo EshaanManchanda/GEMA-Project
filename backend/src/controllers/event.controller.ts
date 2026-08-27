@@ -539,6 +539,50 @@ export const getEvent = async (
           }
         }
 
+        // Self-heal explicitly allowed expired events that were archived by the cron job
+        const allowedCategories = ["Courses, Camps & Workshops", "Creative Workshops"];
+        const allowedTypes = ["workshop", "class", "course", "masterclass", "bootcamp"];
+        const isAllowedCategory = rawEvent.category && allowedCategories.includes(rawEvent.category);
+        const isAllowedType = rawEvent.type && allowedTypes.includes(rawEvent.type.toLowerCase());
+
+        if (
+          !rawEvent.isDeleted &&
+          rawEvent.isApproved &&
+          (isAllowedCategory || isAllowedType) &&
+          rawEvent.status === "archived"
+        ) {
+          await Event.updateOne(
+            { _id: rawEvent._id },
+            { $set: { isActive: true, status: "published" } }
+          );
+
+          const recoveredEvent = await Event.findOne(filterQuery) // query by ID/slug without strict public filter
+            .populate("vendorId", "firstName lastName businessName email phone avatar logo bio")
+            .populate({
+              path: "teacherId",
+              select: "fullName bio specialization profileImage coverImage userId",
+              populate: { path: "userId", select: "firstName lastName email avatar" }
+            })
+            .populate("imageAssets", "url thumbnailUrl variations")
+            .lean();
+
+          if (recoveredEvent) {
+            const sanitizedEvent = sanitizeEventOutput(recoveredEvent);
+            const responseData = { event: sanitizedEvent };
+
+            await cacheService.set(cacheKey, responseData, {
+              ttl: CacheTTL.SINGLE_EVENT,
+            });
+
+            return res.status(200).json({
+              success: true,
+              message: "Event retrieved successfully",
+              data: responseData,
+              cached: false,
+            });
+          }
+        }
+
         const reasons: string[] = [];
         if (!rawEvent.isApproved) reasons.push("not approved");
         if (!rawEvent.isActive) reasons.push("not active");

@@ -53,6 +53,17 @@ export const archiveExpiredEvents = async () => {
         const isExpired = now > expirationDate;
 
         if (isExpired) {
+          const allowedCategories = ["Courses, Camps & Workshops", "Creative Workshops"];
+          const allowedTypes = ["workshop", "class", "course", "masterclass", "bootcamp"];
+          
+          const isAllowedCategory = event.category && allowedCategories.includes(event.category);
+          const isAllowedType = event.type && allowedTypes.includes(event.type.toLowerCase());
+          
+          if (isAllowedCategory || isAllowedType) {
+            logger.info(`Skipping archival for expired event matching keep-alive criteria: ${event.title} (ID: ${event._id})`);
+            continue;
+          }
+
           eventIdsToArchive.push(event._id);
           logger.info(
             `Marking event for archival: ${event.title} (ID: ${event._id})`,

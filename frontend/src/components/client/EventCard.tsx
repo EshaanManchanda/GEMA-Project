@@ -1,5 +1,5 @@
 import React, { useMemo, useCallback } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, Link } from 'react-router-dom';
 import { useInView } from 'react-intersection-observer';
 import { FaMapMarkerAlt, FaChild, FaCalendar, FaClock, FaEye, FaStar, FaHeart, FaRegHeart } from 'react-icons/fa';
 import { getPlaceholderUrl } from '../../utils/placeholderImage';
@@ -309,6 +309,7 @@ const WishlistButton: React.FC<WishlistButtonProps> = ({
 }) => {
   const handleClick = (e: React.MouseEvent) => {
     e.stopPropagation();
+    e.preventDefault();
     if (onToggle) {
       onToggle(eventId);
     }
@@ -710,6 +711,7 @@ const EventCard: React.FC<EventCardProps> = (props) => {
 
   const handleButtonClick = useCallback((e: React.MouseEvent) => {
     e.stopPropagation();
+    e.preventDefault();
     handleClick();
   }, [handleClick]);
 
@@ -1126,16 +1128,20 @@ const EventCard: React.FC<EventCardProps> = (props) => {
     }
   };
 
+  const Component = (onClick || disableNavigation) ? 'div' : Link;
+  const linkProps = (onClick || disableNavigation) ? {} : { to: event.customLink || generateEventUrl(eventSlug) };
+
   return (
-    <div
-      ref={ref}
-      className={`${cardClasses} ${className}`}
-      onClick={handleClick}
+    <Component
+      ref={ref as any}
+      className={`${cardClasses} ${className} ${!onClick && !disableNavigation ? 'block' : ''}`}
+      onClick={onClick ? handleClick : undefined}
       aria-label={ariaLabel || `Event: ${event.title}`}
       role="article"
+      {...linkProps}
     >
       {renderVariant()}
-    </div>
+    </Component>
   );
 };
 
