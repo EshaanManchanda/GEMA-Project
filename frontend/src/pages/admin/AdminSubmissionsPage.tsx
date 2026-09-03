@@ -1254,6 +1254,7 @@ function CompetitionTab() {
     const [search, setSearch] = useState('');
     const [searchInput, setSearchInput] = useState('');
     const [statusFilter, setStatusFilter] = useState('');
+    const [paymentStatusFilter, setPaymentStatusFilter] = useState('');
     const [medalFilter, setMedalFilter] = useState('');
     const [page, setPage] = useState(1);
     const [selectedSubmission, setSelectedSubmission] = useState<CompetitionSubmission | null>(null);
@@ -1265,6 +1266,7 @@ function CompetitionTab() {
                 page,
                 limit: 20,
                 status: statusFilter || undefined,
+                paymentStatus: paymentStatusFilter || undefined,
                 medal: medalFilter || undefined,
                 search: search || undefined,
             });
@@ -1282,7 +1284,7 @@ function CompetitionTab() {
         } finally {
             setIsLoading(false);
         }
-    }, [page, statusFilter, medalFilter, search]);
+    }, [page, statusFilter, paymentStatusFilter, medalFilter, search]);
 
     useEffect(() => { fetchSubmissions(); }, [fetchSubmissions]);
 
@@ -1330,7 +1332,7 @@ function CompetitionTab() {
                     <select
                         value={statusFilter}
                         onChange={e => { setStatusFilter(e.target.value); setPage(1); }}
-                        className="px-4 py-2.5 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-blue-500 focus:border-transparent bg-white"
+                        className="pl-4 pr-10 py-2.5 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-blue-500 focus:border-transparent bg-white"
                     >
                         <option value="">All Statuses</option>
                         <option value="pending">Pending</option>
@@ -1339,9 +1341,18 @@ function CompetitionTab() {
                         <option value="disqualified">Disqualified</option>
                     </select>
                     <select
+                        value={paymentStatusFilter}
+                        onChange={e => { setPaymentStatusFilter(e.target.value); setPage(1); }}
+                        className="pl-4 pr-10 py-2.5 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-blue-500 focus:border-transparent bg-white"
+                    >
+                        <option value="">All Payments</option>
+                        <option value="paid">Received</option>
+                        <option value="pending">Not Received</option>
+                    </select>
+                    <select
                         value={medalFilter}
                         onChange={e => { setMedalFilter(e.target.value); setPage(1); }}
-                        className="px-4 py-2.5 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-blue-500 focus:border-transparent bg-white"
+                        className="pl-4 pr-10 py-2.5 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-blue-500 focus:border-transparent bg-white"
                     >
                         <option value="">All Medals</option>
                         <option value="Gold">Gold</option>
@@ -1375,6 +1386,7 @@ function CompetitionTab() {
                                     <th className="text-left px-4 py-3 font-medium text-gray-600">Student</th>
                                     <th className="text-left px-4 py-3 font-medium text-gray-600 hidden md:table-cell">School</th>
                                     <th className="text-left px-4 py-3 font-medium text-gray-600">Status</th>
+                                    <th className="text-left px-4 py-3 font-medium text-gray-600">Payment</th>
                                     <th className="text-left px-4 py-3 font-medium text-gray-600">Medal</th>
                                     <th className="text-left px-4 py-3 font-medium text-gray-600 hidden lg:table-cell">Date</th>
                                     <th className="text-right px-4 py-3 font-medium text-gray-600">Actions</th>
@@ -1406,6 +1418,12 @@ function CompetitionTab() {
                                                   sub.status === 'disqualified' ? 'bg-gray-200 text-gray-800' :
                                                   'bg-gray-100 text-gray-800'}`}>
                                                 {sub.status.replace('_', ' ')}
+                                            </span>
+                                        </td>
+                                        <td className="px-4 py-3">
+                                            <span className={`inline-flex px-2 py-1 text-xs font-medium rounded-full capitalize
+                                                ${sub.paymentStatus === 'paid' ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800'}`}>
+                                                {sub.paymentStatus === 'paid' ? 'Received' : 'Not Received'}
                                             </span>
                                         </td>
                                         <td className="px-4 py-3">

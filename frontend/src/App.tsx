@@ -168,8 +168,9 @@ const AdminLeadPagesPage = React.lazy(() => import(/* webpackChunkName: "admin" 
 // Lead Page (Public)
 const LeadPage = React.lazy(() => import(/* webpackChunkName: "lead" */ './pages/LeadPage'));
 
-// Competition Page (AI Art Competition 2026)
+// Competition Pages (AI Art Competition 2026)
 const AiArtCompetitionPage = React.lazy(() => import(/* webpackChunkName: "competition" */ './pages/AiArtCompetitionPage'));
+const CompetitionPaymentSuccessPage = React.lazy(() => import(/* webpackChunkName: "competition" */ './pages/CompetitionPaymentSuccessPage'));
 
 // Analytics Pages
 const EventPerformance = React.lazy(() => import(/* webpackChunkName: "analytics" */ './pages/analytics/EventPerformance'));
@@ -359,11 +360,18 @@ function AppContent() {
           } />
 
           {/* AI Art Competition 2026 */}
-          <Route path="ai-art-competition" element={
-            <Suspense fallback={<GenericPageSkeleton />}>
-              <AiArtCompetitionPage />
-            </Suspense>
-          } />
+          <Route path="ai-art-competition">
+            <Route index element={
+              <Suspense fallback={<GenericPageSkeleton />}>
+                <AiArtCompetitionPage />
+              </Suspense>
+            } />
+            <Route path="payment-success" element={
+              <Suspense fallback={<GenericPageSkeleton />}>
+                <CompetitionPaymentSuccessPage />
+              </Suspense>
+            } />
+          </Route>
           {/* Legacy: redirect old teaching-events detail URLs to the unified events page */}
           <Route path="teaching-events/:id" element={<Navigate to="/events" replace />} />
 

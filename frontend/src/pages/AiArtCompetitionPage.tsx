@@ -3,18 +3,26 @@ import { motion, AnimatePresence } from 'framer-motion';
 import {
   FiUser, FiUpload,
   FiCheck, FiChevronRight, FiChevronLeft, FiAlertCircle,
-  FiAward, FiStar, FiImage, FiTrash2, FiChevronDown, FiX, FiMail, FiEdit2, FiPlay
+  FiAward, FiStar, FiImage, FiTrash2, FiChevronDown, FiX, FiMail, FiEdit2, FiPlay, FiCreditCard
 } from 'react-icons/fi';
+import { SiCanva, SiGoogle, SiOpenai, SiFigma, SiAdobe, SiGooglegemini, SiClaude } from 'react-icons/si';
 import { HiOutlineSparkles } from 'react-icons/hi2';
 import SEO from '@/components/common/SEO';
 import competitionAPI, { CompetitionSubmitPayload } from '@/services/api/competitionAPI';
 import toast from 'react-hot-toast';
+import StripeElementsWrapper from '@/components/payment/StripeElementsWrapper';
+import StripePaymentElement from '@/components/payment/StripePaymentElement';
+import { ApiService } from '@/services/api';
+import { getRegionalPaymentMethods, getPreferredPaymentMethod } from '@/utils/paymentConfig';
+import { getEnvironmentInfo, getPaymentMethodAvailability } from '@/utils/environmentUtils';
+import { isRealStripeClientSecret } from '@/utils/stripeConfig';
+import { CreditCard, CheckCircle, Shield, ChevronLeft } from 'lucide-react';
 
 // ─── Constants ────────────────────────────────────────────────────────────────
 
 const AT_A_GLANCE = [
   { icon: '🧑‍🎓', label: 'Who can participate', value: 'Grades 1–12' },
-  { icon: '👤', label: 'Participation', value: 'Individual' },
+  { icon: '👤', label: 'Participation', value: 'Individual - AED 50 per student' },
   { icon: '🖼️', label: 'Submission', value: '1 AI-generated artwork' },
   { icon: '📁', label: 'Format', value: 'JPG / PNG' },
   { icon: '📝', label: 'Optional', value: '100-word description' },
@@ -73,7 +81,10 @@ const AI_TOOLS = [
   'ChatGPT',
   'Adobe Firefly',
   'Microsoft Designer / Copilot',
-  'Other AI image-generation tool',
+  'Midjourney',
+  'Claude',
+  'DALL-E',
+  'Figma',
   'Other AI creative tool',
 ];
 
@@ -112,6 +123,7 @@ const STEPS = [
   { id: 3, label: 'AI Details', icon: HiOutlineSparkles },
   { id: 4, label: 'Upload', icon: FiUpload },
   { id: 5, label: 'Consent', icon: FiAward },
+  { id: 6, label: 'Payment', icon: FiCreditCard },
 ];
 
 // ─── Form State ────────────────────────────────────────────────────────────────
@@ -229,26 +241,241 @@ const wordCount = (text: string) =>
 
 function getToolIcon(tool: string) {
   switch (tool) {
-    case 'Canva AI / Canva Magic Media': return '🎨';
-    case 'Google Gemini': return '✨';
-    case 'ChatGPT': return '💬';
-    case 'Adobe Firefly': return '🔥';
-    case 'Microsoft Designer / Copilot': return '💻';
-    case 'Other AI image-generation tool': return '🖼️';
-    case 'Other AI creative tool': return '💡';
-    default: return '🤖';
+    case 'Canva AI / Canva Magic Media': return <img src="https://cdn.jsdelivr.net/gh/devicons/devicon@latest/icons/canva/canva-original.svg" alt="Canva" className="w-7 h-7 object-contain" />;
+    case 'Google Gemini': return <SiGooglegemini color="#4285F4" size={28} />;
+    case 'ChatGPT': return <SiOpenai color="#fff" size={28} />;
+    case 'Adobe Firefly': return <SiAdobe color="#FF0000" size={28} />;
+    case 'Microsoft Designer / Copilot': return <img src="https://cdn.jsdelivr.net/gh/devicons/devicon@latest/icons/windows8/windows8-original.svg" alt="Microsoft" className="w-7 h-7 object-contain" />;
+    case 'Midjourney': return <HiOutlineSparkles color="#fff" size={28} />;
+    case 'Claude': return <SiClaude color="#d97757" size={28} />;
+    case 'DALL-E': return <SiOpenai color="#fff" size={28} />;
+    case 'Figma': return <SiFigma color="#F24E1E" size={28} />;
+    case 'Other AI creative tool': return <span className="text-2xl">💡</span>;
+    default: return <span className="text-2xl">🤖</span>;
   }
 }
 
+// ─── Competition Payment Step ─────────────────────────────────────────────────
+
+interface CompetitionPaymentStepProps {
+  clientSecret: string;
+  paymentIntentId: string;
+  isSubmitting: boolean;
+  onPaymentSuccess: (paymentIntentId: string) => void;
+  onError: (error: string) => void;
+  onBack: () => void;
+}
+
+function CompetitionPaymentStep({ clientSecret, paymentIntentId, isSubmitting, onPaymentSuccess, onError, onBack }: CompetitionPaymentStepProps) {
+  const regionalMethods = getRegionalPaymentMethods();
+  const environmentInfo = getEnvironmentInfo();
+  const paymentAvailability = getPaymentMethodAvailability();
+
+  const paymentMethods = [
+    {
+      id: 'test',
+      name: 'Test Payment',
+      description: environmentInfo.isDevelopment
+        ? 'Recommended for development - automatically succeeds and processes your entry normally'
+        : 'Safe test payment option - processes your entry normally without charging your card',
+      icon: CheckCircle,
+      recommended: regionalMethods.test.recommended || !paymentAvailability.stripeElements,
+      reliable: true,
+      enabled: regionalMethods.test.enabled,
+    },
+    {
+      id: 'stripe',
+      name: 'Credit/Debit Card',
+      description: paymentAvailability.stripeElements
+        ? 'Visa, Mastercard, American Express - Secure payment processing'
+        : 'Credit/Debit Card payments may have limitations in current environment',
+      icon: CreditCard,
+      recommended: regionalMethods.stripe.recommended && paymentAvailability.stripeElements,
+      reliable: paymentAvailability.stripeElements,
+      enabled: regionalMethods.stripe.enabled,
+    },
+  ].filter(m => m.enabled);
+
+  const [selectedMethod, setSelectedMethod] = React.useState(getPreferredPaymentMethod());
+  const [testProcessing, setTestProcessing] = React.useState(false);
+
+  const handleTestPayment = async () => {
+    setTestProcessing(true);
+    try {
+      // Just call onPaymentSuccess with the already-created paymentIntentId
+      // On the backend, submitCompetition will verify if it's paid or accept test payments
+      await new Promise(r => setTimeout(r, 800)); // Brief delay for UX
+      onPaymentSuccess(paymentIntentId);
+    } catch (e: any) {
+      onError(e.message || 'Test payment failed');
+    } finally {
+      setTestProcessing(false);
+    }
+  };
+
+  return (
+    <div className="space-y-6">
+      <div className="text-center mb-6">
+        <h2 className="text-2xl font-bold text-white mb-2">Payment</h2>
+        <p className="text-slate-400 text-sm">
+          Secure payment processing with 256-bit SSL encryption
+        </p>
+      </div>
+
+      {/* Payment Methods */}
+      <div className="bg-white rounded-2xl overflow-hidden shadow-sm">
+        <div className="px-6 py-4 border-b border-gray-100 flex items-center gap-2">
+          <CreditCard className="w-5 h-5 text-gray-600" />
+          <span className="font-semibold text-gray-900">Select Payment Method</span>
+        </div>
+        <div className="p-4 space-y-3">
+          {paymentMethods.map((method) => (
+            <div
+              key={method.id}
+              onClick={() => setSelectedMethod(method.id)}
+              className={`relative border rounded-xl p-4 cursor-pointer transition-all duration-200 ${
+                selectedMethod === method.id
+                  ? 'border-teal-500 bg-teal-50 ring-2 ring-teal-200'
+                  : 'border-gray-200 hover:border-gray-300 hover:bg-gray-50'
+              }`}
+            >
+              <div className="flex items-center gap-3">
+                <input
+                  type="radio"
+                  name="competitionPaymentMethod"
+                  value={method.id}
+                  checked={selectedMethod === method.id}
+                  onChange={() => setSelectedMethod(method.id)}
+                  className="text-teal-500 focus:ring-teal-500"
+                />
+                <method.icon className="w-6 h-6 text-gray-600" />
+                <div className="flex-1">
+                  <div className="flex items-center gap-2 flex-wrap">
+                    <span className="font-medium text-gray-900">{method.name}</span>
+                    {method.recommended && (
+                      <span className="px-2 py-0.5 text-xs bg-green-600 text-white rounded-full">Recommended</span>
+                    )}
+                    {method.reliable && method.id === 'test' && (
+                      <span className="px-2 py-0.5 text-xs bg-blue-500 text-white rounded-full">Reliable</span>
+                    )}
+                  </div>
+                  <p className="text-sm text-gray-500 mt-0.5">{method.description}</p>
+                </div>
+                <Shield className="w-5 h-5 text-green-500 flex-shrink-0" />
+              </div>
+            </div>
+          ))}
+        </div>
+      </div>
+
+      {/* Stripe Card Form */}
+      {selectedMethod === 'stripe' && (
+        <>
+          {clientSecret && isRealStripeClientSecret(clientSecret) ? (
+            <StripeElementsWrapper clientSecret={clientSecret}>
+              {(isReady) => isReady ? (
+                <StripePaymentElement
+                  onSuccess={() => onPaymentSuccess(paymentIntentId)}
+                  onError={onError}
+                  isProcessing={isSubmitting}
+                  amount={50}
+                  currency="AED"
+                />
+              ) : (
+                <div className="bg-white rounded-2xl p-8 flex items-center justify-center">
+                  <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-teal-500"></div>
+                  <span className="ml-3 text-gray-500">Loading card form...</span>
+                </div>
+              )}
+            </StripeElementsWrapper>
+          ) : (
+            <div className="bg-white rounded-2xl p-8 flex items-center justify-center">
+              <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-teal-500"></div>
+              <span className="ml-3 text-gray-500">Loading payment form...</span>
+            </div>
+          )}
+        </>
+      )}
+
+      {/* Payment Summary */}
+      <div className="bg-white rounded-2xl overflow-hidden shadow-sm">
+        <div className="px-6 py-4 border-b border-gray-100">
+          <span className="font-semibold text-gray-900">Payment Summary</span>
+        </div>
+        <div className="p-6 space-y-3">
+          <div className="flex justify-between text-sm">
+            <span className="text-gray-600">Competition Entry Fee</span>
+            <span className="font-medium">AED 50.00</span>
+          </div>
+          <div className="border-t pt-3 flex justify-between text-base font-bold">
+            <span>Total Amount</span>
+            <span>AED 50.00</span>
+          </div>
+        </div>
+      </div>
+
+      {/* Security Notice */}
+      <div className="bg-green-50 border border-green-200 rounded-xl p-4 flex items-start gap-3">
+        <CheckCircle className="w-5 h-5 text-green-600 mt-0.5 flex-shrink-0" />
+        <div className="text-sm">
+          <p className="font-medium text-green-800">Secure Payment</p>
+          <p className="text-green-700 mt-0.5">
+            Your payment information is encrypted and secure. We never store your credit card details.
+            All transactions are processed through our certified payment partners.
+          </p>
+        </div>
+      </div>
+
+      {/* Action Buttons */}
+      {selectedMethod === 'test' && (
+        <div className="flex justify-between items-center">
+          <button
+            type="button"
+            onClick={onBack}
+            className="flex items-center gap-2 px-5 py-2.5 rounded-xl border border-slate-500 text-white text-sm font-medium hover:bg-slate-700 transition-all"
+          >
+            <ChevronLeft className="w-4 h-4" />
+            Back to Consent
+          </button>
+          <button
+            type="button"
+            onClick={handleTestPayment}
+            disabled={testProcessing || isSubmitting}
+            className="px-7 py-3 rounded-xl bg-white hover:bg-white text-slate-900 text-sm font-bold flex items-center gap-2 transition-all disabled:opacity-50 disabled:cursor-wait"
+          >
+            {testProcessing || isSubmitting ? (
+              <><span className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" />Processing…</>
+            ) : (
+              <>Pay AED 50.00</>
+            )}
+          </button>
+        </div>
+      )}
+
+      {selectedMethod === 'stripe' && (
+        <div className="flex justify-start">
+          <button
+            type="button"
+            onClick={onBack}
+            className="flex items-center gap-2 px-5 py-2.5 rounded-xl border border-slate-500 text-white text-sm font-medium hover:bg-slate-700 transition-all"
+          >
+            <ChevronLeft className="w-4 h-4" />
+            Back to Consent
+          </button>
+        </div>
+      )}
+    </div>
+  );
+}
+
 // ─── Component ────────────────────────────────────────────────────────────────
+
 
 export default function AiArtCompetitionPage() {
   const [currentStep, setCurrentStep] = useState(1);
   const [form, setForm] = useState<FormState>(initialFormState);
   const [errors, setErrors] = useState<string[]>([]);
   const [isSubmitting, setIsSubmitting] = useState(false);
-  const [isSubmitted, setIsSubmitted] = useState(false);
-  const [submissionRef, setSubmissionRef] = useState('');
   const [rulesExpanded, setRulesExpanded] = useState(false);
   const [showDeclarationsModal, setShowDeclarationsModal] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -283,11 +510,21 @@ export default function AiArtCompetitionPage() {
     setErrors([]);
   };
 
-  const handleNext = () => {
+  const handleNext = async () => {
     const errs = validateStep(currentStep, form);
     if (errs.length) { setErrors(errs); return; }
     setErrors([]);
-    setCurrentStep((s) => Math.min(5, s + 1));
+
+    if (currentStep === 5) {
+      setCurrentStep(6);
+      setTimeout(() => {
+        const submitSection = document.getElementById('submit-entry');
+        if (submitSection) submitSection.scrollIntoView({ behavior: 'smooth' });
+      }, 100);
+      return;
+    }
+
+    setCurrentStep((s) => Math.min(6, s + 1));
     const submitSection = document.getElementById('submit-entry');
     if (submitSection) submitSection.scrollIntoView({ behavior: 'smooth' });
   };
@@ -299,123 +536,6 @@ export default function AiArtCompetitionPage() {
     if (submitSection) submitSection.scrollIntoView({ behavior: 'smooth' });
   };
 
-  const handleSubmit = async () => {
-    const errs = validateStep(5, form);
-    if (errs.length) { setErrors(errs); return; }
-
-    if (!form.artwork) {
-      setErrors(['Artwork file is missing — please go back and upload your artwork']);
-      return;
-    }
-
-    setIsSubmitting(true);
-    try {
-      const additionalPrompts = [
-        form.additionalPrompt1,
-        form.additionalPrompt2,
-        form.additionalPrompt3,
-      ].filter(Boolean);
-
-      const payload: CompetitionSubmitPayload = {
-        parentName: form.parentName,
-        parentEmail: form.parentEmail,
-        parentPhone: form.parentPhone,
-        studentFullName: form.studentFullName,
-        studentAge: Number(form.studentAge),
-        grade: form.grade,
-        cohort: getCohortFromGrade(form.grade),
-        gender: form.gender || undefined,
-        schoolName: form.schoolName,
-        schoolEmirate: form.schoolEmirate,
-        artworkTitle: form.artworkTitle,
-        artworkDescription: form.artworkDescription,
-        aiTools: form.aiTools,
-        otherToolName: form.otherToolName || undefined,
-        creationType: form.creationType,
-        mainPrompt: form.mainPrompt,
-        additionalPrompts,
-        changesAfterGeneration: form.changesAfterGeneration,
-        changesDescription: form.changesDescription || undefined,
-        artwork: form.artwork,
-        agreeTerms: form.agreeTerms,
-        responsibleAiDeclaration: form.responsibleAiDeclaration,
-        originalityDeclaration: form.originalityDeclaration,
-        parentGuardianConsent: form.parentGuardianConsent,
-        artworkDisplayPermission: form.artworkDisplayPermission as 'yes' | 'no',
-        nameDisplayPermission: form.nameDisplayPermission === 'yes',
-        competitionUpdatesConsent: form.competitionUpdatesConsent,
-        marketingConsent: form.marketingConsent,
-      };
-
-      const result = await competitionAPI.submitCompetition(payload);
-      setSubmissionRef(result.data.submissionRef);
-      setIsSubmitted(true);
-      window.scrollTo({ top: 0, behavior: 'smooth' });
-    } catch (err: any) {
-      const msg = err?.response?.data?.message || 'Submission failed. Please try again.';
-      toast.error(msg);
-      setErrors([msg]);
-    } finally {
-      setIsSubmitting(false);
-    }
-  };
-
-  // ── Success Screen ─────────────────────────────────────────────────────────
-  if (isSubmitted) {
-    return (
-      <div className="min-h-screen bg-[#0E1525] text-slate-350 flex items-center justify-center px-4 py-16 font-sans">
-        <SEO title="Submission Successful — Kidrove AI Art Competition 2026" />
-        <motion.div
-          initial={{ opacity: 0, scale: 0.95 }}
-          animate={{ opacity: 1, scale: 1 }}
-          transition={{ type: 'spring', damping: 20 }}
-          className="bg-slate-800/50 backdrop-blur-xl border border-slate-700/50 rounded-3xl p-8 md:p-12 max-w-2xl w-full text-center relative overflow-hidden"
-        >
-          <div className="absolute top-[-20%] left-[-20%] w-[60%] h-[60%] rounded-full bg-emerald-500/10 blur-[80px] pointer-events-none" />
-          <motion.div
-            initial={{ scale: 0 }}
-            animate={{ scale: 1 }}
-            transition={{ delay: 0.2, type: 'spring', damping: 15 }}
-            className="w-24 h-24 rounded-full bg-gradient-to-br from-emerald-400 to-teal-500 flex items-center justify-center mx-auto mb-6 shadow-[0_0_40px_rgba(16,185,129,0.3)]"
-          >
-            <FiCheck size={48} className="text-white stroke-[3]" />
-          </motion.div>
-          <motion.h1 initial={{ opacity: 0, y: 15 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.3 }} className="text-white text-3xl font-black mb-2">
-            🎉 Entry Submitted!
-          </motion.h1>
-          <motion.p initial={{ opacity: 0, y: 15 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.4 }} className="text-slate-400 mb-6 text-sm">
-            Your AI Art competition entry has been received successfully.
-          </motion.p>
-          <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ delay: 0.45 }} className="bg-emerald-500/10 border border-emerald-500/20 rounded-2xl px-6 py-4 inline-block mb-8 text-center">
-            <span className="text-slate-500 text-xs uppercase font-extrabold tracking-widest block mb-1">Your Submission ID</span>
-            <span className="text-amber-300 font-extrabold text-2xl tracking-wider select-all">{submissionRef}</span>
-          </motion.div>
-          <motion.div initial={{ opacity: 0, y: 15 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.55 }} className="text-left bg-slate-900/40 border border-slate-700/50 rounded-2xl p-6">
-            <h2 className="text-white font-extrabold text-base mb-4 flex items-center gap-2"><span>📌</span> What happens next?</h2>
-            {[
-              { icon: '📩', title: 'Email Confirmation', desc: 'You will receive an email confirmation containing your submission ID shortly.' },
-              { icon: '📜', title: 'Participation Certificate', desc: 'Every qualifying student will receive a Kidrove Certificate of Participation.' },
-              { icon: '🏆', title: 'Winners will be Announced', desc: 'Entries will be evaluated by our judging panel. Winners receive Gold, Silver or Bronze medals!' },
-              { icon: '🎨', title: 'Virtual Exhibition', desc: 'Outstanding creations will be exhibited in the Kidrove AI Art Gallery.' },
-            ].map((item, i) => (
-              <motion.div key={i} initial={{ opacity: 0, x: -10 }} animate={{ opacity: 1, x: 0 }} transition={{ delay: 0.6 + i * 0.08 }} className="flex gap-3 items-start mb-4 last:mb-0 bg-slate-800/40 border border-slate-700/40 rounded-xl p-3">
-                <span className="text-xl flex-shrink-0">{item.icon}</span>
-                <div>
-                  <h4 className="text-white font-bold text-xs">{item.title}</h4>
-                  <p className="text-slate-400 text-xs mt-0.5 leading-relaxed">{item.desc}</p>
-                </div>
-              </motion.div>
-            ))}
-          </motion.div>
-          <div className="mt-8">
-            <button onClick={() => { setIsSubmitted(false); setForm(initialFormState); setCurrentStep(1); }} className="px-6 py-2.5 bg-slate-700 hover:bg-slate-600 text-white text-xs font-bold rounded-xl transition-all border border-slate-600">
-              Submit Another Entry
-            </button>
-          </div>
-        </motion.div>
-      </div>
-    );
-  }
 
   // ── Tab Content Panels ─────────────────────────────────────────────────────
 
@@ -1077,7 +1197,7 @@ export default function AiArtCompetitionPage() {
                       }`}>
                       {isDone ? <FiCheck size={18} className="stroke-[3]" /> : <Icon size={18} />}
                     </div>
-                    <span className={`text-[10px] font-bold tracking-wider uppercase text-center ${isActive ? 'text-amber-400' : isDone ? 'text-emerald-400' : 'text-slate-300'}`}>
+                    <span className={`text-xs font-extrabold tracking-wider uppercase text-center ${isActive ? 'text-amber-400' : isDone ? 'text-emerald-400' : 'text-slate-100'}`}>
                       {step.label}
                     </span>
                   </div>
@@ -1136,7 +1256,7 @@ export default function AiArtCompetitionPage() {
                         onChange={(e) => update('artworkDescription', e.target.value)}
                         placeholder="Write a short description of your artwork…"
                         rows={5}
-                        className={`w-full bg-[#0B1220] border hover:border-slate-600 focus:border-amber-500 focus:ring-1 focus:ring-amber-500 text-white rounded-xl px-4 py-3 placeholder-slate-600 transition-all outline-none text-sm resize-none ${wordCount(form.artworkDescription) > 100 ? 'border-red-500 focus:border-red-500 focus:ring-red-500' : 'border-slate-700/50'}`}
+                        className={`w-full bg-[#0B1220] border hover:border-slate-600 focus:border-amber-500 focus:ring-1 focus:ring-amber-500 text-white rounded-xl px-4 py-3 placeholder-slate-400 transition-all outline-none text-sm resize-none ${wordCount(form.artworkDescription) > 100 ? 'border-red-500 focus:border-red-500 focus:ring-red-500' : 'border-slate-700/50'}`}
                       />
                       <div className={`text-right text-xs mt-2 ${wordCount(form.artworkDescription) > 100 ? 'text-red-400 font-bold' : 'text-slate-500'}`}>
                         {wordCount(form.artworkDescription)} / 100 words
@@ -1207,7 +1327,7 @@ export default function AiArtCompetitionPage() {
                       <div className="flex gap-6 mt-2 mb-4">
                         {['Yes', 'No'].map((opt) => (
                           <label key={opt} className="flex items-center gap-2.5 cursor-pointer text-sm text-slate-300 select-none">
-                            <input type="radio" name="usedMorePrompts" value={opt} checked={form.usedMorePrompts === opt} onChange={() => update('usedMorePrompts', opt)} className="w-4 h-4 rounded-full border-slate-700 text-amber-500 focus:ring-amber-500 focus:ring-offset-slate-900 bg-slate-900" />
+                            <input type="radio" name="usedMorePrompts" value={opt} checked={form.usedMorePrompts === opt} onChange={() => update('usedMorePrompts', opt)} className="w-4 h-4 rounded-full border-slate-400 text-amber-500 focus:ring-amber-500 focus:ring-offset-slate-900 bg-slate-900" />
                             <span>{opt}</span>
                           </label>
                         ))}
@@ -1228,7 +1348,7 @@ export default function AiArtCompetitionPage() {
                       <div className="flex flex-col gap-2.5 mt-3">
                         {CHANGES_OPTIONS.map((opt) => (
                           <label key={opt.value} className="flex items-center gap-2.5 cursor-pointer text-sm text-slate-350 select-none">
-                            <input type="radio" name="changesAfterGeneration" value={opt.value} checked={form.changesAfterGeneration === opt.value} onChange={() => update('changesAfterGeneration', opt.value)} className="w-4 h-4 rounded-full border-slate-700 text-amber-500 focus:ring-amber-500 focus:ring-offset-slate-900 bg-slate-900" />
+                            <input type="radio" name="changesAfterGeneration" value={opt.value} checked={form.changesAfterGeneration === opt.value} onChange={() => update('changesAfterGeneration', opt.value)} className="w-4 h-4 rounded-full border-slate-400 text-amber-500 focus:ring-amber-500 focus:ring-offset-slate-900 bg-slate-900" />
                             <span>{opt.label}</span>
                           </label>
                         ))}
@@ -1277,8 +1397,8 @@ export default function AiArtCompetitionPage() {
                             <FiUpload size={24} />
                           </div>
                           <h3 className="text-white font-bold text-base mb-1">Upload your artwork</h3>
-                          <p className="text-slate-500 text-xs">Drag and drop your file here, or click to browse</p>
-                          <p className="text-slate-600 text-[10px] mt-4">JPG, JPEG, PNG (Recommended Max 1MB)</p>
+                          <p className="text-white text-sm font-semibold">Drag and drop your file here, or click to browse</p>
+                          <p className="text-slate-300 text-xs mt-4">JPG, JPEG, PNG (Recommended Max 1MB)</p>
                         </div>
                       )}
                     </div>
@@ -1367,6 +1487,107 @@ export default function AiArtCompetitionPage() {
                   </div>
                 )}
 
+                {/* ── Step 6: Payment ──────────────────────────────────── */}
+                {currentStep === 6 && (
+                  <div className="bg-[#0B1220] border border-slate-700/40 rounded-3xl p-8 max-w-lg mx-auto mt-6" id="submit-entry">
+                    <div className="flex flex-col items-center text-center">
+                      <div className="w-16 h-16 bg-amber-500/10 rounded-full flex items-center justify-center mb-4">
+                        <CreditCard className="w-8 h-8 text-amber-500" />
+                      </div>
+                      <h2 className="text-white text-xl font-bold mb-2">Entry Fee Payment</h2>
+                      <p className="text-slate-400 text-sm mb-6 leading-relaxed">
+                        Please complete your AED 50.00 payment. You will be redirected to our secure Stripe payment page and brought back automatically once payment is confirmed.
+                      </p>
+
+                      <div className="w-full space-y-4">
+                        <button
+                          onClick={async () => {
+                            const errs = validateStep(5, form);
+                            if (errs.length) { setErrors(errs); setCurrentStep(5); return; }
+                            if (!form.artwork) { setErrors(['Artwork file is missing — please go back and upload your artwork']); return; }
+                            setErrors([]);
+                            setIsSubmitting(true);
+                            try {
+                              const additionalPrompts = [
+                                form.additionalPrompt1,
+                                form.additionalPrompt2,
+                                form.additionalPrompt3,
+                              ].filter(Boolean);
+
+                              const payload: CompetitionSubmitPayload = {
+                                parentName: form.parentName,
+                                parentEmail: form.parentEmail,
+                                parentPhone: form.parentPhone,
+                                studentFullName: form.studentFullName,
+                                studentAge: Number(form.studentAge),
+                                grade: form.grade,
+                                cohort: getCohortFromGrade(form.grade),
+                                gender: form.gender || undefined,
+                                schoolName: form.schoolName,
+                                schoolEmirate: form.schoolEmirate,
+                                artworkTitle: form.artworkTitle,
+                                artworkDescription: form.artworkDescription,
+                                aiTools: form.aiTools,
+                                otherToolName: form.otherToolName || undefined,
+                                creationType: form.creationType,
+                                mainPrompt: form.mainPrompt,
+                                additionalPrompts,
+                                changesAfterGeneration: form.changesAfterGeneration,
+                                changesDescription: form.changesDescription || undefined,
+                                artwork: form.artwork,
+                                agreeTerms: form.agreeTerms,
+                                responsibleAiDeclaration: form.responsibleAiDeclaration,
+                                originalityDeclaration: form.originalityDeclaration,
+                                parentGuardianConsent: form.parentGuardianConsent,
+                                artworkDisplayPermission: form.artworkDisplayPermission as 'yes' | 'no',
+                                nameDisplayPermission: form.nameDisplayPermission === 'yes',
+                                competitionUpdatesConsent: form.competitionUpdatesConsent,
+                                marketingConsent: form.marketingConsent,
+                              };
+
+                              // Step 1: Save draft (uploads artwork, stores form data)
+                              const draftResult = await competitionAPI.saveDraft(payload);
+                              if (!draftResult.success) throw new Error('Failed to save entry. Please try again.');
+
+                              const submissionId = draftResult.data.submissionId;
+
+                              // Step 2: Create Stripe Checkout Session
+                              const sessionResult = await competitionAPI.createCheckoutSession(submissionId);
+                              if (!sessionResult.success || !sessionResult.data.sessionUrl) throw new Error('Failed to create payment session. Please try again.');
+
+                              // Step 3: Redirect to Stripe (full page redirect so Stripe can redirect back)
+                              window.location.href = sessionResult.data.sessionUrl;
+                            } catch (err: any) {
+                              const msg = err?.response?.data?.message || err?.message || 'Something went wrong. Please try again.';
+                              toast.error(msg);
+                              setErrors([msg]);
+                              setIsSubmitting(false);
+                            }
+                          }}
+                          disabled={isSubmitting}
+                          className="w-full py-4 bg-white hover:bg-gray-100 text-slate-900 font-bold rounded-xl transition-all flex items-center justify-center gap-2 disabled:opacity-60 disabled:cursor-wait"
+                        >
+                          {isSubmitting ? (
+                            <><span className="w-4 h-4 border-2 border-slate-900 border-t-transparent rounded-full animate-spin" /> Preparing payment…</>
+                          ) : (
+                            'Pay AED 50.00 & Submit'
+                          )}
+                        </button>
+                        <button
+                          onClick={handleBack}
+                          disabled={isSubmitting}
+                          className="w-full py-3 border border-slate-500 text-slate-300 hover:text-white hover:bg-slate-800 font-bold rounded-xl transition-all"
+                        >
+                          Back to Consent
+                        </button>
+                      </div>
+                      <p className="text-slate-500 text-[11px] mt-5">
+                        You will be redirected to Stripe's secure payment page. Do not close your browser — you will be automatically returned here after payment.
+                      </p>
+                    </div>
+                  </div>
+                )}
+
                 {/* ── Errors Panel ────────────────────────────────────────── */}
                 {errors.length > 0 && (
                   <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} className="mt-6 bg-red-500/10 border border-red-500/25 rounded-2xl p-4">
@@ -1394,18 +1615,18 @@ export default function AiArtCompetitionPage() {
               <button type="button" onClick={handleNext} className="px-6 py-3 rounded-xl bg-gradient-to-r from-amber-500 to-yellow-400 text-slate-955 text-sm font-bold flex items-center gap-2 hover:shadow-[0_0_15px_rgba(245,158,11,0.25)] transition-all active:scale-[0.98]">
                 Next <FiChevronRight className="stroke-[3] text-lg" />
               </button>
-            ) : (
-              <button type="button" onClick={handleSubmit} disabled={isSubmitting} className="px-7 py-3 rounded-xl bg-gradient-to-r from-amber-500 to-yellow-400 text-slate-955 text-sm font-black flex items-center gap-2 hover:shadow-[0_0_15px_rgba(245,158,11,0.25)] transition-all active:scale-[0.98] disabled:opacity-50 disabled:cursor-wait">
+            ) : currentStep === 5 ? (
+              <button type="button" onClick={handleNext} disabled={isSubmitting} className="px-7 py-3 rounded-xl bg-gradient-to-r from-amber-500 to-yellow-400 text-slate-955 text-sm font-black flex items-center gap-2 hover:shadow-[0_0_15px_rgba(245,158,11,0.25)] transition-all active:scale-[0.98] disabled:opacity-50 disabled:cursor-wait">
                 {isSubmitting ? (
                   <span className="flex items-center gap-2">
                     <span className="w-4 h-4 border-2 border-slate-950 border-t-transparent rounded-full animate-spin" />
-                    Submitting…
+                    Processing…
                   </span>
                 ) : (
-                  <>Submit Entry <FiStar className="text-lg" /></>
+                  <>Proceed to Payment <FiCreditCard className="text-lg" /></>
                 )}
               </button>
-            )}
+            ) : null}
           </div>
 
           <p className="text-center text-slate-500 text-xs mt-6 select-none">Step {currentStep} of {STEPS.length}</p>
@@ -1483,7 +1704,7 @@ export default function AiArtCompetitionPage() {
                   <div className="bg-slate-900/30 rounded-2xl p-4 border border-slate-700/30">
                     <p className="text-slate-400 text-xs">
                       I agree to all{' '}
-                      <a href="https://docs.google.com/spreadsheets/u/0/d/1jZLZINqvvbIEG0Sg451tIlE4P2KuVuSpQXhEKPokanw/edit" target="_blank" rel="noopener noreferrer" className="text-amber-500 hover:underline font-bold">
+                      <a href="/terms" target="_blank" rel="noopener noreferrer" className="text-amber-500 hover:underline font-bold">
                         Terms & Conditions
                       </a>{' '}
                       as laid by Kidrove.
@@ -1563,7 +1784,7 @@ function InputField({
         placeholder={placeholder}
         min={min}
         max={max}
-        className="w-full bg-[#0B1220] border border-slate-700/50 hover:border-slate-600 focus:border-amber-500 focus:ring-1 focus:ring-amber-500 text-white rounded-xl px-4 py-3 placeholder-slate-600 transition-all outline-none text-sm"
+        className="w-full bg-[#0B1220] border border-slate-700/50 hover:border-slate-600 focus:border-amber-500 focus:ring-1 focus:ring-amber-500 text-white rounded-xl px-4 py-3 placeholder-slate-400 transition-all outline-none text-sm"
       />
     </div>
   );
@@ -1583,9 +1804,9 @@ function SelectField({
       <select
         value={value}
         onChange={(e) => onChange(e.target.value)}
-        className="w-full bg-[#0B1220] border border-slate-700/50 hover:border-slate-600 focus:border-amber-500 focus:ring-1 focus:ring-amber-500 text-white rounded-xl px-4 py-3 cursor-pointer transition-all outline-none text-sm appearance-none bg-[url('data:image/svg+xml;charset=utf-8,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20viewBox%3D%220%200%2020%2020%2522%3E%3Cpath%20fill%3D%22none%22%20stroke%3D%22%252394a3b8%22%20stroke-width%3D%221.5%22%20d%3D%22m6%208%204%204%204-4%22%2F%3E%3C%2Fsvg%3E')] bg-[length:1.25rem_1.25rem] bg-[right_1rem_center] bg-no-repeat"
+        className="w-full bg-[#0B1220] border border-slate-700/50 hover:border-slate-600 focus:border-amber-500 focus:ring-1 focus:ring-amber-500 text-white rounded-xl px-4 py-3 cursor-pointer transition-all outline-none text-sm appearance-none bg-[url('data:image/svg+xml;charset=utf-8,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20viewBox%3D%220%200%2020%2020%2522%3E%3Cpath%20fill%3D%22none%22%20stroke%3D%22%2523f8fafc%22%20stroke-width%3D%221.5%22%20d%3D%22m6%208%204%204%204-4%22%2F%3E%3C%2Fsvg%3E')] bg-[length:1.25rem_1.25rem] bg-[right_1rem_center] bg-no-repeat"
       >
-        <option value="" className="bg-slate-950 text-slate-400">{placeholder || `Select ${label}`}</option>
+        <option value="" className="bg-slate-950 text-slate-300">{placeholder || `Select ${label}`}</option>
         {options.map((o) => (
           <option key={o.value} value={o.value} className="bg-slate-950 text-white">{o.label}</option>
         ))}
@@ -1604,10 +1825,10 @@ function CheckboxItem({
       onClick={() => onChange(!checked)}
       className={`flex items-start gap-3.5 cursor-pointer py-3.5 px-4 rounded-xl border transition-all ${checked
         ? 'bg-amber-500/10 border-amber-500 text-white shadow-[0_0_12px_rgba(245,158,11,0.15)]'
-        : 'bg-slate-900/40 border-slate-700/40 text-slate-450 hover:border-slate-600 hover:text-slate-200'
+        : 'bg-slate-900/40 border-slate-400 text-slate-300 hover:border-slate-300 hover:text-white'
         }`}
     >
-      <div className={`w-5 h-5 rounded-md border flex items-center justify-center flex-shrink-0 mt-0.5 transition-all ${checked ? 'bg-amber-500 border-amber-500 text-slate-950 shadow-[0_0_6px_rgba(245,158,11,0.2)]' : 'bg-slate-900 border-slate-700'}`}>
+      <div className={`w-5 h-5 rounded-md border flex items-center justify-center flex-shrink-0 mt-0.5 transition-all ${checked ? 'bg-amber-500 border-amber-500 text-slate-950 shadow-[0_0_6px_rgba(245,158,11,0.2)]' : 'bg-slate-900 border-slate-400'}`}>
         {checked && <FiCheck size={12} className="stroke-[3]" />}
       </div>
       <span className={`text-xs select-none leading-relaxed ${accent ? 'font-semibold text-white' : 'text-slate-455'}`}>
@@ -1627,10 +1848,10 @@ function RadioCard({
       onClick={onChange}
       className={`border rounded-2xl p-5 cursor-pointer transition-all flex gap-4 ${selected
         ? 'bg-amber-500/10 border-amber-500 shadow-[0_0_15px_rgba(245,158,11,0.15)]'
-        : 'bg-[#0B1220] border-slate-700/50 text-slate-450 hover:border-slate-600 hover:text-slate-200'
+        : 'bg-[#0B1220] border-slate-500 text-slate-300 hover:border-slate-400 hover:text-white'
         }`}
     >
-      <div className={`w-5 h-5 rounded-full border-2 flex items-center justify-center flex-shrink-0 mt-0.5 transition-all ${selected ? 'border-amber-500 bg-amber-500 text-slate-950 shadow-[0_0_8px_rgba(245,158,11,0.4)]' : 'border-slate-700 bg-transparent'}`} />
+      <div className={`w-5 h-5 rounded-full border-2 flex items-center justify-center flex-shrink-0 mt-0.5 transition-all ${selected ? 'border-amber-500 bg-amber-500 text-slate-950 shadow-[0_0_8px_rgba(245,158,11,0.4)]' : 'border-slate-400 bg-transparent'}`} />
       <div>
         <div className={`font-bold text-sm mb-1 ${selected ? 'text-white' : 'text-slate-300'}`}>{label}</div>
         <div className="text-slate-500 text-xs leading-relaxed">{description}</div>

@@ -335,9 +335,8 @@ const StripePaymentElement: React.FC<StripePaymentElementProps> = ({
           {/* Submit Button */}
           <Button
             type="submit"
-            variant="primary"
             size="lg"
-            className="w-full"
+            className="w-full bg-white hover:bg-white !text-slate-900 border border-slate-200"
             disabled={!stripe || !elements || !isElementReady || processing || isProcessing}
             loading={processing || isProcessing}
           >

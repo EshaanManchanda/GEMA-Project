@@ -37,6 +37,7 @@ export interface CompetitionSubmitPayload {
   nameDisplayPermission: boolean;
   competitionUpdatesConsent: boolean;
   marketingConsent?: boolean;
+  paymentIntentId?: string;
 }
 
 export interface CompetitionSubmitResponse {
@@ -76,6 +77,7 @@ export interface CompetitionSubmission {
     additionalPrompts?: string[];
     changesAfterGeneration: string;
     changesDescription?: string;
+    processScreenshotUrl?: string;
   };
   artworkUpload: {
     artworkUrl: string;
@@ -96,8 +98,11 @@ export interface CompetitionSubmission {
     marketingConsent: boolean;
   };
   status: string;
+  paymentStatus: "pending" | "paid" | "failed";
+  checkoutSessionId?: string;
   medal?: string;
   certificateTemplateId?: string;
+  adminNotes?: string;
   metadata: { submittedAt: string };
   createdAt: string;
 }
@@ -156,6 +161,9 @@ const competitionAPI = {
     formData.append('nameDisplayPermission', String(payload.nameDisplayPermission));
     formData.append('competitionUpdatesConsent', String(payload.competitionUpdatesConsent));
     formData.append('marketingConsent', String(payload.marketingConsent ?? false));
+    if (payload.paymentIntentId) {
+      formData.append('paymentIntentId', payload.paymentIntentId);
+    }
 
     const response = await ApiService.post('/competition/submit', formData, {
       headers: { 'Content-Type': 'multipart/form-data' },
@@ -171,6 +179,7 @@ const competitionAPI = {
     page?: number;
     limit?: number;
     status?: string;
+    paymentStatus?: string;
     medal?: string;
     search?: string;
     emirate?: string;
@@ -230,6 +239,73 @@ const competitionAPI = {
       medal,
     });
     return response as { success: boolean };
+  },
+
+  // ── Secure Payment Flow ─────────────────────────────────────────────────────
+
+  /**
+   * Step 1: Save all form data + artwork as a draft (paymentStatus: pending).
+   * Returns submissionId.
+   */
+  saveDraft: async (payload: CompetitionSubmitPayload): Promise<{ success: boolean; data: { submissionId: string } }> => {
+    const formData = new FormData();
+
+    formData.append('parentName', payload.parentName);
+    formData.append('parentEmail', payload.parentEmail);
+    formData.append('parentPhone', payload.parentPhone);
+    formData.append('studentFullName', payload.studentFullName);
+    formData.append('studentAge', String(payload.studentAge));
+    formData.append('grade', payload.grade);
+    if (payload.cohort) formData.append('cohort', payload.cohort);
+    if (payload.gender) formData.append('gender', payload.gender);
+    formData.append('schoolName', payload.schoolName);
+    formData.append('schoolEmirate', payload.schoolEmirate);
+    formData.append('artworkTitle', payload.artworkTitle);
+    formData.append('artworkDescription', payload.artworkDescription);
+    payload.aiTools.forEach((tool) => formData.append('aiTools', tool));
+    if (payload.otherToolName) formData.append('otherToolName', payload.otherToolName);
+    formData.append('creationType', payload.creationType);
+    formData.append('mainPrompt', payload.mainPrompt);
+    if (payload.additionalPrompts?.length) {
+      formData.append('additionalPrompts', JSON.stringify(payload.additionalPrompts.filter(Boolean)));
+    }
+    formData.append('changesAfterGeneration', payload.changesAfterGeneration);
+    if (payload.changesDescription) formData.append('changesDescription', payload.changesDescription);
+    formData.append('artwork', payload.artwork);
+    formData.append('agreeTerms', String(payload.agreeTerms));
+    formData.append('responsibleAiDeclaration', String(payload.responsibleAiDeclaration));
+    formData.append('originalityDeclaration', String(payload.originalityDeclaration));
+    formData.append('parentGuardianConsent', String(payload.parentGuardianConsent));
+    formData.append('artworkDisplayPermission', payload.artworkDisplayPermission);
+    formData.append('nameDisplayPermission', String(payload.nameDisplayPermission));
+    formData.append('competitionUpdatesConsent', String(payload.competitionUpdatesConsent));
+    formData.append('marketingConsent', String(payload.marketingConsent ?? false));
+
+    const response = await ApiService.post('/competition/save-draft', formData, {
+      headers: { 'Content-Type': 'multipart/form-data' },
+    });
+    return response as { success: boolean; data: { submissionId: string } };
+  },
+
+  /**
+   * Step 2: Create a Stripe Checkout Session for the saved draft.
+   * Returns { sessionUrl } to redirect the user to Stripe.
+   */
+  createCheckoutSession: async (submissionId: string): Promise<{ success: boolean; data: { sessionUrl: string; sessionId: string } }> => {
+    const response = await ApiService.post('/competition/create-checkout-session', { submissionId });
+    return response as { success: boolean; data: { sessionUrl: string; sessionId: string } };
+  },
+
+  /**
+   * Step 3: Called from the success page after Stripe redirects back.
+   * Verifies payment and activates the submission.
+   */
+  finalizeSubmission: async (
+    submissionId: string,
+    sessionId: string,
+  ): Promise<{ success: boolean; message: string; data: { submissionId: string; submissionRef: string; studentName: string; artworkTitle: string } }> => {
+    const response = await ApiService.post('/competition/finalize', { submissionId, sessionId });
+    return response as { success: boolean; message: string; data: { submissionId: string; submissionRef: string; studentName: string; artworkTitle: string } };
   },
 };
 

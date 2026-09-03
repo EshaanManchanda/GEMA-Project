@@ -3,6 +3,10 @@ import { authenticate, authorize } from "../middleware/auth";
 import { UserRole } from "../models/index";
 import { handleUploadError, uploadFields } from "../middleware/upload";
 import {
+  createPaymentIntent,
+  saveDraftSubmission,
+  createCheckoutSession,
+  finalizeSubmission,
   submitCompetition,
   getSubmissions,
   getSubmissionById,
@@ -16,10 +20,41 @@ const router = Router();
 // ─── Public Routes ────────────────────────────────────────────────────────────
 
 /**
+ * POST /api/competition/create-payment-intent
+ * Create a Stripe payment intent for 50 AED (legacy inline flow)
+ */
+router.post("/create-payment-intent", createPaymentIntent);
+
+/**
+ * POST /api/competition/save-draft
+ * Step 1 of secure payment flow: save form data + upload artwork.
+ * Returns submissionId. Payment is NOT collected yet.
+ */
+router.post(
+  "/save-draft",
+  uploadFields([{ name: "artwork", maxCount: 1 }]),
+  handleUploadError,
+  saveDraftSubmission,
+);
+
+/**
+ * POST /api/competition/create-checkout-session
+ * Step 2 of secure payment flow: create a Stripe Checkout Session
+ * for a saved draft submission. Returns { sessionUrl }.
+ */
+router.post("/create-checkout-session", createCheckoutSession);
+
+/**
+ * POST /api/competition/finalize
+ * Step 3 of secure payment flow: called after Stripe redirects back.
+ * Verifies payment, activates submission, sends confirmation email.
+ * Body: { submissionId, sessionId }
+ */
+router.post("/finalize", finalizeSubmission);
+
+/**
  * POST /api/competition/submit
- * Submit a competition entry (multipart/form-data).
- * - "artwork" field = the final artwork image (JPG/PNG, max 10 MB)
- * - All other fields are text fields in the form body.
+ * Legacy: Submit a competition entry (multipart/form-data).
  */
 router.post(
   "/submit",

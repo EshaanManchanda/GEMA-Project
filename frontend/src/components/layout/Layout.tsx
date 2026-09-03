@@ -821,6 +821,7 @@ const Layout: React.FC<{ children?: React.ReactNode }> = ({ children }) => {
                   </Link>
                 </li>
               </ul>
+
             </div>
 
             {/* Teach Links */}
@@ -835,6 +836,30 @@ const Layout: React.FC<{ children?: React.ReactNode }> = ({ children }) => {
                 <li>
                   <Link to="/teach/register" className="text-gray-700 hover:text-gray-900 text-sm">
                     Teach as Individual
+                  </Link>
+                </li>
+              </ul>
+
+              <h3 className="font-semibold mt-10 mb-4 text-gray-900">Featured</h3>
+              <ul className="space-y-2">
+                <li>
+                  <Link to="/ai-art-competition" className="text-gray-700 hover:text-gray-900 text-sm">
+                    AI Art Competition
+                  </Link>
+                </li>
+                <li>
+                  <Link to="/summer-2026" className="text-gray-700 hover:text-gray-900 text-sm">
+                    Summer 2026
+                  </Link>
+                </li>
+                <li>
+                  <Link to="/summer-partners" className="text-gray-700 hover:text-gray-900 text-sm">
+                    Summer Partners
+                  </Link>
+                </li>
+                <li>
+                  <Link to="/workshops" className="text-gray-700 hover:text-gray-900 text-sm">
+                    Workshops
                   </Link>
                 </li>
               </ul>

@@ -207,7 +207,7 @@ const ContactPage: React.FC = () => {
                     <div className="ml-4">
                       <h3 className="text-lg font-semibold text-gray-800">Email</h3>
                       <p className="text-gray-600 mt-1">{getContactEmail()}</p>
-                      <p className="text-gray-600">{getSupportEmail()}</p>
+                      {/* <p className="text-gray-600">{getSupportEmail()}</p> */}
                     </div>
                   </div>
 

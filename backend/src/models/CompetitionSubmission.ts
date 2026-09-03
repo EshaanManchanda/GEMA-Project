@@ -39,7 +39,10 @@ export enum AiTool {
   CHATGPT = "ChatGPT",
   ADOBE_FIREFLY = "Adobe Firefly",
   MICROSOFT_DESIGNER = "Microsoft Designer / Copilot",
-  OTHER_IMAGE = "Other AI image-generation tool",
+  MIDJOURNEY = "Midjourney",
+  CLAUDE = "Claude",
+  DALL_E = "DALL-E",
+  FIGMA = "Figma",
   OTHER_CREATIVE = "Other AI creative tool",
 }
 
@@ -132,6 +135,9 @@ export interface ICompetitionSubmission extends Document {
   declarations: IDeclarations;
   consent: IConsentSection;
   status: SubmissionStatus;
+  paymentStatus: "pending" | "paid" | "failed";
+  paymentIntentId?: string;
+  checkoutSessionId?: string;
   adminNotes?: string;
   medal?: string;
   certificateTemplateId?: string;
@@ -381,6 +387,17 @@ const competitionSubmissionSchema = new Schema<ICompetitionSubmission>(
       type: String,
       trim: true,
       maxlength: [2000, "Admin notes cannot exceed 2000 characters"],
+    },
+    paymentStatus: {
+      type: String,
+      enum: ["pending", "paid", "failed"],
+      default: "pending",
+    },
+    paymentIntentId: {
+      type: String,
+    },
+    checkoutSessionId: {
+      type: String,
     },
     medal: { type: String },
     certificateTemplateId: { type: String },

@@ -29,6 +29,7 @@ const StripePaymentForm: React.FC<StripePaymentFormProps> = ({
   const [processing, setProcessing] = useState(false);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const [isReady, setIsReady] = useState(false);
+  const [isIframeReady, setIsIframeReady] = useState(false);
 
   // Check if Stripe and Elements are ready
   useEffect(() => {
@@ -40,8 +41,8 @@ const StripePaymentForm: React.FC<StripePaymentFormProps> = ({
   const handleSubmit = async (event: React.FormEvent) => {
     event.preventDefault();
 
-    if (!stripe || !elements) {
-      setErrorMessage('Stripe not initialized. Please refresh the page.');
+    if (!stripe || !elements || !isIframeReady) {
+      setErrorMessage('Payment form is not fully loaded. Please wait a moment.');
       return;
     }
 
@@ -152,6 +153,7 @@ const StripePaymentForm: React.FC<StripePaymentFormProps> = ({
                 } as any
               }}
               className="w-full"
+              onReady={() => setIsIframeReady(true)}
             />
           </div>
 
@@ -187,7 +189,7 @@ const StripePaymentForm: React.FC<StripePaymentFormProps> = ({
             variant="primary"
             size="lg"
             className="w-full"
-            disabled={!stripe || !elements || processing || isProcessing}
+            disabled={!stripe || !elements || !isIframeReady || processing || isProcessing}
             loading={processing || isProcessing}
           >
             {processing || isProcessing

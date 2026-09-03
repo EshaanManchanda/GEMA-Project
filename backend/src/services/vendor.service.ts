@@ -920,7 +920,7 @@ class VendorService {
       // MongoDB rejects a projection with both a parent and nested-child
       // exclusion on the same path ("Path collision").
       "-passwordHash -twoFactorAuth.secret -passwordReset " +
-        "-emailVerification -loginAttempts",
+        "-loginAttempts",
     );
 
     return { vendor, user };
@@ -949,7 +949,7 @@ class VendorService {
       // MongoDB rejects a projection with both a parent and nested-child
       // exclusion on the same path ("Path collision").
       "-passwordHash -twoFactorAuth.secret -passwordReset " +
-        "-emailVerification -loginAttempts",
+        "-loginAttempts",
     );
 
     if (!user) {
