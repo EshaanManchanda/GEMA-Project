@@ -22,7 +22,7 @@ import { CreditCard, CheckCircle, Shield, ChevronLeft } from 'lucide-react';
 
 const AT_A_GLANCE = [
   { icon: '🧑‍🎓', label: 'Who can participate', value: 'Grades 1–12' },
-  { icon: '👤', label: 'Participation Fee', value: 'Individual - AED 50 per student' },
+  { icon: '🪙', label: 'Participation Fee', value: 'Individual - AED 50 per student' },
   { icon: '🖼️', label: 'Submission', value: '1 AI-generated artwork' },
   { icon: '📁', label: 'Format', value: 'JPG / PNG' },
   { icon: '📝', label: 'Optional', value: '100-word description' },
