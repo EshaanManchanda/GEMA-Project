@@ -22,7 +22,7 @@ import { CreditCard, CheckCircle, Shield, ChevronLeft } from 'lucide-react';
 
 const AT_A_GLANCE = [
   { icon: '🧑‍🎓', label: 'Who can participate', value: 'Grades 1–12' },
-  { icon: '👤', label: 'Participation', value: 'Individual - AED 50 per student' },
+  { icon: '👤', label: 'Participation Fee', value: 'Individual - AED 50 per student' },
   { icon: '🖼️', label: 'Submission', value: '1 AI-generated artwork' },
   { icon: '📁', label: 'Format', value: 'JPG / PNG' },
   { icon: '📝', label: 'Optional', value: '100-word description' },
@@ -333,11 +333,10 @@ function CompetitionPaymentStep({ clientSecret, paymentIntentId, isSubmitting, o
             <div
               key={method.id}
               onClick={() => setSelectedMethod(method.id)}
-              className={`relative border rounded-xl p-4 cursor-pointer transition-all duration-200 ${
-                selectedMethod === method.id
+              className={`relative border rounded-xl p-4 cursor-pointer transition-all duration-200 ${selectedMethod === method.id
                   ? 'border-teal-500 bg-teal-50 ring-2 ring-teal-200'
                   : 'border-gray-200 hover:border-gray-300 hover:bg-gray-50'
-              }`}
+                }`}
             >
               <div className="flex items-center gap-3">
                 <input
