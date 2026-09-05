@@ -166,7 +166,7 @@ const AdminOrderDetailPage: React.FC = () => {
     return (
         <>
             <PrivatePageSEO title={`Order ${order.orderNumber} | Admin`} description="Order details" />
-            <div className="max-w-6xl mx-auto space-y-6">
+            <div className="max-w-6xl mx-auto space-y-8">
 
                 {/* Header */}
                 <div className="flex items-center justify-between">
@@ -193,6 +193,12 @@ const AdminOrderDetailPage: React.FC = () => {
                             <CreditCard className="w-4 h-4" />
                             {order.paymentStatus.charAt(0).toUpperCase() + order.paymentStatus.slice(1)}
                         </span>
+                        {order.vendorStatus && (
+                            <span className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-sm font-medium border bg-purple-100 text-purple-800 border-purple-200">
+                                <Package className="w-4 h-4" />
+                                Vendor: {order.vendorStatus.charAt(0).toUpperCase() + order.vendorStatus.slice(1)}
+                            </span>
+                        )}
                     </div>
                 </div>
 
@@ -230,10 +236,10 @@ const AdminOrderDetailPage: React.FC = () => {
                     </button>
                 </div>
 
-                <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+                <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
 
                     {/* Left column: Items + Timeline */}
-                    <div className="lg:col-span-2 space-y-6">
+                    <div className="lg:col-span-2 space-y-8">
 
                         {/* Order Items */}
                         <div className="bg-white rounded-xl shadow-sm border border-gray-200">
@@ -248,16 +254,33 @@ const AdminOrderDetailPage: React.FC = () => {
                                         <div className="flex justify-between items-start gap-4">
                                             <div className="flex-1 min-w-0">
                                                 <p className="font-medium text-gray-900 truncate">{item.eventTitle}</p>
-                                                <div className="flex flex-wrap gap-x-4 gap-y-1 mt-1 text-sm text-gray-500">
-                                                    <span className="flex items-center gap-1">
-                                                        <Calendar className="w-3.5 h-3.5" />
+                                                {item.eventId?.vendorId?.businessName && (
+                                                    <p className="text-sm text-gray-500 mb-1">
+                                                        Hosted by: <span className="font-medium text-gray-700">{item.eventId.vendorId.businessName}</span>
+                                                    </p>
+                                                )}
+                                                <div className="flex flex-wrap gap-x-4 gap-y-2 mt-2 text-sm text-gray-500">
+                                                    <span className="flex items-center gap-1 bg-gray-50 px-2 py-1 rounded-md">
+                                                        <Calendar className="w-3.5 h-3.5 text-gray-400" />
                                                         {formatDate(item.scheduleDate)}
                                                     </span>
-                                                    <span className="flex items-center gap-1">
-                                                        <Tag className="w-3.5 h-3.5" />
+                                                    <span className="flex items-center gap-1 bg-gray-50 px-2 py-1 rounded-md">
+                                                        <Tag className="w-3.5 h-3.5 text-gray-400" />
                                                         Qty: {item.quantity}
                                                     </span>
-                                                    <span>Unit: {formatCurrency(item.unitPrice, item.currency)}</span>
+                                                    <span className="flex items-center gap-1 bg-gray-50 px-2 py-1 rounded-md">
+                                                        Unit: {formatCurrency(item.unitPrice, item.currency)}
+                                                    </span>
+                                                    {item.eventId?.type && (
+                                                        <span className="flex items-center gap-1 bg-blue-50 text-blue-700 px-2 py-1 rounded-md capitalize font-medium">
+                                                            Type: {item.eventId.type.replace('_', ' ')}
+                                                        </span>
+                                                    )}
+                                                    {item.programStatus && (
+                                                        <span className={`flex items-center gap-1 px-2 py-1 rounded-md capitalize font-medium ${item.programStatus === 'intro_booked' ? 'bg-orange-50 text-orange-700' : 'bg-green-50 text-green-700'}`}>
+                                                            {item.programStatus === 'intro_booked' ? 'Trial Class' : 'Full Program'}
+                                                        </span>
+                                                    )}
                                                 </div>
                                                 {item.participants && item.participants.length > 0 && (
                                                     <div className="mt-1.5">
@@ -488,17 +511,37 @@ const AdminOrderDetailPage: React.FC = () => {
                                 {/* Refund info */}
                                 {order.refundAmount !== undefined && order.refundAmount > 0 && (
                                     <div className="border-t border-orange-100 pt-3 bg-orange-50 -mx-6 px-6 pb-4 rounded-b-xl">
-                                        <p className="text-sm font-medium text-orange-800 mb-1">Refund Issued</p>
-                                        <div className="flex justify-between text-sm">
-                                            <span className="text-orange-700">Amount</span>
-                                            <span className="text-orange-900 font-semibold">{formatCurrency(order.refundAmount, order.currency)}</span>
+                                        <p className="text-sm font-medium text-orange-800 mb-2">Refund Issued</p>
+                                        <div className="space-y-1">
+                                            <div className="flex justify-between text-sm">
+                                                <span className="text-orange-700">Amount</span>
+                                                <span className="text-orange-900 font-semibold">{formatCurrency(order.refundAmount, order.currency)}</span>
+                                            </div>
+                                            {order.refundStatus && (
+                                                <div className="flex justify-between text-sm">
+                                                    <span className="text-orange-700">Status</span>
+                                                    <span className="text-orange-900 capitalize">{order.refundStatus}</span>
+                                                </div>
+                                            )}
+                                            {order.refundTransactionId && (
+                                                <div className="flex justify-between text-sm">
+                                                    <span className="text-orange-700">Transaction ID</span>
+                                                    <span className="text-orange-900 font-mono text-xs">{order.refundTransactionId}</span>
+                                                </div>
+                                            )}
+                                            {order.refundReason && (
+                                                <div className="flex justify-between text-sm">
+                                                    <span className="text-orange-700">Reason</span>
+                                                    <span className="text-orange-900 text-right">{order.refundReason}</span>
+                                                </div>
+                                            )}
+                                            {order.refundedAt && (
+                                                <div className="flex justify-between text-sm">
+                                                    <span className="text-orange-700">Refunded On</span>
+                                                    <span className="text-orange-900">{formatDate(order.refundedAt)}</span>
+                                                </div>
+                                            )}
                                         </div>
-                                        {order.refundReason && (
-                                            <p className="text-xs text-orange-700 mt-1">Reason: {order.refundReason}</p>
-                                        )}
-                                        {order.refundedAt && (
-                                            <p className="text-xs text-orange-600 mt-0.5">Refunded on {formatDate(order.refundedAt)}</p>
-                                        )}
                                     </div>
                                 )}
                             </div>
@@ -541,7 +584,7 @@ const AdminOrderDetailPage: React.FC = () => {
                     </div>
 
                     {/* Right column: Customer + Billing + Meta */}
-                    <div className="space-y-6">
+                    <div className="space-y-8">
 
                         {/* Customer / Billing */}
                         <div className="bg-white rounded-xl shadow-sm border border-gray-200">
@@ -603,7 +646,25 @@ const AdminOrderDetailPage: React.FC = () => {
                                         <span className="text-gray-900">{formatDate(order.cancelledAt)}</span>
                                     </div>
                                 )}
-                                <div className="flex justify-between">
+                                {order.cancellationType && (
+                                    <div className="flex justify-between">
+                                        <span className="text-gray-500">Cancelled By</span>
+                                        <span className="text-gray-900 capitalize">{order.cancellationType.replace('_', ' ')}</span>
+                                    </div>
+                                )}
+                                {order.checkIn && (
+                                    <div className="flex justify-between">
+                                        <span className="text-gray-500">Check-in</span>
+                                        <span className="text-green-600 font-medium">{formatDate(order.checkIn.checkedInAt)}</span>
+                                    </div>
+                                )}
+                                {order.vendorNotes && (
+                                    <div className="flex flex-col gap-1 mt-2 p-3 bg-blue-50 rounded-lg">
+                                        <span className="text-blue-800 text-xs font-semibold uppercase">Vendor Notes</span>
+                                        <span className="text-blue-900 text-sm">{order.vendorNotes}</span>
+                                    </div>
+                                )}
+                                <div className="flex justify-between pt-2 border-t border-gray-100">
                                     <span className="text-gray-500">Last Updated</span>
                                     <span className="text-gray-900">{formatDate(order.updatedAt)}</span>
                                 </div>

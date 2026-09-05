@@ -24,7 +24,7 @@ export interface IParticipant {
 
 export interface IOrderItem {
   _id?: string;
-  eventId: string;
+  eventId: any; // Populated object containing type, vendorId, etc.
   eventTitle: string;
   scheduleDate: string | Date;
   quantity: number;
@@ -32,6 +32,7 @@ export interface IOrderItem {
   totalPrice: number;
   currency: string;
   participants?: IParticipant[];
+  programStatus?: 'intro_booked' | 'program_purchased';
 }
 
 export interface IOrder {
@@ -45,6 +46,7 @@ export interface IOrder {
   total: number;
   currency: string;
   status: 'pending' | 'confirmed' | 'cancelled' | 'refunded';
+  vendorStatus?: 'processing' | 'preparing' | 'ready' | 'completed' | 'issue';
   paymentStatus: 'pending' | 'paid' | 'failed' | 'refunded' | 'free';
   paymentMethod?: 'stripe' | 'paypal' | 'razorpay' | 'test';
   paymentIntentId?: string;
@@ -77,11 +79,16 @@ export interface IOrder {
   };
 
   notes?: string;
+  vendorNotes?: string;
   refundAmount?: number;
   refundReason?: string;
   refundedAt?: string | Date;
   confirmedAt?: string | Date;
   cancelledAt?: string | Date;
+
+  refundStatus?: 'pending' | 'processing' | 'completed' | 'failed';
+  refundTransactionId?: string;
+  cancellationType?: 'user_requested' | 'event_cancelled' | 'admin_cancelled';
 
   // Enhanced features
   specialRequests?: string;

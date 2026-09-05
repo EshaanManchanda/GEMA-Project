@@ -673,10 +673,14 @@ export const getOrderAdmin = async (
     const { id } = req.params;
 
     const order = await Order.findById(id)
-      .populate(
-        "items.eventId",
-        "title category type images location vendorId venueType meetingLink slug",
-      )
+      .populate({
+        path: "items.eventId",
+        select: "title category type images location vendorId venueType meetingLink slug",
+        populate: {
+          path: "vendorId",
+          select: "businessName name email",
+        },
+      })
       .lean();
 
     if (!order) {

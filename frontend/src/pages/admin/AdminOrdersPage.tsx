@@ -530,6 +530,9 @@ const AdminOrdersPage: React.FC = () => {
                   <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                     Event(s)
                   </th>
+                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                    Schedule Date
+                  </th>
                   <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider cursor-pointer"
                     onClick={() => handleSort('total')}>
                     <div className="flex items-center gap-1">
@@ -588,6 +591,9 @@ const AdminOrdersPage: React.FC = () => {
                         {order.items.length} item{order.items.length > 1 ? 's' : ''}
                       </div>
                       <div className="text-xs text-gray-500">{order.items[0]?.eventTitle}</div>
+                    </td>
+                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                      {order.items[0]?.scheduleDate ? formatDate(order.items[0].scheduleDate) : '—'}
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap">
                       <div className="text-sm font-medium text-gray-900">

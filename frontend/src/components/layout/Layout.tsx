@@ -52,6 +52,7 @@ import {
   FaHandshake,
   FaMoneyBillWave,
   FaUsers,
+  FaGraduationCap,
   // FaHome
 } from 'react-icons/fa';
 
@@ -293,12 +294,17 @@ const Layout: React.FC<{ children?: React.ReactNode }> = ({ children }) => {
             <nav className="hidden md:flex space-x-8">
               {[
                 { path: '/search', label: 'Find Activities' },
+                { path: '/search?type=Course%2CWorkshop%2CClass%2CBootcamp%2CMasterclass', label: 'Explore Classes' },
                 { path: '/blog', label: 'Blog' },
                 { path: '/about', label: 'Kidrove Go' },
                 { path: '/faq', label: 'FAQ' },
                 { path: '/contact', label: 'Get In Touch' },
               ].map((link) => {
-                const isActive = location.pathname === link.path;
+                const isActive = link.path === '/search' 
+                  ? location.pathname === '/search' && !location.search.includes('type=Course')
+                  : link.path.includes('type=Course')
+                    ? location.pathname === '/search' && location.search.includes('type=Course')
+                    : location.pathname === link.path;
                 return (
                   <Link
                     key={link.path}
@@ -355,7 +361,7 @@ const Layout: React.FC<{ children?: React.ReactNode }> = ({ children }) => {
               {/* {isAuthenticated && (
                 <NotificationDropdown className="relative" />
               )} */}
-              {isInitialized && isAuthenticated && user && user.email? (
+              {isInitialized && isAuthenticated && user && user.email ? (
                 <div className="relative" ref={dropdownRef}>
                   <button
                     onClick={toggleProfileDropdown}
@@ -605,12 +611,17 @@ const Layout: React.FC<{ children?: React.ReactNode }> = ({ children }) => {
                   <nav className="px-2 py-3 border-b border-gray-100">
                     {[
                       { path: '/search', label: 'Find Activities', icon: <FaSearch size={14} /> },
+                      { path: '/search?type=Course%2CWorkshop%2CClass%2CBootcamp%2CMasterclass', label: 'Explore Classes', icon: <FaGraduationCap size={14} /> },
                       { path: '/blog', label: 'Blog', icon: <FaFileAlt size={14} /> },
                       { path: '/about', label: 'Kidrove Go', icon: <FaUser size={14} /> },
                       { path: '/faq', label: 'FAQ', icon: <FaChartBar size={14} /> },
                       { path: '/contact', label: 'Get In Touch', icon: <FaCalendarPlus size={14} /> },
                     ].map((link) => {
-                      const isActive = location.pathname === link.path;
+                      const isActive = link.path === '/search' 
+                        ? location.pathname === '/search' && !location.search.includes('type=Course')
+                        : link.path.includes('type=Course')
+                          ? location.pathname === '/search' && location.search.includes('type=Course')
+                          : location.pathname === link.path;
                       return (
                         <Link
                           key={link.path}
