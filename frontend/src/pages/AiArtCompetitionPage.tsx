@@ -20,11 +20,20 @@ import { CreditCard, CheckCircle, Shield, ChevronLeft } from 'lucide-react';
 
 // ─── Constants ────────────────────────────────────────────────────────────────
 
-const AT_A_GLANCE = [
+const AT_A_GLANCE: any[] = [
   { icon: '🧑‍🎓', label: 'Who can participate', value: 'Grades 1–12' },
-  { icon: '🪙', label: 'Participation Fee', value: 'Individual - AED 50 per student' },
+  {
+    icon: '💰',
+    label: 'Participation Fee',
+    value: (
+      <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center w-full">
+        <span>Individual: AED 50/student</span>
+        <span className="text-emerald-400 mt-1 sm:mt-0">School Bulk: AED 35/student</span>
+      </div>
+    ),
+    colSpan: 2
+  },
   { icon: '🖼️', label: 'Submission', value: '1 AI-generated artwork' },
-  { icon: '📁', label: 'Format', value: 'JPG / PNG' },
   { icon: '📝', label: 'Optional', value: '100-word description' },
   { icon: '🤖', label: 'AI Tools', value: 'Any Generative AI tool' },
 ];
@@ -635,10 +644,10 @@ export default function AiArtCompetitionPage() {
           </h3>
           <div className="grid grid-cols-2 sm:grid-cols-3 gap-4">
             {AT_A_GLANCE.map((item, idx) => (
-              <div key={idx} className="bg-[#0B1220] p-4 rounded-2xl border border-slate-700/30 group-hover:border-amber-500/20 transition-colors">
+              <div key={idx} className={`bg-[#0B1220] p-4 rounded-2xl border border-slate-700/30 group-hover:border-amber-500/20 transition-colors ${item.colSpan === 2 ? 'col-span-2' : ''}`}>
                 <span className="block text-2xl mb-2">{item.icon}</span>
                 <span className="block text-[10px] text-slate-500 font-bold uppercase tracking-wider mb-1">{item.label}</span>
-                <span className="block text-sm text-slate-200 font-semibold">{item.value}</span>
+                <span className="block text-sm text-slate-200 font-semibold w-full">{item.value}</span>
               </div>
             ))}
           </div>
@@ -704,7 +713,7 @@ export default function AiArtCompetitionPage() {
             {[
               { icon: '✨', text: 'Explore Generative AI' },
               { icon: '🎨', text: 'Turn ideas to art' },
-              { icon: '🇦🇪', text: 'Vision of the UAE' },
+              { icon: '💡', text: 'Vision of the UAE' },
               { icon: '🏆', text: 'Compete nationwide' },
               { icon: '📜', text: 'Official Certificate' },
               { icon: '⭐', text: 'Win a Medal' },
@@ -1587,6 +1596,79 @@ export default function AiArtCompetitionPage() {
                             'Pay AED 50.00 & Submit'
                           )}
                         </button>
+
+                        {import.meta.env.DEV && (
+                          <button
+                            onClick={async () => {
+                              const errs = validateStep(5, form);
+                              if (errs.length) { setErrors(errs); setCurrentStep(5); return; }
+                              if (!form.artwork) { setErrors(['Artwork file is missing — please go back and upload your artwork']); return; }
+                              setErrors([]);
+                              setIsSubmitting(true);
+                              try {
+                                const additionalPrompts = [
+                                  form.additionalPrompt1,
+                                  form.additionalPrompt2,
+                                  form.additionalPrompt3,
+                                ].filter(Boolean);
+
+                                const payload: CompetitionSubmitPayload = {
+                                  parentName: form.parentName,
+                                  parentEmail: form.parentEmail,
+                                  parentPhone: form.parentPhone,
+                                  studentFullName: form.studentFullName,
+                                  studentAge: Number(form.studentAge),
+                                  grade: form.grade,
+                                  cohort: getCohortFromGrade(form.grade),
+                                  gender: form.gender || undefined,
+                                  schoolName: form.schoolName,
+                                  schoolEmirate: form.schoolEmirate,
+                                  artworkTitle: form.artworkTitle,
+                                  artworkDescription: form.artworkDescription,
+                                  aiTools: form.aiTools,
+                                  otherToolName: form.otherToolName || undefined,
+                                  creationType: form.creationType,
+                                  mainPrompt: form.mainPrompt,
+                                  additionalPrompts,
+                                  changesAfterGeneration: form.changesAfterGeneration,
+                                  changesDescription: form.changesDescription || undefined,
+                                  artwork: form.artwork,
+                                  agreeTerms: form.agreeTerms,
+                                  responsibleAiDeclaration: form.responsibleAiDeclaration,
+                                  originalityDeclaration: form.originalityDeclaration,
+                                  parentGuardianConsent: form.parentGuardianConsent,
+                                  artworkDisplayPermission: form.artworkDisplayPermission as 'yes' | 'no',
+                                  nameDisplayPermission: form.nameDisplayPermission === 'yes',
+                                  competitionUpdatesConsent: form.competitionUpdatesConsent,
+                                  marketingConsent: form.marketingConsent,
+                                };
+
+                                // Step 1: Save draft (uploads artwork, stores form data)
+                                const draftResult = await competitionAPI.saveDraft(payload);
+                                if (!draftResult.success) throw new Error('Failed to save entry. Please try again.');
+
+                                const submissionId = draftResult.data.submissionId;
+
+                                // Step 2: Bypass Stripe and redirect to success
+                                window.location.href = `/ai-art-competition/payment-success?session_id=TEST_PAYMENT_SKIP&submission_id=${submissionId}`;
+                              } catch (err: any) {
+                                const msg = err?.response?.data?.message || err?.message || 'Something went wrong. Please try again.';
+                                toast.error(msg);
+                                setErrors([msg]);
+                                setIsSubmitting(false);
+                              }
+                            }}
+                            disabled={isSubmitting}
+                            className="w-full py-4 bg-emerald-500/10 hover:bg-emerald-500/20 text-emerald-400 border border-emerald-500/30 font-bold rounded-xl transition-all flex items-center justify-center gap-2 disabled:opacity-60 disabled:cursor-wait"
+                          >
+                            {isSubmitting ? (
+                              <><span className="w-4 h-4 border-2 border-emerald-500 border-t-transparent rounded-full animate-spin" /> Processing...</>
+                            ) : (
+                              'Test Payment (Bypass Stripe)'
+                            )}
+                          </button>
+                        )}
+
                         <button
                           onClick={handleBack}
                           disabled={isSubmitting}

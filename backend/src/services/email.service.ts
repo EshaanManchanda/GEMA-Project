@@ -2171,8 +2171,8 @@ class EmailService {
       <head>
         <meta charset="utf-8">
         <style>
-          body { font-family: 'Helvetica Neue', Arial, sans-serif; line-height: 1.6; color: #334155; margin: 0; padding: 40px 20px; background-color: #0f172a; }
-          .container { max-width: 600px; margin: 0 auto; background: white; border-radius: 20px; overflow: hidden; box-shadow: 0 20px 40px rgba(0,0,0,0.4); border: 1px solid #1e293b; }
+          body { font-family: 'Helvetica Neue', Arial, sans-serif; line-height: 1.6; color: #334155; margin: 0; padding: 40px 20px; background-color: #f8fafc; }
+          .container { max-width: 600px; margin: 0 auto; background: white; border-radius: 20px; overflow: hidden; box-shadow: 0 10px 30px rgba(0,0,0,0.1); }
           .header { background: linear-gradient(135deg, #f59e0b 0%, #ea580c 100%); color: white; padding: 40px 30px; text-align: center; position: relative; }
           .header-badge { display: inline-block; background: rgba(0,0,0,0.2); padding: 8px 16px; border-radius: 30px; font-size: 12px; font-weight: 800; letter-spacing: 2px; text-transform: uppercase; margin-bottom: 15px; border: 1px solid rgba(255,255,255,0.2); }
           .header h1 { margin: 0; font-size: 32px; font-weight: 800; letter-spacing: -0.5px; }

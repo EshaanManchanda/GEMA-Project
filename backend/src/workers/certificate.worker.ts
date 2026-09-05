@@ -642,7 +642,7 @@ export function buildCertEmailHtml(
       <meta name="viewport" content="width=device-width,initial-scale=1.0">
       <title>Your Certificate</title>
     </head>
-    <body style="font-family:'Helvetica Neue', Arial, sans-serif;line-height:1.6;color:#1e293b;background:#0f172a;margin:0;padding:40px 20px;">
+    <body style="font-family:'Helvetica Neue', Arial, sans-serif;line-height:1.6;color:#1e293b;background:#f8fafc;margin:0;padding:40px 20px;">
       <div style="max-width:600px;margin:0 auto;background:white;border-radius:20px;overflow:hidden;box-shadow:0 20px 40px rgba(0,0,0,0.4);border:1px solid #1e293b;">
         <div style="background:${gradient};color:white;padding:40px 30px;text-align:center;position:relative;">
           ${medal ? `<div style="display:inline-block;background:rgba(0,0,0,0.2);padding:8px 16px;border-radius:30px;font-size:12px;font-weight:800;letter-spacing:2px;text-transform:uppercase;margin-bottom:15px;border:1px solid rgba(255,255,255,0.2);">✨ ${medal} Medal Winner ✨</div>` : ''}
