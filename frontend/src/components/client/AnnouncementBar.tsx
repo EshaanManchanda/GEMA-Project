@@ -284,7 +284,7 @@ const AnnouncementBar: React.FC = () => {
             ))}
           </div>
 
-          <div className="relative max-w-7xl mx-auto px-4 sm:px-6 py-2 sm:py-3">
+          <div className={`relative max-w-7xl mx-auto px-4 sm:px-6 ${multiSlide ? 'pt-4 pb-2 sm:pt-5 sm:pb-3' : 'py-2 sm:py-3'}`}>
             
             {/* Dismiss - Absolutely positioned at top right */}
             {current.isDismissible && (
@@ -311,7 +311,7 @@ const AnnouncementBar: React.FC = () => {
               )}
 
               {/* Slide content */}
-              <div className="flex-1 min-w-0 overflow-hidden relative">
+              <div className="flex-1 min-w-0 relative">
                 <AnimatePresence
                   initial={false}
                   custom={direction}
