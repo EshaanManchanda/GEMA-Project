@@ -237,11 +237,12 @@ function validateStep(step: number, form: FormState): string[] {
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 
 const getCohortFromGrade = (grade: string) => {
-  const g = grade.toLowerCase();
-  if (g.includes('1') || g.includes('2') || g.includes('3')) return 'AI Dreamers 🌟';
-  if (g.includes('4') || g.includes('5') || g.includes('6')) return 'AI Creators 🎨';
-  if (g.includes('7') || g.includes('8') || g.includes('9')) return 'AI Explorers 🚀';
-  if (g.includes('10') || g.includes('11') || g.includes('12')) return 'AI Visionaries 💡';
+  if (!grade) return '';
+  const num = parseInt(grade.replace(/[^0-9]/g, ''), 10);
+  if (num >= 1 && num <= 3) return 'AI Dreamers 🌟';
+  if (num >= 4 && num <= 6) return 'AI Creators 🎨';
+  if (num >= 7 && num <= 9) return 'AI Explorers 🚀';
+  if (num >= 10 && num <= 12) return 'AI Visionaries 💡';
   return '';
 };
 
@@ -1216,11 +1217,11 @@ export default function AiArtCompetitionPage() {
                       ? 'bg-gradient-to-br from-emerald-400 to-emerald-600 text-white shadow-[0_0_15px_rgba(16,185,129,0.3)]'
                       : isActive
                         ? 'bg-gradient-to-br from-amber-400 to-yellow-500 text-slate-950 shadow-[0_0_20px_rgba(245,158,11,0.4)]'
-                        : 'bg-slate-800/80 border border-slate-700 text-slate-200'
+                        : 'bg-slate-700/80 border border-slate-600 text-slate-100 shadow-sm'
                       }`}>
                       {isDone ? <FiCheck size={18} className="stroke-[3]" /> : <Icon size={18} />}
                     </div>
-                    <span className={`text-xs font-extrabold tracking-wider uppercase text-center ${isActive ? 'text-amber-400' : isDone ? 'text-emerald-400' : 'text-slate-100'}`}>
+                    <span className={`text-xs font-extrabold tracking-wider uppercase text-center ${isActive ? 'text-amber-400' : isDone ? 'text-emerald-400' : 'text-slate-200'}`}>
                       {step.label}
                     </span>
                   </div>
@@ -1270,18 +1271,18 @@ export default function AiArtCompetitionPage() {
                     <SectionHeader icon="🎨" title="Competition Entry" step="Section 2 of 5" />
                     <InputField label="Artwork Title" required value={form.artworkTitle} onChange={(v) => update('artworkTitle', v)} placeholder="e.g. The UAE of Tomorrow" />
                     <div className="mt-5">
-                      <label className="block text-slate-300 text-sm font-semibold mb-1">
+                      <label className="block text-slate-100 text-base font-semibold mb-1">
                         What does your artwork show?<span className="text-amber-500 ml-1">*</span>
                       </label>
-                      <p className="text-slate-500 text-xs mb-3 leading-relaxed">What did you create? What does it represent? Why did you choose this idea? (Max 100 words)</p>
+                      <p className="text-slate-300 text-sm mb-3 leading-relaxed">What did you create? What does it represent? Why did you choose this idea? (Max 100 words)</p>
                       <textarea
                         value={form.artworkDescription}
                         onChange={(e) => update('artworkDescription', e.target.value)}
                         placeholder="Write a short description of your artwork…"
                         rows={5}
-                        className={`w-full bg-[#0B1220] border hover:border-slate-600 focus:border-amber-500 focus:ring-1 focus:ring-amber-500 text-white rounded-xl px-4 py-3 placeholder-slate-400 transition-all outline-none text-sm resize-none ${wordCount(form.artworkDescription) > 100 ? 'border-red-500 focus:border-red-500 focus:ring-red-500' : 'border-slate-700/50'}`}
+                        className={`w-full bg-[#0B1220] border hover:border-slate-500 focus:border-amber-500 focus:ring-1 focus:ring-amber-500 text-white rounded-xl px-4 py-3 placeholder-slate-400 transition-all outline-none text-base resize-none ${wordCount(form.artworkDescription) > 100 ? 'border-red-500 focus:border-red-500 focus:ring-red-500' : 'border-slate-700/50'}`}
                       />
-                      <div className={`text-right text-xs mt-2 ${wordCount(form.artworkDescription) > 100 ? 'text-red-400 font-bold' : 'text-slate-500'}`}>
+                      <div className={`text-right text-sm mt-2 ${wordCount(form.artworkDescription) > 100 ? 'text-red-400 font-bold' : 'text-slate-400'}`}>
                         {wordCount(form.artworkDescription)} / 100 words
                       </div>
                     </div>
@@ -1292,14 +1293,14 @@ export default function AiArtCompetitionPage() {
                 {currentStep === 3 && (
                   <div>
                     <SectionHeader icon="🤖" title="Your AI Creation" step="Section 3 of 5" />
-                    <p className="text-slate-400 text-sm mb-6 leading-relaxed bg-[#0B1220] p-4 border border-slate-700/30 rounded-2xl">
+                    <p className="text-slate-300 text-sm mb-6 leading-relaxed bg-[#0B1220] p-4 border border-slate-700/30 rounded-2xl">
                       Provide details about the tools and creative process used. AI usage is an integral part of this challenge.
                     </p>
 
                     {/* AI Tools */}
                     <div className="mb-6 text-white">
                       <FieldLabel required>Which AI tool(s) did you use?</FieldLabel>
-                      <p className="text-slate-500 text-xs mb-3">You can select multiple tools.</p>
+                      <p className="text-slate-300 text-xs mb-3">You can select multiple tools.</p>
                       <div className="grid grid-cols-2 md:grid-cols-3 gap-3">
                         {AI_TOOLS.map((tool) => {
                           const isSelected = form.aiTools.includes(tool);
@@ -1326,7 +1327,7 @@ export default function AiArtCompetitionPage() {
                           <RadioCard key={ct.value} value={ct.value} label={ct.label} description={ct.desc} selected={form.creationType === ct.value} onChange={() => update('creationType', ct.value)} />
                         ))}
                       </div>
-                      <p className="text-slate-500 text-xs mt-3 leading-relaxed">
+                      <p className="text-slate-300 text-xs mt-3 leading-relaxed">
                         Note: Your choice does not penalize your score. Judges assess the student's creative vision, theme interpretation, and creative control.
                       </p>
                     </div>
@@ -1334,13 +1335,13 @@ export default function AiArtCompetitionPage() {
                     {/* Main prompt */}
                     <div className="mb-6 text-white">
                       <FieldLabel required>Main AI Prompt</FieldLabel>
-                      <p className="text-slate-400 text-xs mb-3">Provide the main prompt or instruction sent to the AI tool to generate your artwork.</p>
+                      <p className="text-slate-300 text-sm mb-3">Provide the main prompt or instruction sent to the AI tool to generate your artwork.</p>
                       <textarea
                         value={form.mainPrompt}
                         onChange={(e) => update('mainPrompt', e.target.value)}
                         placeholder="e.g. Create a futuristic UAE in 2050 at sunset, Burj Khalifa with green hanging gardens, flying cars, clean energy..."
                         rows={4}
-                        className="w-full bg-[#0B1220] border border-slate-700/50 hover:border-slate-600 focus:border-amber-500 focus:ring-1 focus:ring-amber-500 text-white rounded-xl px-4 py-3 placeholder-slate-600 transition-all outline-none text-sm resize-none"
+                        className="w-full bg-[#0B1220] border border-slate-700/50 hover:border-slate-500 focus:border-amber-500 focus:ring-1 focus:ring-amber-500 text-white rounded-xl px-4 py-3 placeholder-slate-400 transition-all outline-none text-base resize-none"
                       />
                     </div>
 
@@ -1391,7 +1392,7 @@ export default function AiArtCompetitionPage() {
                 {currentStep === 4 && (
                   <div>
                     <SectionHeader icon="🖼️" title="Artwork Upload" step="Section 4 of 5" />
-                    <p className="text-slate-400 text-sm mb-6 leading-relaxed">
+                    <p className="text-slate-300 text-sm mb-6 leading-relaxed">
                       Upload your finalized high-resolution artwork. Valid formats: <span className="text-white font-bold">JPG, JPEG, PNG</span>. Recommended maximum file size: <span className="text-white font-bold">1 MB</span>.
                     </p>
                     <input ref={fileInputRef} type="file" accept="image/jpeg,image/png" className="hidden" onChange={(e) => handleArtworkFile(e.target.files?.[0] || null)} />
@@ -1406,13 +1407,13 @@ export default function AiArtCompetitionPage() {
                           <img src={form.artworkPreview} alt="Final Artwork Preview" className="max-h-80 rounded-2xl object-contain mb-4 border border-slate-700/50 shadow-2xl" />
                           <div className="flex items-center gap-3">
                             <span className="text-emerald-450 font-bold text-sm flex items-center gap-1.5">
-                              <FiCheck className="stroke-[3] text-emerald-400" /> Uploaded: {form.artwork?.name}
+                              <FiCheck className="stroke-[3] text-emerald-400" /><span className='text-white'>Uploaded: {form.artwork?.name}</span>
                             </span>
                             <button type="button" onClick={(e) => { e.stopPropagation(); update('artwork', null); update('artworkPreview', ''); }} className="text-red-400 hover:text-red-300 font-bold p-1 bg-slate-800 border border-slate-700/50 rounded-lg" title="Remove artwork">
                               <FiTrash2 size={16} />
                             </button>
                           </div>
-                          <p className="text-slate-500 text-xs mt-3 select-none">Click or drag a new image here to replace this file</p>
+                          <p className="text-slate-300 text-xs mt-3 select-none">Click or drag a new image here to replace this file</p>
                         </div>
                       ) : (
                         <div className="flex flex-col items-center py-6">
@@ -1439,8 +1440,8 @@ export default function AiArtCompetitionPage() {
                       <div className="bg-[#0B1220] backdrop-blur-xl border border-slate-700/40 rounded-3xl p-6">
                         <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 mb-6">
                           <div>
-                            <h3 className="text-white font-bold text-sm">Official Declarations & Consent</h3>
-                            <p className="text-slate-500 text-xs mt-1">Responsible AI, Originality, Terms & Conditions, and Parent/Guardian Consent.</p>
+                            <h3 className="text-white font-bold text-base">Official Declarations & Consent</h3>
+                            <p className="text-slate-300 text-sm mt-1">Responsible AI, Originality, Terms & Conditions, and Parent/Guardian Consent.</p>
                           </div>
                           <button type="button" onClick={() => setShowDeclarationsModal(true)} className="px-5 py-2.5 bg-slate-800 text-amber-400 text-xs font-bold rounded-xl border border-amber-500/30 hover:bg-slate-700 transition-colors whitespace-nowrap">
                             Read Declarations
@@ -1461,26 +1462,26 @@ export default function AiArtCompetitionPage() {
 
                       {/* Showcase Permission */}
                       <div className="bg-[#0B1220] border border-slate-700/40 rounded-3xl p-6">
-                        <h3 className="text-white font-bold text-sm mb-1">Permission to Showcase Artwork</h3>
-                        <p className="text-slate-500 text-xs mb-4">Let Kidrove celebrate student talent in public galleries and social media.</p>
+                        <h3 className="text-white font-bold text-base mb-1">Permission to Showcase Artwork</h3>
+                        <p className="text-slate-300 text-sm mb-4">Let Kidrove celebrate student talent in public galleries and social media.</p>
                         <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 mb-4">
-                          <button type="button" onClick={() => update('artworkDisplayPermission', 'yes')} className={`p-5 rounded-2xl border text-left transition-all flex gap-3.5 ${form.artworkDisplayPermission === 'yes' ? 'bg-emerald-500/10 border-emerald-500 shadow-[0_0_15px_rgba(16,185,129,0.15)]' : 'bg-slate-900/40 border-slate-700/40 text-slate-400 hover:border-slate-600'}`}>
+                          <button type="button" onClick={() => update('artworkDisplayPermission', 'yes')} className={`p-5 rounded-2xl border text-left transition-all flex gap-3.5 ${form.artworkDisplayPermission === 'yes' ? 'bg-emerald-500/10 border-emerald-500 shadow-[0_0_15px_rgba(16,185,129,0.15)]' : 'bg-slate-900/40 border-slate-700/40 text-slate-300 hover:border-slate-600'}`}>
                             <div className={`w-5.5 h-5.5 rounded-full border-2 flex items-center justify-center flex-shrink-0 mt-0.5 ${form.artworkDisplayPermission === 'yes' ? 'border-emerald-500 bg-emerald-500 text-slate-955' : 'border-slate-600'}`}>{form.artworkDisplayPermission === 'yes' && <FiCheck size={13} className="stroke-[3]" />}</div>
-                            <div><h4 className={`font-bold text-xs mb-1 ${form.artworkDisplayPermission === 'yes' ? 'text-white' : 'text-slate-300'}`}>Yes, Display Publicly</h4><p className="text-[11px] text-slate-400 leading-normal">Showcase in our digital art gallery, social channels, and event promotions.</p></div>
+                            <div><h4 className={`font-bold text-base mb-1 ${form.artworkDisplayPermission === 'yes' ? 'text-white' : 'text-slate-300'}`}>Yes, Display Publicly</h4><p className="text-sm text-slate-300 leading-normal">Showcase in our digital art gallery, social channels, and event promotions.</p></div>
                           </button>
-                          <button type="button" onClick={() => update('artworkDisplayPermission', 'no')} className={`p-5 rounded-2xl border text-left transition-all flex gap-3.5 ${form.artworkDisplayPermission === 'no' ? 'bg-rose-500/10 border-rose-500 shadow-[0_0_15px_rgba(244,63,94,0.15)]' : 'bg-slate-900/40 border-slate-700/40 text-slate-400 hover:border-slate-600'}`}>
+                          <button type="button" onClick={() => update('artworkDisplayPermission', 'no')} className={`p-5 rounded-2xl border text-left transition-all flex gap-3.5 ${form.artworkDisplayPermission === 'no' ? 'bg-rose-500/10 border-rose-500 shadow-[0_0_15px_rgba(244,63,94,0.15)]' : 'bg-slate-900/40 border-slate-700/40 text-slate-300 hover:border-slate-600'}`}>
                             <div className={`w-5.5 h-5.5 rounded-full border-2 flex items-center justify-center flex-shrink-0 mt-0.5 ${form.artworkDisplayPermission === 'no' ? 'border-rose-500 bg-rose-500 text-slate-955' : 'border-slate-600'}`}>{form.artworkDisplayPermission === 'no' && <FiCheck size={13} className="stroke-[3]" />}</div>
-                            <div><h4 className={`font-bold text-xs mb-1 ${form.artworkDisplayPermission === 'no' ? 'text-white' : 'text-slate-350'}`}>No, Keep Private</h4><p className="text-[11px] text-slate-400 leading-normal">Only show the artwork to judges for award evaluation purposes.</p></div>
+                            <div><h4 className={`font-bold text-base mb-1 ${form.artworkDisplayPermission === 'no' ? 'text-white' : 'text-slate-300'}`}>No, Keep Private</h4><p className="text-sm text-slate-300 leading-normal">Only show the artwork to judges for award evaluation purposes.</p></div>
                           </button>
                         </div>
                         {form.artworkDisplayPermission === 'yes' && (
-                          <div className="mt-4 p-4.5 bg-slate-900/40 border border-slate-700/30 rounded-2xl">
-                            <label className="block text-slate-300 text-xs font-semibold mb-1">Student Name Display Credit:</label>
-                            <p className="text-slate-400 text-[10px] mb-3">Select how the student should be credited in showcase exhibitions:</p>
-                            <div className="flex flex-col gap-2.5">
+                          <div className="mt-4 p-4 bg-slate-900/40 border border-slate-700/30 rounded-2xl">
+                            <label className="block text-white text-base font-semibold mb-1">Student Name Display Credit:</label>
+                            <p className="text-slate-300 text-sm mb-3">Select how the student should be credited in showcase exhibitions:</p>
+                            <div className="flex flex-col gap-3">
                               {[{ value: 'yes', label: 'Full Credit (Show first name, grade, and school name)' }, { value: 'no', label: 'Anonymous (Only show grade and school name)' }].map((opt) => (
-                                <label key={opt.value} className="flex items-start gap-2.5 cursor-pointer text-xs text-slate-300 select-none">
-                                  <input type="radio" name="nameDisplay" value={opt.value} checked={form.nameDisplayPermission === opt.value} onChange={() => update('nameDisplayPermission', opt.value)} className="w-4 h-4 rounded-full border-slate-700 text-amber-500 focus:ring-amber-500 focus:ring-offset-slate-900 bg-slate-900 mt-0.5" />
+                                <label key={opt.value} className="flex items-start gap-3 cursor-pointer text-base text-slate-200 hover:text-white transition-colors select-none">
+                                  <input type="radio" name="nameDisplay" value={opt.value} checked={form.nameDisplayPermission === opt.value} onChange={() => update('nameDisplayPermission', opt.value)} className="w-5 h-5 rounded-full border-slate-500 text-amber-500 focus:ring-amber-500 focus:ring-offset-slate-900 bg-slate-900 mt-0.5 cursor-pointer" />
                                   <span className="leading-snug">{opt.label}</span>
                                 </label>
                               ))}
@@ -1491,7 +1492,7 @@ export default function AiArtCompetitionPage() {
 
                       {/* Communication Preferences */}
                       <div className="bg-[#0B1220] text-white border border-slate-700/40 rounded-3xl p-6">
-                        <h3 className="text-white font-bold text-sm mb-2">Communication Preferences</h3>
+                        <h3 className="text-white font-bold text-base mb-2">Communication Preferences</h3>
                         <div className="flex flex-col gap-3">
                           <CheckboxItem label="I agree to receive important updates, results notifications, and certificate delivery details." checked={form.competitionUpdatesConsent} onChange={(v) => update('competitionUpdatesConsent', v)} accent />
                           <CheckboxItem label="Optional: I would like to receive notifications about future workshops, challenges, and educational events." checked={form.marketingConsent} onChange={(v) => update('marketingConsent', v)} />
@@ -1502,8 +1503,8 @@ export default function AiArtCompetitionPage() {
                       <div className="flex gap-3 bg-red-500/10 border border-red-500/20 rounded-2xl p-6">
                         <FiAlertCircle size={18} className="text-red-400 flex-shrink-0 mt-0.5" />
                         <div>
-                          <h4 className="text-red-300 font-bold text-xs mb-1">Disqualification Clause</h4>
-                          <p className="text-[11px] text-slate-400 leading-relaxed">Kidrove reserves the right to disqualify entries violating rules, utilizing inappropriate content, copying, or infringing copyright. Judging panel decision is final.</p>
+                          <h4 className="text-red-300 font-bold text-sm mb-1">Disqualification Clause</h4>
+                          <p className="text-xs text-slate-300 leading-relaxed">Kidrove reserves the right to disqualify entries violating rules, utilizing inappropriate content, copying, or infringing copyright. Judging panel decision is final.</p>
                         </div>
                       </div>
                     </div>
@@ -1518,7 +1519,7 @@ export default function AiArtCompetitionPage() {
                         <CreditCard className="w-8 h-8 text-amber-500" />
                       </div>
                       <h2 className="text-white text-xl font-bold mb-2">Entry Fee Payment</h2>
-                      <p className="text-slate-400 text-sm mb-6 leading-relaxed">
+                      <p className="text-slate-300 text-sm mb-6 leading-relaxed">
                         Please complete your AED 50.00 payment. You will be redirected to our secure Stripe payment page and brought back automatically once payment is confirmed.
                       </p>
 
@@ -1677,7 +1678,7 @@ export default function AiArtCompetitionPage() {
                           Back to Consent
                         </button>
                       </div>
-                      <p className="text-slate-500 text-[11px] mt-5">
+                      <p className="text-slate-400 text-[11px] mt-5">
                         You will be redirected to Stripe's secure payment page. Do not close your browser — you will be automatically returned here after payment.
                       </p>
                     </div>
@@ -1724,7 +1725,7 @@ export default function AiArtCompetitionPage() {
               </button>
             ) : null}
           </div>
-          <p className="text-center text-slate-500 text-xs mt-6 select-none">Step {currentStep} of {STEPS.length}</p>
+          <p className="text-center text-slate-400 text-xs mt-6 select-none">Step {currentStep} of {STEPS.length}</p>
         </div>
       </div>
 
@@ -1783,7 +1784,7 @@ export default function AiArtCompetitionPage() {
                     <div className="w-8 h-8 rounded-full bg-amber-500/10 flex items-center justify-center border border-amber-500/20 text-amber-500"><HiOutlineSparkles size={16} /></div>
                     <h4 className="text-white font-bold text-sm">Responsible AI Declaration</h4>
                   </div>
-                  <div className="space-y-2 text-slate-400 text-xs leading-relaxed bg-slate-900/30 rounded-2xl p-4 border border-slate-700/30">
+                  <div className="space-y-2 text-slate-300 text-xs leading-relaxed bg-slate-900/30 rounded-2xl p-4 border border-slate-700/30">
                     {[
                       'I understand that AI is a creative tool and that the submitted work must represent my own creative idea.',
                       "I have not copied another participant's artwork.",
@@ -1806,7 +1807,7 @@ export default function AiArtCompetitionPage() {
                     <div className="w-8 h-8 rounded-full bg-blue-500/10 flex items-center justify-center border border-blue-500/20 text-blue-500"><FiAward size={16} /></div>
                     <h4 className="text-white font-bold text-sm">Originality Declaration</h4>
                   </div>
-                  <div className="space-y-2 text-slate-400 text-xs leading-relaxed bg-slate-900/30 rounded-2xl p-4 border border-slate-700/30">
+                  <div className="space-y-2 text-slate-300 text-xs leading-relaxed bg-slate-900/30 rounded-2xl p-4 border border-slate-700/30">
                     {[
                       'This is my original competition entry.',
                       'The concept and creative direction were developed by me.',
@@ -1822,7 +1823,7 @@ export default function AiArtCompetitionPage() {
                 {/* Terms */}
                 <div>
                   <div className="bg-slate-900/30 rounded-2xl p-4 border border-slate-700/30">
-                    <p className="text-slate-400 text-xs">
+                    <p className="text-slate-300 text-xs">
                       I agree to all{' '}
                       <a href="/terms" target="_blank" rel="noopener noreferrer" className="text-amber-500 hover:underline font-bold">
                         Terms & Conditions
@@ -1835,7 +1836,7 @@ export default function AiArtCompetitionPage() {
                 {/* Parent/Guardian */}
                 <div>
                   <h4 className="text-white font-bold text-sm mb-3">Parent/Guardian Confirmation</h4>
-                  <div className="space-y-2 bg-slate-900/30 rounded-2xl p-4 border border-slate-700/30 text-xs text-slate-400">
+                  <div className="space-y-2 bg-slate-900/30 rounded-2xl p-4 border border-slate-700/30 text-xs text-slate-300">
                     <p className="mb-2 leading-relaxed">I confirm that I am the parent/legal guardian of the participating student and give permission for them to participate in the AI Art Competition 2026.</p>
                     {[
                       'The competition involves the use of Generative AI creative tools.',
@@ -1879,7 +1880,7 @@ function SectionHeader({ icon, title, step }: { icon: string; title: string; ste
 
 function FieldLabel({ children, required }: { children: React.ReactNode; required?: boolean }) {
   return (
-    <label className="block text-slate-350 text-sm font-semibold mb-2">
+    <label className="block text-slate-200 text-base font-semibold mb-2">
       {children}
       {required && <span className="text-amber-500 ml-1">*</span>}
     </label>
@@ -1894,7 +1895,7 @@ function InputField({
 }) {
   return (
     <div className="mb-5">
-      <label className="block text-slate-300 text-sm font-semibold mb-1.5">
+      <label className="block text-slate-200 text-base font-semibold mb-1.5">
         {label}{required && <span className="text-amber-500 ml-1">*</span>}
       </label>
       <input
@@ -1904,7 +1905,7 @@ function InputField({
         placeholder={placeholder}
         min={min}
         max={max}
-        className="w-full bg-[#0B1220] border border-slate-700/50 hover:border-slate-600 focus:border-amber-500 focus:ring-1 focus:ring-amber-500 text-white rounded-xl px-4 py-3 placeholder-slate-400 transition-all outline-none text-sm"
+        className="w-full bg-[#0B1220] border border-slate-700/50 hover:border-slate-500 focus:border-amber-500 focus:ring-1 focus:ring-amber-500 text-white rounded-xl px-4 py-3 placeholder-slate-400 transition-all outline-none text-base"
       />
     </div>
   );
@@ -1918,13 +1919,13 @@ function SelectField({
 }) {
   return (
     <div className="mb-5">
-      <label className="block text-slate-300 text-sm font-semibold mb-1.5">
+      <label className="block text-slate-200 text-base font-semibold mb-1.5">
         {label}{required && <span className="text-amber-500 ml-1">*</span>}
       </label>
       <select
         value={value}
         onChange={(e) => onChange(e.target.value)}
-        className="w-full bg-[#0B1220] border border-slate-700/50 hover:border-slate-600 focus:border-amber-500 focus:ring-1 focus:ring-amber-500 text-white rounded-xl px-4 py-3 cursor-pointer transition-all outline-none text-sm appearance-none bg-[url('data:image/svg+xml;charset=utf-8,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20viewBox%3D%220%200%2020%2020%2522%3E%3Cpath%20fill%3D%22none%22%20stroke%3D%22%2523f8fafc%22%20stroke-width%3D%221.5%22%20d%3D%22m6%208%204%204%204-4%22%2F%3E%3C%2Fsvg%3E')] bg-[length:1.25rem_1.25rem] bg-[right_1rem_center] bg-no-repeat"
+        className="w-full bg-[#0B1220] border border-slate-700/50 hover:border-slate-500 focus:border-amber-500 focus:ring-1 focus:ring-amber-500 text-white rounded-xl px-4 py-3 cursor-pointer transition-all outline-none text-base appearance-none bg-[url('data:image/svg+xml;charset=utf-8,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20viewBox%3D%220%200%2020%2020%2522%3E%3Cpath%20fill%3D%22none%22%20stroke%3D%22%2523f8fafc%22%20stroke-width%3D%221.5%22%20d%3D%22m6%208%204%204%204-4%22%2F%3E%3C%2Fsvg%3E')] bg-[length:1.25rem_1.25rem] bg-[right_1rem_center] bg-no-repeat"
       >
         <option value="" className="bg-slate-950 text-slate-300">{placeholder || `Select ${label}`}</option>
         {options.map((o) => (
@@ -1945,13 +1946,13 @@ function CheckboxItem({
       onClick={() => onChange(!checked)}
       className={`flex items-start gap-3.5 cursor-pointer py-3.5 px-4 rounded-xl border transition-all ${checked
         ? 'bg-amber-500/10 border-amber-500 text-white shadow-[0_0_12px_rgba(245,158,11,0.15)]'
-        : 'bg-slate-900/40 border-slate-400 text-slate-300 hover:border-slate-300 hover:text-white'
+        : 'bg-slate-900/40 border-slate-400 text-slate-200 hover:border-slate-300 hover:text-white'
         }`}
     >
       <div className={`w-5 h-5 rounded-md border flex items-center justify-center flex-shrink-0 mt-0.5 transition-all ${checked ? 'bg-amber-500 border-amber-500 text-slate-950 shadow-[0_0_6px_rgba(245,158,11,0.2)]' : 'bg-slate-900 border-slate-400'}`}>
         {checked && <FiCheck size={12} className="stroke-[3]" />}
       </div>
-      <span className={`text-xs select-none leading-relaxed ${accent ? 'font-semibold text-white' : 'text-slate-455'}`}>
+      <span className={`text-base select-none leading-relaxed ${accent ? 'font-semibold text-white' : 'text-slate-200'}`}>
         {label}
       </span>
     </div>
@@ -1968,13 +1969,13 @@ function RadioCard({
       onClick={onChange}
       className={`border rounded-2xl p-5 cursor-pointer transition-all flex gap-4 ${selected
         ? 'bg-amber-500/10 border-amber-500 shadow-[0_0_15px_rgba(245,158,11,0.15)]'
-        : 'bg-[#0B1220] border-slate-500 text-slate-300 hover:border-slate-400 hover:text-white'
+        : 'bg-[#0B1220] border-slate-500 text-slate-200 hover:border-slate-400 hover:text-white'
         }`}
     >
       <div className={`w-5 h-5 rounded-full border-2 flex items-center justify-center flex-shrink-0 mt-0.5 transition-all ${selected ? 'border-amber-500 bg-amber-500 text-slate-950 shadow-[0_0_8px_rgba(245,158,11,0.4)]' : 'border-slate-400 bg-transparent'}`} />
       <div>
-        <div className={`font-bold text-sm mb-1 ${selected ? 'text-white' : 'text-slate-300'}`}>{label}</div>
-        <div className="text-slate-500 text-xs leading-relaxed">{description}</div>
+        <div className={`font-bold text-base mb-1 ${selected ? 'text-white' : 'text-slate-200'}`}>{label}</div>
+        <div className="text-slate-300 text-sm leading-relaxed">{description}</div>
       </div>
     </div>
   );
