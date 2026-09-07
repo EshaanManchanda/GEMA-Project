@@ -170,6 +170,7 @@ const LeadPage = React.lazy(() => import(/* webpackChunkName: "lead" */ './pages
 
 // Competition Pages (AI Art Competition 2026)
 const AiArtCompetitionPage = React.lazy(() => import(/* webpackChunkName: "competition" */ './pages/AiArtCompetitionPage'));
+const AiArtSponsorshipPage = React.lazy(() => import(/* webpackChunkName: "competition" */ './pages/AiArtSponsorshipPage'));
 const CompetitionPaymentSuccessPage = React.lazy(() => import(/* webpackChunkName: "competition" */ './pages/CompetitionPaymentSuccessPage'));
 
 // Analytics Pages
@@ -369,6 +370,11 @@ function AppContent() {
             <Route path="payment-success" element={
               <Suspense fallback={<GenericPageSkeleton />}>
                 <CompetitionPaymentSuccessPage />
+              </Suspense>
+            } />
+            <Route path="sponsorship" element={
+              <Suspense fallback={<GenericPageSkeleton />}>
+                <AiArtSponsorshipPage />
               </Suspense>
             } />
           </Route>
