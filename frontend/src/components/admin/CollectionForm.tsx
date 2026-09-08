@@ -1,8 +1,10 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef, useMemo, useCallback } from 'react';
 import { useForm, Controller } from 'react-hook-form';
 import { yupResolver } from '@hookform/resolvers/yup';
 import * as yup from 'yup';
 import toast from 'react-hot-toast';
+import { motion, AnimatePresence } from 'framer-motion';
+import { FaTag, FaCalendarAlt, FaChevronDown, FaTimes } from 'react-icons/fa';
 import {
   Save,
   X,
@@ -86,6 +88,99 @@ const toEventIdString = (value: any): string => {
   return '';
 };
 
+// ── Outschool-style Dropdown ─────────────────────────────────────────────────
+interface OutschoolDropdownProps {
+  label: string;
+  icon?: React.ReactNode;
+  active?: boolean;
+  title: string;
+  description?: string;
+  ctaLabel?: string;
+  onCtaClick?: () => void;
+  children: React.ReactNode;
+}
+const OutschoolDropdown: React.FC<OutschoolDropdownProps> = ({
+  label, icon, active, title, description, ctaLabel, onCtaClick, children
+}) => {
+  const [open, setOpen] = useState(false);
+  const ref = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    const handler = (e: MouseEvent) => {
+      if (ref.current && !ref.current.contains(e.target as Node)) setOpen(false);
+    };
+    document.addEventListener('mousedown', handler);
+    return () => document.removeEventListener('mousedown', handler);
+  }, []);
+
+  return (
+    <div ref={ref} className="relative">
+      <button
+        type="button"
+        onClick={() => setOpen(v => !v)}
+        className={`flex items-center gap-2 px-4 py-2 rounded-full border text-sm font-semibold transition-all whitespace-nowrap select-none shadow-sm ${active
+          ? 'bg-indigo-600 text-white border-indigo-600'
+          : 'bg-white text-gray-800 border-gray-300 hover:border-gray-400 hover:bg-gray-50'
+          }`}
+      >
+        {icon && <span className="text-sm">{icon}</span>}
+        {label}
+        <FaChevronDown className={`text-xs transition-transform duration-200 ${open ? 'rotate-180' : ''}`} />
+      </button>
+
+      <AnimatePresence>
+        {open && (
+          <motion.div
+            initial={{ opacity: 0, y: 6, scale: 0.98 }}
+            animate={{ opacity: 1, y: 0, scale: 1 }}
+            exit={{ opacity: 0, y: 6, scale: 0.98 }}
+            transition={{ duration: 0.15 }}
+            className="absolute top-full mt-2 left-0 z-50 bg-white rounded-2xl shadow-xl border border-gray-100 w-72"
+          >
+            <div className="px-5 pt-5 pb-3">
+              <h3 className="text-lg font-bold text-gray-900">{title}</h3>
+              {description && <p className="text-sm text-gray-500 mt-1 leading-snug">{description}</p>}
+            </div>
+            <div className="px-5 pb-3 max-h-64 overflow-y-auto">
+              {children}
+            </div>
+            {ctaLabel && (
+              <div className="px-5 pb-5">
+                <button
+                  type="button"
+                  onClick={() => { onCtaClick?.(); setOpen(false); }}
+                  className="w-full py-2.5 bg-indigo-600 hover:bg-indigo-700 text-white rounded-full font-semibold text-sm transition-colors"
+                >
+                  {ctaLabel}
+                </button>
+              </div>
+            )}
+          </motion.div>
+        )}
+      </AnimatePresence>
+    </div>
+  );
+};
+
+const ActiveChip: React.FC<{ label: string; onRemove: () => void }> = ({ label, onRemove }) => (
+  <span className="inline-flex items-center gap-1.5 pl-3 pr-2 py-1 bg-indigo-50 border border-indigo-200 text-indigo-800 rounded-full text-xs font-medium">
+    {label}
+    <button type="button" onClick={onRemove} className="w-4 h-4 flex items-center justify-center rounded-full hover:bg-indigo-200 transition-colors">
+      <FaTimes size={9} />
+    </button>
+  </span>
+);
+
+const CheckRow: React.FC<{ label: string; checked: boolean; onChange: () => void }> = ({ label, checked, onChange }) => (
+  <label className="flex items-center gap-3 py-2 cursor-pointer hover:text-indigo-700 group" onClick={(e) => { e.preventDefault(); onChange(); }}>
+    <div className={`w-4 h-4 rounded border-2 flex items-center justify-center flex-shrink-0 transition-colors ${checked ? 'bg-indigo-600 border-indigo-600' : 'border-gray-300 group-hover:border-indigo-400'
+      }`}>
+      {checked && <svg viewBox="0 0 10 8" className="w-2.5 h-2 text-white fill-current"><path d="M1 4l3 3 5-6" stroke="currentColor" strokeWidth="1.5" fill="none" strokeLinecap="round" strokeLinejoin="round" /></svg>}
+    </div>
+    <span className="text-sm text-gray-700 group-hover:text-gray-900">{label}</span>
+  </label>
+);
+
 const CollectionForm: React.FC<CollectionFormProps> = ({
   collection,
   isOpen,
@@ -100,6 +195,56 @@ const CollectionForm: React.FC<CollectionFormProps> = ({
   const [eventSearch, setEventSearch] = useState('');
   const [currentPage, setCurrentPage] = useState(1);
   const eventsPerPage = 20;
+
+  const [filterCategory, setFilterCategory] = useState<string[]>([]);
+  const [filterType, setFilterType] = useState<string[]>([]);
+  const [pendingCategory, setPendingCategory] = useState<string[]>([]);
+  const [pendingType, setPendingType] = useState<string[]>([]);
+  const [catSearch, setCatSearch] = useState('');
+
+  const uniqueCategories = useMemo(() => {
+    const cats = new Set<string>();
+    events.forEach(e => {
+      if (e.category) cats.add(e.category);
+    });
+    return Array.from(cats).map(c => ({ label: c, value: c })).sort((a, b) => a.label.localeCompare(b.label));
+  }, [events]);
+
+  const uniqueEventTypes = useMemo(() => {
+    const types = new Set<string>();
+    events.forEach(e => {
+      if (e.type) types.add(e.type);
+    });
+    return Array.from(types).map(t => ({ label: t, value: t })).sort((a, b) => a.label.localeCompare(b.label));
+  }, [events]);
+
+  const currentCatLabel = useMemo(() => {
+    if (!filterCategory.length) return 'Category';
+    if (filterCategory.length === 1) return filterCategory[0];
+    return `${filterCategory.length} Categories`;
+  }, [filterCategory]);
+
+  const currentTypeLabel = useMemo(() => {
+    if (!filterType.length) return 'Event Type';
+    if (filterType.length === 1) return filterType[0];
+    return `${filterType.length} Types`;
+  }, [filterType]);
+
+  const togglePendingArray = useCallback((setState: React.Dispatch<React.SetStateAction<string[]>>, value: string) => {
+    setState(prev => {
+      if (!value) return [];
+      if (prev.includes(value)) return prev.filter(v => v !== value);
+      return [...prev, value];
+    });
+  }, []);
+
+  const toggleFilterArray = useCallback((setState: React.Dispatch<React.SetStateAction<string[]>>, setPending: React.Dispatch<React.SetStateAction<string[]>>, value: string) => {
+    setState(prev => {
+      const next = prev.includes(value) ? prev.filter(v => v !== value) : [...prev, value];
+      setPending(next);
+      return next;
+    });
+  }, []);
 
   // MediaAsset states
   const [showIconPicker, setShowIconPicker] = useState(false);
@@ -267,14 +412,17 @@ const CollectionForm: React.FC<CollectionFormProps> = ({
   };
 
   // Filter events
-  const filteredEvents = events.filter(event =>
-    event.title?.toLowerCase().includes(eventSearch.toLowerCase())
-  );
+  const filteredEvents = events.filter(event => {
+    const matchesSearch = event.title?.toLowerCase().includes(eventSearch.toLowerCase());
+    const matchesCategory = filterCategory.length === 0 || filterCategory.includes(event.category);
+    const matchesType = filterType.length === 0 || filterType.includes(event.type);
+    return matchesSearch && matchesCategory && matchesType;
+  });
 
   // Reset to first page when search changes
   useEffect(() => {
     setCurrentPage(1);
-  }, [eventSearch]);
+  }, [eventSearch, filterCategory, filterType]);
 
   const totalPages = Math.ceil(filteredEvents.length / eventsPerPage);
   const paginatedEvents = filteredEvents.slice((currentPage - 1) * eventsPerPage, currentPage * eventsPerPage);
@@ -611,6 +759,85 @@ const CollectionForm: React.FC<CollectionFormProps> = ({
                   />
                 </div>
               </div>
+
+              {/* Filters */}
+              <div className="flex flex-wrap items-center gap-2 mb-4">
+                <OutschoolDropdown
+                  label={currentCatLabel}
+                  icon={<FaTag />}
+                  active={filterCategory.length > 0}
+                  title="Category"
+                  ctaLabel="Apply"
+                  onCtaClick={() => setFilterCategory(pendingCategory)}
+                >
+                  <div className="mb-3">
+                    <input
+                      type="text"
+                      placeholder="Search categories..."
+                      value={catSearch}
+                      onChange={e => setCatSearch(e.target.value)}
+                      className="w-full px-3 py-2 text-sm border border-gray-200 rounded-lg focus:outline-none focus:border-indigo-400 bg-gray-50"
+                    />
+                  </div>
+                  <div className="divide-y divide-gray-50">
+                    {uniqueCategories
+                      .filter(c => !catSearch || c.label.toLowerCase().includes(catSearch.toLowerCase()))
+                      .map(cat => (
+                        <CheckRow
+                          key={cat.value}
+                          label={cat.label}
+                          checked={pendingCategory.includes(cat.value)}
+                          onChange={() => togglePendingArray(setPendingCategory, cat.value)}
+                        />
+                      ))}
+                  </div>
+                </OutschoolDropdown>
+
+                <OutschoolDropdown
+                  label={currentTypeLabel}
+                  icon={<FaCalendarAlt />}
+                  active={filterType.length > 0}
+                  title="Event Type"
+                  ctaLabel="Apply"
+                  onCtaClick={() => setFilterType(pendingType)}
+                >
+                  <div className="divide-y divide-gray-50">
+                    {uniqueEventTypes.map(type => (
+                      <CheckRow
+                        key={type.value}
+                        label={type.label}
+                        checked={pendingType.includes(type.value)}
+                        onChange={() => togglePendingArray(setPendingType, type.value)}
+                      />
+                    ))}
+                  </div>
+                </OutschoolDropdown>
+                
+                {(filterCategory.length > 0 || filterType.length > 0) && (
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setFilterCategory([]); setPendingCategory([]);
+                      setFilterType([]); setPendingType([]);
+                    }}
+                    className="flex items-center gap-1.5 px-3 py-2 rounded-full text-sm font-medium text-red-600 border border-red-200 bg-red-50 hover:bg-red-100 transition-all ml-auto"
+                  >
+                    <FaTimes size={10} /> Clear Filters
+                  </button>
+                )}
+              </div>
+              
+              {/* Active Chips */}
+              {(filterCategory.length > 0 || filterType.length > 0) && (
+                <div className="flex flex-wrap gap-2 mb-4">
+                  {filterCategory.map(cat => (
+                    <ActiveChip key={`cat-${cat}`} label={cat} onRemove={() => toggleFilterArray(setFilterCategory, setPendingCategory, cat)} />
+                  ))}
+                  {filterType.map(type => (
+                    <ActiveChip key={`type-${type}`} label={type} onRemove={() => toggleFilterArray(setFilterType, setPendingType, type)} />
+                  ))}
+                </div>
+              )}
 
               {/* Events List */}
               <div className="border border-gray-200 rounded-md max-h-96 overflow-y-auto">
