@@ -823,7 +823,7 @@ export default function AiArtCompetitionPage() {
               Schools with strong participation and exceptional entries are awarded Kidrove School Recognition.
             </p>
           </div>
-          <a href="https://docs.google.com/spreadsheets/d/17geLB2uBJlrPnqaTKfHJlp7b5j7icz79_sEG7Odqmtg/edit?usp=sharing" target="_blank" rel="noreferrer" className="inline-flex items-center gap-2 text-[#8B5CF6] font-bold text-sm hover:gap-3 transition-all relative z-10 uppercase tracking-wider">
+          <a href="https://docs.google.com/spreadsheets/d/1T3sos6JH3kVPfuS0-Gq9rqdojUZmCDGN/edit?usp=sharing&ouid=105721430558491971288&rtpof=true&sd=true" target="_blank" rel="noreferrer" className="inline-flex items-center gap-2 text-[#8B5CF6] font-bold text-sm hover:gap-3 transition-all relative z-10 uppercase tracking-wider">
             Download Registration Sheet <FiChevronRight />
           </a>
         </div>
