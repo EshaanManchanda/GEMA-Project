@@ -341,12 +341,8 @@ function AppContent() {
             </Suspense>
           } />
 
-          {/* Event Discovery Routes - No ErrorBoundary (low-risk) */}
-          <Route path="events" element={
-            <Suspense fallback={<EventsPageSkeleton />}>
-              <EventsPage />
-            </Suspense>
-          } />
+          {/* Event Discovery Routes - redirect /events to /search */}
+          <Route path="events" element={<Navigate to="/search" replace />} />
           <Route path="events/:slug" element={
             <Suspense fallback={<EventDetailSkeleton />}>
               <EventDetailPage />
@@ -378,15 +374,11 @@ function AppContent() {
               </Suspense>
             } />
           </Route>
-          {/* Legacy: redirect old teaching-events detail URLs to the unified events page */}
-          <Route path="teaching-events/:id" element={<Navigate to="/events" replace />} />
+          {/* Legacy: redirect old teaching-events detail URLs to the unified search page */}
+          <Route path="teaching-events/:id" element={<Navigate to="/search" replace />} />
 
-          {/* Teaching Event Public Routes */}
-          <Route path="teaching-event" element={
-            <Suspense fallback={<EventsPageSkeleton />}>
-              <EventsPage />
-            </Suspense>
-          } />
+          {/* Teaching Event Public Routes - redirect /teaching-event to /search */}
+          <Route path="teaching-event" element={<Navigate to="/search" replace />} />
           <Route path="teaching-event/:id" element={
             <PageErrorBoundary>
               <Suspense fallback={<EventDetailSkeleton />}>

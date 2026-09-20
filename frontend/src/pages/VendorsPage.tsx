@@ -1,10 +1,11 @@
 import React, { useState, useEffect, useMemo } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import {
-  FaSearch, FaTimes, FaBuilding
+  FaSearch, FaTimes, FaBuilding, FaUsers
 } from 'react-icons/fa';
 import { MdOutlineSort } from 'react-icons/md';
 import { useVendorsQuery } from '@/hooks/queries/useVendorQuery';
+import { useHomepageQuery } from '@/hooks/queries/useHomepageQuery';
 import { useDebounce } from '@/hooks/useDebounce';
 import SEO from '@/components/common/SEO';
 import VendorCard, { Vendor } from '@/components/vendor/VendorCard';
@@ -69,6 +70,9 @@ const VendorsPage: React.FC = () => {
   };
 
   const { data, isLoading, isError, error } = useVendorsQuery(queryParams);
+  const { data: homeData } = useHomepageQuery();
+  
+  const totalEvents = homeData?.stats?.totalEvents || 0;
 
   const vendors = (data?.vendors || data?.data?.vendors || []) as Vendor[];
   const pagination = data?.pagination || data?.data?.pagination || {
@@ -132,61 +136,105 @@ const VendorsPage: React.FC = () => {
       />
 
       {/* Hero */}
-      <div className="relative py-28 sm:py-48 overflow-hidden">
+      <div className="relative overflow-hidden pt-0 pb-0">
         {/* Background Image & Overlay */}
-        <div className="absolute inset-0">
+        <div className="absolute inset-0 bg-[#fff5f5]">
           <img
-            src="https://images.unsplash.com/photo-1540575467063-178a50c2df87?q=80&w=2070&auto=format&fit=crop"
+            src="/assets/vendbanner.png"
             alt="Vendors Header"
             className="w-full h-full object-cover"
           />
-          <div className="absolute inset-0 bg-gray-900/50 backdrop-blur-[2px]" />
-          <div className="absolute inset-0 bg-gradient-to-b from-black/50 via-transparent to-transparent" />
         </div>
 
-        <div className="container mx-auto px-4 text-center relative z-10 text-white">
-          <motion.h1
-            initial={{ opacity: 0, y: -16 }}
-            animate={{ opacity: 1, y: 0 }}
-            className="text-3xl sm:text-4xl md:text-5xl font-bold mb-4 drop-shadow-lg"
-          >
-            Find Top Event <span className='text-green-400'>Organizers</span>
-          </motion.h1>
-          <motion.p
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            transition={{ delay: 0.1 }}
-            className="text-green-300 text-base sm:text-lg mb-8 max-w-2xl mx-auto drop-shadow-md font-medium"
-          >
-            Discover professional vendors to bring your perfect event to life.
-          </motion.p>
+        <div className="container mx-auto px-4 text-center relative z-10 pt-10 pb-8">
 
-          {/* Search */}
-          <motion.div
-            initial={{ opacity: 0, scale: 0.96 }}
-            animate={{ opacity: 1, scale: 1 }}
-            transition={{ delay: 0.15 }}
-            className="max-w-lg mx-auto relative"
-          >
-            <FaSearch className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400 w-4 h-4" />
-            <input
-              type="text"
-              value={searchTerm}
-              onChange={(e) => setSearchTerm(e.target.value)}
-              placeholder="Search organizers by name..."
-              className="w-full pl-11 pr-4 py-3 rounded-xl text-gray-900 focus:outline-none
-                         focus:ring-2 focus:ring-emerald-500 shadow-lg text-sm"
-            />
-            {searchTerm && (
-              <button
-                onClick={() => setSearchTerm('')}
-                className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400
-                           hover:text-gray-600"
-              >
-                <FaTimes className="w-3.5 h-3.5" />
+          <div className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-emerald-50 border border-emerald-100 text-emerald-700 font-semibold text-sm mb-6 shadow-sm">
+            <FaUsers className="text-emerald-500" />
+            Verified Event Organizers
+          </div>
+
+          <h1 className="text-4xl sm:text-5xl md:text-6xl font-extrabold text-[#111827] mb-4 leading-tight tracking-tight">
+            Find the Best <br className="hidden sm:block" />
+            Events for Kids <br />
+            <span className="inline-block relative text-[#3b82f6] font-handwriting italic mt-1">
+              in the UAE
+              <svg className="absolute w-full h-3 -bottom-1 left-0 text-yellow-400" viewBox="0 0 100 10" preserveAspectRatio="none">
+                <path d="M0 5 Q 50 15 100 5" stroke="currentColor" strokeWidth="4" fill="transparent" strokeLinecap="round" />
+              </svg>
+              {/* Decorative yellow lines */}
+              <svg className="absolute -right-8 -top-6 w-8 h-8 text-yellow-400" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round">
+                <path d="M4 12h-2m20 0h-2m-9-9v-2m0 20v-2m7.07-7.07l1.42-1.42m-14.14 0l-1.42-1.42m14.14 14.14l1.42 1.42m-14.14 0l-1.42 1.42" />
+              </svg>
+            </span>
+          </h1>
+
+          <p className="text-gray-500 text-base sm:text-lg mb-10 max-w-2xl mx-auto font-medium leading-relaxed">
+            Discover trusted vendors who run classes, courses, camps, <br className="hidden sm:block" />
+            and exciting events for kids and families across the UAE.
+          </p>
+
+          {/* Search Bar */}
+          <div className="max-w-2xl mx-auto relative mb-12">
+            <div className="flex items-center bg-white rounded-full p-2 shadow-[0_8px_30px_rgb(0,0,0,0.08)] border border-gray-100">
+              <FaSearch className="text-gray-400 ml-4 mr-2 text-lg" />
+              <input
+                type="text"
+                value={searchTerm}
+                onChange={(e) => setSearchTerm(e.target.value)}
+                placeholder="Search vendors by name..."
+                className="flex-1 border-none focus:ring-0 text-gray-700 placeholder-gray-400 bg-transparent text-base px-2 py-2 outline-none"
+              />
+              {searchTerm && (
+                <button
+                  onClick={() => setSearchTerm('')}
+                  className="mr-3 text-gray-400 hover:text-gray-600"
+                >
+                  <FaTimes className="w-4 h-4" />
+                </button>
+              )}
+              <button className="bg-[#34d399] hover:bg-emerald-500 text-white font-bold px-8 py-3.5 rounded-full transition-colors">
+                Search
               </button>
-            )}
-          </motion.div>
+            </div>
+          </div>
+
+          {/* Stats Cards */}
+          <div className="flex flex-wrap justify-center gap-4 max-w-4xl mx-auto">
+            {/* Stat 1 */}
+            <div className="flex items-center gap-4 bg-white rounded-2xl px-6 py-4 shadow-sm border border-red-100 min-w-[200px]">
+              <div className="w-12 h-12 rounded-full bg-red-50 flex items-center justify-center flex-shrink-0">
+                <FaUsers className="text-red-400 text-xl" />
+              </div>
+              <div className="text-left">
+                <p className="text-2xl font-bold text-gray-900 leading-tight">{pagination.total > 0 ? `${pagination.total}+` : '0'}</p>
+                <p className="text-sm font-medium text-gray-500">Verified Vendors</p>
+              </div>
+            </div>
+            {/* Stat 2 */}
+            <div className="flex items-center gap-4 bg-white rounded-2xl px-6 py-4 shadow-sm border border-blue-100 min-w-[200px]">
+              <div className="w-12 h-12 rounded-full bg-blue-50 flex items-center justify-center flex-shrink-0">
+                <svg className="w-6 h-6 text-blue-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
+                </svg>
+              </div>
+              <div className="text-left">
+                <p className="text-2xl font-bold text-gray-900 leading-tight">{totalEvents > 0 ? `${totalEvents}+` : '0'}</p>
+                <p className="text-sm font-medium text-gray-500">Events Organized</p>
+              </div>
+            </div>
+            {/* Stat 3 */}
+            <div className="flex items-center gap-4 bg-white rounded-2xl px-6 py-4 shadow-sm border border-emerald-100 min-w-[200px]">
+              <div className="w-12 h-12 rounded-full bg-emerald-50 flex items-center justify-center flex-shrink-0">
+                <svg className="w-6 h-6 text-emerald-400" viewBox="0 0 20 20" fill="currentColor">
+                  <path fillRule="evenodd" d="M3.172 5.172a4 4 0 015.656 0L10 6.343l1.172-1.171a4 4 0 115.656 5.656L10 17.657l-6.828-6.829a4 4 0 010-5.656z" clipRule="evenodd" />
+                </svg>
+              </div>
+              <div className="text-left">
+                <p className="text-2xl font-bold text-gray-900 leading-tight">1k+</p>
+                <p className="text-sm font-medium text-gray-500">Happy Families</p>
+              </div>
+            </div>
+          </div>
         </div>
       </div>
 

@@ -77,6 +77,13 @@ export const buildPublicEventFilter = (additionalFilters: any = {}) => {
   const { includePast, ...filters } = additionalFilters;
 
   // Merge with any additional filters provided
+  if (baseFilter.$or && filters.$or) {
+    const combinedFilters = { ...baseFilter, ...filters };
+    combinedFilters.$and = [{ $or: baseFilter.$or }, { $or: filters.$or }];
+    delete combinedFilters.$or;
+    return combinedFilters;
+  }
+
   return { ...baseFilter, ...filters };
 };
 

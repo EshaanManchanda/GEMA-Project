@@ -68,7 +68,7 @@ const LearnScratchPage: React.FC = () => {
             They build animations, stories, and interactive projects while developing computational thinking.
           </p>
           <Link
-            to="/events?category=coding&search=scratch"
+            to="/search?q=scratch"
             className="inline-flex items-center px-6 py-3 bg-orange-600 text-white font-semibold rounded-lg hover:bg-orange-700 transition-colors"
           >
             Browse Scratch Workshops
@@ -126,13 +126,13 @@ const LearnScratchPage: React.FC = () => {
           </p>
           <div className="flex flex-col sm:flex-row gap-4 justify-center">
             <Link
-              to="/events?category=coding&search=scratch"
+              to="/search?q=scratch"
               className="px-6 py-3 bg-orange-600 text-white font-semibold rounded-lg hover:bg-orange-700 transition-colors"
             >
               Find Scratch Classes
             </Link>
             <Link
-              to="/events"
+              to="/search"
               className="px-6 py-3 border border-gray-300 text-gray-700 font-semibold rounded-lg hover:bg-gray-50 transition-colors"
             >
               Browse All Activities

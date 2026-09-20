@@ -247,7 +247,7 @@ const DiscoveryHubPage: React.FC<{ config: DiscoveryHubConfig }> = ({ config }) 
               <p className="text-gray-600 mb-4">We couldn't reach the server just now — please try again shortly.</p>
             )}
             <Link
-              to="/events"
+              to="/search"
               className="inline-block px-6 py-2 bg-primary text-white rounded-md hover:bg-primary-dark transition-colors"
             >
               Browse All Events

@@ -6,6 +6,9 @@ import {
   FaLaptop, FaMapMarkerAlt, FaCheckCircle, FaTimes,
 } from 'react-icons/fa';
 import { MdOutlineSort } from 'react-icons/md';
+import { useQuery } from '@tanstack/react-query';
+import { useEventsQuery } from '@/hooks/queries/useEventsQuery';
+import { useHomepageQuery } from '@/hooks/queries/useHomepageQuery';
 import teacherAPI from '@/services/api/teacherAPI';
 import { API_BASE_URL } from '@/config/api';
 import type { ITeacher } from '@/types/teacher';
@@ -197,6 +200,16 @@ const TeachersListingPage: React.FC = () => {
   const [activeSubject, setActiveSubject] = useState<string | null>(null);
   const [sortBy, setSortBy] = useState<SortOption>('newest');
   const [showSort, setShowSort] = useState(false);
+
+  const { data: classesData } = useEventsQuery({ 
+    type: 'Course,Workshop,Class,Bootcamp,Masterclass', 
+    status: 'published' 
+  });
+  const totalClasses = classesData?.pagination?.totalEvents || classesData?.pagination?.total || 0;
+
+  const { data: homeData } = useHomepageQuery();
+  const totalStudents = homeData?.stats?.totalStudents || 0;
+
   useEffect(() => {
     const fetchTeachers = async () => {
       try {
@@ -257,59 +270,103 @@ const TeachersListingPage: React.FC = () => {
 
     <div className="min-h-screen bg-gray-50">
       {/* Hero */}
-      <div className="relative py-28 sm:py-48 overflow-hidden">
-        {/* Background Image & Overlay */}
-        <div className="absolute inset-0">
+      <div className="relative overflow-hidden pt-0 pb-0">
+        <div className="absolute inset-0 bg-[#fdfbf6]">
           <img
-            src="https://images.unsplash.com/photo-1577896851231-70ef18881754?q=80&w=2070&auto=format&fit=crop"
+            src="/assets/teacherbanner.png"
             alt="Teachers Header"
             className="w-full h-full object-cover"
           />
-          <div className="absolute inset-0 bg-gray-900/50 backdrop-blur-[2px]" />
-          <div className="absolute inset-0 bg-gradient-to-b from-black/50 via-transparent to-transparent" />
         </div>
-        <div className="container mx-auto px-4 text-center relative z-10 text-white">
-          <motion.h1
-            initial={{ opacity: 0, y: -16 }}
-            animate={{ opacity: 1, y: 0 }}
-            className="text-3xl sm:text-4xl md:text-5xl font-bold mb-4 drop-shadow-lg"
-          >
-            Meet Our <span className='text-purple-400'>Teachers</span>
-          </motion.h1>
-          <motion.p
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            transition={{ delay: 0.1 }}
-            className="text-purple-300 text-base sm:text-lg mb-8 max-w-2xl mx-auto drop-shadow-md font-medium"
-          >
-            Learn from passionate educators across a variety of subjects
-          </motion.p>
-          {/* Search */}
-          <motion.div
-            initial={{ opacity: 0, scale: 0.96 }}
-            animate={{ opacity: 1, scale: 1 }}
-            transition={{ delay: 0.15 }}
-            className="max-w-lg mx-auto relative"
-          >
-            <FaSearch className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400 w-4 h-4" />
-            <input
-              type="text"
-              value={search}
-              onChange={(e) => setSearch(e.target.value)}
-              placeholder="Search by name or subject..."
-              className="w-full pl-11 pr-4 py-3 rounded-xl text-gray-900 focus:outline-none
-                         focus:ring-2 focus:ring-white shadow-lg text-sm"
-            />
-            {search && (
-              <button
-                onClick={() => setSearch('')}
-                className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400
-                           hover:text-gray-600"
-              >
-                <FaTimes className="w-3.5 h-3.5" />
+        <div className="container mx-auto px-4 text-center relative z-10 pt-10 pb-8">
+
+          <div className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-[#f3f0ff] border border-purple-100 text-[#6d28d9] font-semibold text-sm mb-6 shadow-sm">
+            <FaChalkboardTeacher className="text-[#6d28d9]" />
+            Expert Educators & Instructors
+          </div>
+
+          <h1 className="text-4xl sm:text-5xl md:text-6xl font-extrabold text-[#111827] mb-4 leading-tight tracking-tight">
+            Learn from <br className="hidden sm:block" />
+            <span className="relative inline-block mt-2 sm:mt-0">
+              <span className="text-transparent bg-clip-text bg-gradient-to-r from-[#4f46e5] to-[#7c3aed]">
+                Amazing Teachers
+              </span>
+              {/* Decorative red sunburst lines */}
+              <svg className="absolute -right-8 -top-8 w-10 h-10 text-red-400" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round">
+                <path d="M12 2v2m10 8h-2M4 12H2m17.07-7.07l-1.42 1.42M6.34 6.34L4.93 4.93m14.14 14.14l-1.42-1.42M6.34 17.66l-1.42 1.42" />
+              </svg>
+            </span>
+          </h1>
+
+          <p className="text-gray-500 text-base sm:text-lg mb-10 max-w-2xl mx-auto font-medium leading-relaxed">
+            Browse certified educators teaching arts, sports, coding, music, <br className="hidden sm:block" />
+            languages and more for kids across the UAE.
+          </p>
+
+          {/* Search Bar */}
+          <div className="max-w-2xl mx-auto relative mb-12">
+            <div className="flex items-center bg-white rounded-full p-2 shadow-[0_8px_30px_rgb(0,0,0,0.08)] border border-gray-100">
+              <FaSearch className="text-gray-400 ml-4 mr-2 text-lg" />
+              <input
+                type="text"
+                value={search}
+                onChange={(e) => setSearch(e.target.value)}
+                placeholder="Search by name or subject..."
+                className="flex-1 border-none focus:ring-0 text-gray-700 placeholder-gray-400 bg-transparent text-base px-2 py-2 outline-none"
+              />
+              {search && (
+                <button
+                  onClick={() => setSearch('')}
+                  className="mr-3 text-gray-400 hover:text-gray-600"
+                >
+                  <FaTimes className="w-4 h-4" />
+                </button>
+              )}
+              <button className="bg-gradient-to-r from-[#4f46e5] to-[#7c3aed] hover:from-[#4338ca] hover:to-[#6d28d9] text-white font-bold px-8 py-3.5 rounded-full transition-all shadow-sm">
+                Search
               </button>
-            )}
-          </motion.div>
+            </div>
+          </div>
+
+          {/* Stats Cards */}
+          <div className="flex flex-wrap justify-center gap-4 max-w-4xl mx-auto">
+            {/* Stat 1 */}
+            <div className="flex items-center gap-4 bg-white rounded-2xl px-6 py-4 shadow-sm border border-red-100 min-w-[200px]">
+              <div className="w-12 h-12 rounded-full bg-red-50 flex items-center justify-center flex-shrink-0">
+                <FaUsers className="text-red-400 text-xl" />
+              </div>
+              <div className="text-left">
+                <p className="text-2xl font-bold text-gray-900 leading-tight">{teachers.length > 0 ? `${teachers.length}+` : '0'}</p>
+                <p className="text-sm font-medium text-gray-500">Verified Teachers</p>
+              </div>
+            </div>
+            {/* Stat 2 */}
+            <div className="flex items-center gap-4 bg-white rounded-2xl px-6 py-4 shadow-sm border border-purple-100 min-w-[200px]">
+              <div className="w-12 h-12 rounded-full bg-purple-50 flex items-center justify-center flex-shrink-0">
+                <svg className="w-6 h-6 text-purple-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 6.253v13m0-13C10.832 5.477 9.246 5 7.5 5S4.168 5.477 3 6.253v13C4.168 18.477 5.754 18 7.5 18s3.332.477 4.5 1.253m0-13C13.168 5.477 14.754 5 16.5 5c1.747 0 3.332.477 4.5 1.253v13C19.832 18.477 18.247 18 16.5 18c-1.746 0-3.332.477-4.5 1.253" />
+                </svg>
+              </div>
+              <div className="text-left">
+                <p className="text-2xl font-bold text-gray-900 leading-tight">{totalClasses > 0 ? `${totalClasses}+` : '0'}</p>
+                <p className="text-sm font-medium text-gray-500">Total classes</p>
+              </div>
+            </div>
+            {/* Stat 3 */}
+            <div className="flex items-center gap-4 bg-white rounded-2xl px-6 py-4 shadow-sm border border-emerald-100 min-w-[200px]">
+              <div className="w-12 h-12 rounded-full bg-emerald-50 flex items-center justify-center flex-shrink-0">
+                <svg className="w-6 h-6 text-emerald-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path d="M12 14l9-5-9-5-9 5 9 5z" />
+                  <path d="M12 14l6.16-3.422a12.083 12.083 0 01.665 6.479A11.952 11.952 0 0012 20.055a11.952 11.952 0 00-6.824-2.998 12.078 12.078 0 01.665-6.479L12 14z" />
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 14l9-5-9-5-9 5 9 5zm0 0l6.16-3.422a12.083 12.083 0 01.665 6.479A11.952 11.952 0 0012 20.055a11.952 11.952 0 00-6.824-2.998 12.078 12.078 0 01.665-6.479L12 14zm-4 6v-7.5l4-2.222" />
+                </svg>
+              </div>
+              <div className="text-left">
+                <p className="text-2xl font-bold text-gray-900 leading-tight">{totalStudents > 0 ? `${totalStudents}+` : '0'}</p>
+                <p className="text-sm font-medium text-gray-500">Students Taught</p>
+              </div>
+            </div>
+          </div>
         </div>
       </div>
       {/* Filters bar */}

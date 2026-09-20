@@ -23,6 +23,7 @@ import {
   FaCheck,
   FaQuoteLeft,
   FaChevronDown,
+  FaHeart,
   FaAward,
 } from 'react-icons/fa';
 import { toast } from 'react-hot-toast';
@@ -187,64 +188,34 @@ const StarRow: React.FC<{ rating: number; interactive?: boolean; onRate?: (n: nu
 };
 
 /* ─── FAQItem with smooth animation ─────────────────────────────── */
-const FAQItem: React.FC<{ q: string; a: string; defaultOpen?: boolean; index: number }> = ({ q, a, defaultOpen, index }) => {
+const FAQItem: React.FC<{ q: string; a: string; defaultOpen?: boolean; index: number }> = ({ q, a, defaultOpen }) => {
   const [open, setOpen] = useState(!!defaultOpen);
-  const [contentHeight, setContentHeight] = useState<number | undefined>(defaultOpen ? undefined : 0);
-  const contentRef = React.useRef<HTMLDivElement>(null);
-
-  useEffect(() => {
-    if (!contentRef.current) return;
-    if (open) {
-      setContentHeight(contentRef.current.scrollHeight);
-      const timer = setTimeout(() => setContentHeight(undefined), 350);
-      return () => clearTimeout(timer);
-    } else {
-      setContentHeight(contentRef.current.scrollHeight);
-      requestAnimationFrame(() => {
-        requestAnimationFrame(() => setContentHeight(0));
-      });
-      return () => { };
-    }
-  }, [open]);
-
-  const colors = [
-    { accent: 'indigo', bg: 'hover:bg-indigo-50/60', border: 'border-indigo-100', num: 'bg-indigo-100 text-indigo-600' },
-    { accent: 'violet', bg: 'hover:bg-violet-50/60', border: 'border-violet-100', num: 'bg-violet-100 text-violet-600' },
-    { accent: 'blue', bg: 'hover:bg-blue-50/60', border: 'border-blue-100', num: 'bg-blue-100 text-blue-600' },
-    { accent: 'purple', bg: 'hover:bg-purple-50/60', border: 'border-purple-100', num: 'bg-purple-100 text-purple-600' },
-    { accent: 'sky', bg: 'hover:bg-sky-50/60', border: 'border-sky-100', num: 'bg-sky-100 text-sky-600' },
-  ];
-  const color = colors[index % colors.length];
-
   return (
     <div
-      className={`rounded-2xl border ${color.border} bg-white/80 mb-3 overflow-hidden transition-all duration-200 ${color.bg} ${open ? 'shadow-md' : 'shadow-sm'}`}
+      className={`group rounded-3xl border transition-all duration-300 overflow-hidden bg-white mb-4 ${open
+          ? 'border-indigo-150 bg-indigo-50/10 shadow-[0_4px_20px_-4px_rgba(79,70,229,0.1)]'
+          : 'border-slate-100 hover:border-slate-200/50 hover:shadow-sm'
+        }`}
     >
       <button
-        className="w-full flex items-center gap-4 px-6 py-4 text-left group"
-        onClick={() => setOpen((v) => !v)}
+        type="button"
+        onClick={() => setOpen(!open)}
+        className="w-full text-left p-6 flex items-center justify-between gap-4 focus:outline-none"
       >
-        <div className={`w-7 h-7 rounded-full flex-shrink-0 flex items-center justify-center text-xs font-black ${color.num} transition-transform duration-200 ${open ? 'scale-110' : ''}`}>
-          {index + 1}
-        </div>
-        <span className="flex-1 text-[15px] font-semibold text-slate-800 leading-snug">{q}</span>
-        <div className={`w-8 h-8 rounded-full flex items-center justify-center flex-shrink-0 transition-all duration-300 ${open ? 'bg-indigo-500 text-white rotate-0' : 'bg-slate-100 text-slate-400'}`}>
-          <FaChevronDown className={`text-[10px] transition-transform duration-300 ${open ? 'rotate-180' : 'rotate-0'}`} />
-        </div>
+        <h3 className={`font-extrabold text-lg pr-4 transition-colors duration-250 ${open ? 'text-indigo-950' : 'text-slate-850 group-hover:text-indigo-650'}`}>
+          {q}
+        </h3>
+        <FaChevronDown
+          className={`flex-shrink-0 text-slate-400 transition-all duration-300 ${open ? 'rotate-180 text-indigo-600' : 'group-hover:text-indigo-500'}`}
+        />
       </button>
 
       <div
-        ref={contentRef}
-        style={{
-          height: contentHeight === undefined ? 'auto' : contentHeight,
-          overflow: 'hidden',
-          transition: 'height 0.35s cubic-bezier(0.4, 0, 0.2, 1)',
-        }}
+        className={`overflow-hidden transition-all duration-300 ${open ? 'max-h-96 opacity-100' : 'max-h-0 opacity-0'}`}
       >
-        <div className="px-6 pb-5 pt-0">
-          <div className={`h-px bg-${color.accent}-100 mb-4`} />
-          <p className="text-[14px] text-slate-500 leading-relaxed pl-11">{a}</p>
-        </div>
+        <p className="text-slate-500 text-base leading-relaxed px-6 pb-6 pr-10">
+          {a}
+        </p>
       </div>
     </div>
   );
@@ -517,7 +488,7 @@ const VendorPage: React.FC = () => {
     (vendor as any).learningOutcomes?.length ? (vendor as any).learningOutcomes : DEFAULT_OUTCOMES;
 
   return (
-    <div className="min-h-screen bg-[#f4f5f9] font-sans">
+    <div className="min-h-screen bg-[#f4f5f9] font-sans overflow-x-hidden">
       <VendorSEO
         vendor={{ ...vendor, firstName: user.firstName, lastName: user.lastName, avatar }}
         breadcrumbs={[
@@ -528,11 +499,13 @@ const VendorPage: React.FC = () => {
       />
 
       {/* ══════ SECTION 1: HERO ══════ */}
-      <section className="relative h-[420px] bg-[#0d1b2e] overflow-hidden pt-10 pb-20">
-        {cover
-          ? <img src={cover} alt={vendorName} className="absolute inset-0 w-full h-full object-cover object-center" />
-          : <div className="absolute inset-0 bg-gradient-to-br from-[#0d1b2e] via-[#152640] to-[#0d2137]" />
-        }
+      <section className="relative h-[420px] overflow-hidden pt-10 pb-20">
+        <img 
+          src={cover || "/assets/defbanner.png"} 
+          alt={vendorName} 
+          className="absolute inset-0 w-full h-full object-cover object-center" 
+        />
+        {!cover && <div className="absolute inset-0 bg-gray-600/30" />}
         <div className="absolute inset-0 bg-gradient-to-r from-black/75 via-black/50 to-black/30" />
 
         <div className="relative z-10 max-w-5xl mx-auto px-4 sm:px-6 pt-6 pb-12">
@@ -557,32 +530,32 @@ const VendorPage: React.FC = () => {
             </div>
 
             <div className="flex-1 min-w-0 pb-1">
-              <div className="flex flex-wrap items-center gap-2.5 mb-1">
-                <h1 className="text-3xl sm:text-4xl font-extrabold tracking-tight text-white leading-tight">{vendorName}</h1>
+              <div className="flex flex-wrap items-center gap-3 mb-2">
+                <h1 className="text-4xl sm:text-5xl font-black tracking-tight text-white leading-tight drop-shadow-md">{vendorName}</h1>
                 {isVerified ? (
-                  <span className="inline-flex items-center gap-1 text-xs font-semibold px-3 py-1 rounded-full bg-white/10 border border-white/20 text-white backdrop-blur-md">
-                    <FaCheckCircle className="text-emerald-400 text-[10px]" />
+                  <span className="inline-flex items-center gap-1.5 text-xs font-bold px-3.5 py-1 rounded-full bg-emerald-500/20 border border-emerald-400/30 text-emerald-50 backdrop-blur-md shadow-[0_0_15px_rgba(16,185,129,0.3)] mt-2 sm:mt-0">
+                    <FaCheckCircle className="text-emerald-400 text-[12px]" />
                     Verified Organizer
                   </span>
                 ) : (
-                  <span className="inline-flex items-center gap-1 text-xs font-semibold px-3 py-1 rounded-full bg-white/10 border border-white/20 text-white/80 backdrop-blur-md">
-                    <FaCheckCircle className="text-white/40 text-[10px]" />
-                    Organizer
+                  <span className="inline-flex items-center gap-1.5 text-xs font-bold px-3.5 py-1 rounded-full bg-emerald-500/20 border border-emerald-400/30 text-emerald-50 backdrop-blur-md shadow-[0_0_15px_rgba(16,185,129,0.3)] mt-2 sm:mt-0">
+                    <FaStore className="text-emerald-400 text-[12px]" />
+                    Event Organizer
                   </span>
                 )}
               </div>
 
-              <p className="text-sm text-white/60 mb-3">{subtitle}</p>
+              <p className="text-lg sm:text-xl text-white/95 font-medium mb-4 drop-shadow-sm">{subtitle}</p>
 
-              <div className="flex flex-wrap items-center mt-2 text-sm text-white/85 mb-4">
+              <div className="flex flex-wrap items-center mt-2 text-sm text-white/90 mb-4">
                 <span className="flex items-center gap-1.5">
-                  <FaStar className="text-amber-400 text-xs" />
-                  <strong className="text-white">{rating.toFixed(1)}</strong>
-                  <span className="text-white/50 text-xs">({totalReviews} reviews)</span>
+                  <FaStar className="text-amber-400 text-sm" />
+                  <strong className="text-white text-base">{rating.toFixed(1)}</strong>
+                  <span className="text-white/70 text-sm">({totalReviews} reviews)</span>
                 </span>
-                <span className="text-white/25 mx-2">|</span>
-                <span className="flex items-center gap-1.5 text-xs text-white/60">
-                  <FaUsers className="text-white/40" /> {compactNumber(totalAttendees)} Attendees
+                <span className="text-white/30 mx-3">|</span>
+                <span className="flex items-center gap-1.5 text-sm text-white/80">
+                  <FaUsers className="text-white/60 text-base" /> {compactNumber(totalAttendees)} Attendees
                 </span>
               </div>
 
@@ -669,395 +642,298 @@ const VendorPage: React.FC = () => {
       <div className="max-w-6xl mx-auto px-6 py-8">
         <div className="flex flex-col gap-8">
 
-          {/* ══════ SECTION 3: ABOUT ME ══════ */}
-          <div
-            className="rounded-3xl shadow-sm overflow-hidden border-l-4 border-indigo-500"
-            style={{ background: '#fafaf9' }}
-          >
-            <div className="px-8 pt-7 pb-2">
-              <p className="text-[10px] uppercase tracking-widest font-bold text-indigo-500 mb-1">About Me</p>
-              <h2 className="flex items-center gap-2 text-xl font-bold text-slate-900">
-                <FaStore className="text-indigo-500" /> {vendorName}
-              </h2>
+          {/* ══════ ROW 1: ABOUT & VIDEO ══════ */}
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
+            {/* ABOUT */}
+            <div className={`bg-white rounded-3xl p-8 border border-slate-100 shadow-sm flex flex-col ${!teacherVideoUrl ? 'md:col-span-2' : ''}`}>
+              <div className="flex items-center gap-3 mb-4">
+                <div className="w-10 h-10 rounded-xl bg-indigo-100 flex items-center justify-center">
+                  <FaStore className="text-indigo-600 text-lg" />
+                </div>
+                <h2 className="text-xl font-extrabold text-slate-900">About Event Vendor</h2>
+              </div>
+              <p className="text-slate-500 leading-relaxed mb-6 flex-grow">
+                {vendor.bio
+                  ? vendor.bio
+                  : 'We create engaging and memorable experiences for kids through well-organized events, workshops, and activities. Our focus is on learning, creativity, and fun, ensuring every child has a great time.'}
+              </p>
+              
+              <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 mt-auto">
+                <div className="bg-slate-50 rounded-xl p-3 border border-slate-100 flex flex-col justify-center items-center text-center">
+                  <div className="flex items-center gap-2 mb-1">
+                    <FaCalendarAlt className="text-indigo-400" />
+                    <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Joined</span>
+                  </div>
+                  <p className="text-sm font-bold text-slate-700">{formatMemberSince(user.createdAt)}</p>
+                </div>
+                <div className="bg-slate-50 rounded-xl p-3 border border-slate-100 flex flex-col justify-center items-center text-center">
+                  <div className="flex items-center gap-2 mb-1">
+                    <FaLanguage className="text-cyan-500" />
+                    <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Languages</span>
+                  </div>
+                  <p className="text-sm font-bold text-slate-700">{vendor.languagesSpoken?.length ? vendor.languagesSpoken.join(', ') : 'Not specified'}</p>
+                </div>
+                <div className="bg-slate-50 rounded-xl p-3 border border-slate-100 flex flex-col justify-center items-center text-center">
+                  <div className="flex items-center gap-2 mb-1">
+                    <FaStar className="text-amber-400" />
+                    <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Event Style</span>
+                  </div>
+                  <p className="text-sm font-bold text-slate-700 truncate">Professional, Engaging</p>
+                </div>
+                <div className="bg-slate-50 rounded-xl p-3 border border-slate-100 flex flex-col justify-center items-center text-center">
+                  <div className="flex items-center gap-2 mb-1">
+                    <FaMapMarkerAlt className="text-rose-400" />
+                    <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Location</span>
+                  </div>
+                  <p className="text-sm font-bold text-slate-700 truncate">{(vendor as any).location || vendor.city || 'Online / Flexible'}</p>
+                </div>
+              </div>
             </div>
 
-            <div className="px-8 pb-6">
-              {/* Bio */}
-              <div className="relative mt-4 mb-6">
-                <FaQuoteLeft className="absolute -top-1 -left-1 text-indigo-200 text-4xl pointer-events-none" />
-                <p className="text-[17px] font-medium text-slate-700 leading-relaxed pl-10">
-                  {vendor.bio
-                    ? vendor.bio.split(' ').map((word: string, i: number) => {
-                      const isKeyword = word.length > 7 && /^[A-Z]/.test(word);
-                      return isKeyword
-                        ? <strong key={i} className="text-indigo-700 font-bold">{word} </strong>
-                        : <span key={i}>{word} </span>;
-                    })
-                    : 'No profile summary has been added yet.'}
+            {/* VIDEO */}
+            {teacherVideoUrl && (
+              <div className="bg-white rounded-3xl p-8 border border-slate-100 shadow-sm flex flex-col">
+                <div className="flex items-center gap-3 mb-4">
+                  <div className="w-10 h-10 rounded-xl bg-purple-100 flex items-center justify-center">
+                    <FaPlay className="text-purple-600 text-sm" />
+                  </div>
+                  <h2 className="text-xl font-extrabold text-slate-900">Introduction Video</h2>
+                </div>
+                <div className="relative rounded-2xl overflow-hidden bg-slate-900 flex-grow shadow-inner min-h-[200px]">
+                  {videoEmbedUrl ? (
+                    <iframe src={videoEmbedUrl} title="intro" className="w-full h-full border-0 absolute inset-0" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture" allowFullScreen />
+                  ) : isDirectVideoUrl(teacherVideoUrl) ? (
+                    <video src={teacherVideoUrl} controls className="w-full h-full object-cover absolute inset-0" />
+                  ) : (
+                    <a href={teacherVideoUrl} target="_blank" rel="noreferrer" className="absolute inset-0 flex flex-col items-center justify-center gap-3 text-white hover:text-purple-300 transition-colors bg-slate-800">
+                      <div className="w-16 h-16 rounded-full bg-white/10 border border-white/20 flex items-center justify-center text-2xl backdrop-blur-sm"><FaPlay /></div>
+                      <span className="text-sm font-bold">Watch Introduction Video</span>
+                    </a>
+                  )}
+                </div>
+              </div>
+            )}
+          </div>
+
+          {/* ══════ ROW 2: OUR CORE VALUES ══════ */}
+          <div className="bg-[#fefce8] rounded-3xl p-8 shadow-sm">
+            <div className="flex items-center justify-between mb-8">
+              <div className="flex items-center gap-4">
+                <div className="w-12 h-12 rounded-full bg-[#fca5a5] flex items-center justify-center shadow-sm">
+                  <FaHeart className="text-white text-xl" />
+                </div>
+                <div>
+                  <h2 className="text-2xl font-black text-[#1e293b]">Our Core Values</h2>
+                  <p className="text-[#64748b] font-medium mt-1">The principles that guide everything we do.</p>
+                </div>
+              </div>
+              <div className="hidden md:block text-right transform -rotate-6">
+                <p className="text-[#1e3a8a] font-black leading-tight text-lg" style={{ fontFamily: 'var(--font-handwriting, cursive)' }}>
+                  More<br/>Smiles<br/>Brighter<br/>Futures 💙
                 </p>
               </div>
+            </div>
+            
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+              <div className="bg-white rounded-2xl p-6 shadow-sm border border-orange-50 flex flex-col">
+                <div className="w-12 h-12 rounded-full bg-orange-100 text-orange-500 flex items-center justify-center text-xl mb-4">
+                  <FaUsers />
+                </div>
+                <h3 className="font-extrabold text-[#1e293b] text-[15px] mb-3 leading-tight">Child-Centric<br/>Approach</h3>
+                <p className="text-[#64748b] text-xs leading-relaxed flex-grow">We design every event with children's happiness, safety, and growth in mind.</p>
+              </div>
+              <div className="bg-white rounded-2xl p-6 shadow-sm border border-blue-50 flex flex-col">
+                <div className="w-12 h-12 rounded-full bg-blue-100 text-blue-500 flex items-center justify-center text-xl mb-4">
+                  <FaCheckCircle />
+                </div>
+                <h3 className="font-extrabold text-[#1e293b] text-[15px] mb-3 leading-tight">Safety &<br/>Trust</h3>
+                <p className="text-[#64748b] text-xs leading-relaxed flex-grow">A safe, inclusive, and supportive environment for every child and family.</p>
+              </div>
+              <div className="bg-white rounded-2xl p-6 shadow-sm border border-emerald-50 flex flex-col">
+                <div className="w-12 h-12 rounded-full bg-emerald-100 text-emerald-500 flex items-center justify-center text-xl mb-4">
+                  <FaBookOpen />
+                </div>
+                <h3 className="font-extrabold text-[#1e293b] text-[15px] mb-3 leading-tight">Creativity &<br/>Fun</h3>
+                <p className="text-[#64748b] text-xs leading-relaxed flex-grow">We bring learning to life through engaging and innovative experiences.</p>
+              </div>
+              <div className="bg-white rounded-2xl p-6 shadow-sm border border-purple-50 flex flex-col">
+                <div className="w-12 h-12 rounded-full bg-purple-100 text-purple-500 flex items-center justify-center text-xl mb-4">
+                  <FaStar />
+                </div>
+                <h3 className="font-extrabold text-[#1e293b] text-[15px] mb-3 leading-tight">Excellence</h3>
+                <p className="text-[#64748b] text-xs leading-relaxed flex-grow">We strive for the highest standards in planning, execution, and customer satisfaction.</p>
+              </div>
+            </div>
+          </div>
 
-              {/* 4-column detail grid — wider now */}
-              <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 mb-5">
+          {/* ══════ ROW 3: EXPECT & AVAILABILITY ══════ */}
+          <div className="grid grid-cols-1 lg:grid-cols-5 gap-8">
+            <div className="lg:col-span-3 bg-[#f5f3ff] rounded-3xl p-8 flex flex-col border border-indigo-50/50">
+              <div className="flex items-center gap-4 mb-8">
+                <div className="w-12 h-12 rounded-full bg-white flex items-center justify-center shadow-sm">
+                  <FaStar className="text-indigo-600 text-xl" />
+                </div>
+                <div>
+                  <h2 className="text-2xl font-black text-[#1e293b]">What to Expect</h2>
+                  <p className="text-[#64748b] font-medium mt-1 text-sm">A seamless and delightful experience for you and your child.</p>
+                </div>
+              </div>
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 flex-grow">
                 {[
-                  { icon: <FaCalendarAlt />, iconCls: 'bg-indigo-50 text-indigo-600', label: 'Joined', value: formatMemberSince(user.createdAt) },
-                  { icon: <FaLanguage />, iconCls: 'bg-cyan-50 text-cyan-600', label: 'Languages', value: vendor.languagesSpoken?.length ? vendor.languagesSpoken.join(', ') : 'Not specified' },
-                  { icon: <FaStar />, iconCls: 'bg-amber-50 text-amber-500', label: 'Event Style', value: (vendor as any).teachingDescription || 'Professional, Engaging' },
-                  { icon: <FaMapMarkerAlt />, iconCls: 'bg-rose-50 text-rose-500', label: 'Location', value: (vendor as any).location || vendor.city || 'Online / Flexible' },
+                  { icon: <FaCheckCircle/>, text: 'Memorable Experiences' },
+                  { icon: <FaStar/>, text: 'Professional Event Management' },
+                  { icon: <FaUsers/>, text: 'Dedicated Support' },
+                  { icon: <FaBookOpen/>, text: 'Seamless Ticketing & Entry' },
+                  { icon: <FaBullseye/>, text: 'Top-tier Services' },
+                  { icon: <FaCheckCircle/>, text: 'Secure Booking' },
                 ].map((item, i) => (
-                  <div key={i} className="flex items-start gap-3 bg-white border border-slate-100 rounded-2xl px-4 py-3">
-                    <div className={`w-9 h-9 rounded-lg flex items-center justify-center text-sm flex-shrink-0 mt-0.5 ${item.iconCls}`}>{item.icon}</div>
-                    <div>
-                      <p className="text-[10px] uppercase tracking-widest text-slate-400 font-bold mb-0.5">{item.label}</p>
-                      <p className="text-[15px] font-bold text-slate-700">{item.value}</p>
+                  <div key={i} className="bg-white rounded-2xl p-4 flex items-center gap-4 shadow-sm border border-white/50 transition-transform hover:-translate-y-1">
+                    <div className="w-10 h-10 rounded-full flex items-center justify-center flex-shrink-0 bg-indigo-50 text-indigo-600">
+                      {item.icon}
                     </div>
+                    <span className="font-extrabold text-[#1e293b] text-[13px] leading-snug">{item.text}</span>
                   </div>
                 ))}
               </div>
-
-              {/* Subject chips */}
-              {vendor.subjects && vendor.subjects.length > 0 && (
-                <div className="flex flex-wrap gap-2">
-                  {vendor.subjects.map((sub: string, i: number) => (
-                    <span key={i} className="inline-flex items-center px-3 py-1.5 rounded-full bg-indigo-50 border border-indigo-100 text-indigo-700 text-xs font-semibold">
-                      {sub}
-                    </span>
-                  ))}
-                </div>
-              )}
             </div>
-          </div>
 
-          {/* ══════ SECTION 4: EDUCATION & QUALIFICATIONS (moved here, below About) ══════ */}
-          {(vendor.education || []).length > 0 && (
-            <div className="rounded-3xl shadow-sm border border-slate-100 overflow-hidden">
-              <div className="px-8 py-5 border-b border-slate-100 flex items-center gap-3" style={{ background: 'linear-gradient(90deg, #f5f3ff, #faf9ff)' }}>
-                <div className="w-9 h-9 rounded-xl bg-violet-100 flex items-center justify-center">
-                  <FaGraduationCap className="text-violet-600 text-base" />
+            <div className="lg:col-span-2 bg-[#ecfdf5] rounded-3xl p-8 flex flex-col border border-emerald-50/50">
+              <div className="flex items-center gap-4 mb-8">
+                <div className="w-12 h-12 rounded-full bg-white flex items-center justify-center shadow-sm">
+                  <FaCalendarAlt className="text-emerald-500 text-xl" />
                 </div>
                 <div>
-                  <p className="text-[10px] uppercase tracking-widest font-bold text-violet-500 mb-0.5">Credentials</p>
-                  <h2 className="text-base font-bold text-slate-900">Education & Qualifications</h2>
-                  <p className="text-xs text-slate-400">{(vendor.education || []).length} credential{(vendor.education || []).length !== 1 ? 's' : ''} on file</p>
+                  <h2 className="text-2xl font-black text-[#1e293b]">Availability</h2>
+                  <p className="text-[#64748b] font-medium mt-1 text-sm">Check when this vendor is available for events.</p>
                 </div>
               </div>
-
-              <div className="p-8 bg-white">
-                <div className="relative">
-                  <div className="absolute left-5 top-4 bottom-4 w-px bg-gradient-to-b from-violet-300 via-indigo-200 to-transparent" />
-                  <div className="space-y-6">
-                    {(vendor.education || []).map((edu: any, i: number) => (
-                      <div key={i} className="relative flex gap-6 group">
-                        <div className="relative z-10 flex-shrink-0 w-10 h-10 rounded-full bg-gradient-to-br from-violet-500 to-indigo-600 flex items-center justify-center shadow-md shadow-violet-200 group-hover:scale-110 transition-transform">
-                          <FaGraduationCap className="text-white text-xs" />
-                        </div>
-                        <div className="flex-1 bg-slate-50 hover:bg-violet-50/50 border border-slate-100 hover:border-violet-100 rounded-2xl p-5 transition-all duration-200">
-                          <div className="flex flex-wrap items-start justify-between gap-2">
-                            <div>
-                              <p className="text-base font-bold text-slate-900">{edu.degree}</p>
-                              <p className="text-sm text-violet-600 font-semibold mt-0.5">{edu.institution}</p>
-                            </div>
-                            <div className="flex flex-wrap gap-2 mt-1">
-                              {edu.year && (
-                                <span className="inline-flex items-center gap-1 text-[11px] font-bold px-2.5 py-1 rounded-lg bg-violet-100 text-violet-700">
-                                  <FaCalendarAlt className="text-[9px]" /> {edu.year}
-                                </span>
-                              )}
-                              {/* Location badge removed as requested */}
-                            </div>
-                          </div>
-                        </div>
+              <div className="bg-white rounded-3xl p-2 shadow-sm border border-white/50 flex-grow">
+                {DAYS_OF_WEEK.map((day, i) => {
+                  const isAvail = availHours?.[day]?.isAvailable;
+                  return (
+                    <div key={day} className={`flex items-center justify-between p-3.5 px-5 ${i !== DAYS_OF_WEEK.length - 1 ? 'border-b border-slate-50' : ''}`}>
+                      <div className="flex items-center gap-3">
+                        <FaPlay className="text-[7px] text-slate-400" />
+                        <span className="font-bold text-[#334155] capitalize text-[13px]">{day}</span>
                       </div>
-                    ))}
-                  </div>
-                </div>
-              </div>
-            </div>
-          )}
-
-          {/* ══════ SECTION 5: INTRODUCTION VIDEO ══════ */}
-          <div className="bg-white border border-slate-100 rounded-3xl shadow-sm overflow-hidden">
-            <div className="px-8 py-5 border-b border-slate-100 flex items-center gap-3" style={{ background: 'linear-gradient(90deg, #eff6ff, #f8faff)' }}>
-              <div className="w-9 h-9 rounded-xl bg-blue-100 flex items-center justify-center">
-                <FaPlay className="text-blue-600 text-xs" />
-              </div>
-              <div>
-                <p className="text-[10px] uppercase tracking-widest font-bold text-blue-500 mb-0.5">Video</p>
-                <h2 className="text-base font-bold text-slate-900">Introduction Video</h2>
-              </div>
-            </div>
-            <div className="p-8">
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-8 items-start">
-                <div className="relative rounded-2xl overflow-hidden bg-slate-900 aspect-video shadow-xl">
-                  {teacherVideoUrl ? (
-                    videoEmbedUrl ? (
-                      <iframe src={videoEmbedUrl} title="intro" className="w-full h-full border-0" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture" allowFullScreen />
-                    ) : isDirectVideoUrl(teacherVideoUrl) ? (
-                      <video src={teacherVideoUrl} controls className="w-full h-full" />
-                    ) : (
-                      <a href={teacherVideoUrl} target="_blank" rel="noreferrer" className="absolute inset-0 flex flex-col items-center justify-center gap-3 text-blue-400 hover:text-blue-300 transition-colors">
-                        <div className="w-16 h-16 rounded-full bg-white/10 border border-white/20 flex items-center justify-center text-2xl"><FaPlay /></div>
-                        <span className="text-sm font-medium">Open Video</span>
-                      </a>
-                    )
-                  ) : (
-                    <div className="absolute inset-0 flex flex-col items-center justify-center gap-3">
-                      <div className="w-14 h-14 rounded-full bg-white/10 border border-white/20 flex items-center justify-center text-white text-xl"><FaPlay /></div>
-                      <span className="text-sm text-white/40">No introduction video yet</span>
+                      <span className={`text-[10px] font-extrabold tracking-wide px-3 py-1 rounded-full ${isAvail ? 'bg-[#dcfce7] text-emerald-700' : 'bg-[#f1f5f9] text-slate-400'}`}>
+                        {isAvail ? 'Available' : 'Unavailable'}
+                      </span>
                     </div>
-                  )}
-                </div>
-                <div>
-                  <h3 className="text-xl font-bold text-slate-900 mb-3">Get to know me better!</h3>
-                  <p className="text-sm text-slate-500 leading-relaxed">
-                    {(vendor as any).videoDescription
-                      ? (vendor as any).videoDescription
-                      : vendor.bio
-                        ? vendor.bio.split('\n')[0] || vendor.bio.slice(0, 300)
-                        : 'Watch my introduction video to learn more about my teaching style, approach, and what you can expect from my classes.'}
-                  </p>
-                  {teacherVideoUrl && (
-                    <span className="inline-flex items-center gap-2 mt-5 bg-blue-50 border border-blue-100 rounded-full px-4 py-2 text-xs font-semibold text-blue-600">
-                      <FaClock className="text-blue-400" /> Introduction video
-                    </span>
-                  )}
-                </div>
+                  );
+                })}
               </div>
             </div>
           </div>
 
-          {/* ══════ SECTION 6: TEACHING PHILOSOPHY ══════ */}
-          <div
-            className="rounded-3xl shadow-sm overflow-hidden border-l-4 border-amber-400"
-            style={{ background: 'rgba(254,243,199,0.3)' }}
-          >
-            <div className="px-8 pt-7 pb-2">
-              <p className="text-[10px] uppercase tracking-widest font-bold text-amber-500 mb-1">Why Choose Us</p>
-              <h2 className="text-xl font-bold text-slate-900">Our Core Values</h2>
-            </div>
-            <div className="px-8 pb-7">
-              <div className="grid grid-cols-1 sm:grid-cols-3 gap-5 mt-5">
-                {coreValues.map((p, i) => (
-                  <div key={i} className="bg-white rounded-2xl border border-amber-100 p-6 shadow-sm hover:shadow-md transition-shadow">
-                    <div className="w-10 h-10 rounded-full bg-gradient-to-br from-amber-400 to-orange-400 flex items-center justify-center text-white font-extrabold text-sm mb-4">
-                      {i + 1}
-                    </div>
-                    <p className="text-[16px] font-bold text-slate-800 mb-2">{p.title}</p>
-                    <p className="text-[14px] text-slate-500 leading-relaxed">{p.desc}</p>
-                  </div>
-                ))}
-              </div>
-            </div>
-          </div>
+          {/* ══════ EVENTS, FAQ, REVIEWS WITH SPOTLIGHTS ══════ */}
+          <div className="relative py-12 mt-8">
+            {/* Spotlights */}
+            <div className="absolute top-[5%] left-[-10%] w-[50%] h-[30%] rounded-full bg-blue-500/15 blur-[150px] pointer-events-none" />
+            <div className="absolute top-[45%] right-[-10%] w-[50%] h-[30%] rounded-full bg-[#F6B83F]/15 blur-[150px] pointer-events-none" />
 
-          {/* ══════ SECTION 7: CLASSES ══════ */}
-          {classCards.length > 0 && (
-            <div className="bg-white border border-slate-100 rounded-3xl shadow-sm overflow-hidden">
-              <div className="px-8 py-5 border-b border-slate-100 flex items-center justify-between" style={{ background: 'linear-gradient(90deg, #fefce8, #fffdf0)' }}>
-                <div className="flex items-center gap-3">
-                  <div className="w-9 h-9 rounded-xl bg-amber-100 flex items-center justify-center">
-                    <FaBookOpen className="text-amber-600 text-base" />
-                  </div>
-                  <div>
-                    <p className="text-[10px] uppercase tracking-widest font-bold text-amber-500 mb-0.5">Events</p>
-                    <h2 className="text-base font-bold text-slate-900">Organized by this Vendor</h2>
-                  </div>
-                </div>
-                <Link to="/events" className="text-xs font-semibold text-indigo-600 hover:text-indigo-800 transition-colors">View all →</Link>
-              </div>
-              <div className="p-8">
-                {/* Full-width 3-column grid */}
-                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
-                  {classCards.map((event) => {
-                    const thumb = normalizeImageUrl(
-                      (typeof event.imageAssets?.[0] === 'object' ? (event.imageAssets[0].url || event.imageAssets[0].secureUrl) : event.imageAssets?.[0]) ||
-                      event.images?.[0]?.url || event.images?.[0] || event.coverImage || event.image
-                    );
-                    const hasUnlimited = (event.dateSchedule || []).some((s: any) => s.unlimitedSeats);
-                    const totalSeats = hasUnlimited
-                      ? 0
-                      : (event.dateSchedule || []).reduce((sum: number, s: any) => sum + (s.totalSeats ?? s.availableSeats ?? 0), 0);
-                    const soldSeats = (event.dateSchedule || []).reduce((sum: number, s: any) => sum + (s.soldSeats ?? 0), 0);
-                    const firstDate = event.dateSchedule?.[0]?.date || event.dateSchedule?.[0]?.startDate;
-                    const dateLabel = firstDate
-                      ? new Date(firstDate).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })
-                      : null;
-                    const isOnline = event.eventType === 'Online' || event.venueType === 'Online' || (event as any).teachingMode === 'online';
-                    const typeLabel = event.type || 'Class';
-                    const eventRating = event.averageRating || 0;
-                    const eventReviewCount = event.reviewCount || 0;
-                    return (
-                      <Link
-                        to={`/events/${event._id}`}
-                        key={event._id}
-                        className="group flex flex-col rounded-2xl overflow-hidden bg-white border border-slate-200 shadow-sm hover:shadow-xl hover:-translate-y-1 transition-all duration-200"
-                      >
-                        <div className="relative overflow-hidden bg-slate-100 aspect-[16/10] flex-shrink-0">
-                          {thumb
-                            ? <img src={thumb} alt={event.title} className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300" />
-                            : (
-                              <div className="w-full h-full bg-gradient-to-br from-violet-100 via-blue-50 to-indigo-100 flex items-center justify-center">
-                                <FaBookOpen className="text-violet-300 text-4xl" />
-                              </div>
-                            )
-                          }
-                          {isOnline && (
-                            <span className="absolute top-3 right-3 bg-violet-600 text-white text-[10px] font-bold px-2 py-0.5 rounded-full">Online</span>
-                          )}
-                        </div>
-                        <div className="flex flex-col flex-1 px-5 pt-4 pb-5 gap-2">
-                          <span className="text-[10px] font-extrabold tracking-widest uppercase text-violet-500">{typeLabel}</span>
-                          <h3 className="text-[16px] font-bold text-slate-900 leading-snug line-clamp-2 group-hover:text-violet-700 transition-colors">{event.title}</h3>
-                          {eventRating > 0 && (
-                            <div className="flex items-center gap-1.5">
-                              <StarRow rating={eventRating} />
-                              <span className="text-[10px] text-slate-400">({eventReviewCount})</span>
-                            </div>
-                          )}
-                          <div className="flex flex-wrap items-center gap-3 text-xs text-slate-500">
-                            {dateLabel && <span className="flex items-center gap-1.5"><FaCalendarAlt className="text-slate-400" />{dateLabel}</span>}
-                          </div>
-                          <div className="flex items-center gap-1.5 text-xs text-slate-400">
-                            <FaUsers className="flex-shrink-0" />
-                            <span>{hasUnlimited ? 'Unlimited seats' : `${soldSeats}/${totalSeats || '∞'} booked`}</span>
-                          </div>
-                          <div className="mt-auto pt-3 border-t border-slate-100">
-                            <span className="text-xl font-extrabold text-violet-600">{event.currency || 'AED'} {event.price || 0}</span>
-                            <span className="text-xs text-slate-400 ml-1">/ session</span>
-                          </div>
-                        </div>
+            <div className="relative z-10 flex flex-col gap-16">
+              
+              {/* ══════ SECTION 7: CLASSES ══════ */}
+              {classCards.length > 0 && (
+                <div className="relative z-10">
+                  <div className="relative flex flex-col items-center mb-12">
+                    <div className="text-center">
+                      <span className="inline-block text-xs font-bold tracking-widest uppercase text-indigo-700 bg-indigo-50 px-3 py-1 rounded-full border border-indigo-300 shadow-sm">
+                        Events
+                      </span>
+                      <h2 className="text-4xl sm:text-5xl font-black text-slate-900 tracking-tight mt-4 mb-3">
+                        EVENTS & CLASSES
+                      </h2>
+                      <p className="text-slate-500 text-lg max-w-xl mx-auto">
+                        Discover events by this vendor.
+                      </p>
+                    </div>
+                    <div className="mt-6 sm:mt-0 sm:absolute sm:right-0 sm:bottom-0">
+                      <Link to={`/search?organizer=${data?.vendor?._id || id}`} className="inline-flex items-center px-6 py-2.5 bg-indigo-50 hover:bg-indigo-100 text-indigo-700 font-bold rounded-full transition-colors text-center shadow-sm border border-indigo-100">
+                        View all events →
                       </Link>
-                    );
-                  })}
-                </div>
-              </div>
-            </div>
-          )}
+                    </div>
+                  </div>
 
-          {/* ══════ SECTION 8: CERTIFICATIONS ══════ */}
-          {hasCertifications && (
-            <div className="bg-white rounded-3xl shadow-sm border border-slate-100 overflow-hidden">
-              <div className="px-8 py-5 border-b border-slate-100 flex items-center gap-3" style={{ background: 'linear-gradient(90deg, #f0fdf4, #f8fffb)' }}>
-                <div className="w-9 h-9 rounded-xl bg-emerald-100 flex items-center justify-center">
-                  <FaAward className="text-emerald-600 text-base" />
-                </div>
-                <div>
-                  <p className="text-[10px] uppercase tracking-widest font-bold text-emerald-600 mb-0.5">Certifications</p>
-                  <h2 className="text-base font-bold text-slate-900">Certificates & Credentials</h2>
-                </div>
-              </div>
-              <div className="p-8">
-                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-                  {certifications.map((cert, i) => (
-                    <div key={i} className="flex items-center gap-4 bg-slate-50 border border-slate-100 rounded-2xl px-5 py-4">
-                      <div className="w-11 h-11 rounded-xl bg-gradient-to-br from-emerald-400 to-teal-500 flex items-center justify-center text-white font-extrabold text-base flex-shrink-0">
-                        {cert.name?.[0] || '🏅'}
-                      </div>
-                      <div>
-                        <p className="text-[14px] font-bold text-slate-800 leading-tight">{cert.name}</p>
-                        {(cert.issuer || cert.year) && (
-                          <p className="text-[12px] text-slate-400 mt-0.5">
-                            {cert.issuer}{cert.issuer && cert.year ? ' · ' : ''}{cert.year}
-                          </p>
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
+                {classCards.map((event) => {
+                  const thumb = normalizeImageUrl(
+                    (typeof event.imageAssets?.[0] === 'object' ? (event.imageAssets[0].url || event.imageAssets[0].secureUrl) : event.imageAssets?.[0]) ||
+                    event.images?.[0]?.url || event.images?.[0] || event.coverImage || event.image
+                  );
+                  const typeLabel = event.type || 'Event';
+                  const duration = event.duration || 'Flexible';
+                  
+                  return (
+                    <Link
+                      key={event._id}
+                      to={`/events/${event._id}`}
+                      className="group relative bg-white rounded-3xl overflow-hidden shadow-sm hover:shadow-md border border-slate-100 cursor-pointer transform hover:-translate-y-1 transition-all duration-300 flex flex-col h-[380px]"
+                    >
+                      {/* Card Image Area */}
+                      <div className="h-48 w-full relative overflow-hidden bg-slate-100">
+                        {thumb ? (
+                          <div
+                            className="absolute inset-0 bg-cover bg-no-repeat bg-center transition-transform duration-500 group-hover:scale-105"
+                            style={{ backgroundImage: `url('${thumb}')` }}
+                          />
+                        ) : (
+                          <div className="absolute inset-0 flex items-center justify-center bg-gradient-to-br from-violet-100 via-blue-50 to-indigo-100">
+                            <FaBookOpen className="text-violet-300 text-4xl" />
+                          </div>
                         )}
                       </div>
-                    </div>
-                  ))}
-                </div>
-              </div>
-            </div>
-          )}
 
-          {/* ══════ SECTION 9: OUTCOMES + AVAILABILITY — side by side ══════ */}
-          <div className="bg-white border border-slate-100 rounded-3xl shadow-sm overflow-hidden">
-            <div className="grid grid-cols-1 lg:grid-cols-2 divide-y lg:divide-y-0 lg:divide-x divide-slate-100">
+                      {/* Card Info Area */}
+                      <div className="p-6 flex-grow flex flex-col justify-between">
+                        <div>
+                          {/* Category Pill Tag */}
+                          <span className="text-[10px] font-extrabold tracking-wider uppercase px-2.5 py-1 rounded border border-purple-100 bg-purple-50 text-purple-600">
+                            {typeLabel}
+                          </span>
 
-              {/* LEFT: What to Expect */}
-              <div className="flex flex-col">
-                <div className="px-8 py-5 border-b border-slate-100 flex items-center gap-3" style={{ background: 'linear-gradient(90deg, #f5f3ff, #eef2ff)' }}>
-                  <div className="w-9 h-9 rounded-xl bg-violet-100 flex items-center justify-center">
-                    <FaCheck className="text-violet-600 text-sm" />
-                  </div>
-                  <div>
-                    <p className="text-[10px] uppercase tracking-widest font-bold text-violet-500 mb-0.5">Outcomes</p>
-                    <h2 className="text-base font-bold text-slate-900">What to Expect</h2>
-                  </div>
-                </div>
-                <div className="p-6 flex-1">
-                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                    {outcomes.map((outcome, i) => (
-                      <div key={i} className="flex items-center gap-3 bg-violet-50/60 border border-violet-100 rounded-xl px-4 py-3">
-                        <div className="w-6 h-6 rounded-full bg-indigo-500 flex items-center justify-center flex-shrink-0">
-                          <FaCheck className="text-white text-[9px]" />
+                          {/* Title */}
+                          <h3 className="font-extrabold text-slate-800 text-lg mt-3 group-hover:text-indigo-650 transition-colors leading-snug line-clamp-2">
+                            {event.title}
+                          </h3>
                         </div>
-                        <p className="text-[13px] font-semibold text-slate-700 leading-snug">{outcome}</p>
+
+                        {/* Card Meta Row */}
+                        <div className="flex items-center justify-between border-t border-slate-50 pt-4 mt-2">
+                          <div className="flex items-center gap-1.5 text-xs text-slate-500 font-medium bg-slate-100 px-2.5 py-1 rounded-full">
+                            <span>{event.currency || 'AED'} {event.price || 0}</span>
+                          </div>
+                          <div className="flex items-center gap-1.5 text-xs text-slate-500 font-medium">
+                            <span className="w-1.5 h-1.5 rounded-full bg-indigo-400"></span>
+                            <span>View details →</span>
+                          </div>
+                        </div>
                       </div>
-                    ))}
-                  </div>
-                </div>
+                    </Link>
+                  );
+                })}
               </div>
-
-              {/* RIGHT: Availability */}
-              <div className="flex flex-col">
-                <div className="px-8 py-5 border-b border-slate-100 flex items-center justify-between" style={{ background: 'linear-gradient(90deg, #f0fdf4, #f8fffb)' }}>
-                  <div className="flex items-center gap-3">
-                    <div className="w-9 h-9 rounded-xl bg-emerald-100 flex items-center justify-center">
-                      <FaCalendarAlt className="text-emerald-600 text-base" />
-                    </div>
-                    <div>
-                      <p className="text-[10px] uppercase tracking-widest font-bold text-emerald-600 mb-0.5">Schedule</p>
-                      <h2 className="text-base font-bold text-slate-900">Availability</h2>
-                    </div>
-                  </div>
-                  <span className="text-[10px] text-slate-400 bg-slate-50 border border-slate-200 px-2.5 py-1 rounded-full font-medium">
-                    GMT +4
-                  </span>
-                </div>
-                <div className="p-6 flex-1">
-                  <div className="flex flex-col gap-2">
-                    {DAYS_OF_WEEK.map((day) => {
-                      const dayData = availHours[day] || { isAvailable: false };
-                      const isOpen = dayData.isAvailable;
-                      return (
-                        <div
-                          key={day}
-                          className={`flex items-center gap-3 px-4 py-2.5 rounded-xl text-sm font-semibold border transition-all ${isOpen
-                            ? 'bg-emerald-50 border-emerald-200 text-emerald-700'
-                            : 'bg-slate-50 border-slate-200 text-slate-400'
-                            }`}
-                        >
-                          <span className={`w-2 h-2 rounded-full flex-shrink-0 ${isOpen ? 'bg-emerald-500' : 'bg-slate-300'}`} />
-                          <span className="capitalize w-24">{day}</span>
-                          {isOpen ? (
-                            <span className="text-emerald-600 font-bold text-xs ml-auto">
-                              {dayData.startTime || '09:00'} – {dayData.endTime || '17:00'}
-                            </span>
-                          ) : (
-                            <span className="text-slate-300 text-xs ml-auto">Unavailable</span>
-                          )}
-                        </div>
-                      );
-                    })}
-                  </div>
-                  <p className="text-[11px] text-slate-400 mt-4 flex items-center gap-1.5">
-                    <FaClock className="opacity-50" /> All times in Asia/Dubai (GMT +4)
-                  </p>
-                </div>
-              </div>
-
             </div>
-          </div>
+              )}
 
-          {/* ══════ SECTION 10: FAQ ══════ */}
-          {faqItems.length > 0 && (
-            <div className="rounded-3xl shadow-sm overflow-hidden" style={{ background: 'linear-gradient(135deg, #fafafa 0%, #f4f3ff 100%)' }}>
-              <div className="px-8 py-6 border-b border-slate-100/80">
-                <p className="text-[10px] uppercase tracking-widest font-bold text-indigo-500 mb-1">Got Questions?</p>
-                <h2 className="text-xl font-bold text-slate-900">Frequently Asked Questions</h2>
-                <p className="text-sm text-slate-400 mt-1">Click any question to reveal the answer</p>
-              </div>
-              <div className="p-6 lg:p-8">
-                <div className="max-w-none">
+              {/* ══════ SECTION 10: FAQ ══════ */}
+              {faqItems.length > 0 && (
+                <div className="relative z-10 py-4">
+                  <div className="max-w-4xl mx-auto relative z-10">
+                    <div className="text-center mb-12">
+                      <span className="inline-block text-xs font-bold tracking-widest uppercase text-indigo-700 bg-indigo-50 px-3 py-1 rounded-full border border-indigo-300 shadow-sm">
+                        FAQ
+                      </span>
+                      <h2 className="text-4xl sm:text-5xl font-black text-slate-900 tracking-tight mt-4 mb-3">
+                        FREQUENTLY ASKED QUESTIONS
+                      </h2>
+                      <p className="text-slate-500 text-lg max-w-xl mx-auto">
+                        Everything you need to know about events with {vendorName}.
+                      </p>
+                    </div>
+
+                <div className="space-y-4">
                   {faqItems.map((item, i) => (
                     <FAQItem key={i} q={item.q} a={item.a} defaultOpen={i === 0} index={i} />
                   ))}
@@ -1066,105 +942,118 @@ const VendorPage: React.FC = () => {
             </div>
           )}
 
-          {/* ══════ SECTION 11: REVIEWS ══════ */}
-          <div className="bg-white border border-slate-200 rounded-3xl shadow-sm p-6 lg:p-10">
-            <h2 className="text-2xl font-bold text-gray-900 mb-8">What Our Customers Say</h2>
-
-            <div className="flex flex-col lg:flex-row gap-10">
-              {/* Left — Rating Summary */}
-              <div className="w-full lg:w-1/4 flex flex-col">
-                <div className="rounded-2xl p-6 mb-5" style={{ background: 'linear-gradient(135deg, #fef3c7, #fffbeb)' }}>
-                  <div className="flex items-center gap-3 mb-1">
-                    <FaStar className="w-9 h-9 text-amber-400" />
-                    <span className="text-5xl font-bold text-gray-900">
-                      {reviewsLoading ? '…' : liveRating.avg.toFixed(1)}
-                    </span>
-                  </div>
-                  <p className="text-sm text-gray-600 mt-1">
-                    {reviewsLoading ? (
-                      <span className="text-gray-400">Loading…</span>
-                    ) : (
-                      <>{liveRating.count.toLocaleString()} {liveRating.count === 1 ? 'review' : 'reviews'}</>
-                    )}
+              {/* ══════ SECTION 11: REVIEWS ══════ */}
+              <div className="relative z-10 py-4">
+                <div className="text-center mb-12">
+                  <span className="inline-block text-xs font-bold tracking-widest uppercase text-indigo-700 bg-indigo-50 px-3 py-1 rounded-full border border-indigo-300 shadow-sm">
+                    Testimonials
+                  </span>
+                  <h2 className="text-4xl sm:text-5xl font-black text-slate-900 tracking-tight mt-4 mb-3">
+                    WHAT CUSTOMERS SAY
+                  </h2>
+                  <p className="text-slate-500 text-lg max-w-xl mx-auto">
+                    Read real feedback from our attendees.
                   </p>
                 </div>
 
-                <div className="space-y-2.5">
-                  {[5, 4, 3, 2, 1].map((star) => {
-                    const total = allReviews.length;
-                    const count = total ? allReviews.filter((r) => Math.round(r.rating || 0) === star).length : 0;
-                    const pct = total ? (count / total) * 100 : 0;
-                    return (
-                      <div key={star} className="flex items-center gap-3 text-sm">
-                        <span className="w-14 text-gray-800 font-semibold">{star} star{star > 1 && 's'}</span>
-                        <div className="flex-1 h-2 bg-gray-100 rounded-full overflow-hidden">
-                          <div className="h-full bg-amber-400 rounded-full transition-all duration-500" style={{ width: `${pct}%` }} />
-                        </div>
-                        <span className="w-12 text-right text-gray-500 text-[11px]">{pct.toFixed(0)}%</span>
+                <div className="flex flex-col lg:flex-row gap-10">
+                  {/* Left — Rating Summary */}
+                  <div className="w-full lg:w-1/4 flex flex-col">
+                    <div className="rounded-2xl p-6 mb-5" style={{ background: 'linear-gradient(135deg, #fef3c7, #fffbeb)' }}>
+                      <div className="flex items-center gap-3 mb-1">
+                        <FaStar className="w-9 h-9 text-amber-400" />
+                        <span className="text-5xl font-bold text-gray-900">
+                          {reviewsLoading ? '…' : liveRating.avg.toFixed(1)}
+                        </span>
                       </div>
-                    );
-                  })}
-                </div>
-              </div>
+                      <p className="text-sm text-gray-600 mt-1">
+                        {reviewsLoading ? (
+                          <span className="text-gray-400">Loading…</span>
+                        ) : (
+                          <>{liveRating.count.toLocaleString()} {liveRating.count === 1 ? 'review' : 'reviews'}</>
+                        )}
+                      </p>
+                    </div>
 
-              {/* Right — Review Cards */}
-              <div className="w-full lg:w-3/4 flex flex-col gap-5">
-                {visibleReviews.length === 0 ? (
-                  <div className="p-8 text-center border-2 border-dashed border-gray-200 rounded-2xl bg-gray-50 flex flex-col items-center gap-3">
-                    <FaStar className="text-gray-300 text-3xl" />
-                    <p className="text-sm text-gray-500">No reviews yet. Be the first to share your experience!</p>
-                  </div>
-                ) : (
-                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                    {visibleReviews.map((review, idx) => {
-                      const name = `${review.user?.firstName || ''} ${review.user?.lastName || ''}`.trim() || 'Verified Customer';
-                      const initial = name.charAt(0).toUpperCase();
-                      const avatarUrl = normalizeImageUrl(review.user?.avatar);
-                      const date = new Date(review.createdAt || Date.now()).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
-                      const gradientClass = REVIEWER_GRADIENTS[idx % REVIEWER_GRADIENTS.length];
-                      return (
-                        <div key={review._id || `r-${idx}`} className="p-5 rounded-2xl border border-gray-200 bg-white flex flex-col gap-3">
-                          <div className="flex items-center gap-3">
-                            {avatarUrl ? (
-                              <img src={avatarUrl} alt={name} className="w-11 h-11 rounded-full object-cover flex-shrink-0" />
-                            ) : (
-                              <div className={`w-11 h-11 rounded-full bg-gradient-to-br ${gradientClass} flex items-center justify-center text-white text-lg font-bold flex-shrink-0`}>
-                                {initial}
-                              </div>
-                            )}
-                            <div>
-                              <strong className="text-sm font-semibold text-gray-900 line-clamp-1">{name}</strong>
-                              <div className="flex items-center gap-2 mt-0.5">
-                                <div className="flex gap-0.5">
-                                  {[1, 2, 3, 4, 5].map(n => (
-                                    <FaStar key={n} className={`text-xs ${n <= Math.round(review.rating || 0) ? 'text-amber-400' : 'text-gray-200'}`} />
-                                  ))}
-                                </div>
-                                <span className="text-gray-400 text-xs">{date}</span>
-                              </div>
+                    <div className="space-y-2.5">
+                      {[5, 4, 3, 2, 1].map((star) => {
+                        const total = allReviews.length;
+                        const count = total ? allReviews.filter((r) => Math.round(r.rating || 0) === star).length : 0;
+                        const pct = total ? (count / total) * 100 : 0;
+                        return (
+                          <div key={star} className="flex items-center gap-3 text-sm">
+                            <span className="w-14 text-gray-800 font-semibold">{star} star{star > 1 && 's'}</span>
+                            <div className="flex-1 h-2 bg-gray-100 rounded-full overflow-hidden">
+                              <div className="h-full bg-amber-400 rounded-full transition-all duration-500" style={{ width: `${pct}%` }} />
                             </div>
+                            <span className="w-12 text-right text-gray-500 text-[11px]">{pct.toFixed(0)}%</span>
                           </div>
-                          {review.comment && (
-                            <p className="text-[14px] text-gray-700 leading-relaxed">{review.comment}</p>
-                          )}
-                        </div>
-                      );
-                    })}
+                        );
+                      })}
+                    </div>
                   </div>
-                )}
 
-                {/* Review submission form */}
-                <div className="mt-4 pt-6 border-t border-gray-100">
-                  {id ? (
-                    <VendorReviewWidget
-                      vendorUserId={id}
-                      onSubmitSuccess={handleReviewSubmitSuccess}
-                    />
-                  ) : (
-                    <p className="text-sm text-slate-400 text-center py-4">This vendor has no published events yet — check back soon to leave a review!</p>
-                  )}
+                  {/* Right — Review Cards */}
+                  <div className="w-full lg:w-3/4 flex flex-col gap-5">
+                    {visibleReviews.length === 0 ? (
+                      <div className="p-8 text-center border-2 border-dashed border-gray-200 rounded-2xl bg-gray-50 flex flex-col items-center gap-3">
+                        <FaStar className="text-gray-300 text-3xl" />
+                        <p className="text-sm text-gray-500">No reviews yet. Be the first to share your experience!</p>
+                      </div>
+                    ) : (
+                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                        {visibleReviews.map((review, idx) => {
+                          const name = `${review.user?.firstName || ''} ${review.user?.lastName || ''}`.trim() || 'Verified Customer';
+                          const initial = name.charAt(0).toUpperCase();
+                          const avatarUrl = normalizeImageUrl(review.user?.avatar);
+                          const date = new Date(review.createdAt || Date.now()).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
+                          const gradientClass = REVIEWER_GRADIENTS[idx % REVIEWER_GRADIENTS.length];
+                          return (
+                            <div key={review._id || `r-${idx}`} className="p-5 rounded-2xl border border-gray-200 bg-white flex flex-col gap-3">
+                              <div className="flex items-center gap-3">
+                                {avatarUrl ? (
+                                  <img src={avatarUrl} alt={name} className="w-11 h-11 rounded-full object-cover flex-shrink-0" />
+                                ) : (
+                                  <div className={`w-11 h-11 rounded-full bg-gradient-to-br ${gradientClass} flex items-center justify-center text-white text-lg font-bold flex-shrink-0`}>
+                                    {initial}
+                                  </div>
+                                )}
+                                <div>
+                                  <strong className="text-sm font-semibold text-gray-900 line-clamp-1">{name}</strong>
+                                  <div className="flex items-center gap-2 mt-0.5">
+                                    <div className="flex gap-0.5">
+                                      {[1, 2, 3, 4, 5].map(n => (
+                                        <FaStar key={n} className={`text-xs ${n <= Math.round(review.rating || 0) ? 'text-amber-400' : 'text-gray-200'}`} />
+                                      ))}
+                                    </div>
+                                    <span className="text-gray-400 text-xs">{date}</span>
+                                  </div>
+                                </div>
+                              </div>
+                              {review.comment && (
+                                <p className="text-[14px] text-gray-700 leading-relaxed">{review.comment}</p>
+                              )}
+                            </div>
+                          );
+                        })}
+                      </div>
+                    )}
+
+                    {/* Review submission form */}
+                    <div className="mt-4 pt-6 border-t border-gray-100">
+                      {id ? (
+                        <VendorReviewWidget
+                          vendorUserId={id}
+                          onSubmitSuccess={handleReviewSubmitSuccess}
+                        />
+                      ) : (
+                        <p className="text-sm text-slate-400 text-center py-4">This vendor has no published events yet — check back soon to leave a review!</p>
+                      )}
+                    </div>
+                  </div>
                 </div>
               </div>
+
             </div>
           </div>
 

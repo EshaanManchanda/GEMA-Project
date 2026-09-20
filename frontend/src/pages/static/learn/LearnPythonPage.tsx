@@ -68,7 +68,7 @@ const LearnPythonPage: React.FC = () => {
             Kids write real code, build projects, and explore the foundations of data science and AI.
           </p>
           <Link
-            to="/events?category=coding&search=python"
+            to="/search?q=python"
             className="inline-flex items-center px-6 py-3 bg-green-600 text-white font-semibold rounded-lg hover:bg-green-700 transition-colors"
           >
             Browse Python Workshops
@@ -126,13 +126,13 @@ const LearnPythonPage: React.FC = () => {
           </p>
           <div className="flex flex-col sm:flex-row gap-4 justify-center">
             <Link
-              to="/events?category=coding&search=python"
+              to="/search?q=python"
               className="px-6 py-3 bg-green-600 text-white font-semibold rounded-lg hover:bg-green-700 transition-colors"
             >
               Find Python Classes
             </Link>
             <Link
-              to="/events"
+              to="/search"
               className="px-6 py-3 border border-gray-300 text-gray-700 font-semibold rounded-lg hover:bg-gray-50 transition-colors"
             >
               Browse All Activities

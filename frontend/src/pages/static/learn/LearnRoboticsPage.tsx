@@ -68,7 +68,7 @@ const LearnRoboticsPage: React.FC = () => {
             They learn engineering, electronics, and coding through project-based challenges.
           </p>
           <Link
-            to="/events?category=stem&search=robotics"
+            to="/search?q=robotics"
             className="inline-flex items-center px-6 py-3 bg-blue-600 text-white font-semibold rounded-lg hover:bg-blue-700 transition-colors"
           >
             Browse Robotics Workshops
@@ -126,13 +126,13 @@ const LearnRoboticsPage: React.FC = () => {
           </p>
           <div className="flex flex-col sm:flex-row gap-4 justify-center">
             <Link
-              to="/events?category=stem&search=robotics"
+              to="/search?q=robotics"
               className="px-6 py-3 bg-blue-600 text-white font-semibold rounded-lg hover:bg-blue-700 transition-colors"
             >
               Find Robotics Classes
             </Link>
             <Link
-              to="/events"
+              to="/search"
               className="px-6 py-3 border border-gray-300 text-gray-700 font-semibold rounded-lg hover:bg-gray-50 transition-colors"
             >
               Browse All Activities

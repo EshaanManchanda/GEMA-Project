@@ -227,7 +227,7 @@ const VendorClaimedEventsPage: React.FC = () => {
                 </p>
                 <div className="flex justify-center gap-4">
                   <Link
-                    to="/events"
+                    to="/search"
                     className="inline-block px-4 py-2 bg-orange-600 text-white rounded-md hover:bg-orange-700 transition"
                   >
                     Browse Events

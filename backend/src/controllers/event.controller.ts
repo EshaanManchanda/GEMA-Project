@@ -171,6 +171,7 @@ export const getEvents = async (
       teacherId,
       subject,
       topic,
+      organizer,
     } = req.query;
 
     // Pagination validation constants
@@ -281,6 +282,14 @@ export const getEvents = async (
     if (tags) {
       const tagArray = (tags as string).split(",").map((tag) => tag.trim());
       additionalFilters.tags = { $in: tagArray };
+    }
+
+    // Organizer filtering (matches either vendorId or teacherId)
+    if (organizer) {
+      additionalFilters.$or = [
+        { teacherId: String(organizer) },
+        { vendorId: String(organizer) }
+      ];
     }
 
     // Build public event filter (includes expiration check)

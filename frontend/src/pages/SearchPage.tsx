@@ -156,6 +156,9 @@ const SearchPage: React.FC = () => {
   const [searchInput, setSearchInput] = useState<string>(query);
   const [showMobileFilters, setShowMobileFilters] = useState(false);
 
+  // ── Hidden organizer filter (set via URL ?organizer=userId, never shown in UI) ──
+  const organizerIdFromUrl = searchParams.get('organizer') || '';
+
   // Search state inside category dropdown
   const [catSearch, setCatSearch] = useState('');
 
@@ -277,8 +280,10 @@ const SearchPage: React.FC = () => {
     if (filters.featured !== undefined) p.featured = filters.featured.toString();
     if (filters.dateFrom) p.dateFrom = filters.dateFrom;
     if (filters.dateTo) p.dateTo = filters.dateTo;
+    // Hidden organizer filter — passed to backend when present in URL
+    if (organizerIdFromUrl) p.organizer = organizerIdFromUrl;
     return p;
-  }, [filters]);
+  }, [filters, organizerIdFromUrl]);
 
   const { data: searchData, isLoading: loading, error: queryError } = useEventsSearchQuery(query, searchParams_API);
   const events = useMemo(() => searchData?.events || [], [searchData]);
@@ -306,9 +311,11 @@ const SearchPage: React.FC = () => {
     if (filters.sortBy && filters.sortBy !== 'createdAt') p.set('sortBy', filters.sortBy);
     if (filters.sortOrder && filters.sortOrder !== 'desc') p.set('sortOrder', filters.sortOrder);
     if (filters.page && filters.page !== 1) p.set('page', filters.page.toString());
+    // Preserve organizer param if present (hidden filter)
+    if (organizerIdFromUrl) p.set('organizer', organizerIdFromUrl);
     if (p.toString() === searchParamsRef.current.toString()) return;
     setSearchParams(p, { replace: true });
-  }, [filters, query]); // eslint-disable-line
+  }, [filters, query, organizerIdFromUrl]); // eslint-disable-line
 
   const handleSearch = (e?: React.FormEvent) => {
     if (e) e.preventDefault();
@@ -437,6 +444,28 @@ const SearchPage: React.FC = () => {
       />
 
       <div className="min-h-screen bg-gray-50">
+
+        {/* ── Organizer filter contextual banner (hidden filter) ─────────── */}
+        {organizerIdFromUrl && (
+          <div className="bg-indigo-50 border-b border-indigo-100">
+            <div className="container mx-auto px-4 py-3 flex items-center justify-between gap-3">
+              <div className="flex items-center gap-2 text-sm text-indigo-700 font-medium">
+                <FaBuilding className="text-indigo-400 flex-shrink-0" />
+                <span>Showing all events by this organizer</span>
+              </div>
+              <button
+                onClick={() => {
+                  const p = new URLSearchParams(searchParams);
+                  p.delete('organizer');
+                  setSearchParams(p, { replace: true });
+                }}
+                className="flex items-center gap-1 text-xs text-indigo-500 hover:text-indigo-700 font-semibold px-3 py-1 rounded-full hover:bg-indigo-100 transition-colors"
+              >
+                <FaTimes className="w-3 h-3" /> Clear
+              </button>
+            </div>
+          </div>
+        )}
 
         {/* ── Sticky filter bar ─────────────────────────────────────────────── */}
         <div className="bg-white border-b border-gray-200 sticky z-30 shadow-sm transition-all" style={{ top: 'var(--main-padding-top, 72px)' }}>

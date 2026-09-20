@@ -835,9 +835,9 @@ const Layout: React.FC<{ children?: React.ReactNode }> = ({ children }) => {
 
             </div>
 
-            {/* Teach Links */}
+            {/* Join Us / Teach Links */}
             <div className="col-span-1">
-              <h3 className="font-semibold mb-4 text-gray-900">Teach</h3>
+              <h3 className="font-semibold mb-4 text-gray-900">Join Us</h3>
               <ul className="space-y-2">
                 <li>
                   <Link to="/for-organizations" className="text-gray-700 hover:text-gray-900 text-sm">

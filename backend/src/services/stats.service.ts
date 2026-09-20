@@ -6,12 +6,14 @@ import {
   Booking,
   Category,
 } from "../models/index";
+import Student from "../models/Student";
 import cacheService from "./cache.service";
 
 export interface PublicStats {
   totalEvents: number;
   totalVendors: number;
   totalVenues: number;
+  totalStudents: number;
   totalReviews: number;
   totalBookings: number;
   totalCategories: number;
@@ -43,6 +45,7 @@ class StatsService {
       totalReviews,
       totalBookings,
       totalCategories,
+      totalStudents,
       reviews,
       topCategoriesData,
       topCitiesData,
@@ -57,6 +60,7 @@ class StatsService {
       Review.countDocuments({ status: "approved" }),
       Booking.countDocuments({ status: { $in: ["confirmed", "completed"] } }),
       Category.countDocuments({ isActive: true }),
+      Student.countDocuments(),
       Review.find({ status: "approved" }).select("rating").lean(),
       // Aggregate top categories by event count
       Event.aggregate([
@@ -117,6 +121,7 @@ class StatsService {
       totalEvents,
       totalVendors,
       totalVenues,
+      totalStudents,
       totalReviews,
       totalBookings,
       totalCategories,

@@ -450,7 +450,7 @@ const PaymentSuccessPage: React.FC = () => {
               View My Bookings
             </Link>
             <Link
-              to="/events"
+              to="/search"
               className="px-6 py-3 bg-white border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50 transition-colors text-center flex items-center justify-center"
             >
               <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
