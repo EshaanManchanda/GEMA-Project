@@ -201,9 +201,9 @@ const TeachersListingPage: React.FC = () => {
   const [sortBy, setSortBy] = useState<SortOption>('newest');
   const [showSort, setShowSort] = useState(false);
 
-  const { data: classesData } = useEventsQuery({ 
-    type: 'Course,Workshop,Class,Bootcamp,Masterclass', 
-    status: 'published' 
+  const { data: classesData } = useEventsQuery({
+    type: 'Course,Workshop,Class,Bootcamp,Masterclass',
+    status: 'published'
   });
   const totalClasses = classesData?.pagination?.totalEvents || classesData?.pagination?.total || 0;
 
@@ -285,7 +285,7 @@ const TeachersListingPage: React.FC = () => {
             Expert Educators & Instructors
           </div>
 
-          <h1 className="text-4xl sm:text-5xl md:text-6xl font-extrabold text-[#111827] mb-4 leading-tight tracking-tight">
+          <h1 className="text-4xl sm:text-5xl md:text-6xl font-extrabold text-[#111827] mb-4 mt-7 leading-tight tracking-tight">
             Learn from <br className="hidden sm:block" />
             <span className="relative inline-block mt-2 sm:mt-0">
               <span className="text-transparent bg-clip-text bg-gradient-to-r from-[#4f46e5] to-[#7c3aed]">
@@ -298,14 +298,14 @@ const TeachersListingPage: React.FC = () => {
             </span>
           </h1>
 
-          <p className="text-gray-500 text-base sm:text-lg mb-10 max-w-2xl mx-auto font-medium leading-relaxed">
+          <p className="text-gray-500 text-base sm:text-lg mb-10 pt-4 max-w-2xl mx-auto font-medium leading-relaxed">
             Browse certified educators teaching arts, sports, coding, music, <br className="hidden sm:block" />
             languages and more for kids across the UAE.
           </p>
 
           {/* Search Bar */}
           <div className="max-w-2xl mx-auto relative mb-12">
-            <div className="flex items-center bg-white rounded-full p-2 shadow-[0_8px_30px_rgb(0,0,0,0.08)] border border-gray-100">
+            <div className="flex items-center bg-white rounded-full p-2 mt-17 shadow-[0_8px_30px_rgb(0,0,0,0.08)] border border-gray-100">
               <FaSearch className="text-gray-400 ml-4 mr-2 text-lg" />
               <input
                 type="text"
