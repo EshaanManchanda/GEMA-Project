@@ -142,7 +142,7 @@ const VendorsPage: React.FC = () => {
           <img
             src="/assets/vendbanner.png"
             alt="Vendors Header"
-            className="w-full h-full object-cover"
+            className="w-full h-full object-cover object-top sm:object-center"
           />
         </div>
 
@@ -174,64 +174,64 @@ const VendorsPage: React.FC = () => {
           </p>
 
           {/* Search Bar */}
-          <div className="max-w-2xl mx-auto relative mb-12">
-            <div className="flex items-center bg-white rounded-full p-2 shadow-[0_8px_30px_rgb(0,0,0,0.08)] border border-gray-100">
-              <FaSearch className="text-gray-400 ml-4 mr-2 text-lg" />
+          <div className="max-w-2xl mx-auto relative mb-6 sm:mb-12 px-2 sm:px-0">
+            <div className="flex items-center bg-white rounded-full p-1 sm:p-2 shadow-[0_8px_30px_rgb(0,0,0,0.08)] border border-gray-100">
+              <FaSearch className="text-gray-400 ml-2 sm:ml-4 mr-1 sm:mr-2 text-sm sm:text-lg" />
               <input
                 type="text"
                 value={searchTerm}
                 onChange={(e) => setSearchTerm(e.target.value)}
                 placeholder="Search vendors by name..."
-                className="flex-1 border-none focus:ring-0 text-gray-700 placeholder-gray-400 bg-transparent text-base px-2 py-2 outline-none"
+                className="flex-1 border-none focus:ring-0 text-gray-700 placeholder-gray-400 bg-transparent text-sm sm:text-base px-1 sm:px-2 py-1 sm:py-2 outline-none min-w-0"
               />
               {searchTerm && (
                 <button
                   onClick={() => setSearchTerm('')}
-                  className="mr-3 text-gray-400 hover:text-gray-600"
+                  className="mr-1 sm:mr-3 text-gray-400 hover:text-gray-600 flex-shrink-0"
                 >
-                  <FaTimes className="w-4 h-4" />
+                  <FaTimes className="w-3 h-3 sm:w-4 sm:h-4" />
                 </button>
               )}
-              <button className="bg-[#34d399] hover:bg-emerald-500 text-white font-bold px-8 py-3.5 rounded-full transition-colors">
+              <button className="bg-[#34d399] hover:bg-emerald-500 text-white text-sm sm:text-base font-bold px-4 sm:px-8 py-2 sm:py-3.5 rounded-full transition-colors flex-shrink-0">
                 Search
               </button>
             </div>
           </div>
 
           {/* Stats Cards */}
-          <div className="flex flex-wrap justify-center gap-4 max-w-4xl mx-auto">
+          <div className="grid grid-cols-3 gap-2 sm:flex sm:flex-wrap sm:justify-center sm:gap-4 max-w-4xl mx-auto">
             {/* Stat 1 */}
-            <div className="flex items-center gap-4 bg-white rounded-2xl px-6 py-4 shadow-sm border border-red-100 min-w-[200px]">
-              <div className="w-12 h-12 rounded-full bg-red-50 flex items-center justify-center flex-shrink-0">
-                <FaUsers className="text-red-400 text-xl" />
+            <div className="flex flex-col sm:flex-row items-center sm:items-center justify-center sm:justify-start gap-1 sm:gap-4 bg-white rounded-xl sm:rounded-2xl px-2 py-2 sm:px-6 sm:py-4 shadow-sm border border-red-100 min-w-0 sm:min-w-[200px] text-center sm:text-left">
+              <div className="w-8 h-8 sm:w-12 sm:h-12 rounded-full bg-red-50 flex items-center justify-center flex-shrink-0">
+                <FaUsers className="text-red-400 text-sm sm:text-xl" />
               </div>
-              <div className="text-left">
-                <p className="text-2xl font-bold text-gray-900 leading-tight">{pagination.total > 0 ? `${pagination.total}+` : '0'}</p>
-                <p className="text-sm font-medium text-gray-500">Verified Vendors</p>
+              <div>
+                <p className="text-base sm:text-2xl font-bold text-gray-900 leading-tight">{pagination.total > 0 ? `${pagination.total}+` : '0'}</p>
+                <p className="text-[10px] sm:text-sm font-medium text-gray-500 leading-tight">Verified Vendors</p>
               </div>
             </div>
             {/* Stat 2 */}
-            <div className="flex items-center gap-4 bg-white rounded-2xl px-6 py-4 shadow-sm border border-blue-100 min-w-[200px]">
-              <div className="w-12 h-12 rounded-full bg-blue-50 flex items-center justify-center flex-shrink-0">
-                <svg className="w-6 h-6 text-blue-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+            <div className="flex flex-col sm:flex-row items-center sm:items-center justify-center sm:justify-start gap-1 sm:gap-4 bg-white rounded-xl sm:rounded-2xl px-2 py-2 sm:px-6 sm:py-4 shadow-sm border border-blue-100 min-w-0 sm:min-w-[200px] text-center sm:text-left">
+              <div className="w-8 h-8 sm:w-12 sm:h-12 rounded-full bg-blue-50 flex items-center justify-center flex-shrink-0">
+                <svg className="w-4 h-4 sm:w-6 sm:h-6 text-blue-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
                 </svg>
               </div>
-              <div className="text-left">
-                <p className="text-2xl font-bold text-gray-900 leading-tight">{totalEvents > 0 ? `${totalEvents}+` : '0'}</p>
-                <p className="text-sm font-medium text-gray-500">Events Organized</p>
+              <div>
+                <p className="text-base sm:text-2xl font-bold text-gray-900 leading-tight">{totalEvents > 0 ? `${totalEvents}+` : '0'}</p>
+                <p className="text-[10px] sm:text-sm font-medium text-gray-500 leading-tight">Events Organized</p>
               </div>
             </div>
             {/* Stat 3 */}
-            <div className="flex items-center gap-4 bg-white rounded-2xl px-6 py-4 shadow-sm border border-emerald-100 min-w-[200px]">
-              <div className="w-12 h-12 rounded-full bg-emerald-50 flex items-center justify-center flex-shrink-0">
-                <svg className="w-6 h-6 text-emerald-400" viewBox="0 0 20 20" fill="currentColor">
+            <div className="flex flex-col sm:flex-row items-center sm:items-center justify-center sm:justify-start gap-1 sm:gap-4 bg-white rounded-xl sm:rounded-2xl px-2 py-2 sm:px-6 sm:py-4 shadow-sm border border-emerald-100 min-w-0 sm:min-w-[200px] text-center sm:text-left">
+              <div className="w-8 h-8 sm:w-12 sm:h-12 rounded-full bg-emerald-50 flex items-center justify-center flex-shrink-0">
+                <svg className="w-4 h-4 sm:w-6 sm:h-6 text-emerald-400" viewBox="0 0 20 20" fill="currentColor">
                   <path fillRule="evenodd" d="M3.172 5.172a4 4 0 015.656 0L10 6.343l1.172-1.171a4 4 0 115.656 5.656L10 17.657l-6.828-6.829a4 4 0 010-5.656z" clipRule="evenodd" />
                 </svg>
               </div>
-              <div className="text-left">
-                <p className="text-2xl font-bold text-gray-900 leading-tight">1k+</p>
-                <p className="text-sm font-medium text-gray-500">Happy Families</p>
+              <div>
+                <p className="text-base sm:text-2xl font-bold text-gray-900 leading-tight">1k+</p>
+                <p className="text-[10px] sm:text-sm font-medium text-gray-500 leading-tight">Happy Families</p>
               </div>
             </div>
           </div>
@@ -332,7 +332,7 @@ const VendorsPage: React.FC = () => {
 
         {/* Loading skeletons */}
         {isLoading && (
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-5">
+          <div className="grid grid-cols-2 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-2 sm:gap-5">
             {Array.from({ length: 8 }).map((_, i) => (
               <SkeletonCard key={i} />
             ))}
@@ -367,7 +367,7 @@ const VendorsPage: React.FC = () => {
 
         {/* Grid */}
         {!isLoading && !isError && filtered.length > 0 && (
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-5">
+          <div className="grid grid-cols-2 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-2 sm:gap-5">
             {filtered.map((vendor, idx) => (
               <VendorCard key={vendor.id} vendor={vendor} idx={idx} />
             ))}

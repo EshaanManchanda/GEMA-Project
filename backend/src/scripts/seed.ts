@@ -25,7 +25,7 @@ const sampleUsers = [
     password: "admin123",
     role: UserRole.ADMIN,
     phone: "+971501234567",
-    country: "UAE",
+    country: "AE",
     isEmailVerified: true,
     status: UserStatus.ACTIVE,
   },
@@ -36,7 +36,7 @@ const sampleUsers = [
     password: "vendor123",
     role: UserRole.VENDOR,
     phone: "+971502345678",
-    country: "UAE",
+    country: "AE",
     isEmailVerified: true,
     status: UserStatus.ACTIVE,
     companyName: "Amazing Events Co.",
@@ -49,7 +49,7 @@ const sampleUsers = [
     password: "customer123",
     role: UserRole.CUSTOMER,
     phone: "+971503456789",
-    country: "UAE",
+    country: "AE",
     isEmailVerified: true,
     status: UserStatus.ACTIVE,
   },
@@ -60,7 +60,7 @@ const sampleUsers = [
     password: "password123",
     role: UserRole.CUSTOMER,
     phone: "+971504567890",
-    country: "UAE",
+    country: "AE",
     isEmailVerified: true,
     status: UserStatus.ACTIVE,
   },
@@ -71,7 +71,7 @@ const sampleUsers = [
     password: "password123",
     role: UserRole.VENDOR,
     phone: "+971505678901",
-    country: "UAE",
+    country: "AE",
     isEmailVerified: true,
     status: UserStatus.ACTIVE,
     companyName: "Wilson Events",
@@ -84,7 +84,7 @@ const sampleUsers = [
     password: "password123",
     role: UserRole.VENDOR,
     phone: "+971506789012",
-    country: "UAE",
+    country: "AE",
     isEmailVerified: true,
     status: UserStatus.ACTIVE,
     companyName: "Emirates Entertainment",
@@ -97,7 +97,7 @@ const sampleUsers = [
     password: "password123",
     role: UserRole.CUSTOMER,
     phone: "+971507890123",
-    country: "UAE",
+    country: "AE",
     isEmailVerified: true,
     status: UserStatus.ACTIVE,
   },
@@ -108,7 +108,7 @@ const sampleUsers = [
     password: "password123",
     role: UserRole.CUSTOMER,
     phone: "+971508901234",
-    country: "UAE",
+    country: "AE",
     isEmailVerified: true,
     status: UserStatus.ACTIVE,
   },
@@ -119,7 +119,7 @@ const sampleUsers = [
     password: "password123",
     role: UserRole.VENDOR,
     phone: "+971509012345",
-    country: "UAE",
+    country: "AE",
     isEmailVerified: true,
     status: UserStatus.ACTIVE,
     companyName: "Heritage Events",
@@ -132,7 +132,7 @@ const sampleUsers = [
     password: "password123",
     role: UserRole.CUSTOMER,
     phone: "+971550123456",
-    country: "UAE",
+    country: "AE",
     isEmailVerified: true,
     status: UserStatus.ACTIVE,
   },
@@ -143,7 +143,7 @@ const sampleUsers = [
     password: "password123",
     role: UserRole.CUSTOMER,
     phone: "+971551234567",
-    country: "UAE",
+    country: "AE",
     isEmailVerified: true,
     status: UserStatus.ACTIVE,
   },
@@ -154,7 +154,7 @@ const sampleUsers = [
     password: "password123",
     role: UserRole.VENDOR,
     phone: "+971552345678",
-    country: "UAE",
+    country: "AE",
     isEmailVerified: true,
     status: UserStatus.ACTIVE,
     companyName: "Global Productions",
@@ -167,7 +167,7 @@ const sampleUsers = [
     password: "password123",
     role: UserRole.CUSTOMER,
     phone: "+971553456789",
-    country: "UAE",
+    country: "AE",
     isEmailVerified: true,
     status: UserStatus.ACTIVE,
   },
@@ -178,7 +178,7 @@ const sampleUsers = [
     password: "password123",
     role: UserRole.CUSTOMER,
     phone: "+971554567890",
-    country: "UAE",
+    country: "AE",
     isEmailVerified: true,
     status: UserStatus.ACTIVE,
   },
@@ -189,7 +189,7 @@ const sampleUsers = [
     password: "password123",
     role: UserRole.VENDOR,
     phone: "+971555678901",
-    country: "UAE",
+    country: "AE",
     isEmailVerified: true,
     status: UserStatus.ACTIVE,
     companyName: "Desert Star Events",
@@ -200,6 +200,7 @@ const sampleUsers = [
 const sampleVenues = [
   {
     title: "Dubai Opera House",
+    shortDescription: "A short description",
     description:
       "A world-class performing arts venue in the heart of Downtown Dubai",
     status: "published",
@@ -207,7 +208,7 @@ const sampleVenues = [
       address: "Sheikh Mohammed bin Rashid Boulevard",
       city: "Dubai",
       state: "Dubai",
-      country: "UAE",
+      country: "AE",
       zipCode: "12345",
       coordinates: {
         lat: 25.1938,
@@ -277,7 +278,8 @@ const sampleVenues = [
     currency: "AED",
     seoMeta: {
       title: "Dubai Opera House - Performing Arts Venue",
-      description:
+      shortDescription: "A short description",
+    description:
         "A world-class performing arts venue in the heart of Downtown Dubai",
       keywords: ["opera", "theatre", "music", "dubai", "venue"],
     },
@@ -287,13 +289,14 @@ const sampleVenues = [
   },
   {
     title: "Al Wasl Dome",
+    shortDescription: "A short description",
     description: "The iconic dome structure perfect for large-scale events",
     status: "published",
     location: {
       address: "Expo 2020 Site",
       city: "Dubai",
       state: "Dubai",
-      country: "UAE",
+      country: "AE",
       zipCode: "54321",
       coordinates: {
         lat: 25.0657,
@@ -364,7 +367,8 @@ const sampleVenues = [
     currency: "AED",
     seoMeta: {
       title: "Al Wasl Dome - Iconic Event Venue",
-      description: "The iconic dome structure perfect for large-scale events",
+      shortDescription: "A short description",
+    description: "The iconic dome structure perfect for large-scale events",
       keywords: ["dome", "expo", "events", "dubai", "venue"],
     },
     ageRange: [0, 100],
@@ -373,13 +377,14 @@ const sampleVenues = [
   },
   {
     title: "Jumeirah Beach Park",
+    shortDescription: "A short description",
     description: "Beautiful outdoor venue with beach views",
     status: "published",
     location: {
       address: "Jumeirah Beach Road",
       city: "Dubai",
       state: "Dubai",
-      country: "UAE",
+      country: "AE",
       zipCode: "67890",
       coordinates: {
         lat: 25.232,
@@ -443,7 +448,8 @@ const sampleVenues = [
     currency: "AED",
     seoMeta: {
       title: "Jumeirah Beach Park - Outdoor Venue",
-      description: "Beautiful outdoor venue with beach views",
+      shortDescription: "A short description",
+    description: "Beautiful outdoor venue with beach views",
       keywords: ["beach", "park", "outdoor", "dubai", "venue"],
     },
     ageRange: [0, 100],
@@ -452,6 +458,7 @@ const sampleVenues = [
   },
   {
     title: "Madinat Jumeirah Conference Centre",
+    shortDescription: "A short description",
     description:
       "Premium conference facility with traditional Arabian architecture",
     status: "published",
@@ -459,7 +466,7 @@ const sampleVenues = [
       address: "Al Sufouh Road, Madinat Jumeirah",
       city: "Dubai",
       state: "Dubai",
-      country: "UAE",
+      country: "AE",
       zipCode: "24578",
       coordinates: {
         lat: 25.1327,
@@ -529,7 +536,8 @@ const sampleVenues = [
     currency: "AED",
     seoMeta: {
       title: "Madinat Jumeirah - Conference Venue",
-      description:
+      shortDescription: "A short description",
+    description:
         "Premium conference facility with traditional Arabian architecture",
       keywords: ["conference", "madinat", "business", "dubai", "venue"],
     },
@@ -539,13 +547,14 @@ const sampleVenues = [
   },
   {
     title: "Desert Palm Polo Club",
+    shortDescription: "A short description",
     description: "Exclusive outdoor venue perfect for luxury events and sports",
     status: "published",
     location: {
       address: "Al Awir Road",
       city: "Dubai",
       state: "Dubai",
-      country: "UAE",
+      country: "AE",
       zipCode: "89012",
       coordinates: {
         lat: 25.1558,
@@ -609,7 +618,8 @@ const sampleVenues = [
     currency: "AED",
     seoMeta: {
       title: "Desert Palm Polo Club - Luxury Outdoor Venue",
-      description:
+      shortDescription: "A short description",
+    description:
         "Exclusive outdoor venue perfect for luxury events and sports",
       keywords: ["polo", "luxury", "outdoor", "dubai", "venue"],
     },
@@ -619,6 +629,7 @@ const sampleVenues = [
   },
   {
     title: "Dubai World Trade Centre",
+    shortDescription: "A short description",
     description:
       "Premier exhibition and convention center in the heart of Dubai",
     status: "published",
@@ -626,7 +637,7 @@ const sampleVenues = [
       address: "Trade Centre Road",
       city: "Dubai",
       state: "Dubai",
-      country: "UAE",
+      country: "AE",
       zipCode: "45612",
       coordinates: {
         lat: 25.2329,
@@ -702,7 +713,8 @@ const sampleVenues = [
     currency: "AED",
     seoMeta: {
       title: "Dubai World Trade Centre - Exhibition Venue",
-      description:
+      shortDescription: "A short description",
+    description:
         "Premier exhibition and convention center in the heart of Dubai",
       keywords: ["exhibition", "trade centre", "convention", "dubai", "venue"],
     },
@@ -712,13 +724,14 @@ const sampleVenues = [
   },
   {
     title: "The Pavilion Downtown",
+    shortDescription: "A short description",
     description: "Elegant rooftop venue with stunning skyline views",
     status: "published",
     location: {
       address: "Burj Khalifa Boulevard",
       city: "Dubai",
       state: "Dubai",
-      country: "UAE",
+      country: "AE",
       zipCode: "78901",
       coordinates: {
         lat: 25.1972,
@@ -782,7 +795,8 @@ const sampleVenues = [
     currency: "AED",
     seoMeta: {
       title: "The Pavilion Downtown - Rooftop Venue",
-      description: "Elegant rooftop venue with stunning skyline views",
+      shortDescription: "A short description",
+    description: "Elegant rooftop venue with stunning skyline views",
       keywords: ["pavilion", "rooftop", "downtown", "dubai", "venue"],
     },
     ageRange: [0, 100],
@@ -791,13 +805,14 @@ const sampleVenues = [
   },
   {
     title: "Al Habtoor City Marina",
+    shortDescription: "A short description",
     description: "Waterfront venue perfect for yacht parties and marine events",
     status: "published",
     location: {
       address: "Al Habtoor City, Business Bay",
       city: "Dubai",
       state: "Dubai",
-      country: "UAE",
+      country: "AE",
       zipCode: "34567",
       coordinates: {
         lat: 25.1906,
@@ -867,7 +882,8 @@ const sampleVenues = [
     currency: "AED",
     seoMeta: {
       title: "Al Habtoor City Marina - Waterfront Venue",
-      description:
+      shortDescription: "A short description",
+    description:
         "Waterfront venue perfect for yacht parties and marine events",
       keywords: ["marina", "yacht", "waterfront", "dubai", "venue"],
     },
@@ -880,6 +896,7 @@ const sampleVenues = [
 const sampleEvents = [
   {
     title: "Dubai Music Festival 2024",
+    shortDescription: "A short description",
     description:
       "A spectacular showcase of international and local musical talent featuring artists from around the world.",
     category: "Music",
@@ -909,7 +926,8 @@ const sampleEvents = [
     ],
     seoMeta: {
       title: "Dubai Music Festival 2024 - International Music Event",
-      description: "Experience world-class music at Dubai Opera House",
+      shortDescription: "A short description",
+    description: "Experience world-class music at Dubai Opera House",
       keywords: ["music", "dubai", "festival", "concert"],
     },
     faqs: [
@@ -929,6 +947,7 @@ const sampleEvents = [
   },
   {
     title: "Tech Startup Conference",
+    shortDescription: "A short description",
     description:
       "Connect with innovative startups, investors, and tech enthusiasts in this groundbreaking conference.",
     category: "Technology",
@@ -953,7 +972,8 @@ const sampleEvents = [
     ],
     seoMeta: {
       title: "Tech Startup Conference Dubai 2024",
-      description: "Premier technology conference for startups and investors",
+      shortDescription: "A short description",
+    description: "Premier technology conference for startups and investors",
       keywords: ["tech", "startup", "conference", "dubai", "business"],
     },
     faqs: [
@@ -969,6 +989,7 @@ const sampleEvents = [
   },
   {
     title: "Sunset Yoga Retreat",
+    shortDescription: "A short description",
     description:
       "Relax and rejuvenate with a peaceful yoga session overlooking the beautiful Dubai coastline.",
     category: "Health & Wellness",
@@ -993,7 +1014,8 @@ const sampleEvents = [
     ],
     seoMeta: {
       title: "Sunset Yoga Retreat at Jumeirah Beach",
-      description: "Peaceful yoga session with stunning sunset views",
+      shortDescription: "A short description",
+    description: "Peaceful yoga session with stunning sunset views",
       keywords: ["yoga", "wellness", "beach", "dubai", "sunset"],
     },
     faqs: [
@@ -1009,6 +1031,7 @@ const sampleEvents = [
   },
   {
     title: "Culinary Masterclass with Chef Ahmad",
+    shortDescription: "A short description",
     description:
       "Learn the secrets of Middle Eastern cuisine from renowned Chef Ahmad in this hands-on cooking experience.",
     category: "Food & Dining",
@@ -1033,7 +1056,8 @@ const sampleEvents = [
     ],
     seoMeta: {
       title: "Middle Eastern Culinary Masterclass Dubai",
-      description: "Learn authentic Middle Eastern cooking techniques",
+      shortDescription: "A short description",
+    description: "Learn authentic Middle Eastern cooking techniques",
       keywords: [
         "cooking",
         "culinary",
@@ -1054,6 +1078,7 @@ const sampleEvents = [
   },
   {
     title: "International Business Summit 2024",
+    shortDescription: "A short description",
     description:
       "Join global business leaders and entrepreneurs for networking and insights into the future of international trade.",
     category: "Business",
@@ -1083,7 +1108,8 @@ const sampleEvents = [
     ],
     seoMeta: {
       title: "International Business Summit Dubai 2024",
-      description: "Premier business conference for global leaders",
+      shortDescription: "A short description",
+    description: "Premier business conference for global leaders",
       keywords: ["business", "summit", "international", "trade", "dubai"],
     },
     faqs: [
@@ -1104,6 +1130,7 @@ const sampleEvents = [
   },
   {
     title: "Desert Safari & Cultural Experience",
+    shortDescription: "A short description",
     description:
       "Experience authentic Emirati culture with desert adventures, traditional meals, and cultural performances.",
     category: "Culture & Heritage",
@@ -1138,7 +1165,8 @@ const sampleEvents = [
     ],
     seoMeta: {
       title: "Authentic Desert Safari Cultural Experience Dubai",
-      description: "Immerse yourself in Emirati culture and desert adventures",
+      shortDescription: "A short description",
+    description: "Immerse yourself in Emirati culture and desert adventures",
       keywords: [
         "desert",
         "safari",
@@ -1166,6 +1194,7 @@ const sampleEvents = [
   },
   {
     title: "Art & Design Exhibition",
+    shortDescription: "A short description",
     description:
       "Showcase of contemporary Middle Eastern art featuring emerging and established artists from the region.",
     category: "Art & Culture",
@@ -1190,7 +1219,8 @@ const sampleEvents = [
     ],
     seoMeta: {
       title: "Contemporary Middle Eastern Art Exhibition Dubai",
-      description: "Explore innovative art and design from regional artists",
+      shortDescription: "A short description",
+    description: "Explore innovative art and design from regional artists",
       keywords: [
         "art",
         "exhibition",
@@ -1218,6 +1248,7 @@ const sampleEvents = [
   },
   {
     title: "Rooftop Jazz Night",
+    shortDescription: "A short description",
     description:
       "Intimate jazz performance under the stars with breathtaking views of Dubai's skyline.",
     category: "Music",
@@ -1247,7 +1278,8 @@ const sampleEvents = [
     ],
     seoMeta: {
       title: "Rooftop Jazz Night with Dubai Skyline Views",
-      description: "Intimate jazz performance with stunning city views",
+      shortDescription: "A short description",
+    description: "Intimate jazz performance with stunning city views",
       keywords: ["jazz", "rooftop", "music", "nightlife", "dubai", "skyline"],
     },
     faqs: [
@@ -1268,6 +1300,7 @@ const sampleEvents = [
   },
   {
     title: "Marina Yacht Festival",
+    shortDescription: "A short description",
     description:
       "Exclusive yacht showcase featuring luxury vessels, water sports demonstrations, and marine lifestyle exhibitions.",
     category: "Sports & Recreation",
@@ -1297,7 +1330,8 @@ const sampleEvents = [
     ],
     seoMeta: {
       title: "Marina Yacht Festival Dubai - Luxury Marine Experience",
-      description: "Explore luxury yachts and marine lifestyle at Dubai Marina",
+      shortDescription: "A short description",
+    description: "Explore luxury yachts and marine lifestyle at Dubai Marina",
       keywords: [
         "yacht",
         "marina",
@@ -1325,6 +1359,7 @@ const sampleEvents = [
   },
   {
     title: "AI & Innovation Workshop",
+    shortDescription: "A short description",
     description:
       "Hands-on workshop exploring artificial intelligence applications in business and daily life.",
     category: "Technology",
@@ -1349,7 +1384,8 @@ const sampleEvents = [
     ],
     seoMeta: {
       title: "AI & Innovation Workshop Dubai - Tech Training",
-      description:
+      shortDescription: "A short description",
+    description:
         "Learn practical AI applications in interactive workshop format",
       keywords: [
         "ai",
@@ -1378,6 +1414,7 @@ const sampleEvents = [
   },
   {
     title: "Family Fun Day",
+    shortDescription: "A short description",
     description:
       "A day of entertainment for the whole family with games, activities, food stalls, and live performances.",
     category: "Family & Kids",
@@ -1402,7 +1439,8 @@ const sampleEvents = [
     ],
     seoMeta: {
       title: "Family Fun Day at Jumeirah Beach - All Ages",
-      description:
+      shortDescription: "A short description",
+    description:
         "Perfect family day out with activities and entertainment for everyone",
       keywords: [
         "family",
@@ -1615,7 +1653,7 @@ async function seedOrdersAndTickets(users: any[], events: any[]) {
           city: "Dubai",
           state: "Dubai",
           zipCode: String(Math.floor(Math.random() * 90000) + 10000),
-          country: "UAE",
+          country: "AE",
         },
         source: ["web", "mobile", "admin"][Math.floor(Math.random() * 3)],
       });
@@ -1731,7 +1769,7 @@ async function seedOrdersAndTickets(users: any[], events: any[]) {
         city: "Dubai",
         state: "Dubai",
         zipCode: String(Math.floor(Math.random() * 90000) + 10000),
-        country: "UAE",
+        country: "AE",
       },
       source: ["web", "mobile", "admin"][Math.floor(Math.random() * 3)],
     });
@@ -2000,7 +2038,11 @@ async function seedReviews(
       source: ["web", "mobile", "admin"][Math.floor(Math.random() * 3)],
     });
 
-    reviews.push(await review.save());
+    try {
+      reviews.push(await review.save());
+    } catch (e: any) {
+      // ignore duplicate reviews
+    }
   }
 
   // Create some additional random reviews (unverified purchases)
@@ -2030,7 +2072,11 @@ async function seedReviews(
       source: ["web", "mobile"][Math.floor(Math.random() * 2)],
     });
 
-    reviews.push(await review.save());
+    try {
+      reviews.push(await review.save());
+    } catch (e: any) {
+      // ignore duplicate reviews
+    }
   }
 
   // Create some venue reviews
@@ -2064,7 +2110,11 @@ async function seedReviews(
       source: "web",
     });
 
-    reviews.push(await review.save());
+    try {
+      reviews.push(await review.save());
+    } catch (e: any) {
+      // ignore duplicate reviews
+    }
   }
 
   logger.info(`${reviews.length} reviews created`);
@@ -2239,47 +2289,22 @@ async function seedEmployees(users: any[], venues: any[]) {
       ] || ["basic_access"];
 
       const employee = new Employee({
+        userId: new mongoose.Types.ObjectId(),
         employeeId: `EMP${String(employees.length + 1).padStart(3, "0")}`,
         firstName: data.firstName,
         lastName: data.lastName,
-        email: `${data.firstName.toLowerCase()}.${data.lastName.toLowerCase()}${employeeIndex}@${vendor.companyName.replace(/[^a-zA-Z0-9]/g, "").toLowerCase()}.com`,
+        email: `${data.firstName.toLowerCase()}.${data.lastName.toLowerCase()}${employeeIndex}_${Math.floor(Math.random() * 100000)}@${((vendor as any).companyName || "vendor").replace(/[^a-zA-Z0-9]/g, "").toLowerCase()}.com`,
         phone: `+971${Math.floor(Math.random() * 2) === 0 ? "50" : "55"}${Math.floor(Math.random() * 9000000) + 1000000}`,
-        position: data.position,
-        department,
+        role: ["manager", "scanner", "coordinator", "security"][Math.floor(Math.random() * 4)] as any,
         vendorId: vendor._id,
-        permissions: employeePermissions,
-        status:
-          Math.random() > 0.1
-            ? "active"
-            : ["inactive", "suspended"][Math.floor(Math.random() * 2)], // 90% active
-        hireDate: new Date(
-          Date.now() - Math.random() * 730 * 24 * 60 * 60 * 1000,
-        ), // Random date within last 2 years
-        salary: Math.floor(Math.random() * 8000) + 3000, // Salary between 3000-11000 AED
+        permissions: employeePermissions.map(p => ({ action: p, scope: "all" as any })),
+        status: Math.random() > 0.1 ? "active" : (["inactive", "suspended"][Math.floor(Math.random() * 2)] as any),
+        hiredAt: new Date(Date.now() - Math.random() * 730 * 24 * 60 * 60 * 1000),
         emergencyContact: {
           name: `Emergency Contact for ${data.firstName}`,
-          relationship: ["Spouse", "Parent", "Sibling", "Friend"][
-            Math.floor(Math.random() * 4)
-          ],
+          relationship: ["Spouse", "Parent", "Sibling", "Friend"][Math.floor(Math.random() * 4)],
           phone: `+971${Math.floor(Math.random() * 2) === 0 ? "50" : "55"}${Math.floor(Math.random() * 9000000) + 1000000}`,
-        },
-        address: {
-          street: `${Math.floor(Math.random() * 999) + 1} ${["Al Wasl Road", "Sheikh Zayed Road", "Jumeirah Road", "Business Bay Boulevard"][Math.floor(Math.random() * 4)]}`,
-          city: "Dubai",
-          state: "Dubai",
-          country: "UAE",
-          zipCode: String(Math.floor(Math.random() * 90000) + 10000),
-        },
-        notes:
-          Math.random() > 0.7
-            ? [
-                "Excellent performance in customer service",
-                "Completed advanced training program",
-                "Multilingual - speaks Arabic and English",
-                "Available for overtime work",
-                "Specialized in event setup and coordination",
-              ][Math.floor(Math.random() * 5)]
-            : undefined,
+        }
       });
 
       employees.push(employee);

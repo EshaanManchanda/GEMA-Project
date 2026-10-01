@@ -275,7 +275,7 @@ const TeachersListingPage: React.FC = () => {
           <img
             src="/assets/teacherbanner.png"
             alt="Teachers Header"
-            className="w-full h-full object-cover"
+            className="w-full h-full object-cover object-top sm:object-center"
           />
         </div>
         <div className="container mx-auto px-4 text-center relative z-10 pt-10 pb-8">
@@ -304,66 +304,66 @@ const TeachersListingPage: React.FC = () => {
           </p>
 
           {/* Search Bar */}
-          <div className="max-w-2xl mx-auto relative mb-12">
-            <div className="flex items-center bg-white rounded-full p-2 mt-17 shadow-[0_8px_30px_rgb(0,0,0,0.08)] border border-gray-100">
-              <FaSearch className="text-gray-400 ml-4 mr-2 text-lg" />
+          <div className="max-w-2xl mx-auto relative mb-6 sm:mb-12 px-2 sm:px-0 mt-4 sm:mt-0">
+            <div className="flex items-center bg-white rounded-full p-1 sm:p-2 sm:mt-17 shadow-[0_8px_30px_rgb(0,0,0,0.08)] border border-gray-100">
+              <FaSearch className="text-gray-400 ml-2 sm:ml-4 mr-1 sm:mr-2 text-sm sm:text-lg" />
               <input
                 type="text"
                 value={search}
                 onChange={(e) => setSearch(e.target.value)}
                 placeholder="Search by name or subject..."
-                className="flex-1 border-none focus:ring-0 text-gray-700 placeholder-gray-400 bg-transparent text-base px-2 py-2 outline-none"
+                className="flex-1 border-none focus:ring-0 text-gray-700 placeholder-gray-400 bg-transparent text-sm sm:text-base px-1 sm:px-2 py-1 sm:py-2 outline-none min-w-0"
               />
               {search && (
                 <button
                   onClick={() => setSearch('')}
-                  className="mr-3 text-gray-400 hover:text-gray-600"
+                  className="mr-1 sm:mr-3 text-gray-400 hover:text-gray-600 flex-shrink-0"
                 >
-                  <FaTimes className="w-4 h-4" />
+                  <FaTimes className="w-3 h-3 sm:w-4 sm:h-4" />
                 </button>
               )}
-              <button className="bg-gradient-to-r from-[#4f46e5] to-[#7c3aed] hover:from-[#4338ca] hover:to-[#6d28d9] text-white font-bold px-8 py-3.5 rounded-full transition-all shadow-sm">
+              <button className="bg-gradient-to-r from-[#4f46e5] to-[#7c3aed] hover:from-[#4338ca] hover:to-[#6d28d9] text-white text-sm sm:text-base font-bold px-4 sm:px-8 py-2 sm:py-3.5 rounded-full transition-all shadow-sm flex-shrink-0">
                 Search
               </button>
             </div>
           </div>
 
           {/* Stats Cards */}
-          <div className="flex flex-wrap justify-center gap-4 max-w-4xl mx-auto">
+          <div className="grid grid-cols-3 gap-2 sm:flex sm:flex-wrap sm:justify-center sm:gap-4 max-w-4xl mx-auto">
             {/* Stat 1 */}
-            <div className="flex items-center gap-4 bg-white rounded-2xl px-6 py-4 shadow-sm border border-red-100 min-w-[200px]">
-              <div className="w-12 h-12 rounded-full bg-red-50 flex items-center justify-center flex-shrink-0">
-                <FaUsers className="text-red-400 text-xl" />
+            <div className="flex flex-col sm:flex-row items-center sm:items-center justify-center sm:justify-start gap-1 sm:gap-4 bg-white rounded-xl sm:rounded-2xl px-2 py-2 sm:px-6 sm:py-4 shadow-sm border border-red-100 min-w-0 sm:min-w-[200px] text-center sm:text-left">
+              <div className="w-8 h-8 sm:w-12 sm:h-12 rounded-full bg-red-50 flex items-center justify-center flex-shrink-0">
+                <FaUsers className="text-red-400 text-sm sm:text-xl" />
               </div>
-              <div className="text-left">
-                <p className="text-2xl font-bold text-gray-900 leading-tight">{teachers.length > 0 ? `${teachers.length}+` : '0'}</p>
-                <p className="text-sm font-medium text-gray-500">Verified Teachers</p>
+              <div>
+                <p className="text-base sm:text-2xl font-bold text-gray-900 leading-tight">{teachers.length > 0 ? `${teachers.length}+` : '0'}</p>
+                <p className="text-[10px] sm:text-sm font-medium text-gray-500 leading-tight">Verified Teachers</p>
               </div>
             </div>
             {/* Stat 2 */}
-            <div className="flex items-center gap-4 bg-white rounded-2xl px-6 py-4 shadow-sm border border-purple-100 min-w-[200px]">
-              <div className="w-12 h-12 rounded-full bg-purple-50 flex items-center justify-center flex-shrink-0">
-                <svg className="w-6 h-6 text-purple-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+            <div className="flex flex-col sm:flex-row items-center sm:items-center justify-center sm:justify-start gap-1 sm:gap-4 bg-white rounded-xl sm:rounded-2xl px-2 py-2 sm:px-6 sm:py-4 shadow-sm border border-purple-100 min-w-0 sm:min-w-[200px] text-center sm:text-left">
+              <div className="w-8 h-8 sm:w-12 sm:h-12 rounded-full bg-purple-50 flex items-center justify-center flex-shrink-0">
+                <svg className="w-4 h-4 sm:w-6 sm:h-6 text-purple-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 6.253v13m0-13C10.832 5.477 9.246 5 7.5 5S4.168 5.477 3 6.253v13C4.168 18.477 5.754 18 7.5 18s3.332.477 4.5 1.253m0-13C13.168 5.477 14.754 5 16.5 5c1.747 0 3.332.477 4.5 1.253v13C19.832 18.477 18.247 18 16.5 18c-1.746 0-3.332.477-4.5 1.253" />
                 </svg>
               </div>
-              <div className="text-left">
-                <p className="text-2xl font-bold text-gray-900 leading-tight">{totalClasses > 0 ? `${totalClasses}+` : '0'}</p>
-                <p className="text-sm font-medium text-gray-500">Total classes</p>
+              <div>
+                <p className="text-base sm:text-2xl font-bold text-gray-900 leading-tight">{totalClasses > 0 ? `${totalClasses}+` : '0'}</p>
+                <p className="text-[10px] sm:text-sm font-medium text-gray-500 leading-tight">Total classes</p>
               </div>
             </div>
             {/* Stat 3 */}
-            <div className="flex items-center gap-4 bg-white rounded-2xl px-6 py-4 shadow-sm border border-emerald-100 min-w-[200px]">
-              <div className="w-12 h-12 rounded-full bg-emerald-50 flex items-center justify-center flex-shrink-0">
-                <svg className="w-6 h-6 text-emerald-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+            <div className="flex flex-col sm:flex-row items-center sm:items-center justify-center sm:justify-start gap-1 sm:gap-4 bg-white rounded-xl sm:rounded-2xl px-2 py-2 sm:px-6 sm:py-4 shadow-sm border border-emerald-100 min-w-0 sm:min-w-[200px] text-center sm:text-left">
+              <div className="w-8 h-8 sm:w-12 sm:h-12 rounded-full bg-emerald-50 flex items-center justify-center flex-shrink-0">
+                <svg className="w-4 h-4 sm:w-6 sm:h-6 text-emerald-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                   <path d="M12 14l9-5-9-5-9 5 9 5z" />
                   <path d="M12 14l6.16-3.422a12.083 12.083 0 01.665 6.479A11.952 11.952 0 0012 20.055a11.952 11.952 0 00-6.824-2.998 12.078 12.078 0 01.665-6.479L12 14z" />
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 14l9-5-9-5-9 5 9 5zm0 0l6.16-3.422a12.083 12.083 0 01.665 6.479A11.952 11.952 0 0012 20.055a11.952 11.952 0 00-6.824-2.998 12.078 12.078 0 01.665-6.479L12 14zm-4 6v-7.5l4-2.222" />
                 </svg>
               </div>
-              <div className="text-left">
-                <p className="text-2xl font-bold text-gray-900 leading-tight">{totalStudents > 0 ? `${totalStudents}+` : '0'}</p>
-                <p className="text-sm font-medium text-gray-500">Students Taught</p>
+              <div>
+                <p className="text-base sm:text-2xl font-bold text-gray-900 leading-tight">{totalStudents > 0 ? `${totalStudents}+` : '0'}</p>
+                <p className="text-[10px] sm:text-sm font-medium text-gray-500 leading-tight">Students Taught</p>
               </div>
             </div>
           </div>
@@ -468,7 +468,7 @@ const TeachersListingPage: React.FC = () => {
         )}
         {/* Loading skeletons */}
         {isLoading && (
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-5">
+          <div className="grid grid-cols-2 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-2 sm:gap-5">
             {Array.from({ length: 8 }).map((_, i) => (
               <SkeletonCard key={i} />
             ))}
@@ -500,7 +500,7 @@ const TeachersListingPage: React.FC = () => {
         )}
         {/* Grid */}
         {!isLoading && !error && filtered.length > 0 && (
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-5">
+          <div className="grid grid-cols-2 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-2 sm:gap-5">
             {filtered.map((t, idx) => (
               <TeacherCard key={t.user._id} t={t} idx={idx} />
             ))}

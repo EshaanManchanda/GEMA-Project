@@ -29,7 +29,7 @@
     "db:seed-coupons": "ts-node src/scripts/seedCoupons.ts",
     "db:seed-affiliate": "ts-node src/scripts/seedAffiliateVendor.ts",
     "db:seed-seo": "ts-node src/scripts/seedSEOContent.ts",
-    "db:seed-faqs": "ts-node src/scripts/seed-faqs.ts",
+    "db:seed-faqs": "ts-node src/scripts/seed-faq-standalone.ts",
     "db:seed-production-seo": "ts-node src/scripts/seed-production-seo.ts",
     "db:seed-all": "npm run db:seed && npm run db:seed-blogs && npm run db:seed-categories && npm run db:seed-banners && npm run db:seed-seo && npm run db:seed-faqs",
     "migrate:cloudinary": "ts-node src/scripts/migrate-cloudinary-assets.ts",

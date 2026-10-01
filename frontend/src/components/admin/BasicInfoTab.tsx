@@ -65,6 +65,7 @@ interface BasicInfoTabProps {
     requirePhoneVerification: boolean;
     status: 'draft' | 'published' | 'archived' | 'pending' | 'rejected';
     isActive: boolean;
+    isFreeEvent: boolean;
     vendorId: string;
     // Affiliate Event fields
     isAffiliateEvent: boolean;
@@ -370,6 +371,19 @@ const BasicInfoTab: React.FC<BasicInfoTabProps> = ({
                 />
                 <span className="text-sm font-medium text-gray-700">
                   Active (Visible to Users)
+                </span>
+              </label>
+
+              <label className="flex items-center">
+                <input
+                  type="checkbox"
+                  name="isFreeEvent"
+                  checked={formData.isFreeEvent}
+                  onChange={onCheckboxChange}
+                  className="mr-2 h-4 w-4 text-primary focus:ring-primary border-gray-300 rounded"
+                />
+                <span className="text-sm font-medium text-gray-700">
+                  Free Event (No Payment Required)
                 </span>
               </label>
 

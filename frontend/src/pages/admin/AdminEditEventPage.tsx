@@ -1083,7 +1083,7 @@ const AdminEditEventPage: React.FC = () => {
           totalSeats: schedule.unlimitedSeats
             ? undefined
             : parseInt(schedule.availableSeats) || undefined,
-          price: schedule.isFreeSession ? 0 : (schedule.price !== '' && schedule.price !== null && schedule.price !== undefined ? (parseFloat(schedule.price) || 0) : (parseFloat(formData.basePrice) || 0)),
+          price: formData.isFreeEvent ? 0 : (schedule.isFreeSession ? 0 : (schedule.price !== '' && schedule.price !== null && schedule.price !== undefined ? (parseFloat(schedule.price) || 0) : (parseFloat(formData.basePrice) || 0))),
           unlimitedSeats: schedule.unlimitedSeats || false,
           isSpecialDate: schedule.isSpecialDate || false,
           specialDates: schedule.specialDates || [],

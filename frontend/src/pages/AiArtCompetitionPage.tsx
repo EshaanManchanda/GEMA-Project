@@ -41,8 +41,8 @@ const AT_A_GLANCE: any[] = [
 
 const IMPORTANT_DATES = [
   { label: 'Competition Opens', date: '1st September 2026', icon: '🚀' },
-  { label: 'Registration Deadline', date: '1st October 2026', icon: '📋' },
-  { label: 'Submission Deadline', date: '15th October 2026', icon: '🎨' },
+  { label: 'Registration Deadline', date: '15th October 2026', icon: '📋' },
+  { label: 'Submission Deadline', date: '20th October 2026', icon: '🎨' },
   { label: 'Results Announcement', date: '1st November 2026', icon: '🏆' },
 ];
 
@@ -577,8 +577,8 @@ export default function AiArtCompetitionPage() {
           <div className="grid gap-10 md:grid-cols-4 md:gap-6">
             {[
               { date: '1 Sep', year: '2026', title: 'Competition opens', copy: 'The prompt is live. Let your first idea be the spark.' },
-              { date: '1 Oct', year: '2026', title: 'Registration closes', copy: 'Make sure your name and route into the competition are in.' },
-              { date: '15 Oct', year: '2026', title: 'Artwork submission closes', copy: 'One final artwork, uploaded as a JPG or PNG.' },
+              { date: '15 Oct', year: '2026', title: 'Registration closes', copy: 'Make sure your name and route into the competition are in.' },
+              { date: '20 Oct', year: '2026', title: 'Artwork submission closes', copy: 'One final artwork, uploaded as a JPG or PNG.' },
               { date: '1 Nov', year: '2026', title: 'Results announced', copy: 'We reveal the students who made us see the UAE differently.' },
             ].map((item, index) => (
               <div key={item.date} className="relative grid grid-cols-[32px_1fr] gap-4 md:block">
