@@ -372,8 +372,9 @@ const TeachersListingPage: React.FC = () => {
       {/* Filters bar */}
       <div className="sticky top-0 z-20 bg-white border-b border-gray-100 shadow-sm">
         <div className="container mx-auto px-4 py-3 flex flex-wrap items-center gap-3">
-          {/* Mode filter */}
-          <div className="flex items-center gap-1.5 flex-wrap">
+          {/* Filters container */}
+          <div className="flex items-center gap-1.5 flex-wrap flex-1 min-w-0">
+            {/* Mode filter */}
             {(['all', 'online', 'offline', 'hybrid'] as ModeFilter[]).map((m) => (
               <button
                 key={m}
@@ -387,11 +388,11 @@ const TeachersListingPage: React.FC = () => {
                 {m === 'all' ? 'All Modes' : m}
               </button>
             ))}
-          </div>
-          {/* Divider */}
-          <div className="h-4 w-px bg-gray-200 hidden sm:block" />
-          {/* Subject chips (top 8) */}
-          <div className="flex items-center gap-1.5 flex-wrap flex-1 min-w-0">
+
+            {/* Divider */}
+            <div className="h-4 w-px bg-gray-200 hidden sm:block mx-1" />
+
+            {/* Subject chips (top 8) */}
             {allSubjects.slice(0, 8).map((sub) => (
               <button
                 key={sub}
