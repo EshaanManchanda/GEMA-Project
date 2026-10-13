@@ -68,7 +68,7 @@ export const createVendorEvent = catchAsync(
       type,
       venueType,
       ageRange,
-      location,
+      location = {}, // online events may omit it entirely
       price,
       currency,
       tags,

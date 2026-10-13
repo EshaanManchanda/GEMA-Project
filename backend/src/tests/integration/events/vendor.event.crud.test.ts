@@ -312,7 +312,8 @@ describe("Vendor Event CRUD — /api/vendors/events", () => {
       expect(res.status).toBe(400);
     });
 
-    it("VE-2: rejects a past startDate", async () => {
+    // Past start dates are allowed on create by product decision (bca29a1).
+    it("VE-2: accepts a past startDate", async () => {
       const { accessToken, csrfToken } = await registerAndLoginVendor(app, "-pastdate");
       const past = new Date();
       past.setDate(past.getDate() - 5);
@@ -332,7 +333,7 @@ describe("Vendor Event CRUD — /api/vendors/events", () => {
             ],
           }),
         );
-      expect(res.status).toBe(400);
+      expect(res.status).toBe(201);
     });
 
     it("VE-2: rejects negative top-level price", async () => {
@@ -387,14 +388,16 @@ describe("Vendor Event CRUD — /api/vendors/events", () => {
       expect(res.status).toBe(400);
     });
 
-    it("VE-2: rejects an online event without a valid meetingLink", async () => {
+    // meetingLink became optional for Online events (cda2acd). Guards the old
+    // 500 from reading location.city when an online payload omits location.
+    it("VE-2: accepts an online event with no meetingLink and no location", async () => {
       const { accessToken, csrfToken } = await registerAndLoginVendor(app, "-onlineNoLink");
       const res = await request(app)
         .post("/api/vendors/events")
         .set("Cookie", authCookie(accessToken, csrfToken))
         .set("X-CSRF-Token", csrfToken)
         .send(basePayload({ venueType: "Online", location: undefined, meetingLink: "" }));
-      expect(res.status).toBe(400);
+      expect(res.status).toBe(201);
     });
   });
 
