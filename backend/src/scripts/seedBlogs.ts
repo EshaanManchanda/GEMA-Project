@@ -1,3 +1,4 @@
+import { assertSafeSeedTarget } from "./seedGuard";
 import mongoose from "mongoose";
 import { Blog, BlogCategory } from "../models/index";
 import { IBlogCategory } from "../models/BlogCategory";
@@ -446,6 +447,7 @@ const blogPosts = [
 ];
 
 async function seedBlogs() {
+  assertSafeSeedTarget(MONGODB_URI);
   try {
     // Connect to MongoDB
     await mongoose.connect(MONGODB_URI);

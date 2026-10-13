@@ -45,3 +45,5 @@ Thumbs.db
 nul
 *.backup
 .graphify-out/
+# Local one-off fix scripts
+scratch_fix_*.py

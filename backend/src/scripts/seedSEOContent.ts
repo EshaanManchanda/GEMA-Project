@@ -1,3 +1,4 @@
+import { assertSafeSeedTarget } from "./seedGuard";
 import mongoose from "mongoose";
 import { SEOContent, User } from "../models/index";
 import { config } from "../config/index";
@@ -210,6 +211,7 @@ const seoContentData = [
 ];
 
 async function seedSEOContent() {
+  assertSafeSeedTarget(MONGODB_URI);
   try {
     console.log("🌱 Starting SEO content seeding...");
     console.log(

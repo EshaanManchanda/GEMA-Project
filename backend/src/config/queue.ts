@@ -32,7 +32,10 @@ export const bullMQClient = areQueuesDisabled
 
       // Connection optimization
       lazyConnect: false,
-      enableAutoPipelining: true, // Better performance with shared connection
+      // Must stay off: with BullMQ 5.x workers, ioredis auto-pipelining throws
+      // "pipeline[functionName] is not a function" on every moveToActive,
+      // so workers never pick up jobs (emails, QR codes, tickets).
+      enableAutoPipelining: false,
 
       // Reconnection strategy - never give up, use exponential backoff
       retryStrategy(times: number) {

@@ -1,4 +1,5 @@
 import * as winston from "winston";
+import DailyRotateFile from "winston-daily-rotate-file";
 import { config } from "./env";
 import * as fs from "fs";
 import * as path from "path";
@@ -7,7 +8,7 @@ import * as util from "util";
 // Ensure logs directory exists
 const logsDir = path.resolve(process.cwd(), "logs");
 if (!fs.existsSync(logsDir)) {
-  fs.mkdirSync(logsDir, { recursive: true });
+  fs.mkdirSync(logsDir, { recursive: true, mode: 0o750 });
 }
 
 // Safe stringify that handles circular structures
@@ -34,6 +35,27 @@ const logFormat = winston.format.printf(
   },
 );
 
+// One file per day, gzipped once rotated, deleted after the retention window.
+// Override with LOG_RETENTION_DAYS / ERROR_LOG_RETENTION_DAYS (whole days).
+const retentionDays = (envVar: string, fallback: number): number => {
+  const n = parseInt(process.env[envVar] || "", 10);
+  return n > 0 ? n : fallback;
+};
+// PM2 sets `name` per app, so the API and worker rotate their own files and
+// audit JSON instead of pruning each other's.
+const filePrefix = process.env.name ? `${process.env.name}-` : "";
+const rotatingFile = (kind: string, days: number, level?: string) =>
+  new DailyRotateFile({
+    dirname: logsDir,
+    filename: `${filePrefix}${kind}-%DATE%.log`,
+    datePattern: "YYYY-MM-DD",
+    level,
+    zippedArchive: true,
+    maxFiles: `${days}d`,
+    // Owner + group only: logs contain emails/IPs.
+    options: { flags: "a", mode: 0o640 },
+  });
+
 // Create the logger instance
 const logger = winston.createLogger({
   level: config.nodeEnv === "production" ? "info" : "debug",
@@ -45,15 +67,8 @@ const logger = winston.createLogger({
   ),
   defaultMeta: { service: "gema-backend" },
   transports: [
-    // Write all logs with level 'error' and below to 'error.log'
-    new winston.transports.File({
-      filename: path.join(logsDir, "error.log"),
-      level: "error",
-    }),
-    // Write all logs with level 'info' and below to 'combined.log'
-    new winston.transports.File({
-      filename: path.join(logsDir, "combined.log"),
-    }),
+    rotatingFile("error", retentionDays("ERROR_LOG_RETENTION_DAYS", 30), "error"),
+    rotatingFile("combined", retentionDays("LOG_RETENTION_DAYS", 15)),
   ],
 });
 

@@ -1,3 +1,4 @@
+import { assertSafeSeedTarget } from "./seedGuard";
 import mongoose from "mongoose";
 import { Banner, User, MediaAsset } from "../models/index";
 import { config } from "../config/index";
@@ -31,6 +32,7 @@ const bannerImages = [
 ];
 
 async function seedBanners() {
+  assertSafeSeedTarget(MONGODB_URI);
   try {
     console.log("🌱 Starting banner seeding...");
     console.log(

@@ -1,3 +1,4 @@
+import { assertSafeSeedTarget } from "./seedGuard";
 import mongoose from "mongoose";
 import fs from "fs";
 import path from "path";
@@ -7,6 +8,7 @@ import { config } from "../config/index";
 const MONGODB_URI = config.mongodbUri;
 
 const seedCoupons = async () => {
+  assertSafeSeedTarget(MONGODB_URI);
   try {
     // Connect to MongoDB
     console.log("Connecting to MongoDB...");

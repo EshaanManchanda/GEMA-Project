@@ -1,3 +1,4 @@
+import { assertSafeSeedTarget } from "./seedGuard";
 import mongoose from "mongoose";
 import { config, connectDB, logger } from "../config/index";
 import {
@@ -2752,6 +2753,8 @@ async function seedAnnouncements() {
  * Main seed function
  */
 async function seed() {
+  assertSafeSeedTarget(config.mongodbUri);
+
   try {
     // Connect to MongoDB
     await connectDB();

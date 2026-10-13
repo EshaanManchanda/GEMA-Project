@@ -1,3 +1,4 @@
+import { assertSafeSeedTarget } from "./seedGuard";
 import mongoose from "mongoose";
 import dotenv from "dotenv";
 import path from "path";
@@ -6,6 +7,7 @@ import fs from "fs";
 dotenv.config({ path: path.join(__dirname, "../../.env") });
 
 const seedJSON = async () => {
+  assertSafeSeedTarget(process.env.MONGODB_URI);
   try {
     const mongoUri = process.env.MONGODB_URI;
     if (!mongoUri)

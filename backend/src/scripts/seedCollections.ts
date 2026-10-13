@@ -1,3 +1,4 @@
+import { assertSafeSeedTarget } from "./seedGuard";
 import mongoose from "mongoose";
 import Collection from "../models/Collection";
 import { connectDB } from "../config/database";
@@ -109,6 +110,7 @@ const collections = [
 ];
 
 async function seedCollections() {
+  assertSafeSeedTarget(process.env.MONGODB_URI);
   try {
     console.log("🌱 Starting Collections Seed Script...");
 
