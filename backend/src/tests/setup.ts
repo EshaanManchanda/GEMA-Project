@@ -17,6 +17,7 @@ process.env.ADMIN_SECRET_KEY = "test-admin-secret";
 process.env.BCRYPT_SALT_ROUNDS = "4";
 process.env.REDIS_URL = "redis://localhost:6379";
 process.env.FRONTEND_URL = "http://localhost:3000";
+process.env.GOOGLE_PLACES_API_KEY = "test-places-key"; // GooglePlacesService reads it once at import; unset => sync silently returns 0 reviews
 process.env.CLOUDINARY_CLOUD_NAME = "test-cloud";
 process.env.CLOUDINARY_API_KEY = "test-api-key";
 process.env.CLOUDINARY_API_SECRET = "test-api-secret";

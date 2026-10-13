@@ -72,37 +72,10 @@ jest.mock("../../../services/queue.service", () => ({
   addQRJob: jest.fn().mockResolvedValue(undefined),
 }));
 
-// Bypass rate limiter — tests fire many requests from the same IP
-jest.mock("../../../middleware/rateLimiter", () => {
-  const passthrough = (_req: any, _res: any, next: any) => next();
-  return {
-    __esModule: true,
-    default: {
-      generalLimiter: passthrough,
-      authLimiter: passthrough,
-      passwordResetLimiter: passthrough,
-      emailVerificationLimiter: passthrough,
-      changePasswordLimiter: passthrough,
-      uploadLimiter: passthrough,
-      createResourceLimiter: passthrough,
-      adminLimiter: passthrough,
-      searchLimiter: passthrough,
-      paymentLimiter: passthrough,
-      createCustomLimiter: () => passthrough,
-    },
-    generalLimiter: passthrough,
-    authLimiter: passthrough,
-    passwordResetLimiter: passthrough,
-    emailVerificationLimiter: passthrough,
-    changePasswordLimiter: passthrough,
-    uploadLimiter: passthrough,
-    createResourceLimiter: passthrough,
-    adminLimiter: passthrough,
-    searchLimiter: passthrough,
-    paymentLimiter: passthrough,
-    createCustomLimiter: () => passthrough,
-  };
-});
+// Bypass rate limiters — tests fire many requests from the same IP. Every
+// limiter checks skipInE2E() per request, so this covers limiters added later
+// (a hand-listed mock went stale when refreshTokenLimiter was added).
+process.env.E2E_RELAX_RATE_LIMITS = "true";
 
 // ---------------------------------------------------------------------------
 // Helpers
