@@ -1,6 +1,7 @@
 import { Router } from "express";
 import { body, param, query } from "express-validator";
 import rateLimit from "express-rate-limit";
+import { skipInE2E } from "../middleware/rateLimiter";
 import {
   createReview,
   getReviews,
@@ -31,6 +32,7 @@ import { uploadMultiple, handleUploadError } from "../middleware/upload";
 
 // Strict limiter for the sync endpoint — calls the paid Google Places API
 const googleSyncLimiter = rateLimit({
+  skip: skipInE2E,
   windowMs: 60 * 60 * 1000, // 1 hour
   max: 30, // 30 syncs per IP per hour (covers heavy admin use)
   message: {
@@ -44,6 +46,7 @@ const googleSyncLimiter = rateLimit({
 
 // Limiter for public review-media uploads (unauthenticated, identified by email)
 const reviewMediaLimiter = rateLimit({
+  skip: skipInE2E,
   windowMs: 15 * 60 * 1000, // 15 minutes
   max: 20, // 20 upload requests per IP per window (each can carry up to 5 files)
   message: {

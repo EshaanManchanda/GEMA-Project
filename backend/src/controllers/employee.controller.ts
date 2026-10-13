@@ -34,7 +34,12 @@ export const createEmployee = async (
           new AppError("User with this email is already an employee.", 409),
         );
       }
-      // If user exists but is not an employee, we can link them
+      // Never attach someone else's customer/vendor/admin account to a vendor.
+      if (user.role !== "employee") {
+        return next(
+          new AppError("This email belongs to an existing non-employee account.", 409),
+        );
+      }
     } else {
       // If user does not exist, create a new user account for the employee
       user = await User.create({

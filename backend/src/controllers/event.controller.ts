@@ -3,6 +3,7 @@ import { validationResult } from "express-validator";
 import { Event, User, Order, AnalyticsEvent } from "../models/index";
 import Vendor, { VerificationStatus } from "../models/Vendor";
 import Teacher from "../models/Teacher";
+import { canStaffAccessVendor } from "../utils/vendorResolve";
 import MediaAsset from "../models/MediaAsset";
 import { AppError } from "../middleware/index";
 import { AuthRequest } from "../types/index";
@@ -1246,8 +1247,17 @@ export const claimEvent = async (
       return next(new AppError("Event not found", 404));
     }
 
-    if (event.claimStatus === "claimed") {
-      return next(new AppError("This event has already been claimed", 400));
+    // Only listings explicitly open for claiming. The schema default is
+    // "not_claimable", so checking `=== "claimed"` let anyone take over any event.
+    if (event.claimStatus !== "unclaimed") {
+      return next(
+        new AppError(
+          event.claimStatus === "claimed"
+            ? "This event has already been claimed"
+            : "This event is not available to claim",
+          400,
+        ),
+      );
     }
 
     const user = await User.findById(userId);
@@ -1491,6 +1501,18 @@ export const getEventsForCertificates = async (
   }
 };
 
+/** Admin, the owning vendor, or the owning teacher of an event. */
+async function isEventOwner(req: AuthRequest, event: { vendorId?: unknown; teacherId?: unknown }): Promise<boolean> {
+  const role = req.user?.role;
+  if (role === "admin") return true;
+  if (role === "vendor") return canStaffAccessVendor(req, event.vendorId);
+  if (role === "teacher" && event.teacherId) {
+    const teacher = await Teacher.findOne({ userId: req.user!._id }).select("_id").lean();
+    return !!teacher && String(teacher._id) === String(event.teacherId);
+  }
+  return false;
+}
+
 export const listCertificateTypes = async (
   req: AuthRequest,
   res: Response,
@@ -1499,7 +1521,7 @@ export const listCertificateTypes = async (
   try {
     const { id } = req.params;
     const event = await Event.findById(id).select("certificateTypes vendorId teacherId");
-    if (!event) return next(new AppError("Event not found", 404));
+    if (!event || !(await isEventOwner(req, event))) return next(new AppError("Event not found", 404));
     res.status(200).json({ success: true, data: event.certificateTypes || [] });
   } catch (error) {
     next(error);
@@ -1516,7 +1538,7 @@ export const addCertificateType = async (
     const { name, slug, templateId, description, criteria, isDefault, sortOrder } = req.body;
 
     const event = await Event.findById(id);
-    if (!event) return next(new AppError("Event not found", 404));
+    if (!event || !(await isEventOwner(req, event))) return next(new AppError("Event not found", 404));
 
     const certTypes = event.certificateTypes || [];
     if (certTypes.find((ct) => ct.slug === slug)) {
@@ -1554,7 +1576,7 @@ export const updateCertificateType = async (
     const { name, templateId, description, criteria, isDefault, sortOrder } = req.body;
 
     const event = await Event.findById(id);
-    if (!event) return next(new AppError("Event not found", 404));
+    if (!event || !(await isEventOwner(req, event))) return next(new AppError("Event not found", 404));
 
     const certTypes = event.certificateTypes || [];
     const idx = certTypes.findIndex((ct) => ct.slug === typeSlug);
@@ -1585,7 +1607,7 @@ export const deleteCertificateType = async (
     const { id, typeSlug } = req.params;
 
     const event = await Event.findById(id);
-    if (!event) return next(new AppError("Event not found", 404));
+    if (!event || !(await isEventOwner(req, event))) return next(new AppError("Event not found", 404));
 
     const certTypes = event.certificateTypes || [];
     const idx = certTypes.findIndex((ct) => ct.slug === typeSlug);

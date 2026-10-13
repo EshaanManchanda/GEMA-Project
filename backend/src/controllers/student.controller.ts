@@ -110,10 +110,14 @@ export const getMyChildren = async (req: AuthRequest, res: Response, next: NextF
   }
 };
 
-export const getStudent = async (req: Request, res: Response, next: NextFunction) => {
+export const getStudent = async (req: AuthRequest, res: Response, next: NextFunction) => {
   try {
     const student = await Student.findById(req.params.id).populate("parentUserId", "firstName lastName email");
-    if (!student) return next(new AppError("Student not found", 404));
+    // Children's records: admins, or the child's own parent. 404 (not 403) so IDs can't be probed.
+    const parentId = (student?.parentUserId as { _id?: unknown } | undefined)?._id ?? student?.parentUserId;
+    if (!student || (req.user?.role !== "admin" && String(parentId) !== String(req.user?._id))) {
+      return next(new AppError("Student not found", 404));
+    }
     res.status(200).json({ success: true, data: { student } });
   } catch (error) {
     next(error);

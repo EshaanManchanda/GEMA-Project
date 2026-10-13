@@ -1,5 +1,5 @@
 import { Request, Response, NextFunction } from "express";
-import { Ticket, User, Event, Employee, Order } from "../models/index";
+import { Ticket, User, Event, Order } from "../models/index";
 import { AppError } from "../middleware/error";
 import { AuthRequest } from "../types/index";
 import {
@@ -12,6 +12,25 @@ import { sendTicketByEmail } from "../utils/mailer";
 import { sendTicketViaWhatsAppOrSms } from "../services/communication/ticketDelivery.service";
 import { v4 as uuidv4 } from "uuid";
 import logger from "../config/logger";
+import { canStaffAccessVendor } from "../utils/vendorResolve";
+
+/** Vendor that owns a ticket: stored on the ticket, else on its event. */
+async function ticketVendorId(ticket: { vendorId?: unknown; eventId?: unknown }): Promise<unknown> {
+  if (ticket.vendorId) return ticket.vendorId;
+  const ev = ticket.eventId as { _id?: unknown; vendorId?: unknown } | undefined;
+  if (ev?.vendorId) return ev.vendorId;
+  const event = await Event.findById(ev?._id ?? ev).select("vendorId").lean();
+  return event?.vendorId;
+}
+
+/** Ticket owner, or staff (admin / the owning vendor / its employees). */
+async function canAccessTicket(req: AuthRequest, ticket: { userId?: unknown; vendorId?: unknown; eventId?: unknown }): Promise<boolean> {
+  if (!req.user) return false;
+  const owner = (ticket.userId as { _id?: unknown } | null)?._id ?? ticket.userId;
+  if (owner && String(owner) === String(req.user._id)) return true;
+  if (!["admin", "vendor", "employee"].includes(req.user.role)) return false;
+  return canStaffAccessVendor(req, await ticketVendorId(ticket));
+}
 
 // Helper function to generate a unique ticket number
 const generateUniqueTicketNumber = async (): Promise<string> => {
@@ -182,12 +201,7 @@ export const getTicketDetails = async (
 
     // Ensure only the ticket holder or an authorized employee/admin can view full details
     // This is a basic check, more robust authorization might be needed
-    if (
-      !req.user ||
-      (req.user._id?.toString() !== ticket.userId.toString() &&
-        req.user.role !== "admin" &&
-        req.user.role !== "vendor")
-    ) {
+    if (!(await canAccessTicket(req, ticket))) {
       return next(new AppError("Unauthorized to view this ticket", 403));
     }
 
@@ -312,12 +326,7 @@ export const resendTicket = async (
     }
 
     // Only the current ticket holder or an authorized employee/admin can resend
-    if (
-      !req.user ||
-      (req.user._id?.toString() !== ticket.userId.toString() &&
-        req.user.role !== "admin" &&
-        req.user.role !== "vendor")
-    ) {
+    if (!(await canAccessTicket(req, ticket))) {
       return next(new AppError("Unauthorized to resend this ticket", 403));
     }
 
@@ -433,27 +442,18 @@ export const verifyTicketQR = async (
       });
     }
 
-    // Vendor-specific validation: Only allow employees to scan tickets for their vendor
-    if (req.user.role === "employee") {
-      // Get employee record to find vendorId
-      const employee = await Employee.findOne({ userId: req.user._id });
-      if (
-        employee &&
-        ticket.vendorId.toString() !== employee.vendorId.toString()
-      ) {
-        return res.status(403).json({
-          success: false,
-          status: "invalid_vendor",
-          message: "Invalid - Ticket belongs to different vendor",
-          details: {
-            ticketNumber,
-            ticketVendor: ticket.vendorId,
-            employeeVendor: employee.vendorId,
-            scannedBy: req.user.email,
-            scannedAt: new Date().toISOString(),
-          },
-        });
-      }
+    // Staff may only scan tickets for their own vendor (admins: any).
+    if (!(await canStaffAccessVendor(req, await ticketVendorId(ticket)))) {
+      return res.status(403).json({
+        success: false,
+        status: "invalid_vendor",
+        message: "Invalid - Ticket belongs to different vendor",
+        details: {
+          ticketNumber,
+          scannedBy: req.user.email,
+          scannedAt: new Date().toISOString(),
+        },
+      });
     }
 
     // Verify event ID matches
@@ -636,10 +636,13 @@ export const checkInTicket = async (
   try {
     const ticket = await Ticket.findById(ticketId)
       .populate("userId", "firstName lastName email")
-      .populate("eventId", "title dateSchedule location");
+      .populate("eventId", "title dateSchedule location vendorId");
 
     if (!ticket) {
       return next(new AppError("Ticket not found", 404));
+    }
+    if (!(await canStaffAccessVendor(req, await ticketVendorId(ticket)))) {
+      return next(new AppError("Unauthorized to check-in this ticket", 403));
     }
 
     // Verify ticket can be checked in
@@ -709,6 +712,14 @@ export const getEventTickets = async (
   }
 
   try {
+    const event = await Event.findById(eventId).select("vendorId").lean();
+    if (!event) {
+      return next(new AppError("Event not found", 404));
+    }
+    if (!(await canStaffAccessVendor(req, event.vendorId))) {
+      return next(new AppError("Unauthorized to view event tickets", 403));
+    }
+
     const query: any = { eventId };
     if (status) {
       query.status = status;
@@ -986,6 +997,16 @@ export const generateMissingTickets = async (
     const order = await Order.findOne(query).sort({ createdAt: -1 });
     if (!order) {
       return next(new AppError("Order not found or access denied", 404));
+    }
+    if (req.user.role === "vendor") {
+      // A vendor may only act on orders for their own events.
+      const events = await Event.find({ _id: { $in: order.items.map((it: any) => it.eventId) } })
+        .select("vendorId")
+        .lean();
+      const owns = await Promise.all(events.map((e) => canStaffAccessVendor(req, e.vendorId)));
+      if (!events.length || owns.includes(false)) {
+        return next(new AppError("Order not found or access denied", 404));
+      }
     }
 
     if (order.status !== "confirmed") {

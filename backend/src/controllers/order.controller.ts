@@ -452,6 +452,16 @@ export const processPayment = async (
       return next(new AppError("PaymentIntent not found", 404));
     }
 
+    // The intent must have been created for THIS order — otherwise one paid
+    // intent could be replayed to mark any other (pricier) order as paid.
+    const intentOrderId = paymentIntent.metadata?.orderId;
+    if (
+      intentOrderId !== String(order._id) &&
+      order.paymentIntentId !== paymentIntentId
+    ) {
+      return next(new AppError("Payment does not belong to this order", 400));
+    }
+
     const paymentSuccessful = paymentIntent.status === "succeeded";
 
     if (!paymentSuccessful) {

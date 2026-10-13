@@ -6,6 +6,8 @@ import { emailQueue } from "../config/queue";
 import { emailService } from "../services/email.service";
 import logger from "../config/logger";
 import mongoose from "mongoose";
+import { AuthRequest } from "../types/index";
+import { canStaffAccessVendor } from "../utils/vendorResolve";
 
 // Helper: send event cancellation email — queue if available, otherwise direct
 const sendEventCancellationEmail = async (data: {
@@ -75,11 +77,8 @@ export const cancelEvent = async (
     }
 
     // Check if user is vendor owner or admin
-    const user = await User.findById(userId).session(session);
-    const isAdmin = user?.role === "admin";
-    const isVendorOwner = event.vendorId.toString() === userId?.toString();
-
-    if (!isAdmin && !isVendorOwner) {
+    // event.vendorId is a Vendor._id — resolve the caller's vendor profile, don't compare to the User._id.
+    if (!(await canStaffAccessVendor(req as AuthRequest, event.vendorId))) {
       res.status(403).json({
         success: false,
         message: "Not authorized to cancel this event",
@@ -225,7 +224,7 @@ export const getCancellationStatus = async (
 
     const event = await Event.findById(id)
       .select(
-        "title cancellationStatus cancellationReason cancelledAt cancelledBy cancellationNotification",
+        "title vendorId cancellationStatus cancellationReason cancelledAt cancelledBy cancellationNotification",
       )
       .populate("cancelledBy", "firstName lastName email");
 
@@ -234,6 +233,11 @@ export const getCancellationStatus = async (
         success: false,
         message: "Event not found",
       });
+      return;
+    }
+
+    if (!(await canStaffAccessVendor(req as AuthRequest, event.vendorId))) {
+      res.status(403).json({ success: false, message: "Not authorized for this event" });
       return;
     }
 
@@ -312,6 +316,11 @@ export const getAffectedOrders = async (
       return;
     }
 
+    if (!(await canStaffAccessVendor(req as AuthRequest, event.vendorId))) {
+      res.status(403).json({ success: false, message: "Not authorized for this event" });
+      return;
+    }
+
     const skip = (Number(page) - 1) * Number(limit);
 
     const orders = await Order.find({
@@ -366,6 +375,11 @@ export const retryNotifications = async (
         success: false,
         message: "Event not found",
       });
+      return;
+    }
+
+    if (!(await canStaffAccessVendor(req as AuthRequest, event.vendorId))) {
+      res.status(403).json({ success: false, message: "Not authorized for this event" });
       return;
     }
 

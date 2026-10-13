@@ -4,13 +4,21 @@ import Gallery from "../models/Gallery";
 import Event from "../models/Event";
 import { AppError } from "../middleware/index";
 import { AuthRequest } from "../types/index";
+import { canStaffAccessVendor } from "../utils/vendorResolve";
+
+/** Admin, or the vendor that owns the gallery's event. */
+async function canManageEventGallery(req: AuthRequest, eventId: unknown): Promise<boolean> {
+  const event = await Event.findById(eventId).select("vendorId").lean();
+  return !!event && (await canStaffAccessVendor(req, event.vendorId));
+}
 
 export const createGallery = async (req: AuthRequest, res: Response, next: NextFunction) => {
   try {
     const { eventId, type, images } = req.body;
 
-    const event = await Event.findById(eventId);
-    if (!event) return next(new AppError("Event not found", 404));
+    if (!(await canManageEventGallery(req, eventId))) {
+      return next(new AppError("Event not found", 404));
+    }
 
     const gallery = await Gallery.create({ eventId, type: type || "grid", images: images || [] });
 
@@ -26,6 +34,11 @@ export const updateGallery = async (req: AuthRequest, res: Response, next: NextF
   try {
     const { id } = req.params;
     const { type, images } = req.body;
+
+    const existing = await Gallery.findById(id).select("eventId").lean();
+    if (!existing || !(await canManageEventGallery(req, existing.eventId))) {
+      return next(new AppError("Gallery not found", 404));
+    }
 
     const gallery = await Gallery.findByIdAndUpdate(
       id,
@@ -66,6 +79,11 @@ export const getGalleryByEvent = async (req: Request, res: Response, next: NextF
 export const deleteGallery = async (req: AuthRequest, res: Response, next: NextFunction) => {
   try {
     const { id } = req.params;
+
+    const existing = await Gallery.findById(id).select("eventId").lean();
+    if (!existing || !(await canManageEventGallery(req, existing.eventId))) {
+      return next(new AppError("Gallery not found", 404));
+    }
 
     const gallery = await Gallery.findByIdAndDelete(id);
     if (!gallery) return next(new AppError("Gallery not found", 404));

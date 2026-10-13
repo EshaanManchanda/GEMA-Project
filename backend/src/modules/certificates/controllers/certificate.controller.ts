@@ -16,6 +16,25 @@ import { renderCertificate } from "../../../workers/certificate.worker";
 import { certificateQueue } from "../../../config/queue";
 import { MediaService } from "../../../services/media.service";
 import logger from "../../../config/logger";
+import Event from "../../../models/Event";
+import { canStaffAccessVendor, resolveStaffVendorId } from "../../../utils/vendorResolve";
+
+/** Admin, the certificate's recipient, or staff of the vendor that owns its event. */
+async function canViewCertificate(
+  req: AuthRequest,
+  cert: { userId?: unknown; eventId?: unknown; recipient?: { email?: string } },
+): Promise<boolean> {
+  const user = req.user;
+  if (!user) return false;
+  if (user.role === "admin") return true;
+  const owner = (cert.userId as { _id?: unknown } | null)?._id ?? cert.userId;
+  if (owner && String(owner) === String(user._id)) return true;
+  if (cert.recipient?.email && user.email && cert.recipient.email.toLowerCase() === String(user.email).toLowerCase()) return true;
+  if (!["vendor", "employee"].includes(user.role)) return false;
+  const eventId = (cert.eventId as { _id?: unknown } | null)?._id ?? cert.eventId;
+  const event = await Event.findById(eventId).select("vendorId").lean();
+  return !!event && (await canStaffAccessVendor(req, event.vendorId));
+}
 import { toCsv, safeReportFilename } from "../../../utils/csv.utils";
 
 // ─── Guards ───────────────────────────────────────────────────────────────────
@@ -247,14 +266,16 @@ export const triggerGeneration = async (req: AuthRequest, res: Response, next: N
   } catch (error) { next(error); }
 };
 
-export const getCertificate = async (req: Request, res: Response, next: NextFunction) => {
+export const getCertificate = async (req: AuthRequest, res: Response, next: NextFunction) => {
   try {
     if (!validate(req, next)) return;
     const certificate = await Certificate.findById(req.params.id)
       .populate("templateId", "name slug")
       .populate("eventId", "title")
       .populate("userId", "firstName lastName email");
-    if (!certificate) return next(new AppError("Certificate not found", 404));
+    if (!certificate || !(await canViewCertificate(req, certificate))) {
+      return next(new AppError("Certificate not found", 404));
+    }
     res.status(200).json({ success: true, data: { certificate } });
   } catch (error) { next(error); }
 };
@@ -274,6 +295,13 @@ export const listCertificates = async (req: AuthRequest, res: Response, next: Ne
       issuedFrom:     req.query.issuedFrom as string | undefined,
       issuedTo:       req.query.issuedTo as string | undefined,
     });
+
+    // Vendors only ever see certificates for their own events.
+    const staffVendorId = await resolveStaffVendorId(req);
+    if (staffVendorId !== null) {
+      const ownEvents = staffVendorId ? await Event.distinct("_id", { vendorId: staffVendorId }) : [];
+      (filter as Record<string, unknown>).$and = [{ eventId: { $in: ownEvents } }];
+    }
 
     const pageNum = parseInt(page as string);
     const limitNum = parseInt(limit as string);
@@ -424,11 +452,13 @@ export const retryCertificate = async (req: AuthRequest, res: Response, next: Ne
   } catch (error) { next(error); }
 };
 
-export const downloadCertificate = async (req: Request, res: Response, next: NextFunction) => {
+export const downloadCertificate = async (req: AuthRequest, res: Response, next: NextFunction) => {
   try {
     if (!validate(req, next)) return;
-    const certificate = await Certificate.findById(req.params.id).select("pdfUrl status recipient");
-    if (!certificate) return next(new AppError("Certificate not found", 404));
+    const certificate = await Certificate.findById(req.params.id).select("pdfUrl status recipient userId eventId");
+    if (!certificate || !(await canViewCertificate(req, certificate))) {
+      return next(new AppError("Certificate not found", 404));
+    }
     if (!certificate.pdfUrl) return next(new AppError("Certificate PDF not yet generated", 404));
     res.status(200).json({ success: true, data: { pdfUrl: certificate.pdfUrl } });
   } catch (error) { next(error); }
@@ -488,12 +518,15 @@ export const bulkImportCSV = async (req: AuthRequest, res: Response, next: NextF
   } catch (error) { next(error); }
 };
 
-export const getBulkRequestStatus = async (req: Request, res: Response, next: NextFunction) => {
+export const getBulkRequestStatus = async (req: AuthRequest, res: Response, next: NextFunction) => {
   try {
     if (!validate(req, next)) return;
     const certRequest = await CertificateRequest.findById(req.params.requestId)
-      .select("status progress type createdAt updatedAt");
-    if (!certRequest) return next(new AppError("Certificate request not found", 404));
+      .select("status progress type createdAt updatedAt eventId");
+    const event = certRequest && (await Event.findById(certRequest.eventId).select("vendorId").lean());
+    if (!certRequest || !event || !(await canStaffAccessVendor(req, event.vendorId))) {
+      return next(new AppError("Certificate request not found", 404));
+    }
     res.status(200).json({ success: true, data: { request: certRequest } });
   } catch (error) { next(error); }
 };

@@ -26,6 +26,7 @@ import mediaService from "../services/media.service";
 import { config } from "../config/env";
 import Student from "../models/Student";
 import logger from "../config/logger";
+import { canStaffAccessVendor } from "../utils/vendorResolve";
 
 const hasConfirmedEventBooking = async (
   userId: string | mongoose.Types.ObjectId,
@@ -782,12 +783,14 @@ export const respondToReview = async (
 
     if (review.type === ReviewType.EVENT && review.event) {
       const event = await Event.findById(review.event);
-      if (event && event.vendorId.toString() === userId) {
+      // event.vendorId is a Vendor._id — resolve via the caller's vendor profile.
+      if (event && (await canStaffAccessVendor(req, event.vendorId))) {
         isAuthorized = true;
-        isVendor = true;
+        isVendor = req.user?.role === "vendor";
       }
     } else if (review.type === ReviewType.VENDOR && review.vendor) {
-      if (review.vendor._id.toString() === userId) {
+      // Review.vendor references the vendor's User._id.
+      if (String(review.vendor._id) === String(userId)) {
         isAuthorized = true;
         isVendor = true;
       }

@@ -1711,6 +1711,10 @@ class VendorService {
     if (invalidIds.length > 0) {
       throw new AppError(`Invalid event IDs: ${invalidIds.join(", ")}`, 400);
     }
+    const ownedCount = await Event.countDocuments({ _id: { $in: eventIds }, vendorId });
+    if (ownedCount !== new Set(eventIds.map(String)).size) {
+      throw new AppError("One or more events not found or not owned by you", 404);
+    }
 
     const session = await mongoose.startSession();
     session.startTransaction();

@@ -19,7 +19,7 @@ import {
   getFileInfo,
   deleteFile,
 } from "../middleware/upload";
-import { authenticate } from "../middleware/auth";
+import { authenticate, authorize } from "../middleware/auth";
 import { uploadLimiter } from "../middleware/rateLimiter";
 import uploadService from "../services/upload.service";
 import mediaService from "../services/media.service";
@@ -439,9 +439,12 @@ router.post(
 );
 
 // Delete file
+// ponytail: local files carry no owner, so any vendor/admin can delete any file
+// here. Use the MediaAsset endpoints (which track uploadedBy) for per-owner control.
 router.delete(
   "/file/:filename",
   authenticate,
+  authorize(["admin", "vendor"]),
   uploadLimiter,
   async (req: AuthRequest, res: Response, next: NextFunction) => {
     try {

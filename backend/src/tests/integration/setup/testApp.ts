@@ -19,6 +19,10 @@ import adminEventRoutes from "../../../routes/admin.event.routes";
 import adminSettingsRoutes from "../../../routes/admin.settings.routes";
 import analyticsRoutes from "../../../routes/analytics.routes";
 import adminBusinessReportRoutes from "../../../routes/admin.businessReport.routes";
+import ticketRoutes from "../../../routes/ticket.routes";
+import studentRoutes from "../../../routes/student.routes";
+import orderRoutes from "../../../routes/order.routes";
+import cancellationRoutes from "../../../routes/event.cancellation.routes";
 import { maintenanceModeGuard } from "../../../middleware/maintenance.middleware";
 import { errorHandler, notFound } from "../../../middleware/index";
 import { verifyCsrfToken } from "../../../middleware/csrf";
@@ -68,6 +72,10 @@ export const createTestApp = (): Application => {
   app.use("/api/admin", adminSettingsRoutes);
   app.use("/api/insights", analyticsRoutes);
   app.use("/api/admin/business-reports", adminBusinessReportRoutes);
+  app.use("/api/tickets", ticketRoutes);
+  app.use("/api/students", studentRoutes);
+  app.use("/api/orders", orderRoutes);
+  app.use("/api", cancellationRoutes); // mounted at "/" under /api in production
 
   // Health check
   app.get("/api/health", (_req: Request, res: Response) => {

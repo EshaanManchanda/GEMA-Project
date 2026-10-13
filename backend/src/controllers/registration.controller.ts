@@ -16,6 +16,7 @@ import { config } from "../config/env";
 import cloudinary from "../config/cloudinary";
 import { getFileInfo } from "../middleware/upload";
 import { downloadFileAsAttachment } from "../utils/emailAttachment.util";
+import { canStaffAccessVendor } from "../utils/vendorResolve";
 
 // @desc    Submit event registration with files
 // @route   POST /api/events/:eventId/registrations
@@ -397,8 +398,8 @@ export const getRegistrationById = async (
 
     // Check access permissions
     const event = registration.eventId as any;
-    const isOwner = registration.userId._id.toString() === userId;
-    const isVendor = event.vendorId.toString() === userId;
+    const isOwner = String(registration.userId._id) === String(userId);
+    const isVendor = await canStaffAccessVendor(req, event.vendorId);
     const isAdmin = userRole === "admin";
 
     if (!isOwner && !isVendor && !isAdmin) {
@@ -492,7 +493,7 @@ export const getEventRegistrations = async (
       return next(new AppError("Event not found", 404));
     }
 
-    const isVendor = event.vendorId.toString() === userId;
+    const isVendor = await canStaffAccessVendor(req, event.vendorId);
     const isAdmin = userRole === "admin";
 
     if (!isVendor && !isAdmin) {
@@ -700,7 +701,7 @@ export const reviewRegistration = async (
 
     // Check permissions
     const event = registration.eventId as any;
-    const isVendor = event.vendorId.toString() === userId;
+    const isVendor = await canStaffAccessVendor(req, event.vendorId);
     const isAdmin = userRole === "admin";
 
     if (!isVendor && !isAdmin) {
@@ -794,8 +795,8 @@ export const downloadRegistrationFile = async (
 
     // Check permissions
     const event = registration.eventId as any;
-    const isOwner = registration.userId.toString() === userId;
-    const isVendor = event.vendorId.toString() === userId;
+    const isOwner = String(registration.userId) === String(userId);
+    const isVendor = await canStaffAccessVendor(req, event.vendorId);
     const isAdmin = userRole === "admin";
 
     if (!isOwner && !isVendor && !isAdmin) {
