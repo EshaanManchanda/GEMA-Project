@@ -3,6 +3,13 @@ import { Request, Response } from "express";
 import logger from "../config/logger";
 
 /**
+ * E2E runs fire hundreds of requests from one IP. They opt out with
+ * E2E_RELAX_RATE_LIMITS=true — ignored in production so it can never weaken a live server.
+ */
+export const skipInE2E = (): boolean =>
+  process.env.E2E_RELAX_RATE_LIMITS === "true" && process.env.NODE_ENV !== "production";
+
+/**
  * Rate limiting configuration for different endpoint types
  */
 
@@ -19,6 +26,7 @@ const createErrorMessage = (retryAfter: number) => ({
  * Limit: 100 requests per 15 minutes per IP
  */
 export const generalLimiter: RateLimitRequestHandler = rateLimit({
+  skip: skipInE2E,
   windowMs: 15 * 60 * 1000, // 15 minutes
   max: 100,
   message: createErrorMessage(15 * 60),
@@ -40,6 +48,7 @@ export const generalLimiter: RateLimitRequestHandler = rateLimit({
  * Prevents brute force attacks
  */
 export const authLimiter: RateLimitRequestHandler = rateLimit({
+  skip: skipInE2E,
   windowMs: 15 * 60 * 1000, // 15 minutes
   max: 5,
   message: createErrorMessage(15 * 60),
@@ -74,6 +83,7 @@ export const authLimiter: RateLimitRequestHandler = rateLimit({
  * Limit: 30 requests per 15 minutes per IP
  */
 export const refreshTokenLimiter: RateLimitRequestHandler = rateLimit({
+  skip: skipInE2E,
   windowMs: 15 * 60 * 1000, // 15 minutes
   max: 30,
   message: createErrorMessage(15 * 60),
@@ -92,6 +102,7 @@ export const refreshTokenLimiter: RateLimitRequestHandler = rateLimit({
  * Limit: 3 requests per hour per IP
  */
 export const passwordResetLimiter: RateLimitRequestHandler = rateLimit({
+  skip: skipInE2E,
   windowMs: 60 * 60 * 1000, // 1 hour
   max: 3,
   message: createErrorMessage(60 * 60),
@@ -117,6 +128,7 @@ export const passwordResetLimiter: RateLimitRequestHandler = rateLimit({
  * Limit: 5 requests per hour per IP
  */
 export const emailVerificationLimiter: RateLimitRequestHandler = rateLimit({
+  skip: skipInE2E,
   windowMs: 60 * 60 * 1000, // 1 hour
   max: 5,
   message: createErrorMessage(60 * 60),
@@ -141,6 +153,7 @@ export const emailVerificationLimiter: RateLimitRequestHandler = rateLimit({
  * limiter on one channel can't be reused to lock out (or brute-force) the other
  */
 export const phoneOtpLimiter: RateLimitRequestHandler = rateLimit({
+  skip: skipInE2E,
   windowMs: 60 * 60 * 1000, // 1 hour
   max: 5,
   message: createErrorMessage(60 * 60),
@@ -163,6 +176,7 @@ export const phoneOtpLimiter: RateLimitRequestHandler = rateLimit({
  * Limit: 5 requests per hour per user — prevents brute-forcing currentPassword
  */
 export const changePasswordLimiter: RateLimitRequestHandler = rateLimit({
+  skip: skipInE2E,
   windowMs: 60 * 60 * 1000, // 1 hour
   max: 5,
   message: createErrorMessage(60 * 60),
@@ -188,6 +202,7 @@ export const changePasswordLimiter: RateLimitRequestHandler = rateLimit({
  * Limit: 20 uploads per hour per user
  */
 export const uploadLimiter: RateLimitRequestHandler = rateLimit({
+  skip: skipInE2E,
   windowMs: 60 * 60 * 1000, // 1 hour
   max: 20,
   message: createErrorMessage(60 * 60),
@@ -211,6 +226,7 @@ export const uploadLimiter: RateLimitRequestHandler = rateLimit({
  * Limit: 30 requests per hour per user
  */
 export const createResourceLimiter: RateLimitRequestHandler = rateLimit({
+  skip: skipInE2E,
   windowMs: 60 * 60 * 1000, // 1 hour
   max: 30,
   message: createErrorMessage(60 * 60),
@@ -233,6 +249,7 @@ export const createResourceLimiter: RateLimitRequestHandler = rateLimit({
  * Limit: 200 requests per 15 minutes for admin users
  */
 export const adminLimiter: RateLimitRequestHandler = rateLimit({
+  skip: skipInE2E,
   windowMs: 15 * 60 * 1000, // 15 minutes
   max: 200,
   message: createErrorMessage(15 * 60),
@@ -252,6 +269,7 @@ export const adminLimiter: RateLimitRequestHandler = rateLimit({
  * Limit: 60 requests per minute for search endpoints
  */
 export const searchLimiter: RateLimitRequestHandler = rateLimit({
+  skip: skipInE2E,
   windowMs: 60 * 1000, // 1 minute
   max: 60,
   message: createErrorMessage(60),
@@ -274,6 +292,7 @@ export const searchLimiter: RateLimitRequestHandler = rateLimit({
  * Limit: 10 payment attempts per hour per user
  */
 export const paymentLimiter: RateLimitRequestHandler = rateLimit({
+  skip: skipInE2E,
   windowMs: 60 * 60 * 1000, // 1 hour
   max: 10,
   message: createErrorMessage(60 * 60),
@@ -306,6 +325,7 @@ export const createCustomLimiter = (options: {
   keyPrefix?: string;
 }): RateLimitRequestHandler => {
   return rateLimit({
+  skip: skipInE2E,
     windowMs: options.windowMs,
     max: options.max,
     message: createErrorMessage(options.windowMs / 1000),

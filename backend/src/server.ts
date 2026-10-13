@@ -13,6 +13,7 @@ import morgan from "morgan";
 import compression from "compression";
 import cookieParser from "cookie-parser";
 import rateLimit from "express-rate-limit";
+import { skipInE2E } from "./middleware/rateLimiter";
 import mongoSanitize from "express-mongo-sanitize";
 import hpp from "hpp";
 import {
@@ -226,6 +227,7 @@ app.use(
 
 // General API rate limiting (reduced for single core)
 const generalLimiter = rateLimit({
+  skip: skipInE2E,
   windowMs: 60 * 1000, // 1 minute window (shorter than default 15 min)
   max: 100, // REDUCED from 500 - max 100 requests per minute per IP
   standardHeaders: true,
@@ -235,6 +237,7 @@ const generalLimiter = rateLimit({
 
 // Heavy endpoints (dashboard, analytics) - even more restrictive
 const heavyEndpointsLimiter = rateLimit({
+  skip: skipInE2E,
   windowMs: 60 * 1000, // 1 minute window
   max: 20, // STRICT: Only 20 requests/min for heavy operations
   standardHeaders: true,
@@ -245,6 +248,7 @@ const heavyEndpointsLimiter = rateLimit({
 
 // Auth endpoints - moderate limits
 const authLimiter = rateLimit({
+  skip: skipInE2E,
   windowMs: 15 * 60 * 1000, // 15 minutes
   max: 10, // 10 login attempts per 15 minutes
   standardHeaders: true,

@@ -1,3 +1,4 @@
+import { assertSafeSeedTarget } from "./seedGuard";
 import mongoose from "mongoose";
 import { Category } from "../models/index";
 import { config } from "../config/index";
@@ -769,6 +770,7 @@ const categories = [
 ];
 
 async function seedCategories() {
+  assertSafeSeedTarget(MONGODB_URI);
   try {
     console.log("🌱 Starting category seeding...");
     console.log(
