@@ -107,8 +107,10 @@ export const getHealthStatus = async (req: Request, res: Response) => {
     const emailStatus = await checkEmailHealth();
     const firebaseStatus = await checkFirebaseHealth();
 
-    // Get system metrics
-    const metrics = await getSystemMetrics();
+    // Admins get full detail; the public (uptime monitors, deploy checks) gets
+    // only up/down per service — no user/order counts or infra details.
+    const isAdmin = (req as any).user?.role === "admin";
+    const metrics = isAdmin ? await getSystemMetrics() : undefined;
 
     // Calculate overall status
     const services = {
@@ -130,7 +132,7 @@ export const getHealthStatus = async (req: Request, res: Response) => {
       version: process.env.npm_package_version || "1.0.0",
       uptime: process.uptime(),
       services,
-      metrics,
+      metrics: metrics as HealthStatus["metrics"],
     };
 
     const responseTime = Date.now() - startTime;
@@ -151,7 +153,15 @@ export const getHealthStatus = async (req: Request, res: Response) => {
 
     res.status(httpStatus).json({
       success: true,
-      data: healthStatus,
+      data: isAdmin
+        ? healthStatus
+        : {
+            status: overallStatus,
+            timestamp: healthStatus.timestamp,
+            services: Object.fromEntries(
+              Object.entries(services).map(([name, s]) => [name, { status: s.status }]),
+            ),
+          },
       responseTime: `${responseTime}ms`,
     });
   } catch (error) {
