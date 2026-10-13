@@ -26,6 +26,18 @@ import {
   buildPromotionSnapshotHtml,
 } from "../services/reportTemplate.service";
 import { renderReportPdf } from "../utils/pdf.utils";
+import crypto from "crypto";
+import { UserRole } from "../models/User";
+import {
+  buildTrustReport,
+  dedupeSites,
+  isHighlightsRange,
+  HighlightsRange,
+  HIGHLIGHTS_CACHE_PREFIX,
+  scopeLabel,
+} from "../services/trustReport.service";
+import { buildTrustReportHtml } from "../services/trustReportTemplate.service";
+import { getConfiguredSites } from "../services/searchConsole.service";
 import cacheService from "../services/cache.service";
 import { invalidateBusinessReportCaches } from "../utils/cache.utils";
 import { logReportGeneration } from "../services/reportObservability.service";
@@ -590,6 +602,79 @@ router.get(
         `attachment; filename="${filename}"`,
       );
       return res.send(csvBody);
+    } catch (error) {
+      next(error);
+    }
+  },
+);
+
+// @route   GET /api/insights/platform/highlights-report?range=30d|90d|1y
+// @access  Private (Admin) — customer-facing "Platform Highlights" PDF.
+// Cached 1h per range + configured GSC site set. Not invalidated on GSC sync:
+// syncSite refreshes only the 28-day snapshots, while this report reads its own
+// 30/90/365-day snapshots (6h staleness) — so the PDF may lag source data by ≤ 1h.
+type HighlightsEntry = { pdf: string; omitted: string; day: string };
+// ponytail: per-process single-flight — concurrent cold requests share one
+// aggregation + Chromium render. Across PM2 cluster instances use a Redis lock.
+const highlightsInFlight = new Map<string, Promise<HighlightsEntry>>();
+
+async function generateHighlights(range: HighlightsRange, cacheKey: string): Promise<HighlightsEntry> {
+  const report = await buildTrustReport(range);
+  const pdf = await renderReportPdf(buildTrustReportHtml(report), {
+    footerText: `Kidrove Platform Highlights · ${scopeLabel(report.period.days)}`,
+    offline: true,
+  });
+  const entry: HighlightsEntry = {
+    pdf: Buffer.from(pdf).toString("base64"),
+    omitted: report.diagnostics
+      .filter((d) => d.status !== "ok")
+      .map((d) => `${d.section}:${d.status}`)
+      .join(","),
+    day: report.generatedAt.slice(0, 10),
+  };
+  // A transient failure (e.g. GSC timeout) must not strip a section for the next hour.
+  if (!report.diagnostics.some((d) => d.status === "failed")) {
+    await cacheService.set(cacheKey, entry, { ttl: 3600 });
+  }
+  return entry;
+}
+
+router.get(
+  "/platform/highlights-report",
+  authorize([UserRole.ADMIN]),
+  (req: AuthRequest, _res: Response, next: NextFunction) =>
+    isHighlightsRange(req.query.range)
+      ? next()
+      : next(new AppError("range must be 30d, 90d or 1y", 400)),
+  pdfReportLimiter,
+  async (req: AuthRequest, res: Response, next: NextFunction) => {
+    try {
+      const range = req.query.range as HighlightsRange;
+      const sitesHash = crypto
+        .createHash("sha1")
+        .update(dedupeSites(getConfiguredSites()).sort().join(","))
+        .digest("hex")
+        .slice(0, 10);
+      const cacheKey = `${HIGHLIGHTS_CACHE_PREFIX}v1:${range}:${sitesHash}`;
+
+      let entry = await cacheService.get<HighlightsEntry>(cacheKey);
+      if (!entry?.pdf) {
+        let pending = highlightsInFlight.get(cacheKey);
+        if (!pending) {
+          pending = generateHighlights(range, cacheKey).finally(() => highlightsInFlight.delete(cacheKey));
+          highlightsInFlight.set(cacheKey, pending);
+        }
+        entry = await pending;
+      }
+
+      res.setHeader("Content-Type", "application/pdf");
+      res.setHeader(
+        "Content-Disposition",
+        `attachment; filename="kidrove-platform-highlights-${range}-${entry.day}.pdf"`,
+      );
+      res.setHeader("Cache-Control", "no-store");
+      res.setHeader("X-Report-Omitted-Sections", entry.omitted);
+      return res.send(Buffer.from(entry.pdf, "base64"));
     } catch (error) {
       next(error);
     }

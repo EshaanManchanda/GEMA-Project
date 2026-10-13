@@ -236,7 +236,7 @@ ${
 // workers/certificate.worker.ts (upper/lower/date/year/default helpers).
 
 /** Full HTML-escape — safe for both text nodes and quoted attribute values. */
-function escHtml(s: unknown): string {
+export function escHtml(s: unknown): string {
   return String(s ?? "")
     .replace(/&/g, "&amp;")
     .replace(/</g, "&lt;")
