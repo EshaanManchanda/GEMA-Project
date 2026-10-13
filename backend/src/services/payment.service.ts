@@ -655,7 +655,8 @@ export class PaymentService {
   /**
    * Handle successful payment
    */
-  private static async handlePaymentSucceeded(
+  // Public so the seat-expiry sweep can reconcile payments whose webhook was missed.
+  static async handlePaymentSucceeded(
     paymentIntent: Stripe.PaymentIntent,
   ): Promise<void> {
     try {
