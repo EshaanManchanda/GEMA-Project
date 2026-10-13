@@ -1128,20 +1128,41 @@ const EventCard: React.FC<EventCardProps> = (props) => {
     }
   };
 
-  const Component = (onClick || disableNavigation) ? 'div' : Link;
-  const linkProps = (onClick || disableNavigation) ? {} : { to: event.customLink || generateEventUrl(eventSlug) };
+  // Always a real <a href> when navigable (crawlable, open-in-new-tab). With a
+  // caller onClick (analytics + navigate), a plain left click is handed to the
+  // caller; modified/middle clicks fall through to the browser.
+  const label = ariaLabel || `Event: ${event.title}`;
+
+  if (disableNavigation) {
+    return (
+      <div
+        ref={ref}
+        className={`${cardClasses} ${className}`}
+        onClick={onClick ? handleClick : undefined}
+        aria-label={label}
+        role="article"
+      >
+        {renderVariant()}
+      </div>
+    );
+  }
+
+  const handleLinkClick = (e: React.MouseEvent) => {
+    if (e.button !== 0 || e.metaKey || e.ctrlKey || e.shiftKey || e.altKey) return;
+    e.preventDefault();
+    handleClick();
+  };
 
   return (
-    <Component
-      ref={ref as any}
-      className={`${cardClasses} ${className} ${!onClick && !disableNavigation ? 'block' : ''}`}
-      onClick={onClick ? handleClick : undefined}
-      aria-label={ariaLabel || `Event: ${event.title}`}
-      role="article"
-      {...linkProps}
+    <Link
+      ref={ref}
+      to={event.customLink || generateEventUrl(eventSlug)}
+      className={`${cardClasses} ${className} block`}
+      onClick={onClick ? handleLinkClick : undefined}
+      aria-label={label}
     >
       {renderVariant()}
-    </Component>
+    </Link>
   );
 };
 
