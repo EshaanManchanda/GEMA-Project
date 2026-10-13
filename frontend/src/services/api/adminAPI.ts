@@ -1626,6 +1626,22 @@ const adminAPI = {
     await ApiService.download(`/insights/events/${eventId}/report?format=${format}&range=${range}`, filename);
   },
 
+  /**
+   * Customer-facing "Platform Highlights" PDF. Returns the sections the
+   * server left out (e.g. ["search:not_configured"]) so the UI can say why.
+   * retry:false — a 429/5xx must not re-run Puppeteer or burn the rate limit.
+   */
+  downloadHighlightsReport: async (range: '30d' | '90d' | '1y'): Promise<string[]> => {
+    const date = new Date().toISOString().split('T')[0];
+    const headers = await ApiService.download(
+      `/insights/platform/highlights-report?range=${range}`,
+      `kidrove-platform-highlights-${range}-${date}.pdf`,
+      { retry: false, timeout: 120_000 }
+    );
+    const omitted = String(headers?.['x-report-omitted-sections'] ?? '');
+    return omitted ? omitted.split(',').filter(Boolean) : [];
+  },
+
   exportCertificates: async (filters: CertificateExportFilters = {}): Promise<void> => {
     const params = new URLSearchParams();
     Object.entries(filters).forEach(([k, v]) => { if (v) params.set(k, v); });

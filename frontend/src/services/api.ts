@@ -515,9 +515,11 @@ export class ApiService {
   // Download file method
   static async download(
     url: string,
-    filename?: string
-  ): Promise<void> {
+    filename?: string,
+    config: AxiosRequestConfig & { retry?: boolean } = {}
+  ): Promise<AxiosResponse['headers']> {
     const response = await api.get(url, {
+      ...config,
       responseType: 'blob',
     });
 
@@ -530,6 +532,7 @@ export class ApiService {
     link.click();
     document.body.removeChild(link);
     window.URL.revokeObjectURL(downloadUrl);
+    return response.headers;
   }
 }
 

@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { Link } from 'react-router-dom';
 import toast from 'react-hot-toast';
+import { isAxiosError } from 'axios';
 import PrivatePageSEO from '@/components/common/PrivatePageSEO';
 import logger from '@/utils/logger';
 import { convertToCSV } from '@/utils/csvExport';
@@ -45,6 +46,7 @@ import {
   FaExchangeAlt,
   FaPercentage,
   FaExternalLinkAlt,
+  FaFilePdf,
 } from 'react-icons/fa';
 
 ChartJS.register(
@@ -91,6 +93,24 @@ const getDateRange = (range: TimeRange) => {
   };
 };
 
+// The highlights PDF supports 30d/90d/1y; a week is too thin for a customer report.
+const toHighlightsRange = (range: TimeRange): '30d' | '90d' | '1y' => {
+  switch (range) {
+    case '90days': return '90d';
+    case '1year': return '1y';
+    case '7days':
+    case '30days':
+    default: return '30d';
+  }
+};
+
+const OMITTED_REASON: Record<string, string> = {
+  empty: 'no data yet',
+  insufficient: 'too little data to show privately',
+  not_configured: 'not configured',
+  failed: 'could not be loaded',
+};
+
 const formatMonth = (monthStr: string) => {
   const months = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun',
     'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
@@ -133,6 +153,7 @@ const AdminAnalyticsPage: React.FC = () => {
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [exportFormat, setExportFormat] = useState<'json' | 'csv'>('csv');
+  const [generatingPdf, setGeneratingPdf] = useState(false);
 
   const [dashboard, setDashboard] = useState<DashboardSummary | null>(null);
   const [eventData, setEventData] = useState<EventAnalytics | null>(null);
@@ -362,6 +383,42 @@ const AdminAnalyticsPage: React.FC = () => {
       URL.revokeObjectURL(url);
     } catch (err) {
       logger.error('Export failed:', err);
+    }
+  };
+
+  const handleHighlightsPdf = async () => {
+    if (generatingPdf) return;
+    setGeneratingPdf(true);
+    const toastId = toast.loading('Generating Platform Highlights PDF…');
+    try {
+      const omitted = await adminAPI.downloadHighlightsReport(toHighlightsRange(timeRange));
+      toast.success('Platform Highlights PDF downloaded', { id: toastId });
+      if (omitted.length) {
+        const detail = omitted
+          .map((o) => {
+            const [section, status] = o.split(':');
+            return `${section} (${OMITTED_REASON[status] ?? status})`;
+          })
+          .join(', ');
+        toast(`Left out of the PDF: ${detail}`, { icon: 'ℹ️', duration: 8000 });
+      }
+    } catch (err) {
+      logger.error('Highlights PDF failed:', err);
+      const response = isAxiosError(err) ? err.response : undefined;
+      const status = response?.status;
+      const message =
+        status === 401 || status === 403
+          ? 'You are not authorised to generate this report.'
+          : status === 429
+            ? 'Too many reports generated. Please try again in a few minutes.'
+            : isAxiosError(err) && err.code === 'ECONNABORTED'
+              ? 'The report took too long to generate. Please try again shortly.'
+              : !response
+                ? 'Network error. Check your connection and try again.'
+                : 'Report generation failed. Please try again.';
+      toast.error(message, { id: toastId });
+    } finally {
+      setGeneratingPdf(false);
     }
   };
 
@@ -740,6 +797,24 @@ const AdminAnalyticsPage: React.FC = () => {
                   Export
                 </button>
               </div>
+              <button
+                onClick={handleHighlightsPdf}
+                disabled={generatingPdf}
+                aria-busy={generatingPdf}
+                title={timeRange === '7days'
+                  ? 'Customer-facing PDF. 7-day view uses the last 30 days.'
+                  : 'Customer-facing PDF with positive platform highlights'}
+                className="inline-flex items-center gap-2 px-4 py-2 bg-orange-500 text-white
+                  rounded-lg text-sm font-medium hover:bg-orange-600 transition-colors
+                  disabled:opacity-60 disabled:cursor-not-allowed"
+              >
+                {generatingPdf ? (
+                  <span className="w-3.5 h-3.5 rounded-full border-2 border-white/40 border-t-white animate-spin" aria-hidden="true" />
+                ) : (
+                  <FaFilePdf className="w-3.5 h-3.5" aria-hidden="true" />
+                )}
+                {generatingPdf ? 'Generating…' : 'Platform Highlights (PDF)'}
+              </button>
             </div>
           </div>
 
