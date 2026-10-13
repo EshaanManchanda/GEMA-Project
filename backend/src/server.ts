@@ -225,11 +225,15 @@ app.use(
 // Rate limiting optimized for KVM1 (single core protection)
 // Shorter windows and lower limits to prevent single CPU from being overwhelmed
 
-// General API rate limiting (reduced for single core)
+// General API rate limiting. 100/min was hit by a few SPA page loads (each fires
+// 10-20 calls) and by users sharing one NAT IP (schools, offices). Expensive
+// paths keep their own tighter limiters (payments, uploads, auth, admin).
+// Webhooks are exempt (Stripe retries on 429), as are health probes.
+const UNLIMITED_PATHS = /^\/(api\/payments\/webhook|api\/webhooks\/|api\/health|health)/;
 const generalLimiter = rateLimit({
-  skip: skipInE2E,
-  windowMs: 60 * 1000, // 1 minute window (shorter than default 15 min)
-  max: 100, // REDUCED from 500 - max 100 requests per minute per IP
+  skip: (req) => skipInE2E() || UNLIMITED_PATHS.test(req.path),
+  windowMs: 60 * 1000, // 1 minute window
+  max: Number(process.env.RATE_LIMIT_MAX) || 600, // per IP per minute
   standardHeaders: true,
   legacyHeaders: false,
   message: "Too many requests, please slow down. Try again in a minute.",
