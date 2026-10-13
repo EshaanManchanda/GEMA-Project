@@ -147,6 +147,20 @@ create_backup() {
         fi
     fi
 
+    # Database snapshot. Code rollback can't undo data written by new code, so
+    # take a dump before every deploy (restore: mongorestore --gzip --drop <dir>).
+    MONGO_URI=$(grep -E '^MONGODB_URI=' "$BACKEND_DIR/.env" 2>/dev/null | head -1 | cut -d= -f2- | tr -d '"'"'")
+    if [ -z "$MONGO_URI" ]; then
+        warning "MONGODB_URI not found in $BACKEND_DIR/.env - skipping database backup"
+    elif ! command -v mongodump &> /dev/null; then
+        warning "mongodump not installed - skipping database backup (apt install mongodb-database-tools)"
+    elif mongodump --uri="$MONGO_URI" --gzip --out="$BACKUP_DIR/$BACKUP_NAME-db" > /dev/null 2>&1; then
+        success "Database backup created: $BACKUP_NAME-db"
+    else
+        error "Database backup failed - aborting deploy"
+        exit 1
+    fi
+
     # Keep only last 5 backups
     cd "$BACKUP_DIR" && ls -t | tail -n +11 | xargs -r rm -rf
 
@@ -256,6 +270,15 @@ deploy_backend() {
         pm2 start ecosystem.config.js --env production
         pm2 save
         success "Backend started with PM2"
+    fi
+
+    # The worker runs the same compiled code (emails, tickets, seat expiry);
+    # reloading only the API leaves it on the old build.
+    if pm2 describe gema-worker > /dev/null 2>&1; then
+        pm2 reload gema-worker
+        success "Worker reloaded with PM2"
+    else
+        warning "gema-worker is not running in PM2 - emails, tickets and seat expiry will NOT process"
     fi
 
     # Wait for backend to be ready
