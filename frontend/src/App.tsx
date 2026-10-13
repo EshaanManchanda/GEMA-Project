@@ -255,9 +255,10 @@ function AppContent() {
     logger.debug('[AppContent] 🔄 Render', { isInitialized, loading, path: location.pathname });
   }
 
-  // Show loading spinner while checking authentication
-  // Wait for auth initialization to complete before rendering routes
-  if (!isInitialized || loading) {
+  // Show loading spinner only until the initial auth check completes.
+  // Not on `loading`: login/register/profile thunks set it too, and blanking the app
+  // unmounted the page mid-request — a wrong password wiped the form and lost the error.
+  if (!isInitialized) {
     if (import.meta.env.DEV) {
       logger.warn('[AppContent] ⏳ Showing spinner — stuck?', { isInitialized, loading });
     }

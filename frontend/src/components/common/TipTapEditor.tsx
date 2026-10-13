@@ -1925,7 +1925,11 @@ const TipTapEditor: React.FC<TipTapEditorProps> = ({
             </div>
           )}
 
-          {/* Bubble Menu for text selection */}
+          {/* Bubble Menu for text selection.
+              Wrapped in a div React owns: tippy moves BubbleMenu's own node out of this tree,
+              and React used it as the insertBefore anchor when the toolbar re-mounts
+              (HTML → Visual), throwing NotFoundError and wiping the form. */}
+          <div>
           <BubbleMenu editor={editor} tippyOptions={{ duration: 100 }}>
             <div className="flex gap-1 bg-gray-800 text-white p-1 rounded shadow-lg">
               <button
@@ -1951,6 +1955,7 @@ const TipTapEditor: React.FC<TipTapEditorProps> = ({
               </button>
             </div>
           </BubbleMenu>
+          </div>
         </>
       )}
 

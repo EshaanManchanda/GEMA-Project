@@ -1,4 +1,4 @@
-import { ApiService } from '../api';
+import { ApiService, ApiResponse } from '../api';
 import { logApiResponse } from '../../utils/apiResponseHandler';
 import {
   SubmitRegistrationRequest,
@@ -49,7 +49,7 @@ const registrationAPI = {
       );
 
       logApiResponse(`POST /registrations/submit/${data.eventId}`, response);
-      return response.data;
+      return body(response);
     } catch (error) {
       logApiResponse(`POST /registrations/submit/${data.eventId}`, null, error);
       throw error;
@@ -67,7 +67,7 @@ const registrationAPI = {
       );
 
       logApiResponse(`POST /registrations/${data.registrationId}/confirm-payment`, response);
-      return response.data;
+      return body(response);
     } catch (error) {
       logApiResponse(`POST /registrations/${data.registrationId}/confirm-payment`, null, error);
       throw error;
@@ -81,7 +81,7 @@ const registrationAPI = {
     try {
       const response = await ApiService.get('/registrations/user/me', { params });
       logApiResponse('GET /registrations/user/me', response);
-      return response.data;
+      return body(response);
     } catch (error) {
       logApiResponse('GET /registrations/user/me', null, error);
       throw error;
@@ -95,7 +95,7 @@ const registrationAPI = {
     try {
       const response = await ApiService.get(`/registrations/event/${eventId}`, { params });
       logApiResponse(`GET /registrations/event/${eventId}`, response);
-      return response.data;
+      return body(response);
     } catch (error) {
       logApiResponse(`GET /registrations/event/${eventId}`, null, error);
       throw error;
@@ -109,7 +109,7 @@ const registrationAPI = {
     try {
       const response = await ApiService.get(`/registrations/${registrationId}`);
       logApiResponse(`GET /registrations/${registrationId}`, response);
-      return response.data;
+      return body(response);
     } catch (error) {
       logApiResponse(`GET /registrations/${registrationId}`, null, error);
       throw error;
@@ -146,7 +146,7 @@ const registrationAPI = {
       );
 
       logApiResponse(`PATCH /registrations/${data.registrationId}`, response);
-      return response.data;
+      return body(response);
     } catch (error) {
       logApiResponse(`PATCH /registrations/${data.registrationId}`, null, error);
       throw error;
@@ -163,7 +163,7 @@ const registrationAPI = {
       });
 
       logApiResponse(`DELETE /registrations/${data.registrationId}`, response);
-      return response.data;
+      return body(response);
     } catch (error) {
       logApiResponse(`DELETE /registrations/${data.registrationId}`, null, error);
       throw error;
@@ -181,7 +181,7 @@ const registrationAPI = {
       });
 
       logApiResponse(`POST /registrations/${data.registrationId}/review`, response);
-      return response.data;
+      return body(response);
     } catch (error) {
       logApiResponse(`POST /registrations/${data.registrationId}/review`, null, error);
       throw error;
@@ -215,7 +215,7 @@ const registrationAPI = {
       });
 
       logApiResponse(`POST /registrations/config/${data.eventId}`, response);
-      return response.data;
+      return body(response);
     } catch (error) {
       logApiResponse(`POST /registrations/config/${data.eventId}`, null, error);
       throw error;
@@ -229,7 +229,7 @@ const registrationAPI = {
     try {
       const response = await ApiService.get(`/registrations/config/${eventId}`);
       logApiResponse(`GET /registrations/config/${eventId}`, response);
-      return response.data;
+      return body(response);
     } catch (error) {
       logApiResponse(`GET /registrations/config/${eventId}`, null, error);
       throw error;
@@ -243,7 +243,7 @@ const registrationAPI = {
     try {
       const response = await ApiService.delete(`/registrations/config/${eventId}`);
       logApiResponse(`DELETE /registrations/config/${eventId}`, response);
-      return response.data;
+      return body(response);
     } catch (error) {
       logApiResponse(`DELETE /registrations/config/${eventId}`, null, error);
       throw error;
@@ -260,12 +260,17 @@ const registrationAPI = {
       });
 
       logApiResponse(`POST /registrations/config/${data.eventId}/duplicate`, response);
-      return response.data;
+      return body(response);
     } catch (error) {
       logApiResponse(`POST /registrations/config/${data.eventId}/duplicate`, null, error);
       throw error;
     }
   },
 };
+
+
+// ApiService already unwrapped the axios response; this only re-types its envelope
+// (ApiResponse.message is optional, the declared response types require it).
+const body = <T>(response: ApiResponse): T => response as unknown as T;
 
 export default registrationAPI;
