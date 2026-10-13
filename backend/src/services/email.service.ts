@@ -345,9 +345,9 @@ class EmailService {
       );
       return info.messageId || "";
     } catch (error: any) {
+      // Inline the message: winston spreads a string meta arg into {"0":"M",...}
       logger.error(
-        "[EmailService] Failed to send email:",
-        error?.message || error,
+        `[EmailService] Failed to send email: ${error?.message || error}`,
       );
 
       // In non-production, don't block app flow on SMTP auth/config issues.
