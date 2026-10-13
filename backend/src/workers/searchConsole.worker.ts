@@ -2,6 +2,7 @@ import { Worker, Job } from "bullmq";
 import {
   QUEUE_NAMES,
   bullMQConnection,
+  QUEUE_PREFIX,
   searchConsoleSyncQueue,
   areQueuesEnabled,
 } from "../config/queue";
@@ -41,7 +42,7 @@ const processSearchConsoleSync = async (_job: Job) => {
 
 const searchConsoleWorker = areQueuesEnabled
   ? new Worker(QUEUE_NAMES.SEARCH_CONSOLE_SYNC, processSearchConsoleSync, {
-      connection: bullMQConnection!,
+      prefix: QUEUE_PREFIX, connection: bullMQConnection!,
       concurrency: WORKER_TUNING.SEARCH_CONSOLE_SYNC.CONCURRENCY,
     })
   : null;

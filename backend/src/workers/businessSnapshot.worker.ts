@@ -3,6 +3,7 @@ import { Worker, Job } from "bullmq";
 import {
   QUEUE_NAMES,
   bullMQConnection,
+  QUEUE_PREFIX,
   analyticsQueue,
   areQueuesEnabled,
 } from "../config/queue";
@@ -187,7 +188,7 @@ const processBusinessSnapshotJob = async (job: Job) => {
 
 const businessSnapshotWorker = areQueuesEnabled
   ? new Worker(QUEUE_NAMES.ANALYTICS, processBusinessSnapshotJob, {
-      connection: bullMQConnection!,
+      prefix: QUEUE_PREFIX, connection: bullMQConnection!,
       concurrency: WORKER_TUNING.BUSINESS_SNAPSHOT.CONCURRENCY,
     })
   : null;

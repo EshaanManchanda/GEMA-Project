@@ -127,8 +127,15 @@ if (bullMQClient) {
 // Share the BullMQ client across all queues/workers
 export const bullMQConnection = bullMQClient;
 
+// Key namespace for every queue/worker. Defaults to BullMQ's own `bull` so a
+// deploy never orphans live jobs. Set QUEUE_PREFIX=gema where Redis is shared
+// with another project (generic names like `email` would collide).
+// Queues and their workers MUST use the same prefix or jobs are never picked up.
+export const QUEUE_PREFIX = process.env.QUEUE_PREFIX || "bull";
+
 // Queue configuration (optimized for KVM1 - reduced retention for lower memory usage)
 const queueConfig = {
+  prefix: QUEUE_PREFIX,
   connection: bullMQConnection, // Use shared connection!
   defaultJobOptions: {
     attempts: 3,

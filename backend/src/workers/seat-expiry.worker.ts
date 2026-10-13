@@ -3,6 +3,7 @@ import mongoose from "mongoose";
 import {
   QUEUE_NAMES,
   bullMQConnection,
+  QUEUE_PREFIX,
   seatExpiryQueue,
   areQueuesEnabled,
 } from "../config/queue";
@@ -90,7 +91,7 @@ const processSeatExpiry = async (_job: Job) => {
 
 const seatExpiryWorker = areQueuesEnabled
   ? new Worker(QUEUE_NAMES.SEAT_EXPIRY, processSeatExpiry, {
-      connection: bullMQConnection!,
+      prefix: QUEUE_PREFIX, connection: bullMQConnection!,
       concurrency: WORKER_TUNING.SEAT_EXPIRY.CONCURRENCY,
     })
   : null;

@@ -2,6 +2,7 @@ import { Worker, Job } from "bullmq";
 import {
   QUEUE_NAMES,
   bullMQConnection,
+  QUEUE_PREFIX,
   automationQueue,
   areQueuesEnabled,
 } from "../config/queue";
@@ -275,7 +276,7 @@ const automationWorker = areQueuesEnabled
         }
       },
       {
-        connection: bullMQConnection,
+        prefix: QUEUE_PREFIX, connection: bullMQConnection,
         concurrency: WORKER_TUNING.AUTOMATION.CONCURRENCY,
       },
     )

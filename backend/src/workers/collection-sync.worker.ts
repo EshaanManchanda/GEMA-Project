@@ -3,6 +3,7 @@ import mongoose from "mongoose";
 import {
   QUEUE_NAMES,
   bullMQConnection,
+  QUEUE_PREFIX,
   areQueuesEnabled,
 } from "../config/queue";
 import { WORKER_TUNING } from "../config/workerTuning";
@@ -79,7 +80,7 @@ const collectionSyncWorker = areQueuesEnabled
         }
       },
       {
-        connection: bullMQConnection, // Use shared connection
+        prefix: QUEUE_PREFIX, connection: bullMQConnection, // Use shared connection
         concurrency: WORKER_TUNING.COLLECTION_SYNC.CONCURRENCY,
         limiter: {
           max: WORKER_TUNING.COLLECTION_SYNC.RATE_LIMIT_MAX,

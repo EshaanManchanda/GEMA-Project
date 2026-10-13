@@ -2,6 +2,7 @@ import { Worker, Job } from "bullmq";
 import {
   QUEUE_NAMES,
   bullMQConnection,
+  QUEUE_PREFIX,
   areQueuesEnabled,
 } from "../config/queue";
 import { WORKER_TUNING } from "../config/workerTuning";
@@ -98,7 +99,7 @@ const payoutWorker = areQueuesEnabled
         }
       },
       {
-        connection: bullMQConnection,
+        prefix: QUEUE_PREFIX, connection: bullMQConnection,
         concurrency: WORKER_TUNING.PAYOUT.CONCURRENCY,
       },
     )

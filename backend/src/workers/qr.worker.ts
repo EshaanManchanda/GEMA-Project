@@ -2,6 +2,7 @@ import { Worker, Job } from "bullmq";
 import {
   QUEUE_NAMES,
   bullMQConnection,
+  QUEUE_PREFIX,
   areQueuesEnabled,
 } from "../config/queue";
 import { WORKER_TUNING } from "../config/workerTuning";
@@ -66,7 +67,7 @@ const qrWorker = areQueuesEnabled
         }
       },
       {
-        connection: bullMQConnection, // Use shared connection
+        prefix: QUEUE_PREFIX, connection: bullMQConnection, // Use shared connection
         concurrency: WORKER_TUNING.QR_GENERATION.CONCURRENCY,
         limiter: {
           max: WORKER_TUNING.QR_GENERATION.RATE_LIMIT_MAX,

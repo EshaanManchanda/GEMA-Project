@@ -4,6 +4,7 @@ import QRCode from "qrcode";
 import {
   QUEUE_NAMES,
   bullMQConnection,
+  QUEUE_PREFIX,
   areQueuesEnabled,
 } from "../config/queue";
 import { WORKER_TUNING } from "../config/workerTuning";
@@ -306,7 +307,7 @@ const certificateWorker = areQueuesEnabled
         }
       },
       {
-        connection: bullMQConnection!,
+        prefix: QUEUE_PREFIX, connection: bullMQConnection!,
         concurrency: WORKER_TUNING.CERTIFICATE_GENERATION.CONCURRENCY,
       },
     )
