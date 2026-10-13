@@ -22,6 +22,7 @@
     "lint": "eslint src/**/*.ts",
     "lint:fix": "eslint src/**/*.ts --fix",
     "format": "prettier --write src/**/*.ts",
+    "check:predeploy": "ts-node src/scripts/preDeployCheck.ts",
     "db:seed": "ts-node src/scripts/seed.ts",
     "db:seed-blogs": "ts-node src/scripts/seedBlogs.ts",
     "db:seed-banners": "ts-node src/scripts/seedBanners.ts",
