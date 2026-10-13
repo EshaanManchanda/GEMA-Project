@@ -166,6 +166,8 @@ const HomePage: React.FC = () => {
         firstBannerImage={firstBannerImage}
       />
       <div className="w-full bg-gray-50">
+        {/* Hero is image-only; the page still needs one <h1> for SEO and screen readers */}
+        <h1 className="sr-only">Kidrove – events, classes and activities for kids</h1>
         {/* Homepage Banner Carousel - No ScrollReveal for LCP */}
         {bannersData?.banners && bannersData.banners.length > 0 && (
           <BannerCarousel banners={bannersData.banners} />

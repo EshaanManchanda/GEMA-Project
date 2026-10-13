@@ -36,9 +36,8 @@ test('home page loads with events and navigation @mobile', async ({ page, reques
   await expectNoHorizontalScroll(page);
 });
 
-// Known gap: the home page has no <h1> (SEO + screen readers). This test passes
-// while the bug exists and will flag itself once an <h1> is added — then drop .fail.
-test.fail('home page has exactly one <h1>', async ({ page }) => {
+// The home hero is image-only, so the page carries a visually hidden <h1>.
+test('home page has exactly one <h1>', async ({ page }) => {
   await visit(page, '/');
   await expect(page.locator('h1')).toHaveCount(1);
 });
