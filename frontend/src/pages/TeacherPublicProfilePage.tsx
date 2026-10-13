@@ -858,7 +858,6 @@ const TeacherPublicProfilePage: React.FC = () => {
                   const thumb = getEventImageFromEvent(event, 400, 300);
                   const typeLabel = event.type || 'Class';
                   const grades = event.grades && event.grades.length > 0 ? event.grades.join(', ') : 'All Grades';
-                  const duration = event.duration || 'Flexible';
                   
                   return (
                     <Link
@@ -899,9 +898,6 @@ const TeacherPublicProfilePage: React.FC = () => {
                           <div className="flex items-center gap-1.5 text-xs text-slate-500 font-medium">
                             <span className="w-1.5 h-1.5 rounded-full bg-indigo-400"></span>
                             <span>{grades}</span>
-                          </div>
-                          <div className="flex items-center gap-1.5 text-xs text-slate-500 font-medium bg-slate-100 px-2.5 py-1 rounded-full">
-                            <span>{duration}</span>
                           </div>
                         </div>
                       </div>

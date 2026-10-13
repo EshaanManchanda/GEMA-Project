@@ -8,7 +8,6 @@ import {
 import { MdOutlineSort } from 'react-icons/md';
 import { useQuery } from '@tanstack/react-query';
 import { useEventsQuery } from '@/hooks/queries/useEventsQuery';
-import { useHomepageQuery } from '@/hooks/queries/useHomepageQuery';
 import teacherAPI from '@/services/api/teacherAPI';
 import { API_BASE_URL } from '@/config/api';
 import type { ITeacher } from '@/types/teacher';
@@ -207,9 +206,6 @@ const TeachersListingPage: React.FC = () => {
   });
   const totalClasses = classesData?.pagination?.totalEvents || classesData?.pagination?.total || 0;
 
-  const { data: homeData } = useHomepageQuery();
-  const totalStudents = homeData?.stats?.totalStudents || 0;
-
   useEffect(() => {
     const fetchTeachers = async () => {
       try {
@@ -329,7 +325,7 @@ const TeachersListingPage: React.FC = () => {
           </div>
 
           {/* Stats Cards */}
-          <div className="grid grid-cols-3 gap-2 sm:flex sm:flex-wrap sm:justify-center sm:gap-4 max-w-4xl mx-auto">
+          <div className="grid grid-cols-2 gap-2 sm:flex sm:flex-wrap sm:justify-center sm:gap-4 max-w-4xl mx-auto">
             {/* Stat 1 */}
             <div className="flex flex-col sm:flex-row items-center sm:items-center justify-center sm:justify-start gap-1 sm:gap-4 bg-white rounded-xl sm:rounded-2xl px-2 py-2 sm:px-6 sm:py-4 shadow-sm border border-red-100 min-w-0 sm:min-w-[200px] text-center sm:text-left">
               <div className="w-8 h-8 sm:w-12 sm:h-12 rounded-full bg-red-50 flex items-center justify-center flex-shrink-0">
@@ -350,20 +346,6 @@ const TeachersListingPage: React.FC = () => {
               <div>
                 <p className="text-base sm:text-2xl font-bold text-gray-900 leading-tight">{totalClasses > 0 ? `${totalClasses}+` : '0'}</p>
                 <p className="text-[10px] sm:text-sm font-medium text-gray-500 leading-tight">Total classes</p>
-              </div>
-            </div>
-            {/* Stat 3 */}
-            <div className="flex flex-col sm:flex-row items-center sm:items-center justify-center sm:justify-start gap-1 sm:gap-4 bg-white rounded-xl sm:rounded-2xl px-2 py-2 sm:px-6 sm:py-4 shadow-sm border border-emerald-100 min-w-0 sm:min-w-[200px] text-center sm:text-left">
-              <div className="w-8 h-8 sm:w-12 sm:h-12 rounded-full bg-emerald-50 flex items-center justify-center flex-shrink-0">
-                <svg className="w-4 h-4 sm:w-6 sm:h-6 text-emerald-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                  <path d="M12 14l9-5-9-5-9 5 9 5z" />
-                  <path d="M12 14l6.16-3.422a12.083 12.083 0 01.665 6.479A11.952 11.952 0 0012 20.055a11.952 11.952 0 00-6.824-2.998 12.078 12.078 0 01.665-6.479L12 14z" />
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 14l9-5-9-5-9 5 9 5zm0 0l6.16-3.422a12.083 12.083 0 01.665 6.479A11.952 11.952 0 0012 20.055a11.952 11.952 0 00-6.824-2.998 12.078 12.078 0 01.665-6.479L12 14zm-4 6v-7.5l4-2.222" />
-                </svg>
-              </div>
-              <div>
-                <p className="text-base sm:text-2xl font-bold text-gray-900 leading-tight">{totalStudents > 0 ? `${totalStudents}+` : '0'}</p>
-                <p className="text-[10px] sm:text-sm font-medium text-gray-500 leading-tight">Students Taught</p>
               </div>
             </div>
           </div>
