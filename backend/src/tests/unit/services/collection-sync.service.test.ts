@@ -8,6 +8,12 @@ jest.mock("../../../models/Event");
 jest.mock("../../../config/logger");
 jest.mock("../../../services/cache.service");
 
+/** eventsData written by the last Collection.updateOne call. */
+const savedEventsData = () => {
+  const calls = (Collection.updateOne as jest.Mock).mock.calls;
+  return calls[calls.length - 1]?.[1]?.$set?.eventsData;
+};
+
 describe("CollectionSyncService", () => {
   beforeEach(() => {
     jest.clearAllMocks();
@@ -226,11 +232,8 @@ describe("CollectionSyncService", () => {
       // Should call getEventDataForEmbed 7 times (for 7 events)
       expect(getEventSpy).toHaveBeenCalledTimes(7);
 
-      // Verify save was called
-      expect(collection.save).toHaveBeenCalled();
-
-      // Verify eventsData was populated
-      expect(collection.eventsData.length).toBeGreaterThan(0);
+      // Persisted atomically via updateOne (not collection.save) with all 7 events
+      expect(savedEventsData()).toHaveLength(7);
     });
 
     it("should return null if collection not found", async () => {
@@ -289,7 +292,7 @@ describe("CollectionSyncService", () => {
       );
 
       // Only 1 event should be in eventsData (the approved and active one)
-      expect(collection.eventsData.length).toBe(1);
+      expect(savedEventsData()).toHaveLength(1);
       expect(result).toBe(1);
     });
   });

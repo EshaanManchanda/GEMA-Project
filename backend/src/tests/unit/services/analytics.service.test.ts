@@ -119,12 +119,12 @@ describe("Analytics — Revenue Consistency", () => {
         // locationStats
         .mockResolvedValueOnce([])
         // monthlyStats
-        .mockResolvedValueOnce([])
-        // getEventRevenueStats via $lookup — returns two events with their revenues
-        .mockResolvedValueOnce([
-          { eventId: EVENT_A_ID, title: "Event A", revenue: 80, tickets: 1 },
-          { eventId: EVENT_B_ID, title: "Event B", revenue: 120, tickets: 1 },
-        ]);
+        .mockResolvedValueOnce([]);
+      // getEventRevenueStats aggregates Orders ($group items.eventId) — returns two events with their revenues
+      mockOrderAggregate.mockResolvedValueOnce([
+        { eventId: EVENT_A_ID, title: "Event A", revenue: 80, tickets: 1 },
+        { eventId: EVENT_B_ID, title: "Event B", revenue: 120, tickets: 1 },
+      ]);
 
       const result = await analyticsService.getEventAnalytics();
 

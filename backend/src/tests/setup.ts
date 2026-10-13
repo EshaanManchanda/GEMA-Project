@@ -18,6 +18,10 @@ process.env.BCRYPT_SALT_ROUNDS = "4";
 process.env.REDIS_URL = "redis://localhost:6379";
 process.env.FRONTEND_URL = "http://localhost:3000";
 process.env.GOOGLE_PLACES_API_KEY = "test-places-key"; // GooglePlacesService reads it once at import; unset => sync silently returns 0 reviews
+// config/stripe validates keys at import; tests never call real Stripe.
+process.env.STRIPE_SECRET_KEY = process.env.STRIPE_TEST_SECRET_KEY = "sk_test_dummydummydummydummy";
+process.env.STRIPE_PUBLISHABLE_KEY = process.env.STRIPE_TEST_PUBLISHABLE_KEY = "pk_test_dummydummydummydummy";
+process.env.STRIPE_WEBHOOK_SECRET = "whsec_dummydummydummy";
 process.env.CLOUDINARY_CLOUD_NAME = "test-cloud";
 process.env.CLOUDINARY_API_KEY = "test-api-key";
 process.env.CLOUDINARY_API_SECRET = "test-api-secret";
