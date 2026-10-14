@@ -277,7 +277,9 @@ export default defineConfig({
           }
 
           // Firebase (ensure it's isolated)
-          if (id.includes('firebase')) {
+          // node_modules only: matching app code (src/config/firebase.ts, statically imported
+          // via authSlice) would make this chunk an entry dependency and modulepreload it.
+          if (id.includes('node_modules/firebase') || id.includes('node_modules/@firebase')) {
             return 'firebase';
           }
 
