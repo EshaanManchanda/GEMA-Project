@@ -12,6 +12,24 @@ import { ApiResponse } from "../types/index";
 import * as crypto from "crypto";
 import PayoutService from "../services/payout.service";
 
+// Only these come from the applicant: totals, clicks, commissions, status and
+// the affiliate code were all writable through `...req.body` (an applicant
+// could start with totalCommissionEarned set). The proposed commission rate
+// is reviewed by an admin before approval.
+const PROFILE_FIELDS = [
+  "businessName",
+  "website",
+  "socialMedia",
+  "paymentMethod",
+  "paymentDetails",
+  "minimumPayoutAmount",
+  "payoutFrequency",
+] as const;
+const APPLY_FIELDS = [...PROFILE_FIELDS, "defaultCommissionRate", "commissionType"] as const;
+
+const pick = (body: Record<string, unknown>, fields: readonly string[]) =>
+  Object.fromEntries(fields.filter((f) => body?.[f] !== undefined).map((f) => [f, body[f]]));
+
 /**
  * Apply to become an affiliate
  */
@@ -22,7 +40,7 @@ export const applyAffiliate = async (
 ): Promise<void> => {
   try {
     const userId = req.user?._id || req.user?.id;
-    const applicationData = req.body;
+    const applicationData = pick(req.body, APPLY_FIELDS);
 
     if (!userId) {
       return next(new AppError("Authentication required", 401));
@@ -111,7 +129,7 @@ export const updateAffiliateProfile = async (
 ): Promise<void> => {
   try {
     const userId = req.user?._id || req.user?.id;
-    const updateData = req.body;
+    const updateData = pick(req.body, PROFILE_FIELDS);
 
     if (!userId) {
       return next(new AppError("Authentication required", 401));

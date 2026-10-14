@@ -501,8 +501,9 @@ affiliateSchema.index({ "commissions.status": 1 });
 affiliateSchema.index({ totalRevenue: -1 });
 affiliateSchema.index({ createdAt: -1 });
 
-// Pre-save middleware to generate affiliate code
-affiliateSchema.pre("save", function (next) {
+// Generate the affiliate code before validation (it's required, and
+// validation runs before "save" hooks, so every application used to fail).
+affiliateSchema.pre("validate", function (next) {
   if (!this.affiliateCode) {
     // Generate a unique affiliate code
     const userId = this.userId.toString();

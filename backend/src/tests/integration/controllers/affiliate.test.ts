@@ -47,7 +47,7 @@ async function insertAffiliate(userId: string, extra: Record<string, unknown> = 
 }
 
 describe("affiliate self-service", () => {
-  it.failing("BUG: applying without an affiliateCode succeeds (code is required before the pre-save generator runs)", async () => {
+  it("applying without an affiliateCode succeeds (code is required before the pre-save generator runs)", async () => {
     const user = await signUp(app, "customer");
 
     const res = await send(user, "post", "/api/affiliates/apply", application);
@@ -72,7 +72,7 @@ describe("affiliate self-service", () => {
     expect((await send(user, "post", "/api/affiliates/apply", application)).status).toBe(400);
   });
 
-  it.failing("BUG: applicants cannot seed their own earnings via the apply body", async () => {
+  it("applicants cannot seed their own earnings via the apply body", async () => {
     const user = await signUp(app, "customer");
 
     await send(user, "post", "/api/affiliates/apply", {
@@ -115,7 +115,7 @@ describe("affiliate self-service", () => {
     expect((await send(user, "put", "/api/affiliates/profile", { website: "not a url" })).status).toBe(400);
   });
 
-  it.failing("BUG: profile update cannot raise totalCommissionEarned", async () => {
+  it("profile update cannot raise totalCommissionEarned", async () => {
     const user = await signUp(app, "customer");
     await insertAffiliate(user.userId);
 
