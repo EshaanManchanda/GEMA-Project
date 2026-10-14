@@ -196,6 +196,62 @@
    "commit": "cf82c46",
    "title": "Old /book/<id> links went to a broken page",
    "text": "The redirect sent visitors to the literal path /booking/:eventId. It now uses the real event id."
+  },
+  {
+   "area": "Security",
+   "sev": "high",
+   "commit": "f9e7822",
+   "title": "An admin endpoint returned the new user's password hash",
+   "text": "Creating a vendor from a partnership returned the full user document, password hash included. User documents now never serialize password or OTP hashes, on any endpoint. The public partner directory also stopped returning phone numbers, payment session ids and attachments."
+  },
+  {
+   "area": "Security",
+   "sev": "high",
+   "commit": "4bcf5f5",
+   "title": "Employees could check tickets in as a colleague",
+   "text": "The check-in API trusted the employee id in the request, any venue assignment authorised every event, and vendors could read every vendor's check-in logs. Check-ins are now tied to the logged-in employee and their assigned events, and logs are limited to the vendor's own events."
+  },
+  {
+   "area": "Security",
+   "sev": "high",
+   "commit": "68d92ba",
+   "title": "Affiliates could set their own earnings",
+   "text": "Applying or editing an affiliate profile accepted any field, including commission earned and totals. Only the form's fields are accepted now. Applying had also always failed, because the affiliate code was generated after validation."
+  },
+  {
+   "area": "Security",
+   "sev": "medium",
+   "commit": "c150545",
+   "title": "Vendors could approve their own venues",
+   "text": "Venue updates accepted isApproved and promotion fields. Creating a venue also always failed (venue-type mismatch and missing required fields); both are fixed."
+  },
+  {
+   "area": "Security",
+   "sev": "medium",
+   "commit": "cdf2b45",
+   "title": "Anyone could read unmoderated blog comments",
+   "text": "The public comment list accepted ?status=pending. It now returns published comments only, and deleting a comment twice no longer pushes the count below zero."
+  },
+  {
+   "area": "Security",
+   "sev": "medium",
+   "commit": "c968630",
+   "title": "Anyone could rewrite a newsletter subscriber's details",
+   "text": "Subscribing with an existing email overwrote that subscriber's name, city and preferences. Existing subscribers are left as they are, and the welcome email escapes the name."
+  },
+  {
+   "area": "Bugs & user experience",
+   "sev": "high",
+   "commit": "bfdaff7",
+   "title": "Event cards reloaded the whole site, sometimes on another domain",
+   "text": "Cards linked to an absolute URL built from the configured site address, so every click was a full reload to that host. They now navigate inside the app."
+  },
+  {
+   "area": "Testing & CI",
+   "sev": "medium",
+   "commit": "891ef1b",
+   "title": "Frontend type-check had 38 errors",
+   "text": "All were unused code (including the never-shown old competition payment step). The type-check is clean, so the CI frontend job can pass."
   }
  ],
  "tests": [
