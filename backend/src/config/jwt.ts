@@ -2,6 +2,7 @@ import * as jwt from "jsonwebtoken";
 import { Secret, SignOptions } from "jsonwebtoken";
 import { StringValue } from "ms"; // 👈 important
 import { config } from "./env";
+import { randomUUID } from "crypto";
 
 /**
  * Parse expiration value to handle both string and number formats
@@ -30,7 +31,9 @@ export const generateRefreshToken = (payload: object): string => {
     algorithm: 'HS256',
     expiresIn: parseExpiration(config.jwtRefreshExpiresIn),
   };
-  return jwt.sign(payload, config.jwtRefreshSecret as Secret, options);
+  // jwtid: two refresh tokens issued in the same second were byte-identical,
+  // so a fast refresh looked like reuse of a revoked token (logout everywhere).
+  return jwt.sign(payload, config.jwtRefreshSecret as Secret, { ...options, jwtid: randomUUID() });
 };
 
 /**
